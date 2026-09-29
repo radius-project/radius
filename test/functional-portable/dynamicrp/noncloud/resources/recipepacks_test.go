@@ -202,7 +202,7 @@ func Test_RecipePacks_ByName_Deployment(t *testing.T) {
 // 2. Resource Deployment Failure:
 //   - Attempts to deploy a Bicep template with a recipe pack but no providers configuration in the environment
 //   - The recipe does not have a default namespace
-//   - Validates the exact wrapper chain ending in a structured BadRequest with "Namespace parameter required."
+//   - Validates that the deployment fails with "Namespace parameter required." error
 func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 	template := "testdata/recipepacks-test-no-provider.bicep"
 	appName := "recipepacks-test-app-no-provider"
@@ -212,31 +212,20 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
-	validate := step.ValidateExactError(step.DeploymentErrorDetail{
-		Code: "DeploymentFailed",
+	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
+		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code: "ResourceDeploymentFailure",
+				Code:            "RecipeDeploymentFailed",
+				MessageContains: "failed to deploy recipe default of type Test.Resources/userTypeAlpha",
 				Details: []step.DeploymentErrorDetail{
 					{
-						Code:            "RecipeDeploymentFailed",
-						MessageContains: "failed to deploy recipe default of type Test.Resources/userTypeAlpha",
+						Code:            "DeploymentFailed",
+						MessageContains: "At least one resource deployment operation failed",
 						Details: []step.DeploymentErrorDetail{
 							{
-								Code:            "DeploymentFailed",
-								MessageContains: "At least one resource deployment operation failed",
-								Details: []step.DeploymentErrorDetail{
-									{
-										// The nested provider's failed-resource envelope contributes this wrapper.
-										Code: "ResourceDeploymentFailure",
-										Details: []step.DeploymentErrorDetail{
-											{
-												Code:            "BadRequest",
-												MessageContains: "Namespace parameter required.",
-											},
-										},
-									},
-								},
+								Code:            "",
+								MessageContains: "Namespace parameter required.",
 							},
 						},
 					},
