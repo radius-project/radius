@@ -27,7 +27,12 @@ import (
 var _ PreflightCheck = (*VersionCompatibilityCheck)(nil)
 
 const (
+	// RADIUS_EDGE_CHART_VERSION is the chart version of the unreleased in-repo chart.
 	RADIUS_EDGE_CHART_VERSION = "0.42.42-dev"
+
+	// RADIUS_EDGE_APP_VERSION is the appVersion of the unreleased in-repo chart. Installed
+	// versions are read from the release's appVersion, so this is what an edge install reports.
+	RADIUS_EDGE_APP_VERSION = "edge"
 )
 
 // VersionCompatibilityCheck validates that the target version is a valid upgrade
@@ -89,7 +94,7 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 	}
 
 	// Always allow upgrades from edge development version
-	if currentVersion == RADIUS_EDGE_CHART_VERSION {
+	if currentVersion == RADIUS_EDGE_CHART_VERSION || currentVersion == RADIUS_EDGE_APP_VERSION {
 		return true, "", nil
 	}
 

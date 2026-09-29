@@ -87,6 +87,20 @@ func TestVersionCompatibilityCheck_Run(t *testing.T) {
 			expectSuccess:  true,
 			expectMessage:  "Upgrade from v0.55.0 to v0.55.1 is valid",
 		},
+		{
+			name:           "upgrade from edge chart version",
+			currentVersion: RADIUS_EDGE_CHART_VERSION,
+			targetVersion:  "0.61.0",
+			expectSuccess:  true,
+			expectMessage:  "Upgrade from 0.42.42-dev to 0.61.0 is valid",
+		},
+		{
+			name:           "upgrade from edge app version",
+			currentVersion: RADIUS_EDGE_APP_VERSION,
+			targetVersion:  "0.61.0",
+			expectSuccess:  true,
+			expectMessage:  "Upgrade from edge to 0.61.0 is valid",
+		},
 	}
 
 	for _, tt := range tests {
@@ -116,6 +130,7 @@ func TestValidateVersionJump(t *testing.T) {
 		targetVersion  string
 		expectValid    bool
 		expectMessage  string
+		expectError    bool
 	}{
 		{
 			name:           "safe incremental upgrade",
@@ -162,12 +177,28 @@ func TestValidateVersionJump(t *testing.T) {
 			expectValid:    false,
 			expectMessage:  "Target version is the same as current version",
 		},
+		{
+			name:           "edge app version upgrades to any version",
+			currentVersion: RADIUS_EDGE_APP_VERSION,
+			targetVersion:  "0.30.0",
+			expectValid:    true,
+		},
+		{
+			name:           "non-semver current version is still an error",
+			currentVersion: "nightly",
+			targetVersion:  "0.61.0",
+			expectError:    true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			valid, message, err := ValidateVersionJump(tt.currentVersion, tt.targetVersion)
 
+			if tt.expectError {
+				require.Error(t, err)
+				return
+			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectValid, valid)
 			if tt.expectMessage != "" {
