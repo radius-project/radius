@@ -209,12 +209,13 @@ rad auth access list --principal group:<stable-group-id> --scope <resource-id>
 rad auth assignment list --scope <resource-id> --include-inherited
 ```
 
-For repeatable management, a platform team defines roles and assignments as Radius resources and previews the access impact before deployment:
+For repeatable management, a platform team defines roles and assignments as Radius resources and deploys them through the existing workflow:
 
 ```console
-rad deploy platform-access.bicep --scope <resource-id> --what-if
 rad deploy platform-access.bicep --scope <resource-id>
 ```
+
+When a deployment contains authorization changes, the CLI shows a concise summary of the roles and assignments that will be added or changed and asks for confirmation before applying any resources in the deployment. The prompt defaults to "No." Automation can provide `--yes` to skip the prompt; a non-interactive deployment without `--yes` fails with guidance rather than waiting for input. The flag skips only confirmation and cannot bypass authorization, validation, lockout protection, or privilege-escalation safeguards. Deployments without authorization changes retain the existing non-interactive behavior.
 
 Initial administrator access remains part of installation or RBAC enablement rather than an ordinary assignment command, and exceptional recovery remains a separate, audited security-boundary workflow.
 
@@ -261,7 +262,7 @@ resource developerAccess 'Radius.Core/roleAssignments@<api-version>' = {
 
 The assignment applies at the Bicep resource's deployment scope; an assignment targeted to an individual Radius resource uses that resource as its Bicep scope. Built-in roles are immutable `Radius.Core/roleDefinitions` resources that templates reference as `existing`. Role assignments use stable identity identifiers rather than display names or email addresses.
 
-Before deployment, `rad deploy --what-if` shows the roles and assignments that will be added or changed and warns about lockout or privilege-escalation risk. As with other Radius resources, Bicep deployment is incremental: removing a role or assignment from a Bicep file does not delete it. Administrators explicitly delete custom roles or assignments through the CLI or API, and a later deployment recreates or updates a resource that remains declared in Bicep. Assignments do not support in-place updates to the principal, role, or scope; administrators create a replacement and explicitly delete the previous assignment so the audit history remains clear.
+The authorization-change summary identifies the affected principals, roles, and scopes and warns about lockout or privilege-escalation risk before asking for confirmation. As with other Radius resources, Bicep deployment is incremental: removing a role or assignment from a Bicep file does not delete it. Administrators explicitly delete custom roles or assignments through the CLI or API, and a later deployment recreates or updates a resource that remains declared in Bicep. Assignments do not support in-place updates to the principal, role, or scope; administrators create a replacement and explicitly delete the previous assignment so the audit history remains clear.
 
 ## Key investments
 
