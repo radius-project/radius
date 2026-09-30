@@ -440,11 +440,8 @@ function humanReviewEvidence(pull, reviews) {
       review.user.login.toLowerCase() !== pull.author?.login?.toLowerCase() &&
       Number.isFinite(Date.parse(review.submitted_at))
   );
-  const approvals = latestDecisiveReviews(humanReviews, [
-    "APPROVED",
-    "CHANGES_REQUESTED",
-    "DISMISSED"
-  ]).filter(
+  const decisive = latestDecisiveReviews(humanReviews);
+  const approvals = decisive.filter(
     (review) =>
       review.state === "APPROVED" &&
       review.commit_id === pull.headRefOid &&
@@ -454,6 +451,9 @@ function humanReviewEvidence(pull, reviews) {
   return {
     hasReviewer: humanReviews.some((review) =>
       SUBMITTED_REVIEW_STATES.includes(review.state)
+    ),
+    changeRequests: decisive.filter(
+      (review) => review.state === "CHANGES_REQUESTED"
     ),
     approvedFeedbackAt: approvals.reduce(
       (latest, review) => Math.max(latest, Date.parse(review.submitted_at)),
@@ -574,7 +574,8 @@ function desiredLabels(
   requiredChecksPassed = false,
   reviewDecision = pull.reviewDecision,
   unresolvedReviewFeedback = false,
-  hasSubmittedHumanReview = false
+  hasSubmittedHumanReview = false,
+  hasOutstandingHumanChanges = false
 ) {
   const existing = currentLabels(pull);
   const desired = new Set();
@@ -615,13 +616,16 @@ function desiredLabels(
     unresolvedReviewFeedback
   ) {
     handoff = STATUS_LABELS.waitingForAuthor;
-  } else if (reviewDecision === "APPROVED") {
-    handoff = STATUS_LABELS.reviewApproved;
-  } else if (reviewDecision === "CHANGES_REQUESTED") {
+  } else if (
+    hasOutstandingHumanChanges ||
+    reviewDecision === "CHANGES_REQUESTED"
+  ) {
     handoff =
       rereviewRequested ?
         STATUS_LABELS.waitingForReview
       : STATUS_LABELS.waitingForAuthor;
+  } else if (reviewDecision === "APPROVED") {
+    handoff = STATUS_LABELS.reviewApproved;
   } else {
     handoff =
       pull.reviewRequests.totalCount > 0 || hasSubmittedHumanReview ?
@@ -653,12 +657,11 @@ function reviewerKey(reviewer) {
   return null;
 }
 
-function latestDecisiveReviews(
-  reviews,
-  states = ["CHANGES_REQUESTED", "APPROVED"]
-) {
+function latestDecisiveReviews(reviews) {
   const decisive = new Map();
-  const decisions = reviews.filter((review) => states.includes(review.state));
+  const decisions = reviews.filter((review) =>
+    ["CHANGES_REQUESTED", "APPROVED", "DISMISSED"].includes(review.state)
+  );
   for (const review of decisions) {
     if (
       !review.user?.login ||
@@ -680,14 +683,11 @@ function latestDecisiveReviews(
   return [...decisive.values()];
 }
 
-function hasRereviewRequest(pull, reviews, timeline) {
+function hasRereviewRequest(pull, changes, timeline) {
   if (pull.reviewRequests.totalCount !== pull.reviewRequests.nodes.length) {
     throw new Error("Cannot classify more than 100 pending review requests");
   }
 
-  const changes = latestDecisiveReviews(reviews).filter(
-    (review) => review.state === "CHANGES_REQUESTED"
-  );
   if (changes.length === 0) {
     return false;
   }
@@ -905,7 +905,7 @@ async function syncPull(github, core, owner, repo, number) {
     core.info(`Removed held pull request #${number} from the merge queue`);
   }
 
-  let submittedReviews;
+  let changeRequests = [];
   let hasSubmittedHumanReview = false;
   let unresolvedReviewFeedback = false;
   if (
@@ -914,14 +914,18 @@ async function syncPull(github, core, owner, repo, number) {
     !existing.has(MANUAL_LABELS.doNotMerge) &&
     !existing.has(MANUAL_LABELS.needsAuthorResponse)
   ) {
-    submittedReviews = await github.paginate(github.rest.pulls.listReviews, {
-      owner,
-      repo,
-      pull_number: number,
-      per_page: 100
-    });
+    const submittedReviews = await github.paginate(
+      github.rest.pulls.listReviews,
+      {
+        owner,
+        repo,
+        pull_number: number,
+        per_page: 100
+      }
+    );
     const evidence = humanReviewEvidence(pull, submittedReviews);
     hasSubmittedHumanReview = evidence.hasReviewer;
+    changeRequests = evidence.changeRequests;
     unresolvedReviewFeedback = await hasUnresolvedReviewFeedback(
       github,
       owner,
@@ -947,27 +951,24 @@ async function syncPull(github, core, owner, repo, number) {
   let rereviewRequested = false;
   if (
     pull.state === "OPEN" &&
+    !pull.isDraft &&
     !unresolvedReviewFeedback &&
-    reviewDecision === "CHANGES_REQUESTED" &&
-    pull.reviewRequests.totalCount > 0
+    (changeRequests.length > 0 || reviewDecision === "CHANGES_REQUESTED") &&
+    pull.reviewRequests.totalCount > 0 &&
+    !existing.has(MANUAL_LABELS.doNotMerge) &&
+    !existing.has(MANUAL_LABELS.needsAuthorResponse)
   ) {
-    const [reviews, timeline] = await Promise.all([
-      submittedReviews ??
-        github.paginate(github.rest.pulls.listReviews, {
-          owner,
-          repo,
-          pull_number: number,
-          per_page: 100
-        }),
-      github.paginate(github.rest.issues.listEventsForTimeline, {
+    const timeline = await github.paginate(
+      github.rest.issues.listEventsForTimeline,
+      {
         owner,
         repo,
         issue_number: number,
         per_page: 100
-      })
-    ]);
-    rereviewRequested = hasRereviewRequest(pull, reviews, timeline);
-    if (!reviews.some((review) => review.state === "CHANGES_REQUESTED")) {
+      }
+    );
+    rereviewRequested = hasRereviewRequest(pull, changeRequests, timeline);
+    if (changeRequests.length === 0) {
       core.warning(
         `#${number} reports changes requested but has no active change-request review`
       );
@@ -1004,7 +1005,8 @@ async function syncPull(github, core, owner, repo, number) {
     requiredChecksPassed,
     reviewDecision,
     unresolvedReviewFeedback,
-    hasSubmittedHumanReview
+    hasSubmittedHumanReview,
+    changeRequests.length > 0
   );
   if (mergeabilityUnknown) {
     core.warning(
