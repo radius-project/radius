@@ -125,6 +125,58 @@ const OPINIONATED_REVIEWS_QUERY = `
   }
 `;
 
+const REVIEW_THREAD_FRAGMENT = `
+  fragment ReviewThread on PullRequestReviewThread {
+    id
+    isResolved
+    comments(first: 100, after: $commentsCursor) {
+      nodes {
+        state
+        author {
+          __typename
+          login
+        }
+        pullRequestReview {
+          state
+          submittedAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+const REVIEW_THREADS_QUERY = `
+  query($owner: String!, $repo: String!, $number: Int!, $cursor: String, $commentsCursor: String) {
+    repository(owner: $owner, name: $repo) {
+      pullRequest(number: $number) {
+        reviewThreads(first: 100, after: $cursor) {
+          nodes {
+            ...ReviewThread
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+  }
+  ${REVIEW_THREAD_FRAGMENT}
+`;
+
+const REVIEW_THREAD_COMMENTS_QUERY = `
+  query($id: ID!, $commentsCursor: String) {
+    node(id: $id) {
+      ...ReviewThread
+    }
+  }
+  ${REVIEW_THREAD_FRAGMENT}
+`;
+
 const REQUIRED_CHECKS_QUERY = `
   query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
     repository(owner: $owner, name: $repo) {
@@ -373,11 +425,97 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
   return "APPROVED";
 }
 
+async function hasUnresolvedReviewFeedback(github, owner, repo, number, pull) {
+  let cursor = null;
+  do {
+    const result = await github.graphql(REVIEW_THREADS_QUERY, {
+      owner,
+      repo,
+      number,
+      cursor,
+      commentsCursor: null
+    });
+    const page = result.repository?.pullRequest?.reviewThreads;
+    if (
+      !page ||
+      !Array.isArray(page.nodes) ||
+      typeof page.pageInfo?.hasNextPage !== "boolean"
+    ) {
+      throw new Error(`Invalid review-thread response for #${number}`);
+    }
+    for (let thread of page.nodes) {
+      let commentsCursor = null;
+      while (true) {
+        if (!thread?.id || typeof thread.isResolved !== "boolean") {
+          throw new Error(`Invalid review thread for #${number}`);
+        }
+        if (thread.isResolved) {
+          break;
+        }
+        const comments = thread.comments;
+        if (
+          !comments ||
+          !Array.isArray(comments.nodes) ||
+          typeof comments.pageInfo?.hasNextPage !== "boolean"
+        ) {
+          throw new Error(`Invalid review-comment response for #${number}`);
+        }
+        if (
+          comments.nodes.some(
+            (comment) =>
+              comment?.state === "SUBMITTED" &&
+              comment.author?.__typename === "User" &&
+              comment.author.login &&
+              comment.author.login.toLowerCase() !==
+                pull.author?.login?.toLowerCase() &&
+              ["COMMENTED", "APPROVED", "CHANGES_REQUESTED"].includes(
+                comment.pullRequestReview?.state
+              ) &&
+              Number.isFinite(
+                Date.parse(comment.pullRequestReview?.submittedAt)
+              )
+          )
+        ) {
+          return true;
+        }
+        if (!comments.pageInfo.hasNextPage) {
+          break;
+        }
+        if (
+          !comments.pageInfo.endCursor ||
+          comments.pageInfo.endCursor === commentsCursor
+        ) {
+          throw new Error(
+            `Missing or repeated review-comment cursor for #${number}`
+          );
+        }
+        commentsCursor = comments.pageInfo.endCursor;
+        const next = await github.graphql(REVIEW_THREAD_COMMENTS_QUERY, {
+          id: thread.id,
+          commentsCursor
+        });
+        thread = next.node;
+      }
+    }
+    if (
+      page.pageInfo.hasNextPage &&
+      (!page.pageInfo.endCursor || page.pageInfo.endCursor === cursor)
+    ) {
+      throw new Error(
+        `Missing or repeated review-thread cursor for #${number}`
+      );
+    }
+    cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  } while (cursor);
+  return false;
+}
+
 function desiredLabels(
   pull,
   rereviewRequested = false,
   requiredChecksPassed = false,
-  reviewDecision = pull.reviewDecision
+  reviewDecision = pull.reviewDecision,
+  unresolvedReviewFeedback = false
 ) {
   const existing = currentLabels(pull);
   const desired = new Set();
@@ -413,7 +551,10 @@ function desiredLabels(
   }
 
   let handoff;
-  if (existing.has(MANUAL_LABELS.needsAuthorResponse)) {
+  if (
+    existing.has(MANUAL_LABELS.needsAuthorResponse) ||
+    unresolvedReviewFeedback
+  ) {
     handoff = STATUS_LABELS.waitingForAuthor;
   } else if (reviewDecision === "APPROVED") {
     handoff = STATUS_LABELS.reviewApproved;
@@ -519,7 +660,9 @@ function reviewSignal(run, pull) {
   // A fork can change the read-only signal workflow's run-name; bind it to the actual PR commit.
   const match = /^([1-9]\d*)$/.exec(run.display_title ?? "");
   if (
-    run.event !== "pull_request_review" ||
+    !["pull_request_review", "pull_request_review_comment"].includes(
+      run.event
+    ) ||
     run.conclusion !== "success" ||
     !match ||
     pull.number !== Number(match[1]) ||
@@ -698,10 +841,27 @@ async function syncPull(github, core, owner, repo, number) {
     core.info(`Removed held pull request #${number} from the merge queue`);
   }
 
+  let unresolvedReviewFeedback = false;
+  if (
+    pull.state === "OPEN" &&
+    !pull.isDraft &&
+    !existing.has(MANUAL_LABELS.doNotMerge) &&
+    !existing.has(MANUAL_LABELS.needsAuthorResponse)
+  ) {
+    unresolvedReviewFeedback = await hasUnresolvedReviewFeedback(
+      github,
+      owner,
+      repo,
+      number,
+      pull
+    );
+  }
+
   const reviewDecision =
     (
       pull.state === "OPEN" &&
       !pull.isDraft &&
+      !unresolvedReviewFeedback &&
       pull.reviewDecision === null &&
       !existing.has(MANUAL_LABELS.doNotMerge) &&
       !existing.has(MANUAL_LABELS.needsAuthorResponse)
@@ -712,6 +872,7 @@ async function syncPull(github, core, owner, repo, number) {
   let rereviewRequested = false;
   if (
     pull.state === "OPEN" &&
+    !unresolvedReviewFeedback &&
     reviewDecision === "CHANGES_REQUESTED" &&
     pull.reviewRequests.totalCount > 0
   ) {
@@ -741,6 +902,7 @@ async function syncPull(github, core, owner, repo, number) {
   if (
     pull.state === "OPEN" &&
     !pull.isDraft &&
+    !unresolvedReviewFeedback &&
     reviewDecision === "APPROVED" &&
     pull.mergeable === "MERGEABLE" &&
     pull.mergeStateStatus === "BEHIND" &&
@@ -764,7 +926,8 @@ async function syncPull(github, core, owner, repo, number) {
     pull,
     rereviewRequested,
     requiredChecksPassed,
-    reviewDecision
+    reviewDecision,
+    unresolvedReviewFeedback
   );
   if (mergeabilityUnknown) {
     core.warning(
