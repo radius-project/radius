@@ -24,9 +24,12 @@ limitations under the License.
 package pgbackup
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -90,7 +93,7 @@ func StateBranchName() string {
 // holds every UCP resource, including resource groups -- in plain-format output, e.g.:
 //
 //	COPY public.resources (id, original_id, resource_type, ...) FROM stdin;
-var copyResourcesHeader = regexp.MustCompile(`(?m)^COPY\s+(?:[\w"]+\.)?"?resources"?\s*\(.*\)\s+FROM\s+stdin;\s*$`)
+var copyResourcesHeader = regexp.MustCompile(`^COPY\s+(?:[\w"]+\.)?"?resources"?\s*\(.*\)\s+FROM\s+stdin;\s*$`)
 
 // IsControlPlaneEmpty reports whether the backed-up ucp database dump in stateDir contains no rows
 // in the "resources" table. A database in this state (e.g. after a postgres pod crash-loop, or
@@ -99,19 +102,38 @@ var copyResourcesHeader = regexp.MustCompile(`(?m)^COPY\s+(?:[\w"]+\.)?"?resourc
 // snapshot successfully at the start of the run.
 func IsControlPlaneEmpty(stateDir string) (bool, error) {
 	path := filepath.Join(stateDir, "ucp.sql")
-	data, err := os.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return false, fmt.Errorf("failed to read backup file %q: %w", path, err)
 	}
+	defer f.Close()
 
-	loc := copyResourcesHeader.FindIndex(data)
-	if loc == nil {
-		// No "resources" table in the dump at all is at least as degenerate as an empty one.
-		return true, nil
+	// Stream the dump line by line: only the resources COPY header and the line after it matter,
+	// so there is no need to hold a large snapshot in memory. bufio.Reader rather than
+	// bufio.Scanner, because data rows carry resource JSON and can exceed Scanner's 64KB limit.
+	r := bufio.NewReader(f)
+	inResources := false
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil && !errors.Is(err, io.EOF) {
+			return false, fmt.Errorf("failed to read backup file %q: %w", path, err)
+		}
+		line = strings.TrimRight(line, "\r\n")
+
+		switch {
+		case !inResources:
+			inResources = copyResourcesHeader.MatchString(line)
+		case line == "":
+			// Skip blank lines between the COPY header and its first data line.
+		default:
+			return strings.HasPrefix(line, `\.`), nil
+		}
+
+		if errors.Is(err, io.EOF) {
+			// No "resources" table in the dump at all is at least as degenerate as an empty one.
+			return !inResources, nil
+		}
 	}
-
-	rest := bytes.TrimLeft(data[loc[1]:], "\n")
-	return bytes.HasPrefix(rest, []byte(`\.`)), nil
 }
 
 // HasBackup reports whether a SQL dump exists for every database in the state directory.

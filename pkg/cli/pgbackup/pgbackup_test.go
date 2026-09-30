@@ -19,6 +19,7 @@ package pgbackup
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -83,6 +84,53 @@ func Test_IsControlPlaneEmpty_HasDataRows(t *testing.T) {
 	empty, err := IsControlPlaneEmpty(dir)
 	require.NoError(t, err)
 	require.False(t, empty, "a COPY block with at least one data row is not an empty control plane")
+}
+
+func Test_IsControlPlaneEmpty_SchemaQualifiedTableNames(t *testing.T) {
+	headers := []string{
+		"COPY myschema.resources (id, resource_type) FROM stdin;",
+		`COPY "public"."resources" (id, resource_type) FROM stdin;`,
+		`COPY "resources" (id, resource_type) FROM stdin;`,
+	}
+	for _, header := range headers {
+		t.Run(header, func(t *testing.T) {
+			dir := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(header+"\n\\.\n"), 0o644))
+			empty, err := IsControlPlaneEmpty(dir)
+			require.NoError(t, err)
+			require.True(t, empty, "no data rows")
+
+			dump := header + "\n/planes/radius/local/resourcegroups/default\tresourcegroups\n\\.\n"
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(dump), 0o644))
+			empty, err = IsControlPlaneEmpty(dir)
+			require.NoError(t, err)
+			require.False(t, empty, "one data row")
+		})
+	}
+}
+
+func Test_IsControlPlaneEmpty_IgnoresSimilarlyNamedTables(t *testing.T) {
+	dir := t.TempDir()
+	dump := "COPY public.resources_archive (id) FROM stdin;\n" +
+		"/planes/radius/local/resourcegroups/old\n" +
+		"\\.\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(dump), 0o644))
+
+	empty, err := IsControlPlaneEmpty(dir)
+	require.NoError(t, err)
+	require.True(t, empty, "rows in resources_archive must not count as rows in resources")
+}
+
+func Test_IsControlPlaneEmpty_LongDataRow(t *testing.T) {
+	dir := t.TempDir()
+	// Longer than bufio.Scanner's 64KB default token size.
+	longRow := "/planes/radius/local/resourcegroups/default\t" + strings.Repeat("x", 200*1024)
+	dump := "COPY public.resources (id, properties) FROM stdin;\n" + longRow + "\n\\.\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(dump), 0o644))
+
+	empty, err := IsControlPlaneEmpty(dir)
+	require.NoError(t, err)
+	require.False(t, empty)
 }
 
 func Test_IsControlPlaneEmpty_MissingFile(t *testing.T) {
