@@ -160,7 +160,7 @@ Automation uses a dedicated workload identity rather than a shared human account
 
 ### Proposed CLI experience
 
-The API is the common management surface for RBAC. The `rad` CLI provides a single `rad auth` command group for imperative administration, while declarative role definitions and assignments use Radius resources in Bicep and the existing `rad deploy` workflow. Users do not have to learn a separate policy file format or apply engine, and no graphical RBAC management experience is included. The exact permission names, flags, and resource identifiers remain subject to technical design and usability validation.
+The API is the common management surface for RBAC. Custom role definitions and role assignments can both be managed imperatively through a single `rad auth` command group or declared in Bicep and deployed through the existing `rad deploy` workflow. Built-in roles are read-only. Users do not have to learn a separate policy file format or apply engine, and no graphical RBAC management experience is included. The exact permission names, flags, and resource identifiers remain subject to technical design and usability validation.
 
 | Command family | User purpose |
 | --- | --- |
@@ -172,16 +172,23 @@ The API is the common management surface for RBAC. The `rad` CLI provides a sing
 | `rad auth access` | List effective access, check whether an identity can perform an action at a scope, and explain which role or assignment allowed or denied a decision without exposing hidden data. |
 | `rad auth enforcement` | Inspect enforcement status, preview would-be denials, enable enforcement after reviewing access impact, and perform any supported migration-period rollback. |
 
-A platform administrator can grant access imperatively for bootstrap, investigation, or an immediate operational need:
+A platform administrator can create a custom role and grant it imperatively for bootstrap, investigation, or an immediate operational need:
 
 ```console
+rad auth role create application-operator \
+  --description "Operate applications without changing platform configuration" \
+  --permission Radius.Core/applications/read \
+  --permission Radius.Core/applications/write \
+  --permission Radius.Core/applications/deploy/action \
+  --permission Radius.Core/environments/use/action
+
 rad auth assignment create \
   --principal group:<stable-group-id> \
-  --role "Application Developer" \
+  --role application-operator \
   --scope <resource-group-id>
 ```
 
-Before creating the assignment, the CLI resolves and displays the principal, role, exact scope, inheritance effect, and management origin. Broad administrator grants, self-assignment, enforcement changes, and destructive operations require confirmation. `--yes` can skip an interactive prompt for automation, but cannot bypass authorization, validation, or protection against removing the final recoverable administrator.
+Before creating the assignment, the CLI resolves and displays the principal, role, exact scope, and inheritance effect. Broad administrator grants, self-assignment, enforcement changes, and destructive operations require confirmation. `--yes` can skip an interactive prompt for automation, but cannot bypass authorization, validation, or protection against removing the final recoverable administrator.
 
 An application developer can check access before starting an operation and investigate a denial:
 
@@ -209,13 +216,13 @@ rad deploy platform-access.bicep --scope <resource-id> --what-if
 rad deploy platform-access.bicep --scope <resource-id>
 ```
 
-Declaratively managed authorization resources identify their management origin. Conflicting imperative changes fail with guidance to update the source of truth or, if supported, perform an explicit and audited ownership transfer. Initial administrator access remains part of installation or RBAC enablement rather than an ordinary assignment command, and exceptional recovery remains a separate, audited security-boundary workflow.
+Initial administrator access remains part of installation or RBAC enablement rather than an ordinary assignment command, and exceptional recovery remains a separate, audited security-boundary workflow.
 
 Across these commands, reads support table and JSON output, writes show the resolved scope, ambiguous names fail rather than selecting a resource silently, and incomplete results are labeled rather than presented as complete. Authorization failures distinguish Radius access decisions from failures in Kubernetes, cloud providers, registries, or source-control systems.
 
 ### Proposed Bicep experience
 
-Radius exposes custom roles and role assignments as `Radius.Core/roleDefinitions` and `Radius.Core/roleAssignments` resources. Platform teams manage them through Bicep and the existing `rad deploy` workflow rather than a separate policy format or apply command.
+Radius exposes custom roles and role assignments as `Radius.Core/roleDefinitions` and `Radius.Core/roleAssignments` resources. Platform teams can manage both resource types together through Bicep and the existing `rad deploy` workflow rather than a separate policy format or apply command.
 
 > **Note**: the Bicep schemas below are proposals which may change during technical design and implementation.
 
@@ -254,7 +261,7 @@ resource developerAccess 'Radius.Core/roleAssignments@<api-version>' = {
 
 The assignment applies at the Bicep resource's deployment scope; an assignment targeted to an individual Radius resource uses that resource as its Bicep scope. Built-in roles are immutable `Radius.Core/roleDefinitions` resources that templates reference as `existing`. Role assignments use stable identity identifiers rather than display names or email addresses.
 
-Before deployment, `rad deploy --what-if` shows the roles and assignments that will be added, changed, or revoked and warns about lockout or privilege-escalation risk. Redeploying reconciles the authorization resources previously managed by that declaration, so removing an assignment from Bicep revokes it instead of leaving access behind. Declaratively managed resources identify their management origin, and conflicting imperative changes fail with guidance to update or explicitly take ownership from the declarative source.
+Before deployment, `rad deploy --what-if` shows the roles and assignments that will be added or changed and warns about lockout or privilege-escalation risk. As with other Radius resources, Bicep deployment is incremental: removing a role or assignment from a Bicep file does not delete it. Administrators explicitly delete custom roles or assignments through the CLI or API, and a later deployment recreates or updates a resource that remains declared in Bicep. Assignments do not support in-place updates to the principal, role, or scope; administrators create a replacement and explicitly delete the previous assignment so the audit history remains clear.
 
 ## Key investments
 
