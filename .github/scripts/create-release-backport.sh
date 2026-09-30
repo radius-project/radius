@@ -32,7 +32,7 @@ fail() {
 }
 
 usage() {
-    cat << 'EOF'
+    cat <<'EOF'
 Usage: create-release-backport.sh --source-pr <number> --source-commit <sha> \
     --source-title <title> --source-url <url> --channel <X.Y> \
     --output-dir <path> [--expected-base <sha>]
@@ -47,24 +47,24 @@ write_outputs() {
 
     if [[ "${status}" == "conflict" ]]; then
         printf 'chore(backport): hand off #%s conflict\n' "${SOURCE_PR}" \
-            > "${commit_message_file}"
+            >"${commit_message_file}"
         # The placeholder is the bot's own work, so it keeps the bot as author
         # and the caller substitutes the bot identity for this empty file.
-        : > "${OUTPUT_DIR}/author.txt"
+        : >"${OUTPUT_DIR}/author.txt"
     else
         {
             git show -s --format=%B "${SOURCE_COMMIT}"
             echo
             echo "(cherry picked from commit ${SOURCE_COMMIT})"
-        } > "${commit_message_file}"
+        } >"${commit_message_file}"
         git show -s --format='%an <%ae>' "${SOURCE_COMMIT}" \
-            > "${OUTPUT_DIR}/author.txt"
+            >"${OUTPUT_DIR}/author.txt"
     fi
 
-    printf '%s\n' "${status}" > "${OUTPUT_DIR}/status.txt"
-    printf '%s\n' "${branch}" > "${OUTPUT_DIR}/branch.txt"
-    printf '%s\n' "${SOURCE_TITLE}" > "${OUTPUT_DIR}/title.txt"
-    printf '%s\n' "${body_file}" > "${OUTPUT_DIR}/body-path.txt"
+    printf '%s\n' "${status}" >"${OUTPUT_DIR}/status.txt"
+    printf '%s\n' "${branch}" >"${OUTPUT_DIR}/branch.txt"
+    printf '%s\n' "${SOURCE_TITLE}" >"${OUTPUT_DIR}/title.txt"
+    printf '%s\n' "${body_file}" >"${OUTPUT_DIR}/body-path.txt"
 }
 
 write_pr_body() {
@@ -92,7 +92,22 @@ write_pr_body() {
             echo "The source squash commit was cherry-picked with \`-x\`."
             echo "Rebase-merge this pull request to preserve its commit title."
         fi
-    } > "${body_file}"
+    } >"${body_file}"
+}
+
+is_release_metadata_commit() {
+    git diff-tree --no-commit-id --name-only -r "${SOURCE_COMMIT}" -- \
+        '.github/release-plans/*.yaml' | grep -q .
+}
+
+remove_legacy_release_workflow() {
+    local base_commit="$1"
+
+    if is_release_metadata_commit &&
+        git cat-file -e "${base_commit}:.github/workflows/release.yaml" \
+            2>/dev/null; then
+        git rm -q .github/workflows/release.yaml
+    fi
 }
 
 write_conflict_handoff() {
@@ -123,6 +138,12 @@ write_conflict_handoff() {
         echo "git checkout -B ${branch} origin/${branch}"
         echo "git reset --hard ${base_commit}"
         echo "git cherry-pick -x ${SOURCE_COMMIT}"
+        if is_release_metadata_commit &&
+            git cat-file -e \
+                "${base_commit}:.github/workflows/release.yaml" \
+                2>/dev/null; then
+            echo "git rm .github/workflows/release.yaml"
+        fi
         echo "# Resolve the files listed by git, then:"
         echo "git add <resolved-files>"
         echo "git cherry-pick --continue"
@@ -131,7 +152,7 @@ write_conflict_handoff() {
         echo
         echo "The hard reset removes this handoff commit before applying the"
         echo "real backport. Do not merge this placeholder commit."
-    } > "${handoff_file}"
+    } >"${handoff_file}"
 }
 
 main() {
@@ -181,7 +202,7 @@ main() {
         fail "source PR must be a positive number"
     fi
     if ! git rev-parse --verify --quiet \
-        "${SOURCE_COMMIT}^{commit}" > /dev/null; then
+        "${SOURCE_COMMIT}^{commit}" >/dev/null; then
         fail "source commit does not exist: ${SOURCE_COMMIT}"
     fi
     [[ -n "${SOURCE_TITLE}" ]] || fail "source title is required"
@@ -195,7 +216,7 @@ main() {
     release_branch="release/${CHANNEL}"
     if ! git rev-parse --verify --quiet \
         "refs/remotes/origin/${release_branch}^{commit}" \
-        > /dev/null; then
+        >/dev/null; then
         fail "remote release branch does not exist: ${release_branch}"
     fi
     base_commit="$(
@@ -217,10 +238,11 @@ main() {
     git checkout -q --detach "${base_commit}"
 
     set +e
-    git cherry-pick --no-commit "${SOURCE_COMMIT}" > /dev/null 2>&1
+    git cherry-pick --no-commit "${SOURCE_COMMIT}" >/dev/null 2>&1
     status=$?
     set -e
     if ((status == 0)); then
+        remove_legacy_release_workflow "${base_commit}"
         write_pr_body "${body_file}" success "${release_branch}" "" \
             "${base_commit}"
         write_outputs success "${branch}" "${body_file}"
@@ -230,7 +252,7 @@ main() {
     while IFS= read -r conflict; do
         [[ -n "${conflict}" ]] && conflicts+=("${conflict}")
     done < <(git diff --name-only --diff-filter=U)
-    git cherry-pick --abort > /dev/null 2>&1 || true
+    git cherry-pick --abort >/dev/null 2>&1 || true
     git reset --hard -q "${base_commit}"
     if ((${#conflicts[@]} == 0)); then
         fail "cherry-pick failed without conflicts: ${SOURCE_COMMIT}"
