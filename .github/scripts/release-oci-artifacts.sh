@@ -38,7 +38,7 @@ ARTIFACTS_DIR=""
 IMAGE_LOCK=""
 CLI_LOCK=""
 OUTPUT=""
-CATEGORIES="production,non-go,test"
+CATEGORIES="production,non-go"
 NAMES=""
 VERIFY_ALIASES=false
 VERIFY_SBOMS=false
@@ -1132,7 +1132,7 @@ promote_aliases() {
     if [[ "${CHANNEL}" != "${expected_channel}" ]]; then
         fail "channel ${CHANNEL} does not match version ${VERSION}"
     fi
-    CATEGORIES="production,non-go,test"
+    CATEGORIES="production,non-go"
     verify_locks
 
     while IFS=$'\t' read -r reference digest immutable_reference; do
