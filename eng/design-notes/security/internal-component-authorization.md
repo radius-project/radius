@@ -10,7 +10,7 @@ This design describes authorization and secure communication *between Radius com
 
 ## Motivation
 
-Radius runs several cooperating services, and a deployment fans out into many follow-on requests handled by different components. As Radius is used for production applications across multiple teams, this creates needs the current model does not meet. The motivations below explain why this design is needed; they are framed as capabilities to add rather than a catalog of specific weaknesses.
+Radius runs several cooperating services, and a deployment fans out into many follow-on requests handled by different components. As Radius is used for production applications across multiple teams, this creates needs the current model does not meet.
 
 - **Verifiable component identity and least privilege.** Internal services largely trust one another and can hold more platform and cluster authority than any single task requires. Components should prove their identity to each other and act with the minimum permissions their role needs, so a single compromised component has a limited blast radius.
 - **Authorization that survives the whole request path.** A user's authorization is established at the front door, but deployments continue through callbacks, controllers, and background workers that run after the original request returns. That authorization needs to travel with the work and be re-checked when it executes, rather than being lost partway through.
