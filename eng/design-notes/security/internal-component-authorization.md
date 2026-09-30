@@ -438,6 +438,9 @@ With [multi-cluster deployment](../environments/2026-06-multi-cluster.md) and [R
 
 A kubeconfig mounted into every component gives each component both identities, so a compromised component could use either. An installation that deploys to a remote cluster therefore stays in the Off stage until the broker issues target-cluster tokens.
 
+> [!NOTE]
+> Remote target support can be implemented as part of this work, but some of it depends on the cloud-derived cluster access planned as v2 in the [multi-cluster design](../environments/2026-06-multi-cluster.md). mTLS, execution records, the data-access service, and brokered cloud credentials do not depend on it and apply to remote-target installations as they do to single-cluster ones. Issuing target-cluster tokens through the broker builds on v2, so enforcement for remote targets waits until v2 is available.
+
 ### Error Handling
 
 Error handling differs by trust boundary, because each boundary fails in a different way and has a different safe fallback. In all cases the rule is to fail closed: when Radius cannot confirm identity or authorization, it refuses the work rather than assuming it is allowed.
