@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Radius version number to use (e.g. 0.1.0, 0.1.0-rc1)
+        description: Radius version number to use (e.g. 0.61.0, 0.61.0-rc.1)
         required: true
         default: ""
         type: string
