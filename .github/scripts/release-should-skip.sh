@@ -17,8 +17,8 @@
 # ------------------------------------------------------------
 
 # A versions.yaml change first lands on main and is later cherry-picked to an
-# existing release branch. Skip the main run only while that triggering commit
-# is absent from the release branch. Any partial release state resumes.
+# existing release branch. A stale main event must not replace the immutable
+# release plan; resume a partial release from its original release-branch run.
 
 set -euo pipefail
 
@@ -30,8 +30,16 @@ fail() {
 remote_commit() {
     local repository="$1"
     local ref="$2"
+    local refs sha remote_ref direct="" peeled=""
 
-    git -C "${repository}" ls-remote origin "${ref}" | cut -f1
+    refs="$(git -C "${repository}" ls-remote origin "${ref}" "${ref}^{}")" || return
+    while read -r sha remote_ref; do
+        case "${remote_ref}" in
+            "${ref}^{}") peeled="${sha}" ;;
+            "${ref}") direct="${sha}" ;;
+        esac
+    done <<<"${refs}"
+    printf '%s' "${peeled:-${direct}}"
 }
 
 main() {
@@ -50,7 +58,10 @@ main() {
     branch_commit="$(remote_commit "${repository}" "refs/heads/${branch}")"
     tag_commit="$(remote_commit "${repository}" "refs/tags/${tag}")"
 
-    if [[ -n "${branch_commit}" && "${trigger_ref}" == "refs/heads/main" && -z "${tag_commit}" ]]; then
+    if [[ "${trigger_ref}" == "refs/heads/main" && -n "${tag_commit}" && "${tag_commit}" != "${trigger_commit}" ]]; then
+        echo "Tag ${tag} already records release commit ${tag_commit}; retry the original ${branch} workflow run instead of this stale main event."
+        skip=true
+    elif [[ -n "${branch_commit}" && "${trigger_ref}" == "refs/heads/main" && -z "${tag_commit}" ]]; then
         if ! git -C "${repository}" cat-file -e "${trigger_commit}^{commit}" 2>/dev/null; then
             git -C "${repository}" fetch --quiet origin "${trigger_commit}"
         fi

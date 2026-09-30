@@ -78,7 +78,7 @@ fetch_branch() {
 reconcile_branch() {
     local branch="$1"
     local planned_commit="$2"
-    local existing release_commit observed
+    local existing release_commit observed previous attempt
 
     if ! existing="$(remote_branch_commit "${branch}")"; then
         fail "could not query release branch ${branch}"
@@ -86,21 +86,31 @@ reconcile_branch() {
     if [[ -n "${existing}" ]]; then
         fetch_branch "${branch}"
         existing="$(git rev-parse FETCH_HEAD)"
-        if [[ -n "${planned_commit}" ]] &&
-            ! git merge-base --is-ancestor "${planned_commit}" "${existing}"; then
-            fail "planned commit ${planned_commit} is not reachable from release branch ${branch} at ${existing}"
-        fi
-
-        if ! observed="$(remote_branch_commit "${branch}")"; then
-            fail "could not verify release branch ${branch}"
-        fi
-        [[ "${observed}" == "${existing}" ]] ||
-            fail "release branch ${branch} changed from ${existing} to ${observed} during reconciliation"
-
         release_commit="${planned_commit:-${existing}}"
-        echo "Release branch ${branch} already exists at ${existing}; release commit is ${release_commit}" >&2
-        printf '%s' "${release_commit}"
-        return
+        for ((attempt = 1; attempt <= 3; attempt++)); do
+            if ! git merge-base --is-ancestor "${release_commit}" "${existing}"; then
+                fail "planned commit ${release_commit} is not reachable from release branch ${branch} at ${existing}"
+            fi
+            if ! observed="$(remote_branch_commit "${branch}")"; then
+                fail "could not verify release branch ${branch}"
+            fi
+            [[ -n "${observed}" ]] ||
+                fail "release branch ${branch} disappeared during reconciliation"
+            if [[ "${observed}" == "${existing}" ]]; then
+                echo "Release branch ${branch} already exists at ${existing}; release commit is ${release_commit}" >&2
+                printf '%s' "${release_commit}"
+                return
+            fi
+            [[ "${attempt}" -lt 3 ]] ||
+                fail "release branch ${branch} kept changing during reconciliation"
+
+            previous="${existing}"
+            fetch_branch "${branch}"
+            existing="$(git rev-parse FETCH_HEAD)"
+            if ! git merge-base --is-ancestor "${previous}" "${existing}"; then
+                fail "release branch ${branch} no longer fast-forwards ${previous}; remote is at ${existing}"
+            fi
+        done
     fi
 
     release_commit="${planned_commit:-$(git rev-parse HEAD)}"

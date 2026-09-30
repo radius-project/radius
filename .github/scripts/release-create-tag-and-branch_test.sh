@@ -89,9 +89,10 @@ run_script() {
     local planned_commit="${2:-}"
     local fail_branch_fetch="${3:-false}"
     local concurrent_branch_commit="${4:-}"
+    local branch_change="${5:-}"
     local script_path="${PATH}"
 
-    if [[ "${fail_branch_fetch}" == "true" || -n "${concurrent_branch_commit}" ]]; then
+    if [[ "${fail_branch_fetch}" == "true" || -n "${concurrent_branch_commit}" || -n "${branch_change}" ]]; then
         script_path="${TEST_ROOT}/bin:${PATH}"
     fi
 
@@ -100,6 +101,7 @@ run_script() {
         cd "${TEST_ROOT}" &&
             PATH="${script_path}" FAIL_BRANCH_FETCH="${fail_branch_fetch}" \
                 CONCURRENT_BRANCH_COMMIT="${concurrent_branch_commit}" \
+                BRANCH_CHANGE="${branch_change}" \
                 CONCURRENT_REMOTE="${TEST_ROOT}/${name}.git" \
                 CONCURRENT_MARKER="${TEST_ROOT}/${name}.branch-created" \
                 bash "${SCRIPT}" "${name}" "${TAG}" "${BRANCH}" "${planned_commit}" 2>&1
@@ -120,6 +122,25 @@ if [[ -n "\${CONCURRENT_BRANCH_COMMIT:-}" && "\${1:-}" == "push" && ! -e "\${CON
     "${REAL_GIT}" --git-dir="\${CONCURRENT_REMOTE}" update-ref \
         "refs/heads/${BRANCH}" "\${CONCURRENT_BRANCH_COMMIT}"
     touch "\${CONCURRENT_MARKER}"
+fi
+if [[ -n "\${BRANCH_CHANGE:-}" && "\${1:-}" == "fetch" && "\${*: -1}" == "refs/heads/${BRANCH}" && ( ! -e "\${CONCURRENT_MARKER}" || "\${BRANCH_CHANGE}" == "advance" ) ]]; then
+    "${REAL_GIT}" "\$@" || exit
+    case "\${BRANCH_CHANGE}" in
+        delete)
+            "${REAL_GIT}" --git-dir="\${CONCURRENT_REMOTE}" update-ref -d "refs/heads/${BRANCH}"
+            ;;
+        advance)
+            current="\$("${REAL_GIT}" --git-dir="\${CONCURRENT_REMOTE}" rev-parse "refs/heads/${BRANCH}")"
+            tree="\$("${REAL_GIT}" --git-dir="\${CONCURRENT_REMOTE}" rev-parse "\${current}^{tree}")"
+            next="\$("${REAL_GIT}" --git-dir="\${CONCURRENT_REMOTE}" -c user.name='Radius Test' -c user.email=test@example.com -c commit.gpgsign=false commit-tree "\${tree}" -p "\${current}" -m advance)"
+            "${REAL_GIT}" --git-dir="\${CONCURRENT_REMOTE}" update-ref "refs/heads/${BRANCH}" "\${next}"
+            ;;
+        *)
+            "${REAL_GIT}" --git-dir="\${CONCURRENT_REMOTE}" update-ref "refs/heads/${BRANCH}" "\${BRANCH_CHANGE}"
+            ;;
+    esac
+    touch "\${CONCURRENT_MARKER}"
+    exit 0
 fi
 exec "${REAL_GIT}" "\$@"
 EOF
@@ -433,6 +454,66 @@ test_concurrent_divergent_branch_creation_fails() {
     pass
 }
 
+test_existing_branch_change_after_fetch() {
+    local change="$1"
+    local name="existing-${change}"
+    local planned_commit existing_commit changed_commit expected_error
+
+    setup_repo "${name}"
+    planned_commit="$(git -C "${TEST_ROOT}/${name}" rev-parse HEAD)"
+    commit_on "${name}" "existing branch work"
+    existing_commit="$(git -C "${TEST_ROOT}/${name}" rev-parse HEAD)"
+    case "${change}" in
+        fast-forward)
+            commit_on "${name}" "concurrent branch work"
+            changed_commit="$(git -C "${TEST_ROOT}/${name}" rev-parse HEAD)"
+            expected_error=""
+            ;;
+        rewind)
+            changed_commit="${planned_commit}"
+            expected_error="no longer fast-forwards"
+            ;;
+        divergent)
+            git -C "${TEST_ROOT}/${name}" checkout --quiet -b divergent "${planned_commit}"
+            commit_on "${name}" "divergent branch work"
+            changed_commit="$(git -C "${TEST_ROOT}/${name}" rev-parse HEAD)"
+            expected_error="no longer fast-forwards"
+            ;;
+        deleted)
+            changed_commit=delete
+            expected_error="disappeared"
+            ;;
+        advancing)
+            changed_commit=advance
+            expected_error="kept changing"
+            ;;
+    esac
+    git -C "${TEST_ROOT}/${name}" push --quiet origin \
+        "HEAD:refs/heads/main" "${existing_commit}:refs/heads/${BRANCH}"
+
+    run_script "${name}" "${planned_commit}" false "" "${changed_commit}"
+    if [[ -z "${expected_error}" ]]; then
+        if [[ "${LAST_STATUS}" -ne 0 ]]; then
+            fail_test "safe branch advancement should reconcile: ${LAST_OUTPUT}"
+            return
+        fi
+        if [[ "$(remote_ref "${name}" "refs/tags/${TAG}")" != "${planned_commit}" ]]; then
+            fail_test "safe branch advancement must preserve the planned tag target"
+            return
+        fi
+    else
+        if [[ "${LAST_STATUS}" -eq 0 || "${LAST_OUTPUT}" != *"${expected_error}"* ]]; then
+            fail_test "${change} should stop branch reconciliation: ${LAST_OUTPUT}"
+            return
+        fi
+        if [[ -n "$(remote_ref "${name}" "refs/tags/${TAG}")" ]]; then
+            fail_test "${change} must not create a tag"
+            return
+        fi
+    fi
+    pass
+}
+
 test_concurrent_ancestor_branch_is_not_fast_forwarded() {
     setup_repo repo18
     local ancestor planned_commit
@@ -554,6 +635,10 @@ main() {
     test_concurrent_conflicting_tag_creation_fails
     test_concurrent_descendant_branch_creation_is_accepted
     test_concurrent_divergent_branch_creation_fails
+    local change
+    for change in fast-forward rewind divergent deleted advancing; do
+        test_existing_branch_change_after_fetch "${change}"
+    done
     test_concurrent_ancestor_branch_is_not_fast_forwarded
     test_fetch_failure_stops_before_tag_creation
     test_planned_commit_must_be_reachable_from_branch
