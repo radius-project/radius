@@ -30,6 +30,12 @@ const MANUAL_LABELS = Object.freeze({
 
 const MANAGED_LABELS = Object.freeze(Object.values(STATUS_LABELS));
 
+const SUBMITTED_REVIEW_STATES = Object.freeze([
+  "COMMENTED",
+  "APPROVED",
+  "CHANGES_REQUESTED"
+]);
+
 // GitHub's merge-queue GraphQL fields require this feature header.
 const MERGE_QUEUE_HEADERS = Object.freeze({
   "GraphQL-Features": "merge_queue"
@@ -132,6 +138,7 @@ const REVIEW_THREAD_FRAGMENT = `
     comments(first: 100, after: $commentsCursor) {
       nodes {
         state
+        createdAt
         author {
           __typename
           login
@@ -425,7 +432,44 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
   return "APPROVED";
 }
 
-async function hasUnresolvedReviewFeedback(github, owner, repo, number, pull) {
+function humanReviewEvidence(pull, reviews) {
+  const humanReviews = reviews.filter(
+    (review) =>
+      review.user?.type === "User" &&
+      review.user.login &&
+      review.user.login.toLowerCase() !== pull.author?.login?.toLowerCase() &&
+      Number.isFinite(Date.parse(review.submitted_at))
+  );
+  const approvals = latestDecisiveReviews(humanReviews, [
+    "APPROVED",
+    "CHANGES_REQUESTED",
+    "DISMISSED"
+  ]).filter(
+    (review) =>
+      review.state === "APPROVED" &&
+      review.commit_id === pull.headRefOid &&
+      typeof review.body === "string" &&
+      review.body.trim().length > 0
+  );
+  return {
+    hasReviewer: humanReviews.some((review) =>
+      SUBMITTED_REVIEW_STATES.includes(review.state)
+    ),
+    approvedFeedbackAt: approvals.reduce(
+      (latest, review) => Math.max(latest, Date.parse(review.submitted_at)),
+      -Infinity
+    )
+  };
+}
+
+async function hasUnresolvedReviewFeedback(
+  github,
+  owner,
+  repo,
+  number,
+  pull,
+  approvedFeedbackAt
+) {
   let cursor = null;
   do {
     const result = await github.graphql(REVIEW_THREADS_QUERY, {
@@ -461,20 +505,34 @@ async function hasUnresolvedReviewFeedback(github, owner, repo, number, pull) {
           throw new Error(`Invalid review-comment response for #${number}`);
         }
         if (
-          comments.nodes.some(
-            (comment) =>
-              comment?.state === "SUBMITTED" &&
-              comment.author?.__typename === "User" &&
-              comment.author.login &&
-              comment.author.login.toLowerCase() !==
-                pull.author?.login?.toLowerCase() &&
-              ["COMMENTED", "APPROVED", "CHANGES_REQUESTED"].includes(
+          comments.nodes.some((comment) => {
+            const submittedAt = Date.parse(
+              comment?.pullRequestReview?.submittedAt
+            );
+            if (
+              comment?.state !== "SUBMITTED" ||
+              !comment.author?.login ||
+              comment.author.login.toLowerCase() ===
+                pull.author?.login?.toLowerCase() ||
+              !SUBMITTED_REVIEW_STATES.includes(
                 comment.pullRequestReview?.state
-              ) &&
-              Number.isFinite(
-                Date.parse(comment.pullRequestReview?.submittedAt)
-              )
-          )
+              ) ||
+              !Number.isFinite(submittedAt)
+            ) {
+              return false;
+            }
+            if (comment.author.__typename === "User") {
+              return true;
+            }
+            // A nonempty approval summary conservatively endorses existing feedback, not later bot comments.
+            const createdAt = Date.parse(comment.createdAt);
+            return (
+              comment.author.__typename === "Bot" &&
+              Number.isFinite(createdAt) &&
+              createdAt <= approvedFeedbackAt &&
+              submittedAt <= approvedFeedbackAt
+            );
+          })
         ) {
           return true;
         }
@@ -515,7 +573,8 @@ function desiredLabels(
   rereviewRequested = false,
   requiredChecksPassed = false,
   reviewDecision = pull.reviewDecision,
-  unresolvedReviewFeedback = false
+  unresolvedReviewFeedback = false,
+  hasSubmittedHumanReview = false
 ) {
   const existing = currentLabels(pull);
   const desired = new Set();
@@ -565,7 +624,7 @@ function desiredLabels(
       : STATUS_LABELS.waitingForAuthor;
   } else {
     handoff =
-      pull.reviewRequests.totalCount > 0 ?
+      pull.reviewRequests.totalCount > 0 || hasSubmittedHumanReview ?
         STATUS_LABELS.waitingForReview
       : STATUS_LABELS.needsReviewer;
   }
@@ -594,15 +653,12 @@ function reviewerKey(reviewer) {
   return null;
 }
 
-function hasRereviewRequest(pull, reviews, timeline) {
-  if (pull.reviewRequests.totalCount !== pull.reviewRequests.nodes.length) {
-    throw new Error("Cannot classify more than 100 pending review requests");
-  }
-
+function latestDecisiveReviews(
+  reviews,
+  states = ["CHANGES_REQUESTED", "APPROVED"]
+) {
   const decisive = new Map();
-  const decisions = reviews.filter((review) =>
-    ["CHANGES_REQUESTED", "APPROVED"].includes(review.state)
-  );
+  const decisions = reviews.filter((review) => states.includes(review.state));
   for (const review of decisions) {
     if (
       !review.user?.login ||
@@ -621,7 +677,15 @@ function hasRereviewRequest(pull, reviews, timeline) {
   for (const review of decisions) {
     decisive.set(review.user.login.toLowerCase(), review);
   }
-  const changes = [...decisive.values()].filter(
+  return [...decisive.values()];
+}
+
+function hasRereviewRequest(pull, reviews, timeline) {
+  if (pull.reviewRequests.totalCount !== pull.reviewRequests.nodes.length) {
+    throw new Error("Cannot classify more than 100 pending review requests");
+  }
+
+  const changes = latestDecisiveReviews(reviews).filter(
     (review) => review.state === "CHANGES_REQUESTED"
   );
   if (changes.length === 0) {
@@ -841,6 +905,8 @@ async function syncPull(github, core, owner, repo, number) {
     core.info(`Removed held pull request #${number} from the merge queue`);
   }
 
+  let submittedReviews;
+  let hasSubmittedHumanReview = false;
   let unresolvedReviewFeedback = false;
   if (
     pull.state === "OPEN" &&
@@ -848,12 +914,21 @@ async function syncPull(github, core, owner, repo, number) {
     !existing.has(MANUAL_LABELS.doNotMerge) &&
     !existing.has(MANUAL_LABELS.needsAuthorResponse)
   ) {
+    submittedReviews = await github.paginate(github.rest.pulls.listReviews, {
+      owner,
+      repo,
+      pull_number: number,
+      per_page: 100
+    });
+    const evidence = humanReviewEvidence(pull, submittedReviews);
+    hasSubmittedHumanReview = evidence.hasReviewer;
     unresolvedReviewFeedback = await hasUnresolvedReviewFeedback(
       github,
       owner,
       repo,
       number,
-      pull
+      pull,
+      evidence.approvedFeedbackAt
     );
   }
 
@@ -877,12 +952,13 @@ async function syncPull(github, core, owner, repo, number) {
     pull.reviewRequests.totalCount > 0
   ) {
     const [reviews, timeline] = await Promise.all([
-      github.paginate(github.rest.pulls.listReviews, {
-        owner,
-        repo,
-        pull_number: number,
-        per_page: 100
-      }),
+      submittedReviews ??
+        github.paginate(github.rest.pulls.listReviews, {
+          owner,
+          repo,
+          pull_number: number,
+          per_page: 100
+        }),
       github.paginate(github.rest.issues.listEventsForTimeline, {
         owner,
         repo,
@@ -927,7 +1003,8 @@ async function syncPull(github, core, owner, repo, number) {
     rereviewRequested,
     requiredChecksPassed,
     reviewDecision,
-    unresolvedReviewFeedback
+    unresolvedReviewFeedback,
+    hasSubmittedHumanReview
   );
   if (mergeabilityUnknown) {
     core.warning(
