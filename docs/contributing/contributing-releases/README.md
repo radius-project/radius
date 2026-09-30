@@ -12,7 +12,7 @@ Before starting a release, ensure you have:
 
 - **Release version number**: Determine the version in the form `<major>.<minor>.<patch>` (e.g., `0.56.0`).
 - **Repository access**: Write access to `radius-project/resource-types-contrib`, `radius-project/radius`, `radius-project/docs`, `radius-project/samples`, and `azure-octo/deployment-engine`.
-- **Resource type releases**: Release the required `resource-types-contrib` namespaces and merge the generated resource-type update PR into `radius` before starting the Radius release automation. Follow [the namespace release step](#step-2-release-resource-type-namespaces) before merging the `versions.yaml` change.
+- **Resource type releases**: Release the required `resource-types-contrib` namespaces and recipe packs and merge the generated resource-type update PR into `radius` before starting the Radius release automation. Follow [the namespace release step](#step-2-release-resource-type-namespaces-and-recipe-packs) before merging the `versions.yaml` change.
 - **GPG signing configured**: The `azure-octo` org requires [verified tags](https://docs.github.com/en/authentication/managing-commit-signature-verification/displaying-verification-statuses-for-all-of-your-commits). [Set up GPG signing locally](https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key) before starting.
 - **Local clone of `radius-project/radius`**: Clone directly from the organization repo, not a personal fork. CI workflows require access to organization secrets that are not available in forks.
 
@@ -46,7 +46,7 @@ Radius follows a monthly release cadence. All contributions merged to `main` thr
 
 ### Release automation
 
-Two GitHub Actions workflows drive the Radius release process after the [resource type namespaces are released and their update PR is merged](#step-2-release-resource-type-namespaces). **No one manually creates tags in `radius-project` repos.** Radius release tags are created automatically by the `release.yaml` workflow; resource type namespace tags are created independently by `resource-types-contrib`'s `release-namespace.yaml` workflow. (The [Deployment Engine repo](https://github.com/azure-octo/deployment-engine) in the `azure-octo` organization still requires manual tagging — see the release steps below.)
+Two GitHub Actions workflows drive the Radius release process after the [resource type namespaces are released and their update PR is merged](#step-2-release-resource-type-namespaces-and-recipe-packs). **No one manually creates tags in `radius-project` repos.** Radius release tags are created automatically by the `release.yaml` workflow; resource type namespace tags are created independently by `resource-types-contrib`'s `release-namespace.yaml` workflow. (The [Deployment Engine repo](https://github.com/azure-octo/deployment-engine) in the `azure-octo` organization still requires manual tagging — see the release steps below.)
 
 1. **[Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml)** (`release.yaml`): Triggered whenever `versions.yaml` is pushed to `main` or a `release/*` branch. This workflow:
    - Scans `versions.yaml` in `.supported[]` order and selects the first `.version` entry whose git tag does not already exist
@@ -122,14 +122,15 @@ Use this same thread throughout the entire release lifecycle, including all RCs 
 
 This detailed release log helps the team improve future releases by reviewing the overall timeline, identifying inefficiencies, errors, or bottlenecks, and preserving institutional knowledge about the release process.
 
-### Step 2: Release resource type namespaces
+### Step 2: Release resource type namespaces and recipe packs
 
 Complete this step **before updating `versions.yaml` or starting the Radius release automation** so the release includes the intended resource types.
 
 1. In `radius-project/resource-types-contrib`, run the [Release Namespace](https://github.com/radius-project/resource-types-contrib/actions/workflows/release-namespace.yaml) workflow from `main` for each namespace consumed by Radius under `resourceTypes` in [`deploy/manifest/defaults.yaml`](../../../deploy/manifest/defaults.yaml). Select the namespace and the appropriate semantic version `bump` (`patch`, `minor`, or `major`). Leave `prerelease_label` empty and `dry_run` and `force` disabled. Namespace versions are independent of the Radius version; even for a Radius RC, publish stable namespace releases because prereleases do not notify Radius.
-2. Wait for each workflow to succeed. An unchanged namespace is skipped and does not need a new release. For each published release, confirm that [Notify Radius](https://github.com/radius-project/resource-types-contrib/actions/workflows/notify-radius.yaml) succeeds and triggers Radius's [Update Resource Types](https://github.com/radius-project/radius/actions/workflows/update-resource-types.yaml) workflow.
-3. Wait for all namespace updates to finish, then review the generated `chore(resource-types-contrib): updates` PR from `bot/update-resource-types` in `radius-project/radius`. Successive notifications refresh the same open PR. Confirm that `deploy/manifest/defaults.yaml` pins the intended stable namespace releases and that the copied manifests and generated artifacts are included. Wait for required checks and approval, then **merge the PR into `main` before proceeding**. If all namespaces are unchanged and Radius already has the intended pins, no new PR is required.
-4. Record the namespace releases and merged update PR in the Teams release thread. For the first RC, the release branch will inherit this update from `main`. For a subsequent RC, cherry-pick any new resource-type update onto `release/X.Y` before the `versions.yaml` update triggers the release, as described in [Step 7](#step-7-cherry-pick-additional-changes-subsequent-rcs-only).
+2. In the same repository, run the [Release Recipe Pack](https://github.com/radius-project/resource-types-contrib/actions/workflows/release-recipe-pack.yaml) workflow from `main` for each pack listed under `recipePacks` in [`deploy/manifest/defaults.yaml`](../../../deploy/manifest/defaults.yaml). Select the pack and the appropriate `bump`. Leave `prerelease_label` empty and `dry_run` and `force` disabled. Pack versions are independent of the Radius version. A pack that hasn't changed since its last release is skipped. The workflow fails if any recipe image the pack references can't be pulled.
+3. Wait for each namespace and recipe pack workflow to succeed. An unchanged namespace is skipped and does not need a new release. For each published release, confirm that [Notify Radius](https://github.com/radius-project/resource-types-contrib/actions/workflows/notify-radius.yaml) succeeds and triggers Radius's [Update Resource Types](https://github.com/radius-project/radius/actions/workflows/update-resource-types.yaml) workflow.
+4. Wait for all namespace and recipe pack updates to finish, then review the generated `chore(resource-types-contrib): updates` PR from `bot/update-resource-types` in `radius-project/radius`. Successive notifications refresh the same open PR. Confirm that `deploy/manifest/defaults.yaml` pins the intended stable namespace and recipe pack releases and that the copied manifests and generated artifacts are included. Wait for required checks and approval, then **merge the PR into `main` before proceeding**. If all namespaces are unchanged and Radius already has the intended pins, no new PR is required.
+5. Record the namespace and recipe pack releases and merged update PR in the Teams release thread. For the first RC, the release branch will inherit this update from `main`. For a subsequent RC, cherry-pick any new resource-type update onto `release/X.Y` before the `versions.yaml` update triggers the release, as described in [Step 7](#step-7-cherry-pick-additional-changes-subsequent-rcs-only).
 
 > **Stop if the update is missing or incomplete.** Inspect the namespace release, notification, and Radius update workflow runs and resolve failures before continuing. Publishing namespace releases alone is not enough: their resource-type update must be merged into the code that Radius will release.
 
@@ -352,7 +353,7 @@ Start a new thread in the team's Microsoft Teams release channel titled with the
 
 Open a PR with the bug fix targeting `main`. After approval, merge it.
 
-If the patch changes resource types, first follow [the namespace release step](#step-2-release-resource-type-namespaces) to publish the affected namespaces and merge the generated Radius update PR into `main`. Cherry-pick and merge that update into `release/X.Y` before merging the patch's `versions.yaml` change there.
+If the patch changes resource types, first follow [the namespace release step](#step-2-release-resource-type-namespaces-and-recipe-packs) to publish the affected namespaces and merge the generated Radius update PR into `main`. Cherry-pick and merge that update into `release/X.Y` before merging the patch's `versions.yaml` change there.
 
 ### Step 3: Update versions.yaml and create patch release notes
 
