@@ -47,34 +47,6 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 }
 ` // Trailing newline intentional.
 
-	// PreviewAppBicepTemplate is the app.bicep template used by `rad init --preview`.
-	PreviewAppBicepTemplate = `extension radius
-
-@description('The Radius Environment ID. Injected automatically by the rad CLI.')
-param environment string
-
-@description('The Radius Application ID. Injected automatically by the rad CLI.')
-param application string
-
-resource demo 'Radius.Compute/containers@2025-08-01-preview' = {
-  name: 'demo'
-  properties: {
-    environment: environment
-    application: application
-    containers: {
-      demo: {
-        image: 'ghcr.io/radius-project/samples/demo:latest'
-        ports: {
-          web: {
-            containerPort: 3000
-          }
-        }
-      }
-    }
-  }
-}
-` // Trailing newline intentional.
-
 	bicepConfigTemplate = `{
 	"extensions": {
 		"radius": "br:biceptypes.azurecr.io/radius:%s",
@@ -98,18 +70,21 @@ func ScaffoldApplication(directory string, template string) error {
 		return err
 	}
 
+	return WriteBicepConfig(directory)
+}
+
+// WriteBicepConfig writes the default bicepconfig.json into directory if it does not already exist.
+// It never overwrites an existing file because the user may have customized it.
+func WriteBicepConfig(directory string) error {
 	bicepConfigFilepath := filepath.Join(directory, "bicepconfig.json")
-	_, err = os.Stat(bicepConfigFilepath)
-	if os.IsNotExist(err) {
-		err = os.WriteFile(bicepConfigFilepath, []byte(GetVersionedBicepConfig()), 0644)
-		if err != nil {
-			return err
-		}
-	} else if err != nil {
+	_, err := os.Stat(bicepConfigFilepath)
+	if err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
 		return err
 	}
 
-	return nil
+	return os.WriteFile(bicepConfigFilepath, []byte(GetVersionedBicepConfig()), 0644)
 }
 
 // GetVersionedBicepConfig returns the default bicepconfig.json contents with the Radius and AWS

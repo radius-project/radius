@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -48,6 +47,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -132,9 +132,6 @@ func Test_Validate(t *testing.T) {
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -162,9 +159,6 @@ func Test_Validate(t *testing.T) {
 
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
@@ -199,9 +193,6 @@ func Test_Validate(t *testing.T) {
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -230,9 +221,6 @@ func Test_Validate(t *testing.T) {
 
 				// No need to choose env settings since we're using existing
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -260,9 +248,6 @@ func Test_Validate(t *testing.T) {
 				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
 
 				// No need to choose env settings since we're using existing
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
@@ -296,9 +281,6 @@ func Test_Validate(t *testing.T) {
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -330,9 +312,6 @@ func Test_Validate(t *testing.T) {
 
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
@@ -366,9 +345,6 @@ func Test_Validate(t *testing.T) {
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -401,42 +377,6 @@ func Test_Validate(t *testing.T) {
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
-			},
-		},
-		{
-			Name:          "Initialize --full with existing environment create application - initial appname is invalid",
-			Input:         []string{"--full"},
-			ExpectedValid: true,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         config,
-			},
-			CreateTempDirectory: "in.valid", // Invalid app name
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				// Radius is already installed, no reinstall
-				initGetKubeContextSuccess(mocks.Kubernetes)
-				initKubeContextWithKind(mocks.Prompter)
-				initHelmMockRadiusInstalled(mocks.Helm)
-
-				// Configure an existing environment - but then choose to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{
-					{
-						ID:   to.Ptr("/planes/radius/local/resourceGroups/cool-existing-env/providers/Radius.Core/environments/cool-existing-env"),
-						Name: to.Ptr("cool-existing-env"),
-					},
-				})
-				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
-
-				// No need to choose env settings since we're using existing
-
-				// Create Application
-				setScaffoldApplicationPromptYes(mocks.Prompter)
-				setApplicationNamePrompt(mocks.Prompter, "valid")
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -455,9 +395,6 @@ func Test_Validate(t *testing.T) {
 
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -472,9 +409,6 @@ func Test_Validate(t *testing.T) {
 				// Radius is already installed
 				initGetKubeContextSuccess(mocks.Kubernetes)
 				initHelmMockRadiusNotInstalled(mocks.Helm)
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -498,8 +432,6 @@ func Test_Validate(t *testing.T) {
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, "myenv")
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -522,8 +454,6 @@ func Test_Validate(t *testing.T) {
 						Name: to.Ptr("default"),
 					},
 				})
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -553,9 +483,6 @@ func Test_Validate(t *testing.T) {
 
 				// prompt the user since there's no 'default'
 				initExistingEnvironmentSelection(mocks.Prompter, "prod")
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -652,9 +579,6 @@ func Test_Validate(t *testing.T) {
 				initAddCloudProviderPromptYes(mocks.Prompter)
 				initSelectCloudProvider(mocks.Prompter, confirmCloudProviderBackNavigationSentinel)
 
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
-
 				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
 			},
 		},
@@ -687,9 +611,6 @@ func Test_Validate(t *testing.T) {
 
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -707,9 +628,6 @@ func Test_Validate(t *testing.T) {
 
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -727,9 +645,6 @@ func Test_Validate(t *testing.T) {
 
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -747,9 +662,6 @@ func Test_Validate(t *testing.T) {
 
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -767,27 +679,25 @@ func Test_Validate(t *testing.T) {
 
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
-
-				// No application
-				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-// newScaffoldTestRunner creates a Runner configured for application scaffold tests.
-// The appServerFactory parameter controls the fake ApplicationsServer behavior. When
-// expectCompletion is true the runner is expected to reach the end of Run (so the
-// EditWorkspaces step is expected to be called); set it to false for error-path tests
-// where Run returns before persisting the workspace.
-func newScaffoldTestRunner(t *testing.T, expectCompletion bool, appServerFactory func() corerpfake.ApplicationsServer) (*Runner, string) {
+// newBicepConfigTestRunner creates a Runner that runs to completion with a fake Radius.Core
+// ApplicationsServer that fails the test if called, and changes into a temp directory.
+func newBicepConfigTestRunner(t *testing.T) (*Runner, string) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 
 	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 	configFileInterface.EXPECT().
 		ConfigFromContext(t.Context()).
+		Return(nil).
+		Times(1)
+	configFileInterface.EXPECT().
+		EditWorkspaces(t.Context(), gomock.Any(), gomock.Any()).
 		Return(nil).
 		Times(1)
 
@@ -798,17 +708,30 @@ func newScaffoldTestRunner(t *testing.T, expectCompletion bool, appServerFactory
 		Times(2)
 
 	rootScope := "/planes/radius/local/resourceGroups/default"
-	radiusCoreClientFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(rootScope, nil, nil, appServerFactory)
+	radiusCoreClientFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(rootScope, nil, nil, func() corerpfake.ApplicationsServer {
+		return corerpfake.ApplicationsServer{
+			Get: func(
+				ctx context.Context,
+				rootScope string,
+				applicationName string,
+				options *corerpv20250801.ApplicationsClientGetOptions,
+			) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
+				t.Error("Applications Get should not be called")
+				return
+			},
+			CreateOrUpdate: func(
+				ctx context.Context,
+				rootScope string,
+				applicationName string,
+				resource corerpv20250801.ApplicationResource,
+				options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
+			) (resp azfake.Responder[corerpv20250801.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+				t.Error("Applications CreateOrUpdate should not be called")
+				return
+			},
+		}
+	})
 	require.NoError(t, err)
-
-	credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
-
-	if expectCompletion {
-		configFileInterface.EXPECT().
-			EditWorkspaces(t.Context(), gomock.Any(), gomock.Any()).
-			Return(nil).
-			Times(1)
-	}
 
 	helmInterface := helm.NewMockInterface(ctrl)
 	helmInterface.EXPECT().
@@ -819,32 +742,10 @@ func newScaffoldTestRunner(t *testing.T, expectCompletion bool, appServerFactory
 	prompter := prompt.NewMockInterface(ctrl)
 	setProgressHandler(prompter)
 
-	workspace := &workspaces.Workspace{
-		Name:        "default",
-		Scope:       "/planes/radius/local/resourceGroups/default",
-		Environment: "/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default",
-	}
-
-	options := initOptions{
-		Cluster: clusterOptions{
-			Install: true,
-			Context: "kind-kind",
-		},
-		Environment: environmentOptions{
-			Create:    true,
-			Name:      "default",
-			Namespace: "defaultNamespace",
-		},
-		Application: applicationOptions{
-			Scaffold: true,
-			Name:     "test-app",
-		},
-	}
-
 	runner := &Runner{
 		ConnectionFactory: &connections.MockFactory{
 			ApplicationsManagementClient: appManagementClient,
-			CredentialManagementClient:   credentialManagementClient,
+			CredentialManagementClient:   cli_credential.NewMockCredentialManagementClient(ctrl),
 		},
 		ConfigFileInterface:       configFileInterface,
 		ConfigHolder:              &framework.ConfigHolder{ConfigFilePath: "filePath"},
@@ -853,199 +754,59 @@ func newScaffoldTestRunner(t *testing.T, expectCompletion bool, appServerFactory
 		Prompter:                  prompter,
 		RadiusCoreClientFactory:   radiusCoreClientFactory,
 		DefaultScopeClientFactory: radiusCoreClientFactory,
-		Options:                   &options,
-		Workspace:                 workspace,
+		Options: &initOptions{
+			Cluster: clusterOptions{
+				Install: true,
+				Context: "kind-kind",
+			},
+			Environment: environmentOptions{
+				Create:    true,
+				Name:      "default",
+				Namespace: "defaultNamespace",
+			},
+		},
+		Workspace: &workspaces.Workspace{
+			Name:        "default",
+			Scope:       "/planes/radius/local/resourceGroups/default",
+			Environment: "/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default",
+		},
 	}
 
 	tempDir := t.TempDir()
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(originalDir) })
-	err = os.Chdir(tempDir)
-	require.NoError(t, err)
+	t.Chdir(tempDir)
 
 	return runner, tempDir
 }
 
-func Test_Run_WithApplicationScaffold(t *testing.T) {
-	t.Run("creates Radius.Core application when not found", func(t *testing.T) {
-		var getCalled, createCalled int
-
-		runner, tempDir := newScaffoldTestRunner(t, true, func() corerpfake.ApplicationsServer {
-			return corerpfake.ApplicationsServer{
-				Get: func(
-					ctx context.Context,
-					rootScope string,
-					applicationName string,
-					options *corerpv20250801.ApplicationsClientGetOptions,
-				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
-					getCalled++
-					assert.Equal(t, "test-app", applicationName)
-					errResp.SetError(fmt.Errorf("application not found"))
-					errResp.SetResponseError(404, "Not Found")
-					return
-				},
-				CreateOrUpdate: func(
-					ctx context.Context,
-					rootScope string,
-					applicationName string,
-					resource corerpv20250801.ApplicationResource,
-					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
-				) (resp azfake.Responder[corerpv20250801.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
-					createCalled++
-					assert.Equal(t, "test-app", applicationName)
-					assert.Equal(t, v1.LocationGlobal, *resource.Location)
-					assert.Equal(t, "/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default", *resource.Properties.Environment)
-					result := corerpv20250801.ApplicationsClientCreateOrUpdateResponse{
-						Name:       to.Ptr(applicationName),
-						Location:   resource.Location,
-						Properties: resource.Properties,
-					}
-					resp.SetResponse(http.StatusOK, result, nil)
-					return
-				},
-			}
-		})
+func Test_Run_WritesBicepConfig(t *testing.T) {
+	t.Run("writes bicepconfig.json and does not write app.bicep", func(t *testing.T) {
+		runner, tempDir := newBicepConfigTestRunner(t)
 
 		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
-		assert.Equal(t, 1, getCalled, "Get should be called once")
-		assert.Equal(t, 1, createCalled, "CreateOrUpdate should be called once")
-
-		_, err = os.Stat(filepath.Join(tempDir, "app.bicep"))
-		require.NoError(t, err, "app.bicep should be created")
-
-		_, err = os.Stat(filepath.Join(tempDir, "bicepconfig.json"))
+		b, err := os.ReadFile(filepath.Join(tempDir, "bicepconfig.json"))
 		require.NoError(t, err, "bicepconfig.json should be created")
+		require.Equal(t, setup.GetVersionedBicepConfig(), string(b))
+
+		require.NoFileExists(t, filepath.Join(tempDir, "app.bicep"))
 	})
 
-	t.Run("skips creation when application already exists", func(t *testing.T) {
-		var getCalled, createCalled int
+	t.Run("preserves existing bicepconfig.json", func(t *testing.T) {
+		runner, tempDir := newBicepConfigTestRunner(t)
 
-		runner, tempDir := newScaffoldTestRunner(t, true, func() corerpfake.ApplicationsServer {
-			return corerpfake.ApplicationsServer{
-				Get: func(
-					ctx context.Context,
-					rootScope string,
-					applicationName string,
-					options *corerpv20250801.ApplicationsClientGetOptions,
-				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
-					getCalled++
-					result := corerpv20250801.ApplicationsClientGetResponse{
-						Name: to.Ptr(applicationName),
-					}
-					resp.SetResponse(http.StatusOK, result, nil)
-					return
-				},
-				CreateOrUpdate: func(
-					ctx context.Context,
-					rootScope string,
-					applicationName string,
-					resource corerpv20250801.ApplicationResource,
-					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
-				) (resp azfake.Responder[corerpv20250801.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
-					createCalled++
-					t.Error("CreateOrUpdate should not be called when application already exists")
-					return
-				},
-			}
-		})
-
-		err := runner.Run(t.Context())
+		existing := `{"extensions":{"radius":"br:example.azurecr.io/radius:custom"}}`
+		err := os.WriteFile(filepath.Join(tempDir, "bicepconfig.json"), []byte(existing), 0644)
 		require.NoError(t, err)
 
-		assert.Equal(t, 1, getCalled, "Get should be called once")
-		assert.Equal(t, 0, createCalled, "CreateOrUpdate should not be called")
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
 
-		_, err = os.Stat(filepath.Join(tempDir, "app.bicep"))
-		require.NoError(t, err, "app.bicep should be created")
+		b, err := os.ReadFile(filepath.Join(tempDir, "bicepconfig.json"))
+		require.NoError(t, err)
+		require.Equal(t, existing, string(b))
 
-		_, err = os.Stat(filepath.Join(tempDir, "bicepconfig.json"))
-		require.NoError(t, err, "bicepconfig.json should be created")
-	})
-
-	t.Run("returns error when Get fails with a non-404 error", func(t *testing.T) {
-		var getCalled, createCalled int
-
-		runner, tempDir := newScaffoldTestRunner(t, false, func() corerpfake.ApplicationsServer {
-			return corerpfake.ApplicationsServer{
-				Get: func(
-					ctx context.Context,
-					rootScope string,
-					applicationName string,
-					options *corerpv20250801.ApplicationsClientGetOptions,
-				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
-					getCalled++
-					errResp.SetError(fmt.Errorf("internal server error"))
-					errResp.SetResponseError(http.StatusInternalServerError, "Internal Server Error")
-					return
-				},
-				CreateOrUpdate: func(
-					ctx context.Context,
-					rootScope string,
-					applicationName string,
-					resource corerpv20250801.ApplicationResource,
-					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
-				) (resp azfake.Responder[corerpv20250801.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
-					createCalled++
-					t.Error("CreateOrUpdate should not be called when Get fails with a non-404 error")
-					return
-				},
-			}
-		})
-
-		err := runner.Run(t.Context())
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "Failed to check for existing application.")
-
-		assert.Equal(t, 1, getCalled, "Get should be called once")
-		assert.Equal(t, 0, createCalled, "CreateOrUpdate should not be called")
-
-		_, err = os.Stat(filepath.Join(tempDir, "app.bicep"))
-		require.True(t, os.IsNotExist(err), "app.bicep should not be created when application check fails")
-	})
-
-	t.Run("returns error when CreateOrUpdate fails", func(t *testing.T) {
-		var getCalled, createCalled int
-
-		runner, tempDir := newScaffoldTestRunner(t, false, func() corerpfake.ApplicationsServer {
-			return corerpfake.ApplicationsServer{
-				Get: func(
-					ctx context.Context,
-					rootScope string,
-					applicationName string,
-					options *corerpv20250801.ApplicationsClientGetOptions,
-				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
-					getCalled++
-					errResp.SetError(fmt.Errorf("application not found"))
-					errResp.SetResponseError(http.StatusNotFound, "Not Found")
-					return
-				},
-				CreateOrUpdate: func(
-					ctx context.Context,
-					rootScope string,
-					applicationName string,
-					resource corerpv20250801.ApplicationResource,
-					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
-				) (resp azfake.Responder[corerpv20250801.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
-					createCalled++
-					errResp.SetError(fmt.Errorf("internal server error"))
-					errResp.SetResponseError(http.StatusInternalServerError, "Internal Server Error")
-					return
-				},
-			}
-		})
-
-		err := runner.Run(t.Context())
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "Failed to create application.")
-
-		assert.Equal(t, 1, getCalled, "Get should be called once")
-		assert.Equal(t, 1, createCalled, "CreateOrUpdate should be called once")
-
-		_, err = os.Stat(filepath.Join(tempDir, "app.bicep"))
-		require.True(t, os.IsNotExist(err), "app.bicep should not be created when application creation fails")
+		require.NoFileExists(t, filepath.Join(tempDir, "app.bicep"))
 	})
 }
 
@@ -1318,9 +1079,6 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				Recipes: recipePackOptions{
 					DefaultRecipePack: !tc.full,
 				},
-				Application: applicationOptions{
-					Scaffold: false,
-				},
 			}
 
 			runner := &Runner{
@@ -1344,8 +1102,14 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				SetFile: tc.setFile,
 			}
 
+			tempDir := t.TempDir()
+			t.Chdir(tempDir)
+
 			err = runner.Run(t.Context())
 			require.NoError(t, err)
+
+			require.FileExists(t, filepath.Join(tempDir, "bicepconfig.json"))
+			require.NoFileExists(t, filepath.Join(tempDir, "app.bicep"))
 
 			if len(tc.expectedOutput) == 0 {
 				require.Len(t, outputSink.Writes, 0)
@@ -1479,24 +1243,6 @@ func initExistingEnvironmentSelection(prompter *prompt.MockInterface, choice str
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), selectExistingEnvironmentPrompt).
 		Return(choice, nil).Times(1)
-}
-
-func setScaffoldApplicationPromptNo(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		GetListInput(gomock.Any(), common.ConfirmSetupApplicationPrompt).
-		Return(prompt.ConfirmNo, nil).Times(1)
-}
-
-func setScaffoldApplicationPromptYes(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		GetListInput(gomock.Any(), common.ConfirmSetupApplicationPrompt).
-		Return(prompt.ConfirmYes, nil).Times(1)
-}
-
-func setApplicationNamePrompt(prompter *prompt.MockInterface, applicationName string) {
-	prompter.EXPECT().
-		GetTextInput(common.EnterApplicationNamePrompt, gomock.Any()).
-		Return(applicationName, nil).Times(1)
 }
 
 func setAWSRegionPrompt(prompter *prompt.MockInterface, regions []string, region string) {

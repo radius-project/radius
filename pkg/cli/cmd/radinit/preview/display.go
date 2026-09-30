@@ -45,11 +45,6 @@ func toDisplayOptions(options *initOptions) common.DisplayOptions {
 		recipePackLabel = "default"
 	}
 
-	var scaffoldFiles []string
-	if options.Application.Scaffold {
-		scaffoldFiles = []string{"app.bicep", "bicepconfig.json"}
-	}
-
 	return common.DisplayOptions{
 		Cluster: common.ClusterDisplay{
 			Install:   options.Cluster.Install,
@@ -65,11 +60,6 @@ func toDisplayOptions(options *initOptions) common.DisplayOptions {
 		CloudProviders: common.CloudProvidersDisplay{
 			Azure: options.CloudProviders.Azure,
 			AWS:   options.CloudProviders.AWS,
-		},
-		Application: common.ApplicationDisplay{
-			Scaffold:      options.Application.Scaffold,
-			Name:          options.Application.Name,
-			ScaffoldFiles: scaffoldFiles,
 		},
 		RecipePackLabel: recipePackLabel,
 	}
