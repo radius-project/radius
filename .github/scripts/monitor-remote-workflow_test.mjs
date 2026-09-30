@@ -81,7 +81,10 @@ function createGithub({ runs = [], getRun, jobs = [], pages } = {}) {
       };
       paginating = true;
       try {
-        const pageCount = pages ? pages.length : 1;
+        const pageCount =
+          pages ?
+            Math.min(pages.length, parameters.event ? 10 : pages.length)
+          : 1;
         for (let page = 0; page < pageCount && !stopped; page += 1) {
           const response = await method({ ...parameters, page: page + 1 });
           collected.push(
@@ -100,10 +103,22 @@ function createGithub({ runs = [], getRun, jobs = [], pages } = {}) {
           if (pages && paginating) {
             calls.pages += 1;
             return {
-              data: { workflow_runs: [...(pages[page - 1] || [])] }
+              data: {
+                workflow_runs: (pages[page - 1] || []).map((run) => ({
+                  event: "repository_dispatch",
+                  ...run
+                }))
+              }
             };
           }
-          return { data: { workflow_runs: [...runs] } };
+          return {
+            data: {
+              workflow_runs: runs.map((run) => ({
+                event: "repository_dispatch",
+                ...run
+              }))
+            }
+          };
         },
         async getWorkflowRun({ run_id: runID }) {
           calls.get += 1;
@@ -124,6 +139,7 @@ function createGithub({ runs = [], getRun, jobs = [], pages } = {}) {
           dispatches.push({ eventType, payload });
           runs.push({
             id: nextRunID++,
+            event: "repository_dispatch",
             display_title: `${eventType} / ${payload.release_identifier}`,
             status: "completed",
             conclusion: "success",
@@ -139,6 +155,7 @@ function createGithub({ runs = [], getRun, jobs = [], pages } = {}) {
 function successfulRun(id, identifier) {
   return {
     id,
+    event: "repository_dispatch",
     display_title: `deployment-engine / ${identifier}`,
     status: "completed",
     conclusion: "success",
@@ -183,6 +200,39 @@ test("finds an existing run beyond five pages without redispatching", async () =
   assert.equal(github.dispatches.length, 0);
   assert.equal(core.outputs.get("run_id"), "6");
   assert.equal(core.outputs.get("conclusion"), "success");
+});
+
+test("finds a successful run beyond the filtered 1000-result cap", async () => {
+  const identifier = "0.61.0-aeaeaeae";
+  const core = createCore({ RELEASE_IDENTIFIER: identifier });
+  const pages = Array.from({ length: 10 }, (unused, page) =>
+    Array.from({ length: 100 }, (unused, index) =>
+      successfulRun(2000 - page * 100 - index, "unrelated")
+    )
+  );
+  pages.push([successfulRun(42, identifier)]);
+  const github = createGithub({ pages });
+
+  await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+  assert.deepEqual(core.failures, []);
+  assert.equal(github.calls.pages, 11);
+  assert.equal(github.dispatches.length, 0);
+  assert.equal(core.outputs.get("run_id"), "42");
+});
+
+test("ignores matching titles from non-dispatch events", async () => {
+  const identifier = "0.61.0-afafafaf";
+  const core = createCore({ RELEASE_IDENTIFIER: identifier });
+  const github = createGithub({
+    runs: [{ ...successfulRun(42, identifier), event: "workflow_dispatch" }]
+  });
+
+  await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+  assert.deepEqual(core.failures, []);
+  assert.equal(github.dispatches.length, 1);
+  assert.equal(core.outputs.get("run_id"), "1000");
 });
 
 test("never dispatches when history discovery times out", async () => {

@@ -174,7 +174,11 @@ export default async ({
     /** @param {any[]} runs */
     const correlatedRuns = (runs) =>
       (runs || [])
-        .filter((run) => run.display_title === expectedRunName)
+        .filter(
+          (run) =>
+            run.event === "repository_dispatch" &&
+            run.display_title === expectedRunName
+        )
         .sort((left, right) => right.id - left.id);
 
     /** @param {any[]} runs */
@@ -188,7 +192,6 @@ export default async ({
         owner: remoteOwner,
         repo: remoteRepo,
         workflow_id: remoteWorkflowFile,
-        event: "repository_dispatch",
         per_page: 100
       };
 
