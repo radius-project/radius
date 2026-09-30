@@ -126,10 +126,6 @@ When a platform team adds a resource type or action, existing roles do not silen
 
 **Comparative evidence.** [Argo CD](https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/) demonstrates application-focused roles and the usability tradeoffs of allow, deny, inheritance, and pattern matching. [Grafana](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/access-control/) demonstrates fixed and custom roles, action-and-scope permissions, and assignments to teams and service accounts. [Backstage](https://backstage.io/docs/permissions/overview/) demonstrates consistent permission decisions across user interfaces and the services that own protected resources.
 
-**Architecture review input.** The `architecture-review` completed during specification development found the product direction feasible in principle. It identified the trusted identity contract, complete enforcement coverage, cross-scope authorization, revocation behavior, and consistency across clients and automation as topics the technical design must validate.
-
-**Evidence limitations.** No customer interviews, support-ticket analysis, Radius authorization usage data, compliance controls, or measured latency budgets were provided. Customer need, role fit, usability, and performance targets remain hypotheses to validate; the first release should not claim a specific compliance certification or market demand until that evidence exists.
-
 ## Details of user problem
 
 I operate Radius for more than one team. Today, if I let someone use the Radius API, I cannot express that they may manage only their applications, deploy only to approved environments, or administer only the Recipe Packs or resource types they own. I either grant broad access through the Kubernetes API boundary or create external workflow controls that are inconsistent with direct API access.
