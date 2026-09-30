@@ -227,6 +227,8 @@ KubernetesPodSpec
 KubernetesResourceCheck
 KubernetesRuntimeProperties
 Kumar
+Kustomization
+Kyverno
 Kusto
 Kustomize
 LinkRP
