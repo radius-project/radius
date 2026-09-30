@@ -22,6 +22,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/term"
 	"github.com/radius-project/radius/pkg/cli/output"
 )
@@ -67,7 +68,7 @@ func (r *Runner) terminalWidth() (int, bool) {
 	return width, true
 }
 
-// wrapText word-wraps text so that no line is longer than width runes. Existing line breaks are
+// wrapText word-wraps text so that no line is wider than width terminal display cells. Existing line breaks are
 // preserved, runs of whitespace between words are collapsed, and words longer than width are split.
 func wrapText(text string, width int) string {
 	if width <= 0 {
@@ -84,7 +85,7 @@ func wrapText(text string, width int) string {
 }
 
 func wrapParagraph(paragraph string, width int) []string {
-	if utf8.RuneCountInString(paragraph) <= width {
+	if displayWidth(paragraph) <= width {
 		return []string{paragraph}
 	}
 
@@ -104,7 +105,7 @@ func wrapParagraph(paragraph string, width int) []string {
 
 	for _, word := range words {
 		for _, chunk := range splitWord(word, width) {
-			chunkWidth := utf8.RuneCountInString(chunk)
+			chunkWidth := displayWidth(chunk)
 			if currentWidth > 0 && currentWidth+1+chunkWidth > width {
 				flush()
 			}
@@ -121,44 +122,69 @@ func wrapParagraph(paragraph string, width int) []string {
 	return lines
 }
 
-// splitWord breaks a word longer than width runes into width-sized chunks.
+// splitWord breaks a word wider than width display cells into chunks that each fit within width.
+// Chunks break only on grapheme cluster boundaries, so wide and combined characters are never split.
+// A single grapheme wider than width is placed on its own line because it cannot be split further.
 func splitWord(word string, width int) []string {
-	runes := []rune(word)
-	if len(runes) <= width {
+	if displayWidth(word) <= width {
 		return []string{word}
 	}
 
-	chunks := make([]string, 0, (len(runes)+width-1)/width)
-	for len(runes) > width {
-		chunks = append(chunks, string(runes[:width]))
-		runes = runes[width:]
-	}
-	if len(runes) > 0 {
-		chunks = append(chunks, string(runes))
+	chunks := []string{}
+	for _, chunk := range strings.Split(ansi.Hardwrap(word, width, false), "\n") {
+		if chunk != "" {
+			chunks = append(chunks, chunk)
+		}
 	}
 
 	return chunks
 }
 
-// descriptionColumnOffset returns the column where the DESCRIPTION column starts in the property table,
-// mirroring how output.TableFormatter sizes columns with text/tabwriter.
+// displayWidth returns the number of terminal cells s occupies, counting wide characters such as CJK
+// as two cells and combining characters as zero.
+func displayWidth(s string) int {
+	return ansi.StringWidth(s)
+}
+
+// descriptionColumnOffset returns the widest display column at which a DESCRIPTION cell can start in the
+// property table, mirroring how output.TableFormatter lays out columns with text/tabwriter.
+//
+// text/tabwriter sizes and pads columns by rune count rather than display width. Continuation lines have
+// empty leading cells, so they start at the rune-based column offset and stay aligned with each other. A
+// row whose NAME or TYPE contains wide characters (for example CJK) is shifted right by the extra display
+// cells; the offset returned here accounts for that shift, so no wrapped line exceeds the terminal width,
+// but that row's first line is not aligned with its continuation lines. Property names and types are
+// ASCII in practice, so this only affects unusual schemas.
 func descriptionColumnOffset(schemaList []FieldSchema) int {
-	widths := []int{
-		utf8.RuneCountInString("NAME"),
-		utf8.RuneCountInString("TYPE"),
-		utf8.RuneCountInString("REQUIRED"),
-		utf8.RuneCountInString("READ-ONLY"),
-	}
+	rows := [][]string{{"NAME", "TYPE", "REQUIRED", "READ-ONLY"}}
 	for _, field := range schemaList {
-		cells := []string{field.Name, field.Type, strconv.FormatBool(field.IsRequired), strconv.FormatBool(field.IsReadOnly)}
-		for i, cell := range cells {
-			widths[i] = max(widths[i], utf8.RuneCountInString(cell))
-		}
+		rows = append(rows, []string{field.Name, field.Type, strconv.FormatBool(field.IsRequired), strconv.FormatBool(field.IsReadOnly)})
 	}
 
+	// Column widths as text/tabwriter computes them, in runes.
+	columnWidths := make([]int, len(rows[0]))
+	for _, row := range rows {
+		for i, cell := range row {
+			columnWidths[i] = max(columnWidths[i], utf8.RuneCountInString(cell))
+		}
+	}
+	for i := range columnWidths {
+		columnWidths[i] = max(columnWidths[i]+output.TablePadSize, output.TableColumnMinWidth)
+	}
+
+	// Continuation lines have empty leading cells and start at the sum of the column widths.
 	offset := 0
-	for _, width := range widths {
-		offset += max(width+output.TablePadSize, output.TableColumnMinWidth)
+	for _, width := range columnWidths {
+		offset += width
+	}
+
+	// Each cell occupies its display width plus the padding tabwriter adds based on its rune count.
+	for _, row := range rows {
+		rowOffset := 0
+		for i, cell := range row {
+			rowOffset += displayWidth(cell) + columnWidths[i] - utf8.RuneCountInString(cell)
+		}
+		offset = max(offset, rowOffset)
 	}
 
 	return offset

@@ -97,6 +97,36 @@ func Test_wrapText(t *testing.T) {
 			expected: "ééé\nééé\né",
 		},
 		{
+			name:     "wraps wide characters by display width",
+			text:     "数据库服务器名称数据库",
+			width:    8,
+			expected: "数据库服\n务器名称\n数据库",
+		},
+		{
+			name:     "wide text that fits in runes but not in cells is wrapped",
+			text:     "这是一个很长的描述",
+			width:    10,
+			expected: "这是一个很\n长的描述",
+		},
+		{
+			name:     "wraps mixed ASCII and wide words",
+			text:     "The 数据库 name is 服务器名称",
+			width:    12,
+			expected: "The 数据库\nname is\n服务器名称",
+		},
+		{
+			name:     "never splits a wide rune across lines",
+			text:     "a数据库",
+			width:    4,
+			expected: "a数\n据库",
+		},
+		{
+			name:     "never splits a grapheme cluster",
+			text:     "👩‍💻👩‍💻👩‍💻",
+			width:    5,
+			expected: "👩‍💻👩‍💻\n👩‍💻",
+		},
+		{
 			name:     "non-positive width is unchanged",
 			text:     "some text",
 			width:    0,
@@ -126,6 +156,39 @@ func Test_descriptionColumnOffset(t *testing.T) {
 		// NAME=13 (application+2), TYPE=10, REQUIRED=10, READ-ONLY=11
 		require.Equal(t, 44, descriptionColumnOffset([]FieldSchema{{Name: "application", Type: "string"}}))
 	})
+
+	t.Run("accounts for tabwriter padding wide cells by rune count", func(t *testing.T) {
+		t.Parallel()
+		// Columns are 41 runes wide, but the "数" row occupies one extra display cell before DESCRIPTION.
+		require.Equal(t, 42, descriptionColumnOffset([]FieldSchema{{Name: "ab", Type: "string"}, {Name: "数", Type: "string"}}))
+	})
+}
+
+func Test_wrapText_WideCharacters(t *testing.T) {
+	t.Parallel()
+
+	texts := []string{
+		strings.Repeat("数据库服务器", 10),
+		"PostgreSQL 数据库服务器 with a very long 描述文字描述文字描述文字描述文字 and more ASCII text",
+		"https://example.com/" + strings.Repeat("数据", 30),
+		strings.Repeat("é", 50) + " " + strings.Repeat("👩‍💻", 20),
+	}
+
+	for i, text := range texts {
+		for _, width := range []int{2, 3, 7, 20, 33} {
+			t.Run(fmt.Sprintf("text %d at %d cells", i, width), func(t *testing.T) {
+				t.Parallel()
+
+				wrapped := wrapText(text, width)
+				for _, line := range strings.Split(wrapped, "\n") {
+					require.True(t, utf8.ValidString(line), "line contains a split rune: %q", line)
+					require.LessOrEqual(t, displayWidth(line), width, "line exceeds width: %q", line)
+				}
+				// Wrapping only replaces spaces with line breaks, so no character is split or lost.
+				require.Equal(t, strings.Join(strings.Fields(text), ""), strings.Join(strings.Fields(wrapped), ""))
+			})
+		}
+	}
 }
 
 // renderTable renders schemaList the same way `rad resource-type show` does.
@@ -170,7 +233,7 @@ func Test_wrapDescriptions(t *testing.T) {
 			require.Greater(t, len(lines), len(schemaList)+1)
 
 			for _, line := range lines {
-				require.LessOrEqual(t, utf8.RuneCountInString(line), width, "line exceeds terminal width: %q", line)
+				require.LessOrEqual(t, displayWidth(line), width, "line exceeds terminal width: %q", line)
 				if strings.TrimSpace(line[:offset]) == "" {
 					// Continuation lines are indented to the DESCRIPTION column.
 					require.NotEqual(t, ' ', rune(line[offset]), "continuation line is misaligned: %q", line)
@@ -196,13 +259,47 @@ func Test_wrapDescriptions(t *testing.T) {
 		require.Equal(t, expected, renderTable(t, wrapDescriptions(list, 119)))
 	})
 
+	t.Run("wide descriptions are wrapped by display width and aligned", func(t *testing.T) {
+		t.Parallel()
+
+		list := []FieldSchema{
+			{Name: "name", Type: "string", Description: strings.Repeat("数据库服务器名称", 8)},
+			{Name: "token", Type: "string", Description: "见 https://example.com/" + strings.Repeat("文档", 40)},
+		}
+		const width = 80
+		offset := descriptionColumnOffset(list)
+		rendered := renderTable(t, wrapDescriptions(list, width))
+		lines := strings.Split(strings.TrimSuffix(rendered, "\n"), "\n")
+		require.Greater(t, len(lines), len(list)+1)
+
+		for _, line := range lines {
+			require.LessOrEqual(t, displayWidth(line), width, "line exceeds terminal width: %q", line)
+			if strings.TrimSpace(line[:offset]) == "" {
+				require.NotEqual(t, ' ', rune(line[offset]), "continuation line is misaligned: %q", line)
+			}
+		}
+	})
+
+	t.Run("wide property names never push lines past the terminal width", func(t *testing.T) {
+		t.Parallel()
+
+		list := []FieldSchema{
+			{Name: "ab", Type: "string", Description: longSizeDescription},
+			{Name: "数据库", Type: "string", Description: longSizeDescription},
+		}
+		const width = 80
+		for _, line := range strings.Split(strings.TrimSuffix(renderTable(t, wrapDescriptions(list, width)), "\n"), "\n") {
+			require.LessOrEqual(t, displayWidth(line), width, "line exceeds terminal width: %q", line)
+		}
+	})
+
 	t.Run("narrow terminals wrap at a minimum width", func(t *testing.T) {
 		t.Parallel()
 
 		rendered := renderTable(t, wrapDescriptions(schemaList[1:2], 30))
 		offset := descriptionColumnOffset(schemaList[1:2])
 		for _, line := range strings.Split(strings.TrimSuffix(rendered, "\n"), "\n")[1:] {
-			require.LessOrEqual(t, utf8.RuneCountInString(line), offset+minDescriptionWidth)
+			require.LessOrEqual(t, displayWidth(line), offset+minDescriptionWidth)
 		}
 	})
 }
