@@ -66,3 +66,9 @@ data:
       deleteRetryDelaySeconds: 60
     terraform:
       path: "/terraform"
+    {{- if include "radius.buildkit.registryEnabled" . }}
+    registryProxy:
+      enabled: true
+      listenAddress: "127.0.0.1:{{ include "radius.buildkit.registryNodePort" . }}"
+      targetAddress: "radius-registry.{{ .Release.Namespace }}.svc:5000"
+    {{- end }}
