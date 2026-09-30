@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,7 +34,9 @@ import (
 
 	"uuid"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	azruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -66,8 +69,8 @@ func Test_DeploymentEngineReview(t *testing.T) {
 
 		status, body := deploymentReviewRequest(t, t.Context(), options.Connection, http.MethodGet,
 			scope+"/providers/Microsoft.Resources/deployments/"+child, sdkclients.DeploymentsClientAPIVersion, nil)
-		require.Equal(t, http.StatusOK, status)
-		require.JSONEq(t, "null", string(body), "a missing deployment is returned as HTTP 200 with a null body")
+		require.Equal(t, http.StatusNoContent, status)
+		require.Empty(t, body, "a missing deployment is returned as HTTP 204 with no body")
 	})
 
 	t.Run("secure_module_output", func(t *testing.T) {
@@ -131,25 +134,40 @@ func Test_DeploymentEngineReview(t *testing.T) {
 			readDeploymentReviewTemplate(t, "invalid-recipepack.json"), map[string]any{"name": name})
 		require.Error(t, err, "the invalid resource must fail deployment")
 
+		var responseError *azcore.ResponseError
+		require.True(t, errors.As(err, &responseError), "expected an SDK response error, got %T: %v", err, err)
+		require.NotNil(t, responseError)
+		require.NotNil(t, responseError.RawResponse, "the poller must preserve the failed operation-status response")
+		operationBody, err := azruntime.Payload(responseError.RawResponse)
+		require.NoError(t, err)
+		t.Logf("Raw schema operation-status error: %s", operationBody)
+		require.Equal(t, http.StatusOK, responseError.RawResponse.StatusCode)
+		var operation struct {
+			Status string           `json:"status"`
+			Error  *v1.ErrorDetails `json:"error"`
+		}
+		require.NoError(t, json.Unmarshal(operationBody, &operation))
+		require.Equal(t, "Failed", operation.Status)
+		require.NotNil(t, operation.Error)
+		require.Equal(t, "DeploymentFailed", operation.Error.Code)
+		require.Len(t, operation.Error.Details, 1, "do not append an opaque duplicate of the provider error")
+		actual := operation.Error.Details[0]
+		assertDeploymentReviewSchemaError(t, actual)
+		require.Equal(t, providerError.Error.Message, actual.Message)
+		require.Equal(t, providerError.Error.Details, actual.Details, "preserve the original structured property errors")
+
+		// Deployment GET exposes state, not the operation-status error payload.
 		status, body = deploymentReviewRequest(t, t.Context(), options.Connection, http.MethodGet,
 			deploymentID, sdkclients.DeploymentsClientAPIVersion, nil)
 		require.Equal(t, http.StatusOK, status, "failed deployment must remain readable: %s", body)
-		t.Logf("Raw schema deployment error: %s", body)
+		t.Logf("Raw failed deployment state: %s", body)
 		var deployment struct {
 			Properties struct {
-				ProvisioningState string           `json:"provisioningState"`
-				Error             *v1.ErrorDetails `json:"error"`
+				ProvisioningState string `json:"provisioningState"`
 			} `json:"properties"`
 		}
 		require.NoError(t, json.Unmarshal(body, &deployment))
 		require.Equal(t, "Failed", deployment.Properties.ProvisioningState)
-		require.NotNil(t, deployment.Properties.Error)
-		require.Equal(t, "DeploymentFailed", deployment.Properties.Error.Code)
-		require.Len(t, deployment.Properties.Error.Details, 1, "do not append an opaque duplicate of the provider error")
-		actual := deployment.Properties.Error.Details[0]
-		assertDeploymentReviewSchemaError(t, actual)
-		require.Equal(t, providerError.Error.Message, actual.Message)
-		require.Equal(t, providerError.Error.Details, actual.Details, "preserve the original structured property errors")
 	})
 
 	t.Run("provider_config_precedence", func(t *testing.T) {
@@ -219,13 +237,16 @@ func Test_DeploymentEngineReview(t *testing.T) {
 		var deployment struct {
 			Properties struct {
 				Dependencies []struct {
-					ID           string `json:"id"`
-					SymbolicName string `json:"symbolicName"`
+					ID           *string `json:"id"`
+					SymbolicName string  `json:"symbolicName"`
 					DependsOn    []struct {
 						ID           string `json:"id"`
 						SymbolicName string `json:"symbolicName"`
 					} `json:"dependsOn"`
 				} `json:"dependencies"`
+				OutputResources []struct {
+					ID string `json:"id"`
+				} `json:"outputResources"`
 			} `json:"properties"`
 		}
 		require.NoError(t, json.Unmarshal(body, &deployment))
@@ -239,13 +260,27 @@ func Test_DeploymentEngineReview(t *testing.T) {
 			require.True(t, ok, "unexpected dependency identity: %+v", dependency)
 			require.False(t, seen[dependency.SymbolicName], "duplicate dependency identity")
 			seen[dependency.SymbolicName] = true
-			require.True(t, strings.EqualFold(expectedID, dependency.ID), "dependency must have a canonical UCP ID: %+v", dependency)
+			if dependency.SymbolicName == "legacyDependent" {
+				require.NotNil(t, dependency.ID)
+				require.True(t, strings.EqualFold(expectedID, *dependency.ID), "legacy dependency must have a canonical UCP ID: %+v", dependency)
+			} else {
+				// The baseline modern extensible dependency projection has symbolic
+				// identity only; its concrete resource ID belongs to outputResources.
+				require.Nil(t, dependency.ID)
+			}
 			require.Len(t, dependency.DependsOn, 1)
 			require.Equal(t, "legacyPredecessor", dependency.DependsOn[0].SymbolicName)
 			require.True(t, strings.EqualFold(predecessorID, dependency.DependsOn[0].ID),
 				"legacy predecessor must retain its canonical UCP ID: %+v", dependency)
 		}
 		require.Len(t, seen, len(expected), "both modern and legacy successors must expose their dependency")
+		outputIDs := make([]string, 0, len(deployment.Properties.OutputResources))
+		for _, resource := range deployment.Properties.OutputResources {
+			outputIDs = append(outputIDs, strings.ToLower(resource.ID))
+		}
+		require.ElementsMatch(t, []string{
+			strings.ToLower(predecessorID), strings.ToLower(legacyID), strings.ToLower(modernID),
+		}, outputIDs, "all three actual resources must retain their canonical output IDs")
 	})
 
 	t.Run("content_link_query_redaction", func(t *testing.T) {
