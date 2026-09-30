@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 
 	azcredential "github.com/radius-project/radius/pkg/azure/credential"
 	"github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -40,8 +41,17 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
+// errStateModifiedDuringCleanup reports that the state object changed between the end of destroy and
+// the conditional delete, so another writer now owns it and cleanup deliberately left it in place.
+// This is an expected outcome rather than a failure, and is logged differently from a cleanup error.
+var errStateModifiedDuringCleanup = errors.New("state object changed after destroy completed")
+
 // deleteCloudState removes the state object Terraform leaves behind after destroy, so that deleting a
 // Radius resource does not accumulate empty objects in the user's bucket or container.
+//
+// The delete is conditional on the entity tag read immediately beforehand, so state that changed after
+// destroy completed is never removed. Cleanup does not take the Terraform state lock, so this guards
+// against deleting state another writer has already rewritten rather than against the whole race.
 //
 // It is best effort by design. The resources it tracked are already destroyed by the time this runs, so
 // a cleanup failure is an operator cleanup task rather than a reason to fail the Radius delete and leave
@@ -66,6 +76,10 @@ func (e *executor) deleteCloudState(ctx context.Context, settings *datamodel.Ter
 		del = e.deleteCloudStateObject
 	}
 	if err := del(ctx, settings, auth, key); err != nil {
+		if errors.Is(err, errStateModifiedDuringCleanup) {
+			logger.Info(fmt.Sprintf("Left Terraform %s state object %q in place after destroy because it changed since destroy completed; another writer owns it now", settings.Type, key))
+			return
+		}
 		logger.Info(fmt.Sprintf("Unable to delete Terraform %s state object %q after destroy; the resources it tracked were destroyed and the object can be removed manually: %s", settings.Type, key, err.Error()))
 		return
 	}
@@ -96,19 +110,65 @@ func (e *executor) deleteS3State(ctx context.Context, settings *datamodel.Terraf
 		Credentials: aws.NewCredentialsCache(ucpaws.NewUCPCredentialProvider(provider, 0)),
 	})
 
-	_, err = client.DeleteObject(ctx, &s3.DeleteObjectInput{
+	// Read the entity tag first and make the delete conditional on it. An unconditional delete would
+	// remove whatever is at the key, including state written by a concurrent operation between the end
+	// of destroy and this call.
+	head, err := client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(settings.Bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		// S3 DeleteObject is idempotent, but treat an explicit not-found as success for clarity.
-		var apiErr smithy.APIError
-		if errors.As(err, &apiErr) && (apiErr.ErrorCode() == "NoSuchKey" || apiErr.ErrorCode() == "NotFound") {
+		if isS3NotFound(err) {
 			return nil
 		}
 		return err
 	}
+	if head.ETag == nil || *head.ETag == "" {
+		return errors.New("state object has no entity tag, so it cannot be deleted safely")
+	}
+
+	_, err = client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket:  aws.String(settings.Bucket),
+		Key:     aws.String(key),
+		IfMatch: head.ETag,
+	})
+	if err != nil {
+		// S3 DeleteObject is idempotent, but treat an explicit not-found as success for clarity.
+		if isS3NotFound(err) {
+			return nil
+		}
+		if isS3PreconditionFailed(err) {
+			return errStateModifiedDuringCleanup
+		}
+		return err
+	}
 	return nil
+}
+
+func isS3NotFound(err error) bool {
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) && (apiErr.ErrorCode() == "NoSuchKey" || apiErr.ErrorCode() == "NotFound") {
+		return true
+	}
+	return s3ResponseStatus(err) == 404
+}
+
+func isS3PreconditionFailed(err error) bool {
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) && apiErr.ErrorCode() == "PreconditionFailed" {
+		return true
+	}
+	return s3ResponseStatus(err) == 412
+}
+
+// s3ResponseStatus returns the HTTP status behind an S3 error, or 0. HeadObject has no response body
+// to model an error code from, so the status is the only reliable signal for a missing object.
+func s3ResponseStatus(err error) int {
+	var respErr *smithyhttp.ResponseError
+	if errors.As(err, &respErr) && respErr.Response != nil && respErr.Response.Response != nil {
+		return respErr.HTTPStatusCode()
+	}
+	return 0
 }
 
 func (e *executor) deleteAzureState(ctx context.Context, settings *datamodel.TerraformBackend, auth backends.CloudBackendAuth, key string) error {
@@ -144,9 +204,30 @@ func (e *executor) deleteAzureState(ctx context.Context, settings *datamodel.Ter
 		return err
 	}
 
-	if _, err := client.Delete(ctx, nil); err != nil {
+	// Read the entity tag first and make the delete conditional on it, so state that was rewritten
+	// after destroy completed is never removed.
+	props, err := client.GetProperties(ctx, nil)
+	if err != nil {
 		if bloberror.HasCode(err, bloberror.BlobNotFound, bloberror.ContainerNotFound) {
 			return nil
+		}
+		return err
+	}
+	if props.ETag == nil || *props.ETag == "" {
+		return errors.New("state object has no entity tag, so it cannot be deleted safely")
+	}
+
+	options := &blob.DeleteOptions{
+		AccessConditions: &blob.AccessConditions{
+			ModifiedAccessConditions: &blob.ModifiedAccessConditions{IfMatch: props.ETag},
+		},
+	}
+	if _, err := client.Delete(ctx, options); err != nil {
+		if bloberror.HasCode(err, bloberror.BlobNotFound, bloberror.ContainerNotFound) {
+			return nil
+		}
+		if bloberror.HasCode(err, bloberror.ConditionNotMet) {
+			return errStateModifiedDuringCleanup
 		}
 		return err
 	}

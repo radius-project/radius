@@ -86,6 +86,14 @@ func TestBackendCredentialFetchAndEnvironment(t *testing.T) {
 					"ARM_CLIENT_CERTIFICATE_PATH": "stale", "ARM_CLIENT_SECRET_FILE_PATH": "stale",
 					"ARM_CLIENT_ID_FILE_PATH": "stale", "ARM_ENVIRONMENT": "usgovernment",
 				}
+				if cloud == "azurerm" && federated {
+					// Terraform resolves these ahead of a rendered workload identity, so they are
+					// rejected outright rather than carried through. See
+					// TestAzureBackendRejectsConflictingAuthentication.
+					for _, key := range azureBackendConflictingAuthVariables {
+						delete(env, key)
+					}
+				}
 				// Identity modes write nothing, so the provider environment must survive untouched.
 				unchanged := maps.Clone(env)
 
