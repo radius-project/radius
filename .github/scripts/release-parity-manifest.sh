@@ -28,6 +28,7 @@ TARGETS_FILE="${RELEASE_PARITY_TARGETS:-${DEFAULT_TARGETS}}"
 OBSERVED_AT="${RELEASE_PARITY_OBSERVED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 IMAGE_DATA_DIR="${RELEASE_PARITY_IMAGE_DATA_DIR:-}"
 RUNTIME_ASSET="${RELEASE_PARITY_RUNTIME_ASSET:-}"
+STAGED="${RELEASE_PARITY_STAGED:-false}"
 VERSION=""
 OUTPUT_PATH=""
 TEMP_DIR=""
@@ -201,7 +202,7 @@ collect_cli_assets() {
     local release_json="$1"
     local source_commit="$2"
     local output_path="$3"
-    local assets_dir="${TEMP_DIR}/assets"
+    local assets_dir="${RELEASE_PARITY_ASSETS_DIR:-${TEMP_DIR}/assets}"
     local entries_file="${TEMP_DIR}/cli-entries.jsonl"
     local asset
     local name
@@ -248,6 +249,7 @@ collect_cli_assets() {
             "production-image-intent.json",
             "release-cli-oci.json",
             "release-image-digests.json",
+            "release-manifest.json",
             "testrp-image-digests.json",
             "testrp-image-intent.json"
         ]) | sort
@@ -390,7 +392,7 @@ collect_release_notes() {
     jq -j '.body // ""' "${release_json}" >"${body_path}"
     prerelease="$(jq -r '.prerelease' "${release_json}")"
 
-    if [[ "${prerelease}" == "true" ]]; then
+    if [[ "${prerelease}" == "true" && "${STAGED}" != "true" ]]; then
         if grep -q 'Release notes generated using configuration' "${body_path}"; then
             source_type="github-generated"
         else
@@ -404,7 +406,7 @@ collect_release_notes() {
             "/repos/${repository}/contents/${repository_path}?ref=${source_commit}" \
             >"${source_path}"
         source_sha="$(sha256_file "${source_path}")"
-        if cmp -s "${body_path}" "${source_path}"; then
+        if [[ "$(<"${body_path}")" == "$(<"${source_path}")" ]]; then
             matches_source="true"
         fi
     fi
@@ -534,6 +536,9 @@ collect_images() {
         category="$(jq -r '.category' <<<"${target}")"
         radius_build="$(jq -r '.radiusBuild' <<<"${target}")"
         reference="${registry}/${name}:${channel}"
+        if [[ "${STAGED}" == "true" && "${radius_build}" == "true" ]]; then
+            reference="${registry}/${name}:${VERSION}"
+        fi
         raw_path="${TEMP_DIR}/image-${name}-raw.json"
         normalized_path="${TEMP_DIR}/image-${name}.json"
         expected_platforms="$(
@@ -746,6 +751,7 @@ main() {
     local helm_json
     local sibling_repositories_json
     local oci_artifacts_json
+    local sboms_json release_id name
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -783,6 +789,8 @@ main() {
     require_command yq
     [[ -f "${TARGETS_FILE}" ]] || fail "targets file not found: ${TARGETS_FILE}"
     validate_semver "${VERSION}"
+    [[ "${STAGED}" == "true" || "${STAGED}" == "false" ]] ||
+        fail "RELEASE_PARITY_STAGED must be true or false"
 
     TEMP_DIR="$(mktemp -d)"
     repository="$(jq -r '.repository' "${TARGETS_FILE}")"
@@ -795,19 +803,38 @@ main() {
     helm_json="${TEMP_DIR}/helm.json"
     sibling_repositories_json="${TEMP_DIR}/sibling-repositories.json"
     oci_artifacts_json="${TEMP_DIR}/oci-artifacts.json"
+    sboms_json="${TEMP_DIR}/sboms.json"
+    printf '[]\n' >"${sboms_json}"
 
-    gh api "/repos/${repository}/releases/tags/${tag}" >"${release_json}"
-    jq -e '.draft == false' "${release_json}" >/dev/null ||
-        fail "release ${tag} is still a draft"
+    if [[ "${STAGED}" == "true" ]]; then
+        release_id="$(gh release view "${tag}" --repo "${repository}" \
+            --json databaseId --jq '.databaseId')"
+        [[ "${release_id}" =~ ^[0-9]+$ ]] || fail "release ID is invalid"
+        gh api "/repos/${repository}/releases/${release_id}" >"${release_json}"
+    else
+        gh api "/repos/${repository}/releases/tags/${tag}" >"${release_json}"
+    fi
+    if [[ "${STAGED}" != "true" ]]; then
+        jq -e '.draft == false' "${release_json}" >/dev/null ||
+            fail "release ${tag} is still a draft"
+    fi
     source_commit="$(resolve_tag_commit "${repository}" "${tag}")"
 
     collect_cli_assets "${release_json}" "${source_commit}" \
         "${cli_assets_json}"
+    if [[ "${STAGED}" == "true" ]]; then
+        while IFS= read -r name; do
+            jq -n --arg name "${name}" --arg sha256 "$(sha256_file \
+                "${RELEASE_PARITY_ASSETS_DIR:-${TEMP_DIR}/assets}/${name}")" \
+                '{name:$name,sha256:$sha256}'
+        done < <(jq -r '.cliAssets[].name + ".sbom.json"' "${TARGETS_FILE}") |
+            jq -s 'sort_by(.name)' >"${sboms_json}"
+    fi
     collect_release_notes "${repository}" "${release_json}" \
         "${source_commit}" "${release_notes_json}"
 
     runtime_asset="${RUNTIME_ASSET:-$(host_runtime_asset)}"
-    runtime_binary_path="${TEMP_DIR}/assets/${runtime_asset}"
+    runtime_binary_path="${RELEASE_PARITY_ASSETS_DIR:-${TEMP_DIR}/assets}/${runtime_asset}"
     [[ -f "${runtime_binary_path}" ]] ||
         fail "${runtime_asset} is required for runtime metadata"
     chmod +x "${runtime_binary_path}"
@@ -835,10 +862,12 @@ main() {
         --arg title "$(jq -r '.name // ""' "${release_json}")" \
         --arg published_at "$(jq -r '.published_at // ""' "${release_json}")" \
         --arg html_url "$(jq -r '.html_url // ""' "${release_json}")" \
+        --argjson draft "$(jq -r '.draft' "${release_json}")" \
         --argjson prerelease "$(jq -r '.prerelease' "${release_json}")" \
         --slurpfile notes "${release_notes_json}" \
         --slurpfile assets "${cli_assets_json}" \
         --slurpfile runtime "${runtime_version_json}" \
+        --slurpfile sboms "${sboms_json}" \
         --slurpfile images "${images_json}" \
         --slurpfile helm "${helm_json}" \
         --slurpfile repositories "${sibling_repositories_json}" \
@@ -854,12 +883,13 @@ main() {
                 title: $title,
                 publishedAt: $published_at,
                 htmlUrl: $html_url,
-                draft: false,
+                draft: $draft,
                 prerelease: $prerelease,
                 notes: $notes[0]
             },
             cli: {
                 assets: $assets[0],
+                sboms: $sboms[0],
                 runtimeVersion: $runtime[0]
             },
             images: $images[0],

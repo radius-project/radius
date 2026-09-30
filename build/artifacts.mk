@@ -48,6 +48,15 @@ release-parity-manifest: ## Capture observable outputs for RELEASE_PARITY_VERSIO
 		--output "$(RELEASE_PARITY_OUTPUT)"
 
 .PHONY: goreleaser-check
+.PHONY: verify-release-publication recheck-release-publication
+verify-release-publication: ## Verify staged release outputs and installation before publication
+	@REL_VERSION="$(REL_VERSION)" TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		bash ./.github/scripts/verify-release-publication.sh verify
+
+recheck-release-publication: ## Recheck verified release outputs after publication approval
+	@REL_VERSION="$(REL_VERSION)" TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		bash ./.github/scripts/verify-release-publication.sh recheck
+
 goreleaser-check: ## Validate the GoReleaser configuration
 	@REL_CHANNEL="$(REL_CHANNEL)" \
 		REL_VERSION="$(REL_VERSION)" \
