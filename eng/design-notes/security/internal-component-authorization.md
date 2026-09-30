@@ -436,7 +436,7 @@ With [multi-cluster deployment](../environments/2026-06-multi-cluster.md) and [R
 | Admission controls    | The Pod Security labels and admission policies must be installed on the target cluster, matching the application-template identity, by the platform team or the deployment workflow.                                                                                                              |
 | Repo Radius workflow  | Creates both target identities, installs the admission controls on the target cluster, and installs cert-manager on the temporary control-plane cluster. Execution records do not outlive a workflow run.                                                                                         |
 
-A kubeconfig mounted into every component gives each component both identities, so a compromised component could use either. Remote targets therefore stay in the Off or Observe stage until the broker issues target-cluster tokens.
+A kubeconfig mounted into every component gives each component both identities, so a compromised component could use either. An installation that deploys to a remote cluster therefore stays in the Off stage until the broker issues target-cluster tokens.
 
 ### Error Handling
 
@@ -500,21 +500,20 @@ These protections depend on restricting direct infrastructure access too. An enc
 
 ## Compatibility (optional)
 
-The changes are internal, so a developer's workflow is unchanged, except that templates creating cluster-wide Kubernetes objects directly must move them into a recipe. Observe mode logs these templates before enforcement. However, older providers and deployment engines must be upgraded before they can participate in the new authenticated request flow; enabling checks before they are upgraded would break them. Agree on compatible versions and upgrade order, and keep an observation mode that logs what would be rejected before enforcement is turned on.
+The changes are internal, so a developer's workflow is unchanged, except that templates creating cluster-wide Kubernetes objects directly must move them into a recipe. However, older providers and deployment engines must be upgraded before they can participate in the new authenticated request flow; enabling checks before they are upgraded would break them. Agree on compatible versions and upgrade order. The operator must also complete the configuration this design requires, such as installing cert-manager, adding controller namespace mappings, and moving cluster-wide objects into recipes, before turning on enforcement.
 
 Enforcement must not be bypassable by talking to an older component or an older endpoint. Rollout follows a one-way sequence per installation:
 
-| Stage   | Behavior                                                                                                                                                                                                                                      | Exit condition                                                                                            |
-|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| Off     | Current behavior. The first release with this design ships here.                                                                                                                                                                              | All components, including the deployment engine, run a version that supports the protocol.                |
-| Observe | Components present certificates and record IDs, and every check runs and logs what it would reject, but nothing is rejected.                                                                                                                  | No would-be rejections for legitimate traffic over an agreed period, and every component reports support. |
-| Enforce | Every internal listener requires a verified client certificate. Plain HTTP and TLS-without-client-certificate listeners are removed from the configuration, not just left unused. Requests without a record ID and operation ID are rejected. | Terminal. A later release removes the legacy listeners and code paths entirely.                           |
+| Stage   | Behavior                                                                                                                                                                                                                                      | Exit condition                                                                                                                                        |
+|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Off     | Current behavior. The first release with this design ships here.                                                                                                                                                                              | All components, including the deployment engine, run a version that supports the protocol, and the operator has completed the required configuration. |
+| Enforce | Every internal listener requires a verified client certificate. Plain HTTP and TLS-without-client-certificate listeners are removed from the configuration, not just left unused. Requests without a record ID and operation ID are rejected. | Terminal. A later release removes the legacy listeners and code paths entirely.                                                                       |
 
 Rules that prevent a downgrade:
 
 - **No per-connection fallback.** A component never retries without a certificate, or without a record ID, when a check fails. There is no negotiation that lets a peer choose the older behavior.
 - **Enabling enforcement is gated.** UCP enables it only when every registered component reports protocol support.
-- **Moving back is an audited administrator action.** Changing from Enforce to Observe or Off requires an administrator to change installation configuration, is logged, and raises an alert. Components cannot request it.
+- **Moving back is an audited administrator action.** Changing from Enforce to Off requires an administrator to change installation configuration, is logged, and raises an alert. Components cannot request it.
 - **Version downgrades keep enforcement.** Once enforcement is on, installing a Radius version that does not support it is blocked by a pre-upgrade check in the Helm chart rather than silently turning checks off.
 
 See [core API registration](../../pkg/corerp/setup/setup.go) and [extensibility](extensibility.md).
@@ -531,7 +530,7 @@ Internal authentication must be available when user checks are enforced elsewher
 
 | Stage                                  | Deliverable and exit condition                                                                                                                                                                                                                                 |
 |----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1. Identify and authenticate callers   | Document existing service calls and direct backend access. Add verified Kubernetes and component connections, including the external engine. Log how the new checks would decide without rejecting existing traffic yet.                                       |
+| 1. Identify and authenticate callers   | Document existing service calls and direct backend access. Add verified Kubernetes and component connections, including the external engine. Keep these checks off until every component supports them.                                                        |
 | 2. Carry permissions through execution | Add execution grants for engine callbacks and queued work, component permission checks, and controller namespace mappings. Test retries and recovery before enforcing these checks.                                                                            |
 | 3. Restrict remaining direct access    | Enforce database and credential separation, and run application templates under a namespace-limited Kubernetes identity and recipes under the separate recipe identity. Verify that a compromised provider cannot use these paths to avoid the earlier checks. |
 
