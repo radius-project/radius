@@ -52,8 +52,8 @@ resource mongo 'apps/Deployment@v1' = {
             ]
             resources: {
               requests: {
-                cpu: '600m'
-                memory: '1024Mi'
+                cpu: '100m'
+                memory: '256Mi'
               }
               limits: {
                 cpu: '900m'
