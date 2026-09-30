@@ -154,6 +154,8 @@ Users do not create a separate Radius account or password. They authenticate thr
 
 Administrators assign roles to stable user, group, and workload identities supplied by that trusted system. Radius shows a recognizable name when available together with the identity type and source, so administrators can distinguish similarly named identities and avoid granting access to the wrong principal. Group-based access follows changes in the source identity system within a documented period rather than requiring administrators to duplicate group membership in Radius.
 
+In this specification, a **principal** is the user, group, or workload identity that receives a role assignment. The principal's **issuer** is the configured trusted identity source that established the identity and owns its identifier namespace; it is not the administrator creating the assignment. The **subject** is the stable identifier that the issuer assigned to that user, group, or workload. Radius uses the principal type, issuer, and subject together to identify the intended principal, while display names and email addresses are informational only.
+
 Every supported client preserves the identity of the person or workload performing the action. Users can see which identity Radius recognizes and receive a clear authentication error when no supported identity is available. Authorization denials separately explain that the recognized identity lacks Radius access, while failures from Kubernetes, a cloud provider, a registry, or another external system remain distinguishable.
 
 Automation uses a dedicated workload identity rather than a shared human account. Actions performed through the dashboard, Backstage, agents, or other intermediaries remain attributable to the initiating user or workload even though graphical RBAC administration is out of scope.
@@ -184,6 +186,7 @@ rad auth role create application-operator \
 
 rad auth assignment create \
   --principal group:<stable-group-id> \
+  --issuer <trusted-identity-source> \
   --role application-operator \
   --scope <resource-group-id>
 ```
@@ -205,7 +208,7 @@ rad auth access explain \
 An administrator can inspect effective access and distinguish assignments made directly at a scope from those inherited from a broader scope:
 
 ```console
-rad auth access list --principal group:<stable-group-id> --scope <resource-id>
+rad auth access list --principal group:<stable-group-id> --issuer <trusted-identity-source> --scope <resource-id>
 rad auth assignment list --scope <resource-id> --include-inherited
 ```
 
@@ -260,7 +263,7 @@ resource developerAccess 'Radius.Core/roleAssignments@<api-version>' = {
 }
 ```
 
-The assignment applies at the Bicep resource's deployment scope; an assignment targeted to an individual Radius resource uses that resource as its Bicep scope. Built-in roles are immutable `Radius.Core/roleDefinitions` resources that templates reference as `existing`. Role assignments use stable identity identifiers rather than display names or email addresses.
+The `principal` block identifies the user, group, or workload that receives the role. Its `type`, `issuer`, and `subject` fields correspond to the identity terms above. The assignment applies at the Bicep resource's deployment scope; an assignment targeted to an individual Radius resource uses that resource as its Bicep scope. Built-in roles are immutable `Radius.Core/roleDefinitions` resources that templates reference as `existing`.
 
 The authorization-change summary identifies the affected principals, roles, and scopes and warns about lockout or privilege-escalation risk before asking for confirmation. As with other Radius resources, Bicep deployment is incremental: removing a role or assignment from a Bicep file does not delete it. Administrators explicitly delete custom roles or assignments through the CLI or API, and a later deployment recreates or updates a resource that remains declared in Bicep. Assignments do not support in-place updates to the principal, role, or scope; administrators create a replacement and explicitly delete the previous assignment so the audit history remains clear.
 
