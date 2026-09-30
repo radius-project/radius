@@ -255,15 +255,6 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create command with environment name that is not a valid default Kubernetes namespace",
-			Input:         []string{"testingEnv"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-		},
-		{
 			Name:          "Create command with mixed-case environment name and explicit Kubernetes namespace",
 			Input:         []string{"testingEnv", "--kubernetes-namespace", "mynamespace"},
 			ExpectedValid: true,
@@ -282,6 +273,20 @@ func Test_Validate(t *testing.T) {
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
+
+func Test_Validate_InvalidDefaultNamespace(t *testing.T) {
+	cmd, runner := NewCommand(&framework.Impl{
+		ConfigHolder: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)},
+		Output:       &output.MockOutput{},
+	})
+	cmd.SetArgs([]string{"testingEnv"})
+	require.NoError(t, cmd.ParseFlags([]string{}))
+
+	err := runner.Validate(cmd, []string{"testingEnv"})
+
+	expected := clierrors.Message(`Environment name "testingEnv" cannot be used as the default Kubernetes namespace: namespace must be 1-63 characters, made up of lower case alphanumeric characters or '-', start with an alphabetic character, and end with an alphanumeric character. Use a valid namespace name for the environment, or specify a namespace using the --kubernetes-namespace flag.`)
+	require.Equal(t, expected, err)
 }
 
 func Test_Run(t *testing.T) {
