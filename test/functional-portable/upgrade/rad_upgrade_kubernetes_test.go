@@ -237,14 +237,7 @@ func Test_RadUpgradeKubernetes(t *testing.T) {
 // renders ("latest") when no override is configured.
 func radUpgradeImageArgs(registry, tag string, deImage deploymentEngineImage, rootCACertFile string) []string {
 	var args []string
-	for _, component := range []struct{ key, image string }{
-		{"controller", "controller"},
-		{"rp", "applications-rp"},
-		{"dynamicrp", "dynamic-rp"},
-		{"ucp", "ucpd"},
-		{"bicep", "bicep"},
-		{"preupgrade", "pre-upgrade"},
-	} {
+	for _, component := range radiusImageComponents {
 		args = append(args, "--set", fmt.Sprintf("%s.image=%s/%s,%s.tag=%s", component.key, registry, component.image, component.key, tag))
 	}
 	if deImage.repository != "" {
