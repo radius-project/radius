@@ -27,6 +27,31 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/credentials"
 )
 
+// azureBackendConflictingAuthVariables select an Azure authentication method that Terraform
+// resolves ahead of the workload identity rendered into the backend block.
+//
+// The azurerm backend checks access_key and then sas_token before Entra ID authentication at all
+// (v1.15.8 internal/backend/remote-state/azure/api_client.go, buildClient). Past those,
+// go-azure-sdk/sdk/auth resolves client certificate and then client secret before OIDC, and the
+// backend hardcodes both as enabled, so neither can be switched off in configuration. Because the
+// generated block already supplies client_id and tenant_id, a single stray secret or certificate
+// completes an unregistered credential. client_id_file_path overrides the rendered client_id, and
+// oidc_token substitutes the assertion.
+//
+// Terraform reads all of these from the environment, so each must be rejected rather than allowed
+// to silently replace the registered identity for state access.
+var azureBackendConflictingAuthVariables = []string{
+	"ARM_ACCESS_KEY", "ARM_SAS_TOKEN",
+	"ARM_CLIENT_CERTIFICATE", "ARM_CLIENT_CERTIFICATE_PATH", "ARM_CLIENT_CERTIFICATE_PASSWORD",
+	"ARM_CLIENT_SECRET", "ARM_CLIENT_SECRET_FILE_PATH",
+	"ARM_CLIENT_ID_FILE_PATH", "ARM_OIDC_TOKEN",
+}
+
+// azureBackendMetadataVariables redirect Azure endpoint discovery, which sends state traffic and
+// the token exchange to a different host. They are the Azure counterpart of the AWS endpoint
+// overrides rejected in setAWSBackendAuth.
+var azureBackendMetadataVariables = []string{"ARM_METADATA_HOSTNAME", "ARM_METADATA_HOST"}
+
 // resolveBackendAuth fetches the selected cloud's registered default credential, independently of the
 // module's providers.
 //
@@ -119,13 +144,30 @@ func setAWSBackendAuth(c *credentials.AWSCredential, env map[string]string) (bac
 }
 
 func setAzureBackendAuth(c *credentials.AzureCredential, env map[string]string) (backends.CloudBackendAuth, error) {
+	// Reject rather than remove metadata hosts: providers share this environment, and removing a
+	// custom metadata host could silently redirect provider operations to public Azure. This
+	// applies to both credential modes, because the override redirects endpoint discovery for
+	// state traffic and for the token exchange regardless of where authentication is configured.
+	// ARM_ENVIRONMENT is unaffected and remains the supported way to select a sovereign cloud.
+	for _, key := range azureBackendMetadataVariables {
+		if env[key] != "" {
+			return backends.CloudBackendAuth{}, fmt.Errorf("azurerm backend does not support endpoint override %s; remove it from the execution environment before using Radius-managed Azure Blob state storage", key)
+		}
+	}
 	if c == nil {
 		return backends.CloudBackendAuth{}, fmt.Errorf("azurerm backend requires registered default Azure credentials")
 	}
 	switch c.Kind {
 	case credentials.AzureWorkloadIdentityCredentialKind:
 		// WorkloadIdentity carries no secret, so it is rendered into the backend block and the
-		// process environment is left alone for the recipe's providers.
+		// process environment is left alone for the recipe's providers. Because nothing is
+		// removed here, reject any variable that Terraform would resolve ahead of the rendered
+		// identity instead of silently authenticating state access as something else.
+		for _, key := range azureBackendConflictingAuthVariables {
+			if env[key] != "" {
+				return backends.CloudBackendAuth{}, fmt.Errorf("azurerm backend does not support %s alongside registered Azure WorkloadIdentity credentials; Terraform resolves it ahead of the registered identity for state access. Remove it from the execution environment", key)
+			}
+		}
 		if c.WorkloadIdentity == nil || strings.TrimSpace(c.WorkloadIdentity.ClientID) == "" || strings.TrimSpace(c.WorkloadIdentity.TenantID) == "" {
 			return backends.CloudBackendAuth{}, fmt.Errorf("azurerm backend requires a registered Azure WorkloadIdentity with clientID and tenantID")
 		}

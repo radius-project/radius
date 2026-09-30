@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -31,6 +32,8 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/funcr"
 	"github.com/hashicorp/terraform-exec/tfexec"
@@ -62,7 +65,9 @@ func recordBackendTestExecution() error {
 		"AWS_ENDPOINT_URL", "AWS_ENDPOINT_URL_S3", "AWS_S3_ENDPOINT", "AWS_ENDPOINT_URL_STS", "AWS_STS_ENDPOINT",
 		"ARM_CLIENT_ID", "ARM_CLIENT_SECRET", "ARM_TENANT_ID", "ARM_USE_OIDC", "ARM_OIDC_TOKEN_FILE_PATH",
 		"ARM_CLIENT_ID_FILE_PATH", "ARM_CLIENT_SECRET_FILE_PATH", "ARM_CLIENT_CERTIFICATE_PATH",
-		"ARM_ACCESS_KEY", "ARM_SAS_TOKEN", "TEST_USER_ENV", "TEST_SECRET_ENV", envTFCLIConfigFile,
+		"ARM_CLIENT_CERTIFICATE", "ARM_CLIENT_CERTIFICATE_PASSWORD", "ARM_OIDC_TOKEN",
+		"ARM_ACCESS_KEY", "ARM_SAS_TOKEN", "ARM_SUBSCRIPTION_ID", "ARM_METADATA_HOSTNAME", "ARM_METADATA_HOST",
+		"TEST_USER_ENV", "TEST_SECRET_ENV", envTFCLIConfigFile,
 	} {
 		if value, ok := os.LookupEnv(key); ok {
 			record.Environment[key] = value
@@ -128,6 +133,17 @@ func installBackendTestTerraform(t *testing.T) string {
 	return snapshots
 }
 
+// clearAzureConflictingAuthentication resets the Azure variables that Terraform resolves ahead of a
+// workload identity rendered into the backend block. installBackendTestTerraform seeds several of
+// them to simulate a dirty host, and an azurerm backend using workload identity rejects them, so
+// tests that exercise a successful execution must start without them.
+func clearAzureConflictingAuthentication(t *testing.T) {
+	t.Helper()
+	for _, key := range azureBackendConflictingAuthVariables {
+		t.Setenv(key, "")
+	}
+}
+
 func readBackendSnapshots(t *testing.T, path string) []backendExecutionSnapshot {
 	t.Helper()
 	file, err := os.Open(path)
@@ -154,7 +170,7 @@ func cloudExecutionOptions(t *testing.T, cloud string) Options {
 		RootDir: t.TempDir(), StateLockTimeout: "37s",
 		EnvConfig: &recipes.Configuration{TerraformBackend: backend, RecipeConfig: datamodel.RecipeConfigProperties{
 			Env: datamodel.EnvironmentVariables{AdditionalProperties: map[string]string{
-				"TEST_USER_ENV": "user-value", "AWS_ACCESS_KEY_ID": "user-access", "ARM_CLIENT_SECRET": "user-secret",
+				"TEST_USER_ENV": "user-value", "AWS_ACCESS_KEY_ID": "user-access", "ARM_SUBSCRIPTION_ID": "user-subscription",
 			}},
 			EnvSecrets: map[string]datamodel.SecretReference{"TEST_SECRET_ENV": {Source: "secret-store", Key: "env"}},
 			Terraform: datamodel.TerraformConfigProperties{
@@ -189,10 +205,17 @@ func TestCloudDeployUpdateDeleteProcessEnvironment(t *testing.T) {
 		for _, federated := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/federated=%v", cloud, federated), func(t *testing.T) {
 				snapshotsPath := installBackendTestTerraform(t)
+				// An azurerm backend using workload identity rejects conflicting Azure auth, so
+				// seed it only where it is legitimately carried through to the module.
+				azureIdentity := cloud == "azurerm" && federated
 				t.Setenv("AWS_ACCESS_KEY_ID", "host-access")
 				t.Setenv("AWS_SESSION_TOKEN", "host-session")
-				t.Setenv("ARM_CLIENT_SECRET", "host-secret")
-				t.Setenv("ARM_ACCESS_KEY", "host-storage-key")
+				if azureIdentity {
+					clearAzureConflictingAuthentication(t)
+				} else {
+					t.Setenv("ARM_CLIENT_SECRET", "host-secret")
+					t.Setenv("ARM_ACCESS_KEY", "host-storage-key")
+				}
 				aws := &backendCredentialStub[credentials.AWSCredential]{value: backendTestAWSCredential(federated)}
 				azure := &backendCredentialStub[credentials.AzureCredential]{value: backendTestAzureCredential(federated)}
 				kube := fake.NewSimpleClientset()
@@ -247,8 +270,17 @@ func TestCloudDeployUpdateDeleteProcessEnvironment(t *testing.T) {
 						// environment the recipe's providers see is left exactly as configured.
 						require.Equal(t, "user-access", env["AWS_ACCESS_KEY_ID"])
 						require.Equal(t, "host-session", env["AWS_SESSION_TOKEN"])
-						require.Equal(t, "user-secret", env["ARM_CLIENT_SECRET"])
-						require.Equal(t, "host-storage-key", env["ARM_ACCESS_KEY"])
+						require.Equal(t, "user-subscription", env["ARM_SUBSCRIPTION_ID"])
+						if cloud == "s3" {
+							// Azure variables cannot reach an S3 backend, so they survive untouched.
+							require.Equal(t, "host-secret", env["ARM_CLIENT_SECRET"])
+							require.Equal(t, "host-storage-key", env["ARM_ACCESS_KEY"])
+						} else {
+							// Terraform would resolve these ahead of the rendered workload
+							// identity, so execution is rejected while any of them is set.
+							require.Empty(t, env["ARM_CLIENT_SECRET"])
+							require.Empty(t, env["ARM_ACCESS_KEY"])
+						}
 					} else if cloud == "s3" {
 						require.NotContains(t, env, "AWS_SESSION_TOKEN")
 						require.NotContains(t, env, "AWS_WEB_IDENTITY_TOKEN_FILE")
@@ -304,7 +336,9 @@ func TestCloudDeployUpdateDeleteProcessEnvironment(t *testing.T) {
 				require.NotContains(t, logs.String(), "registry-token")
 				require.Equal(t, "host-access", os.Getenv("AWS_ACCESS_KEY_ID"))
 				require.Equal(t, "host-session", os.Getenv("AWS_SESSION_TOKEN"))
-				require.Equal(t, "host-secret", os.Getenv("ARM_CLIENT_SECRET"))
+				if !azureIdentity {
+					require.Equal(t, "host-secret", os.Getenv("ARM_CLIENT_SECRET"))
+				}
 			})
 		}
 	}
@@ -353,6 +387,101 @@ func TestCloudAzureStaleFilePathSelectors(t *testing.T) {
 			require.Contains(t, commands, "init")
 			require.Contains(t, commands, "apply")
 		})
+	}
+}
+
+// Terraform resolves several environment variables ahead of a workload identity rendered into the
+// backend block, so each must be rejected before execution rather than silently authenticating
+// state access as something other than the registered credential.
+func TestAzureBackendRejectsConflictingAuthentication(t *testing.T) {
+	for _, source := range []string{"inherited", "settings", "secret"} {
+		for _, key := range azureBackendConflictingAuthVariables {
+			for _, operation := range []string{"deploy", "delete"} {
+				t.Run(fmt.Sprintf("%s/%s/%s", operation, source, key), func(t *testing.T) {
+					snapshotsPath := installBackendTestTerraform(t)
+					clearAzureConflictingAuthentication(t)
+					options := cloudExecutionOptions(t, "azurerm")
+					const conflicting = "private-value"
+					switch source {
+					case "inherited":
+						t.Setenv(key, conflicting)
+					case "settings":
+						options.EnvConfig.RecipeConfig.Env.AdditionalProperties[key] = conflicting
+					case "secret":
+						options.EnvConfig.RecipeConfig.EnvSecrets[key] = datamodel.SecretReference{Source: "secret-store", Key: "conflict"}
+						options.Secrets["secret-store"].Data["conflict"] = conflicting
+					}
+					before := maps.Clone(options.EnvConfig.RecipeConfig.Env.AdditionalProperties)
+					hostValue := os.Getenv(key)
+					e := executor{azureCredentials: &backendCredentialStub[credentials.AzureCredential]{value: backendTestAzureCredential(true)}, deleteStateObject: noStateCleanup}
+					var err error
+					if operation == "deploy" {
+						_, err = e.Deploy(t.Context(), options)
+					} else {
+						err = e.Delete(t.Context(), options)
+					}
+					require.ErrorContains(t, err, key)
+					require.Contains(t, err.Error(), "registered Azure WorkloadIdentity credentials")
+					require.NotContains(t, err.Error(), conflicting)
+					require.NoFileExists(t, snapshotsPath, "must reject before any Terraform subprocess runs")
+					require.Equal(t, before, options.EnvConfig.RecipeConfig.Env.AdditionalProperties)
+					require.Equal(t, hostValue, os.Getenv(key))
+				})
+			}
+		}
+	}
+}
+
+// A ServicePrincipal backend delivers its credential through the environment and scrubs the same
+// variables, so unlike workload identity it must keep working when they are present.
+func TestAzureServicePrincipalBackendScrubsConflictingAuthentication(t *testing.T) {
+	for _, key := range azureBackendConflictingAuthVariables {
+		t.Run(key, func(t *testing.T) {
+			snapshotsPath := installBackendTestTerraform(t)
+			options := cloudExecutionOptions(t, "azurerm")
+			options.EnvConfig.RecipeConfig.Env.AdditionalProperties[key] = "user-value"
+			e := executor{azureCredentials: &backendCredentialStub[credentials.AzureCredential]{value: backendTestAzureCredential(false)}, deleteStateObject: noStateCleanup}
+			_, err := e.Deploy(t.Context(), options)
+			require.NoError(t, err)
+			for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
+				if snapshot.Command == "version" {
+					continue
+				}
+				require.Equal(t, "registered-client", snapshot.Environment["ARM_CLIENT_ID"])
+				if key == "ARM_CLIENT_SECRET" {
+					require.Equal(t, "registered-secret", snapshot.Environment[key])
+					continue
+				}
+				require.Empty(t, snapshot.Environment[key], "conflicting selector must not survive")
+			}
+		})
+	}
+}
+
+// Metadata host overrides redirect Azure endpoint discovery for state traffic and for the token
+// exchange, so both credential modes must reject them.
+func TestAzureBackendRejectsMetadataHostOverride(t *testing.T) {
+	for _, federated := range []bool{false, true} {
+		for _, key := range azureBackendMetadataVariables {
+			for _, operation := range []string{"deploy", "delete"} {
+				t.Run(fmt.Sprintf("%s/%s/federated=%v", operation, key, federated), func(t *testing.T) {
+					snapshotsPath := installBackendTestTerraform(t)
+					clearAzureConflictingAuthentication(t)
+					options := cloudExecutionOptions(t, "azurerm")
+					t.Setenv(key, "metadata.private.example.com")
+					e := executor{azureCredentials: &backendCredentialStub[credentials.AzureCredential]{value: backendTestAzureCredential(federated)}, deleteStateObject: noStateCleanup}
+					var err error
+					if operation == "deploy" {
+						_, err = e.Deploy(t.Context(), options)
+					} else {
+						err = e.Delete(t.Context(), options)
+					}
+					require.ErrorContains(t, err, key)
+					require.Contains(t, err.Error(), "does not support endpoint override")
+					require.NoFileExists(t, snapshotsPath, "must reject before any Terraform subprocess runs")
+				})
+			}
+		}
 	}
 }
 
@@ -555,6 +684,9 @@ func TestCloudBackendPreservesExplicitProviderAuthentication(t *testing.T) {
 			explicit := map[string]any{"access_key": "provider-access", "secret_key": "provider-secret", "region": "us-east-1"}
 			if cloud == "azurerm" {
 				provider = "azurerm"
+				// The backend uses workload identity here, which rejects conflicting Azure auth
+				// in the environment. Provider credentials stay in the provider block.
+				clearAzureConflictingAuthentication(t)
 				explicit = map[string]any{
 					"client_id": "provider-client", "client_secret": "provider-secret", "tenant_id": "provider-tenant",
 					"subscription_id": "provider-subscription", "use_oidc": false, "use_cli": false, "features": map[string]any{},
@@ -642,6 +774,60 @@ func TestCloudStateCleanupIsBestEffort(t *testing.T) {
 			if cleanupErr != nil {
 				require.Contains(t, logs.String(), "access denied to state object")
 			}
+		})
+	}
+}
+
+// A concurrent writer may replace the state between the end of destroy and cleanup. The conditional
+// delete must leave that state alone, and say so distinctly from a cleanup failure so operators do
+// not go hunting for an object that is deliberately still there.
+func TestCloudStateCleanupSkipsModifiedState(t *testing.T) {
+	installBackendTestTerraform(t)
+	options := cloudExecutionOptions(t, "s3")
+	var gotKey string
+	e := executor{
+		awsCredentials: &backendCredentialStub[credentials.AWSCredential]{value: backendTestAWSCredential(true)},
+		deleteStateObject: func(_ context.Context, _ *datamodel.TerraformBackend, _ backends.CloudBackendAuth, key string) error {
+			gotKey = key
+			return fmt.Errorf("conditional delete rejected: %w", errStateModifiedDuringCleanup)
+		},
+	}
+	var logs strings.Builder
+	ctx := logr.NewContext(t.Context(), funcr.New(func(prefix, args string) {
+		logs.WriteString(prefix + args)
+	}, funcr.Options{}))
+
+	require.NoError(t, e.Delete(ctx, options))
+	require.Contains(t, logs.String(), gotKey)
+	require.Contains(t, logs.String(), "changed since destroy completed")
+	require.NotContains(t, logs.String(), "can be removed manually")
+}
+
+// The S3 error classifiers decide whether cleanup deletes, skips, or reports a failure, so a
+// misclassification would either delete a concurrent writer's state or hide a real error.
+func TestS3CleanupErrorClassification(t *testing.T) {
+	responseErr := func(status int) error {
+		return &smithyhttp.ResponseError{Response: &smithyhttp.Response{Response: &http.Response{StatusCode: status}}}
+	}
+
+	for _, tc := range []struct {
+		name         string
+		err          error
+		notFound     bool
+		precondition bool
+	}{
+		{name: "no such key", err: &smithy.GenericAPIError{Code: "NoSuchKey"}, notFound: true},
+		{name: "head not found code", err: &smithy.GenericAPIError{Code: "NotFound"}, notFound: true},
+		{name: "head not found status", err: responseErr(http.StatusNotFound), notFound: true},
+		{name: "precondition code", err: &smithy.GenericAPIError{Code: "PreconditionFailed"}, precondition: true},
+		{name: "precondition status", err: responseErr(http.StatusPreconditionFailed), precondition: true},
+		{name: "access denied", err: &smithy.GenericAPIError{Code: "AccessDenied"}},
+		{name: "wrapped precondition", err: fmt.Errorf("delete: %w", &smithy.GenericAPIError{Code: "PreconditionFailed"}), precondition: true},
+		{name: "unrelated", err: errors.New("boom")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.notFound, isS3NotFound(tc.err))
+			require.Equal(t, tc.precondition, isS3PreconditionFailed(tc.err))
 		})
 	}
 }
