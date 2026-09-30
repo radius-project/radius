@@ -123,7 +123,7 @@ make test-functional-upgrade-noncloud
 
 Supplying only `DE_IMAGE` or only `DE_TAG` fails before the test accesses Kubernetes or uninstalls Radius. Set the missing value or unset both variables. The test verifies the live DE image after each install, the upgrades, and release recovery, and logs the runtime image and resolved `ImageID` when available. A candidate image falling back to the chart default fails verification; a preflight hook rejecting an upgrade remains an allowed outcome. Without candidate inputs, the test leaves chart defaults unchanged and checks that the running pods match the installed Deployment.
 
-The `rad upgrade kubernetes` test installs from the in-repo chart and then upgrades to temporary copies of it versioned `0.60.0` and `0.61.0`, so its preflight version checks compare real versions. It pins every image, so set `RADIUS_REGISTRY_CERT_FILE` to the registry CA certificate when the Radius images come from a registry that uses a private CA.
+The `rad upgrade kubernetes` test installs from the in-repo chart and then upgrades to temporary copies of it versioned `0.60.0`, `0.61.0`, and `0.61.1`, so its preflight version checks compare real versions. It pins every image, so set `RADIUS_REGISTRY_CERT_FILE` to the registry CA certificate when the Radius images come from a registry that uses a private CA.
 
 ### Control test cleanup
 

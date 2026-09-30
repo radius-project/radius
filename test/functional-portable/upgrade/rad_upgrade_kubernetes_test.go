@@ -68,7 +68,7 @@ const (
 //
 // The parent installs Radius from the in-repo (edge) chart with `rad install kubernetes`, and the
 // subtests then upgrade that single release in sequence, first to a 0.60.0 copy of the chart and
-// then to a 0.61.0 copy. They share a Helm release and a Kubernetes namespace and so must not run
+// then to 0.61.0 and 0.61.1 copies. They share a Helm release and a Kubernetes namespace and so must not run
 // in parallel, and each subtest depends on the state the previous one left behind.
 func Test_RadUpgradeKubernetes(t *testing.T) {
 	ctx := t.Context()
@@ -87,6 +87,7 @@ func Test_RadUpgradeKubernetes(t *testing.T) {
 	chartDir := t.TempDir()
 	upgradeChart := writeVersionedChart(t, relativeChartPath, filepath.Join(chartDir, upgradeTargetVersion), upgradeTargetVersion)
 	nextChart := writeVersionedChart(t, relativeChartPath, filepath.Join(chartDir, nextMinorVersion), nextMinorVersion)
+	patchChart := writeVersionedChart(t, relativeChartPath, filepath.Join(chartDir, nextPatchVersion), nextPatchVersion)
 
 	cleanupAndWait(t, ctx, k8sClient)
 
@@ -193,11 +194,11 @@ func Test_RadUpgradeKubernetes(t *testing.T) {
 		}},
 		{"ResetValuesDiscardsStoredValues", func(t *testing.T) {
 			before := latestRevision(t, ctx)
-			args := append([]string{"--reset-values", "--chart", nextChart, "--version", nextPatchVersion}, imageArgs...)
+			args := append([]string{"--reset-values", "--chart", patchChart, "--version", nextPatchVersion}, imageArgs...)
 			out, err := upgrade(t, args...)
 			require.NoErrorf(t, err, "rad upgrade kubernetes --reset-values failed: %s", out)
 			require.Equal(t, before+1, latestRevision(t, ctx), "Upgrade should create exactly one Helm revision")
-			requireRelease(t, ctx, nextMinorVersion)
+			requireRelease(t, ctx, nextPatchVersion)
 
 			values := helmUserValues(t, ctx)
 			_, found := lookupValue(values, sentinelValueKey)

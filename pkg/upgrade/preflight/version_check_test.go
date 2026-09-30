@@ -184,6 +184,30 @@ func TestValidateVersionJump(t *testing.T) {
 			expectValid:    true,
 		},
 		{
+			name:           "edge app version upgrades to edge",
+			currentVersion: RADIUS_EDGE_APP_VERSION,
+			targetVersion:  RADIUS_EDGE_APP_VERSION,
+			expectValid:    true,
+		},
+		{
+			name:           "edge chart version upgrades to edge",
+			currentVersion: RADIUS_EDGE_CHART_VERSION,
+			targetVersion:  RADIUS_EDGE_APP_VERSION,
+			expectValid:    true,
+		},
+		{
+			name:           "edge app version rejects non-semver target",
+			currentVersion: RADIUS_EDGE_APP_VERSION,
+			targetVersion:  "nightly",
+			expectError:    true,
+		},
+		{
+			name:           "edge chart version rejects non-semver target",
+			currentVersion: RADIUS_EDGE_CHART_VERSION,
+			targetVersion:  "nightly",
+			expectError:    true,
+		},
+		{
 			name:           "non-semver current version is still an error",
 			currentVersion: "nightly",
 			targetVersion:  "0.61.0",
