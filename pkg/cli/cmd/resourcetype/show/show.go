@@ -61,6 +61,10 @@ type Runner struct {
 	UCPClientFactory *v20231001preview.ClientFactory
 	Workspace        *workspaces.Workspace
 
+	// TerminalWidth returns the terminal width used to wrap table output. When nil, the width of
+	// stdout is used if stdout is a terminal. Output is not wrapped when the width is unknown.
+	TerminalWidth TerminalWidthFunc
+
 	ResourceTypeName          string
 	ResourceProviderNamespace string
 	ResourceTypeSuffix        string

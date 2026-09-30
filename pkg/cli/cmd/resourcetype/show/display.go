@@ -103,8 +103,14 @@ const (
 // nestedProperty  string    false     false      A property within the nested object.
 
 func (r *Runner) display(resourceTypeDetails *common.ResourceType) error {
+	terminalWidth, wrap := r.terminalWidth()
+
+	description := resourceTypeDetails.Description
+	if wrap {
+		description = wrapText(description, terminalWidth)
+	}
 	r.Output.LogInfo("\nDESCRIPTION:")
-	r.Output.LogInfo("%s", resourceTypeDetails.Description)
+	r.Output.LogInfo("%s", description)
 	for apiVersion, apiVersionProperties := range resourceTypeDetails.APIVersions {
 		r.Output.LogInfo("API VERSION: %s\n", apiVersion)
 		propertyTitleStatus := PropertyTitleNone
@@ -149,6 +155,10 @@ func (r *Runner) display(resourceTypeDetails *common.ResourceType) error {
 
 				if schema.Heading != "" {
 					r.Output.LogInfo("%s\n", schema.Heading)
+				}
+
+				if wrap {
+					schemaList = wrapDescriptions(schemaList, terminalWidth)
 				}
 
 				err := r.Output.WriteFormatted(r.Format, schemaList, common.GetResourceTypeShowSchemaTableFormat())
