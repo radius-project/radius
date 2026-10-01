@@ -10,6 +10,11 @@ import {
   verifyReleaseManifest,
   recheckPublication
 } from "./verify-release-manifest.mjs";
+import {
+  bicepExtensionTargets,
+  plannedBicepExtensions,
+  usesGhcrBicepExtensions
+} from "./release-bicep-extensions.mjs";
 
 const targets = JSON.parse(
   await readFile(
@@ -298,6 +303,217 @@ test("approval waits cannot replace verified digests or bypass installation", ()
   );
 });
 
+function ghcrFixture(releaseType = "final") {
+  const input = fixture(releaseType);
+  input.targets = {
+    ...structuredClone(targets),
+    bicepExtensionsContract: "ghcr-v1",
+    ociArtifacts: structuredClone(bicepExtensionTargets)
+  };
+  input.plan.expectedOutputs = input.targets;
+  const awsSha = "d".repeat(40);
+  input.plan.siblingRepositories.find(
+    (entry) => entry.name === "bicep-types-aws"
+  ).sourceCommit = awsSha;
+  input.observed.downstream.repositories.find(
+    (entry) => entry.repository === "radius-project/bicep-types-aws"
+  ).commit = awsSha;
+  const artifacts = plannedBicepExtensions(input.plan, sourceSha).map(
+    (entry) => ({
+      ...entry,
+      digest,
+      generation: {
+        workflow: ".github/workflows/build-release.yaml",
+        runId: 123,
+        runAttempt: 1,
+        artifactId: 456,
+        artifactDigest: `sha256:${"e".repeat(64)}`
+      }
+    })
+  );
+  input.observed.downstream.bicepExtensionLock = {
+    schemaVersion: 1,
+    version: input.plan.version,
+    releaseSourceCommit: sourceSha,
+    artifacts
+  };
+  input.observed.downstream.ociArtifacts = artifacts.map((artifact) => ({
+    name: artifact.name,
+    reference: artifact.reference,
+    descriptor: { digest: artifact.digest },
+    manifest: {
+      schemaVersion: 2,
+      mediaType: "application/vnd.oci.image.manifest.v1+json",
+      artifactType: "application/vnd.ms.bicep.provider.artifact",
+      config: {
+        mediaType: "application/vnd.ms.bicep.provider.config.v1+json",
+        digest,
+        size: 2
+      },
+      layers: [
+        {
+          mediaType: "application/vnd.ms.bicep.provider.layer.v1.tar+gzip",
+          digest,
+          size: 20
+        }
+      ],
+      annotations: {
+        "bicep.serialization.format": "v1",
+        "org.opencontainers.image.source": `https://github.com/${artifact.source.repository}`,
+        "org.opencontainers.image.revision": artifact.source.commit,
+        "org.opencontainers.image.version": artifact.version
+      }
+    }
+  }));
+  return input;
+}
+
+test("approved GHCR contract verifies full RC, final and patch pairs", () => {
+  assert.equal(usesGhcrBicepExtensions(targets), false);
+  for (const type of ["rc", "final", "patch"]) {
+    const input = ghcrFixture(type);
+    const report = verifyReleaseManifest(input);
+    assert.equal(
+      report.outputs.some((entry) => entry.status === "failed"),
+      false
+    );
+    assert.equal(report.checks.external, "verified");
+    const approved = structuredClone(report);
+    approved.checks.installation = "verified";
+    recheckPublication(report, approved);
+    input.observed.downstream.bicepExtensionLock.artifacts[0].generation
+      .runId++;
+    assert.throws(
+      () => recheckPublication(verifyReleaseManifest(input), approved),
+      /changed after installation/
+    );
+  }
+});
+
+test("GHCR contract rejects incomplete, substituted or unapproved evidence", () => {
+  const mutations = {
+    "missing selector": (input) => {
+      delete input.plan.expectedOutputs.bicepExtensionsContract;
+    },
+    "unknown selector": (input) => {
+      input.plan.expectedOutputs.bicepExtensionsContract = "ghcr-v2";
+    },
+    "null selector": (input) => {
+      input.plan.expectedOutputs.bicepExtensionsContract = null;
+    },
+    "wrong target repository": (input) => {
+      input.targets.ociArtifacts[0].repository += "-other";
+    },
+    "missing lock": (input) => {
+      delete input.observed.downstream.bicepExtensionLock;
+    },
+    "unsupported lock": (_input, lock) => {
+      lock.schemaVersion++;
+    },
+    "wrong release": (_input, lock) => {
+      lock.version = "v0.60.0";
+    },
+    "wrong Radius release SHA": (_input, lock) => {
+      lock.releaseSourceCommit = parentSha;
+    },
+    "missing output": (_input, lock) => {
+      lock.artifacts.pop();
+    },
+    "duplicate output": (_input, lock) => {
+      lock.artifacts[1] = structuredClone(lock.artifacts[0]);
+    },
+    "swapped sources": (_input, lock) => {
+      lock.artifacts[1].source = lock.artifacts[0].source;
+    },
+    "wrong AWS source": (_input, lock) => {
+      lock.artifacts[0].source.commit = sourceSha;
+    },
+    "wrong Radius source": (_input, lock) => {
+      lock.artifacts[1].source.commit = parentSha;
+    },
+    "wrong source repo": (_input, lock) => {
+      lock.artifacts[0].source.repository = "fork/bicep-types-aws";
+    },
+    "missing frozen source": (input) => {
+      input.plan.siblingRepositories.pop();
+    },
+    "leading zero version": (input) => {
+      input.plan.version = "v00.61.0";
+    },
+    "version mismatch": (_input, lock) => {
+      lock.artifacts[0].version = "0.60.0";
+    },
+    "channel reference": (_input, lock) => {
+      lock.artifacts[0].reference =
+        "ghcr.io/radius-project/bicep-types-aws:0.61";
+    },
+    "ACR reference": (_input, lock) => {
+      lock.artifacts[0].reference = "biceptypes.azurecr.io/aws:0.61.0";
+    },
+    "missing digest": (_input, lock) => {
+      delete lock.artifacts[0].digest;
+    },
+    "missing provenance": (_input, lock) => {
+      delete lock.artifacts[0].generation;
+    },
+    "missing snapshot": (_input, lock) => {
+      delete lock.artifacts[0].generation.artifactDigest;
+    },
+    "invalid run": (_input, lock) => {
+      lock.artifacts[0].generation.runId = 0;
+    },
+    "invalid attempt": (_input, lock) => {
+      lock.artifacts[0].generation.runAttempt = "1";
+    },
+    "invalid artifact": (_input, lock) => {
+      lock.artifacts[0].generation.artifactId = -1;
+    },
+    "invalid workflow": (_input, lock) => {
+      lock.artifacts[0].generation.workflow = "../../script";
+    },
+    "missing observed output": (_input, _lock, observed) => {
+      observed.pop();
+    },
+    "wrong observed digest": (_input, _lock, observed) => {
+      observed[0].descriptor.digest = `sha256:${"f".repeat(64)}`;
+    },
+    "wrong observed reference": (_input, _lock, observed) => {
+      observed[0].reference += "-other";
+    },
+    "wrong media type": (_input, _lock, observed) => {
+      observed[0].manifest.artifactType = "other";
+    },
+    "executable layer": (_input, _lock, observed) => {
+      observed[0].manifest.layers.push(observed[0].manifest.layers[0]);
+    },
+    "foreign blob": (_input, _lock, observed) => {
+      observed[0].manifest.config.urls = ["https://example.com"];
+    },
+    "wrong source annotation": (_input, _lock, observed) => {
+      observed[0].manifest.annotations["org.opencontainers.image.revision"] =
+        parentSha;
+    },
+    "wrong version annotation": (_input, _lock, observed) => {
+      observed[0].manifest.annotations["org.opencontainers.image.version"] =
+        "0.60.0";
+    }
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    for (const type of ["rc", "final", "patch"]) {
+      const input = ghcrFixture(type);
+      mutate(
+        input,
+        input.observed.downstream.bicepExtensionLock,
+        input.observed.downstream.ociArtifacts
+      );
+      assert.equal(
+        verifyReleaseManifest(input).checks.external,
+        "failed",
+        `${type}: ${name}`
+      );
+    }
+  }
+});
 test("the manifest command verifies files and rejects a changed approved snapshot", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "release-manifest-"));
   try {

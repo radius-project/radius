@@ -319,6 +319,18 @@ cat >"${FAKE_BIN}/oras" <<'EOF'
 set -euo pipefail
 
 reference="${*: -1}"
+if [[ "${reference}" == ghcr.io/radius-project/bicep-types-* ]]; then
+    name="${reference##*/}"
+    name="${name%%[:@]*}"
+    manifest="${FIXTURES}/${name}.json"
+    if [[ "$*" == *"--descriptor"* ]]; then
+        jq -n --arg digest "sha256:$(sha256sum "${manifest}" | cut -d ' ' -f 1)" \
+            '{digest:$digest}'
+    else
+        cat "${manifest}"
+    fi
+    exit 0
+fi
 if [[ "${MISSING_DOWNSTREAM}" == "true" && \
     "${reference}" == biceptypes.azurecr.io/* ]]; then
     echo "artifact not found: ${reference}" >&2
@@ -388,7 +400,7 @@ run_collector() {
         RELEASE_PARITY_RUNTIME_ASSET="rad_linux_amd64" \
         bash "${SCRIPT_DIR}/release-parity-manifest.sh" \
         --version 0.60.0 \
-        --output "${OUTPUT}" >/dev/null
+        --output "${OUTPUT}" "$@" >/dev/null
 }
 
 run_collector
@@ -498,6 +510,81 @@ if run_collector 2>/dev/null; then
     fail "collector accepted a missing downstream artifact"
 fi
 MISSING_DOWNSTREAM="false"
+
+node --input-type=module - "${SCRIPT_DIR}" "${FIXTURES}" "${SOURCE_COMMIT}" <<'JS'
+import { readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+const [scripts, fixtures, source] = process.argv.slice(2);
+const { bicepExtensionTargets, plannedBicepExtensions } =
+  await import(`${scripts}/release-bicep-extensions.mjs`);
+const save = (name, value) => writeFile(`${fixtures}/${name}`, JSON.stringify(value));
+const targets = JSON.parse(await readFile(`${fixtures}/targets.json`));
+targets.bicepExtensionsContract = "ghcr-v1";
+targets.ociArtifacts = bicepExtensionTargets;
+await save("targets.json", targets);
+const plan = {
+  schemaVersion: 2, version: "v0.60.0", releaseType: "final",
+  expectedOutputs: targets,
+  siblingRepositories: [{
+    name: "bicep-types-aws", repository: "radius-project/bicep-types-aws",
+    sourceCommit: "b".repeat(40)
+  }]
+};
+await save("plan.json", plan);
+const artifacts = [];
+for (const entry of plannedBicepExtensions(plan, source)) {
+  const digest = `sha256:${"c".repeat(64)}`;
+  const manifest = {
+    schemaVersion: 2, mediaType: "application/vnd.oci.image.manifest.v1+json",
+    artifactType: "application/vnd.ms.bicep.provider.artifact",
+    config: { mediaType: "application/vnd.ms.bicep.provider.config.v1+json", digest, size: 2 },
+    layers: [{ mediaType: "application/vnd.ms.bicep.provider.layer.v1.tar+gzip", digest, size: 20 }],
+    annotations: {
+      "bicep.serialization.format": "v1",
+      "org.opencontainers.image.source": `https://github.com/${entry.source.repository}`,
+      "org.opencontainers.image.revision": entry.source.commit,
+      "org.opencontainers.image.version": entry.version
+    }
+  };
+  const raw = JSON.stringify(manifest);
+  const name = entry.name === "aws-bicep-types" ? "aws" : "radius";
+  await writeFile(`${fixtures}/bicep-types-${name}.json`, raw);
+  artifacts.push({
+    ...entry, digest: `sha256:${createHash("sha256").update(raw).digest("hex")}`,
+    generation: {
+      workflow: ".github/workflows/build-release.yaml", runId: 1, runAttempt: 1,
+      artifactId: 2, artifactDigest: digest
+    }
+  });
+}
+await save("assets/bicep-extension-lock.json", {
+  schemaVersion: 1, version: plan.version, releaseSourceCommit: source, artifacts
+});
+const release = JSON.parse(await readFile(`${fixtures}/release.json`));
+release.assets.push({ name: "bicep-extension-lock.json" });
+await save("release.json", release);
+JS
+
+if run_collector 2>/dev/null; then
+    fail "GHCR collection accepted no approved plan"
+fi
+run_collector --plan-file "${FIXTURES}/plan.json"
+jq -e '
+    (.downstream.ociArtifacts | length) == 2
+    and all(.downstream.ociArtifacts[]; .reference | endswith(":0.60.0"))
+    and .downstream.bicepExtensionLock.version == "v0.60.0"
+' "${OUTPUT}" >/dev/null || fail "GHCR collection did not preserve the locked pair"
+mv "${ASSETS}/bicep-extension-lock.json" "${FIXTURES}/saved-lock.json"
+if run_collector --plan-file "${FIXTURES}/plan.json" 2>/dev/null; then
+    fail "GHCR collection accepted missing evidence"
+fi
+mv "${FIXTURES}/saved-lock.json" "${ASSETS}/bicep-extension-lock.json"
+jq '.artifacts[0].source.commit = .releaseSourceCommit' \
+    "${ASSETS}/bicep-extension-lock.json" >"${FIXTURES}/wrong-lock.json"
+mv "${FIXTURES}/wrong-lock.json" "${ASSETS}/bicep-extension-lock.json"
+if run_collector --plan-file "${FIXTURES}/plan.json" 2>/dev/null; then
+    fail "GHCR collection accepted the Radius source for AWS"
+fi
 
 for baseline in "${SCRIPT_DIR}/../release-parity/baselines/"*.json; do
     jq -e --slurpfile targets "${SCRIPT_DIR}/../release-parity/targets.json" '

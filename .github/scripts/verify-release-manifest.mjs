@@ -9,6 +9,10 @@ import {
   validatePublicationManifest
 } from "./publish-draft-release.mjs";
 import { verifySpdxDocument } from "./release-assets.mjs";
+import {
+  usesGhcrBicepExtensions,
+  verifyBicepExtensionOutputs
+} from "./release-bicep-extensions.mjs";
 
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
 const sorted = (values) => [...values].sort();
@@ -319,6 +323,21 @@ export function verifyReleaseManifest({
     sorted(targets.ociArtifacts.map((entry) => entry.name)),
     sorted((observed.downstream?.ociArtifacts ?? []).map((entry) => entry.name))
   );
+  let ghcrBicep = false;
+  try {
+    ghcrBicep = usesGhcrBicepExtensions(plan.expectedOutputs);
+    if (ghcrBicep) {
+      verifyBicepExtensionOutputs(
+        plan,
+        sourceSha,
+        observed.downstream?.bicepExtensionLock,
+        observed.downstream?.ociArtifacts
+      );
+      compare("external", "Bicep release contract", "verified", "verified");
+    }
+  } catch (error) {
+    compare("external", "Bicep release contract", "verified", error.message);
+  }
   for (const target of targets.ociArtifacts) {
     const artifact = observed.downstream?.ociArtifacts?.find(
       (entry) => entry.name === target.name
@@ -326,7 +345,7 @@ export function verifyReleaseManifest({
     compare(
       "external",
       `${target.name} reference`,
-      `${target.repository}:${artifactTag}`,
+      `${target.repository}:${ghcrBicep ? version : artifactTag}`,
       artifact?.reference
     );
     compare(

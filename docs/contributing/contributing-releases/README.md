@@ -41,6 +41,64 @@ Stop if the update is missing or incomplete. Publishing namespace releases alone
 3. Review `release-manifest.json` and the staged-installation result. **Finals and patches** wait for approval in the `release` environment; approve only the verified version/source pair. **RCs** publish automatically after the same mandatory gate. Outputs are rechecked after approval before alias promotion or publication.
 4. Follow the exact downstream run URLs. For RCs, review and merge docs and samples upmerge PRs, then resume the release. Automation binds the pull request each upmerge run opened and requires it to be merged before running sample tests; both repositories squash-merge, so the source commits never become reachable from `edge`, and a run with nothing to merge is complete. All three successful receipts are required for final preparation and publication. Receipts exist only for RCs published with this coordination in place; if the last validated RC predates it, cut another RC before preparing the final. Finals publish docs and samples and run sample tests; patches run sample tests without recutting their release branches.
 
+### Bicep extension release contract
+
+The GHCR extension contract is preparatory: checked-in `.github/release-parity/targets.json` and active release workflows still use ACR. No new registry permissions, settings, release policy, or writer cutover is needed to land the contract alone. Later activation must select `expectedOutputs.bicepExtensionsContract: ghcr-v1` in the generated, approved schema-v2 plan and replace its `ociArtifacts` with the canonical AWS/Radius targets exported by `.github/scripts/release-bicep-extensions.mjs`. Prepare Release already copies the complete targets into the plan; never edit an approved plan to opt in. Plans without the selector retain the legacy ACR channel/RC contract. Unknown selectors and GHCR targets without a selector fail closed.
+
+New-format releases require one `bicep-extension-lock.json` release asset, with the following shape (example values, not publication evidence):
+
+```json
+{
+  "schemaVersion": 1,
+  "version": "v0.62.0-rc.1",
+  "releaseSourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "artifacts": [
+    {
+      "name": "aws-bicep-types",
+      "source": {
+        "repository": "radius-project/bicep-types-aws",
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "version": "0.62.0-rc.1",
+      "reference": "ghcr.io/radius-project/bicep-types-aws:0.62.0-rc.1",
+      "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "generation": {
+        "workflow": ".github/workflows/publish-bicep.yaml",
+        "runId": 123,
+        "runAttempt": 1,
+        "artifactId": 456,
+        "artifactDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    },
+    {
+      "name": "radius-bicep-types",
+      "source": {
+        "repository": "radius-project/radius",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "version": "0.62.0-rc.1",
+      "reference": "ghcr.io/radius-project/bicep-types-radius:0.62.0-rc.1",
+      "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "generation": {
+        "workflow": ".github/workflows/build-release.yaml",
+        "runId": 789,
+        "runAttempt": 1,
+        "artifactId": 987,
+        "artifactDigest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      }
+    }
+  ]
+}
+```
+
+The artifact array has exactly AWS then Radius, at the same full stable or dotted RC version. Radius binds to the controller-resolved metadata-bearing release SHA, not the product parent or current `main`; AWS binds to the plan's one frozen `bicep-types-aws` sibling SHA. Each manifest must be a non-executable Bicep provider artifact with the provider config and single type layer, `bicep.serialization.format: v1`, and `org.opencontainers.image.source`, `.revision`, and `.version` annotations matching its entry. The generation attempt identifies the original generation, not a later upload retry.
+
+The producer/integration layer must authenticate the recorded run and artifact through GitHub's API in the source repository: trusted workflow, exact source/tag, successful generation attempt, artifact ownership and content digest. Capture generated inputs and outputs once, including AWS schemas. The offline contract validator checks shape and source/digest binding; a self-reported run ID is not authentication. It neither queries registries nor regenerates missing evidence. R2 and the AWS companion supply generation evidence; R3 binds and uploads the pair before verification.
+
+`plannedBicepExtensions(plan, sourceSha)` returns the exact expected identities; `validateBicepExtensionLock(plan, sourceSha, lock)` validates the pair; `verifyBicepExtensionOutputs(plan, sourceSha, lock, observed)` also checks the collected OCI manifests. The collector's optional `--plan-file <approved-plan.json>` is required for GHCR targets. It downloads the lock with existing release assets, fetches manifests by their observed digest, checks the raw bytes against that digest, and stores the lock in `downstream.bicepExtensionLock`. `verify-release-manifest.mjs` includes that evidence in installation approval and post-approval rechecking. Existing release-asset upload/download helpers enforce immutability and reject missing lock evidence, even when a caller requests optional download.
+
+Before activation, complete both producer integrations, source-owned GHCR bootstrap (first push, then administrator makes the package Public), anonymous restore, AWS package access for the Radius finalizer, tagged-release ACR federation, and the old Bicep writer handoff. Stable/RC alias decisions, approval, controller ordering, and historical recovery stay unchanged. See the [migration design](../../../eng/design-notes/tools/2026-09-bicep-extension-ghcr-migration.md#parallel-execution-and-queueing). Missing or conflicting evidence blocks publication; recover the original captured evidence rather than replacing a locked release asset.
+
 ### Resume
 
 Run [Resume Release](https://github.com/radius-project/radius/actions/workflows/resume-release.yaml) from `main` with the failed summary's `version` (including `v`, for example `v0.61.0-rc.1`) and `source-commit`. The source is the release PR squash commit for a first RC, or the generated metadata backport merge commit for an existing channel. Do not substitute the current branch tip.
