@@ -217,8 +217,10 @@ rad auth assignment list --scope <resource-id> --include-inherited
 For repeatable management, a platform team defines roles and assignments as Radius resources and deploys them through the existing workflow:
 
 ```console
-rad deploy platform-access.bicep --scope <resource-id>
+rad deploy platform-access.bicep --group <resource-group-name>
 ```
+
+The active workspace's Radius resource group is the template deployment scope; `--group` overrides that resource group. This is distinct from the authorization scope of each role assignment, which is declared in the template.
 
 When a deployment contains authorization changes, the CLI shows a concise summary of the roles and assignments that will be added or changed and asks for confirmation before applying any resources in the deployment. The prompt defaults to "No." Automation can provide `--yes` to skip the prompt; a non-interactive deployment without `--yes` fails with guidance rather than waiting for input. The flag skips only confirmation and cannot bypass authorization, validation, lockout protection, or privilege-escalation safeguards. Deployments without authorization changes retain the existing non-interactive behavior.
 
@@ -265,7 +267,9 @@ resource developerAccess 'Radius.Core/roleAssignments@<api-version>' = {
 }
 ```
 
-The `principal` block identifies the user, group, or workload that receives the role. Its `type`, `issuer`, and `subject` fields correspond to the identity terms above. The assignment applies at the Bicep resource's deployment scope; an assignment targeted to an individual Radius resource uses that resource as its Bicep scope. Built-in roles are immutable `Radius.Core/roleDefinitions` resources that templates reference as `existing`.
+The `principal` block identifies the user, group, or workload that receives the role. Its `type`, `issuer`, and `subject` fields correspond to the identity terms above. For `rad deploy`, the active workspace's Radius resource group, or the group selected with `--group`, is the template deployment scope. In the proposed schema, an assignment without a more specific target applies at that resource group, while an assignment targeted to an individual Radius resource uses that resource as its Bicep scope. Built-in roles are immutable `Radius.Core/roleDefinitions` resources that templates reference as `existing`.
+
+`rad deploy` does not currently accept an arbitrary Radius resource ID as its deployment scope. Declarative management of installation- or plane-scoped authorization therefore requires generalized deployment-scope support or a different resource-placement model. Until that exists, administrators manage those broader scopes through the RBAC API or imperative `rad auth` commands.
 
 The authorization-change summary identifies the affected principals, roles, and scopes and warns about lockout or privilege-escalation risk before asking for confirmation. An ordinary `rad deploy` is incremental: removing a role or assignment from a Bicep file does not delete it. Administrators explicitly delete custom roles or assignments through the CLI or API, and a later deployment recreates or updates a resource that remains declared in Bicep. Assignments do not support in-place updates to the principal, role, or scope; administrators create a replacement and explicitly delete the previous assignment so the audit history remains clear. GitOps reconciliation has different deletion semantics, as described below.
 
