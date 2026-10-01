@@ -131,7 +131,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to inspect control-plane backup: %w", err)
 	}
 	if empty {
-		return clierrors.Message("Refusing to persist state: the control-plane backup contains no resources. This can happen if the control plane degraded after 'rad startup' succeeded (for example a postgres pod crash-loop, or 'rad install' being re-run mid-session). The existing state archive was left unchanged; investigate the control plane before retrying 'rad shutdown'.")
+		return clierrors.Message("Refusing to persist state: the control-plane backup contains no user-created resources such as resource groups. This can happen if the control plane degraded after 'rad startup' succeeded (for example a postgres pod crash-loop, or 'rad install' being re-run mid-session). The existing state archive was left unchanged; investigate the control plane before retrying 'rad shutdown'.")
 	}
 
 	r.Output.LogInfo("Backing up Terraform recipe state...")

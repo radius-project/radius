@@ -37,7 +37,7 @@ import (
 // nonEmptyUCPDump is a minimal pg_dump-shaped dump of the "resources" table with one data row,
 // standing in for a healthy control-plane backup.
 const nonEmptyUCPDump = `COPY public.resources (id, original_id, resource_type, root_scope, routing_scope, etag, resource_data) FROM stdin;
-/planes/radius/local/resourcegroups/default	/planes/radius/local/resourcegroups/default	resourcegroups	/planes/radius/local	resourcegroups/default	abc123	{}
+/planes/radius/local/resourcegroups/default/	/planes/radius/local/resourceGroups/default	/system.resources/resourcegroups/	/planes/radius/local	resourcegroups/default	abc123	{}
 \.
 `
 

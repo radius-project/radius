@@ -90,16 +90,35 @@ func StateBranchName() string {
 }
 
 // copyResourcesHeader matches the pg_dump COPY header for the "resources" table -- the table that
-// holds every UCP resource, including resource groups -- in plain-format output, e.g.:
+// holds every UCP resource, including resource groups -- in plain-format output, and captures its
+// column list, e.g.:
 //
 //	COPY public.resources (id, original_id, resource_type, ...) FROM stdin;
-var copyResourcesHeader = regexp.MustCompile(`^COPY\s+(?:[\w"]+\.)?"?resources"?\s*\(.*\)\s+FROM\s+stdin;\s*$`)
+var copyResourcesHeader = regexp.MustCompile(`^COPY\s+(?:[\w"]+\.)?"?resources"?\s*\((.*)\)\s+FROM\s+stdin;\s*$`)
 
-// IsControlPlaneEmpty reports whether the backed-up ucp database dump in stateDir contains no rows
-// in the "resources" table. A database in this state (e.g. after a postgres pod crash-loop, or
-// "rad install" re-run mid-session) is not safe to persist: committing it would overwrite the
-// durable archive with unrecoverable data loss, even though `rad startup` restored the previous
-// snapshot successfully at the start of the run.
+// seedResourceTypes are the normalized resource_type values UCP writes for itself rather than on a
+// user's behalf: the resource provider metadata the initializer registers on every boot
+// (pkg/ucp/initializer, registerResourceProviderDirect) and the planes. A control plane that was
+// reset or lost its data still contains these rows, so they say nothing about user state. Every
+// other type -- a resource group, for example -- is created by a user ("rad init" creates the
+// default group).
+var seedResourceTypes = map[string]bool{
+	"/system.resources/resourceproviders/":                           true,
+	"/system.resources/resourceproviders/resourcetypes/":             true,
+	"/system.resources/resourceproviders/resourcetypes/apiversions/": true,
+	"/system.resources/resourceproviders/locations/":                 true,
+	"/system.resources/resourceprovidersummaries/":                   true,
+	"/system.radius/planes/":                                         true,
+	"/system.aws/planes/":                                            true,
+	"/system.azure/planes/":                                          true,
+}
+
+// IsControlPlaneEmpty reports whether the backed-up ucp database dump in stateDir contains no
+// user-created resources: no rows in any "resources" table other than the provider metadata and
+// planes UCP seeds for itself (seedResourceTypes). A database in this state (e.g. after a postgres
+// pod crash-loop, or "rad install" re-run mid-session) is not safe to persist: committing it would
+// overwrite the durable archive with unrecoverable data loss, even though `rad startup` restored
+// the previous snapshot successfully at the start of the run.
 func IsControlPlaneEmpty(stateDir string) (bool, error) {
 	path := filepath.Join(stateDir, "ucp.sql")
 	f, err := os.Open(path)
@@ -108,11 +127,11 @@ func IsControlPlaneEmpty(stateDir string) (bool, error) {
 	}
 	defer f.Close()
 
-	// Stream the dump line by line: only the resources COPY header and the line after it matter,
-	// so there is no need to hold a large snapshot in memory. bufio.Reader rather than
-	// bufio.Scanner, because data rows carry resource JSON and can exceed Scanner's 64KB limit.
+	// Stream the dump line by line, so a large snapshot is never held in memory. bufio.Reader rather
+	// than bufio.Scanner, because data rows carry resource JSON and can exceed Scanner's 64KB limit.
 	r := bufio.NewReader(f)
 	inResources := false
+	typeColumn := -1
 	for {
 		line, err := r.ReadString('\n')
 		if err != nil && !errors.Is(err, io.EOF) {
@@ -122,18 +141,44 @@ func IsControlPlaneEmpty(stateDir string) (bool, error) {
 
 		switch {
 		case !inResources:
-			inResources = copyResourcesHeader.MatchString(line)
+			if m := copyResourcesHeader.FindStringSubmatch(line); m != nil {
+				inResources = true
+				typeColumn = columnIndex(m[1], "resource_type")
+			}
 		case line == "":
-			// Skip blank lines between the COPY header and its first data line.
+			// Skip blank lines inside the COPY block.
+		case strings.HasPrefix(line, `\.`):
+			// End of this resources block without a user-created row. Keep scanning: a dump can hold
+			// more than one table named resources (other schemas), and any of them may have user data.
+			inResources = false
 		default:
-			return strings.HasPrefix(line, `\.`), nil
+			if typeColumn < 0 {
+				// The dump does not name a resource_type column, so seed rows cannot be told apart;
+				// treat any row as user data rather than refuse to persist a real snapshot.
+				return false, nil
+			}
+			fields := strings.Split(line, "\t")
+			if typeColumn >= len(fields) || !seedResourceTypes[strings.ToLower(fields[typeColumn])] {
+				return false, nil
+			}
 		}
 
 		if errors.Is(err, io.EOF) {
-			// No "resources" table in the dump at all is at least as degenerate as an empty one.
-			return !inResources, nil
+			// No user-created row anywhere. That includes a dump with no resources table at all, and
+			// one cut off before its terminator: both are at least as degenerate as an empty table.
+			return true, nil
 		}
 	}
+}
+
+// columnIndex returns the position of column in a pg_dump COPY column list, or -1.
+func columnIndex(columns, column string) int {
+	for i, c := range strings.Split(columns, ",") {
+		if strings.Trim(strings.TrimSpace(c), `"`) == column {
+			return i
+		}
+	}
+	return -1
 }
 
 // HasBackup reports whether a SQL dump exists for every database in the state directory.
