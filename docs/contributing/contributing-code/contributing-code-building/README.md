@@ -37,6 +37,24 @@ To build with debug symbols (`-gcflags "all=-N -l"`), set `DEBUG=1`:
 DEBUG=1 make build-rad
 ```
 
+### Build the `rad` CLI with Nix
+
+The repository root has a [Nix flake](https://nix.dev/concepts/flakes) that builds the `rad` CLI from source, so you can use it without installing Go or Make. With [Nix](https://nixos.org/download/) installed and flakes enabled, build it from your clone with:
+
+```sh
+nix build .#rad
+./result/bin/rad version
+```
+
+You can also run it, or add it to your shell, straight from GitHub without cloning:
+
+```sh
+nix run github:radius-project/radius -- version
+nix shell github:radius-project/radius
+```
+
+Like `make build-rad`, the flake produces an `edge` build stamped with the source commit. It supports `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and `aarch64-darwin`. When `go.mod` or `go.sum` changes, update `vendorHash` in `flake.nix`; `nix build` prints the expected value on a mismatch. When `go.mod` moves to a newer Go release, switch `buildGo127Module` to the matching builder, updating the `nixpkgs` input with `nix flake update` if needed.
+
 ### Build, test, lint, and check formatting
 
 This combined command builds the code, runs unit tests, runs the Go linters, and checks JSON/TS/JS/MJS formatting. Run it to verify your local changes before opening a pull request:
