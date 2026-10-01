@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -55,6 +56,7 @@ type cloudBackendFixture struct {
 	resourceType  string
 	resourceID    func(string) string
 	read          func(context.Context, string) ([]byte, error)
+	write         func(context.Context, string, []byte) error
 	keys          func(context.Context) ([]string, error)
 	verifyObject  func(context.Context, string, string) (bool, error)
 	cleanupObject func(context.Context, string) error
@@ -120,6 +122,25 @@ func testTerraformCloudBackend(t *testing.T, backend string, setup func(context.
 			}
 
 			names := []string{name + "-a", name + "-b"}
+			// A decoy under the same prefix that Radius never owns. Post-destroy cleanup must
+			// delete only the state key belonging to the destroyed resource, so a key-construction
+			// bug that widened the delete would show up here. It also keeps the final listing
+			// assertion non-vacuous: without it, a broken keys() helper that always returned
+			// nothing would satisfy an "empty storage" check.
+			decoyKey := fixture.prefix + "/unrelated-tenant.tfstate"
+			decoyBody := []byte(`{"version":4,"lineage":"decoy","serial":1,"resources":[]}`)
+			func() {
+				seedCtx, cancel := context.WithTimeout(ctx, time.Minute)
+				defer cancel()
+				require.NoError(t, fixture.write(seedCtx, decoyKey, decoyBody), "seed decoy state object")
+			}()
+			requireDecoyIntact := func(stage string) {
+				readCtx, cancel := context.WithTimeout(ctx, time.Minute)
+				defer cancel()
+				body, err := fixture.read(readCtx, decoyKey)
+				require.NoError(t, err, "decoy object must survive %s", stage)
+				require.Equal(t, decoyBody, body, "decoy content must be unchanged after %s", stage)
+			}
 			// SDK fallback cleanup is separate from assertions: it cannot make a failed
 			// Terraform destroy look successful and runs before backend storage cleanup.
 			for _, objectName := range names {
@@ -181,6 +202,18 @@ func testTerraformCloudBackend(t *testing.T, backend string, setup func(context.
 				require.Equal(t, revision, resource.Instances[0].Attributes.Tags["revision"])
 				verifyObject(objectName, revision)
 			}
+			// Radius deletes the empty state object Terraform leaves behind, so after destroy the
+			// key must be gone rather than holding a zero-resource state. Listing keys avoids
+			// needing a per-cloud not-found predicate.
+			requireStateAbsent := func(key string) {
+				pollCloud(t, ctx, "state object "+key+" removed after destroy", func(ctx context.Context) (bool, error) {
+					keys, err := fixture.keys(ctx)
+					if err != nil {
+						return false, err
+					}
+					return !slices.Contains(keys, key), nil
+				})
+			}
 
 			keyA := deploy(names[0], "one", true)
 			first := read(keyA)
@@ -201,26 +234,23 @@ func testTerraformCloudBackend(t *testing.T, backend string, setup func(context.
 			verifyObject(names[1], "one")
 
 			destroy(names[0])
-			deleted := read(keyA)
-			require.Equal(t, updated.Lineage, deleted.Lineage)
-			require.Greater(t, deleted.Serial, updated.Serial)
-			require.Zero(t, len(deleted.Resources))
+			// The infrastructure must be gone and its state object removed with it, while B is
+			// untouched: cleanup must be scoped to the destroyed resource's own key.
+			requireStateAbsent(keyA)
 			verifyObject(names[0], "")
 			require.Equal(t, second.digest, read(keyB).digest, "destroying A must not change B")
 			verifyObject(names[1], "one")
+			requireDecoyIntact("destroying A")
 
 			destroy(names[1])
-			deletedB := read(keyB)
-			require.Equal(t, second.Lineage, deletedB.Lineage)
-			require.Greater(t, deletedB.Serial, second.Serial)
-			require.Zero(t, len(deletedB.Resources))
+			requireStateAbsent(keyB)
 			verifyObject(names[1], "")
-			require.Equal(t, deleted.digest, read(keyA).digest)
+			requireDecoyIntact("destroying B")
 			opCtx, cancel := context.WithTimeout(ctx, time.Minute)
 			defer cancel()
 			keys, err := fixture.keys(opCtx)
 			require.NoError(t, err, "backing storage must still exist after both destroys")
-			require.ElementsMatch(t, []string{keyA, keyB}, keys, "state retained, no extra state or lock objects")
+			require.Equal(t, []string{decoyKey}, keys, "cleanup removes both state objects, leaves no lock objects, and never touches unrelated keys")
 		}),
 		SkipKubernetesOutputResourceValidation: true,
 		SkipObjectValidation:                   true,
