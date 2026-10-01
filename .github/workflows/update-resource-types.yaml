@@ -378,4 +378,4 @@ jobs:
 
             Each affected entry is pinned to an immutable commit SHA in `deploy/manifest/defaults.yaml` (`resourceTypes[]` / `recipePacks[]`).
 
-            Merging this PR will republish `br:biceptypes.azurecr.io/radius:latest` via the existing `build-and-push-bicep-types` job in `build-main.yaml`.
+            Merging this PR will republish `br:ghcr.io/radius-project/bicep-types-radius:edge` and its ACR compatibility mirror via the existing `build-and-push-bicep-types` job in `build-main.yaml`.

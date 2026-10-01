@@ -369,8 +369,11 @@ publish_branch_artifacts() {
     cp "${SOURCE_APP_FILE}" "${APP_FILE}"
     cat >"${WORK_DIR}/bicepconfig.json" <<EOF
 {
+  "experimentalFeaturesEnabled": {
+    "ociEnabled": true
+  },
   "extensions": {
-    "radius": "br:biceptypes.azurecr.io/radius:latest"
+    "radius": "br:ghcr.io/radius-project/bicep-types-radius:edge"
   }
 }
 EOF

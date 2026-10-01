@@ -59,7 +59,7 @@ The `bicep-types-radius-<run-id>.tar` snapshot and per-attempt receipts have 30-
 1. Retain the upstream read-only snapshot architecture, downstream manual-writer restrictions and cloud credential isolation. Restrict elevated workflow definitions and production authority to trusted code, including maintained PR base branches; repository package grants are not per-workflow ACLs.
 2. Allow the source repository's `GITHUB_TOKEN` to create the canonical package; the trusted uploader requests `packages: write`. No PAT or separate publisher repository is needed.
 3. The caller forwards only existing repository secrets `BICEPTYPES_CLIENT_ID`, `BICEPTYPES_TENANT_ID` and `BICEPTYPES_SUBSCRIPTION_ID` to required callee declarations. Only the trusted publisher's Azure login references them. Verify the existing identity's ACR authorization and configure a federation binding scoped to this new main workflow. The current subject `repository_owner_id:93291507:repository_id:340522752:environment:publish-bicep` omits ref/workflow identity and alone cannot prove that scope. Establish the new mirror trust without changing legacy tag policy, existing issuer bindings or shared environment approval behavior. No live identity configuration is included here.
-4. Stop the external development writer and drain in-flight work before cutover. Leave the upstream release-tag publisher and its environment behavior intact.
+4. Before merging [#13119](https://github.com/radius-project/radius/pull/13119), separately authorize the development guard in `azure-octo/radius-publisher/.github/workflows/publish-bicep-types.yml`: reject normalized production `radius` (including omitted/default `radius`) for `source_ref: refs/heads/main` or `rel_channel: edge`/`latest`, before checkout or cloud credentials. Pause new development work and drain queued/running caller and private receiver jobs before enabling the replacement. Preserve legacy tagged channel/RC publication, explicit `test/radius`, and existing environment behavior. The AWS receiver guard alone does not stop Radius dispatches. Only after all unpublished legacy Radius/AWS plans finish, at the R3 release handoff, extend this Radius guard to all production `radius` dispatches, including old tags; keep `test/radius` intact. See the [ordered merge and writer handoff](../../contributing-releases/README.md#ordered-merge-and-writer-handoff) for both receiver guards and their distinct activation points. These private guard changes remain outstanding operational gates, not changes deployed by this PR.
 
 #### After the first upload
 
@@ -71,6 +71,21 @@ Run the focused checks without registry credentials:
 node --test .github/scripts/bicep-types.test.mjs
 actionlint .github/workflows/build-main.yaml .github/workflows/__publish-bicep-types.yaml
 ```
+
+### GHCR consumer cutover
+
+Active Radius configs read `ghcr.io/radius-project/bicep-types-radius` and `ghcr.io/radius-project/bicep-types-aws` with `experimentalFeaturesEnabled.ociEnabled=true`. Development uses `edge`, not the former ACR development `latest`; release channels, full version/RC tags and digest pins retain their meaning. New CLI scaffolds and Bicep image configs use the same defaults; existing user configs are not rewritten. A new CLI release must ship these defaults; already released binaries do not change.
+
+Keep the consumer cutover draft until all gates are satisfied:
+
+1. The upstream release stack has landed and the dependent migration stack targets `main`.
+2. Radius publishers and release integration, plus the actual AWS companion publisher/release changes, are complete.
+3. Both canonical GHCR packages are public and anonymous restore/build succeeds for required `edge`, channel and full version/RC references. Backfill needed old channels and RCs with their exact historical manifest digests before changing pinned consumers; do not rebuild or invent historical provenance.
+4. Verify a newly built CLI's generated configs and arrange a CLI release containing the changes. Do not infer generated defaults or public package availability from a Bicep binary version alone.
+
+Keep ACR resources and the compatibility mirror. Remaining production ACR references in main/release publisher code are mirror destinations; release parity baselines, design inventories and historical release verification are intentionally retained. Private `TEST_BICEP_TYPES_REGISTRY`/`test/radius`, `testresources`, and unrelated recipe/image registries are not part of this cutover.
+
+The secure CI registry certificate already covers `localhost` and `radius-registry`. Native Bicep OCI publication treats loopback names as HTTP, so Bicep extension and recipe targets use `radius-registry:5000`; Docker/ORAS capture retains `localhost:5000`. The secure Kind action adds the registry's network address to CoreDNS because Docker's alias alone is not visible to pods; workloads retain the existing `global.rootCA.cert` trust mount. Exercise native `bicep publish-extension`, `rad bicep publish-extension`, restore/build and recipe publication with isolated certificates; JSON checks alone do not verify transport. A failed loopback publication does not imply loopback restore fails. Local generic OCI success is not proof that the public GHCR packages or AWS release artifacts exist.
 
 ## Verification
 

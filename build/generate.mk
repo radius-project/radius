@@ -214,20 +214,20 @@ rebuild-bicep-types-index:
 	node $(BICEP_TYPES_EMITTER_DIR)/dist/src/cmd/rebuild-index.js --out-dir $(BICEP_TYPES_GENERATED_DIR) --release-version ${VERSION}
 
 # Publishing the unified `radius` Bicep extension. Runnable locally against any
-# OCI registry (e.g. a local Zot/CRane-backed registry, or biceptypes.azurecr.io
-# after `az acr login`). Both BICEP_PUBLISH_TARGET and the local Bicep CLI must
+# OCI registry (e.g. a local Zot/CRane-backed registry, or ghcr.io
+# after `docker login`). Both BICEP_PUBLISH_TARGET and the local Bicep CLI must
 # be available. CI workflows (added separately) call this target after
 # generating types and authenticating to the registry.
 #
 # Example:
-#   make publish-bicep-extension BICEP_PUBLISH_TARGET=br:biceptypes.azurecr.io/radius:latest
+#   make publish-bicep-extension BICEP_PUBLISH_TARGET=br:ghcr.io/radius-project/bicep-types-radius:edge
 BICEP_PUBLISH_INDEX := $(BICEP_TYPES_OUTPUT_BASE)/../index.json
 BICEP_PUBLISH_TARGET ?=
 
 .PHONY: publish-bicep-extension
 publish-bicep-extension: ## Publish the unified `radius` Bicep extension to BICEP_PUBLISH_TARGET. Requires generate-bicep-types to have been run.
 	@if [ -z "$(BICEP_PUBLISH_TARGET)" ]; then \
-		echo "ERROR: BICEP_PUBLISH_TARGET must be set (e.g. br:biceptypes.azurecr.io/radius:latest)"; \
+		echo "ERROR: BICEP_PUBLISH_TARGET must be set (e.g. br:ghcr.io/radius-project/bicep-types-radius:edge)"; \
 		exit 1; \
 	fi
 	@if [ ! -f "$(BICEP_PUBLISH_INDEX)" ]; then \
