@@ -404,6 +404,40 @@ func Test_Resource(t *testing.T) {
 		require.Equal(t, expectedResourceList, resources)
 	})
 
+	t.Run("ListResourcesOfType - case insensitive resource type", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mock := NewMockgenericResourceClient(ctrl)
+		resourceProviderMock := NewMockresourceProviderClient(ctrl)
+		client := createClient(mock)
+		client.resourceProviderClientFactory = func() (resourceProviderClient, error) {
+			return resourceProviderMock, nil
+		}
+		summary := ucp.ResourceProviderSummary{
+			Name: new("Applications.Test"),
+			ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+				"testResource": {
+					APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+						version: {},
+					},
+				},
+			},
+		}
+
+		resourceProviderMock.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "applications.test", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{ResourceProviderSummary: summary}, nil)
+
+		mock.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(pager(listPages))
+
+		expectedResourceList := []generated.GenericResource{*listPages[0].Value[0], *listPages[0].Value[1], *listPages[1].Value[0], *listPages[1].Value[1]}
+
+		resources, err := client.ListResourcesOfType(t.Context(), "applications.test/TESTRESOURCE")
+		require.NoError(t, err)
+		require.Equal(t, expectedResourceList, resources)
+	})
+
 	t.Run("ListAllResourceTypesNames", func(t *testing.T) {
 		mockResourceProviderClient := NewMockresourceProviderClient(gomock.NewController(t))
 
