@@ -42,6 +42,36 @@ Cloud isolation does not alter upstream release pipelines, tag requirements, art
 5. Set the smallest explicit `permissions:` block at the workflow or job level.
 6. Open the pull request as a draft and run the workflow from your branch. Confirm its trigger, job graph, artifacts, and failure behavior before marking the pull request ready.
 
+### Main Bicep publishing
+
+**Merging the main workflow is the publishing cutover.** `build-main.yaml` publishes Radius types through `__publish-bicep-types.yaml`, with no external-main fallback. It retains the upstream snapshot/edge job graph, main queue and Helm gate. Release workflows, release tag policy, shared `publish-bicep` environment usage and approvals, and consumers remain unchanged.
+
+The new publisher accepts protected canonical main pushes and manual main runs. Successful `only_changed=true` detection permits a skip; failed/missing detection, unexpected skips, and publication failures fail Build Summary. These main-only requirements do not add a precondition to release-tag publishing.
+
+Read-only generation captures a native Bicep OCI tar once, using pinned tools, isolated `ociEnabled=true` configuration, and a local registry without credentials. A fresh trusted uploader validates source/run/artifact identity, native digest verification and the Bicep provider contract, then uses ORAS without executing downloaded code. Standard source/revision annotations retain provenance.
+
+One serialized job publishes `ghcr.io/radius-project/bicep-types-radius:edge`, mirrors the same manifest digest to `biceptypes.azurecr.io/radius:latest`, and verifies both destinations. The first GHCR upload may create the package. GHCR stable `latest`, full-version/RC tags, AWS publishing and existing ACR reads are outside this main-only change. Started pairs finish or fail visibly rather than silently skipping the mirror.
+
+The `bicep-types-radius-<run-id>.tar` snapshot and per-attempt receipts have 30-day retention. Current-main retries reuse the snapshot without rebuilding. A stale first attempt skips before mutation; a superseded retry fails closed because previous writes may be partial. Inspect both destinations and receipts before recovery from current main; missing/expired snapshots require a new approved run.
+
+#### Before merging the publisher
+
+1. Retain the upstream read-only snapshot architecture, downstream manual-writer restrictions and cloud credential isolation. Restrict elevated workflow definitions and production authority to trusted code, including maintained PR base branches; repository package grants are not per-workflow ACLs.
+2. Allow the source repository's `GITHUB_TOKEN` to create the canonical package; the trusted uploader requests `packages: write`. No PAT or separate publisher repository is needed.
+3. The caller forwards only existing repository secrets `BICEPTYPES_CLIENT_ID`, `BICEPTYPES_TENANT_ID` and `BICEPTYPES_SUBSCRIPTION_ID` to required callee declarations. Only the trusted publisher's Azure login references them. Verify the existing identity's ACR authorization and configure a federation binding scoped to this new main workflow. The current subject `repository_owner_id:93291507:repository_id:340522752:environment:publish-bicep` omits ref/workflow identity and alone cannot prove that scope. Establish the new mirror trust without changing legacy tag policy, existing issuer bindings or shared environment approval behavior. No live identity configuration is included here.
+4. Stop the external development writer and drain in-flight work before cutover. Leave the upstream release-tag publisher and its environment behavior intact.
+
+#### After the first upload
+
+The workflow verifies both uploaded digests before checking public visibility. Private/internal visibility or lookup failure fails the run but retains an `uploaded` receipt containing both digests. A package admin must use **Packages -> bicep-types-radius -> Package settings -> Change visibility -> Public**, then rerun and verify anonymous restore before switching consumers. Visibility is never changed automatically.
+
+Run the focused checks without registry credentials:
+
+```bash
+node --test .github/scripts/bicep-types.test.mjs
+actionlint .github/workflows/build-main.yaml .github/workflows/__publish-bicep-types.yaml
+```
+
 ## Verification
 
 - The workflow you changed runs green on your pull request (open it as a draft first if you want to iterate).
