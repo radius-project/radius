@@ -212,6 +212,12 @@ if [[ "$1" == "api" ]]; then
         */contents/docs/release-notes/v0.60.0.md*)
             cat "${FIXTURES}/release-note.md"
             ;;
+        */contents/.github/release-parity/targets.json*)
+            cat "${FIXTURES}/targets.json"
+            ;;
+        */contents/.github/release-plans/v0.60.0.yaml*)
+            cat "${FIXTURES}/plan.json"
+            ;;
         *)
             echo "unexpected gh api endpoint: ${endpoint}" >&2
             exit 1
@@ -354,7 +360,9 @@ cat >"${FAKE_BIN}/yq" <<'EOF'
 #!/bin/bash
 set -euo pipefail
 
-if [[ "$1" == "eval" ]]; then
+if [[ "$1" == "-o=json" ]]; then
+    cat
+elif [[ "$1" == "eval" ]]; then
     cat <<'JSON'
 {
   "apiVersion": "v2",
@@ -395,7 +403,7 @@ chmod +x "${FAKE_BIN}/yq"
 
 run_collector() {
     PATH="${FAKE_BIN}:${PATH}" \
-        RELEASE_PARITY_TARGETS="${TARGETS}" \
+        RELEASE_PARITY_TARGETS="${TARGET_OVERRIDE-${TARGETS}}" \
         RELEASE_PARITY_OBSERVED_AT="2026-08-19T01:00:00Z" \
         RELEASE_PARITY_RUNTIME_ASSET="rad_linux_amd64" \
         bash "${SCRIPT_DIR}/release-parity-manifest.sh" \
@@ -405,6 +413,9 @@ run_collector() {
 
 run_collector
 cp "${OUTPUT}" "${FIRST_OUTPUT}"
+TARGET_OVERRIDE="" run_collector
+cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
+    fail "historical source contract was replaced by current main targets"
 run_collector
 cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
     fail "collector output was not deterministic"
@@ -569,6 +580,10 @@ if run_collector 2>/dev/null; then
     fail "GHCR collection accepted no approved plan"
 fi
 run_collector --plan-file "${FIXTURES}/plan.json"
+cp "${OUTPUT}" "${FIRST_OUTPUT}"
+TARGET_OVERRIDE="" run_collector
+cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
+    fail "standalone GHCR inspection did not load the committed source plan"
 jq -e '
     (.downstream.ociArtifacts | length) == 2
     and all(.downstream.ociArtifacts[]; .reference | endswith(":0.60.0"))

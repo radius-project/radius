@@ -20,6 +20,15 @@ name: build-release
 
 on:
   workflow_dispatch:
+    inputs:
+      generation-run-id:
+        description: Original Radius Bicep capture run for cross-run recovery; supply with its original attempt.
+        type: string
+        default: ""
+      generation-run-attempt:
+        description: Original successful Radius Bicep capture attempt.
+        type: string
+        default: ""
   push:
     tags:
       - v*
@@ -42,14 +51,21 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
-      contents: read # Required for release and source inspection
+      contents: write # Draft release lock inspection requires push access
       packages: read # Required for immutable image and OCI verification
+      actions: read
+      pull-requests: read
     outputs:
       release-state: ${{ steps.release-state.outputs.result }}
+      ghcr-bicep: ${{ steps.bicep-state.outputs.ghcr }}
+      bicep-locked: ${{ steps.bicep-state.outputs.locked }}
+      generation-run-id: ${{ steps.bicep-state.outputs.generation_run_id }}
+      generation-run-attempt: ${{ steps.bicep-state.outputs.generation_run_attempt }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Parse and validate release tag
@@ -96,6 +112,22 @@ jobs:
               return 'absent'
             }
             return matches[0].draft ? 'draft' : 'published'
+
+      - name: Install Bicep reconciliation tools
+        run: make install-jq install-yq install-oras
+
+      - name: Reconcile extension contract and retained generation
+        id: bicep-state
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OPERATION: preflight
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-preflight
+          INPUT_GENERATION_RUN_ID: ${{ inputs.generation-run-id }}
+          INPUT_GENERATION_RUN_ATTEMPT: ${{ inputs.generation-run-attempt }}
+        with:
+          script: |
+            const {default: stage} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/stage-release-bicep.mjs`)
+            await stage({github, context, core})
 
       - name: Login to GitHub Container Registry
         if: steps.release-state.outputs.result == 'published'
@@ -821,8 +853,8 @@ jobs:
       packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
 
-  build-and-push-bicep-types:
-    name: Publish Bicep types
+  publish-legacy-bicep-types:
+    name: Publish legacy Bicep types
     needs:
       - release-preflight
       - goreleaser-release
@@ -831,7 +863,8 @@ jobs:
     if: >-
       github.repository == 'radius-project/radius' &&
       startsWith(github.ref, 'refs/tags/v') &&
-      needs.release-preflight.outputs.release-state != 'published'
+      needs.release-preflight.outputs.release-state != 'published' &&
+      needs.release-preflight.outputs.ghcr-bicep == 'false'
     uses: ./.github/workflows/__build-bicep-types.yaml
     # The publisher bot credentials are read inside the called job, which is the
     # only job that carries the publish-bicep environment. Environment secrets
@@ -840,6 +873,69 @@ jobs:
     secrets: inherit
     permissions:
       contents: read # Required for actions/checkout
+
+  publish-radius-bicep-extension:
+    name: Stage full-version Radius Bicep extension
+    needs:
+      - release-preflight
+      - goreleaser-release
+      - build-and-push-remaining-images
+      - build-and-push-helm-chart
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.release-preflight.outputs.release-state != 'published' &&
+      needs.release-preflight.outputs.ghcr-bicep == 'true' &&
+      needs.release-preflight.outputs.bicep-locked != 'true'
+    uses: ./.github/workflows/__publish-release-bicep.yaml
+    with:
+      generation-run-id: ${{ needs.release-preflight.outputs.generation-run-id }}
+      generation-run-attempt: ${{ needs.release-preflight.outputs.generation-run-attempt }}
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      packages: write
+
+  build-and-push-bicep-types:
+    name: Reconcile paired Bicep extension lock
+    needs: [release-preflight, publish-radius-bicep-extension, publish-legacy-bicep-types]
+    if: >-
+      !cancelled() && needs.release-preflight.result == 'success' &&
+      needs.release-preflight.outputs.release-state != 'published' &&
+      (needs.publish-legacy-bicep-types.result == 'success' ||
+       (needs.release-preflight.outputs.ghcr-bicep == 'true' &&
+        (needs.publish-radius-bicep-extension.result == 'success' ||
+         needs.release-preflight.outputs.bicep-locked == 'true')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+      packages: read
+    steps:
+      - name: Checkout approved release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install lock tools
+        if: needs.release-preflight.outputs.ghcr-bicep == 'true'
+        run: make install-jq install-yq install-oras
+
+      - name: Authenticate and retain immutable extension pair
+        if: needs.release-preflight.outputs.ghcr-bicep == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OPERATION: lock
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-pair
+          INPUT_RADIUS_RECORD: ${{ needs.publish-radius-bicep-extension.outputs.record }}
+        with:
+          script: |
+            const {default: stage} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/stage-release-bicep.mjs`)
+            await stage({github, context, core})
 
   verify-release:
     name: Verify release manifest and staged installation
@@ -982,6 +1078,7 @@ jobs:
       contents: write # Required for publishing the draft GitHub Release
       packages: write # Required for promoting image and CLI OCI aliases
       actions: read
+      id-token: write # Tagged finalizer's explicitly configured ACR mirror identity
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1085,6 +1182,45 @@ jobs:
           GORELEASER_PRODUCTION_IMAGE_LOCK=dist/verification/release-image-digests.json \
             GORELEASER_CLI_LOCK=dist/verification/release-cli-oci.json \
             make promote-release-aliases
+
+      - name: Authenticate tagged finalizer for ACR compatibility
+        if: >-
+          needs.release-preflight.outputs.ghcr-bicep == 'true' &&
+          (contains(github.ref_name, '-rc.') ||
+           steps.alias-policy.outputs.promote_channel == 'true')
+        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.0
+        with:
+          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
+          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
+          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
+
+      - name: Login to fixed compatibility registry
+        if: >-
+          needs.release-preflight.outputs.ghcr-bicep == 'true' &&
+          (contains(github.ref_name, '-rc.') ||
+           steps.alias-policy.outputs.promote_channel == 'true')
+        run: az acr login --name biceptypes
+
+      - name: Promote and mirror locked Bicep extensions
+        if: needs.release-preflight.outputs.ghcr-bicep == 'true'
+        env:
+          RELEASE_PROMOTE_CHANNEL: ${{ steps.alias-policy.outputs.promote_channel }}
+          RELEASE_PROMOTE_LATEST: ${{ steps.alias-policy.outputs.promote_latest }}
+        run: |
+          bash ./.github/scripts/release-oci-artifacts.sh finalize-bicep \
+            --version "${REL_VERSION}" --source-sha "${SOURCE_SHA}" \
+            --bicep-plan dist/verification/plan.json \
+            --bicep-lock dist/verification/assets/bicep-extension-lock.json \
+            --output dist/bicep-publication-receipt.json
+
+      - name: Retain partial Bicep promotion and mirror receipt
+        if: always() && needs.release-preflight.outputs.ghcr-bicep == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bicep-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist/bicep-publication-receipt.json
+          if-no-files-found: warn
+          retention-days: 90
 
       - name: Publish and verify draft GitHub Release
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0

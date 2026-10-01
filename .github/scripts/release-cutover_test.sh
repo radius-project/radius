@@ -66,6 +66,8 @@ test_release_job_graph() {
         "coordinate-release",
         "finalize-release",
         "goreleaser-release",
+        "publish-legacy-bicep-types",
+        "publish-radius-bicep-extension",
         "release-preflight",
         "verify-release"
     ]'
@@ -102,6 +104,15 @@ test_publication_gate() {
         (."finalize-release".if | contains("needs.approve-publication.result")) and
         (."finalize-release".steps | map(.name) |
           index("Recheck outputs after approval") < index("Select release aliases")) and
+        (."finalize-release".steps | map(.name) |
+          index("Recheck outputs after approval") < index("Authenticate tagged finalizer for ACR compatibility") and
+          index("Promote and mirror locked Bicep extensions") < index("Publish and verify draft GitHub Release")) and
+        ."finalize-release".permissions."id-token" == "write" and
+        ."publish-radius-bicep-extension".uses == "./.github/workflows/__publish-release-bicep.yaml" and
+        (."publish-legacy-bicep-types".if | contains("ghcr-bicep == '\''false'\''")) and
+        (."publish-radius-bicep-extension".if | contains("ghcr-bicep == '\''true'\''")) and
+        ([."release-preflight", ."build-and-push-bicep-types", ."finalize-release"] |
+          all(.steps | all((.uses // "" | contains("create-github-app-token")) | not))) and
         (."finalize-release".steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json"))
     ' >/dev/null; then
         fail_test "failed verification or missing approval can reach publication"
@@ -134,6 +145,8 @@ test_privileged_jobs_require_preflight() {
         build-and-push-remaining-images \
         build-and-push-helm-chart \
         build-and-push-bicep-types \
+        publish-legacy-bicep-types \
+        publish-radius-bicep-extension \
         finalize-release; do
         needs="$(JOB="${job}" yq -o=json '
             .jobs[strenv(JOB)].needs
@@ -355,7 +368,7 @@ test_release_resume_contract() {
     published_guards="$(grep -Fc \
         "needs.release-preflight.outputs.release-state != 'published'" \
         "${RELEASE_WORKFLOW}")"
-    if [[ "${published_guards}" != "6" ]]; then
+    if [[ "${published_guards}" != "8" ]]; then
         fail_test "published releases can re-enter mutating jobs"
         return
     fi

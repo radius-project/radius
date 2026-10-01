@@ -158,13 +158,32 @@ export async function prepareRelease(
     { "org.opencontainers.image.version": expected.version },
     run
   );
-  await verifyRun(github, bundle.source);
+  await verifyGeneration(github, bundle.source, artifact);
+  const record = {
+    ...expected,
+    digest: bundle.manifestDigest,
+    generation: {
+      workflow,
+      runId: bundle.source.runId,
+      runAttempt: bundle.source.generationAttempt,
+      artifactId: artifact.id,
+      artifactDigest: artifact.digest
+    }
+  };
+  const receipt = { status: "prepared", record };
+  await save(join(directory, "receipt.json"), receipt);
+  return receipt;
+}
+
+export async function verifyGeneration(github, source, artifact) {
+  verifySnapshot(artifact, source);
+  await verifyRun(github, source);
   const jobs = await github.paginate(
     github.rest.actions.listJobsForWorkflowRunAttempt,
     {
       ...repo,
       run_id: source.runId,
-      attempt_number: bundle.source.generationAttempt,
+      attempt_number: source.generationAttempt,
       per_page: 100,
       request: request()
     }
@@ -184,20 +203,6 @@ export async function prepareRelease(
       created <= Date.parse(captures[0].completed_at),
     "Snapshot was not uploaded by the recorded generation attempt"
   );
-  const record = {
-    ...expected,
-    digest: bundle.manifestDigest,
-    generation: {
-      workflow,
-      runId: bundle.source.runId,
-      runAttempt: bundle.source.generationAttempt,
-      artifactId: artifact.id,
-      artifactDigest: artifact.digest
-    }
-  };
-  const receipt = { status: "prepared", record };
-  await save(join(directory, "receipt.json"), receipt);
-  return receipt;
 }
 
 // ORAS's exact resolver-not-found diagnostic is the only absence result.

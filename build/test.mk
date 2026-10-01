@@ -93,6 +93,7 @@ test-release-plan: ## Tests release plan schema, policy, source, and file valida
 
 .PHONY: test-release-controller
 test-release-controller: ## Tests release controller input binding and stage ordering
+	@node --test ./.github/scripts/collect-release-bicep.test.mjs
 	@node --test ./.github/scripts/dispatch-release-controller_test.mjs
 	@node --test ./.github/scripts/reconcile-release-controller-lock_test.mjs
 	@node --test ./.github/scripts/resolve-release-controller_test.mjs
@@ -136,6 +137,7 @@ test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
 .PHONY: test-release-oci-artifacts
 .PHONY: test-release-publication
 test-release-publication: ## Tests mandatory publication gates, staged installation, coordination, and reporting
+	@node --test ./.github/scripts/promote-release-bicep.test.mjs ./.github/scripts/publish-release-bicep.test.mjs
 	@node --test ./.github/scripts/verify-release-manifest_test.mjs ./.github/scripts/coordinate-release_test.mjs ./.github/scripts/release-status_test.mjs
 	@bash ./.github/scripts/release-verification_test.sh
 

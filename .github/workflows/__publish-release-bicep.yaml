@@ -2,7 +2,7 @@
 ---
 name: __publish-release-bicep
 
-# Preparatory only: build-release does not call this until the coordinated cutover.
+# The tagged release caller selects this only for the approved ghcr-v1 contract.
 on:
   workflow_call:
     inputs:

@@ -37,6 +37,8 @@ ARTIFACTS_FILE=""
 ARTIFACTS_DIR=""
 IMAGE_LOCK=""
 CLI_LOCK=""
+BICEP_LOCK=""
+BICEP_PLAN=""
 OUTPUT=""
 CATEGORIES="production,non-go"
 NAMES=""
@@ -162,6 +164,9 @@ Usage:
     release-oci-artifacts.sh assert-images-absent --registry <registry> \
         --version <version> [--categories <category,...>] [--names <name,...>] \
         [--source-sha <sha>]
+    release-oci-artifacts.sh finalize-bicep --version <version> \
+        --source-sha <sha> --bicep-plan <plan.json> --bicep-lock <lock.json> \
+        --output <receipt.json>
 EOF
 }
 
@@ -201,6 +206,14 @@ parse_args() {
                 ;;
             --cli-lock)
                 CLI_LOCK="${2:-}"
+                shift 2
+                ;;
+            --bicep-lock)
+                BICEP_LOCK="${2:-}"
+                shift 2
+                ;;
+            --bicep-plan)
+                BICEP_PLAN="${2:-}"
                 shift 2
                 ;;
             --output)
@@ -1174,6 +1187,20 @@ main() {
         pin-image) pin_image ;;
         stage-cli) stage_cli ;;
         promote) promote_aliases ;;
+        finalize-bicep)
+            require_command node
+            validate_source_sha
+            [[ -f "${BICEP_PLAN}" && -f "${BICEP_LOCK}" ]] ||
+                fail "approved Bicep plan and lock are required"
+            [[ -n "${OUTPUT}" ]] || fail "Bicep receipt output is required"
+            jq -e --arg version "v${VERSION}" '.version == $version' \
+                "${BICEP_PLAN}" >/dev/null ||
+                fail "Bicep plan version differs from release"
+            node "${SCRIPT_DIR}/promote-release-bicep.mjs" \
+                "${BICEP_PLAN}" "${SOURCE_SHA}" "${BICEP_LOCK}" \
+                "${RELEASE_PROMOTE_CHANNEL:?RELEASE_PROMOTE_CHANNEL is required}" \
+                "${PROMOTE_LATEST}" "${OUTPUT}"
+            ;;
         verify) verify_locks ;;
         assert-images-absent) assert_images_absent ;;
         *) fail "unknown command: ${COMMAND}" ;;
