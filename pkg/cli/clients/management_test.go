@@ -894,6 +894,53 @@ func Test_ForceDeletePolicy(t *testing.T) {
 	})
 }
 
+// Radius.Core resources are only served at 2025-08-01-preview. The generic client otherwise falls
+// back to the default 2023-10-01-preview, which the server rejects for these types, so every write
+// path has to pin the version the same way the read paths do.
+func Test_CreateOrUpdateResource_RadiusCoreAPIVersion(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name            string
+		resourceType    string
+		expectedVersion string
+	}{
+		{"radius core pins the supported version", "Radius.Core/terraformSettings", "2025-08-01-preview"},
+		{"radius core is matched case-insensitively", "radius.core/environments", "2025-08-01-preview"},
+		{"applications core keeps the default", "Applications.Core/extenders", "2023-10-01-preview"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var capturedURLs []string
+			transport := &mockTransport{
+				do: func(req *http.Request) (*http.Response, error) {
+					capturedURLs = append(capturedURLs, req.URL.String())
+					header := http.Header{}
+					header.Set("Content-Type", "application/json")
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     header,
+						Body:       io.NopCloser(strings.NewReader(`{"id": "` + testScope + `/providers/` + tt.resourceType + `/myresource", "properties": {"provisioningState": "Succeeded"}}`)),
+						Request:    req,
+					}, nil
+				},
+			}
+
+			client := &UCPApplicationsManagementClient{
+				RootScope:     testScope,
+				ClientOptions: &arm.ClientOptions{Transport: transport},
+			}
+
+			_, err := client.CreateOrUpdateResource(t.Context(), tt.resourceType, "myresource", &generated.GenericResource{})
+			require.NoError(t, err)
+
+			require.NotEmpty(t, capturedURLs)
+			require.Contains(t, capturedURLs[0], "api-version="+tt.expectedVersion)
+		})
+	}
+}
+
 func Test_DeleteResource_ForceQueryParameter(t *testing.T) {
 	t.Parallel()
 

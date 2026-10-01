@@ -17,6 +17,7 @@ limitations under the License.
 package resource_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
@@ -93,8 +94,8 @@ func newS3BackendFixture(ctx context.Context, t *testing.T, name string) cloudBa
 	require.NoError(t, err)
 
 	return cloudBackendFixture{
-		settings:     map[string]any{"type": "s3", "bucket": bucket, "region": region},
-		prefix:       "radius", // Omit keyPrefix to exercise the default.
+		settings:     map[string]any{"type": "s3", "bucket": bucket, "region": region, "keyPrefix": "e2e/" + name},
+		prefix:       "e2e/" + name,
 		providers:    map[string]any{"aws": map[string]any{"accountId": account, "region": region}},
 		resourceType: "aws_s3_bucket",
 		resourceID:   func(name string) string { return name },
@@ -106,6 +107,12 @@ func newS3BackendFixture(ctx context.Context, t *testing.T, name string) cloudBa
 				return nil, err
 			}
 			return readCloudStateBody(response.Body)
+		},
+		write: func(ctx context.Context, key string, body []byte) error {
+			_, err := client.PutObject(ctx, &s3.PutObjectInput{
+				Bucket: new(bucket), Key: new(key), Body: bytes.NewReader(body), ExpectedBucketOwner: new(account),
+			})
+			return err
 		},
 		keys: func(ctx context.Context) ([]string, error) {
 			var keys []string

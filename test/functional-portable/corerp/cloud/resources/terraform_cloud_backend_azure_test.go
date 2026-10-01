@@ -149,6 +149,10 @@ func newAzureBackendFixture(ctx context.Context, t *testing.T, name string) clou
 			}
 			return readCloudStateBody(response.Body)
 		},
+		write: func(ctx context.Context, key string, body []byte) error {
+			_, err := blobClient.UploadBuffer(ctx, container, key, body, nil)
+			return err
+		},
 		keys: func(ctx context.Context) ([]string, error) {
 			var keys []string
 			pager := blobClient.NewListBlobsFlatPager(container, nil)

@@ -1384,6 +1384,12 @@ func (amc *UCPApplicationsManagementClient) createRadiusCoreEnvironmentClient(sc
 }
 
 func (amc *UCPApplicationsManagementClient) createGenericClient(scope string, resourceType string, apiVersion ...string) (genericResourceClient, error) {
+	// Radius.Core resources require a specific API version, matching getGenericClient. Without this
+	// the default below is used, and the server rejects the request for the resource type.
+	if isRadiusCoreType(resourceType) {
+		apiVersion = []string{"2025-08-01-preview"}
+	}
+
 	if amc.genericResourceClientFactory == nil {
 		clientOptions := *amc.ClientOptions
 		if len(apiVersion) != 0 {

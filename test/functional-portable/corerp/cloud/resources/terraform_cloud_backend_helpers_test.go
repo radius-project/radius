@@ -236,14 +236,14 @@ func TestTerraformCloudRadiusCleanup(t *testing.T) {
 // These helper tests need neither TestOptions nor cloud/Kubernetes credentials.
 func TestTerraformCloudStateHelpers(t *testing.T) {
 	t.Run("key identity and prefix", func(t *testing.T) {
-		resource := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/extenders/a"
-		key := expectedCloudStateKey("radius", "env", "app", resource)
-		require.Regexp(t, `^radius/[0-9a-f]{40}\.tfstate$`, key)
-		require.Equal(t, key, expectedCloudStateKey("radius", "ENV", "APP", strings.ToUpper(resource)))
-		require.NotEqual(t, key, expectedCloudStateKey("radius", "env", "app", resource+"b"))
-		require.NotEqual(t, key, expectedCloudStateKey("radius", "other-env", "app", resource))
-		require.NotEqual(t, key, expectedCloudStateKey("radius", "env", "other-app", resource))
-		require.Equal(t, "custom/nested/"+strings.TrimPrefix(key, "radius/"), expectedCloudStateKey("custom/nested", "env", "app", resource))
+		resource := "/planes/radius/local/resourceGroups/test/providers/Test.CloudBackend/stateResource/a"
+		key := expectedCloudStateKey("e2e", "env", "app", resource)
+		require.Regexp(t, `^e2e/[0-9a-f]{40}\.tfstate$`, key)
+		require.Equal(t, key, expectedCloudStateKey("e2e", "ENV", "APP", strings.ToUpper(resource)))
+		require.NotEqual(t, key, expectedCloudStateKey("e2e", "env", "app", resource+"b"))
+		require.NotEqual(t, key, expectedCloudStateKey("e2e", "other-env", "app", resource))
+		require.NotEqual(t, key, expectedCloudStateKey("e2e", "env", "other-app", resource))
+		require.Equal(t, "custom/nested/"+strings.TrimPrefix(key, "e2e/"), expectedCloudStateKey("custom/nested", "env", "app", resource))
 	})
 	t.Run("parse without exposing state", func(t *testing.T) {
 		body := []byte(`{"version":4,"lineage":"lineage-a","serial":2,"resources":[{"mode":"managed","type":"aws_s3_bucket","instances":[{"attributes":{"id":"bucket-a","tags":{"revision":"two"},"secret":"do-not-log"}}]}]}`)
