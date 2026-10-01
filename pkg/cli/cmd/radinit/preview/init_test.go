@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -691,13 +692,19 @@ func newBicepConfigTestRunner(t *testing.T) (*Runner, string) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 
+	workspace := &workspaces.Workspace{
+		Name:        "default",
+		Scope:       "/planes/radius/local/resourceGroups/default",
+		Environment: "/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default",
+	}
+
 	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 	configFileInterface.EXPECT().
 		ConfigFromContext(t.Context()).
 		Return(nil).
 		Times(1)
 	configFileInterface.EXPECT().
-		EditWorkspaces(t.Context(), gomock.Any(), gomock.Any()).
+		EditWorkspaces(t.Context(), gomock.Any(), workspace).
 		Return(nil).
 		Times(1)
 
@@ -765,11 +772,7 @@ func newBicepConfigTestRunner(t *testing.T) (*Runner, string) {
 				Namespace: "defaultNamespace",
 			},
 		},
-		Workspace: &workspaces.Workspace{
-			Name:        "default",
-			Scope:       "/planes/radius/local/resourceGroups/default",
-			Environment: "/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default",
-		},
+		Workspace: workspace,
 	}
 
 	tempDir := t.TempDir()
@@ -807,6 +810,28 @@ func Test_Run_WritesBicepConfig(t *testing.T) {
 		require.Equal(t, existing, string(b))
 
 		require.NoFileExists(t, filepath.Join(tempDir, "app.bicep"))
+	})
+
+	t.Run("saves workspace when working directory is not writable", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("directory permissions are not enforced the same way on Windows")
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("root ignores directory permissions")
+		}
+
+		// The mock expects EditWorkspaces to be called with the runner's workspace exactly once.
+		runner, tempDir := newBicepConfigTestRunner(t)
+
+		err := os.Chmod(tempDir, 0555)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = os.Chmod(tempDir, 0755) })
+
+		err = runner.Run(t.Context())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "bicepconfig.json")
+
+		require.NoFileExists(t, filepath.Join(tempDir, "bicepconfig.json"))
 	})
 }
 
