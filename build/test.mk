@@ -115,6 +115,10 @@ test-release-branch-commits: ## Tests Conventional Commit validation for release
 test-build-summary: ## Tests the build job summary rendering shared by the build workflows
 	@bash ./.github/scripts/build-summary_test.sh
 
+.PHONY: test-publishing-isolation
+test-publishing-isolation: ## Tests publishing boundaries without credentials (requires Node.js, yq and OpenSSL)
+	@node --test .github/scripts/cloud-test-artifacts.test.mjs
+
 .PHONY: test-capture-release-image-digests
 test-capture-release-image-digests: ## Tests production release image digest capture
 	@bash ./.github/scripts/capture-release-image-digests_test.sh
