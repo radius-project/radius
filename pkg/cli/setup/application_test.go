@@ -109,3 +109,29 @@ func Test_WriteBicepConfig_KeepsExistingFile(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "something else", string(b))
 }
+
+func Test_WriteBicepConfig_ExistingDirectoryIsPreserved(t *testing.T) {
+	directory := t.TempDir()
+	bicepConfigPath := filepath.Join(directory, "bicepconfig.json")
+
+	err := os.Mkdir(bicepConfigPath, 0755)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(bicepConfigPath, "keep.txt"), []byte("keep"), 0644)
+	require.NoError(t, err)
+
+	err = WriteBicepConfig(directory)
+	require.NoError(t, err)
+
+	require.DirExists(t, bicepConfigPath)
+	b, err := os.ReadFile(filepath.Join(bicepConfigPath, "keep.txt"))
+	require.NoError(t, err)
+	require.Equal(t, "keep", string(b))
+}
+
+func Test_WriteBicepConfig_ReturnsErrorWhenDirectoryMissing(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "does-not-exist")
+
+	err := WriteBicepConfig(directory)
+	require.Error(t, err)
+	require.NoFileExists(t, filepath.Join(directory, "bicepconfig.json"))
+}
