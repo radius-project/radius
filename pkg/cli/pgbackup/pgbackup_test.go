@@ -77,7 +77,7 @@ func Test_IsControlPlaneEmpty_NoResourcesTableInDump(t *testing.T) {
 func Test_IsControlPlaneEmpty_HasDataRows(t *testing.T) {
 	dir := t.TempDir()
 	dump := "COPY public.resources (id, resource_type) FROM stdin;\n" +
-		"/planes/radius/local/resourcegroups/default\tresourcegroups\n" +
+		"/planes/radius/local/resourcegroups/default\t/system.resources/resourcegroups/\n" +
 		"\\.\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(dump), 0o644))
 
@@ -126,6 +126,84 @@ func Test_IsControlPlaneEmpty_LongDataRow(t *testing.T) {
 	// Longer than bufio.Scanner's 64KB default token size.
 	longRow := "/planes/radius/local/resourcegroups/default\t" + strings.Repeat("x", 200*1024)
 	dump := "COPY public.resources (id, properties) FROM stdin;\n" + longRow + "\n\\.\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(dump), 0o644))
+
+	empty, err := IsControlPlaneEmpty(dir)
+	require.NoError(t, err)
+	require.False(t, empty)
+}
+
+// resourcesHeader is the COPY header pg_dump --format=plain writes for the resources table
+// (deploy/Chart/templates/database/configmap-initdb.yaml).
+const resourcesHeader = "COPY public.resources (id, original_id, resource_type, root_scope, routing_scope, etag, created_at, resource_data) FROM stdin;\n"
+
+// row builds one COPY data row for the resources table with the given normalized resource_type.
+func row(id, originalID, resourceType, routingScope string) string {
+	return id + "\t" + originalID + "\t" + resourceType + "\t/planes/radius/local/\t" + routingScope + "\tetag\t2026-09-30 10:00:00.000000+00\t{}\n"
+}
+
+// seedOnlyDump is what a reset control plane dumps: UCP re-registers its resource provider metadata
+// on every boot and creates its planes from configuration, so the resources table is never empty.
+var seedOnlyDump = resourcesHeader +
+	row("/planes/radius/local/", "/planes/radius/local", "/system.radius/planes/", "/system.radius/planes/local/") +
+	row("/planes/radius/local/providers/system.resources/resourceproviders/applications.core/", "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Core", "/system.resources/resourceproviders/", "/system.resources/resourceproviders/applications.core/") +
+	row("/planes/radius/local/providers/system.resources/resourceproviders/applications.core/resourcetypes/environments/", "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Core/resourceTypes/environments", "/system.resources/resourceproviders/resourcetypes/", "/system.resources/resourceproviders/applications.core/resourcetypes/environments/") +
+	row("/planes/radius/local/providers/system.resources/resourceproviders/applications.core/resourcetypes/environments/apiversions/2023-10-01-preview/", "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Core/resourceTypes/environments/apiVersions/2023-10-01-preview", "/system.resources/resourceproviders/resourcetypes/apiversions/", "/system.resources/resourceproviders/applications.core/resourcetypes/environments/apiversions/2023-10-01-preview/") +
+	row("/planes/radius/local/providers/system.resources/resourceproviders/applications.core/locations/global/", "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Core/locations/global", "/system.resources/resourceproviders/locations/", "/system.resources/resourceproviders/applications.core/locations/global/") +
+	row("/planes/radius/local/providers/system.resources/resourceprovidersummaries/applications.core/", "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/Applications.Core", "/system.resources/resourceprovidersummaries/", "/system.resources/resourceprovidersummaries/applications.core/")
+
+var resourceGroupRow = row("/planes/radius/local/resourcegroups/default/", "/planes/radius/local/resourceGroups/default", "/system.resources/resourcegroups/", "/system.resources/resourcegroups/default/")
+
+func Test_IsControlPlaneEmpty_OnlySeedRows(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(seedOnlyDump+"\\.\n"), 0o644))
+
+	empty, err := IsControlPlaneEmpty(dir)
+	require.NoError(t, err)
+	require.True(t, empty, "provider metadata and planes are seeded on every boot, so they are not user data")
+}
+
+func Test_IsControlPlaneEmpty_SeedRowsAndAResourceGroup(t *testing.T) {
+	dir := t.TempDir()
+	dump := seedOnlyDump + resourceGroupRow + "\\.\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(dump), 0o644))
+
+	empty, err := IsControlPlaneEmpty(dir)
+	require.NoError(t, err)
+	require.False(t, empty, "a resource group is user-created data")
+}
+
+func Test_IsControlPlaneEmpty_TruncatedBlock(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(seedOnlyDump), 0o644))
+
+	empty, err := IsControlPlaneEmpty(dir)
+	require.NoError(t, err)
+	require.True(t, empty, "a resources block that ends before its terminator has no user data to protect")
+}
+
+func Test_IsControlPlaneEmpty_ChecksEveryResourcesTable(t *testing.T) {
+	dir := t.TempDir()
+	// A seed-only resources table in another schema must not decide the answer for public.resources.
+	other := "COPY other.resources (id, original_id, resource_type, root_scope, routing_scope, etag, created_at, resource_data) FROM stdin;\n" +
+		row("/planes/radius/local/", "/planes/radius/local", "/system.radius/planes/", "/system.radius/planes/local/") + "\\.\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(other+seedOnlyDump+resourceGroupRow+"\\.\n"), 0o644))
+
+	empty, err := IsControlPlaneEmpty(dir)
+	require.NoError(t, err)
+	require.False(t, empty, "user data in any resources table means the snapshot is not empty")
+
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(other+seedOnlyDump+"\\.\n"), 0o644))
+	empty, err = IsControlPlaneEmpty(dir)
+	require.NoError(t, err)
+	require.True(t, empty, "seed rows in every resources table is still empty")
+}
+
+func Test_IsControlPlaneEmpty_NoResourceTypeColumn(t *testing.T) {
+	dir := t.TempDir()
+	// Without a resource_type column seed rows cannot be told apart, so any row counts as user data
+	// rather than refusing to persist a real snapshot.
+	dump := "COPY public.resources (id, original_id) FROM stdin;\n/planes/radius/local/\t/planes/radius/local\n\\.\n"
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(dump), 0o644))
 
 	empty, err := IsControlPlaneEmpty(dir)
