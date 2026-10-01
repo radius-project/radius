@@ -76,9 +76,12 @@ resource demo 'Radius.Compute/containers@2025-08-01-preview' = {
 ` // Trailing newline intentional.
 
 	bicepConfigTemplate = `{
+	"experimentalFeaturesEnabled": {
+		"ociEnabled": true
+	},
 	"extensions": {
-		"radius": "br:biceptypes.azurecr.io/radius:%s",
-		"aws": "br:biceptypes.azurecr.io/aws:%s"
+		"radius": "br:ghcr.io/radius-project/bicep-types-radius:%s",
+		"aws": "br:ghcr.io/radius-project/bicep-types-aws:%s"
 	}
 }`
 )
@@ -116,9 +119,5 @@ func ScaffoldApplication(directory string, template string) error {
 // Bicep extensions pinned to the current release channel.
 func GetVersionedBicepConfig() string {
 	tag := version.Channel()
-	if version.IsEdgeChannel() {
-		tag = "latest"
-	}
-
 	return fmt.Sprintf(bicepConfigTemplate, tag, tag)
 }

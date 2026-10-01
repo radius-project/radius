@@ -92,8 +92,8 @@ env:
   TF_RECIPE_MODULE_SERVER_URL: http://tf-module-server.radius-test-tf-module-server.svc.cluster.local
   # Private Git repository where terraform module for testing is stored.
   TF_RECIPE_PRIVATE_GIT_SOURCE: git::https://github.com/radius-project/terraform-private-modules//kubernetes-redis
-  # bicep-types ACR url for pulling latest Radius Bicep types (AWS)
-  BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
+  # Public production AWS extension (private Test-tenant types stay separate).
+  BICEP_TYPES_REGISTRY: ghcr.io/radius-project
   # bicep-types ACR url for uploading test Radius Bicep types
   TEST_BICEP_TYPES_REGISTRY: ${{ vars.TEST_BICEP_TYPES_REGISTRY }}
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
@@ -423,17 +423,19 @@ jobs:
         run: make generate-bicep-types VERSION="${REL_VERSION}"
 
       - name: Publish Radius types locally
+        # OCI publishing treats loopback names as HTTP; use the existing TLS alias.
         run: |
           bicep publish-extension ./hack/bicep-types-radius/generated/index.json \
-            --target "br:localhost:5000/test/radius:${REL_VERSION}" --force
+            --target "br:radius-registry:5000/test/radius:${REL_VERSION}" --force
 
       - name: Generate test bicepconfig.json
         run: |
           cat <<EOF > ./test/bicepconfig.json
           {
+            "experimentalFeaturesEnabled": {"ociEnabled": true},
             "extensions": {
-              "radius": "br:localhost:5000/test/radius:${REL_VERSION}",
-              "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest"
+              "radius": "br:radius-registry:5000/test/radius:${REL_VERSION}",
+              "aws": "br:${BICEP_TYPES_REGISTRY}/bicep-types-aws:edge"
             }
           }
           EOF
@@ -449,7 +451,7 @@ jobs:
           rad version
           make publish-test-bicep-recipes
         env:
-          BICEP_RECIPE_REGISTRY: localhost:5000
+          BICEP_RECIPE_REGISTRY: radius-registry:5000
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
 
       - name: Checkout current export format
@@ -998,7 +1000,7 @@ jobs:
             "experimentalFeaturesEnabled": {"ociEnabled": true},
             "extensions": {
               "radius": "br:${TEST_BICEP_TYPES_REGISTRY}/test/radius:$RADIUS_VERSION",
-              "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest"
+              "aws": "br:${BICEP_TYPES_REGISTRY}/bicep-types-aws:edge"
             },
             "cloud": {
               "credentialPrecedence": ["AzureCLI", "Environment"]

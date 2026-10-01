@@ -53,8 +53,8 @@ env:
 
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY || 'ghcr.io/radius-project/dev' }}
-  # bicep-types ACR url for pulling latest Radius Bicep types (AWS)
-  BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
+  # Public production Radius and AWS extensions.
+  BICEP_TYPES_REGISTRY: ghcr.io/radius-project
   # bicep-types ACR url for uploading test Radius Bicep types
   TEST_BICEP_TYPES_REGISTRY: ${{ vars.TEST_BICEP_TYPES_REGISTRY }}
   # The radius functional test timeout
@@ -248,10 +248,10 @@ jobs:
 
           BICEP_CONFIG_FILE="./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json"
           TMP_FILE="$(mktemp)"
-          jq --arg radius "br:${BICEP_TYPES_REGISTRY}/radius:latest" \
-            --arg aws "br:${BICEP_TYPES_REGISTRY}/aws:latest" \
+          jq --arg radius "br:${BICEP_TYPES_REGISTRY}/bicep-types-radius:edge" \
+            --arg aws "br:${BICEP_TYPES_REGISTRY}/bicep-types-aws:edge" \
             --arg testresources "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" \
-            '.extensions.radius = $radius | .extensions.aws = $aws | .extensions.testresources = $testresources | .cloud.credentialPrecedence = ["AzureCLI", "Environment"]' \
+            '.experimentalFeaturesEnabled.ociEnabled = true | .extensions.radius = $radius | .extensions.aws = $aws | .extensions.testresources = $testresources | .cloud.credentialPrecedence = ["AzureCLI", "Environment"]' \
             "${BICEP_CONFIG_FILE}" > "${TMP_FILE}"
           mv "${TMP_FILE}" "${BICEP_CONFIG_FILE}"
         env:

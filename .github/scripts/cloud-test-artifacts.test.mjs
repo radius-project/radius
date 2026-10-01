@@ -711,7 +711,7 @@ test("workflow consumers use producer outputs, not setup or the retry attempt", 
   );
 });
 
-test("TLS-local setup precedes the candidate and keeps the existing generated config", async (t) => {
+test("TLS-local setup precedes the candidate and OCI consumers use the TLS alias", async (t) => {
   const steps = cloud.build.steps,
     directory = await temporary(t);
   const registry = step(cloud.build, "Create a job-local registry");
@@ -730,7 +730,7 @@ test("TLS-local setup precedes the candidate and keeps the existing generated co
       env: {
         ...process.env,
         REL_VERSION: env.REL_VERSION,
-        BICEP_TYPES_REGISTRY: "biceptypes.azurecr.io"
+        BICEP_TYPES_REGISTRY: "ghcr.io/radius-project"
       }
     }
   );
@@ -739,9 +739,84 @@ test("TLS-local setup precedes the candidate and keeps the existing generated co
   );
   assert.equal(
     config.extensions.radius,
-    `br:localhost:5000/test/radius:${env.REL_VERSION}`
+    `br:radius-registry:5000/test/radius:${env.REL_VERSION}`
   );
-  assert.notEqual(config.experimentalFeaturesEnabled?.ociEnabled, true);
+  assert.equal(
+    config.extensions.aws,
+    "br:ghcr.io/radius-project/bicep-types-aws:edge"
+  );
+  assert.equal(config.experimentalFeaturesEnabled.ociEnabled, true);
+  assert.match(
+    step(cloud.build, "Publish Radius types locally").run,
+    /br:radius-registry:5000\/test\/radius:/
+  );
+  assert.equal(
+    step(cloud.build, "Publish Bicep test recipes locally").env
+      .BICEP_RECIPE_REGISTRY,
+    "radius-registry:5000"
+  );
+  assert.equal(
+    step(cloud.build, "Build and publish container images locally").env
+      .DOCKER_REGISTRY,
+    "localhost:5000/images"
+  );
+});
+
+test("secure Kind workload DNS preserves CoreDNS and rejects a disconnected registry", async (t) => {
+  const directory = await temporary(t);
+  const action = readYaml(".github/actions/create-kind-cluster/action.yaml");
+  const steps = action.runs.steps;
+  const dns = step({ steps }, "Resolve the secure registry from cluster workloads");
+  assert.equal(
+    dns.if,
+    "${{ inputs.with-local-registry == 'true' && inputs.secure == 'true' }}"
+  );
+  assert.ok(
+    steps.indexOf(dns) >
+      steps.indexOf(step({ steps }, "Create a KinD cluster with a secure local registry"))
+  );
+  const original = ".:53 {\n    errors\n    kubernetes cluster.local\n    forward . /etc/resolv.conf\n}\n";
+  await save(join(directory, "original.json"), { data: { Corefile: original } });
+  await writeFile(
+    join(directory, "docker"),
+    '#!/bin/sh\nprintf "%s\\n" "$REGISTRY_IP"\n',
+    { mode: 0o755 }
+  );
+  await writeFile(
+    join(directory, "kubectl"),
+    `#!/bin/sh
+set -eu
+case "$*" in
+  "-n kube-system get configmap coredns -o json") cat "$FIXTURE_DIR/original.json" ;;
+  "apply -f -") cat > "$FIXTURE_DIR/applied.json" ;;
+  "-n kube-system rollout restart deployment/coredns") ;;
+  "-n kube-system rollout status deployment/coredns --timeout=90s") ;;
+  *) echo "Unexpected kubectl arguments: $*" >&2; exit 1 ;;
+esac
+`,
+    { mode: 0o755 }
+  );
+  const settings = {
+    ...process.env,
+    PATH: `${directory}:${process.env.PATH}`,
+    FIXTURE_DIR: directory,
+    INPUT_REGISTRY_NAME: "radius-registry",
+    REGISTRY_IP: "172.18.0.3"
+  };
+  execFileSync("bash", ["-c", dns.run], { env: settings });
+  const updated = JSON.parse(await readFile(join(directory, "applied.json")));
+  assert.equal(
+    updated.data.Corefile,
+    "radius-registry:53 {\n    hosts {\n        172.18.0.3 radius-registry\n    }\n}\n" + original
+  );
+  await rm(join(directory, "applied.json"));
+  const failed = spawnSync("bash", ["-c", dns.run], {
+    env: { ...settings, REGISTRY_IP: "" },
+    encoding: "utf8"
+  });
+  assert.equal(failed.status, 1);
+  assert.match(failed.stdout, /Secure registry is not connected/);
+  await assert.rejects(readFile(join(directory, "applied.json")), { code: "ENOENT" });
 });
 
 test("certificate properties and invalid-hostname rejection remain intact", async (t) => {
