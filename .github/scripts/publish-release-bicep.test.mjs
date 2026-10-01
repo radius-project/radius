@@ -699,7 +699,7 @@ test("script surfaces API/auth failures instead of returning success or regenera
   );
 });
 
-test("reusable workflow stays preparatory, separates generation credentials, and serializes release writers", async () => {
+test("release caller activates the credential-isolated full-version producer and serializes writers", async () => {
   const yaml = await readFile(
     new URL("../workflows/__publish-release-bicep.yaml", import.meta.url),
     "utf8"
@@ -712,7 +712,7 @@ test("reusable workflow stays preparatory, separates generation credentials, and
   for (const step of job.steps) {
     assert.ok(bundle.includes(`- name: ${step.name}\n`));
   }
-  assert.doesNotMatch(active, /uses:.*__publish-release-bicep/);
+  assert.match(active, /uses:.*__publish-release-bicep/);
   assert.doesNotMatch(
     yaml,
     /secrets:|id-token:|--force|azure\/login|ACR|create-github-app-token/
