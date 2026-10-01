@@ -1,0 +1,209 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __publish-release-bicep
+
+# Preparatory only: build-release does not call this until the coordinated cutover.
+on:
+  workflow_call:
+    inputs:
+      generation-run-id:
+        description: Original build-release run to reuse on cross-run recovery; supply with its capture attempt.
+        type: string
+        default: ""
+      generation-run-attempt:
+        description: Original successful capture attempt, not the later publishing attempt.
+        type: string
+        default: ""
+    outputs:
+      record:
+        description: One Radius artifact record for the paired release lock; not a complete lock.
+        value: ${{ jobs.publish.outputs.record }}
+      manifest-digest:
+        value: ${{ jobs.publish.outputs.manifest_digest }}
+
+permissions: {}
+
+env:
+  INPUT_GENERATION_RUN_ID: ${{ inputs.generation-run-id }}
+  INPUT_GENERATION_RUN_ATTEMPT: ${{ inputs.generation-run-attempt }}
+
+jobs:
+  bundle:
+    name: Capture versioned Radius Bicep types
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      artifact_id: ${{ steps.select.outputs.artifact_id || steps.upload.outputs.artifact-id }}
+      generation_run_id: ${{ steps.select.outputs.generation_run_id }}
+    services:
+      registry:
+        image: registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+        ports:
+          - 5000/tcp
+    steps:
+      - name: Checkout approved release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install release validation tools
+        run: make install-yq install-jq
+
+      - name: Validate approved source and select immutable snapshot
+        id: select
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-release-bicep.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: select
+          INPUT_DIRECTORY: ${{ runner.temp }}/release-bicep
+
+      - name: Setup Go for generation
+        if: steps.select.outputs.reuse == 'false'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Setup Node.js for generation
+        if: steps.select.outputs.reuse == 'false'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Install pinned generation tools
+        if: steps.select.outputs.reuse == 'false'
+        run: make install-bicep install-oras
+
+      - name: Generate types once for the full release version
+        if: steps.select.outputs.reuse == 'false'
+        env:
+          VERSION: ${{ steps.select.outputs.version }}
+        run: make generate-bicep-types VERSION="${VERSION}"
+
+      - name: Capture native Bicep OCI snapshot
+        if: steps.select.outputs.reuse == 'false'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-release-bicep.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: capture
+          INPUT_DIRECTORY: ${{ runner.temp }}/release-bicep
+          INPUT_REGISTRY: localhost:${{ job.services.registry.ports['5000'] }}
+
+      - name: Retain original native snapshot
+        if: steps.select.outputs.reuse == 'false'
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: ${{ runner.temp }}/release-bicep/bicep-types-radius-${{ github.run_id }}.tar
+          archive: false
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    name: Stage immutable Radius Bicep full version
+    needs: [bundle]
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: radius-bicep-types-release-${{ github.ref }}
+      cancel-in-progress: false
+    environment: publish-bicep
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      packages: write
+    outputs:
+      record: ${{ steps.publish.outputs.record }}
+      manifest_digest: ${{ steps.publish.outputs.manifest_digest }}
+    steps:
+      - name: Checkout trusted approved publisher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install pinned copy and validation tools
+        run: make install-oras install-yq install-jq
+
+      - name: Download the selected native snapshot
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.bundle.outputs.artifact_id }}
+          path: ${{ runner.temp }}/release-bicep/download
+          github-token: ${{ github.token }}
+          repository: radius-project/radius
+          run-id: ${{ needs.bundle.outputs.generation_run_id }}
+          skip-decompress: true
+          digest-mismatch: error
+
+      - name: Authenticate original generation and prepare source-bound record
+        id: prepare
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-release-bicep.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: prepare
+          INPUT_DIRECTORY: ${{ runner.temp }}/release-bicep
+          INPUT_ARTIFACT_ID: ${{ needs.bundle.outputs.artifact_id }}
+
+      - name: Isolate registry credentials
+        run: |
+          mkdir -p "${RUNNER_TEMP}/release-bicep-credentials"
+          echo "DOCKER_CONFIG=${RUNNER_TEMP}/release-bicep-credentials" >> "${GITHUB_ENV}"
+
+      - name: Login to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Publish or verify identical full version
+        id: publish
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-release-bicep.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: publish
+          INPUT_DIRECTORY: ${{ runner.temp }}/release-bicep
+
+      - name: Retain Radius record and partial publication receipt
+        if: always() && steps.prepare.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: radius-bicep-extension-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/release-bicep/receipt.json
+            ${{ runner.temp }}/release-bicep/radius-bicep-extension.json
+          if-no-files-found: error
+          retention-days: 90
