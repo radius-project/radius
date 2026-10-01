@@ -105,36 +105,37 @@ export function validateBicepExtensionLock(plan, sourceSha, lock) {
     "Bicep lock must contain exactly the AWS and Radius outputs in canonical order"
   );
   for (const [index, artifact] of lock.artifacts.entries()) {
-    for (const [key, value] of Object.entries(expected[index])) {
-      assert.deepEqual(
-        artifact[key],
-        value,
-        `Bicep ${artifact.name} ${key} mismatch`
-      );
-    }
-    assert.match(
-      artifact.digest,
-      digestPattern,
-      "Invalid Bicep manifest digest"
-    );
-    const generation = artifact.generation;
-    assert.ok(generation, "Missing Bicep generation provenance");
-    assert.match(
-      generation.workflow,
-      /^\.github\/workflows\/[a-zA-Z0-9_-]+\.ya?ml$/
-    );
-    for (const key of ["runId", "runAttempt", "artifactId"]) {
-      assert.ok(
-        Number.isSafeInteger(generation[key]) && generation[key] > 0,
-        `Invalid Bicep generation ${key}`
-      );
-    }
-    assert.match(
-      generation.artifactDigest,
-      digestPattern,
-      "Missing Bicep snapshot digest"
+    validateBicepExtensionRecord(expected[index], artifact);
+  }
+}
+
+export function validateBicepExtensionRecord(expected, artifact) {
+  assert.ok(artifact, "Missing Bicep artifact record");
+  for (const [key, value] of Object.entries(expected)) {
+    assert.deepEqual(
+      artifact[key],
+      value,
+      `Bicep ${artifact.name} ${key} mismatch`
     );
   }
+  assert.match(artifact.digest, digestPattern, "Invalid Bicep manifest digest");
+  const generation = artifact.generation;
+  assert.ok(generation, "Missing Bicep generation provenance");
+  assert.match(
+    generation.workflow,
+    /^\.github\/workflows\/[a-zA-Z0-9_-]+\.ya?ml$/
+  );
+  for (const key of ["runId", "runAttempt", "artifactId"]) {
+    assert.ok(
+      Number.isSafeInteger(generation[key]) && generation[key] > 0,
+      `Invalid Bicep generation ${key}`
+    );
+  }
+  assert.match(
+    generation.artifactDigest,
+    digestPattern,
+    "Missing Bicep snapshot digest"
+  );
 }
 
 export function verifyBicepExtensionOutputs(plan, sourceSha, lock, observed) {
@@ -146,44 +147,44 @@ export function verifyBicepExtensionOutputs(plan, sourceSha, lock, observed) {
   );
   for (const artifact of lock.artifacts) {
     const actual = observed.find((entry) => entry.name === artifact.name);
-    assert.equal(
-      actual.reference,
-      artifact.reference,
-      "Bicep full-version reference mismatch"
-    );
-    assert.equal(
-      actual.descriptor?.digest,
-      artifact.digest,
-      "Bicep locked digest mismatch"
-    );
-    const manifest = actual.manifest;
-    assert.equal(manifest?.schemaVersion, 2);
-    assert.equal(manifest.mediaType, manifestType);
-    assert.equal(manifest.artifactType, `${providerType}artifact`);
-    assert.equal(manifest.config?.mediaType, `${providerType}config.v1+json`);
-    assert.equal(manifest.layers?.length, 1, "Unexpected Bicep layers");
-    assert.equal(
-      manifest.layers[0].mediaType,
-      `${providerType}layer.v1.tar+gzip`
-    );
-    assert.ok(!manifest.subject, "Unexpected Bicep subject");
-    for (const blob of [manifest.config, ...manifest.layers]) {
-      assert.match(blob.digest, digestPattern);
-      assert.ok(Number.isSafeInteger(blob.size) && blob.size >= 0);
-      assert.ok(!blob.urls, "Unexpected Bicep foreign blob URLs");
-    }
-    for (const [name, value] of Object.entries({
-      "bicep.serialization.format": "v1",
-      "org.opencontainers.image.source": `https://github.com/${artifact.source.repository}`,
-      "org.opencontainers.image.revision": artifact.source.commit,
-      "org.opencontainers.image.version": artifact.version
-    })) {
-      assert.equal(
-        manifest.annotations?.[name],
-        value,
-        `Bicep ${name} mismatch`
-      );
-    }
+    verifyBicepExtensionOutput(artifact, actual);
+  }
+}
+
+export function verifyBicepExtensionOutput(artifact, actual) {
+  assert.equal(
+    actual.reference,
+    artifact.reference,
+    "Bicep full-version reference mismatch"
+  );
+  assert.equal(
+    actual.descriptor?.digest,
+    artifact.digest,
+    "Bicep locked digest mismatch"
+  );
+  const manifest = actual.manifest;
+  assert.equal(manifest?.schemaVersion, 2);
+  assert.equal(manifest.mediaType, manifestType);
+  assert.equal(manifest.artifactType, `${providerType}artifact`);
+  assert.equal(manifest.config?.mediaType, `${providerType}config.v1+json`);
+  assert.equal(manifest.layers?.length, 1, "Unexpected Bicep layers");
+  assert.equal(
+    manifest.layers[0].mediaType,
+    `${providerType}layer.v1.tar+gzip`
+  );
+  assert.ok(!manifest.subject, "Unexpected Bicep subject");
+  for (const blob of [manifest.config, ...manifest.layers]) {
+    assert.match(blob.digest, digestPattern);
+    assert.ok(Number.isSafeInteger(blob.size) && blob.size >= 0);
+    assert.ok(!blob.urls, "Unexpected Bicep foreign blob URLs");
+  }
+  for (const [name, value] of Object.entries({
+    "bicep.serialization.format": "v1",
+    "org.opencontainers.image.source": `https://github.com/${artifact.source.repository}`,
+    "org.opencontainers.image.revision": artifact.source.commit,
+    "org.opencontainers.image.version": artifact.version
+  })) {
+    assert.equal(manifest.annotations?.[name], value, `Bicep ${name} mismatch`);
   }
 }
 
