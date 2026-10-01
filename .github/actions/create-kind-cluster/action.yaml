@@ -173,3 +173,23 @@ runs:
         INPUT_TEMP_CERT_DIR: ${{ inputs.temp-cert-dir }}
         INPUT_REGISTRY_SERVER: ${{ inputs.registry-server }}
         INPUT_REGISTRY_PORT: ${{ inputs.registry-port }}
+
+    - name: Resolve the secure registry from cluster workloads
+      if: ${{ inputs.with-local-registry == 'true' && inputs.secure == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        # Docker's network alias is visible to nodes, but not to pod DNS.
+        registry_ip="$(docker inspect --format '{{.NetworkSettings.Networks.kind.IPAddress}}' "${INPUT_REGISTRY_NAME}")"
+        if [[ -z "${registry_ip}" ]]; then
+          echo "::error::Secure registry is not connected to the Kind network"
+          exit 1
+        fi
+        kubectl -n kube-system get configmap coredns -o json |
+          jq --arg host "${INPUT_REGISTRY_NAME}" --arg ip "${registry_ip}" \
+            '.data.Corefile = "\($host):53 {\n    hosts {\n        \($ip) \($host)\n    }\n}\n" + .data.Corefile' |
+          kubectl apply -f -
+        kubectl -n kube-system rollout restart deployment/coredns
+        kubectl -n kube-system rollout status deployment/coredns --timeout=90s
+      env:
+        INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}
