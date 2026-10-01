@@ -106,7 +106,8 @@ run_install_or_upgrade_case() (
     rad() {
         [[ "$1 $2" == "${operation} kubernetes" ]] ||
             fail "unexpected rad invocation: $*"
-        [[ $# -eq 12 ]] || fail "expected only the five required --set flags"
+        [[ $# -eq $((${#REQUIRED_CHART_VALUES[@]} + 2)) ]] ||
+            fail "expected only the required --set flags"
         assert_required_values "$*"
         calls=$((calls + 1))
     }
