@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import releaseAssets from "./release-assets.mjs";
+import releaseAssets, { readBicepExtensionLock } from "./release-assets.mjs";
 import { bicepExtensionLockName } from "./release-bicep-extensions.mjs";
 
 function fixture({ draft = true, assets = [] } = {}) {
@@ -67,6 +67,44 @@ function spdxDocument(overrides = {}) {
     ...overrides
   });
 }
+
+test("Bicep reconciliation distinguishes unstaged drafts from missing published locks", async () => {
+  const draft = fixture();
+  assert.equal(
+    await readBicepExtensionLock(draft.github, "v0.61.0"),
+    undefined
+  );
+  await assert.rejects(
+    readBicepExtensionLock(fixture({ draft: false }).github, "v0.61.0"),
+    /Published GHCR release is missing/
+  );
+  const locked = fixture({
+    draft: false,
+    assets: [
+      { id: 1, name: bicepExtensionLockName, contents: '{"schemaVersion":1}' }
+    ]
+  });
+  assert.deepEqual(await readBicepExtensionLock(locked.github, "v0.61.0"), {
+    schemaVersion: 1
+  });
+  const duplicate = fixture({
+    assets: [
+      { id: 1, name: bicepExtensionLockName, contents: "{}" },
+      { id: 2, name: bicepExtensionLockName, contents: "{}" }
+    ]
+  });
+  await assert.rejects(
+    readBicepExtensionLock(duplicate.github, "v0.61.0"),
+    /multiple assets/
+  );
+  draft.github.rest.repos.listReleases = async () => {
+    throw new Error("denied");
+  };
+  await assert.rejects(
+    readBicepExtensionLock(draft.github, "v0.61.0"),
+    /denied/
+  );
+});
 
 test("downloads exact release assets", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));

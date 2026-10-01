@@ -66,6 +66,32 @@ function findAsset(assets, name) {
   return matches[0];
 }
 
+export async function readBicepExtensionLock(github, tag) {
+  const owner = "radius-project";
+  const repo = "radius";
+  const releases = await github.paginate(github.rest.repos.listReleases, {
+    owner,
+    repo,
+    per_page: 100
+  });
+  const matches = releases.filter((release) => release.tag_name === tag);
+  if (matches.length > 1) throw new Error(`Multiple releases for ${tag}`);
+  if (!matches.length) return undefined;
+  const release = matches[0];
+  const asset = findAsset(
+    await listAssets(github, owner, repo, release.id),
+    bicepExtensionLockName
+  );
+  if (!asset) {
+    if (!release.draft)
+      throw new Error("Published GHCR release is missing its Bicep lock");
+    return undefined;
+  }
+  return JSON.parse(
+    (await downloadAsset(github, owner, repo, asset.id)).toString("utf8")
+  );
+}
+
 /** @param {Buffer} data @param {string} name */
 export function verifySpdxDocument(data, name) {
   let document;

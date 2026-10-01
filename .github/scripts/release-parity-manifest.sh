@@ -841,6 +841,24 @@ main() {
     fi
     source_commit="$(resolve_tag_commit "${repository}" "${tag}")"
 
+    # Default inspection follows the release's committed contract, not main.
+    # Explicit historical fixtures remain available through RELEASE_PARITY_TARGETS.
+    if [[ -z "${PLAN_FILE}" && -z "${RELEASE_PARITY_TARGETS:-}" ]]; then
+        TARGETS_FILE="${TEMP_DIR}/source-targets.json"
+        gh api -H 'Accept: application/vnd.github.raw+json' \
+            "/repos/${repository}/contents/.github/release-parity/targets.json?ref=${source_commit}" \
+            >"${TARGETS_FILE}"
+        jq -e --arg repository "${repository}" \
+            '.repository == $repository' "${TARGETS_FILE}" >/dev/null ||
+            fail "source targets have an unexpected repository"
+        if jq -e 'has("bicepExtensionsContract")' "${TARGETS_FILE}" >/dev/null; then
+            PLAN_FILE="${TEMP_DIR}/source-plan.json"
+            gh api -H 'Accept: application/vnd.github.raw+json' \
+                "/repos/${repository}/contents/.github/release-plans/${tag}.yaml?ref=${source_commit}" |
+                yq -o=json '.' >"${PLAN_FILE}"
+        fi
+    fi
+
     if jq -e 'has("bicepExtensionsContract")' "${TARGETS_FILE}" >/dev/null; then
         [[ -f "${PLAN_FILE}" ]] || fail "approved JSON --plan-file is required"
         require_command node

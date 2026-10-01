@@ -229,6 +229,34 @@ test_identity_and_cleanup() {
         "metadata backports must remove legacy release-branch workflows"
 }
 
+test_bicep_evidence_boundary() {
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "aws-read") |
+        [.with.repositories, .with."permission-actions",
+          .with."permission-contents", .with."permission-metadata"]' \
+        '["bicep-types-aws","read","read","read"]' \
+        "AWS evidence token must be a repository-scoped read token"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps |
+        map(select(.env.INPUT_OPERATION != null or
+          .id == "aws-read" or .id == "bicep-state-token")) |
+        all_c(.if | contains("ghcr-bicep == '\''true'\''"))' \
+        "legacy plans must not collect or persist new Bicep evidence"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "bicep-state-token") |
+        [.with.repositories, .with."permission-contents"]' \
+        '["radius","write"]' \
+        "only an explicit Radius token may persist Bicep evidence"
+    assert_contains "${ROOT}/.github/scripts/collect-release-bicep.mjs" \
+        'automation/bicep-release-state-' \
+        "Bicep evidence must use a separate state ref"
+    assert_not_contains "${ROOT}/.github/scripts/collect-release-bicep.mjs" \
+        'automation/release-state-' \
+        "Bicep persistence must not alter Deployment Engine state"
+}
+
 main() {
     command -v yq >/dev/null || {
         echo "yq is required" >&2
@@ -238,6 +266,7 @@ main() {
     test_shared_controller_contract
     test_stage_order
     test_identity_and_cleanup
+    test_bicep_evidence_boundary
 
     if ((FAIL > 0)); then
         echo "Release controller tests failed: ${PASS} passed, ${FAIL} failed"
