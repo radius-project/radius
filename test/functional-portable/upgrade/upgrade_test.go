@@ -290,6 +290,17 @@ func helmUpgrade(ctx context.Context, registry, tag string, deImage deploymentEn
 	return runCommand(ctx, helmReleaseArgs("upgrade", registry, tag, deImage, values))
 }
 
+// radiusImageComponents maps each chart value prefix to the Radius image built for it. Tests pin
+// these images to the build under test.
+var radiusImageComponents = []struct{ key, image string }{
+	{"controller", "controller"},
+	{"rp", "applications-rp"},
+	{"dynamicrp", "dynamic-rp"},
+	{"ucp", "ucpd"},
+	{"bicep", "bicep"},
+	{"preupgrade", "pre-upgrade"},
+}
+
 func helmReleaseArgs(operation, registry, tag string, deImage deploymentEngineImage, values map[string]string) []string {
 	args := []string{
 		"helm", operation, helmReleaseName, relativeChartPath,
@@ -303,14 +314,7 @@ func helmReleaseArgs(operation, registry, tag string, deImage deploymentEngineIm
 	case "upgrade":
 		args = append(args, "--cleanup-on-fail")
 	}
-	for _, component := range []struct{ key, image string }{
-		{"controller", "controller"},
-		{"rp", "applications-rp"},
-		{"dynamicrp", "dynamic-rp"},
-		{"ucp", "ucpd"},
-		{"bicep", "bicep"},
-		{"preupgrade", "pre-upgrade"},
-	} {
+	for _, component := range radiusImageComponents {
 		args = append(args,
 			"--set-string", fmt.Sprintf("%s.image=%s/%s", component.key, registry, component.image),
 			"--set-string", fmt.Sprintf("%s.tag=%s", component.key, tag))
