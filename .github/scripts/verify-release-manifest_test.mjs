@@ -22,6 +22,12 @@ const targets = JSON.parse(
     "utf8"
   )
 );
+// Keep the legacy fixture explicit after new prepared plans move to GHCR.
+delete targets.bicepExtensionsContract;
+targets.ociArtifacts = targets.ociArtifacts.map((entry) => ({
+  ...entry,
+  repository: `biceptypes.azurecr.io/${entry.name === "aws-bicep-types" ? "aws" : "radius"}`
+}));
 const sourceSha = "a".repeat(40);
 const parentSha = "b".repeat(40);
 const digest = `sha256:${"c".repeat(64)}`;
