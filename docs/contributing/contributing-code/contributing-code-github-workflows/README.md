@@ -145,6 +145,21 @@ PATH="$HOME/.local/bin:$PATH" make test-bicep-types-native
 
 The test checks the tool versions against `build/tools.yaml` and uses the committed generated Radius types without regenerating or copying them. It runs the real `capture()` and `prepare()` with native Bicep and ORAS against an owned plaintext registry on a random loopback port. An OCI-disabled control uses the same absolute index path; successful capture exercises the publisher's isolated scratch configuration. It checks the raw archive, native manifest/config/layer digests and bytes, source-only annotation stamping, and original-generation evidence across preparation retries. The owned container, volume and temporary files are removed afterward. No credentials, external registry publishing or global trust changes are used. Ubuntu unit CI installs the tools in a preceding step and runs this target separately from the cloud TLS capture test.
 
+### GHCR consumer cutover
+
+Active Radius configs read `ghcr.io/radius-project/bicep-types-radius` and `ghcr.io/radius-project/bicep-types-aws` with `experimentalFeaturesEnabled.ociEnabled=true`. Development uses `edge`, not the former ACR development `latest`; release channels, full version/RC tags and digest pins retain their meaning. New CLI scaffolds and Bicep image configs use the same defaults; existing user configs are not rewritten. A new CLI release must ship these defaults; already released binaries do not change.
+
+Keep the consumer cutover draft until all gates are satisfied:
+
+1. The upstream release stack has landed and the dependent migration stack targets `main`.
+2. Radius publishers and release integration, plus the actual AWS companion publisher/release changes, are complete.
+3. Both canonical GHCR packages are public and anonymous restore/build succeeds for required `edge`, channel and full version/RC references. Backfill needed old channels and RCs with their exact historical manifest digests before changing pinned consumers; do not rebuild or invent historical provenance.
+4. Verify a newly built CLI's generated configs and arrange a CLI release containing the changes. Do not infer generated defaults or public package availability from a Bicep binary version alone.
+
+Keep ACR resources and the compatibility mirror. Remaining production ACR references in main/release publisher code are mirror destinations; release parity baselines, design inventories and historical release verification are intentionally retained. Private `TEST_BICEP_TYPES_REGISTRY`/`test/radius`, `testresources`, and unrelated recipe/image registries are not part of this cutover.
+
+The secure CI registry certificate already covers `localhost` and `radius-registry`. Native Bicep OCI publication treats loopback names as HTTP, so Bicep extension and recipe targets use `radius-registry:5000`; Docker/ORAS capture retains `localhost:5000`. The secure Kind action adds the registry's network address to CoreDNS because Docker's alias alone is not visible to pods; workloads retain the existing `global.rootCA.cert` trust mount. Exercise native `bicep publish-extension`, `rad bicep publish-extension`, restore/build and recipe publication with isolated certificates; JSON checks alone do not verify transport. A failed loopback publication does not imply loopback restore fails. Local generic OCI success is not proof that the public GHCR packages or AWS release artifacts exist.
+
 ## Verification
 
 - The workflow you changed runs green on your pull request (open it as a draft first if you want to iterate).
