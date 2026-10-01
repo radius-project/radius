@@ -78,19 +78,26 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
    make publish-bicep-extension BICEP_PUBLISH_TARGET=<target>
    ```
 
-   `<target>` is either a local path (for example `./bin/radius-types.tgz`) or an OCI reference (for example `br:biceptypes.azurecr.io/radius:latest`). The target requires the `bicep` CLI on your `PATH`.
+   `<target>` is either a local path (for example `./bin/radius-types.tgz`) or an OCI reference in a registry you can publish to. Production Radius types use `br:ghcr.io/radius-project/bicep-types-radius:edge`; use your own namespace for development. The target requires the `bicep` CLI on your `PATH`.
 4. Update the root `bicepconfig.json` to reference your published extension:
 
    ```json
    {
+       "experimentalFeaturesEnabled": {
+           "ociEnabled": true
+       },
        "extensions": {
            "radius": "<target>",
-           "aws": "br:biceptypes.azurecr.io/aws:latest"
+           "aws": "br:ghcr.io/radius-project/bicep-types-aws:edge"
        }
    }
    ```
 
    Once Bicep restores the new extension, your schema changes are available in Bicep templates.
+
+   Generated CLI and Bicep image configs use these public GHCR packages with OCI enabled. Development builds use `edge`; release channels and full version/RC tags keep their existing meaning. Existing user configs are not overwritten by `rad init`; when migrating one manually, retain other settings and preserve any version or digest pin (verify the same digest is available in GHCR). The ACR compatibility mirror remains for released clients and historical release verification.
+
+   With OCI enabled, Bicep's native publisher uses HTTP for loopback registry names. The secure local CI registry already provides the `radius-registry` TLS name and certificate; use `br:radius-registry:5000/...` for Bicep extension and recipe targets, not `br:localhost:5000/...`. Docker and ORAS capture can keep their existing `localhost` address.
 
 ### 5. Update docs and samples, then merge in order
 
