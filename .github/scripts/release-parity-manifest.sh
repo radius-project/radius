@@ -31,6 +31,8 @@ RUNTIME_ASSET="${RELEASE_PARITY_RUNTIME_ASSET:-}"
 STAGED="${RELEASE_PARITY_STAGED:-false}"
 VERSION=""
 OUTPUT_PATH=""
+PLAN_FILE=""
+GHCR_BICEP="false"
 TEMP_DIR=""
 
 cleanup() {
@@ -42,7 +44,7 @@ cleanup() {
 trap cleanup EXIT
 
 usage() {
-    echo "Usage: $0 --version <version> --output <path>"
+    echo "Usage: $0 --version <version> --output <path> [--plan-file <json>]"
 }
 
 fail() {
@@ -240,6 +242,7 @@ collect_cli_assets() {
         --argjson expected "${expected_assets}" \
         --argjson sboms "${expected_sboms}" '
         ($expected + $sboms + [
+            "bicep-extension-lock.json",
             "bicep-image-digests.json",
             "bicep-image-intent.json",
             "core-release-lock.json",
@@ -702,6 +705,11 @@ collect_oci_artifacts() {
     local reference
     local descriptor_path
     local manifest_path
+    local digest
+
+    if [[ "${GHCR_BICEP}" == "true" ]]; then
+        channel="${VERSION}"
+    fi
 
     : >"${entries_file}"
     while IFS= read -r target; do
@@ -714,7 +722,16 @@ collect_oci_artifacts() {
 
         oras manifest fetch --descriptor "${reference}" \
             >"${descriptor_path}"
-        oras manifest fetch "${reference}" >"${manifest_path}"
+        if [[ "${GHCR_BICEP}" == "true" ]]; then
+            digest="$(jq -er '.digest' "${descriptor_path}")"
+            [[ "${digest}" =~ ^sha256:[a-f0-9]{64}$ ]] ||
+                fail "invalid manifest digest for ${reference}"
+            oras manifest fetch "${repository}@${digest}" >"${manifest_path}"
+            [[ "sha256:$(sha256_file "${manifest_path}")" == "${digest}" ]] ||
+                fail "manifest content digest mismatch for ${reference}"
+        else
+            oras manifest fetch "${reference}" >"${manifest_path}"
+        fi
         jq -e --arg expected "${expected_type}" \
             '.artifactType == $expected' "${manifest_path}" >/dev/null ||
             fail "unexpected artifact type for ${reference}"
@@ -761,6 +778,10 @@ main() {
                 ;;
             --output)
                 OUTPUT_PATH="${2:-}"
+                shift 2
+                ;;
+            --plan-file)
+                PLAN_FILE="${2:-}"
                 shift 2
                 ;;
             -h | --help)
@@ -820,6 +841,21 @@ main() {
     fi
     source_commit="$(resolve_tag_commit "${repository}" "${tag}")"
 
+    if jq -e 'has("bicepExtensionsContract")' "${TARGETS_FILE}" >/dev/null; then
+        [[ -f "${PLAN_FILE}" ]] || fail "approved JSON --plan-file is required"
+        require_command node
+        jq -e --arg tag "${tag}" --slurpfile targets "${TARGETS_FILE}" \
+            '.version == $tag and .expectedOutputs == $targets[0]' \
+            "${PLAN_FILE}" >/dev/null || fail "approved Bicep plan differs from targets"
+        node "${SCRIPT_DIR}/release-bicep-extensions.mjs" targets \
+            "${PLAN_FILE}" "${source_commit}" >/dev/null
+        GHCR_BICEP="true"
+    elif [[ -n "${PLAN_FILE}" ]]; then
+        jq -e --slurpfile targets "${TARGETS_FILE}" \
+            '.expectedOutputs == $targets[0]' "${PLAN_FILE}" >/dev/null ||
+            fail "approved plan differs from targets"
+    fi
+
     collect_cli_assets "${release_json}" "${source_commit}" \
         "${cli_assets_json}"
     if [[ "${STAGED}" == "true" ]]; then
@@ -851,6 +887,13 @@ main() {
     collect_helm_chart "${channel}" "${helm_json}"
     collect_sibling_repositories "${tag}" "${sibling_repositories_json}"
     collect_oci_artifacts "${channel}" "${oci_artifacts_json}"
+
+    if [[ "${GHCR_BICEP}" == "true" ]]; then
+        node "${SCRIPT_DIR}/release-bicep-extensions.mjs" verify \
+            "${PLAN_FILE}" "${source_commit}" \
+            "${RELEASE_PARITY_ASSETS_DIR:-${TEMP_DIR}/assets}/bicep-extension-lock.json" \
+            "${oci_artifacts_json}"
+    fi
 
     mkdir -p "$(dirname "${OUTPUT_PATH}")"
     jq -S -n \
@@ -899,6 +942,13 @@ main() {
                 ociArtifacts: $oci_artifacts[0]
             }
         }' >"${OUTPUT_PATH}"
+    if [[ "${GHCR_BICEP}" == "true" ]]; then
+        jq --slurpfile lock \
+            "${RELEASE_PARITY_ASSETS_DIR:-${TEMP_DIR}/assets}/bicep-extension-lock.json" \
+            '.downstream.bicepExtensionLock = $lock[0]' \
+            "${OUTPUT_PATH}" >"${TEMP_DIR}/locked-manifest.json"
+        mv "${TEMP_DIR}/locked-manifest.json" "${OUTPUT_PATH}"
+    fi
 
     echo "Wrote release parity manifest to ${OUTPUT_PATH}"
 }

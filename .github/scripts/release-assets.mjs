@@ -3,6 +3,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { bicepExtensionLockName } from "./release-bicep-extensions.mjs";
 
 /** @param {unknown} value */
 function asBuffer(value) {
@@ -144,7 +145,10 @@ async function downloadFiles(github, core, owner, repo, release) {
 
   const assets = await listAssets(github, owner, repo, release.id);
   const missing = names.filter((name) => !findAsset(assets, name));
-  if (missing.length > 0 && !optional) {
+  if (
+    missing.length > 0 &&
+    (!optional || missing.includes(bicepExtensionLockName))
+  ) {
     throw new Error(`Release is missing assets: ${missing.join(", ")}`);
   }
   if (missing.length > 0) {
@@ -165,7 +169,8 @@ async function downloadFiles(github, core, owner, repo, release) {
 async function uploadFile(github, core, owner, repo, release, file) {
   const name = path.basename(file);
   const data = await readFile(file);
-  const immutable = core.getInput("IMMUTABLE") === "true";
+  const immutable =
+    name === bicepExtensionLockName || core.getInput("IMMUTABLE") === "true";
   let assets = await listAssets(github, owner, repo, release.id);
   const existing = findAsset(assets, name);
 

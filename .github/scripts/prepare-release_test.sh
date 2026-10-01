@@ -582,10 +582,34 @@ test_patch_rerun_needs_no_curated_sections() {
     ((++PASS))
 }
 
+test_bicep_contract_is_frozen_in_plan() {
+    setup_repo "v0.60.0"
+    git -C "${REPO}" tag v0.60.0
+    node --input-type=module - "${SCRIPT_DIR}" "${REPO}" <<'JS'
+import { readFile, writeFile } from "node:fs/promises";
+const [scripts, repo] = process.argv.slice(2);
+const { bicepExtensionTargets } = await import(`${scripts}/release-bicep-extensions.mjs`);
+const file = `${repo}/.github/release-parity/targets.json`;
+const outputs = JSON.parse(await readFile(file));
+outputs.bicepExtensionsContract = "ghcr-v1";
+outputs.ociArtifacts = bicepExtensionTargets;
+await writeFile(file, JSON.stringify(outputs));
+JS
+    run_prepare rc 0.61
+    assert_version "v0.61.0-rc.1" || return
+    assert_yq_value "${REPO}/.github/release-plans/v0.61.0-rc.1.yaml" \
+        '.expectedOutputs.bicepExtensionsContract' 'ghcr-v1' || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.expectedOutputs.ociArtifacts[0].repository' \
+        'ghcr.io/radius-project/bicep-types-aws' || return
+    ((++PASS))
+}
+
 main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/prepare-release-test-XXXXXX")"
 
     test_first_rc
+    test_bicep_contract_is_frozen_in_plan
     test_first_rc_keeps_previous_stable_supported
     test_first_rc_requires_latest_stable
     test_subsequent_rc
