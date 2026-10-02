@@ -199,6 +199,7 @@ func Test_isTransientRegistryError(t *testing.T) {
 		{name: "unexpected EOF", err: fmt.Errorf("read: %w", io.ErrUnexpectedEOF), expected: true},
 		{name: "dns timeout", err: &url.Error{Op: "Head", URL: "https://ghcr.io", Err: &net.DNSError{Err: "i/o timeout", Name: "ghcr.io", IsTimeout: true}}, expected: true},
 		{name: "dns not found", err: &net.DNSError{Err: "no such host", Name: "ghcr.io", IsNotFound: true}, expected: false},
+		{name: "network i/o timeout", err: &url.Error{Op: "Get", URL: "https://ghcr.io", Err: &net.OpError{Op: "read", Net: "tcp", Err: os.ErrDeadlineExceeded}}, expected: true},
 		{name: "server error", err: &errcode.ErrorResponse{StatusCode: http.StatusBadGateway}, expected: true},
 		{name: "too many requests", err: &errcode.ErrorResponse{StatusCode: http.StatusTooManyRequests}, expected: true},
 		{name: "unauthorized", err: &errcode.ErrorResponse{StatusCode: http.StatusUnauthorized}, expected: false},
