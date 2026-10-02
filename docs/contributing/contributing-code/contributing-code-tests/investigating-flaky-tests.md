@@ -43,7 +43,7 @@ gh issue list --repo radius-project/radius --search '"<test name>" in:title,body
 gh search issues --repo radius-project/radius '<test name>'
 ```
 
-Report the flake rate as `<failures> / <runs inspected>` over the lookback window (for example "4 / 180 runs in the last 30 days ≈ 2.2%"), plus links to the specific failed runs you counted. State the lookback window and run count so the figure is reproducible — do not report a bare percentage without the sample size.
+Use actual test executions, not the raw count of workflow runs inspected, as the denominator: a workflow run can be canceled, skipped, or contain a job/matrix leg where the target test never ran at all, so dividing by every inspected run systematically understates the flake rate. For each run in the sample, confirm the test actually executed (it appears, pass or fail, in that run's logs/`gh run view --json jobs` output) before counting it in the denominator; exclude runs where it did not execute. Report the flake rate as `<failures> / <executions confirmed>` over the lookback window (for example "4 / 142 executions in the last 30 days ≈ 2.8%"), plus links to the specific failed runs you counted. If you cannot reliably confirm execution for every run in the sample (for example, logs have expired), report the raw workflow-run count instead but label it explicitly as a workflow-run proxy rather than a true execution rate (for example "4 / 180 workflow runs inspected (proxy — execution not confirmed for all runs) in the last 30 days"). State the lookback window and run count so the figure is reproducible — do not report a bare percentage without the sample size.
 
 ### 3. Determine product defect vs. test defect
 
