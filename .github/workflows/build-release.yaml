@@ -143,6 +143,9 @@ jobs:
           cache-dependency-path: go.sum
           cache: false
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
@@ -233,6 +236,9 @@ jobs:
           cache-dependency-path: go.sum
           cache: false
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
@@ -310,6 +316,9 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: false
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1

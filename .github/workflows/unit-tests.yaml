@@ -60,6 +60,9 @@ jobs:
           # Compiles and executes Go code — don't restore a cache a prior run could have poisoned.
           cache: false
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: Test tool metadata and installers
         run: go test ./internal/tooling ./cmd/tool-updater
 
@@ -142,6 +145,9 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: false
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       - name: Build rad for Windows process tests
         env:

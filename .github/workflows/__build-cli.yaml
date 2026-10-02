@@ -81,6 +81,10 @@ jobs:
           cache-dependency-path: go.sum
           cache: false
 
+      - name: Download Go modules
+        if: inputs.only_changed != 'true'
+        uses: ./.github/actions/go-mod-download
+
       - name: Setup Python
         if: inputs.only_changed != 'true'
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
