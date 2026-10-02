@@ -17,7 +17,9 @@ limitations under the License.
 package setup
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -40,34 +42,6 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
       ports: {
         web: {
           containerPort: 3000
-        }
-      }
-    }
-  }
-}
-` // Trailing newline intentional.
-
-	// PreviewAppBicepTemplate is the app.bicep template used by `rad init --preview`.
-	PreviewAppBicepTemplate = `extension radius
-
-@description('The Radius Environment ID. Injected automatically by the rad CLI.')
-param environment string
-
-@description('The Radius Application ID. Injected automatically by the rad CLI.')
-param application string
-
-resource demo 'Radius.Compute/containers@2025-08-01-preview' = {
-  name: 'demo'
-  properties: {
-    environment: environment
-    application: application
-    containers: {
-      demo: {
-        image: 'ghcr.io/radius-project/samples/demo:latest'
-        ports: {
-          web: {
-            containerPort: 3000
-          }
         }
       }
     }
@@ -98,18 +72,31 @@ func ScaffoldApplication(directory string, template string) error {
 		return err
 	}
 
+	return WriteBicepConfig(directory)
+}
+
+// WriteBicepConfig writes the default bicepconfig.json into directory if it does not already exist.
+// It never overwrites an existing file because the user may have customized it.
+//
+// The file is created with O_EXCL so that a file created concurrently by another process is not truncated.
+// Any existing entry at that path, including a directory, is treated as already present.
+func WriteBicepConfig(directory string) error {
 	bicepConfigFilepath := filepath.Join(directory, "bicepconfig.json")
-	_, err = os.Stat(bicepConfigFilepath)
-	if os.IsNotExist(err) {
-		err = os.WriteFile(bicepConfigFilepath, []byte(GetVersionedBicepConfig()), 0644)
-		if err != nil {
-			return err
-		}
+	f, err := os.OpenFile(bicepConfigFilepath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if errors.Is(err, fs.ErrExist) {
+		return nil
 	} else if err != nil {
 		return err
 	}
 
-	return nil
+	_, err = f.WriteString(GetVersionedBicepConfig())
+	if err != nil {
+		_ = f.Close()
+		_ = os.Remove(bicepConfigFilepath)
+		return err
+	}
+
+	return f.Close()
 }
 
 // GetVersionedBicepConfig returns the default bicepconfig.json contents with the Radius and AWS
