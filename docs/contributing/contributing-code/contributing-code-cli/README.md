@@ -99,6 +99,7 @@ if errors.Is(err, NotFoundError{}) {
 
 ## Verification
 
+- For preview application/environment deletion changes, run `go test ./pkg/cli/cmd ./pkg/cli/cmd/app/delete/preview ./pkg/cli/cmd/env/delete/preview`. The shared cascade must let a selected producer delete its generated secret, verify that the secret is gone before removing scopes, and continue deleting standalone/orphan secrets. Use `RADIUS_TEST_FAST_CLEANUP=false` when running the RabbitMQ and environment-cascade functional tests so cleanup errors and post-delete assertions are not skipped.
 - `go run ./cmd/rad/main.go version` prints version information that includes your local changes.
 - After `sudo make install`, running `rad version` from any directory resolves to your freshly installed build.
 - A breakpoint set in `cmd/rad/` is hit when you run **"Debug rad CLI (prompt for args)"**.
@@ -106,6 +107,7 @@ if errors.Is(err, NotFoundError{}) {
 
 ## Troubleshooting
 
+- **Preview deletion reports an incomplete managed-secret cleanup.** The CLI waits up to five minutes after direct resource deletions for server-deleted secrets to disappear. Inspect the named secret's state and server error before retrying; the application/environment is retained. If the producer was removed, a later invocation deletes the remaining secret directly. `--force` is not applied automatically and does not bypass verification of server-side secret cleanup.
 - **`go run` fails to resolve modules.** Run it from inside the repository; Go needs the module context.
 - **The debugger never stops at your breakpoint.** Confirm you selected **"Debug rad CLI (prompt for args)"** and that the breakpoint is on an executable line in code the command actually reaches.
 - **A debugged command hangs waiting for input.** Add `--yes` to the prompted arguments (except for `rad init`).

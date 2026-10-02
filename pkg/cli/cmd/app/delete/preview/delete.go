@@ -138,7 +138,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 //
 // This discovers resources owned by the application using the management client's
 // resource enumeration (ownership-based via properties.application), deletes them
-// in parallel, then deletes the application via the Radius.Core preview API.
+// in parallel without competing with server-side managed-secret cleanup, verifies that managed
+// secrets are gone, then deletes the application via the Radius.Core preview API.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
 		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)

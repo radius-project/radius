@@ -20,8 +20,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -38,6 +42,75 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/test/radcli"
 )
+
+func Test_Run_ManagedSecretCleanup(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(fmt.Sprintf("secret deletion fails=%v", fail), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				const scope = "/planes/radius/local/resourceGroups/test-group"
+				const ownerType = "Radius.Messaging/rabbitMQ"
+				const secretType = "Radius.Security/secrets"
+				ownerID := scope + "/providers/" + ownerType + "/rabbitmq"
+				secretID := scope + "/providers/" + secretType + "/rabbitmq-secret"
+				var appDeletes atomic.Int32
+				factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, nil, nil, func() fake.ApplicationsServer {
+					server := test_client_factory.WithApplicationsServerNoError()
+					server.Delete = func(context.Context, string, string, *corerpv20250801.ApplicationsClientDeleteOptions) (resp azfake.Responder[corerpv20250801.ApplicationsClientDeleteResponse], errResp azfake.ErrorResponder) {
+						appDeletes.Add(1)
+						resp.SetResponse(http.StatusNoContent, corerpv20250801.ApplicationsClientDeleteResponse{}, nil)
+						return
+					}
+					return server
+				})
+				require.NoError(t, err)
+				client := clients.NewMockApplicationsManagementClient(gomock.NewController(t))
+				client.EXPECT().ListResourcesInApplication(gomock.Any(), scope+"/providers/Radius.Core/applications/test-app").
+					Return([]generated.GenericResource{
+						{ID: &ownerID, Type: new(ownerType), Properties: map[string]any{"secrets": map[string]any{"name": "rabbitmq-secret"}}},
+						{ID: &secretID, Type: new(secretType)},
+					}, nil)
+				client.EXPECT().DeleteResource(gomock.Any(), ownerType, ownerID, false).Return(true, nil)
+				release := make(chan struct{})
+				client.EXPECT().GetResource(gomock.Any(), secretType, strings.ToLower(secretID)).
+					DoAndReturn(func(ctx context.Context, _, _ string) (generated.GenericResource, error) {
+						select {
+						case <-release:
+						case <-ctx.Done():
+							return generated.GenericResource{}, ctx.Err()
+						}
+						if fail {
+							return generated.GenericResource{Properties: map[string]any{"provisioningState": "Failed"}}, nil
+						}
+						return generated.GenericResource{}, &azcore.ResponseError{StatusCode: http.StatusNotFound}
+					})
+				runner := &Runner{
+					RadiusCoreClientFactory: factory,
+					ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: client},
+					Workspace:               &workspaces.Workspace{Name: "test-workspace", Scope: scope},
+					Output:                  &output.MockOutput{}, ApplicationName: "test-app", Confirm: true,
+				}
+				done := make(chan error, 1)
+				go func() { done <- runner.Run(t.Context()) }()
+				synctest.Wait()
+				require.Zero(t, appDeletes.Load())
+				select {
+				case err := <-done:
+					t.Fatalf("application cleanup returned before secret cleanup: %v", err)
+				default:
+				}
+				close(release)
+				err = <-done
+				if fail {
+					require.ErrorContains(t, err, strings.ToLower(secretID))
+					require.Zero(t, appDeletes.Load())
+				} else {
+					require.NoError(t, err)
+					require.EqualValues(t, 1, appDeletes.Load())
+				}
+			})
+		})
+	}
+}
 
 func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
