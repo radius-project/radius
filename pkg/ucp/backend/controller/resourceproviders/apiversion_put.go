@@ -73,8 +73,8 @@ func (c *APIVersionPutController) updateSummary(id resources.ID, apiVersion *dat
 			summary.Properties.ResourceTypes = map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{}
 		}
 
-		resourceTypeName := id.Truncate().Name()
-		resourceTypeEntry, ok := summary.Properties.ResourceTypes[id.Truncate().Name()]
+		resourceTypeName := resolveResourceTypeKey(summary.Properties.ResourceTypes, id.Truncate().Name())
+		resourceTypeEntry, ok := summary.Properties.ResourceTypes[resourceTypeName]
 		if !ok {
 			// If we get here, the resource type entry doesn't exist! Something is out of whack.
 			return fmt.Errorf("resource type entry %q not found", resourceTypeName)

@@ -165,7 +165,7 @@ func (c *ResourceTypeDeleteController) deleteApiVersion(ctx context.Context, api
 
 func (c *ResourceTypeDeleteController) updateSummary(id resources.ID) func(summary *datamodel.ResourceProviderSummary) error {
 	return func(summary *datamodel.ResourceProviderSummary) error {
-		resourceTypeName := id.Name()
+		resourceTypeName := resolveResourceTypeKey(summary.Properties.ResourceTypes, id.Name())
 		delete(summary.Properties.ResourceTypes, resourceTypeName)
 
 		return nil
