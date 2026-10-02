@@ -228,6 +228,8 @@ KubernetesPodSpec
 KubernetesResourceCheck
 KubernetesRuntimeProperties
 Kumar
+Kustomization
+Kyverno
 Kusto
 Kustomize
 LinkRP
@@ -389,6 +391,7 @@ ServicePrincipal
 Shruthi
 SignalR
 Snyk
+SPIFFE
 SplitNamespace
 SqlDatabase
 SqlDatabaseListSecretsResult
