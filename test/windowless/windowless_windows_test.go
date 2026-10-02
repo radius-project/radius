@@ -45,6 +45,7 @@ const (
 	testHelperParent       = "automation-parent"
 	testHelperBicep        = "bicep"
 	testRadBinaryEnv       = "RADIUS_TEST_RAD_BINARY"
+	testPrebuiltRadEnv     = "RADIUS_TEST_PREBUILT_RAD"
 	testBicepModeEnv       = "RADIUS_TEST_BICEP_MODE"
 	testBicepStatusEnv     = "RADIUS_TEST_BICEP_STATUS"
 	testBicepModeHang      = "hang"
@@ -67,6 +68,12 @@ func TestMain(m *testing.M) {
 		os.Exit(runAutomationParent()) //nolint:forbidigo // Test helper subprocess must return the rad exit code.
 	case testHelperBicep:
 		os.Exit(runFakeBicep()) //nolint:forbidigo // Test helper subprocess must behave as the Bicep executable.
+	}
+
+	// CI builds rad in a separate step so compilation doesn't count against the test timeout.
+	if prebuilt := os.Getenv(testPrebuiltRadEnv); prebuilt != "" {
+		radBinaryPath = prebuilt
+		os.Exit(m.Run()) //nolint:forbidigo // TestMain must return the test suite exit code.
 	}
 
 	tempDir, err := os.MkdirTemp("", "radius-windowless-test-")
