@@ -54,7 +54,13 @@ Follow [step 4 of the backing doc](../../../docs/contributing/contributing-code/
 
 ## 5. Implement and validate (when a fix is requested)
 
-Make the change, then validate per [step 5 of the backing doc](../../../docs/contributing/contributing-code/contributing-code-tests/investigating-flaky-tests.md#5-implement-and-validate-the-fix): repeat the specific test (`go test ./path/... -run TestName -count=20 -race`) and run the suite's normal tier command. Add regression coverage for a product-code fix where feasible.
+Make the change, then validate per [step 5 of the backing doc](../../../docs/contributing/contributing-code/contributing-code-tests/investigating-flaky-tests.md#5-implement-and-validate-the-fix). **If a PR is requested**, the fix must be verified by repeating the specific test (`go test ./path/... -run TestName -count=N -race`):
+
+- A **minimum of 20 runs**, all passing.
+- **100 runs preferred** when the test is "fast" (a single run completes in well under a few seconds).
+- If the right count is in question (e.g. you cannot tell how fast the test is, or there's any other ambiguity), **ask the user** explicitly rather than guessing.
+
+Also run the suite's normal tier command, and add regression coverage for a product-code fix where feasible.
 
 ## 6. Post findings to the issue
 
@@ -92,4 +98,5 @@ Re-verify PR eligibility (see step 1) immediately before creating the PR. Then f
 - [ ] Root cause classified as product defect or test defect, with evidence
 - [ ] Fix options listed; recommended fix uses `pkg/retry` when retrying is appropriate
 - [ ] Findings posted as an issue comment
+- [ ] If a PR was opened: fix verified with a passing repeat-run loop (≥20 runs, 100 preferred for fast tests; iteration count confirmed with the user if unclear)
 - [ ] If a PR was opened: commits signed off and signed (`-s -S`), `pr:standard` or `pr:important` label applied, issue linked, PR eligibility re-checked

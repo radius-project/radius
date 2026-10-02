@@ -80,12 +80,20 @@ List the realistic fix options with trade-offs, then recommend one:
 ### 5. Implement and validate the fix
 
 - Make the code change (product or test).
-- Re-run the specific test multiple times to gain confidence the fix addresses the flake, for example:
+- Re-run the specific test enough times to gain real confidence the fix addresses the flake, **only when a pull request is being opened for the fix** (an investigation-only comment does not require this loop):
+  - Run it a **minimum of 20 times**.
+  - If the test is "fast" (a single run completes in well under a few seconds, so 100 iterations finish in a reasonable time), **prefer 100 runs** instead of 20 for stronger confidence.
+  - If you cannot tell whether the test qualifies as "fast" enough for 100 runs, or any other reason makes the correct iteration count unclear, **explicitly ask the user** which count to use rather than guessing.
 
   ```sh
+  # Minimum verification loop
   go test ./path/to/package/... -run TestName -count=20 -race
+
+  # Preferred loop for fast tests
+  go test ./path/to/package/... -run TestName -count=100 -race
   ```
 
+  Report the exact count run and the pass/fail outcome of every iteration in the findings comment and the PR body — a fix is not validated until the full loop is clean.
 - Run the normal tier command for the suite you touched (see the [test matrix](./README.md#test-matrix)) to confirm no regressions.
 - If you changed product code, add or update a regression test that exercises the race/condition directly where feasible.
 
@@ -122,7 +130,7 @@ Follow the [pull-request guide](../../../contributing-pull-requests/README.md) f
   ```
 
   A flaky-test fix is routine maintenance, so it uses `pr:standard` unless the fix also changes user-facing behavior (in which case follow the [label guidance](../../../contributing-pull-requests/README.md#5-open-the-pull-request-and-fill-out-the-template) for `pr:important`).
-- Fill out the PR template's test-instructions section with the exact commands run in step 5 and their results.
+- Fill out the PR template's test-instructions section with the exact verification-loop command run in step 5 (`-count=20` or `-count=100`), the number of iterations, and that every iteration passed.
 
 ## Automatic triggering
 
@@ -132,6 +140,7 @@ The [`flaky-test-investigation.yml`](../../../../.github/workflows/flaky-test-in
 
 - The issue has a new comment containing a reproducible frequency figure (with sample size and run links), an evidenced root-cause classification, and the fix options considered.
 - Any implemented fix uses `pkg/retry` for retry-based mitigations rather than a bespoke retry loop, unless the root cause is a genuine race requiring correct synchronization instead of a retry.
+- If a PR was opened, the fix was verified with a repeated test-run loop of **at least 20 runs** (**100 runs preferred for fast tests**), with every iteration passing, and the exact command and iteration count are recorded in the findings comment and PR body. If the correct iteration count was unclear, the user was asked rather than a count being assumed.
 - If a PR was opened, its commits are signed off (`-s`) and cryptographically signed (`-S`), it carries exactly one of `pr:standard`/`pr:important`, and it links the originating issue.
 
 ## Troubleshooting
