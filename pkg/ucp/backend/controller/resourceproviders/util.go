@@ -39,6 +39,25 @@ const (
 	summaryNotFoundIgnore summaryNotFoundPolicy = "ignore"
 )
 
+// resolveResourceTypeKey returns the key under which name's entry is (or should be) stored in resourceTypes.
+//
+// Resource type names are case-insensitive. If an entry already exists under a different casing of
+// name, that existing key is returned so callers never create a second entry that differs only by
+// case. Otherwise name itself is returned.
+func resolveResourceTypeKey(resourceTypes map[string]datamodel.ResourceProviderSummaryPropertiesResourceType, name string) string {
+	if _, ok := resourceTypes[name]; ok {
+		return name
+	}
+
+	for key := range resourceTypes {
+		if strings.EqualFold(key, name) {
+			return key
+		}
+	}
+
+	return name
+}
+
 // resourceProviderSummaryIDFromRequest returns the resource provider summary ID from the resource
 // id in the request. Returns the request resource ID, the summary ID, and an error.
 //

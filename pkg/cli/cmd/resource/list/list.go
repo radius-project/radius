@@ -235,10 +235,14 @@ func (r *Runner) Run(ctx context.Context) error {
 			r.UCPClientFactory = clientFactory
 		}
 
-		_, err = common.GetResourceTypeDetails(ctx, r.ResourceProviderNamespace, r.ResourceTypeSuffix, r.UCPClientFactory)
+		var resourceTypeDetails common.ResourceType
+		resourceTypeDetails, err = common.GetResourceTypeDetails(ctx, r.ResourceProviderNamespace, r.ResourceTypeSuffix, r.UCPClientFactory)
 		if err != nil {
 			return err
 		}
+
+		// Use the server's casing for the resource type, since the user's input may differ in case.
+		r.ResourceType = resourceTypeDetails.Name
 
 		switch {
 		case r.ApplicationName != "":
