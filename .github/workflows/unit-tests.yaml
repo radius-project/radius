@@ -143,7 +143,14 @@ jobs:
           cache-dependency-path: go.sum
           cache: false
 
+      - name: Build rad for Windows process tests
+        env:
+          CGO_ENABLED: 0
+          RADIUS_TEST_RAD_BINARY: ${{ runner.temp }}\rad-windowless-test.exe
+        run: go build -o $env:RADIUS_TEST_RAD_BINARY ./cmd/rad
+
       - name: Run Windows CLI process tests
         env:
           CGO_ENABLED: 0
+          RADIUS_TEST_RAD_BINARY: ${{ runner.temp }}\rad-windowless-test.exe
         run: go test ./pkg/process ./pkg/cli/style ./test/windowless -count=1 -timeout=2m
