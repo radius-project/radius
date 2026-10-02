@@ -438,6 +438,34 @@ func Test_Resource(t *testing.T) {
 		require.Equal(t, expectedResourceList, resources)
 	})
 
+	t.Run("ListResourcesOfType - resource type not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mock := NewMockgenericResourceClient(ctrl)
+		resourceProviderMock := NewMockresourceProviderClient(ctrl)
+		client := createClient(mock)
+		client.resourceProviderClientFactory = func() (resourceProviderClient, error) {
+			return resourceProviderMock, nil
+		}
+		summary := ucp.ResourceProviderSummary{
+			Name: new("Applications.Test"),
+			ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+				"testResource": {
+					APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+						version: {},
+					},
+				},
+			},
+		}
+
+		resourceProviderMock.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Applications.Test", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{ResourceProviderSummary: summary}, nil)
+
+		_, err := client.ListResourcesOfType(t.Context(), "Applications.Test/otherResource")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), `resource type "otherResource" not found in the resource provider "Applications.Test"`)
+	})
+
 	t.Run("ListAllResourceTypesNames", func(t *testing.T) {
 		mockResourceProviderClient := NewMockresourceProviderClient(gomock.NewController(t))
 
@@ -2566,6 +2594,30 @@ func Test_Location(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, result)
 	})
+}
+
+func Test_isRadiusCoreType(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		resourceType string
+		want         bool
+	}{
+		{"Radius.Core/environments", true},
+		{"radius.core/applications", true},
+		{"RADIUS.CORE/recipePacks", true},
+		{"Radius.Core", true},
+		{"Radius.Compute/containers", false},
+		{"Radius.CoreExtra/things", false},
+		{"Applications.Core/containers", false},
+		{"", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.resourceType, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, isRadiusCoreType(tt.resourceType))
+		})
+	}
 }
 
 func Test_extractScopeAndName(t *testing.T) {

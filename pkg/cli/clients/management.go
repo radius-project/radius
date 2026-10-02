@@ -1538,8 +1538,7 @@ func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType
 	// Radius.Core resources require a specific API version.
 	// Eventually version 2023-10-01-preview will be removed along with Applications.Core resources.
 	// Then we will not need this special case.
-provider, _, _ := strings.Cut(resourceType, "/")
-	if strings.EqualFold(provider, "Radius.Core") {
+	if isRadiusCoreType(resourceType) {
 		apiVersions = []string{"2025-08-01-preview"}
 	}
 
@@ -1558,6 +1557,12 @@ provider, _, _ := strings.Cut(resourceType, "/")
 	}
 
 	return generated.NewGenericResourcesClient(resourceType, strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, &clientOptions)
+}
+
+// isRadiusCoreType reports whether resourceType belongs to the Radius.Core namespace, ignoring case.
+func isRadiusCoreType(resourceType string) bool {
+	namespace, _, _ := strings.Cut(resourceType, "/")
+	return strings.EqualFold(namespace, "Radius.Core")
 }
 
 // withForceDeletePolicy returns a copy of opts with forceDeletePolicy appended to PerCallPolicies.
