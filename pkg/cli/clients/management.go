@@ -768,47 +768,23 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceGroup(ctx cont
 	return nil
 }
 
-// DeleteResourceGroup deletes a resource group by its name.
-func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error) {
-	// First check if the resource group exists
-	_, err := amc.GetResourceGroup(ctx, planeName, resourceGroupName)
-	if err != nil {
-		if clientv2.Is404Error(err) {
-			// Resource group doesn't exist - idempotent success
-			return false, nil
-		}
-		return false, fmt.Errorf("failed to get resource group: %w", err)
-	}
-
-	// Get all resources in the group (we know it exists now)
-	resources, err := amc.ListResourcesInResourceGroup(ctx, planeName, resourceGroupName)
-	if err != nil {
-		return false, fmt.Errorf("failed to list resources in resource group: %w", err)
-	}
-
-	// Delete all resources if there are any
-	if len(resources) > 0 {
-		// Delete all resources in parallel
-		g, groupCtx := errgroup.WithContext(ctx)
-		for _, resource := range resources {
-			g.Go(func() error {
-				// Delete each resource using its full ID to ensure correct scope
-				_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.ID, false)
-				if err != nil && !clientv2.Is404Error(err) {
-					return err
-				}
-
-				return nil
-			})
-		}
-
-		// Wait for all resources to be deleted
-		if err := g.Wait(); err != nil {
-			return false, fmt.Errorf("failed to delete resources in group: %w", err)
-		}
-	}
-
-	// Now delete the empty resource group
+// DeleteResourceGroupRecord deletes the resource group record itself. It does not delete the
+// resources in the group.
+//
+// The server does not reject this when the group still has contents: the UCP resource group route
+// performs a plain synchronous delete with no child-resource guard. Deleting the record while its
+// resources survive orphans them, and they stay unreachable until a group of the same name is
+// recreated at that scope. Callers must therefore delete the contents first and must not call this
+// if that failed.
+//
+// Deleting the contents is the caller's responsibility, because it has to happen in dependency
+// order: a recipe-driven resource loads its environment, recipe pack and settings while it is being
+// deleted, so those have to outlive it. The ordering lives in the `rad group delete` command, which
+// enumerates the group once, uses that same set to prompt the user, and deletes it in tiers before
+// calling this method. See pkg/cli/cmd/deleteorder.go.
+//
+// Deleting a group that does not exist reports success without having deleted anything.
+func (amc *UCPApplicationsManagementClient) DeleteResourceGroupRecord(ctx context.Context, planeName string, resourceGroupName string) (bool, error) {
 	client, err := amc.createResourceGroupClient()
 	if err != nil {
 		return false, err
@@ -826,6 +802,12 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Cont
 }
 
 // ListResourcesInResourceGroup lists all resources in a specific resource group.
+//
+// Unlike the inventory queries built on ListAllResourceTypesNames, this includes applications and
+// environments, because they are records that live in the group.
+//
+// Errors are returned rather than skipped. This result drives `rad group delete`, where silently
+// omitting a resource type means deleting the group while leaving its contents behind.
 func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroup(ctx context.Context, planeName string, resourceGroupName string) ([]generated.GenericResource, error) {
 	// First check if the resource group exists
 	_, err := amc.GetResourceGroup(ctx, planeName, resourceGroupName)
@@ -837,28 +819,34 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroup(ctx con
 	groupScope := fmt.Sprintf("/planes/radius/%s/resourceGroups/%s", planeName, resourceGroupName)
 
 	results := []generated.GenericResource{}
-	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, planeName)
+	resourceTypesList, err := amc.listResourceTypeNames(ctx, planeName, scopeExcludedResourceTypes)
 	if err != nil {
 		return nil, err
 	}
 
+	// Failures below are returned as ResourceEnumerationError rather than wrapped with %w. Callers
+	// classify a 404 from this method as "the resource group does not exist", which only the
+	// GetResourceGroup check above can establish. Letting a per-resource-type 404 reach the caller
+	// as a 404 would turn an enumeration failure into a silent no-op that reports success while
+	// the group and its contents survive. getApiVersionsForResourceType converts a provider 404
+	// for the same reason.
 	for _, resourceType := range resourceTypesList {
 		// Create a client scoped to this resource group
 		apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
 		if err != nil {
-			continue // Skip this resource type if we can't get API versions
+			return nil, NewResourceEnumerationError(resourceType, "failed to get API versions for resource type %q: %v", resourceType, err)
 		}
 
 		client, err := amc.getGenericClient(groupScope, resourceType, apiVersions, false)
 		if err != nil {
-			continue
+			return nil, NewResourceEnumerationError(resourceType, "failed to create client for resource type %q: %v", resourceType, err)
 		}
 
 		pager := client.NewListByRootScopePager(&generated.GenericResourcesClientListByRootScopeOptions{})
 		for pager.More() {
 			page, err := pager.NextPage(ctx)
 			if err != nil {
-				break
+				return nil, NewResourceEnumerationError(resourceType, "failed to list resources of type %q: %v", resourceType, err)
 			}
 
 			for _, resource := range page.GenericResourcesList.Value {
@@ -1081,16 +1069,44 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 	return response.ResourceProviderSummary, nil
 }
 
-// ListAllResourceTypesNames lists the names of all resource types in all resource providers in the configured plane.
-func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
-	// excludedResourceTypesList contains resource types that should be excluded
-	// Lowercase is used to avoid case sensitivity issues.
-	excludedResourceTypesList := []string{
-		"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
-		"radius.core/environments",
-		"radius.core/applications",
-	}
+// inventoryExcludedResourceTypes are the types omitted from deployed-resource inventory and
+// application-graph queries. In those queries applications and environments are the containers
+// being described rather than members of the result, and deployment records are engine bookkeeping
+// rather than user resources.
+//
+// This set is deliberately narrower than it looks: it must not be used for queries that ask which
+// resource records exist in a scope. See scopeExcludedResourceTypes.
+//
+// Lowercase is used to avoid case sensitivity issues.
+var inventoryExcludedResourceTypes = []string{
+	"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
+	"radius.core/environments",
+	"radius.core/applications",
+}
 
+// scopeExcludedResourceTypes are the types omitted when enumerating the resource records that live
+// in a scope, such as a resource group. Applications and environments are records in their own
+// right and must be included: a group containing only those is not empty, and deleting the group
+// without deleting them orphans them.
+//
+// Lowercase is used to avoid case sensitivity issues.
+var scopeExcludedResourceTypes = []string{
+	"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
+}
+
+// ListAllResourceTypesNames lists the names of all resource types in all resource providers in the configured plane.
+//
+// The result omits applications and environments, so it answers "what has been deployed" rather
+// than "what records exist". Callers enumerating the contents of a scope want the latter and must
+// not use this method.
+func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
+	return amc.listResourceTypeNames(ctx, planeName, inventoryExcludedResourceTypes)
+}
+
+// listResourceTypeNames lists the names of all resource types in all resource providers in the
+// given plane, omitting the supplied types. Exclusions are compared case-insensitively and must be
+// supplied in lowercase.
+func (amc *UCPApplicationsManagementClient) listResourceTypeNames(ctx context.Context, planeName string, excludedResourceTypesList []string) ([]string, error) {
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list resource provider summaries: %v", err)

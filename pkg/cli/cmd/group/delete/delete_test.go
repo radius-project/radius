@@ -74,75 +74,91 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
+	// testResourceID mirrors the fully qualified IDs the API returns. The runner needs a real ID to
+	// address a resource for deletion, and reports any resource that lacks one.
+	testResourceID := func(resourceType string, name string) string {
+		return "/planes/radius/local/resourceGroups/testrg/providers/" + resourceType + "/" + name
+	}
+
+	testResource := func(resourceType string, name string) generated.GenericResource {
+		return generated.GenericResource{
+			ID:   new(testResourceID(resourceType, name)),
+			Name: new(name),
+			Type: new(resourceType),
+		}
+	}
+
+	deletingOutput := func(resourceType string, name string) output.LogOutput {
+		return output.LogOutput{
+			Format: "  Deleting %s...",
+			Params: []any{testResourceID(resourceType, name)},
+		}
+	}
+
+	groupDeletedOutput := output.LogOutput{
+		Format: "System.Resources/resourceGroups/%s deleted",
+		Params: []any{"testrg"},
+	}
+
+	groupNotFoundOutput := output.LogOutput{
+		Format: "System.Resources/resourceGroups/%s not found",
+		Params: []any{"testrg"},
+	}
+
 	tests := []struct {
-		name            string
-		confirmation    bool // --yes flag
-		resources       []generated.GenericResource
-		listError       error
-		deleteResult    bool
-		deleteError     error
-		promptResponse  string
-		promptError     error
-		expectedPrompt  string
-		expectedOutputs []any
-		expectedError   error
-		skipPrompt      bool // for cases where prompt shouldn't be called
+		name                string
+		confirmation        bool // --yes flag
+		resources           []generated.GenericResource
+		listError           error
+		deleteResult        bool
+		deleteError         error
+		resourceDeleteError error
+		promptResponse      string
+		promptError         error
+		expectedPrompt      string
+		expectedOutputs     []any
+		expectedError       error
+		skipPrompt          bool // for cases where prompt shouldn't be called
 	}{
 		{
-			name:         "Success with --yes flag and empty group",
-			confirmation: true,
-			resources:    []generated.GenericResource{},
-			deleteResult: true,
-			skipPrompt:   true,
-			expectedOutputs: []any{
-				output.LogOutput{
-					Format: "System.Resources/resourceGroups/%s deleted",
-					Params: []any{"testrg"},
-				},
-			},
+			name:            "Success with --yes flag and empty group",
+			confirmation:    true,
+			resources:       []generated.GenericResource{},
+			deleteResult:    true,
+			skipPrompt:      true,
+			expectedOutputs: []any{groupDeletedOutput},
 		},
 		{
 			name:         "Success with --yes flag and resources",
 			confirmation: true,
 			resources: []generated.GenericResource{
-				{Name: new("resource1"), Type: new("Applications.Core/containers")},
-				{Name: new("resource2"), Type: new("Applications.Core/gateways")},
+				testResource("Applications.Core/containers", "resource1"),
+				testResource("Applications.Core/gateways", "resource2"),
 			},
 			deleteResult: true,
 			skipPrompt:   true,
 			expectedOutputs: []any{
-				output.LogOutput{
-					Format: "System.Resources/resourceGroups/%s deleted",
-					Params: []any{"testrg"},
-				},
+				deletingOutput("Applications.Core/containers", "resource1"),
+				deletingOutput("Applications.Core/gateways", "resource2"),
+				groupDeletedOutput,
 			},
 		},
 		{
-			name:         "Group already deleted with --yes flag",
-			confirmation: true,
-			resources:    []generated.GenericResource{},
-			deleteResult: false, // indicates group doesn't exist
-			skipPrompt:   true,
-			expectedOutputs: []any{
-				output.LogOutput{
-					Format: "System.Resources/resourceGroups/%s not found",
-					Params: []any{"testrg"},
-				},
-			},
+			name:            "Group already deleted with --yes flag",
+			confirmation:    true,
+			resources:       []generated.GenericResource{},
+			deleteResult:    false, // indicates group doesn't exist
+			skipPrompt:      true,
+			expectedOutputs: []any{groupNotFoundOutput},
 		},
 		{
-			name:           "Empty group - user confirms deletion",
-			confirmation:   false,
-			resources:      []generated.GenericResource{},
-			promptResponse: prompt.ConfirmYes,
-			expectedPrompt: "The resource group testrg is empty. Are you sure you want to delete the resource group?",
-			deleteResult:   true,
-			expectedOutputs: []any{
-				output.LogOutput{
-					Format: "System.Resources/resourceGroups/%s deleted",
-					Params: []any{"testrg"},
-				},
-			},
+			name:            "Empty group - user confirms deletion",
+			confirmation:    false,
+			resources:       []generated.GenericResource{},
+			promptResponse:  prompt.ConfirmYes,
+			expectedPrompt:  "The resource group testrg is empty. Are you sure you want to delete the resource group?",
+			deleteResult:    true,
+			expectedOutputs: []any{groupDeletedOutput},
 		},
 		{
 			name:            "Empty group - user cancels deletion",
@@ -157,24 +173,23 @@ func Test_Run(t *testing.T) {
 			name:         "Group with resources - user confirms deletion",
 			confirmation: false,
 			resources: []generated.GenericResource{
-				{Name: new("resource1"), Type: new("Applications.Core/containers")},
-				{Name: new("resource2"), Type: new("Applications.Core/gateways")},
+				testResource("Applications.Core/containers", "resource1"),
+				testResource("Applications.Core/gateways", "resource2"),
 			},
 			promptResponse: prompt.ConfirmYes,
 			expectedPrompt: "The resource group testrg contains deployed resources. Are you sure you want to delete the resource group and its resources?",
 			deleteResult:   true,
 			expectedOutputs: []any{
-				output.LogOutput{
-					Format: "System.Resources/resourceGroups/%s deleted",
-					Params: []any{"testrg"},
-				},
+				deletingOutput("Applications.Core/containers", "resource1"),
+				deletingOutput("Applications.Core/gateways", "resource2"),
+				groupDeletedOutput,
 			},
 		},
 		{
 			name:         "Group with resources - user cancels deletion",
 			confirmation: false,
 			resources: []generated.GenericResource{
-				{Name: new("resource1"), Type: new("Applications.Core/containers")},
+				testResource("Applications.Core/containers", "resource1"),
 			},
 			promptResponse:  prompt.ConfirmNo,
 			expectedPrompt:  "The resource group testrg contains deployed resources. Are you sure you want to delete the resource group and its resources?",
@@ -208,31 +223,41 @@ func Test_Run(t *testing.T) {
 			expectedOutputs: nil,
 		},
 		{
-			name:           "List returns 404 - group doesn't exist",
-			confirmation:   false,
-			listError:      &azcore.ResponseError{StatusCode: http.StatusNotFound},
-			promptResponse: prompt.ConfirmYes,
-			expectedPrompt: "The resource group testrg is empty. Are you sure you want to delete the resource group?",
-			deleteResult:   false,
+			// The group record must outlive a failed resource delete. Deleting the record while a
+			// resource is still present orphans that resource: the record survives in the
+			// datastore but becomes unreachable, because UCP resolves the resource group before
+			// the resource beneath it. This is the defect that issue #12469 reports, so the case
+			// deliberately registers no DeleteResourceGroupRecord expectation -- gomock fails the
+			// test if the runner deletes the record anyway.
+			name:         "Resource delete fails - group record is not deleted",
+			confirmation: true,
+			resources: []generated.GenericResource{
+				testResource("Applications.Core/containers", "resource1"),
+			},
+			resourceDeleteError: fmt.Errorf("recipe delete failed"),
+			skipPrompt:          true,
+			expectedError:       fmt.Errorf("failed to delete resources in resource group testrg"),
 			expectedOutputs: []any{
-				output.LogOutput{
-					Format: "System.Resources/resourceGroups/%s not found",
-					Params: []any{"testrg"},
-				},
+				deletingOutput("Applications.Core/containers", "resource1"),
 			},
 		},
 		{
-			name:         "List returns 404 with --yes flag",
-			confirmation: true,
-			listError:    &azcore.ResponseError{StatusCode: http.StatusNotFound},
-			skipPrompt:   true,
-			deleteResult: false,
-			expectedOutputs: []any{
-				output.LogOutput{
-					Format: "System.Resources/resourceGroups/%s not found",
-					Params: []any{"testrg"},
-				},
-			},
+			// A missing group is reported without prompting: there is nothing to confirm, and
+			// asking whether to delete a group that does not exist is misleading.
+			name:            "List returns 404 - group doesn't exist",
+			confirmation:    false,
+			listError:       &azcore.ResponseError{StatusCode: http.StatusNotFound},
+			skipPrompt:      true,
+			deleteResult:    false,
+			expectedOutputs: []any{groupNotFoundOutput},
+		},
+		{
+			name:            "List returns 404 with --yes flag",
+			confirmation:    true,
+			listError:       &azcore.ResponseError{StatusCode: http.StatusNotFound},
+			skipPrompt:      true,
+			deleteResult:    false,
+			expectedOutputs: []any{groupNotFoundOutput},
 		},
 		{
 			name:            "List fails with --yes flag - should not proceed",
@@ -281,19 +306,31 @@ func Test_Run(t *testing.T) {
 				prompter = mockPrompter
 			}
 
-			// Expect DeleteResourceGroup call if user confirms or --yes is provided
-			// BUT not if we have a list error (other than 404)
-			hasNonNotFoundListError := tt.listError != nil && !clients.Is404Error(tt.listError)
-			shouldCallDelete := (tt.confirmation || tt.promptResponse == prompt.ConfirmYes) && !hasNonNotFoundListError
+			// Expect the group record deletion if the user confirms or --yes is provided, and the
+			// deletion of each resource in the group beforehand. Neither happens if the group could
+			// not be enumerated, because its contents would be unknown.
+			listFailed := tt.listError != nil
+			shouldCallDelete := (tt.confirmation || tt.promptResponse == prompt.ConfirmYes) && !listFailed
 			if shouldCallDelete && tt.promptError == nil {
-				if tt.deleteError != nil {
+				for _, resource := range tt.resources {
 					appManagementClient.EXPECT().
-						DeleteResourceGroup(gomock.Any(), "local", "testrg").
-						Return(false, tt.deleteError).Times(1)
-				} else {
-					appManagementClient.EXPECT().
-						DeleteResourceGroup(gomock.Any(), "local", "testrg").
-						Return(tt.deleteResult, nil).Times(1)
+						DeleteResource(gomock.Any(), *resource.Type, *resource.ID, false).
+						Return(tt.resourceDeleteError == nil, tt.resourceDeleteError).Times(1)
+				}
+
+				// A failed resource delete must stop the run before the group record is deleted,
+				// so no expectation is registered for it: gomock then fails the test if the
+				// runner calls it anyway.
+				if tt.resourceDeleteError == nil {
+					if tt.deleteError != nil {
+						appManagementClient.EXPECT().
+							DeleteResourceGroupRecord(gomock.Any(), "local", "testrg").
+							Return(false, tt.deleteError).Times(1)
+					} else {
+						appManagementClient.EXPECT().
+							DeleteResourceGroupRecord(gomock.Any(), "local", "testrg").
+							Return(tt.deleteResult, nil).Times(1)
+					}
 				}
 			}
 

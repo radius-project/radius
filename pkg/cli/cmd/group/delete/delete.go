@@ -22,6 +22,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -58,6 +59,15 @@ The command will:
 - Check if the resource group contains any deployed resources
 - Show an appropriate confirmation prompt based on whether resources exist
 - Delete all resources in the group (if any) before deleting the group itself
+
+Resources are deleted in stages rather than all at once. Workloads are deleted first, then secrets
+and secret stores, then applications, and finally environments along with the recipe packs and
+settings they reference. Deleting a resource runs its recipe, which needs that configuration to
+still exist, so the configuration is removed last.
+
+If any resource fails to delete, the remaining resources in the same stage still finish and every
+failure is reported. Later stages are skipped and the resource group is left in place. Re-running
+the command is safe and will retry the resources that are left.
 
 Use the --yes flag to skip confirmation prompts.`,
 		Example: `rad group delete rgprod
@@ -125,26 +135,34 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run runs the `rad group delete` command.
 //
 
-// Run checks if the user has confirmed the deletion of the resource group, and if so, deletes the resource group and
-// returns an error if unsuccessful.
+// Run enumerates the resource group, confirms the deletion with the user, deletes the group's
+// resources in dependency order and then deletes the group itself.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return fmt.Errorf("failed to create management client: %w", err)
 	}
 
-	// Always try to list resources to provide accurate information
+	// The group is enumerated once and the same set is used for both the confirmation prompt and
+	// the deletion, so that the user cannot be asked about one set of resources and have a
+	// different set deleted.
 	resources, listErr := client.ListResourcesInResourceGroup(ctx, scopeLocal, r.UCPResourceGroupName)
-	hasResources := listErr == nil && len(resources) > 0
+	if listErr != nil {
+		// A 404 means the group does not exist, which is reported as a no-op below rather than as
+		// a failure. Any other error means the contents are unknown, and deleting a group whose
+		// contents cannot be enumerated would silently orphan them.
+		if !clients.Is404Error(listErr) {
+			return fmt.Errorf("unable to verify resource group contents: %w", listErr)
+		}
 
-	// Check if we encountered a real error (not a 404 which means group doesn't exist)
-	if listErr != nil && !clients.Is404Error(listErr) {
-		return fmt.Errorf("unable to verify resource group contents: %w", listErr)
+		r.Output.LogInfo(msgResourceGroupNotFound, r.UCPResourceGroupName)
+
+		return nil
 	}
 
 	// Handle confirmation prompts when --yes is not provided
 	if !r.Confirmation {
-		confirmed, err := r.promptForConfirmation(hasResources)
+		confirmed, err := r.promptForConfirmation(len(resources) > 0)
 		if err != nil {
 			return err
 		}
@@ -154,8 +172,15 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	// Actually delete the resource group (which will now handle resource deletion internally)
-	deleted, err := client.DeleteResourceGroup(ctx, scopeLocal, r.UCPResourceGroupName)
+	// Resources are deleted in dependency order. Deleting them in one unordered wave lets a recipe
+	// pack, settings resource or environment be deleted before the recipe-driven resources that
+	// need it in order to tear themselves down, which leaves those resources undeletable.
+	tiers := cmd.GroupResourcesByDeleteTier(resources)
+	if err := cmd.DeleteResourcesInTiers(ctx, client, r.Output, tiers, false); err != nil {
+		return fmt.Errorf("failed to delete resources in resource group %s: %w", r.UCPResourceGroupName, err)
+	}
+
+	deleted, err := client.DeleteResourceGroupRecord(ctx, scopeLocal, r.UCPResourceGroupName)
 	if err != nil {
 		return fmt.Errorf("failed to delete resource group %s: %w", r.UCPResourceGroupName, err)
 	}
