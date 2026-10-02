@@ -21,13 +21,36 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
 
+	helm "helm.sh/helm/v4/pkg/action"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
+	goretry "github.com/sethvargo/go-retry"
+
 	"github.com/Masterminds/semver/v3"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/retry"
 	"github.com/radius-project/radius/pkg/version"
+)
+
+const (
+	// radiusInstallMaxRetries is the number of additional attempts made to (re)install the Radius
+	// Helm chart after an attempt fails because the readiness wait timed out
+	// (context.DeadlineExceeded). A small fraction of CI runs hit a transient race where a
+	// dependency image (for example deployment-engine, dispatched cross-repo before its image
+	// finishes publishing) isn't pullable yet, which leaves a single Deployment unready for the
+	// whole install timeout. Retrying gives the image time to become available without masking a
+	// permanently broken install, since non-timeout errors are never retried.
+	// See https://github.com/radius-project/radius/issues/12576.
+	radiusInstallMaxRetries = 2
+
+	// radiusInstallRetryInitialDelay is the initial backoff delay between Radius Helm install
+	// retries. Each retried attempt can itself take up to DefaultInstallTimeout to fail, so the
+	// backoff only needs to add a modest extra delay to give a racing image publish time to land.
+	radiusInstallRetryInitialDelay = 30 * time.Second
 )
 
 type CLIClusterOptions struct {
@@ -227,6 +250,11 @@ type Impl struct {
 
 	configureDefaultContourGateway func(ctx context.Context, kubeContext string) error
 	removeDefaultContourGateway    func(ctx context.Context, kubeContext string) error
+
+	// radiusInstallBackoff overrides the backoff strategy used to retry a timed-out Radius Helm
+	// install/upgrade (see applyRadiusHelmChartWithRetry). Tests set this to a backoff with no
+	// delay to avoid real sleeps; nil uses the production backoff.
+	radiusInstallBackoff goretry.Backoff
 }
 
 var _ Interface = &Impl{}
@@ -262,7 +290,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
-	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
+	err = i.applyRadiusHelmChartWithRetry(ctx, helmAction, kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius, radiusValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
 	}
@@ -290,6 +318,44 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	return nil
+}
+
+// applyRadiusHelmChartWithRetry installs (or upgrades) the Radius Helm chart, retrying when the
+// attempt fails because the readiness wait timed out (context.DeadlineExceeded). Any other error
+// is returned immediately without retrying.
+//
+// Helm does not roll back a release whose install/upgrade fails solely because the readiness
+// wait timed out, so the release remains recorded in the cluster after a timeout. Left in place,
+// the next attempt's QueryRelease call would see the release as already installed and silently
+// no-op instead of retrying, so the stale release is uninstalled before each retry.
+func (i *Impl) applyRadiusHelmChartWithRetry(ctx context.Context, helmAction HelmAction, kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options RadiusChartOptions, vals map[string]any) error {
+	backoff := i.radiusInstallBackoff
+	if backoff == nil {
+		backoff = goretry.WithMaxRetries(radiusInstallMaxRetries, goretry.NewExponential(radiusInstallRetryInitialDelay))
+	}
+	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: backoff})
+
+	attempt := 0
+	return retryer.RetryFunc(ctx, func(ctx context.Context) error {
+		attempt++
+
+		err := helmAction.ApplyHelmChart(kubeContext, helmChart, helmConf, options.ChartOptions, vals)
+		if err == nil {
+			return nil
+		}
+
+		if !errors.Is(err, context.DeadlineExceeded) {
+			return err
+		}
+
+		output.LogInfo("Installing Radius timed out waiting for resources to become ready (attempt %d), cleaning up and retrying: %v", attempt, err)
+
+		if uninstallErr := i.uninstallHelmRelease("Radius", options.ReleaseName, options.Namespace, kubeContext); uninstallErr != nil {
+			return fmt.Errorf("failed to clean up Radius Helm release after timeout, err: %w", uninstallErr)
+		}
+
+		return retry.RetryableError(err)
+	})
 }
 
 // UninstallRadius uninstalls Radius and its dependencies (Contour) from the cluster using the provided options.

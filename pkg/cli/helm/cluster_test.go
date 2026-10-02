@@ -18,12 +18,14 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	goretry "github.com/sethvargo/go-retry"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	helm "helm.sh/helm/v4/pkg/action"
@@ -92,6 +94,164 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, gatewayCalls.configureCalls)
 	require.Equal(t, kubeContext, gatewayCalls.kubeContext)
+}
+
+// Test_Helm_InstallRadius_RetriesOnTimeout verifies that InstallRadius retries the Radius Helm
+// install after a context.DeadlineExceeded failure (the "Install Radius... context deadline
+// exceeded" flake, see https://github.com/radius-project/radius/issues/12576), cleaning up the
+// stale release before retrying and succeeding on the second attempt.
+func Test_Helm_InstallRadius_RetriesOnTimeout(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	impl := &Impl{
+		Helm: mockHelmClient,
+		// Zero-delay backoff so the test doesn't sleep through the real retry delay.
+		radiusInstallBackoff: goretry.WithMaxRetries(radiusInstallMaxRetries, goretry.NewConstant(time.Millisecond)),
+	}
+	ctx := t.Context()
+	kubeContext := "test-context"
+	options := NewDefaultClusterOptions()
+	options.Contour.Disabled = true
+
+	mockHelmClient.EXPECT().
+		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
+		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
+			pull := helm.NewPull(pullopts...)
+			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
+			require.NoError(t, err)
+			return "Pulled", nil
+		}).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+
+	// Each attempt first checks whether the release already exists.
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
+		Return(nil, driver.ErrReleaseNotFound).
+		Times(2)
+
+	timeoutErr := fmt.Errorf("helm install wait: %w", context.DeadlineExceeded)
+	radiusRelease := &releasev1.Release{
+		Name:  options.Radius.ReleaseName,
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+	}
+
+	gomock.InOrder(
+		mockHelmClient.EXPECT().
+			RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true, gomock.Any()).
+			Return(nil, timeoutErr).
+			Times(1),
+		mockHelmClient.EXPECT().
+			RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true, gomock.Any()).
+			Return(radiusRelease, nil).
+			Times(1),
+	)
+
+	// The stale (failed) release is cleaned up before the retry.
+	mockHelmClient.EXPECT().
+		RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace, true).
+		Return(&release.UninstallReleaseResponse{}, nil).
+		Times(1)
+
+	err := impl.InstallRadius(ctx, options, kubeContext)
+	require.NoError(t, err)
+}
+
+// Test_Helm_InstallRadius_ExhaustsRetriesOnPersistentTimeout verifies that InstallRadius gives up
+// and returns the context.DeadlineExceeded error after exhausting all retries, cleaning up the
+// stale release after every failed attempt.
+func Test_Helm_InstallRadius_ExhaustsRetriesOnPersistentTimeout(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	impl := &Impl{
+		Helm:                 mockHelmClient,
+		radiusInstallBackoff: goretry.WithMaxRetries(radiusInstallMaxRetries, goretry.NewConstant(time.Millisecond)),
+	}
+	ctx := t.Context()
+	kubeContext := "test-context"
+	options := NewDefaultClusterOptions()
+	options.Contour.Disabled = true
+
+	mockHelmClient.EXPECT().
+		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
+		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
+			pull := helm.NewPull(pullopts...)
+			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
+			require.NoError(t, err)
+			return "Pulled", nil
+		}).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+
+	totalAttempts := radiusInstallMaxRetries + 1
+
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
+		Return(nil, driver.ErrReleaseNotFound).
+		Times(totalAttempts)
+
+	timeoutErr := fmt.Errorf("helm install wait: %w", context.DeadlineExceeded)
+	mockHelmClient.EXPECT().
+		RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true, gomock.Any()).
+		Return(nil, timeoutErr).
+		Times(totalAttempts)
+
+	// Cleanup runs after every failed attempt, including the last one.
+	mockHelmClient.EXPECT().
+		RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace, true).
+		Return(&release.UninstallReleaseResponse{}, nil).
+		Times(totalAttempts)
+
+	err := impl.InstallRadius(ctx, options, kubeContext)
+	require.Error(t, err)
+	require.True(t, errors.Is(err, context.DeadlineExceeded))
+}
+
+// Test_Helm_InstallRadius_DoesNotRetryOnNonTimeoutError verifies that InstallRadius does not
+// retry (and does not attempt any cleanup) when the Radius Helm install fails for a reason other
+// than a readiness-wait timeout.
+func Test_Helm_InstallRadius_DoesNotRetryOnNonTimeoutError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	impl := &Impl{
+		Helm:                 mockHelmClient,
+		radiusInstallBackoff: goretry.WithMaxRetries(radiusInstallMaxRetries, goretry.NewConstant(time.Millisecond)),
+	}
+	ctx := t.Context()
+	kubeContext := "test-context"
+	options := NewDefaultClusterOptions()
+	options.Contour.Disabled = true
+
+	mockHelmClient.EXPECT().
+		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
+		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
+			pull := helm.NewPull(pullopts...)
+			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
+			require.NoError(t, err)
+			return "Pulled", nil
+		}).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
+		Return(nil, driver.ErrReleaseNotFound).
+		Times(1)
+
+	mockHelmClient.EXPECT().
+		RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true, gomock.Any()).
+		Return(nil, errors.New("some other unrelated failure")).
+		Times(1)
+
+	// No RunHelmUninstall expectation: cleanup/retry must not happen for non-timeout errors.
+
+	err := impl.InstallRadius(ctx, options, kubeContext)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "some other unrelated failure")
+	require.False(t, errors.Is(err, context.DeadlineExceeded))
 }
 
 func Test_Helm_UninstallRadius(t *testing.T) {
