@@ -14,9 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import loadLabels from "./pr-status-label-config.mjs";
+const STATUS_LABELS = Object.freeze({
+  needsReviewer: "pr:needs-reviewer",
+  waitingForReview: "pr:waiting-for-review",
+  waitingForAuthor: "pr:waiting-for-author",
+  reviewApproved: "pr:review-approved",
+  needsRebase: "pr:needs-rebase",
+  readyForQueue: "pr:ready-for-queue"
+});
 
-const { states: STATUS_LABELS, manual: MANUAL_LABELS } = await loadLabels();
+const MANUAL_LABELS = Object.freeze({
+  needsAuthorResponse: "pr:needs-author-response",
+  doNotMerge: "pr:do-not-merge"
+});
+
 const MANAGED_LABELS = Object.freeze(Object.values(STATUS_LABELS));
 
 const SUBMITTED_REVIEW_STATES = Object.freeze([

@@ -61,22 +61,8 @@ jobs:
           ref: ${{ github.sha }}
           sparse-checkout: |
             .github/scripts/pr-status-labels.mjs
-            .github/scripts/pr-status-label-config.mjs
-            .github/configs/pr-status-labels.yml
-            .node-version
-            package.json
-            pnpm-lock.yaml
           sparse-checkout-cone-mode: false
           persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version-file: .node-version
-          package-manager-cache: false
-
-      - name: Install label configuration dependencies
-        run: corepack pnpm install --frozen-lockfile --prod --ignore-scripts
 
       - name: Reconcile PR status labels
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0

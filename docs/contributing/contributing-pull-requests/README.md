@@ -95,7 +95,7 @@ Every non-Dependabot pull request must have exactly one release-impact label:
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
-The [PR Status Labels workflow](../../../.github/workflows/pr.status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold. The names below are the defaults; maintainers can [configure the label names](#configuring-lifecycle-label-names) without changing their meaning:
+The [PR Status Labels workflow](../../../.github/workflows/pr.status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold:
 
 - **`pr:needs-reviewer`** — there is neither a pending reviewer or team request nor an active submitted human review from someone other than the author.
 - **`pr:waiting-for-review`** — a reviewer or team has a pending request, or a human has submitted a review but required approval is still outstanding or cannot be verified. When a reviewer requests changes, the author must re-request a review after addressing them; pushing a commit alone does not hand the PR back.
@@ -114,26 +114,9 @@ The status workflow assumes these labels already exist; it never creates reposit
 
 Draft PRs have no handoff label. Maintainers can apply the existing **`pr:do-not-merge`** label to pause a PR; it removes the handoff and queue-ready labels. Use **`pr:needs-author-response`** for an explicit author-response request, including actionable general discussion outside inline review threads, then remove it after the author responds. The workflow never applies or removes these manual labels. Both manual labels fail the `PR Required Labels` check and remove a PR from the merge queue if it was already queued.
 
-#### Configuring lifecycle label names
+#### Lifecycle label configuration prerequisites
 
-Edit [`.github/configs/pr-status-labels.yml`](../../../.github/configs/pr-status-labels.yml) to change the GitHub label names used by both lifecycle assignment and the [required-label merge-hold check](../../../.github/workflows/pr.required-labels.yml):
-
-```yaml
-states:
-  needsReviewer: pr:needs-reviewer
-  waitingForReview: pr:waiting-for-review
-  waitingForAuthor: pr:waiting-for-author
-  reviewApproved: pr:review-approved
-  needsRebase: pr:needs-rebase
-  readyForQueue: pr:ready-for-queue
-manual:
-  needsAuthorResponse: pr:needs-author-response
-  doNotMerge: pr:do-not-merge
-```
-
-The section and state keys are fixed, required, and case-sensitive; change only their values. Each value must be a nonempty label name of at most 50 characters, with no surrounding whitespace or control characters. Names must be unique across both sections, ignoring case. Normal YAML comments and quoted values are supported, including names containing spaces or colons. The six `states` values are the complete set of automatically managed labels; the two `manual` values are never automatically applied or removed. This mapping does not configure review or merge policy, colors, descriptions, or the release-impact labels.
-
-Mapped labels must already exist. For a rename, update the mapping and the independent [label catalog](../../../.github/labels.yml) together, and deliberately rename or migrate the existing repository label and its PR assignments. The catalog action supports `from_name: <old-name>` on the renamed entry. Coordinate that migration with activation of the mapping, especially for manual holds: the status workflow never migrates old names, and the catalog's `skip-delete` setting preserves labels omitted from the catalog. Updating only the mapping can leave old labels on PRs or stop recognizing an old manual hold.
+The [YAML mapping](../../../.github/configs/pr-status-labels.yml) and [shared loader](../../../.github/scripts/pr-status-label-config.mjs) are prerequisites for a later activation PR. **They do not yet control lifecycle assignment or manual merge holds.** Both live workflows retain their existing behavior, including required-label comments; editing this mapping alone has no runtime effect. Label provisioning remains independent in the [label catalog](../../../.github/labels.yml).
 
 Validate from the repository root using Node.js from [`.node-version`](../../../.node-version) and the pnpm version pinned in [`package.json`](../../../package.json):
 
@@ -142,9 +125,9 @@ corepack pnpm install --frozen-lockfile --ignore-scripts
 corepack pnpm run validate:pr-status-labels
 ```
 
-The existing lint workflow runs the same configuration validation on proposed changes; configuration-only edits are excluded from the shared CI skip list. The shared loader rejects missing or unknown keys/sections, duplicate YAML keys, wrong types, invalid names, and case-insensitive duplicate names before any lifecycle label or dequeue writes. Both runtime consumers install the pinned YAML parser from the trusted lockfile; neither falls back to hardcoded names.
+The existing lint workflow runs the same configuration validation on proposed changes; configuration-only edits are excluded from the shared CI skip list. The loader requires the fixed, case-sensitive keys in both sections and rejects duplicate YAML keys, wrong types, blank names, names over 50 characters, surrounding whitespace or control characters, and case-insensitive duplicate names. Unknown keys and sections are rejected.
 
-Runtime consumers use trusted repository revisions, not fork PR code: the status workflow loads its script, mapping, and dependencies from `github.sha`, and the required-label workflow uses the PR event's `base.sha`. A proposed mapping therefore takes effect only after reaching the trusted revision used by a subsequent run. On initial rollout, or for a target branch without these files, the required-label check fails rather than skipping configuration; maintainers must arrange for the trusted files to reach that branch. Rerunning an old event retains its old base revision.
+Activate the mapping in a separate PR only after the prerequisite PR is verified merged and a fresh target base contains the config, loader, package manifest, and lockfile. That follow-up must wire both runtime consumers to the same mapping without changing review or merge policy. Until then, the existing checks do not load these files and require no bootstrap exception.
 
 ### 6. (Optional) Self-review with the `radius-code-review` skill
 
