@@ -69,6 +69,11 @@ func TestMain(m *testing.M) {
 		os.Exit(runFakeBicep()) //nolint:forbidigo // Test helper subprocess must behave as the Bicep executable.
 	}
 
+	radBinaryPath = os.Getenv(testRadBinaryEnv)
+	if radBinaryPath != "" {
+		os.Exit(m.Run()) //nolint:forbidigo // TestMain must return the test suite exit code.
+	}
+
 	tempDir, err := os.MkdirTemp("", "radius-windowless-test-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
