@@ -22,17 +22,52 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
+      contents: read
       issues: write
       pull-requests: write
     steps:
+      - name: Checkout trusted label configuration
+        if: github.event_name != 'merge_group'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: |
+            .github/scripts/pr-status-label-config.mjs
+            .github/configs/pr-status-labels.yml
+            .node-version
+            package.json
+            pnpm-lock.yaml
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Setup Node.js
+        if: github.event_name != 'merge_group'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Install label configuration dependencies
+        if: github.event_name != 'merge_group'
+        run: corepack pnpm install --frozen-lockfile --prod --ignore-scripts
+
       - name: Reject merge holds and pending author responses
-        if: >-
-          github.event_name != 'merge_group' &&
-          (contains(github.event.pull_request.labels.*.name, 'pr:do-not-merge') ||
-           contains(github.event.pull_request.labels.*.name, 'pr:needs-author-response'))
-        run: |
-          echo "::error::Remove pr:do-not-merge or pr:needs-author-response before merging."
-          exit 1
+        if: github.event_name != 'merge_group'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { default: loadLabels } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/pr-status-label-config.mjs`
+            )
+            const { manual } = await loadLabels()
+            const holds = Object.values(manual).filter((name) =>
+              context.payload.pull_request.labels.some(
+                (label) => label.name.toLowerCase() === name.toLowerCase()
+              )
+            )
+            if (holds.length > 0) {
+              core.setFailed(`Remove ${holds.join(" or ")} before merging.`)
+            }
 
       - name: Run PR Required Labels
         if: github.event_name != 'merge_group' && github.event.pull_request.user.login != 'dependabot[bot]'
