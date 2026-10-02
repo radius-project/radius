@@ -57,6 +57,11 @@ jobs:
 
       - name: Download Go modules
         uses: ./.github/actions/go-mod-download
+        with:
+          module-directories: |
+            .
+            test/magpiego
+            test/testrp
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0

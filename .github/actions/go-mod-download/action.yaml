@@ -7,10 +7,14 @@ description: |
   fail with stream-level errors (e.g. "stream ID ...; INTERNAL_ERROR; received
   from peer"). Run this after Setup Go and before any step that compiles Go
   code (`go build`, `go test`, `make build`, `make docker-build`, etc.) so the
-  module cache is already warm and those steps don't hit the network at all.
+  module cache is warm for every module listed by the caller.
 inputs:
   working-directory:
-    description: Directory containing the go.mod to download dependencies for.
+    description: Base directory used to resolve module-directories.
+    required: false
+    default: "."
+  module-directories:
+    description: Newline-separated directories containing go.mod, relative to working-directory.
     required: false
     default: "."
   retries:
@@ -35,16 +39,6 @@ runs:
         GODEBUG: http2client=0
         INPUT_RETRIES: ${{ inputs.retries }}
         INPUT_RETRY_WAIT_SECONDS: ${{ inputs.retry-wait-seconds }}
-      run: |
-        attempt=1
-        wait_seconds="${INPUT_RETRY_WAIT_SECONDS}"
-        until go mod download; do
-          if [ "${attempt}" -ge "${INPUT_RETRIES}" ]; then
-            echo "::error::go mod download failed after ${INPUT_RETRIES} attempts"
-            exit 1
-          fi
-          echo "::warning::go mod download failed (attempt ${attempt}/${INPUT_RETRIES}); retrying in ${wait_seconds}s"
-          sleep "${wait_seconds}"
-          attempt=$((attempt + 1))
-          wait_seconds=$((wait_seconds * 2))
-        done
+        INPUT_MODULE_DIRECTORIES: ${{ inputs.module-directories }}
+        DOWNLOAD_SCRIPT: ${{ github.action_path }}/download.sh
+      run: bash "${DOWNLOAD_SCRIPT}"

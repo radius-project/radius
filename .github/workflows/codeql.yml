@@ -99,6 +99,11 @@ jobs:
       - name: Download Go modules
         if: matrix.language == 'go'
         uses: ./.github/actions/go-mod-download
+        with:
+          module-directories: |
+            .
+            test/magpiego
+            test/testrp
 
       - name: Setup Node
         if: matrix.language == 'javascript'

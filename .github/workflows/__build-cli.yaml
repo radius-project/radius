@@ -84,6 +84,11 @@ jobs:
       - name: Download Go modules
         if: inputs.only_changed != 'true'
         uses: ./.github/actions/go-mod-download
+        with:
+          module-directories: |
+            .
+            test/magpiego
+            test/testrp
 
       - name: Setup Python
         if: inputs.only_changed != 'true'

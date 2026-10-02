@@ -26,12 +26,31 @@ Follow the [GitHub Workflows instruction file](../../../../.github/instructions/
 5. Set the smallest explicit `permissions:` block at the workflow or job level.
 6. Open the pull request as a draft and run the workflow from your branch. Confirm its trigger, job graph, artifacts, and failure behavior before marking the pull request ready.
 
+### Go module downloads
+
+After setting up Go, use the local `.github/actions/go-mod-download` composite action before compiling Go. It runs `go mod download` with HTTP/2 disabled and up to five attempts, waiting 5, 10, 20, and 40 seconds between attempts. Set `working-directory` when the source checkout is not at the workspace root. The `module-directories` input defaults to `.` and accepts one module directory per line, relative to `working-directory`.
+
+Jobs that run `make build`, `make docker-build`, or `make docker-multi-arch-push` must download the independent test modules as well as the root module:
+
+```yaml
+- name: Download Go modules
+  uses: ./.github/actions/go-mod-download
+  with:
+    module-directories: |
+      .
+      test/magpiego
+      test/testrp
+```
+
+Jobs that compile only the root module, including the current GoReleaser builds, can keep the default. Module downloads do not cover unrelated `go install` commands outside these modules.
+
 ## Verification
 
 - The workflow you changed runs green on your pull request (open it as a draft first if you want to iterate).
 - Any Make target or script called by the workflow runs successfully from the repository root.
 - A fork run reaches all steps that do not require organization credentials and skips credential-dependent work with an explicit condition.
 - The [github-workflows.instructions.md](../../../../.github/instructions/github-workflows.instructions.md) checklist is satisfied — especially the fork-testability and `permissions:` items.
+- Run `bash .github/actions/go-mod-download/test.sh` for changes to the module download action. It checks retries, exponential backoff, failure propagation, directory handling, and input validation without network access. The unit-test workflow also exercises the action on Ubuntu and Windows.
 
 ## Troubleshooting
 
