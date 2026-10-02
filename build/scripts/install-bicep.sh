@@ -63,7 +63,11 @@ gh_curl() {
     # --retry rides out transient failures (timeouts and HTTP 408/429/5xx such as
     # the 504 gateway timeouts GitHub's release CDN returns intermittently) with
     # exponential backoff, while still failing fast on 404s (a wrong version).
-    curl --proto '=https' --tlsv1.2 --retry 5 --retry-connrefused "${headers[@]}" "$@"
+    # --retry-all-errors extends that same backoff to failures curl's default
+    # retry logic does not classify as transient, notably curl 56 ("Connection
+    # died"), the dropped/reset mid-download connections seen intermittently
+    # against the release CDN (see #12661).
+    curl --proto '=https' --tlsv1.2 --retry 5 --retry-connrefused --retry-all-errors "${headers[@]}" "$@"
 }
 
 detect_os() {
