@@ -317,11 +317,25 @@ func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context,
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceId := deploymentResource.Spec.Id
-	radiusAPIVersion := "2023-10-01-preview"
+	id, err := resources.ParseResource(resourceId)
+	if err != nil {
+		return nil, err
+	}
+	// Preserve the existing version for non-Radius routes, which use their own discovery.
+	apiVersion := "2023-10-01-preview"
+	if strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), "radius/") {
+		apiVersion, err = r.Radius.ResolveAPIVersion(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	logger.Info("Starting DELETE operation.")
-	poller, err := r.ResourceDeploymentsClient.Delete(ctx, resourceId, radiusAPIVersion)
+	poller, err := r.ResourceDeploymentsClient.Delete(ctx, resourceId, apiVersion)
 	if err != nil {
+		if clients.Is404Error(err) {
+			return nil, nil
+		}
 		return nil, err
 	} else if poller != nil {
 		return poller, nil
