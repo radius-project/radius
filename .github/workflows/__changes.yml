@@ -109,6 +109,27 @@ jobs:
           files: ${{ inputs.files }}
           base_sha: ${{ inputs.base_sha }}
 
+      # The first checkout includes the caller's changes.mjs, possibly from a PR.
+      # The "Filter" workflow step above detects changed files in that checkout
+      # without executing .github/scripts/changes.mjs.
+      # On pull_request_target and workflow_run events, the checkout below
+      # replaces .github/scripts/changes.mjs in the same workspace with the
+      # version from github.repository at github.sha before the "Set result"
+      # step below imports that file. The "Set result" step reads the "Filter"
+      # step's saved GitHub Actions output, which is unaffected by replacing files.
+      # If this checkout fails, the "Set result" step is skipped rather than executing
+      # the PR's version of .github/scripts/changes.mjs from the first checkout.
+      - name: Checkout trusted changes helper
+        if: github.event_name == 'pull_request_target' || github.event_name == 'workflow_run'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          sparse-checkout: |
+            .github/scripts/changes.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
       - name: Set result
         id: set-result
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
