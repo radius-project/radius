@@ -1,0 +1,69 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+# Automatically kicks off the flaky-test investigation documented in
+# docs/contributing/contributing-code/contributing-code-tests/investigating-flaky-tests.md
+# whenever an issue is labeled `flaky-test`. Assigning the issue to the Copilot
+# coding agent starts a session that runs the `radius-investigate-flaky-test`
+# skill. Assigning `@copilot` requires a fine-grained PAT from a Copilot-licensed
+# user stored in the `COPILOT_ASSIGN_PAT` secret, because GitHub does not allow
+# the default GITHUB_TOKEN to trigger the coding agent. Until that secret is
+# configured, this workflow leaves a comment instead of failing.
+name: Flaky Test Investigation
+
+on:
+  issues:
+    types: [labeled]
+
+permissions: {}
+
+jobs:
+  assign-investigation:
+    name: Assign flaky-test investigation
+    if: github.repository == 'radius-project/radius' && github.event.label.name == 'flaky-test'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Check for Copilot assignment token
+        id: check_token
+        env:
+          HAS_TOKEN: ${{ secrets.COPILOT_ASSIGN_PAT != '' }}
+        run: echo "has_token=${HAS_TOKEN}" >> "$GITHUB_OUTPUT"
+
+      - name: Assign issue to Copilot coding agent
+        if: steps.check_token.outputs.has_token == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_ASSIGN_PAT }}
+        run: |
+          gh issue edit "${{ github.event.issue.number }}" \
+            --repo "${{ github.repository }}" \
+            --add-assignee "@copilot"
+          gh issue comment "${{ github.event.issue.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "Assigned to the Copilot coding agent to run the [\`radius-investigate-flaky-test\`](https://github.com/${{ github.repository }}/blob/main/.github/skills/radius-investigate-flaky-test/SKILL.md) skill: measure the flake frequency, classify the root cause, propose a fix, and report findings here."
+
+      - name: Note missing token
+        if: steps.check_token.outputs.has_token != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "Automatic assignment to the Copilot coding agent is not configured (missing \`COPILOT_ASSIGN_PAT\` repository secret — see [Automatic triggering](https://github.com/${{ github.repository }}/blob/main/docs/contributing/contributing-code/contributing-code-tests/investigating-flaky-tests.md#automatic-triggering)). Run the [\`radius-investigate-flaky-test\`](https://github.com/${{ github.repository }}/blob/main/.github/skills/radius-investigate-flaky-test/SKILL.md) skill manually to investigate this flake."
