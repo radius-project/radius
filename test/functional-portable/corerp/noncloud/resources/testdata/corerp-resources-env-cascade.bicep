@@ -39,3 +39,28 @@ resource container 'Radius.Compute/containers@2025-08-01-preview' = {
     connections: {}
   }
 }
+
+resource rabbitmq 'Radius.Messaging/rabbitMQ@2025-08-01-preview' = {
+  name: 'env-cascade-rabbitmq'
+  location: location
+  properties: {
+    application: app.id
+    environment: environment
+    queue: 'jobs'
+    username: 'radius'
+  }
+}
+
+resource standaloneSecret 'Radius.Security/secrets@2025-08-01-preview' = {
+  name: 'env-cascade-standalone'
+  location: location
+  properties: {
+    application: app.id
+    environment: environment
+    data: {
+      testValue: {
+        value: 'non-sensitive-test-value'
+      }
+    }
+  }
+}
