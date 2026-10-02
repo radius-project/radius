@@ -105,8 +105,13 @@ func fetchRecipeWithRetry(ctx context.Context, repo *remote.Repository, tag stri
 // isTransientRegistryError reports whether err is a network or server-side
 // failure that is likely to succeed on retry. Client errors such as a missing
 // tag or an authentication failure are not retried.
+//
+// context.DeadlineExceeded is intentionally not rejected here: an http.Client
+// timeout wraps it while also being a net.Error timeout that is worth retrying.
+// When the caller's own deadline has expired, RetryFunc stops on the context
+// before making another attempt.
 func isTransientRegistryError(err error) bool {
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+	if errors.Is(err, context.Canceled) {
 		return false
 	}
 

@@ -23,6 +23,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
@@ -141,6 +142,52 @@ func Test_ReadFromRegistry_DoesNotRetryNotFound(t *testing.T) {
 	require.Equal(t, single.requests, retrying.requests)
 }
 
+// httpClientTimeoutErr returns the error a real http.Client produces when its
+// Timeout elapses, which wraps context.DeadlineExceeded and is a net.Error timeout.
+func httpClientTimeoutErr(t *testing.T) error {
+	t.Helper()
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { <-release }))
+	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(release) })
+
+	client := &http.Client{Timeout: 10 * time.Millisecond}
+	resp, err := client.Get(srv.URL)
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	require.Error(t, err)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	return err
+}
+
+type registryClientFunc func(*http.Request) (*http.Response, error)
+
+func (f registryClientFunc) Do(req *http.Request) (*http.Response, error) { return f(req) }
+
+func Test_ReadFromRegistry_StopsWhenCallerDeadlineExpires(t *testing.T) {
+	original := registryFetchBackoff
+	registryFetchBackoff = func() goretry.Backoff {
+		return goretry.WithMaxRetries(5, goretry.NewConstant(time.Hour))
+	}
+	t.Cleanup(func() { registryFetchBackoff = original })
+
+	requests := 0
+	client := registryClientFunc(func(req *http.Request) (*http.Response, error) {
+		requests++
+		return nil, &url.Error{Op: req.Method, URL: req.URL.String(), Err: &net.DNSError{Err: "i/o timeout", Name: "ghcr.io", IsTimeout: true}}
+	})
+
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	err := ReadFromRegistry(ctx, recipes.EnvironmentDefinition{TemplatePath: "ghcr.io/radius-project/recipes/test:1.0"}, &map[string]any{}, client)
+	require.Error(t, err)
+	require.Less(t, time.Since(start), 10*time.Second)
+	require.Equal(t, 1, requests)
+}
+
 func Test_isTransientRegistryError(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -157,7 +204,9 @@ func Test_isTransientRegistryError(t *testing.T) {
 		{name: "unauthorized", err: &errcode.ErrorResponse{StatusCode: http.StatusUnauthorized}, expected: false},
 		{name: "not found", err: &errcode.ErrorResponse{StatusCode: http.StatusNotFound}, expected: false},
 		{name: "context canceled", err: context.Canceled, expected: false},
-		{name: "deadline exceeded", err: fmt.Errorf("get: %w", context.DeadlineExceeded), expected: false},
+		{name: "context canceled wrapped in timeout", err: &url.Error{Op: "Get", URL: "https://ghcr.io", Err: fmt.Errorf("%w: %w", context.Canceled, &net.DNSError{IsTimeout: true})}, expected: false},
+		{name: "deadline exceeded", err: fmt.Errorf("get: %w", context.DeadlineExceeded), expected: true},
+		{name: "http client timeout", err: httpClientTimeoutErr(t), expected: true},
 		{name: "generic error", err: errors.New("failed to decode the layers from manifest"), expected: false},
 	}
 
