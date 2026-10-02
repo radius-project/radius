@@ -72,6 +72,7 @@ Every contributing doc, grouped by topic. This is the single index that [AGENTS.
 - [Investigating issues](./contributing-issues/README.md)
 - [Triage process](./triage/triage-process.md)
 - [Releases](./contributing-releases/README.md)
+- [Adding a Recipe Pack for a new platform](./contributing-recipe-packs.md)
 - [Design notes](./contributing-code/contributing-code-design/README.md)
 
 ## Capability index
