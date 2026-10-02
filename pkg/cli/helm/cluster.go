@@ -348,10 +348,24 @@ func (i *Impl) applyRadiusHelmChartWithRetry(ctx context.Context, helmAction Hel
 			return err
 		}
 
-		output.LogInfo("Installing Radius timed out waiting for resources to become ready (attempt %d), cleaning up and retrying: %v", attempt, err)
+		// WithMaxRetries(radiusInstallMaxRetries, ...) allows radiusInstallMaxRetries retries on
+		// top of the initial attempt, so the callback is invoked at most radiusInstallMaxRetries+1
+		// times. On that final invocation, the backoff strategy returns the error without calling
+		// the callback again, so don't claim a retry will happen, even though the stale release is
+		// still cleaned up below.
+		isFinalAttempt := attempt > radiusInstallMaxRetries
+		if isFinalAttempt {
+			output.LogInfo("Installing Radius timed out waiting for resources to become ready (attempt %d), no retries remaining: %v", attempt, err)
+		} else {
+			output.LogInfo("Installing Radius timed out waiting for resources to become ready (attempt %d), cleaning up and retrying: %v", attempt, err)
+		}
 
 		if uninstallErr := i.uninstallHelmRelease("Radius", options.ReleaseName, options.Namespace, kubeContext); uninstallErr != nil {
 			return fmt.Errorf("failed to clean up Radius Helm release after timeout, err: %w", uninstallErr)
+		}
+
+		if isFinalAttempt {
+			return err
 		}
 
 		return retry.RetryableError(err)
