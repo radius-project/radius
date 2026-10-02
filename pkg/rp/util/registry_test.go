@@ -17,12 +17,156 @@ limitations under the License.
 package util
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/rp/util/registrytest"
+	goretry "github.com/sethvargo/go-retry"
 	"github.com/stretchr/testify/require"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 )
+
+func connResetErr() error {
+	return &net.OpError{Op: "read", Net: "tcp", Err: os.NewSyscallError("read", syscall.ECONNRESET)}
+}
+
+type errReader struct{ err error }
+
+func (r errReader) Read([]byte) (int, error) { return 0, r.err }
+
+// flakyRegistryClient wraps a registry client and injects connection resets,
+// either before a request reaches the server or while a blob body is read.
+type flakyRegistryClient struct {
+	client      remote.Client
+	resetSends  int
+	resetBodies int
+	requests    int
+}
+
+func (c *flakyRegistryClient) Do(req *http.Request) (*http.Response, error) {
+	c.requests++
+	if c.resetSends > 0 {
+		c.resetSends--
+		return nil, &url.Error{Op: req.Method, URL: req.URL.String(), Err: connResetErr()}
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.resetBodies > 0 && req.Method == http.MethodGet && strings.Contains(req.URL.Path, "/blobs/") {
+		c.resetBodies--
+		_ = resp.Body.Close()
+		resp.Body = io.NopCloser(errReader{err: connResetErr()})
+	}
+
+	return resp, nil
+}
+
+func setFastRegistryBackoff(t *testing.T, maxRetries uint64) {
+	original := registryFetchBackoff
+	registryFetchBackoff = func() goretry.Backoff {
+		return goretry.WithMaxRetries(maxRetries, goretry.NewConstant(time.Millisecond))
+	}
+	t.Cleanup(func() { registryFetchBackoff = original })
+}
+
+func Test_ReadFromRegistry_RetriesTransientFailures(t *testing.T) {
+	tests := []struct {
+		name        string
+		resetSends  int
+		resetBodies int
+	}{
+		{name: "connection reset sending request", resetSends: 2},
+		{name: "connection reset reading blob body", resetBodies: 2},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			setFastRegistryBackoff(t, 5)
+			ts := registrytest.NewFakeRegistryServer(t)
+			t.Cleanup(ts.CloseServer)
+
+			client := &flakyRegistryClient{client: ts.TestServer.Client(), resetSends: tc.resetSends, resetBodies: tc.resetBodies}
+			data := map[string]any{}
+			err := ReadFromRegistry(t.Context(), recipes.EnvironmentDefinition{TemplatePath: ts.TestImageURL}, &data, client)
+			require.NoError(t, err)
+			require.Contains(t, data, "parameters")
+			require.Zero(t, client.resetSends)
+			require.Zero(t, client.resetBodies)
+		})
+	}
+}
+
+func Test_ReadFromRegistry_GivesUpAfterRetries(t *testing.T) {
+	setFastRegistryBackoff(t, 2)
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	client := &flakyRegistryClient{client: ts.TestServer.Client(), resetSends: 100}
+	data := map[string]any{}
+	err := ReadFromRegistry(t.Context(), recipes.EnvironmentDefinition{TemplatePath: ts.TestImageURL}, &data, client)
+	require.ErrorContains(t, err, "connection reset by peer")
+	require.Equal(t, 3, client.requests)
+}
+
+func Test_ReadFromRegistry_DoesNotRetryNotFound(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+	definition := recipes.EnvironmentDefinition{TemplatePath: ts.TestServer.URL + "/nonexisting:latest"}
+
+	setFastRegistryBackoff(t, 0)
+	single := &flakyRegistryClient{client: ts.TestServer.Client()}
+	err := ReadFromRegistry(t.Context(), definition, &map[string]any{}, single)
+	require.ErrorContains(t, err, "not found")
+
+	setFastRegistryBackoff(t, 5)
+	retrying := &flakyRegistryClient{client: ts.TestServer.Client()}
+	err = ReadFromRegistry(t.Context(), definition, &map[string]any{}, retrying)
+	require.ErrorContains(t, err, "not found")
+	require.Equal(t, single.requests, retrying.requests)
+}
+
+func Test_isTransientRegistryError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{name: "connection reset", err: &url.Error{Op: "Get", URL: "https://ghcr.io", Err: connResetErr()}, expected: true},
+		{name: "connection refused", err: fmt.Errorf("wrapped: %w", syscall.ECONNREFUSED), expected: true},
+		{name: "unexpected EOF", err: fmt.Errorf("read: %w", io.ErrUnexpectedEOF), expected: true},
+		{name: "dns timeout", err: &url.Error{Op: "Head", URL: "https://ghcr.io", Err: &net.DNSError{Err: "i/o timeout", Name: "ghcr.io", IsTimeout: true}}, expected: true},
+		{name: "dns not found", err: &net.DNSError{Err: "no such host", Name: "ghcr.io", IsNotFound: true}, expected: false},
+		{name: "server error", err: &errcode.ErrorResponse{StatusCode: http.StatusBadGateway}, expected: true},
+		{name: "too many requests", err: &errcode.ErrorResponse{StatusCode: http.StatusTooManyRequests}, expected: true},
+		{name: "unauthorized", err: &errcode.ErrorResponse{StatusCode: http.StatusUnauthorized}, expected: false},
+		{name: "not found", err: &errcode.ErrorResponse{StatusCode: http.StatusNotFound}, expected: false},
+		{name: "context canceled", err: context.Canceled, expected: false},
+		{name: "deadline exceeded", err: fmt.Errorf("get: %w", context.DeadlineExceeded), expected: false},
+		{name: "generic error", err: errors.New("failed to decode the layers from manifest"), expected: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, isTransientRegistryError(tc.err))
+		})
+	}
+}
 
 func Test_PathParser(t *testing.T) {
 	repository, tag, err := parsePath("ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0")
