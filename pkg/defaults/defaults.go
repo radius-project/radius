@@ -84,7 +84,7 @@ import (
 type Pin struct {
 	// Name identifies the entry: a resource-type namespace (e.g.
 	// "Radius.Compute") under `resourceTypes`, or a recipe pack folder (e.g.
-	// "azure") under `recipePacks`.
+	// "azure-aks") under `recipePacks`.
 	Name string
 	// Repo is the upstream repository the entry is fetched from, without a
 	// scheme (e.g. "github.com/radius-project/resource-types-contrib").
