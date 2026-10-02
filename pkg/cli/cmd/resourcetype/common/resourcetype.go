@@ -19,6 +19,7 @@ package common
 import (
 	"context"
 	"slices"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -132,7 +133,8 @@ func GetResourceTypeShowSchemaTableFormat() output.FormatterOptions {
 }
 
 // GetResourceTypeDetails retrieves the details of a resource provider's resource type using the UCP client.
-// It returns the resource type details or an error if the resource type is not found.
+// It returns the resource type details or an error if the resource type is not found. The lookup is
+// case-insensitive, and the returned ResourceType uses the casing registered on the server.
 func GetResourceTypeDetails(ctx context.Context, resourceProviderName string, resourceTypeName string, clientFactory *v20231001preview.ClientFactory) (ResourceType, error) {
 	fullyQualifiedResourceType := resourceProviderName + "/" + resourceTypeName
 
@@ -145,7 +147,7 @@ func GetResourceTypeDetails(ctx context.Context, resourceProviderName string, re
 
 	resourceTypes := ResourceTypesForProvider(&response.ResourceProviderSummary)
 	idx := slices.IndexFunc(resourceTypes, func(rt ResourceType) bool {
-		return rt.Name == fullyQualifiedResourceType
+		return strings.EqualFold(rt.Name, fullyQualifiedResourceType)
 	})
 
 	if idx < 0 {
