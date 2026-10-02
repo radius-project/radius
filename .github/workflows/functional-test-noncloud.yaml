@@ -654,8 +654,9 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           # The statestore leg installs/uninstalls/reinstalls Radius, so it needs
-          # far longer than the standard per-leg timeout.
-          TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || env.FUNCTIONALTEST_TIMEOUT }}
+          # far longer than the standard per-leg timeout. The upgrade leg installs
+          # Radius twice and runs several upgrades, so it also needs more time.
+          TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || matrix.name == 'upgrade-noncloud' && '30m' || env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}

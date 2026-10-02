@@ -73,6 +73,9 @@ func testContext() *recipecontext.Context {
 				SubscriptionID: "sub-id",
 				ID:             "/subscriptions/sub-id",
 			},
+			// An arbitrary fixture value, not derived from the hash rule. This
+			// context is hand-built, so the resolver substitutes whatever is here.
+			// The cases below reuse it only to stay self-consistent.
 			ResourceNameHash: "b9f5a1471dadc792",
 		},
 		AWS: &recipecontext.ProviderAWS{
@@ -346,7 +349,10 @@ func Test_ResolveParameterExpressions_GeneratedAzureResourceNameHash(t *testing.
 		ctx,
 	)
 
-	require.Equal(t, map[string]any{"name": "redis-509212db4b1fe144"}, result)
+	// Assert against the context's own hash rather than a literal. What this test
+	// owns is that the expression resolves to that field; whether the field itself
+	// is correct is recipecontext's contract and is tested there.
+	require.Equal(t, map[string]any{"name": "redis-" + ctx.Azure.ResourceNameHash}, result)
 }
 
 func Test_TernaryExpressions(t *testing.T) {

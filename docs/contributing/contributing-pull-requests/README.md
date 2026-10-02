@@ -74,6 +74,10 @@ refactor(api)!: remove the legacy response field
 
 These signals determine changelog grouping only. They never select the Radius version: scheduled full releases bump the minor version while Radius is `0.x`, and patch releases bump the patch version of their release channel.
 
+The `action-semantic-pull-request` status enforces this format and must pass before a pull request can merge. If it fails, edit the pull request title — the status re-runs automatically on every title edit, and no new commit is needed. While a pull request is still in progress you can prefix the title with `[WIP]`, which leaves the status pending rather than failing, so the pull request stays unmergeable without being reported as broken.
+
+See the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification for more details.
+
 ### 4. Sign your commits
 
 The Developer Certificate of Origin (DCO) check requires every commit to include a `Signed-off-by` line. Every commit must also be cryptographically signed so that GitHub displays a **Verified** badge. These are separate requirements; see [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide for setup and remediation guidance.
@@ -87,9 +91,28 @@ Open the pull request from your fork against `main`. The form is pre-populated w
 Every non-Dependabot pull request must have exactly one release-impact label:
 
 - **`pr:standard`** — ongoing maintenance, minor improvements, documentation updates, and routine development work.
-- **`pr:important`** — major features, breaking changes, deprecations, or other high-impact changes that need special attention during release.
+- **`pr:important`** — major features, breaking changes, deprecations, or other high-impact changes that need special attention during release and in release notes.
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
+
+The [PR Status Labels workflow](../../../.github/workflows/pr.status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold:
+
+- **`pr:needs-reviewer`** — there is neither a pending reviewer or team request nor an active submitted human review from someone other than the author.
+- **`pr:waiting-for-review`** — a reviewer or team has a pending request, or a human has submitted a review but required approval is still outstanding or cannot be verified. When a reviewer requests changes, the author must re-request a review after addressing them; pushing a commit alone does not hand the PR back.
+- **`pr:waiting-for-author`** — unresolved human-reviewer inline feedback, inline feedback endorsed by a human approval summary, a formal changes-requested review, or a manual author-response request needs action.
+- **`pr:review-approved`** — required reviews are approved and no qualifying unresolved inline feedback remains; this does not mean checks have passed.
+
+An unresolved inline thread containing a submitted comment from a human reviewer other than the PR author takes precedence over pending review requests and approvals. Bot comments alone, author-only notes, reviews that are pending, not yet submitted, or dismissed, deleted feedback, and general top-level discussion do not qualify. Replying or pushing commits does not resolve a thread, and outdated but unresolved feedback still counts. Once all qualifying threads are resolved or their qualifying feedback is deleted or dismissed, the workflow recomputes the normal review state: pending requests return the turn to reviewers, approvals can restore approval and queue-ready labels, and an outstanding formal changes-requested review still requires an explicit re-request.
+
+A human reviewer's latest submitted opinionated review also endorses existing inline feedback when it approves the current head, has a nonempty summary, and has not been dismissed. This conservative, deterministic rule counts unresolved submitted feedback, including bot comments, only if both the comment's creation and its review's submission were at or before that approval. It checks summary emptiness, not wording; it uses no language classifier. Empty summaries, stale approvals, and bot comments posted or submitted after the approval do not establish this handoff. An approval summary without qualifying unresolved threads does not request author action, and general issue comments never establish it.
+
+Submitted review evidence establishes who has participated, not whether merging is allowed. Required approvals, CODEOWNER review, and last-push approval safeguards apply to the PR's actual target branch, including stacked targets. If approval cannot be safely established, an active submitted human review keeps the PR waiting for review rather than requesting a new reviewer; qualifying author feedback takes precedence. An outstanding changes-requested review from a human other than the author takes precedence regardless of target protection or GitHub's aggregate review decision. It hands the PR back to reviewers only when a currently pending reviewer or team request was explicitly made after the outstanding change requests. Dismissing the review or superseding it with an approval clears that review's change request; a comment-only review or a push does not.
+
+The workflow also adds **`pr:needs-rebase`** when the PR has merge conflicts, and **`pr:ready-for-queue`** when review is approved, the PR is mergeable, required checks pass, and it is not already queued. A branch that is behind `main` can still be queue-ready once its required checks pass; the merge queue handles the branch update. These labels are signals, not substitutes for GitHub's merge rules or the merge queue.
+
+The status workflow assumes these labels already exist; it never creates repository labels. The independent [labels workflow](../../../.github/workflows/labels.yml) previews changes from the [PR-label catalog](../../../.github/labels.yml) on pull requests and syncs definitions after merge or a manual repository-label change. The catalog also includes the existing `pr:standard` and `pr:important` labels, which contributors still select manually. Unrelated repository labels are preserved.
+
+Draft PRs have no handoff label. Maintainers can apply the existing **`pr:do-not-merge`** label to pause a PR; it removes the handoff and queue-ready labels. Use **`pr:needs-author-response`** for an explicit author-response request, including actionable general discussion outside inline review threads, then remove it after the author responds. The workflow never applies or removes these manual labels. Both manual labels fail the `PR Required Labels` check and remove a PR from the merge queue if it was already queued.
 
 ### 6. (Optional) Self-review with the `radius-code-review` skill
 
@@ -119,6 +142,7 @@ The maintainers or other contributors will add comments giving feedback, asking 
 
 - **Be proactive.** Comment on your own PR to point out relevant locations, decisions, opportunities for feedback, and tricky parts. This focuses reviewers' attention and saves them time.
 - **Resolve feedback.** Mark comments as resolved once you've addressed them through discussion or a code change. If you are the reviewer, follow up (politely) if you feel your feedback hasn't been addressed adequately.
+- **Hand review back explicitly.** Resolve addressed inline threads; replies and pushes alone do not clear them. After addressing a formal changes-requested review, also re-request review from a reviewer or team. When responding to a manually flagged comment, clear `pr:needs-author-response` if you can manage labels, or ask a maintainer to clear it.
 - **Anyone can participate.** We welcome any contributor or community member to engage with any pull request. Make suggestions and ask relevant questions; if a question is for your own learning, make it clear that it is "non-blocking." See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md) for full guidance.
 
 ## Verification
@@ -128,7 +152,9 @@ A pull request must pass these checkpoints to be accepted:
 - **Initial review** — a maintainer reviews your summary and confirms an appropriate issue is linked.
 - **External automation eligibility** — a pull request opened through external automation links to an eligible issue with the required labels.
 - **Automated tests** — GitHub Actions workflows run unit, integration, and functional tests against your changes. Automation adds comments with links to logs so you can diagnose failures.
+- **Conventional Commit title** — the `action-semantic-pull-request` status passes after validating the title format in [Use a Conventional Commit pull request title](#3-use-a-conventional-commit-pull-request-title).
 - **Required label** — exactly one of `pr:standard` or `pr:important` is applied.
+- **No merge hold** — neither `pr:do-not-merge` nor `pr:needs-author-response` is present.
 - **Code review** — you receive and address feedback from a maintainer or other contributors.
 
 The functional-tests workflow requires approval to run. One of our approvers is automatically notified when you submit the PR; once they approve the run, the functional tests start.
@@ -141,6 +167,7 @@ The functional-tests workflow requires approval to run. One of our approvers is 
 ## Troubleshooting
 
 - **A functional-test run hasn't started.** The functional-tests workflow requires an approver to approve the run. Approvers are notified automatically when you submit; if a run hasn't started, wait for approval or ask the maintainers.
+- **The `action-semantic-pull-request` status fails.** The title is not a valid Conventional Commit. The workflow output names the problem, most often an unknown or missing type. Rename the title to `<type>[optional scope][!]: <description>` using a type from the table in [Use a Conventional Commit pull request title](#3-use-a-conventional-commit-pull-request-title); the status re-runs on the edit.
 - **CodeQL reports a security issue.** We run [CodeQL](https://codeql.github.com/) for security analysis on every PR. It is not currently required to pass for a PR to be merged, as it may be triggered by other alerts in the repo. If CodeQL fails due to your changes, work with the maintainers to resolve it.
 - **The spell check fails.** The PR check workflow runs [cspell](https://cspell.org/) with a [custom dictionary](https://github.com/radius-project/radius/blob/main/.cspellignore). Check the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for the flagged words and add correctly spelled words to `.cspellignore`. Run it locally from the repo root with:
 
@@ -150,4 +177,5 @@ The functional-tests workflow requires approval to run. One of our approvers is 
 
   cspell requires [Node.js](https://nodejs.org/); install it globally with `npm install -g cspell`.
 - **A CI failure you can't understand.** Our automation adds comments with links to logs. If you're still stuck, ask the maintainers for help.
+- **A handoff label is missing or outdated.** The status workflow reacts to PR, review, and inline-comment creation/edit/deletion activity. It also checks open PRs on a nominal 15-minute schedule to pick up CI, base-branch, and thread resolution or reopening changes; GitHub may delay scheduled runs. GitHub Actions has no trigger for resolving or reopening threads, so those changes may wait for the scheduled reconciliation or a manual run rather than updating immediately. Fork review and inline-comment events signal a trusted labeling run without executing fork code. Maintainers can rerun `PR Status Labels` from the Actions tab with a PR number, or leave it blank to reconcile all open PRs. If fork PR labeling does not start, check whether the repository's Actions policy allows `pull_request_target`.
 - **Your PR was marked stale.** Pull requests inactive for 28 days are marked with the `stale` label and closed after one further day of inactivity. Comment or push an update to keep your PR active.
