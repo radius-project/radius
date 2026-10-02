@@ -1538,7 +1538,8 @@ func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType
 	// Radius.Core resources require a specific API version.
 	// Eventually version 2023-10-01-preview will be removed along with Applications.Core resources.
 	// Then we will not need this special case.
-	if len(resourceType) >= len("Radius.Core") && strings.EqualFold(resourceType[:len("Radius.Core")], "Radius.Core") {
+provider, _, _ := strings.Cut(resourceType, "/")
+	if strings.EqualFold(provider, "Radius.Core") {
 		apiVersions = []string{"2025-08-01-preview"}
 	}
 
