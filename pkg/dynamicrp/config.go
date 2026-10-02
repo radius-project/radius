@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
+	"github.com/radius-project/radius/pkg/dynamicrp/registryproxy"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.yaml.in/yaml/v3"
@@ -59,6 +60,9 @@ type Config struct {
 
 	// Queue is the configuration for the message queue.
 	Queue queueprovider.QueueProviderOptions `yaml:"queueProvider"`
+
+	// RegistryProxy configures the loopback proxy to the in-cluster OCI registry used by the BuildKit sidecar.
+	RegistryProxy registryproxy.Options `yaml:"registryProxy"`
 
 	// Secrets is the configuration for the secret storage system.
 	Secrets secretprovider.SecretProviderOptions `yaml:"secretProvider"`

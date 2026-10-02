@@ -1,0 +1,139 @@
+suite: test containerImages in-cluster registry
+templates:
+  - dynamic-rp/registry.yaml
+  - dynamic-rp/configmaps.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: renders the registry Deployment and NodePort Service by default
+    asserts:
+      - hasDocuments:
+          count: 2
+        template: dynamic-rp/registry.yaml
+      - equal:
+          path: kind
+          value: Deployment
+        documentIndex: 0
+        template: dynamic-rp/registry.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/library/registry:3.0.0
+        documentIndex: 0
+        template: dynamic-rp/registry.yaml
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+        documentIndex: 0
+        template: dynamic-rp/registry.yaml
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+        documentIndex: 0
+        template: dynamic-rp/registry.yaml
+      - equal:
+          path: spec.template.spec.securityContext.seccompProfile.type
+          value: RuntimeDefault
+        documentIndex: 0
+        template: dynamic-rp/registry.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: registry-data
+            emptyDir: {}
+        documentIndex: 0
+        template: dynamic-rp/registry.yaml
+      - equal:
+          path: spec.type
+          value: NodePort
+        documentIndex: 1
+        template: dynamic-rp/registry.yaml
+      - equal:
+          path: spec.ports[0].nodePort
+          value: 31500
+        documentIndex: 1
+        template: dynamic-rp/registry.yaml
+      - equal:
+          path: spec.ports[0].port
+          value: 5000
+        documentIndex: 1
+        template: dynamic-rp/registry.yaml
+
+  - it: configures the dynamic-rp registry proxy by default
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'registryProxy:\n\s+enabled: true\n\s+listenAddress: "127\.0\.0\.1:31500"\n\s+targetAddress: "radius-registry\.radius-system\.svc:5000"'
+        template: dynamic-rp/configmaps.yaml
+
+  - it: uses a custom NodePort for the Service and the proxy
+    set:
+      dynamicrp.buildkit.registry.nodePort: 32000
+    asserts:
+      - equal:
+          path: spec.ports[0].nodePort
+          value: 32000
+        documentIndex: 1
+        template: dynamic-rp/registry.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'listenAddress: "127\.0\.0\.1:32000"'
+        template: dynamic-rp/configmaps.yaml
+
+  - it: mounts an existing claim for registry storage
+    set:
+      dynamicrp.buildkit.registry.persistence.existingClaim: registry-data
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: registry-data
+            persistentVolumeClaim:
+              claimName: registry-data
+        documentIndex: 0
+        template: dynamic-rp/registry.yaml
+
+  - it: omits the registry and proxy when the registry is disabled
+    set:
+      dynamicrp.buildkit.registry.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: dynamic-rp/registry.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: registryProxy
+        template: dynamic-rp/configmaps.yaml
+
+  - it: omits the registry and proxy when BuildKit is disabled
+    set:
+      dynamicrp.buildkit.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: dynamic-rp/registry.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: registryProxy
+        template: dynamic-rp/configmaps.yaml
+
+  - it: rejects an out-of-range NodePort
+    set:
+      dynamicrp.buildkit.registry.nodePort: 70000
+    asserts:
+      - failedTemplate:
+          errorMessage: dynamicrp.buildkit.registry.nodePort must be an integer between 1 and 65535
+        template: dynamic-rp/registry.yaml
+
+  - it: rejects a string NodePort
+    set:
+      dynamicrp.buildkit.registry.nodePort: "31500"
+    asserts:
+      - failedTemplate:
+          errorMessage: dynamicrp.buildkit.registry.nodePort must be an integer between 1 and 65535
+        template: dynamic-rp/registry.yaml
