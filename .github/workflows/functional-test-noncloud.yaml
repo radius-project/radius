@@ -451,6 +451,34 @@ jobs:
         if: matrix.name == 'database-noncloud'
         run: echo "DATABASE_INSTALL_ARGS=--set database.enabled=true" >> "${GITHUB_ENV}"
 
+      - name: Wait for Deployment Engine image to be available
+        # When this run was triggered by deployment-engine's publish dispatch, DE_TAG
+        # names an image that repo just pushed to GHCR. The dispatch that starts this
+        # workflow can race the GHCR push itself (the image isn't necessarily visible
+        # yet when the dispatch lands), and "Install Radius" below waits on every
+        # Deployment becoming ready, so a not-yet-pullable DE image leaves the bicep-de
+        # pod in ImagePullBackOff for the whole install timeout and fails the job with a
+        # bare "context deadline exceeded" (see issue #12576). Poll the GHCR manifest
+        # instead of guessing a fixed delay, so we proceed the moment the image lands
+        # and fail fast with a clear reason if it never does.
+        if: github.event_name == 'repository_dispatch' && matrix.name != 'statestore-noncloud'
+        run: |
+          set -euo pipefail
+
+          MAX_ATTEMPTS=10
+          SLEEP_SECONDS=15
+          for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
+            if docker manifest inspect "${DE_IMAGE}:${DE_TAG}" >/dev/null 2>&1; then
+              echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} is available (attempt ${attempt}/${MAX_ATTEMPTS})."
+              exit 0
+            fi
+            echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} not yet available (attempt ${attempt}/${MAX_ATTEMPTS}), waiting ${SLEEP_SECONDS}s..."
+            sleep "${SLEEP_SECONDS}"
+          done
+
+          echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} did not become available after $((MAX_ATTEMPTS * SLEEP_SECONDS))s."
+          exit 1
+
       - name: Install Radius
         # The statestore leg drives its own install/uninstall/reinstall lifecycle
         # inside the test (it must reinstall to simulate an ephemeral control
