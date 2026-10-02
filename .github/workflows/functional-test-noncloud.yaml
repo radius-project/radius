@@ -26,6 +26,25 @@ on:
         description: Branch to run the workflow on
         required: true
         default: main
+      de_image:
+        description: Deployment Engine image repository; set with de_tag or leave both empty
+        required: false
+        default: ""
+        type: string
+      de_tag:
+        description: Deployment Engine image tag; set with de_image or leave both empty
+        required: false
+        default: ""
+        type: string
+      test_target:
+        description: Noncloud matrix target
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - kubernetes-noncloud
+          - ucp-noncloud
   schedule:
     # Run three times a day at 6 AM PDT (1 PM UTC), 12 PM PDT (7 PM UTC), and 6 PM PDT (1 AM UTC next day)
     - cron: 0 1,13,19 * * *
@@ -127,6 +146,29 @@ jobs:
             echo "DE_TAG=${TAG}"
           } >> "$GITHUB_ENV"
 
+      - name: Set DE image and tag (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          INPUT_DE_IMAGE: ${{ inputs.de_image }}
+          INPUT_DE_TAG: ${{ inputs.de_tag }}
+        run: |
+          if [[ -z "$INPUT_DE_IMAGE" && -z "$INPUT_DE_TAG" ]]; then
+            exit 0
+          fi
+          if [[ -z "$INPUT_DE_IMAGE" || -z "$INPUT_DE_TAG" ]]; then
+            echo "::error::de_image and de_tag must both be set or both be empty."
+            exit 1
+          fi
+          if [[ "${INPUT_DE_IMAGE}${INPUT_DE_TAG}" == *$'\n'* || "${INPUT_DE_IMAGE}${INPUT_DE_TAG}" == *$'\r'* ]]; then
+            echo "::error::de_image and de_tag must be single-line values."
+            exit 1
+          fi
+          {
+            printf 'DE_IMAGE=%s\n' "$INPUT_DE_IMAGE"
+            printf 'DE_TAG=%s\n' "$INPUT_DE_TAG"
+          } >> "$GITHUB_ENV"
+
       - name: Generate ID for release
         id: gen-id
         run: |
@@ -226,22 +268,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
-        name:
-          [
-            cli-noncloud,
-            corerp-noncloud,
-            daprrp-noncloud,
-            database-noncloud,
-            kubernetes-noncloud,
-            msgrp-noncloud,
-            multicluster-noncloud,
-            statestore-noncloud,
-            samples-noncloud,
-            ucp-noncloud,
-            datastoresrp-noncloud,
-            dynamicrp-noncloud,
-            upgrade-noncloud,
-          ]
+        name: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.test_target == 'kubernetes-noncloud' && '["kubernetes-noncloud"]' || github.event_name == 'workflow_dispatch' && inputs.test_target == 'ucp-noncloud' && '["ucp-noncloud"]' || '["cli-noncloud","corerp-noncloud","daprrp-noncloud","database-noncloud","kubernetes-noncloud","msgrp-noncloud","multicluster-noncloud","statestore-noncloud","samples-noncloud","ucp-noncloud","datastoresrp-noncloud","dynamicrp-noncloud","upgrade-noncloud"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     env:
