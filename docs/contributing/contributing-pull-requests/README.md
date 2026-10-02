@@ -114,6 +114,21 @@ The status workflow assumes these labels already exist; it never creates reposit
 
 Draft PRs have no handoff label. Maintainers can apply the existing **`pr:do-not-merge`** label to pause a PR; it removes the handoff and queue-ready labels. Use **`pr:needs-author-response`** for an explicit author-response request, including actionable general discussion outside inline review threads, then remove it after the author responds. The workflow never applies or removes these manual labels. Both manual labels fail the `PR Required Labels` check and remove a PR from the merge queue if it was already queued.
 
+#### Lifecycle label configuration prerequisites
+
+The [YAML mapping](../../../.github/configs/pr-status-labels.yml) and its `loadLabels` reader in the [existing PR status script](../../../.github/scripts/pr-status-labels.mjs) are prerequisites for a later activation PR. **They do not yet control lifecycle assignment or manual merge holds.** Both live workflows retain their existing behavior, including required-label comments; editing this mapping alone has no runtime effect. Label provisioning remains independent in the [label catalog](../../../.github/labels.yml).
+
+Validate from the repository root using Node.js from [`.node-version`](../../../.node-version) and the pnpm version pinned in [`package.json`](../../../package.json):
+
+```bash
+corepack pnpm install --frozen-lockfile --ignore-scripts
+corepack pnpm run validate:pr-status-labels
+```
+
+The existing lint workflow runs the same configuration validation on proposed changes; configuration-only edits are excluded from the shared CI skip list. The reader requires the fixed, case-sensitive keys in both sections and rejects duplicate YAML keys, wrong types, blank names, names over 50 characters, surrounding whitespace or control characters, and case-insensitive duplicate names. Unknown keys and sections are rejected.
+
+Activate the mapping in a separate PR only after the prerequisite PR is verified merged and a fresh target base contains the config, updated PR status script, package manifest, and lockfile. That follow-up must wire both runtime consumers to the same mapping without changing review or merge policy. Until then, the existing checks do not read the mapping and require no bootstrap exception.
+
 ### 6. (Optional) Self-review with the `radius-code-review` skill
 
 If you use GitHub Copilot, you can run the [`radius-code-review`](../../../.github/skills/radius-code-review/SKILL.md) skill against your own pull request to generate an initial AI-assisted review *before* asking maintainers to look at it. This can help you catch obvious issues, missing tests, or unclear comments while you still own the change.
