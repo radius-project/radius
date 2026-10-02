@@ -13,13 +13,13 @@
 #                        prefix: <namespace>/<typeName>/<typeName>.yaml.
 #
 # Pin entries in both sections share one shape:
-#   name  namespace (Radius.Compute) or recipe pack folder (azure)
+#   name  namespace (Radius.Compute) or recipe pack folder (azure-aks)
 #   repo  upstream repository, without a scheme
 #   ref   immutable commit SHA that is fetched (Phase A)
 #   tag   stable upstream release tag `ref` was resolved from, or "" only when
 #         that unit has no stable release and `ref` is an edge commit. Namespace
 #         tags look like Radius.Compute/v0.2.0, recipe pack tags like
-#         recipe-pack/azure/v0.2.0, and legacy repository-wide tags like
+#         recipe-pack/azure-aks/v0.2.0, and legacy repository-wide tags like
 #         v0.57.0. Prerelease tags are never selected.
 #
 # Updates prefer stable unit-scoped SemVer tags. Incoming edge refs cannot
@@ -32,7 +32,7 @@
 #   make update-resource-types                   # all namespaces
 #   make update-resource-types RESOURCE_TYPES_NAMESPACE=Radius.Compute
 #   make update-recipe-packs                                      # all packs
-#   make update-recipe-packs RECIPE_PACKS_NAME=azure
+#   make update-recipe-packs RECIPE_PACKS_NAME=azure-aks
 #
 # To add a new default resource type:
 #   1. Merge the manifest in resource-types-contrib.
@@ -48,37 +48,41 @@ resourceTypes:
     repo: github.com/radius-project/resource-types-contrib
     # The sync fetch accepts git refs, but update-resource-types always records
     # a full commit SHA under ref and the stable release tag under tag.
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Compute/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.Compute/v0.3.0"
   - name: Radius.Data
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Data/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.Data/v0.3.0"
   - name: Radius.Security
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Security/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.Security/v0.2.2"
   - name: Radius.Messaging
     repo: github.com/radius-project/resource-types-contrib
-    ref: ebdeec9509036f2b2f271e41661e6fcfe45eda89
-    tag: "Radius.Messaging/v0.1.1"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.Messaging/v0.2.2"
   - name: Radius.AI
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.AI/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.AI/v0.2.2"
   - name: Radius.Storage
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Storage/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.Storage/v0.2.2"
 recipePacks:
-  - name: azure
+  - name: azure-aks
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "recipe-pack/azure/v0.1.0"
+    ref: b390a6f858a07e3392643625dcf3df1ecdfd1e2a
+    tag: ""
+  - name: azure-aci
+    repo: github.com/radius-project/resource-types-contrib
+    ref: b390a6f858a07e3392643625dcf3df1ecdfd1e2a
+    tag: ""
   - name: kubernetes
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "recipe-pack/kubernetes/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "recipe-pack/kubernetes/v0.2.0"
 defaultRegistration:
   - Radius.Compute/containers
   - Radius.Compute/containerImages

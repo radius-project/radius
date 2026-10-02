@@ -26,6 +26,18 @@ rad install kubernetes \
   --set dynamicrp.buildkit.enabled=true
 ```
 
+Git build sources require no additional storage. To enable local filesystem build sources, create a PVC in the Radius release namespace containing the approved source directories, then configure the chart to mount it read-only:
+
+```console
+rad install kubernetes \
+  --set dynamicrp.buildkit.enabled=true \
+  --set dynamicrp.buildkit.localContexts.existingClaim=build-contexts
+```
+
+The chart does not create or populate the PVC. It mounts the claim only into `dynamic-rp` at `/var/radius/build-contexts`; local source paths must resolve beneath that directory.
+
+`dynamic-rp` reads the mount as user ID `65532` and the Pod sets no `fsGroup`, so every directory and file on the claim must be readable by that user or world-readable. The Deployment runs a single replica with the default rolling update, so a `ReadWriteOnce` claim can block a rollout when the replacement Pod is scheduled to another node. Prefer a `ReadOnlyMany` or `ReadWriteMany` claim where the storage class supports it.
+
 BuildKit defaults to one parallel OCI worker step across all image builds sharing the `dynamic-rp` Pod. This protects the sidecar's memory limit when multiple `containerImages` resources are deployed together. `dynamicrp.buildkit.maxParallelism` must be an integer between `1` and `2147483647`; BuildKit treats non-positive values as unlimited, so the chart rejects them before rendering the daemon configuration.
 
 Increase `dynamicrp.buildkit.maxParallelism` only after profiling representative cold builds. Size `dynamicrp.buildkit.resources.requests` for the sustained working set and `dynamicrp.buildkit.resources.limits` with enough headroom for the configured parallelism. The limit bounds concurrent build steps but cannot make an individual build fit within an undersized memory limit.
@@ -39,6 +51,10 @@ By default, Radius pulls container images from GitHub Container Registry (ghcr.i
 ### Custom Image Tag
 
 You can specify a custom tag for all Radius images using the `global.imageTag` parameter. This is useful when you want to deploy a specific version across all components or use custom-built images.
+
+Main-branch Radius images use the mutable `edge` tag. The `latest` tag is deprecated for main-branch consumption and will point to the most recent stable release after the release-pipeline cutover. During the transition, Radius-owned images and CLI OCI artifacts are published under both tags with identical content. Use `edge` when you need builds from `main`.
+
+The Deployment Engine and dashboard are published from separate repositories. Edge charts continue to use their existing `latest` tags until those publishers adopt the `edge` convention.
 
 #### Using a Custom Registry
 
@@ -181,7 +197,7 @@ IMAGES=(
 
 SOURCE_REGISTRY="ghcr.io/radius-project"
 TARGET_REGISTRY="myregistry.azurecr.io"
-VERSION="latest"  # or specific version like "0.48"
+VERSION="0.60"
 
 # Mirror each image
 for IMAGE in "${IMAGES[@]}"; do
@@ -198,7 +214,7 @@ rad install kubernetes \
   --set global.imageRegistry=myregistry.azurecr.io
 ```
 
-**Note:** When using a custom registry, images are pulled directly from `<registry>/<image-name>:<tag>` format. For example, with `myregistry.azurecr.io`, the controller image will be pulled from `myregistry.azurecr.io/controller:latest`.
+**Note:** When using a custom registry, images are pulled directly from `<registry>/<image-name>:<tag>` format. For example, with `myregistry.azurecr.io`, the controller image will be pulled from `myregistry.azurecr.io/controller:0.60`.
 
 ### Terraform Binary Pre-downloading
 
@@ -242,9 +258,7 @@ When enabled, three policies are applied:
 - `radius-allow-internal` — re-permits east-west traffic between Radius
   components (intra-namespace), matched by the immutable
   `kubernetes.io/metadata.name` namespace label.
-- `radius-allow-control-plane` — allows the Kubernetes API server to reach UCP
-  (APIService aggregation) and the controller (admission webhook) on port `9443`,
-  from the CIDRs in `networkPolicies.controlPlaneCIDRs`.
+- `radius-allow-control-plane` — allows the Kubernetes API server to reach UCP (APIService aggregation) on port `9443`, from the CIDRs in `networkPolicies.controlPlaneCIDRs`.
 
 Only ingress is restricted; egress is left open so UCP can reach the Kubernetes
 API server and pods can resolve DNS.
@@ -256,14 +270,7 @@ API server and pods can resolve DNS.
 
 #### Setting `controlPlaneCIDRs`
 
-The kube-apiserver reaches UCP (APIService aggregation) and the controller
-(admission webhook) over the host network, so this traffic arrives with the
-**node's** IP rather than a pod IP and cannot be matched by a namespace/pod
-selector. You must supply the source CIDR(s) via
-`networkPolicies.controlPlaneCIDRs` — **this is required when
-`networkPolicies.enabled=true`; Helm rendering fails if it is empty** — otherwise
-the default-deny policy would block API aggregation and webhooks and break the
-control plane.
+The kube-apiserver reaches UCP (APIService aggregation) over the host network, so this traffic arrives with the **node's** IP rather than a pod IP and cannot be matched by a namespace/pod selector. You must supply the source CIDR(s) via `networkPolicies.controlPlaneCIDRs` — **this is required when `networkPolicies.enabled=true`; Helm rendering fails if it is empty** — otherwise the default-deny policy would block API aggregation and break the control plane.
 
 Use your cluster's node/control-plane subnet(s), **not** individual node IPs
 (a `/32` would exclude other control-plane addresses):

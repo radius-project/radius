@@ -74,6 +74,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 				ReleaseName:  radiusReleaseName,
 				ChartRepo:    radiusHelmRepo,
 				Wait:         true,
+				Timeout:      DefaultInstallTimeout,
 			},
 		},
 		Contour: ContourChartOptions{
@@ -117,6 +118,11 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 
 	if cliOptions.Radius.ChartVersion != "" {
 		options.Radius.ChartVersion = cliOptions.Radius.ChartVersion
+	}
+
+	// A non-positive timeout means the user did not supply --timeout, so keep the default.
+	if cliOptions.Radius.Timeout > 0 {
+		options.Radius.Timeout = cliOptions.Radius.Timeout
 	}
 
 	if cliOptions.Radius.ChartRepo != "" {
@@ -398,7 +404,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
-	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues)
+	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
 	}
@@ -420,7 +426,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
-	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, contourValues, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, false, reuseValues)
+	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, contourValues, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, false, reuseValues, clusterOptions.Contour.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Contour, err: %w", err)
 	}

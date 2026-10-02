@@ -6,7 +6,7 @@ This is the primary doc for writing and modifying the Dockerfiles that package t
 
 ## Where these files live
 
-- `deploy/images/<service>/Dockerfile` — one directory per shipped image (`applications-rp`, `dynamic-rp`, `ucpd`, `controller`, `bicep`, and others). Some services also carry a `Dockerfile.mariner` variant.
+- `deploy/images/<service>/Dockerfile` — one directory per shipped image (`applications-rp`, `dynamic-rp`, `ucpd`, `controller`, `bicep`, and others).
 - The image builds are wired through [`build/docker.mk`](../../../../build/docker.mk) and invoked with `make docker-build` / `make docker-push` (see [building the repo](../contributing-code-building/README.md)).
 
 ## Conventions
@@ -15,6 +15,7 @@ Follow the [Docker instruction file](../../../../.github/instructions/docker.ins
 
 - **Multi-stage builds** — compile in a build stage and copy only the resulting binary into a minimal runtime stage.
 - **Minimal, non-root runtime** — prefer distroless/minimal base images and run as a non-root user.
+- **Pinned runtime bases** — use an explicit operating-system release for each runtime base image when available and pin its multi-platform image index digest, for example `gcr.io/distroless/static-debian13:nonroot@sha256:<index-digest>`. Refreshing a digest is required to consume future base-image security updates.
 - **Deterministic layers** — order instructions for cache reuse and copy only what each stage needs.
 
 ## Verification

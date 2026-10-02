@@ -28,37 +28,6 @@ const (
 	// which climbs to ~16m and extends total drain time.
 	DeleteRetryDelay time.Duration = 30 * time.Second
 
-	// AnnotationRadiusEnabled is the name of the annotation that indicates if a Deployment has Radius enabled.
-	AnnotationRadiusEnabled = "radapp.io/enabled"
-
-	// AnnotationRadiusConnectionPrefix is the name of the annotation that indicates the name of the connection to use.
-	AnnotationRadiusConnectionPrefix = "radapp.io/connection-"
-
-	// AnnotationRadiusStatus is the name of the annotation that indicates the status of a Deployment.
-	AnnotationRadiusStatus = "radapp.io/status"
-
-	// AnnotationRadiusConfigurationHash is the name of the annotation that indicates the hash of the configuration.
-	AnnotationRadiusConfigurationHash = "radapp.io/configuration-hash"
-
-	// AnnotationRadiusEnvironment is the name of the annotation that indicates the name of the environment. If unset,
-	// the value 'default' will be used as the environment name.
-	AnnotationRadiusEnvironment = "radapp.io/environment"
-
-	// AnnotationRadiusApplication is the name of the annotation that indicates the name of the application. If unset,
-	// the namespace of the Deployment will be used as the application name.
-	AnnotationRadiusApplication = "radapp.io/application"
-
-	// DeploymentFinalizer is the name of the finalizer added to Deployments.
-	DeploymentFinalizer = "radapp.io/deployment-finalizer"
-
-	// EventScopeMismatch is emitted when a deployment annotation references a scope outside
-	// of the deployment's ownership boundary.
-	EventScopeMismatch = "ScopeMismatch"
-
-	// EventContainerOwnershipMismatch is emitted when a container does not reference
-	// the source Kubernetes deployment resource.
-	EventContainerOwnershipMismatch = "ContainerOwnershipMismatch"
-
 	// EventDeploymentResourceDeleteSkipped is emitted when the controller skips deleting the
 	// resource referenced by a DeploymentResource because the object is not a controller-owned
 	// child of a DeploymentTemplate whose deployment scope covers Spec.Id.
@@ -67,11 +36,6 @@ const (
 	// deploymentTemplateKind is the Kind of the DeploymentTemplate CRD, used when checking the
 	// controller owner reference on a DeploymentResource.
 	deploymentTemplateKind = "DeploymentTemplate"
-
-	applicationsCoreContainersResourceType = "Applications.Core/containers"
-
-	// RecipeFinalizer is the name of the finalizer added to Recipes.
-	RecipeFinalizer = "radapp.io/recipe-finalizer"
 
 	// DeploymentTemplateFinalizer is the name of the finalizer added to DeploymentTemplates.
 	DeploymentTemplateFinalizer = "radapp.io/deployment-template-finalizer"

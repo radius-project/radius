@@ -122,6 +122,26 @@ install-golangci-lint: ## Install the pinned golangci-lint into a user-owned bin
 		GOLANGCI_LINT_INSTALL_DIR="$(GOLANGCI_LINT_INSTALL_DIR)" \
 		./build/scripts/install-golangci-lint.sh
 
+.PHONY: install-goreleaser
+install-goreleaser: ## Install the pinned GoReleaser CLI into a user-owned bin dir (no sudo).
+	@GORELEASER_VERSION="$(GORELEASER_VERSION)" \
+		GORELEASER_CHECKSUM_LINUX_AMD64="$(GORELEASER_CHECKSUM_LINUX_AMD64)" \
+		GORELEASER_CHECKSUM_LINUX_ARM64="$(GORELEASER_CHECKSUM_LINUX_ARM64)" \
+		GORELEASER_CHECKSUM_DARWIN_AMD64="$(GORELEASER_CHECKSUM_DARWIN_AMD64)" \
+		GORELEASER_CHECKSUM_DARWIN_ARM64="$(GORELEASER_CHECKSUM_DARWIN_ARM64)" \
+		GORELEASER_INSTALL_DIR="$(GORELEASER_INSTALL_DIR)" \
+		./build/scripts/install-goreleaser.sh
+
+.PHONY: install-git-cliff
+install-git-cliff: ## Install the pinned git-cliff CLI into a user-owned bin dir (no sudo).
+	@GIT_CLIFF_VERSION="$(GIT_CLIFF_VERSION)" \
+		GIT_CLIFF_CHECKSUM_LINUX_AMD64="$(GIT_CLIFF_CHECKSUM_LINUX_AMD64)" \
+		GIT_CLIFF_CHECKSUM_LINUX_ARM64="$(GIT_CLIFF_CHECKSUM_LINUX_ARM64)" \
+		GIT_CLIFF_CHECKSUM_DARWIN_AMD64="$(GIT_CLIFF_CHECKSUM_DARWIN_AMD64)" \
+		GIT_CLIFF_CHECKSUM_DARWIN_ARM64="$(GIT_CLIFF_CHECKSUM_DARWIN_ARM64)" \
+		GIT_CLIFF_INSTALL_DIR="$(GIT_CLIFF_INSTALL_DIR)" \
+		./build/scripts/install-git-cliff.sh
+
 .PHONY: install-terraform
 install-terraform: ## Install the pinned Terraform CLI into a user-owned bin dir (no sudo).
 	@TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \

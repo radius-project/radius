@@ -15,8 +15,7 @@ limitations under the License.
 */
 
 // Package persistence defines the Store abstraction used to save and load
-// ApplicationGraphResponse artifacts. Concrete backends (git, graphdb, ...)
-// live in sub-packages.
+// ApplicationGraphResponse artifacts. The archive adapter lives in a sub-package.
 package persistence
 
 import (
@@ -32,8 +31,7 @@ var ErrNotFound = errors.New("persistence: not found")
 // Key identifies a persisted graph within a Store.
 //
 // The meaning of the fields is backend-specific:
-//   - For the git backend, Namespace maps to a branch prefix and Name to the
-//     file path inside the branch.
+//   - For the archive adapter, Namespace and Name map to <namespace>/<name>.json.
 //   - For a future graph DB backend, these fields map to database/collection
 //     identifiers.
 type Key struct {
@@ -46,8 +44,7 @@ type Key struct {
 
 // SaveOptions contains optional metadata applied during Save.
 type SaveOptions struct {
-	// Message is a human-readable description of the change (e.g. git commit
-	// message).
+	// Message is a human-readable description passed to the archive's Commit.
 	Message string
 
 	// Labels are free-form key/value pairs attached to the saved graph.

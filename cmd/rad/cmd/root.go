@@ -110,7 +110,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
-	"github.com/radius-project/radius/pkg/graph/persistence/git"
+	"github.com/radius-project/radius/pkg/graph/persistence/archive"
 	"github.com/radius-project/radius/pkg/statearchive/factory"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -258,13 +258,13 @@ func init() {
 }
 
 func initSubCommands() {
-	graphStore, err := git.NewStore(git.Options{
+	graphStore, err := archive.NewStore(archive.Options{
 		Archive: factory.NewGraphArchive(os.Getenv(factory.GraphRegistryEnvVar)),
 	})
 	if err != nil {
-		// graphStore is required only when we are in repo radius
-		// it can be nil otherwise.
-		graphStore = nil
+		// These fixed options must be valid. Environment errors are deferred
+		// until Archive.Open, not handled by dropping graph persistence.
+		panic(fmt.Errorf("failed to initialize graph store: %w", err))
 	}
 	framework := &framework.Impl{
 		Bicep: &bicep.Impl{

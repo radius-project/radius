@@ -25,7 +25,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
@@ -47,7 +48,7 @@ const (
 var (
 	testResourceType    = "Applications.Core/environments"
 	testOperationStatus = &manager.Status{
-		ID:               uuid.NewString(),
+		ID:               uuid.New().String(),
 		Name:             "operation-status",
 		Status:           v1.ProvisioningStateUpdating,
 		StartTime:        time.Now().UTC(),
@@ -127,8 +128,8 @@ func genTestMessage(opID uuid.UUID, opTimeout time.Duration) *queue.Message {
 		OperationID:   opID,
 		OperationType: "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
 		ResourceID: fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/%s",
-			uuid.NewString()),
-		CorrelationID:    uuid.NewString(),
+			uuid.New().String()),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &opTimeout,
 	})
 

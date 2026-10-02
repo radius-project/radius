@@ -24,8 +24,9 @@ import (
 	"strings"
 	"time"
 
+	"uuid"
+
 	armauthorization "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization/v2"
-	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/to"
 
 	"github.com/radius-project/radius/pkg/azure/armauth"

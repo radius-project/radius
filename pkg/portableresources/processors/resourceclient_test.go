@@ -30,11 +30,13 @@ import (
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -58,6 +60,35 @@ func Test_Delete_InvalidResourceID(t *testing.T) {
 	c := NewResourceClient(nil, nil, nil)
 	err := c.Delete(t.Context(), "invalid")
 	require.Error(t, err)
+}
+
+func Test_NewResourceClientFactory(t *testing.T) {
+	controlPlaneProvider := kubernetesclientprovider.FromConfig(&rest.Config{Host: "https://control-plane.example.com"})
+	factory := NewResourceClientFactory(nil, nil, controlPlaneProvider)
+
+	t.Run("uses control-plane provider when target config is nil", func(t *testing.T) {
+		client, ok := factory(nil).(*resourceClient)
+		require.True(t, ok)
+		require.Same(t, controlPlaneProvider, client.kubernetesClient)
+	})
+
+	t.Run("uses tuned copy of target config", func(t *testing.T) {
+		targetConfig := &rest.Config{
+			Host:  "https://target.example.com",
+			QPS:   1,
+			Burst: 2,
+		}
+
+		client, ok := factory(targetConfig).(*resourceClient)
+		require.True(t, ok)
+		require.NotSame(t, controlPlaneProvider, client.kubernetesClient)
+		require.NotSame(t, targetConfig, client.kubernetesClient.Config())
+		require.Equal(t, targetConfig.Host, client.kubernetesClient.Config().Host)
+		require.Equal(t, kubeutil.DefaultServerQPS, client.kubernetesClient.Config().QPS)
+		require.Equal(t, kubeutil.DefaultServerBurst, client.kubernetesClient.Config().Burst)
+		require.Equal(t, float32(1), targetConfig.QPS)
+		require.Equal(t, 2, targetConfig.Burst)
+	})
 }
 
 func Test_Delete_ARM(t *testing.T) {

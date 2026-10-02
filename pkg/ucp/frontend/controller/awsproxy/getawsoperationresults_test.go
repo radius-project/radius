@@ -20,10 +20,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"uuid"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
-	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -34,7 +35,7 @@ import (
 )
 
 func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
@@ -65,7 +66,7 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 }
 
 func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(

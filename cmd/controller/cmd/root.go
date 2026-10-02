@@ -42,7 +42,6 @@ var rootCmd = &cobra.Command{
 	Long:  `Server process for Radius Kubernetes interoperability (controller).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		configFilePath := cmd.Flag("config-file").Value.String()
-		tlsCertDir := cmd.Flag("cert-dir").Value.String()
 
 		options, err := hostoptions.NewHostOptionsFromEnvironment(configFilePath)
 		if err != nil {
@@ -63,7 +62,7 @@ var rootCmd = &cobra.Command{
 		logger.Info("Loaded options", "configfile", configFilePath)
 
 		services := []hosting.Service{
-			&controller.Service{Options: options, TLSCertDir: tlsCertDir},
+			&controller.Service{Options: options},
 		}
 
 		if options.Config.TracerProvider.Enabled {
@@ -78,7 +77,6 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	// Let users override the configuration via `--config-file`.
 	rootCmd.Flags().String("config-file", fmt.Sprintf("controller-%s.yaml", hostoptions.Environment()), "The service configuration file.")
-	rootCmd.Flags().String("cert-dir", "/var/tls/cert", "The directory containing the TLS certificates.")
 
 	cobra.CheckErr(rootCmd.ExecuteContext(context.Background()))
 }

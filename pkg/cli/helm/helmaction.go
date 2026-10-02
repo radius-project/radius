@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	helm "helm.sh/helm/v4/pkg/action"
@@ -73,6 +74,10 @@ type ChartOptions struct {
 
 	// Wait specifies whether to wait for the chart to be ready.
 	Wait bool
+
+	// Timeout specifies how long to wait for the chart's resources to become ready.
+	// Only meaningful when Wait is true. The zero value means DefaultInstallTimeout.
+	Timeout time.Duration
 }
 
 // HelmAction is an interface for performing actions on Helm charts.
@@ -198,7 +203,7 @@ func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *
 	}
 
 	if !chartInstalled {
-		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait)
+		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, options.Timeout)
 		if err != nil {
 			return fmt.Errorf("failed to run Helm install, err: %w", err)
 		}
@@ -206,7 +211,7 @@ func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *
 		// Reinstall path is used during `rad install kubernetes --reinstall`. Preserve the
 		// previously-stored user values by default (ResetThenReuseValues) so that re-runs
 		// don't silently revert non-default settings.
-		_, err = helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, true)
+		_, err = helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, true, options.Timeout)
 		if err != nil {
 			return fmt.Errorf("failed to run Helm upgrade, err: %w", err)
 		}

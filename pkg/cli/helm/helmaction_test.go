@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -231,6 +232,82 @@ func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 	assert.Equal(t, prometheus["path"], "path")
 }
 
+// Test_ApplyHelmChart_TimeoutPropagation verifies the caller-configured readiness timeout
+// (`rad install kubernetes --timeout`) reaches the Helm client for both the install and the
+// reinstall/upgrade path. See https://github.com/radius-project/radius/issues/10236.
+func Test_ApplyHelmChart_TimeoutPropagation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		reinstall bool
+		timeout   time.Duration
+	}{
+		{
+			name:      "install propagates an explicit timeout",
+			reinstall: false,
+			timeout:   42 * time.Minute,
+		},
+		{
+			name:      "install propagates the unset timeout unchanged",
+			reinstall: false,
+			timeout:   0,
+		},
+		{
+			name:      "reinstall propagates an explicit timeout",
+			reinstall: true,
+			timeout:   42 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockHelmClient := NewMockHelmClient(ctrl)
+			helmAction := NewHelmAction(mockHelmClient)
+
+			helmConf := &helm.Configuration{}
+			helmChart := &chart.Chart{}
+			vals := map[string]any{"key": "value"}
+
+			existingRelease := &releasev1.Release{
+				Name:  "myrelease",
+				Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+				Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
+			}
+
+			if tt.reinstall {
+				mockHelmClient.EXPECT().
+					RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+					Return(existingRelease, nil).Times(1)
+				mockHelmClient.EXPECT().
+					RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true, tt.timeout).
+					Return(existingRelease, nil).Times(1)
+			} else {
+				mockHelmClient.EXPECT().
+					RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+					Return(nil, driver.ErrReleaseNotFound).Times(1)
+				mockHelmClient.EXPECT().
+					RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, tt.timeout).
+					Return(existingRelease, nil).Times(1)
+			}
+
+			err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+				ReleaseName: "myrelease",
+				Namespace:   "myns",
+				Wait:        true,
+				Reinstall:   tt.reinstall,
+				Timeout:     tt.timeout,
+			}, vals)
+			require.NoError(t, err)
+		})
+	}
+}
+
 func Test_ApplyHelmChart_InstallError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -249,7 +326,7 @@ func Test_ApplyHelmChart_InstallError(t *testing.T) {
 
 	// Install returns an error
 	mockHelmClient.EXPECT().
-		RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true).
+		RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, gomock.Any()).
 		Return(nil, errors.New("install failed")).Times(1)
 
 	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
@@ -285,7 +362,7 @@ func Test_ApplyHelmChart_ReinstallPath(t *testing.T) {
 
 	// Reinstall triggers upgrade with reuseValues=true
 	mockHelmClient.EXPECT().
-		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true).
+		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true, gomock.Any()).
 		Return(existingRelease, nil).Times(1)
 
 	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
@@ -321,7 +398,7 @@ func Test_ApplyHelmChart_ReinstallError(t *testing.T) {
 
 	// Reinstall triggers upgrade but fails
 	mockHelmClient.EXPECT().
-		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true).
+		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true, gomock.Any()).
 		Return(nil, errors.New("upgrade failed")).Times(1)
 
 	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{

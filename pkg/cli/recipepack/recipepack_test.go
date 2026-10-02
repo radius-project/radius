@@ -39,6 +39,7 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 		"Radius.Security/secrets",
 		"Radius.Data/mySqlDatabases",
 		"Radius.Data/postgreSqlDatabases",
+		"Radius.Data/redisCaches",
 		"Radius.Messaging/rabbitMQ",
 	}
 	require.Len(t, definitions, len(expectedResourceTypes))

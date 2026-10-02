@@ -39,18 +39,21 @@ types:
       }
       ```
 
-      The connection automatically injects environment variables into the
-      container for all properties from the model. The environment variables are
+      On compatible Kubernetes Container Recipes, the connection injects environment
+      variables into the container for the model properties. The variables are
       named `CONNECTION_<CONNECTION-NAME>_<PROPERTY-NAME>`. In this example the
       connection name is `llm` so the environment variables will be:
 
       - CONNECTION_LLM_MODEL
       - CONNECTION_LLM_ENDPOINT
+      - CONNECTION_LLM_APIKEY (secret-backed)
 
-      The `apiKey` secret is NOT injected via the connection — it is materialized
-      into a managed `Radius.Security/secrets` resource. Bind it into a container
-      env var with a `secretKeyRef`, using `model.properties.secrets.name` as the
-      `secretName` and key `apiKey` (see the `secrets` property).
+      With Radius control-plane support from `radius-project/radius#12709` and
+      Kubernetes Container Recipe support from `resource-types-contrib#300` or
+      later, the same connection injects `apiKey` through a Kubernetes secret
+      reference. For custom, older, or mixed-version Kubernetes deployments, use
+      `model.properties.secrets.name` as the `secretName` and `apiKey` as the key
+      in an explicitly authored `secretKeyRef`.
 
     apiVersions:
       '2025-08-01-preview':
@@ -75,7 +78,7 @@ types:
               type: object
               description: >-
                 (Read-only) Recipe secrets. The reserved `name` sub-property references the managed
-                Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`;
+                Radius.Security/secrets resource Radius materializes from the Recipe's `result.secrets`;
                 the other sub-properties declare secret keys whose values are written only into that
                 managed secret (never onto this resource). Consumers bind a key into a container env var
                 via `secretKeyRef`, using `<resource>.properties.secrets.name` as `secretName`.

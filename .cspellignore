@@ -10,6 +10,7 @@ AWSCredential
 AWSCredentialProvider
 AcquireLock
 Amidst
+amannn
 AnonymousCredential
 Antrea
 ApiVersionName
@@ -725,6 +726,7 @@ getMeterMust
 getResourceIdentitySchemas
 getgraph
 gh
+ghaction
 ghcr
 github
 gitignore
@@ -732,6 +734,7 @@ gitmodules
 gitops
 gitsubmodule
 gnrc
+goarm
 godoc
 gofmt
 golang
@@ -823,6 +826,7 @@ kusto
 lastModifiedAt
 lastModifiedBy
 lastModifiedByType
+ldflags
 lfx
 lgtm
 lifecycle
@@ -947,6 +951,7 @@ openSSF
 openapi
 operationStatuses
 oras
+orhun
 orchestrator
 ossf
 otel

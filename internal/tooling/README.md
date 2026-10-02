@@ -135,7 +135,7 @@ A `versionFiles` entry keeps another repository file synchronized when a tool ve
 | `prefix` | string | Required for `replace`; empty for `plain` | Text immediately before the embedded version.                             |
 | `suffix` | string | Required for `replace`; empty for `plain` | Text immediately after the embedded version.                              |
 
-The `replace` prefix must occur exactly once. Terraform uses `versionFiles` for `.terraform-version`, the Go fallback, and the Helm chart default.
+The `replace` prefix must occur exactly once. Terraform uses `versionFiles` for `.terraform-version`, the Go fallback, and the Helm chart default. Bicep uses it for the `rad bicep download` version in `pkg/cli/bicep/tools/download_tools.go`.
 
 ## Update behavior
 

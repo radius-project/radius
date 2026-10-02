@@ -39,7 +39,8 @@ import (
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/test/testutil"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

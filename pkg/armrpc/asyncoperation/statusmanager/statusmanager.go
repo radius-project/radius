@@ -31,7 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/trace"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // statusManager includes the necessary functions to manage asynchronous operations.

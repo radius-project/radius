@@ -168,7 +168,7 @@ jobs:
           cache: false
 
       - name: Login to Azure
-        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
@@ -352,7 +352,7 @@ jobs:
           echo "FUNCTEST_OIDC_ISSUER=${oidc_issuer}" >> "${GITHUB_OUTPUT}"
 
       - name: Re-login to Azure before functional tests
-        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
@@ -383,7 +383,7 @@ jobs:
         # federated OIDC to assume a role instead of static access keys; the
         # action exports short-lived AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY /
         # AWS_SESSION_TOKEN into the environment for the test step below.
-        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: ${{ github.run_id }}
@@ -397,6 +397,7 @@ jobs:
           UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          DIAGNOSTICS_NAME: all
           AWS_REGION: ${{ env.AWS_REGION }}
           AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
@@ -451,11 +452,13 @@ jobs:
           # Run quota-dependent suites first so cloud failures leave enough time for
           # diagnostics and cleanup. These two targets cover the same suites as
           # test-functional-all without rerunning the Kubernetes aggregate target.
-          make test-functional-all-cloud
-          make test-functional-all-noncloud
+          # Use main's diagnostics wrapper, not the released test harness.
+          bash "$GITHUB_WORKSPACE/.github/scripts/run-with-cluster-diagnostics.sh" \
+            bash -e -c 'make test-functional-all-cloud; make test-functional-all-noncloud'
 
       - name: Collect cluster diagnostics
         if: always()
+        timeout-minutes: 5
         # Diagnostic-only post-mortem snapshot. The script records each command's
         # failure inline and keeps going, because the failures worth debugging are
         # usually the ones where the control plane is unreachable.
@@ -463,6 +466,7 @@ jobs:
         env:
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           DIAGNOSTICS_NAME: all
+          DIAGNOSTICS_LOG_NAMESPACES: radius-system
         run: ./.github/scripts/collect-cluster-diagnostics.sh
 
       - name: Upload container logs
@@ -484,7 +488,7 @@ jobs:
 
       - name: Login to Azure
         if: always()
-        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}

@@ -17,23 +17,30 @@ limitations under the License.
 package preview
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"github.com/stretchr/testify/require"
 
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 )
+
+const testScope = "/planes/radius/local/resourceGroups/test-group"
 
 func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
@@ -93,125 +100,309 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func Test_Run(t *testing.T) {
-	workspace := &workspaces.Workspace{
-		Name:  "test-workspace",
-		Scope: "/planes/radius/local/resourceGroups/test-group",
+func Test_Run_JSONWritesEnvironmentOnly(t *testing.T) {
+	providers := &corerpv20250801.Providers{
+		Azure: &corerpv20250801.ProvidersAzure{
+			SubscriptionID:    new("test-subscription-id"),
+			ResourceGroupName: new("test-resource-group"),
+		},
 	}
 
 	testcases := []struct {
-		name              string
-		envFactory        func() fake.EnvironmentsServer
-		recipePackFactory func() fake.RecipePacksServer
-		environmentName   string
-		expectedOutput    []any
+		name        string
+		providers   *corerpv20250801.Providers
+		recipePacks []*string
 	}{
 		{
-			name:              "environment with recipe packs",
-			envFactory:        test_client_factory.WithEnvironmentServerNoError,
-			recipePackFactory: test_client_factory.WithRecipePackServerNoError,
-			environmentName:   "env1",
-			expectedOutput: []any{
-				output.FormattedOutput{
-					Format: "table",
-					Obj: corerpv20250801.EnvironmentResource{
-						Name: new("env1"),
-						Properties: &corerpv20250801.EnvironmentProperties{
-							RecipePacks: []*string{
-								new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/test-recipe-pack"),
-							},
-							Providers: &corerpv20250801.Providers{
-								Azure: &corerpv20250801.ProvidersAzure{
-									SubscriptionID:    new("test-subscription-id"),
-									ResourceGroupName: new("test-resource-group"),
-								},
-								Aws: &corerpv20250801.ProvidersAws{
-									AccountID: new("test-account-id"),
-									Region:    new("test-region"),
-								},
-								Kubernetes: &corerpv20250801.ProvidersKubernetes{
-									Namespace: new("test-namespace"),
-								},
-							},
-						},
-					},
-					Options: objectformats.GetResourceTableFormat(),
-				},
-				output.LogOutput{
-					Format: "",
-				},
-				output.FormattedOutput{
-					Format: "table",
-					Obj: []EnvProvider{
-						{
-							Provider:   "azure",
-							Properties: "subscriptionId: 'test-subscription-id', resourceGroupName: 'test-resource-group'",
-						},
-						{
-							Provider:   "aws",
-							Properties: "accountId: 'test-account-id', region: 'test-region'",
-						},
-						{
-							Provider:   "kubernetes",
-							Properties: "namespace: 'test-namespace'",
-						},
-					},
-					Options: objectformats.GetProvidersForEnvironmentTableFormat(),
-				},
-				output.LogOutput{
-					Format: "",
-				},
-				output.FormattedOutput{
-					Format: "table",
-					Obj: []EnvRecipes{
-						{
-							RecipePack:   "test-recipe-pack",
-							ResourceType: "test-recipe1",
-							Kind:         string(corerpv20250801.RecipeKindTerraform),
-							Source:       "https://example.com/recipe1?ref=v0.1",
-						},
-						{
-							RecipePack:   "test-recipe-pack",
-							ResourceType: "test-recipe2",
-							Kind:         string(corerpv20250801.RecipeKindTerraform),
-							Source:       "https://example.com/recipe2?ref=v0.1",
-						},
-					},
-					Options: objectformats.GetRecipesForEnvironmentTableFormat(),
-				},
+			name:      "providers only",
+			providers: providers,
+		},
+		{
+			name: "references only",
+			recipePacks: []*string{
+				new(testScope + "/providers/Radius.Core/recipePacks/default"),
 			},
+		},
+		{
+			name:      "providers and references",
+			providers: providers,
+			recipePacks: []*string{
+				new("/planes/radius/local/resourceGroups/shared/providers/Radius.Core/recipePacks/default"),
+			},
+		},
+		{
+			name: "no providers or references",
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, tc.envFactory, tc.recipePackFactory)
-			require.NoError(t, err)
-
-			outputSink := &output.MockOutput{}
-			runner := &Runner{
-				RadiusCoreClientFactory: factory,
-				Workspace:               workspace,
-				EnvironmentName:         tc.environmentName,
-				Format:                  "table",
-				Output:                  outputSink,
+			environment := corerpv20250801.EnvironmentResource{
+				ID:       new(testScope + "/providers/Radius.Core/environments/test-env"),
+				Name:     new("test-env"),
+				Type:     new("Radius.Core/environments"),
+				Location: new("global"),
+				Tags:     map[string]*string{"team": new("platform")},
+				Properties: &corerpv20250801.EnvironmentProperties{
+					BicepSettings: new(testScope + "/providers/Radius.Core/bicepSettings/default"),
+					Providers:     tc.providers,
+					RecipePacks:   tc.recipePacks,
+					Simulated:     new(true),
+				},
 			}
-
-			err = runner.Run(t.Context())
+			recipePackGets := 0
+			var stdout bytes.Buffer
+			err := runShow(
+				t,
+				environmentServer(environment),
+				forbiddenRecipePackServer(&recipePackGets),
+				output.FormatJson,
+				&stdout)
 			require.NoError(t, err)
-			require.Equal(t, tc.expectedOutput, outputSink.Writes)
+
+			var actual corerpv20250801.EnvironmentResource
+			decoder := json.NewDecoder(&stdout)
+			require.NoError(t, decoder.Decode(&actual))
+			require.Equal(t, environment, actual)
+			require.ErrorIs(t, decoder.Decode(&struct{}{}), io.EOF)
+			require.Zero(t, recipePackGets)
 		})
 	}
 }
 
-func Test_Run_RecipeSortOrder(t *testing.T) {
-	workspace := &workspaces.Workspace{
-		Name:  "test-workspace",
-		Scope: "/planes/radius/local/resourceGroups/test-group",
+func Test_Run_TableOutput(t *testing.T) {
+	providers := &corerpv20250801.Providers{
+		Azure: &corerpv20250801.ProvidersAzure{
+			SubscriptionID:    new("test-subscription-id"),
+			ResourceGroupName: new("test-resource-group"),
+		},
+		Aws: &corerpv20250801.ProvidersAws{
+			AccountID: new("test-account-id"),
+			Region:    new("test-region"),
+		},
+		Kubernetes: &corerpv20250801.ProvidersKubernetes{
+			Namespace: new("test-namespace"),
+		},
+	}
+	testcases := []struct {
+		name              string
+		recipePacks       []*string
+		recipePackPattern string
+	}{
+		{
+			name: "ordered recipe pack references",
+			recipePacks: []*string{
+				new("/planes/radius/local/resourceGroups/shared/providers/Radius.Core/recipePacks/default"),
+				new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/pack-b"),
+				new("/planes/radius/local/resourceGroups/another/providers/Radius.Core/recipePacks/default"),
+			},
+			recipePackPattern: `(?s)default\s+shared.*pack-b\s+test-group.*default\s+another`,
+		},
+		{
+			name: "no recipe pack references",
+		},
 	}
 
-	// Create environment server with multiple recipe packs
-	envServer := func() fake.EnvironmentsServer {
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			environment := corerpv20250801.EnvironmentResource{
+				ID:   new(testScope + "/providers/Radius.Core/environments/test-env"),
+				Name: new("test-env"),
+				Type: new("Radius.Core/environments"),
+				Properties: &corerpv20250801.EnvironmentProperties{
+					ProvisioningState: new(corerpv20250801.ProvisioningStateSucceeded),
+					Providers:         providers,
+					RecipePacks:       tc.recipePacks,
+				},
+			}
+			recipePackGets := 0
+			var stdout bytes.Buffer
+			err := runShow(
+				t,
+				environmentServer(environment),
+				forbiddenRecipePackServer(&recipePackGets),
+				output.FormatTable,
+				&stdout)
+			require.NoError(t, err)
+
+			actual := stdout.String()
+			require.Contains(t, actual, "STATE")
+			require.Contains(t, actual, "Succeeded")
+			require.Contains(t, actual, "PROVIDER")
+			require.Contains(t, actual, "azure")
+			require.Contains(t, actual, "subscriptionId: 'test-subscription-id', resourceGroupName: 'test-resource-group'")
+			require.Contains(t, actual, "aws")
+			require.Contains(t, actual, "accountId: 'test-account-id', region: 'test-region'")
+			require.Contains(t, actual, "kubernetes")
+			require.Contains(t, actual, "namespace: 'test-namespace'")
+			if tc.recipePackPattern == "" {
+				require.NotContains(t, actual, "RECIPE PACK")
+			} else {
+				require.Contains(t, actual, "RECIPE PACK")
+				require.Regexp(t, tc.recipePackPattern, actual)
+				require.NotContains(t, actual, "RESOURCE TYPE")
+				require.NotContains(t, actual, "RECIPE KIND")
+				require.NotContains(t, actual, "RECIPE SOURCE")
+			}
+			require.Zero(t, recipePackGets)
+		})
+	}
+}
+
+func Test_Run_TableReturnsInvalidRecipePackReferenceError(t *testing.T) {
+	envServer := environmentServer(corerpv20250801.EnvironmentResource{
+		ID:   new(testScope + "/providers/Radius.Core/environments/test-env"),
+		Name: new("test-env"),
+		Properties: &corerpv20250801.EnvironmentProperties{
+			RecipePacks: []*string{new("not-a-resource-id")},
+		},
+	})
+
+	var stdout bytes.Buffer
+	require.Error(t, runShow(t, envServer, nil, output.FormatTable, &stdout))
+	require.Empty(t, stdout.String())
+}
+
+func Test_Run_EnvironmentFetchErrors(t *testing.T) {
+	testcases := []struct {
+		name          string
+		status        int
+		expectedError error
+	}{
+		{
+			name:          "not found",
+			status:        http.StatusNotFound,
+			expectedError: clierrors.Message("The environment %q does not exist. Please select a new environment and try again.", "test-env"),
+		},
+		{
+			name:   "server error",
+			status: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			envServer := func() fake.EnvironmentsServer {
+				return fake.EnvironmentsServer{
+					Get: func(
+						ctx context.Context,
+						rootScope string,
+						environmentName string,
+						options *corerpv20250801.EnvironmentsClientGetOptions,
+					) (resp azfake.Responder[corerpv20250801.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+						errResp.SetResponseError(tc.status, http.StatusText(tc.status))
+						return
+					},
+				}
+			}
+
+			var stdout bytes.Buffer
+			err := runShow(t, envServer, nil, output.FormatTable, &stdout)
+			require.Error(t, err)
+			if tc.expectedError != nil {
+				require.Equal(t, tc.expectedError, err)
+			} else {
+				var responseError *azcore.ResponseError
+				require.ErrorAs(t, err, &responseError)
+				require.Equal(t, tc.status, responseError.StatusCode)
+			}
+			require.Empty(t, stdout.String())
+		})
+	}
+}
+
+func Test_Run_PropagatesOutputErrors(t *testing.T) {
+	environment := corerpv20250801.EnvironmentResource{
+		ID:   new(testScope + "/providers/Radius.Core/environments/test-env"),
+		Name: new("test-env"),
+		Type: new("Radius.Core/environments"),
+		Properties: &corerpv20250801.EnvironmentProperties{
+			ProvisioningState: new(corerpv20250801.ProvisioningStateSucceeded),
+			Providers: &corerpv20250801.Providers{
+				Kubernetes: &corerpv20250801.ProvidersKubernetes{
+					Namespace: new("test-namespace"),
+				},
+			},
+			RecipePacks: []*string{
+				new(testScope + "/providers/Radius.Core/recipePacks/default"),
+			},
+		},
+	}
+
+	testcases := []struct {
+		name   string
+		format string
+		marker string
+	}{
+		{name: "json environment", format: output.FormatJson, marker: "{"},
+		{name: "table environment", format: output.FormatTable, marker: "RESOURCE"},
+		{name: "table providers", format: output.FormatTable, marker: "PROVIDER"},
+		{name: "table recipe packs", format: output.FormatTable, marker: "RECIPE PACK"},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			writeError := errors.New("write failed")
+			err := runShow(
+				t,
+				environmentServer(environment),
+				nil,
+				tc.format,
+				&failOnTextWriter{
+					marker: tc.marker,
+					err:    writeError,
+				})
+
+			require.ErrorIs(t, err, writeError)
+		})
+	}
+}
+
+func runShow(
+	t *testing.T,
+	envServer func() fake.EnvironmentsServer,
+	recipePackServer func() fake.RecipePacksServer,
+	format string,
+	writer io.Writer,
+) error {
+	t.Helper()
+
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(testScope, envServer, recipePackServer)
+	require.NoError(t, err)
+
+	runner := &Runner{
+		RadiusCoreClientFactory: factory,
+		Workspace: &workspaces.Workspace{
+			Name:  "test-workspace",
+			Scope: testScope,
+		},
+		EnvironmentName: "test-env",
+		Format:          format,
+		Output:          &output.OutputWriter{Writer: writer},
+	}
+
+	return runner.Run(t.Context())
+}
+
+func forbiddenRecipePackServer(gets *int) func() fake.RecipePacksServer {
+	return func() fake.RecipePacksServer {
+		return fake.RecipePacksServer{
+			Get: func(
+				ctx context.Context,
+				rootScope string,
+				recipePackName string,
+				options *corerpv20250801.RecipePacksClientGetOptions,
+			) (resp azfake.Responder[corerpv20250801.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+				(*gets)++
+				errResp.SetResponseError(http.StatusForbidden, "Forbidden")
+				return
+			},
+		}
+	}
+}
+
+func environmentServer(environment corerpv20250801.EnvironmentResource) func() fake.EnvironmentsServer {
+	return func() fake.EnvironmentsServer {
 		return fake.EnvironmentsServer{
 			Get: func(
 				ctx context.Context,
@@ -219,87 +410,25 @@ func Test_Run_RecipeSortOrder(t *testing.T) {
 				environmentName string,
 				options *corerpv20250801.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[corerpv20250801.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
-				result := corerpv20250801.EnvironmentsClientGetResponse{
-					Name: new(environmentName),
-					Properties: &corerpv20250801.EnvironmentProperties{
-						RecipePacks: []*string{
-							new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/pack-b"),
-							new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/pack-a"),
-						},
-					},
-				}
-				resp.SetResponse(http.StatusOK, result, nil)
+				resp.SetResponse(http.StatusOK, corerpv20250801.EnvironmentsClientGetResponse{
+					EnvironmentResource: environment,
+				}, nil)
 				return
 			},
 		}
 	}
+}
 
-	// Create recipe pack server with recipes in non-alphabetical order
-	recipePackServer := func() fake.RecipePacksServer {
-		return fake.RecipePacksServer{
-			Get: func(ctx context.Context, rootScope string, recipePackName string, options *corerpv20250801.RecipePacksClientGetOptions) (resp azfake.Responder[corerpv20250801.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
-				var recipes map[string]*corerpv20250801.RecipeDefinition
-				if recipePackName == "pack-a" {
-					recipes = map[string]*corerpv20250801.RecipeDefinition{
-						"Applications.Datastores/sqlDatabases": {
-							Source: new("ghcr.io/radius-project/recipes/sql"),
-							Kind:   to.Ptr(corerpv20250801.RecipeKindTerraform),
-						},
-						"Applications.Datastores/redisCaches": {
-							Source: new("ghcr.io/radius-project/recipes/redis"),
-							Kind:   to.Ptr(corerpv20250801.RecipeKindTerraform),
-						},
-					}
-				} else {
-					recipes = map[string]*corerpv20250801.RecipeDefinition{
-						"Applications.Messaging/rabbitMQQueues": {
-							Source: new("ghcr.io/radius-project/recipes/rabbitmq"),
-							Kind:   to.Ptr(corerpv20250801.RecipeKindBicep),
-						},
-						"Applications.Dapr/stateStores": {
-							Source: new("ghcr.io/radius-project/recipes/dapr-state"),
-							Kind:   to.Ptr(corerpv20250801.RecipeKindBicep),
-						},
-					}
-				}
-				result := corerpv20250801.RecipePacksClientGetResponse{
-					Name: new(recipePackName),
-					Properties: &corerpv20250801.RecipePackProperties{
-						Recipes: recipes,
-					},
-				}
-				resp.SetResponse(http.StatusOK, result, nil)
-				return
-			},
-		}
+type failOnTextWriter struct {
+	written bytes.Buffer
+	marker  string
+	err     error
+}
+
+func (w *failOnTextWriter) Write(p []byte) (int, error) {
+	if strings.Contains(w.written.String()+string(p), w.marker) {
+		return 0, w.err
 	}
 
-	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, envServer, recipePackServer)
-	require.NoError(t, err)
-
-	outputSink := &output.MockOutput{}
-	runner := &Runner{
-		RadiusCoreClientFactory: factory,
-		Workspace:               workspace,
-		EnvironmentName:         "test-env",
-		Format:                  "table",
-		Output:                  outputSink,
-	}
-
-	err = runner.Run(t.Context())
-	require.NoError(t, err)
-
-	// Verify the recipes are sorted by RecipePack first, then by ResourceType
-	expectedRecipes := []EnvRecipes{
-		{RecipePack: "pack-a", ResourceType: "Applications.Datastores/redisCaches", Kind: "terraform", Source: "ghcr.io/radius-project/recipes/redis"},
-		{RecipePack: "pack-a", ResourceType: "Applications.Datastores/sqlDatabases", Kind: "terraform", Source: "ghcr.io/radius-project/recipes/sql"},
-		{RecipePack: "pack-b", ResourceType: "Applications.Dapr/stateStores", Kind: "bicep", Source: "ghcr.io/radius-project/recipes/dapr-state"},
-		{RecipePack: "pack-b", ResourceType: "Applications.Messaging/rabbitMQQueues", Kind: "bicep", Source: "ghcr.io/radius-project/recipes/rabbitmq"},
-	}
-
-	// The third output should be the recipes table
-	require.Len(t, outputSink.Writes, 3)
-	formattedOutput, ok := outputSink.Writes[2].(output.FormattedOutput)
-	require.True(t, ok, "expected FormattedOutput")
-	require.Equal(t, expectedRecipes, formattedOutput.Obj)
+	return w.written.Write(p)
 }

@@ -89,6 +89,13 @@ types:
 
       To mount a persistent volume or secret see the PersistentVolumes and Secrets Resource Types.
 
+      On Kubernetes, each connection injects ordinary producer properties and
+      Recipe-managed secret references using
+      `CONNECTION_<CONNECTION-NAME>_<PROPERTY-NAME>`. Explicit environment variables
+      take precedence, followed by managed secret references, then ordinary values.
+      Set `disableDefaultEnvVars: true` to disable all generated variables for a
+      connection. This behavior applies to regular and init containers.
+
     apiVersions:
       '2025-08-01-preview':
         schema: 
@@ -117,7 +124,7 @@ types:
                     description: (Required) The resource ID of the resource this container is dependent upon.
                   disableDefaultEnvVars:
                     type: boolean
-                    description: (Optional) Disables the automatic injection of environment variables from connected resource properties.
+                    description: (Optional) Disables automatic injection of ordinary properties and secret-backed environment variables from this connection.
                 required: [source]
             containers:
               type: object

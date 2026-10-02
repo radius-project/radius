@@ -22,7 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -66,7 +67,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"container-put-success",
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PUT",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.New().String()),
 			nil,
 			false,
 			nil,
@@ -78,7 +79,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"container-put-not-found",
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PUT",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.New().String()),
 			&database.ErrNotFound{},
 			false,
 			nil,
@@ -90,7 +91,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"container-put-get-err",
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PUT",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.New().String()),
 			errors.New("error getting object"),
 			false,
 			nil,
@@ -102,7 +103,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"gateway-put-success",
 			gateway.ResourceType,
 			"APPLICATIONS.CORE/GATEWAYS|PUT",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.New().String()),
 			nil,
 			false,
 			nil,
@@ -114,7 +115,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"gateway-put-not-found",
 			gateway.ResourceType,
 			"APPLICATIONS.CORE/GATEWAYS|PUT",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.New().String()),
 			&database.ErrNotFound{},
 			false,
 			nil,
@@ -145,7 +146,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 				OperationID:      uuid.New(),
 				OperationType:    tt.opType,
 				ResourceID:       tt.rId,
-				CorrelationID:    uuid.NewString(),
+				CorrelationID:    uuid.New().String(),
 				OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 			}
 
@@ -239,7 +240,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"container-patch-success",
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PATCH",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.New().String()),
 			nil,
 			false,
 			nil,
@@ -251,7 +252,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"container-patch-not-found",
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PATCH",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.New().String()),
 			&database.ErrNotFound{},
 			false,
 			nil,
@@ -263,7 +264,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"container-patch-get-err",
 			container.ResourceType,
 			"APPLICATIONS.CORE/CONTAINERS|PATCH",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.NewString()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s", uuid.New().String()),
 			errors.New("error getting object"),
 			false,
 			nil,
@@ -275,7 +276,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"gateway-patch-success",
 			gateway.ResourceType,
 			"APPLICATIONS.CORE/GATEWAYS|PATCH",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.New().String()),
 			nil,
 			false,
 			nil,
@@ -287,7 +288,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			"gateway-patch-not-found",
 			gateway.ResourceType,
 			"APPLICATIONS.CORE/GATEWAYS|PATCH",
-			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.NewString()),
+			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/gateways/%s", uuid.New().String()),
 			&database.ErrNotFound{},
 			false,
 			nil,
@@ -318,7 +319,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 				OperationID:      uuid.New(),
 				OperationType:    tt.opType,
 				ResourceID:       tt.rId,
-				CorrelationID:    uuid.NewString(),
+				CorrelationID:    uuid.New().String(),
 				OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 			}
 

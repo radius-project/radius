@@ -57,6 +57,7 @@ const (
 	// Radius.Data resource types (new provider).
 	DataMySQLDatabasesResource      = "radius.data/mySqlDatabases"
 	DataPostgreSQLDatabasesResource = "radius.data/postgreSqlDatabases"
+	DataRedisCachesResource         = "radius.data/redisCaches"
 
 	// Radius.Messaging resource types (new provider).
 	MessagingRabbitMQResource = "radius.messaging/rabbitMQ"

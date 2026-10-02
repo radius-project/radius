@@ -18,7 +18,9 @@ package kubernetes
 
 import (
 	"testing"
+	"time"
 
+	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/test/radcli"
@@ -54,8 +56,100 @@ func Test_Validate(t *testing.T) {
 			Input:         []string{"--skip-contour-install"},
 			ExpectedValid: true,
 		},
+		{
+			Name:          "valid (timeout)",
+			Input:         []string{"--timeout", "30m"},
+			ExpectedValid: true,
+		},
+		{
+			Name:          "invalid (negative timeout)",
+			Input:         []string{"--timeout", "-5m"},
+			ExpectedValid: false,
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
+
+// Test_TimeoutFlag covers the `--timeout` flag added so that a slow cluster can be given more
+// than the default readiness budget instead of failing the install.
+// See https://github.com/radius-project/radius/issues/10236.
+func Test_TimeoutFlag(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		args     []string
+		expected time.Duration
+	}{
+		{
+			name:     "defaults to the helm default when the flag is omitted",
+			args:     []string{},
+			expected: helm.DefaultInstallTimeout,
+		},
+		{
+			name:     "parses a longer duration",
+			args:     []string{"--timeout", "45m"},
+			expected: 45 * time.Minute,
+		},
+		{
+			name:     "parses a shorter duration",
+			args:     []string{"--timeout", "90s"},
+			expected: 90 * time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cmd, r := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+			runner, ok := r.(*Runner)
+			require.True(t, ok)
+
+			cmd.SetArgs(tt.args)
+			require.NoError(t, cmd.ParseFlags(tt.args))
+
+			require.Equal(t, tt.expected, runner.Timeout)
+		})
+	}
+}
+
+// Test_Run_TimeoutPropagation verifies the parsed `--timeout` value reaches the Helm layer via
+// ClusterOptions rather than being silently dropped.
+func Test_Run_TimeoutPropagation(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	helmMock := helm.NewMockInterface(ctrl)
+	outputMock := &output.MockOutput{}
+
+	ctx := t.Context()
+	runner := &Runner{
+		Helm:   helmMock,
+		Output: outputMock,
+
+		KubeContext: "test-context",
+		Chart:       "test-chart",
+		Timeout:     45 * time.Minute,
+	}
+
+	helmMock.EXPECT().CheckRadiusInstall("test-context").
+		Return(helm.InstallState{}, nil).
+		Times(1)
+
+	expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
+		Radius: helm.ChartOptions{
+			ChartPath: "test-chart",
+			Timeout:   45 * time.Minute,
+		},
+	})
+	require.Equal(t, 45*time.Minute, expectedOptions.Radius.Timeout)
+
+	helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").
+		Return(nil).
+		Times(1)
+
+	require.NoError(t, runner.Run(ctx))
 }
 
 func Test_Run(t *testing.T) {

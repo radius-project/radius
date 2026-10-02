@@ -7,9 +7,10 @@ package graph
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -23,7 +24,9 @@ import (
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
-	gitstore "github.com/radius-project/radius/pkg/graph/persistence/git"
+	archivestore "github.com/radius-project/radius/pkg/graph/persistence/archive"
+	"github.com/radius-project/radius/pkg/statearchive"
+	archivefactory "github.com/radius-project/radius/pkg/statearchive/factory"
 	"github.com/radius-project/radius/test/radcli"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -313,11 +316,28 @@ func TestIsModeledGraphArg(t *testing.T) {
 }
 
 func TestRunner_RunModeled_LocalFilesystem(t *testing.T) {
+	for _, backend := range []string{"", "oci", "git", "unknown"} {
+		t.Run("backend="+backend, func(t *testing.T) {
+			testRunModeledLocalFilesystem(t, backend)
+		})
+	}
+}
+
+func testRunModeledLocalFilesystem(t *testing.T, backend string) {
+	t.Helper()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	withTempCwd(t)
 	t.Setenv("GITHUB_ACTIONS", "")
+	t.Setenv(archivefactory.BackendEnvVar, backend)
+	t.Setenv(archivefactory.StateRegistryEnvVar, "")
+	t.Setenv(archivefactory.GraphRegistryEnvVar, "")
+
+	store, err := archivestore.NewStore(archivestore.Options{
+		Archive: archivefactory.NewGraphArchive(os.Getenv(archivefactory.GraphRegistryEnvVar)),
+	})
+	require.NoError(t, err)
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
@@ -329,18 +349,23 @@ func TestRunner_RunModeled_LocalFilesystem(t *testing.T) {
 		Bicep:         bicepMock,
 		Output:        &output.MockOutput{},
 		BicepFilePath: sampleBicepPath,
+		GraphStore:    store,
 	}
 
-	err := runner.Run(t.Context())
+	err = runner.Run(t.Context())
 	require.NoError(t, err)
 
 	contents, err := os.ReadFile(defaultModeledGraphFile)
 	require.NoError(t, err)
 	require.Contains(t, string(contents), "frontend")
 	require.Contains(t, string(contents), "Applications.Core/containers")
+	var graph corerpv20250801preview.ApplicationGraphResponse
+	require.NoError(t, json.Unmarshal(contents, &graph))
+	require.Len(t, graph.Resources, 1)
+	require.Equal(t, "frontend", *graph.Resources[0].Name)
 }
 
-func TestRunner_RunModeled_OrphanBranchPersistence(t *testing.T) {
+func TestRunner_RunModeled_ArchivePersistence(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -376,18 +401,11 @@ func TestRunner_RunModeled_OrphanBranchPersistence(t *testing.T) {
 	require.True(t, os.IsNotExist(statErr), "modeled graph must not be written locally in repo-radius mode")
 }
 
-// TestRunner_RunModeled_RealGitStore_SlashBranch exercises the GitHub Actions
-// path end-to-end through the real git-backed Store (no mocks) using a
-// slash-containing source branch (e.g. "feature/foo"), which is the typical
-// shape GITHUB_HEAD_REF takes for pull_request events. The mock-based tests
-// above never call constructPathForKey/validateKeyPart, so they don't catch
-// that path separators in Key.Namespace are rejected by the real Store.
-func TestRunner_RunModeled_RealGitStore_SlashBranch(t *testing.T) {
-	repoDir := initGitRepo(t)
-	chdirT(t, repoDir)
-
+// Exercise the real adapter's path validation and JSON I/O, not just a mock
+// Store, so source-branch encoding must produce distinct, safe namespaces.
+func TestRunner_RunModeled_ArchiveStore_SourceBranches(t *testing.T) {
+	withTempCwd(t)
 	t.Setenv("GITHUB_ACTIONS", "true")
-	t.Setenv("GITHUB_HEAD_REF", "feature/foo")
 	t.Setenv("GITHUB_REF_NAME", "")
 
 	ctrl := gomock.NewController(t)
@@ -397,9 +415,16 @@ func TestRunner_RunModeled_RealGitStore_SlashBranch(t *testing.T) {
 	bicepMock.EXPECT().
 		PrepareTemplate(gomock.Any(), sampleBicepPath).
 		Return(sampleTemplate(), nil).
-		Times(1)
+		Times(3)
 
-	store, err := gitstore.NewStore(gitstore.Options{Branch: "test-graph-" + t.Name()})
+	archiveDir := t.TempDir()
+	session := statearchive.NewMockSession(ctrl)
+	session.EXPECT().Path().Return(archiveDir).AnyTimes()
+	session.EXPECT().Commit(gomock.Any(), gomock.Any()).Return(nil).Times(3)
+	session.EXPECT().Close(gomock.Any()).Times(6)
+	archive := statearchive.NewMockArchive(ctrl)
+	archive.EXPECT().Open(gomock.Any(), archivestore.DefaultGraphArchive).Return(session, nil).Times(6)
+	store, err := archivestore.NewStore(archivestore.Options{Archive: archive})
 	require.NoError(t, err)
 
 	runner := &Runner{
@@ -409,8 +434,61 @@ func TestRunner_RunModeled_RealGitStore_SlashBranch(t *testing.T) {
 		GraphStore:    store,
 	}
 
-	err = runner.Run(t.Context())
-	require.NoError(t, err, "runModeled must accept slash-containing GITHUB_HEAD_REF values")
+	for _, branch := range []string{"feature/foo", "feature-foo", "feature%2Ffoo"} {
+		t.Setenv("GITHUB_HEAD_REF", branch)
+		require.NoError(t, runner.Run(t.Context()))
+	}
+	for _, branch := range []string{"feature/foo", "feature-foo", "feature%2Ffoo"} {
+		namespace := url.QueryEscape(branch)
+		got, err := store.Load(t.Context(), persistence.Key{Namespace: namespace, Name: modeledGraphKeyName})
+		require.NoError(t, err)
+		require.Len(t, got.Resources, 1)
+		require.Equal(t, "frontend", *got.Resources[0].Name)
+		contents, err := os.ReadFile(filepath.Join(archiveDir, namespace, defaultModeledGraphFile))
+		require.NoError(t, err)
+		require.Contains(t, string(contents), "frontend")
+	}
+	_, err = os.Stat(defaultModeledGraphFile)
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestRunner_RunModeled_ArchiveConfigurationError(t *testing.T) {
+	for _, tc := range []struct {
+		backend string
+		want    string
+	}{
+		{want: archivefactory.GraphRegistryEnvVar},
+		{backend: "oci", want: archivefactory.GraphRegistryEnvVar},
+		{backend: "git", want: "Git state archive backend has been removed"},
+		{backend: "unknown", want: "invalid " + archivefactory.BackendEnvVar},
+	} {
+		t.Run("backend="+tc.backend, func(t *testing.T) {
+			withTempCwd(t)
+			t.Setenv("GITHUB_ACTIONS", "true")
+			t.Setenv("GITHUB_HEAD_REF", "feature/foo")
+			t.Setenv(archivefactory.BackendEnvVar, tc.backend)
+			t.Setenv(archivefactory.GraphRegistryEnvVar, "")
+			store, err := archivestore.NewStore(archivestore.Options{
+				Archive: archivefactory.NewGraphArchive(os.Getenv(archivefactory.GraphRegistryEnvVar)),
+			})
+			require.NoError(t, err)
+
+			ctrl := gomock.NewController(t)
+			bicepMock := bicep.NewMockInterface(ctrl)
+			bicepMock.EXPECT().PrepareTemplate(gomock.Any(), sampleBicepPath).Return(sampleTemplate(), nil)
+			runner := &Runner{
+				Bicep:         bicepMock,
+				Output:        &output.MockOutput{},
+				BicepFilePath: sampleBicepPath,
+				GraphStore:    store,
+			}
+			err = runner.Run(t.Context())
+			require.ErrorContains(t, err, tc.want)
+			require.ErrorContains(t, err, "save modeled graph to radius-graph archive")
+			_, err = os.Stat(defaultModeledGraphFile)
+			require.ErrorIs(t, err, os.ErrNotExist, "archive errors must not fall back to local output")
+		})
+	}
 }
 
 func TestRunner_RunModeled_FallsBackToRefName(t *testing.T) {
@@ -549,71 +627,16 @@ func TestRunner_RunModeled_StoreSaveError(t *testing.T) {
 	err := runner.Run(t.Context())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "push rejected")
-	require.Contains(t, err.Error(), gitstore.DefaultGraphBranch)
+	require.Contains(t, err.Error(), archivestore.DefaultGraphArchive)
 }
 
 // withTempCwd switches the current working directory to a freshly-created
 // temp directory and restores the original on test cleanup.
 func withTempCwd(t *testing.T) {
 	t.Helper()
-	original, err := os.Getwd()
-	require.NoError(t, err)
 	tmp := t.TempDir()
-	require.NoError(t, os.Chdir(tmp))
-	t.Cleanup(func() {
-		_ = os.Chdir(original)
-	})
+	t.Chdir(tmp)
 	require.True(t, filepath.IsAbs(tmp))
-}
-
-// chdirT switches the current working directory to dir for the duration of
-// the test and restores the original on cleanup.
-func chdirT(t *testing.T, dir string) {
-	t.Helper()
-	orig, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { _ = os.Chdir(orig) })
-}
-
-// initGitRepo creates a minimal git repo in a temp directory with one
-// initial commit, so that worktree-based operations on the real git Store
-// have a HEAD to branch from. The test is skipped when the git binary is
-// unavailable or when running with -short.
-func initGitRepo(t *testing.T) string {
-	t.Helper()
-	if testing.Short() {
-		t.Skip("skipping git-backed test in -short mode")
-	}
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("skipping git-backed test: git binary not found in PATH")
-	}
-
-	dir := t.TempDir()
-	for _, args := range [][]string{
-		{"init"},
-		{"config", "user.name", "test"},
-		{"config", "user.email", "test@test.com"},
-	} {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = dir
-		out, err := cmd.CombinedOutput()
-		require.NoErrorf(t, err, "git %v failed: %s", args, string(out))
-	}
-
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "README.md"), []byte("test"), 0o644))
-
-	for _, args := range [][]string{
-		{"add", "-A"},
-		{"commit", "-m", "init"},
-	} {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = dir
-		out, err := cmd.CombinedOutput()
-		require.NoErrorf(t, err, "git %v failed: %s", args, string(out))
-	}
-
-	return dir
 }
 
 // saveAssertion returns a Save implementation that asserts the inbound

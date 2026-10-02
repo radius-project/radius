@@ -46,11 +46,13 @@ func makeDefaultsFilter(ucpClient *v20231001preview.ClientFactory) defaultsUpdat
 
 func makeUpdateFilters(
 	defaultsFilter defaultsUpdateFilter,
+	validationFilter validationUpdateFilter,
 	encryptionFilter encryptionUpdateFilter,
 ) []controller.UpdateFilter[datamodel.DynamicResource] {
 	// Distinct types prevent callers from passing encryption first.
 	return []controller.UpdateFilter[datamodel.DynamicResource]{
 		controller.UpdateFilter[datamodel.DynamicResource](defaultsFilter),
+		controller.UpdateFilter[datamodel.DynamicResource](validationFilter),
 		controller.UpdateFilter[datamodel.DynamicResource](encryptionFilter),
 	}
 }

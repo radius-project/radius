@@ -89,7 +89,13 @@ func (client *GenericResourcesClient) createOrUpdate(ctx context.Context, resour
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *GenericResourcesClient) createOrUpdateCreateRequest(ctx context.Context, resourceName string, genericResourceParameters GenericResource, _ *GenericResourcesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}"
+	if client.resourceType == "" {
+		return nil, errors.New("parameter resourceType cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
+	if client.rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if resourceName == "" {
 		return nil, errors.New("parameter resourceName cannot be empty")
@@ -150,7 +156,13 @@ func (client *GenericResourcesClient) deleteOperation(ctx context.Context, resou
 // deleteCreateRequest creates the Delete request.
 func (client *GenericResourcesClient) deleteCreateRequest(ctx context.Context, resourceName string, _ *GenericResourcesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}"
+	if client.resourceType == "" {
+		return nil, errors.New("parameter resourceType cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
+	if client.rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if resourceName == "" {
 		return nil, errors.New("parameter resourceName cannot be empty")
@@ -187,7 +199,13 @@ func (client *GenericResourcesClient) Get(ctx context.Context, resourceName stri
 // getCreateRequest creates the Get request.
 func (client *GenericResourcesClient) getCreateRequest(ctx context.Context, resourceName string, _ *GenericResourcesClientGetOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}"
+	if client.resourceType == "" {
+		return nil, errors.New("parameter resourceType cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
+	if client.rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if resourceName == "" {
 		return nil, errors.New("parameter resourceName cannot be empty")
@@ -250,7 +268,13 @@ func (client *GenericResourcesClient) listByRootScopeCreateRequest(ctx context.C
 	var err error
 	if firstPage {
 		urlPath := "/{rootScope}/providers/{resourceType}"
+		if client.resourceType == "" {
+			return nil, errors.New("parameter resourceType cannot be empty")
+		}
 		urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
+		if client.rootScope == "" {
+			return nil, errors.New("parameter rootScope cannot be empty")
+		}
 		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	} else {
@@ -302,7 +326,13 @@ func (client *GenericResourcesClient) ListSecrets(ctx context.Context, resourceN
 // listSecretsCreateRequest creates the ListSecrets request.
 func (client *GenericResourcesClient) listSecretsCreateRequest(ctx context.Context, resourceName string, _ *GenericResourcesClientListSecretsOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}/listSecrets"
+	if client.resourceType == "" {
+		return nil, errors.New("parameter resourceType cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
+	if client.rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if resourceName == "" {
 		return nil, errors.New("parameter resourceName cannot be empty")
