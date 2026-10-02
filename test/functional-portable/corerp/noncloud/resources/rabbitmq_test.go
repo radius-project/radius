@@ -40,6 +40,7 @@ func Test_RabbitMQ(t *testing.T) {
 	name := "corerp-resources-rabbitmq"
 	resourceName := "rabbitmq"
 	appNamespace := "corerp-resources-rabbitmq"
+	var managedSecretName string
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
@@ -65,6 +66,7 @@ func Test_RabbitMQ(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				managedSecretName = requireManagedSecret(t, ctx, test, validation.MessagingRabbitMQResource, resourceName, appNamespace)
 				labelset := kubernetes.MakeSelectorLabels(name, resourceName)
 				listOptions := metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
@@ -102,6 +104,10 @@ func Test_RabbitMQ(t *testing.T) {
 	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
 	test.PreSetup = preSetup
 	test.Steps[0].Executor = step.NewDeployExecutor(template, fmt.Sprintf("environment=%s", previewEnvID))
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
+		require.NotEmpty(t, managedSecretName)
+		requireManagedSecretDeleted(t, ctx, test, appNamespace, managedSecretName)
+	}
 
 	test.Test(t)
 }

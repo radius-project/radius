@@ -157,6 +157,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // the environment, the applications in the environment, and finally the environment itself. This
 // matches the behavior of the legacy Applications.Core/environments delete path, so that deleting
 // an environment does not leave orphaned resources behind.
+// Resource deletion also waits for server-side managed-secret cleanup before removing scopes.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
 		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
