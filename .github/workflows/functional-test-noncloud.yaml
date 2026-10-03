@@ -163,6 +163,14 @@ jobs:
           # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
           cache: false
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+        with:
+          module-directories: |
+            .
+            test/magpiego
+            test/testrp
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -284,6 +292,9 @@ jobs:
           cache-dependency-path: go.sum
           # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
           cache: false
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       # The rad CLI, container images and Bicep types are built once in the
       # "build" job and shared with every matrix leg. Downloading them here avoids
