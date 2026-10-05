@@ -16,22 +16,70 @@ on:
 permissions: {}
 
 jobs:
+  merge-holds:
+    if: github.event_name != 'merge_group'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      # Proposed code/configuration is evaluated only with a read-only token.
+      - name: Checkout proposed label configuration
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: |
+            .github/scripts/pr-status-labels.mjs
+            .github/configs/pr-status-labels.yml
+            .node-version
+            package.json
+            pnpm-lock.yaml
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Install label configuration dependencies
+        run: corepack pnpm install --frozen-lockfile --prod --ignore-scripts
+
+      - name: Reject merge holds and pending author responses
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { MANUAL_LABELS } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/pr-status-labels.mjs`
+            )
+            const holds = Object.values(MANUAL_LABELS).filter((name) =>
+              context.payload.pull_request.labels.some(
+                (label) => label.name.toLowerCase() === name.toLowerCase()
+              )
+            )
+            if (holds.length > 0) {
+              core.setFailed(`Remove ${holds.join(" or ")} before merging.`)
+            }
+
   pr-required-labels:
     # Run for all PRs so holds also apply to Dependabot. Merge groups have no
     # individual PR context; the required check still has to report.
+    needs: merge-holds
+    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       issues: write
       pull-requests: write
     steps:
-      - name: Reject merge holds and pending author responses
+      # Never check out or execute PR code in this write-enabled job.
+      - name: Require successful merge-hold validation
         if: >-
           github.event_name != 'merge_group' &&
-          (contains(github.event.pull_request.labels.*.name, 'pr:do-not-merge') ||
-           contains(github.event.pull_request.labels.*.name, 'pr:needs-author-response'))
+          needs.merge-holds.result != 'success'
         run: |
-          echo "::error::Remove pr:do-not-merge or pr:needs-author-response before merging."
+          echo "::error::Merge-hold validation must pass before merging. See the merge-holds job."
           exit 1
 
       - name: Run PR Required Labels

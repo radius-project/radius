@@ -95,7 +95,7 @@ Every non-Dependabot pull request must have exactly one release-impact label:
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
-The [PR Status Labels workflow](../../../.github/workflows/pr.status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold:
+The [PR Status Labels workflow](../../../.github/workflows/pr.status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold. These are the default names; maintainers can [change the names in YAML](#configuring-lifecycle-label-names) without changing the status signals:
 
 - **`pr:needs-reviewer`** — there is neither a pending reviewer or team request nor an active submitted human review from someone other than the author.
 - **`pr:waiting-for-review`** — a reviewer or team has a pending request, or a human has submitted a review but required approval is still outstanding or cannot be verified. When a reviewer requests changes, the author must re-request a review after addressing them; pushing a commit alone does not hand the PR back.
@@ -114,9 +114,26 @@ The status workflow assumes these labels already exist; it never creates reposit
 
 Draft PRs have no handoff label. Maintainers can apply the existing **`pr:do-not-merge`** label to pause a PR; it removes the handoff and queue-ready labels. Use **`pr:needs-author-response`** for an explicit author-response request, including actionable general discussion outside inline review threads, then remove it after the author responds. The workflow never applies or removes these manual labels. Both manual labels fail the `PR Required Labels` check and remove a PR from the merge queue if it was already queued.
 
-#### Lifecycle label configuration prerequisites
+#### Configuring lifecycle label names
 
-The [YAML mapping](../../../.github/configs/pr-status-labels.yml) and its `loadLabels` reader in the [existing PR status script](../../../.github/scripts/pr-status-labels.mjs) are prerequisites for a later activation PR. **They do not yet control lifecycle assignment or manual merge holds.** Both live workflows retain their existing behavior, including required-label comments; editing this mapping alone has no runtime effect. Label provisioning remains independent in the [label catalog](../../../.github/labels.yml).
+[`.github/configs/pr-status-labels.yml`](../../../.github/configs/pr-status-labels.yml) is the source of the label names used by the [existing status script](../../../.github/scripts/pr-status-labels.mjs) and the required-label merge-hold check:
+
+```yaml
+states:
+  needsReviewer: pr:needs-reviewer
+  waitingForReview: pr:waiting-for-review
+  waitingForAuthor: pr:waiting-for-author
+  reviewApproved: pr:review-approved
+  needsRebase: pr:needs-rebase
+  readyForQueue: pr:ready-for-queue
+manual:
+  needsAuthorResponse: pr:needs-author-response
+  doNotMerge: pr:do-not-merge
+```
+
+Keep the keys unchanged: they identify the status signals supported by the code. Edit their values to change the associated GitHub label names. The script reads this mapping directly; it has no second hardcoded label map or separate configuration module. Only `states` labels are automatically applied or removed. The two `manual` labels remain maintainer-controlled holds.
+
+Mapped labels must already exist. Provisioning, descriptions, and colors remain independent in the [label catalog](../../../.github/labels.yml). For a rename, update the mapping and catalog together and deliberately rename or migrate the existing repository label and its assignments. The catalog action supports `from_name: <old-name>` on a renamed entry. Coordinate that migration with the mapping change, especially for manual holds: the status script never migrates old names, and the catalog preserves omitted labels. The release-impact labels and review/merge policy are not configured here.
 
 Validate from the repository root using Node.js from [`.node-version`](../../../.node-version) and the pnpm version pinned in [`package.json`](../../../package.json):
 
@@ -125,9 +142,9 @@ corepack pnpm install --frozen-lockfile --ignore-scripts
 corepack pnpm run validate:pr-status-labels
 ```
 
-The existing lint workflow runs the same configuration validation on proposed changes; configuration-only edits are excluded from the shared CI skip list. The reader requires the fixed, case-sensitive keys in both sections and rejects duplicate YAML keys, wrong types, blank names, names over 50 characters, surrounding whitespace or control characters, and case-insensitive duplicate names. Unknown keys and sections are rejected.
+This command loads and validates the YAML without calling GitHub. The existing lint workflow runs it on proposed changes; configuration-only edits are excluded from the shared CI skip list. The mapping requires the fixed, case-sensitive keys in both sections and rejects duplicate YAML keys, wrong types, blank names, names over 50 characters, surrounding whitespace or control characters, and case-insensitive duplicate names. Unknown keys and sections are rejected. Normal YAML comments and quoted names containing spaces or colons are supported.
 
-Activate the mapping in a separate PR only after the prerequisite PR is verified merged and a fresh target base contains the config, updated PR status script, package manifest, and lockfile. That follow-up must wire both runtime consumers to the same mapping without changing review or merge policy. Until then, the existing checks do not read the mapping and require no bootstrap exception.
+The status workflow checks out its script, mapping, and pinned parser dependencies together from trusted `github.sha`. The required-label workflow evaluates the proposed mapping in a read-only `merge-holds` job, so the introducing PR does not depend on configuration already existing on its base branch. The existing write-enabled `pr-required-labels` job checks no PR code out and runs the pinned release-label action only after merge-hold validation succeeds; reminder comments are preserved. Invalid configuration or a failed merge-hold check fails the required-label job rather than silently skipping it. Merge-group reporting remains unchanged.
 
 ### 6. (Optional) Self-review with the `radius-code-review` skill
 
