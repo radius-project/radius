@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-goreleaser-shadow test-capture-release-image-digests test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-authz-would-deny-check ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-goreleaser-shadow test-capture-release-image-digests test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-authz-would-deny-check test-authz-kit ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -64,6 +64,10 @@ test-manage-radius-installation: ## Tests Radius installation lifecycle reconcil
 test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned log collector
 	@bash ./.github/scripts/authz-would-deny-check_test.sh
 	@python3 ./.github/scripts/run-with-authz-logs_test.py
+
+.PHONY: test-authz-kit
+test-authz-kit: ## Tests the manual authorization test kit in hack/authz (syntax, shellcheck, --help, helpers)
+	@bash ./hack/authz/kit_test.sh
 
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
