@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -35,6 +36,9 @@ const (
 
 	// LogFieldCode is the log key for the authorization error code.
 	LogFieldCode = "authzCode"
+
+	// LogFieldReason is the log key for the authorization denial reason.
+	LogFieldReason = "authzReason"
 )
 
 // Decision is the result of an authorization check.
@@ -44,21 +48,41 @@ type Decision struct {
 
 	// Code is the error code for a denial, such as "AuthorizationFailed".
 	Code string
+
+	// Reason describes why the check denied the request.
+	Reason string
+
+	// Action is the action that was checked, such as "Applications.Core/containers/write".
+	Action string
+
+	// Target is the resource ID or scope the action was checked against.
+	Target string
 }
 
 // DeniedError is returned by Apply when a denial is enforced.
 type DeniedError struct {
 	// Code is the error code for the denial.
 	Code string
+
+	// Reason describes why the request was denied. It is returned to the caller, so it
+	// must not include another user's identity or details of resources outside the
+	// caller's permission.
+	Reason string
+
+	// Action is the action that was denied.
+	Action string
+
+	// Target is the resource ID or scope the action was denied on.
+	Target string
 }
 
 // Error implements the error interface.
 func (e *DeniedError) Error() string {
-	return fmt.Sprintf("authorization denied (%s)", e.Code)
+	return fmt.Sprintf("authorization denied (%s): %s", e.Code, e.Reason)
 }
 
 // CodeAuthorizationFailed is used when a denial does not carry a specific code.
-const CodeAuthorizationFailed = "AuthorizationFailed"
+const CodeAuthorizationFailed = v1.CodeAuthorizationFailed
 
 // Apply acts on an authorization decision according to mode. It returns nil when the
 // decision is allowed or mode is off, logs and returns nil for a denial in dry-run mode,
@@ -83,13 +107,15 @@ func Apply(ctx context.Context, mode Mode, decision Decision) error {
 	if mode == ModeDryRun {
 		ucplog.FromContextOrDiscard(ctx).Info("authorization check would deny request",
 			LogFieldWouldDeny, true,
-			LogFieldCode, code)
+			LogFieldCode, code,
+			LogFieldReason, decision.Reason)
 		return nil
 	}
 
 	ucplog.FromContextOrDiscard(ctx).Info("authorization check denied request",
 		LogFieldDenied, true,
-		LogFieldCode, code)
+		LogFieldCode, code,
+		LogFieldReason, decision.Reason)
 
-	return &DeniedError{Code: code}
+	return &DeniedError{Code: code, Reason: decision.Reason, Action: decision.Action, Target: decision.Target}
 }
