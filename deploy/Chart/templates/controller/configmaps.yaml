@@ -45,6 +45,9 @@ data:
       level: "info"
       json: true
 
+    authorization:
+      mode: {{ include "radius.authz.mode" . | quote }}
+
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
       enabled: true

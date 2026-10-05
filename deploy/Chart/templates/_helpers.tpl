@@ -148,3 +148,20 @@ Usage (pass the root context):
   value: "{{ .Values.global.targetCluster.mountPath }}/{{ .Values.global.targetCluster.secretKey }}"
 {{- end -}}
 {{- end -}}
+
+{{/*
+Returns the authorization mode (off, dryRun, or enforce) derived from global.rbac.
+Fails rendering when dry run is combined with enforcement.
+*/}}
+{{- define "radius.authz.mode" -}}
+{{- $rbac := .Values.global.rbac | default dict -}}
+{{- if and $rbac.enabled $rbac.dryRun -}}
+{{- fail "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run." -}}
+{{- else if $rbac.dryRun -}}
+dryRun
+{{- else if $rbac.enabled -}}
+enforce
+{{- else -}}
+off
+{{- end -}}
+{{- end -}}
