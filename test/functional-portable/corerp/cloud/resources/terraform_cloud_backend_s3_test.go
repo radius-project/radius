@@ -51,8 +51,9 @@ func newS3BackendFixture(ctx context.Context, t *testing.T, name string) cloudBa
 	if region != "us-east-1" {
 		input.CreateBucketConfiguration = &types.CreateBucketConfiguration{LocationConstraint: types.BucketLocationConstraint(region)}
 	}
-	_, err = client.CreateBucket(ctx, input)
-	require.NoError(t, err)
+	// Registered before the bucket is requested. S3 can allocate the bucket and still return an
+	// error, so registering after require.NoError below would leak the bucket on that path. The
+	// bucket name is unique to this test, and NoSuchBucket means there was nothing to remove.
 	t.Cleanup(func() {
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), cloudBackendTimeout)
 		defer cancel()
@@ -61,7 +62,9 @@ func newS3BackendFixture(ctx context.Context, t *testing.T, name string) cloudBa
 		for pager.HasMorePages() {
 			page, err := pager.NextPage(cleanupCtx)
 			if err != nil {
-				t.Errorf("list test backend bucket for cleanup: %v", err)
+				if !s3ErrorCode(err, "NoSuchBucket") {
+					t.Errorf("list test backend bucket for cleanup: %v", err)
+				}
 				return
 			}
 			for _, object := range page.Contents {
@@ -74,10 +77,12 @@ func newS3BackendFixture(ctx context.Context, t *testing.T, name string) cloudBa
 			}
 		}
 		_, err := client.DeleteBucket(cleanupCtx, &s3.DeleteBucketInput{Bucket: new(bucket), ExpectedBucketOwner: new(account)})
-		if err != nil {
+		if err != nil && !s3ErrorCode(err, "NoSuchBucket") {
 			t.Errorf("delete test backend bucket: %v", err)
 		}
 	})
+	_, err = client.CreateBucket(ctx, input)
+	require.NoError(t, err)
 	t.Logf("Test-owned Terraform state bucket: %s", bucket)
 	_, err = client.PutPublicAccessBlock(ctx, &s3.PutPublicAccessBlockInput{
 		Bucket: new(bucket), ExpectedBucketOwner: new(account),

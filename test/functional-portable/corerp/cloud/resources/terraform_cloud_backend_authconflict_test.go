@@ -28,8 +28,6 @@ import (
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // cloudBackendAuthConflictCase describes one execution-environment variable that must never reach
@@ -125,25 +123,7 @@ func testCloudBackendRejectsStateAuthOverride(t *testing.T, tc cloudBackendAuthC
 			registerCloudBackendResourceType(ctx, t, ct.Options.ConfigFilePath)
 
 			put := func(resourceType, resourceName string, properties map[string]any) generated.GenericResource {
-				t.Cleanup(func() {
-					cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), cloudBackendTimeout)
-					defer cancel()
-					err := deleteRadiusAfterUpdate(cleanupCtx, func(ctx context.Context) error {
-						_, err := ct.Options.ManagementClient.DeleteResource(ctx, resourceType, resourceName, false)
-						return err
-					})
-					if err != nil {
-						t.Errorf("cleanup Radius %s/%s: %v", resourceType, resourceName, err)
-					}
-				})
-				opCtx, cancel := context.WithTimeout(ctx, radiusOperationTimeout)
-				defer cancel()
-				resource, err := ct.Options.ManagementClient.CreateOrUpdateResource(opCtx, resourceType, resourceName, &generated.GenericResource{
-					Location: new("global"), Properties: properties,
-				})
-				require.NoError(t, err, "PUT %s/%s", resourceType, resourceName)
-				require.NotNil(t, resource.ID)
-				return resource
+				return putCloudBackendResource(ctx, t, &ct, resourceType, resourceName, properties, true)
 			}
 
 			config := put("Radius.Core/terraformSettings", name, map[string]any{
@@ -210,13 +190,6 @@ func testCloudBackendRejectsStateAuthOverride(t *testing.T, tc cloudBackendAuthC
 		SkipKubernetesOutputResourceValidation: true,
 		SkipObjectValidation:                   true,
 	}}
-	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), cloudBackendTimeout)
-		defer cancel()
-		err := ct.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			t.Errorf("delete test namespace: %v", err)
-		}
-	})
+	cleanupCloudBackendNamespace(t, &ct, name)
 	ct.Test(t)
 }

@@ -27,6 +27,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -57,13 +58,27 @@ const (
 	cloudBackendResourceTypeFile = "testdata/cloudbackend-resourcetypes.yaml"
 )
 
+// Guards the one-time registration of cloudBackendResourceType shared by the parallel tests.
+var (
+	registerCloudBackendTypeOnce sync.Once
+	registerCloudBackendTypeErr  error
+)
+
 // registerCloudBackendResourceType registers the user-defined type the cloud backend tests deploy
 // through. Registration is idempotent and resource types are shared, so it needs no cleanup.
+//
+// It runs once per package. The tests run in parallel against one cluster, and `rad resource-type
+// create` retries 409 conflicts only on the resource type write, not on the API version and
+// location writes that follow it. Concurrent registration of the same type can therefore fail
+// during setup. Registering once keeps the tests parallel without racing each other.
 func registerCloudBackendResourceType(ctx context.Context, t *testing.T, configFilePath string) {
 	t.Helper()
-	cli := radcli.NewCLI(t, configFilePath)
-	_, err := cli.ResourceTypeCreate(ctx, cloudBackendResourceTypeName, cloudBackendResourceTypeFile)
-	require.NoError(t, err, "register %s", cloudBackendResourceType)
+	registerCloudBackendTypeOnce.Do(func() {
+		cli := radcli.NewCLI(t, configFilePath)
+		_, registerCloudBackendTypeErr = cli.ResourceTypeCreate(ctx, cloudBackendResourceTypeName, cloudBackendResourceTypeFile)
+	})
+	// Every test fails when the single registration failed, rather than only the one that ran it.
+	require.NoError(t, registerCloudBackendTypeErr, "register %s", cloudBackendResourceType)
 }
 
 type cloudBackendFixture struct {
@@ -109,27 +124,7 @@ func testTerraformCloudBackend(t *testing.T, backend string, setup func(context.
 			// Every attempted Radius allocation gets a cleanup, including failed PUTs.
 			// LIFO ordering keeps settings and backing storage alive through destroy.
 			put := func(resourceType, resourceName string, properties map[string]any, allocate bool) generated.GenericResource {
-				if allocate {
-					t.Cleanup(func() {
-						cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), cloudBackendTimeout)
-						defer cancel()
-						err := deleteRadiusAfterUpdate(cleanupCtx, func(ctx context.Context) error {
-							_, err := ct.Options.ManagementClient.DeleteResource(ctx, resourceType, resourceName, false)
-							return err
-						})
-						if err != nil {
-							t.Errorf("cleanup Radius %s/%s: %v", resourceType, resourceName, err)
-						}
-					})
-				}
-				opCtx, cancel := context.WithTimeout(ctx, radiusOperationTimeout)
-				defer cancel()
-				resource, err := ct.Options.ManagementClient.CreateOrUpdateResource(opCtx, resourceType, resourceName, &generated.GenericResource{
-					Location: new("global"), Properties: properties,
-				})
-				require.NoError(t, err, "PUT %s/%s", resourceType, resourceName)
-				require.NotNil(t, resource.ID)
-				return resource
+				return putCloudBackendResource(ctx, t, &ct, resourceType, resourceName, properties, allocate)
 			}
 			destroy := func(resourceName string) {
 				opCtx, cancel := context.WithTimeout(ctx, radiusOperationTimeout)
@@ -137,7 +132,7 @@ func testTerraformCloudBackend(t *testing.T, backend string, setup func(context.
 				_, err := ct.Options.ManagementClient.DeleteResource(opCtx, cloudBackendResourceType, resourceName, false)
 				require.NoError(t, err)
 				_, err = ct.Options.ManagementClient.GetResource(opCtx, cloudBackendResourceType, resourceName)
-				require.True(t, azureNotFound(err), "Radius resource must be absent after synchronous destroy")
+				require.True(t, isNotFoundResponse(err), "Radius resource must be absent after synchronous destroy")
 			}
 
 			names := []string{name + "-a", name + "-b"}
@@ -274,15 +269,53 @@ func testTerraformCloudBackend(t *testing.T, backend string, setup func(context.
 		SkipKubernetesOutputResourceValidation: true,
 		SkipObjectValidation:                   true,
 	}}
+	cleanupCloudBackendNamespace(t, &ct, name)
+	ct.Test(t)
+}
+
+// putCloudBackendResource creates or updates a Radius resource and, when allocate is set,
+// registers the cleanup that deletes it.
+//
+// The cleanup is registered before the PUT is issued, so a PUT that allocated server-side and then
+// failed or timed out is still cleaned up. LIFO ordering keeps settings and backing storage alive
+// through destroy.
+func putCloudBackendResource(ctx context.Context, t *testing.T, ct *rp.RPTest, resourceType, resourceName string, properties map[string]any, allocate bool) generated.GenericResource {
+	t.Helper()
+	if allocate {
+		t.Cleanup(func() {
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), cloudBackendTimeout)
+			defer cancel()
+			err := deleteRadiusAfterUpdate(cleanupCtx, func(ctx context.Context) error {
+				_, err := ct.Options.ManagementClient.DeleteResource(ctx, resourceType, resourceName, false)
+				return err
+			})
+			if err != nil {
+				t.Errorf("cleanup Radius %s/%s: %v", resourceType, resourceName, err)
+			}
+		})
+	}
+	opCtx, cancel := context.WithTimeout(ctx, radiusOperationTimeout)
+	defer cancel()
+	resource, err := ct.Options.ManagementClient.CreateOrUpdateResource(opCtx, resourceType, resourceName, &generated.GenericResource{
+		Location: new("global"), Properties: properties,
+	})
+	require.NoError(t, err, "PUT %s/%s", resourceType, resourceName)
+	require.NotNil(t, resource.ID)
+	return resource
+}
+
+// cleanupCloudBackendNamespace registers removal of the application namespace the test deployed
+// into. Namespace deletion can block on finalizers, so it gets the full cleanup budget.
+func cleanupCloudBackendNamespace(t *testing.T, ct *rp.RPTest, namespace string) {
+	t.Helper()
 	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), time.Minute)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), cloudBackendTimeout)
 		defer cancel()
-		err := ct.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
+		err := ct.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
 		if err != nil && !apierrors.IsNotFound(err) {
 			t.Errorf("delete test namespace: %v", err)
 		}
 	})
-	ct.Test(t)
 }
 
 func requiredCloudEnv(t *testing.T, key string) string {
@@ -292,7 +325,10 @@ func requiredCloudEnv(t *testing.T, key string) string {
 	return value
 }
 
-func azureNotFound(err error) bool {
+// isNotFoundResponse reports whether err is a 404 from an azcore-based client. Both the Azure
+// management SDKs and the Radius control-plane client are built on azcore, so this is used for
+// Radius resources too and is not specific to Azure.
+func isNotFoundResponse(err error) bool {
 	var response *azcore.ResponseError
 	return errors.As(err, &response) && response.StatusCode == 404
 }
@@ -305,7 +341,7 @@ func deleteRadiusAfterUpdate(ctx context.Context, deleteResource func(context.Co
 			return false, err
 		}
 		err := deleteResource(ctx)
-		if err == nil || azureNotFound(err) {
+		if err == nil || isNotFoundResponse(err) {
 			return true, nil
 		}
 		var response *azcore.ResponseError

@@ -1387,7 +1387,7 @@ func (amc *UCPApplicationsManagementClient) createGenericClient(scope string, re
 	// Radius.Core resources require a specific API version, matching getGenericClient. Without this
 	// the default below is used, and the server rejects the request for the resource type.
 	if isRadiusCoreType(resourceType) {
-		apiVersion = []string{"2025-08-01-preview"}
+		apiVersion = []string{radiusCoreAPIVersion}
 	}
 
 	if amc.genericResourceClientFactory == nil {
@@ -1562,7 +1562,7 @@ func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType
 	// Eventually version 2023-10-01-preview will be removed along with Applications.Core resources.
 	// Then we will not need this special case.
 	if isRadiusCoreType(resourceType) {
-		apiVersions = []string{"2025-08-01-preview"}
+		apiVersions = []string{radiusCoreAPIVersion}
 	}
 
 	if amc.genericResourceClientFactory != nil {
@@ -1581,6 +1581,11 @@ func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType
 
 	return generated.NewGenericResourcesClient(resourceType, strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, &clientOptions)
 }
+
+// radiusCoreAPIVersion is the only API version Radius.Core resource types are served at. Every
+// client path that handles these types must pin it, because the generic client otherwise falls
+// back to the default 2023-10-01-preview and the server rejects the request.
+const radiusCoreAPIVersion = "2025-08-01-preview"
 
 // isRadiusCoreType reports whether resourceType belongs to the Radius.Core namespace, ignoring case.
 func isRadiusCoreType(resourceType string) bool {

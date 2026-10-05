@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"syscall"
@@ -32,49 +34,56 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTerraformCloudAzureReadinessErrors(t *testing.T) {
-	tests := []struct {
-		name  string
-		err   error
-		retry bool
-	}{
-		{"propagating permission", &azcore.ResponseError{StatusCode: 403, ErrorCode: "AuthorizationPermissionMismatch"}, true},
-		{"propagating authorization", &azcore.ResponseError{StatusCode: 403, ErrorCode: "AuthorizationFailure"}, true},
-		{"invalid authentication", &azcore.ResponseError{StatusCode: 403, ErrorCode: "AuthenticationFailed"}, false},
-		{"unknown forbidden", &azcore.ResponseError{StatusCode: 403, ErrorCode: "do-not-log"}, false},
-		{"not found", &azcore.ResponseError{StatusCode: 404}, false},
-		{"invalid request", &azcore.ResponseError{StatusCode: 400}, false},
-		{"not authenticated", &azcore.ResponseError{StatusCode: 401}, false},
-		{"non-retryable server error", &azcore.ResponseError{StatusCode: 501}, false},
-		{"new account DNS", &net.DNSError{IsNotFound: true, Name: "do-not-log"}, true},
-		{"temporary DNS", &net.DNSError{IsTemporary: true}, true},
-		{"DNS timeout", &net.DNSError{IsTimeout: true}, true},
-		{"permanent DNS error", &net.DNSError{Err: "do-not-log"}, false},
-		{"wrapped connection refused", &url.Error{Op: "Get", URL: "do-not-log", Err: &net.OpError{Op: "dial", Err: syscall.ECONNREFUSED}}, true},
-		{"connection reset", &net.OpError{Op: "read", Err: syscall.ECONNRESET}, true},
-		{"network timeout", &net.OpError{Op: "read", Err: syscall.ETIMEDOUT}, true},
-		{"EOF", io.EOF, true},
-		{"certificate failure", x509.UnknownAuthorityError{}, false},
-		{"other failure", errors.New("do-not-log"), false},
-		{"canceled", fmt.Errorf("do-not-log: %w", context.Canceled), false},
-		{"deadline", fmt.Errorf("do-not-log: %w", context.DeadlineExceeded), false},
+	type readinessCase struct {
+		name       string
+		err        error
+		retry      bool
+		credential bool
+	}
+	tests := []readinessCase{
+		{"propagating permission", &azcore.ResponseError{StatusCode: 403, ErrorCode: "AuthorizationPermissionMismatch"}, true, false},
+		{"propagating authorization", &azcore.ResponseError{StatusCode: 403, ErrorCode: "AuthorizationFailure"}, true, false},
+		{"invalid authentication", &azcore.ResponseError{StatusCode: 403, ErrorCode: "AuthenticationFailed"}, false, false},
+		{"unknown forbidden", &azcore.ResponseError{StatusCode: 403, ErrorCode: "do-not-log"}, false, false},
+		{"not found", &azcore.ResponseError{StatusCode: 404}, false, false},
+		{"invalid request", &azcore.ResponseError{StatusCode: 400}, false, false},
+		{"not authenticated", &azcore.ResponseError{StatusCode: 401}, false, false},
+		{"non-retryable server error", &azcore.ResponseError{StatusCode: 501}, false, false},
+		{"new account DNS", &net.DNSError{IsNotFound: true, Name: "do-not-log"}, true, false},
+		{"temporary DNS", &net.DNSError{IsTemporary: true}, true, false},
+		{"DNS timeout", &net.DNSError{IsTimeout: true}, true, false},
+		{"permanent DNS error", &net.DNSError{Err: "do-not-log"}, false, false},
+		{"wrapped connection refused", &url.Error{Op: "Get", URL: "do-not-log", Err: &net.OpError{Op: "dial", Err: syscall.ECONNREFUSED}}, true, false},
+		{"connection reset", &net.OpError{Op: "read", Err: syscall.ECONNRESET}, true, false},
+		{"network timeout", &net.OpError{Op: "read", Err: syscall.ETIMEDOUT}, true, false},
+		{"EOF", io.EOF, true, false},
+		{"certificate failure", x509.UnknownAuthorityError{}, false, false},
+		{"other failure", errors.New("do-not-log"), false, false},
+		{"credential unavailable", azidentity.NewCredentialUnavailableError("do-not-log AADSTS700016"), true, true},
+		{"wrapped credential unavailable", fmt.Errorf("probe: %w", azidentity.NewCredentialUnavailableError("do-not-log")), true, true},
+		{"authentication failed", &azidentity.AuthenticationFailedError{}, true, true},
+		{"canceled", fmt.Errorf("do-not-log: %w", context.Canceled), false, false},
+		{"deadline", fmt.Errorf("do-not-log: %w", context.DeadlineExceeded), false, false},
 	}
 	for _, status := range []int{408, 429, 500, 502, 503, 504} {
-		tests = append(tests, struct {
-			name  string
-			err   error
-			retry bool
-		}{fmt.Sprintf("retryable HTTP %d", status), &azcore.ResponseError{StatusCode: status}, true})
+		tests = append(tests, readinessCase{
+			name:  fmt.Sprintf("retryable HTTP %d", status),
+			err:   &azcore.ResponseError{StatusCode: status},
+			retry: true,
+		})
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			retry, description := azureBlobReadinessError(tt.err)
-			require.Equal(t, tt.retry, retry)
-			require.NotEmpty(t, description)
-			require.NotContains(t, description, "do-not-log")
+			classification := azureBlobReadinessError(tt.err)
+			require.Equal(t, tt.retry, classification.retry)
+			require.Equal(t, tt.credential, classification.credential)
+			require.NotEmpty(t, classification.observation)
+			require.NotContains(t, classification.observation, "do-not-log")
 		})
 	}
 }
@@ -114,6 +123,37 @@ func TestTerraformCloudAzureReadinessPolling(t *testing.T) {
 			require.NotContains(t, err.Error(), "do-not-log")
 			require.Equal(t, 1, attempts)
 			require.Zero(t, time.Since(start))
+		})
+	})
+	t.Run("credential failures are retried then reported with the Entra code", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+			defer cancel()
+			attempts := 0
+			err := waitForAzureBlobAccess(ctx, func(context.Context) error {
+				attempts++
+				return azidentity.NewCredentialUnavailableError("do-not-log AADSTS700016")
+			})
+			require.ErrorContains(t, err, "credential acquisition failed (AADSTS700016)")
+			require.NotContains(t, err.Error(), "do-not-log")
+			// Bounded, so a real misconfiguration does not consume the whole propagation budget.
+			require.Equal(t, azureCredentialRetries+1, attempts)
+		})
+	})
+	t.Run("a transient credential failure still succeeds", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+			defer cancel()
+			attempts := 0
+			err := waitForAzureBlobAccess(ctx, func(context.Context) error {
+				attempts++
+				if attempts == 1 {
+					return azidentity.NewCredentialUnavailableError("do-not-log")
+				}
+				return nil
+			})
+			require.NoError(t, err)
+			require.Equal(t, 2, attempts)
 		})
 	})
 	t.Run("deadline preserves last observation", func(t *testing.T) {
@@ -275,5 +315,121 @@ func TestTerraformCloudStateHelpers(t *testing.T) {
 		principal, err := azureTokenPrincipal("header." + payload + ".signature")
 		require.NoError(t, err)
 		require.Equal(t, objectID, principal)
+	})
+}
+
+func TestTerraformCloudAzureFederatedAssertion(t *testing.T) {
+	t.Parallel()
+
+	t.Run("requests a fresh token with the exchange audience", func(t *testing.T) {
+		t.Parallel()
+		var gotAudience, gotAuthorization string
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			gotAudience = r.URL.Query().Get("audience")
+			gotAuthorization = r.Header.Get("Authorization")
+			require.Equal(t, "keep", r.URL.Query().Get("existing"))
+			_, _ = io.WriteString(w, `{"value":"fresh-token"}`)
+		}))
+		defer server.Close()
+
+		assertion, err := azureFederatedAssertion(t.Context(), server.URL+"?existing=keep", "request-token")
+		require.NoError(t, err)
+		require.Equal(t, "fresh-token", assertion)
+		require.Equal(t, azureEntraExchangeAudience, gotAudience)
+		require.Equal(t, "Bearer request-token", gotAuthorization)
+		require.Equal(t, 1, calls)
+	})
+
+	t.Run("each acquisition mints a new assertion", func(t *testing.T) {
+		t.Parallel()
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			_, _ = fmt.Fprintf(w, `{"value":"token-%d"}`, calls)
+		}))
+		defer server.Close()
+
+		first, err := azureFederatedAssertion(t.Context(), server.URL, "request-token")
+		require.NoError(t, err)
+		second, err := azureFederatedAssertion(t.Context(), server.URL, "request-token")
+		require.NoError(t, err)
+		require.Equal(t, "token-1", first)
+		require.Equal(t, "token-2", second)
+	})
+
+	t.Run("failures are reported without leaking the response", func(t *testing.T) {
+		t.Parallel()
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = io.WriteString(w, "do-not-log")
+		}))
+		defer server.Close()
+
+		_, err := azureFederatedAssertion(t.Context(), server.URL, "do-not-log")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "HTTP 403")
+		require.NotContains(t, err.Error(), "do-not-log")
+	})
+
+	t.Run("an empty token is rejected", func(t *testing.T) {
+		t.Parallel()
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = io.WriteString(w, `{"value":""}`)
+		}))
+		defer server.Close()
+
+		_, err := azureFederatedAssertion(t.Context(), server.URL, "request-token")
+		require.ErrorContains(t, err, "contained no token")
+	})
+
+	t.Run("a malformed response is rejected without leaking the body", func(t *testing.T) {
+		t.Parallel()
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = io.WriteString(w, "do-not-log")
+		}))
+		defer server.Close()
+
+		_, err := azureFederatedAssertion(t.Context(), server.URL, "request-token")
+		require.Error(t, err)
+		require.NotContains(t, err.Error(), "do-not-log")
+	})
+}
+
+func TestTerraformCloudAzureCLIIdentity(t *testing.T) {
+	t.Parallel()
+
+	t.Run("reads the tenant and service principal", func(t *testing.T) {
+		t.Parallel()
+		tenant, client, err := azureCLIIdentity([]byte(`{
+			"tenantId": "tenant-1",
+			"user": {"name": "client-1", "type": "servicePrincipal"}
+		}`))
+		require.NoError(t, err)
+		require.Equal(t, "tenant-1", tenant)
+		require.Equal(t, "client-1", client)
+	})
+
+	t.Run("rejects a user login", func(t *testing.T) {
+		t.Parallel()
+		_, _, err := azureCLIIdentity([]byte(`{
+			"tenantId": "tenant-1",
+			"user": {"name": "someone@example.com", "type": "user"}
+		}`))
+		require.ErrorContains(t, err, "not a service principal")
+	})
+
+	t.Run("rejects an incomplete record", func(t *testing.T) {
+		t.Parallel()
+		_, _, err := azureCLIIdentity([]byte(`{"user": {"name": "", "type": "servicePrincipal"}}`))
+		require.ErrorContains(t, err, "no tenant or service principal")
+	})
+
+	t.Run("a malformed record is rejected without leaking it", func(t *testing.T) {
+		t.Parallel()
+		_, _, err := azureCLIIdentity([]byte(`{"subscriptionId": "do-not-log"`))
+		require.Error(t, err)
+		require.NotContains(t, err.Error(), "do-not-log")
 	})
 }
