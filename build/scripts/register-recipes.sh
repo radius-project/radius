@@ -33,8 +33,9 @@ if [ $attempt -eq $max_attempts ]; then
     exit 1
 fi
 
-# Register default recipes for common resource types
-# Each recipe is registered with the name "default" so deployments can find them automatically
+# Register default recipes for common resource types by updating the environment directly.
+# Each recipe is registered with the name "default" so deployments can find them automatically.
+ENVIRONMENT_NAMESPACE="${ENVIRONMENT_NAMESPACE:-default}"
 recipes=(
     "Applications.Datastores/redisCaches:ghcr.io/radius-project/recipes/local-dev/rediscaches:latest"
     "Applications.Datastores/sqlDatabases:ghcr.io/radius-project/recipes/local-dev/sqldatabases:latest"
@@ -42,44 +43,36 @@ recipes=(
     "Applications.Messaging/rabbitMQQueues:ghcr.io/radius-project/recipes/local-dev/rabbitmqqueues:latest"
 )
 
-registered_count=0
-failed_count=0
-
+recipes_json=""
 for recipe_spec in "${recipes[@]}"; do
     # Split resource_type:template_path
     IFS=':' read -r resource_type template_path <<< "$recipe_spec"
-
-    echo "Registering default recipe for $resource_type -> $template_path"
-
-    # Try to register the recipe
-    if output=$("$RAD_WRAPPER" recipe register "default" \
-        --resource-type "$resource_type" \
-        --template-kind "bicep" \
-        --template-path "$template_path" \
-        --environment default 2>&1); then
-        echo "✅ Registered: default recipe for $resource_type"
-        ((registered_count++))
-    elif echo "$output" | grep -q "already exists\|already registered"; then
-        echo "ℹ️  Already exists: default recipe for $resource_type"
-        ((registered_count++))
-    else
-        echo "⚠️  Failed to register: default recipe for $resource_type"
-        echo "   Error: $output"
-        ((failed_count++))
-    fi
+    echo "Adding default recipe for $resource_type -> $template_path"
+    recipes_json+="${recipes_json:+,}\"$resource_type\":{\"default\":{\"templateKind\":\"bicep\",\"templatePath\":\"$template_path\"}}"
 done
 
-echo ""
-echo "📊 Recipe Registration Summary:"
-echo "✅ Successfully registered: $registered_count"
-if [ $failed_count -gt 0 ]; then
-    echo "⚠️  Failed to register: $failed_count"
+env_file="$(mktemp)"
+trap 'rm -f "$env_file"' EXIT
+
+cat > "$env_file" <<EOF
+{
+  "location": "global",
+  "properties": {
+    "compute": {
+      "kind": "kubernetes",
+      "namespace": "$ENVIRONMENT_NAMESPACE"
+    },
+    "recipes": {${recipes_json}}
+  }
+}
+EOF
+
+if ! "$RAD_WRAPPER" resource create "Applications.Core/environments" "default" --from-file "$env_file"; then
+    echo "❌ Failed to register default recipes on environment 'default'"
+    exit 1
 fi
 
 echo ""
 echo "🎉 Recipe registration complete!"
 echo "💡 You can now deploy applications that use these resource types"
 echo "📋 All recipes are registered as 'default' so deployments will find them automatically"
-
-# Explicitly exit with success
-exit 0
