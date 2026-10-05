@@ -37,6 +37,7 @@ The development files combine shared host options with service-specific settings
 | `secretProvider`                | [`secretprovider.SecretProviderOptions`](../../../../pkg/components/secret/secretprovider/options.go) | Provider is `kubernetes` or `inmemory`                                     |
 | `metricsProvider`               | [`metricsservice.Options`](../../../../pkg/components/metrics/metricsservice/options.go)              | `enabled`, `serviceName`, and nested `prometheus.path` / `prometheus.port` |
 | `server`, `workerServer`, `ucp` | [`pkg/armrpc/hostoptions`](../../../../pkg/armrpc/hostoptions/)                                       | HTTP listener, async worker, and UCP connection settings                   |
+| `authorization`                 | [`authz.Options`](../../../../pkg/authz/mode.go)                                                      | `mode` is `off` (default), `dryRun`, or `enforce`                          |
 
 For example, local services commonly use Kubernetes API server storage and expose Prometheus settings in this shape:
 
@@ -75,6 +76,8 @@ ucp:
 ```
 
 Kubernetes deployments use the chart-rendered UCP connection instead of the local endpoint.
+
+The `authorization.mode` setting is read by UCP, Applications RP, Dynamic RP, and the controller, and each logs `authz mode=<mode>` at startup. The chart renders it from `global.rbac.enabled` and `global.rbac.dryRun`: `dryRun=true` renders `dryRun`, `enabled=true` renders `enforce`, and setting both fails rendering.
 
 ### 3. Configure supported environment overrides
 

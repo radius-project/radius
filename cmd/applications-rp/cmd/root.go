@@ -26,6 +26,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/builder"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
@@ -59,6 +60,8 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 		defer flush()
+
+		authz.LogMode(logger, options.Config.Authorization)
 
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
