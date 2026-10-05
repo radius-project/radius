@@ -483,3 +483,61 @@ func TestDeleteResourcesInTiers_EmptyTiersSucceed(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, out.Writes)
 }
+
+// TestDescribeResources asserts the rendering used in the error that `rad group delete` returns
+// when resources survive its delete. The names matter: that error is the only record the user gets
+// of what was left behind, and it must stay readable for a group far larger than the cap.
+func TestDescribeResources(t *testing.T) {
+	t.Parallel()
+
+	withID := func(id string) generated.GenericResource {
+		return generated.GenericResource{ID: to.Ptr(id), Type: to.Ptr("Radius.Compute/containers")}
+	}
+
+	manyResources := make([]generated.GenericResource, 0, maxDescribedResources+3)
+	for i := range maxDescribedResources + 3 {
+		manyResources = append(manyResources, withID(fmt.Sprintf("/resource-%d", i)))
+	}
+
+	tests := []struct {
+		name      string
+		resources []generated.GenericResource
+		expected  string
+	}{
+		{
+			name:      "no resources renders nothing",
+			resources: nil,
+			expected:  "",
+		},
+		{
+			name:      "one resource is counted in the singular",
+			resources: []generated.GenericResource{withID("/resource-1")},
+			expected:  "1 resource: /resource-1",
+		},
+		{
+			name:      "several resources are listed in full",
+			resources: []generated.GenericResource{withID("/resource-1"), withID("/resource-2")},
+			expected:  "2 resources: /resource-1, /resource-2",
+		},
+		{
+			// A resource with no ID is still reported. It cannot be deleted, so it is the most
+			// important kind to name, and omitting it would under-report the survivors.
+			name:      "a resource with no ID falls back to its name",
+			resources: []generated.GenericResource{{Name: to.Ptr("no-id")}},
+			expected:  "1 resource: no-id",
+		},
+		{
+			name:      "the list is capped and the rest are counted",
+			resources: manyResources,
+			expected:  "13 resources: /resource-0, /resource-1, /resource-2, /resource-3, /resource-4, /resource-5, /resource-6, /resource-7, /resource-8, /resource-9 and 3 more",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.expected, DescribeResources(tt.resources))
+		})
+	}
+}

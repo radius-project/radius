@@ -774,14 +774,15 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceGroup(ctx cont
 // The server does not reject this when the group still has contents: the UCP resource group route
 // performs a plain synchronous delete with no child-resource guard. Deleting the record while its
 // resources survive orphans them, and they stay unreachable until a group of the same name is
-// recreated at that scope. Callers must therefore delete the contents first and must not call this
-// if that failed.
+// recreated at that scope. Callers must therefore delete the contents first, must not call this if
+// that failed, and must confirm the group is empty immediately beforehand -- the set they deleted
+// was enumerated earlier and does not account for anything deployed into the group since.
 //
 // Deleting the contents is the caller's responsibility, because it has to happen in dependency
 // order: a recipe-driven resource loads its environment, recipe pack and settings while it is being
 // deleted, so those have to outlive it. The ordering lives in the `rad group delete` command, which
-// enumerates the group once, uses that same set to prompt the user, and deletes it in tiers before
-// calling this method. See pkg/cli/cmd/deleteorder.go.
+// enumerates the group once, uses that same set to prompt the user, deletes it in tiers, and
+// re-enumerates the group before calling this method. See pkg/cli/cmd/deleteorder.go.
 //
 // Deleting a group that does not exist reports success without having deleted anything.
 func (amc *UCPApplicationsManagementClient) DeleteResourceGroupRecord(ctx context.Context, planeName string, resourceGroupName string) (bool, error) {

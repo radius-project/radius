@@ -46,13 +46,17 @@ const (
 	// either. It therefore needs a tier of its own between the two.
 	//
 	// Known limitation: secrets within this tier are deleted concurrently, and a type cannot be
-	// ordered against itself. This only matters when a secret holds the credentials Radius needs to
-	// fetch another secret's delete recipe: deleting a resource runs its recipe, and engine
-	// deleteCore resolves the registry and provider credentials named by the environment's Bicep
+	// ordered against itself. This only matters when a secret holds credentials that Radius has to
+	// resolve in order to run another secret's delete recipe: deleting a resource runs its recipe,
+	// and engine deleteCore resolves the credentials named by the environment's Bicep
 	// authentication or Terraform settings before invoking the driver. If that credential secret is
-	// deleted first, the recipe can no longer be fetched and the remaining secret cannot be deleted.
-	// The secret's own data is never read for this, so ordering is irrelevant for the common case of
-	// a public recipe registry, where no credentials are configured. Closing the gap entirely needs
+	// deleted first, the recipe can no longer run and the remaining secret cannot be deleted.
+	//
+	// The secret's own data is never read for this, so ordering is irrelevant whenever the
+	// environment configures no credentials at all. A public recipe registry is not on its own
+	// enough to guarantee that: the Bicep driver gathers every secret named by
+	// RecipeConfig.Bicep.Authentication, and the Terraform driver additionally resolves the secrets
+	// backing its provider configuration and environment variables. Closing the gap entirely needs
 	// ordering derived from the references between individual resources rather than their types.
 	DeleteTierSecuritySecret
 
@@ -95,6 +99,12 @@ const securitySecretsResourceType = "Radius.Security/secrets"
 //
 // Keys are matched case-insensitively through deleteTierLookup, so they are written here in their
 // canonical casing.
+//
+// This table orders the deletes the CLI issues itself. It does not constrain deletes the backend
+// cascades on its own: deleting a dynamic resource deletes the managed Radius.Security/secrets
+// resource it owns, and the materializer issues that delete without polling it to completion. Such
+// a cascade can therefore still be running when this tier table reaches the secret tier, so the
+// table is an ordering of resource types rather than a complete dependency graph.
 var deleteTiersByResourceType = map[string]DeleteTier{
 	// Credential sources, innermost first.
 	securitySecretsResourceType:       DeleteTierSecuritySecret,
@@ -258,4 +268,40 @@ func deleteResourceTier(ctx context.Context, client clients.ApplicationsManageme
 	wg.Wait()
 
 	return errors.Join(append(errs, unaddressable...)...)
+}
+
+// maxDescribedResources bounds how many resources DescribeResources names individually. An error
+// message that lists every resource in a large group is unreadable in a terminal, and the names
+// beyond the first few add nothing: the user re-runs the command rather than acting on each one.
+const maxDescribedResources = 10
+
+// DescribeResources renders resources as a human-readable list for use in error messages, naming
+// at most maxDescribedResources of them and summarizing the rest as a count. It returns the empty
+// string when there are no resources, so callers must only use it when there is something to
+// describe.
+func DescribeResources(resources []generated.GenericResource) string {
+	if len(resources) == 0 {
+		return ""
+	}
+
+	named := resources
+	if len(named) > maxDescribedResources {
+		named = named[:maxDescribedResources]
+	}
+
+	descriptions := make([]string, 0, len(named))
+	for _, resource := range named {
+		descriptions = append(descriptions, describeResource(resource))
+	}
+
+	list := strings.Join(descriptions, ", ")
+	if remaining := len(resources) - len(named); remaining > 0 {
+		list = fmt.Sprintf("%s and %d more", list, remaining)
+	}
+
+	if len(resources) == 1 {
+		return fmt.Sprintf("1 resource: %s", list)
+	}
+
+	return fmt.Sprintf("%d resources: %s", len(resources), list)
 }

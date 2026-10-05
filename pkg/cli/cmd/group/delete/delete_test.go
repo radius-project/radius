@@ -110,6 +110,8 @@ func Test_Run(t *testing.T) {
 		confirmation        bool // --yes flag
 		resources           []generated.GenericResource
 		listError           error
+		remainingResources  []generated.GenericResource // returned by the post-delete verification list
+		verifyListError     error
 		deleteResult        bool
 		deleteError         error
 		resourceDeleteError error
@@ -267,6 +269,76 @@ func Test_Run(t *testing.T) {
 			skipPrompt:      true,
 			expectedOutputs: nil, // No output expected, operation should fail
 		},
+		{
+			// The group is enumerated before the prompt, so a resource deployed into it while the
+			// prompt was open or while the tiers were being deleted is not in that snapshot and is
+			// not deleted. Deleting the group record around it would orphan it, so the runner
+			// re-enumerates the group and keeps the record. No DeleteResourceGroupRecord
+			// expectation is registered, so gomock fails the test if the runner deletes it anyway.
+			name:         "Resource added during deletion - group record is not deleted",
+			confirmation: true,
+			resources: []generated.GenericResource{
+				testResource("Applications.Core/containers", "resource1"),
+			},
+			remainingResources: []generated.GenericResource{
+				testResource("Applications.Core/containers", "latecomer"),
+			},
+			skipPrompt: true,
+			expectedError: fmt.Errorf("resource group testrg still contains 1 resource: %s after deleting its contents",
+				testResourceID("Applications.Core/containers", "latecomer")),
+			expectedOutputs: []any{
+				deletingOutput("Applications.Core/containers", "resource1"),
+			},
+		},
+		{
+			// The same protection has to apply to a group that was empty when the user confirmed:
+			// an empty group is the case where a concurrent deployment is most likely to be
+			// missed, because the user is told there is nothing to lose.
+			name:           "Empty group gains a resource during the prompt - group record is not deleted",
+			confirmation:   false,
+			resources:      []generated.GenericResource{},
+			promptResponse: prompt.ConfirmYes,
+			expectedPrompt: "The resource group testrg is empty. Are you sure you want to delete the resource group?",
+			remainingResources: []generated.GenericResource{
+				testResource("Applications.Core/containers", "latecomer"),
+			},
+			expectedError: fmt.Errorf("resource group testrg still contains 1 resource: %s after deleting its contents",
+				testResourceID("Applications.Core/containers", "latecomer")),
+			expectedOutputs: nil,
+		},
+		{
+			// Emptiness that cannot be established is treated the same way as a resource that is
+			// known to be left behind: the record is kept, because deleting it would orphan
+			// anything that did survive.
+			name:         "Verification list fails - group record is not deleted",
+			confirmation: true,
+			resources: []generated.GenericResource{
+				testResource("Applications.Core/containers", "resource1"),
+			},
+			verifyListError: fmt.Errorf("network error"),
+			skipPrompt:      true,
+			expectedError:   fmt.Errorf("unable to verify that resource group testrg is empty after deleting its resources: network error"),
+			expectedOutputs: []any{
+				deletingOutput("Applications.Core/containers", "resource1"),
+			},
+		},
+		{
+			// A 404 from the verification list means the group itself is already gone, so there is
+			// nothing left to orphan. The record delete still runs and reports the group as not
+			// found, which is the same outcome as deleting an already-deleted group.
+			name:         "Verification list returns 404 - group already gone",
+			confirmation: true,
+			resources: []generated.GenericResource{
+				testResource("Applications.Core/containers", "resource1"),
+			},
+			verifyListError: &azcore.ResponseError{StatusCode: http.StatusNotFound},
+			deleteResult:    false,
+			skipPrompt:      true,
+			expectedOutputs: []any{
+				deletingOutput("Applications.Core/containers", "resource1"),
+				groupNotFoundOutput,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -278,12 +350,13 @@ func Test_Run(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 
 			// Expect ListResourcesInResourceGroup call
+			var firstList *gomock.Call
 			if tt.listError != nil {
-				appManagementClient.EXPECT().
+				firstList = appManagementClient.EXPECT().
 					ListResourcesInResourceGroup(gomock.Any(), "local", "testrg").
 					Return(nil, tt.listError).Times(1)
 			} else {
-				appManagementClient.EXPECT().
+				firstList = appManagementClient.EXPECT().
 					ListResourcesInResourceGroup(gomock.Any(), "local", "testrg").
 					Return(tt.resources, nil).Times(1)
 			}
@@ -309,27 +382,49 @@ func Test_Run(t *testing.T) {
 			// Expect the group record deletion if the user confirms or --yes is provided, and the
 			// deletion of each resource in the group beforehand. Neither happens if the group could
 			// not be enumerated, because its contents would be unknown.
+			//
+			// Calls are chained with After so that the test fails if the runner reorders them. The
+			// deletes within a tier run concurrently and so are only ordered against the calls on
+			// either side of them, not against each other.
 			listFailed := tt.listError != nil
 			shouldCallDelete := (tt.confirmation || tt.promptResponse == prompt.ConfirmYes) && !listFailed
 			if shouldCallDelete && tt.promptError == nil {
+				deletes := make([]*gomock.Call, 0, len(tt.resources))
 				for _, resource := range tt.resources {
-					appManagementClient.EXPECT().
+					deletes = append(deletes, appManagementClient.EXPECT().
 						DeleteResource(gomock.Any(), *resource.Type, *resource.ID, false).
-						Return(tt.resourceDeleteError == nil, tt.resourceDeleteError).Times(1)
+						Return(tt.resourceDeleteError == nil, tt.resourceDeleteError).
+						Times(1).
+						After(firstList))
 				}
 
-				// A failed resource delete must stop the run before the group record is deleted,
-				// so no expectation is registered for it: gomock then fails the test if the
-				// runner calls it anyway.
+				// A failed resource delete must stop the run before the group is re-enumerated and
+				// before the group record is deleted, so no expectation is registered for either:
+				// gomock then fails the test if the runner calls them anyway.
 				if tt.resourceDeleteError == nil {
-					if tt.deleteError != nil {
-						appManagementClient.EXPECT().
-							DeleteResourceGroupRecord(gomock.Any(), "local", "testrg").
-							Return(false, tt.deleteError).Times(1)
-					} else {
-						appManagementClient.EXPECT().
-							DeleteResourceGroupRecord(gomock.Any(), "local", "testrg").
-							Return(tt.deleteResult, nil).Times(1)
+					// The group is re-enumerated once its contents have been deleted. The record is
+					// only deleted when that enumeration proves the group is empty, so a case that
+					// leaves resources behind or cannot enumerate the group registers no
+					// DeleteResourceGroupRecord expectation.
+					verifyList := appManagementClient.EXPECT().
+						ListResourcesInResourceGroup(gomock.Any(), "local", "testrg").
+						Return(tt.remainingResources, tt.verifyListError).
+						Times(1)
+					for _, deleteCall := range deletes {
+						verifyList.After(deleteCall)
+					}
+
+					verified := tt.verifyListError == nil || clients.Is404Error(tt.verifyListError)
+					if verified && len(tt.remainingResources) == 0 {
+						if tt.deleteError != nil {
+							appManagementClient.EXPECT().
+								DeleteResourceGroupRecord(gomock.Any(), "local", "testrg").
+								Return(false, tt.deleteError).Times(1).After(verifyList)
+						} else {
+							appManagementClient.EXPECT().
+								DeleteResourceGroupRecord(gomock.Any(), "local", "testrg").
+								Return(tt.deleteResult, nil).Times(1).After(verifyList)
+						}
 					}
 				}
 			}

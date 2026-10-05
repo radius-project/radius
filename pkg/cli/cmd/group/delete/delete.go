@@ -69,6 +69,11 @@ If any resource fails to delete, the remaining resources in the same stage still
 failure is reported. Later stages are skipped and the resource group is left in place. Re-running
 the command is safe and will retry the resources that are left.
 
+The group is checked again once its resources have been deleted. If anything is still there -- for
+example a resource deployed into the group while the command was running -- the resource group is
+left in place and the remaining resources are reported, so that they are not left unreachable
+inside a deleted group.
+
 Use the --yes flag to skip confirmation prompts.`,
 		Example: `rad group delete rgprod
 rad group delete rgprod --yes`,
@@ -180,6 +185,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to delete resources in resource group %s: %w", r.UCPResourceGroupName, err)
 	}
 
+	if err := r.verifyResourceGroupIsEmpty(ctx, client); err != nil {
+		return err
+	}
+
 	deleted, err := client.DeleteResourceGroupRecord(ctx, scopeLocal, r.UCPResourceGroupName)
 	if err != nil {
 		return fmt.Errorf("failed to delete resource group %s: %w", r.UCPResourceGroupName, err)
@@ -189,6 +198,39 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.Output.LogInfo(msgResourceGroupDeleted, r.UCPResourceGroupName)
 	} else {
 		r.Output.LogInfo(msgResourceGroupNotFound, r.UCPResourceGroupName)
+	}
+
+	return nil
+}
+
+// verifyResourceGroupIsEmpty re-enumerates the group after its contents have been deleted and
+// returns an error if anything is left. The caller must not delete the group record when it does.
+//
+// The deleted set was enumerated before the confirmation prompt, so that the user cannot be asked
+// about one set of resources and have a different set deleted. That snapshot is stale by the time
+// the deletes finish: a resource deployed into the group since then was never deleted, and
+// deleting the group record around it orphans it, because UCP resolves the resource group before
+// the resource beneath it. This also catches a resource whose delete reported 404 while its record
+// survived, which DeleteResourcesInTiers treats as success.
+//
+// Survivors are reported rather than deleted: deleting them would widen the operation past what
+// the user confirmed, and the environment, recipe pack and settings they need to tear themselves
+// down are already gone. Re-running the command re-enumerates the group and is safe.
+func (r *Runner) verifyResourceGroupIsEmpty(ctx context.Context, client clients.ApplicationsManagementClient) error {
+	remaining, err := client.ListResourcesInResourceGroup(ctx, scopeLocal, r.UCPResourceGroupName)
+	if err != nil {
+		// A 404 means the group itself is already gone, so there is nothing left to orphan and
+		// nothing left to delete. Any other error leaves the contents unknown, which is treated
+		// the same way as finding resources: the record is kept rather than risking an orphan.
+		if clients.Is404Error(err) {
+			return nil
+		}
+
+		return fmt.Errorf("unable to verify that resource group %s is empty after deleting its resources: %w", r.UCPResourceGroupName, err)
+	}
+
+	if len(remaining) > 0 {
+		return fmt.Errorf("resource group %s still contains %s after deleting its contents, so the resource group was not deleted: deleting it would leave them unreachable. Re-run the command to delete them", r.UCPResourceGroupName, cmd.DescribeResources(remaining))
 	}
 
 	return nil
