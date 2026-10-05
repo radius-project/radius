@@ -186,6 +186,7 @@ func Test_NewPod(t *testing.T) {
 		require.Equal(t, DefaultImage, container.Image)
 		require.Equal(t, []string{"sleep", "infinity"}, container.Command)
 		require.True(t, *container.SecurityContext.RunAsNonRoot)
+		require.Equal(t, runAsUser, *container.SecurityContext.RunAsUser)
 		require.False(t, *container.SecurityContext.AllowPrivilegeEscalation)
 		require.Empty(t, container.VolumeMounts)
 	})

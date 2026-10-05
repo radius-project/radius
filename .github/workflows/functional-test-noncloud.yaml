@@ -246,6 +246,7 @@ jobs:
             statestore-noncloud,
             samples-noncloud,
             ucp-noncloud,
+            authz-noncloud,
             datastoresrp-noncloud,
             dynamicrp-noncloud,
             upgrade-noncloud,
@@ -462,6 +463,12 @@ jobs:
         if: matrix.name == 'database-noncloud'
         run: echo "DATABASE_INSTALL_ARGS=--set database.enabled=true" >> "${GITHUB_ENV}"
 
+      - name: Enable the authorization dry run
+        # Installs the authz leg with a non-default authorization mode so its smoke test verifies
+        # that every component reads the mode from the Helm values.
+        if: matrix.name == 'authz-noncloud'
+        run: echo "AUTHZ_INSTALL_ARGS=--set global.rbac.dryRun=true" >> "${GITHUB_ENV}"
+
       - name: Wait for Deployment Engine image to be available
         # When this run was triggered by deployment-engine's publish dispatch, DE_TAG
         # names an image that repo just pushed to GHCR. The dispatch that starts this
@@ -536,6 +543,9 @@ jobs:
           # For the database leg, install the PostgreSQL-backed control plane instead of the
           # default Kubernetes API server store. Empty for all other legs.
           RAD_COMMAND="$RAD_COMMAND ${DATABASE_INSTALL_ARGS:-}"
+
+          # For the authz leg, install with the authorization dry run enabled. Empty for all other legs.
+          RAD_COMMAND="$RAD_COMMAND ${AUTHZ_INSTALL_ARGS:-}"
 
           echo "*** Installing Radius to Kubernetes ***"
           eval $RAD_COMMAND
