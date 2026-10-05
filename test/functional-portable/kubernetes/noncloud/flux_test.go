@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -42,6 +41,7 @@ import (
 	gitobject "github.com/go-git/go-git/v5/plumbing/object"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -65,6 +65,20 @@ const (
 	gitServerLabelSelector         = "app=git-http-backend"
 	gitServerContainerName         = "git-http-backend"
 	gitServerInternalRepoURLFormat = "http://git-http.git-http-backend.svc.cluster.local:3000/%s.git"
+
+	// fluxGitRepositoryInterval is the periodic reconcile interval for the Flux
+	// GitRepository. It is a backstop in case a reconcile request is missed.
+	fluxGitRepositoryInterval = 30 * time.Second
+	// fluxArtifactTimeout is how long to wait for source-controller to produce
+	// an artifact for a pushed commit.
+	fluxArtifactTimeout = 5 * time.Minute
+	// fluxDeploymentTemplateTimeout is how long to wait for a DeploymentTemplate
+	// to become Ready or to be pruned by the Radius Flux controller.
+	fluxDeploymentTemplateTimeout = 10 * time.Minute
+	// fluxResourceAssertionTimeout is how long to wait for the expected Radius
+	// resources to converge after a step has been applied.
+	fluxResourceAssertionTimeout = 5 * time.Minute
+	fluxPollInterval             = 2 * time.Second
 )
 
 func Test_Flux_Basic(t *testing.T) {
@@ -223,7 +237,8 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 		Name:      gitRepoName,
 		Namespace: fluxSystemNamespace,
 		Spec: sourcev1.GitRepositorySpec{
-			URL: fmt.Sprintf(gitServerInternalRepoURLFormat, gitRepoName),
+			URL:      fmt.Sprintf(gitServerInternalRepoURLFormat, gitRepoName),
+			Interval: metav1.Duration{Duration: fluxGitRepositoryInterval},
 			SecretRef: &meta.LocalObjectReference{
 				Name: gitRepoName,
 			},
@@ -240,6 +255,7 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	_, err = waitForGitRepositoryReady(t, ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, opts.Client, fluxGitRepository.ResourceVersion)
 	require.NoError(t, err)
 
+	cleanupDTs := map[types.NamespacedName]struct{}{}
 	for stepIndex, step := range steps {
 		stepNumber := stepIndex + 1
 
@@ -270,82 +286,102 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 		require.NoError(t, err)
 		t.Log("Pushed changes successfully")
 
-		// Reconcile the GitRepository by updating the reconcile.fluxcd.io/requestedAt annotation.
-		var reconciledRepo *sourcev1.GitRepository
+		gitRepoNN := types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}
+
+		// Request an immediate reconcile of the GitRepository. RFC3339Nano is used so
+		// that two requests issued within the same second are still distinct;
+		// otherwise source-controller treats the second request as already handled.
 		err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			repo := &sourcev1.GitRepository{}
-			if err := opts.Client.Get(ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, repo); err != nil {
+			if err := opts.Client.Get(ctx, gitRepoNN, repo); err != nil {
 				return err
 			}
 			annotations := repo.GetAnnotations()
 			if annotations == nil {
 				annotations = make(map[string]string)
 			}
-			annotations["reconcile.fluxcd.io/requestedAt"] = strconv.FormatInt(time.Now().Unix(), 10)
+			annotations[meta.ReconcileRequestAnnotation] = time.Now().Format(time.RFC3339Nano)
 			repo.SetAnnotations(annotations)
-			if err := opts.Client.Update(ctx, repo); err != nil {
-				return err
-			}
-
-			reconciledRepo = repo
-			return nil
+			return opts.Client.Update(ctx, repo)
 		})
 		require.NoError(t, err)
 
-		// Update our reference to the latest resource version for future delete calls.
-		fluxGitRepository = reconciledRepo.DeepCopy()
+		// Wait for source-controller to publish an artifact for this exact commit
+		// before checking anything else. Without this, later steps can be pushed
+		// before earlier ones are reconciled and intermediate states are skipped.
+		waitForGitRepositoryArtifactRevision(ctx, t, gitRepoNN, commit.String(), opts.Client)
 
 		radiusConfig, err := reconciler.ParseRadiusGitOpsConfig(path.Join(step.path, "radius-gitops-config.yaml"))
 		require.NoError(t, err)
 
+		// DeploymentTemplates from earlier steps that are no longer in the config
+		// must be pruned by the Radius Flux controller (not by the test).
+		currentDTs := map[types.NamespacedName]struct{}{}
 		for _, configEntry := range radiusConfig.Config {
 			name, namespace, _, _ := getValuesFromRadiusGitOpsConfig(configEntry)
-
-			deploymentTemplate, err := waitForDeploymentTemplateToBeReadyWithGeneration(t, ctx, types.NamespacedName{Name: name, Namespace: namespace}, stepNumber, opts.Client)
-			defer func() {
-				err := opts.Client.Delete(ctx, deploymentTemplate)
-				if controller_runtime.IgnoreNotFound(err) != nil {
-					t.Logf("Error deleting deployment template: %v", err)
-				}
-			}()
+			nn := types.NamespacedName{Name: name, Namespace: namespace}
+			currentDTs[nn] = struct{}{}
+			if _, ok := cleanupDTs[nn]; !ok {
+				cleanupDTs[nn] = struct{}{}
+				// Best-effort cleanup if the test fails before the ordered teardown below.
+				defer func() {
+					dt := &radappiov1alpha3.DeploymentTemplate{Name: nn.Name, Namespace: nn.Namespace}
+					if err := opts.Client.Delete(ctx, dt); controller_runtime.IgnoreNotFound(err) != nil {
+						t.Logf("Error deleting deployment template %s: %v", nn, err)
+					}
+				}()
+			}
+		}
+		for _, previousStep := range steps[:stepIndex] {
+			previousConfig, err := reconciler.ParseRadiusGitOpsConfig(path.Join(previousStep.path, "radius-gitops-config.yaml"))
 			require.NoError(t, err)
+			for _, configEntry := range previousConfig.Config {
+				name, namespace, _, _ := getValuesFromRadiusGitOpsConfig(configEntry)
+				nn := types.NamespacedName{Name: name, Namespace: namespace}
+				if _, ok := currentDTs[nn]; ok {
+					continue
+				}
+				waitForDeploymentTemplateToBeDeleted(ctx, t, nn, opts.Client)
+			}
 		}
 
 		scope := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", step.resourceGroup)
 
-		retryInterval := 1 * time.Second
-		retryTimeout := 30 * time.Second
-		start := time.Now()
-
-		for time.Since(start) < retryTimeout {
-			err = assertExpectedResourcesExist(ctx, scope, step.expectedResources, opts.Connection)
-			if err == nil {
-				break
+		// Both checks must pass. Each returns nil for an empty list, so accepting
+		// either one alone would let every step pass without checking anything.
+		var lastAssertErr error
+		assertOK := pollUntil(ctx, func() bool {
+			if err := assertExpectedResourcesExist(ctx, scope, step.expectedResources, opts.Connection); err != nil {
+				lastAssertErr = err
+				return false
 			}
-
-			err = assertExpectedResourcesToNotExist(ctx, scope, step.expectedResourcesToNotExist, opts.Connection)
-			if err == nil {
-				break
+			if err := assertExpectedResourcesToNotExist(ctx, scope, step.expectedResourcesToNotExist, opts.Connection); err != nil {
+				lastAssertErr = err
+				return false
 			}
+			lastAssertErr = nil
+			return true
+		}, fluxResourceAssertionTimeout)
+		require.Truef(t, assertOK, "step %d: expected resources did not converge in %s: %v", stepNumber, scope, lastAssertErr)
+		t.Logf("Step %d: successfully asserted expected resources in %s", stepNumber, scope)
 
-			time.Sleep(retryInterval)
+		// Wait for every DeploymentTemplate in this step to settle before moving
+		// on, so the next push does not race an in-flight deployment.
+		for nn := range currentDTs {
+			waitForDeploymentTemplateToBeReady(ctx, t, nn, opts.Client)
 		}
-
-		if err != nil {
-			t.Fatalf("Error asserting expected resources exist: %v", err)
-		}
-		t.Logf("Successfully asserted expected resources exist in %s", scope)
 	}
 
-	// Tear down each DeploymentTemplate (and wait for full drainage of its
-	// owned DeploymentResources) before deleting the K8s namespaces. This
+	// Tear down any DeploymentTemplate that still exists (and wait for full
+	// drainage of its owned DeploymentResources) before deleting the K8s
+	// namespaces. DTs removed from the config were already pruned by Flux
+	// during the steps above, so this only cleans up what remains. This
 	// avoids racing parallel Radius delete cascades against the namespace
 	// delete; without it, Test_Flux_Complex intermittently times out for
 	// 10 minutes waiting for a stuck namespace.
 	//
-	// We union DTs across all steps because some tests intentionally remove
-	// DTs in later steps (Test_Flux_Complex step 3 is an empty config), and
-	// iterating only the last step would miss DTs created by earlier steps.
+	// We union DTs across all steps so DTs created by earlier steps are
+	// covered even if a later step failed before they were pruned.
 	seen := map[types.NamespacedName]struct{}{}
 	for _, step := range steps {
 		radiusConfig, err := reconciler.ParseRadiusGitOpsConfig(path.Join(step.path, "radius-gitops-config.yaml"))
@@ -368,32 +404,91 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	}
 }
 
-func waitForDeploymentTemplateToBeReadyWithGeneration(t *testing.T, ctx context.Context, name types.NamespacedName, generation int, client controller_runtime.WithWatch) (*radappiov1alpha3.DeploymentTemplate, error) {
-	var timeout time.Duration = 60 * time.Second
-	var interval time.Duration = 1 * time.Second
-
-	for start := time.Now(); time.Since(start) < timeout; {
-		deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{}
-		err := client.Get(ctx, name, deploymentTemplate)
-		if err == nil {
-			if deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady {
-				if deploymentTemplate.Status.ObservedGeneration == int64(generation) {
-					t.Logf("DeploymentTemplate %s is ready with generation: %d", name.Name, deploymentTemplate.Status.ObservedGeneration)
-					return deploymentTemplate, nil
-				} else {
-					t.Logf("DeploymentTemplate %s generation: %d, looking for %d", name.Name, deploymentTemplate.Status.ObservedGeneration, generation)
-				}
-			} else {
-				t.Logf("DeploymentTemplate %s phrase: %s, looking for %s", name.Name, deploymentTemplate.Status.Phrase, radappiov1alpha3.DeploymentTemplatePhraseReady)
-			}
-
-			return deploymentTemplate, nil
+// pollUntil evaluates cond on the calling goroutine every fluxPollInterval
+// until it returns true, the timeout elapses, or ctx is cancelled.
+func pollUntil(ctx context.Context, cond func() bool, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for {
+		if cond() {
+			return true
 		}
-
-		time.Sleep(interval)
+		if time.Now().After(deadline) {
+			return false
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(fluxPollInterval):
+		}
 	}
+}
 
-	return nil, fmt.Errorf("deploymentTemplate %s not found after %f seconds", name.Name, timeout.Seconds())
+// waitForGitRepositoryArtifactRevision waits until the Flux GitRepository has
+// produced an artifact for the given commit SHA. Flux reports revisions in the
+// form "<branch>@sha1:<sha>".
+func waitForGitRepositoryArtifactRevision(ctx context.Context, t *testing.T, nn types.NamespacedName, commitSHA string, client controller_runtime.Client) {
+	t.Helper()
+	lastRevision := ""
+	ok := pollUntil(ctx, func() bool {
+		repo := &sourcev1.GitRepository{}
+		if err := client.Get(ctx, nn, repo); err != nil {
+			t.Logf("Failed to get GitRepository %s: %v", nn, err)
+			return false
+		}
+		if repo.Status.Artifact == nil {
+			return false
+		}
+		if repo.Status.Artifact.Revision != lastRevision {
+			lastRevision = repo.Status.Artifact.Revision
+			t.Logf("GitRepository %s artifact revision: %s (waiting for %s)", nn, lastRevision, commitSHA)
+		}
+		return strings.HasSuffix(lastRevision, commitSHA)
+	}, fluxArtifactTimeout)
+	require.Truef(t, ok, "GitRepository %s did not produce an artifact for commit %s; last revision: %q", nn, commitSHA, lastRevision)
+}
+
+// waitForDeploymentTemplateToBeReady waits until the DeploymentTemplate exists,
+// has no operation in flight, reports the Ready phrase, and its status reflects
+// the current generation of its spec.
+func waitForDeploymentTemplateToBeReady(ctx context.Context, t *testing.T, nn types.NamespacedName, client controller_runtime.Client) {
+	t.Helper()
+	lastState := "not observed"
+	ok := pollUntil(ctx, func() bool {
+		dt := &radappiov1alpha3.DeploymentTemplate{}
+		if err := client.Get(ctx, nn, dt); err != nil {
+			lastState = fmt.Sprintf("get error: %v", err)
+			return false
+		}
+		state := fmt.Sprintf("phrase=%s generation=%d observedGeneration=%d operationInFlight=%t",
+			dt.Status.Phrase, dt.Generation, dt.Status.ObservedGeneration, dt.Status.Operation != nil)
+		if state != lastState {
+			lastState = state
+			t.Logf("DeploymentTemplate %s: %s", nn, state)
+		}
+		return dt.DeletionTimestamp == nil &&
+			dt.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady &&
+			dt.Status.Operation == nil &&
+			dt.Status.ObservedGeneration == dt.Generation
+	}, fluxDeploymentTemplateTimeout)
+	require.Truef(t, ok, "DeploymentTemplate %s did not become Ready; last state: %s", nn, lastState)
+}
+
+// waitForDeploymentTemplateToBeDeleted waits for the Radius Flux controller to
+// prune a DeploymentTemplate that was removed from the GitOps config.
+func waitForDeploymentTemplateToBeDeleted(ctx context.Context, t *testing.T, nn types.NamespacedName, client controller_runtime.Client) {
+	t.Helper()
+	t.Logf("Waiting for Flux to prune DeploymentTemplate %s", nn)
+	var lastErr error
+	ok := pollUntil(ctx, func() bool {
+		err := client.Get(ctx, nn, &radappiov1alpha3.DeploymentTemplate{})
+		if apierrors.IsNotFound(err) {
+			lastErr = nil
+			return true
+		}
+		lastErr = err
+		return false
+	}, fluxDeploymentTemplateTimeout)
+	require.Truef(t, ok, "DeploymentTemplate %s was not pruned by Flux; last error: %v", nn, lastErr)
 }
 
 // waitForGitRepositoryReady watches the creation of the GitRepository object

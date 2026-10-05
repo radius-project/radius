@@ -45,6 +45,7 @@ Every contributing doc, grouped by topic. This is the single index that [AGENTS.
 - [Test naming conventions](./contributing-code/contributing-code-tests/tests-naming-conventions.md)
 - [Test logging](./contributing-code/contributing-code-tests/tests-logging.md)
 - [Pushing test images to GHCR](./contributing-code/contributing-code-tests/tests-images-pushtoghcr.md)
+- [Investigating flaky tests](./contributing-code/contributing-code-tests/investigating-flaky-tests.md)
 
 ### Schema & API
 
@@ -95,6 +96,7 @@ Maps each capability in [agent-ex-features.md](../../specs/002-agent-ex/agent-ex
 | 2 Code review                             | [contributing-code-reviewing/README.md](./contributing-code/contributing-code-reviewing/README.md)               |
 | 3 Investigate issues                      | [contributing-issues/README.md](./contributing-issues/README.md)                                                 |
 | n/a Configure a deploy environment        | [contributing-deploy-environments.md](./contributing-deploy-environments.md)                                     |
+| n/a Investigate flaky tests               | [investigating-flaky-tests.md](./contributing-code/contributing-code-tests/investigating-flaky-tests.md)         |
 | 5 Author and evolve docs and capabilities | [Documentation index](#documentation-index)                                                                      |
 | 5.1 Author a new doc                      | [authoring-contributing-docs.md](./authoring-contributing-docs.md)                                               |
 | 5.2 Repair drift                          | [extending-agent-ex.md](./extending-agent-ex.md)                                                                 |
