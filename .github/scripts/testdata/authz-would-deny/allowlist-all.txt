@@ -1,0 +1,4 @@
+# Known would-deny lines tracked by issues.
+
+https://github.com/radius-project/radius/issues/99901 "authzCode":"AuthorizationFailed"
+radius-project/radius#99902   "authzCode": "InvalidClientIdentity"
