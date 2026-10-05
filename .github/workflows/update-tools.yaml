@@ -39,6 +39,9 @@ jobs:
           cache-dependency-path: go.sum
           cache: true
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: Check and update tool metadata
         env:
           GITHUB_TOKEN: ${{ github.token }}
