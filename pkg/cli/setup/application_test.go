@@ -17,15 +17,12 @@ limitations under the License.
 package setup
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-const latest = "latest"
 
 func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 	templates := map[string]string{
@@ -48,7 +45,7 @@ func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 
 			b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
 			require.NoError(t, err)
-			require.Equal(t, fmt.Sprintf(bicepConfigTemplate, latest, latest), string(b))
+			require.Equal(t, GetVersionedBicepConfig(), string(b))
 		})
 	}
 }
@@ -92,7 +89,7 @@ func Test_WriteBicepConfig_CreatesFile(t *testing.T) {
 
 	b, err := os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
 	require.NoError(t, err)
-	require.Equal(t, fmt.Sprintf(bicepConfigTemplate, latest, latest), string(b))
+	require.Equal(t, GetVersionedBicepConfig(), string(b))
 	require.NoFileExists(t, filepath.Join(directory, "app.bicep"))
 }
 

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -724,6 +725,7 @@ func newBicepConfigTestRunner(t *testing.T) (*Runner, string) {
 				options *corerpv20250801.ApplicationsClientGetOptions,
 			) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
 				t.Error("Applications Get should not be called")
+				errResp.SetResponseError(http.StatusInternalServerError, "UnexpectedCall")
 				return
 			},
 			CreateOrUpdate: func(
@@ -734,6 +736,7 @@ func newBicepConfigTestRunner(t *testing.T) (*Runner, string) {
 				options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
 			) (resp azfake.Responder[corerpv20250801.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
 				t.Error("Applications CreateOrUpdate should not be called")
+				errResp.SetResponseError(http.StatusInternalServerError, "UnexpectedCall")
 				return
 			},
 		}

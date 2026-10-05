@@ -86,6 +86,11 @@ func WriteBicepConfig(directory string) error {
 	if errors.Is(err, fs.ErrExist) {
 		return nil
 	} else if err != nil {
+		// Some platforms report a different error when the path exists but is not a regular file
+		// (for example a directory), so treat any existing entry as present.
+		if _, statErr := os.Lstat(bicepConfigFilepath); statErr == nil {
+			return nil
+		}
 		return err
 	}
 
@@ -96,7 +101,13 @@ func WriteBicepConfig(directory string) error {
 		return err
 	}
 
-	return f.Close()
+	err = f.Close()
+	if err != nil {
+		_ = os.Remove(bicepConfigFilepath)
+		return err
+	}
+
+	return nil
 }
 
 // GetVersionedBicepConfig returns the default bicepconfig.json contents with the Radius and AWS
