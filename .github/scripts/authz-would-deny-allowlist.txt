@@ -1,0 +1,10 @@
+# Known authorization would-deny log lines that must not fail the dry-run check
+# in .github/scripts/authz-would-deny-check.sh.
+#
+# Each entry is "<issue> <pattern>":
+#   <issue>    The issue tracking the fix, as https://github.com/OWNER/REPO/issues/N or OWNER/REPO#N.
+#   <pattern>  An extended regular expression matched against the full log line.
+#
+# Keep entries narrow (for example, match authzCode and the caller) and remove
+# them when the tracking issue is fixed. Example:
+#   radius-project/radius#12345 "authzCode":"AuthorizationFailed".*"authzReason":"example reason"
