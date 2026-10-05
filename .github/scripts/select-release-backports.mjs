@@ -64,11 +64,54 @@ export function releaseChannelForEvent(context) {
   return branch.match(/^release\/(\d+\.\d+)$/)?.[1] ?? "";
 }
 
+export async function findIncludedSourceCommits({
+  github,
+  owner,
+  repo,
+  channel,
+  sources
+}) {
+  if (sources.length === 0) {
+    return [];
+  }
+  const reference = `refs/heads/release/${channel}`;
+  const { data: references } = await github.rest.git.listMatchingRefs({
+    owner,
+    repo,
+    ref: `heads/release/${channel}`
+  });
+  const release = references.find((entry) => entry.ref === reference);
+  if (!release) {
+    return [];
+  }
+
+  const included = [];
+  for (const source of sources) {
+    const { data: comparison } =
+      await github.rest.repos.compareCommitsWithBasehead({
+        owner,
+        repo,
+        basehead: `${source.merge_commit_sha}...${release.object.sha}`,
+        per_page: 1
+      });
+    if (comparison.status === "ahead" || comparison.status === "identical") {
+      included.push(source.merge_commit_sha);
+    } else if (
+      comparison.status !== "behind" &&
+      comparison.status !== "diverged"
+    ) {
+      throw new Error(`Unexpected ancestry result: ${comparison.status}`);
+    }
+  }
+  return included;
+}
+
 export function selectNextBackport({
   channel,
   sources,
   openBackports,
-  historicalBackports
+  historicalBackports,
+  includedSourceCommits = []
 }) {
   if (
     openBackports.some((pull) =>
@@ -103,8 +146,12 @@ export function selectNextBackport({
     }
   }
 
+  const included = new Set(includedSourceCommits);
   const pending = sources
-    .filter((pull) => !completed.has(pull.number))
+    .filter(
+      (pull) =>
+        !completed.has(pull.number) && !included.has(pull.merge_commit_sha)
+    )
     .sort((left, right) => left.number - right.number);
   return pending.length === 0 ? [] : [backportEntry(pending[0], channel)];
 }

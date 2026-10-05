@@ -50,7 +50,7 @@ collect_explicit_prs() {
     local -a numbers=()
 
     printf '[]\n' > "${output}"
-    [[ -n "${EXPLICIT_PRS}" ]] || return
+    [[ -n "${EXPLICIT_PRS}" ]] || return 0
 
     IFS=',' read -r -a numbers <<< "${EXPLICIT_PRS}"
     for pr in "${numbers[@]}"; do
@@ -72,9 +72,43 @@ collect_explicit_prs() {
     done
 }
 
+collect_present_sources() {
+    local sources_file="$1"
+    local release_branch="$2"
+    local output="$3"
+    local references release_commit source_commit relation
+
+    printf '[]\n' > "${output}"
+    [[ "$(jq 'length' "${sources_file}")" != 0 ]] || return 0
+    references="$(
+        "${GH}" api "repos/${REPOSITORY}/git/matching-refs/heads/${release_branch}"
+    )"
+    release_commit="$(jq -r --arg ref "refs/heads/${release_branch}" \
+        '.[] | select(.ref == $ref) | .object.sha' <<< "${references}")"
+    [[ -n "${release_commit}" ]] || return 0
+
+    jq -r '.[].mergeCommit.oid' "${sources_file}" \
+        | tr -d '\r' > "${TEMP_DIR}/source-commits.txt"
+    while IFS= read -r source_commit; do
+        relation="$(
+            "${GH}" api "repos/${REPOSITORY}/compare/${source_commit}...${release_commit}?per_page=1" \
+                --jq '.status'
+        )"
+        case "${relation}" in
+            ahead | identical)
+                jq --arg commit "${source_commit}" '. + [$commit]' \
+                    "${output}" > "${output}.tmp"
+                mv "${output}.tmp" "${output}"
+                ;;
+            behind | diverged) ;;
+            *) fail "unexpected ancestry result for ${source_commit}: ${relation}" ;;
+        esac
+    done < "${TEMP_DIR}/source-commits.txt"
+}
+
 main() {
     local label release_branch
-    local labeled_file explicit_file sources_file backports_file
+    local labeled_file explicit_file sources_file backports_file present_file
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -117,6 +151,7 @@ main() {
     explicit_file="${TEMP_DIR}/explicit.json"
     sources_file="${TEMP_DIR}/sources.json"
     backports_file="${TEMP_DIR}/backports.json"
+    present_file="${TEMP_DIR}/present.json"
     label="backport release/${CHANNEL}"
     release_branch="release/${CHANNEL}"
 
@@ -127,6 +162,7 @@ main() {
     collect_explicit_prs "${explicit_file}"
     jq -s 'add | unique_by(.number) | sort_by(.number)' \
         "${labeled_file}" "${explicit_file}" > "${sources_file}"
+    collect_present_sources "${sources_file}" "${release_branch}" "${present_file}"
 
     "${GH}" pr list --repo "${REPOSITORY}" --state all \
         --base "${release_branch}" --limit 1000 \
@@ -134,9 +170,11 @@ main() {
         > "${backports_file}"
 
     mkdir -p "$(dirname "${OUTPUT_FILE}")"
-    jq --slurpfile backports "${backports_file}" '
+    jq --slurpfile backports "${backports_file}" \
+        --slurpfile present "${present_file}" '
         map(
             . as $source |
+            ($present[0] | index($source.mergeCommit.oid) != null) as $already_present |
             ($backports[0] |
                 map(select(
                     # A body naming more than one source cannot identify
@@ -168,13 +206,16 @@ main() {
                 source_commit: $source.mergeCommit.oid,
                 source_title: $source.title,
                 source_url: $source.url,
-                backport_pr: ($backport.number // null),
-                backport_url: ($backport.url // null),
+                already_present: $already_present,
+                backport_pr: (if $already_present then null else $backport.number // null end),
+                backport_url: (if $already_present then null else $backport.url // null end),
                 backport_merged: (
-                    (($backport.mergedAt // null) != null) and
-                    $has_source_trailer
+                    $already_present or (
+                        (($backport.mergedAt // null) != null) and
+                        $has_source_trailer
+                    )
                 ),
-                backport_commit: ($backport.mergeCommit.oid // null)
+                backport_commit: (if $already_present then $source.mergeCommit.oid else $backport.mergeCommit.oid // null end)
             }
         )
     ' "${sources_file}" > "${OUTPUT_FILE}"

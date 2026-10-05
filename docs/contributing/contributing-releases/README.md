@@ -100,6 +100,8 @@ Prepare Release opens a draft release PR against main
 
 ### Preparing release changes
 
+Every version currently listed in `versions.yaml` under `supported` must have a Radius Git tag before another release can be prepared. If a final or patch release is still waiting for its metadata backport, complete that release first. The same prerequisite is checked when validating an open release plan.
+
 Run the [Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml) workflow from `main` with these inputs:
 
 | Input                 | Value                                                           |
@@ -116,7 +118,9 @@ If an explicit pull request still needs a backport, the workflow adds the channe
 
 ### Backporting changes to a release branch
 
-After a pull request is squash-merged to `main`, add the `backport release/<channel>` label to include it in a subsequent RC or patch. The release-backport workflow opens one pull request at a time from `automation/backport-<source-pr>-to-<channel>` to `release/<channel>` and records the source pull request and squash commit in its body. Both merged release-branch pull requests and release-branch pushes select the next pending labeled change; the merge event also covers older branches without a branch-local push workflow. This serial ordering keeps every backport pinned to the current release-branch base. Release preparation stops until every selected backport is merged.
+After a pull request is squash-merged to `main`, add the `backport release/<channel>` label to include it in a subsequent RC or patch. The release-backport workflow opens one pull request at a time from `automation/backport-<source-pr>-to-<channel>` to `release/<channel>` and records the source pull request and squash commit in its body. Both merged release-branch pull requests and release-branch pushes select the next pending labeled change; the merge event also covers older branches without a branch-local push workflow. This serial ordering keeps every backport pinned to the current release-branch base. Release preparation stops until every selected fix has a merged backport or its exact source commit is already an ancestor of the release branch.
+
+A source commit already included when the release branch was created needs no backport pull request. An empty cherry-pick without that ancestry proof stops with a diagnostic; review and reconcile the existing release-branch changes rather than treating an unstaged patch as a completed backport.
 
 If the cherry-pick conflicts, the workflow opens a draft pull request containing a conflict-handoff file and posts the exact recovery commands on the source pull request. Follow those commands, force-push the resolved branch with `--force-with-lease`, delete the handoff commit by resetting to the release branch as instructed, and mark the pull request ready.
 

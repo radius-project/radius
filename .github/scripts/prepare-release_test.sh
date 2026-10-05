@@ -156,12 +156,14 @@ EOF
 run_prepare() {
     local release_type="$1"
     local channel="$2"
+    local renderer="${3:-${REPO}/fake-git-cliff}"
+    local range_script="${4:-${REPO}/fake-range.sh}"
 
     set +e
     LAST_OUTPUT="$(
         cd "${REPO}" \
-                     && GIT_CLIFF="${REPO}/fake-git-cliff" \
-                CHANGELOG_RANGE_SCRIPT="${REPO}/fake-range.sh" \
+                     && GIT_CLIFF="${renderer}" \
+                CHANGELOG_RANGE_SCRIPT="${range_script}" \
                 bash "${SCRIPT}" \
                 --release-type "${release_type}" \
                 --channel "${channel}" \
@@ -249,6 +251,7 @@ test_first_rc_keeps_previous_stable_supported() {
     yq -i '.supported += [{"channel": "0.59", "version": "v0.59.1"}]' \
         "${REPO}/versions.yaml"
     git -C "${REPO}" tag v0.60.0
+    git -C "${REPO}" tag v0.59.1
     run_prepare rc 0.61
     assert_version "v0.61.0-rc.1" || return
     assert_yq_value "${REPO}/versions.yaml" '.supported | length' '3' || return
@@ -274,6 +277,41 @@ test_first_rc_requires_latest_stable() {
     ((++PASS))
 }
 
+test_pending_supported_release_blocks_preparation() {
+    local pending_version="$1"
+    local before output status=0
+
+    setup_repo "v0.60.0"
+    if [[ "${pending_version}" != v0.60.0 ]]; then
+        git -C "${REPO}" tag v0.60.0
+        yq -i '.supported += [{"channel": "0.59", "version": "v0.59.1"}]' \
+            "${REPO}/versions.yaml"
+    fi
+    before="$(git -C "${REPO}" hash-object versions.yaml CHANGELOG.md)"
+    run_prepare rc 0.61
+    if [[ "${LAST_STATUS}" == 0 || "${LAST_OUTPUT}" != *"supported release ${pending_version} has no tag"* ]]; then
+        fail_test "pending supported release must block preparation: ${LAST_OUTPUT}"
+        return
+    fi
+    output="$(
+        cd "${REPO}" && bash "${SCRIPT}" --release-type rc \
+            --channel 0.61 --output-dir out --version-only 2>&1
+    )" || status=$?
+    if [[ "${status}" == 0 || "${output}" != *"supported release ${pending_version} has no tag"* ]]; then
+        fail_test "version-only policy must reject pending releases: ${output}"
+        return
+    fi
+    if [[ -e "${REPO}/out/version.txt" || "$(git -C "${REPO}" hash-object versions.yaml CHANGELOG.md)" != "${before}" ]]; then
+        fail_test "pending-release rejection must not emit a version or modify release files"
+        return
+    fi
+
+    git -C "${REPO}" tag "${pending_version}"
+    run_prepare rc 0.61
+    assert_version "v0.61.0-rc.1" || return
+    ((++PASS))
+}
+
 test_subsequent_rc() {
     setup_repo "v0.60.0-rc.2"
     make_release_branch 0.60
@@ -281,6 +319,59 @@ test_subsequent_rc() {
     git -C "${REPO}" tag v0.60.0-rc.2
     run_prepare rc 0.60
     assert_version "v0.60.0-rc.3" || return
+    ((++PASS))
+}
+
+test_subsequent_rc_has_one_cumulative_changelog() {
+    local renderer section notes candidate message
+
+    renderer="$(command -v "${GIT_CLIFF:-git-cliff}")" || {
+        fail_test "real git-cliff is required for the cumulative changelog regression"
+        return
+    }
+    setup_repo "v0.60.0-rc.2"
+    cp "${SCRIPT_DIR}/../../cliff.toml" "${REPO}/cliff.toml"
+    commit "feat: first candidate feature"
+    git -C "${REPO}" tag v0.60.0-rc.1
+    commit "fix: second candidate fix"
+    git -C "${REPO}" tag v0.60.0-rc.2
+    commit "fix: third candidate fix"
+    make_release_branch 0.60
+    cat >> "${REPO}/CHANGELOG.md" << 'EOF'
+
+## [0.60.0-rc.2] - 2026-08-23
+
+Previous second candidate.
+
+## [0.60.0-rc.1] - 2026-08-22
+
+Previous first candidate.
+EOF
+
+    GITHUB_TOKEN="" run_prepare rc 0.60 "${renderer}" \
+        "${SCRIPT_DIR}/changelog-range.sh"
+    assert_version "v0.60.0-rc.3" || return
+    section="${REPO}/out/changelog-section.md"
+    notes="${REPO}/docs/release-notes/v0.60.0-rc.3.md"
+    if [[ "$(grep -c '^## \[' "${section}")" != 1 ]]; then
+        fail_test "cumulative changelog must contain only the new release heading"
+        return
+    fi
+    assert_file_contains "${section}" '## [0.60.0-rc.3] - 2026-08-24' || return
+    for message in 'First candidate feature' 'Second candidate fix' 'Third candidate fix'; do
+        assert_file_contains "${section}" "${message}" || return
+        assert_file_contains "${notes}" "${message}" || return
+    done
+    for candidate in 1 2 3; do
+        if [[ "$(grep -Fc "## [0.60.0-rc.${candidate}] -" "${REPO}/CHANGELOG.md")" != 1 ]]; then
+            fail_test "CHANGELOG.md must contain each historical RC section exactly once"
+            return
+        fi
+    done
+    if grep -Eq '^## \[0\.60\.0-rc\.[12]\]' "${notes}"; then
+        fail_test "new release notes must not contain historical RC headings"
+        return
+    fi
     ((++PASS))
 }
 
@@ -354,6 +445,7 @@ test_final_deprecates_previous_supported() {
         "${REPO}/versions.yaml"
     make_release_branch 0.60
     git -C "${REPO}" tag v0.60.0-rc.3
+    git -C "${REPO}" tag v0.59.1
     run_prepare final 0.60
     assert_version "v0.60.0" || return
     assert_yq_value "${REPO}/versions.yaml" '.supported | length' '1' || return
@@ -547,7 +639,10 @@ main() {
     test_first_rc
     test_first_rc_keeps_previous_stable_supported
     test_first_rc_requires_latest_stable
+    test_pending_supported_release_blocks_preparation v0.60.0
+    test_pending_supported_release_blocks_preparation v0.59.1
     test_subsequent_rc
+    test_subsequent_rc_has_one_cumulative_changelog
     test_subsequent_rc_rejects_stale_metadata
     test_subsequent_rc_rejects_divergent_branch
     test_subsequent_rc_rejects_historical_form

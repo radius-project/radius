@@ -81,7 +81,7 @@ test-changelog-config: install-git-cliff ## Tests the git-cliff configuration ag
 	@bash ./.github/scripts/changelog-config_test.sh
 
 .PHONY: test-prepare-release
-test-prepare-release: ## Tests release version, changelog, notes, and plan preparation
+test-prepare-release: install-git-cliff ## Tests release version, changelog, notes, and plan preparation
 	@bash ./.github/scripts/prepare-release_test.sh
 	@bash ./.github/scripts/verify-deployment-engine-tag_test.sh
 

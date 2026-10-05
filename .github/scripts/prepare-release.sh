@@ -248,6 +248,18 @@ calculate_version() {
     esac
 }
 
+validate_completed_releases() {
+    local supported_versions supported_version
+
+    supported_versions="$(yq -r '.supported[].version' "${VERSIONS_FILE}")"
+    while IFS= read -r supported_version; do
+        if ! git rev-parse --verify --quiet \
+            "refs/tags/${supported_version}^{commit}" > /dev/null; then
+            fail "supported release ${supported_version} has no tag; complete that release before preparing another"
+        fi
+    done <<< "${supported_versions}"
+}
+
 validate_backports() {
     local branch_ref="$1"
     local missing
@@ -319,6 +331,7 @@ render_changelog() {
     fi
 
     "${GIT_CLIFF}" --config "${CLIFF_CONFIG}" --tag "${version}" \
+        --ignore-tags '^v[0-9]+\.[0-9]+\.[0-9]+-rc' \
         --strip all --output "${body_file}" "${remote_options[@]}" \
         "${range}"
     [[ -s "${body_file}" ]] || fail "git-cliff rendered an empty changelog"
@@ -595,6 +608,7 @@ main() {
 
     branch_ref="$(release_branch_ref || true)"
     version="$(calculate_version)"
+    validate_completed_releases
     mkdir -p "${OUTPUT_DIR}"
     printf '%s\n' "${version}" > "${OUTPUT_DIR}/version.txt"
     printf 'automation/prepare-release-%s\n' "${version#v}" \

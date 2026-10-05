@@ -43,6 +43,28 @@ setup_fake_gh() {
 #!/bin/bash
 set -euo pipefail
 
+if [[ "$1" == api ]]; then
+    case "$2" in
+        */git/matching-refs/heads/release/0.60)
+            if [[ "${MISSING_RELEASE_BRANCH:-false}" == true ]]; then
+                printf '[]\n'
+            else
+                printf '%s\n' '[{"ref":"refs/heads/release/0.60","object":{"sha":"release-head"}}]'
+            fi
+            ;;
+        */compare/source-102...release-head*)
+            if [[ "${FAIL_COMPARISON:-false}" == true ]]; then
+                echo 'injected ancestry lookup failure' >&2
+                exit 42
+            fi
+            printf '%s\n' "${SOURCE_102_RELATION:-diverged}"
+            ;;
+        */compare/*...release-head*) printf 'diverged\n' ;;
+        *) echo "Unexpected API request: $2" >&2; exit 1 ;;
+    esac
+    exit 0
+fi
+
 if [[ "$1 $2" == "pr view" ]]; then
     case "$3" in
         102)
@@ -136,6 +158,70 @@ test_collects_labeled_and_explicit_prs() {
     ((++PASS))
 }
 
+test_collects_labels_without_explicit_prs() {
+    local output="${TEST_ROOT}/labeled-only.json"
+
+    GH="${TEST_ROOT}/gh" bash "${SCRIPT}" \
+        --repository radius-project/radius --channel 0.60 --output "${output}"
+    if ! jq -e 'length == 1 and .[0].source_pr == 101' "${output}" > /dev/null; then
+        fail_test "labeled fixes must be collected without explicit PR numbers"
+        return
+    fi
+    ((++PASS))
+}
+
+test_already_present_sources_are_satisfied() {
+    local relation="$1"
+    local expected="$2"
+    local output="${TEST_ROOT}/present-${relation}.json"
+
+    SOURCE_102_RELATION="${relation}" GH="${TEST_ROOT}/gh" bash "${SCRIPT}" \
+        --repository radius-project/radius --channel 0.60 \
+        --explicit-prs 102 --output "${output}"
+    if ! jq -e --argjson expected "${expected}" '
+        .[] | select(.source_pr == 102) |
+        .backport_merged == $expected and .already_present == $expected
+    ' "${output}" > /dev/null; then
+        fail_test "source ancestry ${relation} produced incorrect completion state"
+        return
+    fi
+    if [[ "${expected}" == true ]] && ! jq -e '
+        .[] | select(.source_pr == 102) |
+        .backport_pr == null and .backport_commit == "source-102"
+    ' "${output}" > /dev/null; then
+        fail_test "direct inclusion must bind completion to the original source commit"
+        return
+    fi
+    ((++PASS))
+}
+
+test_missing_release_branch_does_not_satisfy_sources() {
+    local output="${TEST_ROOT}/missing-branch.json"
+
+    MISSING_RELEASE_BRANCH=true SOURCE_102_RELATION=ahead GH="${TEST_ROOT}/gh" \
+        bash "${SCRIPT}" --repository radius-project/radius --channel 0.60 \
+        --explicit-prs 102 --output "${output}"
+    if [[ "$(jq -r '.[] | select(.source_pr == 102) | .already_present' "${output}")" != false ]]; then
+        fail_test "a missing release branch cannot contain the source"
+        return
+    fi
+    ((++PASS))
+}
+
+test_ancestry_lookup_failure_stops_collection() {
+    if FAIL_COMPARISON=true GH="${TEST_ROOT}/gh" bash "${SCRIPT}" \
+        --repository radius-project/radius --channel 0.60 --explicit-prs 102 \
+        --output "${TEST_ROOT}/failed-comparison.json" > /dev/null 2>&1; then
+        fail_test "an ancestry API failure must not be treated as completion"
+        return
+    fi
+    if [[ -e "${TEST_ROOT}/failed-comparison.json" ]]; then
+        fail_test "failed ancestry lookup must not emit a backport plan"
+        return
+    fi
+    ((++PASS))
+}
+
 test_rejects_unmerged_explicit_pr() {
     if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" \
         --repository radius-project/radius --channel 0.60 \
@@ -167,6 +253,13 @@ main() {
     setup_fake_gh
 
     test_collects_labeled_and_explicit_prs
+    test_collects_labels_without_explicit_prs
+    test_already_present_sources_are_satisfied ahead true
+    test_already_present_sources_are_satisfied identical true
+    test_already_present_sources_are_satisfied behind false
+    test_already_present_sources_are_satisfied diverged false
+    test_missing_release_branch_does_not_satisfy_sources
+    test_ancestry_lookup_failure_stops_collection
     test_rejects_unmerged_explicit_pr
     test_ambiguous_backport_body_is_not_trusted
 

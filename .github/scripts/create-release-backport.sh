@@ -45,7 +45,10 @@ write_outputs() {
     local body_file="$3"
     local commit_message_file="${OUTPUT_DIR}/commit-message.txt"
 
-    if [[ "${status}" == "conflict" ]]; then
+    if [[ "${status}" == "already-present" ]]; then
+        : > "${commit_message_file}"
+        : > "${OUTPUT_DIR}/author.txt"
+    elif [[ "${status}" == "conflict" ]]; then
         printf 'chore(backport): hand off #%s conflict\n' "${SOURCE_PR}" \
             > "${commit_message_file}"
         # The placeholder is the bot's own work, so it keeps the bot as author
@@ -214,6 +217,11 @@ main() {
     branch="automation/backport-${SOURCE_PR}-to-${CHANNEL}"
     mkdir -p "${OUTPUT_DIR}"
     body_file="${OUTPUT_DIR}/pull-request-body.md"
+    if git merge-base --is-ancestor "${SOURCE_COMMIT}" "${base_commit}"; then
+        echo "Source commit ${SOURCE_COMMIT} is already present in ${release_branch}; no backport is needed."
+        write_outputs already-present "${branch}" "${body_file}"
+        return
+    fi
     git checkout -q --detach "${base_commit}"
 
     set +e
@@ -221,6 +229,9 @@ main() {
     status=$?
     set -e
     if ((status == 0)); then
+        if git diff --cached --quiet; then
+            fail "cherry-pick produced no changes but ${SOURCE_COMMIT} is not an ancestor of ${release_branch}; reconcile the existing release-branch changes before retrying"
+        fi
         write_pr_body "${body_file}" success "${release_branch}" "" \
             "${base_commit}"
         write_outputs success "${branch}" "${body_file}"

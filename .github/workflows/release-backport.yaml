@@ -132,12 +132,20 @@ jobs:
                 : []
               historicalWithCommits.push({ ...pull, commits })
             }
+            const includedSourceCommits = await selector.findIncludedSourceCommits({
+              github,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              channel,
+              sources,
+            })
             return JSON.stringify(
               selector.selectNextBackport({
                 channel,
                 sources,
                 openBackports,
                 historicalBackports: historicalWithCommits,
+                includedSourceCommits,
               }),
             )
 
@@ -213,7 +221,8 @@ jobs:
             <<< "${source_entry}")" == "true" ]]; then
             {
               echo "exists=true"
-              echo "url=$(jq -r '.[0].backport_url' <<< "${source_entry}")"
+              echo "status=$(jq -r 'if .[0].already_present then "already-present" else "existing" end' <<< "${source_entry}")"
+              echo "url=$(jq -r '.[0].backport_url // .[0].source_url' <<< "${source_entry}")"
             } >> "${GITHUB_OUTPUT}"
             exit 0
           fi
@@ -283,7 +292,9 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Create backport pull request
-        if: steps.existing.outputs.exists != 'true'
+        if: >-
+          steps.existing.outputs.exists != 'true' &&
+          (steps.build.outputs.status == 'success' || steps.build.outputs.status == 'conflict')
         id: pull-request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
@@ -352,10 +363,14 @@ jobs:
             if [[ "${DEFERRED}" == "true" ]]; then
               echo "Deferred until the current channel backport merges."
             fi
-            echo "Pull request: ${BACKPORT_URL}"
+            if [[ "${STATUS}" == "already-present" ]]; then
+              echo "The source commit is already included in the release branch; no new pull request is needed."
+            elif [[ -n "${BACKPORT_URL}" ]]; then
+              echo "Pull request: ${BACKPORT_URL}"
+            fi
           } >> "${GITHUB_STEP_SUMMARY}"
         env:
-          STATUS: ${{ steps.build.outputs.status || 'existing' }}
+          STATUS: ${{ steps.build.outputs.status || steps.existing.outputs.status || 'existing' }}
           DEFERRED: ${{ steps.existing.outputs.deferred || 'false' }}
           BACKPORT_URL: >-
             ${{ steps.pull-request.outputs.pull-request-url || steps.existing.outputs.url }}

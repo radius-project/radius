@@ -87,7 +87,7 @@ main() {
     sort "${changed_files}.raw" > "${changed_files}"
     rm "${changed_files}.raw"
     if grep -Eq \
-        '^(CHANGELOG\.md|versions\.yaml|docs/release-notes/.+\.md)$' \
+        '^(CHANGELOG\.md|versions\.yaml|docs/release-notes/v[0-9]+\.[0-9]+\.[0-9]+[^/]*\.md)$' \
         "${changed_files}"; then
         touches_release=true
     fi

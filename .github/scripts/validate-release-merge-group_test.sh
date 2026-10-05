@@ -154,23 +154,37 @@ test_selects_release_pr_on_advanced_base() {
 }
 
 test_accepts_group_without_release_pr() {
-    local group_sha
+    local file="${1:-other.txt}"
+    local expects_plan="${2:-false}"
+    local group_sha output status=0
 
     git -C "${REPO}" checkout -q main
     git -C "${REPO}" reset -q --hard "${BASE_SHA}"
-    printf 'other\n' > "${REPO}/other.txt"
-    git -C "${REPO}" add other.txt
+    mkdir -p "$(dirname "${REPO}/${file}")"
+    printf 'changed\n' > "${REPO}/${file}"
+    git -C "${REPO}" add "${file}"
     git -C "${REPO}" commit -q -m "fix: unrelated change"
+    printf '[]\n' > "${REPO}/candidates.json"
     GROUP_BASE_SHA="${BASE_SHA}"
     group_sha="$(git -C "${REPO}" rev-parse HEAD)"
-    if ! run_validator "${group_sha}" > /dev/null; then
-        fail_test "expected an unrelated merge group to pass"
-        return
+    output="$(run_validator "${group_sha}" 2>&1)" || status=$?
+    if [[ "${expects_plan}" == "true" ]]; then
+        if [[ "${status}" == 0 || "${output}" != *"release metadata changed without a matching release plan"* ]]; then
+            fail_test "expected unplanned metadata ${file} to fail: ${output}"
+            return
+        fi
+    else
+        if [[ "${status}" != 0 || -s "${REPO}/selected.txt" ]]; then
+            fail_test "expected ordinary change ${file} to pass without a plan: ${output}"
+            return
+        fi
     fi
     ((++PASS))
 }
 
 main() {
+    local file
+
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/release-merge-group-XXXXXX")"
 
     setup_repo
@@ -179,8 +193,16 @@ main() {
     test_rejects_group_with_extra_changes
     setup_repo
     test_selects_release_pr_on_advanced_base
-    setup_repo
-    test_accepts_group_without_release_pr
+    for file in other.txt docs/release-notes/README.md \
+        docs/release-notes/template.md docs/release-notes/template_patch.md; do
+        setup_repo
+        test_accepts_group_without_release_pr "${file}"
+    done
+    for file in CHANGELOG.md versions.yaml docs/release-notes/v0.61.0.md \
+        docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md; do
+        setup_repo
+        test_accepts_group_without_release_pr "${file}" true
+    done
 
     if ((FAIL > 0)); then
         echo "release merge-group tests failed: ${PASS} passed, ${FAIL} failed"

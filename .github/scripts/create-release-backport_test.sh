@@ -78,6 +78,8 @@ setup_repo() {
 }
 
 run_backport() {
+    local status=0
+
     rm -rf "${REPO}/out"
     git -C "${REPO}" config --unset user.name || true
     git -C "${REPO}" config --unset user.email || true
@@ -85,8 +87,9 @@ run_backport() {
     bash "${SCRIPT}" --source-pr 123 --source-commit "${SOURCE_COMMIT}" \
         --source-title 'fix: source change' \
         --source-url 'https://example.test/pull/123' --channel 0.60 \
-        --output-dir out
+        --output-dir out || status=$?
     popd > /dev/null
+    return "${status}"
 }
 
 test_successful_backport() {
@@ -196,6 +199,57 @@ test_conflict_creates_safe_handoff() {
     ((++PASS))
 }
 
+test_already_present_source_is_satisfied() {
+    local position="$1"
+    local before
+
+    setup_repo false
+    if [[ "${position}" == ancestor ]]; then
+        git -C "${REPO}" commit -q --allow-empty -m "fix: later release work"
+    fi
+    git -C "${REPO}" push -q origin HEAD:refs/heads/release/0.60
+    git -C "${REPO}" fetch -q origin \
+        'refs/heads/release/0.60:refs/remotes/origin/release/0.60'
+    before="$(git -C "${REPO}" rev-parse HEAD)"
+    run_backport
+    if [[ "$(cat "${REPO}/out/status.txt")" != already-present ]]; then
+        fail_test "an included source commit must be reported as already present"
+        return
+    fi
+    if [[ "$(git -C "${REPO}" rev-parse HEAD)" != "${before}" ]] \
+                                                                 || ! git -C "${REPO}" diff --cached --quiet; then
+        fail_test "an already-present backport must not create or stage changes"
+        return
+    fi
+    if [[ -s "${REPO}/out/commit-message.txt" || -e "${REPO}/out/pull-request-body.md" ]]; then
+        fail_test "an already-present source must not claim a new backport commit"
+        return
+    fi
+    ((++PASS))
+}
+
+test_empty_cherry_pick_without_ancestry_is_not_success() {
+    local output status=0
+
+    setup_repo false
+    git -C "${REPO}" checkout -q -b equivalent origin/release/0.60
+    printf 'source change\n' > "${REPO}/file.txt"
+    git -C "${REPO}" commit -qam "fix: equivalent release change"
+    git -C "${REPO}" push -q origin HEAD:refs/heads/release/0.60
+    git -C "${REPO}" fetch -q origin \
+        'refs/heads/release/0.60:refs/remotes/origin/release/0.60'
+    output="$(run_backport 2>&1)" || status=$?
+    if [[ "${status}" == 0 || "${output}" != *"cherry-pick produced no changes"* ]]; then
+        fail_test "an empty cherry-pick must require reconciliation: ${output}"
+        return
+    fi
+    if [[ -e "${REPO}/out/status.txt" ]] || ! git -C "${REPO}" diff --cached --quiet; then
+        fail_test "an empty cherry-pick must not report or stage a successful backport"
+        return
+    fi
+    ((++PASS))
+}
+
 test_rejects_advanced_release_branch() {
     local stale_base
 
@@ -227,6 +281,9 @@ main() {
 
     test_successful_backport
     test_conflict_creates_safe_handoff
+    test_already_present_source_is_satisfied tip
+    test_already_present_source_is_satisfied ancestor
+    test_empty_cherry_pick_without_ancestry_is_not_success
     test_rejects_advanced_release_branch
 
     if ((FAIL > 0)); then

@@ -19,6 +19,7 @@ import test from "node:test";
 
 import {
   entriesForMergedPull,
+  findIncludedSourceCommits,
   releaseChannelForEvent,
   selectNextBackport
 } from "./select-release-backports.mjs";
@@ -86,6 +87,146 @@ test("does not accept a merged marker without the exact trailer", () => {
     ]
   });
   assert.equal(selected[0].source_pr, 101);
+});
+
+test("queue skips sources already included in the exact release branch", async () => {
+  for (const relation of ["ahead", "identical", "behind", "diverged"]) {
+    const first = source(101);
+    const second = source(102);
+    const releaseSHA = "b".repeat(40);
+    const comparisons = [];
+    const github = {
+      rest: {
+        git: {
+          async listMatchingRefs(parameters) {
+            assert.equal(parameters.ref, "heads/release/0.60");
+            return {
+              data: [
+                {
+                  ref: "refs/heads/release/0.600",
+                  object: { sha: "c".repeat(40) }
+                },
+                { ref: "refs/heads/release/0.60", object: { sha: releaseSHA } }
+              ]
+            };
+          }
+        },
+        repos: {
+          async compareCommitsWithBasehead(parameters) {
+            comparisons.push(parameters.basehead);
+            assert.equal(parameters.per_page, 1);
+            return {
+              data: {
+                status:
+                  parameters.basehead.startsWith(first.merge_commit_sha) ?
+                    relation
+                  : "diverged"
+              }
+            };
+          }
+        }
+      }
+    };
+    const includedSourceCommits = await findIncludedSourceCommits({
+      github,
+      owner: "radius-project",
+      repo: "radius",
+      channel: "0.60",
+      sources: [first, second]
+    });
+    assert.deepEqual(comparisons, [
+      `${first.merge_commit_sha}...${releaseSHA}`,
+      `${second.merge_commit_sha}...${releaseSHA}`
+    ]);
+    const selected = selectNextBackport({
+      channel: "0.60",
+      sources: [first, second],
+      openBackports: [],
+      historicalBackports: [],
+      includedSourceCommits
+    });
+    assert.equal(
+      selected[0].source_pr,
+      ["ahead", "identical"].includes(relation) ? 102 : 101
+    );
+  }
+});
+
+test("a release-branch prefix match does not prove source inclusion", async () => {
+  const github = {
+    rest: {
+      git: {
+        async listMatchingRefs() {
+          return {
+            data: [
+              {
+                ref: "refs/heads/release/0.600",
+                object: { sha: "b".repeat(40) }
+              }
+            ]
+          };
+        }
+      }
+    }
+  };
+  assert.deepEqual(
+    await findIncludedSourceCommits({
+      github,
+      owner: "radius-project",
+      repo: "radius",
+      channel: "0.60",
+      sources: [source(101)]
+    }),
+    []
+  );
+});
+
+test("failed ancestry queries stop queue selection", async () => {
+  const github = {
+    rest: {
+      git: {
+        async listMatchingRefs() {
+          return {
+            data: [
+              {
+                ref: "refs/heads/release/0.60",
+                object: { sha: "b".repeat(40) }
+              }
+            ]
+          };
+        }
+      },
+      repos: {
+        async compareCommitsWithBasehead() {
+          throw new Error("GitHub unavailable");
+        }
+      }
+    }
+  };
+  await assert.rejects(
+    findIncludedSourceCommits({
+      github,
+      owner: "radius-project",
+      repo: "radius",
+      channel: "0.60",
+      sources: [source(101)]
+    }),
+    /GitHub unavailable/
+  );
+});
+
+test("queue is empty when every source is already included", () => {
+  const first = source(101);
+  assert.deepEqual(
+    selectNextBackport({
+      channel: "0.60",
+      sources: [first],
+      openBackports: [],
+      historicalBackports: [],
+      includedSourceCommits: [first.merge_commit_sha]
+    }),
+    []
+  );
 });
 
 test("uses every current release label on a merged source PR", () => {

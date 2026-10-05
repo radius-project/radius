@@ -194,6 +194,23 @@ test_accepts_generated_plan() {
     ((++PASS))
 }
 
+test_rejects_pending_supported_release() {
+    local output status=0
+
+    git -C "${REPO}" tag -d v0.60.0 > /dev/null
+    output="$(run_validator 2>&1)" || status=$?
+    if [[ "${status}" == 0 || "${output}" != *"supported release v0.60.0 has no tag"* ]]; then
+        fail_test "an open plan must not bypass the pending-release prerequisite: ${output}"
+        return
+    fi
+    git -C "${REPO}" tag v0.60.0
+    if ! run_validator > /dev/null; then
+        fail_test "the plan should become valid after the previous release is tagged"
+        return
+    fi
+    ((++PASS))
+}
+
 test_accepts_curated_note_sections() {
     sed -i 's/<!-- CURATE HIGHLIGHTS -->/A curated highlight./' \
         "${HEAD_DIR}/docs/release-notes/v0.61.0-rc.1.md"
@@ -289,6 +306,8 @@ main() {
 
     setup_repo
     test_accepts_generated_plan
+    setup_repo
+    test_rejects_pending_supported_release
     setup_repo
     test_accepts_curated_note_sections
     setup_repo
