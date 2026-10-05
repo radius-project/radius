@@ -163,6 +163,14 @@ jobs:
           # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
           cache: false
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+        with:
+          module-directories: |
+            .
+            test/magpiego
+            test/testrp
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -284,6 +292,9 @@ jobs:
           cache-dependency-path: go.sum
           # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
           cache: false
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       # The rad CLI, container images and Bicep types are built once in the
       # "build" job and shared with every matrix leg. Downloading them here avoids
@@ -450,6 +461,35 @@ jobs:
         # PostgreSQL rather than the default Kubernetes API server store. See issue #12227.
         if: matrix.name == 'database-noncloud'
         run: echo "DATABASE_INSTALL_ARGS=--set database.enabled=true" >> "${GITHUB_ENV}"
+
+      - name: Wait for Deployment Engine image to be available
+        # When this run was triggered by deployment-engine's publish dispatch, DE_TAG
+        # names an image that repo just pushed to GHCR. The dispatch that starts this
+        # workflow can race the GHCR push itself (the image isn't necessarily visible
+        # yet when the dispatch lands), and "Install Radius" below waits on every
+        # Deployment becoming ready, so a not-yet-pullable DE image leaves the bicep-de
+        # pod in ImagePullBackOff for the whole install timeout and can fail the job with
+        # a bare "context deadline exceeded" (related to issue #12576). Poll the GHCR
+        # manifest instead of guessing a fixed delay, so we proceed the moment the image
+        # lands and fail fast with a clear reason if it never does.
+        if: github.event_name == 'repository_dispatch' && matrix.name != 'statestore-noncloud'
+        run: |
+          set -euo pipefail
+
+          MAX_ATTEMPTS=10
+          SLEEP_SECONDS=15
+          for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
+            if manifest_error=$(docker manifest inspect "${DE_IMAGE}:${DE_TAG}" 2>&1 >/dev/null); then
+              echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} is available (attempt ${attempt}/${MAX_ATTEMPTS})."
+              exit 0
+            fi
+            echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} not yet available (attempt ${attempt}/${MAX_ATTEMPTS}): ${manifest_error}"
+            echo "Retrying in ${SLEEP_SECONDS}s..."
+            sleep "${SLEEP_SECONDS}"
+          done
+
+          echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} did not become available after $((MAX_ATTEMPTS * SLEEP_SECONDS))s. Last error: ${manifest_error}"
+          exit 1
 
       - name: Install Radius
         # The statestore leg drives its own install/uninstall/reinstall lifecycle
@@ -654,8 +694,9 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           # The statestore leg installs/uninstalls/reinstalls Radius, so it needs
-          # far longer than the standard per-leg timeout.
-          TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || env.FUNCTIONALTEST_TIMEOUT }}
+          # far longer than the standard per-leg timeout. The upgrade leg installs
+          # Radius twice and runs several upgrades, so it also needs more time.
+          TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || matrix.name == 'upgrade-noncloud' && '30m' || env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}

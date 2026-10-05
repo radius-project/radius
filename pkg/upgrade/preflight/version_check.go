@@ -27,7 +27,12 @@ import (
 var _ PreflightCheck = (*VersionCompatibilityCheck)(nil)
 
 const (
+	// RADIUS_EDGE_CHART_VERSION is the chart version of the unreleased in-repo chart.
 	RADIUS_EDGE_CHART_VERSION = "0.42.42-dev"
+
+	// RADIUS_EDGE_APP_VERSION is the appVersion of the unreleased in-repo chart. Installed
+	// versions are read from the release's appVersion, so this is what an edge install reports.
+	RADIUS_EDGE_APP_VERSION = "edge"
 )
 
 // VersionCompatibilityCheck validates that the target version is a valid upgrade
@@ -88,26 +93,25 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 		return false, "Target version 'latest' must be resolved to a specific version before validation", nil
 	}
 
-	// Always allow upgrades from edge development version
-	if currentVersion == RADIUS_EDGE_CHART_VERSION {
+	// Always allow upgrades from edge development version, but the target must still be a
+	// recognizable version. Edge targets are allowed so the in-cluster pre-upgrade hook can
+	// validate edge-to-edge upgrades, where the target is the chart's appVersion.
+	if isEdgeVersion(currentVersion) {
+		if isEdgeVersion(targetVersion) {
+			return true, "", nil
+		}
+		if _, err := parseSemver(targetVersion); err != nil {
+			return false, "", fmt.Errorf("invalid target version format: %w", err)
+		}
 		return true, "", nil
 	}
 
-	// Ensure both versions have 'v' prefix for semver parsing
-	if len(currentVersion) > 0 && currentVersion[0] != 'v' {
-		currentVersion = "v" + currentVersion
-	}
-	if len(targetVersion) > 0 && targetVersion[0] != 'v' {
-		targetVersion = "v" + targetVersion
-	}
-
-	// Parse versions using semver library
-	current, err := semver.NewVersion(currentVersion)
+	current, err := parseSemver(currentVersion)
 	if err != nil {
 		return false, "", fmt.Errorf("invalid current version format: %w", err)
 	}
 
-	target, err := semver.NewVersion(targetVersion)
+	target, err := parseSemver(targetVersion)
 	if err != nil {
 		return false, "", fmt.Errorf("invalid target version format: %w", err)
 	}
@@ -154,4 +158,17 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 func ValidateVersionJump(currentVersion, targetVersion string) (bool, string, error) {
 	check := NewVersionCompatibilityCheck(currentVersion, targetVersion)
 	return check.isValidUpgradeVersion(currentVersion, targetVersion)
+}
+
+// isEdgeVersion reports whether version identifies the unreleased in-repo chart.
+func isEdgeVersion(version string) bool {
+	return version == RADIUS_EDGE_CHART_VERSION || version == RADIUS_EDGE_APP_VERSION
+}
+
+// parseSemver parses version as a semantic version, adding the 'v' prefix the parser expects.
+func parseSemver(version string) (*semver.Version, error) {
+	if len(version) > 0 && version[0] != 'v' {
+		version = "v" + version
+	}
+	return semver.NewVersion(version)
 }

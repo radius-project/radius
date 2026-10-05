@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
+name: Go mod download (retry)
+description: |
+  Downloads Go module dependencies with retries, working around a well-known
+  Go issue where HTTP/2-multiplexed requests to proxy.golang.org intermittently
+  fail with stream-level errors (e.g. "stream ID ...; INTERNAL_ERROR; received
+  from peer"). Run this after Setup Go and before any step that compiles Go
+  code (`go build`, `go test`, `make build`, `make docker-build`, etc.) so the
+  module cache is warm for every module listed by the caller.
+inputs:
+  working-directory:
+    description: Base directory used to resolve module-directories.
+    required: false
+    default: "."
+  module-directories:
+    description: Newline-separated directories containing go.mod, relative to working-directory.
+    required: false
+    default: "."
+  retries:
+    description: Number of attempts before giving up.
+    required: false
+    default: "5"
+  retry-wait-seconds:
+    description: Seconds to wait before the first retry; doubles after each attempt.
+    required: false
+    default: "5"
+runs:
+  using: composite
+  steps:
+    - name: Download Go modules (retry on proxy errors)
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        # Disables HTTP/2 for Go's own HTTP client traffic. proxy.golang.org
+        # occasionally resets one multiplexed HTTP/2 stream mid-download
+        # (golang/go#38671), which Go's module fetcher doesn't retry. Forcing
+        # HTTP/1.1 avoids the multiplexing bug entirely.
+        GODEBUG: http2client=0
+        INPUT_RETRIES: ${{ inputs.retries }}
+        INPUT_RETRY_WAIT_SECONDS: ${{ inputs.retry-wait-seconds }}
+        INPUT_MODULE_DIRECTORIES: ${{ inputs.module-directories }}
+        DOWNLOAD_SCRIPT: ${{ github.action_path }}/download.sh
+      run: bash "${DOWNLOAD_SCRIPT}"

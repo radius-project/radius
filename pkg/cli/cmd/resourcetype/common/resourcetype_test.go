@@ -38,6 +38,15 @@ func Test_GetResourceTypeDetails(t *testing.T) {
 
 	})
 
+	t.Run("Get Resource Details Success - Case Insensitive", func(t *testing.T) {
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+		require.NoError(t, err)
+
+		res, err := GetResourceTypeDetails(t.Context(), "MyCompany.Resources", "TESTRESOURCES", clientFactory)
+		require.NoError(t, err)
+		require.Equal(t, "MyCompany.Resources/testResources", res.Name)
+	})
+
 	t.Run("Get Resource Details Failure - Resource Provider Not found", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
