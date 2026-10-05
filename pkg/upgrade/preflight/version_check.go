@@ -19,15 +19,13 @@ package preflight
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/radius-project/radius/pkg/version"
 )
 
 // Ensure VersionCompatibilityCheck implements PreflightCheck interface
 var _ PreflightCheck = (*VersionCompatibilityCheck)(nil)
-
-var legacyRCPrereleasePattern = regexp.MustCompile(`^rc([1-9][0-9]*)$`)
 
 const (
 	// RADIUS_EDGE_CHART_VERSION is the chart version of the unreleased in-repo chart.
@@ -119,20 +117,15 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 		return false, "", fmt.Errorf("invalid target version format: %w", err)
 	}
 
-	currentLegacyRC := legacyRCPrereleasePattern.FindStringSubmatch(current.Prerelease())
-	targetLegacyRC := legacyRCPrereleasePattern.FindStringSubmatch(target.Prerelease())
-	if currentLegacyRC != nil && targetLegacyRC != nil {
-		current = semver.New(current.Major(), current.Minor(), current.Patch(), "rc."+currentLegacyRC[1], current.Metadata())
-		target = semver.New(target.Major(), target.Minor(), target.Patch(), "rc."+targetLegacyRC[1], target.Metadata())
-	}
+	comparison := version.Compare(target, current)
 
 	// Check if versions are the same
-	if current.Equal(target) {
+	if comparison == 0 {
 		return false, "Target version is the same as current version", nil
 	}
 
 	// Check if downgrade attempt
-	if target.LessThan(current) {
+	if comparison < 0 {
 		return false, "Downgrading is not supported", nil
 	}
 
