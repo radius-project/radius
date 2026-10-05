@@ -177,6 +177,15 @@ test-functional-ucp-noncloud: ## Runs UCP functional tests that do not require c
 test-functional-authz-noncloud: ## Runs internal component authorization functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/authz/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
+# Optional overrides for authz-would-deny-check. AUTHZ_WOULD_DENY_ARGS passes extra script arguments,
+# for example AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/container_logs".
+AUTHZ_NAMESPACE ?= radius-system
+AUTHZ_WOULD_DENY_ARGS ?=
+
+.PHONY: authz-would-deny-check
+authz-would-deny-check: ## Fails if a Radius pod in the current kube context logged an authorization dry-run would-deny line
+	@bash ./.github/scripts/authz-would-deny-check.sh --namespace "$(AUTHZ_NAMESPACE)" $(AUTHZ_WOULD_DENY_ARGS)
+
 .PHONY: test-functional-ucp-cloud
 test-functional-ucp-cloud: ## Runs UCP functional tests that require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)

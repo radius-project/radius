@@ -103,6 +103,18 @@ kubectl create secret generic target-kubeconfig \
 
 Install Radius with `global.targetCluster.enabled=true`, then set `RADIUS_TEST_EXTERNAL_KUBECONFIG` to the host-side kubeconfig that the test process uses to assert where resources were created.
 
+### Check for authorization dry-run would-deny logs
+
+CI runs the `corerp`, `dynamicrp`, `kubernetes`, and `ucp` non-cloud groups a second time with Radius installed with `--set global.rbac.dryRun=true`, then fails the leg if any component logged that an authorization check would deny a request (`authzWouldDeny=true`). Under enforcement those requests would be rejected, so this catches false positives before enforcement is turned on. To run the same check locally, install Radius with the dry run enabled, run the tests, then check the current kube context:
+
+```bash
+rad install kubernetes --set global.rbac.dryRun=true
+make test-functional-corerp-noncloud
+make authz-would-deny-check
+```
+
+The check reads current and previous container logs from every pod in `radius-system`. Set `AUTHZ_NAMESPACE` to read another namespace, or pass extra arguments with `AUTHZ_WOULD_DENY_ARGS`, such as `AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/container_logs"` to also scan logs saved by the tests. Known would-deny lines that are tracked by an issue can be listed in [`.github/scripts/authz-would-deny-allowlist.txt`](../../../../.github/scripts/authz-would-deny-allowlist.txt); each entry must start with the issue reference.
+
 ### Configure test execution
 
 The Make targets accept these environment variables:
