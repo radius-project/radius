@@ -88,6 +88,13 @@ func TestVersionCompatibilityCheck_Run(t *testing.T) {
 			expectMessage:  "Upgrade from 0.60.0-rc4 to 0.60.0-rc5 is valid",
 		},
 		{
+			name:           "historical prerelease upgrade across digit boundary",
+			currentVersion: "v0.60.0-rc9+old",
+			targetVersion:  "v0.60.0-rc10+new",
+			expectSuccess:  true,
+			expectMessage:  "Upgrade from v0.60.0-rc9+old to v0.60.0-rc10+new is valid",
+		},
+		{
 			name:           "valid patch version upgrade",
 			currentVersion: "v0.55.0",
 			targetVersion:  "v0.55.1",
@@ -170,6 +177,39 @@ func TestValidateVersionJump(t *testing.T) {
 			currentVersion: "0.61.0-rc.10",
 			targetVersion:  "0.61.0",
 			expectValid:    true,
+		},
+		{
+			name:           "historical RC nine to ten is an upgrade",
+			currentVersion: "0.60.0-rc9",
+			targetVersion:  "0.60.0-rc10",
+			expectValid:    true,
+		},
+		{
+			name:           "historical RC ninety-nine to one hundred is an upgrade",
+			currentVersion: "0.60.0-rc99",
+			targetVersion:  "0.60.0-rc100",
+			expectValid:    true,
+		},
+		{
+			name:           "historical RC ten to nine is a downgrade",
+			currentVersion: "0.60.0-rc10",
+			targetVersion:  "0.60.0-rc9",
+			expectValid:    false,
+			expectMessage:  "Downgrading is not supported",
+		},
+		{
+			name:           "same historical RC is rejected",
+			currentVersion: "0.60.0-rc10",
+			targetVersion:  "0.60.0-rc10",
+			expectValid:    false,
+			expectMessage:  "Target version is the same as current version",
+		},
+		{
+			name:           "other prereleases retain semantic version ordering",
+			currentVersion: "0.60.0-beta9",
+			targetVersion:  "0.60.0-beta10",
+			expectValid:    false,
+			expectMessage:  "Downgrading is not supported",
 		},
 		{
 			// SemVer orders the dotted identifier before the legacy one, which is

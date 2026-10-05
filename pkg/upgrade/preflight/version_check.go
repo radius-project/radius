@@ -19,12 +19,15 @@ package preflight
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/Masterminds/semver/v3"
 )
 
 // Ensure VersionCompatibilityCheck implements PreflightCheck interface
 var _ PreflightCheck = (*VersionCompatibilityCheck)(nil)
+
+var legacyRCPrereleasePattern = regexp.MustCompile(`^rc([1-9][0-9]*)$`)
 
 const (
 	// RADIUS_EDGE_CHART_VERSION is the chart version of the unreleased in-repo chart.
@@ -114,6 +117,13 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 	target, err := parseSemver(targetVersion)
 	if err != nil {
 		return false, "", fmt.Errorf("invalid target version format: %w", err)
+	}
+
+	currentLegacyRC := legacyRCPrereleasePattern.FindStringSubmatch(current.Prerelease())
+	targetLegacyRC := legacyRCPrereleasePattern.FindStringSubmatch(target.Prerelease())
+	if currentLegacyRC != nil && targetLegacyRC != nil {
+		current = semver.New(current.Major(), current.Minor(), current.Patch(), "rc."+currentLegacyRC[1], current.Metadata())
+		target = semver.New(target.Major(), target.Minor(), target.Patch(), "rc."+targetLegacyRC[1], target.Metadata())
 	}
 
 	// Check if versions are the same

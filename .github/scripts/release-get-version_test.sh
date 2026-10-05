@@ -257,14 +257,48 @@ test_rc_branch_and_channel() {
     [[ "$(output_value release-channel)" == "0.62.0-rc.1" ]] || fail_test "RC release channel was parsed incorrectly"
 }
 
-test_legacy_rc_remains_accepted() {
+test_new_legacy_rc_is_rejected() {
     local rc="v0.62.0-rc2"
 
     run_selector "${rc}" "${REPOSITORIES[@]}"
+    [[ "${LAST_STATUS}" -ne 0 ]] || fail_test "a new legacy RC must not be selected"
+    [[ "${LAST_OUTPUT}" == *"cannot create legacy RC"* ]] || fail_test "new legacy RC failed for the wrong reason"
+    [[ "${LAST_OUTPUT}" == *"use v0.62.0-rc.2 for a new release"* ]] || fail_test "new legacy RC must recommend the dotted version"
+    [[ -z "$(output_value release-version)" ]] || fail_test "rejected RC must not emit a release version"
+
+    git -C "${TEST_ROOT}/radius" tag "${rc}"
+    run_selector "${rc}" "${REPOSITORIES[@]}"
+    [[ "${LAST_STATUS}" -ne 0 ]] || fail_test "an unpublished local tag must not establish historical release state"
+    [[ -z "$(output_value release-version)" ]] || fail_test "local-only legacy RC must not emit a release version"
+}
+
+test_legacy_rc_remains_accepted() {
+    local rc="v0.62.0-rc2"
+
+    git -C "${TEST_ROOT}/radius" push --quiet origin "HEAD:refs/tags/${rc}"
+    run_selector "${rc}" "${REPOSITORIES[@]}"
     [[ "${LAST_STATUS}" -eq 0 ]] || fail_test "legacy RC selection failed: ${LAST_OUTPUT}"
+    [[ "$(output_value release-version)" == "${rc}" ]] || fail_test "historical reconciliation must preserve the exact tag name"
     [[ "$(output_value release-branch-name)" == "release/0.62" ]] || fail_test "legacy RC release branch was parsed incorrectly"
     [[ "$(output_value release-channel)" == "0.62.0-rc2" ]] || fail_test "legacy RC release channel was parsed incorrectly"
     [[ "${LAST_OUTPUT}" == *"use v0.62.0-rc.2 for new releases"* ]] || fail_test "legacy RC selection did not recommend the dotted form"
+}
+
+test_annotated_legacy_sibling_tag_allows_resume() {
+    local rc="v0.62.0-rc3"
+
+    git -C "${TEST_ROOT}/recipes" tag --annotate "${rc}" -m release
+    git -C "${TEST_ROOT}/recipes" push --quiet origin "refs/tags/${rc}"
+    run_selector "${rc}" "${REPOSITORIES[@]}"
+    [[ "${LAST_STATUS}" -eq 0 ]] || fail_test "an annotated legacy sibling tag must allow resume: ${LAST_OUTPUT}"
+    [[ "$(output_value release-version)" == "${rc}" ]] || fail_test "annotated legacy reconciliation must preserve the exact tag name"
+
+    for repository in radius dashboard bicep-types-aws; do
+        git -C "${TEST_ROOT}/${repository}" push --quiet origin "HEAD:refs/tags/${rc}"
+    done
+    run_selector "${rc},v0.63.0-rc.1" "${REPOSITORIES[@]}"
+    [[ "${LAST_STATUS}" -eq 0 ]] || fail_test "completed legacy releases must not block a new dotted release: ${LAST_OUTPUT}"
+    [[ "$(output_value release-version)" == "v0.63.0-rc.1" ]] || fail_test "completed historical version should be skipped"
 }
 
 test_rejects_unsupported_release_versions() {
@@ -312,7 +346,9 @@ main() {
     test_selects_version_missing_from_any_repository
     test_skips_version_complete_in_every_repository
     test_rc_branch_and_channel
+    test_new_legacy_rc_is_rejected
     test_legacy_rc_remains_accepted
+    test_annotated_legacy_sibling_tag_allows_resume
     test_rejects_unsupported_release_versions
     test_rejects_multiple_incomplete_versions
     test_requires_repository_and_output
@@ -322,7 +358,7 @@ main() {
     test_cross_branch_partial_release_resume annotated
     test_main_resumes_branch_created_before_tag
     test_release_branch_trigger_never_waits_for_cherry_pick
-    echo "release version selection and resume tests passed (11 tests)"
+    echo "release version selection and resume tests passed (15 tests)"
 }
 
 main "$@"

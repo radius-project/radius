@@ -92,6 +92,10 @@ main() {
             echo "Tag ${version} exists in every release repository. Skipping..."
             continue
         fi
+        if [[ "${#missing[@]}" -eq "${#repositories[@]}" ]] &&
+            is_legacy_rc_version "${version#v}"; then
+            fail "cannot create legacy RC ${version} without an existing release tag; use v$(canonical_radius_rc_version "${version#v}") for a new release"
+        fi
         [[ -z "${release_version}" ]] ||
             fail "updating multiple versions at once is not supported"
 
