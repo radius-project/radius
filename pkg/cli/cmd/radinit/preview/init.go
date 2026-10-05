@@ -249,12 +249,15 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Always write bicepconfig.json to the current directory so that Bicep files can be authored and
 	// deployed with Radius. An existing file is never overwritten. This runs after the workspace is
 	// saved so that an unwritable working directory does not prevent the workspace from being configured.
-	wd, err := os.Getwd()
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to get the current directory.")
+	bicepConfigDirectory := r.Options.BicepConfigDirectory
+	if bicepConfigDirectory == "" {
+		bicepConfigDirectory, err = os.Getwd()
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to get the current directory.")
+		}
 	}
 
-	err = setup.WriteBicepConfig(wd)
+	err = setup.WriteBicepConfig(bicepConfigDirectory)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to write bicepconfig.json.")
 	}

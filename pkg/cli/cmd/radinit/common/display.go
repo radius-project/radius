@@ -56,6 +56,7 @@ const (
 	SummaryApplicationScaffoldFile                = SummaryIndent + "Create %s\n"
 	SummaryConfigurationHeadingIcon               = "📋 "
 	SummaryConfigurationUpdateHeading             = "Update local configuration\n"
+	SummaryConfigurationFile                      = SummaryIndent + "%s\n"
 	ProgressHeading                               = "Initializing Radius. This may take a minute or two...\n\n"
 	ProgressCompleteFooter                        = "\nInitialization complete! Have a RAD time 😎\n\n"
 	ProgressStepCompleteIcon                      = "✅ "
@@ -84,6 +85,10 @@ type DisplayOptions struct {
 	// RecipePackLabel is the label of the recipe pack to display in the summary.
 	// An empty value omits the recipe pack line entirely.
 	RecipePackLabel string
+
+	// ConfigFiles are the local files to list under the "Update local configuration" heading.
+	// An empty value lists no files.
+	ConfigFiles []string
 }
 
 // ClusterDisplay holds the cluster fields rendered by the summary and progress views.
@@ -295,6 +300,7 @@ func (m *SummaryModel) View() tea.View {
 
 	message.WriteString(SummaryConfigurationHeadingIcon)
 	message.WriteString(SummaryConfigurationUpdateHeading)
+	writeConfigFiles(message, options.ConfigFiles)
 
 	message.WriteString(SummaryFooter)
 
@@ -395,6 +401,7 @@ func (m *ProgressModel) View() tea.View {
 
 	m.writeProgressIcon(message, m.Progress.ConfigComplete, &waiting)
 	message.WriteString(SummaryConfigurationUpdateHeading)
+	writeConfigFiles(message, options.ConfigFiles)
 
 	if !waiting {
 		message.WriteString(ProgressCompleteFooter)
@@ -468,6 +475,13 @@ func writeEnvironmentSummary(message *strings.Builder, options DisplayOptions) {
 		}
 	} else {
 		message.WriteString(fmt.Sprintf(SummaryEnvironmentExistingHeadingFmt, highlight(options.Environment.Name)))
+	}
+}
+
+// writeConfigFiles writes one indented line per local configuration file.
+func writeConfigFiles(message *strings.Builder, files []string) {
+	for _, file := range files {
+		message.WriteString(fmt.Sprintf(SummaryConfigurationFile, highlight(file)))
 	}
 }
 

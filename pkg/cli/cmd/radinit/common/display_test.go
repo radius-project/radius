@@ -18,9 +18,11 @@ package common
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,4 +67,63 @@ func Test_ProgressModel_Update_CtrlC(t *testing.T) {
 	// The returned command quits the Bubble Tea program.
 	require.NotNil(t, cmd)
 	require.IsType(t, tea.QuitMsg{}, cmd())
+}
+
+// renderedText strips styling and trailing padding from a rendered view so it can be compared as plain text.
+func renderedText(view tea.View) string {
+	lines := strings.Split(ansi.Strip(view.Content), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, " ")
+	}
+	return strings.Join(lines, "\n")
+}
+
+func Test_SummaryModel_View_ConfigFiles(t *testing.T) {
+	t.Run("lists config files under the configuration heading", func(t *testing.T) {
+		model := NewSummaryModel(DisplayOptions{
+			ConfigFiles: []string{"/home/user/my-project/bicepconfig.json"},
+		})
+
+		text := renderedText(model.View())
+
+		require.Contains(t, text, SummaryConfigurationHeadingIcon+"Update local configuration\n"+
+			"   - /home/user/my-project/bicepconfig.json\n"+
+			"\n(press enter to confirm or esc to restart)")
+	})
+
+	t.Run("lists no config files when empty", func(t *testing.T) {
+		model := NewSummaryModel(DisplayOptions{})
+
+		text := renderedText(model.View())
+
+		require.Contains(t, text, SummaryConfigurationHeadingIcon+"Update local configuration\n"+
+			"\n(press enter to confirm or esc to restart)")
+	})
+}
+
+func Test_ProgressModel_View_ConfigFiles(t *testing.T) {
+	complete := ProgressMsg{InstallComplete: true, EnvironmentComplete: true, ApplicationComplete: true, ConfigComplete: true}
+
+	t.Run("lists config files under the configuration heading", func(t *testing.T) {
+		model := NewProgressModel(DisplayOptions{
+			ConfigFiles: []string{"/home/user/my-project/bicepconfig.json"},
+		}).(*ProgressModel)
+		model.Progress = complete
+
+		text := renderedText(model.View())
+
+		require.Contains(t, text, ProgressStepCompleteIcon+"Update local configuration\n"+
+			"   - /home/user/my-project/bicepconfig.json\n"+
+			"\nInitialization complete!")
+	})
+
+	t.Run("lists no config files when empty", func(t *testing.T) {
+		model := NewProgressModel(DisplayOptions{}).(*ProgressModel)
+		model.Progress = complete
+
+		text := renderedText(model.View())
+
+		require.Contains(t, text, ProgressStepCompleteIcon+"Update local configuration\n"+
+			"\nInitialization complete!")
+	})
 }

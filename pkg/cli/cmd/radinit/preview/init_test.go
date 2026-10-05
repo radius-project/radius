@@ -398,6 +398,11 @@ func Test_Validate(t *testing.T) {
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerpv20250801.EnvironmentResource{})
 			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				wd, err := os.Getwd()
+				require.NoError(t, err)
+				require.Equal(t, wd, runner.(*Runner).Options.BicepConfigDirectory)
+			},
 		},
 		{
 			Name:          "rad init without Radius installed",
@@ -796,6 +801,18 @@ func Test_Run_WritesBicepConfig(t *testing.T) {
 		require.Equal(t, setup.GetVersionedBicepConfig(), string(b))
 
 		require.NoFileExists(t, filepath.Join(tempDir, "app.bicep"))
+	})
+
+	t.Run("writes bicepconfig.json to the resolved directory", func(t *testing.T) {
+		runner, cwd := newBicepConfigTestRunner(t)
+		resolved := t.TempDir()
+		runner.Options.BicepConfigDirectory = resolved
+
+		err := runner.Run(t.Context())
+		require.NoError(t, err)
+
+		require.FileExists(t, filepath.Join(resolved, "bicepconfig.json"))
+		require.NoFileExists(t, filepath.Join(cwd, "bicepconfig.json"))
 	})
 
 	t.Run("preserves existing bicepconfig.json", func(t *testing.T) {

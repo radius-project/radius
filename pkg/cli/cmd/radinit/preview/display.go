@@ -19,8 +19,10 @@ package preview
 import (
 	"context"
 	"io"
+	"path/filepath"
 
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
+	"github.com/radius-project/radius/pkg/cli/setup"
 )
 
 // confirmOptions shows a summary of the user's selections and prompts for confirmation.
@@ -45,6 +47,11 @@ func toDisplayOptions(options *initOptions) common.DisplayOptions {
 		recipePackLabel = "default"
 	}
 
+	var configFiles []string
+	if options.BicepConfigDirectory != "" {
+		configFiles = []string{filepath.Join(options.BicepConfigDirectory, setup.BicepConfigFileName)}
+	}
+
 	return common.DisplayOptions{
 		Cluster: common.ClusterDisplay{
 			Install:   options.Cluster.Install,
@@ -62,5 +69,6 @@ func toDisplayOptions(options *initOptions) common.DisplayOptions {
 			AWS:   options.CloudProviders.AWS,
 		},
 		RecipePackLabel: recipePackLabel,
+		ConfigFiles:     configFiles,
 	}
 }

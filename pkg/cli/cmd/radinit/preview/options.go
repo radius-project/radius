@@ -18,6 +18,7 @@ package preview
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/radius-project/radius/pkg/cli"
 	cli_aws "github.com/radius-project/radius/pkg/cli/aws"
@@ -33,6 +34,9 @@ type initOptions struct {
 	Recipes        recipePackOptions
 	// SetValues is a list of values that will be passed to Helm when installing the application.
 	SetValues []string
+	// BicepConfigDirectory is the directory where bicepconfig.json will be written. It is resolved once
+	// so that the summary and the write use the same location. Empty if it could not be resolved.
+	BicepConfigDirectory string
 }
 
 // clusterOptions holds all of the options that will be used to initialize the Kubernetes cluster.
@@ -102,6 +106,12 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 	}
 
 	options.Recipes.DefaultRecipePack = !r.Full
+
+	// Resolve the bicepconfig.json location for display. If this fails, Run resolves it again and
+	// reports the error there.
+	if wd, err := os.Getwd(); err == nil {
+		options.BicepConfigDirectory = wd
+	}
 
 	// If the user has a current workspace we should overwrite it.
 	// If the user does not have a current workspace we should create a new one called default and set it as current

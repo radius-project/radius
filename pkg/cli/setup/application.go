@@ -49,6 +49,9 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 }
 ` // Trailing newline intentional.
 
+	// BicepConfigFileName is the name of the Bicep configuration file written by `rad init`.
+	BicepConfigFileName = "bicepconfig.json"
+
 	bicepConfigTemplate = `{
 	"extensions": {
 		"radius": "br:biceptypes.azurecr.io/radius:%s",
@@ -81,7 +84,7 @@ func ScaffoldApplication(directory string, template string) error {
 // The file is created with O_EXCL so that a file created concurrently by another process is not truncated.
 // Any existing entry at that path, including a directory, is treated as already present.
 func WriteBicepConfig(directory string) error {
-	bicepConfigFilepath := filepath.Join(directory, "bicepconfig.json")
+	bicepConfigFilepath := filepath.Join(directory, BicepConfigFileName)
 	f, err := os.OpenFile(bicepConfigFilepath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if errors.Is(err, fs.ErrExist) {
 		return nil
