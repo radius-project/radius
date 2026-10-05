@@ -1,0 +1,50 @@
+# Rogue workload for manual authorization checks. It stands in for a compromised
+# application workload in an environment namespace: no service account token and
+# no special permissions. hack/authz/rogue.sh and as-component.sh create it with
+# "kubectl apply --namespace <ns>".
+#
+# The curl image matches test/rogue (rogue.DefaultImage). That image has no
+# openssl binary, so a second container provides openssl. Both share /work, where
+# as-component.sh writes copied component certificates.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: radius-authz-rogue
+  labels:
+    app.kubernetes.io/name: radius-rogue-client
+    app.kubernetes.io/part-of: radius-authz-kit
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  terminationGracePeriodSeconds: 0
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: curl
+      image: docker.io/curlimages/curl:8.17.0
+      command: ["sleep", "infinity"]
+      securityContext:
+        # curl_user in the curl image. The image names its user rather than its UID.
+        runAsUser: 100
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: work
+          mountPath: /work
+    - name: openssl
+      image: docker.io/alpine/openssl:3.5.9
+      command: ["sleep", "infinity"]
+      securityContext:
+        runAsUser: 100
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: work
+          mountPath: /work
+  volumes:
+    - name: work
+      emptyDir: {}
