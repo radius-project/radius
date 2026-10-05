@@ -94,23 +94,24 @@ func TestBackendUsesRegisteredUCPCredentials(t *testing.T) {
 			secretProvider.SetClient(store)
 			e := executor{ucpConn: conn, secretProvider: secretProvider}
 			env := map[string]string{}
+			workingDir := t.TempDir()
 			for i, value := range []any{registered, rotated} {
 				data, err := json.Marshal(value)
 				require.NoError(t, err)
 				require.NoError(t, store.Save(t.Context(), "backend-credentials", data))
-				auth, err := e.resolveBackendAuth(t.Context(), backend, env)
+				auth, err := e.resolveBackendAuth(t.Context(), backend, workingDir, env)
 				require.NoError(t, err)
 				require.Equal(t, path, <-requests)
 				require.Equal(t, []string{initialValue, rotatedValue}[i], read(env, auth))
 			}
 			for _, malformed := range []string{`{`, `{}`} {
 				require.NoError(t, store.Save(t.Context(), "backend-credentials", []byte(malformed)))
-				_, err := e.resolveBackendAuth(t.Context(), backend, env)
+				_, err := e.resolveBackendAuth(t.Context(), backend, workingDir, env)
 				require.Error(t, err)
 				require.Equal(t, path, <-requests)
 			}
 			require.NoError(t, store.Delete(t.Context(), "backend-credentials"))
-			_, err = e.resolveBackendAuth(t.Context(), backend, env)
+			_, err = e.resolveBackendAuth(t.Context(), backend, workingDir, env)
 			require.Error(t, err)
 			require.Equal(t, path, <-requests)
 		})

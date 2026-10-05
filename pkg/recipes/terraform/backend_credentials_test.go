@@ -22,10 +22,12 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	"github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/stretchr/testify/require"
 )
@@ -96,11 +98,12 @@ func TestBackendCredentialFetchAndEnvironment(t *testing.T) {
 				}
 				// Identity modes write nothing, so the provider environment must survive untouched.
 				unchanged := maps.Clone(env)
+				workingDir := t.TempDir()
 
 				var auth backends.CloudBackendAuth
 				for range 2 {
 					var err error
-					auth, err = e.resolveBackendAuth(t.Context(), backend, env)
+					auth, err = e.resolveBackendAuth(t.Context(), backend, workingDir, env)
 					require.NoError(t, err)
 				}
 				require.Equal(t, "user-value", env["KEEP"])
@@ -112,7 +115,20 @@ func TestBackendCredentialFetchAndEnvironment(t *testing.T) {
 				if federated {
 					require.Equal(t, unchanged, env, "identity credentials must not touch the shared provider environment")
 					if cloud == "s3" {
-						require.Equal(t, backends.CloudBackendAuth{AWSRoleARN: aws.value.IRSACredential.RoleARN}, auth)
+						// AWS_PROFILE survives in the environment for the recipe's providers; the
+						// backend block names its own generated profile instead of clearing it.
+						require.Equal(t, backends.CloudBackendAuth{
+							AWSRoleARN:          aws.value.IRSACredential.RoleARN,
+							AWSProfile:          awsBackendProfile,
+							AWSSharedConfigFile: filepath.Join(workingDir, awsBackendConfigFileName),
+						}, auth)
+						body, err := os.ReadFile(auth.AWSSharedConfigFile)
+						require.NoError(t, err)
+						// The profile repeats the backend block's web identity so that naming it
+						// cannot push credential resolution onto container credentials or IMDS.
+						require.Equal(t, "[profile "+awsBackendProfile+"]\n"+
+							"role_arn = "+aws.value.IRSACredential.RoleARN+"\n"+
+							"web_identity_token_file = "+providers.AWSIRSATokenFilePath+"\n", string(body))
 					} else {
 						require.Equal(t, backends.CloudBackendAuth{AzureClientID: "registered-client", AzureTenantID: "registered-tenant", AzureEnvironment: "usgovernment"}, auth)
 					}
@@ -136,6 +152,8 @@ func TestBackendCredentialFetchAndEnvironment(t *testing.T) {
 					require.NotContains(t, env, "AWS_WEB_IDENTITY_TOKEN_FILE")
 					require.NotContains(t, env, "AWS_ROLE_ARN")
 					require.Equal(t, os.DevNull, env["AWS_CONFIG_FILE"])
+					require.Equal(t, os.DevNull, env["AWS_SHARED_CONFIG_FILE"])
+					require.Equal(t, os.DevNull, env["AWS_SHARED_CREDENTIALS_FILE"])
 					require.Equal(t, "registered-access", env["AWS_ACCESS_KEY_ID"])
 					require.Equal(t, "registered-secret", env["AWS_SECRET_ACCESS_KEY"])
 				} else {
@@ -168,7 +186,7 @@ func TestBackendCredentialErrors(t *testing.T) {
 	} {
 		env := map[string]string{"UNCHANGED": "value"}
 		before := maps.Clone(env)
-		_, err := setAWSBackendAuth(c, env)
+		_, err := setAWSBackendAuth(c, t.TempDir(), env)
 		require.Error(t, err)
 		require.NotContains(t, err.Error(), "secret-marker")
 		require.Equal(t, before, env)
@@ -196,7 +214,7 @@ func TestBackendCredentialErrors(t *testing.T) {
 		{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"},
 		{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius", KeyPrefix: "radius"},
 	} {
-		_, err := e.resolveBackendAuth(t.Context(), backend, map[string]string{})
+		_, err := e.resolveBackendAuth(t.Context(), backend, t.TempDir(), map[string]string{})
 		require.ErrorIs(t, err, fetchErr)
 		require.Contains(t, err.Error(), backend.Type+" backend")
 	}
@@ -212,15 +230,44 @@ func TestAWSBackendRejectsEndpointOverrides(t *testing.T) {
 						"AWS_ACCESS_KEY_ID": "existing-access", "ARM_CLIENT_SECRET": "other-cloud",
 					}
 					before := maps.Clone(env)
-					_, err := setAWSBackendAuth(backendTestAWSCredential(federated), env)
+					workingDir := t.TempDir()
+					_, err := setAWSBackendAuth(backendTestAWSCredential(federated), workingDir, env)
 					require.ErrorContains(t, err, key)
 					require.Contains(t, err.Error(), "s3 backend does not support endpoint override")
 					require.NotContains(t, err.Error(), "private-value")
 					require.Equal(t, before, env, "rejection must not partially replace credentials")
+					require.NoFileExists(t, filepath.Join(workingDir, awsBackendConfigFileName),
+						"rejection must happen before any backend configuration is written")
 				})
 			}
 		}
 	}
+}
+
+func TestAWSBackendIRSAProfileCarriesWebIdentity(t *testing.T) {
+	// Naming a profile makes the AWS SDK resolve credentials from that profile ahead of the
+	// environment. A profile carrying no credentials would fall back to the container credentials
+	// endpoint, which fails configuration loading for hosts that are not loopback, ECS or EKS. The
+	// generated profile therefore repeats the web identity the backend block renders.
+	credential := backendTestAWSCredential(true)
+	env := map[string]string{
+		"AWS_CONTAINER_CREDENTIALS_FULL_URI":     "http://provider.example.com/creds",
+		"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI": "/v2/credentials/provider",
+		"AWS_PROFILE":                            "provider-profile",
+	}
+	before := maps.Clone(env)
+	workingDir := t.TempDir()
+
+	auth, err := setAWSBackendAuth(credential, workingDir, env)
+	require.NoError(t, err)
+	require.Equal(t, before, env, "identity credentials must not touch the shared provider environment")
+	require.Equal(t, awsBackendProfile, auth.AWSProfile)
+
+	body, err := os.ReadFile(auth.AWSSharedConfigFile)
+	require.NoError(t, err)
+	require.Equal(t, "[profile "+awsBackendProfile+"]\n"+
+		"role_arn = "+credential.IRSACredential.RoleARN+"\n"+
+		"web_identity_token_file = "+providers.AWSIRSATokenFilePath+"\n", string(body))
 }
 
 func TestAWSBackendAllowsEmptyEndpointOverrides(t *testing.T) {
@@ -230,7 +277,7 @@ func TestAWSBackendAllowsEmptyEndpointOverrides(t *testing.T) {
 			for _, key := range awsBackendTestEndpointVariables {
 				env[key] = ""
 			}
-			auth, err := setAWSBackendAuth(backendTestAWSCredential(federated), env)
+			auth, err := setAWSBackendAuth(backendTestAWSCredential(federated), t.TempDir(), env)
 			require.NoError(t, err)
 			for _, key := range awsBackendTestEndpointVariables {
 				require.Contains(t, env, key)
@@ -240,6 +287,8 @@ func TestAWSBackendAllowsEmptyEndpointOverrides(t *testing.T) {
 			require.Equal(t, "value", env["KEEP"])
 			if federated {
 				require.NotEmpty(t, auth.AWSRoleARN)
+				require.NotEmpty(t, auth.AWSSharedConfigFile)
+				require.Equal(t, awsBackendProfile, auth.AWSProfile)
 				require.NotContains(t, env, "AWS_ACCESS_KEY_ID")
 			} else {
 				require.Equal(t, "registered-access", env["AWS_ACCESS_KEY_ID"])
@@ -250,6 +299,6 @@ func TestAWSBackendAllowsEmptyEndpointOverrides(t *testing.T) {
 
 func TestBackendAuthRejectsUnsupportedBackend(t *testing.T) {
 	e := executor{}
-	_, err := e.resolveBackendAuth(t.Context(), &datamodel.TerraformBackend{Type: "local", KeyPrefix: "radius"}, map[string]string{})
+	_, err := e.resolveBackendAuth(t.Context(), &datamodel.TerraformBackend{Type: "local", KeyPrefix: "radius"}, t.TempDir(), map[string]string{})
 	require.Error(t, err)
 }

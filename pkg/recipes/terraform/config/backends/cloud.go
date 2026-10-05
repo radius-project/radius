@@ -18,6 +18,7 @@ package backends
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -49,6 +50,17 @@ type CloudBackend struct {
 type CloudBackendAuth struct {
 	// AWSRoleARN selects AWS IRSA web identity authentication for the s3 backend.
 	AWSRoleARN string
+
+	// AWSProfile is the profile defined in AWSSharedConfigFile. It is rendered into the backend
+	// block so that a profile selected by the execution environment cannot be used instead.
+	AWSProfile string
+
+	// AWSSharedConfigFile is a Radius-generated AWS shared configuration file containing only
+	// AWSProfile. Rendering it, alongside an empty shared credentials file, keeps shared
+	// configuration that the execution environment points at — which can carry endpoint overrides
+	// that redirect state traffic and the IRSA token exchange — out of backend authentication,
+	// while leaving the process environment the recipe's providers read untouched.
+	AWSSharedConfigFile string
 
 	// AzureClientID selects Azure Workload Identity authentication for the azurerm backend.
 	AzureClientID string
@@ -93,6 +105,19 @@ func (b CloudBackend) BuildBackend(resource *recipes.ResourceMetadata) (map[stri
 				"session_name":            backendSessionPrefix + hash,
 				"web_identity_token_file": providers.AWSIRSATokenFilePath,
 			}
+		}
+		// Bind the backend to Radius-generated shared configuration, so that configuration the
+		// execution environment selects cannot redirect state traffic or the token exchange.
+		//
+		// Naming a profile is what neutralizes AWS_PROFILE, which this mode leaves in place for the
+		// recipe's providers. It also makes Terraform warn about a "configuration conflict" when
+		// static AWS keys are present in that environment (aws-sdk-go-base credentials.go,
+		// getCredentialsProvider). The warning is inaccurate here, because the rendered web identity
+		// replaces resolved credentials outright, and it does not fail the execution.
+		if b.Auth.AWSSharedConfigFile != "" {
+			config["profile"] = b.Auth.AWSProfile
+			config["shared_config_files"] = []string{b.Auth.AWSSharedConfigFile}
+			config["shared_credentials_files"] = []string{os.DevNull}
 		}
 		return map[string]any{BackendS3: config}, nil
 	}

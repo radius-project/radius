@@ -20,11 +20,25 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	"github.com/radius-project/radius/pkg/ucp/credentials"
+)
+
+const (
+	// awsBackendConfigFileName is the AWS shared configuration file Radius generates in the Terraform
+	// working directory and points the generated s3 backend block at.
+	awsBackendConfigFileName = ".radius-aws-backend-config"
+
+	// awsBackendConfigFileMode is the file mode for the generated AWS shared configuration file.
+	awsBackendConfigFileMode os.FileMode = 0600
+
+	// awsBackendProfile is the only profile defined in the generated AWS shared configuration file.
+	awsBackendProfile = "radius-backend"
 )
 
 // azureBackendConflictingAuthVariables select an Azure authentication method that Terraform
@@ -62,7 +76,7 @@ var azureBackendMetadataVariables = []string{"ARM_METADATA_HOSTNAME", "ARM_METAD
 // execution environment instead.
 //
 // The map belongs to this execution; neither registration nor os.Environ is mutated.
-func (e executor) resolveBackendAuth(ctx context.Context, backend *datamodel.TerraformBackend, env map[string]string) (backends.CloudBackendAuth, error) {
+func (e executor) resolveBackendAuth(ctx context.Context, backend *datamodel.TerraformBackend, workingDir string, env map[string]string) (backends.CloudBackendAuth, error) {
 	if err := backend.Validate(); err != nil {
 		return backends.CloudBackendAuth{}, err
 	}
@@ -76,7 +90,7 @@ func (e executor) resolveBackendAuth(ctx context.Context, backend *datamodel.Ter
 		if err != nil {
 			return backends.CloudBackendAuth{}, fmt.Errorf("fetching registered default AWS credentials for s3 backend: %w", err)
 		}
-		return setAWSBackendAuth(credential, env)
+		return setAWSBackendAuth(credential, workingDir, env)
 	case backends.BackendAzureRM:
 		provider, err := e.azureCredentialProvider()
 		if err != nil {
@@ -92,7 +106,7 @@ func (e executor) resolveBackendAuth(ctx context.Context, backend *datamodel.Ter
 	}
 }
 
-func setAWSBackendAuth(c *credentials.AWSCredential, env map[string]string) (backends.CloudBackendAuth, error) {
+func setAWSBackendAuth(c *credentials.AWSCredential, workingDir string, env map[string]string) (backends.CloudBackendAuth, error) {
 	// Reject rather than remove endpoints: providers share this environment, and removing
 	// an emulator endpoint could silently redirect provider operations to real AWS.
 	// This applies to both credential modes, because an override redirects state traffic
@@ -115,7 +129,19 @@ func setAWSBackendAuth(c *credentials.AWSCredential, env map[string]string) (bac
 		if c.IRSACredential == nil || strings.TrimSpace(c.IRSACredential.RoleARN) == "" {
 			return backends.CloudBackendAuth{}, fmt.Errorf("s3 backend requires a registered AWS IRSA roleARN")
 		}
-		return backends.CloudBackendAuth{AWSRoleARN: c.IRSACredential.RoleARN}, nil
+		// Endpoint overrides are rejected above, but they can also be set in AWS shared
+		// configuration, which is selected by the environment rather than passed in it. Isolate the
+		// backend from that configuration in the backend block, which cannot be done by clearing
+		// variables without disturbing the providers this mode deliberately leaves alone.
+		configFile, err := writeAWSBackendConfigFile(workingDir, c.IRSACredential.RoleARN)
+		if err != nil {
+			return backends.CloudBackendAuth{}, err
+		}
+		return backends.CloudBackendAuth{
+			AWSRoleARN:          c.IRSACredential.RoleARN,
+			AWSProfile:          awsBackendProfile,
+			AWSSharedConfigFile: configFile,
+		}, nil
 	case credentials.AWSAccessKeyCredentialKind:
 		if c.AccessKeyCredential == nil || strings.TrimSpace(c.AccessKeyCredential.AccessKeyID) == "" || strings.TrimSpace(c.AccessKeyCredential.SecretAccessKey) == "" {
 			return backends.CloudBackendAuth{}, fmt.Errorf("s3 backend requires a registered AWS AccessKey with accessKeyID and secretAccessKey")
@@ -134,13 +160,50 @@ func setAWSBackendAuth(c *credentials.AWSCredential, env map[string]string) (bac
 	} {
 		delete(env, key)
 	}
-	// Do not let a host's shared profile select different credentials.
+	// Do not let a host's shared profile select different credentials, or shared configuration
+	// redirect state traffic and the token exchange. AWS_CONFIG_FILE is read by the AWS SDK and
+	// AWS_SHARED_CONFIG_FILE by the s3 backend itself, so both spellings have to be pinned.
 	env["AWS_SHARED_CREDENTIALS_FILE"] = os.DevNull
 	env["AWS_CONFIG_FILE"] = os.DevNull
+	env["AWS_SHARED_CONFIG_FILE"] = os.DevNull
 	env["AWS_EC2_METADATA_DISABLED"] = "true"
 	env["AWS_ACCESS_KEY_ID"] = c.AccessKeyCredential.AccessKeyID
 	env["AWS_SECRET_ACCESS_KEY"] = c.AccessKeyCredential.SecretAccessKey
 	return backends.CloudBackendAuth{}, nil
+}
+
+// writeAWSBackendConfigFile renders the AWS shared configuration file that the generated s3 backend
+// block uses, and returns its path.
+//
+// The file defines a single profile. The backend block names that profile explicitly because
+// Terraform's "profile" argument has no environment fallback (terraform v1.15.8
+// internal/backend/remote-state/s3/backend.go:910), so naming it keeps a stray AWS_PROFILE from
+// selecting a different one. The profile has to exist: naming one that is absent from every shared
+// file fails configuration loading rather than falling back to defaults.
+//
+// The profile repeats the same web identity the backend block renders. Naming a profile makes the
+// AWS SDK resolve credentials from that profile ahead of the environment
+// (aws-sdk-go-v2 config/v1.32.12 config/resolve_credentials.go:114-116), so a profile carrying no
+// credentials would fall through to container credentials or IMDS
+// (resolve_credentials.go:186-196). A container credentials endpoint the recipe's providers rely
+// on would then fail configuration loading outright, because only loopback, ECS and EKS hosts are
+// accepted over HTTP (resolve_credentials.go:322-327). Repeating the web identity here selects it
+// during loading (resolve_credentials.go:158-163) and avoids that fallback. It holds no secret,
+// and the backend block stays authoritative: aws-sdk-go-base replaces the resolved credentials
+// with the provider it builds from that block.
+//
+// The companion shared_config_files and shared_credentials_files arguments take precedence over
+// AWS_SHARED_CONFIG_FILE and AWS_SHARED_CREDENTIALS_FILE (backend.go:947-951, which read the
+// argument first), so together these three bind backend authentication to configuration Radius
+// generated without clearing anything from the execution environment.
+func writeAWSBackendConfigFile(workingDir string, roleARN string) (string, error) {
+	path := filepath.Join(workingDir, awsBackendConfigFileName)
+	body := fmt.Sprintf("[profile %s]\nrole_arn = %s\nweb_identity_token_file = %s\n",
+		awsBackendProfile, roleARN, providers.AWSIRSATokenFilePath)
+	if err := os.WriteFile(path, []byte(body), awsBackendConfigFileMode); err != nil {
+		return "", fmt.Errorf("error writing %s: %w", awsBackendConfigFileName, err)
+	}
+	return path, nil
 }
 
 func setAzureBackendAuth(c *credentials.AzureCredential, env map[string]string) (backends.CloudBackendAuth, error) {

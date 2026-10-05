@@ -20,11 +20,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -57,6 +59,47 @@ func TestCloudBackendRendering(t *testing.T) {
 			require.Equal(t, strings.Replace(key, "radius/", "installation/team/", 1), actual[tt.settings.Type].(map[string]any)["key"])
 		})
 	}
+}
+
+// TestCloudBackendAWSSharedConfigIsolation covers the arguments that keep AWS shared configuration
+// selected by the execution environment out of backend authentication. Terraform reads
+// shared_config_files and shared_credentials_files from the backend block ahead of
+// AWS_SHARED_CONFIG_FILE and AWS_SHARED_CREDENTIALS_FILE, and "profile" has no environment fallback
+// at all, so rendering all three binds the backend to configuration Radius generated.
+func TestCloudBackendAWSSharedConfigIsolation(t *testing.T) {
+	_, resource := getTestInputs()
+	settings := datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"}
+
+	t.Run("isolation rendered with identity auth", func(t *testing.T) {
+		b := CloudBackend{Settings: &settings, Auth: CloudBackendAuth{
+			AWSRoleARN:          "arn:aws:iam::123456789012:role/radius",
+			AWSProfile:          "radius-backend",
+			AWSSharedConfigFile: "/tmp/working/.radius-aws-backend-config",
+		}}
+		actual, err := b.BuildBackend(&resource)
+		require.NoError(t, err)
+		config := actual[BackendS3].(map[string]any)
+		require.Equal(t, "radius-backend", config["profile"])
+		require.Equal(t, []string{"/tmp/working/.radius-aws-backend-config"}, config["shared_config_files"])
+		require.Equal(t, []string{os.DevNull}, config["shared_credentials_files"])
+		require.Equal(t, map[string]any{
+			"role_arn":                "arn:aws:iam::123456789012:role/radius",
+			"session_name":            backendSessionPrefix + strings.TrimSuffix(strings.TrimPrefix(config["key"].(string), "radius/"), ".tfstate"),
+			"web_identity_token_file": providers.AWSIRSATokenFilePath,
+		}, config["assume_role_with_web_identity"])
+	})
+
+	t.Run("omitted when the environment carries the credential", func(t *testing.T) {
+		// AccessKey authentication is pinned through the environment instead, so rendering a
+		// profile here would select one the generated configuration does not define.
+		b := CloudBackend{Settings: &settings}
+		actual, err := b.BuildBackend(&resource)
+		require.NoError(t, err)
+		config := actual[BackendS3].(map[string]any)
+		for _, key := range []string{"profile", "shared_config_files", "shared_credentials_files", "assume_role_with_web_identity"} {
+			require.NotContains(t, config, key)
+		}
+	})
 }
 
 func TestCloudBackendKeyLengthBoundary(t *testing.T) {

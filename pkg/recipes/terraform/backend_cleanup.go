@@ -18,8 +18,10 @@ package terraform
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -46,16 +48,99 @@ import (
 // This is an expected outcome rather than a failure, and is logged differently from a cleanup error.
 var errStateModifiedDuringCleanup = errors.New("state object changed after destroy completed")
 
+// errStateNotEmptyDuringCleanup reports that the state read back after destroy positively tracks
+// resources or outputs, so another writer committed live state before cleanup read it. Like a failed
+// precondition this leaves the object in place and is an expected outcome rather than a failure.
+var errStateNotEmptyDuringCleanup = errors.New("state object is not empty after destroy completed")
+
+// errStateUnverifiableDuringCleanup reports that cleanup could not establish what the object holds,
+// because it was unreadable, unparseable, implausibly large, or written in a state format Radius does
+// not recognize. This is distinct from errStateNotEmptyDuringCleanup: Radius has not shown the object
+// is live, only that it cannot show it is empty. Deleting on that basis is what would destroy state
+// Radius does not own, so the object is kept and the operator is told to inspect it rather than to
+// remove it.
+var errStateUnverifiableDuringCleanup = errors.New("state object could not be verified as empty after destroy completed")
+
+// errStateAlreadyAbsent reports that there was no object at the state key. Nothing was deleted, so it
+// must not be logged as a deletion, but it is the expected outcome when a destroy left no state or an
+// earlier cleanup already removed it.
+var errStateAlreadyAbsent = errors.New("state object is already absent")
+
+// maxEmptyStateBytes bounds how much of the state object cleanup reads back. A state Terraform has
+// just emptied is well under a kilobyte, so anything larger cannot be one and is rejected without
+// being buffered.
+const maxEmptyStateBytes = 64 * 1024
+
+// emptyStateFormatVersion is the state format Radius's pinned Terraform writes. Cleanup deletes only
+// this version, because "empty" is decided from fields whose absence means something different in
+// other formats; see verifyStateIsEmpty.
+const emptyStateFormatVersion = 4
+
+// terraformState is the subset of Terraform's state format cleanup needs. The format version
+// identifies the document, and the tracked resources and recorded outputs decide whether it still
+// represents live infrastructure.
+type terraformState struct {
+	Version   *int                       `json:"version"`
+	Resources []json.RawMessage          `json:"resources"`
+	Outputs   map[string]json.RawMessage `json:"outputs"`
+}
+
+// verifyStateIsEmpty reads the state object's body and reports whether it is safe to delete.
+//
+// Reading the content, rather than only its metadata, is what makes cleanup safe against a writer
+// that committed live state after destroy released its lock but before cleanup looked at the object.
+// An entity tag read alone cannot distinguish that state from the empty one destroy left: it would
+// capture the new version and then delete it, because the conditional delete only covers the window
+// between the metadata read and the delete itself. Verifying the version that was read is empty, and
+// deleting only that version, closes both halves of the race.
+//
+// Emptiness is established positively, not by the absence of keys. The document must declare the
+// state format Radius's Terraform writes before `resources` and `outputs` mean what this code assumes:
+// a v3 state keeps live resources under a top-level `modules` array and has no top-level `resources`
+// key at all, so treating a missing key as empty would delete live infrastructure's state. Unrelated
+// JSON documents, `{}`, and `null` fail the same check.
+//
+// Anything cleanup cannot confirm is the empty state destroy wrote is left in place. Those cases are
+// reported as errStateUnverifiableDuringCleanup rather than errStateNotEmptyDuringCleanup, because
+// Radius has not observed live content and must not claim it has.
+func verifyStateIsEmpty(body io.Reader) error {
+	// Read one byte past the limit so an oversized state is detected without buffering it.
+	data, err := io.ReadAll(io.LimitReader(body, maxEmptyStateBytes+1))
+	if err != nil {
+		return fmt.Errorf("%w: unable to read it: %w", errStateUnverifiableDuringCleanup, err)
+	}
+	if len(data) > maxEmptyStateBytes {
+		return fmt.Errorf("%w: it is larger than %d bytes, so it cannot be the state destroy left", errStateUnverifiableDuringCleanup, maxEmptyStateBytes)
+	}
+
+	var state terraformState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return fmt.Errorf("%w: unable to parse it: %w", errStateUnverifiableDuringCleanup, err)
+	}
+	if state.Version == nil || *state.Version != emptyStateFormatVersion {
+		return fmt.Errorf("%w: it does not declare Terraform state format version %d", errStateUnverifiableDuringCleanup, emptyStateFormatVersion)
+	}
+	if len(state.Resources) > 0 || len(state.Outputs) > 0 {
+		return errStateNotEmptyDuringCleanup
+	}
+	return nil
+}
+
 // deleteCloudState removes the state object Terraform leaves behind after destroy, so that deleting a
 // Radius resource does not accumulate empty objects in the user's bucket or container.
 //
-// The delete is conditional on the entity tag read immediately beforehand, so state that changed after
-// destroy completed is never removed. Cleanup does not take the Terraform state lock, so this guards
-// against deleting state another writer has already rewritten rather than against the whole race.
+// Cleanup runs after destroy has released the Terraform state lock. It deliberately does not retake
+// that lock; it instead reads the state object back, deletes only a recognized state format that
+// tracks no resources or outputs, and makes the delete conditional on the entity tag of the version it
+// read. A writer that committed live state before the read is caught by the content check, and one
+// that commits between the read and the delete is caught by the precondition. In both cases the object
+// is left in place, as it is whenever cleanup cannot establish what the object holds.
 //
 // It is best effort by design. The resources it tracked are already destroyed by the time this runs, so
 // a cleanup failure is an operator cleanup task rather than a reason to fail the Radius delete and leave
-// the resource undeletable. Failures are logged with the state key so the object can be removed manually.
+// the resource undeletable. Every outcome is logged with the state key, and the log distinguishes an
+// object Radius chose to keep from one it failed to delete, because only the latter is safe to remove
+// without inspecting it first.
 func (e *executor) deleteCloudState(ctx context.Context, settings *datamodel.TerraformBackend, auth backends.CloudBackendAuth, key string) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if settings == nil || key == "" {
@@ -67,7 +152,7 @@ func (e *executor) deleteCloudState(ctx context.Context, settings *datamodel.Ter
 	// tracked is already destroyed.
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Info(fmt.Sprintf("Recovered from panic while deleting Terraform %s state object %q after destroy; the object can be removed manually: %v", settings.Type, key, r))
+			logger.Info(fmt.Sprintf("Recovered from panic while deleting Terraform %s state object %q after destroy; inspect the object before removing it manually: %v", settings.Type, key, r))
 		}
 	}()
 
@@ -75,15 +160,24 @@ func (e *executor) deleteCloudState(ctx context.Context, settings *datamodel.Ter
 	if del == nil {
 		del = e.deleteCloudStateObject
 	}
-	if err := del(ctx, settings, auth, key); err != nil {
-		if errors.Is(err, errStateModifiedDuringCleanup) {
-			logger.Info(fmt.Sprintf("Left Terraform %s state object %q in place after destroy because it changed since destroy completed; another writer owns it now", settings.Type, key))
-			return
-		}
+
+	err := del(ctx, settings, auth, key)
+	switch {
+	case err == nil:
+		logger.Info(fmt.Sprintf("Deleted Terraform %s state object %q after destroy", settings.Type, key))
+	case errors.Is(err, errStateAlreadyAbsent):
+		logger.Info(fmt.Sprintf("No Terraform %s state object %q to delete after destroy; it was already absent", settings.Type, key))
+	case errors.Is(err, errStateModifiedDuringCleanup):
+		logger.Info(fmt.Sprintf("Left Terraform %s state object %q in place after destroy because it changed since destroy completed; another writer owns it now", settings.Type, key))
+	case errors.Is(err, errStateNotEmptyDuringCleanup):
+		logger.Info(fmt.Sprintf("Left Terraform %s state object %q in place after destroy because it still tracks resources or outputs; another writer owns it now", settings.Type, key))
+	case errors.Is(err, errStateUnverifiableDuringCleanup):
+		// Radius has not shown this object is live, only that it cannot show it is empty, so the
+		// operator is told to inspect it rather than to remove it.
+		logger.Info(fmt.Sprintf("Left Terraform %s state object %q in place after destroy because Radius could not confirm it is empty; inspect it before removing it manually: %s", settings.Type, key, err.Error()))
+	default:
 		logger.Info(fmt.Sprintf("Unable to delete Terraform %s state object %q after destroy; the resources it tracked were destroyed and the object can be removed manually: %s", settings.Type, key, err.Error()))
-		return
 	}
-	logger.Info(fmt.Sprintf("Deleted Terraform %s state object %q after destroy", settings.Type, key))
 }
 
 func (e *executor) deleteCloudStateObject(ctx context.Context, settings *datamodel.TerraformBackend, auth backends.CloudBackendAuth, key string) error {
@@ -105,37 +199,48 @@ func (e *executor) deleteS3State(ctx context.Context, settings *datamodel.Terraf
 
 	// Reuse UCP's credential provider so cleanup authenticates exactly like the backend did,
 	// including the IRSA token exchange.
-	client := s3.New(s3.Options{
+	options := s3.Options{
 		Region:      settings.Region,
 		Credentials: aws.NewCredentialsCache(ucpaws.NewUCPCredentialProvider(provider, 0)),
-	})
+	}
+	if e.stateEndpointOverride != "" {
+		options.BaseEndpoint = aws.String(e.stateEndpointOverride)
+		options.UsePathStyle = true
+	}
+	client := s3.New(options)
 
-	// Read the entity tag first and make the delete conditional on it. An unconditional delete would
-	// remove whatever is at the key, including state written by a concurrent operation between the end
-	// of destroy and this call.
-	head, err := client.HeadObject(ctx, &s3.HeadObjectInput{
+	// Read the object itself, not just its metadata. Destroy has already released the Terraform lock,
+	// so the only way to know this version is the empty state destroy wrote, rather than live state a
+	// concurrent operation committed since, is to look at its contents. The entity tag from this same
+	// response then scopes the delete to the exact version that was verified.
+	object, err := client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(settings.Bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
 		if isS3NotFound(err) {
-			return nil
+			return errStateAlreadyAbsent
 		}
 		return err
 	}
-	if head.ETag == nil || *head.ETag == "" {
-		return errors.New("state object has no entity tag, so it cannot be deleted safely")
+	defer object.Body.Close()
+
+	if err := verifyStateIsEmpty(object.Body); err != nil {
+		return err
+	}
+	if object.ETag == nil || *object.ETag == "" {
+		return fmt.Errorf("%w: it has no entity tag, so the version just verified cannot be identified", errStateUnverifiableDuringCleanup)
 	}
 
 	_, err = client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket:  aws.String(settings.Bucket),
 		Key:     aws.String(key),
-		IfMatch: head.ETag,
+		IfMatch: object.ETag,
 	})
 	if err != nil {
 		// S3 DeleteObject is idempotent, but treat an explicit not-found as success for clarity.
 		if isS3NotFound(err) {
-			return nil
+			return errStateAlreadyAbsent
 		}
 		if isS3PreconditionFailed(err) {
 			return errStateModifiedDuringCleanup
@@ -145,10 +250,15 @@ func (e *executor) deleteS3State(ctx context.Context, settings *datamodel.Terraf
 	return nil
 }
 
+// isS3NotFound reports whether the error means there was no object at the state key.
+//
+// A coded error is authoritative. Falling through to the HTTP status would classify NoSuchBucket,
+// which is a misconfiguration the operator needs to see, as a missing object and report cleanup as
+// having nothing to do.
 func isS3NotFound(err error) bool {
 	var apiErr smithy.APIError
-	if errors.As(err, &apiErr) && (apiErr.ErrorCode() == "NoSuchKey" || apiErr.ErrorCode() == "NotFound") {
-		return true
+	if errors.As(err, &apiErr) {
+		return apiErr.ErrorCode() == "NoSuchKey" || apiErr.ErrorCode() == "NotFound"
 	}
 	return s3ResponseStatus(err) == 404
 }
@@ -161,8 +271,8 @@ func isS3PreconditionFailed(err error) bool {
 	return s3ResponseStatus(err) == 412
 }
 
-// s3ResponseStatus returns the HTTP status behind an S3 error, or 0. HeadObject has no response body
-// to model an error code from, so the status is the only reliable signal for a missing object.
+// s3ResponseStatus returns the HTTP status behind an S3 error, or 0. Some S3 errors arrive without a
+// body to model an error code from, so the status is the only reliable signal for a missing object.
 func s3ResponseStatus(err error) int {
 	var respErr *smithyhttp.ResponseError
 	if errors.As(err, &respErr) && respErr.Response != nil && respErr.Response.Response != nil {
@@ -185,46 +295,63 @@ func (e *executor) deleteAzureState(ctx context.Context, settings *datamodel.Ter
 		return err
 	}
 
+	clientOptions := azcore.ClientOptions{Cloud: cloudConfig}
+	if e.stateTransport != nil {
+		clientOptions.Transport = e.stateTransport
+	}
+
 	// TokenFilePath must match the path rendered into the backend block. Without it the credential
 	// falls back to AZURE_FEDERATED_TOKEN_FILE, which Radius no longer sets for Workload Identity.
 	credential, err := azcredential.NewUCPCredential(azcredential.UCPCredentialOptions{
 		Provider:      provider,
 		TokenFilePath: providers.AzureOIDCTokenFilePath,
-		ClientOptions: &azcore.ClientOptions{Cloud: cloudConfig},
+		ClientOptions: &clientOptions,
 	})
 	if err != nil {
 		return err
 	}
 
 	blobURL := fmt.Sprintf("https://%s.%s/%s/%s", settings.StorageAccountName, storageSuffix, settings.ContainerName, key)
+	if e.stateEndpointOverride != "" {
+		blobURL = fmt.Sprintf("%s/%s/%s/%s", strings.TrimSuffix(e.stateEndpointOverride, "/"), settings.StorageAccountName, settings.ContainerName, key)
+	}
 	client, err := blob.NewClient(blobURL, azcore.TokenCredential(credential), &blob.ClientOptions{
-		ClientOptions: azcore.ClientOptions{Cloud: cloudConfig},
+		ClientOptions: clientOptions,
 	})
 	if err != nil {
 		return err
 	}
 
-	// Read the entity tag first and make the delete conditional on it, so state that was rewritten
-	// after destroy completed is never removed.
-	props, err := client.GetProperties(ctx, nil)
+	// Download the blob rather than only its properties. Destroy has already released the Terraform
+	// lock, so the contents are the only way to tell the empty state destroy wrote from live state a
+	// concurrent operation committed since. The entity tag from this same response then scopes the
+	// delete to the exact version that was verified.
+	download, err := client.DownloadStream(ctx, nil)
 	if err != nil {
-		if bloberror.HasCode(err, bloberror.BlobNotFound, bloberror.ContainerNotFound) {
-			return nil
+		// Only a missing blob means there is nothing to clean up. A missing container is a
+		// misconfiguration the operator needs to see, so it propagates as a cleanup failure.
+		if bloberror.HasCode(err, bloberror.BlobNotFound) {
+			return errStateAlreadyAbsent
 		}
 		return err
 	}
-	if props.ETag == nil || *props.ETag == "" {
-		return errors.New("state object has no entity tag, so it cannot be deleted safely")
+	defer download.Body.Close()
+
+	if err := verifyStateIsEmpty(download.Body); err != nil {
+		return err
+	}
+	if download.ETag == nil || *download.ETag == "" {
+		return fmt.Errorf("%w: it has no entity tag, so the version just verified cannot be identified", errStateUnverifiableDuringCleanup)
 	}
 
 	options := &blob.DeleteOptions{
 		AccessConditions: &blob.AccessConditions{
-			ModifiedAccessConditions: &blob.ModifiedAccessConditions{IfMatch: props.ETag},
+			ModifiedAccessConditions: &blob.ModifiedAccessConditions{IfMatch: download.ETag},
 		},
 	}
 	if _, err := client.Delete(ctx, options); err != nil {
-		if bloberror.HasCode(err, bloberror.BlobNotFound, bloberror.ContainerNotFound) {
-			return nil
+		if bloberror.HasCode(err, bloberror.BlobNotFound) {
+			return errStateAlreadyAbsent
 		}
 		if bloberror.HasCode(err, bloberror.ConditionNotMet) {
 			return errStateModifiedDuringCleanup

@@ -29,6 +29,9 @@ import (
 	install "github.com/hashicorp/hc-install"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
@@ -83,6 +86,15 @@ type executor struct {
 	// deleteStateObject removes a cloud backend's state object after destroy. It is overridden in
 	// tests so that they do not reach a real bucket or container.
 	deleteStateObject func(ctx context.Context, settings *datamodel.TerraformBackend, auth backends.CloudBackendAuth, key string) error
+
+	// stateEndpointOverride redirects cloud state cleanup at a test storage endpoint. It is empty in
+	// production, where the endpoint comes from the backend's region or storage account, and is set
+	// only by tests that exercise the real storage SDKs against a stub server.
+	stateEndpointOverride string
+
+	// stateTransport carries the HTTP transport those same tests use to keep the Azure blob and token
+	// requests inside the stub server. It is nil in production.
+	stateTransport policy.Transporter
 }
 
 // backendResult carries the extra lifecycle operations each backend needs after Terraform runs.
@@ -304,7 +316,7 @@ func (e executor) prepareExecution(ctx context.Context, tf *tfexec.Terraform, op
 	// Set the environment variables for the Terraform process
 	if options.EnvConfig.TerraformBackend != nil {
 		var err error
-		auth, err = e.resolveBackendAuth(ctx, options.EnvConfig.TerraformBackend, envVars)
+		auth, err = e.resolveBackendAuth(ctx, options.EnvConfig.TerraformBackend, tf.WorkingDir(), envVars)
 		if err != nil {
 			return auth, err
 		}
