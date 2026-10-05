@@ -125,6 +125,8 @@ make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--logs-dir ./dist/authz-logs-
 
 The Make target also passes `--require-dry-run`: it requires current startup logs reporting `authz mode=dryRun` from `ucp`, `applications-rp`, `dynamic-rp`, and `controller`, checking every replica found. Previous-container or saved logs cannot substitute for this evidence. Missing components, missing startup messages (including rotated-away messages), and other modes fail the check. Pod-listing failures, unreadable current or previous logs, file traversal/read errors, and empty saved-log directories also fail rather than reporting a clean run. An allowlist cannot bypass these errors. To scan saved logs without accessing a cluster or verifying startup modes, invoke the script directly with `--logs-dir DIR`.
 
+To check authorization trust boundaries by hand on a local kind cluster, for example when reviewing a pull request that adds one, use the manual test kit in [`hack/authz`](../../../../hack/authz/README.md).
+
 ### Configure test execution
 
 The Make targets accept these environment variables:
