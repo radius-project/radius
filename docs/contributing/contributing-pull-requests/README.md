@@ -95,7 +95,7 @@ Every non-Dependabot pull request must have exactly one release-impact label:
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
-The [PR Status Labels workflow](../../../.github/workflows/pr.status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold. These are the default names; maintainers can [change the names in YAML](#configuring-lifecycle-label-names) without changing the status signals:
+The [PR Status Labels workflow](../../../.github/workflows/pr.status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold. These are the default names; maintainers can [change the names in JSON](#configuring-lifecycle-label-names) without changing the status signals:
 
 - **`pr:needs-reviewer`** — there is neither a pending reviewer or team request nor an active submitted human review from someone other than the author.
 - **`pr:waiting-for-review`** — a reviewer or team has a pending request, or a human has submitted a review but required approval is still outstanding or cannot be verified. When a reviewer requests changes, the author must re-request a review after addressing them; pushing a commit alone does not hand the PR back.
@@ -116,35 +116,38 @@ Draft PRs have no handoff label. Maintainers can apply the existing **`pr:do-not
 
 #### Configuring lifecycle label names
 
-[`.github/configs/pr-status-labels.yml`](../../../.github/configs/pr-status-labels.yml) is the source of the label names used by the [existing status script](../../../.github/scripts/pr-status-labels.mjs) and the required-label merge-hold check:
+[`.github/configs/pr-status-labels.json`](../../../.github/configs/pr-status-labels.json) is the source of the label names used by the [existing status script](../../../.github/scripts/pr-status-labels.mjs) and the required-label merge-hold check:
 
-```yaml
-states:
-  needsReviewer: pr:needs-reviewer
-  waitingForReview: pr:waiting-for-review
-  waitingForAuthor: pr:waiting-for-author
-  reviewApproved: pr:review-approved
-  needsRebase: pr:needs-rebase
-  readyForQueue: pr:ready-for-queue
-manual:
-  needsAuthorResponse: pr:needs-author-response
-  doNotMerge: pr:do-not-merge
+```json
+{
+  "states": {
+    "needsReviewer": "pr:needs-reviewer",
+    "waitingForReview": "pr:waiting-for-review",
+    "waitingForAuthor": "pr:waiting-for-author",
+    "reviewApproved": "pr:review-approved",
+    "needsRebase": "pr:needs-rebase",
+    "readyForQueue": "pr:ready-for-queue"
+  },
+  "manual": {
+    "needsAuthorResponse": "pr:needs-author-response",
+    "doNotMerge": "pr:do-not-merge"
+  }
+}
 ```
 
-Keep the keys unchanged: they identify the status signals supported by the code. Edit their values to change the associated GitHub label names. The script reads this mapping directly; it has no second hardcoded label map or separate configuration module. Only `states` labels are automatically applied or removed. The two `manual` labels remain maintainer-controlled holds.
+Keep the keys unchanged: they identify the status signals supported by the code. Edit their values to change the associated GitHub label names, using distinct, nonempty names valid on GitHub. The script imports this mapping using Node.js's built-in JSON support; there is no third-party parser, assertion block, second hardcoded label map, or separate configuration module. Only `states` labels are automatically applied or removed. The two `manual` labels remain maintainer-controlled holds.
 
 Mapped labels must already exist. Provisioning, descriptions, and colors remain independent in the [label catalog](../../../.github/labels.yml). For a rename, update the mapping and catalog together and deliberately rename or migrate the existing repository label and its assignments. The catalog action supports `from_name: <old-name>` on a renamed entry. Coordinate that migration with the mapping change, especially for manual holds: the status script never migrates old names, and the catalog preserves omitted labels. The release-impact labels and review/merge policy are not configured here.
 
-Validate from the repository root using Node.js from [`.node-version`](../../../.node-version) and the pnpm version pinned in [`package.json`](../../../package.json):
+To check that the configuration loads, run from the repository root using Node.js from [`.node-version`](../../../.node-version):
 
 ```bash
-corepack pnpm install --frozen-lockfile --ignore-scripts
-corepack pnpm run validate:pr-status-labels
+node .github/scripts/pr-status-labels.mjs
 ```
 
-This command loads and validates the YAML without calling GitHub. The existing lint workflow runs it on proposed changes; configuration-only edits are excluded from the shared CI skip list. The mapping requires the fixed, case-sensitive keys in both sections and rejects duplicate YAML keys, wrong types, blank names, names over 50 characters, surrounding whitespace or control characters, and case-insensitive duplicate names. Unknown keys and sections are rejected. Normal YAML comments and quoted names containing spaces or colons are supported.
+This command imports the JSON without calling GitHub or installing dependencies. Missing files and malformed JSON fail through Node.js's native loader; the script does not run schema assertions. The existing formatting check covers JSON syntax and formatting, and configuration-only edits are excluded from the shared CI skip list.
 
-The status workflow checks out its script, mapping, and pinned parser dependencies together from trusted `github.sha`. The required-label workflow evaluates the proposed mapping in a read-only `merge-holds` job, so the introducing PR does not depend on configuration already existing on its base branch. The existing write-enabled `pr-required-labels` job checks no PR code out and runs the pinned release-label action only after merge-hold validation succeeds; reminder comments are preserved. Invalid configuration or a failed merge-hold check fails the required-label job rather than silently skipping it. Merge-group reporting remains unchanged.
+The status workflow checks out its script and mapping together from trusted `github.sha`. The required-label workflow evaluates the proposed mapping in a read-only `merge-holds` job, so the introducing PR does not depend on configuration already existing on its base branch. Both use the Node.js runtime supplied by `actions/github-script`, with no package installation. The existing write-enabled `pr-required-labels` job checks no PR code out and runs the pinned release-label action only after merge-hold validation succeeds; reminder comments are preserved. A configuration-loading error or failed merge-hold check fails the required-label job rather than silently skipping it. Merge-group reporting remains unchanged.
 
 ### 6. (Optional) Self-review with the `radius-code-review` skill
 

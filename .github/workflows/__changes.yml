@@ -36,7 +36,7 @@ on:
           grafana/**
           .github/CODEOWNERS
           .github/configs/**
-          !.github/configs/pr-status-labels.yml
+          !.github/configs/pr-status-labels.json
           .github/linters/**
           .github/dependabot.yml
           .github/ISSUE_TEMPLATE/**

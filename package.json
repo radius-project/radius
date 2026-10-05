@@ -1,12 +1,6 @@
 {
   "private": true,
   "packageManager": "pnpm@11.24.0",
-  "scripts": {
-    "validate:pr-status-labels": "node .github/scripts/pr-status-labels.mjs"
-  },
-  "dependencies": {
-    "js-yaml": "5.4.1"
-  },
   "devDependencies": {
     "markdown-table-formatter": "1.7.0",
     "markdownlint-cli2": "0.23.3",

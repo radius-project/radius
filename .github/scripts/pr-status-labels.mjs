@@ -14,46 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
-import { load } from "js-yaml";
-
-const file = new URL("../configs/pr-status-labels.yml", import.meta.url);
-const labels = load(await readFile(file, "utf8"), {
-  filename: file.pathname
-});
-
-assert.deepEqual(Object.keys(labels ?? {}).sort(), ["manual", "states"]);
-assert.deepEqual(Object.keys(labels.states ?? {}).sort(), [
-  "needsRebase",
-  "needsReviewer",
-  "readyForQueue",
-  "reviewApproved",
-  "waitingForAuthor",
-  "waitingForReview"
-]);
-assert.deepEqual(Object.keys(labels.manual ?? {}).sort(), [
-  "doNotMerge",
-  "needsAuthorResponse"
-]);
-
-const names = Object.values(labels).flatMap(Object.values);
-assert(
-  names.every(
-    (name) =>
-      typeof name === "string" &&
-      name.length > 0 &&
-      name === name.trim() &&
-      [...name].length <= 50 &&
-      !/[\u0000-\u001f\u007f-\u009f]/u.test(name)
-  ),
-  "Label names must be nonempty, at most 50 characters, without surrounding whitespace or control characters"
-);
-assert.equal(
-  new Set(names.map((name) => name.toLowerCase())).size,
-  names.length,
-  "Label names must be unique ignoring case"
-);
+import labels from "../configs/pr-status-labels.json" with { type: "json" };
 
 const STATUS_LABELS = Object.freeze(labels.states);
 export const MANUAL_LABELS = Object.freeze(labels.manual);
