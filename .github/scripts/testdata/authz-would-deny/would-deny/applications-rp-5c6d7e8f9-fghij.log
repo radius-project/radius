@@ -1,0 +1,2 @@
+{"severity":"info","timestamp":"2026-10-05T10:00:00.000Z","name":"applications-rp","message":"Authorization mode configured","authzMode":"dryRun"}
+{"severity":"info","timestamp":"2026-10-05T10:00:04.000Z","name":"applications-rp","message":"authorization check would deny request","authzWouldDeny":true,"authzCode":"AuthorizationFailed","authzReason":"caller is not allowed to write Applications.Core/containers"}
