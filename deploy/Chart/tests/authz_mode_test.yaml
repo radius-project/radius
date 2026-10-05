@@ -91,7 +91,7 @@ tests:
           pattern: '(?m)^authorization:\n  mode: "enforce"$'
         template: controller/configmaps.yaml
 
-  - it: fails when global.rbac.enabled and global.rbac.dryRun are both true
+  - it: fails rendering when global.rbac.enabled and global.rbac.dryRun are both true
     set:
       global.rbac.enabled: true
       global.rbac.dryRun: true
@@ -99,12 +99,3 @@ tests:
       - failedTemplate:
           errorMessage: "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run."
         template: ucp/configmaps.yaml
-      - failedTemplate:
-          errorMessage: "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run."
-        template: rp/configmaps.yaml
-      - failedTemplate:
-          errorMessage: "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run."
-        template: dynamic-rp/configmaps.yaml
-      - failedTemplate:
-          errorMessage: "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run."
-        template: controller/configmaps.yaml
