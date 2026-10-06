@@ -32,6 +32,7 @@ func Test_Apply(t *testing.T) {
 
 	deny := Decision{Allowed: false, Code: "GrantScopeExceeded", Reason: "target is outside the record"}
 	allow := Decision{Allowed: true}
+	noCode := Decision{Allowed: false, Reason: "missing code"}
 
 	tests := []struct {
 		name     string
@@ -49,6 +50,9 @@ func Test_Apply(t *testing.T) {
 		{name: "enforce rejects denial", mode: ModeEnforce, decision: deny, wantErr: true, wantCode: "GrantScopeExceeded"},
 		{name: "enforce allows allowed", mode: ModeEnforce, decision: allow},
 		{name: "unknown mode fails closed", mode: Mode("audit"), decision: deny, wantErr: true},
+		{name: "unknown mode fails closed for allowed", mode: Mode("audit"), decision: allow, wantErr: true},
+		{name: "dryRun logs default code when code is empty", mode: ModeDryRun, decision: noCode, wantLog: true, wantCode: CodeAuthorizationFailed},
+		{name: "enforce uses default code when code is empty", mode: ModeEnforce, decision: noCode, wantErr: true, wantCode: CodeAuthorizationFailed},
 	}
 
 	for _, tt := range tests {
@@ -80,7 +84,11 @@ func Test_Apply(t *testing.T) {
 			require.Len(t, entries, 1)
 			fields := entries[0].ContextMap()
 			require.Equal(t, true, fields[LogFieldWouldDeny])
-			require.Equal(t, tt.decision.Code, fields[LogFieldCode])
+			wantCode := tt.decision.Code
+			if tt.wantCode != "" {
+				wantCode = tt.wantCode
+			}
+			require.Equal(t, wantCode, fields[LogFieldCode])
 			require.Equal(t, tt.decision.Reason, fields[LogFieldReason])
 		})
 	}
