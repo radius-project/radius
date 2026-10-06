@@ -336,7 +336,7 @@ func TestAWSProvider_generateProviderConfigMap(t *testing.T) {
 				awsIRSAProvider: map[string]any{
 					awsRoleARN:  testAWSIRSACredentials.IRSACredential.RoleARN,
 					sessionName: "radius-terraform-" + "test-uuid",
-					tokenFile:   tokenFilePath,
+					tokenFile:   AWSIRSATokenFilePath,
 				},
 			},
 		},
