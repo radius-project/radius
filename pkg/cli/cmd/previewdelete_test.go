@@ -286,7 +286,7 @@ func Test_WaitForManagedSecretDeletion(t *testing.T) {
 						}
 						return generated.GenericResource{}, &azcore.ResponseError{StatusCode: http.StatusNotFound}
 					}).AnyTimes()
-				err := waitForManagedSecretDeletion(t.Context(), client, *child.ID, *owner.ID)
+				err := waitForManagedSecretDeletion(t.Context(), client, *child.ID, *owner.ID, false, false)
 				if tt.wantError != "" {
 					require.ErrorContains(t, err, tt.wantError)
 					require.ErrorContains(t, err, *child.ID)
@@ -297,6 +297,58 @@ func Test_WaitForManagedSecretDeletion(t *testing.T) {
 				} else {
 					require.NoError(t, err)
 					require.Equal(t, len(tt.states)+1, calls)
+				}
+			})
+		})
+	}
+}
+
+func Test_DeleteResourcesInParallel_MissingProducer(t *testing.T) {
+	for _, tt := range []struct {
+		name        string
+		ownerError  error
+		states      []string
+		direct      bool
+		force       bool
+		deleteError error
+	}{
+		{name: "204 leaves inactive orphan", states: []string{"Succeeded"}, direct: true},
+		{name: "404 leaves inactive orphan", ownerError: &azcore.ResponseError{StatusCode: http.StatusNotFound}, states: []string{"Succeeded"}, direct: true},
+		{name: "both already absent"},
+		{name: "earlier cascade completes", states: []string{"Accepted", "Updating", "Deleting"}},
+		{name: "earlier cascade fails", states: []string{"Updating", "Failed"}, direct: true},
+		{name: "canceled cleanup", states: []string{"Canceled"}, direct: true},
+		{name: "empty terminal state", states: []string{""}, direct: true},
+		{name: "force still waits for active operation", states: []string{"Updating", "Succeeded"}, direct: true, force: true},
+		{name: "orphan delete fails", states: []string{"Succeeded"}, direct: true, deleteError: errors.New("orphan delete failed")},
+		{name: "new concurrent operation conflicts", states: []string{"Succeeded"}, direct: true, deleteError: &azcore.ResponseError{StatusCode: http.StatusConflict}},
+		{name: "orphan disappeared before delete", states: []string{"Succeeded"}, direct: true, deleteError: &azcore.ResponseError{StatusCode: http.StatusNotFound}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				owner, child := managedSecretPair()
+				id := deleteResourceKey(*child.ID)
+				client := clients.NewMockApplicationsManagementClient(gomock.NewController(t))
+				client.EXPECT().DeleteResource(gomock.Any(), *owner.Type, *owner.ID, tt.force).Return(false, tt.ownerError)
+				var sequence []any
+				for _, state := range tt.states {
+					sequence = append(sequence, client.EXPECT().GetResource(gomock.Any(), *child.Type, id).
+						Return(generated.GenericResource{Properties: map[string]any{"provisioningState": state}}, nil))
+				}
+				if tt.direct {
+					sequence = append(sequence, client.EXPECT().DeleteResource(gomock.Any(), *child.Type, id, tt.force).Return(true, tt.deleteError))
+				}
+				if tt.deleteError == nil || clients.Is404Error(tt.deleteError) {
+					sequence = append(sequence, client.EXPECT().GetResource(gomock.Any(), *child.Type, id).
+						Return(generated.GenericResource{}, &azcore.ResponseError{StatusCode: http.StatusNotFound}))
+				}
+				gomock.InOrder(sequence...)
+				err := DeleteResourcesInParallel(t.Context(), client, &output.MockOutput{}, []generated.GenericResource{child, owner}, tt.force)
+				if tt.deleteError != nil && !clients.Is404Error(tt.deleteError) {
+					require.ErrorIs(t, err, tt.deleteError)
+					require.ErrorContains(t, err, id)
+				} else {
+					require.NoError(t, err)
 				}
 			})
 		})

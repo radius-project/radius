@@ -79,6 +79,7 @@ func PreviewEnvironmentID(scope string, environmentName string) string {
 // A managed secret selected together with its producer is deleted by the server, not separately
 // by the CLI. After deleting the producers, this helper verifies that those secrets disappear
 // before returning, so callers can safely remove the application or environment.
+// If a producer is already absent, an inactive remaining secret is deleted directly.
 //
 // A resource missing an ID or type cannot be addressed and is skipped with a warning rather than
 // silently dropped, so the caller's reported count cannot disagree with what was deleted.
@@ -98,8 +99,9 @@ func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsM
 
 	g, groupCtx := errgroup.WithContext(ctx)
 	g.SetLimit(maxParallelDeletes)
+	missing := make([]bool, len(selected))
 
-	for _, resource := range selected {
+	for i, resource := range selected {
 		if resource.ID == nil || resource.Type == nil {
 			out.LogInfo(MsgSkippingResource, describeResource(resource))
 			continue
@@ -118,10 +120,11 @@ func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsM
 			if err := groupCtx.Err(); err != nil {
 				return err
 			}
-			_, err := client.DeleteResource(groupCtx, resourceType, resourceID, force)
+			deleted, err := client.DeleteResource(groupCtx, resourceType, resourceID, force)
 			if err != nil && !clients.Is404Error(err) {
 				return err
 			}
+			missing[i] = !deleted || clients.Is404Error(err)
 			return nil
 		})
 	}
@@ -132,6 +135,12 @@ func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsM
 	if len(managedSecrets) == 0 {
 		return ctx.Err()
 	}
+	missingOwners := map[string]bool{}
+	for i, resource := range selected {
+		if missing[i] {
+			missingOwners[deleteResourceKey(*resource.ID)] = true
+		}
+	}
 
 	// Wait cancels the first group's context even on success. Start from the caller's context.
 	waitCtx, cancel := context.WithTimeout(ctx, managedSecretDeleteTimeout)
@@ -139,8 +148,12 @@ func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsM
 	g, groupCtx = errgroup.WithContext(waitCtx)
 	g.SetLimit(maxParallelDeletes)
 	for id, owner := range managedSecrets {
+		deleteOrphan := missingOwners[deleteResourceKey(owner)]
+		if deleteOrphan {
+			out.LogInfo("  Resource %s is already absent; cleaning up its remaining managed secret %s...", owner, id)
+		}
 		g.Go(func() error {
-			return waitForManagedSecretDeletion(groupCtx, client, id, owner)
+			return waitForManagedSecretDeletion(groupCtx, client, id, owner, deleteOrphan, force)
 		})
 	}
 	return g.Wait()
@@ -212,7 +225,7 @@ func selectedManagedSecrets(selected []generated.GenericResource) (map[string]st
 	return owners, nil
 }
 
-func waitForManagedSecretDeletion(ctx context.Context, client clients.ApplicationsManagementClient, id, owner string) error {
+func waitForManagedSecretDeletion(ctx context.Context, client clients.ApplicationsManagementClient, id, owner string, deleteOrphan, force bool) error {
 	lastState := "unknown"
 	err := wait.PollUntilContextCancel(ctx, managedSecretPollInterval, true, func(ctx context.Context) (bool, error) {
 		if err := ctx.Err(); err != nil {
@@ -232,9 +245,20 @@ func waitForManagedSecretDeletion(ctx context.Context, client clients.Applicatio
 				return false, fmt.Errorf("invalid properties.provisioningState: expected a string")
 			}
 			lastState = state
-			if strings.EqualFold(state, string(v1.ProvisioningStateFailed)) || strings.EqualFold(state, string(v1.ProvisioningStateCanceled)) {
-				return false, fmt.Errorf("managed secret cleanup reached state %q", state)
+		}
+		failed := strings.EqualFold(lastState, string(v1.ProvisioningStateFailed)) || strings.EqualFold(lastState, string(v1.ProvisioningStateCanceled))
+		// A missing producer may still have an earlier cascade in flight. Only submit a new
+		// DELETE once the secret is terminal, even when the caller requested force.
+		if deleteOrphan && (lastState == "" || strings.EqualFold(lastState, string(v1.ProvisioningStateSucceeded)) || failed) {
+			_, err := client.DeleteResource(ctx, managedSecretResourceType, id, force)
+			if err != nil && !clients.Is404Error(err) {
+				return false, err
 			}
+			deleteOrphan = false
+			return false, nil
+		}
+		if failed {
+			return false, fmt.Errorf("managed secret cleanup reached state %q", lastState)
 		}
 		return false, nil
 	})

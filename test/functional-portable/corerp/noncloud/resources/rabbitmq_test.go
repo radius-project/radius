@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
@@ -40,7 +41,6 @@ func Test_RabbitMQ(t *testing.T) {
 	name := "corerp-resources-rabbitmq"
 	resourceName := "rabbitmq"
 	appNamespace := "corerp-resources-rabbitmq"
-	var managedSecretName string
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
@@ -65,8 +65,10 @@ func Test_RabbitMQ(t *testing.T) {
 					},
 				},
 			},
+			// Exercise application cleanup explicitly, including when CI enables fast cleanup.
+			SkipResourceDeletion: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				managedSecretName = requireManagedSecret(t, ctx, test, validation.MessagingRabbitMQResource, resourceName, appNamespace)
+				managedSecretName := requireManagedSecret(t, ctx, test, validation.MessagingRabbitMQResource, resourceName, appNamespace)
 				labelset := kubernetes.MakeSelectorLabels(name, resourceName)
 				listOptions := metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
@@ -97,6 +99,15 @@ func Test_RabbitMQ(t *testing.T) {
 				require.Equal(t, "rabbitmq", deployment.Spec.Template.Spec.Containers[0].Name)
 				require.Len(t, deployment.Spec.Template.Spec.Containers[0].Ports, 1)
 				require.Equal(t, int32(5672), deployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
+
+				cli := radcli.NewCLI(t, test.Options.ConfigFilePath)
+				_, err := cli.ApplicationDeletePreview(ctx, name, "")
+				require.NoError(t, err, "failed to delete preview application")
+				requireManagedSecretDeleted(t, ctx, test, appNamespace, managedSecretName)
+				scope := test.Options.Workspace.Scope
+				requireResourceDeleted(ctx, t, test, validation.MessagingRabbitMQResource, scope+"/providers/Radius.Messaging/rabbitMQ/"+resourceName)
+				requireResourceDeleted(ctx, t, test, validation.CoreApplicationsResource, scope+"/providers/Radius.Core/applications/"+name)
+				validation.ValidateNoPodsInApplication(ctx, t, test.Options.K8sClient, appNamespace, name)
 			},
 		},
 	})
@@ -104,10 +115,6 @@ func Test_RabbitMQ(t *testing.T) {
 	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
 	test.PreSetup = preSetup
 	test.Steps[0].Executor = step.NewDeployExecutor(template, fmt.Sprintf("environment=%s", previewEnvID))
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
-		require.NotEmpty(t, managedSecretName)
-		requireManagedSecretDeleted(t, ctx, test, appNamespace, managedSecretName)
-	}
 
 	test.Test(t)
 }
