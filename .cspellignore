@@ -228,10 +228,10 @@ KubernetesPodSpec
 KubernetesResourceCheck
 KubernetesRuntimeProperties
 Kumar
-Kustomization
-Kyverno
 Kusto
+Kustomization
 Kustomize
+Kyverno
 LinkRP
 Linkrp
 LoadBalancer
