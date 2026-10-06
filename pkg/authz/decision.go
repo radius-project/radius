@@ -63,26 +63,36 @@ func (e *DeniedError) Error() string {
 	return fmt.Sprintf("authorization denied (%s): %s", e.Code, e.Reason)
 }
 
+// CodeAuthorizationFailed is used when a denial does not carry a specific code.
+const CodeAuthorizationFailed = "AuthorizationFailed"
+
 // Apply acts on an authorization decision according to mode. It returns nil when the
 // decision is allowed or mode is off, logs and returns nil for a denial in dry-run mode,
-// and returns a *DeniedError for a denial in enforce mode. An unknown mode fails closed.
+// and returns a *DeniedError for a denial in enforce mode. An unknown mode fails closed,
+// even for allowed decisions.
 func Apply(ctx context.Context, mode Mode, decision Decision) error {
-	if decision.Allowed {
-		return nil
-	}
-
 	switch mode {
-	case "", ModeOff:
-		return nil
-	case ModeDryRun:
-		ucplog.FromContextOrDiscard(ctx).Info("authorization check would deny request",
-			LogFieldWouldDeny, true,
-			LogFieldCode, decision.Code,
-			LogFieldReason, decision.Reason)
-		return nil
-	case ModeEnforce:
-		return &DeniedError{Code: decision.Code, Reason: decision.Reason}
+	case "", ModeOff, ModeDryRun, ModeEnforce:
 	default:
 		return fmt.Errorf("invalid authorization mode %q", mode)
 	}
+
+	if decision.Allowed || mode == "" || mode == ModeOff {
+		return nil
+	}
+
+	code := decision.Code
+	if code == "" {
+		code = CodeAuthorizationFailed
+	}
+
+	if mode == ModeDryRun {
+		ucplog.FromContextOrDiscard(ctx).Info("authorization check would deny request",
+			LogFieldWouldDeny, true,
+			LogFieldCode, code,
+			LogFieldReason, decision.Reason)
+		return nil
+	}
+
+	return &DeniedError{Code: code, Reason: decision.Reason}
 }
