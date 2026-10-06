@@ -46,13 +46,15 @@ type Decision struct {
 	// Code is the error code for a denial, such as "AuthorizationFailed".
 	Code string
 
-	// Reason describes why the check denied the request.
+	// Reason is an internal diagnostic describing why the check denied the request.
+	// It may be logged, but is omitted from ARM responses.
 	Reason string
 
-	// Action is the action that was checked, such as "Applications.Core/containers/write".
+	// Action is the caller's requested action, such as "Applications.Core/containers/write".
 	Action string
 
-	// Target is the resource ID or scope the action was checked against.
+	// Target is the caller's requested resource ID or scope, not a resource discovered
+	// while evaluating permissions.
 	Target string
 }
 
@@ -61,15 +63,15 @@ type DeniedError struct {
 	// Code is the error code for the denial.
 	Code string
 
-	// Reason describes why the request was denied. It is returned to the caller, so it
-	// must not include another user's identity or details of resources outside the
-	// caller's permission.
+	// Reason is an internal diagnostic. It is included in Error() but never in
+	// ErrorResponse() or Response().
 	Reason string
 
-	// Action is the action that was denied.
+	// Action is the caller's requested action. It is required for ARM responses.
 	Action string
 
-	// Target is the resource ID or scope the action was denied on.
+	// Target is the caller's requested resource ID or scope, not a resource discovered
+	// while evaluating permissions. It is required for ARM responses.
 	Target string
 }
 
