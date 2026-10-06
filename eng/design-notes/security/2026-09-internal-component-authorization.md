@@ -601,7 +601,7 @@ Remaining implementation details:
 
 **Q: Does the execution record need explicit versioning?**
 
-**A:** Not in the initial design. Callers pass only opaque record and operation IDs, so the wire contract with the deployment engine carries no approval content to version, and the nested-record API uses `api-version` like other UCP APIs. The stored record is read only by Radius components, but old and new versions read it during a rolling upgrade. Remaining: whether to add a `schemaVersion` to the record so that a checker rejects a record with restrictions it does not understand, or to rely on UCP adding new restrictive fields only after every checker is upgraded.
+**A:** Not in the initial design. Callers pass only opaque record and operation IDs, so the wire contract with the deployment engine carries no approval content to version, and the nested-record API uses `api-version` like other UCP APIs. The stored record is read only by Radius components, but old and new versions read it during a rolling upgrade. Until the record has a version, UCP adds a new restrictive field only after every component that checks records has been upgraded to understand it. The PR that adds the execution record also adds this ordering rule to the [release process](../../../docs/contributing/contributing-releases/README.md), so it is checked on every release. Adding a `schemaVersion`, so that a checker fails closed on a record with restrictions it does not understand, is the long-term answer and is tracked in [#13222](https://github.com/radius-project/radius/issues/13222).
 
 **Q: Which clusters can enforce the admission controls?**
 
