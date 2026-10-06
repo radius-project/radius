@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
@@ -69,32 +70,35 @@ func (e *DeniedError) code() string {
 	return e.Code
 }
 
-// ErrorResponse converts the denial to an ARM error response body. The message names
-// the action and target, and includes Reason as provided by the check.
-func (e *DeniedError) ErrorResponse() v1.ErrorResponse {
-	message := "Authorization denied"
-	if e.Action != "" || e.Target != "" {
-		message = fmt.Sprintf("Authorization denied for action '%s' on target '%s'", e.Action, e.Target)
-	}
-	if e.Reason != "" {
-		message += ": " + e.Reason
+// ErrorResponse converts the denial to an ARM error response body. Action and Target
+// must identify the caller's requested action and target; conversion fails if either
+// is blank. Reason is an internal diagnostic and is never included in the response.
+func (e *DeniedError) ErrorResponse() (v1.ErrorResponse, error) {
+	if strings.TrimSpace(e.Action) == "" || strings.TrimSpace(e.Target) == "" {
+		return v1.ErrorResponse{}, fmt.Errorf("authorization response requires an action and target")
 	}
 
 	return v1.ErrorResponse{
 		Error: &v1.ErrorDetails{
 			Code:    e.code(),
-			Message: message,
+			Message: fmt.Sprintf("Authorization denied for action '%s' on target '%s'", e.Action, e.Target),
 			Target:  e.Target,
 		},
-	}
+	}, nil
 }
 
 // Response converts the denial to a rest.Response with the HTTP status for its code.
-func (e *DeniedError) Response() rest.Response {
+// It returns an error if the requested action or target is blank.
+func (e *DeniedError) Response() (rest.Response, error) {
+	body, err := e.ErrorResponse()
+	if err != nil {
+		return nil, err
+	}
+
 	return &DeniedResponse{
 		StatusCode: StatusForCode(e.code()),
-		Body:       e.ErrorResponse(),
-	}
+		Body:       body,
+	}, nil
 }
 
 // DeniedResponse is a rest.Response that writes an ARM error payload for an authorization failure.
