@@ -94,7 +94,7 @@ tools:
 
   - name: kubectl
     makePrefix: KUBECTL
-    version: v1.37.0
+    version: v1.37.1
     source:
       type: stable-text
       repository: kubernetes/kubernetes
@@ -103,16 +103,16 @@ tools:
     platforms:
       linux_amd64:
         asset: kubectl
-        checksum: 6129359f4e1f3848a5572ccb0b26cf28b8ca08cef38c95a765b2f64a2c961a2f
+        checksum: 65691ff77eb6fa44c908b77a1082c9f092c3b9733b5cefabec0d1104890e21a8
       linux_arm64:
         asset: kubectl
-        checksum: 922df28df248cc00a9e025f947704f1d1482de64ece54cfe57e61f19eaf1eef3
+        checksum: ff749f4b78d9c4f1ec87307df9b50119ed819e2094aa9810cb9acffc3286c8c7
       darwin_amd64:
         asset: kubectl
-        checksum: d5276c0f4fde77fc446070290f345944a7f1fda153df6b960e5fde93b7a9bccd
+        checksum: 6851381c486ff6edd691623e3d65c87cb9a5b02887ff8fbbb38d8a031b748387
       darwin_arm64:
         asset: kubectl
-        checksum: 583beedaebe422e71d3f1a96acef8b1fef86ea2f09a45ad01aa6c9ce287c1380
+        checksum: fd65982c97ddad3106754b69ffa196d0e543aa591930ae52aed1adfb92f8c77f
     checksumSource:
       type: url-file
       urlTemplate: https://dl.k8s.io/release/{version}/bin/{os}/{arch}/kubectl.sha256
@@ -198,7 +198,7 @@ tools:
 
   - name: golangci-lint
     makePrefix: GOLANGCI_LINT
-    version: v2.13.2
+    version: v2.14.0
     source:
       type: github-release
       repository: golangci/golangci-lint
@@ -207,16 +207,16 @@ tools:
     platforms:
       linux_amd64:
         asset: golangci-lint-{version_no_v}-linux-amd64.tar.gz
-        checksum: 2277d43b98ec0054280f2ac26b53268bae97682444678a59a657dd565da021d6
+        checksum: ab90aeb7b066f92a33415b638a50fe5344bbb75a0d32ad30cc248d88f81032ab
       linux_arm64:
         asset: golangci-lint-{version_no_v}-linux-arm64.tar.gz
-        checksum: a2a4e0065aa41be71f7c5ac90f271b61751331e5d04314e62afe4027855f0893
+        checksum: ee7ec5f3453d15ddf106fae5a4d6c71737712348a979d1fe9cd52ec7ea299bae
       darwin_amd64:
         asset: golangci-lint-{version_no_v}-darwin-amd64.tar.gz
-        checksum: 8a13aaf9cbbb1dee52824e862cf0d0720e5bb97c1f4260d1e51623a09492b57b
+        checksum: a5667c1c3536be1740133213e1e822bfb8f0d98ea12903174d6d5f635e4ed68d
       darwin_arm64:
         asset: golangci-lint-{version_no_v}-darwin-arm64.tar.gz
-        checksum: f4bf83f0b64f055c42b28fc9a38861839f69c096e61c788e72dfaae412011789
+        checksum: 5ef5f36a7147e91dc58ef9ef4d11bb7bad5ead0c76eb6c01327a73c641d1dcc3
     checksumSource:
       type: github-release-file
       fileTemplate: golangci-lint-{version_no_v}-checksums.txt
@@ -224,7 +224,7 @@ tools:
 
   - name: goreleaser
     makePrefix: GORELEASER
-    version: v2.18.1
+    version: v2.18.2
     source:
       type: github-release
       repository: goreleaser/goreleaser
@@ -233,16 +233,16 @@ tools:
     platforms:
       linux_amd64:
         asset: goreleaser_Linux_x86_64.tar.gz
-        checksum: 0c6122af0ad8fd65638889bf7d3757148b2f80eeff9f079682f0655df66ec8e8
+        checksum: 0a96edc9d9bc594e4a41cc4d59467c182062910ab24d9d1f6dd7b667d32606d3
       linux_arm64:
         asset: goreleaser_Linux_arm64.tar.gz
-        checksum: 93dba7614308e167158bd26978e8275971fd4b9147e7f3c687a64f5939d42d27
+        checksum: a71681b29194f08f057a68cfcaa5c6b15d907a83a2622c51900c4faff828f322
       darwin_amd64:
         asset: goreleaser_Darwin_x86_64.tar.gz
-        checksum: 623e9ba517ace49c3d6b57bcfe8f5fe33ca45313ee93261c1854464cca94d861
+        checksum: 5e97d6517f73a0b6f71675a2911b15d3136c03c8907650c2b18e114b1c0f5205
       darwin_arm64:
         asset: goreleaser_Darwin_arm64.tar.gz
-        checksum: 8e912c5cc78896d791b7530e672d4a4ef9c00ebff7375de410fae1b459825ea3
+        checksum: a811ff154fe136a0cfb55d00126c151fc39ec370a663d805a9ca5547445aa70c
     checksumSource:
       type: github-release-file
       fileTemplate: checksums.txt
@@ -250,7 +250,7 @@ tools:
 
   - name: git-cliff
     makePrefix: GIT_CLIFF
-    version: v2.14.1
+    version: v2.14.2
     source:
       type: github-release
       repository: orhun/git-cliff
@@ -259,16 +259,16 @@ tools:
     platforms:
       linux_amd64:
         asset: git-cliff-{version_no_v}-x86_64-unknown-linux-gnu.tar.gz
-        checksum: dfe9bef0c7a00d05fafe78e6e591a1a280d39dd495b8066764db0a559acde67f
+        checksum: 24f397c733add5390fdceee3a2088588ab0d5f944ce00d34cb7029b888cf2db4
       linux_arm64:
         asset: git-cliff-{version_no_v}-aarch64-unknown-linux-gnu.tar.gz
-        checksum: e99dc84135c6bc27aefc9d8226f7297119ed6750a32f45418f4587bc6cb260d8
+        checksum: 69e208f6e4baef3a0f9b759d5f44223aa9336b86c691072a3d0c98d35a816e69
       darwin_amd64:
         asset: git-cliff-{version_no_v}-x86_64-apple-darwin.tar.gz
-        checksum: d1ca51bfd8b8c2a09434532bdb85bab50179b7c0bde2378aa48f3c1a7dc2fd36
+        checksum: 4e647d2deb152aca1e987f225cf42b080b991dd98f3bce4027ef95446d982ac3
       darwin_arm64:
         asset: git-cliff-{version_no_v}-aarch64-apple-darwin.tar.gz
-        checksum: 2e2d1f60963aa6a201dbd21df14d7f44025328b8bb33437695f15a516598615a
+        checksum: a0be97e237d440d34c5e508ec21d070b2c85cbb8be48a46a56f9a4e8bd247f05
     checksumSource:
       type: download
 

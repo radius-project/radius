@@ -10,13 +10,13 @@
 # Lifecycle and hold labels share blue; release-impact labels remain green.
 - name: pr:needs-reviewer
   color: 1D76DB
-  description: Ready for review but no reviewer has been requested
+  description: No pending review request or active submitted human review
 - name: pr:waiting-for-review
   color: 1D76DB
-  description: A requested reviewer owns the next action
+  description: A reviewer owns the next action; required approval is pending or unverifiable
 - name: pr:waiting-for-author
   color: 1D76DB
-  description: The author needs to address review feedback
+  description: The author needs to address human review feedback or human-endorsed inline feedback
 - name: pr:review-approved
   color: 1D76DB
   description: Required reviews are approved; checks may still be pending

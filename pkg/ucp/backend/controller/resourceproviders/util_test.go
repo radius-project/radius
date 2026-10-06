@@ -79,6 +79,47 @@ func TestResourceProviderSummaryIDFromRequest(t *testing.T) {
 	}
 }
 
+func Test_ResolveResourceTypeKey(t *testing.T) {
+	tests := []struct {
+		name           string
+		resourceTypes  map[string]datamodel.ResourceProviderSummaryPropertiesResourceType
+		lookup         string
+		expectedResult string
+	}{
+		{
+			name:           "exact match",
+			resourceTypes:  map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{"testResources": {}},
+			lookup:         "testResources",
+			expectedResult: "testResources",
+		},
+		{
+			name:           "case-insensitive match reuses existing key",
+			resourceTypes:  map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{"testResources": {}},
+			lookup:         "TESTRESOURCES",
+			expectedResult: "testResources",
+		},
+		{
+			name:           "no match returns the lookup name",
+			resourceTypes:  map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{"otherResources": {}},
+			lookup:         "testResources",
+			expectedResult: "testResources",
+		},
+		{
+			name:           "nil map returns the lookup name",
+			resourceTypes:  nil,
+			lookup:         "testResources",
+			expectedResult: "testResources",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := resolveResourceTypeKey(tt.resourceTypes, tt.lookup)
+			require.Equal(t, tt.expectedResult, result)
+		})
+	}
+}
+
 func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 	summaryID := resources.MustParse("/planes/radius/local/providers/System.Resources/resourceProviderSummaries/Applications.Test")
 	tests := []struct {

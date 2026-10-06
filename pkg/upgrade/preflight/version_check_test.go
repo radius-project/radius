@@ -68,17 +68,31 @@ func TestVersionCompatibilityCheck_Run(t *testing.T) {
 		},
 		{
 			name:           "valid prerelease upgrade same version",
-			currentVersion: "0.55.0-rc4",
-			targetVersion:  "0.55.0-rc5",
+			currentVersion: "0.61.0-rc.2",
+			targetVersion:  "0.61.0-rc.10",
 			expectSuccess:  true,
-			expectMessage:  "Upgrade from 0.55.0-rc4 to 0.55.0-rc5 is valid",
+			expectMessage:  "Upgrade from 0.61.0-rc.2 to 0.61.0-rc.10 is valid",
 		},
 		{
 			name:           "valid prerelease to release upgrade",
-			currentVersion: "v0.55.0-rc5",
-			targetVersion:  "v0.55.0",
+			currentVersion: "v0.61.0-rc.10",
+			targetVersion:  "v0.61.0",
 			expectSuccess:  true,
-			expectMessage:  "Upgrade from v0.55.0-rc5 to v0.55.0 is valid",
+			expectMessage:  "Upgrade from v0.61.0-rc.10 to v0.61.0 is valid",
+		},
+		{
+			name:           "valid historical prerelease upgrade",
+			currentVersion: "0.60.0-rc4",
+			targetVersion:  "0.60.0-rc5",
+			expectSuccess:  true,
+			expectMessage:  "Upgrade from 0.60.0-rc4 to 0.60.0-rc5 is valid",
+		},
+		{
+			name:           "historical prerelease upgrade across digit boundary",
+			currentVersion: "v0.60.0-rc9+old",
+			targetVersion:  "v0.60.0-rc10+new",
+			expectSuccess:  true,
+			expectMessage:  "Upgrade from v0.60.0-rc9+old to v0.60.0-rc10+new is valid",
 		},
 		{
 			name:           "valid patch version upgrade",
@@ -86,6 +100,20 @@ func TestVersionCompatibilityCheck_Run(t *testing.T) {
 			targetVersion:  "v0.55.1",
 			expectSuccess:  true,
 			expectMessage:  "Upgrade from v0.55.0 to v0.55.1 is valid",
+		},
+		{
+			name:           "upgrade from edge chart version",
+			currentVersion: RADIUS_EDGE_CHART_VERSION,
+			targetVersion:  "0.61.0",
+			expectSuccess:  true,
+			expectMessage:  "Upgrade from 0.42.42-dev to 0.61.0 is valid",
+		},
+		{
+			name:           "upgrade from edge app version",
+			currentVersion: RADIUS_EDGE_APP_VERSION,
+			targetVersion:  "0.61.0",
+			expectSuccess:  true,
+			expectMessage:  "Upgrade from edge to 0.61.0 is valid",
 		},
 	}
 
@@ -116,6 +144,7 @@ func TestValidateVersionJump(t *testing.T) {
 		targetVersion  string
 		expectValid    bool
 		expectMessage  string
+		expectError    bool
 	}{
 		{
 			name:           "safe incremental upgrade",
@@ -139,15 +168,57 @@ func TestValidateVersionJump(t *testing.T) {
 		},
 		{
 			name:           "safe prerelease upgrade",
-			currentVersion: "0.55.0-rc4",
-			targetVersion:  "0.55.0-rc5",
+			currentVersion: "0.61.0-rc.2",
+			targetVersion:  "0.61.0-rc.10",
 			expectValid:    true,
 		},
 		{
 			name:           "safe prerelease to release",
-			currentVersion: "0.55.0-rc5",
-			targetVersion:  "0.55.0",
+			currentVersion: "0.61.0-rc.10",
+			targetVersion:  "0.61.0",
 			expectValid:    true,
+		},
+		{
+			name:           "historical RC nine to ten is an upgrade",
+			currentVersion: "0.60.0-rc9",
+			targetVersion:  "0.60.0-rc10",
+			expectValid:    true,
+		},
+		{
+			name:           "historical RC ninety-nine to one hundred is an upgrade",
+			currentVersion: "0.60.0-rc99",
+			targetVersion:  "0.60.0-rc100",
+			expectValid:    true,
+		},
+		{
+			name:           "historical RC ten to nine is a downgrade",
+			currentVersion: "0.60.0-rc10",
+			targetVersion:  "0.60.0-rc9",
+			expectValid:    false,
+			expectMessage:  "Downgrading is not supported",
+		},
+		{
+			name:           "same historical RC is rejected",
+			currentVersion: "0.60.0-rc10",
+			targetVersion:  "0.60.0-rc10",
+			expectValid:    false,
+			expectMessage:  "Target version is the same as current version",
+		},
+		{
+			name:           "other prereleases retain semantic version ordering",
+			currentVersion: "0.60.0-beta9",
+			targetVersion:  "0.60.0-beta10",
+			expectValid:    false,
+			expectMessage:  "Downgrading is not supported",
+		},
+		{
+			// SemVer orders the dotted identifier before the legacy one, which is
+			// why the two forms are never mixed within one version.
+			name:           "dotted prerelease after legacy prerelease is a downgrade",
+			currentVersion: "0.61.0-rc1",
+			targetVersion:  "0.61.0-rc.2",
+			expectValid:    false,
+			expectMessage:  "Downgrading is not supported",
 		},
 		{
 			name:           "safe patch bump",
@@ -162,12 +233,52 @@ func TestValidateVersionJump(t *testing.T) {
 			expectValid:    false,
 			expectMessage:  "Target version is the same as current version",
 		},
+		{
+			name:           "edge app version upgrades to any version",
+			currentVersion: RADIUS_EDGE_APP_VERSION,
+			targetVersion:  "0.30.0",
+			expectValid:    true,
+		},
+		{
+			name:           "edge app version upgrades to edge",
+			currentVersion: RADIUS_EDGE_APP_VERSION,
+			targetVersion:  RADIUS_EDGE_APP_VERSION,
+			expectValid:    true,
+		},
+		{
+			name:           "edge chart version upgrades to edge",
+			currentVersion: RADIUS_EDGE_CHART_VERSION,
+			targetVersion:  RADIUS_EDGE_APP_VERSION,
+			expectValid:    true,
+		},
+		{
+			name:           "edge app version rejects non-semver target",
+			currentVersion: RADIUS_EDGE_APP_VERSION,
+			targetVersion:  "nightly",
+			expectError:    true,
+		},
+		{
+			name:           "edge chart version rejects non-semver target",
+			currentVersion: RADIUS_EDGE_CHART_VERSION,
+			targetVersion:  "nightly",
+			expectError:    true,
+		},
+		{
+			name:           "non-semver current version is still an error",
+			currentVersion: "nightly",
+			targetVersion:  "0.61.0",
+			expectError:    true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			valid, message, err := ValidateVersionJump(tt.currentVersion, tt.targetVersion)
 
+			if tt.expectError {
+				require.Error(t, err)
+				return
+			}
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectValid, valid)
 			if tt.expectMessage != "" {

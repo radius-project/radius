@@ -64,7 +64,7 @@ Run the focused Windows process tests on a native Windows host:
 go test ./pkg/process ./pkg/cli/style ./test/windowless -count=1 -timeout=2m
 ```
 
-The process unit tests verify the Windows no-window creation flags. The integration test builds `rad.exe`, launches it non-detached with piped output inside a kill-on-close Windows Job Object, and verifies `rad version --cli --output json`, a windowless Bicep child, and process-tree cancellation. CI runs these tests on Windows amd64 and arm64.
+The process unit tests verify the Windows no-window creation flags. When `RADIUS_TEST_RAD_BINARY` is unset, the integration test builds `rad.exe`; otherwise, it uses the binary at that path. It launches `rad.exe` non-detached with piped output inside a kill-on-close Windows Job Object and verifies `rad version --cli --output json`, a windowless Bicep child, and process-tree cancellation. CI prebuilds the binary outside the Go test process and runs these tests on Windows amd64 and arm64.
 
 ### Debug rad in VS Code
 

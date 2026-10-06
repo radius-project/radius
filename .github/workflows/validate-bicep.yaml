@@ -74,6 +74,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: Install bicep CLI
         # Install into ~/.rad/bin so the rad CLI finds it; the script also adds
         # the dir to PATH for subsequent steps. Pinned version + checksum live in

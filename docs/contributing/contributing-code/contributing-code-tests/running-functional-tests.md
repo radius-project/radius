@@ -76,7 +76,7 @@ The aggregate `make test-functional-all-noncloud` target intentionally excludes 
 | `make test-functional-multicluster-noncloud` | Requires a second Kubernetes cluster, a target-cluster Secret mounted into Radius, and `RADIUS_TEST_EXTERNAL_KUBECONFIG` for the test process.     |
 | `make test-functional-database-noncloud`     | Requires Radius installed with `--set database.enabled=true` (PostgreSQL-backed control plane) instead of the default Kubernetes API server store. |
 | `make test-functional-statestore-noncloud`   | Destructive lifecycle test that installs, purges, and reinstalls Radius. Run it only on a dedicated cluster.                                       |
-| `make test-functional-upgrade-noncloud`      | Exercises the Radius upgrade path and performs its own install/upgrade lifecycle.                                                                  |
+| `make test-functional-upgrade-noncloud`      | Exercises the Radius upgrade path, including `rad upgrade kubernetes`, and performs its own install/upgrade lifecycle.                             |
 
 The multicluster, database, statestore, and upgrade groups run as isolated CI legs in `functional-test-noncloud.yaml`; do not run them against a shared development cluster. The upgrade tests uninstall the existing Radius release before installing and upgrading their own release.
 
@@ -121,7 +121,9 @@ DE_IMAGE=ghcr.io/my-org/deployment-engine DE_TAG=de-candidate \
 make test-functional-upgrade-noncloud
 ```
 
-Supplying only `DE_IMAGE` or only `DE_TAG` fails before the test accesses Kubernetes or uninstalls Radius. Set the missing value or unset both variables. The test verifies the live DE image after installation, both upgrade attempts, and release recovery, and logs the runtime image and resolved `ImageID` when available. A candidate image falling back to the chart default fails verification; a preflight hook rejecting an upgrade remains an allowed outcome. Without candidate inputs, the test leaves chart defaults unchanged and checks that the running pods match the installed Deployment.
+Supplying only `DE_IMAGE` or only `DE_TAG` fails before the test accesses Kubernetes or uninstalls Radius. Set the missing value or unset both variables. The test verifies the live DE image after each install, the upgrades, and release recovery, and logs the runtime image and resolved `ImageID` when available. A candidate image falling back to the chart default fails verification; a preflight hook rejecting an upgrade remains an allowed outcome. Without candidate inputs, the test leaves chart defaults unchanged and checks that the running pods match the installed Deployment.
+
+The `rad upgrade kubernetes` test installs from the in-repo chart and then upgrades to temporary copies of it versioned `0.60.0`, `0.61.0`, and `0.61.1`, so its preflight version checks compare real versions. It pins every image, so set `RADIUS_REGISTRY_CERT_FILE` to the registry CA certificate when the Radius images come from a registry that uses a private CA.
 
 ### Control test cleanup
 
@@ -187,6 +189,8 @@ Separate scheduled jobs (`purge-azure-test-resources.yaml` and `purge-aws-test-r
 ### Diagnose long-running Azure test failures
 
 The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
+
+The LRT setup script [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) defines the required Helm overrides in `REQUIRED_CHART_VALUES`, shared by fresh installs, upgrades, and existing same-version IRSA reconciliation. Keep LRT-specific configuration in that array rather than changing global chart defaults or using `kubectl set resources`, which can cause field-ownership conflicts on later upgrades.
 
 Download the `all_container_logs` artifact from a successful or failed run. Alongside the released test harness's logs, it contains:
 

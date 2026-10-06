@@ -740,6 +740,80 @@ func Test_Helm_RollbackRadius_Success(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func Test_Helm_RollbackRadius_PrereleaseOrdering(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		versions []string
+		revision int
+	}{
+		{
+			name:     "legacy RC nine before ten",
+			versions: []string{"0.60.0-rc9", "0.60.0-rc10"},
+			revision: 1,
+		},
+		{
+			name:     "legacy RC preferred over older stable release",
+			versions: []string{"0.59.0", "0.60.0-rc9", "0.60.0-rc10"},
+			revision: 2,
+		},
+		{
+			name:     "legacy RC names with prefix and metadata are preserved",
+			versions: []string{"v0.60.0-rc9+previous", "v0.60.0-rc10+current"},
+			revision: 1,
+		},
+		{
+			name:     "newer legacy RC is skipped",
+			versions: []string{"0.59.0", "0.60.0-rc10", "0.60.0-rc9"},
+			revision: 1,
+		},
+		{
+			name:     "dotted RC nine before ten",
+			versions: []string{"0.60.0-rc.9", "0.60.0-rc.10"},
+			revision: 1,
+		},
+		{
+			name:     "mixed RC formats retain semantic version ordering",
+			versions: []string{"0.59.0", "0.60.0-rc1", "0.60.0-rc.2"},
+			revision: 1,
+		},
+	}
+
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			mockHelmClient := NewMockHelmClient(ctrl)
+			impl := &Impl{Helm: mockHelmClient}
+			history := make([]*releasev1.Release, 0, len(testCase.versions))
+			for index, chartVersion := range testCase.versions {
+				history = append(history, &releasev1.Release{
+					Version: index + 1,
+					Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: chartVersion}},
+					Info:    &releasev1.Info{Status: releasecommon.StatusSuperseded},
+				})
+			}
+			history[len(history)-1].Info.Status = releasecommon.StatusDeployed
+
+			mockHelmClient.EXPECT().
+				RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
+				Return(history, nil).
+				Times(1)
+			mockHelmClient.EXPECT().
+				RunHelmRollback(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", testCase.revision, true).
+				Return(nil).
+				Times(1)
+
+			require.NoError(t, impl.RollbackRadius(t.Context(), "test-context"))
+			for index, chartVersion := range testCase.versions {
+				require.Equal(t, chartVersion, history[index].Chart.Metadata.Version)
+			}
+		})
+	}
+}
+
 func Test_Helm_RollbackRadius_NoOlderVersion(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
