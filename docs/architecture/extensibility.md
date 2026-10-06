@@ -517,8 +517,6 @@ managed secret. `secrets` is treated as a framework-owned basic property (see
 `pkg/resourceutil.BasicProperties`) so it is never overwritten by generic
 recipe-output copying.
 
-The server submits the managed secret's asynchronous DELETE without waiting for completion. Preview application and environment deletion in [`pkg/cli/cmd/previewdelete.go`](../../pkg/cli/cmd/previewdelete.go) therefore uses the producer's public `properties.secrets.name` and root scope to identify generated secrets selected alongside their producers. The CLI lets the server delete those secrets instead of sending competing DELETE requests, then verifies their disappearance before removing the application or environment. Verification shares a five-minute deadline, honors cancellation, and reports failures without removing the containing application/environment. Independent resources remain parallel, and standalone or orphan secrets whose producer is not selected are still deleted directly. `--force` does not bypass this verification or force a second DELETE of an active managed secret.
-
 **Binding is lazy, and materialization is non-blocking.** The materializer
 issues an accepted PUT for the managed secret and returns without waiting for
 that secret's own asynchronous provisioning to finish — it deliberately does not
