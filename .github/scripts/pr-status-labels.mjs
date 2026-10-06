@@ -16,6 +16,53 @@ limitations under the License.
 
 import labels from "../configs/pr-status-labels.json" with { type: "json" };
 
+export function validateLabels(config) {
+  const required = {
+    states: [
+      "needsReviewer",
+      "waitingForReview",
+      "waitingForAuthor",
+      "reviewApproved",
+      "needsRebase",
+      "readyForQueue"
+    ],
+    manual: ["needsAuthorResponse", "doNotMerge"]
+  };
+  const names = new Set();
+  for (const [section, keys] of Object.entries(required)) {
+    for (const key of keys) {
+      const name = config?.[section]?.[key];
+      if (
+        typeof name !== "string" ||
+        name.trim().length === 0 ||
+        name !== name.trim() ||
+        [...name].length > 50 ||
+        /[\u0000-\u001f\u007f-\u009f]/u.test(name)
+      ) {
+        throw new Error(
+          `Invalid pr-status-labels.json: ${section}.${key} must be a nonempty label name of at most 50 characters without surrounding whitespace or control characters`
+        );
+      }
+      const normalized = name.toLowerCase();
+      if (names.has(normalized)) {
+        throw new Error(
+          `Invalid pr-status-labels.json: ${section}.${key} duplicates another label name (ignoring case)`
+        );
+      }
+      names.add(normalized);
+    }
+    if (Object.keys(config[section]).length !== keys.length) {
+      throw new Error(
+        `Invalid pr-status-labels.json: unknown key in ${section}`
+      );
+    }
+  }
+  if (Object.keys(config).length !== Object.keys(required).length) {
+    throw new Error("Invalid pr-status-labels.json: unknown section");
+  }
+}
+
+validateLabels(labels);
 const STATUS_LABELS = Object.freeze(labels.states);
 export const MANUAL_LABELS = Object.freeze(labels.manual);
 const MANAGED_LABELS = Object.freeze(Object.values(STATUS_LABELS));
