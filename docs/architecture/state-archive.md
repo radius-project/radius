@@ -132,6 +132,8 @@ sequenceDiagram
 
 OCI sessions materialize a temporary directory and upload its contents on commit.
 
+> **Terraform state is only archived when it lives in Kubernetes.** `BackupTerraform` exports the Terraform state **Secrets** Radius manages in the cluster. An environment whose [TerraformSettings](terraform-bicep-settings.md#terraform-state-backends) select an S3 or Azure Blob backend keeps its state in that bucket or container instead, outside the cluster and outside this archive, so `rad shutdown` neither reads nor restores it. Operators must arrange backup and retention for those state objects separately, for example with S3 bucket versioning or Azure blob soft delete.
+
 ## Selecting an Archive
 
 [pkg/statearchive/factory](../../pkg/statearchive/factory/factory.go) configures OCI for both consumers. Configuration errors are returned by `Archive.Open`, not CLI initialization, so unrelated commands such as `rad version --cli` do not need archive configuration.

@@ -167,6 +167,11 @@ jobs:
           # Publishes recipes/types — don't restore a cache a prior run could have poisoned.
           cache: false
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+        with:
+          working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+
       - name: Login to Azure
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:

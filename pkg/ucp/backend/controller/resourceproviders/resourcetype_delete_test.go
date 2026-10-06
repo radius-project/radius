@@ -49,3 +49,31 @@ func TestResourceTypeDeleteController_updateSummary(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expected, summary)
 }
+
+func TestResourceTypeDeleteController_updateSummary_existingDifferentCasing(t *testing.T) {
+	// A DELETE for "testResources" should remove the entry even when it is stored under a
+	// different casing (e.g. "testresources").
+	id := resources.MustParse("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources")
+
+	summary := &datamodel.ResourceProviderSummary{
+		Properties: datamodel.ResourceProviderSummaryProperties{
+			ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
+				"testresources":  {},
+				"testResources2": {},
+			},
+		},
+	}
+
+	expected := &datamodel.ResourceProviderSummary{
+		Properties: datamodel.ResourceProviderSummaryProperties{
+			ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
+				"testResources2": {},
+			},
+		},
+	}
+
+	controller := &ResourceTypeDeleteController{}
+	err := controller.updateSummary(id)(summary)
+	require.NoError(t, err)
+	require.Equal(t, expected, summary)
+}

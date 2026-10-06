@@ -550,7 +550,7 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 					}
 
 					// Only rollback to a semantically older version
-					if candidateSemver.LessThan(currentSemver) {
+					if version.Compare(candidateSemver, currentSemver) < 0 {
 						targetRevision = history[i].Version
 						break
 					}
