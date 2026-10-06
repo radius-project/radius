@@ -26,12 +26,39 @@ Follow the [GitHub Workflows instruction file](../../../../.github/instructions/
 5. Set the smallest explicit `permissions:` block at the workflow or job level.
 6. Open the pull request as a draft and run the workflow from your branch. Confirm its trigger, job graph, artifacts, and failure behavior before marking the pull request ready.
 
+### Go module downloads
+
+After setting up Go, use the local `.github/actions/go-mod-download` composite action before compiling Go. It runs `go mod download` with HTTP/2 disabled and up to five attempts, waiting 5, 10, 20, and 40 seconds between attempts. Set `working-directory` when the source checkout is not at the workspace root. The `module-directories` input defaults to `.` and accepts one module directory per line, relative to `working-directory`.
+
+Jobs that run `make build`, `make docker-build`, or `make docker-multi-arch-push` must download the independent test modules as well as the root module:
+
+```yaml
+- name: Download Go modules
+  uses: ./.github/actions/go-mod-download
+  with:
+    module-directories: |
+      .
+      test/magpiego
+      test/testrp
+```
+
+Jobs that compile only the root module, including the current GoReleaser builds, can keep the default. Module downloads do not cover unrelated `go install` commands outside these modules.
+
+### Keep change detection separate from executable helper code
+
+[`__changes.yml`](../../../../.github/workflows/__changes.yml) first checks out the caller-selected repository and ref to inspect changes as data. Its Filter step must finish in that checkout at the workspace root. For `pull_request_target` and `workflow_run`, a second checkout then restores `.github/scripts/changes.mjs` from `github.repository` at `github.sha` before Set result imports it. Do not select this executable helper using the comparison inputs or a PR/workflow-run head SHA. A failed trusted checkout or import must fail the job without falling back to PR content.
+
+The comparison checkout's `allow-unsafe-pr-checkout: true` permits fetching fork content for inspection; it does not make that content safe to execute. Do not insert repository scripts, local actions, or package installation between comparison checkout and trusted restoration. Ordinary `pull_request` and `merge_group` calls retain their existing behavior. The `files`, `ref`, `repository`, `base_sha`, and string-valued `only_changed` interface is unchanged: PR and merge-group events use the filter result, other events with a base SHA use it, and events without either return `"false"` so downstream work runs.
+
+Run `make test-workflow-changes` for the helper and workflow wiring tests. They cover output/error behavior and import fixtures, not the live checkout action.
+
 ## Verification
 
 - The workflow you changed runs green on your pull request (open it as a draft first if you want to iterate).
 - Any Make target or script called by the workflow runs successfully from the repository root.
 - A fork run reaches all steps that do not require organization credentials and skips credential-dependent work with an explicit condition.
 - The [github-workflows.instructions.md](../../../../.github/instructions/github-workflows.instructions.md) checklist is satisfied — especially the fork-testability and `permissions:` items.
+- Run `bash .github/actions/go-mod-download/test.sh` for changes to the module download action. It checks retries, exponential backoff, failure propagation, directory handling, and input validation without network access. The unit-test workflow also exercises the action on Ubuntu and Windows.
 
 ## Troubleshooting
 
@@ -39,6 +66,7 @@ Follow the [GitHub Workflows instruction file](../../../../.github/instructions/
 - **A fork run fails on a secret.** Move the secret-dependent operation behind a repository or event condition; do not replace the missing secret with a fallback value.
 - **Logic works in CI but cannot be reproduced locally.** Extract the logic into a Make target or script and keep only GitHub-specific orchestration in the YAML.
 - **A reusable workflow change has unexpected callers.** Search `.github/workflows/` and the [`radius-project/.github`](https://github.com/radius-project/.github) repository for every `uses:` reference before changing its inputs, secrets, or outputs.
+- **Change detection fails after Filter.** Inspect the trusted checkout and import failure. Do not bypass the failed step or import the helper from the PR to recover.
 
 ## Related docs
 

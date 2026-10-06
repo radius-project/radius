@@ -162,6 +162,7 @@ GC
 GCP
 GH
 GOARCH
+GODEBUG
 GPG
 GPUs
 GVK
@@ -1344,3 +1345,4 @@ repointed
 canonicality
 syft
 repoints
+korthout

@@ -28,6 +28,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  go-mod-download-tests:
+    name: Test Go module download (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    steps:
+      - name: Checkout Radius repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test Go module download retries
+        shell: bash
+        run: bash .github/actions/go-mod-download/test.sh
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Create module download fixture
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/go download fixture/nested"
+          printf 'module example.com/root\n\ngo 1.16\n' > "${RUNNER_TEMP}/go download fixture/go.mod"
+          printf 'module example.com/nested\n\ngo 1.16\n' > "${RUNNER_TEMP}/go download fixture/nested/go.mod"
+
+      - name: Exercise Go module download action
+        uses: ./.github/actions/go-mod-download
+        with:
+          working-directory: ${{ runner.temp }}/go download fixture
+          module-directories: |
+            .
+            nested
+
   changes:
     name: Changes
     uses: ./.github/workflows/__changes.yml
@@ -59,6 +100,9 @@ jobs:
           cache-dependency-path: go.sum
           # Compiles and executes Go code — don't restore a cache a prior run could have poisoned.
           cache: false
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       - name: Test tool metadata and installers
         run: go test ./internal/tooling ./cmd/tool-updater
@@ -142,6 +186,9 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: false
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       - name: Build rad for Windows process tests
         env:

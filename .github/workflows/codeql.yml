@@ -96,6 +96,15 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Download Go modules
+        if: matrix.language == 'go'
+        uses: ./.github/actions/go-mod-download
+        with:
+          module-directories: |
+            .
+            test/magpiego
+            test/testrp
+
       - name: Setup Node
         if: matrix.language == 'javascript'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
