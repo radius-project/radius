@@ -26,5 +26,6 @@ limitations under the License.
 //
 // Checks build a Decision and pass it to Apply, which acts on it according to the
 // configured mode. An enforced denial is a *DeniedError, which converts to an ARM error
-// response whose HTTP status comes from StatusForCode.
+// response whose HTTP status comes from StatusForCode. Conversion requires the
+// caller's requested action and target and omits the internal diagnostic reason.
 package authz
