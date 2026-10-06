@@ -21,8 +21,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly SCRIPT="${SCRIPT_DIR}/validate-release-merge-group.sh"
+readonly WORKFLOW="${SCRIPT_DIR}/../workflows/release-plan.yaml"
 
 TEST_ROOT=""
+WORKFLOW_SELECTOR=""
 REPO=""
 BASE_SHA=""
 RELEASE_SHA=""
@@ -44,6 +46,8 @@ fail_test() {
 }
 
 setup_repo() {
+    local trusted_validator="${1:-false}"
+
     REPO="${TEST_ROOT}/repo"
     rm -rf "${REPO}"
     mkdir -p "${REPO}"
@@ -53,6 +57,11 @@ setup_repo() {
     git -C "${REPO}" config commit.gpgsign false
     printf 'base\n' > "${REPO}/base.txt"
     git -C "${REPO}" add base.txt
+    if [[ "${trusted_validator}" == true ]]; then
+        mkdir -p "${REPO}/.github/scripts"
+        cp "${SCRIPT}" "${REPO}/.github/scripts/validate-release-merge-group.sh"
+        git -C "${REPO}" add .github/scripts/validate-release-merge-group.sh
+    fi
     git -C "${REPO}" commit -q -m "chore: initial"
     BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
 
@@ -182,10 +191,79 @@ test_accepts_group_without_release_pr() {
     ((++PASS))
 }
 
+run_workflow_selector() {
+    local output_dir="${TEST_ROOT}/workflow"
+    local status=0
+
+    rm -rf "${output_dir}"
+    mkdir -p "${output_dir}"
+    cp "${REPO}/candidates.json" "${output_dir}/release-pr-candidates.json"
+    : > "${output_dir}/github-output"
+    pushd "${REPO}" > /dev/null
+    BASE_SHA="${GROUP_BASE_SHA}" GITHUB_SHA="${GROUP_SHA}" \
+        RUNNER_TEMP="${output_dir}" GITHUB_OUTPUT="${output_dir}/github-output" \
+        bash -e -c "${WORKFLOW_SELECTOR}" || status=$?
+    popd > /dev/null
+    return "${status}"
+}
+
+test_workflow_bootstrap() {
+    local file="$1"
+    local expects_failure="$2"
+    local output status=0
+
+    setup_repo
+    git -C "${REPO}" checkout -q main
+    mkdir -p "$(dirname "${REPO}/${file}")" "${REPO}/.github/scripts"
+    printf 'changed\n' > "${REPO}/${file}"
+    printf '#!/bin/bash\ntouch queued-validator-executed\nexit 99\n' \
+        > "${REPO}/.github/scripts/validate-release-merge-group.sh"
+    git -C "${REPO}" add "${file}" .github/scripts/validate-release-merge-group.sh
+    git -C "${REPO}" commit -q -m "ci: introduce release validation"
+    GROUP_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+    GROUP_BASE_SHA="${BASE_SHA}"
+    git -C "${REPO}" checkout -q --detach "${GROUP_BASE_SHA}"
+    printf '[]\n' > "${REPO}/candidates.json"
+
+    output="$(run_workflow_selector 2>&1)" || status=$?
+    if [[ -e "${REPO}/queued-validator-executed" ]]; then
+        fail_test "bootstrap executed a validator from the queued PR"
+        return
+    fi
+    if [[ "${expects_failure}" == true ]]; then
+        if [[ "${status}" == 0 || "${output}" != *"trusted release validator is installed on main"* ]]; then
+            fail_test "bootstrap must reject release metadata ${file}: ${output}"
+            return
+        fi
+    elif [[ "${status}" != 0 ]] || ! grep -Fxq 'number=' "${TEST_ROOT}/workflow/github-output"; then
+        fail_test "bootstrap must accept ordinary changes ${file}: ${output}"
+        return
+    fi
+    ((++PASS))
+}
+
+test_workflow_uses_existing_trusted_validator() {
+    local output
+
+    setup_repo true
+    create_squash_group false
+    git -C "${REPO}" checkout -q --detach "${GROUP_BASE_SHA}"
+    if ! output="$(run_workflow_selector 2>&1)"; then
+        fail_test "installed trusted validator should select the release PR: ${output}"
+        return
+    fi
+    if ! grep -Fxq 'number=123' "${TEST_ROOT}/workflow/github-output"; then
+        fail_test "workflow must use the installed validator rather than bypassing release validation"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
     local file
 
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/release-merge-group-XXXXXX")"
+    WORKFLOW_SELECTOR="$(yq -r '.jobs."validate-merge-group".steps[] | select(.id == "select") | .run' "${WORKFLOW}")"
 
     setup_repo
     test_accepts_squash_release_only_group
@@ -203,6 +281,15 @@ main() {
         setup_repo
         test_accepts_group_without_release_pr "${file}" true
     done
+    for file in other.txt docs/release-notes/README.md \
+        docs/release-notes/template.md docs/release-notes/template_patch.md; do
+        test_workflow_bootstrap "${file}" false
+    done
+    for file in CHANGELOG.md versions.yaml docs/release-notes/v0.61.0.md \
+        docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md; do
+        test_workflow_bootstrap "${file}" true
+    done
+    test_workflow_uses_existing_trusted_validator
 
     if ((FAIL > 0)); then
         echo "release merge-group tests failed: ${PASS} passed, ${FAIL} failed"
