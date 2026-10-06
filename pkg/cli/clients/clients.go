@@ -255,10 +255,14 @@ type ApplicationsManagementClient interface {
 	// CreateOrUpdateResourceGroup creates a resource group by its name.
 	CreateOrUpdateResourceGroup(ctx context.Context, planeName string, resourceGroupName string, resource *ucp_v20231001preview.ResourceGroupResource) error
 
-	// DeleteResourceGroup deletes a resource group by its name.
-	DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error)
+	// DeleteResourceGroupRecord deletes the resource group record itself. It does not delete the
+	// resources in the group, and the server does not reject the delete when resources remain:
+	// deleting the record while its contents survive orphans them. Callers must delete the
+	// contents first, in dependency order, and must not call this if that failed.
+	DeleteResourceGroupRecord(ctx context.Context, planeName string, resourceGroupName string) (bool, error)
 
-	// ListResourcesInResourceGroup lists all resources in a specific resource group.
+	// ListResourcesInResourceGroup lists all resources in a specific resource group, including
+	// applications and environments.
 	ListResourcesInResourceGroup(ctx context.Context, planeName string, resourceGroupName string) ([]generated.GenericResource, error)
 
 	// ListResourcesInResourceGroupFiltered lists resources in a resource group, optionally filtered by environment and/or application.

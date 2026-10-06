@@ -231,7 +231,9 @@ KubernetesResourceCheck
 KubernetesRuntimeProperties
 Kumar
 Kusto
+Kustomization
 Kustomize
+Kyverno
 LinkRP
 Linkrp
 LoadBalancer
@@ -397,6 +399,7 @@ Shruthi
 Sidekiq
 SignalR
 Snyk
+SPIFFE
 SplitNamespace
 SqlDatabase
 SqlDatabaseListSecretsResult
