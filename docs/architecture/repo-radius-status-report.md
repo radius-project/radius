@@ -84,7 +84,37 @@ Teardown is arranged to run even after earlier workflow failures. It deliberatel
 
 **Contract support is different from working integration.** A frontend can drive the existing workflows today, while the supported public interface, Marketplace identities, and full result contract remain unfinished. There is no verified evidence here of a formal general-availability declaration.
 
-**Recommended implementation sequence, not a maintainer commitment:** settle the result schema and failure semantics, finish the supported contract and action-publication strategy, complete source-revision selection and native deployment history, then close compatibility and storage-scope gaps with explicit acceptance tests. Investigate the historical state failure independently rather than treating a green streak as a root-cause fix.
+## Recommended implementation sequence
+
+This sequence is a recommendation based on the dependencies described above, not a maintainer commitment, approved roadmap, or release schedule. The acceptance checks below are proposed ways to verify completion.
+
+### Settle the result schema and failure semantics
+
+Resolve artifact naming, define the versioned verification envelope, and represent command execution and state-save outcomes separately. A deployment command can succeed while saving state fails; consumers need to distinguish those outcomes rather than infer overall success from command results alone.
+
+For the work tracked in [radius-project/radius#12526](https://github.com/radius-project/radius/issues/12526), verify successful execution, invalid commands, command failures, and teardown state-save failures against the agreed schema. Establish this contract before publishing actions that external consumers will depend on.
+
+### Finish the supported contract and action distribution
+
+Document installation or workflow generation, inputs, outputs, permissions, examples, and compatibility and migration rules for [radius-project/radius#12997](https://github.com/radius-project/radius/issues/12997). Package cloud verification as a reusable action and settle the release scheme for the Marketplace identities requested in [radius-project/radius#12524](https://github.com/radius-project/radius/issues/12524).
+
+After publication, update the thin workflow wrappers in [radius-project/radius#12525](https://github.com/radius-project/radius/issues/12525) to consume those identities. Verify that a consumer repository can install and run the documented workflows and receive the agreed success and failure artifacts.
+
+### Complete revision selection and deployment history
+
+Define the explicit application-source `ref` input and checkout behavior requested in [radius-project/radius#12527](https://github.com/radius-project/radius/issues/12527). Keep application revision selection distinct from the immutable version of the workflow implementation.
+
+Then implement the native GitHub Deployment records requested in [radius-project/radius#12528](https://github.com/radius-project/radius/issues/12528). Verify that promotion or redeployment checks out the intended application revision, records that commit and environment, and marks the deployment inactive when the application is deleted.
+
+### Close compatibility and storage-scope gaps
+
+Address AKS authentication separately for runner commands and Radius pods, as tracked in [radius-project/radius#12550](https://github.com/radius-project/radius/issues/12550). Acceptance tests should cover deployment and management on the supported target configurations, not only successful cloud verification.
+
+Resolve [radius-project/radius#11605](https://github.com/radius-project/radius/issues/11605) explicitly: either document OCI as the replacement for the original cloud-storage request or implement the required credential-driven Azure Blob/S3 provisioning. Verify save and restore behavior for whichever storage scope is accepted.
+
+### Investigate the historical state failure in parallel
+
+Investigate or document the disposition of [radius-project/radius#13112](https://github.com/radius-project/radius/issues/13112) independently of the productization sequence. The passing streak is a useful reliability signal, but it does not identify the September 25 failure's cause or prove a fix. If investigation identifies a defect, add a regression test that exercises the failure before declaring it resolved.
 
 ## Evidence baseline
 
