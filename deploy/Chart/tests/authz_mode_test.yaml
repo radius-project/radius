@@ -8,45 +8,45 @@ release:
   name: radius
   namespace: radius-system
 tests:
-  - it: renders authorization mode off by default
+  - it: omits the authorization section by default
     asserts:
-      - matchRegex:
+      - notMatchRegex:
           path: data["ucp-config.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "off"$'
+          pattern: '(?m)^authorization:'
         template: ucp/configmaps.yaml
-      - matchRegex:
+      - notMatchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "off"$'
+          pattern: '(?m)^authorization:'
         template: rp/configmaps.yaml
-      - matchRegex:
+      - notMatchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "off"$'
+          pattern: '(?m)^authorization:'
         template: dynamic-rp/configmaps.yaml
-      - matchRegex:
+      - notMatchRegex:
           path: data["controller-config.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "off"$'
+          pattern: '(?m)^authorization:'
         template: controller/configmaps.yaml
 
-  - it: renders authorization mode off when rbac is explicitly disabled
+  - it: omits the authorization section when rbac is explicitly disabled
     set:
       global.rbac.enabled: false
       global.rbac.dryRun: false
     asserts:
-      - matchRegex:
+      - notMatchRegex:
           path: data["ucp-config.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "off"$'
+          pattern: '(?m)^authorization:'
         template: ucp/configmaps.yaml
-      - matchRegex:
+      - notMatchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "off"$'
+          pattern: '(?m)^authorization:'
         template: rp/configmaps.yaml
-      - matchRegex:
+      - notMatchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "off"$'
+          pattern: '(?m)^authorization:'
         template: dynamic-rp/configmaps.yaml
-      - matchRegex:
+      - notMatchRegex:
           path: data["controller-config.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "off"$'
+          pattern: '(?m)^authorization:'
         template: controller/configmaps.yaml
 
   - it: renders authorization mode dryRun when global.rbac.dryRun is true
