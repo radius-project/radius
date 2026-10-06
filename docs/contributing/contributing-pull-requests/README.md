@@ -95,7 +95,7 @@ Every non-Dependabot pull request must have exactly one release-impact label:
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
-The [PR Status Labels workflow](../../../.github/workflows/pr.status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold:
+The [PR Status Labels workflow](../../../.github/workflows/pr.status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold. These are the default names; maintainers can [change the names in JSON](#configuring-lifecycle-label-names) without changing the status signals:
 
 - **`pr:needs-reviewer`** — there is neither a pending reviewer or team request nor an active submitted human review from someone other than the author.
 - **`pr:waiting-for-review`** — a reviewer or team has a pending request, or a human has submitted a review but required approval is still outstanding or cannot be verified. When a reviewer requests changes, the author must re-request a review after addressing them; pushing a commit alone does not hand the PR back.
@@ -113,6 +113,41 @@ The workflow also adds **`pr:needs-rebase`** when the PR has merge conflicts, an
 The status workflow assumes these labels already exist; it never creates repository labels. The independent [labels workflow](../../../.github/workflows/labels.yml) previews changes from the [PR-label catalog](../../../.github/labels.yml) on pull requests and syncs definitions after merge or a manual repository-label change. The catalog also includes the existing `pr:standard` and `pr:important` labels, which contributors still select manually. Unrelated repository labels are preserved.
 
 Draft PRs have no handoff label. Maintainers can apply the existing **`pr:do-not-merge`** label to pause a PR; it removes the handoff and queue-ready labels. Use **`pr:needs-author-response`** for an explicit author-response request, including actionable general discussion outside inline review threads, then remove it after the author responds. The workflow never applies or removes these manual labels. Both manual labels fail the `PR Required Labels` check and remove a PR from the merge queue if it was already queued.
+
+#### Configuring lifecycle label names
+
+[`.github/configs/pr-status-labels.json`](../../../.github/configs/pr-status-labels.json) is the source of the label names used by the [existing status script](../../../.github/scripts/pr-status-labels.mjs) and the required-label merge-hold check:
+
+```json
+{
+  "states": {
+    "needsReviewer": "pr:needs-reviewer",
+    "waitingForReview": "pr:waiting-for-review",
+    "waitingForAuthor": "pr:waiting-for-author",
+    "reviewApproved": "pr:review-approved",
+    "needsRebase": "pr:needs-rebase",
+    "readyForQueue": "pr:ready-for-queue"
+  },
+  "manual": {
+    "needsAuthorResponse": "pr:needs-author-response",
+    "doNotMerge": "pr:do-not-merge"
+  }
+}
+```
+
+Keep the keys unchanged: they identify the status signals supported by the code. Edit their values to change the associated GitHub label names, using distinct, nonempty names valid on GitHub. The script imports this mapping using Node.js's built-in JSON support; there is no third-party parser, assertion block, second hardcoded label map, or separate configuration module. Only `states` labels are automatically applied or removed. The two `manual` labels remain maintainer-controlled holds.
+
+Mapped labels must already exist. Provisioning, descriptions, and colors remain independent in the [label catalog](../../../.github/labels.yml). For a rename, update the mapping and catalog together and deliberately rename or migrate the existing repository label and its assignments. The catalog action supports `from_name: <old-name>` on a renamed entry. While that PR is open, the merge-hold check recognizes both the proposed manual names and those at the PR's base commit, so renaming a hold cannot bypass an existing hold. Coordinate the migration with the mapping change: the status script never migrates old names, and the catalog preserves omitted labels. The release-impact labels and review/merge policy are not configured here.
+
+To check that the configuration loads, run from the repository root using Node.js from [`.node-version`](../../../.node-version):
+
+```bash
+node .github/scripts/pr-status-labels.mjs
+```
+
+This command imports and checks the JSON without calling GitHub or installing dependencies. Missing files and malformed JSON fail through Node.js's native loader. Runtime guards require every supported key to have a distinct, nonempty label name of at most 50 characters, without surrounding whitespace or control characters; missing keys, unknown keys or sections, and case-insensitive duplicate names throw descriptive errors before reconciliation can write labels or dequeue a PR. These are ordinary runtime errors, not test assertions. The existing formatting check covers JSON syntax and formatting, and configuration-only edits are excluded from the shared CI skip list.
+
+The status workflow checks out its script and mapping together from trusted `github.sha`. The required-label workflow checks the proposed mapping and fetches the JSON at the PR's pinned `base.sha` in a read-only `merge-holds` job, applying the same runtime guards to both. If the base file does not exist yet, the job logs that initial-rollout case and checks the proposed holds; other read failures or invalid base configuration fail the job. It never executes code from the base file. Both workflows use the Node.js runtime supplied by `actions/github-script`, with no package installation. The existing write-enabled `pr-required-labels` job checks no PR code out and runs the pinned release-label action only after merge-hold validation succeeds; reminder comments are preserved. A configuration-loading error or failed merge-hold check fails the required-label job rather than silently skipping it. Merge-group reporting remains unchanged.
 
 ### 6. (Optional) Self-review with the `radius-code-review` skill
 

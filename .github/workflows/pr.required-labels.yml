@@ -16,22 +16,83 @@ on:
 permissions: {}
 
 jobs:
+  merge-holds:
+    if: github.event_name != 'merge_group'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      # Proposed code/configuration is evaluated only with a read-only token.
+      - name: Checkout proposed label configuration
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: |
+            .github/scripts/pr-status-labels.mjs
+            .github/configs/pr-status-labels.json
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Reject merge holds and pending author responses
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { MANUAL_LABELS, validateLabels } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/pr-status-labels.mjs`
+            )
+            const names = new Set(
+              Object.values(MANUAL_LABELS).map((name) => name.toLowerCase())
+            )
+            try {
+              const { data: file } = await github.rest.repos.getContent({
+                ...context.repo,
+                path: ".github/configs/pr-status-labels.json",
+                ref: context.payload.pull_request.base.sha
+              })
+              if (
+                file?.type !== "file" ||
+                file.encoding !== "base64" ||
+                typeof file.content !== "string"
+              ) {
+                throw new Error("Invalid base-branch label configuration response")
+              }
+              const baseLabels = JSON.parse(Buffer.from(file.content, "base64").toString("utf8"))
+              validateLabels(baseLabels)
+              for (const name of Object.values(baseLabels.manual)) {
+                names.add(name.toLowerCase())
+              }
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error
+              }
+              core.info("No label configuration at the PR base revision; checking proposed holds for the initial rollout.")
+            }
+            const holds = context.payload.pull_request.labels
+              .filter((label) => names.has(label.name.toLowerCase()))
+              .map((label) => label.name)
+            if (holds.length > 0) {
+              core.setFailed(`Remove ${holds.join(" or ")} before merging.`)
+            }
+
   pr-required-labels:
     # Run for all PRs so holds also apply to Dependabot. Merge groups have no
     # individual PR context; the required check still has to report.
+    needs: merge-holds
+    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       issues: write
       pull-requests: write
     steps:
-      - name: Reject merge holds and pending author responses
+      # Never check out or execute PR code in this write-enabled job.
+      - name: Require successful merge-hold validation
         if: >-
           github.event_name != 'merge_group' &&
-          (contains(github.event.pull_request.labels.*.name, 'pr:do-not-merge') ||
-           contains(github.event.pull_request.labels.*.name, 'pr:needs-author-response'))
+          needs.merge-holds.result != 'success'
         run: |
-          echo "::error::Remove pr:do-not-merge or pr:needs-author-response before merging."
+          echo "::error::Merge-hold validation must pass before merging. See the merge-holds job."
           exit 1
 
       - name: Run PR Required Labels
