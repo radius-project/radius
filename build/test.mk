@@ -129,6 +129,12 @@ test-release-version-format: ## Tests release SemVer validation and tag parsing
 test-monitor-remote-workflow: ## Tests exact remote workflow dispatch correlation
 	@node --test ./.github/scripts/monitor-remote-workflow_test.mjs
 
+.PHONY: test-workflow-changes
+test-workflow-changes: ## Tests reusable workflow change detection
+	@node --test ./.github/scripts/changes_test.mjs
+
+test: test-workflow-changes
+
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
 	@echo "$(ARROW) Compiling unit tests..."
