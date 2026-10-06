@@ -20,9 +20,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -39,6 +43,76 @@ import (
 
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 )
+
+func Test_Run_CascadeManagedSecretCleanup(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(fmt.Sprintf("secret deletion fails=%v", fail), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				owner := resource("producer")
+				owner.Properties = map[string]any{"secrets": map[string]any{"name": "generated-secret"}}
+				secretType := "Radius.Security/secrets"
+				secretID := testScope + "/providers/" + secretType + "/generated-secret"
+				appDeletes := &deletedApplications{}
+				var envDeletes atomic.Int32
+				factory, err := test_client_factory.NewRadiusCoreTestClientFactory(testScope, func() fake.EnvironmentsServer {
+					server := test_client_factory.WithEnvironmentServerNoError()
+					server.Delete = func(context.Context, string, string, *corerpv20250801.EnvironmentsClientDeleteOptions) (resp azfake.Responder[corerpv20250801.EnvironmentsClientDeleteResponse], errResp azfake.ErrorResponder) {
+						envDeletes.Add(1)
+						resp.SetResponse(http.StatusNoContent, corerpv20250801.EnvironmentsClientDeleteResponse{}, nil)
+						return
+					}
+					return server
+				}, nil, applicationsServerWithEnvironment([]*corerpv20250801.ApplicationResource{
+					application("app-a", testEnvironmentID), application("app-b", testEnvironmentID),
+				}, appDeletes, false))
+				require.NoError(t, err)
+				client := clients.NewMockApplicationsManagementClient(gomock.NewController(t))
+				client.EXPECT().ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
+					Return([]generated.GenericResource{owner, {ID: &secretID, Type: &secretType}}, nil)
+				client.EXPECT().DeleteResource(gomock.Any(), *owner.Type, *owner.ID, false).Return(true, nil)
+				release := make(chan struct{})
+				client.EXPECT().GetResource(gomock.Any(), secretType, strings.ToLower(secretID)).
+					DoAndReturn(func(ctx context.Context, _, _ string) (generated.GenericResource, error) {
+						select {
+						case <-release:
+						case <-ctx.Done():
+							return generated.GenericResource{}, ctx.Err()
+						}
+						if fail {
+							return generated.GenericResource{Properties: map[string]any{"provisioningState": "Failed"}}, nil
+						}
+						return generated.GenericResource{}, &azcore.ResponseError{StatusCode: http.StatusNotFound}
+					})
+				runner := &Runner{
+					RadiusCoreClientFactory: factory,
+					ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: client},
+					Workspace:               testWorkspace(), Output: &output.MockOutput{}, EnvironmentName: "test-env", Confirm: true,
+				}
+				done := make(chan error, 1)
+				go func() { done <- runner.Run(t.Context()) }()
+				synctest.Wait()
+				require.Empty(t, appDeletes.list())
+				require.Zero(t, envDeletes.Load())
+				select {
+				case err := <-done:
+					t.Fatalf("environment cleanup returned before secret cleanup: %v", err)
+				default:
+				}
+				close(release)
+				err = <-done
+				if fail {
+					require.ErrorContains(t, err, strings.ToLower(secretID))
+					require.Empty(t, appDeletes.list())
+					require.Zero(t, envDeletes.Load())
+				} else {
+					require.NoError(t, err)
+					require.ElementsMatch(t, []string{"app-a", "app-b"}, appDeletes.list())
+					require.EqualValues(t, 1, envDeletes.Load())
+				}
+			})
+		})
+	}
+}
 
 const (
 	testScope         = "/planes/radius/local/resourceGroups/test-group"
