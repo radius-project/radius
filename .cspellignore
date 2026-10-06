@@ -3,6 +3,7 @@ ACA
 ACIRuntimeProperties
 ADDENDUMS
 AKS
+APIM
 APIServer
 APIs
 ARM's
@@ -246,6 +247,7 @@ ManualResourceProvisioning
 ManualScalingExtension
 MemoryDB
 MessagingRP
+Milvus
 MetadataValue
 MetadataValueFromSecret
 Mgmt
@@ -253,6 +255,7 @@ MongoDatabase
 MongoDatabaseListSecretsResult
 MongoDatabaseProperties
 MongoDatabaseSecrets
+Mosquitto
 Monorepo
 Mooncake
 MySql
@@ -268,6 +271,7 @@ NoSchedule
 NodeJS
 Nowak
 OAuth
+Ollama
 OCC
 OSS
 ObserverFunc
@@ -308,6 +312,7 @@ ProvidersAzure
 ProvidersKubernetes
 PubSubBroker
 Pulumi
+Qdrant
 Qube
 RCs
 RDBMS
@@ -388,6 +393,7 @@ SemVer
 ServiceAccount
 ServicePrincipal
 Shruthi
+Sidekiq
 SignalR
 Snyk
 SplitNamespace
@@ -890,6 +896,7 @@ mongo
 mongoDatabases
 mongodatabases
 mongodb
+mosquitto
 monorepos
 mountPath
 multiapi
@@ -941,6 +948,7 @@ octo
 oidc
 oidcIssuer
 ok
+ollama
 onboarded
 onboarding
 oncall
@@ -967,6 +975,8 @@ periodSeconds
 persistentVolume
 persistentVolumes
 pfx
+pgvector
+pgvector's
 pkgs
 plaidResource
 plainHTTP
