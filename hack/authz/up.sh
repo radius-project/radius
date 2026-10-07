@@ -184,6 +184,7 @@ install_radius() {
     echo "Installing Radius in authz mode ${MODE}"
     "${RAD}" install kubernetes --kubecontext "${AUTHZ_KUBE_CONTEXT}" \
         --chart "${AUTHZ_REPO_ROOT}/deploy/Chart" --reinstall "${set_args[@]}"
+    authz_record_mode "${MODE}"
 
     local deployment
     for deployment in "${DEPLOYMENTS[@]}"; do
