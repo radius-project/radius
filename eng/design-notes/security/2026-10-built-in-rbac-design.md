@@ -754,14 +754,10 @@ Kubernetes RBAC still controls who can create `DeploymentTemplate` objects in ea
 
 > **In short:** Every client is checked by UCP the same way. The only tricky one is the dashboard, which today uses a single shared account.
 
-| Client                          | Who Radius thinks is calling                                                               | Notes                                                                                                   |
-|---------------------------------|--------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
-| `rad` CLI                       | Whoever is in your kubeconfig.                                                             | Sign-in is unchanged.                                                                                   |
-| CI/CD, GitHub Actions           | The workflow's Kubernetes identity (a service account or federated identity).              | Give each pipeline its own identity.                                                                    |
-| Agents and Copilot integrations | The identity in the kubeconfig the agent uses.                                             | Use a dedicated identity per agent. CLI errors make "access denied" clearly different from "try again". |
-| Dashboard and Backstage plugin  | Without identity forwarding: the dashboard's service account. With it: the signed-in user. | See below.                                                                                              |
-| Radius controller               | The namespace principal.                                                                   | See [Part 11](#part-11-controllers-and-gitops).                                                         |
-| Deployment engine               | The user who started the deployment.                                                       | Never acts as itself.                                                                                   |
+- **`rad` CLI, CI/CD, agents:** whoever is in the kubeconfig. Sign-in is unchanged. Give each pipeline and agent its own identity.
+- **Radius controller:** the namespace principal ([Part 11](#part-11-controllers-and-gitops)).
+- **Deployment engine:** never acts as itself; it acts for the user who started the deployment.
+- **Dashboard and Backstage plugin:** the dashboard's service account, unless identity forwarding is on. See below.
 
 **The dashboard.** Today the dashboard uses one service account that can do everything on `api.ucp.dev`. Every dashboard user effectively shares it. Under RBAC, that service account is a normal principal **with no access by default**. If we gave it access, every dashboard user would see whatever it can see, and the audit log would show the service account instead of the real user. Both break the specification.
 
@@ -784,12 +780,13 @@ Managing roles in the dashboard stays out of scope, as the specification says.
 
 All of these are served by UCP and checked like any other request.
 
-| --- | --- | --- |
-| `GET /providers/Radius.Core/whoAmI` | Anyone signed in | Your principal, groups, issuer, the enforcement mode, and whether you are a Radius Administrator. |
-| `POST {scope}/providers/Radius.Core/checkAccess` | Anyone, for themselves. Checking someone else needs `Radius.Core/checkAccess/action`. | For each permission and target you ask about: allowed or denied. |
-| `POST {scope}/providers/Radius.Core/explainAccess` | Same as `checkAccess` | Same, plus **why**: which assignment and role allowed it, or which roles would allow it if denied. Assignment details are only shown if you can read role assignments at that scope. |
-| `GET {scope}/providers/Radius.Core/effectiveAccess?principal=...` | Needs `roleAssignments/read` | Every assignment (direct and inherited) for that principal and its groups, and the combined permissions. For a group, this shows the group's own assignments; Radius cannot list who is in a group. |
-| `GET {scope}/providers/Radius.Core/roleAssignments?$filter=atScopeAndBelow()` | Needs `roleAssignments/read` | Assignments at and below the scope. `rad auth assignment list --include-inherited` also checks each parent scope. |
+| API                                                                           | Who can call it                                                                       | What it returns                                                                                                                                                                                     |
+|-------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GET /providers/Radius.Core/whoAmI`                                           | Anyone signed in                                                                      | Your principal, groups, issuer, the enforcement mode, and whether you are a Radius Administrator.                                                                                                   |
+| `POST {scope}/providers/Radius.Core/checkAccess`                              | Anyone, for themselves. Checking someone else needs `Radius.Core/checkAccess/action`. | For each permission and target you ask about: allowed or denied.                                                                                                                                    |
+| `POST {scope}/providers/Radius.Core/explainAccess`                            | Same as `checkAccess`                                                                 | Same, plus **why**: which assignment and role allowed it, or which roles would allow it if denied. Assignment details are only shown if you can read role assignments at that scope.                |
+| `GET {scope}/providers/Radius.Core/effectiveAccess?principal=...`             | Needs `roleAssignments/read`                                                          | Every assignment (direct and inherited) for that principal and its groups, and the combined permissions. For a group, this shows the group's own assignments; Radius cannot list who is in a group. |
+| `GET {scope}/providers/Radius.Core/roleAssignments?$filter=atScopeAndBelow()` | Needs `roleAssignments/read`                                                          | Assignments at and below the scope. `rad auth assignment list --include-inherited` also checks each parent scope.                                                                                   |
 
 If you check your own access but cannot read role assignments, you get allowed or denied plus the names of built-in roles that would grant it, and nothing about other people. That is enough to know what to ask for, without seeing who else has access.
 
@@ -848,11 +845,7 @@ Changes to `rad deploy`:
 - A new `--yes` flag skips the question. Without a terminal and without `--yes`, a deployment that contains roles or assignments fails with instructions. Deployments without them work exactly as today.
 - Access errors list every missing permission, not just the first.
 
-**Which system said no?** Every command tells you which of these blocked you:
-
-- **Kubernetes RBAC** (you cannot reach `api.ucp.dev` at all). Shown as a Kubernetes `Status` error.
-- **Radius RBAC** (`AuthorizationFailed` with `source: Radius`).
-- **A cloud provider or registry** (an error from a recipe).
+**Which system said no?** Every command says whether Kubernetes RBAC (a Kubernetes `Status` error), Radius RBAC (`source: Radius`), or a cloud provider or registry (a recipe error) blocked you.
 
 ### Implementation Details
 
@@ -1088,21 +1081,9 @@ Resource-group assignments work today. Assignments on one resource need the Radi
 
 The first release writes events to logs. A searchable store would let `rad auth` show recent denials directly, but adds questions about retention, volume, and protecting the data. The permission name `Radius.Core/auditEvents/read` is reserved. Until then, the `auditor` role covers access configuration and access checks only, and reviewing activity relies on the exported logs in your own log system. This is narrower than the specification's Auditor and needs product sign-off.
 
-**Q: Should `application-developer` include `listSecrets`?**
-
-This design includes it, because developers own the secret stores in their own resource groups. Organizations that disagree can use a custom role. Product and security review should confirm.
-
 **Q: How should the dashboard identify users long-term?**
 
 Kubernetes impersonation works today but needs a powerful Kubernetes permission. An alternative: UCP accepts an "on behalf of" user only from the dashboard's mTLS identity and checks a token from an OIDC provider. That avoids impersonation but needs a second issuer. Decide this with the dashboard design.
-
-**Q: Is 30 seconds fast enough for access changes?**
-
-It could be lowered by watching for changes instead of polling, on the PostgreSQL store. Customers with strict requirements should confirm.
-
-**Q: Is rejecting unbounded deferred resources too strict?**
-
-This design limits deferred resources to their known scope and rejects ones where even the scope is unknown (`AuthorizationIndeterminate`). Data on how often real templates compute resource-group names or environment IDs at run time would show whether that is too strict.
 
 ## Alternatives considered
 
