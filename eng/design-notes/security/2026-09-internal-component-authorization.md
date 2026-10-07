@@ -160,6 +160,20 @@ Operators choose where the Radius CA comes from with the Helm value `global.rbac
 
 **`external`.** The operator provides one Secret per service, named `<service>-tls`, containing `tls.crt`, `tls.key`, and `ca.crt`, and renews each one before it expires. Services reload the files when they change.
 
+##### Key algorithm and lifetime
+
+Operators set these with Helm values. They apply to the certificates Radius issues (`selfSigned`, `caSecret`, `issuerRef`):
+
+| Setting                                         | Default | Allowed values                                                           |
+|-------------------------------------------------|---------|--------------------------------------------------------------------------|
+| `global.rbac.certificates.privateKey.algorithm` | `ECDSA` | `ECDSA` or `RSA`                                                         |
+| `global.rbac.certificates.privateKey.size`      | `256`   | ECDSA: `256` or `384`. RSA: `2048`, `3072`, or `4096`.                   |
+| `global.rbac.certificates.duration`             | `24h`   | `1h` to `720h` (30 days). Renewal happens at two-thirds of the lifetime. |
+
+- **Algorithms receivers accept.** In every mode, including `external`, a receiver rejects a peer certificate or CA that uses any other key type or a smaller key. `rad install` applies the same check to `--ca-cert`.
+- **FIPS.** Setting `global.fips.enabled=true` runs the Radius Go components with Go's FIPS 140-3 module (`GODEBUG=fips140=only`), so TLS uses only FIPS-approved algorithms. Every allowed value above is FIPS-approved. FIPS support for the deployment engine and dashboard is tracked in their repositories.
+- **Choosing a lifetime.** Short lifetimes limit how long a stolen key works, because Radius relies on expiry rather than revocation lists. Raise the lifetime only when the issuer requires it, for example when an external CA charges per certificate or limits request rates. A longer lifetime also lengthens the grace window for renewal failures.
+
 ##### Kubernetes API server trust
 
 The Kubernetes API server is also a client of UCP. It forwards `rad` and `kubectl` requests to UCP through the `APIService` `v1alpha3.api.ucp.dev`, and it checks UCP's certificate against that APIService's `caBundle`. Today the Helm chart generates a separate `ucp-ca` (10 years, never rotated) for this. If `caBundle` does not hold the CA that signed UCP's current certificate, the APIService becomes unavailable and every `rad` command fails.
@@ -532,7 +546,7 @@ If a component is denied direct access to a store, queue, or cloud credential it
 
 #### Certificate authority and rotation
 
-If a service certificate cannot be rotated before it expires, fail closed rather than continuing on an unverifiable identity. Because certificates are issued with a lifetime longer than the rotation interval, a rotation failure first enters a grace window in which the current certificate is still valid: during that window, retry issuance with backoff and raise an operator alert, but let in-flight deployments continue and begin refusing new ones so a transient CA problem does not immediately halt the system. Once the certificate actually expires with no valid replacement, mTLS connections to and from that component must fail and its deployments stop; a component must never fall back to an unauthenticated path or accept an expired peer certificate to make progress. In `external` mode Radius cannot issue a replacement, so it only raises the alert, starting 7 days before expiry. Recovery is operator-driven — repair the CA or issuance path, let rotation succeed, and resume — and interrupted deployments rely on the retry and re-validation behavior described for asynchronous work rather than on a weakened identity check.
+If a service certificate cannot be rotated before it expires, fail closed rather than continuing on an unverifiable identity. Because certificates are issued with a lifetime longer than the rotation interval, a rotation failure first enters a grace window in which the current certificate is still valid: during that window, retry issuance with backoff and raise an operator alert, but let in-flight deployments continue and begin refusing new ones so a transient CA problem does not immediately halt the system. Once the certificate actually expires with no valid replacement, mTLS connections to and from that component must fail and its deployments stop; a component must never fall back to an unauthenticated path or accept an expired peer certificate to make progress. In `external` mode Radius cannot issue a replacement, so it only raises the alert, starting when a third of the certificate's lifetime or 7 days remain, whichever is less. Recovery is operator-driven — repair the CA or issuance path, let rotation succeed, and resume — and interrupted deployments rely on the retry and re-validation behavior described for asynchronous work rather than on a weakened identity check.
 
 #### Error codes
 
@@ -579,6 +593,7 @@ Unit tests should cover verification of deployment approvals and grant-scope che
 | An application pod uses a control-plane service account or Secret    | Admission rejects it with `AdmissionPolicyDenied`.                                                                 |
 | A record expires during a deployment                                 | The deployment fails with `ExecutionRecordNotActive`, and rerunning `rad deploy` succeeds.                         |
 | Upgrade an existing installation, then rotate the CA                 | `rad` commands keep working throughout; the APIService stays available.                                            |
+| A peer presents an RSA-1024 or otherwise disallowed key              | The receiver fails the handshake and logs `PeerCertificateInvalid`.                                                |
 | Install with `--ca-cert` and `--ca-key`                              | Service certificates chain to the provided CA. A certificate signed directly by the organization root is rejected. |
 
 Use cluster integration tests for certificate renewal, protected service accounts, restarts, upgrades, and interrupted deployments. Include the external engine and both legacy and current resource APIs. Test recipes that create cluster-wide objects separately from namespace-limited application templates.
@@ -637,7 +652,7 @@ The Detailed Design proposes a specific option for each major decision; what rem
 
 **A:** [cert-manager](https://cert-manager.io) is the default issuer. It issues one X.509 certificate per service from a Radius-only CA and renews each certificate automatically before it expires. Production installations can instead use their own signed CA, an existing issuer, or their own certificates (see [Certificate options](#certificate-options)). `rad install` installs cert-manager when the cluster has none and uses an existing supported installation otherwise (see [Issuing and protecting service identities](#issuing-and-protecting-service-identities)). SPIFFE/SPIRE stays the growth path if Radius components later span clusters, and the other issuers considered are listed under [Certificate issuer](#certificate-issuer).
 
-Service certificates last **24 hours** and are renewed after two-thirds of their lifetime (about 16 hours), which is cert-manager's default renewal point. That leaves an 8-hour grace window for the retry behavior under [Certificate authority and rotation](#certificate-authority-and-rotation). The 24-hour lifetime matches the workload certificates of Istio, Linkerd, and Dapr. The Radius CA certificate lasts **1 year**, as Dapr's root does, and is also renewed at two-thirds of its lifetime; the CA bundle holds both the old and new CA until every service certificate is reissued.
+Service certificates last **24 hours** by default (configurable, see [Key algorithm and lifetime](#key-algorithm-and-lifetime)) and are renewed after two-thirds of their lifetime (about 16 hours), which is cert-manager's default renewal point. That leaves an 8-hour grace window for the retry behavior under [Certificate authority and rotation](#certificate-authority-and-rotation). The 24-hour lifetime matches the workload certificates of Istio, Linkerd, and Dapr. The Radius CA certificate lasts **1 year**, as Dapr's root does, and is also renewed at two-thirds of its lifetime; the CA bundle holds both the old and new CA until every service certificate is reissued.
 
 Local development does not need cert-manager: `--skip-rbac` (see [CLI Design](#cli-design-if-applicable)) leaves the installation in the Off stage without cert-manager or mTLS.
 
