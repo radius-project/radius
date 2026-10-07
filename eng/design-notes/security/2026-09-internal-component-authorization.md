@@ -133,9 +133,32 @@ cert-manager is needed only on the cluster that runs the Radius control plane, n
 | No cert-manager                           | `rad install` installs a pinned, supported version and upgrades it with Radius, as Cluster API's `clusterctl init` does. The Radius Helm chart does not bundle cert-manager, because it installs cluster-wide resources that other workloads may share. |
 | cert-manager at a supported version       | Radius uses it and creates only its own `Issuer` and `Certificate` objects. The user remains responsible for upgrading it.                                                                                                                              |
 | cert-manager older than the minimum       | Installation stops and reports the minimum version. Radius does not upgrade a cert-manager it did not install.                                                                                                                                          |
-| Another certificate tool, or none allowed | The operator provides each service's certificate, key, and CA bundle as Secrets and handles rotation (bring your own certificates).                                                                                                                     |
+| Another certificate tool, or none allowed | The operator provides each service's certificate, key, and CA bundle (the `external` option under [Certificate options](#certificate-options)).                                                                                                         |
 
-Radius services read their certificate, key, and CA bundle from mounted files and reload them when they change, so they do not depend on cert-manager directly. Operators may also point the Radius `Certificate` objects at their own cert-manager issuer, such as an organization CA. That is opt-in: with a shared CA, other workloads could obtain certificates for Radius service names unless the organization restricts who may request them, so the default is a Radius-only CA.
+Radius services read their certificate, key, and CA bundle from mounted files and reload them when they change, so they do not depend on cert-manager directly.
+
+##### Certificate options
+
+Operators choose where the Radius CA comes from with the Helm value `global.rbac.certificates.mode` or the matching `rad install` flags (see [CLI Design](#cli-design-if-applicable)):
+
+| Mode                   | Who signs the service certificates                                                                            | When to use it                                                                |
+|------------------------|---------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `selfSigned` (default) | A Radius CA that cert-manager creates. Its root is self-signed and trusted only by Radius.                    | Development, testing, and production without a corporate PKI requirement.     |
+| `caSecret`             | A CA certificate and key the operator provides, usually an intermediate signed by the organization's root CA. | **Recommended for production.** Certificates chain to the organization's PKI. |
+| `issuerRef`            | An existing cert-manager `Issuer` or `ClusterIssuer`, such as Vault, AWS Private CA, or Azure Key Vault.      | The CA key must stay in an external service or HSM.                           |
+| `external`             | The operator. Radius uses the certificates as provided and does not issue any.                                | cert-manager is not allowed in the cluster.                                   |
+
+`selfSigned` is not weaker than the other modes: the root is a trust anchor only for Radius's internal calls, and its key is protected like any other CA key. Production teams usually pick another mode because their policy requires certificates to chain to the organization's PKI, or the CA key to be held in an HSM.
+
+**`caSecret`, bring your own signed CA.** The operator creates a `kubernetes.io/tls` Secret in the Radius namespace whose `tls.crt` holds the CA certificate (followed by its chain) and `tls.key` its private key. Radius's own cert-manager `CA` issuer signs the service certificates with it, so issuance stays limited to Radius. Requirements:
+
+- The certificate is a CA (`basicConstraints: CA:TRUE`), should use `pathLenConstraint: 0`, and should carry name constraints that allow only `*.<radius-namespace>.svc`.
+- Receivers trust this CA, not the organization root, so a certificate that some other team obtains from the organization root is not accepted as a Radius service.
+- The operator owns the CA's renewal. Radius logs a warning and raises an alert 30 days before it expires. To rotate, the operator updates the Secret; Radius keeps the old CA in the trust bundle until every service certificate is reissued.
+
+**`issuerRef`.** Because a shared issuer can also sign certificates for other workloads, this mode requires a certificate request policy (such as cert-manager's approver-policy) that limits Radius service names to Radius's own `Certificate` objects. Installation fails if the policy is missing.
+
+**`external`.** The operator provides one Secret per service, named `<service>-tls`, containing `tls.crt`, `tls.key`, and `ca.crt`, and renews each one before it expires. Services reload the files when they change.
 
 mTLS is only as strong as the rule that one service cannot obtain another's certificate. With cert-manager, anyone who can create a `Certificate` or `CertificateRequest` for the Radius issuer, or read the Secret that holds a service's private key, can act as that service. The design therefore requires:
 
@@ -392,9 +415,24 @@ The internal contract must distinguish "a user requested this deployment" from "
 
 ### CLI Design (if applicable)
 
-No new user-facing CLI commands are introduced. The changes are internal to service-to-service communication. Operators configure certificates and controller namespace mappings through installation, described below, not through `rad`.
+No new user-facing CLI commands are introduced. The changes are internal to service-to-service communication. Operators configure certificates and controller namespace mappings at install time, described below.
 
 Authorization is on by default once the feature is complete. Operators who do not want it opt out at install time with a new `rad install kubernetes --skip-rbac` flag, which follows the existing `--skip-contour-install` flag. Helm installs set the equivalent value, `global.rbac.enabled=false`. The installation then stays in the Off stage described under [Compatibility](#compatibility-optional), and cert-manager is not required.
+
+`rad install kubernetes` and `rad upgrade kubernetes` get flags for the [certificate options](#certificate-options), so a production install needs no manual Helm values:
+
+| Flag                                 | Effect                                                                                     |
+|--------------------------------------|--------------------------------------------------------------------------------------------|
+| `--ca-cert FILE` and `--ca-key FILE` | Creates the CA Secret from the files and sets `caSecret` mode. Both are required together. |
+| `--ca-secret NAME`                   | Sets `caSecret` mode using an existing Secret in the Radius namespace.                     |
+| `--cert-issuer KIND/NAME`            | Sets `issuerRef` mode, for example `ClusterIssuer/vault-issuer`.                           |
+
+```bash
+# Production: bring your own CA signed by the organization's root
+rad install kubernetes --ca-cert ./radius-ca.crt --ca-key ./radius-ca.key
+```
+
+Before installing, `rad` checks that the certificate is a CA, matches the key, and is not expired, and warns if it expires within 30 days. The flags cannot be combined with each other or with `--skip-rbac`. `external` mode has no flag because it needs one Secret per service; set `global.rbac.certificates.mode=external` with `--set`.
 
 ### Implementation Details
 
@@ -514,16 +552,17 @@ Most checks run on paths that already make network or storage calls, so the adde
 
 Unit tests should cover verification of deployment approvals and grant-scope checks. Functional tests should exercise complete requests across services, using scenarios such as:
 
-| Scenario                                                             | Expected result                                                                            |
-|----------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| An application sends a fake user header or calls a provider directly | It cannot impersonate a user or bypass UCP's approval.                                     |
-| The engine uses development approval for a production resource       | UCP rejects the request.                                                                   |
-| A controller object targets another team's resource group            | The controller rejects it before starting the change.                                      |
-| A worker receives altered inputs or the same message twice           | It rejects the changed work and avoids duplicate effects.                                  |
-| Permission is removed during deployment                              | New steps stop; any permitted cleanup stays within its limits.                             |
-| A provider tries to access unrelated state or credentials            | The backend denies access, not just the HTTP API.                                          |
-| An application pod uses a control-plane service account or Secret    | Admission rejects it with `AdmissionPolicyDenied`.                                         |
-| A record expires during a deployment                                 | The deployment fails with `ExecutionRecordNotActive`, and rerunning `rad deploy` succeeds. |
+| Scenario                                                             | Expected result                                                                                                    |
+|----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| An application sends a fake user header or calls a provider directly | It cannot impersonate a user or bypass UCP's approval.                                                             |
+| The engine uses development approval for a production resource       | UCP rejects the request.                                                                                           |
+| A controller object targets another team's resource group            | The controller rejects it before starting the change.                                                              |
+| A worker receives altered inputs or the same message twice           | It rejects the changed work and avoids duplicate effects.                                                          |
+| Permission is removed during deployment                              | New steps stop; any permitted cleanup stays within its limits.                                                     |
+| A provider tries to access unrelated state or credentials            | The backend denies access, not just the HTTP API.                                                                  |
+| An application pod uses a control-plane service account or Secret    | Admission rejects it with `AdmissionPolicyDenied`.                                                                 |
+| A record expires during a deployment                                 | The deployment fails with `ExecutionRecordNotActive`, and rerunning `rad deploy` succeeds.                         |
+| Install with `--ca-cert` and `--ca-key`                              | Service certificates chain to the provided CA. A certificate signed directly by the organization root is rejected. |
 
 Use cluster integration tests for certificate renewal, protected service accounts, restarts, upgrades, and interrupted deployments. Include the external engine and both legacy and current resource APIs. Test recipes that create cluster-wide objects separately from namespace-limited application templates.
 
