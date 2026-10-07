@@ -42,6 +42,9 @@ AUTHZ_ROGUE_NAMESPACE="${AUTHZ_ROGUE_NAMESPACE:-default}"
 # name. Stack A creates these Secrets and sets the final naming here.
 AUTHZ_COMPONENT_SECRET_FORMAT="${AUTHZ_COMPONENT_SECRET_FORMAT:-%s-mtls}"
 
+# Label that up.sh sets on AUTHZ_RADIUS_NAMESPACE to record the installed mode.
+AUTHZ_KIT_MODE_LABEL="authz-kit.radius.dev/mode"
+
 # Must match metadata.name and the container names in rogue-pod.yaml.
 AUTHZ_ROGUE_POD="radius-authz-rogue"
 AUTHZ_ROGUE_CURL_CONTAINER="curl"
@@ -114,6 +117,29 @@ authz_install_set_values() {
         "dashboard.image=ghcr.io/radius-project/dashboard" \
         "dashboard.tag=latest"
     authz_mode_helm_values "${mode}"
+}
+
+# Records the installed authorization mode as a label on the Radius namespace.
+authz_record_mode() {
+    local mode="${1:-}"
+    authz_mode_helm_values "${mode}" >/dev/null || return
+    authz_kubectl label namespace "${AUTHZ_RADIUS_NAMESPACE}" \
+        "${AUTHZ_KIT_MODE_LABEL}=${mode}" --overwrite >/dev/null
+}
+
+# Prints the authorization mode recorded by up.sh, or nothing when it is
+# unknown. Uses the current kubeconfig context.
+authz_recorded_mode() {
+    kubectl get namespace "${AUTHZ_RADIUS_NAMESPACE}" \
+        -o "jsonpath={.metadata.labels.${AUTHZ_KIT_MODE_LABEL//./\\.}}" 2>/dev/null || true
+}
+
+# Prints the extra would-deny check arguments for an installed mode: a dryRun
+# install must prove every component started in dryRun.
+authz_would_deny_mode_args() {
+    if [[ "${1:-}" == "dryRun" ]]; then
+        echo "--require-dry-run"
+    fi
 }
 
 # Prints the name of the Secret expected to hold a component's certificate.
