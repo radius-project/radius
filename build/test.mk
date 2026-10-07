@@ -184,7 +184,7 @@ AUTHZ_WOULD_DENY_ARGS ?=
 
 .PHONY: authz-would-deny-check
 authz-would-deny-check: ## Fails if a Radius pod in the current kube context logged an authorization dry-run would-deny line
-	@bash ./.github/scripts/authz-would-deny-check.sh --namespace "$(AUTHZ_NAMESPACE)" $(AUTHZ_WOULD_DENY_ARGS)
+	@bash ./.github/scripts/authz-would-deny-check.sh --require-dry-run --namespace "$(AUTHZ_NAMESPACE)" $(AUTHZ_WOULD_DENY_ARGS)
 
 .PHONY: test-functional-ucp-cloud
 test-functional-ucp-cloud: ## Runs UCP functional tests that require cloud resources
