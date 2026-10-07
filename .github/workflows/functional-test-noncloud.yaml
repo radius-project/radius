@@ -738,7 +738,9 @@ jobs:
         # deny a request. Under enforcement those requests would be rejected, so this catches
         # false positives before enforcement is turned on. Scans current and previous container
         # logs in radius-system plus the logs the tests streamed while running, which include pods
-        # that were replaced. Tracked exceptions go in
+        # that were replaced. The Make target also requires current startup evidence of dryRun
+        # from all four Radius components and fails if any log collection or scan fails.
+        # Tracked exceptions go in
         # .github/scripts/authz-would-deny-allowlist.txt. The authz-noncloud leg is not checked
         # because its tests make requests that are meant to be denied.
         if: ${{ !cancelled() && matrix.authzDryRun && steps.functional-tests.outcome != 'skipped' }}
