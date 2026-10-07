@@ -2,13 +2,14 @@
 
 Status as of October 6, 2026.
 
+
 This document assesses what work is complete for Repo Radius today and what work (according to open GitHub issues) is still outstanding.
 
 For the work that is still outstanding, we (eng + product) must decide:
+* Is this something that we need for Repo Radius?
+* If so, is this something we need now or in the near future?
+* If so, what architecture decisions must be made for that work to be implemented?
 
-- Is this something that we need for Repo Radius?
-- If so, is this something we need now or in the near future?
-- If so, what architecture decisions must be made for that work to be implemented?
 
 ## Repo Radius Today
 
@@ -27,94 +28,89 @@ The following features have already been implemented for Repo Radius:
 
 ## What is left to implement or resolve
 
-The following repo radius issues are still open as of today.
+The following issues were open at the October 6 assessment. The decisions below are questions to resolve, not approved designs.
 
-- **Document the supported interface.** Define installation or workflow generation, inputs, outputs, permissions, result schemas, examples, and breaking-change rules. Add tests for successful deployment, failed deployment, and invalid commands. [radius-project/radius#12997](https://github.com/radius-project/radius/issues/12997)
-- **Publish the GitHub Marketplace actions.** The `run-rad-commands` composite action exists. Cloud verification currently lives in `verify-azure.yml` and `verify-aws.yml`; it still needs a standalone action before publishing the requested `radius-project/verify-cloud-auth` and `radius-project/run-rad-commands` identities. The September 29 issue update overstates the verification action's completion. [radius-project/radius#12524](https://github.com/radius-project/radius/issues/12524)
-- **Update the generated wrappers.** Switch the existing commit-pinned workflows to the requested published actions after publication. [radius-project/radius#12525](https://github.com/radius-project/radius/issues/12525)
-- **Finish result reporting.** Reconcile `rad-commands-result` with the requested name `run-rad-commands-result`, add the versioned `verify-cloud-auth-result` document, and report state-save failure separately from command failure. State saving currently happens during teardown. [radius-project/radius#12526](https://github.com/radius-project/radius/issues/12526)
-- **Add an application-source `ref`.** Let callers select a commit or tag for promotion and redeployment. GitHub dispatch can already target a branch/tag, which default checkout can follow, but the dispatcher has no explicit application-source input. The Canvas's dispatch-ref selection was not verified. [radius-project/radius#12527](https://github.com/radius-project/radius/issues/12527)
-- **Record native GitHub Deployments.** Record the deployed commit and environment, and mark the corresponding deployment inactive when the application is deleted. Existing graph/status artifacts do not do this. [radius-project/radius#12528](https://github.com/radius-project/radius/issues/12528)
-- **Fix AAD-enabled AKS deployment.** Azure verification installs `kubelogin` and converts kubeconfig; deployment lacks equivalent setup. The runner and Radius pods need different authentication modes. A July 28 maintainer comment quotes documentation that AKS-managed AAD is unsupported. [radius-project/radius#12550](https://github.com/radius-project/radius/issues/12550)
-- **Settle cloud-storage scope.** Decide whether OCI replaces the original request for credential-driven Azure Blob/S3 storage. If not, add storage provisioning before control-plane startup and the required archive backend. The current factory supports neither Blob nor S3. [radius-project/radius#11605](https://github.com/radius-project/radius/issues/11605)
-- **Investigate the September 25 state-test failure.** Eleven consecutive scheduled runs passed afterward, but that does not explain the failure or prove it was fixed. [radius-project/radius#13112](https://github.com/radius-project/radius/issues/13112)
+### Document the supported interface ([#12997](https://github.com/radius-project/radius/issues/12997))
 
-## Notable details and assessment
+Define and test the supported GitHub Actions interface, including installation, inputs, outputs, permissions, and upgrade rules.
 
-- OCI is the only supported archive backend. The factory rejects `git`; the closed [Git-storage issue](https://github.com/radius-project/radius/issues/11604) does not mean that backend remains available.
-- Older design text still mentions Git storage and pre-migration workflow paths. Current code and migration notes take precedence.
-- The frontend can use the existing workflows today. That is separate from offering a stable public interface and published GitHub Marketplace actions.
+**Architectural decisions:**
 
-## Recommended implementation sequence
+- Which actions, workflows, configuration settings, and result files are public contracts, and which remain internal?
+- Which action, CLI, and plugin versions must work together, and how are breaking changes introduced?
+- Which cloud configurations and deployment/failure scenarios must pass contract tests before the interface is supported?
 
-This is a proposed order, not an approved roadmap or delivery commitment.
+### Publish the GitHub Marketplace actions ([#12524](https://github.com/radius-project/radius/issues/12524))
 
-1. **Agree on results and failures.** Settle artifact names and schemas before publishing actions. Test verification, invalid commands, command failures, and state-save failures. A successful command must not hide a failed state save. [radius-project/radius#12526](https://github.com/radius-project/radius/issues/12526)
-2. **Document and publish the actions.** Define supported inputs, outputs, permissions, and upgrade rules; package verification as an action; publish immutable releases; then update wrappers. Test installation and result handling from a consumer repository. [radius-project/radius#12997](https://github.com/radius-project/radius/issues/12997), [radius-project/radius#12524](https://github.com/radius-project/radius/issues/12524), [radius-project/radius#12525](https://github.com/radius-project/radius/issues/12525)
-3. **Finish promotion and deployment history.** Add the application-source `ref`, record the actual deployed commit, and mark deployments inactive on delete. Test that promotion checks out the intended revision. [radius-project/radius#12527](https://github.com/radius-project/radius/issues/12527), [radius-project/radius#12528](https://github.com/radius-project/radius/issues/12528)
-4. **Close authentication and storage gaps.** Test both runner and pod access on supported clusters. Decide whether OCI meets the storage requirement, then test save/restore for the accepted storage option. [radius-project/radius#12550](https://github.com/radius-project/radius/issues/12550), [radius-project/radius#11605](https://github.com/radius-project/radius/issues/11605)
+Package cloud verification as a standalone action and publish it alongside the existing command action under the two requested GitHub Marketplace identities.
 
-Investigate [radius-project/radius#13112](https://github.com/radius-project/radius/issues/13112) in parallel. If it reveals a defect, add a regression test before declaring the failure resolved.
+**Architectural decisions:**
 
-## Architectural decisions needed to finish implementation
+- Where will `radius-project/verify-cloud-auth` and `radius-project/run-rad-commands` be published, and how will their releases come from ai-extensions?
+- Will the actions release independently or together with the CLI and plugin?
+- Which setup and authentication steps belong in each action rather than in its calling workflow?
 
-These choices need agreement before the remaining work can be finished. The recommendations are proposals, not approved decisions.
+### Update the generated wrappers ([#12525](https://github.com/radius-project/radius/issues/12525))
 
-### What will consumers be able to rely on?
+Switch generated workflows from current commit-pinned assets to the published actions.
 
-- Decide which actions, reusable workflows, generated wrappers, configuration settings, and result files are supported public interfaces.
-- Choose whether the two actions release independently or together with the CLI and plugin. Independent releases allow separate upgrades but require more compatibility testing; coordinated releases couple upgrades.
-- Decide how ai-extensions packages and publishes the two GitHub Marketplace identities.
-- **Recommendation:** Keep wrappers thin, pin immutable releases, and document which action, CLI, and frontend versions work together.
+**Architectural decisions:**
 
-Related: [radius-project/radius#12997](https://github.com/radius-project/radius/issues/12997), [radius-project/radius#12524](https://github.com/radius-project/radius/issues/12524), [radius-project/radius#12525](https://github.com/radius-project/radius/issues/12525).
+- What remains in the wrappers, and what moves into the published actions?
+- How will generated workflows pin action releases and receive upgrades?
+- How will the plugin update existing workflows without overwriting user changes?
 
-### Who reports the final outcome?
+### Finish result reporting ([#12526](https://github.com/radius-project/radius/issues/12526))
 
-- The command action reports results before teardown saves state. Decide who combines those outcomes into the final run result.
-- Separate reports keep actions independent but leave each frontend to reconcile them. A combined report simplifies consumers but must retain command-level details.
-- Define how consumers handle partial execution, state-save failure, and interrupted runs. A runner that disappears may never publish an artifact.
-- **Recommendation:** Have the workflow assemble the final result after teardown attempts state saving. Keep ordered command results, report persistence separately, and version artifact-name changes with the schema.
+Standardize command and verification artifacts, and distinguish command failure from state-save failure.
 
-Related: [radius-project/radius#12526](https://github.com/radius-project/radius/issues/12526), [radius-project/radius#12997](https://github.com/radius-project/radius/issues/12997).
+**Architectural decisions:**
 
-### Which revision is deployed, and how is it recorded?
+- How will `rad-commands-result` migrate to `run-rad-commands-result`, and how will both result schemas be versioned?
+- Who assembles the final outcome after teardown attempts to save state: the workflow or each frontend?
+- How will results represent partial execution, failed state saves, and interrupted runs with no artifact?
 
-- Decide how workflow dispatch ref and application-source ref interact. The requested omitted-ref default is the latest default-branch commit; dispatch-ref checkout can select another branch.
-- Define when a deployment counts as successful, including what happens if commands succeed but state saving fails.
-- Decide how deletion finds the right GitHub Deployment when an environment contains multiple applications.
-- **Recommendation:** Resolve the source ref once to a commit SHA and use it for checkout, results, and deployment history. Define default and invalid-ref behavior and application/environment matching.
-- Pinning source does not pin mutable container images or recipe dependencies. The action's version is also separate from the application's revision.
+### Add an application-source ref ([#12527](https://github.com/radius-project/radius/issues/12527))
 
-Related: [radius-project/radius#12527](https://github.com/radius-project/radius/issues/12527), [radius-project/radius#12528](https://github.com/radius-project/radius/issues/12528).
+Add an explicit application revision input for promotion and redeployment, separate from the workflow dispatch ref.
 
-### Is OCI the final storage choice?
+**Architectural decisions:**
 
-- Decide whether OCI meets the original cloud-storage request or whether Azure Blob/S3 archives are still required.
-- OCI already works, but needs registry credentials and access controls. Cloud blob storage could use the deployment cloud identity, but adds provisioning, backend testing, and migration work.
-- Assign responsibility for provisioning, permissions, retention, and recovery.
-- **Recommendation:** Settle the requirement before adding a backend. If OCI is accepted, document its operating requirements. If Blob/S3 is required, define bootstrap and migration behavior while keeping the shared archive interface.
-- Keep state and graph policies separate. Terraform state in S3 or Azure Blob is outside the control-plane archive and needs its own protection.
+- How will application-source ref and workflow dispatch ref interact, including the requested default of the latest default-branch commit?
+- When will a branch or tag resolve to a commit SHA so checkout, results, and deployment history identify the same revision?
+- How will invalid or inaccessible refs fail before deployment begins?
 
-Related: [radius-project/radius#11605](https://github.com/radius-project/radius/issues/11605) and [Durable State Archive](state-archive.md).
+### Record native GitHub Deployments ([#12528](https://github.com/radius-project/radius/issues/12528))
 
-### How do the runner and Radius pods authenticate?
+Record the deployed commit and environment in GitHub Deployments, and mark the matching deployment inactive on deletion.
 
-- Define supported AKS/EKS configurations and the credentials each consumer can use.
-- For AAD-enabled AKS, decide how to produce runner and pod kubeconfigs, supply credential-plugin binaries, and refresh tokens.
-- The runner's Azure CLI session is not available inside Radius pods. Installing `kubelogin` only on the runner can move the failure into the pods.
-- **Recommendation:** Configure each consumer explicitly, with the appropriate non-interactive authentication mode and permissions. Test deployment and management end to end; a successful verification workflow is not enough.
+**Architectural decisions:**
 
-Related: [radius-project/radius#12550](https://github.com/radius-project/radius/issues/12550).
+- Which workflow step creates and updates deployment records, and what token permissions does it need?
+- Does deployment success require both successful commands and a successful state save?
+- How will records identify the application and environment so deletion finds the right deployment when several applications share an environment?
 
-### What counts as finished?
+### Fix AAD-enabled AKS deployment ([#12550](https://github.com/radius-project/radius/issues/12550))
 
-- Agree on the supported GitHub Actions interface and the cloud configurations that must pass end-to-end tests.
-- Keep the wider deployment-engine roadmap separate. The supported-interface issue excludes a new engine, non-GitHub CI, and cloud-side OIDC identity provisioning.
-- **Recommendation:** Judge completion against the documented interface and tested cloud configurations. Track broader engine work under [radius-project/radius#12996](https://github.com/radius-project/radius/issues/12996).
-- The historical state-test failure needs investigation, not a design decision.
+Add the authentication setup needed for both the GitHub runner and Radius pods to access AAD-enabled AKS.
 
-Related: [radius-project/radius#12997](https://github.com/radius-project/radius/issues/12997), [radius-project/radius#13112](https://github.com/radius-project/radius/issues/13112).
+**Architectural decisions:**
+
+- Which AKS configurations and non-interactive authentication modes will be supported?
+- How will runner and pod kubeconfigs, credential-plugin binaries, and token refresh be configured separately?
+- Which identities and permissions will each use? The runner's Azure CLI session is not available inside Radius pods.
+
+### Settle cloud-storage scope ([#11605](https://github.com/radius-project/radius/issues/11605))
+
+Decide whether OCI satisfies the storage requirement or whether Azure Blob/S3 archive support is still needed.
+
+**Architectural decisions:**
+
+- Is OCI the supported archive backend, or must Radius also implement Blob/S3 backends?
+- If Blob/S3 is required, who provisions storage and configures access before control-plane startup?
+- How will backend selection, archive migration, retention, and recovery work while keeping state and graph policies separate?
+
+Terraform state in Blob/S3 is separate from the Radius control-plane archive and needs its own protection.
 
 ## Evidence baseline
 
