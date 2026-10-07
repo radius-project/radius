@@ -19,7 +19,8 @@
 # ============================================================================
 # Runs .github/scripts/authz-would-deny-check.sh against the kit cluster.
 # All logic lives in that script; this wrapper only selects the kubeconfig
-# context so the check never reads logs from another cluster.
+# context so the check never reads logs from another cluster, and adds
+# --require-dry-run when up.sh installed the cluster in dryRun mode.
 # ============================================================================
 
 set -euo pipefail
@@ -43,8 +44,14 @@ usage() {
 Usage: $(basename "$0") [--current-context] [CHECK_ARGS...]
 
 Fails if a Radius pod logged an authorization dry-run would-deny line. Wraps
-.github/scripts/authz-would-deny-check.sh (make authz-would-deny-check) and
-runs it against the kubeconfig context ${AUTHZ_KUBE_CONTEXT}.
+.github/scripts/authz-would-deny-check.sh and runs it against the kubeconfig
+context ${AUTHZ_KUBE_CONTEXT}.
+
+When up.sh installed the cluster in dryRun mode (the ${AUTHZ_KIT_MODE_LABEL}
+label on namespace ${AUTHZ_RADIUS_NAMESPACE}), --require-dry-run is added so
+the check also fails unless ucp, applications-rp, dynamic-rp, and controller
+all started in dryRun. For other or unknown modes it only scans for
+would-deny lines; pass --require-dry-run to require dryRun anyway.
 
 Options:
   --current-context  Use the current kubeconfig context instead.
@@ -54,7 +61,8 @@ Environment:
   AUTHZ_KUBE_CONTEXT  kubeconfig context (default: ${AUTHZ_KUBE_CONTEXT}).
 
 CHECK_ARGS are passed to the check script. Its exit codes are returned:
-0 no unexpected would-deny lines, 1 would-deny lines found, 2 usage error.
+0 no unexpected would-deny lines, 1 would-deny lines found, 2 usage,
+collection, or dry-run verification error.
 EOF
 }
 
@@ -93,7 +101,20 @@ if [[ "${USE_CURRENT_CONTEXT}" == false ]]; then
     export KUBECONFIG="${TEMP_DIR}/kubeconfig"
 fi
 
+MODE_ARGS=()
+mode="$(authz_recorded_mode)"
+if [[ -n "${mode}" ]]; then
+    echo "Kit cluster installed in authz mode ${mode}." >&2
+else
+    echo "Install mode unknown (no ${AUTHZ_KIT_MODE_LABEL} label on namespace ${AUTHZ_RADIUS_NAMESPACE}); pass --require-dry-run to require dryRun." >&2
+fi
+if [[ " ${CHECK_ARGS[*]-} " != *" --require-dry-run "* ]]; then
+    while IFS= read -r arg; do
+        MODE_ARGS+=("${arg}")
+    done < <(authz_would_deny_mode_args "${mode}")
+fi
+
 status=0
 bash "${CHECK_SCRIPT}" --namespace "${AUTHZ_RADIUS_NAMESPACE}" \
-    ${CHECK_ARGS[@]+"${CHECK_ARGS[@]}"} || status=$?
+    ${MODE_ARGS[@]+"${MODE_ARGS[@]}"} ${CHECK_ARGS[@]+"${CHECK_ARGS[@]}"} || status=$?
 exit "${status}"
