@@ -112,7 +112,7 @@ assert_calls_not_contain() {
 #   MOCK_CONTEXT_EXISTS  "false" makes "config view --context" fail.
 #   MOCK_POD_EXISTS      "false" makes "get pod" fail so the pod is created.
 #   MOCK_KIT_MODE        the namespace's kit mode label, empty for no label,
-#                        or "absent" when the namespace does not exist.
+#                        or absent/timeout/forbidden for namespace read errors.
 mkdir -p "${TEST_ROOT}/bin"
 cat >"${TEST_ROOT}/bin/kubectl" <<'MOCK'
 #!/bin/bash
@@ -142,6 +142,12 @@ case "$1 $2" in
         [[ "${MOCK_POD_EXISTS:-true}" == "true" ]] || exit 1
         ;;
     "get namespace")
+        case "${MOCK_KIT_MODE:-}" in
+            timeout | forbidden)
+                echo "Error from server: ${MOCK_KIT_MODE}" >&2
+                exit 1
+                ;;
+        esac
         if [[ "${MOCK_KIT_MODE:-}" == "absent" ]]; then
             echo "Error from server (NotFound): namespaces \"$3\" not found" >&2
             exit 1
@@ -432,7 +438,7 @@ assert_status 2
 assert_calls_contain "get pods"
 
 echo "Test: would-deny.sh does not require dry-run for other or unknown modes"
-for mode in enforce "" absent; do
+for mode in off enforce ""; do
     reset_calls
     MOCK_KIT_MODE="${mode}" run_kit would-deny.sh --logs-dir "${TEST_ROOT}/logs/clean"
     assert_status 0
@@ -443,13 +449,59 @@ assert_output_contains "installed in authz mode enforce"
 MOCK_KIT_MODE="" run_kit would-deny.sh --logs-dir "${TEST_ROOT}/logs/clean"
 assert_output_contains "pass --require-dry-run"
 
-echo "Test: would-deny.sh forwards an explicit --require-dry-run once"
+echo "Test: would-deny.sh accepts an explicit --require-dry-run"
 reset_calls
 MOCK_KIT_MODE=dryRun run_kit would-deny.sh --require-dry-run --logs-dir "${TEST_ROOT}/logs/clean"
 assert_status 2
 assert_output_contains "could not list pods"
 run_kit would-deny.sh --help
 assert_output_contains "--require-dry-run"
+
+echo "Test: namespace read errors cannot bypass live verification"
+for mode in timeout forbidden absent; do
+    reset_calls
+    MOCK_KIT_MODE="${mode}" run_kit would-deny.sh \
+        --logs-dir "${TEST_ROOT}/logs/clean"
+    assert_status 2
+    assert_output_contains "Error from server"
+    assert_output_contains "could not read kit mode"
+    assert_calls_not_contain "get pods"
+done
+reset_calls
+MOCK_KIT_MODE=timeout run_kit would-deny.sh --current-context \
+    --require-dry-run --logs-dir "${TEST_ROOT}/logs/clean"
+assert_status 2
+assert_output_contains "could not read kit mode"
+assert_calls_not_contain "get pods"
+
+echo "Test: flag text in a path cannot suppress live verification"
+mkdir -p "${TEST_ROOT}/logs/a --require-dry-run b"
+cp "${TEST_ROOT}/logs/clean/ucp-0.log" \
+    "${TEST_ROOT}/logs/a --require-dry-run b/ucp-0.log"
+reset_calls
+MOCK_KIT_MODE=dryRun run_kit would-deny.sh \
+    --logs-dir "${TEST_ROOT}/logs/a --require-dry-run b"
+assert_status 2
+assert_calls_contain "get pods"
+assert_output_contains "could not list pods in namespace radius-system"
+
+echo "Test: namespace overrides are rejected before contacting the cluster"
+for arg in --namespace --namespace=another-namespace; do
+    reset_calls
+    run_kit would-deny.sh "${arg}" another-namespace
+    assert_status 2
+    assert_output_contains "use AUTHZ_RADIUS_NAMESPACE"
+    assert_calls_not_contain "config view"
+    assert_calls_not_contain "get namespace"
+done
+
+echo "Test: configured namespace is shared by mode detection and log collection"
+reset_calls
+AUTHZ_RADIUS_NAMESPACE=another-namespace MOCK_KIT_MODE=dryRun \
+    run_kit would-deny.sh --logs-dir "${TEST_ROOT}/logs/clean"
+assert_status 2
+assert_calls_contain "get namespace another-namespace"
+assert_calls_contain "get pods --namespace another-namespace"
 
 echo "Test: README describes how would-deny.sh differs from the Make target"
 # shellcheck disable=SC2016 # Backticks are literal Markdown.
