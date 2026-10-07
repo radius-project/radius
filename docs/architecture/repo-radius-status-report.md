@@ -2,54 +2,17 @@
 
 Status as of October 6, 2026.
 
-Repo Radius can deploy and manage applications through a temporary Radius control plane in GitHub Actions. State save/restore, cloud-specific workflows, and frontend integration are implemented. The remaining work is to make the actions a supported public interface, publish them to GitHub Marketplace, and close compatibility gaps.
+This document assesses what work is complete for Repo Radius today and what work (according to open GitHub issues) is still outstanding.
 
-There is no verified general-availability announcement. The status below comes from code and issue discussions, not from whether an issue is open or closed.
+For the work that is still outstanding, we (eng + product) must decide:
 
-## What Repo Radius is
+- Is this something that we need for Repo Radius?
+- If so, is this something we need now or in the near future?
+- If so, what architecture decisions must be made for that work to be implemented?
 
-Repo Radius runs the Radius control plane only when a repository workflow needs it. The Radius Canvas or another frontend starts a GitHub Actions workflow, which restores Radius state, runs commands, saves state, and removes the temporary control plane.
+## Repo Radius Today
 
-- Application workloads run on a separate AKS or EKS cluster and remain there after the workflow ends.
-- Users still need a workload cluster, cloud permissions, credentials, and durable state storage.
-- The original proposal covered deployment, environment setup, promotion, and management. Its [feature-spec PR](https://github.com/radius-project/radius/pull/12078) closed without merging; the implementation landed through separate PRs.
-
-```mermaid
-flowchart LR
-    Frontend["Frontend / Radius Canvas"] -->|dispatch| Workflow["GitHub Actions workflow"]
-    Workflow --> CP["Temporary Radius control plane"]
-    Archive["Private OCI state archive"] -->|rad startup: restore| CP
-    CP -->|deploy / update / delete| Target["External AKS / EKS cluster"]
-    CP -->|rad shutdown: save| Archive
-    Workflow --> Results["Command results and deployment artifacts"]
-```
-
-## Key components and ownership
-
-- **Radius CLI and control plane:** `radius-project/radius` contains command execution, external-cluster access, and state save/restore.
-- **Workflows and actions:** `radius-project/ai-extensions`, under `.github/extension/`, contains authentication, control-plane setup, command execution, reporting, and teardown.
-- **Frontend/plugin:** ai-extensions generates repository workflows and drives verification and deployment.
-- **Durable storage:** Radius implements OCI archives for state and modeled graphs. Each uses a separately configured registry repository.
-- **Workload cluster:** The user's AKS or EKS cluster keeps running the application.
-
-The workflows moved to ai-extensions in [radius-project/ai-extensions#424](https://github.com/radius-project/ai-extensions/pull/424). [radius-project/radius#12719](https://github.com/radius-project/radius/pull/12719), merged August 31, removed the duplicate assets from Radius.
-
-## How it works
-
-1. The frontend writes verification and deployment workflows into the application repository and configures a GitHub Environment.
-2. The workflow selects Azure or AWS, authenticates through GitHub OIDC, and connects to the workload cluster.
-3. Shared actions create a temporary Radius control plane. `rad startup` restores its saved state.
-4. The workflow configures credentials and recipe packs, then runs the requested `rad` commands or the default deployment.
-5. The workflow publishes command results and deployment graph/status artifacts.
-6. Teardown attempts `rad shutdown` to save state, then removes the temporary cluster.
-
-The [teardown action](https://github.com/radius-project/ai-extensions/blob/a77ba988a4fb0e42c9cc96e70b2b0bf6f694a3d1/.github/extension/actions/teardown/action.yml) protects the archive:
-
-- If startup did not report successful state restoration, teardown skips state saving so an uninitialized control plane cannot overwrite the archive.
-- If a later step fails, teardown still attempts to save state, including changes from a partially applied deployment.
-- A lost runner or abrupt termination can prevent state saving, cleanup, or artifact publication.
-
-## What has been implemented
+The following features have already been implemented for Repo Radius:
 
 - **Temporary control-plane lifecycle:** Start Radius, restore state, run commands, save state, and tear down. The foundation landed in [radius-project/radius#12214](https://github.com/radius-project/radius/pull/12214).
 - **External-cluster deployment:** Radius manages workloads outside its own cluster. The foundation landed in [radius-project/radius#12106](https://github.com/radius-project/radius/pull/12106); provider workflows connect to AKS/EKS. See the [Azure workflow](https://github.com/radius-project/ai-extensions/blob/a77ba988a4fb0e42c9cc96e70b2b0bf6f694a3d1/.github/extension/run-rad-commands-azure.yml). This does not establish support for every cluster configuration.
@@ -64,7 +27,7 @@ The [teardown action](https://github.com/radius-project/ai-extensions/blob/a77ba
 
 ## What is left to implement or resolve
 
-All issues below were open at the assessment date.
+The following repo radius issues are still open as of today.
 
 - **Document the supported interface.** Define installation or workflow generation, inputs, outputs, permissions, result schemas, examples, and breaking-change rules. Add tests for successful deployment, failed deployment, and invalid commands. [radius-project/radius#12997](https://github.com/radius-project/radius/issues/12997)
 - **Publish the GitHub Marketplace actions.** The `run-rad-commands` composite action exists. Cloud verification currently lives in `verify-azure.yml` and `verify-aws.yml`; it still needs a standalone action before publishing the requested `radius-project/verify-cloud-auth` and `radius-project/run-rad-commands` identities. The September 29 issue update overstates the verification action's completion. [radius-project/radius#12524](https://github.com/radius-project/radius/issues/12524)
@@ -160,7 +123,3 @@ Related: [radius-project/radius#12997](https://github.com/radius-project/radius/
 - Issue discussions, PR states, and workflow runs: checked October 6, 2026.
 
 This snapshot does not cover every frontend/cloud combination or assign owners and delivery dates.
-
-## Review and corrections
-
-Claude Opus 5.5 reviewed the initial report against code and GitHub evidence. Corrections covered verification-action packaging, state-test results, teardown's archive guard, AKS authentication, source-ref selection, and command-result reporting. The implementation sequence, architectural decisions, and readability rewrite came afterward and were not part of that review.
