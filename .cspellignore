@@ -153,6 +153,7 @@ ExecHealthProbeProperties
 ExtenderListSecretResponse
 ExtenderProperties
 ExtenderResource
+FIPS
 Fairfax
 Fargate
 FindSecretIDs
