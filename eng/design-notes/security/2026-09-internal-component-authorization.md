@@ -162,17 +162,12 @@ Operators choose where the Radius CA comes from with the Helm value `global.rbac
 
 ##### Key algorithm and lifetime
 
-Operators set these with Helm values. They apply to the certificates Radius issues (`selfSigned`, `caSecret`, `issuerRef`):
+These are fixed, not settings:
 
-| Setting                                         | Default | Allowed values                                                           |
-|-------------------------------------------------|---------|--------------------------------------------------------------------------|
-| `global.rbac.certificates.privateKey.algorithm` | `ECDSA` | `ECDSA` or `RSA`                                                         |
-| `global.rbac.certificates.privateKey.size`      | `256`   | ECDSA: `256` or `384`. RSA: `2048`, `3072`, or `4096`.                   |
-| `global.rbac.certificates.duration`             | `24h`   | `1h` to `720h` (30 days). Renewal happens at two-thirds of the lifetime. |
-
-- **Algorithms receivers accept.** In every mode, including `external`, a receiver rejects a peer certificate or CA that uses any other key type or a smaller key. `rad install` applies the same check to `--ca-cert`.
-- **FIPS.** Setting `global.fips.enabled=true` runs the Radius Go components with Go's FIPS 140-3 module (`GODEBUG=fips140=only`), so TLS uses only FIPS-approved algorithms. Every allowed value above is FIPS-approved. FIPS support for the deployment engine and dashboard is tracked in their repositories.
-- **Choosing a lifetime.** Short lifetimes limit how long a stolen key works, because Radius relies on expiry rather than revocation lists. Raise the lifetime only when the issuer requires it, for example when an external CA charges per certificate or limits request rates. A longer lifetime also lengthens the grace window for renewal failures.
+- **Key.** Radius generates every service key as ECDSA P-256 in the modes where it issues certificates (`selfSigned`, `caSecret`, `issuerRef`). It is fast, small, FIPS-approved, and supported by every TLS stack Radius uses.
+- **Lifetime.** Radius requests 24-hour certificates and renews them at two-thirds of their lifetime. Short lifetimes limit how long a stolen key works, because Radius relies on expiry rather than revocation lists. If an `issuerRef` issuer returns a different lifetime, cert-manager renews at two-thirds of the lifetime actually issued, so nothing breaks.
+- **What receivers accept.** An organization's CA, and certificates in `external` mode, are often RSA, which Radius does not control. So in every mode receivers accept ECDSA P-256 or P-384 and RSA 2048 bits or larger, and reject anything else. `rad install` applies the same check to `--ca-cert`.
+- **FIPS.** Setting `global.fips.enabled=true` runs the Radius Go components with Go's FIPS 140-3 module (`GODEBUG=fips140=only`), so TLS uses only FIPS-approved algorithms. The fixed key and every accepted key above are FIPS-approved. This stays opt-in because FIPS-only mode also restricts crypto outside internal TLS, such as connections to cloud providers and registries. FIPS support for the deployment engine and dashboard is tracked in their repositories.
 
 ##### Kubernetes API server trust
 
@@ -652,7 +647,7 @@ The Detailed Design proposes a specific option for each major decision; what rem
 
 **A:** [cert-manager](https://cert-manager.io) is the default issuer. It issues one X.509 certificate per service from a Radius-only CA and renews each certificate automatically before it expires. Production installations can instead use their own signed CA, an existing issuer, or their own certificates (see [Certificate options](#certificate-options)). `rad install` installs cert-manager when the cluster has none and uses an existing supported installation otherwise (see [Issuing and protecting service identities](#issuing-and-protecting-service-identities)). SPIFFE/SPIRE stays the growth path if Radius components later span clusters, and the other issuers considered are listed under [Certificate issuer](#certificate-issuer).
 
-Service certificates last **24 hours** by default (configurable, see [Key algorithm and lifetime](#key-algorithm-and-lifetime)) and are renewed after two-thirds of their lifetime (about 16 hours), which is cert-manager's default renewal point. That leaves an 8-hour grace window for the retry behavior under [Certificate authority and rotation](#certificate-authority-and-rotation). The 24-hour lifetime matches the workload certificates of Istio, Linkerd, and Dapr. The Radius CA certificate lasts **1 year**, as Dapr's root does, and is also renewed at two-thirds of its lifetime; the CA bundle holds both the old and new CA until every service certificate is reissued.
+Service certificates last **24 hours** (see [Key algorithm and lifetime](#key-algorithm-and-lifetime)) and are renewed after two-thirds of their lifetime (about 16 hours), which is cert-manager's default renewal point. That leaves an 8-hour grace window for the retry behavior under [Certificate authority and rotation](#certificate-authority-and-rotation). The 24-hour lifetime matches the workload certificates of Istio, Linkerd, and Dapr. The Radius CA certificate lasts **1 year**, as Dapr's root does, and is also renewed at two-thirds of its lifetime; the CA bundle holds both the old and new CA until every service certificate is reissued.
 
 Local development does not need cert-manager: `--skip-rbac` (see [CLI Design](#cli-design-if-applicable)) leaves the installation in the Off stage without cert-manager or mTLS.
 
