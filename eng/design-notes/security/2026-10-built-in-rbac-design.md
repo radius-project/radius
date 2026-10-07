@@ -29,17 +29,6 @@ A simple way to remember it: this design is the front door lock, and the interna
 
 The model is borrowed from Azure Resource Manager (ARM) RBAC. Radius's resource IDs and API already look like ARM's, so ARM's approach fits naturally and many users will already know it.
 
-## How to read this document
-
-If you are new to Radius or to RBAC, read these sections first:
-
-1. [Key terms](#key-terms) for the vocabulary.
-2. [How Radius handles a request today](#how-radius-handles-a-request-today) for the starting point.
-3. [The big idea](#the-big-idea) and [A worked example](#a-worked-example) for the overall shape.
-4. [How the two designs fit together](#how-the-two-designs-fit-together) if you also work on the internal design, or need to know which design owns a check.
-
-The [Detailed Design](#detailed-design) then covers each part one at a time. Each part starts with a short "In short" summary so you can skim.
-
 ## Key terms
 
 | Term                   | Plain-language meaning                                                                                                                                                | Example                                                                                                  |
