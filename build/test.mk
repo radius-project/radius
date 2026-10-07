@@ -24,15 +24,27 @@ CLI_DOWNLOAD_ARCH ?= amd64
 CLI_DOWNLOAD_FILE ?= rad
 CLI_DOWNLOAD_EXT ?=
 CLI_DOWNLOAD_MINIMUM_VERSION ?=
+CLI_DOWNLOAD_VERSION ?=
+
+.PHONY: resolve-cli-download-version
+resolve-cli-download-version: ## Print the latest stable CLI version (requires curl and jq; supports GH_TOKEN or GITHUB_TOKEN).
+	@bash $(CLI_DOWNLOAD_TEST_SCRIPT) --resolve-version
 
 .PHONY: test-cli-download
-test-cli-download: ## Test CLI download for specified OS and ARCH (defaults to linux/amd64). Usage: make test-cli-download [CLI_DOWNLOAD_OS=linux] [CLI_DOWNLOAD_ARCH=amd64] [CLI_DOWNLOAD_FILE=rad] [CLI_DOWNLOAD_EXT=] [CLI_DOWNLOAD_MINIMUM_VERSION=]
+test-cli-download: ## Test CLI download for specified OS and ARCH (defaults to linux/amd64). Usage: make test-cli-download [CLI_DOWNLOAD_OS=linux] [CLI_DOWNLOAD_ARCH=amd64] [CLI_DOWNLOAD_FILE=rad] [CLI_DOWNLOAD_EXT=] [CLI_DOWNLOAD_MINIMUM_VERSION=] [CLI_DOWNLOAD_VERSION=]
 	@bash $(CLI_DOWNLOAD_TEST_SCRIPT) \
 		"$(CLI_DOWNLOAD_OS)" \
 		"$(CLI_DOWNLOAD_ARCH)" \
 		"$(CLI_DOWNLOAD_FILE)" \
 		"$(CLI_DOWNLOAD_EXT)" \
-		"$(CLI_DOWNLOAD_MINIMUM_VERSION)"
+		"$(CLI_DOWNLOAD_MINIMUM_VERSION)" \
+		"$(CLI_DOWNLOAD_VERSION)"
+
+.PHONY: test-cli-download-script
+test-cli-download-script: ## Test CLI release discovery and downloads with local fixtures.
+	@bash ./build/test-cli-download_test.sh
+
+test: test-cli-download-script
 
 # Will be set by our build workflow, this is just a default
 TEST_TIMEOUT ?=1h

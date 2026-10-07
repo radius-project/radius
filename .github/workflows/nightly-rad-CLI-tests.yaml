@@ -11,12 +11,41 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - .github/workflows/nightly-rad-CLI-tests.yaml
+      - build/test-cli-download.sh
+      - build/test-cli-download_test.sh
+      - build/test.mk
 
 permissions: {}
 
 jobs:
+  resolve-version:
+    if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test CLI download script
+        run: make test-cli-download-script
+
+      - name: Resolve latest stable release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(make --no-print-directory -s resolve-cli-download-version)"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
   download:
     if: github.repository == 'radius-project/radius'
+    needs: resolve-version
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
@@ -62,6 +91,7 @@ jobs:
           MATRIX_FILE: ${{ matrix.file }}
           MATRIX_EXT: ${{ matrix.ext }}
           MATRIX_MINIMUM_VERSION: ${{ matrix.minimum_version }}
+          CLI_DOWNLOAD_VERSION: ${{ needs.resolve-version.outputs.version }}
         run: >-
           make test-cli-download
           CLI_DOWNLOAD_OS="${MATRIX_OS}"
@@ -82,3 +112,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MATRIX_OS: ${{ matrix.os }}
           MATRIX_ARCH: ${{ matrix.arch }}
+
+  report-release-failure:
+    needs: resolve-version
+    if: ${{ failure() && needs.resolve-version.result == 'failure' && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Create GitHub issue on release discovery failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "CLI nightly test failed - release discovery" \
+            --body "Release discovery failed on ${GITHUB_REPOSITORY}. See [workflow logs](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) for more details." \
+            --label "test-failure" \
+            --repo "${GITHUB_REPOSITORY}"

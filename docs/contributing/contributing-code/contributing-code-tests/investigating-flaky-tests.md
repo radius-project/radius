@@ -21,7 +21,11 @@ Read the issue body for the exact test name (for example `Test_CLI_Delete/Valida
 | Unit / integration     | [`unit-tests.yaml`](../../../../.github/workflows/unit-tests.yaml)                             | `make test`                       |
 | Functional (non-cloud) | [`functional-test-noncloud.yaml`](../../../../.github/workflows/functional-test-noncloud.yaml) | `make test-functional-*-noncloud` |
 | Functional (cloud)     | [`functional-test-cloud.yaml`](../../../../.github/workflows/functional-test-cloud.yaml)       | `make test-functional-*-cloud`    |
-| Nightly `rad` CLI      | [`nightly-rad-CLI-tests.yaml`](../../../../.github/workflows/nightly-rad-CLI-tests.yaml)       | n/a (scheduled)                   |
+| Nightly `rad` CLI      | [`nightly-rad-CLI-tests.yaml`](../../../../.github/workflows/nightly-rad-CLI-tests.yaml)       | `make test-cli-download`          |
+
+The nightly CLI workflow resolves the latest stable release once with a read-only GitHub token, then passes that version to all seven download jobs. Release discovery requires `curl` and `jq`; local runs can use `GH_TOKEN` (preferred) or `GITHUB_TOKEN` to avoid the unauthenticated API quota. An HTTP error stops discovery before parsing and prints the status and response body.
+
+Use `make resolve-cli-download-version` to print the selected version. To test a download without another API lookup, run `make test-cli-download CLI_DOWNLOAD_VERSION=v0.61.0` with the desired `CLI_DOWNLOAD_OS`, `CLI_DOWNLOAD_ARCH`, and `CLI_DOWNLOAD_EXT` settings. The Windows arm64 job also sets `CLI_DOWNLOAD_MINIMUM_VERSION=v0.60.0` and skips older releases. Run `make test-cli-download-script` for local regression tests with no network requests; this target also runs as part of `make test`.
 
 ### 2. Measure how often the flake hits
 

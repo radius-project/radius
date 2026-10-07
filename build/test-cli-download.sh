@@ -18,12 +18,61 @@
 
 set -euo pipefail
 
+# --resolve-version prints only the latest stable version to stdout (requires jq).
+# GH_TOKEN or GITHUB_TOKEN optionally authenticates release discovery.
+# The sixth argument supplies a resolved version and skips discovery.
+
 # Default values
 OS=${1:-"linux"}
 ARCH=${2:-"amd64"}
 FILE=${3:-"rad"}
 EXT=${4:-""}
 MINIMUM_VERSION=${5:-""}
+RAD_VERSION=${6:-""}
+
+resolve_version() {
+    local -r release_url="https://api.github.com/repos/radius-project/radius/releases"
+    local -r token="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+    local headers=(-H "Accept: application/vnd.github+json")
+    local response status version
+
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "jq is required to resolve the latest CLI release version" >&2
+        return 1
+    fi
+    if [[ -n "${token}" ]]; then
+        headers+=(-H "Authorization: Bearer ${token}")
+    fi
+
+    echo "Fetching latest release version from GitHub API..." >&2
+    response=$(curl -sS "${headers[@]}" -w '\n%{http_code}' \
+        "${release_url}") || {
+        printf 'GitHub API call to %s failed (curl exit %d)\n' \
+            "${release_url}" "$?" >&2
+        return 1
+    }
+    status=${response##*$'\n'}
+    response=${response%$'\n'*}
+    if [[ "${status}" != "200" ]]; then
+        printf 'GitHub API call failed (HTTP %s):\n%s\n' \
+            "${status}" "${response}" >&2
+        return 1
+    fi
+
+    if ! version=$(jq -er '
+        if type != "array" then error("Expected a releases array") else
+            [.[] | select(.draft != true and .prerelease != true)
+                | .tag_name | select(type == "string")
+                | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))][0] // empty
+        end
+    ' <<<"${response}"); then
+        printf 'Failed to extract a stable RAD_VERSION (HTTP %s):\n%s\n' \
+            "${status}" "${response}" >&2
+        return 1
+    fi
+
+    printf '%s\n' "${version}"
+}
 
 version_is_at_least() {
     local -r actual="${1#v}"
@@ -58,35 +107,18 @@ version_is_at_least() {
     return 0
 }
 
+if [[ "${1:-}" == "--resolve-version" ]]; then
+    resolve_version
+    exit 0
+fi
+
 echo "Starting CLI download test for $OS/$ARCH"
 
-# Get latest version from GitHub releases API
-echo "Fetching latest release version from GitHub API..."
-radReleaseUrl="https://api.github.com/repos/radius-project/radius/releases"
-
-# Make API call
-# `|| { ... }` rather than a following `$?` check: the script runs under `set -e`, so
-# a failing curl inside the assignment exits immediately and a separate check below it
-# is never reached. -sS keeps curl quiet on success but lets its own error through.
-# -w appends the HTTP status on its own line, so a parse failure below can tell a
-# rate limit (403) from a server error (5xx).
-api_response=$(curl -sS -w '\n%{http_code}' "$radReleaseUrl") || {
-    printf 'GitHub API call to %s failed (curl exit %d)\n' "$radReleaseUrl" "$?" >&2
-    exit 1
-}
-http_status=${api_response##*$'\n'}
-api_response=${api_response%$'\n'*}
-
-echo "GitHub API call successful"
-
-# Extract version from API response using grep, awk, and sed.
-# `|| true` stops a non-matching grep (e.g. an API error response with no
-# "tag_name") from tripping `set -e` here, before the empty-value check below
-# can report a useful error.
-RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p') || true
-
-if [ -z "$RAD_VERSION" ]; then
-    printf 'Failed to extract RAD_VERSION from API response (HTTP %s):\n%s\n' "$http_status" "$api_response" >&2
+if [[ -z "${RAD_VERSION}" ]]; then
+    RAD_VERSION=$(resolve_version)
+fi
+if [[ ! "${RAD_VERSION}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    printf 'Invalid release version: %s\n' "${RAD_VERSION}" >&2
     exit 1
 fi
 
