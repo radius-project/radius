@@ -25,6 +25,8 @@ Every script prints its options with `--help`. They target the kubeconfig contex
 
 Shared settings and helpers live in `lib.sh`. Run `make test-authz-kit` after changing the kit; it runs `bash -n`, shellcheck, each script's `--help`, and tests for the helpers with a stubbed `kubectl`.
 
+`would-deny.sh` fails with exit code 2 if it cannot read the Radius namespace, even when scanning saved logs with `--logs-dir`. A successful namespace read with no mode label retains the unknown-mode warning; pass `--require-dry-run` to require live startup verification in that case. Set `AUTHZ_RADIUS_NAMESPACE` to select another namespace for both the mode label and logs. The wrapper rejects `--namespace` overrides so these cannot refer to different installations.
+
 ### Component certificates
 
 `as-component.sh` reads the Secret named by `AUTHZ_COMPONENT_SECRET_FORMAT` in `lib.sh`, where `%s` is the component name (default `%s-mtls`, for example `dynamic-rp-mtls`), with the keys `tls.crt`, `tls.key`, and `ca.crt`. Stack A adds these Secrets and sets the final naming in that one variable. Until then the script reports which Secret is missing.

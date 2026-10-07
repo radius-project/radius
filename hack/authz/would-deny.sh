@@ -52,6 +52,7 @@ label on namespace ${AUTHZ_RADIUS_NAMESPACE}), --require-dry-run is added so
 the check also fails unless ucp, applications-rp, dynamic-rp, and controller
 all started in dryRun. For other or unknown modes it only scans for
 would-deny lines; pass --require-dry-run to require dryRun anyway.
+Namespace read errors fail the check, even when scanning saved logs.
 
 Options:
   --current-context  Use the current kubeconfig context instead.
@@ -59,8 +60,11 @@ Options:
 
 Environment:
   AUTHZ_KUBE_CONTEXT  kubeconfig context (default: ${AUTHZ_KUBE_CONTEXT}).
+  AUTHZ_RADIUS_NAMESPACE  Namespace for both mode and logs
+                          (default: ${AUTHZ_RADIUS_NAMESPACE}).
 
-CHECK_ARGS are passed to the check script. Its exit codes are returned:
+CHECK_ARGS are passed to the check script, except --namespace is rejected;
+use AUTHZ_RADIUS_NAMESPACE instead. Its exit codes are returned:
 0 no unexpected would-deny lines, 1 would-deny lines found, 2 usage,
 collection, or dry-run verification error.
 EOF
@@ -74,6 +78,9 @@ while [[ $# -gt 0 ]]; do
         --current-context)
             USE_CURRENT_CONTEXT=true
             shift
+            ;;
+        --namespace | --namespace=*)
+            authz_die "use AUTHZ_RADIUS_NAMESPACE instead of --namespace so mode detection and log collection share a namespace"
             ;;
         -h | --help)
             usage
@@ -91,8 +98,8 @@ done
 
 [[ -f "${CHECK_SCRIPT}" ]] || authz_die "check script not found: ${CHECK_SCRIPT}"
 
+authz_require_tools kubectl
 if [[ "${USE_CURRENT_CONTEXT}" == false ]]; then
-    authz_require_tools kubectl
     TEMP_DIR="$(mktemp -d)"
     if ! kubectl config view --minify --flatten \
         --context "${AUTHZ_KUBE_CONTEXT}" >"${TEMP_DIR}/kubeconfig"; then
@@ -102,17 +109,17 @@ if [[ "${USE_CURRENT_CONTEXT}" == false ]]; then
 fi
 
 MODE_ARGS=()
-mode="$(authz_recorded_mode)"
+if ! mode="$(authz_recorded_mode)"; then
+    authz_die "could not read kit mode from namespace ${AUTHZ_RADIUS_NAMESPACE}"
+fi
 if [[ -n "${mode}" ]]; then
     echo "Kit cluster installed in authz mode ${mode}." >&2
 else
     echo "Install mode unknown (no ${AUTHZ_KIT_MODE_LABEL} label on namespace ${AUTHZ_RADIUS_NAMESPACE}); pass --require-dry-run to require dryRun." >&2
 fi
-if [[ " ${CHECK_ARGS[*]-} " != *" --require-dry-run "* ]]; then
-    while IFS= read -r arg; do
-        MODE_ARGS+=("${arg}")
-    done < <(authz_would_deny_mode_args "${mode}")
-fi
+while IFS= read -r arg; do
+    MODE_ARGS+=("${arg}")
+done < <(authz_would_deny_mode_args "${mode}")
 
 status=0
 bash "${CHECK_SCRIPT}" --namespace "${AUTHZ_RADIUS_NAMESPACE}" \
