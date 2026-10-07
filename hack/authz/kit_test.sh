@@ -111,6 +111,8 @@ assert_calls_not_contain() {
 #                        "absent" when the Secret does not exist.
 #   MOCK_CONTEXT_EXISTS  "false" makes "config view --context" fail.
 #   MOCK_POD_EXISTS      "false" makes "get pod" fail so the pod is created.
+#   MOCK_KIT_MODE        the namespace's kit mode label, empty for no label,
+#                        or "absent" when the namespace does not exist.
 mkdir -p "${TEST_ROOT}/bin"
 cat >"${TEST_ROOT}/bin/kubectl" <<'MOCK'
 #!/bin/bash
@@ -139,6 +141,15 @@ case "$1 $2" in
     "get pod")
         [[ "${MOCK_POD_EXISTS:-true}" == "true" ]] || exit 1
         ;;
+    "get namespace")
+        if [[ "${MOCK_KIT_MODE:-}" == "absent" ]]; then
+            echo "Error from server (NotFound): namespaces \"$3\" not found" >&2
+            exit 1
+        fi
+        printf '%s' "${MOCK_KIT_MODE:-}"
+        ;;
+    "label namespace")
+        ;;
     "wait pod" | "apply --namespace" | "delete pod")
         ;;
     "config view")
@@ -163,7 +174,7 @@ export MOCK_CALLS="${TEST_ROOT}/kubectl-calls.txt"
 export MOCK_SECRET_KEYS="absent"
 export MOCK_CONTEXT_EXISTS="true"
 unset AUTHZ_COMPONENT_SECRET_FORMAT AUTHZ_KUBE_CONTEXT AUTHZ_CLUSTER_NAME \
-    AUTHZ_RADIUS_NAMESPACE AUTHZ_ROGUE_NAMESPACE
+    AUTHZ_RADIUS_NAMESPACE AUTHZ_ROGUE_NAMESPACE MOCK_KIT_MODE
 
 reset_calls() {
     : >"${MOCK_CALLS}"
@@ -381,6 +392,74 @@ run_kit would-deny.sh --logs-dir "${TEST_ROOT}/logs/clean"
 assert_status 2
 assert_output_contains "kubeconfig context 'kind-radius-authz' not found"
 export MOCK_CONTEXT_EXISTS="true"
+
+echo "Test: authz_would_deny_mode_args requires dryRun only for a dryRun install"
+run_lib authz_would_deny_mode_args dryRun
+assert_status 0
+assert_output "--require-dry-run"
+for mode in off enforce ""; do
+    run_lib authz_would_deny_mode_args "${mode}"
+    assert_status 0
+    assert_output ""
+done
+
+echo "Test: authz_record_mode labels the Radius namespace with the installed mode"
+reset_calls
+PATH="${TEST_ROOT}/bin:${PATH}" run_lib authz_record_mode dryRun
+assert_status 0
+assert_calls_contain "--context kind-radius-authz label namespace radius-system authz-kit.radius.dev/mode=dryRun --overwrite"
+PATH="${TEST_ROOT}/bin:${PATH}" run_lib authz_record_mode bogus
+assert_status 2
+assert_calls_not_contain "mode=bogus"
+
+echo "Test: up.sh records the installed mode"
+if grep -Eq '^[[:space:]]+authz_record_mode "\$\{MODE\}"' "${KIT_DIR}/up.sh"; then
+    pass_test
+else
+    fail_test "up.sh does not call authz_record_mode after installing"
+fi
+
+echo "Test: would-deny.sh requires dry-run startup logs for a dryRun install"
+reset_calls
+MOCK_KIT_MODE=dryRun run_kit would-deny.sh --logs-dir "${TEST_ROOT}/logs/clean"
+assert_status 2
+assert_calls_contain "get namespace radius-system"
+assert_calls_contain "get pods"
+assert_output_contains "could not list pods in namespace radius-system"
+reset_calls
+MOCK_KIT_MODE=dryRun run_kit would-deny.sh --current-context --logs-dir "${TEST_ROOT}/logs/clean"
+assert_status 2
+assert_calls_contain "get pods"
+
+echo "Test: would-deny.sh does not require dry-run for other or unknown modes"
+for mode in enforce "" absent; do
+    reset_calls
+    MOCK_KIT_MODE="${mode}" run_kit would-deny.sh --logs-dir "${TEST_ROOT}/logs/clean"
+    assert_status 0
+    assert_calls_not_contain "get pods"
+done
+MOCK_KIT_MODE=enforce run_kit would-deny.sh --logs-dir "${TEST_ROOT}/logs/clean"
+assert_output_contains "installed in authz mode enforce"
+MOCK_KIT_MODE="" run_kit would-deny.sh --logs-dir "${TEST_ROOT}/logs/clean"
+assert_output_contains "pass --require-dry-run"
+
+echo "Test: would-deny.sh forwards an explicit --require-dry-run once"
+reset_calls
+MOCK_KIT_MODE=dryRun run_kit would-deny.sh --require-dry-run --logs-dir "${TEST_ROOT}/logs/clean"
+assert_status 2
+assert_output_contains "could not list pods"
+run_kit would-deny.sh --help
+assert_output_contains "--require-dry-run"
+
+echo "Test: README describes how would-deny.sh differs from the Make target"
+# shellcheck disable=SC2016 # Backticks are literal Markdown.
+readme_row="$(grep -F '| `would-deny.sh`' "${KIT_DIR}/README.md" || true)"
+# shellcheck disable=SC2016 # Backticks are literal Markdown.
+if [[ "${readme_row}" == *"--require-dry-run"* && "${readme_row}" != *'(`make authz-would-deny-check`)'* ]]; then
+    pass_test
+else
+    fail_test "README would-deny.sh row must explain --require-dry-run and not claim it equals make authz-would-deny-check"
+fi
 
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"
