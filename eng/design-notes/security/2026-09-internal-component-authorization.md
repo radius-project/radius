@@ -160,6 +160,22 @@ Operators choose where the Radius CA comes from with the Helm value `global.rbac
 
 **`external`.** The operator provides one Secret per service, named `<service>-tls`, containing `tls.crt`, `tls.key`, and `ca.crt`, and renews each one before it expires. Services reload the files when they change.
 
+##### Kubernetes API server trust
+
+The Kubernetes API server is also a client of UCP. It forwards `rad` and `kubectl` requests to UCP through the `APIService` `v1alpha3.api.ucp.dev`, and it checks UCP's certificate against that APIService's `caBundle`. Today the Helm chart generates a separate `ucp-ca` (10 years, never rotated) for this. If `caBundle` does not hold the CA that signed UCP's current certificate, the APIService becomes unavailable and every `rad` command fails.
+
+UCP's certificate now comes from the configured CA, so `caBundle` must follow it:
+
+| When                       | What changes                                                                                                                                     |
+|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| Fresh install              | The chart stops generating `ucp-ca`. `caBundle` holds the configured CA from the start.                                                          |
+| Upgrade                    | `caBundle` moves from `ucp-ca` to the configured CA. It holds both until UCP serves a certificate from the new CA.                               |
+| CA rotation or mode switch | `caBundle` holds the old and new CA until every certificate is reissued, as under [Rotating the CA](#issuing-and-protecting-service-identities). |
+
+Daily service certificate renewals do not change `caBundle`, because the CA stays the same. In the cert-manager modes, the chart annotates the APIService with `cert-manager.io/inject-ca-from: <radius-namespace>/ucp-cert`, and cert-manager's CA injector keeps `caBundle` in sync for all three cases. In `external` mode, Helm writes `caBundle` from the operator's CA bundle, and the operator updates it when rotating. Any admission webhook Radius adds later follows the same rule.
+
+This applies only to the API server's trust in UCP. UCP's check that a request came from the API server uses the cluster's front-proxy CA, which belongs to Kubernetes and is not changed by these modes.
+
 mTLS is only as strong as the rule that one service cannot obtain another's certificate. With cert-manager, anyone who can create a `Certificate` or `CertificateRequest` for the Radius issuer, or read the Secret that holds a service's private key, can act as that service. The design therefore requires:
 
 | Concern                       | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -562,6 +578,7 @@ Unit tests should cover verification of deployment approvals and grant-scope che
 | A provider tries to access unrelated state or credentials            | The backend denies access, not just the HTTP API.                                                                  |
 | An application pod uses a control-plane service account or Secret    | Admission rejects it with `AdmissionPolicyDenied`.                                                                 |
 | A record expires during a deployment                                 | The deployment fails with `ExecutionRecordNotActive`, and rerunning `rad deploy` succeeds.                         |
+| Upgrade an existing installation, then rotate the CA                 | `rad` commands keep working throughout; the APIService stays available.                                            |
 | Install with `--ca-cert` and `--ca-key`                              | Service certificates chain to the provided CA. A certificate signed directly by the organization root is rejected. |
 
 Use cluster integration tests for certificate renewal, protected service accounts, restarts, upgrades, and interrupted deployments. Include the external engine and both legacy and current resource APIs. Test recipes that create cluster-wide objects separately from namespace-limited application templates.
@@ -628,7 +645,6 @@ Remaining implementation details:
 
 - The supported cert-manager version range.
 - Whether to require trust-manager for CA bundle distribution and approver-policy for certificate request approval, or implement those checks another way.
-- How existing installations move from the Helm-generated certificates.
 
 **Q: What are the execution record's limits?**
 
