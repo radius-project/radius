@@ -167,7 +167,7 @@ These are fixed, not settings:
 - **Key.** Radius generates every service key as ECDSA P-256 in the modes where it issues certificates (`selfSigned`, `caSecret`, `issuerRef`). It is fast, small, and supported by every TLS stack Radius uses.
 - **Lifetime.** Radius requests 24-hour certificates and renews them at two-thirds of their lifetime. Short lifetimes limit how long a stolen key works, because Radius relies on expiry rather than revocation lists. If an `issuerRef` issuer returns a different lifetime, cert-manager renews at two-thirds of the lifetime actually issued, so nothing breaks.
 - **What receivers accept.** An organization's CA, and certificates in `external` mode, are often RSA, which Radius does not control. So in every mode receivers accept ECDSA P-256 or P-384 and RSA 2048 bits or larger, and reject anything else. `rad install` applies the same check to `--ca-cert`.
-- **FIPS.** The fixed key and every accepted key above are FIPS-approved, so a later FIPS mode for Radius needs no certificate changes. FIPS mode itself is out of scope for this design.
+- **FIPS.** The fixed key and every accepted key above are FIPS-approved, so a later FIPS mode for Radius needs no certificate changes. FIPS mode itself is out of scope for this design and is tracked in [#13231](https://github.com/radius-project/radius/issues/13231).
 
 ##### Kubernetes API server trust
 
