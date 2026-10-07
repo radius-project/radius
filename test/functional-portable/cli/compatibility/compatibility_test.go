@@ -54,9 +54,9 @@ import (
 func TestMain(m *testing.M) {
 	if os.Getenv("RADIUS_COMPATIBILITY_COMPILER") == "true" && len(os.Args) > 1 && os.Args[1] == "build" {
 		fmt.Print(os.Getenv("RADIUS_COMPATIBILITY_TEMPLATE"))
-		os.Exit(0)
+		return
 	}
-	os.Exit(m.Run())
+	m.Run()
 }
 
 type lockedBuffer struct {

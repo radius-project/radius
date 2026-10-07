@@ -31,9 +31,9 @@ import (
 func TestMain(m *testing.M) {
 	if os.Getenv("RADIUS_UNIT_BICEP_COMPILER") == "true" && len(os.Args) > 1 && os.Args[1] == "build" {
 		fmt.Print(`{"resources":{"app":{"type":"Radius.Core/applications"}}}`)
-		os.Exit(0)
+		return
 	}
-	os.Exit(m.Run())
+	m.Run()
 }
 
 func Test_PrepareTemplate_RecordsRadiusPin(t *testing.T) {
