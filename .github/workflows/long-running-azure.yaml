@@ -418,16 +418,11 @@ jobs:
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
           # The released test code predates fixes and compatibility updates on main:
           #   - Test_ACI: tracked in #12044 (cleanup timeout flake).
-          #   - Test_RecipePack, Test_RadiusCoreEnv: the v0.59 recipe-pack fixture
-          #     uses the old recipeKind/recipeLocation properties that were renamed
-          #     to kind/source in PR #12104 (merged 2026-06-22), four days after the
-          #     v0.59.0 release (2026-06-18). The old names produce a BCP037 compile
-          #     error against the mutable latest Bicep extension.
           #   - Test_RadiusCore_AzureMySql_PortalLink: v0.60 deletes the environment
           #     before its application, so recipe cleanup fails. Tracked in #12701.
           # Skip these exact tests until a release that includes the fixes is cut.
-          # See #12044, #12104, #12163, #12247, #12392, and #12701.
-          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RecipePack|Test_RadiusCoreEnv|Test_RadiusCore_AzureMySql_PortalLink)$$'"
+          # See #12044, #12163, #12247, and #12701.
+          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RadiusCore_AzureMySql_PortalLink)$$'"
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
           set -euo pipefail
