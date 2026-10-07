@@ -831,7 +831,9 @@ func Test_Run_ExtensibleEnvironment(t *testing.T) {
 			Params: []any{extensibleComputeNotSupportedMessage},
 		},
 	}
-	require.Equal(t, expected, outputSink.Writes)
+	require.Len(t, outputSink.Writes, len(expected)+1)
+	require.Contains(t, fmt.Sprint(outputSink.Writes[0]), "Radius type compatibility is not verified")
+	require.Equal(t, expected, outputSink.Writes[1:])
 }
 
 // Test_Run_ExtensibleEnvironment_PreExisting verifies that `rad run` surfaces the not-supported

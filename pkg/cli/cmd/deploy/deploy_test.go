@@ -19,6 +19,7 @@ package deploy
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -47,6 +48,40 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+func Test_Run_Compatibility(t *testing.T) {
+	for _, cancelled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("cancelled=%t", cancelled), func(t *testing.T) {
+			sink := &output.MockOutput{}
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ControlPlaneVersionError: errors.New("version unavailable")},
+				Output:            sink,
+				Workspace:         &workspaces.Workspace{},
+				Template: map[string]any{
+					"resources":  map[string]any{"app": map[string]any{"type": "Radius.Core/applications"}},
+					"parameters": map[string]any{"required": map[string]any{"type": "string"}},
+				},
+				Providers:  &clients.Providers{Radius: &clients.RadiusProvider{}},
+				Parameters: map[string]map[string]any{},
+			}
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			if cancelled {
+				cancel()
+			}
+			err := runner.Run(ctx)
+			if cancelled {
+				require.ErrorIs(t, err, context.Canceled)
+				require.Empty(t, sink.Writes)
+				return
+			}
+			// Parameter validation stops the command before application or recipe-pack writes.
+			require.ErrorContains(t, err, "requires a parameter")
+			require.NotEmpty(t, sink.Writes)
+			require.Contains(t, fmt.Sprint(sink.Writes[0]), "version unavailable")
+		})
+	}
+}
 
 func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
@@ -672,12 +707,13 @@ func Test_Run(t *testing.T) {
 				"Deployment In Progress...", filePath, radcli.TestEnvironmentID, workspace.Name)
 
 		options := deploy.Options{
-			Workspace:      *workspace,
-			Parameters:     map[string]map[string]any{},
-			CompletionText: "Deployment Complete",
-			ProgressText:   progressText,
-			Template:       map[string]any{},
-			Providers:      provider,
+			CompatibilityChecked: true,
+			Workspace:            *workspace,
+			Parameters:           map[string]map[string]any{},
+			CompletionText:       "Deployment Complete",
+			ProgressText:         progressText,
+			Template:             map[string]any{},
+			Providers:            provider,
 		}
 
 		deployMock := deploy.NewMockInterface(ctrl)
@@ -857,12 +893,13 @@ func Test_Run(t *testing.T) {
 				"Deployment In Progress...", filePath, radcli.TestEnvironmentID, workspace.Name)
 
 		options := deploy.Options{
-			Workspace:      *workspace,
-			Parameters:     map[string]map[string]any{},
-			CompletionText: "Deployment Complete",
-			ProgressText:   progressText,
-			Template:       map[string]any{},
-			Providers:      &ProviderConfig,
+			CompatibilityChecked: true,
+			Workspace:            *workspace,
+			Parameters:           map[string]map[string]any{},
+			CompletionText:       "Deployment Complete",
+			ProgressText:         progressText,
+			Template:             map[string]any{},
+			Providers:            &ProviderConfig,
 		}
 
 		deployMock := deploy.NewMockInterface(ctrl)

@@ -53,6 +53,9 @@ type Options struct {
 
 	// CompleteText is a message displayed on the console when deployment completes.
 	CompletionText string
+
+	// CompatibilityChecked is set when the caller checked before its own resource writes.
+	CompatibilityChecked bool
 }
 
 var _ Interface = (*Impl)(nil)

@@ -297,6 +297,22 @@ func newDeprecatedResource(resourceType string) (DeprecatedResource, bool) {
 // A Bicep module compiles to a resource of type Microsoft.Resources/deployments whose resources are
 // nested at properties.template.resources.
 func collectDeprecatedResources(template map[string]any, seen map[string]struct{}, out *[]DeprecatedResource) {
+	walkTemplateResources(template, func(_ map[string]any, resource map[string]any) {
+		resourceType, ok := resource["type"].(string)
+		if !ok {
+			return
+		}
+		if deprecated, isDeprecated := newDeprecatedResource(resourceType); isDeprecated {
+			key := strings.ToLower(deprecated.FullType)
+			if _, alreadySeen := seen[key]; !alreadySeen {
+				seen[key] = struct{}{}
+				*out = append(*out, deprecated)
+			}
+		}
+	})
+}
+
+func walkTemplateResources(template map[string]any, visit func(map[string]any, map[string]any)) {
 	if template == nil {
 		return
 	}
@@ -337,15 +353,7 @@ func collectDeprecatedResources(template map[string]any, seen map[string]struct{
 		}
 
 		resourceType, hasType := resource["type"].(string)
-		if hasType {
-			if deprecated, isDeprecated := newDeprecatedResource(resourceType); isDeprecated {
-				key := strings.ToLower(deprecated.FullType)
-				if _, alreadySeen := seen[key]; !alreadySeen {
-					seen[key] = struct{}{}
-					*out = append(*out, deprecated)
-				}
-			}
-		}
+		visit(template, resource)
 
 		// Recurse into the inline template of a nested deployment (a Bicep module). Only
 		// Microsoft.Resources/deployments carries one. Other resource types can hold arbitrary
@@ -362,7 +370,7 @@ func collectDeprecatedResources(template map[string]any, seen map[string]struct{
 		}
 
 		if nested, ok := properties["template"].(map[string]any); ok {
-			collectDeprecatedResources(nested, seen, out)
+			walkTemplateResources(nested, visit)
 		}
 	}
 }

@@ -138,6 +138,7 @@ func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string
 		return nil, err
 	}
 
+	recordRadiusExtensionPin(i.FileSystem, filePath, template)
 	i.Output.CompleteStep(step)
 	return template, nil
 }
