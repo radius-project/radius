@@ -164,10 +164,10 @@ Operators choose where the Radius CA comes from with the Helm value `global.rbac
 
 These are fixed, not settings:
 
-- **Key.** Radius generates every service key as ECDSA P-256 in the modes where it issues certificates (`selfSigned`, `caSecret`, `issuerRef`). It is fast, small, FIPS-approved, and supported by every TLS stack Radius uses.
+- **Key.** Radius generates every service key as ECDSA P-256 in the modes where it issues certificates (`selfSigned`, `caSecret`, `issuerRef`). It is fast, small, and supported by every TLS stack Radius uses.
 - **Lifetime.** Radius requests 24-hour certificates and renews them at two-thirds of their lifetime. Short lifetimes limit how long a stolen key works, because Radius relies on expiry rather than revocation lists. If an `issuerRef` issuer returns a different lifetime, cert-manager renews at two-thirds of the lifetime actually issued, so nothing breaks.
 - **What receivers accept.** An organization's CA, and certificates in `external` mode, are often RSA, which Radius does not control. So in every mode receivers accept ECDSA P-256 or P-384 and RSA 2048 bits or larger, and reject anything else. `rad install` applies the same check to `--ca-cert`.
-- **FIPS.** Setting `global.fips.enabled=true` runs the Radius Go components with Go's FIPS 140-3 module (`GODEBUG=fips140=only`), so TLS uses only FIPS-approved algorithms. The fixed key and every accepted key above are FIPS-approved. This stays opt-in because FIPS-only mode also restricts crypto outside internal TLS, such as connections to cloud providers and registries. FIPS support for the deployment engine and dashboard is tracked in their repositories.
+- **FIPS.** The fixed key and every accepted key above are FIPS-approved, so a later FIPS mode for Radius needs no certificate changes. FIPS mode itself is out of scope for this design.
 
 ##### Kubernetes API server trust
 
