@@ -18,14 +18,14 @@ Radius has no RBAC of its own today. If you can reach the Radius API through Kub
 
 This document is the technical design for adding RBAC to Radius. The product requirements come from the [built-in RBAC feature specification](./2026-09-built-in-rbac-feature-spec.md). This design explains how to build it: how Radius identifies callers, how roles are stored, where checks happen, how deployments are checked, and how existing installations turn RBAC on safely.
 
-This design has a companion: the [internal component authorization design](https://github.com/radius-project/radius/pull/13086), which we call the **internal design** in this document. The two designs split the work like this:
+This design has a companion: the [internal component authorization design](./2026-09-internal-component-authorization.md), which we call the **internal design** in this document. The internal design says up front that it "assumes UCP already produces an authorization decision for a user's request". This document is where that decision comes from. The two designs split the work like this:
 
-| This design (user-facing RBAC)                                                         | Internal design                                                                                                           |
-|----------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
-| Decides whether a **user** may do something.                                           | Makes sure Radius's **own services** cannot skip or go beyond that decision.                                              |
-| Roles, role assignments, `rad auth` commands, and the checks UCP runs on each request. | Service identities (mTLS), the execution record that carries an approval through a deployment, and the credential broker. |
+| This design (user-facing RBAC)                                                                                   | Internal design                                                                                                                                                                                                                  |
+|------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Decides whether a **user** may do something.                                                                     | Makes sure Radius's **own services** cannot skip or go beyond that decision.                                                                                                                                                     |
+| Roles, role assignments, `rad auth` commands, the checks UCP runs on each request, and the deployment preflight. | Service identities (mTLS), the execution record that carries an approval through a deployment, the data-access service, the credential broker, Kubernetes admission controls, and the service-to-service rollout (Off, Enforce). |
 
-A simple way to remember it: this design is the front door lock, and the internal design makes sure there is no back door.
+A simple way to remember it: this design is the front door lock, and the internal design makes sure there is no back door. The places where the two designs connect are listed in [How the two designs fit together](#how-the-two-designs-fit-together).
 
 The model is borrowed from Azure Resource Manager (ARM) RBAC. Radius's resource IDs and API already look like ARM's, so ARM's approach fits naturally and many users will already know it.
 
@@ -36,6 +36,7 @@ If you are new to Radius or to RBAC, read these sections first:
 1. [Key terms](#key-terms) for the vocabulary.
 2. [How Radius handles a request today](#how-radius-handles-a-request-today) for the starting point.
 3. [The big idea](#the-big-idea) and [A worked example](#a-worked-example) for the overall shape.
+4. [How the two designs fit together](#how-the-two-designs-fit-together) if you also work on the internal design, or need to know which design owns a check.
 
 The [Detailed Design](#detailed-design) then covers each part one at a time. Each part starts with a short "In short" summary so you can skim.
 
@@ -57,8 +58,13 @@ The [Detailed Design](#detailed-design) then covers each part one at a time. Eac
 | UCP                    | Universal Control Plane. The Radius service that receives every API request and routes it to the right place. This design makes it the place where access is checked. |                                                                                                          |
 | Resource provider (RP) | A Radius service that actually creates and manages a kind of resource, such as Applications RP or Dynamic RP.                                                         |                                                                                                          |
 | Deployment engine      | The Radius service that runs Bicep templates by creating each resource in order.                                                                                      | Runs `rad deploy app.bicep`.                                                                             |
-| Execution record       | From the internal design. UCP's saved record of "this deployment was approved to do these things". Radius services check it later while the deployment runs.          |                                                                                                          |
+| Execution record       | From the internal design. UCP's saved record of "this deployment was approved to do these things". Radius services check it later while the deployment runs.          | Record `r-123`: Alice may create these two resources in `team-a`, using staging, until `expiresAt`.      |
+| Operation              | From the internal design. One unit of work under an execution record, such as creating one resource. It names the one service allowed to run it.                      | "Create container `web`, run by Applications RP."                                                        |
+| Submitter              | From the internal design. The one Radius service allowed to send requests under an execution record. Usually the deployment engine; the controller for GitOps.        | `bicep-de.radius-system.svc`                                                                             |
 | mTLS                   | Mutual TLS. An encrypted connection where **both** sides prove who they are with certificates. The internal design uses it between Radius services.                   |                                                                                                          |
+| Hop                    | From the internal design. One step where work passes from one Radius service to another. The receiving service checks the caller and the execution record.            | Deployment engine → UCP, or UCP → resource provider.                                                     |
+| Credential broker      | From the internal design. The only service that holds cloud credentials. It hands out short-lived tokens for approved work only.                                      | A 15-minute AWS token for one recipe step.                                                               |
+| Data-access service    | From the internal design. The only path resource providers have for writing to Radius's database. It checks the execution record before each write.                   |                                                                                                          |
 | Enforcement mode       | A setting that controls whether RBAC is off, only logging what it would block (`Audit`), or actually blocking (`Enforce`).                                            |                                                                                                          |
 
 ## How Radius handles a request today
@@ -214,10 +220,95 @@ Let's follow Alice, a member of `team-a-devs`, as she runs `rad deploy app.bicep
 5. **Preflight: UCP checks everything at once.** For each resource, UCP asks:
    - Can Alice write this kind of resource in `team-a`? Yes, through `application-developer`.
    - Can Alice deploy to the staging environment it points at? Yes, through `environment-deployer` on staging.
-6. **All checks pass**, so UCP writes an execution record listing exactly what was approved.
-7. **The deployment runs.** Each time the engine creates a resource, UCP confirms it is on the approved list, then forwards it to the resource provider.
+6. **All checks pass**, so UCP writes an execution record listing exactly what was approved: Alice as `subject`, the two resources as `targets`, staging as `environment`, and the deployment engine as `submitter`.
+7. **The deployment runs.** Each time the engine creates a resource, it sends the record ID. UCP confirms the engine is the record's `submitter` and the resource is on the approved list, then forwards it to the resource provider over mTLS. The provider only checks that UCP sent it. It never looks at Alice's roles.
 
 If Alice had pointed at production instead, step 5 would fail and nothing would be created. That is the sample output above.
+
+### How the two designs fit together
+
+> **In short:** This design makes the decision ("may Alice do this?"). The internal design carries that decision through every Radius service and makes sure no service goes past it. They meet in a few specific places, listed below.
+
+**The full path of a deployment, showing which design owns each step.** Steps marked **RBAC** are in this design. Steps marked **Internal** are in the internal design.
+
+```mermaid
+sequenceDiagram
+    participant U as rad CLI
+    participant K as Kubernetes API server
+    participant UCP
+    participant DE as Deployment engine
+    participant RP as Resource provider
+    participant DA as Data-access service
+    participant CB as Credential broker
+
+    U->>K: rad deploy
+    K->>UCP: Request + user and group headers + client certificate
+    Note over UCP: Internal: verify Kubernetes's certificate<br/>RBAC: turn headers into principals
+    Note over UCP: RBAC: check deployments/write
+    UCP->>DE: Start deployment (mTLS)
+    DE->>UCP: Preflight: list of resources (mTLS)
+    Note over UCP: RBAC: check every resource and reference
+    Note over UCP: Internal: write execution record<br/>with the approved list
+    UCP-->>DE: Record ID
+    DE->>UCP: Create resource + record ID (mTLS)
+    Note over UCP: Internal: caller is submitter, record active<br/>RBAC: resource is on approved list
+    UCP->>RP: Forward + operation ID (mTLS)
+    Note over RP: Internal: caller is UCP, operation assigned to me
+    RP->>CB: Token for recipe step
+    Note over CB: Internal: record and operation active,<br/>scope inside environment
+    RP->>DA: Save resource state
+    Note over DA: Internal: operation assigned to caller,<br/>resource matches
+```
+
+**Integration points.** Each row is one place where the designs depend on each other. The **Status** column says what is needed:
+
+- **Uses as is:** this design relies on the internal design exactly as written.
+- **Shared contract:** both designs must agree on a format or setting. The details are in this document.
+- **Needs agreement:** the two designs currently say different things. See [Open Questions](#open-questions).
+
+| #  | Integration point                     | What this design does                                                                                                                                                  | What the internal design does                                                                                                                                                                       | Status          |
+|----|---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|
+| 1  | Trusting the user's identity          | Reads `X-Remote-User` and `X-Remote-Group` and turns them into principals ([Part 1](#part-1-who-is-calling-identity)).                                                 | Verifies Kubernetes's client certificate before UCP may read those headers, and serves Kubernetes and internal requests on separate UCP endpoints.                                                  | Uses as is      |
+| 2  | Identifying Radius services           | Never treats a Radius service as a principal, except the controller acting for a namespace.                                                                            | Gives each service a certificate. Its identity is the DNS name `<service>.<namespace>.svc`, such as `bicep-de.radius-system.svc`.                                                                   | Uses as is      |
+| 3  | Turning a decision into a record      | Preflight produces the approved list: every resource, action, and bound ([Part 8](#part-8-how-ucp-checks-a-deployment)).                                               | Stores it as an execution record. Only UCP can write records.                                                                                                                                       | Shared contract |
+| 4  | Checking each follow-on request       | Checks the request is on the approved list, or inside a deferred resource's bound.                                                                                     | Checks the caller is the record's `submitter`, the record is active and not expired, and the request is inside `actions` and `targets`. Also says UCP rechecks the user's current permissions.      | Needs agreement |
+| 5  | What happens when a user loses access | The deployment keeps its approved list. Only cancel, expiry, or a security incident stops it.                                                                          | UCP marks the user's active records as revoked, so the next step fails.                                                                                                                             | Needs agreement |
+| 6  | Nested deployments (Bicep modules)    | Checks module resources in the parent's preflight, so the user is checked once.                                                                                        | The engine asks UCP for a child record whose `actions` and `targets` are a subset of the parent's (`parentRecordId`). Closing the parent closes its children.                                       | Shared contract |
+| 7  | Resource providers                    | Adds no checks to providers.                                                                                                                                           | Providers accept only requests from UCP over mTLS, for an operation assigned to them, with a matching input hash.                                                                                   | Uses as is      |
+| 8  | Recipes and cloud credentials         | Checks `use` on the environment, plus `recipePacks/use/action` and `credentials/use/action` when an admin configures an environment. Users never read the credentials. | Pins the exact recipe by digest in the record. The credential broker issues short-lived tokens only for that record's environment scope. Recipes run under a separate Kubernetes identity.          | Uses as is      |
+| 9  | Background work and database writes   | None. Roles are never checked in workers.                                                                                                                              | Workers check the record before each step. The data-access service checks the record before each write.                                                                                             | Uses as is      |
+| 10 | Controllers and GitOps                | Namespaces are principals and get role assignments ([Part 11](#part-11-controllers-and-gitops)).                                                                       | Describes a separate namespace mapping object. The record's `subject` is the namespace and `submitter` is the controller.                                                                           | Needs agreement |
+| 11 | Cancelling a deployment               | Adds `rad deployment cancel`, which needs `deployments/cancel/action`.                                                                                                 | Closing a record is final. Workers stop at the next step.                                                                                                                                           | Uses as is      |
+| 12 | Record expiry                         | A rerun of `rad deploy` is a new deployment, checked against current access.                                                                                           | Records expire at `expiresAt` (default 24 hours) and are never extended. The engine cannot renew a record.                                                                                          | Uses as is      |
+| 13 | Turning enforcement on                | User RBAC mode (`Disabled`, `Audit`, `Enforce`) is set at run time through the API ([Part 10](#part-10-turning-rbac-on)).                                              | Service-to-service rollout is Off or Enforce, set through Helm (`global.rbac.enabled`), with an optional dry run (`global.rbac.dryRun=true`).                                                       | Shared contract |
+| 14 | Install options                       | `rbac.mode` and `rbac.bootstrapAdministrators` Helm values.                                                                                                            | `rad install kubernetes --skip-rbac` and `global.rbac.enabled=false`.                                                                                                                               | Shared contract |
+| 15 | Runtime isolation in Kubernetes       | Grants access per application or resource group.                                                                                                                       | Admission controls stop application pods from using Radius's own service accounts or Secrets. Isolation between running apps is per environment, because apps in one environment share a namespace. | Uses as is      |
+| 16 | Error codes and logs                  | Adds RBAC error codes and audit events with `executionRecordId` and `correlationId`.                                                                                   | Adds execution-record and certificate error codes, and logs the same IDs.                                                                                                                           | Shared contract |
+
+**What this design puts in the execution record.** The internal design defines the record's fields. This table shows where each value comes from on the RBAC side:
+
+| Record field                 | Value set by UCP                                                                                                                                                                     |
+|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `subject`                    | The principal who started the deployment, with its issuer, for example `{type: user, issuer: <k8sIssuer>, subject: alice@contoso.com}`. For the controller, the namespace principal. |
+| `application`, `environment` | The application and environment from the template, after preflight checks `use` on the environment.                                                                                  |
+| `actions`, `targets`         | The approved list from preflight: each resource ID and its permission. For a deferred resource, the bound (the scope it must stay inside).                                           |
+| `templateDigest`, `recipe`   | The template preflight checked, and the recipe the environment's Recipe Pack chose for each resource.                                                                                |
+| `submitter`                  | The service that called preflight: the deployment engine, or the controller.                                                                                                         |
+| `parentRecordId`             | For a module, the parent record. Its `actions` and `targets` come from the parent's approved list, so no new role check is needed.                                                   |
+| `expiresAt`, `status`        | Set by the internal design. This design closes a record when the deployment is cancelled.                                                                                            |
+
+**Who checks what at each hop.** Roles are checked in only one place: UCP. Everywhere else, services check the execution record.
+
+| Hop                                     | Internal design checks                                                                      | This design checks                                                                |
+|-----------------------------------------|---------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| Kubernetes → UCP                        | Kubernetes's client certificate.                                                            | The user's roles for the request, and every reference in it.                      |
+| Deployment engine → UCP (preflight)     | The caller is the deployment engine.                                                        | The user's roles for every resource in the template.                              |
+| Deployment engine → UCP (each resource) | The caller is `submitter`; the record is active; the request is inside `actions`/`targets`. | Nothing new. The approved list was already checked in preflight.                  |
+| Controller → UCP                        | The caller is the controller.                                                               | The namespace principal's roles, like any user.                                   |
+| UCP → resource provider                 | The caller is UCP; the operation is assigned to this provider; the input hash matches.      | Nothing.                                                                          |
+| Queue → worker                          | The record and operation are active; the inputs match.                                      | Nothing.                                                                          |
+| Provider → data-access service          | The operation is assigned to the caller; the resource and action match.                     | Nothing.                                                                          |
+| Provider or engine → credential broker  | The record and operation are active; the scope is inside the environment.                   | Nothing. The user's `use` permission on the environment was checked in preflight. |
 
 ### Detailed Design
 
@@ -260,9 +351,9 @@ Storing the issuer on every assignment also means later releases can add other s
 
 **Kubernetes RBAC becomes a simple "can you reach Radius" gate.** Kubernetes still checks whether you may use the `api.ucp.dev` API group before forwarding. The Helm chart adds a ClusterRole called `radius-api-user` that allows it. When Radius RBAC is on, admins bind this ClusterRole broadly (for example to `system:authenticated`) and let Radius make the real decision. When Radius RBAC is off, Kubernetes RBAC stays the only check, exactly as today.
 
-**Radius's own services.** The internal design identifies Radius services with mTLS. Only two of them matter here:
+**Radius's own services.** The internal design identifies Radius services with mTLS. Each service's identity is its DNS name, such as `bicep-de.radius-system.svc` for the deployment engine. Identity headers sent by a service are never trusted. Only two services matter here:
 
-- The **deployment engine** is never a principal. Its requests are checked as the user who started the deployment.
+- The **deployment engine** is never a principal. Its requests are checked as the user who started the deployment, through the execution record's `subject` and approved list.
 - The **Radius controller** acts for a Kubernetes namespace. See [Part 11](#part-11-controllers-and-gitops).
 
 #### Part 2: Where access applies (scopes)
@@ -538,7 +629,13 @@ allowed(principals, permission, target):
 
 These checks run on **every** reference in the request body, not just new ones. Comparing against what is currently saved would mean reading, then checking, then writing, and another request could change things in between. The side effect: if you lose permission to deploy to an environment, you also cannot update resources already in it. That matches the intent: deploying to an environment is a permission you need right now, not one you had once. Reads and deletes do not check references.
 
-**Using an environment does not mean seeing what is inside it.** If you can deploy to staging, Radius will use staging's Recipe Packs, settings, and cloud credentials **for you** when it creates resources. You do not get permission to read or change those things yourself. The internal design makes sure Radius only uses them for the specific recipe and scope that was approved. Sensitive recipe outputs are hidden by existing [sensitive-field redaction](./2026-07-sensitive-fields-in-app-graph.md).
+**Using an environment does not mean seeing what is inside it.** If you can deploy to staging, Radius will use staging's Recipe Packs, settings, and cloud credentials **for you** when it creates resources. You do not get permission to read or change those things yourself. The internal design makes sure Radius only uses them for the approved work:
+
+- The execution record pins the exact recipe by digest, so nobody can swap in a different template after preflight.
+- Only the credential broker holds cloud credentials. It gives the recipe a short-lived token, and only for the environment's scope.
+- Recipes run under their own Kubernetes identity. Resources written directly in your application template run under a separate identity limited to the environment's namespace.
+
+Sensitive recipe outputs are hidden by existing [sensitive-field redaction](./2026-07-sensitive-fields-in-app-graph.md).
 
 **Do not reveal what exists.** UCP checks access **before** looking up the resource. So if you do not have access, you get `403 AuthorizationFailed` whether the resource exists or not. Otherwise, someone could probe for resource names by watching for `404` vs `403`. If you do have read access, you get the normal `404` for missing resources.
 
@@ -568,19 +665,19 @@ The resource group list and the "all resources in a group" list are filtered the
 3. **Preflight.** The engine sends the list to a new internal UCP endpoint, `POST /internal/authorization/preflight`, over mTLS. UCP checks every resource as if it were its own request, for the user who started the deployment.
    - For a deferred resource, UCP checks the permission at the known scope. Thanks to inheritance, that covers any name inside it. UCP saves that scope as a **bound** (a limit).
    - If even the scope or an important reference is unknown, preflight fails with `AuthorizationIndeterminate` in `Enforce` mode (it only logs in `Audit` mode). Radius would rather refuse than approve something it cannot check.
-4. **Decide.** If any check fails, UCP returns all failures at once. The engine fails the deployment before creating anything, and the CLI shows every missing permission. If all pass, UCP writes the execution record listing what was approved and returns its ID.
-5. **Run.** Each resource request includes the record ID. UCP checks that the resource is on the approved list, or for a deferred resource, inside its bound. Anything else is rejected with `GrantScopeExceeded`, even if the user has since gained access. An accepted deployment can never grow.
+4. **Decide.** If any check fails, UCP returns all failures at once. The engine fails the deployment before creating anything, and the CLI shows every missing permission. If all pass, UCP writes the execution record and returns its ID. The record's fields are listed in [What this design puts in the execution record](#how-the-two-designs-fit-together).
+5. **Run.** Each resource request includes the record ID. The internal design's checks run first: the caller must be the record's `submitter`, and the record must be active and not past `expiresAt`. Then UCP checks that the resource is on the approved list, or for a deferred resource, inside its bound. Anything else is rejected with `GrantScopeExceeded`, even if the user has since gained access. An accepted deployment can never grow.
 
 **What if someone's access changes mid-deployment?** The specification says an accepted deployment keeps the decision it got at the start: it is not stopped when roles change, and it cannot gain anything new. So:
 
 - Requests on the approved list keep working even if the user loses access during the deployment.
 - To stop a deployment right away, an admin cancels it: `rad deployment cancel <name>`. This needs `Microsoft.Resources/deployments/cancel/action` (in `radius-administrator` and `application-developer`), and UCP closes the execution record.
 - A retry or a new `rad deploy` is a new deployment and is checked against current access.
-- The internal design's execution record has a hard expiry, so no deployment can run forever on old approval.
+- The internal design's execution record has a hard expiry (`expiresAt`, default 24 hours) that is never extended, so no deployment can run forever on old approval. A deployment that runs past it fails with `ExecutionRecordNotActive`, and the user reruns `rad deploy`, which checks their current access.
 
-This requires a change to the internal design. Today it says UCP closes execution records when a user loses access. With this design, downstream checks look at the execution record's approved list, status, cancellation, and expiry, but not at the user's current roles. UCP closes records only on cancellation, expiry, or a security incident.
+This requires a change to the internal design (integration point 5 in [How the two designs fit together](#how-the-two-designs-fit-together)). Today it says UCP marks a user's execution records as revoked when the user loses access, and rechecks the user's permissions on every follow-on request. With this design, downstream checks look at the execution record's approved list, status, cancellation, and expiry, but not at the user's current roles. UCP closes records only on cancellation, expiry, or a security incident. Everything else in the internal design's record checks stays the same.
 
-**Nested deployments** (Bicep modules) are expanded as part of the parent, so their resources are checked in the same preflight.
+**Nested deployments** (Bicep modules) are expanded as part of the parent, so their resources are checked in the same preflight. When the engine runs a module, it asks UCP for a child record, as the internal design describes. UCP copies the module's part of the parent's approved list into the child record and sets `parentRecordId`. It does not run new role checks, because preflight already did.
 
 **Templates that contain roles or assignments** go through the same preflight. The [safety rules](#part-9-safety-rules) also run during preflight, so a template that would remove the last admin fails before anything changes.
 
@@ -642,17 +739,24 @@ The mode is stored in `authorizationSettings` at `/providers/Radius.Core/authori
 | `Audit`    | Yes         | No, everything is allowed | Trying RBAC out. Anything that would have been blocked is logged. |
 | `Enforce`  | Yes         | Yes                       | Normal use.                                                       |
 
-**How this relates to the internal design.** The internal design has its own on/off stages for service-to-service security (`Off`, dry run, `Enforce`). Those are installation settings applied through Helm, because they change listeners, certificates, and admission policies and need pods to restart. The user RBAC mode in this design is different: it is changed at run time through the API.
+**How this relates to the internal design.** The internal design has its own rollout for service-to-service security, with two stages: `Off` and `Enforce`. It also has a **dry run**, which is not a stage: the installation stays `Off`, every service-to-service check runs, and failures are only logged. These are installation settings applied through Helm (`global.rbac.enabled` and `global.rbac.dryRun`), because they change listeners, certificates, and admission policies and need pods to restart. The user RBAC mode in this design is different: it is changed at run time through the API.
 
 They are linked by one rule: **user RBAC can only be `Enforce` if service-to-service security is also `Enforce`.** Otherwise, someone could skip UCP's checks by calling a resource provider directly. UCP rejects the change with `ComponentProtocolNotEnforced` until every Radius service reports it is enforcing the internal protocol.
 
-| User RBAC mode | Allowed service-to-service stages |
-|----------------|-----------------------------------|
-| `Disabled`     | Any                               |
-| `Audit`        | Any                               |
-| `Enforce`      | `Enforce` only                    |
+| User RBAC mode | Allowed service-to-service setting |
+|----------------|------------------------------------|
+| `Disabled`     | `Off`, dry run, or `Enforce`       |
+| `Audit`        | `Off`, dry run, or `Enforce`       |
+| `Enforce`      | `Enforce` only                     |
 
 Turning user RBAC from `Enforce` back to `Audit` does not change service-to-service security.
+
+**Recommended order for existing installations.** Run both previews at the same time, then turn both on:
+
+1. Turn on the internal dry run (`global.rbac.dryRun=true`) and user RBAC `Audit` (`rad auth enforcement preview`).
+2. Fix what both reports show: missing assignments from `rad auth enforcement report`, and services, templates, or pods flagged by the dry run.
+3. Move service-to-service security to `Enforce` with a Helm upgrade.
+4. Run `rad auth enforcement enable`.
 
 ##### New installations
 
@@ -660,7 +764,7 @@ Turning user RBAC from `Enforce` back to `Audit` does not change service-to-serv
 2. Before UCP starts accepting requests, it creates a `radius-administrator` assignment at `/` for each listed identity, marked as `Bootstrap`, and sets the mode from `rbac.mode` (default `Enforce`).
 3. UCP does not accept requests until both are done, so there is never a moment where RBAC is on but nobody is admin, or where RBAC is off when it should be on.
 
-For a single developer, nothing changes: they installed Radius, so they are the admin. `rad install kubernetes --skip-rbac` (from the internal design) sets the mode to `Disabled`.
+For a single developer, nothing changes: they installed Radius, so they are the admin. `rad install kubernetes --skip-rbac` (from the internal design) sets the user RBAC mode to `Disabled` and leaves service-to-service security `Off` (`global.rbac.enabled=false`), so cert-manager is not needed.
 
 Helm only sets the mode on the first install. After that, `authorizationSettings` is the source of truth and `helm upgrade` does not overwrite it. If the Helm value disagrees with the saved mode, the pre-upgrade check fails and tells you to use `rad auth enforcement` instead.
 
@@ -682,9 +786,9 @@ The workflow's identity becomes the bootstrap admin. When Repo Radius restores s
 
 > **In short:** When the Radius controller deploys something from a Kubernetes namespace, it acts as that namespace. Admins give namespaces access with normal role assignments.
 
-**Background.** The Radius controller watches `DeploymentTemplate` objects in Kubernetes, including ones Flux creates from a Git repository, and deploys them. There is no user request behind these deployments: the object is just there in a namespace. The internal design says the controller acts **for the namespace** the object is in, and an admin decides which resource groups and environments each namespace may target.
+**Background.** The Radius controller watches `DeploymentTemplate` objects in Kubernetes, including ones Flux creates from a Git repository, and deploys them. There is no user request behind these deployments: the object is just there in a namespace. Today the controller also calls UCP without credentials. The internal design says the controller authenticates with its own mTLS identity and acts **for the namespace** the object is in. For each reconcile, UCP creates an execution record with the controller as `submitter` and the namespace as `subject`. The internal design describes a separate mapping where an admin lists which resource groups and environments each namespace may target.
 
-**This design: namespaces are principals.** For controller requests, UCP uses a principal called the **namespace principal**: `{type: workload, issuer: radius-controller, subject: <namespace>}`. UCP only accepts this principal when the request really comes from the controller (verified with mTLS). Admins give it roles like anyone else:
+**This design: namespaces are principals.** Instead of a separate mapping, UCP uses a principal called the **namespace principal**: `{type: workload, issuer: radius-controller, subject: <namespace>}`. This replaces the internal design's `namespace:<name>` value in the record's `subject`, so the record and the audit log use the same principal. UCP only accepts this principal when the request really comes from the controller (verified with mTLS). Admins give it roles like anyone else:
 
 ```console
 rad auth assignment create --role application-developer \
@@ -702,6 +806,13 @@ Why do it this way instead of a separate namespace mapping?
 - There is only one kind of access data to manage.
 
 Kubernetes RBAC still controls who can create `DeploymentTemplate` objects in each namespace.
+
+**What stays from the internal design.** Using role assignments instead of a mapping object changes only where the namespace's access is stored. These internal design rules still apply:
+
+- **Deleting an object** gets a delete-only record limited to resources earlier records created for the same object (matched by its Kubernetes UID). This works even if the namespace has since lost access, because cleaning up is narrower than creating.
+- **When a namespace loses access**, the controller stops starting new reconciles for objects outside its access. Resources already deployed are not deleted automatically. The object gets a status condition saying it is out of scope.
+- **References outside the namespace's access** (environments, recipes, or resources) are rejected at reconcile, before any change starts. This is the same reference check as [Part 7](#part-7-how-ucp-checks-a-request).
+- **Flux-created templates** belong to the namespace they are created in, like any other template.
 
 **Managing roles through GitOps.** To let a Git repository manage role assignments, give its namespace principal `access-administrator` (or a custom role with `roleAssignments/write`) at the scopes the repository manages. The [safety rules](#part-9-safety-rules) still apply. For example, if Flux removes an assignment from Git and that would remove the last admin, reconciliation fails with that error instead of applying the change.
 
@@ -838,9 +949,10 @@ The new `Radius.Core` types are added to TypeSpec and appear in the Radius Bicep
 #### Deployment Engine (if applicable)
 
 - Expand the template and call preflight before creating the first resource. This reuses the engine's existing what-if logic.
-- Send the execution record ID with each request (internal design).
+- Send the execution record ID with each request, and ask UCP for a child record for each module, as the internal design describes.
 - Report every failed check.
 - Support cancellation, which closes the execution record.
+- Get Kubernetes tokens from the credential broker for each step, as the internal design describes. No RBAC-specific change is needed for this.
 
 #### Core RP (if applicable)
 
@@ -848,11 +960,11 @@ No access checks are added here. Applications RP stops serving the new `Radius.C
 
 #### Portable Resources / Recipes RP (if applicable)
 
-No changes beyond the internal design. Recipes run using the environment's settings under the execution record, as described in [Part 7](#part-7-how-ucp-checks-a-request).
+No changes beyond the internal design. Recipes run using the environment's settings under the execution record, as described in [Part 7](#part-7-how-ucp-checks-a-request). The internal design checks that the recipe that runs matches the digest pinned in the record, and the credential broker issues the recipe's cloud and Kubernetes tokens.
 
 #### Controller
 
-- Send the namespace principal and Git source details on every request to UCP.
+- Send the namespace principal and Git source details on every request to UCP, over the controller's mTLS identity from the internal design (replacing today's `AnonymousCredential`).
 - Show `AuthorizationFailed`, `LastAdministratorProtected`, and `ManagedByConflict` as a failed `Ready` condition and a Kubernetes event on the `DeploymentTemplate`.
 - Stop retrying on access errors that will not fix themselves, until the object or the access rules change.
 
@@ -866,6 +978,19 @@ Add:
 - A Role that lets UCP `get` only the `radius-rbac-recovery` Secret (by `resourceNames`). A test confirms UCP cannot read any other Secret through it.
 
 `rad install kubernetes` fills in the bootstrap admin using `SelfSubjectReview`.
+
+How the Helm values from the two designs relate:
+
+| Value                           | From            | Purpose                                                                                      |
+|---------------------------------|-----------------|----------------------------------------------------------------------------------------------|
+| `global.rbac.enabled`           | Internal design | Service-to-service security `Off` or `Enforce`. `--skip-rbac` sets it to `false`.            |
+| `global.rbac.dryRun`            | Internal design | Log service-to-service failures without blocking. Cannot be combined with `Enforce`.         |
+| `rbac.mode`                     | This design     | Starting user RBAC mode on first install. Must be `Disabled` if `global.rbac.enabled=false`. |
+| `rbac.bootstrapAdministrators`  | This design     | Identities that become the first admins.                                                     |
+| `rbac.kubernetesIssuer`         | This design     | The issuer value for Kubernetes principals.                                                  |
+| `dashboard.forwardUserIdentity` | This design     | Dashboard sends each signed-in user's identity.                                              |
+
+The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=false`, because user RBAC `Enforce` needs service-to-service `Enforce`.
 
 ### Error Handling
 
@@ -887,6 +1012,19 @@ Add:
 | `AuthorizationUnavailable`     | 503         | UCP's copy of the access data is too old, or the database is down.                                                                | Retry later.                                                        |
 
 **Fail closed.** In `Enforce` mode, if anything goes wrong while checking access, the request is denied with `AuthorizationUnavailable`. It is never allowed by mistake. In `Audit` mode, errors are logged and the request goes ahead, because `Audit` must not change behavior.
+
+**Codes from the internal design.** Users may also see these codes from the internal design. They mean a Radius service or deployment step was blocked, not that the user is missing a role. `rad` shows them with `source: Radius` and a note saying they are not fixed by adding a role assignment.
+
+| Code                       | What it means for a user                                                                       | What to do                                                  |
+|----------------------------|------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| `ExecutionRecordNotActive` | The deployment's approval was cancelled, closed, or expired (for example, after 24 hours).     | Rerun `rad deploy`.                                         |
+| `OperationNotAssigned`     | A Radius service tried to run a step it was not assigned.                                      | Report to the platform team; this points to a Radius issue. |
+| `OperationInputMismatch`   | A step's inputs changed after they were approved.                                              | Rerun the deployment.                                       |
+| `QueueWaitLimitExceeded`   | A step waited in the queue too long.                                                           | Rerun the deployment.                                       |
+| `CredentialIssuanceDenied` | The credential broker refused a cloud or Kubernetes token for a scope outside the environment. | Check the environment's cloud scope or the recipe.          |
+| `AdmissionPolicyDenied`    | Kubernetes blocked an application pod, for example one using a Radius system Secret.           | Change the template; the message names the rule.            |
+
+`InvalidAuthenticationInfo`, `AuthorizationFailed`, `GrantScopeExceeded`, and `AuthorizationUnavailable` appear in both designs and mean the same thing.
 
 **Do not leak information.** Error messages show your own identity, the permission, and the target you asked for. They never show other people, assignments you cannot read, or whether a resource exists.
 
@@ -924,6 +1062,8 @@ Add:
 | Upgrade an existing install, then preview, report, enable                | Nothing blocked before enable; report suggests assignments; enable succeeds. |
 | Recovery Secret is created, then expires                                 | Admin access works only during that time, and is logged.                     |
 | Dashboard without forwarding and without an assignment                   | Shows that identity forwarding is required; no data.                         |
+| Enable `Enforce` while service-to-service security is `Off`              | `ComponentProtocolNotEnforced`; mode stays the same.                         |
+| A deployment runs past its execution record's `expiresAt`                | `ExecutionRecordNotActive`; rerunning `rad deploy` rechecks current access.  |
 
 **Performance tests:**
 
@@ -932,23 +1072,25 @@ Add:
 
 ## Security
 
-| Threat                                                                 | How this design handles it                                                                                                               |
-|------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
-| A pod that can reach UCP sends fake identity headers                   | Identity headers are only read on connections with Kubernetes's verified client certificate (internal design).                           |
-| Someone skips UCP and calls a resource provider directly               | Internal design mTLS. `Enforce` cannot be turned on until every service enforces it.                                                     |
-| A Radius service does more than the user's deployment was approved for | The execution record's approved list from preflight.                                                                                     |
-| A user gives themselves more access                                    | The "no giving out what you do not have" rule, immutable assignments, and checks on every path including GitOps and Bicep.               |
-| An Access Administrator grants admin to someone they control           | Expected for that role. Made visible with confirmation, `highImpact` audit events, and alerts.                                           |
-| Everyone gets locked out                                               | "Keep at least one admin" rule, bootstrap admins, and the recovery Secret.                                                               |
-| The recovery path is abused                                            | Needs Kubernetes cluster admin to create one named Secret; time-limited; memory only; logged with alerts.                                |
-| Errors, lists, graphs, or access checks leak information               | Check before lookup, filter lists without counts, hide graph nodes, show policy details only to those who can read assignments.          |
-| A removed user keeps access                                            | Changes apply within 30 seconds; an out-of-date UCP instance refuses requests.                                                           |
-| A new type or action quietly grants access                             | No wildcards in custom roles; built-in roles change only in reviewed releases; types join the application set only by deliberate opt-in. |
-| The dashboard's shared account leaks data                              | It has no access by default; per-user forwarding is the supported path.                                                                  |
-| Assignments copied from another cluster match the wrong people         | The issuer includes a cluster-specific trust domain.                                                                                     |
-| Restored data replaces bootstrap admins                                | Restored data cannot change `Bootstrap` assignments or the mode.                                                                         |
+| Threat                                                                 | How this design handles it                                                                                                                                                             |
+|------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| A pod that can reach UCP sends fake identity headers                   | Identity headers are only read on connections with Kubernetes's verified client certificate (internal design).                                                                         |
+| Someone skips UCP and calls a resource provider directly               | Internal design mTLS. `Enforce` cannot be turned on until every service enforces it.                                                                                                   |
+| A Radius service does more than the user's deployment was approved for | The execution record's approved list from preflight. The internal design checks it at every hop, including database writes (data-access service) and cloud tokens (credential broker). |
+| A user gives themselves more access                                    | The "no giving out what you do not have" rule, immutable assignments, and checks on every path including GitOps and Bicep.                                                             |
+| An Access Administrator grants admin to someone they control           | Expected for that role. Made visible with confirmation, `highImpact` audit events, and alerts.                                                                                         |
+| Everyone gets locked out                                               | "Keep at least one admin" rule, bootstrap admins, and the recovery Secret.                                                                                                             |
+| The recovery path is abused                                            | Needs Kubernetes cluster admin to create one named Secret; time-limited; memory only; logged with alerts.                                                                              |
+| Errors, lists, graphs, or access checks leak information               | Check before lookup, filter lists without counts, hide graph nodes, show policy details only to those who can read assignments.                                                        |
+| A removed user keeps access                                            | Changes apply within 30 seconds; an out-of-date UCP instance refuses requests.                                                                                                         |
+| A new type or action quietly grants access                             | No wildcards in custom roles; built-in roles change only in reviewed releases; types join the application set only by deliberate opt-in.                                               |
+| The dashboard's shared account leaks data                              | It has no access by default; per-user forwarding is the supported path.                                                                                                                |
+| Assignments copied from another cluster match the wrong people         | The issuer includes a cluster-specific trust domain.                                                                                                                                   |
+| Restored data replaces bootstrap admins                                | Restored data cannot change `Bootstrap` assignments or the mode.                                                                                                                       |
 
 **What Radius must trust.** UCP, the Kubernetes API server, your identity provider, and your Kubernetes cluster admins. Anyone who can change Secrets, Deployments, or the database in the Radius namespace can get around Radius RBAC. Limit Kubernetes access to the Radius namespace and the database to the platform team. The docs will say this clearly.
+
+**Access is per application; runtime isolation is per environment.** Radius RBAC can stop Team B from changing Team A's application. But if both teams deploy to the same environment, their pods share one Kubernetes namespace and can reach each other's Secrets and service accounts. The internal design's admission controls protect Radius's own Secrets and service accounts, not one app from another. Teams that need runtime isolation from each other should use separate environments, and admins should give each team `environment-deployer` only on its own environments.
 
 ## Compatibility (optional)
 
@@ -958,6 +1100,7 @@ Add:
 - **The dashboard** shows no data in `Enforce` mode until identity forwarding is turned on or an admin gives its service account a role.
 - **Templates** that attach resources to another team's application or connect to another team's resources need the matching `write` or `connect` permission.
 - **`Enforce` needs the internal design's service-to-service security**, and therefore cert-manager, on the control-plane cluster.
+- **Templates that create cluster-wide Kubernetes objects directly** must move them into a recipe once service-to-service security is `Enforce` (internal design). This is separate from user RBAC but usually happens in the same rollout.
 
 ## Monitoring and Logging
 
@@ -992,13 +1135,13 @@ Events never include request bodies, secrets, or credentials.
 
 The work is split into stages. Each stage ships with RBAC `Disabled` until stage 5, so nothing changes for users until the whole thing is ready.
 
-| Stage                        | What gets built                                                                                                                                                    | Needs first                                                               |
-|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
-| 1. Model and catalog         | TypeSpec for the new types, the permission catalog generator, and the `pkg/ucp/authorization` checker with unit tests. No checks run yet.                          | Nothing                                                                   |
-| 2. Identity and `Audit` mode | Verify Kubernetes's certificate, read identity, run checks in `Audit` mode, audit events and metrics, `rad auth whoami`, `status`, and `access check`.             | Internal design stage 1 (verify Kubernetes's certificate)                 |
-| 3. Managing access           | UCP APIs for roles and assignments, safety rules, bootstrap, recovery, the rest of `rad auth role`, `assignment`, and `access`, and Bicep at resource-group scope. | Stage 1                                                                   |
-| 4. Deployments and lists     | Preflight, approved list in the execution record, list filtering, hidden graph nodes, `rad deploy` summary and `--yes`, deployment cancel.                         | Internal design stage 2 (execution records)                               |
-| 5. Enforcement and clients   | `Enforce` mode, the adoption commands, controller namespace principals, dashboard changes, and docs.                                                               | Internal design stage 3, and every service supports the internal protocol |
+| Stage                        | What gets built                                                                                                                                                    | Needs first                                                                                                   |
+|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| 1. Model and catalog         | TypeSpec for the new types, the permission catalog generator, and the `pkg/ucp/authorization` checker with unit tests. No checks run yet.                          | Nothing                                                                                                       |
+| 2. Identity and `Audit` mode | Verify Kubernetes's certificate, read identity, run checks in `Audit` mode, audit events and metrics, `rad auth whoami`, `status`, and `access check`.             | Internal design stage 1, "Identify and authenticate callers" (Kubernetes certificate check)                   |
+| 3. Managing access           | UCP APIs for roles and assignments, safety rules, bootstrap, recovery, the rest of `rad auth role`, `assignment`, and `access`, and Bicep at resource-group scope. | Stage 1                                                                                                       |
+| 4. Deployments and lists     | Preflight, approved list in the execution record, list filtering, hidden graph nodes, `rad deploy` summary and `--yes`, deployment cancel.                         | Internal design stage 2, "Carry permissions through execution" (execution records)                            |
+| 5. Enforcement and clients   | `Enforce` mode, the adoption commands, controller namespace principals, dashboard changes, and docs.                                                               | Internal design stage 3, "Restrict remaining direct access", and service-to-service security set to `Enforce` |
 
 Functional tests for each scenario are added in the stage that builds it.
 
@@ -1006,11 +1149,20 @@ Functional tests for each scenario are added in the stage that builds it.
 
 **Q: The internal design needs to change how execution records are closed. Is that agreed?**
 
-The internal design currently closes a deployment's execution record when the user loses access, which stops the deployment's next steps. The feature specification says an accepted deployment keeps its original decision and only stops if cancelled. This design follows the specification. The internal design needs to be updated so records close only on cancellation, expiry, or a security incident.
+The internal design currently says that when a user loses permission, UCP marks the user's active execution records as revoked, and UCP rechecks the user's permissions on every follow-on request. That stops the deployment's next steps. The feature specification says an accepted deployment keeps its original decision and only stops if cancelled. This design follows the specification. The internal design needs two updates:
+
+- On the deployment engine → UCP hop, check the record's approved list but not the user's current roles.
+- Close records only on cancellation, expiry, or a security incident, not when a user's access changes.
+
+Everything else stays: final states, `expiresAt`, and the credential broker's token lifetimes. Integration points 4 and 5 in [How the two designs fit together](#how-the-two-designs-fit-together) depend on this.
 
 **Q: Should the controller's namespace mapping be role assignments to a namespace principal?**
 
-This design proposes it so there is only one kind of access data. The internal design describes a separate mapping object. The two designs need to agree before stage 5.
+This design proposes it so there is only one kind of access data, and so `rad auth access` and the audit log work for GitOps. The internal design describes a separate mapping object and writes the namespace into the record's `subject` as `namespace:<name>`. If both designs agree, the internal design's mapping becomes "role assignments to the namespace principal", and its rules for deletion, narrowing, and cross-scope references stay as written. The two designs need to agree before stage 5.
+
+**Q: Is a single preflight enough for nested deployments?**
+
+This design checks module resources in the parent's preflight. The internal design creates a child record for each module, as a subset of the parent. These fit together if UCP fills each child record from the parent's approved list without new role checks. Deferred module resources keep the bounds from preflight. The deployment engine team should confirm that every module's resources can be listed before the first resource is created.
 
 **Q: Can Bicep and the deployment engine support role assignments on a single Radius resource?**
 
