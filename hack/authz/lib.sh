@@ -127,11 +127,11 @@ authz_record_mode() {
         "${AUTHZ_KIT_MODE_LABEL}=${mode}" --overwrite >/dev/null
 }
 
-# Prints the authorization mode recorded by up.sh, or nothing when it is
-# unknown. Uses the current kubeconfig context.
+# Prints the authorization mode recorded by up.sh, or nothing for an absent
+# label. Uses the current kubeconfig context; namespace read errors propagate.
 authz_recorded_mode() {
     kubectl get namespace "${AUTHZ_RADIUS_NAMESPACE}" \
-        -o "jsonpath={.metadata.labels.${AUTHZ_KIT_MODE_LABEL//./\\.}}" 2>/dev/null || true
+        -o "jsonpath={.metadata.labels.${AUTHZ_KIT_MODE_LABEL//./\\.}}"
 }
 
 # Prints the extra would-deny check arguments for an installed mode: a dryRun
