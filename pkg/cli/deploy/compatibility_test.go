@@ -88,8 +88,22 @@ func Test_extensionTag(t *testing.T) {
 		"./custom-extension.tgz",
 		"br:example.io/radius:secret\ninjected output",
 		"br:example.io/radius:credential-secret",
+		"br:localhost:5000/radius/types",
+		"br:localhost:5000/radius/types@sha256:abc",
 	} {
 		require.Empty(t, extensionTag(reference))
+	}
+}
+
+func Test_extensionTag_RegistryPort(t *testing.T) {
+	tests := map[string]string{
+		"br:localhost:5000/radius/types:0.60.2": "0.60.2",
+		"br:localhost:5000/radius/types:0.60":   "0.60",
+		"br:localhost:5000/radius/types:latest": "latest",
+		"br:example.io/radius:0.60.2":           "0.60.2",
+	}
+	for reference, expected := range tests {
+		require.Equal(t, expected, extensionTag(reference), reference)
 	}
 }
 

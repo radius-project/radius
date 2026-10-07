@@ -114,8 +114,14 @@ func extensionTag(reference string) string {
 	if !strings.HasPrefix(reference, "br:") || strings.Contains(reference, "@") {
 		return ""
 	}
-	name, tag, ok := strings.Cut(strings.TrimPrefix(reference, "br:"), ":")
-	if !ok || !strings.Contains(name, "/") {
+	// The tag follows the last colon in the final path segment, so a registry port is not a tag.
+	repository := strings.TrimPrefix(reference, "br:")
+	slash := strings.LastIndex(repository, "/")
+	if slash < 0 {
+		return ""
+	}
+	_, tag, ok := strings.Cut(repository[slash+1:], ":")
+	if !ok {
 		return ""
 	}
 	// Do not print arbitrary reference contents, including connection credentials.

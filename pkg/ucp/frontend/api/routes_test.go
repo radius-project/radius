@@ -38,8 +38,8 @@ import (
 )
 
 func Test_VersionRoute(t *testing.T) {
-	for _, pathBase := range []string{"", "/apis/api.ucp.dev/v1alpha3"} {
-		t.Run(pathBase, func(t *testing.T) {
+	for name, pathBase := range map[string]string{"root": "", "kubernetes": "/apis/api.ucp.dev/v1alpha3"} {
+		t.Run(name, func(t *testing.T) {
 			options := &ucp.Options{
 				Config: &ucp.Config{
 					Server: hostoptions.ServerOptions{PathBase: pathBase},

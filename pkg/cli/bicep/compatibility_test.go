@@ -140,11 +140,42 @@ func Test_recordRadiusExtensionPin_ReadError(t *testing.T) {
 	require.Contains(t, RadiusExtensionReferences(template)[0].Reason, "readfile failed")
 }
 
+func Test_recordRadiusExtensionPin_PreservesRadMetadata(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "bicepconfig.json"),
+		[]byte(`{"extensions":{"radius":"br:example.io/radius:0.60.2"}}`), 0600))
+	template := compatibilityTemplate(t, `{
+		"metadata":{"_rad":{"other":"kept","radiusExtension":"stale"}},
+		"resources":{"app":{"type":"Radius.Core/applications"}}
+	}`)
+	recordRadiusExtensionPin(filesystem.NewOSFS(), filepath.Join(root, "app.bicep"), template)
+	rad := template["metadata"].(map[string]any)["_rad"].(map[string]any)
+	require.Equal(t, "kept", rad["other"])
+	require.Equal(t, "br:example.io/radius:0.60.2", rad["radiusExtension"])
+
+	// A read error must not leave a stale pin from earlier metadata.
+	template = compatibilityTemplate(t, `{
+		"metadata":{"_rad":{"other":"kept","radiusExtension":"stale"}},
+		"resources":{"app":{"type":"Radius.Core/applications"}}
+	}`)
+	recordRadiusExtensionPin(filesystem.NewOSFS(), filepath.Join(t.TempDir(), "app.bicep"), template)
+	rad = template["metadata"].(map[string]any)["_rad"].(map[string]any)
+	require.Equal(t, "kept", rad["other"])
+	require.NotContains(t, rad, "radiusExtension")
+	require.Contains(t, rad["radiusExtensionError"], "no bicepconfig.json")
+}
+
 func Test_readRadiusExtensionPin_InvalidPath(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Skip("Windows rejects a NUL in an absolute path")
+	path := "app.bicep"
+	if runtime.GOOS == "windows" {
+		path = "\x00"
+	} else {
+		// Resolving a relative path fails when the working directory no longer exists.
+		dir := t.TempDir()
+		t.Chdir(dir)
+		require.NoError(t, os.Remove(dir))
 	}
-	_, err := readRadiusExtensionPin(filesystem.NewOSFS(), "\x00")
+	_, err := readRadiusExtensionPin(filesystem.NewOSFS(), path)
 	require.ErrorContains(t, err, "could not locate")
 }
 

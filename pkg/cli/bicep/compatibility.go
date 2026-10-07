@@ -82,14 +82,18 @@ func recordRadiusExtensionPin(fs filesystem.FileSystem, sourcePath string, templ
 		metadata = map[string]any{}
 		template["metadata"] = metadata
 	}
-	rad := map[string]any{}
+	rad, ok := metadata["_rad"].(map[string]any)
+	if !ok {
+		rad = map[string]any{}
+		metadata["_rad"] = rad
+	}
+	delete(rad, "radiusExtension")
 	if err != nil {
 		rad["radiusExtensionError"] = err.Error()
 	} else {
 		rad["radiusExtension"] = reference
 		rad["radiusExtensionError"] = "Bicep does not report the resolved Radius artifact release; the configured pin is not compiler provenance"
 	}
-	metadata["_rad"] = rad
 }
 
 func readRadiusExtensionPin(fs filesystem.FileSystem, sourcePath string) (string, error) {

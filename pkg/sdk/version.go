@@ -37,7 +37,11 @@ func GetVersion(ctx context.Context, connection Connection) (version.VersionInfo
 	endpoint := strings.TrimRight(connection.Endpoint(), "/") + "/version"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return version.VersionInfo{}, fmt.Errorf("failed to create Radius version request")
+		// A url.Error includes the endpoint, which can contain connection credentials.
+		if urlErr, ok := err.(*url.Error); ok {
+			err = urlErr.Err
+		}
+		return version.VersionInfo{}, fmt.Errorf("failed to create Radius version request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
 

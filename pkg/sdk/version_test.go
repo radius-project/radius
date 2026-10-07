@@ -18,6 +18,7 @@ package sdk
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -72,8 +73,10 @@ func Test_GetVersion_Cancellation(t *testing.T) {
 }
 
 func Test_GetVersion_InvalidEndpoint(t *testing.T) {
-	_, err := GetVersion(t.Context(), &directConnection{endpoint: "://invalid"})
+	_, err := GetVersion(t.Context(), &directConnection{endpoint: "://user:secret@invalid"})
 	require.ErrorContains(t, err, "failed to create")
+	require.NotContains(t, err.Error(), "secret")
+	require.Error(t, errors.Unwrap(err))
 }
 
 func Test_GetVersion_TransportError(t *testing.T) {
