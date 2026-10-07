@@ -89,6 +89,10 @@ set -euo pipefail
 echo "$*" >>"${MOCK_CALLS}"
 case "$1" in
     get)
+        if [[ "${MOCK_INVENTORY_FAILURE:-false}" == true ]]; then
+            echo "mock: pod inventory unavailable" >&2
+            exit 1
+        fi
         printf '%b' "${MOCK_PODS}"
         ;;
     logs)
@@ -105,6 +109,8 @@ case "$1" in
         done
         if [[ "${previous}" == true ]]; then
             file="${MOCK_LOGS}/${pod}.${container}.previous.log"
+        elif [[ -n "${container}" ]]; then
+            file="${MOCK_LOGS}/${pod}.${container}.log"
         else
             file="${MOCK_LOGS}/${pod}.log"
         fi
@@ -237,17 +243,31 @@ else
     fail_test "expected radius-system to be the default namespace"
 fi
 
-echo "Test: cluster mode warns about a pod whose logs cannot be read"
+echo "Test: one readable pod cannot hide another pod's log failure"
 export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp=0 \npending-pod\tpending=0 \n'
 run_check
-assert_status 0
-assert_output_contains "warning: could not read logs for pod pending-pod"
+assert_status 2
+assert_output_contains "could not read logs for pod pending-pod"
+assert_output_not_contains "No authorization would-deny"
 
 echo "Test: cluster mode fails when no pod logs can be read"
 export MOCK_PODS='pending-pod\tpending=0 \n'
 run_check
 assert_status 2
-assert_output_contains "could not read logs for any pod in namespace radius-system"
+assert_output_contains "could not read logs for pod pending-pod"
+
+echo "Test: missing previous logs fail even when current logs are readable"
+export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp=1 \n'
+run_check
+assert_status 2
+assert_output_contains "could not read previous logs for container ucp"
+
+echo "Test: failure to list pods cannot pass"
+export MOCK_INVENTORY_FAILURE=true
+run_check
+assert_status 2
+assert_output_contains "could not list pods"
+unset MOCK_INVENTORY_FAILURE
 
 echo "Test: cluster mode fails when the namespace has no pods"
 export MOCK_PODS=''
@@ -266,6 +286,139 @@ if grep -Fq "get pods" "${MOCK_CALLS}"; then
 else
     fail_test "expected --cluster to read pod logs"
 fi
+
+echo "Test: empty directories cannot pass as scanned evidence"
+mkdir -p "${TEST_ROOT}/empty"
+run_check --logs-dir "${TEST_ROOT}/empty"
+assert_status 2
+assert_output_contains "no log files found"
+
+# Inject I/O failures rather than relying on chmod (which root can bypass).
+export REAL_FIND
+REAL_FIND="$(command -v find)"
+export REAL_GREP
+REAL_GREP="$(command -v grep)"
+cat >"${TEST_ROOT}/bin/find" <<'MOCK'
+#!/bin/bash
+set -euo pipefail
+"${REAL_FIND}" "$@"
+echo "mock: directory traversal failed" >&2
+exit 1
+MOCK
+chmod +x "${TEST_ROOT}/bin/find"
+echo "Test: partial find output cannot hide a traversal failure"
+run_check --logs-dir "${FIXTURES}/clean"
+assert_status 2
+assert_output_contains "could not enumerate logs"
+assert_output_not_contains "No authorization would-deny"
+rm "${TEST_ROOT}/bin/find"
+
+cat >"${TEST_ROOT}/bin/sort" <<'MOCK'
+#!/bin/bash
+echo "mock: sort failed" >&2
+exit 2
+MOCK
+chmod +x "${TEST_ROOT}/bin/sort"
+echo "Test: sort failure cannot produce an empty successful scan"
+run_check --logs-dir "${FIXTURES}/clean"
+assert_status 2
+assert_output_contains "could not sort logs"
+rm "${TEST_ROOT}/bin/sort"
+
+cat >"${TEST_ROOT}/bin/grep" <<'MOCK'
+#!/bin/bash
+set -euo pipefail
+if [[ "$*" == *authzWouldDeny* ]]; then
+    echo "mock: log read failed" >&2
+    exit 2
+fi
+exec "${REAL_GREP}" "$@"
+MOCK
+chmod +x "${TEST_ROOT}/bin/grep"
+echo "Test: grep errors are not treated as no matches"
+run_check --logs-dir "${FIXTURES}/clean"
+assert_status 2
+assert_output_contains "could not scan log file"
+assert_output_not_contains "No authorization would-deny"
+rm "${TEST_ROOT}/bin/grep"
+
+echo "Test: all four live components must report dryRun"
+export MOCK_PODS=''
+for component in ucp applications-rp dynamic-rp controller; do
+    MOCK_PODS+="${component}-pod"$'\t'"${component}=0 "$'\n'
+    printf '{"message":"authz mode=dryRun","authzMode":"dryRun"}\n' \
+        >"${MOCK_DIR}/${component}-pod.${component}.log"
+    cp "${MOCK_DIR}/${component}-pod.${component}.log" \
+        "${MOCK_DIR}/${component}-pod.log"
+done
+run_check --require-dry-run
+assert_status 0
+assert_output_contains "Verified dryRun startup for all four Radius components"
+
+echo "Test: startup verification does not bypass would-deny detection"
+run_check --require-dry-run --logs-dir "${FIXTURES}/would-deny"
+assert_status 1
+assert_output_contains "Found 2 authorization would-deny"
+
+echo "Test: unreadable component startup logs fail"
+mv "${MOCK_DIR}/controller-pod.controller.log" "${MOCK_DIR}/controller-startup"
+run_check --require-dry-run
+assert_status 2
+assert_output_contains "could not read current logs for controller-pod/controller"
+mv "${MOCK_DIR}/controller-startup" "${MOCK_DIR}/controller-pod.controller.log"
+
+echo "Test: the Make target requires live dryRun evidence"
+STATUS=0
+OUTPUT="$(PATH="${TEST_ROOT}/bin:${PATH}" \
+    make --no-print-directory -C "${SCRIPT_DIR}/../.." \
+    authz-would-deny-check 2>&1)" || STATUS=$?
+assert_status 0
+assert_output_contains "Verified dryRun startup for all four Radius components"
+
+for mode in off enforce dryRunUnexpected; do
+    echo "Test: controller startup mode ${mode} fails"
+    printf '{"message":"authz mode=%s","authzMode":"%s"}\n' \
+        "${mode}" "${mode}" >"${MOCK_DIR}/controller-pod.controller.log"
+    run_check --require-dry-run --logs-dir "${FIXTURES}/clean" \
+        --allowlist "${FIXTURES}/allowlist-all.txt"
+    assert_status 2
+    assert_output_contains "controller-pod/controller did not start in dryRun"
+done
+
+echo "Test: previous and saved dryRun logs cannot replace current evidence"
+cp "${MOCK_DIR}/controller-pod.log" \
+    "${MOCK_DIR}/controller-pod.controller.previous.log"
+MOCK_PODS="${MOCK_PODS/controller=0/controller=1}"
+printf 'No startup message\n' >"${MOCK_DIR}/controller-pod.controller.log"
+run_check --require-dry-run --logs-dir "${MOCK_DIR}"
+assert_status 2
+assert_output_contains "missing authz startup log for controller-pod/controller"
+
+echo "Test: console startup format is accepted"
+printf 'INFO controller authz mode=dryRun {"authzMode": "dryRun"}\n' \
+    >"${MOCK_DIR}/controller-pod.controller.log"
+run_check --require-dry-run
+assert_status 0
+
+echo "Test: a healthy replica cannot hide another replica in off mode"
+MOCK_PODS+='controller-other'$'\tcontroller=0 \n'
+cp "${MOCK_DIR}/controller-pod.log" "${MOCK_DIR}/controller-other.log"
+printf 'INFO controller authz mode=off {"authzMode": "off"}\n' \
+    >"${MOCK_DIR}/controller-other.controller.log"
+run_check --require-dry-run
+assert_status 2
+assert_output_contains "controller-other/controller did not start in dryRun"
+
+echo "Test: repeated ucp replicas cannot count as four different components"
+MOCK_PODS=''
+for replica in 1 2 3 4; do
+    MOCK_PODS+="ucp-${replica}"$'\tucp=0 \n'
+    cp "${MOCK_DIR}/ucp-pod.log" "${MOCK_DIR}/ucp-${replica}.log"
+    cp "${MOCK_DIR}/ucp-pod.log" "${MOCK_DIR}/ucp-${replica}.ucp.log"
+done
+run_check --require-dry-run
+assert_status 2
+assert_output_contains "missing Radius component: applications-rp"
 
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"

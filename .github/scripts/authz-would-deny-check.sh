@@ -26,7 +26,8 @@
 #
 # By default it reads current and previous container logs from every pod in
 # the radius-system namespace. With --logs-dir it scans saved log files
-# instead; add --cluster to scan both.
+# instead; add --cluster to scan both. --require-dry-run also reads the cluster
+# and requires current startup logs from all four Radius components.
 #
 # Known, tracked would-deny lines can be listed in an allowlist file. Each
 # non-comment line is "<issue> <pattern>", where <issue> is a GitHub issue
@@ -34,7 +35,7 @@
 # matched against the log line.
 #
 # Exit codes: 0 no unexpected would-deny lines, 1 would-deny lines found,
-# 2 usage or configuration error.
+# 2 usage, collection, scan, or dry-run verification error.
 # ============================================================================
 
 set -euo pipefail
@@ -50,18 +51,21 @@ NAMESPACE="${AUTHZ_NAMESPACE:-radius-system}"
 ALLOWLIST="${AUTHZ_WOULD_DENY_ALLOWLIST:-${SCRIPT_DIR}/authz-would-deny-allowlist.txt}"
 ALLOWLIST_REQUIRED=false
 SCAN_CLUSTER=false
+REQUIRE_DRY_RUN=false
+readonly RADIUS_COMPONENTS=(ucp applications-rp dynamic-rp controller)
 LOG_DIRS=()
 ALLOW_ISSUES=()
 ALLOW_PATTERNS=()
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [--namespace NAME] [--allowlist FILE] [--logs-dir DIR]... [--cluster]
+Usage: $(basename "$0") [--namespace NAME] [--allowlist FILE] [--logs-dir DIR]... [--cluster] [--require-dry-run]
 
   --namespace NAME  Namespace to read pod logs from (default: radius-system, env: AUTHZ_NAMESPACE).
   --allowlist FILE  Allowlist of tracked would-deny lines (env: AUTHZ_WOULD_DENY_ALLOWLIST).
   --logs-dir DIR    Scan log files under DIR instead of the cluster. Repeatable.
   --cluster         Also scan cluster pod logs when --logs-dir is set.
+  --require-dry-run  Verify all four Radius components' current startup logs. Implies --cluster.
 EOF
 }
 
@@ -104,11 +108,35 @@ load_allowlist() {
     done <"${ALLOWLIST}"
 }
 
-collect_cluster_logs() {
-    local out_dir="$1" pods pod containers entry container restarts total=0 read_ok=0
+# grep returns 1 for no matches, but 2 for an unreadable file or other error.
+# Do not use -q: it can return success before discovering an I/O error.
+match_lines() {
+    local pattern="$1" file="$2" output="$3" status=0
+    grep -Ea -- "${pattern}" "${file}" >"${output}" || status=$?
+    [[ "${status}" -le 1 ]] || die "could not scan log file: ${file}"
+}
 
+verify_dry_run() {
+    local pod="$1" container="$2" line
+    kubectl logs "${pod}" --namespace "${NAMESPACE}" --container "${container}" \
+        >"${WORK_DIR}/component.log" \
+        || die "could not read current logs for ${pod}/${container}"
+    match_lines 'authz mode=[[:alnum:]_]+' \
+        "${WORK_DIR}/component.log" "${WORK_DIR}/startup.log"
+    [[ -s "${WORK_DIR}/startup.log" ]] \
+        || die "missing authz startup log for ${pod}/${container}"
+    while IFS= read -r line; do
+        [[ "${line}" =~ authz\ mode=dryRun([^[:alnum:]_]|$) ]] \
+            || die "${pod}/${container} did not start in dryRun: ${line}"
+    done <"${WORK_DIR}/startup.log"
+}
+
+collect_cluster_logs() {
+    local out_dir="$1" pods pod containers entry container restarts total=0
+    local component verified=" "
     command -v kubectl >/dev/null || die "kubectl is required to read pod logs"
-    pods="$(kubectl get pods --namespace "${NAMESPACE}" --output "jsonpath=${PODS_JSONPATH}")"
+    pods="$(kubectl get pods --namespace "${NAMESPACE}" --output "jsonpath=${PODS_JSONPATH}")" \
+        || die "could not list pods in namespace ${NAMESPACE}"
     [[ -n "${pods//[[:space:]]/}" ]] || die "no pods found in namespace ${NAMESPACE}"
 
     mkdir -p "${out_dir}"
@@ -116,24 +144,36 @@ collect_cluster_logs() {
         [[ -n "${pod}" ]] || continue
         ((++total))
 
-        if kubectl logs "${pod}" --namespace "${NAMESPACE}" --all-containers --prefix >"${out_dir}/${pod}.log"; then
-            ((++read_ok))
-        else
-            echo "warning: could not read logs for pod ${pod}" >&2
-        fi
+        kubectl logs "${pod}" --namespace "${NAMESPACE}" \
+            --all-containers --prefix >"${out_dir}/${pod}.log" \
+            || die "could not read logs for pod ${pod}"
 
         for entry in ${containers}; do
             container="${entry%%=*}"
             restarts="${entry#*=}"
+            if [[ "${REQUIRE_DRY_RUN}" == true ]]; then
+                for component in "${RADIUS_COMPONENTS[@]}"; do
+                    if [[ "${container}" == "${component}" ]]; then
+                        verify_dry_run "${pod}" "${container}"
+                        verified+="${component} "
+                    fi
+                done
+            fi
             [[ "${restarts}" =~ ^[0-9]+$ && "${restarts}" -gt 0 ]] || continue
             kubectl logs "${pod}" --namespace "${NAMESPACE}" --container "${container}" --previous \
                 >>"${out_dir}/${pod}.previous.log" \
-                || echo "warning: could not read previous logs for container ${container} in pod ${pod}" >&2
+                || die "could not read previous logs for container ${container} in pod ${pod}"
         done
     done <<<"${pods}"
 
-    [[ "${read_ok}" -gt 0 ]] || die "could not read logs for any pod in namespace ${NAMESPACE}"
-    echo "Read logs from ${read_ok} of ${total} pod(s) in namespace ${NAMESPACE}."
+    if [[ "${REQUIRE_DRY_RUN}" == true ]]; then
+        for component in "${RADIUS_COMPONENTS[@]}"; do
+            [[ "${verified}" == *" ${component} "* ]] \
+                || die "missing Radius component: ${component}"
+        done
+        echo "Verified dryRun startup for all four Radius components."
+    fi
+    echo "Read logs from ${total} pod(s) in namespace ${NAMESPACE}."
 }
 
 # Prints the issue for the first allowlist entry that matches the line.
@@ -162,8 +202,15 @@ ALLOWED=0
 
 scan_dir() {
     local dir="$1" file label line issue
+    find "${dir}" -type f -print0 >"${WORK_DIR}/files" \
+        || die "could not enumerate logs in ${dir}"
+    sort -z "${WORK_DIR}/files" >"${WORK_DIR}/sorted-files" \
+        || die "could not sort logs in ${dir}"
+    [[ -s "${WORK_DIR}/sorted-files" ]] \
+        || die "no log files found in ${dir}"
     while IFS= read -r -d '' file; do
         label="$(source_label "${file}" "${dir}")"
+        match_lines "${WOULD_DENY_PATTERN}" "${file}" "${WORK_DIR}/matches"
         while IFS= read -r line; do
             if issue="$(allowlisted_issue "${line}")"; then
                 echo "allowed (${issue}): ${label}: ${line}"
@@ -172,8 +219,8 @@ scan_dir() {
                 echo "would-deny: ${label}: ${line}"
                 ((++FOUND))
             fi
-        done < <(grep -Ea -- "${WOULD_DENY_PATTERN}" "${file}" || true)
-    done < <(find "${dir}" -type f -print0 | sort -z)
+        done <"${WORK_DIR}/matches"
+    done <"${WORK_DIR}/sorted-files"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -195,6 +242,11 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --cluster)
+            SCAN_CLUSTER=true
+            shift
+            ;;
+        --require-dry-run)
+            REQUIRE_DRY_RUN=true
             SCAN_CLUSTER=true
             shift
             ;;
