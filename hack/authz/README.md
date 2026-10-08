@@ -1,6 +1,6 @@
 # Manual authorization test kit
 
-Scripts for checking Radius internal component authorization trust boundaries by hand on a local kind cluster. Reviewers use them for pull requests that add or change a trust boundary from the [internal component authorization design](../../eng/design-notes/security/internal-component-authorization.md); the [checklist](#manual-verification-checklist) below lists each planned check. Automated coverage of the same boundaries lives in [`test/functional-portable/authz`](../../test/functional-portable/authz).
+Scripts for checking Radius internal component authorization trust boundaries by hand on a local kind cluster. Reviewers use them for pull requests that add or change a trust boundary from the [internal component authorization design](../../eng/design-notes/security/2026-09-internal-component-authorization.md); the [checklist](#manual-verification-checklist) below lists each planned check. Automated coverage of the same boundaries lives in [`test/functional-portable/authz`](../../test/functional-portable/authz).
 
 ## Prerequisites
 
@@ -56,6 +56,13 @@ kind delete cluster --name radius-authz && docker rm --force radius-authz-regist
 ## Manual verification checklist
 
 `APPS_RP` below is `applications-rp.radius-system:5443`, and `OPS` is the harmless route `/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview`. Commands for checks that are not available yet show the intended flow; the pull request that adds the boundary updates them if the details change.
+
+Run these assignments in the shell where you will run the checklist commands:
+
+```bash
+APPS_RP="applications-rp.${AUTHZ_RADIUS_NAMESPACE:-radius-system}:5443"
+OPS='/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
+```
 
 | Check    | Available           | Command                                                                                                                                                                                                                            | Expected result                                                                                                                      |
 |----------|---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
