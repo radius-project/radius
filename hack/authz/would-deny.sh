@@ -101,7 +101,8 @@ done
 authz_require_tools kubectl
 if [[ "${USE_CURRENT_CONTEXT}" == false ]]; then
     TEMP_DIR="$(mktemp -d)"
-    if ! kubectl config view --minify --flatten \
+    (umask 077; : >"${TEMP_DIR}/kubeconfig")
+    if ! kubectl config view --raw --minify --flatten \
         --context "${AUTHZ_KUBE_CONTEXT}" >"${TEMP_DIR}/kubeconfig"; then
         authz_die "kubeconfig context '${AUTHZ_KUBE_CONTEXT}' not found. Run hack/authz/up.sh, set AUTHZ_KUBE_CONTEXT, or pass --current-context."
     fi
