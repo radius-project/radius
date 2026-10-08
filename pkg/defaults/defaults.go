@@ -67,6 +67,13 @@ limitations under the License.
 // [ResourceTypePin] exposes those entries so release builds can address the
 // artifacts published from exactly that revision — see `pkg/cli/recipepack`,
 // which uses the pinned commit SHA as the OCI tag of each core recipe.
+//
+// # Kubernetes recipe pack
+//
+// recipe-packs/kubernetes/default.json is compiled by `make sync-resource-types`
+// from the resource-types-contrib revision pinned under `recipePacks`.
+// [DefaultKubernetesRecipes] exposes its recipes so rad can create the default
+// recipe pack without keeping its own copy of the list.
 package defaults
 
 import (
@@ -135,4 +142,5 @@ func init() {
 
 	loadIcons(logger, parsed.DefaultRegistration)
 	loadPins(logger, parsed.ResourceTypes)
+	loadKubernetesRecipePack(logger)
 }

@@ -33,7 +33,7 @@ import "embed"
 // FS holds the product-shipped assets. Reads return a fresh copy, so callers
 // cannot corrupt the bytes another consumer will see.
 //
-//go:embed default-icon.svg defaults.yaml built-in-providers/self-hosted/*.svg
+//go:embed default-icon.svg defaults.yaml built-in-providers/self-hosted/*.svg recipe-packs/kubernetes/default.json
 var FS embed.FS
 
 const (
@@ -48,4 +48,9 @@ const (
 	// from resource-types-contrib. A type's icon is at
 	// BuiltInIconsDir + "/<typeName>.svg".
 	BuiltInIconsDir = "built-in-providers/self-hosted"
+
+	// KubernetesRecipePackPath is the [FS] path of the Kubernetes recipe pack
+	// compiled from the resource-types-contrib revision pinned under
+	// `recipePacks` in defaults.yaml. rad creates the default recipe pack from it.
+	KubernetesRecipePackPath = "recipe-packs/kubernetes/default.json"
 )

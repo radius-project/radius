@@ -48,11 +48,13 @@ on:
       - main
       - release/*
     paths:
-      # Trigger when the default list and per-namespace pins, the copied
-      # manifests, or the sync logic (Makefile, resource-types.mk, the sync
-      # script) changes.
+      # Trigger when the default list and pins, the copied manifests, the
+      # compiled recipe pack, or the sync logic (Makefile, resource-types.mk,
+      # the sync script, the Bicep pin) changes.
       - "deploy/manifest/defaults.yaml"
       - "deploy/manifest/built-in-providers/**"
+      - "deploy/manifest/recipe-packs/**"
+      - "build/tools.yaml"
       - "Makefile"
       - "build/resource-types.mk"
       - "build/scripts/sync-resource-types.sh"
@@ -86,11 +88,15 @@ jobs:
       - name: Install yq
         run: make install-yq
 
+      - name: Install Bicep
+        run: make install-bicep
+
       - name: Test stable-first pin selection
         run: make test-sync-resource-types
 
       # Re-run the copy step (without bumping the ref) to regenerate the
-      # manifest files from the ref pinned in deploy/manifest/defaults.yaml.
+      # manifest files and the compiled recipe pack from the refs pinned in
+      # deploy/manifest/defaults.yaml.
       - name: Sync resource types from pinned ref
         run: make sync-resource-types
 
@@ -99,16 +105,16 @@ jobs:
       - name: Check for drift
         run: |
           changes="$(git status --porcelain --untracked-files=all -- \
-            deploy/manifest/built-in-providers/)"
+            deploy/manifest/built-in-providers/ deploy/manifest/recipe-packs/)"
           if [ -n "${changes}" ]; then
             echo ""
-            echo "ERROR: Resource type manifest copies are out of sync with the pinned"
-            echo "resource-types-contrib revisions (resourceTypes[].ref) in deploy/manifest/defaults.yaml."
+            echo "ERROR: Resource type manifest copies or the compiled recipe pack are out of"
+            echo "sync with the pinned resource-types-contrib revisions in deploy/manifest/defaults.yaml."
             echo ""
             printf '%s\n' "${changes}"
-            git diff -- deploy/manifest/built-in-providers/
+            git diff -- deploy/manifest/built-in-providers/ deploy/manifest/recipe-packs/
             echo ""
-            echo "Run 'make sync-resource-types' and commit the updated files."
+            echo "Run 'make install-bicep' and 'make sync-resource-types', then commit the updated files."
             exit 1
           fi
-          echo "Resource type manifest copies are in sync."
+          echo "Resource type manifest copies and the compiled recipe pack are in sync."
