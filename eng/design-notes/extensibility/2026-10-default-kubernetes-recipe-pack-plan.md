@@ -130,18 +130,18 @@ radius:   main <- PR 1 <- PR 2 <- PR 3 <- PR 4 <- PR 5
 contrib:  C3 README (after PR 4 merges)
 ```
 
-| Order | Step | Repo    | Base branch | Summary                                                  | Merge gate                        |
-|-------|------|---------|-------------|----------------------------------------------------------|-----------------------------------|
-| 1     | C1   | contrib | `main`      | Add PostgreSQL to the Kubernetes pack                    | -                                 |
-| 2     | C2   | contrib | -           | Release `recipe-pack/kubernetes/v0.3.0`                  | C1 merged                         |
-| 3     | P0   | radius  | `main`      | Review and merge the bot pin bump PR                     | C2 released                       |
-| 4     | PR 1 | radius  | `main`      | Golden test of today's default pack                      | -                                 |
-| 5     | PR 2 | radius  | PR 1        | Sync compiles and copies the pinned pack; tests; CI      | P0 merged (pin at v0.3.0)         |
-| 6     | PR 3 | radius  | PR 2        | Embed the copied pack and add a loader in `pkg/defaults` | -                                 |
-| 7     | PR 4 | radius  | PR 3        | `rad` builds the pack from the loader; delete Go list    | PR 1 golden test passes unchanged |
-| 8     | PR 5 | radius  | PR 4        | Releases doc                                             | -                                 |
-| 9     | C3   | contrib | `main`      | Update pack header and README                            | PR 4 merged                       |
-| 10    | S    | -       | -           | Post status on the issues                                | all merged                        |
+| Order | Step | Repo    | Base branch | Summary                                                  | Merge gate                          |
+|-------|------|---------|-------------|----------------------------------------------------------|-------------------------------------|
+| 1     | C1   | contrib | `main`      | Add PostgreSQL to the Kubernetes pack                    | -                                   |
+| 2     | C2   | contrib | -           | Release `recipe-pack/kubernetes/v0.3.0`                  | C1 merged                           |
+| 3     | P0   | radius  | `main`      | Review and merge the bot pin bump PR                     | C2 released                         |
+| 4     | PR 1 | radius  | `main`      | Test of today's default pack contents                    | -                                   |
+| 5     | PR 2 | radius  | PR 1        | Sync compiles and copies the pinned pack; tests; CI      | P0 merged (pin at v0.3.0)           |
+| 6     | PR 3 | radius  | PR 2        | Embed the copied pack and add a loader in `pkg/defaults` | -                                   |
+| 7     | PR 4 | radius  | PR 3        | `rad` builds the pack from the loader; delete Go list    | PR 1 contents test passes unchanged |
+| 8     | PR 5 | radius  | PR 4        | Releases doc                                             | -                                   |
+| 9     | C3   | contrib | `main`      | Update pack header and README                            | PR 4 merged                         |
+| 10    | S    | -       | -           | Post status on the issues                                | all merged                          |
 
 Do the steps in the order shown. Steps 1 to 3 (contrib, then the pin bump) are the critical path, because PR 2 cannot merge until the pin is at v0.3.0. PR 1 has no dependency, so it can be written while waiting on steps 1 to 3.
 
@@ -190,7 +190,7 @@ Stack rules:
 - After this merges, the pin is recorded but still unused (1.5).
 - Done when: merged.
 
-### PR 1 (radius, base `main`): golden test of today's default pack
+### PR 1 (radius, base `main`): test of today's default pack contents
 
 - Why: PR 4 replaces where the pack comes from. This test proves the output does not change.
 - File: `pkg/cli/recipepack/recipepack_test.go`.
@@ -251,9 +251,9 @@ Stack rules:
   2. Delete `GetCoreTypesRecipeInfo()` and the gateway parameter constants if unused.
   3. Decide behavior when the loader returns nothing (fail the command vs empty pack).
   4. Update or remove tests that call `GetCoreTypesRecipeInfo()`.
-- PR 1's golden test must pass unchanged.
+- PR 1's contents test must pass unchanged.
 - Run: `go test ./pkg/defaults/... ./pkg/cli/recipepack/... ./pkg/cli/cmd/...`, `make lint`.
-- Done when: merged; Go list gone; golden test green.
+- Done when: merged; Go list gone; contents test green.
 
 ### PR 5 (radius, base PR 4): releases doc
 
