@@ -74,6 +74,7 @@ function verifySpdxDocument(data, name) {
     throw new Error(`Release SBOM ${name} is not valid JSON`, { cause: error });
   }
   const creators = document?.creationInfo?.creators;
+  const packages = document?.packages;
   if (
     typeof document !== "object" ||
     document === null ||
@@ -86,9 +87,9 @@ function verifySpdxDocument(data, name) {
     typeof document.creationInfo?.created !== "string" ||
     !Array.isArray(creators) ||
     !creators.some((creator) => /^Tool: syft-/.test(creator)) ||
-    !Array.isArray(document.packages) ||
-    document.packages.length === 0 ||
-    !document.packages.every(
+    !Array.isArray(packages) ||
+    packages.length === 0 ||
+    !packages.every(
       (entry) =>
         entry !== null &&
         typeof entry === "object" &&
