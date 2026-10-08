@@ -409,27 +409,24 @@ assert_calls_contain "config view --raw --minify --flatten --context kind-radius
 
 echo "Test: pinned kubeconfig is private and removed on success and failure"
 for mode in "" timeout; do
-    (
-        PASS=0
-        FAIL=0
-        umask 000
-        export MOCK_KUBECONFIG_PATH="${TEST_ROOT}/kubeconfig-path"
+    saved_umask="$(umask)"
+    umask 000
+    MOCK_KUBECONFIG_PATH="${TEST_ROOT}/kubeconfig-path" \
         MOCK_KIT_MODE="${mode}" run_kit would-deny.sh \
-            --logs-dir "${TEST_ROOT}/logs/clean"
-        if [[ -z "${mode}" ]]; then
-            assert_status 0
-        else
-            assert_status 2
-            assert_output_contains "Error from server: timeout"
-        fi
-        config_path="$(cat "${MOCK_KUBECONFIG_PATH}")"
-        if [[ ! -e "${config_path%/*}" ]]; then
-            pass_test
-        else
-            fail_test "temporary kubeconfig directory was not removed"
-        fi
-        [[ "${FAIL}" -eq 0 ]]
-    ) && pass_test || fail_test "kubeconfig lifecycle failed for '${mode}'"
+        --logs-dir "${TEST_ROOT}/logs/clean"
+    umask "${saved_umask}"
+    if [[ -z "${mode}" ]]; then
+        assert_status 0
+    else
+        assert_status 2
+        assert_output_contains "Error from server: timeout"
+    fi
+    config_path="$(cat "${TEST_ROOT}/kubeconfig-path")"
+    if [[ ! -e "${config_path%/*}" ]]; then
+        pass_test
+    else
+        fail_test "temporary kubeconfig directory was not removed"
+    fi
 done
 
 echo "Test: would-deny.sh reports a missing context"
