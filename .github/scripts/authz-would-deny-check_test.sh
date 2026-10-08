@@ -315,14 +315,17 @@ rm "${TEST_ROOT}/bin/find"
 
 cat >"${TEST_ROOT}/bin/sort" <<'MOCK'
 #!/bin/bash
-echo "mock: sort failed" >&2
+echo "sort must not be used to scan logs" >&2
 exit 2
 MOCK
 chmod +x "${TEST_ROOT}/bin/sort"
-echo "Test: sort failure cannot produce an empty successful scan"
-run_check --logs-dir "${FIXTURES}/clean"
-assert_status 2
-assert_output_contains "could not sort logs"
+echo "Test: scans preserve NUL-delimited paths without GNU sort"
+mkdir -p "${TEST_ROOT}/logs with spaces"
+cp "${FIXTURES}/would-deny/applications-rp-5c6d7e8f9-fghij.log" \
+    "${TEST_ROOT}/logs with spaces/"$'pod\nname.log'
+run_check --logs-dir "${TEST_ROOT}/logs with spaces"
+assert_status 1
+assert_output_contains "Found 1 authorization would-deny"
 rm "${TEST_ROOT}/bin/sort"
 
 cat >"${TEST_ROOT}/bin/grep" <<'MOCK'
