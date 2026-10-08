@@ -713,8 +713,14 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          make "test-functional-${MATRIX_NAME}"
+          if [[ "${AUTHZ_DRY_RUN}" == "true" ]]; then
+            python3 .github/scripts/run-with-authz-logs.py make "test-functional-${MATRIX_NAME}"
+          else
+            make "test-functional-${MATRIX_NAME}"
+          fi
         env:
+          AUTHZ_DRY_RUN: ${{ matrix.authzDryRun }}
+          AUTHZ_LOG_DIR: ${{ github.workspace }}/dist/authz-logs
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           # The statestore leg installs/uninstalls/reinstalls Radius, so it needs
           # far longer than the standard per-leg timeout. The upgrade leg installs
@@ -737,21 +743,26 @@ jobs:
         # Fails the authz dry-run legs if any component logged that an authorization check would
         # deny a request. Under enforcement those requests would be rejected, so this catches
         # false positives before enforcement is turned on. Scans current and previous container
-        # logs in radius-system plus the logs the tests streamed while running, which include pods
-        # that were replaced. The Make target also requires current startup evidence of dryRun
+        # logs in radius-system plus workflow-owned streams covering the entire test command,
+        # including replaced pods. Test-owned logs stop when their first test finishes and are
+        # not used as gate evidence. The Make target also requires current startup evidence of dryRun
         # from all four Radius components and fails if any log collection or scan fails.
         # Tracked exceptions go in
         # .github/scripts/authz-would-deny-allowlist.txt. The authz-noncloud leg is not checked
         # because its tests make requests that are meant to be denied.
         if: ${{ !cancelled() && matrix.authzDryRun && steps.functional-tests.outcome != 'skipped' }}
         env:
-          RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          AUTHZ_LOG_DIR: ${{ github.workspace }}/dist/authz-logs
         run: |
-          args="--cluster"
-          if [[ -d "${RADIUS_CONTAINER_LOG_PATH}" ]]; then
-            args="${args} --logs-dir ${RADIUS_CONTAINER_LOG_PATH}"
-          fi
-          make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="${args}"
+          test -f "${AUTHZ_LOG_DIR}/complete" || { echo "Authorization log collection did not complete"; exit 1; }
+          make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ${AUTHZ_LOG_DIR}"
+
+      - name: Upload authorization gate logs
+        if: always() && matrix.authzDryRun
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ env.LEG_NAME }}-authz-logs
+          path: dist/authz-logs
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
