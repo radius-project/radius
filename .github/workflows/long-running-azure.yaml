@@ -420,9 +420,12 @@ jobs:
           #   - Test_ACI: tracked in #12044 (cleanup timeout flake).
           #   - Test_RadiusCore_AzureMySql_PortalLink: v0.60 deletes the environment
           #     before its application, so recipe cleanup fails. Tracked in #12701.
+          #   - Test_RabbitMQ, Test_RedisCache, Test_Container_ManagedSecretConnection:
+          #     the v0.61.1 CLI deletes a managed secret in parallel with the resource
+          #     that owns it, so cleanup fails with 409 Conflict. Fixed in #13193.
           # Skip these exact tests until a release that includes the fixes is cut.
-          # See #12044, #12163, #12247, and #12701.
-          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RadiusCore_AzureMySql_PortalLink)$$'"
+          # See #12044, #12163, #12247, #12701, #13143, and #13193.
+          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RadiusCore_AzureMySql_PortalLink|Test_RabbitMQ|Test_RedisCache|Test_Container_ManagedSecretConnection)$$'"
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
           set -euo pipefail
