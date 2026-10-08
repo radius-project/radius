@@ -147,6 +147,7 @@ Do the steps in the order shown. Steps 1 to 3 (contrib, then the pin bump) are t
 
 Stack rules:
 
+- Title each stacked PR `<type>(<scope>): [stack N/5: default k8s recipe pack] <subject>`. The label goes after `<type>(<scope>):` because the required Conventional Commit title check rejects anything before the type.
 - Open PR 1 to PR 5 as soon as each is ready, each based on the previous branch. Mark PRs above the bottom one as draft until the one below merges.
 - Merge bottom-up. After a PR merges (squash), rebase the next branch onto `main` and retarget its PR to `main`.
 - PR 1 can start now. PR 2 can be written now but must not merge until P0 is on `main`, because D3 makes the sync fail if `default.bicep` is missing at the pinned commit (v0.2.0 has `default-recipepack.bicep`). Rebase the stack onto `main` after P0 merges.
