@@ -176,7 +176,7 @@ The API is the common management surface for RBAC. Custom role definitions and r
 | `rad auth access` | List effective access, check whether an identity can perform an action at a scope, and explain which role or assignment allowed or denied a decision without exposing hidden data. |
 | `rad auth enforcement` | Inspect enforcement status, preview would-be denials, enable enforcement after reviewing access impact, and perform any supported migration-period rollback. |
 
-> Where applicable, each `rad auth` command should come with standard CRUDL operations, the examples below are meant to be illustrative but not comprehensive of the full set of commands, which would be finalized in the detailed tech design
+> Where applicable, each `rad auth` command family should support standard create, read, update, delete, and list (CRUDL) operations. The examples below are illustrative rather than comprehensive; the complete command set will be finalized during detailed technical design.
 
 A platform administrator can create a custom role and grant it imperatively for bootstrap, investigation, or an immediate operational need:
 
