@@ -36,7 +36,7 @@ Commands:
   up                  Create the pod if needed and wait until it is ready.
   exec -- ARGS...     Run curl ARGS in the pod. A leading "curl" is optional.
   openssl -- ARGS...  Run openssl ARGS in the pod, for example s_client.
-  down                Delete the pod.
+  down                Delete the pod and wait until it is gone.
 
 Options:
   -n, --namespace NAME  Namespace for the pod (default: ${AUTHZ_ROGUE_NAMESPACE},
@@ -109,6 +109,6 @@ case "${COMMAND}" in
         ;;
     down)
         authz_kubectl delete pod "${AUTHZ_ROGUE_POD}" \
-            --namespace "${AUTHZ_ROGUE_NAMESPACE}" --ignore-not-found --wait=false
+            --namespace "${AUTHZ_ROGUE_NAMESPACE}" --ignore-not-found --wait=true
         ;;
 esac
