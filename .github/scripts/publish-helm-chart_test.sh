@@ -30,12 +30,14 @@ cleanup() {
 trap cleanup EXIT
 
 setup() {
+    local version="${1:-0.61.0}"
+
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/release-helm-test-XXXXXX")"
     mkdir -p "${TEST_ROOT}/bin" "${TEST_ROOT}/registry" \
         "${TEST_ROOT}/source/radius"
-    printf 'apiVersion: v2\nname: radius\nversion: 0.61.0\n' \
+    printf 'apiVersion: v2\nname: radius\nversion: %s\n' "${version}" \
         > "${TEST_ROOT}/source/radius/Chart.yaml"
-    tar -czf "${TEST_ROOT}/radius-0.61.0.tgz" \
+    tar -czf "${TEST_ROOT}/radius-${version}.tgz" \
         -C "${TEST_ROOT}/source" radius
     : > "${TEST_ROOT}/calls"
     cat > "${TEST_ROOT}/bin/helm" << 'EOF'
@@ -45,20 +47,21 @@ set -euo pipefail
 echo "$*" >>"${HELM_CALLS}"
 case "$1" in
     pull)
+        archive="${HELM_REGISTRY}/radius-${4}.tgz"
         if [[ "${HELM_FALSE_ABSENCE_ONCE:-}" == "true" &&
             ! -e "${HELM_REGISTRY}/false-absence" ]]; then
             touch "${HELM_REGISTRY}/false-absence"
             echo "manifest not found" >&2
             exit 1
         fi
-        if [[ ! -f "${HELM_REGISTRY}/radius-0.61.0.tgz" ]]; then
+        if [[ ! -f "${archive}" ]]; then
             echo "manifest not found" >&2
             exit 1
         fi
         while [[ $# -gt 0 ]]; do
             if [[ "$1" == "--destination" ]]; then
                 mkdir -p "$2"
-                cp "${HELM_REGISTRY}/radius-0.61.0.tgz" "$2/"
+                cp "${archive}" "$2/"
                 exit 0
             fi
             shift
@@ -67,12 +70,12 @@ case "$1" in
     push)
         if [[ "${HELM_FAIL_PUSH_ONCE:-}" == "true" &&
             ! -e "${HELM_REGISTRY}/failed" ]]; then
-            cp "$2" "${HELM_REGISTRY}/radius-0.61.0.tgz"
+            cp "$2" "${HELM_REGISTRY}/"
             touch "${HELM_REGISTRY}/failed"
             echo "503 Service Unavailable" >&2
             exit 1
         fi
-        cp "$2" "${HELM_REGISTRY}/radius-0.61.0.tgz"
+        cp "$2" "${HELM_REGISTRY}/"
         ;;
     *) exit 2 ;;
 esac
@@ -81,15 +84,44 @@ EOF
 }
 
 run_publisher() {
+    local version="${1:-0.61.0}"
+
     PATH="${TEST_ROOT}/bin:${PATH}" \
         HELM_CALLS="${TEST_ROOT}/calls" \
         HELM_REGISTRY="${TEST_ROOT}/registry" \
         RELEASE_RETRY_NO_SLEEP=true \
         bash "${SCRIPT_DIR}/publish-helm-chart.sh" \
-            --archive "${TEST_ROOT}/radius-0.61.0.tgz" \
+            --archive "${TEST_ROOT}/radius-${version}.tgz" \
             --repository oci://example.test/charts \
             --name radius \
-            --version 0.61.0 > /dev/null
+            --version "${version}" > /dev/null
+}
+
+test_chart_replacement() {
+    local version="$1"
+    local replaceable="$2"
+
+    setup "${version}"
+    run_publisher "${version}"
+    printf 'replicaCount: 2\n' > "${TEST_ROOT}/source/radius/values.yaml"
+    tar -czf "${TEST_ROOT}/radius-${version}.tgz" \
+        -C "${TEST_ROOT}/source" radius
+
+    if [[ "${replaceable}" == "true" ]]; then
+        run_publisher "${version}"
+        [[ "$(grep -c '^push ' "${TEST_ROOT}/calls")" == "2" ]]
+        cmp "${TEST_ROOT}/radius-${version}.tgz" \
+            "${TEST_ROOT}/registry/radius-${version}.tgz"
+    else
+        if run_publisher "${version}" 2> "${TEST_ROOT}/error"; then
+            echo "publisher replaced immutable chart ${version}" >&2
+            exit 1
+        fi
+        grep -Fq "immutable chart radius:${version} has different content" \
+            "${TEST_ROOT}/error"
+        [[ "$(grep -c '^push ' "${TEST_ROOT}/calls")" == "1" ]]
+    fi
+    cleanup
 }
 
 main() {
@@ -143,6 +175,11 @@ main() {
             --name radius \
             --version 0.61.0 > /dev/null
     [[ "$(grep -c '^push ' "${TEST_ROOT}/calls")" == "1" ]]
+    cleanup
+
+    test_chart_replacement 0.42.42-dev true
+    test_chart_replacement 0.61.0 false
+    test_chart_replacement 0.61.0-rc.1 false
     echo "Helm chart publication tests passed"
 }
 
