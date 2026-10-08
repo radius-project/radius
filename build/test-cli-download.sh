@@ -68,14 +68,24 @@ radReleaseUrl="https://api.github.com/repos/radius-project/radius/releases"
 # `|| { ... }` rather than a following `$?` check: the script runs under `set -e`, so
 # a failing curl inside the assignment exits immediately and a separate check below it
 # is never reached. -sS keeps curl quiet on success but lets its own error through.
-# -w appends the HTTP status on its own line, so a parse failure below can tell a
-# rate limit (403) from a server error (5xx).
-api_response=$(curl -sS -w '\n%{http_code}' "$radReleaseUrl") || {
+# -w appends the HTTP status on its own line so the status check below can
+# report API errors before attempting to parse the release version.
+curl_args=(-sS -w '\n%{http_code}')
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    curl_args+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+fi
+api_response=$(curl "${curl_args[@]}" "$radReleaseUrl") || {
     printf 'GitHub API call to %s failed (curl exit %d)\n' "$radReleaseUrl" "$?" >&2
     exit 1
 }
 http_status=${api_response##*$'\n'}
 api_response=${api_response%$'\n'*}
+
+if [[ "${http_status}" != "200" ]]; then
+    printf 'GitHub API call to %s failed (HTTP %s):\n%s\n' \
+        "$radReleaseUrl" "$http_status" "$api_response" >&2
+    exit 1
+fi
 
 echo "GitHub API call successful"
 
