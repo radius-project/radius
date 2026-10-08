@@ -220,13 +220,59 @@ if [[ "$1 $2 $3" == "buildx imagetools inspect" ]]; then
         echo "error getting credentials" >&2
         exit 1
     fi
-    digest="$(awk -F '\t' -v ref="${reference}" '$1 == ref { value=$2 } END { print value }' "${state}")"
+    if [[ "${reference}" == *@sha256:* ]]; then
+        digest="${reference##*@}"
+        grep -Fq "${digest}" "${state}" || digest=""
+    else
+        digest="$(awk -F '\t' -v ref="${reference}" \
+            '$1 == ref { value=$2 } END { print value }' "${state}")"
+    fi
     if [[ "${reference}" == "${FAKE_CORRUPT_REFERENCE:-}" ]]; then
         digest="sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     fi
     if [[ -z "${digest}" ]]; then
         echo "manifest not found" >&2
         exit 1
+    fi
+    if [[ "$*" == *"{{json .SBOM}}"* ]]; then
+        if [[ "${FAKE_SBOM_MODE:-}" == "absent" ]]; then
+            printf 'null\n'
+            exit 0
+        fi
+        packages='[{"SPDXID":"SPDXRef-Package-radius","name":"radius",'
+        packages+='"downloadLocation":"NOASSERTION"}]'
+        if [[ "${FAKE_SBOM_MODE:-}" == "malformed" ]]; then
+            packages='[]'
+        fi
+        platforms=(linux/amd64 linux/arm64 linux/arm/v7)
+        if [[ "${FAKE_SBOM_MODE:-}" == "partial" ]]; then
+            platforms=(linux/amd64 linux/arm64)
+        fi
+        {
+            printf '{'
+            for index in "${!platforms[@]}"; do
+                [[ "${index}" -eq 0 ]] || printf ','
+                cat <<JSON
+"${platforms[${index}]}": {
+    "SPDX": {
+        "spdxVersion": "SPDX-2.3",
+        "SPDXID": "SPDXRef-DOCUMENT",
+        "dataLicense": "CC0-1.0",
+        "name": "radius",
+        "documentNamespace": "https://anchore.com/syft/image/radius",
+        "creationInfo": {
+            "created": "2026-08-28T00:00:00Z",
+            "creators": ["Tool: syft-1.51.0"]
+        },
+        "packages": ${packages},
+        "relationships": []
+    }
+}
+JSON
+            done
+            printf '}\n'
+        } | jq "${FAKE_SBOM_FILTER:-.}"
+        exit 0
     fi
     printf '{"manifest":{"digest":"%s"}}\n' "${digest}"
     exit 0
@@ -268,14 +314,16 @@ write_image_lock() {
     "reference":"example.test/radius/applications-rp:0.61.0",
     "digest":"${app_digest}",
     "sourceSha":"${SOURCE_SHA}",
-    "immutableReference":"example.test/radius/applications-rp@${app_digest}"
+    "immutableReference":"example.test/radius/applications-rp@${app_digest}",
+    "platforms":["linux/amd64","linux/arm64","linux/arm/v7"]
   },
   {
     "name":"ucpd",
     "reference":"example.test/radius/ucpd:0.61.0",
     "digest":"${ucpd_digest}",
     "sourceSha":"${SOURCE_SHA}",
-    "immutableReference":"example.test/radius/ucpd@${ucpd_digest}"
+    "immutableReference":"example.test/radius/ucpd@${ucpd_digest}",
+    "platforms":["linux/amd64","linux/arm64","linux/arm/v7"]
   }
 ]
 EOF
@@ -513,6 +561,82 @@ test_rejects_lock_from_another_source() {
     ((++PASS))
 }
 
+test_verifies_image_sboms() {
+    local location
+    local filter='.["linux/arm64"].SPDX.packages[0].downloadLocation'
+
+    setup_fixture
+    write_image_lock
+    for location in NOASSERTION NONE https://example.test/radius; do
+        FAKE_SBOM_FILTER="${filter} = \"${location}\"" \
+            run_script verify \
+            --version 0.61.0 \
+            --image-lock "${TEST_ROOT}/image-lock.json" \
+            --sboms
+    done
+    ((++PASS))
+}
+
+test_rejects_invalid_spdx_fields() {
+    local filter
+    local -a invalid_documents=(
+        'del(.name)'
+        '.name = 42'
+        '.packages = [{}]'
+        '.packages = [null]'
+        '.packages = ["radius"]'
+        '.packages = [[]]'
+        '.packages += [{}]'
+        'del(.packages[0].SPDXID)'
+        '.packages[0].SPDXID = 42'
+        'del(.packages[0].name)'
+        '.packages[0].name = 42'
+        'del(.packages[0].downloadLocation)'
+        '.packages[0].downloadLocation = 42'
+    )
+
+    setup_fixture
+    write_image_lock
+    for filter in "${invalid_documents[@]}"; do
+        if FAKE_SBOM_FILTER=".[\"linux/arm64\"].SPDX |= (${filter})" \
+            run_script verify \
+            --version 0.61.0 \
+            --image-lock "${TEST_ROOT}/image-lock.json" \
+            --sboms > "${TEST_ROOT}/error" 2>&1; then
+            fail_test "invalid SPDX fields were accepted: ${filter}"
+            return
+        fi
+        if ! grep -Fq 'missing or invalid SPDX SBOMs' "${TEST_ROOT}/error"; then
+            fail_test "unexpected SPDX validation error: ${filter}"
+            return
+        fi
+    done
+    ((++PASS))
+}
+
+test_rejects_missing_or_malformed_image_sboms() {
+    local mode
+
+    for mode in absent partial malformed; do
+        setup_fixture
+        write_image_lock
+        if PATH="${TEST_ROOT}/bin:${PATH}" \
+            FAKE_REGISTRY_STATE="${TEST_ROOT}/registry-state" \
+            FAKE_REGISTRY_CALLS="${TEST_ROOT}/calls" \
+            FAKE_SBOM_MODE="${mode}" \
+            RELEASE_SOURCE_SHA="${SOURCE_SHA}" \
+            GORELEASER_PARITY_TARGETS="${TEST_ROOT}/targets.json" \
+            bash "${SCRIPT}" verify \
+            --version 0.61.0 \
+            --image-lock "${TEST_ROOT}/image-lock.json" \
+            --sboms > /dev/null 2>&1; then
+            fail_test "${mode} image SBOM should fail verification"
+            return
+        fi
+    done
+    ((++PASS))
+}
+
 test_retries_transient_registry_failures() {
     setup_fixture
     PATH="${TEST_ROOT}/bin:${PATH}" \
@@ -640,6 +764,9 @@ main() {
     test_detects_alias_divergence
     test_detects_version_tag_divergence
     test_rejects_lock_from_another_source
+    test_verifies_image_sboms
+    test_rejects_invalid_spdx_fields
+    test_rejects_missing_or_malformed_image_sboms
     test_retries_transient_registry_failures
     test_rejects_stale_cli_tag_without_overwriting
     test_requires_image_lock_before_reusing_version_tag
