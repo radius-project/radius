@@ -142,6 +142,14 @@ case "$1 $2" in
         [[ "${MOCK_POD_EXISTS:-true}" == "true" ]] || exit 1
         ;;
     "get namespace")
+        if [[ -n "${MOCK_KUBECONFIG_PATH:-}" ]]; then
+            printf '%s\n' "${KUBECONFIG}" >"${MOCK_KUBECONFIG_PATH}"
+            permissions="$(LC_ALL=C ls -l "${KUBECONFIG}")"
+            [[ "${permissions:0:10}" == "-rw-------" ]] || {
+                echo "kubeconfig must have mode 0600" >&2
+                exit 1
+            }
+        fi
         case "${MOCK_KIT_MODE:-}" in
             timeout | forbidden)
                 echo "Error from server: ${MOCK_KIT_MODE}" >&2
@@ -180,7 +188,8 @@ export MOCK_CALLS="${TEST_ROOT}/kubectl-calls.txt"
 export MOCK_SECRET_KEYS="absent"
 export MOCK_CONTEXT_EXISTS="true"
 unset AUTHZ_COMPONENT_SECRET_FORMAT AUTHZ_KUBE_CONTEXT AUTHZ_CLUSTER_NAME \
-    AUTHZ_RADIUS_NAMESPACE AUTHZ_ROGUE_NAMESPACE MOCK_KIT_MODE
+    AUTHZ_RADIUS_NAMESPACE AUTHZ_ROGUE_NAMESPACE MOCK_KIT_MODE \
+    MOCK_KUBECONFIG_PATH
 
 reset_calls() {
     : >"${MOCK_CALLS}"
@@ -303,6 +312,12 @@ run_kit rogue.sh openssl -- version
 assert_status 0
 assert_calls_contain "--container openssl -- openssl version"
 
+echo "Test: rogue.sh down waits for deletion and tolerates an absent pod"
+reset_calls
+run_kit rogue.sh --namespace team-a down
+assert_status 0
+assert_calls_contain "delete pod radius-authz-rogue --namespace team-a --ignore-not-found --wait=true"
+
 echo "Test: rogue.sh requires a command and arguments"
 run_kit rogue.sh
 assert_status 2
@@ -390,7 +405,32 @@ echo "Test: would-deny.sh pins the kit context"
 reset_calls
 run_kit would-deny.sh --logs-dir "${TEST_ROOT}/logs/clean"
 assert_status 0
-assert_calls_contain "config view --minify --flatten --context kind-radius-authz"
+assert_calls_contain "config view --raw --minify --flatten --context kind-radius-authz"
+
+echo "Test: pinned kubeconfig is private and removed on success and failure"
+for mode in "" timeout; do
+    (
+        PASS=0
+        FAIL=0
+        umask 000
+        export MOCK_KUBECONFIG_PATH="${TEST_ROOT}/kubeconfig-path"
+        MOCK_KIT_MODE="${mode}" run_kit would-deny.sh \
+            --logs-dir "${TEST_ROOT}/logs/clean"
+        if [[ -z "${mode}" ]]; then
+            assert_status 0
+        else
+            assert_status 2
+            assert_output_contains "Error from server: timeout"
+        fi
+        config_path="$(cat "${MOCK_KUBECONFIG_PATH}")"
+        if [[ ! -e "${config_path%/*}" ]]; then
+            pass_test
+        else
+            fail_test "temporary kubeconfig directory was not removed"
+        fi
+        [[ "${FAIL}" -eq 0 ]]
+    ) && pass_test || fail_test "kubeconfig lifecycle failed for '${mode}'"
+done
 
 echo "Test: would-deny.sh reports a missing context"
 export MOCK_CONTEXT_EXISTS="false"
