@@ -1,0 +1,50 @@
+suite: test authorization config checksum annotations
+templates:
+  - ucp/deployment.yaml
+  - rp/deployment.yaml
+  - dynamic-rp/deployment.yaml
+  - controller/deployment.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  # The checksum restarts pods when helm upgrade changes the authorization mode,
+  # because services read the mode only at startup.
+  - it: hashes the off mode by default
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
+
+  - it: hashes the dryRun mode
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: 04efa603c0a9195b8f56aaa4fcc58a0d49683206b5ab4d65e147c10ccae9bd63
+
+  - it: hashes the enforce mode
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: c1f1005e99318bf634290d9d518d9bf9ba14bf9a46eaa78abfbc9f99647ca2d9
+
+  - it: annotates the pod template when prometheus and buildkit are disabled
+    set:
+      global.prometheus.enabled: false
+      dynamicrp.buildkit.enabled: false
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
+      - notExists:
+          path: spec.template.metadata.annotations["prometheus.io/scrape"]
+
+  - it: keeps the prometheus annotations alongside the checksum
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["prometheus.io/scrape"]
+          value: "true"

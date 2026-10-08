@@ -1,0 +1,101 @@
+suite: test authorization mode
+templates:
+  - ucp/configmaps.yaml
+  - rp/configmaps.yaml
+  - dynamic-rp/configmaps.yaml
+  - controller/configmaps.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: omits the authorization section by default
+    asserts:
+      - notMatchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^authorization:'
+        template: ucp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:'
+        template: rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:'
+        template: dynamic-rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["controller-config.yaml"]
+          pattern: '(?m)^authorization:'
+        template: controller/configmaps.yaml
+
+  - it: omits the authorization section when rbac is explicitly disabled
+    set:
+      global.rbac.enabled: false
+      global.rbac.dryRun: false
+    asserts:
+      - notMatchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^authorization:'
+        template: ucp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:'
+        template: rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:'
+        template: dynamic-rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["controller-config.yaml"]
+          pattern: '(?m)^authorization:'
+        template: controller/configmaps.yaml
+
+  - it: renders authorization mode dryRun when global.rbac.dryRun is true
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "dryRun"$'
+        template: ucp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "dryRun"$'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "dryRun"$'
+        template: dynamic-rp/configmaps.yaml
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "dryRun"$'
+        template: controller/configmaps.yaml
+
+  - it: renders authorization mode enforce when global.rbac.enabled is true
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "enforce"$'
+        template: ucp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "enforce"$'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "enforce"$'
+        template: dynamic-rp/configmaps.yaml
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "enforce"$'
+        template: controller/configmaps.yaml
+
+  - it: fails rendering when global.rbac.enabled and global.rbac.dryRun are both true
+    set:
+      global.rbac.enabled: true
+      global.rbac.dryRun: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run."
+        template: ucp/configmaps.yaml
