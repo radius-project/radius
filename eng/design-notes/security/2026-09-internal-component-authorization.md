@@ -440,27 +440,27 @@ No new user-facing CLI commands are introduced. The changes are internal to serv
 
 Authorization is on by default once the feature is complete. Operators who do not want it opt out at install time with a new `rad install kubernetes --skip-rbac` flag, which follows the existing `--skip-contour-install` flag. Helm installs set the equivalent value, `global.rbac.enabled=false`. The installation then stays in the Off stage described under [Compatibility](#compatibility-optional), and cert-manager is not required.
 
-`rad install kubernetes` and `rad upgrade kubernetes` get flags for the [certificate options](#certificate-options), so a production install needs no manual Helm values. `--cert-mode` names the mode explicitly, and each mode has its own required flags:
+`rad install kubernetes` and `rad upgrade kubernetes` get flags for the [certificate options](#certificate-options), so a production install needs no manual Helm values. The flags used decide the mode:
 
-| Flag                                 | Effect                                                                                                               |
-|--------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| `--cert-mode MODE`                   | Sets `global.rbac.certificates.mode`: `selfSigned` (default when omitted), `caSecret`, or `issuerRef`.               |
-| `--ca-cert FILE` and `--ca-key FILE` | Used with `--cert-mode caSecret`. Creates the CA Secret from the files. Both are required together.                  |
-| `--ca-secret NAME`                   | Used with `--cert-mode caSecret`. Uses an existing Secret in the Radius namespace instead of `--ca-cert`/`--ca-key`. |
-| `--cert-issuer KIND/NAME`            | Required with `--cert-mode issuerRef`, for example `ClusterIssuer/vault-issuer`.                                     |
+| Flags                                | Mode                   | Effect                                                                          |
+|--------------------------------------|------------------------|---------------------------------------------------------------------------------|
+| None                                 | `selfSigned` (default) | Radius creates its own CA.                                                      |
+| `--ca-cert FILE` and `--ca-key FILE` | `caSecret`             | Creates the CA Secret from the files. Both are required together.               |
+| `--ca-secret NAME`                   | `caSecret`             | Uses an existing Secret in the Radius namespace.                                |
+| `--cert-issuer KIND/NAME`            | `issuerRef`            | Uses an existing cert-manager issuer, for example `ClusterIssuer/vault-issuer`. |
 
 ```bash
 # Development or no corporate PKI: selfSigned is the default
 rad install kubernetes
 
 # Production: bring your own CA signed by the organization's root
-rad install kubernetes --cert-mode caSecret --ca-cert ./radius-ca.crt --ca-key ./radius-ca.key
+rad install kubernetes --ca-cert ./radius-ca.crt --ca-key ./radius-ca.key
 
 # Production: CA key stays in Vault, an HSM, or a cloud CA
-rad install kubernetes --cert-mode issuerRef --cert-issuer ClusterIssuer/vault-issuer
+rad install kubernetes --cert-issuer ClusterIssuer/vault-issuer
 ```
 
-`rad` rejects flags that do not match the mode, such as `--ca-cert` without `--cert-mode caSecret`, `caSecret` without exactly one of `--ca-cert`/`--ca-key` or `--ca-secret`, `issuerRef` without `--cert-issuer`, and any of these flags with `--skip-rbac`. Before installing in `caSecret` mode, `rad` checks that the certificate is a CA, matches the key, and is not expired, and warns if it expires within 30 days. On `rad upgrade kubernetes`, omitting `--cert-mode` keeps the installation's current mode.
+`rad` rejects invalid combinations: `--ca-cert` without `--ca-key` (or the reverse), flags for more than one mode, and any of these flags with `--skip-rbac`. Before installing in `caSecret` mode, `rad` checks that the certificate is a CA, matches the key, and is not expired, and warns if it expires within 30 days. On `rad upgrade kubernetes`, omitting the flags keeps the installation's current mode.
 
 ### Implementation Details
 
@@ -592,7 +592,7 @@ Unit tests should cover verification of deployment approvals and grant-scope che
 | A record expires during a deployment                                 | The deployment fails with `ExecutionRecordNotActive`, and rerunning `rad deploy` succeeds.                         |
 | Upgrade an existing installation, then rotate the CA                 | `rad` commands keep working throughout; the APIService stays available.                                            |
 | A peer presents an RSA-1024 or otherwise disallowed key              | The receiver fails the handshake and logs `PeerCertificateInvalid`.                                                |
-| Install with `--cert-mode caSecret --ca-cert --ca-key`               | Service certificates chain to the provided CA. A certificate signed directly by the organization root is rejected. |
+| Install with `--ca-cert` and `--ca-key`                              | Service certificates chain to the provided CA. A certificate signed directly by the organization root is rejected. |
 
 Use cluster integration tests for certificate renewal, protected service accounts, restarts, upgrades, and interrupted deployments. Include the external engine and both legacy and current resource APIs. Test recipes that create cluster-wide objects separately from namespace-limited application templates.
 
