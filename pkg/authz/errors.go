@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -62,6 +63,10 @@ func StatusForCode(code string) int {
 	return http.StatusInternalServerError
 }
 
+// ruleIdentifierPattern limits public admission rule names to short identifiers so free-form
+// diagnostics cannot leak into responses.
+var ruleIdentifierPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
+
 // code returns the denial's error code, defaulting to AuthorizationFailed when unset.
 func (e *DeniedError) code() string {
 	if e.Code == "" {
@@ -72,16 +77,25 @@ func (e *DeniedError) code() string {
 
 // ErrorResponse converts the denial to an ARM error response body. Action and Target
 // must identify the caller's requested action and target; conversion fails if either
-// is blank. Reason is an internal diagnostic and is never included in the response.
+// is blank. AdmissionPolicyDenied responses also name Rule, which must be a short
+// identifier. Reason is an internal diagnostic and is never included in the response.
 func (e *DeniedError) ErrorResponse() (v1.ErrorResponse, error) {
 	if strings.TrimSpace(e.Action) == "" || strings.TrimSpace(e.Target) == "" {
 		return v1.ErrorResponse{}, fmt.Errorf("authorization response requires an action and target")
 	}
 
+	message := fmt.Sprintf("Authorization denied for action '%s' on target '%s'", e.Action, e.Target)
+	if e.code() == v1.CodeAdmissionPolicyDenied {
+		if !ruleIdentifierPattern.MatchString(e.Rule) {
+			return v1.ErrorResponse{}, fmt.Errorf("admission policy response requires a valid rule identifier")
+		}
+		message += fmt.Sprintf(" by admission rule '%s'", e.Rule)
+	}
+
 	return v1.ErrorResponse{
 		Error: &v1.ErrorDetails{
 			Code:    e.code(),
-			Message: fmt.Sprintf("Authorization denied for action '%s' on target '%s'", e.Action, e.Target),
+			Message: message,
 			Target:  e.Target,
 		},
 	}, nil
