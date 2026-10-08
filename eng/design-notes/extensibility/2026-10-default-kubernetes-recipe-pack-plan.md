@@ -130,18 +130,20 @@ radius:   main <- PR 1 <- PR 2 <- PR 3 <- PR 4 <- PR 5
 contrib:  C3 README (after PR 4 merges)
 ```
 
-| Step | Repo    | Base branch | Summary                                                  | Merge gate                        |
-|------|---------|-------------|----------------------------------------------------------|-----------------------------------|
-| C1   | contrib | `main`      | Add PostgreSQL to the Kubernetes pack                    | -                                 |
-| C2   | contrib | -           | Release `recipe-pack/kubernetes/v0.3.0`                  | C1 merged                         |
-| P0   | radius  | `main`      | Review and merge the bot pin bump PR                     | C2 released                       |
-| PR 1 | radius  | `main`      | Golden test of today's default pack                      | -                                 |
-| PR 2 | radius  | PR 1        | Sync compiles and copies the pinned pack; tests; CI      | P0 merged (pin at v0.3.0)         |
-| PR 3 | radius  | PR 2        | Embed the copied pack and add a loader in `pkg/defaults` | -                                 |
-| PR 4 | radius  | PR 3        | `rad` builds the pack from the loader; delete Go list    | PR 1 golden test passes unchanged |
-| PR 5 | radius  | PR 4        | Comments and releases doc                                | -                                 |
-| C3   | contrib | `main`      | Update pack header and README                            | PR 4 merged                       |
-| S    | -       | -           | Post status on the issues                                | all merged                        |
+| Order | Step | Repo    | Base branch | Summary                                                  | Merge gate                        |
+|-------|------|---------|-------------|----------------------------------------------------------|-----------------------------------|
+| 1     | C1   | contrib | `main`      | Add PostgreSQL to the Kubernetes pack                    | -                                 |
+| 2     | C2   | contrib | -           | Release `recipe-pack/kubernetes/v0.3.0`                  | C1 merged                         |
+| 3     | P0   | radius  | `main`      | Review and merge the bot pin bump PR                     | C2 released                       |
+| 4     | PR 1 | radius  | `main`      | Golden test of today's default pack                      | -                                 |
+| 5     | PR 2 | radius  | PR 1        | Sync compiles and copies the pinned pack; tests; CI      | P0 merged (pin at v0.3.0)         |
+| 6     | PR 3 | radius  | PR 2        | Embed the copied pack and add a loader in `pkg/defaults` | -                                 |
+| 7     | PR 4 | radius  | PR 3        | `rad` builds the pack from the loader; delete Go list    | PR 1 golden test passes unchanged |
+| 8     | PR 5 | radius  | PR 4        | Releases doc                                             | -                                 |
+| 9     | C3   | contrib | `main`      | Update pack header and README                            | PR 4 merged                       |
+| 10    | S    | -       | -           | Post status on the issues                                | all merged                        |
+
+Do the steps in the order shown. Steps 1 to 3 (contrib, then the pin bump) are the critical path, because PR 2 cannot merge until the pin is at v0.3.0. PR 1 has no dependency, so it can be written while waiting on steps 1 to 3.
 
 Stack rules:
 
