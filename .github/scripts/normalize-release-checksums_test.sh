@@ -34,14 +34,19 @@ main() {
     local checksum
     local artifacts
     local hash
+    local hash_tool
+    local command_name
+    local command_dir
+    local bash_command
+    local tested_tools=0
 
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/release-checksum-test-XXXXXX")"
     binary="${TEST_ROOT}/rad_linux_amd64"
     checksum="${binary}.sha256"
     artifacts="${TEST_ROOT}/artifacts.json"
-    printf 'radius\n' > "${binary}"
-    hash="$(sha256sum "${binary}" | cut -d ' ' -f 1)"
-    printf '%s' "${hash}" > "${checksum}"
+    printf 'abc' > "${binary}"
+    hash="ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    bash_command="$(command -v bash)"
     cat > "${artifacts}" << EOF
 [
   {
@@ -59,17 +64,57 @@ main() {
 ]
 EOF
 
-    bash "${SCRIPT_DIR}/normalize-release-checksums.sh" "${artifacts}"
-    [[ "$(cat "${checksum}")" == "${hash} *rad_linux_amd64" ]]
-    bash "${SCRIPT_DIR}/normalize-release-checksums.sh" "${artifacts}"
-    [[ "$(cat "${checksum}")" == "${hash} *rad_linux_amd64" ]]
+    for hash_tool in shasum openssl sha256sum; do
+        if ! command -v "${hash_tool}" > /dev/null; then
+            echo "Skipping unavailable checksum tool: ${hash_tool}"
+            continue
+        fi
+        command_dir="${TEST_ROOT}/${hash_tool}"
+        mkdir -p "${command_dir}"
+        for command_name in jq awk cut "${hash_tool}"; do
+            ln -s "$(command -v "${command_name}")" \
+                "${command_dir}/${command_name}"
+        done
 
-    printf '%064d' 0 > "${checksum}"
-    if bash "${SCRIPT_DIR}/normalize-release-checksums.sh" "${artifacts}" \
-        > /dev/null 2>&1; then
-        echo "normalizer accepted a checksum mismatch" >&2
+        printf '%s' "${hash}" > "${checksum}"
+        PATH="${command_dir}" "${bash_command}" \
+            "${SCRIPT_DIR}/normalize-release-checksums.sh" "${artifacts}"
+        [[ "$(cat "${checksum}")" == "${hash} *rad_linux_amd64" ]]
+        PATH="${command_dir}" "${bash_command}" \
+            "${SCRIPT_DIR}/normalize-release-checksums.sh" "${artifacts}"
+        [[ "$(cat "${checksum}")" == "${hash} *rad_linux_amd64" ]]
+
+        printf '%064d' 0 > "${checksum}"
+        if PATH="${command_dir}" "${bash_command}" \
+            "${SCRIPT_DIR}/normalize-release-checksums.sh" "${artifacts}" \
+            > "${TEST_ROOT}/error" 2>&1; then
+            echo "normalizer accepted a checksum mismatch with ${hash_tool}" >&2
+            exit 1
+        fi
+        grep -Fq 'checksum mismatch for rad_linux_amd64' "${TEST_ROOT}/error"
+        [[ "$(cat "${checksum}")" == "$(printf '%064d' 0)" ]]
+        ((++tested_tools))
+        echo "Checksum normalization passed with ${hash_tool}"
+    done
+
+    if ((tested_tools == 0)); then
+        echo "checksum tests require sha256sum, shasum, or openssl" >&2
         exit 1
     fi
+
+    command_dir="${TEST_ROOT}/no-hash-tool"
+    mkdir -p "${command_dir}"
+    ln -s "$(command -v jq)" "${command_dir}/jq"
+    printf '%s' "${hash}" > "${checksum}"
+    if PATH="${command_dir}" "${bash_command}" \
+        "${SCRIPT_DIR}/normalize-release-checksums.sh" "${artifacts}" \
+        > "${TEST_ROOT}/error" 2>&1; then
+        echo "normalizer accepted missing checksum tools" >&2
+        exit 1
+    fi
+    grep -Fq 'required command not found: one of sha256sum shasum openssl' \
+        "${TEST_ROOT}/error"
+    [[ "$(cat "${checksum}")" == "${hash}" ]]
     echo "release checksum normalization tests passed"
 }
 

@@ -25,6 +25,16 @@ fail() {
     exit 1
 }
 
+sha256_file() {
+    if command -v sha256sum > /dev/null 2>&1; then
+        sha256sum "$1" | cut -d ' ' -f 1
+    elif command -v shasum > /dev/null 2>&1; then
+        shasum -a 256 "$1" | cut -d ' ' -f 1
+    else
+        openssl dgst -sha256 "$1" | awk '{ print $NF }'
+    fi
+}
+
 main() {
     local name
     local binary_path
@@ -33,8 +43,10 @@ main() {
     local actual
 
     command -v jq > /dev/null || fail "required command not found: jq"
-    if ! command -v sha256sum > /dev/null; then
-        fail "required command not found: sha256sum"
+    if ! command -v sha256sum > /dev/null \
+        && ! command -v shasum > /dev/null \
+        && ! command -v openssl > /dev/null; then
+        fail "required command not found: one of sha256sum shasum openssl"
     fi
     if [[ ! -f "${ARTIFACTS_FILE}" ]]; then
         fail "artifacts file not found: ${ARTIFACTS_FILE}"
@@ -77,7 +89,7 @@ main() {
         if [[ ! "${checksum}" =~ ^[0-9a-f]{64}$ ]]; then
             fail "invalid checksum format: ${checksum_path}"
         fi
-        actual="$(sha256sum "${binary_path}" | cut -d ' ' -f 1)"
+        actual="$(sha256_file "${binary_path}")"
         if [[ "${checksum}" != "${actual}" ]]; then
             fail "checksum mismatch for ${name}"
         fi
