@@ -697,6 +697,7 @@ verify_image_sboms() {
                 | type == "string" and test("^SPDX-2\\.[0-9]+$"))
             and $document.SPDXID == "SPDXRef-DOCUMENT"
             and $document.dataLicense == "CC0-1.0"
+            and ($document.name | type == "string")
             and ($document.documentNamespace
                 | type == "string" and startswith("https://"))
             and ($document.creationInfo.created
@@ -704,6 +705,11 @@ verify_image_sboms() {
             and any($document.creationInfo.creators[]?;
                 startswith("Tool: syft-"))
             and ($document.packages | type == "array" and length > 0)
+            and all($document.packages[];
+                type == "object"
+                and (.SPDXID | type == "string")
+                and (.name | type == "string")
+                and (.downloadLocation | type == "string"))
             and ($document.relationships | type == "array")
         )
     ' <<< "${sboms}" > /dev/null; then

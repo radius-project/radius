@@ -80,7 +80,11 @@ write_sbom() {
                 created: "2026-09-10T00:00:00Z",
                 creators: ["Tool: syft-1.0.0"]
             },
-            packages: [{SPDXID: "SPDXRef-Package-rad", name: "rad"}],
+            packages: [{
+                SPDXID: "SPDXRef-Package-rad",
+                name: "rad",
+                downloadLocation: "NOASSERTION"
+            }],
             relationships: []
         }
     ' >"${path}"
@@ -249,6 +253,21 @@ expect_build_target_failure() {
     expect_failure "${description}" --skip-images
 }
 
+expect_spdx_failure() {
+    local mutation="$1"
+    local sbom="${DIST}/rad_linux_amd64.sbom.json"
+
+    write_sbom rad_linux_amd64 "${sbom}"
+    jq "${mutation}" "${sbom}" > "${TEST_ROOT}/invalid-sbom.json"
+    mv "${TEST_ROOT}/invalid-sbom.json" "${sbom}"
+    if run_verifier 2> "${TEST_ROOT}/spdx-error"; then
+        fail "verifier accepted invalid SPDX fields: ${mutation}"
+    fi
+    if ! grep -Fq 'invalid SPDX JSON SBOM' "${TEST_ROOT}/spdx-error"; then
+        fail "unexpected SPDX validation error: ${mutation}"
+    fi
+}
+
 # The verifier locates the Dockerfiles through its own repository root, so the
 # Dockerfile checks run against a staged copy of the repository that the test
 # can mutate freely.
@@ -342,6 +361,31 @@ INVALID_SBOM="rad_linux_amd64"
 write_fixture
 expect_failure "a CLI SBOM that is not an SPDX document"
 INVALID_SBOM=""
+
+write_fixture
+for location in NOASSERTION NONE https://example.test/rad; do
+    jq --arg location "${location}" \
+        '.packages[0].downloadLocation = $location' \
+        "${DIST}/rad_linux_amd64.sbom.json" > "${TEST_ROOT}/valid-sbom.json"
+    mv "${TEST_ROOT}/valid-sbom.json" "${DIST}/rad_linux_amd64.sbom.json"
+    run_verifier
+done
+for mutation in \
+    'del(.name)' \
+    '.name = 42' \
+    '.packages = [{}]' \
+    '.packages = [null]' \
+    '.packages = ["rad"]' \
+    '.packages = [[]]' \
+    '.packages += [{}]' \
+    'del(.packages[0].SPDXID)' \
+    '.packages[0].SPDXID = 42' \
+    'del(.packages[0].name)' \
+    '.packages[0].name = 42' \
+    'del(.packages[0].downloadLocation)' \
+    '.packages[0].downloadLocation = 42'; do
+    expect_spdx_failure "${mutation}"
+done
 
 # Configuration drift is caught before any artifact is inspected. The copy is
 # exploded first so editing one image cannot silently follow a YAML anchor.

@@ -138,11 +138,17 @@ verify_spdx_json() {
             | type == "string" and test("^SPDX-2\\.[0-9]+$"))
         and .SPDXID == "SPDXRef-DOCUMENT"
         and .dataLicense == "CC0-1.0"
+        and (.name | type == "string")
         and (.documentNamespace
             | type == "string" and startswith("https://"))
         and (.creationInfo.created | type == "string" and length > 0)
         and any(.creationInfo.creators[]?; startswith("Tool: syft-"))
         and (.packages | type == "array" and length > 0)
+        and all(.packages[];
+            type == "object"
+            and (.SPDXID | type == "string")
+            and (.name | type == "string")
+            and (.downloadLocation | type == "string"))
         and (.relationships | type == "array")
     ' "${file}" >/dev/null || fail "invalid SPDX JSON SBOM: ${file}"
 }

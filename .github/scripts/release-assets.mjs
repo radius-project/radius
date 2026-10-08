@@ -80,6 +80,7 @@ function verifySpdxDocument(data, name) {
     !/^SPDX-2\.\d+$/.test(document.spdxVersion) ||
     document.SPDXID !== "SPDXRef-DOCUMENT" ||
     document.dataLicense !== "CC0-1.0" ||
+    typeof document.name !== "string" ||
     typeof document.documentNamespace !== "string" ||
     !document.documentNamespace.startsWith("https://") ||
     typeof document.creationInfo?.created !== "string" ||
@@ -87,6 +88,15 @@ function verifySpdxDocument(data, name) {
     !creators.some((creator) => /^Tool: syft-/.test(creator)) ||
     !Array.isArray(document.packages) ||
     document.packages.length === 0 ||
+    !document.packages.every(
+      (entry) =>
+        entry !== null &&
+        typeof entry === "object" &&
+        !Array.isArray(entry) &&
+        typeof entry.SPDXID === "string" &&
+        typeof entry.name === "string" &&
+        typeof entry.downloadLocation === "string"
+    ) ||
     !Array.isArray(document.relationships)
   ) {
     throw new Error(`Release SBOM ${name} is not a valid SPDX document`);
