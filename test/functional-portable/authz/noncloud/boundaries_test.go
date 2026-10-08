@@ -19,7 +19,7 @@ package authz
 import "testing"
 
 // The tests below are placeholders for the trust boundaries described in the internal
-// component authorization design (eng/design-notes/security/internal-component-authorization.md).
+// component authorization design (eng/design-notes/security/2026-09-internal-component-authorization.md).
 // Each is enabled by the pull request that implements the boundary. Expected results use the
 // design's error codes; see pkg/authz for their HTTP status codes.
 
