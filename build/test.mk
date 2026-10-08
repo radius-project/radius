@@ -71,8 +71,9 @@ test-install-bicep: ## Tests bounded Bicep downloads without network access
 test: test-install-bicep
 
 .PHONY: test-authz-would-deny-check
-test-authz-would-deny-check: ## Tests the authorization dry-run would-deny log check against fixture logs
+test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned log collector
 	@bash ./.github/scripts/authz-would-deny-check_test.sh
+	@python3 ./.github/scripts/run-with-authz-logs_test.py
 
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
@@ -225,7 +226,7 @@ test-functional-authz-noncloud: ## Runs internal component authorization functio
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/authz/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 # Optional overrides for authz-would-deny-check. AUTHZ_WOULD_DENY_ARGS passes extra script arguments,
-# for example AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/container_logs".
+# for example AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/authz-logs".
 AUTHZ_NAMESPACE ?= radius-system
 AUTHZ_WOULD_DENY_ARGS ?=
 
