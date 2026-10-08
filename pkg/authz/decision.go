@@ -56,6 +56,10 @@ type Decision struct {
 	// Target is the caller's requested resource ID or scope, not a resource discovered
 	// while evaluating permissions.
 	Target string
+
+	// Rule is the public identifier of the admission rule that rejected the request,
+	// such as "control-plane-secret". It is required for AdmissionPolicyDenied.
+	Rule string
 }
 
 // DeniedError is returned by Apply when a denial is enforced.
@@ -73,6 +77,10 @@ type DeniedError struct {
 	// Target is the caller's requested resource ID or scope, not a resource discovered
 	// while evaluating permissions. It is required for ARM responses.
 	Target string
+
+	// Rule is the public admission rule identifier. It is required for, and only
+	// included in, AdmissionPolicyDenied responses.
+	Rule string
 }
 
 // Error implements the error interface.
@@ -111,5 +119,5 @@ func Apply(ctx context.Context, mode Mode, decision Decision) error {
 		return nil
 	}
 
-	return &DeniedError{Code: code, Reason: decision.Reason, Action: decision.Action, Target: decision.Target}
+	return &DeniedError{Code: code, Reason: decision.Reason, Action: decision.Action, Target: decision.Target, Rule: decision.Rule}
 }
