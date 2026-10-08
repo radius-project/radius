@@ -61,7 +61,9 @@ make test-functional-daprrp
 make test-functional-datastoresrp
 ```
 
-To run a single group directly, call its `make` target — for example `make test-functional-corerp-noncloud` for the non-cloud Core RP tests, or `make test-functional-all-noncloud` for the standard non-cloud groups. The groups (`ucp`, `kubernetes`, `corerp`, `cli`, `msgrp`, `daprrp`, `datastoresrp`, `dynamicrp`, `samples`, `upgrade`, `multicluster`, `database`, and `statestore`) and the variants each group supports are defined in [`build/test.mk`](../../../../build/test.mk).
+To run a single group directly, call its `make` target — for example `make test-functional-corerp-noncloud` for the non-cloud Core RP tests, or `make test-functional-all-noncloud` for the standard non-cloud groups. The groups (`ucp`, `authz`, `kubernetes`, `corerp`, `cli`, `msgrp`, `daprrp`, `datastoresrp`, `dynamicrp`, `samples`, `upgrade`, `multicluster`, `database`, and `statestore`) and the variants each group supports are defined in [`build/test.mk`](../../../../build/test.mk).
+
+The `authz` group (`make test-functional-authz-noncloud`) covers internal component authorization. Its smoke test reads the installed Helm values and checks that every Radius component logs the matching `authz mode=<mode>`, so it passes on any install. The `authz-noncloud` CI leg installs Radius with `--set global.rbac.dryRun=true` so the test checks a non-default mode; to reproduce that locally, run `rad install kubernetes --set global.rbac.dryRun=true` before the tests.
 
 You can also run or debug individual tests from VS Code.
 
