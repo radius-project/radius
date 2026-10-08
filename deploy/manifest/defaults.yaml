@@ -81,8 +81,8 @@ recipePacks:
     tag: ""
   - name: kubernetes
     repo: github.com/radius-project/resource-types-contrib
-    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
-    tag: "recipe-pack/kubernetes/v0.2.0"
+    ref: fc1b6675f4113a5230d0ecc1e982e33095c34067
+    tag: "recipe-pack/kubernetes/v0.3.0"
 defaultRegistration:
   - Radius.Compute/containers
   - Radius.Compute/containerImages
