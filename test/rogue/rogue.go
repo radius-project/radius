@@ -47,7 +47,9 @@ import (
 
 const (
 	// DefaultImage is the image used for the rogue pod. It must provide curl and sleep.
-	DefaultImage = "docker.io/curlimages/curl:8.17.0"
+	// It is the project's GHCR mirror of docker.io/curlimages/curl:8.17.0; see
+	// docs/contributing/contributing-code/contributing-code-tests/tests-images-pushtoghcr.md.
+	DefaultImage = "ghcr.io/radius-project/mirror/curlimages/curl:8.17.0"
 
 	// TLSMountPath is where the Secret named by Options.TLSSecretName is mounted.
 	// Requests read tls.crt, tls.key, and ca.crt from this directory.
