@@ -150,7 +150,7 @@ Operators choose where the Radius CA comes from with the Helm value `global.rbac
 
 **`caSecret`, bring your own signed CA.** The operator creates a `kubernetes.io/tls` Secret in the Radius namespace whose `tls.crt` holds the CA certificate (followed by its chain) and `tls.key` its private key. Radius's own cert-manager `CA` issuer signs the service certificates with it, so issuance stays limited to Radius. Requirements:
 
-- The certificate is a CA (`basicConstraints: CA:TRUE`), should use `pathLenConstraint: 0`, and should carry name constraints that allow only `*.<radius-namespace>.svc`.
+- The certificate is a CA (`basicConstraints: CA:TRUE`), should use `pathLenConstraint: 0`, and should carry name constraints with a single permitted DNS subtree, `<radius-namespace>.svc` (RFC 5280 syntax, which allows `<service>.<radius-namespace>.svc`).
 - Receivers trust this CA, not the organization root, so a certificate that some other team obtains from the organization root is not accepted as a Radius service.
 - The operator owns the CA's renewal. Radius logs a warning and raises an alert 30 days before it expires. To rotate, the operator updates the Secret; Radius keeps the old CA in the trust bundle until every service certificate is reissued.
 
@@ -163,7 +163,7 @@ These are fixed, not settings:
 - **Key.** Radius generates every service key as ECDSA P-256 in the modes where it issues certificates (`selfSigned`, `caSecret`, `issuerRef`). It is fast, small, and supported by every TLS stack Radius uses.
 - **Lifetime.** Radius requests 24-hour certificates and renews them at two-thirds of their lifetime. Short lifetimes limit how long a stolen key works, because Radius relies on expiry rather than revocation lists. If an `issuerRef` issuer returns a different lifetime, cert-manager renews at two-thirds of the lifetime actually issued, so nothing breaks.
 - **What receivers accept.** An organization's CA is often RSA, which Radius does not control. So in every mode receivers accept ECDSA P-256 or P-384 and RSA 2048 bits or larger, and reject anything else. `rad install` applies the same check to `--ca-cert`.
-- **FIPS.** The fixed key and every accepted key above are FIPS-approved, so a later FIPS mode for Radius needs no certificate changes. FIPS mode itself is out of scope for this design and is tracked in [#13231](https://github.com/radius-project/radius/issues/13231).
+- **FIPS.** The fixed key and every accepted key above are FIPS-approved, so a later FIPS mode for Radius needs no certificate changes. FIPS mode itself is out of scope for this design.
 
 ##### Kubernetes API server trust
 
@@ -648,7 +648,7 @@ The Detailed Design proposes a specific option for each major decision; what rem
 
 **Q: Which CA issues service certificates, and how are they rotated?**
 
-**A:** [cert-manager](https://cert-manager.io) is the default issuer. It issues one X.509 certificate per service from a Radius-only CA and renews each certificate automatically before it expires. Production installations can instead use their own signed CA, an existing issuer, or their own certificates (see [Certificate options](#certificate-options)). `rad install` installs cert-manager when the cluster has none and uses an existing supported installation otherwise (see [Issuing and protecting service identities](#issuing-and-protecting-service-identities)). SPIFFE/SPIRE stays the growth path if Radius components later span clusters, and the other issuers considered are listed under [Certificate issuer](#certificate-issuer).
+**A:** [cert-manager](https://cert-manager.io) is the default issuer. It issues one X.509 certificate per service from a Radius-only CA and renews each certificate automatically before it expires. Production installations can instead use their own signed CA or an existing issuer (see [Certificate options](#certificate-options)). `rad install` installs cert-manager when the cluster has none and uses an existing supported installation otherwise (see [Issuing and protecting service identities](#issuing-and-protecting-service-identities)). SPIFFE/SPIRE stays the growth path if Radius components later span clusters, and the other issuers considered are listed under [Certificate issuer](#certificate-issuer).
 
 Service certificates last **24 hours** (see [Key algorithm and lifetime](#key-algorithm-and-lifetime)) and are renewed after two-thirds of their lifetime (about 16 hours), which is cert-manager's default renewal point. That leaves an 8-hour grace window for the retry behavior under [Certificate authority and rotation](#certificate-authority-and-rotation). The 24-hour lifetime matches the workload certificates of Istio, Linkerd, and Dapr. The Radius CA certificate lasts **1 year**, as Dapr's root does, and is also renewed at two-thirds of its lifetime; the CA bundle holds both the old and new CA until every service certificate is reissued.
 
