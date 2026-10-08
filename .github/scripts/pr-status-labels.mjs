@@ -176,6 +176,7 @@ const REVIEW_THREAD_FRAGMENT = `
       nodes {
         state
         createdAt
+        updatedAt
         author {
           __typename
           login
@@ -355,6 +356,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
   }
 
   const reviews = [];
+  const cursors = new Set();
   let cursor = null;
   do {
     const result = await github.graphql(OPINIONATED_REVIEWS_QUERY, {
@@ -378,10 +380,14 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
       throw new Error(`Invalid review response for #${number}`);
     }
     reviews.push(...page.nodes);
-    if (page.pageInfo.hasNextPage && !page.pageInfo.endCursor) {
-      throw new Error(`Missing review cursor for #${number}`);
+    if (
+      page.pageInfo.hasNextPage &&
+      (!page.pageInfo.endCursor || cursors.has(page.pageInfo.endCursor))
+    ) {
+      throw new Error(`Missing or repeated review cursor for #${number}`);
     }
     cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+    cursors.add(cursor);
   } while (cursor);
 
   if (
@@ -469,6 +475,16 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
   return "APPROVED";
 }
 
+function addReviewFeedback(feedback, reviewer, submittedAt) {
+  const key = reviewerKey(reviewer);
+  if (key == null || !Number.isFinite(submittedAt)) {
+    throw new Error(
+      "Outstanding review feedback has no reviewer or valid timestamp"
+    );
+  }
+  feedback.set(key, Math.max(feedback.get(key) ?? -Infinity, submittedAt));
+}
+
 function humanReviewEvidence(pull, reviews) {
   const humanReviews = reviews.filter(
     (review) =>
@@ -486,27 +502,26 @@ function humanReviewEvidence(pull, reviews) {
       review.body.trim().length > 0
   );
   return {
-    hasReviewer: humanReviews.some((review) =>
+    submittedReviews: humanReviews.filter((review) =>
       SUBMITTED_REVIEW_STATES.includes(review.state)
     ),
     changeRequests: decisive.filter(
       (review) => review.state === "CHANGES_REQUESTED"
     ),
-    approvedFeedbackAt: approvals.reduce(
-      (latest, review) => Math.max(latest, Date.parse(review.submitted_at)),
-      -Infinity
-    )
+    feedbackApprovals: approvals
   };
 }
 
-async function hasUnresolvedReviewFeedback(
+async function unresolvedReviewFeedback(
   github,
   owner,
   repo,
   number,
   pull,
-  approvedFeedbackAt
+  feedbackApprovals
 ) {
+  const feedback = new Map();
+  const cursors = new Set();
   let cursor = null;
   do {
     const result = await github.graphql(REVIEW_THREADS_QUERY, {
@@ -525,6 +540,7 @@ async function hasUnresolvedReviewFeedback(
       throw new Error(`Invalid review-thread response for #${number}`);
     }
     for (let thread of page.nodes) {
+      const commentsCursors = new Set();
       let commentsCursor = null;
       while (true) {
         if (!thread?.id || typeof thread.isResolved !== "boolean") {
@@ -541,50 +557,52 @@ async function hasUnresolvedReviewFeedback(
         ) {
           throw new Error(`Invalid review-comment response for #${number}`);
         }
-        if (
-          comments.nodes.some((comment) => {
-            const submittedAt = Date.parse(
-              comment?.pullRequestReview?.submittedAt
+        for (const comment of comments.nodes) {
+          const submittedAt = Date.parse(
+            comment?.pullRequestReview?.submittedAt
+          );
+          if (
+            comment?.state !== "SUBMITTED" ||
+            !comment.author?.login ||
+            comment.author.login.toLowerCase() ===
+              pull.author?.login?.toLowerCase() ||
+            !SUBMITTED_REVIEW_STATES.includes(
+              comment.pullRequestReview?.state
+            ) ||
+            !Number.isFinite(submittedAt)
+          ) {
+            continue;
+          }
+          const createdAt = Date.parse(comment.createdAt);
+          if (comment.author.__typename === "User") {
+            addReviewFeedback(
+              feedback,
+              comment.author,
+              Math.max(submittedAt, createdAt, Date.parse(comment.updatedAt))
             );
-            if (
-              comment?.state !== "SUBMITTED" ||
-              !comment.author?.login ||
-              comment.author.login.toLowerCase() ===
-                pull.author?.login?.toLowerCase() ||
-              !SUBMITTED_REVIEW_STATES.includes(
-                comment.pullRequestReview?.state
-              ) ||
-              !Number.isFinite(submittedAt)
-            ) {
-              return false;
+          } else if (comment.author.__typename === "Bot") {
+            // A nonempty approval summary endorses earlier bot feedback on behalf of that human.
+            for (const approval of feedbackApprovals) {
+              const approvedAt = Date.parse(approval.submitted_at);
+              if (createdAt <= approvedAt && submittedAt <= approvedAt) {
+                addReviewFeedback(feedback, approval.user, approvedAt);
+              }
             }
-            if (comment.author.__typename === "User") {
-              return true;
-            }
-            // A nonempty approval summary conservatively endorses existing feedback, not later bot comments.
-            const createdAt = Date.parse(comment.createdAt);
-            return (
-              comment.author.__typename === "Bot" &&
-              Number.isFinite(createdAt) &&
-              createdAt <= approvedFeedbackAt &&
-              submittedAt <= approvedFeedbackAt
-            );
-          })
-        ) {
-          return true;
+          }
         }
         if (!comments.pageInfo.hasNextPage) {
           break;
         }
         if (
           !comments.pageInfo.endCursor ||
-          comments.pageInfo.endCursor === commentsCursor
+          commentsCursors.has(comments.pageInfo.endCursor)
         ) {
           throw new Error(
             `Missing or repeated review-comment cursor for #${number}`
           );
         }
         commentsCursor = comments.pageInfo.endCursor;
+        commentsCursors.add(commentsCursor);
         const next = await github.graphql(REVIEW_THREAD_COMMENTS_QUERY, {
           id: thread.id,
           commentsCursor
@@ -594,15 +612,16 @@ async function hasUnresolvedReviewFeedback(
     }
     if (
       page.pageInfo.hasNextPage &&
-      (!page.pageInfo.endCursor || page.pageInfo.endCursor === cursor)
+      (!page.pageInfo.endCursor || cursors.has(page.pageInfo.endCursor))
     ) {
       throw new Error(
         `Missing or repeated review-thread cursor for #${number}`
       );
     }
     cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+    cursors.add(cursor);
   } while (cursor);
-  return false;
+  return feedback;
 }
 
 function desiredLabels(
@@ -648,12 +667,10 @@ function desiredLabels(
   }
 
   let handoff;
-  if (
-    existing.has(MANUAL_LABELS.needsAuthorResponse) ||
-    unresolvedReviewFeedback
-  ) {
+  if (existing.has(MANUAL_LABELS.needsAuthorResponse)) {
     handoff = STATUS_LABELS.waitingForAuthor;
   } else if (
+    unresolvedReviewFeedback ||
     hasOutstandingHumanChanges ||
     reviewDecision === "CHANGES_REQUESTED"
   ) {
@@ -720,19 +737,13 @@ function latestDecisiveReviews(reviews) {
   return [...decisive.values()];
 }
 
-function hasRereviewRequest(pull, changes, timeline) {
+function hasRereviewRequest(pull, feedback, timeline) {
   if (pull.reviewRequests.totalCount !== pull.reviewRequests.nodes.length) {
     throw new Error("Cannot classify more than 100 pending review requests");
   }
 
-  if (changes.length === 0) {
+  if (feedback.size === 0) {
     return false;
-  }
-  const lastChange = Math.max(
-    ...changes.map((review) => Date.parse(review.submitted_at))
-  );
-  if (!Number.isFinite(lastChange)) {
-    throw new Error("An outstanding change request has an invalid timestamp");
   }
 
   const pending = new Set(
@@ -740,21 +751,28 @@ function hasRereviewRequest(pull, changes, timeline) {
       reviewerKey(request.requestedReviewer)
     )
   );
-  // An earlier request does not hand feedback back to reviewers after changes are requested.
-  return timeline.some((event) => {
-    if (event.event !== "review_requested") {
-      return false;
+  const requested = new Map();
+  const removed = new Map();
+  for (const event of timeline) {
+    if (!["review_requested", "review_request_removed"].includes(event.event)) {
+      continue;
     }
     const key = reviewerKey(event.requested_reviewer ?? event.requested_team);
     if (key == null || !pending.has(key)) {
-      return false;
+      continue;
     }
     const requestedAt = Date.parse(event.created_at);
     if (!Number.isFinite(requestedAt)) {
       throw new Error("A pending review request has an invalid timestamp");
     }
-    return requestedAt > lastChange;
-  });
+    const times = event.event === "review_requested" ? requested : removed;
+    times.set(key, Math.max(times.get(key) ?? -Infinity, requestedAt));
+  }
+  // Every feedback author needs their own later request that is still pending.
+  return [...feedback].every(
+    ([key, submittedAt]) =>
+      requested.get(key) > Math.max(submittedAt, removed.get(key) ?? -Infinity)
+  );
 }
 
 function reviewSignal(run, pull) {
@@ -860,6 +878,7 @@ async function hasPassingRequiredChecks(github, owner, repo, number, pull) {
   }
 
   const observed = [];
+  const cursors = new Set();
   let cursor = null;
   do {
     const result = await github.graphql(REQUIRED_CHECKS_QUERY, {
@@ -883,10 +902,14 @@ async function hasPassingRequiredChecks(github, owner, repo, number, pull) {
     observed.push(
       ...page.nodes.map(observedRequiredCheck).filter((check) => check.required)
     );
-    if (page.pageInfo.hasNextPage && !page.pageInfo.endCursor) {
-      throw new Error(`Missing status-check cursor for #${number}`);
+    if (
+      page.pageInfo.hasNextPage &&
+      (!page.pageInfo.endCursor || cursors.has(page.pageInfo.endCursor))
+    ) {
+      throw new Error(`Missing or repeated status-check cursor for #${number}`);
     }
     cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+    cursors.add(cursor);
   } while (cursor);
 
   return (
@@ -943,8 +966,8 @@ async function syncPull(github, core, owner, repo, number) {
   }
 
   let changeRequests = [];
-  let hasSubmittedHumanReview = false;
-  let unresolvedReviewFeedback = false;
+  let humanReviews = [];
+  let feedback = new Map();
   if (
     pull.state === "OPEN" &&
     !pull.isDraft &&
@@ -961,23 +984,32 @@ async function syncPull(github, core, owner, repo, number) {
       }
     );
     const evidence = humanReviewEvidence(pull, submittedReviews);
-    hasSubmittedHumanReview = evidence.hasReviewer;
+    humanReviews = evidence.submittedReviews;
     changeRequests = evidence.changeRequests;
-    unresolvedReviewFeedback = await hasUnresolvedReviewFeedback(
+    feedback = await unresolvedReviewFeedback(
       github,
       owner,
       repo,
       number,
       pull,
-      evidence.approvedFeedbackAt
+      evidence.feedbackApprovals
     );
+  }
+  const hasUnresolvedReviewFeedback = feedback.size > 0;
+  for (const review of changeRequests) {
+    addReviewFeedback(feedback, review.user, Date.parse(review.submitted_at));
+  }
+  for (const review of humanReviews) {
+    if (feedback.has(reviewerKey(review.user))) {
+      addReviewFeedback(feedback, review.user, Date.parse(review.submitted_at));
+    }
   }
 
   const reviewDecision =
     (
       pull.state === "OPEN" &&
       !pull.isDraft &&
-      !unresolvedReviewFeedback &&
+      !hasUnresolvedReviewFeedback &&
       pull.reviewDecision === null &&
       !existing.has(MANUAL_LABELS.doNotMerge) &&
       !existing.has(MANUAL_LABELS.needsAuthorResponse)
@@ -989,8 +1021,7 @@ async function syncPull(github, core, owner, repo, number) {
   if (
     pull.state === "OPEN" &&
     !pull.isDraft &&
-    !unresolvedReviewFeedback &&
-    (changeRequests.length > 0 || reviewDecision === "CHANGES_REQUESTED") &&
+    (feedback.size > 0 || reviewDecision === "CHANGES_REQUESTED") &&
     pull.reviewRequests.totalCount > 0 &&
     !existing.has(MANUAL_LABELS.doNotMerge) &&
     !existing.has(MANUAL_LABELS.needsAuthorResponse)
@@ -1004,11 +1035,12 @@ async function syncPull(github, core, owner, repo, number) {
         per_page: 100
       }
     );
-    rereviewRequested = hasRereviewRequest(pull, changeRequests, timeline);
-    if (changeRequests.length === 0) {
+    if (reviewDecision === "CHANGES_REQUESTED" && changeRequests.length === 0) {
       core.warning(
         `#${number} reports changes requested but has no active change-request review`
       );
+    } else {
+      rereviewRequested = hasRereviewRequest(pull, feedback, timeline);
     }
   }
 
@@ -1016,7 +1048,7 @@ async function syncPull(github, core, owner, repo, number) {
   if (
     pull.state === "OPEN" &&
     !pull.isDraft &&
-    !unresolvedReviewFeedback &&
+    !hasUnresolvedReviewFeedback &&
     reviewDecision === "APPROVED" &&
     pull.mergeable === "MERGEABLE" &&
     pull.mergeStateStatus === "BEHIND" &&
@@ -1041,8 +1073,8 @@ async function syncPull(github, core, owner, repo, number) {
     rereviewRequested,
     requiredChecksPassed,
     reviewDecision,
-    unresolvedReviewFeedback,
-    hasSubmittedHumanReview,
+    hasUnresolvedReviewFeedback,
+    humanReviews.length > 0,
     changeRequests.length > 0
   );
   if (mergeabilityUnknown) {
