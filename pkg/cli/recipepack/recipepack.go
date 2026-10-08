@@ -18,13 +18,14 @@ package recipepack
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
-	"github.com/radius-project/radius/pkg/cli/helm"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
@@ -120,39 +121,50 @@ const (
 	// DefaultResourceGroupScope is the full scope path for the default resource group.
 	// default recipe pack that Radius provides always live in this scope.
 	DefaultResourceGroupScope = "/planes/radius/local/resourceGroups/" + DefaultResourceGroupName
-
-	// DefaultRoutesGatewayName is the name of the Gateway installed by the default
-	// Radius-managed Contour installation.
-	DefaultRoutesGatewayName = helm.DefaultContourGatewayName
-
-	// DefaultRoutesGatewayNamespace is the namespace of the Gateway installed by
-	// the default Radius-managed Contour installation.
-	DefaultRoutesGatewayNamespace = helm.DefaultContourGatewayNamespace
 )
 
 // ResourceGroupCreator is a function that creates or updates a Radius resource group.
 // This is typically satisfied by ApplicationsManagementClient.CreateOrUpdateResourceGroup.
 type ResourceGroupCreator func(ctx context.Context, planeName string, resourceGroupName string, resource *ucpv20231001.ResourceGroupResource) error
 
-// NewDefaultRecipePackResource creates a RecipePackResource containing recipes
-// for all core resource types. This is the default recipe pack that gets injected into
-// environments that have no recipe packs configured.
-func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {
-	bicepKind := corerpv20250801.RecipeKindBicep
-	recipes := make(map[string]*corerpv20250801.RecipeDefinition)
-	for _, def := range GetCoreTypesRecipeInfo() {
-		recipes[def.ResourceType] = &corerpv20250801.RecipeDefinition{
-			Kind:       &bicepKind,
-			Source:     to.Ptr(def.Source),
-			Parameters: def.Parameters,
+// NewDefaultRecipePackResource creates the default recipe pack that gets
+// injected into environments that have no recipe packs configured. Its recipes
+// come from the Kubernetes recipe pack embedded from the resource-types-contrib
+// revision pinned in deploy/manifest/defaults.yaml; see
+// defaults.DefaultKubernetesRecipes.
+//
+// The pack's own source tags are replaced with the tag for this build's
+// channel; see resolveRecipeTag.
+func NewDefaultRecipePackResource() (corerpv20250801.RecipePackResource, error) {
+	return newDefaultRecipePackResource(defaults.DefaultKubernetesRecipes(), version.IsEdgeChannel())
+}
+
+// newDefaultRecipePackResource builds the default recipe pack from recipes for
+// the given channel. The channel is a parameter so both branches are reachable
+// from tests.
+func newDefaultRecipePackResource(recipes []defaults.RecipePackRecipe, isEdge bool) (corerpv20250801.RecipePackResource, error) {
+	if len(recipes) == 0 {
+		return corerpv20250801.RecipePackResource{}, errors.New("the default Kubernetes recipe pack is not available in this build of rad")
+	}
+
+	definitions := make(map[string]*corerpv20250801.RecipeDefinition, len(recipes))
+	for _, recipe := range recipes {
+		kind := corerpv20250801.RecipeKind(recipe.Kind)
+		if !slices.Contains(corerpv20250801.PossibleRecipeKindValues(), kind) {
+			return corerpv20250801.RecipePackResource{}, fmt.Errorf("default recipe for %s has unsupported kind %q", recipe.ResourceType, recipe.Kind)
+		}
+		definitions[recipe.ResourceType] = &corerpv20250801.RecipeDefinition{
+			Kind:       &kind,
+			Source:     to.Ptr(recipe.Image + ":" + resolveRecipeTag(recipe.ResourceType, isEdge)),
+			Parameters: recipe.Parameters,
 		}
 	}
 	return corerpv20250801.RecipePackResource{
 		Location: to.Ptr("global"),
 		Properties: &corerpv20250801.RecipePackProperties{
-			Recipes: recipes,
+			Recipes: definitions,
 		},
-	}
+	}, nil
 }
 
 // DefaultRecipePackID returns the full resource ID of the default recipe pack
@@ -177,16 +189,19 @@ func EnsureDefaultResourceGroup(ctx context.Context, createOrUpdate ResourceGrou
 }
 
 // GetOrCreateDefaultRecipePack attempts to GET the default recipe pack from
-// the default scope. If it doesn't exist (404), it creates it with all core
-// resource type recipes. Returns the full resource ID.
+// the default scope. If it doesn't exist (404), it creates it from
+// NewDefaultRecipePackResource. Returns the full resource ID.
 func GetOrCreateDefaultRecipePack(ctx context.Context, client *corerpv20250801.RecipePacksClient) (string, error) {
 	_, err := client.Get(ctx, DefaultResourceGroupScope, DefaultRecipePackResourceName, nil)
 	if err != nil {
 		if !clients.Is404Error(err) {
 			return "", fmt.Errorf("failed to get default recipe pack from default scope: %w", err)
 		}
-		// Not found — create the default recipe pack with all core types.
-		resource := NewDefaultRecipePackResource()
+		// Not found — create the default recipe pack.
+		resource, err := NewDefaultRecipePackResource()
+		if err != nil {
+			return "", fmt.Errorf("failed to build default recipe pack: %w", err)
+		}
 		_, err = client.CreateOrUpdate(ctx, DefaultResourceGroupScope, DefaultRecipePackResourceName, resource, nil)
 		if err != nil {
 			return "", fmt.Errorf("failed to create default recipe pack: %w", err)
@@ -195,86 +210,25 @@ func GetOrCreateDefaultRecipePack(ctx context.Context, client *corerpv20250801.R
 	return DefaultRecipePackID(), nil
 }
 
-// CoreTypesRecipeInfo defines a recipe entry for a single resource type in the default recipe pack.
-type CoreTypesRecipeInfo struct {
-	// ResourceType is the full resource type (e.g., "Radius.Compute/containers").
-	ResourceType string
-	// Source is the OCI registry location for the recipe.
-	Source string
-	// Parameters is the optional parameter bag passed to the recipe.
-	Parameters map[string]any
-}
-
-// GetCoreTypesRecipeInfo returns recipe information for all core types.
-// Each definition represents a recipe for one core resource type.
+// resolveRecipeTag picks the OCI tag for a single default recipe from the build
+// channel and the per-namespace pin recorded in deploy/manifest/defaults.yaml
+// under `resourceTypes`:
 //
-// The OCI tag pinned on each recipe source is derived from the build
-// channel and the per-namespace pin recorded in
-// deploy/manifest/defaults.yaml under `resourceTypes`:
+//   - Edge / dev builds (isEdge) always use the mutable tag "edge" so a
+//     locally-built CLI picks up whatever the recipes publishing pipeline last
+//     pushed for the tip of the recipes repository.
+//   - Release builds resolve the recipe's resource-type namespace (e.g.
+//     "Radius.Compute" for "Radius.Compute/containers") to the immutable commit
+//     SHA that defaults.yaml pins that namespace to, via
+//     defaults.ResourceTypePin. The recipes publishing pipeline tags each
+//     namespace's OCI artifacts with the same commit SHA, so a released rad CLI
+//     installs exactly the recipes published from the pinned revision.
+//   - As a defensive fallback, a namespace missing from the defaults.yaml
+//     `resourceTypes` list falls back to "edge" so a mis-configured build still
+//     installs something rather than producing an invalid OCI reference.
 //
-//   - Edge / dev builds (channel == "edge") always use the mutable tag
-//     "edge" so a locally-built CLI picks up whatever the recipes
-//     publishing pipeline last pushed for the tip of the recipes
-//     repository. This matches the "edge" convention used elsewhere
-//     for unpinned builds.
-//   - Release builds resolve the recipe's resource-type namespace
-//     (e.g. "Radius.Compute" for "Radius.Compute/containers") to the
-//     immutable commit SHA that defaults.yaml pins that namespace to,
-//     via defaults.ResourceTypePin. The recipes publishing pipeline
-//     tags each namespace's OCI artifacts with the same commit SHA,
-//     so this guarantees a released rad CLI installs exactly the
-//     recipes that were published from the pinned resource-types-contrib
-//     revision, regardless of what the mutable "edge" tag currently
-//     points at.
-//   - As a defensive fallback, a namespace missing from the
-//     defaults.yaml `resourceTypes` list falls back to "edge" so a
-//     mis-configured build still installs something rather than
-//     producing an invalid OCI reference.
-func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
-	isEdge := version.IsEdgeChannel()
-	return []CoreTypesRecipeInfo{
-		{
-			ResourceType: "Radius.Compute/containers",
-			Source:       "ghcr.io/radius-project/kube-recipes/containers:" + resolveRecipeTag("Radius.Compute/containers", isEdge),
-		},
-		{
-			ResourceType: "Radius.Compute/persistentVolumes",
-			Source:       "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + resolveRecipeTag("Radius.Compute/persistentVolumes", isEdge),
-		},
-		{
-			ResourceType: "Radius.Compute/routes",
-			Source:       "ghcr.io/radius-project/kube-recipes/routes:" + resolveRecipeTag("Radius.Compute/routes", isEdge),
-			Parameters: map[string]any{
-				"gatewayName":      DefaultRoutesGatewayName,
-				"gatewayNamespace": DefaultRoutesGatewayNamespace,
-			},
-		},
-		{
-			ResourceType: "Radius.Security/secrets",
-			Source:       "ghcr.io/radius-project/kube-recipes/secrets:" + resolveRecipeTag("Radius.Security/secrets", isEdge),
-		},
-		{
-			ResourceType: "Radius.Data/mySqlDatabases",
-			Source:       "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + resolveRecipeTag("Radius.Data/mySqlDatabases", isEdge),
-		},
-		{
-			ResourceType: "Radius.Data/postgreSqlDatabases",
-			Source:       "ghcr.io/radius-project/kube-recipes/postgresqldatabases:" + resolveRecipeTag("Radius.Data/postgreSqlDatabases", isEdge),
-		},
-		{
-			ResourceType: "Radius.Data/redisCaches",
-			Source:       "ghcr.io/radius-project/kube-recipes/rediscaches:" + resolveRecipeTag("Radius.Data/redisCaches", isEdge),
-		},
-		{
-			ResourceType: "Radius.Messaging/rabbitMQ",
-			Source:       "ghcr.io/radius-project/kube-recipes/rabbitmq:" + resolveRecipeTag("Radius.Messaging/rabbitMQ", isEdge),
-		},
-	}
-}
-
-// resolveRecipeTag picks the OCI tag for a single core-type recipe. isEdge is
-// passed in rather than read from the build-stamped channel so both branches
-// are reachable from tests. See GetCoreTypesRecipeInfo for the full contract.
+// isEdge is passed in rather than read from the build-stamped channel so both
+// branches are reachable from tests.
 func resolveRecipeTag(resourceType string, isEdge bool) string {
 	if isEdge {
 		return "edge"
