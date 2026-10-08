@@ -17,6 +17,7 @@ limitations under the License.
 package rogue
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -166,6 +167,13 @@ func Test_ParseCurlOutput(t *testing.T) {
 	}
 }
 
+func Test_DefaultImage_UsesMirror(t *testing.T) {
+	t.Parallel()
+
+	// Test images are pulled from the project's GHCR mirror rather than Docker Hub.
+	require.True(t, strings.HasPrefix(DefaultImage, "ghcr.io/radius-project/mirror/"), DefaultImage)
+}
+
 func Test_NewPod(t *testing.T) {
 	t.Parallel()
 
@@ -188,6 +196,8 @@ func Test_NewPod(t *testing.T) {
 		require.True(t, *container.SecurityContext.RunAsNonRoot)
 		require.Equal(t, runAsUser, *container.SecurityContext.RunAsUser)
 		require.False(t, *container.SecurityContext.AllowPrivilegeEscalation)
+		require.Equal(t, []corev1.Capability{"ALL"}, container.SecurityContext.Capabilities.Drop)
+		require.Equal(t, corev1.SeccompProfileTypeRuntimeDefault, container.SecurityContext.SeccompProfile.Type)
 		require.Empty(t, container.VolumeMounts)
 	})
 
