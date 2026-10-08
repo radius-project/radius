@@ -264,52 +264,22 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 
 // Test_RecipePacks_MissingNamespace_Failure tests that deployment fails when the namespace specified
 // in the Radius.Core/environments providers.kubernetes.namespace does not exist in the cluster.
-// This test validates that the system properly checks for namespace existence before deployment.
-//
-// The test consists of the following steps:
-// 1. Resource Type Registration (no namespace creation):
-//   - Registers user-defined resource type "Test.Resources/userTypeAlpha"
-//
-// 2. Resource Deployment Failure:
-//   - Attempts to deploy a Bicep template that references a non-existent namespace
-//   - Validates that the deployment fails with "Namespace 'recipepacks-ns' does not exist" error
+// The template uses an environment and namespace that no other test uses. Test_RecipePacks_Deployment
+// creates and deletes its namespace, and a namespace that is still terminating passes the existence check.
+// The environment has no recipe pack because the namespace check does not depend on recipe packs.
 func Test_RecipePacks_MissingNamespace_Failure(t *testing.T) {
-	template := "testdata/recipepacks-test.bicep"
-	appName := "recipepacks-test-app"
-	parentResourceTypeName := "Test.Resources/userTypeAlpha"
-	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
-	filepath := "testdata/testresourcetypes.yaml"
-	options := rp.NewRPTestOptions(t)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	template := "testdata/recipepacks-test-missing-namespace.bicep"
 
 	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
 		Code:            "BadRequest",
-		MessageContains: "Namespace 'recipepacks-ns' does not exist in the Kubernetes cluster. Please create it before proceeding.",
+		MessageContains: "Namespace 'recipepacks-missing-ns' does not exist in the Kubernetes cluster. Please create it before proceeding.",
 	})
 
-	test := rp.NewRPTest(t, appName, []rp.TestStep{
+	test := rp.NewRPTest(t, "recipepacks-test-app-missing-namespace", []rp.TestStep{
 		{
-			// The first step in this test is to create/register the parent user-defined resource type using the CLI.
-			// NOTE: We deliberately skip namespace creation to test the failure case
-			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				_, err := cli.ResourceTypeCreate(ctx, parentResourceTypeParam, filepath)
-				require.NoError(t, err)
-			}),
+			Executor:                               step.NewDeployErrorExecutor(template, validate),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
-				require.NoError(t, err)
-				require.Contains(t, output, parentResourceTypeName)
-			},
-		},
-		{
-			// The second step is to deploy a bicep file with a non-existent namespace - this should fail
-			Executor:                               step.NewDeployErrorExecutor(template, validate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   false,
 		},
 	})
 
