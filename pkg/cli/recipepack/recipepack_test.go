@@ -151,10 +151,10 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 	require.NotNil(t, postgreSQLRecipe)
 }
 
-// Test_newDefaultRecipePackResource_Golden pins the exact default recipe pack
+// Test_newDefaultRecipePackResource_Contents pins the exact default recipe pack
 // that rad creates. Expected values are written out literally, not derived from
 // GetCoreTypesRecipeInfo, so the test still holds when the pack's source moves.
-func Test_newDefaultRecipePackResource_Golden(t *testing.T) {
+func Test_newDefaultRecipePackResource_Contents(t *testing.T) {
 	type recipe struct {
 		resourceType string
 		image        string
