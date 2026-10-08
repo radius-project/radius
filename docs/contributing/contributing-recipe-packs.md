@@ -16,13 +16,11 @@ flowchart LR
   G --> E["rad deploy pulls Recipes"]
 ```
 
-For authoring the Recipes themselves, see the [`resource-types-contrib` contributing guide](https://github.com/radius-project/resource-types-contrib/blob/main/docs/contributing/contributing-resource-types-recipes.md). For the short in-repo checklist, see [`recipe-packs/README.md`](https://github.com/radius-project/resource-types-contrib/blob/main/recipe-packs/README.md#how-to-create-a-new-recipe-pack).
-
 ## Prerequisites
 
-- Write access to `radius-project/resource-types-contrib` and `radius-project/radius`, and permission to run their `workflow_dispatch` workflows.
+- Write access to `radius-project/resource-types-contrib`, `radius-project/radius`, and `radius-project/ai-extensions`, and permission to run `workflow_dispatch` workflows in `resource-types-contrib`.
+- If the pack needs new Recipe images: write access to the `radius-project` GHCR packages, plus [`oras`](https://oras.land/docs/installation) to tag them.
 - A test account on the target platform, plus CI credentials for it if `resource-types-contrib` doesn't already validate that platform.
-- The Recipes the pack needs, or a plan to write them. A pack can only reference Recipes that are published as OCI images or available as public modules (for example Azure Verified Modules).
 - To run `make update-recipe-packs` locally: Bash 4 or later (macOS ships Bash 3.2; install a newer one with `brew install bash`) and [`yq`](https://github.com/mikefarah/yq).
 
 ## Steps
@@ -31,37 +29,32 @@ For authoring the Recipes themselves, see the [`resource-types-contrib` contribu
 
 - Name the pack after the platform, and also the compute runtime when a platform has more than one, for example `kubernetes`, `azure-aks`, `azure-aci`. The name is the folder name, the release tag series (`recipe-pack/<pack>/vX.Y.Z`), and the `recipePacks[]` entry name, so pick it once. Renaming a pack later restarts its version series (see [Troubleshooting](#troubleshooting)).
 - List the Resource Types the pack covers. An Environment can have only one Recipe per Resource Type across all its packs, so two packs that both provide, for example, `Radius.Compute/containers` can't be attached together. Note in the pack README which packs it can be combined with.
+- List the Recipes the pack needs. A pack can only reference Recipes that are published as OCI images or available as public modules (for example Azure Verified Modules).
 
-### 2. Author and test the Recipes in `resource-types-contrib`
+### 2. Author and test the Recipes
 
-Add any new Recipes under `<Category>/<resourceType>/recipes/<platform>/` and make sure each Resource Type's `test/app.bicep` deploys with them. If the platform is new to the repository, add a validation workflow for it modeled on `.github/workflows/validate-azure-recipes.yaml`, including its cloud credentials.
+Write any new Recipes by following the [`resource-types-contrib` contributing guide](https://github.com/radius-project/resource-types-contrib/blob/main/docs/contributing/contributing-resource-types-recipes.md). If the platform is new to the repository, add a validation workflow for it modeled on `.github/workflows/validate-azure-recipes.yaml`, including its cloud credentials.
 
-### 3. Publish the Recipes as OCI images
+### 3. Publish new Recipe images
 
-Add one step per Recipe to `.github/workflows/publish-bicep-recipes.yaml`, using a platform-specific registry path, for example:
+Skip this step if every Recipe the pack references is already published with a `latest` tag.
 
-```yaml
-- name: Publish azure-aci containers
-  run: REGISTRY=ghcr.io/radius-project/azure-aci-recipes ./.github/scripts/publish-bicep-recipe.sh containers Compute/containers/recipes/azure/bicep/azure-aci-containers.bicep
-```
+1. Add one step per new Recipe to `.github/workflows/publish-bicep-recipes.yaml`, using a platform-specific registry, for example `REGISTRY=ghcr.io/radius-project/azure-aci-recipes`. After it merges, the push to `main` publishes each image with a commit-SHA tag and `edge`.
+2. Make sure each new GHCR package can be pulled anonymously. A `radius-project` organization admin must make private packages public.
+3. Add a `latest` tag to each **new** image. The pack references `:latest`, which normally moves only during the final Radius release ([release Step 7](./contributing-releases/README.md#step-7-publish-docs-samples-and-recipes)). Packs are released earlier, during the RC, and **Release Recipe Pack** fails its Recipe source check if a `:latest` image is missing. Point `latest` at the commit-SHA tag from step 1, and skip images that already have one:
 
-After the change merges, the push to `main` publishes each image with a commit-SHA tag and `edge`. Confirm that each new GHCR package can be pulled anonymously. If a package is private, a `radius-project` organization admin must make it public. Release automation and users pull these images without credentials.
+   ```bash
+   IMAGE=ghcr.io/radius-project/<registry>/<recipe>
+   oras manifest fetch --descriptor "$IMAGE:latest" || oras tag "$IMAGE:<commit-sha>" latest
+   ```
+
+Don't run **Publish Bicep Recipes** with an existing `release_version` to create these tags. It republishes every Recipe from `main`, which overwrites that version's released images and moves `latest` for every existing Recipe.
 
 ### 4. Add the pack to `resource-types-contrib`
 
-1. Create `recipe-packs/<pack>/<pack>.bicep` declaring a single `Radius.Core/recipePacks` resource named `<pack>`, with one `recipes` entry per Resource Type. Reference in-repo Recipes by `ghcr.io/radius-project/<registry>/<recipe>:latest`. `make validate-recipe-packs` enforces the single-resource rule.
-2. Add `recipe-packs/<pack>/README.md` listing the Recipes, parameters, and how to deploy and attach the pack.
-3. Add the pack to the table in `recipe-packs/README.md`.
-4. Add `<pack>` to the `recipe_pack` choice list in `.github/workflows/release-recipe-pack.yaml`.
-5. Deploy the checked-in pack in the platform's validation workflow so CI catches broken pack files. For Azure, this is a `.github/scripts/deploy-checked-in-azure-recipe-pack.sh recipe-packs/<pack>/<pack>.bicep <pack>` step in `validate-azure-recipes.yaml`.
+Follow the checklist in [`recipe-packs/README.md`](https://github.com/radius-project/resource-types-contrib/blob/main/recipe-packs/README.md#how-to-create-a-new-recipe-pack): add `recipe-packs/<pack>/<pack>.bicep` and its README, list the pack in the packs table, and add it to the `recipe_pack` choices in `release-recipe-pack.yaml`. Also deploy the checked-in pack in the platform's validation workflow so CI catches broken pack files. For Azure, add a `.github/scripts/deploy-checked-in-azure-recipe-pack.sh recipe-packs/<pack>/<pack>.bicep <pack>` step to `validate-azure-recipes.yaml`.
 
-### 5. Create the `latest` image tags
-
-The pack references `:latest`, but a push to `main` only moves `edge`. `latest` moves only when **Publish Bicep Recipes** runs with a stable `release_version`, which the [release process](./contributing-releases/README.md#step-7-publish-docs-samples-and-recipes) does during the final Radius release. Recipe Packs are released earlier, during the RC ([step 7](#7-release-the-pack)), and **Release Recipe Pack** fails its Recipe source check if a referenced `:latest` image doesn't exist.
-
-Before releasing the pack, run **Publish Bicep Recipes** from `main` with `release_version` set to the current stable Radius version so that every new Recipe image has a `latest` tag. This step is required, not optional.
-
-### 6. Register the pack in Radius
+### 5. Register the pack in Radius
 
 Radius ignores release notifications for packs that aren't listed in `defaults.yaml`, so register the pack **before** its first release. In `radius`, add an entry under `recipePacks` in [`deploy/manifest/defaults.yaml`](../../deploy/manifest/defaults.yaml), pinned to the `resource-types-contrib` commit that adds the pack. Until the pack has a stable release, `tag` is empty (an edge pin):
 
@@ -73,28 +66,18 @@ recipePacks:
     tag: ""
 ```
 
-Get the SHA with `git ls-remote https://github.com/radius-project/resource-types-contrib refs/heads/main`, or let the tooling resolve it:
+`make update-recipe-packs RECIPE_PACKS_NAME=<pack>` resolves the SHA for you. The **Verify resource type copies are in sync** check validates the entry: `ref` must be a full SHA and `recipe-packs/<pack>/` must exist at that ref.
 
-```bash
-make update-recipe-packs RECIPE_PACKS_NAME=<pack>
-```
+### 6. Release the pack
 
-The **Verify resource type copies are in sync** check (`verify-resource-types-manifest.yaml`) validates the entry: `ref` must be a full SHA and `recipe-packs/<pack>/` must exist at that ref. Open the PR with a conventional-commit title (for example `chore: add <pack> recipe pack`).
+Release the pack with the other packs in [Step 2 of the RC process](./contributing-releases/README.md#step-2-release-resource-type-namespaces-and-recipe-packs). Its first release is `v0.1.0`. The **Notify Radius** job then moves the `defaults.yaml` pin from the edge commit to the stable tag through the `bot/update-resource-types` PR.
 
-### 7. Release the pack
+### 7. Update consumers
 
-Release packs as part of a Radius release, in [Step 2 of the RC process](./contributing-releases/README.md#step-2-release-resource-type-namespaces-and-recipe-packs), after the `latest` tags from [step 5](#5-create-the-latest-image-tags) exist:
+`ai-extensions` reads the pack catalog from the `defaults.yaml` of the Radius release it pins, so a new pack is visible to it only after that pin moves to a stable Radius release that contains the pack:
 
-1. In `resource-types-contrib`, run **Release Recipe Pack** from `main` with the new pack and `dry_run` enabled. Check the computed version (`minor` on a pack with no releases gives `v0.1.0`) and that the run passes the Recipe source check.
-2. Run it again with `dry_run` disabled and `prerelease_label` empty. The workflow creates `recipe-pack/<pack>/vX.Y.Z`, and **Notify Radius** updates the `bot/update-resource-types` PR in `radius`, which moves the pin from the edge commit to the stable tag.
-3. Review and merge that PR before the release branch is cut.
-
-### 8. Update consumers
-
-Tools that select a pack by name need to learn the new one. In `ai-extensions`:
-
-- `radius_contrib_recipe_pack_url <pack> <pack>.bicep` in the provider deploy workflows (for example `.github/extension/run-rad-commands-azure.yml`) builds the pack URL at a pinned `catalog-ref`. `build/scripts/verify-contrib-consumers.sh` checks every such reference.
-- The `radius-app-bicep` skill reads `recipePacks[]` from the installed Radius release's `defaults.yaml` (`extensions/radius/skills/radius-app-bicep/scripts/radius-recipe-pack.mjs`).
+- Bump `RADIUS_INSTALL_REF` and `RADIUS_INSTALL_COMMIT` in `.github/extension/actions/setup-control-plane/action.yml` and the matching `packages/adapter-shared/src/radius-release.json`. `build/scripts/update-radius-installer.sh` updates all three to the latest Radius release. The `load-contrib-catalog` action derives `catalog-ref` from `RADIUS_INSTALL_COMMIT`, so don't set `catalog-ref` directly.
+- Reference the pack with `radius_contrib_recipe_pack_url <pack> <pack>.bicep` in the provider deploy workflow that should use it (for example `.github/extension/run-rad-commands-azure.yml`). `build/scripts/verify-contrib-consumers.sh` checks that every such reference resolves in the pinned catalog.
 
 Also document the pack for users in [`radius-project/docs`](https://github.com/radius-project/docs).
 
@@ -115,8 +98,8 @@ The pack is ready to ship when:
 
 ## Troubleshooting
 
-- **Release Recipe Pack fails the Recipe source check.** A referenced image or tag can't be pulled anonymously. Make the GHCR package public, or create `latest` as described in [step 5](#5-create-the-latest-image-tags).
-- **A pack release didn't update `defaults.yaml`.** The pack isn't listed under `recipePacks`; Radius skips names it doesn't know. Register it ([step 6](#6-register-the-pack-in-radius)); `make update-recipe-packs RECIPE_PACKS_NAME=<pack>` then pins the existing stable release.
+- **Release Recipe Pack fails the Recipe source check.** A referenced image or tag can't be pulled anonymously. Make the GHCR package public, or add the missing `latest` tag as described in [step 3](#3-publish-new-recipe-images).
+- **A pack release didn't update `defaults.yaml`.** The pack isn't listed under `recipePacks`; Radius skips names it doesn't know. Register it ([step 5](#5-register-the-pack-in-radius)); `make update-recipe-packs RECIPE_PACKS_NAME=<pack>` then pins the existing stable release.
 - **`make update-recipe-packs` fails with `declare: -A: invalid option`.** The script needs Bash 4 or later. Run it with a newer Bash, or edit the entry by hand and rely on the CI check.
 - **The sync check fails with "must pin a full commit SHA" or "uses edge ref …, but stable release … exists".** Use a 40-character SHA. Once a pack has a stable release, an edge pin can no longer be used for it; run `make update-recipe-packs RECIPE_PACKS_NAME=<pack>` to pin the latest stable release.
 - **`rad env update --recipe-packs` fails with "Resource type '…' is defined in multiple recipe packs".** Two attached packs provide the same Resource Type. Attach only one of them, or split the overlapping types into a separate pack.
