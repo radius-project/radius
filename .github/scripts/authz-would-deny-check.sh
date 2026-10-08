@@ -204,9 +204,7 @@ scan_dir() {
     local dir="$1" file label line issue
     find "${dir}" -type f -print0 >"${WORK_DIR}/files" \
         || die "could not enumerate logs in ${dir}"
-    sort -z "${WORK_DIR}/files" >"${WORK_DIR}/sorted-files" \
-        || die "could not sort logs in ${dir}"
-    [[ -s "${WORK_DIR}/sorted-files" ]] \
+    [[ -s "${WORK_DIR}/files" ]] \
         || die "no log files found in ${dir}"
     while IFS= read -r -d '' file; do
         label="$(source_label "${file}" "${dir}")"
@@ -220,7 +218,7 @@ scan_dir() {
                 ((++FOUND))
             fi
         done <"${WORK_DIR}/matches"
-    done <"${WORK_DIR}/sorted-files"
+    done <"${WORK_DIR}/files"
 }
 
 while [[ $# -gt 0 ]]; do
