@@ -781,45 +781,6 @@ func (c *MockApplicationsManagementClientGetEnvironmentCall) DoAndReturn(f func(
 	return c
 }
 
-// GetRecipeMetadata mocks base method.
-func (m *MockApplicationsManagementClient) GetRecipeMetadata(ctx context.Context, environmentNameOrID string, recipe v20231001preview.RecipeGetMetadata) (v20231001preview.RecipeGetMetadataResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecipeMetadata", ctx, environmentNameOrID, recipe)
-	ret0, _ := ret[0].(v20231001preview.RecipeGetMetadataResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetRecipeMetadata indicates an expected call of GetRecipeMetadata.
-func (mr *MockApplicationsManagementClientMockRecorder) GetRecipeMetadata(ctx, environmentNameOrID, recipe any) *MockApplicationsManagementClientGetRecipeMetadataCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetRecipeMetadata), ctx, environmentNameOrID, recipe)
-	return &MockApplicationsManagementClientGetRecipeMetadataCall{Call: call}
-}
-
-// MockApplicationsManagementClientGetRecipeMetadataCall wrap *gomock.Call
-type MockApplicationsManagementClientGetRecipeMetadataCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockApplicationsManagementClientGetRecipeMetadataCall) Return(arg0 v20231001preview.RecipeGetMetadataResponse, arg1 error) *MockApplicationsManagementClientGetRecipeMetadataCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockApplicationsManagementClientGetRecipeMetadataCall) Do(f func(context.Context, string, v20231001preview.RecipeGetMetadata) (v20231001preview.RecipeGetMetadataResponse, error)) *MockApplicationsManagementClientGetRecipeMetadataCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockApplicationsManagementClientGetRecipeMetadataCall) DoAndReturn(f func(context.Context, string, v20231001preview.RecipeGetMetadata) (v20231001preview.RecipeGetMetadataResponse, error)) *MockApplicationsManagementClientGetRecipeMetadataCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // GetRecipePack mocks base method.
 func (m *MockApplicationsManagementClient) GetRecipePack(ctx context.Context, recipePackNameOrID string) (v20250801preview.RecipePackResource, error) {
 	m.ctrl.T.Helper()

@@ -627,25 +627,6 @@ func (amc *UCPApplicationsManagementClient) DeleteRecipePack(ctx context.Context
 	return response.StatusCode != 204, nil
 }
 
-// GetRecipeMetadata shows recipe details including list of all parameters for a given recipe registered to an environment.
-func (amc *UCPApplicationsManagementClient) GetRecipeMetadata(ctx context.Context, environmentNameOrID string, recipeMetadata corerpv20231001.RecipeGetMetadata) (corerpv20231001.RecipeGetMetadataResponse, error) {
-	scope, name, err := amc.extractScopeAndName(environmentNameOrID)
-	if err != nil {
-		return corerpv20231001.RecipeGetMetadataResponse{}, err
-	}
-	client, err := amc.createEnvironmentClient(scope)
-	if err != nil {
-		return corerpv20231001.RecipeGetMetadataResponse{}, err
-	}
-
-	resp, err := client.GetMetadata(ctx, name, recipeMetadata, &corerpv20231001.EnvironmentsClientGetMetadataOptions{})
-	if err != nil {
-		return corerpv20231001.RecipeGetMetadataResponse{}, err
-	}
-
-	return resp.RecipeGetMetadataResponse, nil
-}
-
 // CreateOrUpdateEnvironment creates an environment by its name (or id).
 func (amc *UCPApplicationsManagementClient) CreateOrUpdateEnvironment(ctx context.Context, environmentNameOrID string, resource *corerpv20231001.EnvironmentResource) error {
 	scope, name, err := amc.extractScopeAndName(environmentNameOrID)

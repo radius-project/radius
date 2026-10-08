@@ -54,7 +54,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	return cmd, runner
 }
 
-// Runner is the runner implementation for the `rad recipe list` command.
+// Runner is the runner implementation for the `rad recipe-pack list` command.
 type Runner struct {
 	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory
@@ -64,7 +64,7 @@ type Runner struct {
 	Group             string
 }
 
-// NewRunner creates a new instance of the `rad recipe list` runner.
+// NewRunner creates a new instance of the `rad recipe-pack list` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),

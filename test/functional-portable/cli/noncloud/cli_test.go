@@ -41,6 +41,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/version"
 
@@ -55,104 +56,6 @@ import (
 const (
 	retries = 10
 )
-
-func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
-	options := rp.NewRPTestOptions(t)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	envName := test.Steps[0].RPResources.Resources[0].Name
-	registry := strings.TrimPrefix(testutil.GetBicepRecipeRegistry(), "registry=")
-	version := strings.TrimPrefix(testutil.GetBicepRecipeVersion(), "version=")
-	resourceType := "Applications.Datastores/redisCaches"
-	file := "../../../testrecipes/test-bicep-recipes/corerp-redis-recipe.bicep"
-
-	target := fmt.Sprintf("br:%s/dev/test-bicep-recipes/redis-recipe:%s",
-		strings.TrimPrefix(registry, "registry="), generateUniqueTag())
-
-	recipeName := "recipeName"
-	recipeTemplate := fmt.Sprintf("%s/recipes/local-dev/rediscaches:%s", registry, version)
-
-	bicepRecipe := "recipe1"
-	bicepRecipeTemplate := fmt.Sprintf("%s/test/testrecipes/test-bicep-recipes/corerp-redis-recipe:%s", registry, version)
-	templateKindBicep := "bicep"
-
-	terraformRecipe := "recipe2"
-	terraformRecipeTemplate := "Azure/cosmosdb/azurerm"
-	templateKindTerraform := "terraform"
-
-	t.Run("Validate rad recipe register", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, false)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully linked recipe")
-	})
-
-	t.Run("Validate rad recipe register with insecure registry", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, true)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully linked recipe")
-	})
-
-	t.Run("Validate rad recipe list", func(t *testing.T) {
-		output, err := cli.RecipeList(ctx, envName)
-		require.NoError(t, err)
-		require.Regexp(t, bicepRecipe, output)
-		require.Regexp(t, terraformRecipe, output)
-		require.Regexp(t, recipeName, output)
-		require.Regexp(t, resourceType, output)
-		require.Regexp(t, bicepRecipeTemplate, output)
-		require.Regexp(t, terraformRecipeTemplate, output)
-		require.Regexp(t, recipeTemplate, output)
-		require.Regexp(t, templateKindBicep, output)
-		require.Regexp(t, templateKindTerraform, output)
-	})
-
-	t.Run("Validate rad recipe unregister", func(t *testing.T) {
-		output, err := cli.RecipeUnregister(ctx, envName, recipeName, resourceType)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully unregistered recipe")
-	})
-
-	t.Run("Validate rad recipe show", func(t *testing.T) {
-		output, err := cli.RecipeShow(ctx, envName, bicepRecipe, resourceType)
-		require.NoError(t, err)
-		require.Contains(t, output, bicepRecipe)
-		require.Contains(t, output, bicepRecipeTemplate)
-		require.Contains(t, output, resourceType)
-		require.Contains(t, output, "redisName")
-		require.Contains(t, output, "string")
-	})
-
-	t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
-		showRecipeName := "redistesttf"
-		moduleServer := strings.TrimPrefix(testutil.GetTerraformRecipeModuleServerURL(), "moduleServer=")
-		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip//modules", moduleServer)
-		showRecipeResourceType := "Applications.Datastores/redisCaches"
-		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeResourceType, false)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully linked recipe")
-		output, err = cli.RecipeShow(ctx, envName, showRecipeName, showRecipeResourceType)
-		require.NoError(t, err)
-		require.Contains(t, output, showRecipeName)
-		require.Contains(t, output, showRecipeTemplate)
-		require.Contains(t, output, showRecipeResourceType)
-		require.Contains(t, output, "redis_cache_name")
-		require.Contains(t, output, "string")
-	})
-
-	t.Run("Validate `rad bicep publish` is publishing the file to the given target", func(t *testing.T) {
-		output, err := cli.BicepPublish(ctx, file, target)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully published")
-	})
-
-	t.Run("Validate rad recipe register with recipe name conflicting with existing recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, bicepRecipe, templateKindBicep, recipeTemplate, resourceType, false)
-		require.Contains(t, output, "Successfully linked recipe")
-		require.NoError(t, err)
-		output, err = cli.RecipeList(ctx, envName)
-		require.NoError(t, err)
-		require.Regexp(t, recipeTemplate, output)
-	})
-}
 
 func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 	options := rp.NewRPTestOptions(t)
@@ -731,30 +634,6 @@ func Test_CLI_Only_version(t *testing.T) {
 	require.Regexp(t, expected, objectformats.TrimSpaceMulti(output))
 }
 
-func Test_RecipeCommands(t *testing.T) {
-	template := "testdata/corerp-resources-recipe-env.bicep"
-	name := "corerp-resources-recipe-env"
-
-	test := rp.NewRPTest(t, name, []rp.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: "corerp-resources-recipe-env",
-						Type: validation.EnvironmentsResource,
-					},
-				},
-			},
-			// Environment should not render any K8s Objects directly
-			K8sObjects:     &validation.K8sObjectSet{},
-			PostStepVerify: verifyRecipeCLI,
-		},
-	})
-
-	test.Test(t)
-}
-
 // This test creates an environment by directly calling the CreateEnvironment function to test dev recipes.
 // After dev recipes are confirmed, the environment is deleted.
 func Test_DevRecipes(t *testing.T) {
@@ -788,9 +667,14 @@ func Test_DevRecipes(t *testing.T) {
 	err := basicRunner.CreateEnvironment(ctx)
 	require.NoError(t, err)
 
-	output, err := cli.RecipeList(ctx, envName)
+	// Read the registered recipes back from the environment resource. `rad recipe list` used to
+	// provide this readout, but the recipe commands have been removed in favour of recipe packs.
+	managementClient, err := connections.DefaultFactory.CreateApplicationsManagementClient(ctx, *basicRunner.Workspace)
 	require.NoError(t, err)
-	require.Regexp(t, "default", output)
+
+	environment, err := managementClient.GetEnvironment(ctx, envName)
+	require.NoError(t, err)
+	require.NotNil(t, environment.Properties)
 
 	tag := version.Channel()
 	if version.IsEdgeChannel() {
@@ -798,8 +682,16 @@ func Test_DevRecipes(t *testing.T) {
 	}
 
 	for _, devRecipe := range radinit.AvailableDevRecipes() {
-		require.Regexp(t, devRecipe.ResourceType, output)
-		require.Regexp(t, devRecipe.RepoPath+":"+tag, output)
+		recipes, ok := environment.Properties.Recipes[devRecipe.ResourceType]
+		require.Truef(t, ok, "no recipes registered for resource type %q", devRecipe.ResourceType)
+
+		properties, ok := recipes["default"]
+		require.Truef(t, ok, "no %q recipe registered for resource type %q", "default", devRecipe.ResourceType)
+
+		bicepProperties, ok := properties.(*corerp.BicepRecipeProperties)
+		require.Truef(t, ok, "recipe %q for resource type %q is not a Bicep recipe", "default", devRecipe.ResourceType)
+		require.NotNil(t, bicepProperties.TemplatePath)
+		require.Equal(t, devRecipe.RepoPath+":"+tag, *bicepProperties.TemplatePath)
 	}
 
 	err = cli.EnvDelete(ctx, envName)
@@ -835,6 +727,26 @@ func generateUniqueTag() string {
 	random := rand.Intn(1000)
 	tag := fmt.Sprintf("test-%d-%d", timestamp, random)
 	return tag
+}
+
+// Test_BicepPublish validates that `rad bicep publish` pushes a Bicep file to the given OCI target.
+// This previously ran as a subtest of the recipe CLI verification, which was removed along with the
+// `rad recipe` commands. `rad bicep publish` is unaffected by that removal, so the coverage is kept
+// here as a standalone test.
+func Test_BicepPublish(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	registry := strings.TrimPrefix(testutil.GetBicepRecipeRegistry(), "registry=")
+	file := "../../../testrecipes/test-bicep-recipes/corerp-redis-recipe.bicep"
+	target := fmt.Sprintf("br:%s/dev/test-bicep-recipes/redis-recipe:%s", registry, generateUniqueTag())
+
+	output, err := cli.BicepPublish(ctx, file, target)
+	require.NoError(t, err)
+	require.Contains(t, output, "Successfully published")
 }
 
 func Test_RecipePack(t *testing.T) {
