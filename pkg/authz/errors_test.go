@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -74,6 +75,99 @@ func Test_Apply_DeniedErrorCarriesActionAndTarget(t *testing.T) {
 	require.ErrorAs(t, err, &denied)
 	require.Equal(t, decision.Action, denied.Action)
 	require.Equal(t, decision.Target, denied.Target)
+}
+
+func Test_Apply_DeniedErrorCarriesRule(t *testing.T) {
+	t.Parallel()
+
+	decision := Decision{
+		Code:   v1.CodeAdmissionPolicyDenied,
+		Action: "Applications.Core/containers/write",
+		Target: "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/containers/c",
+		Rule:   "control-plane-secret",
+	}
+
+	var denied *DeniedError
+	require.ErrorAs(t, Apply(t.Context(), ModeEnforce, decision), &denied)
+	require.Equal(t, decision.Rule, denied.Rule)
+}
+
+func Test_DeniedError_AdmissionPolicyDeniedNamesRule(t *testing.T) {
+	t.Parallel()
+
+	const (
+		action = "Applications.Core/containers/write"
+		target = "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/containers/c"
+	)
+	denied := &DeniedError{
+		Code:   v1.CodeAdmissionPolicyDenied,
+		Reason: "pod mounts secret radius-system/ucp-cert owned by bob@example.com",
+		Action: action,
+		Target: target,
+		Rule:   "control-plane-secret",
+	}
+
+	body, err := denied.ErrorResponse()
+	require.NoError(t, err)
+	require.Equal(t, v1.CodeAdmissionPolicyDenied, body.Error.Code)
+	require.Equal(t, target, body.Error.Target)
+	require.Equal(t, "Authorization denied for action '"+action+"' on target '"+target+"' by admission rule 'control-plane-secret'", body.Error.Message)
+
+	response, err := denied.Response()
+	require.NoError(t, err)
+	w := httptest.NewRecorder()
+	require.NoError(t, response.Apply(t.Context(), w, httptest.NewRequest(http.MethodPut, "/", nil)))
+	require.Equal(t, http.StatusForbidden, w.Code)
+	require.Contains(t, w.Body.String(), "control-plane-secret")
+	require.NotContains(t, w.Body.String(), "bob@example.com")
+	require.NotContains(t, w.Body.String(), "ucp-cert")
+}
+
+func Test_DeniedError_AdmissionPolicyDeniedRequiresValidRule(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		rule string
+	}{
+		{name: "missing"},
+		{name: "blank", rule: " \t"},
+		{name: "free text", rule: "denied because bob@example.com owns it"},
+		{name: "email", rule: "bob@example.com"},
+		{name: "quote", rule: "rule'injected"},
+		{name: "too long", rule: strings.Repeat("a", 129)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			denied := &DeniedError{
+				Code:   v1.CodeAdmissionPolicyDenied,
+				Action: "read",
+				Target: "/requested",
+				Rule:   tt.rule,
+			}
+			body, err := denied.ErrorResponse()
+			require.EqualError(t, err, "admission policy response requires a valid rule identifier")
+			require.Equal(t, v1.ErrorResponse{}, body)
+			response, err := denied.Response()
+			require.EqualError(t, err, "admission policy response requires a valid rule identifier")
+			require.Nil(t, response)
+		})
+	}
+}
+
+func Test_DeniedError_RuleOmittedForOtherCodes(t *testing.T) {
+	t.Parallel()
+
+	denied := &DeniedError{
+		Code:   v1.CodeAuthorizationFailed,
+		Action: "read",
+		Target: "/requested",
+		Rule:   "control-plane-secret",
+	}
+	body, err := denied.ErrorResponse()
+	require.NoError(t, err)
+	require.Equal(t, "Authorization denied for action 'read' on target '/requested'", body.Error.Message)
 }
 
 func Test_DeniedError_ErrorResponse(t *testing.T) {
