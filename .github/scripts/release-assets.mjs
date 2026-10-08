@@ -65,33 +65,61 @@ function findAsset(assets, name) {
   return matches[0];
 }
 
+async function deleteStarterAsset(github, owner, repo, release, asset) {
+  if (asset?.state !== "starter") {
+    return false;
+  }
+  if (!release.draft) {
+    throw new Error(
+      `Cannot replace incomplete asset ${asset.name} on a published release`
+    );
+  }
+  await github.rest.repos.deleteReleaseAsset({
+    owner,
+    repo,
+    asset_id: asset.id
+  });
+  return true;
+}
+
 async function uploadAssetData(github, owner, repo, release, name, data) {
+  const maxUploadAttempts = 3;
   let response;
   let assets;
-  try {
-    response = await github.rest.repos.uploadReleaseAsset({
-      owner,
-      repo,
-      release_id: release.id,
-      name,
-      headers: {
-        "content-type":
-          name.endsWith(".json") ? "application/json" : "text/plain",
-        "content-length": data.length
-      },
-      data
-    });
-  } catch (error) {
-    assets = await listAssets(github, owner, repo, release.id);
-    const uncertain = findAsset(assets, name);
-    if (!uncertain) {
-      throw error;
+  for (let attempt = 1; attempt <= maxUploadAttempts; attempt++) {
+    try {
+      response = await github.rest.repos.uploadReleaseAsset({
+        owner,
+        repo,
+        release_id: release.id,
+        name,
+        headers: {
+          "content-type":
+            name.endsWith(".json") ? "application/json" : "text/plain",
+          "content-length": data.length
+        },
+        data
+      });
+      break;
+    } catch (error) {
+      assets = await listAssets(github, owner, repo, release.id);
+      const uncertain = findAsset(assets, name);
+      if (!uncertain) {
+        throw error;
+      }
+      if (await deleteStarterAsset(github, owner, repo, release, uncertain)) {
+        if (attempt === maxUploadAttempts) {
+          throw error;
+        }
+        continue;
+      }
+      const remote = await downloadAsset(github, owner, repo, uncertain.id);
+      if (Buffer.compare(data, remote) !== 0) {
+        throw error;
+      }
+      response = { data: uncertain };
+      break;
     }
-    const remote = await downloadAsset(github, owner, repo, uncertain.id);
-    if (Buffer.compare(data, remote) !== 0) {
-      throw error;
-    }
-    response = { data: uncertain };
   }
   assets = await listAssets(github, owner, repo, release.id);
   const uploaded = findAsset(assets, name);
@@ -139,7 +167,10 @@ async function uploadFile(github, core, owner, repo, release, file) {
   const data = await readFile(file);
   const immutable = core.getInput("IMMUTABLE") === "true";
   let assets = await listAssets(github, owner, repo, release.id);
-  const existing = findAsset(assets, name);
+  let existing = findAsset(assets, name);
+  if (await deleteStarterAsset(github, owner, repo, release, existing)) {
+    existing = undefined;
+  }
 
   if (existing) {
     const remote = await downloadAsset(github, owner, repo, existing.id);

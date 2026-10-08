@@ -7,7 +7,7 @@ import test from "node:test";
 
 import releaseAssets from "./release-assets.mjs";
 
-function fixture({ draft = true, assets = [] } = {}) {
+function fixture({ draft = true, assets = [], starterFailures = 0 } = {}) {
   const outputs = {};
   const calls = { deleted: [], uploaded: [] };
   let nextID = 100;
@@ -15,10 +15,24 @@ function fixture({ draft = true, assets = [] } = {}) {
   const contents = new Map(
     assets.map((asset) => [asset.id, Buffer.from(asset.contents)])
   );
-  const currentAssets = assets.map(({ id, name }) => ({ id, name }));
+  const currentAssets = assets.map(({ id, name, state = "uploaded" }) => ({
+    id,
+    name,
+    state
+  }));
   const github = {
     paginate: async (method) => method(),
-    request: async (_route, { asset_id }) => ({ data: contents.get(asset_id) }),
+    request: async (_route, { asset_id }) => {
+      if (
+        currentAssets.find((asset) => asset.id === asset_id)?.state ===
+        "starter"
+      ) {
+        throw Object.assign(new Error("Asset is not uploaded"), {
+          status: 404
+        });
+      }
+      return { data: contents.get(asset_id) };
+    },
     rest: {
       repos: {
         listReleases: async () => [release],
@@ -32,10 +46,22 @@ function fixture({ draft = true, assets = [] } = {}) {
           contents.delete(asset_id);
         },
         uploadReleaseAsset: async ({ name, data }) => {
-          const asset = { id: nextID++, name };
+          const incomplete = starterFailures > 0;
+          const asset = {
+            id: nextID++,
+            name,
+            state: incomplete ? "starter" : "uploaded"
+          };
           calls.uploaded.push(name);
           currentAssets.push(asset);
-          contents.set(asset.id, Buffer.from(data));
+          contents.set(
+            asset.id,
+            incomplete ? Buffer.alloc(0) : Buffer.from(data)
+          );
+          if (incomplete) {
+            starterFailures--;
+            throw Object.assign(new Error("502 Bad Gateway"), { status: 502 });
+          }
           return { data: asset };
         }
       }
@@ -160,6 +186,117 @@ test("reconciles an upload accepted before a network error", async () => {
     await releaseAssets(state);
     assert.deepEqual(state.calls.uploaded, ["lock.json"]);
     assert.equal(state.outputs.reused, "false");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("retries an immutable draft upload after removing a starter asset", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
+  try {
+    const file = path.join(root, "lock.json");
+    await writeFile(file, "complete");
+    const state = fixture({ starterFailures: 1 });
+    Object.assign(state.inputs, {
+      OWNER: "radius-project",
+      REPO: "radius",
+      TAG: "v0.61.0",
+      MODE: "upload",
+      FILE: file,
+      IMMUTABLE: "true"
+    });
+    await releaseAssets(state);
+    assert.deepEqual(state.calls.deleted, [100]);
+    assert.deepEqual(state.calls.uploaded, ["lock.json", "lock.json"]);
+    assert.equal(state.outputs.asset_id, "101");
+    assert.equal(state.outputs.reused, "false");
+    assert.deepEqual(await state.github.rest.repos.listReleaseAssets(), [
+      { id: 101, name: "lock.json", state: "uploaded" }
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("bounds starter upload retries and permits a later rerun", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
+  try {
+    const file = path.join(root, "lock.json");
+    await writeFile(file, "complete");
+    const state = fixture({ starterFailures: 3 });
+    Object.assign(state.inputs, {
+      OWNER: "radius-project",
+      REPO: "radius",
+      TAG: "v0.61.0",
+      MODE: "upload",
+      FILE: file,
+      IMMUTABLE: "true"
+    });
+    await assert.rejects(() => releaseAssets(state), /502 Bad Gateway/);
+    assert.equal(state.calls.uploaded.length, 3);
+    assert.deepEqual(state.calls.deleted, [100, 101, 102]);
+    assert.equal(state.outputs.uploaded_files, undefined);
+
+    await releaseAssets(state);
+    assert.equal(state.calls.uploaded.length, 4);
+    assert.equal(state.outputs.asset_id, "103");
+    assert.equal(state.outputs.uploaded_files, "1");
+    assert.deepEqual(await state.github.rest.repos.listReleaseAssets(), [
+      { id: 103, name: "lock.json", state: "uploaded" }
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+for (const localContents of ["complete", ""]) {
+  test(`replaces a pre-existing draft starter for ${localContents ? "nonempty" : "empty"} data`, async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
+    try {
+      const file = path.join(root, "lock.json");
+      await writeFile(file, localContents);
+      const state = fixture({
+        assets: [{ id: 7, name: "lock.json", state: "starter", contents: "" }]
+      });
+      Object.assign(state.inputs, {
+        OWNER: "radius-project",
+        REPO: "radius",
+        TAG: "v0.61.0",
+        MODE: "upload",
+        FILE: file,
+        IMMUTABLE: "true"
+      });
+      await releaseAssets(state);
+      assert.deepEqual(state.calls.deleted, [7]);
+      assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+      assert.equal(state.outputs.reused, "false");
+      assert.equal(state.outputs.asset_id, "100");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
+test("never removes a starter asset from a published release", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
+  try {
+    const file = path.join(root, "lock.json");
+    await writeFile(file, "complete");
+    const state = fixture({
+      draft: false,
+      assets: [{ id: 7, name: "lock.json", state: "starter", contents: "" }]
+    });
+    Object.assign(state.inputs, {
+      OWNER: "radius-project",
+      REPO: "radius",
+      TAG: "v0.61.0",
+      MODE: "upload",
+      FILE: file,
+      IMMUTABLE: "true"
+    });
+    await assert.rejects(() => releaseAssets(state), /published release/i);
+    assert.deepEqual(state.calls.deleted, []);
+    assert.deepEqual(state.calls.uploaded, []);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
