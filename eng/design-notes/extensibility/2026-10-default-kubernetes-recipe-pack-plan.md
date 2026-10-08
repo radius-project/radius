@@ -70,7 +70,7 @@ Which commit the script writes (`build/scripts/sync-resource-types.sh`):
 
 - Resource types: pinned AND copied. `make sync-resource-types` copies each manifest into `deploy/manifest/built-in-providers/{dev,self-hosted}/`. The control plane registers them at startup. CI (`verify-resource-types-manifest.yaml`) re-runs the copy and fails on any diff ("drift check").
 - Recipe packs: pinned only. The sync checks that `recipe-packs/<pack>/` exists at the pinned commit (`copy_manifests`, "Verified recipe pack") and copies nothing. Nothing in radius `main` reads the `recipePacks` pins today. The deploy workflows that used to read them (`.github/extension/`) moved to radius-project/ai-extensions in #12719 (Aug 31), and ai-extensions does its own pack handling.
-- Consequence: after P0 the new pin is recorded but unused. `rad` starts using it only after PR 4.
+- Consequence: after P0 the new pin is recorded but unused. `rad` starts using it only after PR 3.
 
 ### 1.6 How `rad` creates the default pack today
 
@@ -122,36 +122,35 @@ Which commit the script writes (`build/scripts/sync-resource-types.sh`):
 
 ## 5. Work plan
 
-The radius work is a stack of 5 PRs. Each PR targets the branch of the PR below it, so each diff stays small and reviewable. The contrib work is in a different repo and cannot be part of the stack; it is a prerequisite.
+The radius work is a stack of 4 PRs. Each PR targets the branch of the PR below it, so each diff stays small and reviewable. The contrib work is in a different repo and cannot be part of the stack; it is a prerequisite.
 
 ```text
 contrib:  C1 add PostgreSQL -> C2 release v0.3.0 -> (bot) pin bump PR merged to radius main
-radius:   main <- PR 1 <- PR 2 <- PR 3 <- PR 4 <- PR 5
-contrib:  C3 README (after PR 4 merges)
+radius:   main <- PR 1 <- PR 2 <- PR 3 <- PR 4
+contrib:  C3 README (after PR 3 merges)
 ```
 
-| Order | Step | Repo    | Base branch | Summary                                                  | Merge gate                          |
-|-------|------|---------|-------------|----------------------------------------------------------|-------------------------------------|
-| 1     | C1   | contrib | `main`      | Add PostgreSQL to the Kubernetes pack                    | -                                   |
-| 2     | C2   | contrib | -           | Release `recipe-pack/kubernetes/v0.3.0`                  | C1 merged                           |
-| 3     | P0   | radius  | `main`      | Review and merge the bot pin bump PR                     | C2 released                         |
-| 4     | PR 1 | radius  | `main`      | Test of today's default pack contents                    | -                                   |
-| 5     | PR 2 | radius  | PR 1        | Sync compiles and copies the pinned pack; tests; CI      | P0 merged (pin at v0.3.0)           |
-| 6     | PR 3 | radius  | PR 2        | Embed the copied pack and add a loader in `pkg/defaults` | -                                   |
-| 7     | PR 4 | radius  | PR 3        | `rad` builds the pack from the loader; delete Go list    | PR 1 contents test passes unchanged |
-| 8     | PR 5 | radius  | PR 4        | Releases doc                                             | -                                   |
-| 9     | C3   | contrib | `main`      | Update pack header and README                            | PR 4 merged                         |
-| 10    | S    | -       | -           | Post status on the issues                                | all merged                          |
+| Order | Step | Repo    | Base branch | Summary                                                  | Merge gate                |
+|-------|------|---------|-------------|----------------------------------------------------------|---------------------------|
+| 1     | C1   | contrib | `main`      | Add PostgreSQL to the Kubernetes pack                    | -                         |
+| 2     | C2   | contrib | -           | Release `recipe-pack/kubernetes/v0.3.0`                  | C1 merged                 |
+| 3     | P0   | radius  | `main`      | Review and merge the bot pin bump PR                     | C2 released               |
+| 4     | PR 1 | radius  | `main`      | Sync compiles and copies the pinned pack; tests; CI      | P0 merged (pin at v0.3.0) |
+| 5     | PR 2 | radius  | PR 1        | Embed the copied pack and add a loader in `pkg/defaults` | -                         |
+| 6     | PR 3 | radius  | PR 2        | `rad` builds the pack from the loader; delete Go list    | -                         |
+| 7     | PR 4 | radius  | PR 3        | Releases doc                                             | -                         |
+| 8     | C3   | contrib | `main`      | Update pack header and README                            | PR 3 merged               |
+| 9     | S    | -       | -           | Post status on the issues                                | all merged                |
 
-Do the steps in the order shown. Steps 1 to 3 (contrib, then the pin bump) are the critical path, because PR 2 cannot merge until the pin is at v0.3.0. PR 1 has no dependency, so it can be written while waiting on steps 1 to 3.
+Do the steps in the order shown. Steps 1 to 3 (contrib, then the pin bump) are the critical path, because PR 1 cannot merge until the pin is at v0.3.0.
 
 Stack rules:
 
-- Title each stacked PR `<type>(<scope>): [stack N/5: default k8s recipe pack] <subject>`. The label goes after `<type>(<scope>):` because the required Conventional Commit title check rejects anything before the type.
-- Open PR 1 to PR 5 as soon as each is ready, each based on the previous branch. Mark PRs above the bottom one as draft until the one below merges.
+- Title each stacked PR `<type>(<scope>): [stack N/4: default k8s recipe pack] <subject>`. The label goes after `<type>(<scope>):` because the required Conventional Commit title check rejects anything before the type.
+- Open PR 1 to PR 4 as soon as each is ready, each based on the previous branch. Mark PRs above the bottom one as draft until the one below merges.
 - Merge bottom-up. After a PR merges (squash), rebase the next branch onto `main` and retarget its PR to `main`.
-- PR 1 can start now. PR 2 can be written now but must not merge until P0 is on `main`, because D3 makes the sync fail if `default.bicep` is missing at the pinned commit (v0.2.0 has `default-recipepack.bicep`). Rebase the stack onto `main` after P0 merges.
-- PR 3 adds code with no caller, so it is safe to merge on its own. PR 4 is the only PR that changes `rad` behavior.
+- PR 1 can be written now but must not merge until P0 is on `main`, because D3 makes the sync fail if `default.bicep` is missing at the pinned commit (v0.2.0 has `default-recipepack.bicep`). Rebase the stack onto `main` after P0 merges.
+- PR 2 adds code with no caller, so it is safe to merge on its own. PR 3 is the only PR that changes `rad` behavior.
 
 ---
 
@@ -190,19 +189,7 @@ Stack rules:
 - After this merges, the pin is recorded but still unused (1.5).
 - Done when: merged.
 
-### PR 1 (radius, base `main`): test of today's default pack contents
-
-- Why: PR 4 replaces where the pack comes from. This test proves the output does not change.
-- File: `pkg/cli/recipepack/recipepack_test.go`.
-- Note: the existing `Test_NewDefaultRecipePackResource` compares against `GetCoreTypesRecipeInfo()`, which PR 4 deletes. The new test must write out the expected values literally.
-- Cases:
-  - edge build: 8 types, each source `ghcr.io/radius-project/kube-recipes/<name>:edge`, `routes` parameters, `kind: bicep`, `location: global`.
-  - release build: same, tag = the namespace `ref` from `defaults.yaml`. Read the expected SHA via `defaults.ResourceTypePin` so the test does not break on every bot pin bump; write type list, image names, and parameters literally.
-- Use the existing pattern in `Test_GetDefaultRecipePackDefinition_UsesEdgeTagForEdgeChannel` to force the edge/release branch.
-- Run: `go test ./pkg/cli/recipepack/...`.
-- Done when: merged.
-
-### PR 2 (radius, base PR 1): sync compiles and copies the pinned pack
+### PR 1 (radius, base `main`): sync compiles and copies the pinned pack
 
 - Why: `rad` can only use a file that is in the repo at build time (D2).
 - Script: `build/scripts/sync-resource-types.sh`.
@@ -233,7 +220,7 @@ Stack rules:
 - Run: `make install-bicep`, `make sync-resource-types`, `make test-sync-resource-types`, `shellcheck`, `shfmt -i 4 -ci`.
 - Done when: merged; committed `default.json` matches the pinned v0.3.0 pack; CI drift check covers it.
 
-### PR 3 (radius, base PR 2): embed the pack and add a loader
+### PR 2 (radius, base PR 1): embed the pack and add a loader
 
 - Why: makes the copied pack available to Go code, without changing behavior yet.
 - Steps:
@@ -243,7 +230,7 @@ Stack rules:
 - Run: `go test ./pkg/defaults/... ./deploy/manifest/...`, `make lint`.
 - Done when: merged.
 
-### PR 4 (radius, base PR 3): `rad` builds the pack from the loader
+### PR 3 (radius, base PR 2): `rad` builds the pack from the loader
 
 - Why: item 1.
 - Steps:
@@ -251,11 +238,11 @@ Stack rules:
   2. Delete `GetCoreTypesRecipeInfo()` and the gateway parameter constants if unused.
   3. Decide behavior when the loader returns nothing (fail the command vs empty pack).
   4. Update or remove tests that call `GetCoreTypesRecipeInfo()`.
-- PR 1's contents test must pass unchanged.
+- Tests: for edge and release builds, the pack `rad` builds has exactly the recipe types, images and parameters in the embedded `default.json`, with the tag from `resolveRecipeTag` (edge -> `edge`, release -> namespace pin `ref`). Do not hard-code the type list; it changes with the synced pack. Add an unexported `isEdge` parameter (as `resolveRecipeTag` has) so the release case is testable.
 - Run: `go test ./pkg/defaults/... ./pkg/cli/recipepack/... ./pkg/cli/cmd/...`, `make lint`.
-- Done when: merged; Go list gone; contents test green.
+- Done when: merged; Go list gone.
 
-### PR 5 (radius, base PR 4): releases doc
+### PR 4 (radius, base PR 3): releases doc
 
 - `docs/contributing/contributing-releases/README.md`: note that the Kubernetes pack is copied and compiled into `deploy/manifest/recipe-packs/`, that `make install-bicep` is needed for the sync, and that `rad` builds the default pack from that file.
 - Run `radius-markdown-lint` on changed Markdown.
