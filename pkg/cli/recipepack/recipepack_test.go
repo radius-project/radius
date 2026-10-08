@@ -151,6 +151,85 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 	require.NotNil(t, postgreSQLRecipe)
 }
 
+// Test_newDefaultRecipePackResource_Golden pins the exact default recipe pack
+// that rad creates. Expected values are written out literally, not derived from
+// GetCoreTypesRecipeInfo, so the test still holds when the pack's source moves.
+func Test_newDefaultRecipePackResource_Golden(t *testing.T) {
+	type recipe struct {
+		resourceType string
+		image        string
+		parameters   map[string]any
+	}
+	expectedRecipes := []recipe{
+		{resourceType: "Radius.Compute/containers", image: "ghcr.io/radius-project/kube-recipes/containers"},
+		{resourceType: "Radius.Compute/persistentVolumes", image: "ghcr.io/radius-project/kube-recipes/persistentvolumes"},
+		{
+			resourceType: "Radius.Compute/routes",
+			image:        "ghcr.io/radius-project/kube-recipes/routes",
+			parameters: map[string]any{
+				"gatewayName":      "radius",
+				"gatewayNamespace": "radius-system",
+			},
+		},
+		{resourceType: "Radius.Security/secrets", image: "ghcr.io/radius-project/kube-recipes/secrets"},
+		{resourceType: "Radius.Data/mySqlDatabases", image: "ghcr.io/radius-project/kube-recipes/mysqldatabases"},
+		{resourceType: "Radius.Data/postgreSqlDatabases", image: "ghcr.io/radius-project/kube-recipes/postgresqldatabases"},
+		{resourceType: "Radius.Data/redisCaches", image: "ghcr.io/radius-project/kube-recipes/rediscaches"},
+		{resourceType: "Radius.Messaging/rabbitMQ", image: "ghcr.io/radius-project/kube-recipes/rabbitmq"},
+	}
+
+	// Release builds tag each recipe with its namespace's pinned commit. Read the
+	// pins from defaults.yaml so routine pin bumps do not break this test.
+	releaseTag := func(t *testing.T, resourceType string) string {
+		namespace, _, ok := defaults.SplitResourceType(resourceType)
+		require.True(t, ok)
+		pin, ok := defaults.ResourceTypePin(namespace)
+		require.True(t, ok, "%s must be pinned in defaults.yaml", namespace)
+		require.NotEmpty(t, pin.Ref)
+		return pin.Ref
+	}
+
+	testcases := []struct {
+		name   string
+		isEdge bool
+		tag    func(t *testing.T, resourceType string) string
+	}{
+		{
+			name:   "edge build",
+			isEdge: true,
+			tag:    func(*testing.T, string) string { return "edge" },
+		},
+		{
+			name:   "release build",
+			isEdge: false,
+			tag:    releaseTag,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			bicepKind := corerpv20250801.RecipeKindBicep
+			expected := corerpv20250801.RecipePackResource{
+				Location: to.Ptr("global"),
+				Properties: &corerpv20250801.RecipePackProperties{
+					Recipes: map[string]*corerpv20250801.RecipeDefinition{},
+				},
+			}
+			for _, r := range expectedRecipes {
+				expected.Properties.Recipes[r.resourceType] = &corerpv20250801.RecipeDefinition{
+					Kind:       &bicepKind,
+					Source:     to.Ptr(r.image + ":" + tc.tag(t, r.resourceType)),
+					Parameters: r.parameters,
+				}
+			}
+
+			require.Equal(t, expected, newDefaultRecipePackResource(tc.isEdge))
+		})
+	}
+}
+
 func Test_NormalizeRecipePacks(t *testing.T) {
 	testcases := []struct {
 		name     string

@@ -138,9 +138,15 @@ type ResourceGroupCreator func(ctx context.Context, planeName string, resourceGr
 // for all core resource types. This is the default recipe pack that gets injected into
 // environments that have no recipe packs configured.
 func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {
+	return newDefaultRecipePackResource(version.IsEdgeChannel())
+}
+
+// newDefaultRecipePackResource takes isEdge instead of reading the
+// build-stamped channel so tests can exercise both edge and release builds.
+func newDefaultRecipePackResource(isEdge bool) corerpv20250801.RecipePackResource {
 	bicepKind := corerpv20250801.RecipeKindBicep
 	recipes := make(map[string]*corerpv20250801.RecipeDefinition)
-	for _, def := range GetCoreTypesRecipeInfo() {
+	for _, def := range coreTypesRecipeInfo(isEdge) {
 		recipes[def.ResourceType] = &corerpv20250801.RecipeDefinition{
 			Kind:       &bicepKind,
 			Source:     to.Ptr(def.Source),
@@ -231,7 +237,10 @@ type CoreTypesRecipeInfo struct {
 //     mis-configured build still installs something rather than
 //     producing an invalid OCI reference.
 func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
-	isEdge := version.IsEdgeChannel()
+	return coreTypesRecipeInfo(version.IsEdgeChannel())
+}
+
+func coreTypesRecipeInfo(isEdge bool) []CoreTypesRecipeInfo {
 	return []CoreTypesRecipeInfo{
 		{
 			ResourceType: "Radius.Compute/containers",
