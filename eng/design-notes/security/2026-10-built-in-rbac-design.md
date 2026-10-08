@@ -223,7 +223,6 @@ sequenceDiagram
 **Integration points.** These are the places where the two designs must agree on a format or setting, or where a decision is still open. Everything else (identity certificates, service identities, resource providers, recipes and the credential broker, background workers, cancellation, record expiry, and runtime isolation) uses the internal design as written. The **Status** column says what is needed:
 
 - **Shared contract:** both designs must agree on a format or setting. The details are in this document.
-- **Needs agreement:** the two designs currently say different things. See [Open Questions](#open-questions).
 - **Open question:** this design follows the internal design, but the feature specification says something different. See [Open Questions](#open-questions).
 
 | # | Integration point                     | What this design does                                                                                                                   | What the internal design does                                                                                                                                                        | Status          |
@@ -232,7 +231,7 @@ sequenceDiagram
 | 2 | Checking each follow-on request       | Checks the request is on the approved list, or inside a deferred resource's bound, and that the user still has the permission it needs. | Checks the caller is the record's `submitter`, the record is active and not expired, and the request is inside `actions` and `targets`. UCP rechecks the user's current permissions. | Open question   |
 | 3 | What happens when a user loses access | Follows the internal design. A cancel, expiry, or security incident also stops the deployment.                                          | UCP marks the user's active records as revoked, so the next step fails.                                                                                                              | Open question   |
 | 4 | Nested deployments (Bicep modules)    | Checks module resources in the parent's preflight, so the user is checked once.                                                         | The engine asks UCP for a child record whose `actions` and `targets` are a subset of the parent's (`parentRecordId`). Closing the parent closes its children.                        | Shared contract |
-| 5 | Controllers and GitOps                | Namespaces are principals and get role assignments ([Part 11](#part-11-controllers-and-gitops)).                                        | Describes a separate namespace mapping object. The record's `subject` is the namespace and `submitter` is the controller.                                                            | Needs agreement |
+| 5 | Controllers and GitOps                | Namespaces are principals and get role assignments ([Part 11](#part-11-controllers-and-gitops)).                                        | The record's `subject` is the namespace principal and `submitter` is the controller.                                                                                                 | Shared contract |
 | 6 | Turning enforcement on                | User RBAC mode (`Disabled`, `Audit`, `Enforce`) is set at run time through the API ([Part 10](#part-10-turning-rbac-on)).               | Service-to-service rollout is Off or Enforce, set through Helm (`global.rbac.enabled`), with an optional dry run (`global.rbac.dryRun=true`).                                        | Shared contract |
 | 7 | Install options                       | `rbac.mode` and `rbac.bootstrapAdministrators` Helm values.                                                                             | `rad install kubernetes --skip-rbac` and `global.rbac.enabled=false`.                                                                                                                | Shared contract |
 | 8 | Error codes and logs                  | Adds RBAC error codes and audit events with `executionRecordId` and `correlationId`.                                                    | Adds execution-record and certificate error codes, and logs the same IDs.                                                                                                            | Shared contract |
@@ -717,9 +716,9 @@ The workflow's identity becomes the bootstrap admin. When Repo Radius restores s
 
 > **In short:** When the Radius controller deploys something from a Kubernetes namespace, it acts as that namespace. Admins give namespaces access with normal role assignments.
 
-**Background.** The Radius controller watches `DeploymentTemplate` objects in Kubernetes, including ones Flux creates from a Git repository, and deploys them. There is no user request behind these deployments: the object is just there in a namespace. Today the controller also calls UCP without credentials. The internal design says the controller authenticates with its own mTLS identity and acts **for the namespace** the object is in. For each reconcile, UCP creates an execution record with the controller as `submitter` and the namespace as `subject`. The internal design describes a separate mapping where an admin lists which resource groups and environments each namespace may target.
+**Background.** The Radius controller watches `DeploymentTemplate` objects in Kubernetes, including ones Flux creates from a Git repository, and deploys them. There is no user request behind these deployments: the object is just there in a namespace. Today the controller also calls UCP without credentials. The internal design says the controller authenticates with its own mTLS identity and acts **for the namespace** the object is in. For each reconcile, UCP creates an execution record with the controller as `submitter` and the namespace as `subject`.
 
-**This design: namespaces are principals.** Instead of a separate mapping, UCP uses a principal called the **namespace principal**: `{type: workload, issuer: radius-controller, subject: <namespace>}`. This replaces the internal design's `namespace:<name>` value in the record's `subject`, so the record and the audit log use the same principal. UCP only accepts this principal when the request really comes from the controller (verified with mTLS). Admins give it roles like anyone else:
+**Namespaces are principals.** UCP uses a principal called the **namespace principal**: `{type: workload, issuer: radius-controller, subject: <namespace>}`. Both designs use it as the record's `subject`, so the record and the audit log use the same principal. UCP only accepts this principal when the request really comes from the controller (verified with mTLS). Admins give it roles like anyone else:
 
 ```console
 rad auth assignment create --role application-developer \
@@ -738,7 +737,7 @@ Why do it this way instead of a separate namespace mapping?
 
 Kubernetes RBAC still controls who can create `DeploymentTemplate` objects in each namespace.
 
-**What stays from the internal design.** Using role assignments instead of a mapping object changes only where the namespace's access is stored. These internal design rules still apply:
+**Rules from the internal design.** These internal design rules apply to namespace principals:
 
 - **Deleting an object** gets a delete-only record limited to resources earlier records created for the same object (matched by its Kubernetes UID). This works even if the namespace has since lost access, because cleaning up is narrower than creating.
 - **When a namespace loses access**, the controller stops starting new reconciles for objects outside its access. Resources already deployed are not deleted automatically. The object gets a status condition saying it is out of scope.
@@ -1064,10 +1063,6 @@ This design follows the internal design: when a user loses a permission an activ
 - **Feature specification:** deployments behave predictably and never stop halfway because of a role change. The cost is that a removed user's deployment can keep running for up to 24 hours unless an admin cancels it.
 
 The feature specification or this design must be updated once this is decided. Integration points 2 and 3 in [How the two designs fit together](#how-the-two-designs-fit-together) depend on it.
-
-**Q: Should the controller's namespace mapping be role assignments to a namespace principal?**
-
-This design proposes it so there is only one kind of access data, and so `rad auth access` and the audit log work for GitOps. The internal design describes a separate mapping object and writes the namespace into the record's `subject` as `namespace:<name>`. If both designs agree, the internal design's mapping becomes "role assignments to the namespace principal", and its rules for deletion, narrowing, and cross-scope references stay as written. The two designs need to agree before stage 5.
 
 **Q: Is a single preflight enough for nested deployments?**
 
