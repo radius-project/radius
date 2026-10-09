@@ -147,6 +147,9 @@ test_stage_order() {
     assert_json "${CONTROLLER}" '.jobs."create-radius-tag".needs' \
         '["validate","publish-deployment-engine","reconcile-siblings"]' \
         "Radius tag creation must be the last mutation stage"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."create-radius-tag"."timeout-minutes" == 12' \
+        "Radius tag creation must allow five minutes for build discovery"
     assert_contains "${CONTROLLER}" \
         'verify-deployment-engine-tag.sh' \
         "controller must hard-block on the signed Deployment Engine tag"
