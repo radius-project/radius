@@ -745,8 +745,29 @@ func Test_Resource(t *testing.T) {
 	})
 
 	t.Run("CreateOrUpdateResource", func(t *testing.T) {
-		mock := NewMockgenericResourceClient(gomock.NewController(t))
+		ctrl := gomock.NewController(t)
+		mock := NewMockgenericResourceClient(ctrl)
+		resourceProviderMock := NewMockresourceProviderClient(ctrl)
 		client := createClient(mock)
+		client.resourceProviderClientFactory = func() (resourceProviderClient, error) {
+			return resourceProviderMock, nil
+		}
+		expectedResourceSummary := ucp.ResourceProviderSummary{
+			Name: new("Applications.Test"),
+			ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+				"testResource": {
+					APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+						version: {},
+					},
+				},
+			},
+			Locations: map[string]*ucp.ResourceProviderSummaryLocation{
+				"east": {},
+			},
+		}
+		resourceProviderMock.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", "Applications.Test", gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{ResourceProviderSummary: expectedResourceSummary}, nil)
 
 		mock.EXPECT().
 			BeginCreateOrUpdate(gomock.Any(), testResourceName, expectedResource, gomock.Any()).
@@ -894,49 +915,173 @@ func Test_ForceDeletePolicy(t *testing.T) {
 	})
 }
 
-// Radius.Core resources are only served at 2025-08-01-preview. The generic client otherwise falls
-// back to the default 2023-10-01-preview, which the server rejects for these types, so every write
-// path has to pin the version the same way the read paths do.
-func Test_CreateOrUpdateResource_RadiusCoreAPIVersion(t *testing.T) {
+func Test_CreateOrUpdateResource_APIVersion(t *testing.T) {
 	t.Parallel()
 
-	for _, tt := range []struct {
-		name            string
-		resourceType    string
-		expectedVersion string
+	tests := []struct {
+		name             string
+		resourceType     string
+		providerName     string
+		resourceTypeName string
+		// advertisedVersions are the API versions the resource type advertises. Defaults to a
+		// single entry of `version` when nil.
+		advertisedVersions []string
+		// defaultAPIVersion is advertised as the resource type's declared default when non-empty.
+		defaultAPIVersion  string
+		expectedAPIVersion string
+		lookupErr          error
 	}{
-		{"radius core pins the supported version", "Radius.Core/terraformSettings", "2025-08-01-preview"},
-		{"radius core is matched case-insensitively", "radius.core/environments", "2025-08-01-preview"},
-		{"applications core keeps the default", "Applications.Core/extenders", "2023-10-01-preview"},
-	} {
+		{
+			name:             "uses the API version advertised by the resource provider",
+			resourceType:     "Applications.Test/testResource",
+			providerName:     "Applications.Test",
+			resourceTypeName: "testResource",
+			// Must come from the provider summary, not the 2023-10-01-preview client default.
+			expectedAPIVersion: version,
+		},
+		{
+			// Radius.Compute is outside the Radius.Core namespace, so it must resolve
+			// dynamically rather than fall through to the Radius.Core pin below.
+			name:               "resolves non-Core Radius types from the resource provider",
+			resourceType:       "Radius.Compute/containers",
+			providerName:       "Radius.Compute",
+			resourceTypeName:   "containers",
+			expectedAPIVersion: version,
+		},
+		{
+			name:               "pins Radius.Core resources to their required API version",
+			resourceType:       "Radius.Core/environments",
+			providerName:       "Radius.Core",
+			resourceTypeName:   "environments",
+			expectedAPIVersion: "2025-08-01-preview",
+		},
+		{
+			// Resource type names are case-insensitive, so the pin must survive a lowercase
+			// namespace all the way through CreateOrUpdateResource, not just in isRadiusCoreType.
+			name:               "pins Radius.Core resources matched case-insensitively",
+			resourceType:       "radius.core/environments",
+			providerName:       "radius.core",
+			resourceTypeName:   "environments",
+			expectedAPIVersion: "2025-08-01-preview",
+		},
+		{
+			// Guards the default-preference branch: the declared default must win even though it
+			// is neither the lowest nor the highest advertised version.
+			name:               "prefers the declared default API version over the advertised versions",
+			resourceType:       "Applications.Test/testResource",
+			providerName:       "Applications.Test",
+			resourceTypeName:   "testResource",
+			advertisedVersions: []string{"2023-05-01", "2024-01-01", "2025-01-01"},
+			defaultAPIVersion:  "2024-01-01",
+			expectedAPIVersion: "2024-01-01",
+		},
+		{
+			// Guards the deterministic-sort branch: with no declared default and several
+			// advertised versions, the lowest must be chosen. Map iteration order is random, so an
+			// unsorted implementation fails this case for most of the advertised versions.
+			name:             "falls back to the lowest advertised version when no default is declared",
+			resourceType:     "Applications.Test/testResource",
+			providerName:     "Applications.Test",
+			resourceTypeName: "testResource",
+			advertisedVersions: []string{
+				"2025-08-01-preview",
+				"2023-10-01-preview",
+				"2024-01-01",
+				"2026-01-01",
+				"2023-05-01",
+			},
+			expectedAPIVersion: "2023-05-01",
+		},
+		{
+			name:             "does not send a request when the API version lookup fails",
+			resourceType:     "Applications.Test/testResource",
+			providerName:     "Applications.Test",
+			resourceTypeName: "testResource",
+			lookupErr:        errors.New("provider summary unavailable"),
+		},
+	}
+
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			var capturedURLs []string
+			var putAPIVersions []string
 			transport := &mockTransport{
 				do: func(req *http.Request) (*http.Response, error) {
-					capturedURLs = append(capturedURLs, req.URL.String())
+					if req.Method == http.MethodPut {
+						putAPIVersions = append(putAPIVersions, req.URL.Query().Get("api-version"))
+					}
 					header := http.Header{}
 					header.Set("Content-Type", "application/json")
 					return &http.Response{
 						StatusCode: http.StatusOK,
 						Header:     header,
-						Body:       io.NopCloser(strings.NewReader(`{"id": "` + testScope + `/providers/` + tt.resourceType + `/myresource", "properties": {"provisioningState": "Succeeded"}}`)),
+						Body:       io.NopCloser(strings.NewReader(`{"status": "Succeeded"}`)),
 						Request:    req,
 					}, nil
 				},
 			}
 
-			client := &UCPApplicationsManagementClient{
-				RootScope:     testScope,
-				ClientOptions: &arm.ClientOptions{Transport: transport},
+			ctrl := gomock.NewController(t)
+			rpClient := NewMockresourceProviderClient(ctrl)
+			if tt.lookupErr != nil {
+				rpClient.EXPECT().
+					GetProviderSummary(gomock.Any(), "local", tt.providerName, gomock.Any()).
+					Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{}, tt.lookupErr)
+			} else {
+				advertised := tt.advertisedVersions
+				if advertised == nil {
+					advertised = []string{version}
+				}
+
+				apiVersions := map[string]*ucp.ResourceTypeSummaryResultAPIVersion{}
+				for _, advertisedVersion := range advertised {
+					apiVersions[advertisedVersion] = &ucp.ResourceTypeSummaryResultAPIVersion{}
+				}
+
+				resourceTypeSummary := &ucp.ResourceProviderSummaryResourceType{
+					APIVersions: apiVersions,
+				}
+				if tt.defaultAPIVersion != "" {
+					resourceTypeSummary.DefaultAPIVersion = new(tt.defaultAPIVersion)
+				}
+
+				rpClient.EXPECT().
+					GetProviderSummary(gomock.Any(), "local", tt.providerName, gomock.Any()).
+					Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+						ResourceProviderSummary: ucp.ResourceProviderSummary{
+							Name: new(tt.providerName),
+							ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+								tt.resourceTypeName: resourceTypeSummary,
+							},
+						},
+					}, nil)
 			}
 
-			_, err := client.CreateOrUpdateResource(t.Context(), tt.resourceType, "myresource", &generated.GenericResource{})
-			require.NoError(t, err)
+			client := &UCPApplicationsManagementClient{
+				RootScope: testScope,
+				ClientOptions: &arm.ClientOptions{
+					Transport: transport,
+				},
+				resourceProviderClientFactory: func() (resourceProviderClient, error) {
+					return rpClient, nil
+				},
+			}
 
-			require.NotEmpty(t, capturedURLs)
-			require.Contains(t, capturedURLs[0], "api-version="+tt.expectedVersion)
+			resourceID := testScope + "/providers/" + tt.resourceType + "/myresource"
+			_, err := client.CreateOrUpdateResource(t.Context(), tt.resourceType, resourceID, &generated.GenericResource{})
+
+			if tt.lookupErr != nil {
+				require.ErrorContains(t, err, "provider summary unavailable")
+				require.Empty(t, putAPIVersions, "no PUT should be sent when the API version cannot be resolved")
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotEmpty(t, putAPIVersions, "expected at least one PUT request")
+			for _, actual := range putAPIVersions {
+				require.Equal(t, tt.expectedAPIVersion, actual, "unexpected api-version on PUT request")
+			}
 		})
 	}
 }
@@ -2083,7 +2228,8 @@ func Test_ListResourcesInResourceGroup(t *testing.T) {
 				ResourceProviderSummary: *summariesWithErrors[0].Value[0],
 			}, nil)
 
-		// Second provider has empty API versions
+		// Second provider has empty API versions, so it falls back to the generated client's
+		// default API version rather than failing the whole enumeration.
 		mockRP.EXPECT().
 			GetProviderSummary(gomock.Any(), "local", "Applications.TestNoVersion", gomock.Any()).
 			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{

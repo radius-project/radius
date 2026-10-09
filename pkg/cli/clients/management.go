@@ -58,13 +58,13 @@ var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
 // ListResourcesOfType lists all resources of a given type in the configured scope.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
-	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+	apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API versions for resource type %q: %w", resourceType, err)
 	}
 	results := []generated.GenericResource{}
 
-	client, err := amc.getGenericClient(amc.RootScope, resourceType, apiVersions, false)
+	client, err := amc.getGenericClient(amc.RootScope, resourceType, apiVersion, false)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInEnvironment(ctx
 
 // GetResource retrieves a resource by its type and name (or id).
 func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, resourceType string, resourceNameOrID string) (generated.GenericResource, error) {
-	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+	apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
@@ -142,7 +142,7 @@ func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, res
 		return generated.GenericResource{}, err
 	}
 
-	client, err := amc.getGenericClient(scope, resourceType, apiVersions, false)
+	client, err := amc.getGenericClient(scope, resourceType, apiVersion, false)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
@@ -157,12 +157,17 @@ func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, res
 
 // CreateOrUpdateResource creates or updates a resource using its type name (or id).
 func (amc *UCPApplicationsManagementClient) CreateOrUpdateResource(ctx context.Context, resourceType string, resourceNameOrID string, resource *generated.GenericResource) (generated.GenericResource, error) {
+	apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
+	if err != nil {
+		return generated.GenericResource{}, err
+	}
+
 	scope, name, err := amc.extractScopeAndName(resourceNameOrID)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
 
-	client, err := amc.createGenericClient(scope, resourceType)
+	client, err := amc.getGenericClient(scope, resourceType, apiVersion, false)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
@@ -182,7 +187,7 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResource(ctx context.C
 
 // DeleteResource deletes a resource by its type and name (or id).
 func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string, force bool) (bool, error) {
-	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+	apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
 	if err != nil {
 		return false, err
 	}
@@ -193,7 +198,7 @@ func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, 
 	}
 
 	var client genericResourceClient
-	client, err = amc.getGenericClient(scope, resourceType, apiVersions, force)
+	client, err = amc.getGenericClient(scope, resourceType, apiVersion, force)
 	if err != nil {
 		return false, err
 	}
@@ -829,16 +834,16 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroup(ctx con
 	// classify a 404 from this method as "the resource group does not exist", which only the
 	// GetResourceGroup check above can establish. Letting a per-resource-type 404 reach the caller
 	// as a 404 would turn an enumeration failure into a silent no-op that reports success while
-	// the group and its contents survive. getApiVersionsForResourceType converts a provider 404
+	// the group and its contents survive. getAPIVersionForResourceType converts a provider 404
 	// for the same reason.
 	for _, resourceType := range resourceTypesList {
 		// Create a client scoped to this resource group
-		apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+		apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
 		if err != nil {
 			return nil, NewResourceEnumerationError(resourceType, "failed to get API versions for resource type %q: %v", resourceType, err)
 		}
 
-		client, err := amc.getGenericClient(groupScope, resourceType, apiVersions, false)
+		client, err := amc.getGenericClient(groupScope, resourceType, apiVersion, false)
 		if err != nil {
 			return nil, NewResourceEnumerationError(resourceType, "failed to create client for resource type %q: %v", resourceType, err)
 		}
@@ -898,12 +903,12 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInResourceGroup(c
 	groupScope := fmt.Sprintf("/planes/radius/%s/resourceGroups/%s", planeName, resourceGroupName)
 
 	// Get API versions for the resource type
-	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+	apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := amc.getGenericClient(groupScope, resourceType, apiVersions, false)
+	client, err := amc.getGenericClient(groupScope, resourceType, apiVersion, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1383,29 +1388,6 @@ func (amc *UCPApplicationsManagementClient) createRadiusCoreEnvironmentClient(sc
 	return &scopedRadiusCoreEnvironmentsClient{inner: inner, scope: strings.TrimPrefix(scope, resources.SegmentSeparator)}, nil
 }
 
-func (amc *UCPApplicationsManagementClient) createGenericClient(scope string, resourceType string, apiVersion ...string) (genericResourceClient, error) {
-	// Radius.Core resources require a specific API version, matching getGenericClient. Without this
-	// the default below is used, and the server rejects the request for the resource type.
-	if isRadiusCoreType(resourceType) {
-		apiVersion = []string{radiusCoreAPIVersion}
-	}
-
-	if amc.genericResourceClientFactory == nil {
-		clientOptions := *amc.ClientOptions
-		if len(apiVersion) != 0 {
-			// If an API version is provided, set it in the client options.
-			// Otherwise, the default API version (2023-10-01-preview) will be used.
-			// Note: If multiple API versions are supported for Applications.Core resource types in the future,
-			// update this logic to select the appropriate client.
-			clientOptions.APIVersion = apiVersion[0]
-		}
-		// Generated client doesn't like the leading '/' in the scope.
-		return generated.NewGenericResourcesClient(resourceType, strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, &clientOptions)
-	}
-
-	return amc.genericResourceClientFactory(scope, resourceType)
-}
-
 func (amc *UCPApplicationsManagementClient) createResourceGroupClient() (resourceGroupClient, error) {
 	if amc.resourceGroupClientFactory == nil {
 		return ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
@@ -1522,15 +1504,18 @@ func (amc *UCPApplicationsManagementClient) captureResponse(ctx context.Context,
 	return amc.capture(ctx, response)
 }
 
-// getApiVersionsForResourceType retrieves the API versions for a given resource type in the configured scope.
-func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx context.Context, resourceType string) ([]string, error) {
+// getAPIVersionForResourceType resolves the API version to use for a given resource type in the
+// configured scope. It prefers the resource provider's declared default API version and falls back
+// to the lowest advertised version when no default is set. It returns an empty version when the
+// resource type advertises none, which leaves the caller on the generated client's default.
+func (amc *UCPApplicationsManagementClient) getAPIVersionForResourceType(ctx context.Context, resourceType string) (string, error) {
 	provider, _, _ := strings.Cut(resourceType, "/")
 	summary, err := amc.GetResourceProviderSummary(ctx, "local", provider)
 	if err != nil {
 		if clientv2.Is404Error(err) {
-			return nil, fmt.Errorf("resource provider %q not found in the configured scope", provider)
+			return "", fmt.Errorf("resource provider %q not found in the configured scope", provider)
 		}
-		return nil, err
+		return "", err
 	}
 
 	resType := strings.Split(resourceType, "/")[1]
@@ -1545,24 +1530,39 @@ func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx co
 		}
 	}
 	if !ok {
-		return nil, fmt.Errorf("resource type %q not found in the resource provider %q", resType, provider)
+		return "", fmt.Errorf("resource type %q not found in the resource provider %q", resType, provider)
 	}
 
-	return maps.Keys(resourceTypeSummary.APIVersions), nil
+	// Prefer the API version the resource provider declares as its default. Resource types may
+	// advertise several versions, and map iteration order is not stable, so falling straight
+	// through to an arbitrary key would pick a different version from one call to the next.
+	if resourceTypeSummary.DefaultAPIVersion != nil && *resourceTypeSummary.DefaultAPIVersion != "" {
+		return *resourceTypeSummary.DefaultAPIVersion, nil
+	}
+
+	apiVersions := maps.Keys(resourceTypeSummary.APIVersions)
+	if len(apiVersions) == 0 {
+		return "", nil
+	}
+
+	// No default is declared, so sort to keep the choice stable across invocations.
+	slices.Sort(apiVersions)
+
+	return apiVersions[0], nil
 }
 
-// getGenericClient returns a generic resource client for the specified scope and resource type.
-// If apiVersions is empty, it uses the default version (2023-10-01-preview), else uses any version supported by the resource type.
+// getGenericClient returns a generic resource client for the specified scope and resource type
+// using the supplied API version.
 // When no genericResourceClientFactory is configured and force is true, a per-call policy is added
 // that appends force=true to the request URL query string. This is used for force-deleting resources
 // that are in a non-terminal provisioning state. Factory-based configurations (used in tests) bypass
 // the force policy since mock clients do not exercise the HTTP pipeline.
-func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersions []string, force bool) (client genericResourceClient, err error) {
+func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersion string, force bool) (client genericResourceClient, err error) {
 	// Radius.Core resources require a specific API version.
 	// Eventually version 2023-10-01-preview will be removed along with Applications.Core resources.
 	// Then we will not need this special case.
 	if isRadiusCoreType(resourceType) {
-		apiVersions = []string{radiusCoreAPIVersion}
+		apiVersion = radiusCoreAPIVersion
 	}
 
 	if amc.genericResourceClientFactory != nil {
@@ -1575,8 +1575,8 @@ func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType
 		clientOptions = withForceDeletePolicy(clientOptions)
 	}
 
-	if len(apiVersions) != 0 {
-		clientOptions.APIVersion = apiVersions[0]
+	if apiVersion != "" {
+		clientOptions.APIVersion = apiVersion
 	}
 
 	return generated.NewGenericResourcesClient(resourceType, strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, &clientOptions)
