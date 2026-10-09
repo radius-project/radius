@@ -456,7 +456,7 @@ test("does not retry non-transient API failures", async () => {
   );
 });
 
-test("reconciles an accepted final dispatch after a transient response error", async () => {
+test("reconciles an accepted dispatch after a transient response error", async () => {
   const identifier = "0.61.0-bdbdbdbd";
   const core = createCore({ RELEASE_IDENTIFIER: identifier });
   const github = createGithub();
@@ -464,9 +464,6 @@ test("reconciles an accepted final dispatch after a transient response error", a
   let attempts = 0;
   github.rest.repos.createDispatchEvent = async (parameters) => {
     attempts += 1;
-    if (attempts < 5) {
-      throw apiError(502);
-    }
     await createDispatchEvent(parameters);
     throw apiError(502);
   };
@@ -479,36 +476,133 @@ test("reconciles an accepted final dispatch after a transient response error", a
   });
 
   assert.deepEqual(core.failures, []);
-  assert.equal(attempts, 5);
+  assert.equal(attempts, 1);
   assert.equal(github.dispatches.length, 1);
   assert.equal(core.outputs.get("conclusion"), "success");
 });
 
-test("retries a rejected transient dispatch after correlated lookup", async () => {
-  const identifier = "0.61.0-bebebebe";
-  const core = createCore({ RELEASE_IDENTIFIER: identifier });
+test("waits for delayed visibility without repeating an uncertain dispatch", async (context) => {
+  for (const error of [
+    apiError(503),
+    Object.assign(new Error("response lost"), { code: "ECONNRESET" }),
+    Object.assign(new Error("request timed out"), { code: "ETIMEDOUT" })
+  ]) {
+    await context.test(error.message, async () => {
+      const core = createCore({
+        MAX_WAIT_SECONDS: "60",
+        POLL_INTERVAL_SECONDS: "15",
+        REUSE_SUCCESSFUL: "false"
+      });
+      const clock = createClock();
+      const github = createGithub();
+      const createDispatchEvent = github.rest.repos.createDispatchEvent;
+      const listWorkflowRuns = github.rest.actions.listWorkflowRuns;
+      let attempts = 0;
+      github.rest.repos.createDispatchEvent = async (parameters) => {
+        attempts += 1;
+        await createDispatchEvent(parameters);
+        throw error;
+      };
+      github.rest.actions.listWorkflowRuns = async (parameters) => {
+        const response = await listWorkflowRuns(parameters);
+        if (clock.now() < 30000) {
+          response.data.workflow_runs = [];
+        }
+        return response;
+      };
+
+      await monitorRemoteWorkflow({ github, core, ...clock, random: () => 0 });
+
+      assert.deepEqual(core.failures, []);
+      assert.equal(attempts, 1);
+      assert.equal(github.dispatches.length, 1);
+      assert.equal(core.outputs.get("run_id"), "1000");
+      assert.equal(core.outputs.get("run_state"), "found");
+      assert.equal(core.outputs.get("conclusion"), "success");
+      assert.equal(clock.now(), 30000);
+    });
+  }
+});
+
+test("retries only explicitly rate-limited dispatches after correlated lookup", async (context) => {
+  for (const error of [
+    apiError(429),
+    Object.assign(apiError(403), {
+      response: { headers: { "retry-after": "2" } }
+    })
+  ]) {
+    await context.test(String(error.status), async () => {
+      const core = createCore();
+      const github = createGithub();
+      const createDispatchEvent = github.rest.repos.createDispatchEvent;
+      let attempts = 0;
+      github.rest.repos.createDispatchEvent = async (parameters) => {
+        attempts += 1;
+        if (attempts === 1) {
+          throw error;
+        }
+        return createDispatchEvent(parameters);
+      };
+
+      await monitorRemoteWorkflow({
+        github,
+        core,
+        ...createClock(),
+        random: () => 0
+      });
+
+      assert.deepEqual(core.failures, []);
+      assert.equal(attempts, 2);
+      assert.equal(github.dispatches.length, 1);
+      assert.equal(core.outputs.get("conclusion"), "success");
+    });
+  }
+});
+
+test("fails closed when an uncertain dispatch never becomes visible", async () => {
+  const core = createCore();
   const github = createGithub();
-  const createDispatchEvent = github.rest.repos.createDispatchEvent;
+  const clock = createClock();
   let attempts = 0;
-  github.rest.repos.createDispatchEvent = async (parameters) => {
+  github.rest.repos.createDispatchEvent = async () => {
     attempts += 1;
-    if (attempts === 1) {
-      throw apiError(503);
-    }
-    return createDispatchEvent(parameters);
+    throw apiError(503);
   };
 
-  await monitorRemoteWorkflow({
-    github,
-    core,
-    ...createClock(),
-    random: () => 0
-  });
+  await monitorRemoteWorkflow({ github, core, ...clock });
 
-  assert.deepEqual(core.failures, []);
-  assert.equal(attempts, 2);
-  assert.equal(github.dispatches.length, 1);
-  assert.equal(core.outputs.get("conclusion"), "success");
+  assert.equal(attempts, 1);
+  assert.equal(clock.now(), 30000);
+  assert.equal(core.outputs.get("run_state"), "unknown");
+  assert.equal(core.failures.length, 1);
+  assert.match(core.failures[0], /publisher dispatch.*503/);
+  assert.match(core.failures[0], /outcome is unknown/);
+  assert.match(
+    core.failures[0],
+    /Inspect publisher runs and destination artifacts before retrying/
+  );
+});
+
+test("preserves the uncertain outcome when discovery fails", async () => {
+  const core = createCore();
+  const github = createGithub();
+  let attempts = 0;
+  github.rest.repos.createDispatchEvent = async () => {
+    attempts += 1;
+    github.rest.actions.listWorkflowRuns = async () => {
+      throw apiError(403, "Forbidden");
+    };
+    throw apiError(502);
+  };
+
+  await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+  assert.equal(attempts, 1);
+  assert.equal(core.outputs.get("run_state"), "unknown");
+  assert.match(
+    core.failures[0],
+    /recent publisher run lookup failed: Forbidden/
+  );
 });
 
 test("names the operation when lookup retries are exhausted", async () => {
@@ -535,14 +629,14 @@ test("names the operation when lookup retries are exhausted", async () => {
   );
 });
 
-test("names the expected run when dispatch retries are exhausted", async () => {
+test("names the expected run when rate-limited dispatch retries are exhausted", async () => {
   const identifier = "0.61.0-bfbfbfbf";
   const core = createCore({ RELEASE_IDENTIFIER: identifier });
   const github = createGithub();
   let attempts = 0;
   github.rest.repos.createDispatchEvent = async () => {
     attempts += 1;
-    throw apiError(502);
+    throw apiError(429);
   };
 
   await monitorRemoteWorkflow({
@@ -556,7 +650,7 @@ test("names the expected run when dispatch retries are exhausted", async () => {
   assert.equal(github.dispatches.length, 0);
   assert.equal(
     core.failures[0],
-    `publisher dispatch 'deployment-engine' failed after 5 attempts: GitHub API returned 502; no run 'deployment-engine / ${identifier}' appeared, so a rerun of this job reconciles before dispatching again`
+    `publisher dispatch 'deployment-engine' failed after 5 attempts: GitHub API returned 429; no run 'deployment-engine / ${identifier}' appeared. Inspect publisher runs and destination artifacts before retrying`
   );
 });
 
@@ -738,6 +832,8 @@ test("uses one total timeout budget for discovery and completion", async () => {
 
   assert.equal(github.dispatches.length, 1);
   assert.match(core.failures[0], /Timed out waiting for publisher run/);
+  assert.equal(core.outputs.get("run_state"), "unknown");
+  assert.equal(clock.now(), 2000);
 });
 
 test("all publisher callers use stable identifiers without time-window discovery", async () => {

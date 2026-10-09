@@ -125,7 +125,7 @@ test_shared_controller_contract() {
         ".concurrency.queue == \"max\" and
         .concurrency.group ==
         \"release-\${{ inputs.version }}-\${{ inputs.source-commit }}\"" \
-        "controller concurrency must preserve every matching attempt"
+        "controller concurrency must queue matching attempts"
     assert_json "${CONTROLLER}" '.permissions' '{}' \
         "controller must disable default GITHUB_TOKEN permissions"
     assert_json "${CONTROLLER}" '.jobs.validate.permissions' \
@@ -223,6 +223,75 @@ test_identity_and_cleanup() {
         "metadata backports must remove legacy release-branch workflows"
 }
 
+test_frozen_output_contract() {
+    local job
+
+    assert_json "${CONTROLLER}" '.jobs.validate.outputs."plan-artifact-id"' \
+        "\"\${{ steps.upload-plan.outputs.artifact-id }}\"" \
+        "validation must identify its immutable plan artifact"
+    assert_yq "${CONTROLLER}" \
+        '.jobs.validate.steps[] | select(.id == "upload-plan") |
+        .with.path | contains("/release-controller/release-targets.json")' \
+        "plan artifact must carry the approved output contract"
+    assert_yq "${CONTROLLER}" \
+        '.jobs.validate.steps[] | select(.id == "upload-plan") |
+        .with.name | contains("${{ github.run_attempt }}")' \
+        "reruns must retain earlier attempts instead of replacing their artifacts"
+    assert_json "${CONTROLLER}" \
+        '[.jobs."publish-deployment-engine", .jobs."create-radius-tag"] |
+        [.[].steps[] | select(.run // "" |
+        contains("verify-deployment-engine-image.sh")) |
+        .env.GORELEASER_PARITY_TARGETS]' \
+        "[\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\"]" \
+        "every image verification must use the approved output contract"
+    for job in publish-deployment-engine create-radius-tag; do
+        assert_json "${CONTROLLER}" \
+            ".jobs.\"${job}\".steps[] |
+            select(.name == \"Download approved release contract\") |
+            [.uses, .with.artifact-ids, .with.path, .with.merge-multiple]" \
+            "[\"actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c\",\"\${{ needs.validate.outputs.plan-artifact-id }}\",\"\${{ runner.temp }}/release-controller\",true]" \
+            "${job} must download the exact validated artifact into the expected path"
+    done
+}
+
+test_unknown_dispatch_summary() {
+    assert_json "${CONTROLLER}" \
+        '.jobs."publish-deployment-engine".outputs."run-state"' \
+        "\"\${{ steps.monitor-de-workflow.outputs.run_state }}\"" \
+        "publisher job must expose an uncertain dispatch outcome"
+    assert_json "${CONTROLLER}" \
+        '.jobs.summary.steps[0].env.DE_RUN_STATE' \
+        "\"\${{ needs.publish-deployment-engine.outputs.run-state }}\"" \
+        "summary must inspect the publisher dispatch outcome"
+    assert_contains "${CONTROLLER}" \
+        'elif [[ "${DE_RUN_STATE}" == "unknown" ]]' \
+        "unknown publisher outcomes must not suggest an immediate resume"
+    if ! (
+        summary_root="$(mktemp -d "${TMPDIR:-/tmp}/controller-summary-XXXXXX")"
+        trap 'rm -rf "${summary_root}"' EXIT
+        summary_script="$(yq -r '.jobs.summary.steps[0].run' "${CONTROLLER}")"
+        for state in unknown found; do
+            VERSION=v0.61.0 SOURCE_COMMIT=1111111111111111111111111111111111111111 \
+                READY=true VALIDATE_RESULT=success APPROVE_RESULT=success \
+                DE_RESULT=failure DE_RUN_STATE="${state}" DE_RUN_URL="" \
+                DE_LOCK_BRANCH="" SIBLINGS_RESULT=skipped RADIUS_RESULT=skipped \
+                GITHUB_STEP_SUMMARY="${summary_root}/${state}.md" \
+                bash -euo pipefail -c "${summary_script}" || exit 1
+        done
+        grep -Fq 'before retrying' "${summary_root}/unknown.md" || exit 1
+        if grep -Fq 'gh workflow run resume-release.yaml' \
+            "${summary_root}/unknown.md"; then
+            exit 1
+        fi
+        grep -Fq 'gh workflow run resume-release.yaml --ref main' \
+            "${summary_root}/found.md" || exit 1
+    ); then
+        fail_test "summary must require inspection only for unknown outcomes"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
     command -v yq >/dev/null || {
         echo "yq is required" >&2
@@ -230,6 +299,8 @@ main() {
     }
     test_entry_triggers
     test_shared_controller_contract
+    test_frozen_output_contract
+    test_unknown_dispatch_summary
     test_stage_order
     test_identity_and_cleanup
 

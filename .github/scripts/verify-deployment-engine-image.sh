@@ -180,6 +180,14 @@ main() {
     command -v docker >/dev/null || fail "required command not found: docker"
     command -v jq >/dev/null || fail "required command not found: jq"
     [[ -f "${TARGETS_FILE}" ]] || fail "release targets file not found"
+    expected_platforms="$(jq -ce '
+        [.images[] | select(.name == "deployment-engine")] |
+        select(length == 1) | .[0].requiredPlatforms |
+        select(type == "array" and length > 0) |
+        select(all(.[]; type == "string" and length > 0)) |
+        select(length == (unique | length)) | sort
+    ' "${TARGETS_FILE}")" ||
+        fail "release targets must define one Deployment Engine platform set"
 
     TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/de-image-XXXXXX")"
     raw="${TEMP_DIR}/image.json"
@@ -199,10 +207,6 @@ main() {
     digest="$(jq -er '
         .manifest.digest | select(test("^sha256:[0-9a-f]{64}$"))
     ' "${raw}")" || fail "invalid manifest digest for ${reference}"
-    expected_platforms="$(jq -c '
-        .images[] | select(.name == "deployment-engine") |
-        .requiredPlatforms | sort
-    ' "${TARGETS_FILE}")"
     actual_platforms="$(jq -c '
         def platform_name($platform):
             $platform.os + "/" + $platform.architecture +
