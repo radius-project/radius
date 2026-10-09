@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -128,42 +127,42 @@ const (
 type ResourceGroupCreator func(ctx context.Context, planeName string, resourceGroupName string, resource *ucpv20231001.ResourceGroupResource) error
 
 // NewDefaultRecipePackResource creates the default recipe pack that gets
-// injected into environments that have no recipe packs configured. Its recipes
-// come from the Kubernetes recipe pack embedded from the resource-types-contrib
-// revision pinned in deploy/manifest/defaults.yaml; see
-// defaults.DefaultKubernetesRecipes.
+// injected into environments that have no recipe packs configured. It is the
+// Kubernetes recipe pack embedded from the resource-types-contrib revision
+// pinned in deploy/manifest/defaults.yaml, as authored upstream; see
+// defaults.DefaultKubernetesRecipePack.
 //
-// The pack's own source tags are replaced with the tag for this build's
-// channel; see resolveRecipeTag.
+// The only change rad makes is the tag of each recipe source, which is replaced
+// with the tag for this build's channel; see resolveRecipeTag.
 func NewDefaultRecipePackResource() (corerpv20250801.RecipePackResource, error) {
-	return newDefaultRecipePackResource(defaults.DefaultKubernetesRecipes(), version.IsEdgeChannel())
+	pack, err := defaults.DefaultKubernetesRecipePack()
+	if err != nil {
+		return corerpv20250801.RecipePackResource{}, fmt.Errorf("the default Kubernetes recipe pack is not available in this build of rad: %w", err)
+	}
+	return newDefaultRecipePackResource(pack, version.IsEdgeChannel())
 }
 
-// newDefaultRecipePackResource builds the default recipe pack from recipes for
-// the given channel. The channel is a parameter so both branches are reachable
-// from tests.
-func newDefaultRecipePackResource(recipes []defaults.RecipePackRecipe, isEdge bool) (corerpv20250801.RecipePackResource, error) {
-	if len(recipes) == 0 {
-		return corerpv20250801.RecipePackResource{}, errors.New("the default Kubernetes recipe pack is not available in this build of rad")
+// newDefaultRecipePackResource builds the default recipe pack from pack for
+// the given channel, retagging the recipe sources in place. The channel is a
+// parameter so both branches are reachable from tests.
+func newDefaultRecipePackResource(pack *corerpv20250801.RecipePackProperties, isEdge bool) (corerpv20250801.RecipePackResource, error) {
+	if pack == nil || len(pack.Recipes) == 0 {
+		return corerpv20250801.RecipePackResource{}, errors.New("the default Kubernetes recipe pack has no recipes")
 	}
 
-	definitions := make(map[string]*corerpv20250801.RecipeDefinition, len(recipes))
-	for _, recipe := range recipes {
-		kind := corerpv20250801.RecipeKind(recipe.Kind)
-		if !slices.Contains(corerpv20250801.PossibleRecipeKindValues(), kind) {
-			return corerpv20250801.RecipePackResource{}, fmt.Errorf("default recipe for %s has unsupported kind %q", recipe.ResourceType, recipe.Kind)
+	for resourceType, recipe := range pack.Recipes {
+		if recipe == nil || recipe.Source == nil {
+			return corerpv20250801.RecipePackResource{}, fmt.Errorf("default recipe for %s has no source", resourceType)
 		}
-		definitions[recipe.ResourceType] = &corerpv20250801.RecipeDefinition{
-			Kind:       &kind,
-			Source:     to.Ptr(recipe.Image + ":" + resolveRecipeTag(recipe.ResourceType, isEdge)),
-			Parameters: recipe.Parameters,
+		repository, err := defaults.RecipeSourceRepository(*recipe.Source)
+		if err != nil {
+			return corerpv20250801.RecipePackResource{}, fmt.Errorf("default recipe for %s: %w", resourceType, err)
 		}
+		recipe.Source = to.Ptr(repository + ":" + resolveRecipeTag(resourceType, isEdge))
 	}
 	return corerpv20250801.RecipePackResource{
-		Location: to.Ptr("global"),
-		Properties: &corerpv20250801.RecipePackProperties{
-			Recipes: definitions,
-		},
+		Location:   to.Ptr("global"),
+		Properties: pack,
 	}, nil
 }
 
