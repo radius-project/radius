@@ -20,8 +20,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/rp"
@@ -66,7 +66,7 @@ func Test_TerraformCloudBackend_AzureRM_RejectsConflictingStateAuth(t *testing.T
 			return map[string]any{
 				"type": "azurerm",
 				// Valid in shape, guaranteed absent in fact: 3-24 lowercase alphanumerics.
-				"storageAccountName": "tfabsent" + strings.ReplaceAll(uuid.NewString(), "-", "")[:12],
+				"storageAccountName": "tfabsent" + strings.ReplaceAll(uuid.New().String(), "-", "")[:12],
 				"containerName":      "tfstate",
 				"keyPrefix":          name,
 			}
@@ -86,7 +86,7 @@ func Test_TerraformCloudBackend_S3_RejectsStateEndpointOverride(t *testing.T) {
 		settings: func(name string) map[string]any {
 			return map[string]any{
 				"type":      "s3",
-				"bucket":    "radius-absent-" + strings.ReplaceAll(uuid.NewString(), "-", ""),
+				"bucket":    "radius-absent-" + strings.ReplaceAll(uuid.New().String(), "-", ""),
 				"region":    "us-west-2",
 				"keyPrefix": name,
 			}
@@ -111,7 +111,7 @@ func Test_TerraformCloudBackend_S3_RejectsStateEndpointOverride(t *testing.T) {
 // only rejected for executions that use a cloud backend, so rejecting it at PUT time would be wrong.
 func testCloudBackendRejectsStateAuthOverride(t *testing.T, tc cloudBackendAuthConflictCase) {
 	t.Helper()
-	name := "tfauth-" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	name := "tfauth-" + strings.ReplaceAll(uuid.New().String(), "-", "")
 	ct := rp.NewRPTest(t, name, nil)
 	ct.FastCleanup = false
 	ct.Steps = []rp.TestStep{{

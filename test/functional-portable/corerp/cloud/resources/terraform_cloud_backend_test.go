@@ -30,9 +30,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"uuid"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/radcli"
@@ -107,7 +107,7 @@ func Test_TerraformCloudBackend_AzureRM(t *testing.T) {
 
 func testTerraformCloudBackend(t *testing.T, backend string, setup func(context.Context, *testing.T, string) cloudBackendFixture) {
 	t.Helper()
-	name := "tfbackend-" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	name := "tfbackend-" + strings.ReplaceAll(uuid.New().String(), "-", "")
 	ct := rp.NewRPTest(t, name, nil)
 	ct.FastCleanup = false
 	ct.Steps = []rp.TestStep{{

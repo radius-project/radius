@@ -34,6 +34,7 @@ import (
 	"syscall"
 	"testing"
 	"time"
+	"uuid"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -44,7 +45,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
-	"github.com/google/uuid"
 	"github.com/radius-project/radius/test/step"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -65,7 +65,7 @@ func newAzureBackendFixture(ctx context.Context, t *testing.T, name string) clou
 	subscription := requiredCloudEnv(t, "AZURE_SUBSCRIPTION_ID")
 	group := requiredCloudEnv(t, "INTEGRATION_TEST_RESOURCE_GROUP_NAME")
 	location := requiredCloudEnv(t, "AZURE_LOCATION")
-	credential := azureTestCredential(t)
+	credential := azureTestCredential(provisionCtx, t)
 	accounts, err := armstorage.NewAccountsClient(subscription, credential, nil)
 	require.NoError(t, err)
 	containers, err := armstorage.NewBlobContainersClient(subscription, credential, nil)
@@ -74,7 +74,7 @@ func newAzureBackendFixture(ctx context.Context, t *testing.T, name string) clou
 	require.NoError(t, err)
 	groups, err := armresources.NewResourceGroupsClient(subscription, credential, nil)
 	require.NoError(t, err)
-	account := "tf" + strings.ReplaceAll(uuid.NewString(), "-", "")[:20]
+	account := "tf" + strings.ReplaceAll(uuid.New().String(), "-", "")[:20]
 	var poller *runtime.Poller[armstorage.AccountsClientCreateResponse]
 	// Registered before the account is requested. Azure can accept the allocation and still return
 	// an error, so registering after require.NoError below would leak the account on that path.
@@ -126,7 +126,7 @@ func newAzureBackendFixture(ctx context.Context, t *testing.T, name string) clou
 	principal, err := azureTokenPrincipal(token.Token)
 	require.NoError(t, err)
 	scope := *accountResponse.ID + "/blobServices/default/containers/" + container
-	assignment := uuid.NewString()
+	assignment := uuid.New().String()
 	_, err = roles.Create(provisionCtx, scope, assignment, armauthorization.RoleAssignmentCreateParameters{
 		Properties: &armauthorization.RoleAssignmentProperties{
 			PrincipalID: new(principal), PrincipalType: new(armauthorization.PrincipalTypeServicePrincipal),
@@ -339,11 +339,11 @@ const azureEntraExchangeAudience = "api://AzureADTokenExchange"
 // obtained at login is still valid. Requesting a fresh assertion per acquisition avoids that,
 // because GitHub issues ID tokens for the whole lifetime of the job. Outside CI, or when the
 // federated inputs are absent, this falls back to the default credential chain.
-func azureTestCredential(t *testing.T) azcore.TokenCredential {
+func azureTestCredential(ctx context.Context, t *testing.T) azcore.TokenCredential {
 	t.Helper()
 	requestURL := os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL")
 	requestToken := os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
-	tenant, client := azureFederatedIdentity(t)
+	tenant, client := azureFederatedIdentity(ctx, t)
 	if requestURL == "" || requestToken == "" || tenant == "" || client == "" {
 		t.Log("Azure credential: default chain (no federated inputs available)")
 		credential, err := azidentity.NewDefaultAzureCredential(nil)
@@ -364,14 +364,14 @@ func azureTestCredential(t *testing.T) azcore.TokenCredential {
 // workflow definition comes from the base branch - so a pull request that adds those variables
 // cannot observe them until it merges. The Azure CLI is already logged in by `azure/login` in that
 // job, so its account record is used as a fallback and keeps the test self-sufficient.
-func azureFederatedIdentity(t *testing.T) (string, string) {
+func azureFederatedIdentity(ctx context.Context, t *testing.T) (string, string) {
 	t.Helper()
 	tenant := os.Getenv("AZURE_SP_TESTS_TENANTID")
 	client := os.Getenv("AZURE_SP_TESTS_APPID")
 	if tenant != "" && client != "" {
 		return tenant, client
 	}
-	output, err := exec.Command("az", "account", "show", "--output", "json").Output()
+	output, err := exec.CommandContext(ctx, "az", "account", "show", "--output", "json").Output()
 	if err != nil {
 		// Expected off CI, where the Azure CLI may be absent or signed out.
 		t.Log("Azure credential: could not read the Azure CLI account record")
