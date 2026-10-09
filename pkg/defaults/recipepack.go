@@ -38,8 +38,8 @@ var (
 	// embedded Kubernetes recipe pack. Set once at package init; each caller
 	// decodes its own copy.
 	kubernetesRecipePackJSON []byte
-	// kubernetesRecipePackErr is the reason the embedded pack failed to load.
-	kubernetesRecipePackErr = errors.New("default Kubernetes recipe pack not loaded")
+	// errKubernetesRecipePack is the reason the embedded pack failed to load.
+	errKubernetesRecipePack = errors.New("default Kubernetes recipe pack not loaded")
 )
 
 // loadKubernetesRecipePack validates the embedded Kubernetes recipe pack. It is
@@ -51,19 +51,19 @@ func loadKubernetesRecipePack(logger *log.Logger) {
 		kubernetesRecipePackJSON, err = parseRecipePack(raw)
 	}
 	if err != nil {
-		kubernetesRecipePackErr = fmt.Errorf("load %s: %w", manifestassets.KubernetesRecipePackPath, err)
-		logger.Printf("%s; default Kubernetes recipe pack disabled", kubernetesRecipePackErr)
+		errKubernetesRecipePack = fmt.Errorf("load %s: %w", manifestassets.KubernetesRecipePackPath, err)
+		logger.Printf("%s; default Kubernetes recipe pack disabled", errKubernetesRecipePack)
 		return
 	}
-	kubernetesRecipePackErr = nil
+	errKubernetesRecipePack = nil
 }
 
 // DefaultKubernetesRecipePack returns the properties of the Kubernetes recipe
 // pack pinned in defaults.yaml, as authored upstream. Every call returns a new
 // copy. It returns an error when the embedded pack is missing or invalid.
 func DefaultKubernetesRecipePack() (*corerpv20250801.RecipePackProperties, error) {
-	if kubernetesRecipePackErr != nil {
-		return nil, kubernetesRecipePackErr
+	if errKubernetesRecipePack != nil {
+		return nil, errKubernetesRecipePack
 	}
 	properties := &corerpv20250801.RecipePackProperties{}
 	if err := json.Unmarshal(kubernetesRecipePackJSON, properties); err != nil {
