@@ -77,10 +77,63 @@ run_verifier() {
 
     DE_IMAGE_MODE="${mode}" RELEASE_RETRY_ATTEMPTS=1 \
         RELEASE_RETRY_NO_SLEEP=true PATH="${TEST_ROOT}/bin:${PATH}" \
-        bash "${SCRIPT}" --tag 0.61.0-rc.1 \
+        bash "${VERIFIER_SCRIPT:-${SCRIPT}}" --tag 0.61.0-rc.1 \
         --signed-tag v0.61.0-rc.1 \
         --source-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
         --output "${TEST_ROOT}/image.json" "$@"
+}
+
+test_frozen_output_contract() {
+    local controller="${TEST_ROOT}/controller"
+    local frozen_targets="${TEST_ROOT}/approved-targets.json"
+    local current_targets="${controller}/.github/release-parity/targets.json"
+    local verifier="${controller}/.github/scripts/verify-deployment-engine-image.sh"
+
+    mkdir -p "$(dirname "${current_targets}")" "$(dirname "${verifier}")"
+    cp "${SCRIPT}" "${verifier}"
+    cp "${SCRIPT_DIR}/../release-parity/targets.json" "${frozen_targets}"
+    cp "${frozen_targets}" "${current_targets}"
+    if ! VERIFIER_SCRIPT="${verifier}" \
+        GORELEASER_PARITY_TARGETS="${frozen_targets}" \
+        run_verifier complete --expected-digest "${DIGEST}" >/dev/null; then
+        fail_test "approved output contract was rejected before resume"
+        return
+    fi
+    jq '(.images[] | select(.name == "deployment-engine")).requiredPlatforms =
+        ["linux/amd64", "linux/arm64"]' \
+        "${frozen_targets}" >"${current_targets}"
+    if ! VERIFIER_SCRIPT="${verifier}" \
+        GORELEASER_PARITY_TARGETS="${frozen_targets}" \
+        run_verifier complete --expected-digest "${DIGEST}" >/dev/null; then
+        fail_test "new controller defaults changed the approved output contract"
+        return
+    fi
+    if VERIFIER_SCRIPT="${verifier}" \
+        GORELEASER_PARITY_TARGETS="${current_targets}" \
+        run_verifier complete >/dev/null 2>&1; then
+        fail_test "fixture did not distinguish current and approved targets"
+        return
+    fi
+    ((++PASS))
+}
+
+test_invalid_output_contract() {
+    local targets="${TEST_ROOT}/invalid-targets.json"
+    local contract
+
+    for contract in \
+        '{"images":[]}' \
+        '{"images":[{"name":"deployment-engine","requiredPlatforms":[]}]}' \
+        '{"images":[{"name":"deployment-engine","requiredPlatforms":["linux/amd64","linux/amd64"]}]}'; do
+        printf '%s\n' "${contract}" >"${targets}"
+        if GORELEASER_PARITY_TARGETS="${targets}" \
+            run_verifier missing --allow-absent \
+            --state-output "${TEST_ROOT}/invalid-state.txt" >/dev/null 2>&1; then
+            fail_test "invalid output contract was treated as an absent image"
+            return
+        fi
+    done
+    ((++PASS))
 }
 
 main() {
@@ -96,6 +149,9 @@ main() {
     else
         ((++PASS))
     fi
+
+    test_frozen_output_contract
+    test_invalid_output_contract
 
     if ! run_verifier missing --allow-absent --state-output "${state}" \
         >/dev/null; then
