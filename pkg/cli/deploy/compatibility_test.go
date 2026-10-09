@@ -61,7 +61,11 @@ func Test_formatCompatibilityWarning(t *testing.T) {
 		}},
 		{name: "older extension", pin: "0.60.0", cli: "0.60.2", cp: "0.60.2", expected: []string{"extension 0.60.0 differs"}},
 		{name: "CLI and server skew", pin: "0.60.2", cli: "0.60.2", cp: "0.60.0", expected: []string{"CLI and target control-plane releases differ"}},
-		{name: "floating channel", pin: "0.60", cli: "0.60.0", cp: "0.60.0", expected: []string{"Could not check the Radius extension release", "tag(s): 0.60"}},
+		// A channel pin matching a channel the CLI and control plane both already run cannot be
+		// made any more precise (an exact-version tag for it may not even be published yet), so it
+		// is not worth flagging -- this is the common case for a default `rad init` project.
+		{name: "floating channel matches CLI and control plane", pin: "0.60", cli: "0.60.1", cp: "0.60.3"},
+		{name: "floating channel does not match control plane", pin: "0.60", cli: "0.60.0", cp: "0.61.0", expected: []string{"Could not check the Radius extension release", "tag(s): 0.60"}},
 		{name: "latest", pin: "latest", cli: "0.60.0", cp: "0.60.0", expected: []string{"Could not check", "tag(s): latest"}},
 		{name: "custom tag", pin: "custom", cli: "0.60.0", cp: "0.60.0", expected: []string{"Could not check", "tag(s): unknown"}},
 		{name: "development CLI", pin: "0.60.0", cli: "edge", cp: "0.60.0", expected: []string{"CLI does not report a full release"}},

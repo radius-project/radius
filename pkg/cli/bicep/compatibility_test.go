@@ -170,6 +170,12 @@ func Test_readRadiusExtensionPin_InvalidPath(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		path = "\x00"
 	} else {
+		if runtime.GOOS == "darwin" {
+			// On macOS, filepath.Abs (via os.Getwd) can still resolve the working directory's path
+			// after it has been removed, so this technique does not reliably force the error path
+			// readRadiusExtensionPin is meant to exercise here.
+			t.Skip("removing the working directory does not reliably fail filepath.Abs on darwin")
+		}
 		// Resolving a relative path fails when the working directory no longer exists.
 		dir := t.TempDir()
 		t.Chdir(dir)

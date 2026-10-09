@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -77,6 +79,18 @@ func releaseVersion(value string) (*semver.Version, error) {
 func formatCompatibilityWarning(cliRelease, controlPlaneRelease string, versionErr error, references []bicep.RadiusExtensionReference) string {
 	cliVersion, cliErr := releaseVersion(cliRelease)
 	controlPlaneVersion, controlPlaneErr := releaseVersion(controlPlaneRelease)
+
+	tags := make([]string, len(references))
+	for i, reference := range references {
+		tags[i] = extensionTag(reference.Reference)
+	}
+
+	// A channel pin (e.g. "0.60", as written by `rad init`) never identifies a full release, but
+	// when the CLI and control plane already run that very channel there is nothing actionable to
+	// flag: an exact-version tag for the channel may not even be published yet, so the warning's own
+	// advice could never clear it.
+	channelMatch := cliErr == nil && controlPlaneErr == nil && matchesChannel(tags, cliVersion, controlPlaneVersion)
+
 	var reasons []string
 	if cliErr != nil {
 		reasons = append(reasons, "The CLI does not report a full release version.")
@@ -85,18 +99,20 @@ func formatCompatibilityWarning(cliRelease, controlPlaneRelease string, versionE
 		reasons = append(reasons, fmt.Sprintf("Could not read the target control-plane release: %v.", versionErr))
 	} else if controlPlaneErr != nil {
 		reasons = append(reasons, "The target control plane does not report a full release version.")
-	} else if cliErr == nil && version.Compare(cliVersion, controlPlaneVersion) != 0 {
+	} else if cliErr == nil && !channelMatch && version.Compare(cliVersion, controlPlaneVersion) != 0 {
 		reasons = append(reasons, "The CLI and target control-plane releases differ.")
 	}
 
-	tags := make([]string, 0, len(references))
-	for _, reference := range references {
-		tag := extensionTag(reference.Reference)
+	for i, reference := range references {
+		tag := tags[i]
 		extensionVersion, err := releaseVersion(tag)
 		if reference.Reason != "" {
 			reasons = append(reasons, "Could not verify the resolved Radius extension release: "+reference.Reason+".")
 		}
 		if err != nil {
+			if channelMatch && channelMatches(tag, cliVersion, controlPlaneVersion) {
+				continue
+			}
 			reason := reference.Reason
 			if reason == "" {
 				reason = "the configured reference is floating, local, custom, or digest-pinned and does not identify a full release"
@@ -107,6 +123,7 @@ func formatCompatibilityWarning(cliRelease, controlPlaneRelease string, versionE
 			if tag == "" {
 				tag = "unknown"
 			}
+			tags[i] = tag
 		} else {
 			if cliErr == nil && version.Compare(extensionVersion, cliVersion) != 0 {
 				reasons = append(reasons, fmt.Sprintf("Configured Radius extension %s differs from the CLI release.", extensionVersion))
@@ -115,7 +132,6 @@ func formatCompatibilityWarning(cliRelease, controlPlaneRelease string, versionE
 				reasons = append(reasons, fmt.Sprintf("Configured Radius extension %s differs from the target control-plane release.", extensionVersion))
 			}
 		}
-		tags = append(tags, tag)
 	}
 	if len(reasons) == 0 {
 		return ""
@@ -155,4 +171,38 @@ func extensionTag(reference string) string {
 		return tag
 	}
 	return ""
+}
+
+// channelPattern matches a bare "major.minor" channel tag such as "0.60", as `rad init` writes to
+// bicepconfig.json, distinguishing it from an exact-version tag (which has a patch component too)
+// or a non-numeric tag such as "latest" or "custom".
+var channelPattern = regexp.MustCompile(`^(\d+)\.(\d+)$`)
+
+// channelMatches reports whether tag names the channel that the CLI and control plane both
+// currently run, in which case the pin cannot be made any more precise and is not worth flagging.
+func channelMatches(tag string, cliVersion, controlPlaneVersion *semver.Version) bool {
+	parts := channelPattern.FindStringSubmatch(tag)
+	if parts == nil {
+		return false
+	}
+	major, err := strconv.ParseUint(parts[1], 10, 64)
+	if err != nil {
+		return false
+	}
+	minor, err := strconv.ParseUint(parts[2], 10, 64)
+	if err != nil {
+		return false
+	}
+	return cliVersion.Major() == major && cliVersion.Minor() == minor &&
+		controlPlaneVersion.Major() == major && controlPlaneVersion.Minor() == minor
+}
+
+// matchesChannel reports whether any tag names a channel the CLI and control plane both run.
+func matchesChannel(tags []string, cliVersion, controlPlaneVersion *semver.Version) bool {
+	for _, tag := range tags {
+		if channelMatches(tag, cliVersion, controlPlaneVersion) {
+			return true
+		}
+	}
+	return false
 }
