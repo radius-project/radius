@@ -86,9 +86,10 @@ func formatCompatibilityWarning(cliRelease, controlPlaneRelease string, versionE
 	}
 
 	// A channel pin (e.g. "0.60", as written by `rad init`) never identifies a full release, but
-	// when the CLI and control plane already run that very channel there is nothing actionable to
-	// flag: an exact-version tag for the channel may not even be published yet, so the warning's own
-	// advice could never clear it.
+	// when the CLI and control plane both already run that channel, an exact-version tag for it may
+	// not even be published yet, so a warning that the pin "does not identify a full release" could
+	// never be cleared by following its own advice. This does not suppress an actual CLI/control-plane
+	// version skew: that is a real, actionable mismatch regardless of what the extension is pinned to.
 	channelMatch := cliErr == nil && controlPlaneErr == nil && matchesChannel(tags, cliVersion, controlPlaneVersion)
 
 	var reasons []string
@@ -99,7 +100,7 @@ func formatCompatibilityWarning(cliRelease, controlPlaneRelease string, versionE
 		reasons = append(reasons, fmt.Sprintf("Could not read the target control-plane release: %v.", versionErr))
 	} else if controlPlaneErr != nil {
 		reasons = append(reasons, "The target control plane does not report a full release version.")
-	} else if cliErr == nil && !channelMatch && version.Compare(cliVersion, controlPlaneVersion) != 0 {
+	} else if cliErr == nil && version.Compare(cliVersion, controlPlaneVersion) != 0 {
 		reasons = append(reasons, "The CLI and target control-plane releases differ.")
 	}
 

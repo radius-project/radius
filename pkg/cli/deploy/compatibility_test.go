@@ -61,10 +61,15 @@ func Test_formatCompatibilityWarning(t *testing.T) {
 		}},
 		{name: "older extension", pin: "0.60.0", cli: "0.60.2", cp: "0.60.2", expected: []string{"extension 0.60.0 differs"}},
 		{name: "CLI and server skew", pin: "0.60.2", cli: "0.60.2", cp: "0.60.0", expected: []string{"CLI and target control-plane releases differ"}},
-		// A channel pin matching a channel the CLI and control plane both already run cannot be
-		// made any more precise (an exact-version tag for it may not even be published yet), so it
-		// is not worth flagging -- this is the common case for a default `rad init` project.
-		{name: "floating channel matches CLI and control plane", pin: "0.60", cli: "0.60.1", cp: "0.60.3"},
+		// A channel pin (e.g. "0.60", as written by `rad init`) cannot be made any more precise --
+		// an exact-version tag for it may not even be published yet -- so it is not worth flagging
+		// when the CLI and control plane already run that exact same release. This is the common
+		// case for a default `rad init` project where the CLI and control plane match.
+		{name: "floating channel matches CLI and control plane", pin: "0.60", cli: "0.60.0", cp: "0.60.0"},
+		// An actual CLI/control-plane skew is still a real, actionable mismatch, even when both run
+		// a release within the channel the pin names: the channel-pin tolerance only excuses the
+		// pin from being flagged as unverifiable, it does not excuse real version skew.
+		{name: "floating channel does not excuse CLI and control-plane skew", pin: "0.60", cli: "0.60.2", cp: "0.60.0", expected: []string{"CLI and target control-plane releases differ"}},
 		{name: "floating channel does not match control plane", pin: "0.60", cli: "0.60.0", cp: "0.61.0", expected: []string{"Could not check the Radius extension release", "tag(s): 0.60"}},
 		{name: "latest", pin: "latest", cli: "0.60.0", cp: "0.60.0", expected: []string{"Could not check", "tag(s): latest"}},
 		{name: "custom tag", pin: "custom", cli: "0.60.0", cp: "0.60.0", expected: []string{"Could not check", "tag(s): unknown"}},
@@ -115,6 +120,19 @@ func Test_formatCompatibilityWarning_UnknownProvenance(t *testing.T) {
 	})
 	require.Contains(t, warning, "no Radius extension pin metadata")
 	require.Contains(t, warning, "tag(s): unknown")
+}
+
+// Test_formatCompatibilityWarning_ChannelPinSkewStillWarns confirms that a channel pin only excuses
+// the pin itself from being flagged as unverifiable -- it must not excuse an actual CLI/control-plane
+// version skew, which remains a real, actionable mismatch regardless of what the extension is pinned
+// to. See the "floating channel does not excuse CLI/control-plane skew" case in
+// Test_formatCompatibilityWarning for the table-driven version of this assertion.
+func Test_formatCompatibilityWarning_ChannelPinSkewStillWarns(t *testing.T) {
+	warning := formatCompatibilityWarning("0.60.2", "0.60.0", nil, []bicep.RadiusExtensionReference{
+		{Reference: "br:example.io/radius:0.60"},
+	})
+	require.Contains(t, warning, "CLI and target control-plane releases differ")
+	require.NotContains(t, warning, "Could not check the Radius extension release")
 }
 
 func Test_extensionTag(t *testing.T) {
