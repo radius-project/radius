@@ -249,6 +249,50 @@ tests:
           value: ghcr.io/radius-project/controller:edge
         template: controller/deployment.yaml
 
+  - it: should pin final images to the full chart appVersion
+    chart:
+      appVersion: 0.61.0
+      version: 0.61.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/controller:0.61.0
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/applications-rp:0.61.0
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:0.61.0
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:0.61.0
+        template: dashboard/deployment.yaml
+
+  - it: should pin patch images to the full chart appVersion
+    chart:
+      appVersion: 0.61.2
+      version: 0.61.2
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/controller:0.61.2
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/ucpd:0.61.2
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dynamic-rp:0.61.2
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: ghcr.io/radius-project/bicep:0.61.2
+        template: controller/deployment.yaml
+
   - it: should work with custom registry and default tag
     set:
       global.imageRegistry: custom.registry.io
