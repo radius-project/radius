@@ -173,7 +173,15 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 		// return cli.EnvDelete(ctx, resource.Name)
 	} else if resource.Type == ApplicationsResource {
 		t.Logf("deleting application: %s", resource.Name)
-		return cli.ApplicationDelete(ctx, resource.Name)
+
+		// Tolerate 404 to keep teardown idempotent: the CLI path this replaced
+		// reported success when the application was already gone.
+		_, err := client.DeleteApplication(ctx, resource.Name, false)
+		if err != nil && !clients.Is404Error(err) {
+			return err
+		}
+
+		return nil
 	} else if resource.Type == CoreApplicationsResource {
 		// Radius.Core applications require cascade delete via the CLI --preview flag,
 		// which deletes owned resources before deleting the application itself.
@@ -197,7 +205,12 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 
 // DeleteRPResourceSilent deletes an environment or application resource without logging to the test.
 // This is useful for background cleanup operations to avoid "Log in goroutine after test has completed" panics.
+//
+// The Radius.Core branches still shell out to the CLI for cascade delete, so they run it via
+// CLI.Silent to keep that contract.
 func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
+	silentCLI := cli.Silent()
+
 	if resource.Type == EnvironmentsResource {
 		var respFromCtx *http.Response
 		ctxWithResp := policy.WithCaptureResponse(ctx, &respFromCtx)
@@ -209,13 +222,19 @@ func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients
 
 		return nil
 	} else if resource.Type == ApplicationsResource {
-		return cli.ApplicationDelete(ctx, resource.Name)
+		// Tolerate 404 for the same reason as DeleteRPResource.
+		_, err := client.DeleteApplication(ctx, resource.Name, false)
+		if err != nil && !clients.Is404Error(err) {
+			return err
+		}
+
+		return nil
 	} else if resource.Type == CoreApplicationsResource {
 		// Radius.Core applications require cascade delete via the CLI --preview flag.
-		_, err := cli.ApplicationDeletePreview(ctx, resource.Name, "")
+		_, err := silentCLI.ApplicationDeletePreview(ctx, resource.Name, "")
 		return err
 	} else if resource.Type == CoreEnvironmentsResource {
-		_, err := cli.EnvironmentDeletePreview(ctx, resource.Name, "")
+		_, err := silentCLI.EnvironmentDeletePreview(ctx, resource.Name, "")
 		return err
 	} else {
 		// Handle other resource types (like ExtendersResource, ContainersResource, etc.)

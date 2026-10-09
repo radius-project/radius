@@ -39,6 +39,67 @@ type CLI struct {
 	T                *testing.T
 	ConfigFilePath   string
 	WorkingDirectory string
+
+	// suppressLogs disables all test logging from this CLI. It is set when commands may
+	// still be running after the test function returns, because logging to a completed test
+	// panics with "Log in goroutine after <test> has completed". It is unexported so the
+	// only way to obtain a suppressed CLI is Silent, which copies rather than mutating a
+	// CLI that concurrent goroutines may share.
+	suppressLogs bool
+
+	// logDestination overrides T as the log destination. It exists so tests can observe
+	// suppression; production callers leave it nil and logging goes to T.
+	logDestination logger
+
+	// heartbeatInterval overrides HeartbeatInterval so tests need not wait on the real one.
+	heartbeatInterval time.Duration
+}
+
+// logger is the destination for CLI test logging. *testing.T satisfies it.
+type logger interface {
+	Logf(format string, args ...any)
+}
+
+// Silent returns a copy of the CLI that performs no test logging. Use it for commands run
+// from background goroutines that are not joined before the test completes.
+//
+// It returns a copy rather than mutating the receiver because teardown runs these commands
+// concurrently from goroutines that share one CLI.
+func (cli *CLI) Silent() *CLI {
+	if cli == nil {
+		return nil
+	}
+
+	copied := *cli
+	copied.suppressLogs = true
+	return &copied
+}
+
+// logf writes to the test log unless logging is suppressed.
+func (cli *CLI) logf(format string, args ...any) {
+	if cli.suppressLogs {
+		return
+	}
+
+	if cli.logDestination != nil {
+		cli.logDestination.Logf(format, args...)
+		return
+	}
+
+	if cli.T == nil {
+		return
+	}
+
+	cli.T.Logf(format, args...)
+}
+
+// heartbeatPeriod returns the interval between heartbeat log lines.
+func (cli *CLI) heartbeatPeriod() time.Duration {
+	if cli.heartbeatInterval > 0 {
+		return cli.heartbeatInterval
+	}
+
+	return HeartbeatInterval
 }
 
 // NewCLI creates a new CLI instance with the given testing.T and config file path.
@@ -823,7 +884,7 @@ func (cli *CLI) CreateCommand(ctx context.Context, args []string) (*exec.Cmd, fu
 func (cli *CLI) ReportCommandResult(ctx context.Context, out string, description string, err error) error {
 	// If there's no context error, we know the command completed (or errored).
 	for line := range strings.SplitSeq(out, "\n") {
-		cli.T.Logf("[rad] %s", line)
+		cli.logf("[rad] %s", line)
 	}
 
 	if ctx.Err() == context.DeadlineExceeded {
@@ -875,8 +936,8 @@ func (cli *CLI) heartbeat(description string, done <-chan struct{}) {
 	start := time.Now()
 	for {
 		select {
-		case <-time.After(HeartbeatInterval):
-			cli.T.Logf("[heartbeat] command %s is still running after %s", description, time.Since(start))
+		case <-time.After(cli.heartbeatPeriod()):
+			cli.logf("[heartbeat] command %s is still running after %s", description, time.Since(start))
 		case <-done:
 			return
 		}
