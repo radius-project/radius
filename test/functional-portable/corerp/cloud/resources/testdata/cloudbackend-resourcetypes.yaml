@@ -1,0 +1,14 @@
+# Resource type used by the Terraform cloud backend guard regressions. Its own namespace keeps it
+# independent of the dynamic-RP suite's Test.Resources types.
+#
+# The schema is intentionally empty: the guard these tests cover rejects the execution before
+# Terraform runs, so the recipe produces no outputs to map. 2023-10-01-preview is the API version
+# the management client uses by default.
+namespace: Test.CloudBackend
+types:
+  stateResource:
+    apiVersions:
+      "2023-10-01-preview":
+        schema:
+          type: "object"
+          properties: {}
