@@ -58,10 +58,18 @@ func TestDefaultKubernetesRecipePack_ReturnsCopy(t *testing.T) {
 
 	first, err := DefaultKubernetesRecipePack()
 	require.NoError(t, err)
+	mutatedParams := 0
 	for _, recipe := range first.Recipes {
 		recipe.Source = to.Ptr("mutated")
-		recipe.Parameters = map[string]any{"mutated": true}
+		for key := range recipe.Parameters {
+			recipe.Parameters[key] = "mutated"
+			mutatedParams++
+		}
+		if recipe.Parameters != nil {
+			recipe.Parameters["mutated"] = true
+		}
 	}
+	require.NotZero(t, mutatedParams, "the embedded pack should have parameters to mutate in place")
 	first.Recipes["Mutated/type"] = &corerpv20250801.RecipeDefinition{}
 
 	second, err := DefaultKubernetesRecipePack()
@@ -70,6 +78,9 @@ func TestDefaultKubernetesRecipePack_ReturnsCopy(t *testing.T) {
 	for _, recipe := range second.Recipes {
 		assert.NotEqual(t, "mutated", *recipe.Source)
 		assert.NotContains(t, recipe.Parameters, "mutated")
+		for key, value := range recipe.Parameters {
+			assert.NotEqual(t, "mutated", value, "parameter %q", key)
+		}
 	}
 }
 
