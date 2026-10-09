@@ -162,6 +162,35 @@ func Test_extensionTag_RegistryPort(t *testing.T) {
 	}
 }
 
+// cancelingFactory wraps connections.MockFactory and cancels the caller's context from inside
+// GetControlPlaneVersion, so CheckCompatibility's second ctx.Err() check (after contacting the
+// control plane) can be exercised independent of a control-plane error.
+type cancelingFactory struct {
+	*connections.MockFactory
+	cancel context.CancelFunc
+}
+
+func (f *cancelingFactory) GetControlPlaneVersion(ctx context.Context, workspace workspaces.Workspace) (version.VersionInfo, error) {
+	f.cancel()
+	return f.MockFactory.GetControlPlaneVersion(ctx, workspace)
+}
+
+func Test_CheckCompatibility_CancelledDuringControlPlaneLookup(t *testing.T) {
+	template := map[string]any{"resources": map[string]any{
+		"app": map[string]any{"type": "Radius.Core/applications"},
+	}}
+	pin := bicep.RadiusExtensionPin{Reference: "br:example.io/radius:0.60.2"}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	factory := &cancelingFactory{
+		MockFactory: &connections.MockFactory{ControlPlaneVersion: version.VersionInfo{Release: "0.60.0"}},
+		cancel:      cancel,
+	}
+	warning, err := CheckCompatibility(ctx, factory, workspaces.Workspace{}, template, pin)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Empty(t, warning)
+}
+
 func Test_CheckCompatibility(t *testing.T) {
 	template := map[string]any{"resources": map[string]any{
 		"app": map[string]any{"type": "Radius.Core/applications"},

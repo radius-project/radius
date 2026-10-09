@@ -293,6 +293,17 @@ func Test_PrepareTemplate_RemoteUnsupportedExtension(t *testing.T) {
 	require.Contains(t, err.Error(), "must reference a .json or .bicep file")
 }
 
+func Test_PrepareTemplate_LocalUnsupportedExtension(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app.txt")
+	require.NoError(t, os.WriteFile(path, []byte("not a template"), 0o644))
+
+	i := newTestImpl()
+	_, _, err := i.PrepareTemplate(t.Context(), path)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "must be a .json or .bicep file")
+}
+
 func Test_PrepareTemplate_RemoteJSONInvalidMentionsURL(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, "{ not valid json")

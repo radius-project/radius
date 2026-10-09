@@ -155,6 +155,28 @@ func Test_RadiusExtensionReferences_NoRadius(t *testing.T) {
 	require.Empty(t, RadiusExtensionReferences(template, pin))
 }
 
+// Test_RadiusExtensionReferences_SortTieBreak asserts the stable ordering used when two distinct
+// references share an identical (empty) Reference but differ by Reason: a root resource whose pin
+// could not be read, and a nested-module resource whose pin is unknown. Both sort keys collide on
+// Reference, exercising the Reason-based tie-break.
+func Test_RadiusExtensionReferences_SortTieBreak(t *testing.T) {
+	template := compatibilityTemplate(t, `{
+		"resources":{
+			"app":{"type":"Radius.Core/applications"},
+			"module":{
+				"type":"Microsoft.Resources/deployments",
+				"properties":{"template":{"resources":[{"type":"Radius.Core/environments"}]}}
+			}
+		}
+	}`)
+	pin := RadiusExtensionPin{Err: fmt.Errorf("no bicepconfig.json was found for the source")}
+	references := RadiusExtensionReferences(template, pin)
+	require.Equal(t, []RadiusExtensionReference{
+		{Reason: "no bicepconfig.json was found for the source"},
+		{Reason: UnknownPinReason},
+	}, references)
+}
+
 func Test_resolveRadiusExtensionPin_ReadError(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(root, "bicepconfig.json"), []byte("{}"), 0600))
