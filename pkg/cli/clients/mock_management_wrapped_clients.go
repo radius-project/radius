@@ -559,45 +559,6 @@ func (c *MockenvironmentResourceClientGetCall) DoAndReturn(f func(context.Contex
 	return c
 }
 
-// GetMetadata mocks base method.
-func (m *MockenvironmentResourceClient) GetMetadata(ctx context.Context, environmentName string, body v20231001preview.RecipeGetMetadata, options *v20231001preview.EnvironmentsClientGetMetadataOptions) (v20231001preview.EnvironmentsClientGetMetadataResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetadata", ctx, environmentName, body, options)
-	ret0, _ := ret[0].(v20231001preview.EnvironmentsClientGetMetadataResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetMetadata indicates an expected call of GetMetadata.
-func (mr *MockenvironmentResourceClientMockRecorder) GetMetadata(ctx, environmentName, body, options any) *MockenvironmentResourceClientGetMetadataCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetadata", reflect.TypeOf((*MockenvironmentResourceClient)(nil).GetMetadata), ctx, environmentName, body, options)
-	return &MockenvironmentResourceClientGetMetadataCall{Call: call}
-}
-
-// MockenvironmentResourceClientGetMetadataCall wrap *gomock.Call
-type MockenvironmentResourceClientGetMetadataCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockenvironmentResourceClientGetMetadataCall) Return(arg0 v20231001preview.EnvironmentsClientGetMetadataResponse, arg1 error) *MockenvironmentResourceClientGetMetadataCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockenvironmentResourceClientGetMetadataCall) Do(f func(context.Context, string, v20231001preview.RecipeGetMetadata, *v20231001preview.EnvironmentsClientGetMetadataOptions) (v20231001preview.EnvironmentsClientGetMetadataResponse, error)) *MockenvironmentResourceClientGetMetadataCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockenvironmentResourceClientGetMetadataCall) DoAndReturn(f func(context.Context, string, v20231001preview.RecipeGetMetadata, *v20231001preview.EnvironmentsClientGetMetadataOptions) (v20231001preview.EnvironmentsClientGetMetadataResponse, error)) *MockenvironmentResourceClientGetMetadataCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // NewListByScopePager mocks base method.
 func (m *MockenvironmentResourceClient) NewListByScopePager(options *v20231001preview.EnvironmentsClientListByScopeOptions) *runtime.Pager[v20231001preview.EnvironmentsClientListByScopeResponse] {
 	m.ctrl.T.Helper()

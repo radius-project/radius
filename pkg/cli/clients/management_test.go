@@ -1596,34 +1596,6 @@ func Test_Environment(t *testing.T) {
 		require.Equal(t, expectedResource, environment)
 	})
 
-	t.Run("GetRecipeMetadata", func(t *testing.T) {
-		mock := NewMockenvironmentResourceClient(gomock.NewController(t))
-		client := createClient(mock)
-
-		expectedMetadata := corerp.RecipeGetMetadata{
-			Name:         new("test-recipe"),
-			ResourceType: new("Applications.Core/gateways"),
-		}
-
-		expectedResult := corerp.RecipeGetMetadataResponse{
-			Parameters: map[string]any{
-				"a": "a-value",
-			},
-		}
-
-		mock.EXPECT().
-			GetMetadata(gomock.Any(), testResourceName, expectedMetadata, gomock.Any()).
-			Return(corerp.EnvironmentsClientGetMetadataResponse{
-				Parameters: map[string]any{
-					"a": "a-value",
-				},
-			}, nil)
-
-		result, err := client.GetRecipeMetadata(t.Context(), testResourceID, expectedMetadata)
-		require.NoError(t, err)
-		require.Equal(t, expectedResult, result)
-	})
-
 	t.Run("CreateOrUpdateEnviroment", func(t *testing.T) {
 		mock := NewMockenvironmentResourceClient(gomock.NewController(t))
 		client := createClient(mock)

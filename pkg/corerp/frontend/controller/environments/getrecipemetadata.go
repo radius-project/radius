@@ -133,7 +133,7 @@ func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, r
 	// Overlay operator-configured parameter values so they appear in the response.
 	// The engine returns the template schema (type, defaultValue, etc.) but not the
 	// values an operator has set on the environment. We merge them here so that
-	// `rad recipe show` can display them.
+	// API clients can display them.
 	for paramName, configuredValue := range recipeProperties.Parameters {
 		schemaEntry, ok := recipeParameters[paramName].(map[string]any)
 		if !ok {

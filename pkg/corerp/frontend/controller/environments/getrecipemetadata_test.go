@@ -272,7 +272,7 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 func TestGetRecipeMetadataFromRegistry_ConfiguredParameterValuesAppearedInResponse(t *testing.T) {
 	// Regression test for https://github.com/radius-project/radius/issues/9454
 	// Operator-configured parameter values stored in the environment must appear in
-	// the GetRecipeMetadata response so that `rad recipe show` can display them.
+	// the GetRecipeMetadata response so that API clients can display them.
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 	mEngine := engine.NewMockEngine(mctrl)
