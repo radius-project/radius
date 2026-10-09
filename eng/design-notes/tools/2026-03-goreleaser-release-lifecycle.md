@@ -443,9 +443,9 @@ release:
 
 The release controller applies the same policy only to operations outside GoReleaser:
 
-- Retry timeouts, connection resets, rate limits, and service-side `5xx` responses with exponential backoff and jitter.
+- Retry read-only API operations after timeouts, connection resets, rate limits, and service-side `5xx` responses with exponential backoff and jitter.
 - Do not retry invalid input, missing required notes, authentication or authorization failures, conflicting tag targets, checksum mismatches, or unsupported platform configuration.
-- Before retrying a dispatch, query the correlated remote run and destination artifact. Never create duplicate work merely because monitoring timed out.
+- Retry a dispatch automatically only after an explicit rate-limit rejection, checking for a correlated run before retrying. A server error or lost dispatch response may follow acceptance: observe the correlated run until the existing monitor deadline, then fail closed without another dispatch if the outcome remains unknown. Inspect publisher runs and destination artifacts before a new invocation; an empty run list does not establish rejection. Exactly-once effects across interrupted invocations require publisher-side idempotency, not just controller concurrency.
 - Size every job timeout above its complete retry and monitoring budget. A child monitor may not wait longer than its enclosing job.
 - Use release concurrency keyed by version and source commit, with cancellation disabled. A second invocation queues or reconciles the same release instead of canceling publication in progress.
 
