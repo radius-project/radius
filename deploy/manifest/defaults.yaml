@@ -4,9 +4,12 @@
 #                        manifests, which are fetched and copied into
 #                        deploy/manifest/built-in-providers/{dev,self-hosted}/.
 #   recipePacks[]        per-pack pins for the recipe packs published by
-#                        resource-types-contrib. Recipe packs are not vendored
-#                        into this repo; generated deploy workflows fetch the
-#                        validated upstream revision recorded here.
+#                        resource-types-contrib. The kubernetes pack is compiled
+#                        into deploy/manifest/recipe-packs/kubernetes/default.json,
+#                        which rad embeds to create the default recipe pack.
+#                        Other packs are not vendored; generated deploy
+#                        workflows fetch the validated upstream revision
+#                        recorded here.
 #   defaultRegistration  the <namespace>/<typeName> entries that ship as
 #                        defaults. Each resolves to a file path in
 #                        resource-types-contrib by stripping the "Radius."
