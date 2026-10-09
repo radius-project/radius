@@ -18,6 +18,7 @@ package kubernetes_noncloud_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -30,11 +31,17 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
+	ucpresources "github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/rp"
+	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
+	"github.com/radius-project/radius/test/validation"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -279,6 +286,93 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 		deleteNamespace(ctx, t, namespace, opts)
 		deleteNamespace(ctx, t, envNamespace, opts)
 	})
+}
+
+func Test_DeploymentTemplate_ModernRecipeOwnership(t *testing.T) {
+	const name = "dt-modern-recipe"
+	const ownerName = name + "-owner"
+	const childName = ownerName + "-recipe-child"
+
+	ct := rp.NewRPTest(t, name, nil)
+	defer deleteNamespace(t.Context(), t, name, ct.Options)
+
+	scope, err := ucpresources.ParseScope(ct.Options.Workspace.Scope)
+	require.NoError(t, err)
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(scope.Name()).String()
+	require.NoError(t, err)
+	ownerID := scope.String() + "/providers/Radius.Data/redisCaches/" + ownerName
+	childID := scope.String() + "/providers/Radius.Core/applications/" + childName
+	template, err := os.ReadFile(path.Join("testdata", "modern-recipe", "owner.json"))
+	require.NoError(t, err)
+	nn := types.NamespacedName{Name: name, Namespace: name}
+	deploymentTemplate := makeDeploymentTemplate(nn, string(template), providerConfig, map[string]string{
+		"name":        ownerName,
+		"environment": scope.String() + "/providers/Radius.Core/environments/" + name + "-env",
+	})
+
+	ct.Steps = []rp.TestStep{
+		{
+			// Keep prerequisites outside the controller's deployment so it owns only the recipe owner.
+			Executor: step.NewDeployExecutor(path.Join("testdata", "modern-recipe", "setup.bicep"),
+				"name="+name, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			RPResources: &validation.RPResourceSet{Resources: []validation.RPResource{
+				{Name: name + "-env", Type: validation.CoreEnvironmentsResource},
+				{Name: name + "-recipes", Type: validation.CoreRecipePacksResource},
+			}},
+			SkipObjectValidation: true,
+		},
+		{
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				// Drain controller-owned resources before the framework deletes the environment and recipe pack.
+				t.Cleanup(func() { deleteDeploymentTemplateAndWait(ctx, t, nn, ct.Options) })
+				require.NoError(t, options.Client.Create(ctx, deploymentTemplate))
+				require.EventuallyWithT(t, func(c *assert.CollectT) {
+					require.NoError(c, options.Client.Get(ctx, nn, deploymentTemplate))
+					require.Equal(c, radappiov1alpha3.DeploymentTemplatePhraseReady, deploymentTemplate.Status.Phrase,
+						"DeploymentTemplate status: %+v", deploymentTemplate.Status)
+					require.Equal(c, deploymentTemplate.Generation, deploymentTemplate.Status.ObservedGeneration)
+				}, 3*time.Minute, time.Second, "waiting for the modern recipe DeploymentTemplate to be ready")
+			}),
+			RPResources: &validation.RPResourceSet{Resources: []validation.RPResource{
+				{Name: ownerName, Type: validation.DataRedisCachesResource},
+				{Name: childName, Type: validation.CoreApplicationsResource},
+			}},
+			SkipObjectValidation: true,
+			SkipResourceDeletion: true, // The DeploymentTemplate cleanup owns this lifecycle.
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+				owner, err := ct.Options.ManagementClient.GetResource(ctx, validation.DataRedisCachesResource, ownerName)
+				require.NoError(t, err)
+				statusJSON, err := json.Marshal(owner.Properties["status"])
+				require.NoError(t, err)
+				var ownerStatus rpv1.ResourceStatus
+				require.NoError(t, json.Unmarshal(statusJSON, &ownerStatus))
+				require.Len(t, ownerStatus.OutputResources, 1, "the recipe owner must retain its child inventory")
+				require.Equal(t, strings.ToLower(childID), strings.ToLower(ownerStatus.OutputResources[0].ID.String()))
+				require.NotNil(t, ownerStatus.OutputResources[0].RadiusManaged)
+				require.True(t, *ownerStatus.OutputResources[0].RadiusManaged, "the recipe must still manage the child")
+
+				outerIDs := make([]string, 0, len(deploymentTemplate.Status.OutputResources))
+				for _, id := range deploymentTemplate.Status.OutputResources {
+					outerIDs = append(outerIDs, strings.ToLower(id))
+				}
+				assert.Equal(t, []string{strings.ToLower(ownerID)}, outerIDs,
+					"outer outputResources must not promote the recipe's same-scope child")
+
+				deploymentResources := &radappiov1alpha3.DeploymentResourceList{}
+				require.NoError(t, ct.Options.Client.List(ctx, deploymentResources, controller_runtime.InNamespace(name)))
+				ownedIDs := make([]string, 0, len(deploymentResources.Items))
+				for _, resource := range deploymentResources.Items {
+					assert.True(t, metav1.IsControlledBy(&resource, deploymentTemplate),
+						"DeploymentResource %s must be controlled by the DeploymentTemplate UID", resource.Name)
+					assert.Contains(t, resource.Finalizers, reconciler.DeploymentResourceFinalizer)
+					ownedIDs = append(ownedIDs, strings.ToLower(resource.Spec.Id))
+				}
+				assert.Equal(t, []string{strings.ToLower(ownerID)}, ownedIDs,
+					"controller-owned DeploymentResources must not claim the recipe's same-scope child")
+			},
+		},
+	}
+	ct.Test(t)
 }
 
 // makeDeploymentTemplate returns a DeploymentTemplate object with the given name, template, providerConfig, and parameters.
