@@ -234,8 +234,8 @@ test_frozen_output_contract() {
         .with.path | contains("/release-controller/release-targets.json")' \
         "plan artifact must carry the approved output contract"
     assert_yq "${CONTROLLER}" \
-        '.jobs.validate.steps[] | select(.id == "upload-plan") |
-        .with.name | contains("${{ github.run_attempt }}")' \
+        ".jobs.validate.steps[] | select(.id == \"upload-plan\") |
+        .with.name | contains(\"\${{ github.run_attempt }}\")" \
         "reruns must retain earlier attempts instead of replacing their artifacts"
     assert_json "${CONTROLLER}" \
         '[.jobs."publish-deployment-engine", .jobs."create-radius-tag"] |
@@ -264,7 +264,7 @@ test_unknown_dispatch_summary() {
         "\"\${{ needs.publish-deployment-engine.outputs.run-state }}\"" \
         "summary must inspect the publisher dispatch outcome"
     assert_contains "${CONTROLLER}" \
-        'elif [[ "${DE_RUN_STATE}" == "unknown" ]]' \
+        "elif [[ \"\${DE_RUN_STATE}\" == \"unknown\" ]]" \
         "unknown publisher outcomes must not suggest an immediate resume"
     if ! (
         summary_root="$(mktemp -d "${TMPDIR:-/tmp}/controller-summary-XXXXXX")"
