@@ -29,13 +29,15 @@ The tests live under `./test/functional-portable`. They use product functionalit
 
 ### Local Bicep registry trust
 
-Bicep v0.43 and later reject registry hosts outside their trusted allowlist. When using the secure local registry setup from `functional-test-noncloud.yaml`, explicitly trust its two hostnames: `localhost` for setup and extension restore, and `radius-registry` for the CLI recipe-publishing tests. Scope the variable to the commands that need it:
+Bicep v0.43 and later reject registry hosts outside their trusted allowlist. When using the secure local registry setup from `functional-test-noncloud.yaml`, explicitly trust its two hostnames: `localhost` for setup and extension restore, and `radius-registry` for the tests that publish recipes: the CLI tests and the dynamicrp recipe pack test. Scope the variable to the commands that need it:
 
 ```sh
 BICEP_TRUSTED_REGISTRIES=localhost,radius-registry \
   BICEP_RECIPE_REGISTRY=localhost:5000 make publish-test-bicep-recipes
 BICEP_TRUSTED_REGISTRIES=localhost,radius-registry \
   BICEP_RECIPE_REGISTRY=radius-registry:5000 make test-functional-cli-noncloud
+BICEP_TRUSTED_REGISTRIES=localhost,radius-registry \
+  BICEP_RECIPE_REGISTRY=radius-registry:5000 make test-functional-dynamicrp-noncloud
 ```
 
 Use bare hostnames, without `br:`, ports, or paths, and add only registries you own or trust. The non-cloud CI test job sets this variable for both direct Bicep commands and `rad` subprocesses; the installer does not set global registry trust. Keep the existing HTTPS, hostname resolution, and CA certificate setup: registry trust does not bypass TLS or certificate verification. ACR hosts remain trusted by default and continue using Azure credentials, including when `ociEnabled` is enabled.
