@@ -18,6 +18,7 @@ package preview
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/radius-project/radius/pkg/cli"
 	cli_aws "github.com/radius-project/radius/pkg/cli/aws"
@@ -31,9 +32,11 @@ type initOptions struct {
 	Environment    environmentOptions
 	CloudProviders cloudProviderOptions
 	Recipes        recipePackOptions
-	Application    applicationOptions
 	// SetValues is a list of values that will be passed to Helm when installing the application.
 	SetValues []string
+	// BicepConfigDirectory is the directory where bicepconfig.json will be written. It is resolved once
+	// so that the summary and the write use the same location. Empty if it could not be resolved.
+	BicepConfigDirectory string
 }
 
 // clusterOptions holds all of the options that will be used to initialize the Kubernetes cluster.
@@ -64,12 +67,6 @@ type cloudProviderOptions struct {
 // recipePackOptions holds all of the options that will be used to initialize recipe packs as part of the environment.
 type recipePackOptions struct {
 	DefaultRecipePack bool
-}
-
-// applicationOptions holds all of the options that will be used to initialize an application in the current directory.
-type applicationOptions struct {
-	Scaffold bool
-	Name     string
 }
 
 func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspaces.Workspace, error) {
@@ -108,12 +105,13 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		return nil, nil, err
 	}
 
-	err = r.enterApplicationOptions(&options)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	options.Recipes.DefaultRecipePack = !r.Full
+
+	// Resolve the bicepconfig.json location for display. If this fails, Run resolves it again and
+	// reports the error there.
+	if wd, err := os.Getwd(); err == nil {
+		options.BicepConfigDirectory = wd
+	}
 
 	// If the user has a current workspace we should overwrite it.
 	// If the user does not have a current workspace we should create a new one called default and set it as current
