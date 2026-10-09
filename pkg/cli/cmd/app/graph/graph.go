@@ -251,7 +251,7 @@ func (r *Runner) runDeployed(ctx context.Context) error {
 func (r *Runner) runModeled(ctx context.Context) error {
 	displayPath := bicep.RedactTemplatePath(r.BicepFilePath)
 	r.Output.LogInfo("Compiling %s", displayPath)
-	template, err := r.Bicep.PrepareTemplate(ctx, r.BicepFilePath)
+	template, _, err := r.Bicep.PrepareTemplate(ctx, r.BicepFilePath)
 	if err != nil {
 		return clierrors.Message("Failed to compile %q: %v", displayPath, err)
 	}

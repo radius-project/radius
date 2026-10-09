@@ -70,7 +70,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
@@ -90,7 +90,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
@@ -109,7 +109,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
@@ -135,7 +135,7 @@ func Test_Validate(t *testing.T) {
 				}
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(templateWithEnv, nil).
+					Return(templateWithEnv, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -157,7 +157,7 @@ func Test_Validate(t *testing.T) {
 								"name": "dev",
 							},
 						},
-					}, nil).
+					}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -172,7 +172,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -187,7 +187,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/prod").
@@ -213,7 +213,7 @@ func Test_Validate(t *testing.T) {
 				}
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(templateWithEnv, nil).
+					Return(templateWithEnv, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -235,7 +235,7 @@ func Test_Validate(t *testing.T) {
 				}
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(templateWithEnv, nil).
+					Return(templateWithEnv, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				// When env flag is explicitly provided, we honor it and validate even if template creates environment
 				mocks.ApplicationManagementClient.EXPECT().
@@ -305,7 +305,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
 			PrepareTemplate(gomock.Any(), "app.bicep").
-			Return(map[string]any{}, nil).
+			Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 			Times(1)
 
 		f := &framework.Impl{
@@ -379,7 +379,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
 			PrepareTemplate(gomock.Any(), "app.bicep").
-			Return(map[string]any{}, nil).
+			Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 			Times(1)
 
 		f := &framework.Impl{
@@ -811,6 +811,7 @@ func Test_Run_ExtensibleEnvironment(t *testing.T) {
 		ApplicationName:          "test-application",
 		Parameters:               map[string]map[string]any{},
 		Template:                 template,
+		RadiusExtensionPin:       bicep.RadiusExtensionPin{Reference: "br:example.io/radius:0.60.2"},
 		Workspace:                workspace,
 		Providers:                providers,
 		TemplateInspectionResult: bicep.InspectTemplateResources(template),
@@ -831,7 +832,9 @@ func Test_Run_ExtensibleEnvironment(t *testing.T) {
 			Params: []any{extensibleComputeNotSupportedMessage},
 		},
 	}
-	require.Equal(t, expected, outputSink.Writes)
+	require.Len(t, outputSink.Writes, len(expected)+1)
+	require.Contains(t, fmt.Sprint(outputSink.Writes[0]), "Radius type compatibility is not verified")
+	require.Equal(t, expected, outputSink.Writes[1:])
 }
 
 // Test_Run_ExtensibleEnvironment_PreExisting verifies that `rad run` surfaces the not-supported

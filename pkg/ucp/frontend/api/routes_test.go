@@ -18,7 +18,9 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -30,9 +32,35 @@ import (
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
+	"github.com/radius-project/radius/pkg/version"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+func Test_VersionRoute(t *testing.T) {
+	for name, pathBase := range map[string]string{"root": "", "kubernetes": "/apis/api.ucp.dev/v1alpha3"} {
+		t.Run(name, func(t *testing.T) {
+			options := &ucp.Options{
+				Config: &ucp.Config{
+					Server: hostoptions.ServerOptions{PathBase: pathBase},
+				},
+				DatabaseProvider: databaseprovider.FromMemory(),
+				SecretProvider: secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{
+					Provider: secretprovider.TypeInMemorySecret,
+				}),
+				StatusManager: statusmanager.NewMockStatusManager(gomock.NewController(t)),
+			}
+			router := chi.NewRouter()
+			require.NoError(t, Register(t.Context(), router, nil, options))
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, pathBase+"/version", nil))
+			require.Equal(t, http.StatusOK, response.Code)
+			var info version.VersionInfo
+			require.NoError(t, json.Unmarshal(response.Body.Bytes(), &info))
+			require.Equal(t, version.NewVersionInfo(), info)
+		})
+	}
+}
 
 func Test_Routes(t *testing.T) {
 	pathBase := "/some-path-base"
