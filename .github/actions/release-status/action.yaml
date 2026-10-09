@@ -1,0 +1,57 @@
+name: Release stage status
+description: Record source-bound release state and send an optional Teams update
+inputs:
+  stage:
+    description: Release stage name
+    required: true
+  state:
+    description: Stage state
+    default: completed
+  version:
+    description: Release tag
+    required: false
+  source-sha:
+    description: Approved source commit
+    required: false
+  results:
+    description: Job or step results as JSON
+    default: "{}"
+  downstream:
+    description: Downstream run results as JSON
+    default: "[]"
+  manifest:
+    description: Path to verification evidence
+    required: false
+  webhook:
+    description: Teams incoming webhook URL
+    required: false
+runs:
+  using: composite
+  steps:
+    - id: report
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        INPUT_STAGE: ${{ inputs.stage }}
+        INPUT_STATE: ${{ inputs.state }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_SOURCE_SHA: ${{ inputs.source-sha }}
+        INPUT_RESULTS: ${{ inputs.results }}
+        INPUT_DOWNSTREAM: ${{ inputs.downstream }}
+        INPUT_MANIFEST_FILE: ${{ inputs.manifest }}
+      with:
+        retries: 5
+        script: |
+          const { default: report } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/release-status.mjs`)
+          await report({ github, context, core })
+    - name: Notify release channel
+      if: inputs.webhook != ''
+      continue-on-error: true
+      shell: bash
+      env:
+        TEAMS_WEBHOOK: ${{ inputs.webhook }}
+        TEAMS_PAYLOAD: ${{ steps.report.outputs.teams-payload }}
+      run: |
+        curl --fail --silent --show-error --proto '=https' \
+          --retry 5 --retry-connrefused --retry-max-time 60 --max-time 15 \
+          --header 'Content-Type: application/json' \
+          --data "${TEAMS_PAYLOAD}" --output /dev/null "${TEAMS_WEBHOOK}"

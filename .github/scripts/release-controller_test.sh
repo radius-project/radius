@@ -136,8 +136,11 @@ test_shared_controller_contract() {
 test_stage_order() {
     assert_json "${CONTROLLER}" \
         '.jobs."publish-deployment-engine".needs' \
-        '["validate","approve"]' \
-        "Deployment Engine must publish after validation and approval"
+        '["validate"]' \
+        "Deployment Engine must publish after validation"
+    assert_yq "${CONTROLLER}" \
+        '.jobs.approve == null and .jobs."publish-deployment-engine".if == "needs.validate.outputs.ready == '\''true'\''"' \
+        "publication approval must not prevent automatic RC staging"
     assert_json "${CONTROLLER}" '.jobs."reconcile-siblings".needs' \
         '["validate","publish-deployment-engine"]' \
         "sibling reconciliation must follow Deployment Engine"
@@ -260,7 +263,9 @@ test_unknown_dispatch_summary() {
         "\"\${{ steps.monitor-de-workflow.outputs.run_state }}\"" \
         "publisher job must expose an uncertain dispatch outcome"
     assert_json "${CONTROLLER}" \
-        '.jobs.summary.steps[0].env.DE_RUN_STATE' \
+        '.jobs.summary.steps[] |
+        select(.name == "Summarize release state and recovery") |
+        .env.DE_RUN_STATE' \
         "\"\${{ needs.publish-deployment-engine.outputs.run-state }}\"" \
         "summary must inspect the publisher dispatch outcome"
     assert_contains "${CONTROLLER}" \
@@ -269,7 +274,10 @@ test_unknown_dispatch_summary() {
     if ! (
         summary_root="$(mktemp -d "${TMPDIR:-/tmp}/controller-summary-XXXXXX")"
         trap 'rm -rf "${summary_root}"' EXIT
-        summary_script="$(yq -r '.jobs.summary.steps[0].run' "${CONTROLLER}")"
+        summary_script="$(yq -r '
+            .jobs.summary.steps[] |
+            select(.name == "Summarize release state and recovery") | .run
+        ' "${CONTROLLER}")"
         for state in unknown found; do
             VERSION=v0.61.0 SOURCE_COMMIT=1111111111111111111111111111111111111111 \
                 READY=true VALIDATE_RESULT=success APPROVE_RESULT=success \

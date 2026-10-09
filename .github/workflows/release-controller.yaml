@@ -88,6 +88,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      actions: write
     uses: ./.github/workflows/__release-controller.yaml
     with:
       source-pr-number: ${{ needs.resolve.outputs.source-pr-number }}
@@ -104,6 +105,7 @@ jobs:
         ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
       RADIUS_PUBLISHER_BOT_PRIVATE_KEY: >-
         ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+      RELEASE_TEAMS_WEBHOOK: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
 
   summary:
     name: Release controller entry summary
