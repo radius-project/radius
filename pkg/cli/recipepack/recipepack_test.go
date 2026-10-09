@@ -84,33 +84,40 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 	require.Equal(t, "global", *resource.Location)
 	require.NotNil(t, resource.Properties)
 
-	// The recipes come from the embedded pack, so compare against it rather
-	// than a list kept here.
-	recipes := defaults.DefaultKubernetesRecipes()
-	require.NotEmpty(t, recipes)
-	require.Len(t, resource.Properties.Recipes, len(recipes))
-	for _, recipe := range recipes {
-		definition, ok := resource.Properties.Recipes[recipe.ResourceType]
-		require.True(t, ok, "missing recipe for %s", recipe.ResourceType)
-		require.Equal(t, corerpv20250801.RecipeKind(recipe.Kind), *definition.Kind)
-		require.Equal(t, recipe.Image+":edge", *definition.Source)
-		require.Equal(t, recipe.Parameters, definition.Parameters)
+	// The pack is the embedded one with only the source tags changed, so
+	// compare against it rather than a list kept here.
+	pack, err := defaults.DefaultKubernetesRecipePack()
+	require.NoError(t, err)
+	require.NotEmpty(t, pack.Recipes)
+	for resourceType, recipe := range pack.Recipes {
+		repository, err := defaults.RecipeSourceRepository(*recipe.Source)
+		require.NoError(t, err)
+		recipe.Source = to.Ptr(repository + ":edge")
+		require.Equal(t, recipe, resource.Properties.Recipes[resourceType], resourceType)
 	}
+	require.Equal(t, pack, resource.Properties)
 }
 
 func Test_newDefaultRecipePackResource_ReleaseChannelUsesPins(t *testing.T) {
 	t.Parallel()
 
-	recipes := defaults.DefaultKubernetesRecipes()
-	resource, err := newDefaultRecipePackResource(recipes, false)
+	pack, err := defaults.DefaultKubernetesRecipePack()
+	require.NoError(t, err)
+	repositories := map[string]string{}
+	for resourceType, recipe := range pack.Recipes {
+		repositories[resourceType], err = defaults.RecipeSourceRepository(*recipe.Source)
+		require.NoError(t, err)
+	}
+
+	resource, err := newDefaultRecipePackResource(pack, false)
 	require.NoError(t, err)
 
-	for _, recipe := range recipes {
-		namespace, _, ok := defaults.SplitResourceType(recipe.ResourceType)
+	for resourceType, repository := range repositories {
+		namespace, _, ok := defaults.SplitResourceType(resourceType)
 		require.True(t, ok)
 		pin, ok := defaults.ResourceTypePin(namespace)
 		require.True(t, ok, "%s must be pinned under resourceTypes in defaults.yaml", namespace)
-		require.Equal(t, recipe.Image+":"+pin.Ref, *resource.Properties.Recipes[recipe.ResourceType].Source)
+		require.Equal(t, repository+":"+pin.Ref, *resource.Properties.Recipes[resourceType].Source)
 	}
 }
 
@@ -120,59 +127,90 @@ func Test_newDefaultRecipePackResource_ReleaseChannelUsesPins(t *testing.T) {
 func Test_DefaultRecipePack_RoutesUseInstalledGateway(t *testing.T) {
 	t.Parallel()
 
-	for _, recipe := range defaults.DefaultKubernetesRecipes() {
-		if recipe.ResourceType != "Radius.Compute/routes" {
-			continue
-		}
-		if name, ok := recipe.Parameters["gatewayName"]; ok {
-			require.Equal(t, helm.DefaultContourGatewayName, name)
-		}
-		if namespace, ok := recipe.Parameters["gatewayNamespace"]; ok {
-			require.Equal(t, helm.DefaultContourGatewayNamespace, namespace)
-		}
+	pack, err := defaults.DefaultKubernetesRecipePack()
+	require.NoError(t, err)
+	recipe, ok := pack.Recipes["Radius.Compute/routes"]
+	if !ok {
+		return
+	}
+	if name, ok := recipe.Parameters["gatewayName"]; ok {
+		require.Equal(t, helm.DefaultContourGatewayName, name)
+	}
+	if namespace, ok := recipe.Parameters["gatewayNamespace"]; ok {
+		require.Equal(t, helm.DefaultContourGatewayNamespace, namespace)
 	}
 }
 
 func Test_newDefaultRecipePackResource(t *testing.T) {
 	t.Parallel()
 
-	recipes := []defaults.RecipePackRecipe{
-		{ResourceType: "Contoso.Example/widgets", Kind: "bicep", Image: "localhost:5000/widgets", Parameters: map[string]any{"size": "large"}},
-		{ResourceType: "Contoso.Example/gadgets", Kind: "terraform", Image: "example.com/gadgets"},
+	// pack returns a new pack on every call because the builder retags it in
+	// place.
+	pack := func() *corerpv20250801.RecipePackProperties {
+		return &corerpv20250801.RecipePackProperties{
+			Recipes: map[string]*corerpv20250801.RecipeDefinition{
+				"Contoso.Example/widgets": {
+					Kind:       to.Ptr(corerpv20250801.RecipeKindBicep),
+					Source:     to.Ptr("localhost:5000/widgets:latest"),
+					Parameters: map[string]any{"size": "large"},
+					PlainHTTP:  to.Ptr(true),
+				},
+				"Contoso.Example/gadgets": {
+					Kind:   to.Ptr(corerpv20250801.RecipeKindTerraform),
+					Source: to.Ptr("example.com/gadgets:1.0"),
+				},
+			},
+		}
 	}
 
 	testcases := []struct {
 		name    string
-		recipes []defaults.RecipePackRecipe
+		pack    *corerpv20250801.RecipePackProperties
 		isEdge  bool
 		want    map[string]*corerpv20250801.RecipeDefinition
 		wantErr string
 	}{
 		{
-			name:    "edge channel",
-			recipes: recipes,
-			isEdge:  true,
+			name:   "edge channel keeps every field and retags sources",
+			pack:   pack(),
+			isEdge: true,
 			want: map[string]*corerpv20250801.RecipeDefinition{
-				"Contoso.Example/widgets": {Kind: to.Ptr(corerpv20250801.RecipeKindBicep), Source: to.Ptr("localhost:5000/widgets:edge"), Parameters: map[string]any{"size": "large"}},
+				"Contoso.Example/widgets": {
+					Kind:       to.Ptr(corerpv20250801.RecipeKindBicep),
+					Source:     to.Ptr("localhost:5000/widgets:edge"),
+					Parameters: map[string]any{"size": "large"},
+					PlainHTTP:  to.Ptr(true),
+				},
 				"Contoso.Example/gadgets": {Kind: to.Ptr(corerpv20250801.RecipeKindTerraform), Source: to.Ptr("example.com/gadgets:edge")},
 			},
 		},
 		{
-			name:    "release channel falls back to edge for unpinned namespace",
-			recipes: recipes[:1],
-			isEdge:  false,
+			name:   "release channel falls back to edge for unpinned namespace",
+			pack:   pack(),
+			isEdge: false,
 			want: map[string]*corerpv20250801.RecipeDefinition{
-				"Contoso.Example/widgets": {Kind: to.Ptr(corerpv20250801.RecipeKindBicep), Source: to.Ptr("localhost:5000/widgets:edge"), Parameters: map[string]any{"size": "large"}},
+				"Contoso.Example/widgets": {
+					Kind:       to.Ptr(corerpv20250801.RecipeKindBicep),
+					Source:     to.Ptr("localhost:5000/widgets:edge"),
+					Parameters: map[string]any{"size": "large"},
+					PlainHTTP:  to.Ptr(true),
+				},
+				"Contoso.Example/gadgets": {Kind: to.Ptr(corerpv20250801.RecipeKindTerraform), Source: to.Ptr("example.com/gadgets:edge")},
 			},
 		},
+		{name: "nil pack", wantErr: "has no recipes"},
+		{name: "no recipes", pack: &corerpv20250801.RecipePackProperties{}, wantErr: "has no recipes"},
 		{
-			name:    "no recipes",
-			wantErr: "not available in this build",
+			name:    "missing source",
+			pack:    &corerpv20250801.RecipePackProperties{Recipes: map[string]*corerpv20250801.RecipeDefinition{"Contoso.Example/widgets": {}}},
+			wantErr: "Contoso.Example/widgets has no source",
 		},
 		{
-			name:    "unsupported kind",
-			recipes: []defaults.RecipePackRecipe{{ResourceType: "Contoso.Example/widgets", Kind: "helm", Image: "r/widgets"}},
-			wantErr: `unsupported kind "helm"`,
+			name: "untagged source",
+			pack: &corerpv20250801.RecipePackProperties{Recipes: map[string]*corerpv20250801.RecipeDefinition{
+				"Contoso.Example/widgets": {Source: to.Ptr("localhost:5000/widgets")},
+			}},
+			wantErr: "has no tag",
 		},
 	}
 
@@ -180,7 +218,7 @@ func Test_newDefaultRecipePackResource(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			resource, err := newDefaultRecipePackResource(tc.recipes, tc.isEdge)
+			resource, err := newDefaultRecipePackResource(tc.pack, tc.isEdge)
 			if tc.wantErr != "" {
 				require.ErrorContains(t, err, tc.wantErr)
 				return
