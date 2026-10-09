@@ -72,8 +72,10 @@ limitations under the License.
 //
 // recipe-packs/kubernetes/default.json is compiled by `make sync-resource-types`
 // from the resource-types-contrib revision pinned under `recipePacks`.
-// [DefaultKubernetesRecipes] exposes its recipes so rad can create the default
-// recipe pack without keeping its own copy of the list.
+// [DefaultKubernetesRecipePack] decodes its properties with the
+// Radius.Core/recipePacks API models so rad can create the default recipe pack
+// without keeping its own copy. Fields the models don't know fail the load
+// instead of being dropped.
 package defaults
 
 import (
