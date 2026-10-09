@@ -361,6 +361,9 @@ func (amc *UCPApplicationsManagementClient) CreateApplicationIfNotFound(ctx cont
 }
 
 // DeleteApplication deletes an application and all of its resources by its name (or id).
+//
+// Functional-test teardown (test/validation.DeleteRPResource) calls this directly, so it must
+// outlive the legacy `rad app delete` command.
 func (amc *UCPApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationNameOrID string, force bool) (bool, error) {
 	scope, name, err := amc.extractScopeAndName(applicationNameOrID)
 	if err != nil {
