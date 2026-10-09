@@ -36,7 +36,11 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func Test_PrepareTemplate_RecordsRadiusPin(t *testing.T) {
+// Test_PrepareTemplate_ExactPinMatch exercises the real PrepareTemplate -> resolveRadiusExtensionPin
+// path with a bicepconfig.json pinning an exact release, confirming the resolved pin resolves to the
+// configured reference and reports no error -- the only input PrepareTemplate ever produces for an
+// exact, successfully-read pin.
+func Test_PrepareTemplate_ExactPinMatch(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "app.bicep")
 	require.NoError(t, os.WriteFile(source, []byte("extension radius\n"), 0600))
@@ -46,9 +50,10 @@ func Test_PrepareTemplate_RecordsRadiusPin(t *testing.T) {
 	require.NoError(t, err)
 	t.Setenv("BICEP", compiler)
 	t.Setenv("RADIUS_UNIT_BICEP_COMPILER", "true")
-	template, err := newTestImpl().PrepareTemplate(t.Context(), source)
+	_, pin, err := newTestImpl().PrepareTemplate(t.Context(), source)
 	require.NoError(t, err)
-	require.Equal(t, "br:example.io/radius:0.60.2", RadiusExtensionReferences(template)[0].Reference)
+	require.Equal(t, "br:example.io/radius:0.60.2", pin.Reference)
+	require.NoError(t, pin.Err)
 }
 
 func compatibilityTemplate(t *testing.T, text string) map[string]any {
@@ -58,7 +63,7 @@ func compatibilityTemplate(t *testing.T, text string) map[string]any {
 	return template
 }
 
-func Test_recordRadiusExtensionPin(t *testing.T) {
+func Test_resolveRadiusExtensionPin(t *testing.T) {
 	tests := []struct {
 		name   string
 		config string
@@ -85,14 +90,18 @@ func Test_recordRadiusExtensionPin(t *testing.T) {
 				"imports":{"Radius":{"provider":"Radius","version":"latest"}},
 				"resources":{"app":{"type":"Radius.Core/applications@2025-08-01-preview"}}
 			}`)
-			recordRadiusExtensionPin(filesystem.NewOSFS(), source, template)
-			references := RadiusExtensionReferences(template)
-			require.Len(t, references, 1)
-			require.Equal(t, tt.ref, references[0].Reference)
-			require.Contains(t, references[0].Reason, tt.reason)
-			if tt.ref != "" {
-				require.Contains(t, references[0].Reason, "not compiler provenance")
+			pin := resolveRadiusExtensionPin(filesystem.NewOSFS(), source, template)
+			require.Equal(t, tt.ref, pin.Reference)
+			if tt.reason == "" {
+				// An exact, successfully-read pin must never carry an error -- that is the signal
+				// CheckCompatibility uses to decide whether a warning is warranted at all.
+				require.NoError(t, pin.Err)
+			} else {
+				require.ErrorContains(t, pin.Err, tt.reason)
 			}
+			// PrepareTemplate must leave the template itself untouched; the pin is returned
+			// out-of-band so generated manifests and published artifacts are not altered.
+			require.NotContains(t, template, "_rad")
 			metadata := template["metadata"].(map[string]any)
 			require.Contains(t, metadata, "_generator")
 		})
@@ -101,7 +110,6 @@ func Test_recordRadiusExtensionPin(t *testing.T) {
 
 func Test_RadiusExtensionReferences(t *testing.T) {
 	template := compatibilityTemplate(t, `{
-		"metadata":{"_rad":{"radiusExtension":"br:example.io/radius:0.60.2"}},
 		"resources":{
 			"app":{"type":"Radius.Core/applications@2025-08-01-preview"},
 			"module":{
@@ -117,52 +125,44 @@ func Test_RadiusExtensionReferences(t *testing.T) {
 			}
 		}
 	}`)
-	references := RadiusExtensionReferences(template)
+	pin := RadiusExtensionPin{Reference: "br:example.io/radius:0.60.2"}
+	references := RadiusExtensionReferences(template, pin)
 	require.Equal(t, []RadiusExtensionReference{
-		{Reason: "the template has no Radius extension pin metadata"},
+		{Reason: UnknownPinReason},
 		{Reference: "br:example.io/radius:0.60.2"},
 	}, references)
 }
 
-func Test_RadiusExtensionReferences_NoRadius(t *testing.T) {
-	template := compatibilityTemplate(t, `{"resources":[{"type":"Microsoft.Storage/storageAccounts"}]}`)
-	recordRadiusExtensionPin(filesystem.NewOSFS(), "app.bicep", template)
-	require.NotContains(t, template, "metadata")
-	require.Empty(t, RadiusExtensionReferences(template))
+// Test_RadiusExtensionReferences_ExactPinMatch asserts that an exact, successfully-resolved pin
+// produces a reference with no Reason -- the input that must never produce a warning.
+func Test_RadiusExtensionReferences_ExactPinMatch(t *testing.T) {
+	template := compatibilityTemplate(t, `{"resources":{"app":{"type":"Radius.Core/applications"}}}`)
+	pin := RadiusExtensionPin{Reference: "br:example.io/radius:0.60.2"}
+	require.Equal(t, []RadiusExtensionReference{{Reference: "br:example.io/radius:0.60.2"}}, RadiusExtensionReferences(template, pin))
 }
 
-func Test_recordRadiusExtensionPin_ReadError(t *testing.T) {
+func Test_RadiusExtensionReferences_PinReadError(t *testing.T) {
+	template := compatibilityTemplate(t, `{"resources":{"app":{"type":"Radius.Core/applications"}}}`)
+	pin := RadiusExtensionPin{Err: fmt.Errorf("no bicepconfig.json was found for the source")}
+	require.Equal(t, []RadiusExtensionReference{{Reason: "no bicepconfig.json was found for the source"}}, RadiusExtensionReferences(template, pin))
+}
+
+func Test_RadiusExtensionReferences_NoRadius(t *testing.T) {
+	template := compatibilityTemplate(t, `{"resources":[{"type":"Microsoft.Storage/storageAccounts"}]}`)
+	pin := resolveRadiusExtensionPin(filesystem.NewOSFS(), "app.bicep", template)
+	require.Empty(t, pin.Reference)
+	require.NoError(t, pin.Err)
+	require.Empty(t, RadiusExtensionReferences(template, pin))
+}
+
+func Test_resolveRadiusExtensionPin_ReadError(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(root, "bicepconfig.json"), []byte("{}"), 0600))
 	template := compatibilityTemplate(t, `{"resources":{"app":{"type":"Radius.Core/applications"}}}`)
 	fs := flakyFS{FileSystem: filesystem.NewOSFS(), failReadSubstr: "bicepconfig.json"}
-	recordRadiusExtensionPin(fs, filepath.Join(root, "app.bicep"), template)
-	require.Contains(t, RadiusExtensionReferences(template)[0].Reason, "readfile failed")
-}
-
-func Test_recordRadiusExtensionPin_PreservesRadMetadata(t *testing.T) {
-	root := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(root, "bicepconfig.json"),
-		[]byte(`{"extensions":{"radius":"br:example.io/radius:0.60.2"}}`), 0600))
-	template := compatibilityTemplate(t, `{
-		"metadata":{"_rad":{"other":"kept","radiusExtension":"stale"}},
-		"resources":{"app":{"type":"Radius.Core/applications"}}
-	}`)
-	recordRadiusExtensionPin(filesystem.NewOSFS(), filepath.Join(root, "app.bicep"), template)
-	rad := template["metadata"].(map[string]any)["_rad"].(map[string]any)
-	require.Equal(t, "kept", rad["other"])
-	require.Equal(t, "br:example.io/radius:0.60.2", rad["radiusExtension"])
-
-	// A read error must not leave a stale pin from earlier metadata.
-	template = compatibilityTemplate(t, `{
-		"metadata":{"_rad":{"other":"kept","radiusExtension":"stale"}},
-		"resources":{"app":{"type":"Radius.Core/applications"}}
-	}`)
-	recordRadiusExtensionPin(filesystem.NewOSFS(), filepath.Join(t.TempDir(), "app.bicep"), template)
-	rad = template["metadata"].(map[string]any)["_rad"].(map[string]any)
-	require.Equal(t, "kept", rad["other"])
-	require.NotContains(t, rad, "radiusExtension")
-	require.Contains(t, rad["radiusExtensionError"], "no bicepconfig.json")
+	pin := resolveRadiusExtensionPin(fs, filepath.Join(root, "app.bicep"), template)
+	require.Empty(t, pin.Reference)
+	require.ErrorContains(t, pin.Err, "readfile failed")
 }
 
 func Test_readRadiusExtensionPin_InvalidPath(t *testing.T) {
@@ -194,17 +194,19 @@ func Test_RadiusExtensionReferences_InvalidShapes(t *testing.T) {
 			},
 		}},
 	} {
-		require.Empty(t, RadiusExtensionReferences(template))
+		require.Empty(t, RadiusExtensionReferences(template, RadiusExtensionPin{}))
 	}
 	template := compatibilityTemplate(t, `{
-		"metadata":{"_rad":{"radiusExtensionError":"root error"}},
 		"resources":[
 			{"type":"Radius.Core/applications"},
 			{"type":"Microsoft.Resources/deployments","properties":{"template":{
-				"metadata":{"_rad":{"radiusExtensionError":"nested error"}},
 				"resources":[{"type":"Radius.Core/applications"}]
 			}}}
 		]
 	}`)
-	require.Equal(t, []RadiusExtensionReference{{Reason: "nested error"}, {Reason: "root error"}}, RadiusExtensionReferences(template))
+	pin := RadiusExtensionPin{Reference: "br:example.io/radius:0.60.2"}
+	require.Equal(t, []RadiusExtensionReference{
+		{Reason: UnknownPinReason},
+		{Reference: "br:example.io/radius:0.60.2"},
+	}, RadiusExtensionReferences(template, pin))
 }

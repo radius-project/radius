@@ -32,15 +32,6 @@ import (
 // DeployWithProgress injects environment and application parameters into the template, displays progress updates while
 // deploying, and logs the deployment results and public endpoints. If an error occurs, an error is returned.
 func DeployWithProgress(ctx context.Context, options Options) (clients.DeploymentResult, error) {
-	if !options.CompatibilityChecked {
-		warning, err := CheckCompatibility(ctx, options.ConnectionFactory, options.Workspace, options.Template)
-		if err != nil {
-			return clients.DeploymentResult{}, err
-		}
-		if warning != "" {
-			output.LogInfo("%s", warning)
-		}
-	}
 	deploymentClient, err := options.ConnectionFactory.CreateDeploymentClient(ctx, options.Workspace)
 	if err != nil {
 		return clients.DeploymentResult{}, err

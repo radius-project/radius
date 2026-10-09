@@ -19,14 +19,31 @@ package deploy
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/filesystem"
+	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/stretchr/testify/require"
 )
+
+// TestMain intercepts the fake "bicep build" invocation used by Test_CheckCompatibility_ExactPinMatch
+// so the test can exercise the real PrepareTemplate -> resolveRadiusExtensionPin path without
+// depending on a real Bicep compiler being installed.
+func TestMain(m *testing.M) {
+	if os.Getenv("RADIUS_UNIT_BICEP_COMPILER") == "true" && len(os.Args) > 1 && os.Args[1] == "build" {
+		fmt.Print(`{"resources":{"app":{"type":"Radius.Core/applications"}}}`)
+		return
+	}
+	m.Run()
+}
 
 func Test_formatCompatibilityWarning(t *testing.T) {
 	tests := []struct {
@@ -66,15 +83,14 @@ func Test_formatCompatibilityWarning(t *testing.T) {
 			for _, expected := range tt.expected {
 				require.Contains(t, warning, expected)
 			}
-			require.Contains(t, warning, "Deployment will continue.")
-			require.Contains(t, warning, "do not identify cached artifact contents")
+			require.Contains(t, warning, "Use a published exact-version extension pin")
 		})
 	}
 }
 
 func Test_formatCompatibilityWarning_UnknownProvenance(t *testing.T) {
 	warning := formatCompatibilityWarning("0.60.0", "0.60.0", nil, []bicep.RadiusExtensionReference{
-		{Reason: "the template has no Radius extension pin metadata"},
+		{Reason: bicep.UnknownPinReason},
 	})
 	require.Contains(t, warning, "no Radius extension pin metadata")
 	require.Contains(t, warning, "tag(s): unknown")
@@ -111,48 +127,77 @@ func Test_CheckCompatibility(t *testing.T) {
 	template := map[string]any{"resources": map[string]any{
 		"app": map[string]any{"type": "Radius.Core/applications"},
 	}}
+	pin := bicep.RadiusExtensionPin{Reference: "br:example.io/radius:0.60.2"}
 	factory := &connections.MockFactory{ControlPlaneVersion: version.VersionInfo{Release: "0.60.0"}}
-	warning, err := CheckCompatibility(t.Context(), factory, workspaces.Workspace{Name: "target"}, template)
+	warning, err := CheckCompatibility(t.Context(), factory, workspaces.Workspace{Name: "target"}, template, pin)
 	require.NoError(t, err)
 	require.Contains(t, warning, "Target control-plane release: 0.60.0")
 
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	_, err = CheckCompatibility(ctx, factory, workspaces.Workspace{}, template)
+	_, err = CheckCompatibility(ctx, factory, workspaces.Workspace{}, template, pin)
 	require.ErrorIs(t, err, context.Canceled)
 
-	warning, err = CheckCompatibility(t.Context(), nil, workspaces.Workspace{}, map[string]any{})
+	warning, err = CheckCompatibility(t.Context(), nil, workspaces.Workspace{}, map[string]any{}, bicep.RadiusExtensionPin{})
 	require.NoError(t, err)
 	require.Empty(t, warning)
 
-	warning, err = CheckCompatibility(t.Context(), nil, workspaces.Workspace{}, template)
+	warning, err = CheckCompatibility(t.Context(), nil, workspaces.Workspace{}, template, pin)
 	require.NoError(t, err)
 	require.Contains(t, warning, "no workspace connection factory")
 }
 
-func Test_DeployWithProgress_Compatibility(t *testing.T) {
+// Test_CheckCompatibility_UnknownPinLogsNotWarns runs a template with no resolvable pin (a JSON
+// template or a nested-module resource) through the real bicep.RadiusExtensionReferences path and
+// confirms CheckCompatibility skips the control-plane lookup entirely and produces no warning: an
+// unknown pin cannot be cleared by following the warning's own advice, so it must never surface one.
+func Test_CheckCompatibility_UnknownPinLogsNotWarns(t *testing.T) {
 	template := map[string]any{"resources": map[string]any{
 		"app": map[string]any{"type": "Radius.Core/applications"},
 	}}
-	for _, checked := range []bool{false, true} {
-		factory := &connections.MockFactory{
-			ControlPlaneVersionError: errors.New("version unavailable"),
-			DeploymentClientError:    errors.New("original deployment connection error"),
-		}
-		_, err := DeployWithProgress(t.Context(), Options{
-			ConnectionFactory: factory, Template: template, CompatibilityChecked: checked,
-		})
-		require.ErrorContains(t, err, "original deployment connection error")
-	}
+	factory := &connections.MockFactory{ControlPlaneVersionError: errors.New("control plane must not be contacted")}
+	warning, err := CheckCompatibility(t.Context(), factory, workspaces.Workspace{}, template, bicep.RadiusExtensionPin{})
+	require.NoError(t, err)
+	require.Empty(t, warning)
+}
+
+// Test_formatCompatibilityWarning_RealExactPinMatch resolves a Radius extension pin through the
+// real PrepareTemplate -> resolveRadiusExtensionPin -> RadiusExtensionReferences path, rather than
+// hand-constructing a bicep.RadiusExtensionReference with no Reason field, and confirms that an
+// exact pin which matches the CLI and control-plane releases produces no warning.
+func Test_formatCompatibilityWarning_RealExactPinMatch(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "app.bicep")
+	require.NoError(t, os.WriteFile(source, []byte("extension radius\n"), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "bicepconfig.json"),
+		[]byte(`{"extensions":{"radius":"br:example.io/radius:0.60.2"}}`), 0600))
+	compiler, err := os.Executable()
+	require.NoError(t, err)
+	t.Setenv("BICEP", compiler)
+	t.Setenv("RADIUS_UNIT_BICEP_COMPILER", "true")
+
+	impl := &bicep.Impl{FileSystem: filesystem.NewOSFS(), Output: &output.OutputWriter{Writer: io.Discard}}
+	template, pin, err := impl.PrepareTemplate(t.Context(), source)
+	require.NoError(t, err)
+	require.Equal(t, "br:example.io/radius:0.60.2", pin.Reference)
+	require.NoError(t, pin.Err)
+
+	references := bicep.RadiusExtensionReferences(template, pin)
+	warning := formatCompatibilityWarning("0.60.2", "0.60.2", nil, references)
+	require.Empty(t, warning, "an exact pin matching the CLI and control-plane release must not warn")
+}
+
+// Test_DeployWithProgress_ConnectionError confirms DeployWithProgress still propagates a connection
+// error. DeployWithProgress no longer runs a compatibility check itself (see
+// Test_CheckCompatibility and friends above) -- the sole caller, rad deploy's Runner.Run, always
+// performs that check beforehand and never relies on CompatibilityChecked being false.
+func Test_DeployWithProgress_ConnectionError(t *testing.T) {
+	template := map[string]any{"resources": map[string]any{
+		"app": map[string]any{"type": "Radius.Core/applications"},
+	}}
 	_, err := DeployWithProgress(t.Context(), Options{
 		ConnectionFactory: &connections.MockFactory{DeploymentClientError: errors.New("connection error")},
-		Template:          map[string]any{},
+		Template:          template,
 	})
 	require.ErrorContains(t, err, "connection error")
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	_, err = DeployWithProgress(ctx, Options{
-		ConnectionFactory: &connections.MockFactory{}, Template: template,
-	})
-	require.ErrorIs(t, err, context.Canceled)
 }

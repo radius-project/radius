@@ -26,12 +26,17 @@ import (
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/version"
 )
 
 // CheckCompatibility reports version skew without blocking deployment. Cancellation still stops it.
-func CheckCompatibility(ctx context.Context, factory connections.Factory, workspace workspaces.Workspace, template map[string]any) (string, error) {
-	references := bicep.RadiusExtensionReferences(template)
+// pin is the Radius extension pin resolved by bicep.Impl.PrepareTemplate for the root template.
+func CheckCompatibility(ctx context.Context, factory connections.Factory, workspace workspaces.Workspace, template map[string]any, pin bicep.RadiusExtensionPin) (string, error) {
+	if ctx.Err() != nil {
+		return "", context.Cause(ctx)
+	}
+	references := knownReferences(ctx, bicep.RadiusExtensionReferences(template, pin))
 	if len(references) == 0 {
 		return "", nil
 	}
@@ -46,6 +51,23 @@ func CheckCompatibility(ctx context.Context, factory connections.Factory, worksp
 		return "", context.Cause(ctx)
 	}
 	return formatCompatibilityWarning(version.Release(), info.Release, err, references), nil
+}
+
+// knownReferences drops references whose pin is simply unknown -- a JSON template or a resource
+// declared inside a nested Bicep module, neither of which can carry pin metadata -- logging them at
+// debug level instead. Following the resulting warning's own advice (adding or fixing a pin) could
+// never clear a warning caused by an unknown pin, so it is not surfaced as one.
+func knownReferences(ctx context.Context, references []bicep.RadiusExtensionReference) []bicep.RadiusExtensionReference {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	known := make([]bicep.RadiusExtensionReference, 0, len(references))
+	for _, reference := range references {
+		if reference.Reference == "" && reference.Reason == bicep.UnknownPinReason {
+			logger.V(ucplog.LevelDebug).Info("Skipping Radius type compatibility check for a resource with no determinable extension pin")
+			continue
+		}
+		known = append(known, reference)
+	}
+	return known
 }
 
 func releaseVersion(value string) (*semver.Version, error) {
@@ -104,9 +126,7 @@ func formatCompatibilityWarning(cliRelease, controlPlaneRelease string, versionE
 	return fmt.Sprintf("WARNING: Radius type compatibility is not verified.\n"+
 		"  Configured Radius extension tag(s): %s\n  CLI release: %s\n  Target control-plane release: %s\n"+
 		"  %s\n"+
-		"  Compilation can succeed with types or properties that the target does not support.\n"+
-		"  Use a published exact-version extension pin for the target release, or upgrade the target and CLI together.\n"+
-		"  Configured pins do not identify cached artifact contents or prove schema compatibility. Deployment will continue.\n",
+		"  Use a published exact-version extension pin for the target release, or upgrade the target and CLI together.\n",
 		strings.Join(tags, ", "), cliRelease, controlPlaneRelease, strings.Join(reasons, "\n  "))
 }
 

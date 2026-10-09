@@ -85,17 +85,27 @@ const radiusTemplate = `{
 
 func Test_DeployCompatibilityWarning(t *testing.T) {
 	tests := []struct {
-		name     string
-		pin      string
-		cpBody   string
-		cpCode   int
-		input    string
-		warning  string
-		template string
+		name string
+		pin  string
+		// cpBody/cpCode fake the target control-plane's /version response.
+		cpBody string
+		cpCode int
+		input  string
+		// warning is a substring the warning text must contain. Leave empty when no resource in
+		// the template has a known pin, since CheckCompatibility then skips the control-plane
+		// preflight check entirely and no warning can be produced.
+		warning string
+		// absentWarning is a substring that must never appear in the warning text, used to confirm
+		// an unknown pin (JSON template or nested Bicep module) is never surfaced as a reason.
+		absentWarning string
+		// skipPreflight indicates that every resource in the template has an unknown pin, so
+		// CheckCompatibility never calls the control plane's /version endpoint at all.
+		skipPreflight bool
+		template      string
 	}{
 		{name: "newer exact pin", pin: "0.60.2", cpBody: `{"release":"0.60.0"}`, warning: "extension 0.60.2 differs from the target"},
 		{name: "older exact pin", pin: "0.60.0", cpBody: `{"release":"0.60.2"}`, warning: "extension 0.60.0 differs from the target"},
-		{name: "floating channel", pin: "0.60", cpBody: `{"release":"0.60.0"}`, warning: "not compiler provenance"},
+		{name: "floating channel", pin: "0.60", cpBody: `{"release":"0.60.0"}`, warning: "does not identify a full release"},
 		{name: "latest", pin: "latest", cpBody: `{"release":"0.60.0"}`, warning: "tag(s): latest"},
 		{name: "custom", pin: "custom", cpBody: `{"release":"0.60.0"}`, warning: "tag(s): unknown"},
 		{name: "prerelease", pin: "0.61.0-rc2", cpBody: `{"release":"0.61.0-rc1"}`, warning: "extension 0.61.0-rc2 differs"},
@@ -103,10 +113,18 @@ func Test_DeployCompatibilityWarning(t *testing.T) {
 		{name: "invalid version response", pin: "0.60.0", cpBody: "<html>", warning: "invalid Radius version response"},
 		{name: "missing target release", pin: "0.60.0", cpBody: `{}`, warning: "has no release"},
 		{name: "actual UCP version route", pin: "0.60.0", warning: "control plane does not report a full release"},
-		{name: "JSON without provenance", input: "json", cpBody: `{"release":"0.60.0"}`, warning: "no Radius extension pin metadata"},
+		// JSON templates have no bicepconfig.json concept, so every resource's pin is simply
+		// unknown rather than mismatched: this is logged at debug level, not surfaced as a
+		// user-facing warning, and the control-plane preflight check is skipped entirely.
+		{name: "JSON without provenance", input: "json", cpBody: `{"release":"0.60.0"}`, absentWarning: "no Radius extension pin metadata", skipPreflight: true},
 		{name: "remote Bicep", pin: "0.60.2", input: "remote", cpBody: `{"release":"0.60.0"}`, warning: "extension 0.60.2 differs"},
 		{name: "no configured alias", input: "inline", cpBody: `{"release":"0.60.0"}`, warning: "has no radius extension reference"},
-		{name: "nested module has separate provenance", pin: "0.60.0", cpBody: `{"release":"0.60.0"}`, warning: "no Radius extension pin metadata", template: `{
+		// A resource declared inside a nested Bicep module always has an unknown pin, since Bicep
+		// does not expose per-module pin configuration. The root template's own legacy environment
+		// resource still has a known, matching pin, so a preflight check still happens and a
+		// warning may still appear for unrelated reasons -- but never citing the nested resource's
+		// unknown pin.
+		{name: "nested module has separate provenance", pin: "0.60.0", cpBody: `{"release":"0.60.0"}`, absentWarning: "no Radius extension pin metadata", template: `{
 			"resources":{
 				"env":{"type":"Applications.Core/environments@2023-10-01-preview","name":"test"},
 				"module":{"type":"Microsoft.Resources/deployments","properties":{"template":{
@@ -144,7 +162,12 @@ func Test_DeployCompatibilityWarning(t *testing.T) {
 					_, _ = io.WriteString(w, "extension radius\n")
 				case r.Method == http.MethodPut:
 					submissions.Add(1)
-					require.Contains(t, log.String(), tt.warning, "warning must precede the first write")
+					if tt.warning != "" {
+						require.Contains(t, log.String(), tt.warning, "warning must precede the first write")
+					}
+					if tt.absentWarning != "" {
+						require.NotContains(t, log.String(), tt.absentWarning, "an unknown pin must not be surfaced as a user-facing warning reason")
+					}
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusBadRequest)
 					_, _ = io.WriteString(w, `{"error":{"code":"TestDeploymentRejected","message":"target rejected template"}}`)
@@ -220,8 +243,14 @@ users:
 			err = command.Execute()
 			require.ErrorContains(t, err, "TestDeploymentRejected")
 			require.EqualValues(t, 1, submissions.Load(), "version skew must not block deployment")
-			require.EqualValues(t, 1, versionRequests.Load(), "do not repeat the preflight check")
-			require.Contains(t, log.String(), "Deployment will continue.")
+			expectedVersionRequests := int32(1)
+			if tt.skipPreflight {
+				expectedVersionRequests = 0
+			}
+			require.EqualValues(t, expectedVersionRequests, versionRequests.Load(), "do not repeat the preflight check")
+			if tt.warning != "" {
+				require.Contains(t, log.String(), "Use a published exact-version extension pin", "a warning must include a recovery action")
+			}
 		})
 	}
 }

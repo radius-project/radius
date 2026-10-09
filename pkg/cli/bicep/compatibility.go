@@ -25,27 +25,53 @@ import (
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 )
 
+// UnknownPinReason is the reason reported for a Radius resource with no determinable extension
+// pin: a JSON template (which has no bicepconfig.json concept) or a resource declared inside a
+// nested Bicep module (whose own pin configuration Bicep does not expose). Callers distinguish this
+// from an actual read/parse error or a detected version mismatch, neither of which the user can
+// clear simply by removing the message.
+const UnknownPinReason = "the template has no Radius extension pin metadata"
+
 // RadiusExtensionReference describes a configured pin, not the contents of Bicep's cache.
 type RadiusExtensionReference struct {
 	Reference string
 	Reason    string
 }
 
-// RadiusExtensionReferences reports pins for templates that contain Radius resources.
-// Missing metadata, including in nested modules, is reported as unknown.
-func RadiusExtensionReferences(template map[string]any) []RadiusExtensionReference {
+// RadiusExtensionPin describes the Radius extension pin configured for the root template, resolved
+// while preparing the template. It is returned alongside the template, rather than written into the
+// template's metadata, so that generated manifests and published artifacts built from the template
+// are not altered by compatibility bookkeeping.
+type RadiusExtensionPin struct {
+	// Reference is the configured pin, e.g. "br:example.io/radius:0.60.2". Empty when the template
+	// declares no Radius resources, or when the pin could not be read (see Err).
+	Reference string
+
+	// Err explains why Reference could not be read. Nil when Reference was read successfully, or
+	// when the template declares no Radius resources at all.
+	Err error
+}
+
+// RadiusExtensionReferences reports pins for Radius resources in template. pin, resolved for the
+// root template by PrepareTemplate, applies to resources declared directly in the root template.
+// Resources declared inside a nested Bicep module are always reported as unknown, since Bicep does
+// not expose per-module pin configuration.
+func RadiusExtensionReferences(template map[string]any, pin RadiusExtensionPin) []RadiusExtensionReference {
 	seen := map[RadiusExtensionReference]bool{}
-	walkTemplateResources(template, func(owner, resource map[string]any) {
+	walkTemplateResources(template, func(resource map[string]any, isRoot bool) {
 		resourceType, _ := resource["type"].(string)
 		if !IsRadiusResourceType(resourceType) {
 			return
 		}
-		metadata, _ := owner["metadata"].(map[string]any)
-		rad, _ := metadata["_rad"].(map[string]any)
-		reference, _ := rad["radiusExtension"].(string)
-		reason, _ := rad["radiusExtensionError"].(string)
+		var reference, reason string
+		if isRoot {
+			reference = pin.Reference
+			if pin.Err != nil {
+				reason = pin.Err.Error()
+			}
+		}
 		if reference == "" && reason == "" {
-			reason = "the template has no Radius extension pin metadata"
+			reason = UnknownPinReason
 		}
 		seen[RadiusExtensionReference{Reference: reference, Reason: reason}] = true
 	})
@@ -62,38 +88,25 @@ func RadiusExtensionReferences(template map[string]any) []RadiusExtensionReferen
 	return references
 }
 
-// recordRadiusExtensionPin runs before remote source/configuration cleanup. It does not
+// resolveRadiusExtensionPin runs before remote source/configuration cleanup. It does not
 // infer the resolved package release from imports.version, which is a provider version.
-func recordRadiusExtensionPin(fs filesystem.FileSystem, sourcePath string, template map[string]any) {
+func resolveRadiusExtensionPin(fs filesystem.FileSystem, sourcePath string, template map[string]any) RadiusExtensionPin {
 	hasRadius := false
-	walkTemplateResources(template, func(_ map[string]any, resource map[string]any) {
+	walkTemplateResources(template, func(resource map[string]any, _ bool) {
 		resourceType, _ := resource["type"].(string)
 		if IsRadiusResourceType(resourceType) {
 			hasRadius = true
 		}
 	})
 	if !hasRadius {
-		return
+		return RadiusExtensionPin{}
 	}
 
 	reference, err := readRadiusExtensionPin(fs, sourcePath)
-	metadata, ok := template["metadata"].(map[string]any)
-	if !ok {
-		metadata = map[string]any{}
-		template["metadata"] = metadata
-	}
-	rad, ok := metadata["_rad"].(map[string]any)
-	if !ok {
-		rad = map[string]any{}
-		metadata["_rad"] = rad
-	}
-	delete(rad, "radiusExtension")
 	if err != nil {
-		rad["radiusExtensionError"] = err.Error()
-	} else {
-		rad["radiusExtension"] = reference
-		rad["radiusExtensionError"] = "Bicep does not report the resolved Radius artifact release; the configured pin is not compiler provenance"
+		return RadiusExtensionPin{Err: err}
 	}
+	return RadiusExtensionPin{Reference: reference}
 }
 
 func readRadiusExtensionPin(fs filesystem.FileSystem, sourcePath string) (string, error) {

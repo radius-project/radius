@@ -342,7 +342,7 @@ func testRunModeledLocalFilesystem(t *testing.T, backend string) {
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
 		PrepareTemplate(gomock.Any(), sampleBicepPath).
-		Return(sampleTemplate(), nil).
+		Return(sampleTemplate(), bicep.RadiusExtensionPin{}, nil).
 		Times(1)
 
 	runner := &Runner{
@@ -377,7 +377,7 @@ func TestRunner_RunModeled_ArchivePersistence(t *testing.T) {
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
 		PrepareTemplate(gomock.Any(), sampleBicepPath).
-		Return(sampleTemplate(), nil).
+		Return(sampleTemplate(), bicep.RadiusExtensionPin{}, nil).
 		Times(1)
 
 	storeMock := persistence.NewMockStore(ctrl)
@@ -414,7 +414,7 @@ func TestRunner_RunModeled_ArchiveStore_SourceBranches(t *testing.T) {
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
 		PrepareTemplate(gomock.Any(), sampleBicepPath).
-		Return(sampleTemplate(), nil).
+		Return(sampleTemplate(), bicep.RadiusExtensionPin{}, nil).
 		Times(3)
 
 	archiveDir := t.TempDir()
@@ -475,7 +475,7 @@ func TestRunner_RunModeled_ArchiveConfigurationError(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			bicepMock := bicep.NewMockInterface(ctrl)
-			bicepMock.EXPECT().PrepareTemplate(gomock.Any(), sampleBicepPath).Return(sampleTemplate(), nil)
+			bicepMock.EXPECT().PrepareTemplate(gomock.Any(), sampleBicepPath).Return(sampleTemplate(), bicep.RadiusExtensionPin{}, nil)
 			runner := &Runner{
 				Bicep:         bicepMock,
 				Output:        &output.MockOutput{},
@@ -503,7 +503,7 @@ func TestRunner_RunModeled_FallsBackToRefName(t *testing.T) {
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
 		PrepareTemplate(gomock.Any(), sampleBicepPath).
-		Return(sampleTemplate(), nil).
+		Return(sampleTemplate(), bicep.RadiusExtensionPin{}, nil).
 		Times(1)
 
 	storeMock := persistence.NewMockStore(ctrl)
@@ -534,7 +534,7 @@ func TestRunner_RunModeled_NoBranchInEnv(t *testing.T) {
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
 		PrepareTemplate(gomock.Any(), sampleBicepPath).
-		Return(sampleTemplate(), nil).
+		Return(sampleTemplate(), bicep.RadiusExtensionPin{}, nil).
 		Times(1)
 
 	runner := &Runner{
@@ -558,7 +558,7 @@ func TestRunner_RunModeled_BicepCompileError(t *testing.T) {
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
 		PrepareTemplate(gomock.Any(), sampleBicepPath).
-		Return(nil, errors.New("syntax error")).
+		Return(nil, bicep.RadiusExtensionPin{}, errors.New("syntax error")).
 		Times(1)
 
 	runner := &Runner{
@@ -583,7 +583,7 @@ func TestRunner_RunModeled_NilGraphStore(t *testing.T) {
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
 		PrepareTemplate(gomock.Any(), sampleBicepPath).
-		Return(sampleTemplate(), nil).
+		Return(sampleTemplate(), bicep.RadiusExtensionPin{}, nil).
 		Times(1)
 
 	runner := &Runner{
@@ -608,7 +608,7 @@ func TestRunner_RunModeled_StoreSaveError(t *testing.T) {
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
 		PrepareTemplate(gomock.Any(), sampleBicepPath).
-		Return(sampleTemplate(), nil).
+		Return(sampleTemplate(), bicep.RadiusExtensionPin{}, nil).
 		Times(1)
 
 	storeMock := persistence.NewMockStore(ctrl)

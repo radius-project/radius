@@ -54,9 +54,10 @@ func Test_Run_Compatibility(t *testing.T) {
 		t.Run(fmt.Sprintf("cancelled=%t", cancelled), func(t *testing.T) {
 			sink := &output.MockOutput{}
 			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ControlPlaneVersionError: errors.New("version unavailable")},
-				Output:            sink,
-				Workspace:         &workspaces.Workspace{},
+				ConnectionFactory:  &connections.MockFactory{ControlPlaneVersionError: errors.New("version unavailable")},
+				Output:             sink,
+				Workspace:          &workspaces.Workspace{},
+				RadiusExtensionPin: bicep.RadiusExtensionPin{Reference: "br:example.io/radius:0.60.2"},
 				Template: map[string]any{
 					"resources":  map[string]any{"app": map[string]any{"type": "Radius.Core/applications"}},
 					"parameters": map[string]any{"required": map[string]any{"type": "string"}},
@@ -102,7 +103,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
@@ -123,7 +124,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), radcli.TestEnvironmentID).
@@ -145,7 +146,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				// Since environment id indicates a applications core environment, only that will be fetched
 				mocks.ApplicationManagementClient.EXPECT().
@@ -169,7 +170,7 @@ func Test_Validate(t *testing.T) {
 				// PrepareTemplate is exercised.
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -184,7 +185,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				// Since environment id indicates a applications core environment, only that will be fetched
 				mocks.ApplicationManagementClient.EXPECT().
@@ -206,7 +207,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod").
@@ -254,7 +255,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -269,7 +270,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/applications.core/environments/prod").
@@ -295,7 +296,7 @@ func Test_Validate(t *testing.T) {
 				}
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(templateWithEnv, nil).
+					Return(templateWithEnv, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -317,7 +318,7 @@ func Test_Validate(t *testing.T) {
 				}
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(templateWithEnv, nil).
+					Return(templateWithEnv, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				// When env flag is explicitly provided, we honor it and validate even if template creates environment
 				mocks.ApplicationManagementClient.EXPECT().
@@ -344,7 +345,7 @@ func Test_Validate(t *testing.T) {
 				}
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(templateWithEnv, nil).
+					Return(templateWithEnv, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				// Since workspace has default environment (full ID), we validate it even though template creates one
 				mocks.ApplicationManagementClient.EXPECT().
@@ -364,7 +365,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -395,7 +396,7 @@ func Test_ValidatePreviewEnvVarWithoutApplication(t *testing.T) {
 	mockBicep := bicep.NewMockInterface(ctrl)
 	mockBicep.EXPECT().
 		PrepareTemplate(gomock.Any(), "app.bicep").
-		Return(map[string]any{}, nil).
+		Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 		Times(1)
 
 	f := &framework.Impl{
@@ -479,7 +480,7 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
 			PrepareTemplate(gomock.Any(), "app.bicep").
-			Return(map[string]any{}, nil).
+			Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 			Times(1)
 
 		f := &framework.Impl{
@@ -551,7 +552,7 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
 			PrepareTemplate(gomock.Any(), "app.bicep").
-			Return(map[string]any{}, nil).
+			Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 			Times(1)
 
 		f := &framework.Impl{
@@ -643,7 +644,7 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
 			PrepareTemplate(gomock.Any(), "app.bicep").
-			Return(map[string]any{}, nil).
+			Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 			Times(1)
 
 		f := &framework.Impl{
@@ -707,13 +708,12 @@ func Test_Run(t *testing.T) {
 				"Deployment In Progress...", filePath, radcli.TestEnvironmentID, workspace.Name)
 
 		options := deploy.Options{
-			CompatibilityChecked: true,
-			Workspace:            *workspace,
-			Parameters:           map[string]map[string]any{},
-			CompletionText:       "Deployment Complete",
-			ProgressText:         progressText,
-			Template:             map[string]any{},
-			Providers:            provider,
+			Workspace:      *workspace,
+			Parameters:     map[string]map[string]any{},
+			CompletionText: "Deployment Complete",
+			ProgressText:   progressText,
+			Template:       map[string]any{},
+			Providers:      provider,
 		}
 
 		deployMock := deploy.NewMockInterface(ctrl)
@@ -893,13 +893,12 @@ func Test_Run(t *testing.T) {
 				"Deployment In Progress...", filePath, radcli.TestEnvironmentID, workspace.Name)
 
 		options := deploy.Options{
-			CompatibilityChecked: true,
-			Workspace:            *workspace,
-			Parameters:           map[string]map[string]any{},
-			CompletionText:       "Deployment Complete",
-			ProgressText:         progressText,
-			Template:             map[string]any{},
-			Providers:            &ProviderConfig,
+			Workspace:      *workspace,
+			Parameters:     map[string]map[string]any{},
+			CompletionText: "Deployment Complete",
+			ProgressText:   progressText,
+			Template:       map[string]any{},
+			Providers:      &ProviderConfig,
 		}
 
 		deployMock := deploy.NewMockInterface(ctrl)

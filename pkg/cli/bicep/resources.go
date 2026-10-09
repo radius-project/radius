@@ -297,7 +297,7 @@ func newDeprecatedResource(resourceType string) (DeprecatedResource, bool) {
 // A Bicep module compiles to a resource of type Microsoft.Resources/deployments whose resources are
 // nested at properties.template.resources.
 func collectDeprecatedResources(template map[string]any, seen map[string]struct{}, out *[]DeprecatedResource) {
-	walkTemplateResources(template, func(_ map[string]any, resource map[string]any) {
+	walkTemplateResources(template, func(resource map[string]any, _ bool) {
 		resourceType, ok := resource["type"].(string)
 		if !ok {
 			return
@@ -312,7 +312,14 @@ func collectDeprecatedResources(template map[string]any, seen map[string]struct{
 	})
 }
 
-func walkTemplateResources(template map[string]any, visit func(map[string]any, map[string]any)) {
+// walkTemplateResources visits every resource in template, including resources nested inside Bicep
+// modules. visit receives isRoot=true for resources declared directly in template, and
+// isRoot=false for resources declared inside a nested module's inline template.
+func walkTemplateResources(template map[string]any, visit func(resource map[string]any, isRoot bool)) {
+	walkTemplateResourcesLevel(template, true, visit)
+}
+
+func walkTemplateResourcesLevel(template map[string]any, isRoot bool, visit func(resource map[string]any, isRoot bool)) {
 	if template == nil {
 		return
 	}
@@ -353,7 +360,7 @@ func walkTemplateResources(template map[string]any, visit func(map[string]any, m
 		}
 
 		resourceType, hasType := resource["type"].(string)
-		visit(template, resource)
+		visit(resource, isRoot)
 
 		// Recurse into the inline template of a nested deployment (a Bicep module). Only
 		// Microsoft.Resources/deployments carries one. Other resource types can hold arbitrary
@@ -370,7 +377,7 @@ func walkTemplateResources(template map[string]any, visit func(map[string]any, m
 		}
 
 		if nested, ok := properties["template"].(map[string]any); ok {
-			walkTemplateResources(nested, visit)
+			walkTemplateResourcesLevel(nested, false, visit)
 		}
 	}
 }

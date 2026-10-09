@@ -161,15 +161,15 @@ func Test_Run(t *testing.T) {
 		err = json.Unmarshal([]byte(parameters), &parametersMap)
 		require.NoError(t, err)
 
-		bicep := bicep.NewMockInterface(ctrl)
-		bicep.EXPECT().
+		bicepMock := bicep.NewMockInterface(ctrl)
+		bicepMock.EXPECT().
 			PrepareTemplate(gomock.Any(), bicepFilePath).
-			Return(templateMap, nil).
+			Return(templateMap, bicep.RadiusExtensionPin{}, nil).
 			Times(1)
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Bicep:           bicep,
+			Bicep:           bicepMock,
 			Output:          outputSink,
 			FilePath:        bicepFilePath,
 			Parameters:      parametersMap,
