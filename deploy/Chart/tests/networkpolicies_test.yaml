@@ -24,7 +24,7 @@ tests:
         - 172.18.0.0/16
     asserts:
       - hasDocuments:
-          count: 3
+          count: 4
       - equal:
           path: kind
           value: NetworkPolicy
@@ -65,7 +65,7 @@ tests:
         - 10.0.0.0/16
     asserts:
       - hasDocuments:
-          count: 3
+          count: 4
       - equal:
           path: metadata.name
           value: radius-allow-control-plane
@@ -91,3 +91,54 @@ tests:
           path: spec.ingress[0].ports[0].protocol
           value: TCP
         documentIndex: 2
+
+  - it: allows node CIDRs to reach the containerImages registry on port 5000
+    set:
+      networkPolicies.enabled: true
+      networkPolicies.controlPlaneCIDRs:
+        - 172.18.0.0/16
+        - 10.0.0.0/16
+    asserts:
+      - equal:
+          path: metadata.name
+          value: radius-allow-registry-nodes
+        documentIndex: 3
+      - equal:
+          path: spec.podSelector.matchLabels
+          value:
+            app.kubernetes.io/name: radius-registry
+        documentIndex: 3
+      - equal:
+          path: spec.ingress[0].from
+          value:
+            - ipBlock:
+                cidr: 172.18.0.0/16
+            - ipBlock:
+                cidr: 10.0.0.0/16
+        documentIndex: 3
+      - equal:
+          path: spec.ingress[0].ports
+          value:
+            - protocol: TCP
+              port: 5000
+        documentIndex: 3
+
+  - it: omits the registry policy when the registry is disabled
+    set:
+      networkPolicies.enabled: true
+      networkPolicies.controlPlaneCIDRs:
+        - 172.18.0.0/16
+      dynamicrp.buildkit.registry.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 3
+
+  - it: omits the registry policy when BuildKit is disabled
+    set:
+      networkPolicies.enabled: true
+      networkPolicies.controlPlaneCIDRs:
+        - 172.18.0.0/16
+      dynamicrp.buildkit.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 3

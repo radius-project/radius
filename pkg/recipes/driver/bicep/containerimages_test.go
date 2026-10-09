@@ -443,6 +443,42 @@ func Test_ExecuteImageBuild_FailureSurfacesStderr(t *testing.T) {
 	require.Equal(t, 7, exitErr.ExitCode())
 }
 
+func Test_ExecuteImageBuild_FailureWithoutBuildKitSuggestsEnablingIt(t *testing.T) {
+	requireScriptShell(t)
+
+	tests := []struct {
+		name        string
+		buildKitEnv string
+		wantHint    bool
+	}{
+		{name: "unset", buildKitEnv: "", wantHint: true},
+		{name: "set", buildKitEnv: "tcp://127.0.0.1:1234", wantHint: false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(buildKitHostEnvName, tc.buildKitEnv)
+
+			_, err := (&bicepDriver{}).executeImageBuild(t.Context(), `echo "buildctl: not found" >&2; exit 127`, map[string]any{}, "", "", driver.ExecuteOptions{})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "buildctl: not found")
+			if tc.wantHint {
+				require.Contains(t, err.Error(), "dynamicrp.buildkit.enabled=true")
+			} else {
+				require.NotContains(t, err.Error(), "dynamicrp.buildkit.enabled")
+			}
+		})
+	}
+}
+
+func Test_BuildKitConfigured(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, buildKitConfigured(nil))
+	require.False(t, buildKitConfigured([]string{"BUILDKIT_HOST="}))
+	require.False(t, buildKitConfigured([]string{"OTHER=tcp://127.0.0.1:1234"}))
+	require.True(t, buildKitConfigured([]string{"PATH=/bin", "BUILDKIT_HOST=tcp://127.0.0.1:1234"}))
+}
+
 func Test_ExecuteImageBuild_StrictResultContract(t *testing.T) {
 	requireScriptShell(t)
 

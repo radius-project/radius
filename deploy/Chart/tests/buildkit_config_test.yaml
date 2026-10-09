@@ -7,6 +7,8 @@ release:
   namespace: radius-system
 tests:
   - it: omits BuildKit configuration when the sidecar is disabled
+    set:
+      dynamicrp.buildkit.enabled: false
     asserts:
       - hasDocuments:
           count: 0
@@ -24,10 +26,14 @@ tests:
           value: |-
             [worker.oci]
               max-parallelism = 1
+            # The in-cluster registry is reached over plain HTTP through the loopback
+            # proxy in dynamic-rp.
+            [registry."localhost:31500"]
+              http = true
         template: dynamic-rp/buildkit-config.yaml
       - equal:
           path: spec.template.metadata.annotations["checksum/buildkit-config"]
-          value: 95a0c8f8af5511090090ab0079d285e12a7761f634954f5303676996506b9ea4
+          value: 9d5ddbbc07243abd33a9846eadd426ce6b795da33f35ff974ca868378bf833ad
         template: dynamic-rp/deployment.yaml
       - equal:
           path: spec.template.spec.containers[1].args
@@ -118,10 +124,14 @@ tests:
           value: |-
             [worker.oci]
               max-parallelism = 3
+            # The in-cluster registry is reached over plain HTTP through the loopback
+            # proxy in dynamic-rp.
+            [registry."localhost:31500"]
+              http = true
         template: dynamic-rp/buildkit-config.yaml
       - equal:
           path: spec.template.metadata.annotations["checksum/buildkit-config"]
-          value: 3dcf331b86546ad0afe422f0c3f70f514a4ef953e279a4b480e79015aaf7b5b0
+          value: 84f0784249ce8527e4c0d097da0604d5a2aaec59479028b25429baf6674a155d
         template: dynamic-rp/deployment.yaml
 
   - it: rejects zero parallelism because BuildKit treats zero as unlimited
@@ -170,6 +180,10 @@ tests:
           value: |-
             [worker.oci]
               max-parallelism = 2147483647
+            # The in-cluster registry is reached over plain HTTP through the loopback
+            # proxy in dynamic-rp.
+            [registry."localhost:31500"]
+              http = true
         template: dynamic-rp/buildkit-config.yaml
 
   - it: rejects a value immediately above the portable integer range
@@ -198,3 +212,23 @@ tests:
       - failedTemplate:
           errorMessage: dynamicrp.buildkit.maxParallelism must be an integer between 1 and 2147483647
         template: dynamic-rp/deployment.yaml
+
+  - it: omits the plain-HTTP registry entry when the in-cluster registry is disabled
+    set:
+      dynamicrp.buildkit.registry.enabled: false
+    asserts:
+      - equal:
+          path: data["buildkitd.toml"]
+          value: |-
+            [worker.oci]
+              max-parallelism = 1
+        template: dynamic-rp/buildkit-config.yaml
+
+  - it: uses the configured registry NodePort for the plain-HTTP registry entry
+    set:
+      dynamicrp.buildkit.registry.nodePort: 32000
+    asserts:
+      - matchRegex:
+          path: data["buildkitd.toml"]
+          pattern: '\[registry\."localhost:32000"\]\n\s+http = true'
+        template: dynamic-rp/buildkit-config.yaml

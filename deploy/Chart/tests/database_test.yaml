@@ -8,6 +8,7 @@ templates:
   - rp/configmaps.yaml
   - rp/deployment.yaml
   - dynamic-rp/configmaps.yaml
+  - dynamic-rp/buildkit-config.yaml
   - dynamic-rp/deployment.yaml
 tests:
   # --- database.enabled=false (default) ---

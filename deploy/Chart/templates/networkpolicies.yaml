@@ -85,5 +85,34 @@ spec:
       ports:
         - protocol: TCP
           port: 9443
+{{- if include "radius.buildkit.registryEnabled" $ }}
+---
+# Allow node-originated traffic to the in-cluster containerImages registry. Each
+# node's container runtime pulls images through localhost:<nodePort>, and kubelet
+# runs the registry's HTTP probes; both arrive with the NODE's IP. The rule is
+# scoped to the registry Pods on container port 5000.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: radius-allow-registry-nodes
+  namespace: "{{ $.Release.Namespace }}"
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: radius-registry
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        {{- range . }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 5000
+{{- end }}
 {{- end }}
 {{- end }}

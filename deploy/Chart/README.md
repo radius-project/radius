@@ -19,18 +19,37 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system
 
 ### In-Cluster Container Image Builds
 
-The `Radius.Compute/containerImages` resource type requires the opt-in rootless BuildKit sidecar:
+The `Radius.Compute/containerImages` resource type is backed by a rootless BuildKit sidecar in the `dynamic-rp` Pod. The sidecar is enabled by default (`dynamicrp.buildkit.enabled=true`). It requires the Radius namespace to allow Pod Security Admission level `privileged`, because the sidecar uses `Unconfined` seccomp and AppArmor profiles.
+
+By default the chart also deploys an in-cluster OCI registry (`radius-registry`) exposed on NodePort `31500`, and the default recipe pack created by `rad env create --preview` configures the `containerImages` recipe to push to `localhost:31500`. A loopback proxy inside `dynamic-rp` forwards `127.0.0.1:31500` to the registry Service, so BuildKit pushes and the node's container runtime pulls using the same `localhost:31500/<name>:<tag>` reference. Container runtimes allow plain-HTTP pulls from `localhost`, so no node configuration is required.
+
+The in-cluster registry is intended for development and single-cluster use:
+
+- The registry is unauthenticated and reachable inside the cluster and on the NodePort.
+- Pulling from `localhost:<nodePort>` requires kube-proxy to forward node-loopback traffic to NodePorts (the default for iptables mode). Clusters using nftables or IPVS kube-proxy, or a kube-proxy replacement, may not support this.
+- Images are stored in an `emptyDir` and are lost when the registry Pod restarts unless `dynamicrp.buildkit.registry.persistence.existingClaim` names an existing PVC.
+- Workloads deployed to a separate target cluster (`global.targetCluster.enabled=true`) cannot pull from it.
+
+To use an external registry instead, disable the in-cluster registry and set the `registry` (and optionally `registrySecretName`) parameter of the `Radius.Compute/containerImages` recipe in your environment's recipe pack:
 
 ```console
 rad install kubernetes \
-  --set dynamicrp.buildkit.enabled=true
+  --set dynamicrp.buildkit.registry.enabled=false
+```
+
+If you change `dynamicrp.buildkit.registry.nodePort`, update the recipe's `registry` parameter to `localhost:<nodePort>`.
+
+To remove container image builds entirely, which also removes the registry and proxy and makes the rest of the install compatible with PSA `baseline`:
+
+```console
+rad install kubernetes \
+  --set dynamicrp.buildkit.enabled=false
 ```
 
 Git build sources require no additional storage. To enable local filesystem build sources, create a PVC in the Radius release namespace containing the approved source directories, then configure the chart to mount it read-only:
 
 ```console
 rad install kubernetes \
-  --set dynamicrp.buildkit.enabled=true \
   --set dynamicrp.buildkit.localContexts.existingClaim=build-contexts
 ```
 

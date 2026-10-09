@@ -1,0 +1,110 @@
+{{- if include "radius.buildkit.registryEnabled" . }}
+{{- $nodePort := include "radius.buildkit.registryNodePort" . }}
+# In-cluster OCI registry for images built by Radius.Compute/containerImages.
+# Runs separately from dynamic-rp so stored images survive dynamic-rp restarts.
+# See dynamicrp.buildkit.registry in values.yaml.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: radius-registry
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: radius-registry
+    app.kubernetes.io/part-of: radius
+spec:
+  replicas: 1
+  # Recreate so a ReadWriteOnce persistence claim is released before the new Pod mounts it.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: radius-registry
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: radius-registry
+        app.kubernetes.io/part-of: radius
+    spec:
+      automountServiceAccountToken: false
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: registry
+        image: "{{ .Values.dynamicrp.buildkit.registry.image }}"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: registry
+          containerPort: 5000
+          protocol: TCP
+        env:
+        # Serve the debug/metrics endpoint on loopback only.
+        - name: REGISTRY_HTTP_DEBUG_ADDR
+          value: "127.0.0.1:5001"
+        readinessProbe:
+          httpGet:
+            path: /v2/
+            port: registry
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /v2/
+            port: registry
+          initialDelaySeconds: 10
+          periodSeconds: 20
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        {{- with .Values.dynamicrp.buildkit.registry.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: registry-data
+          mountPath: /var/lib/registry
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: registry-data
+      {{- with .Values.dynamicrp.buildkit.registry.persistence.existingClaim }}
+        persistentVolumeClaim:
+          claimName: {{ . | quote }}
+      {{- else }}
+        emptyDir: {}
+      {{- end }}
+      - name: tmp
+        emptyDir: {}
+---
+# NodePort Service. dynamic-rp reaches the registry through its cluster DNS name,
+# and each node's container runtime pulls through localhost:<nodePort>, which is
+# the only address runtimes accept over plain HTTP without extra configuration.
+apiVersion: v1
+kind: Service
+metadata:
+  name: radius-registry
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: radius-registry
+    app.kubernetes.io/part-of: radius
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: radius-registry
+  ports:
+  - name: registry
+    port: 5000
+    targetPort: registry
+    protocol: TCP
+    nodePort: {{ $nodePort }}
+{{- end }}

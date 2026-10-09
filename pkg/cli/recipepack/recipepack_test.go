@@ -34,6 +34,7 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 	// Verify expected resource types
 	expectedResourceTypes := []string{
 		"Radius.Compute/containers",
+		"Radius.Compute/containerImages",
 		"Radius.Compute/persistentVolumes",
 		"Radius.Compute/routes",
 		"Radius.Security/secrets",
@@ -53,6 +54,13 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 	require.Contains(t, definitions, CoreTypesRecipeInfo{
 		ResourceType: "Radius.Messaging/rabbitMQ",
 		Source:       "ghcr.io/radius-project/kube-recipes/rabbitmq:edge",
+	})
+	require.Contains(t, definitions, CoreTypesRecipeInfo{
+		ResourceType: "Radius.Compute/containerImages",
+		Source:       "ghcr.io/radius-project/kube-recipes/containerimages:edge",
+		Parameters: map[string]any{
+			"registry": DefaultContainerImagesRegistry,
+		},
 	})
 }
 

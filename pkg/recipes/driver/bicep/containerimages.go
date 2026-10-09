@@ -49,6 +49,8 @@ const (
 	registrySecretNameParameterName        = "registrySecretName"
 	execOutputEnvName                      = "RADIUS_EXEC_OUTPUT"
 	dockerConfigEnvName                    = "DOCKER_CONFIG"
+	buildKitHostEnvName                    = "BUILDKIT_HOST"
+	buildKitDisabledHint                   = "BuildKit is not configured for dynamic-rp (" + buildKitHostEnvName + " is unset). containerImages recipes need the BuildKit sidecar: reinstall Radius with dynamicrp.buildkit.enabled=true"
 	scriptShell                            = "/bin/sh"
 	scriptName                             = "radius-container-images-build"
 	stderrTailLimit                        = 4096
@@ -261,10 +263,14 @@ func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, buil
 	env := imageBuildEnvironment(os.Environ(), dockerConfigDir, resultPath)
 	stderrTail, err := runScript(ctx, script, args, env, tempDir, logger)
 	if err != nil {
-		if stderrTail != "" {
-			return "", fmt.Errorf("recipe %q script failed: %w\nstderr (tail):\n%s", imageBuildOutputName, err, stderrTail)
+		hint := ""
+		if !buildKitConfigured(env) {
+			hint = "\n" + buildKitDisabledHint
 		}
-		return "", fmt.Errorf("recipe %q script failed: %w", imageBuildOutputName, err)
+		if stderrTail != "" {
+			return "", fmt.Errorf("recipe %q script failed: %w%s\nstderr (tail):\n%s", imageBuildOutputName, err, hint, stderrTail)
+		}
+		return "", fmt.Errorf("recipe %q script failed: %w%s", imageBuildOutputName, err, hint)
 	}
 
 	return readScriptResult(resultPath)
@@ -329,6 +335,18 @@ func dockerConfigAuthKey(registry string) (string, error) {
 	default:
 		return registryHost, nil
 	}
+}
+
+// buildKitConfigured reports whether env points buildctl at a BuildKit daemon. The Helm chart sets
+// BUILDKIT_HOST only when dynamicrp.buildkit.enabled is true.
+func buildKitConfigured(env []string) bool {
+	for _, value := range env {
+		name, host, _ := strings.Cut(value, "=")
+		if name == buildKitHostEnvName && host != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // runScript runs the build script, streaming both output pipes so buildctl cannot deadlock.
