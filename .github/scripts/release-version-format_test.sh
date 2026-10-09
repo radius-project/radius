@@ -21,7 +21,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly VALIDATOR="${SCRIPT_DIR}/validate_semver.py"
-readonly TAG_PARSER="${SCRIPT_DIR}/get_release_version.py"
+readonly TAG_PARSER="${SCRIPT_DIR}/release-version.sh"
 readonly RUNBOOK="${SCRIPT_DIR}/../../docs/contributing/contributing-releases/README.md"
 # shellcheck source=.github/scripts/release-version.sh
 source "${SCRIPT_DIR}/release-version.sh"
@@ -70,8 +70,8 @@ assert_tag_parser() {
     local environment_file="${TEMP_DIR}/github-env"
 
     : > "${environment_file}"
-    GITHUB_REF="refs/tags/v${version}" GITHUB_ENV="${environment_file}" \
-        "${PYTHON}" "${TAG_PARSER}" > /dev/null
+    GITHUB_REF="refs/tags/v${version}" \
+        bash "${TAG_PARSER}" > "${environment_file}"
 
     if ! grep -Fxq "REL_VERSION=${version}" "${environment_file}"; then
         fail_test "tag parser did not preserve release version ${version}"
@@ -104,7 +104,6 @@ assert_policy_callers() {
     local script
 
     for script in \
-        release-get-version.sh \
         release-verification.sh \
         checkout-release-codebase.sh; do
         if ! grep -Fq "source \"\${SCRIPT_DIR}/release-version.sh\"" \
@@ -112,6 +111,28 @@ assert_policy_callers() {
             fail_test "${script} does not use the shared release-version policy"
         fi
     done
+}
+
+assert_workflow_environment() {
+    local reference expected_version expected_channel expected_chart expected_update
+    local environment_file="${TEMP_DIR}/workflow-env"
+    while IFS='|' read -r reference expected_version expected_channel expected_chart expected_update; do
+        GITHUB_REF="${reference}" bash "${TAG_PARSER}" > "${environment_file}"
+        grep -Fxq "REL_VERSION=${expected_version}" "${environment_file}"
+        grep -Fxq "REL_CHANNEL=${expected_channel}" "${environment_file}"
+        grep -Fxq "CHART_VERSION=${expected_chart}" "${environment_file}"
+        grep -Fxq "UPDATE_RELEASE=${expected_update}" "${environment_file}"
+    done <<'EOF'
+refs/tags/v0.61.2|0.61.2|0.61|0.61.2|true
+refs/tags/v0.61.0-rc.2|0.61.0-rc.2|0.61.0-rc.2|0.61.0-rc.2|false
+refs/pull/123/merge|pr-123|edge|0.42.42-pr-123|false
+refs/heads/main|edge|edge|0.42.42-dev|false
+refs/heads/gh-readonly-queue/main/pr-123|edge|edge|0.42.42-dev|false
+|edge|edge|0.42.42-dev|false
+EOF
+    if GITHUB_REF=refs/tags/not-a-release bash "${TAG_PARSER}" >/dev/null 2>&1; then
+        fail_test "workflow metadata accepted an invalid tag"
+    fi
 }
 
 assert_runbook_uses_dotted_rc() {
@@ -147,6 +168,7 @@ main() {
 
     assert_tag_parser "0.61.0-rc.1"
     assert_tag_parser "0.60.0-rc3"
+    assert_workflow_environment
 
     assert_radius_valid "0.61.0"
     assert_radius_valid "0.61.0-rc.1"
@@ -162,7 +184,7 @@ main() {
     assert_policy_callers
     assert_runbook_uses_dotted_rc
 
-    echo "release version format tests passed (24 tests)"
+    echo "release version format and workflow metadata tests passed"
 }
 
 main "$@"
