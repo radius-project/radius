@@ -92,6 +92,23 @@ func Test_formatCompatibilityWarning(t *testing.T) {
 	}
 }
 
+// Test_channelMatches covers channelMatches directly, including the tag shapes that
+// formatCompatibilityWarning's table-driven cases cannot reach on their own: a non-channel tag, and
+// a channel tag whose major or minor component overflows uint64 (channelPattern only guarantees
+// digits, not that they fit in a uint64).
+func Test_channelMatches(t *testing.T) {
+	cliVersion, err := releaseVersion("0.60.1")
+	require.NoError(t, err)
+	controlPlaneVersion, err := releaseVersion("0.60.3")
+	require.NoError(t, err)
+
+	require.False(t, channelMatches("not-a-channel", cliVersion, controlPlaneVersion), "non-channel tag")
+	require.False(t, channelMatches("0.61", cliVersion, controlPlaneVersion), "channel not matching either release")
+	require.False(t, channelMatches("99999999999999999999.60", cliVersion, controlPlaneVersion), "major overflows uint64")
+	require.False(t, channelMatches("0.99999999999999999999", cliVersion, controlPlaneVersion), "minor overflows uint64")
+	require.True(t, channelMatches("0.60", cliVersion, controlPlaneVersion), "channel matching both releases")
+}
+
 func Test_formatCompatibilityWarning_UnknownProvenance(t *testing.T) {
 	warning := formatCompatibilityWarning("0.60.0", "0.60.0", nil, []bicep.RadiusExtensionReference{
 		{Reason: bicep.UnknownPinReason},
