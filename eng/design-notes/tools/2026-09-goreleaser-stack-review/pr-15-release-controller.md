@@ -6,9 +6,9 @@
 
 ## Verdict
 
-The layer is the design's release transaction, built with the discipline the design asks for. One reusable controller resolves exactly one merged generated release pull request, reads the plan committed under `.github/release-plans/`, binds it to the metadata-bearing commit, preflights every destination with the reconciliation script in check-only mode, verifies the signed Deployment Engine tag, waits for approval, publishes and verifies the Deployment Engine image and locks its digest, reconciles the sibling repositories at the commits frozen in the plan, and creates the Radius tag last with the release App so the tag starts the release build. Concurrency is keyed by version and source commit with a queue that never cancels an attempt, and every job checks out the executing workflow's commit, so an approval wait cannot change the code between stages. Approve Release and Resume Release are secretless gateways that dispatch the default-branch controller. The legacy `versions.yaml` trigger is deleted outright, and the generated metadata backport removes each release branch's copy before it can fire. Plan validation regenerates the plan from trusted code on pull requests and in the merge group, the controller rejects a conflicting version or source pair, and the failure-injection suite resumes after each stage without a duplicate dispatch or a moved tag. The image verifier's label expectations hold against the image published today: the `0.60` Deployment Engine image carries `org.opencontainers.image.ref` and `org.opencontainers.image.revision`. All suites pass, and ShellCheck, Prettier, markdownlint, and cspell are clean.
+The layer implements the design's release reconciliation stages. One reusable controller resolves exactly one merged generated release pull request, reads the plan committed under `.github/release-plans/`, binds it to the metadata-bearing commit, preflights every destination with the reconciliation script in check-only mode, verifies the signed Deployment Engine tag, waits for approval, publishes and verifies the Deployment Engine image and locks its digest, reconciles the sibling repositories at the commits frozen in the plan, and creates the Radius tag last with the release App so the tag starts the release build. Concurrency is keyed by version and source commit with up to 100 pending attempts and no cancellation of the active run. Every job checks out the executing workflow's commit, so an approval wait cannot change the code between stages; image verification also retains the plan's original output contract across resume invocations. Approve Release and Resume Release are secretless gateways that dispatch the default-branch controller. The legacy `versions.yaml` trigger is deleted outright, and the generated metadata backport removes each release branch's copy before it can fire. Plan validation regenerates the plan from trusted code on pull requests and in the merge group, and the controller rejects a conflicting version or source pair. Stage-boundary failure injection exercises idempotent tag reconciliation; separate monitor tests cover delayed visibility after an accepted dispatch. These checks do not prove exactly-once publication across interrupted invocations or replace the live App-tag-trigger and release-cycle soak gates.
 
-Two cross-layer findings land here and are fixed.
+The original cross-layer findings and follow-up correctness fixes are recorded below.
 
 ## Changes made in this review
 
@@ -26,17 +26,34 @@ Two cross-layer findings land here and are fixed.
 - **Value**: a release pull request stays mergeable through ordinary sibling activity, and the reviewed plan is what gets released.
 - **Impact**: a sibling change merged after preparation is included only by rerunning Prepare Release, which is now the documented way to say it belongs in the release. The validator fetches one branch from each sibling repository per run; measured cost is recorded below.
 
-## Findings left as-is
+### 3. Existing-channel validation and frozen output verification
+
+- **What changed**: the controller passes the channel directly to `jq` rather than setting it only for the upstream `yq` process. The resolved plan artifact now carries its `expectedOutputs` as `release-targets.json`; both image-verification jobs download that exact artifact by ID and pass it to the verifier. Missing or invalid Deployment Engine platform contracts fail explicitly.
+- **Why**: valid sibling refs such as `release/0.61` were rejected when `jq` could not see `CHANNEL`. Separately, using the controller checkout's `targets.json` changed the meaning of an approved plan when a resume ran newer tooling.
+- **Coverage**: real-Git fixtures cover subsequent RCs, finals, patches, wrong-channel rejection, and output-contract extraction. Image-verifier fixtures change controller defaults between attempts while preserving the approved targets and locked digest.
+
+### 4. Ambiguous dispatches fail closed
+
+- **What changed**: after a server error or lost dispatch response, the monitor waits for the correlated run until the existing deadline without issuing another dispatch. Explicit rate-limit rejections retain bounded retries. An unknown outcome is propagated to the controller summary with inspection instructions instead of an immediate resume command.
+- **Why**: a dispatch can be accepted before its run becomes visible. Retrying after one empty lookup duplicated accepted work. The stage-resume fixture's local completion marker did not exercise that boundary.
+- **Coverage**: the actual monitor module is exercised with delayed visibility, lost responses, network timeouts, failed discovery, and deadline expiry. Full protection across interrupted invocations still needs publisher-side idempotency.
+
+### 5. Release lookup is scoped to the known branch
+
+The resolver filters closed pull requests by the exact `owner:automation/prepare-release-<version>` head instead of enumerating every closed `main` pull request. Repository identity, merged state, branch matching, and ambiguity checks remain in place.
+
+## Remaining boundaries and follow-ups
 
 - **Deployment Engine lock on a state branch** (cross-layer finding 2): the lock is written before any release exists, as a signed App commit on `automation/release-state-<version>`, and every resume verifies it. That is a sound durable store; its cost is one branch per release that nothing deletes. Evaluated at PR 16 together with the release manifest: the branch can be pruned once the release is published and the manifest carries the digest.
 - **Approval before mutation**: the `approve` job gates every release, including candidates, on the `release` environment before the Deployment Engine publish. PR 16 moves the approval to publication and removes this job, so the double gate is transitional.
-- **Which code runs**: a backport merge on a release branch runs that branch's copy of the controller, while the gateways dispatch the default branch; a channel created before this layer has no controller copy and starts through Approve Release, which the runbook explains.
+- **Which code runs**: since [December 8, 2025](https://github.blog/changelog/2025-11-07-actions-pull_request_target-and-environment-branch-protections-changes/), `pull_request_target` uses the default branch's workflow and execution reference, including backport merges into older release branches. Those branches need no local controller copy. Their legacy push-triggered `release.yaml` still needs removal.
+- **Native publisher run IDs**: a coordinated publisher change can replace new-run discovery with `workflow_dispatch` and its [returned run ID](https://github.blog/changelog/2026-02-19-workflow-dispatch-api-now-returns-run-ids/). It requires a matching publisher trigger and App `actions: write`; it does not remove the need for idempotency when responses are lost.
+- **Image provenance**: revision and ref labels are consistency checks against the signed tag, not authenticated build provenance. Digest-bound build attestations require a coordinated publisher change before the controller can enforce them.
 - **Unlocked image inspection is allowed to fail**: the step continues on error so an invalid unlocked image is republished rather than trusted; a transient registry failure after five attempts takes the same path, which the publisher tolerates.
 - **Shell style**: the layer converts most release scripts to the `shfmt -i 4 -ci` spacing, which is the style the older scripts use; nothing in CI checks either.
 
 ## Verification
 
-- Shell: controller contract (39), resume failure injection (5), controller plan (8), sibling capture (3), Deployment Engine image (4) and tag (7), preparation (17), plan validation (13 with the two replacement tests), merge group (4), backport creation (4) and collection (3), reconciliation (19), version selection (8), cutover (8), and SBOM suites pass; ShellCheck is clean for the twenty-one new or changed scripts.
-- Node: dispatch (3), lock (5), resolve (6), and monitor (22) suites pass.
-- actionlint reports only the `queue` key it does not know yet; Prettier with the repository configuration passes for the workflows and the Node scripts; markdownlint and cspell pass for the runbook, the plan, and these notes.
-- The Deployment Engine image labels were read from the published `0.60` image with oras. Fetching one branch from each live sibling repository into a scratch repository took five seconds in total and 16 MB of objects, well inside the five-minute validation jobs.
+- Run `make test-release-controller test-monitor-remote-workflow` for the controller, source binding, output contract, resolver, lock, and dispatch regressions. These fixtures do not dispatch a live release.
+- Older actionlint versions reject `queue`; [GitHub supports `queue: max`](https://github.blog/changelog/2026-05-07-github-actions-concurrency-groups-now-allow-larger-queues/) with cancellation disabled. Other workflow validation errors must still be fixed.
+- The live App-created tag triggering `build-release.yaml` and the required release-cycle soak remain rollout gates; local fixtures cannot establish them.

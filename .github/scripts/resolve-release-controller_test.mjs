@@ -113,9 +113,51 @@ test("ignores a backport whose source is not a release pull", async () => {
 
 test("resolves explicit version and source inputs to one plan", async () => {
   const state = fixture({ mode: "dispatch", pulls: [releasePull()] });
+  const requests = [];
+  state.github.rest.pulls.list = async (request) => {
+    requests.push(request);
+    return [releasePull()];
+  };
   await resolveReleaseController(state);
+  assert.deepEqual(requests, [
+    {
+      owner: "radius-project",
+      repo: "radius",
+      base: "main",
+      head: "radius-project:automation/prepare-release-0.61.0-rc.1",
+      state: "closed",
+      per_page: 100
+    }
+  ]);
   assert.equal(state.outputs.selected, "true");
   assert.equal(state.outputs.trigger, "dispatch");
+});
+
+test("still validates repository, merge state and branch after a filtered lookup", async () => {
+  const state = fixture({
+    mode: "dispatch",
+    pulls: [
+      releasePull(),
+      releasePull({ number: 43, merged_at: null }),
+      releasePull({ number: 44, base: { ref: "release/0.61" } }),
+      releasePull({
+        number: 45,
+        head: {
+          ref: "automation/prepare-release-0.61.0-rc.1",
+          repo: { full_name: "other/radius" }
+        }
+      }),
+      releasePull({
+        number: 46,
+        head: {
+          ref: "automation/prepare-release-0.61.0-rc.2",
+          repo: { full_name: repository }
+        }
+      })
+    ]
+  });
+  await resolveReleaseController(state);
+  assert.equal(state.outputs["source-pr-number"], "42");
 });
 
 test("rejects ambiguous generated release pull requests", async () => {

@@ -33,14 +33,24 @@ function describeFailure(operationName, attempts, error) {
 }
 
 /** @param {any} error */
-function isRetryableAPIError(error) {
+function isRateLimitError(error) {
   const status = Number(error?.status ?? error?.response?.status ?? 0);
   const headers = error?.response?.headers || {};
   return (
     status === 429 ||
-    (status >= 500 && status <= 599) ||
     (status === 403 &&
-      (headers["retry-after"] || headers["x-ratelimit-remaining"] === "0")) ||
+      Boolean(
+        headers["retry-after"] || headers["x-ratelimit-remaining"] === "0"
+      ))
+  );
+}
+
+/** @param {any} error */
+function isRetryableAPIError(error) {
+  const status = Number(error?.status ?? error?.response?.status ?? 0);
+  return (
+    isRateLimitError(error) ||
+    (status >= 500 && status <= 599) ||
     RETRYABLE_NETWORK_CODES.has(error?.code) ||
     RETRYABLE_NETWORK_CODES.has(error?.cause?.code)
   );
@@ -232,6 +242,7 @@ export default async ({
       return correlatedRuns(runs);
     };
 
+    let uncertainDispatchFailure = "";
     const dispatchRun = async (previousRunID) => {
       const operationName = `publisher dispatch '${eventType}'`;
       for (let attempt = 1; attempt <= API_RETRY_ATTEMPTS; attempt += 1) {
@@ -242,10 +253,23 @@ export default async ({
             event_type: eventType,
             client_payload: clientPayload
           });
+          core.setOutput("run_state", "unknown");
           return undefined;
         } catch (error) {
           if (!isRetryableAPIError(error)) {
             throw new Error(describeFailure(operationName, attempt, error));
+          }
+          if (!isRateLimitError(error)) {
+            uncertainDispatchFailure = describeFailure(
+              operationName,
+              attempt,
+              error
+            );
+            core.setOutput("run_state", "unknown");
+            core.info(
+              `${uncertainDispatchFailure}; the request may have been accepted. Waiting for '${expectedRunName}' without redispatching`
+            );
+            return undefined;
           }
 
           const delay = Math.max(
@@ -253,7 +277,7 @@ export default async ({
             retryDelay(attempt, error)
           );
           core.info(
-            `Publisher dispatch returned a transient error; checking for '${expectedRunName}' before retrying`
+            `Publisher dispatch was rate limited; checking for '${expectedRunName}' before retrying the rejected request`
           );
           if (now() < deadline) {
             await sleepWithinBudget(delay);
@@ -265,13 +289,13 @@ export default async ({
           const discoveredRun = selectReusableRun(newRuns) || newRuns[0];
           if (discoveredRun) {
             core.info(
-              `The uncertain dispatch created correlated run ${discoveredRun.id}; skipping redispatch`
+              `Found correlated run ${discoveredRun.id}; skipping redispatch`
             );
             return discoveredRun;
           }
           if (attempt === API_RETRY_ATTEMPTS || now() >= deadline) {
             throw new Error(
-              `${describeFailure(operationName, attempt, error)}; no run '${expectedRunName}' appeared, so a rerun of this job reconciles before dispatching again`
+              `${describeFailure(operationName, attempt, error)}; no run '${expectedRunName}' appeared. Inspect publisher runs and destination artifacts before retrying`
             );
           }
         }
@@ -317,8 +341,9 @@ export default async ({
     }
 
     if (!run) {
+      core.setOutput("run_state", "unknown");
       core.setFailed(
-        `Timed out waiting for publisher run '${expectedRunName}': https://github.com/${remoteOwner}/${remoteRepo}/actions/workflows/${remoteWorkflowFile}`
+        `${uncertainDispatchFailure ? `${uncertainDispatchFailure}. ` : ""}Timed out waiting for publisher run '${expectedRunName}': https://github.com/${remoteOwner}/${remoteRepo}/actions/workflows/${remoteWorkflowFile}. The dispatch outcome is unknown; no additional dispatch was sent after the uncertain outcome. Inspect publisher runs and destination artifacts before retrying`
       );
       return;
     }
@@ -328,6 +353,7 @@ export default async ({
       `https://github.com/${remoteOwner}/${remoteRepo}/actions/runs/${run.id}`;
     core.setOutput("run_id", String(run.id));
     core.setOutput("run_url", runUrl);
+    core.setOutput("run_state", "found");
     core.info(`Monitoring correlated remote run: ${runUrl}`);
 
     while (true) {

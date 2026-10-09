@@ -54,8 +54,8 @@ on:
 
 permissions: {}
 
-# All entry workflows use this repository-wide key. queue:max preserves every
-# release attempt while the active run reconciles the same desired state.
+# All entry workflows use this repository-wide key. queue:max allows up to 100
+# pending attempts without canceling the active reconciliation.
 concurrency:
   group: release-${{ inputs.version }}-${{ inputs.source-commit }}
   queue: max
@@ -76,6 +76,7 @@ jobs:
       release-branch: ${{ steps.plan.outputs.release-branch }}
       release-identifier: ${{ steps.plan.outputs.release-identifier }}
       de-image-tag: ${{ steps.plan.outputs.de-image-tag }}
+      plan-artifact-id: ${{ steps.upload-plan.outputs.artifact-id }}
       recipes-commit: ${{ steps.plan.outputs.recipes-commit }}
       dashboard-commit: ${{ steps.plan.outputs.dashboard-commit }}
       bicep-types-aws-commit: ${{ steps.plan.outputs.bicep-types-aws-commit }}
@@ -251,10 +252,13 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload resolved release plan
+        id: upload-plan
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: resolved-release-plan-${{ inputs.version }}-${{ inputs.source-commit }}
-          path: ${{ runner.temp }}/release-controller/release-plan.yaml
+          name: resolved-release-plan-${{ inputs.version }}-${{ inputs.source-commit }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/release-controller/release-plan.yaml
+            ${{ runner.temp }}/release-controller/release-targets.json
           if-no-files-found: error
           retention-days: 90
 
@@ -284,6 +288,7 @@ jobs:
       digest: ${{ steps.verify-image.outputs.digest }}
       source-commit: ${{ steps.de-tag.outputs.commit }}
       run-url: ${{ steps.monitor-de-workflow.outputs.run_url }}
+      run-state: ${{ steps.monitor-de-workflow.outputs.run_state }}
       lock-branch: >-
         ${{ steps.de-lock.outputs.branch || steps.lock-image.outputs.branch }}
     steps:
@@ -292,6 +297,13 @@ jobs:
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
+
+      - name: Download approved release contract
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.validate.outputs.plan-artifact-id }}
+          path: ${{ runner.temp }}/release-controller
+          merge-multiple: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
@@ -334,6 +346,7 @@ jobs:
         id: existing-image
         continue-on-error: true
         env:
+          GORELEASER_PARITY_TARGETS: ${{ runner.temp }}/release-controller/release-targets.json
           DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
           RELEASE_VERSION: ${{ needs.validate.outputs.version }}
           DE_SOURCE_COMMIT: ${{ steps.de-tag.outputs.commit }}
@@ -394,6 +407,7 @@ jobs:
       - name: Verify published Deployment Engine image
         id: verify-image
         env:
+          GORELEASER_PARITY_TARGETS: ${{ runner.temp }}/release-controller/release-targets.json
           DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
           RELEASE_VERSION: ${{ needs.validate.outputs.version }}
           DE_SOURCE_COMMIT: ${{ steps.de-tag.outputs.commit }}
@@ -554,6 +568,13 @@ jobs:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
 
+      - name: Download approved release contract
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.validate.outputs.plan-artifact-id }}
+          path: ${{ runner.temp }}/release-controller
+          merge-multiple: true
+
       - name: Get App token for Radius tag creation
         id: release-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -569,6 +590,7 @@ jobs:
 
       - name: Reverify Deployment Engine image digest
         env:
+          GORELEASER_PARITY_TARGETS: ${{ runner.temp }}/release-controller/release-targets.json
           DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
           DE_IMAGE_DIGEST: ${{ needs.publish-deployment-engine.outputs.digest }}
           RELEASE_VERSION: ${{ needs.validate.outputs.version }}
@@ -641,6 +663,7 @@ jobs:
           APPROVE_RESULT: ${{ needs.approve.result }}
           DE_RESULT: ${{ needs.publish-deployment-engine.result }}
           DE_RUN_URL: ${{ needs.publish-deployment-engine.outputs.run-url }}
+          DE_RUN_STATE: ${{ needs.publish-deployment-engine.outputs.run-state }}
           DE_LOCK_BRANCH: >-
             ${{ needs.publish-deployment-engine.outputs.lock-branch }}
           SIBLINGS_RESULT: ${{ needs.reconcile-siblings.result }}
@@ -669,6 +692,13 @@ jobs:
             if [[ "${READY}" == "false" ]]; then
               echo
               echo "This release is waiting for its generated metadata backport."
+            elif [[ "${DE_RUN_STATE}" == "unknown" ]]; then
+              echo
+              echo "The Deployment Engine dispatch outcome is unknown."
+              echo "No second dispatch was sent after the uncertain response."
+              echo "Inspect azure-octo/radius-publisher runs and the destination"
+              echo "image before retrying; a new invocation can dispatch again."
+              echo "Release identifier: ${VERSION}-${SOURCE_COMMIT}"
             elif [[ "${RADIUS_RESULT}" != "success" ]]; then
               echo
               echo "Completed stages are reconciled on resume. A conflicting"
