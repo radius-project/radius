@@ -79,6 +79,9 @@ Kubernetes deployments use the chart-rendered UCP connection instead of the loca
 
 The `authorization.mode` setting is read by UCP, Applications RP, Dynamic RP, and the controller, and each logs `authz mode=<mode>` at startup. The chart renders it from `global.rbac.enabled` and `global.rbac.dryRun`: `dryRun=true` renders `dryRun`, `enabled=true` renders `enforce`, and setting both fails rendering. In `off` mode the chart omits the section so older service binaries can still load the config.
 
+> [!NOTE]
+> Services only read and log this setting for now. No authorization checks use it yet, so selecting `enforce` does not block requests.
+
 ### 3. Configure supported environment overrides
 
 Some behavior is read directly from the process environment:
