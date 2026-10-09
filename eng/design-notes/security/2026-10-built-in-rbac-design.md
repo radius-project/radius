@@ -4,19 +4,13 @@
 
 ## Overview
 
-**Role-based access control (RBAC)** is a way to decide who can do what. Instead of giving each person a custom list of allowed actions, you group actions into **roles** (for example "Reader" or "Application Developer") and give people roles. RBAC answers three questions for every request:
-
-1. **Who** is making the request?
-2. **What** are they trying to do?
-3. **Where** are they trying to do it?
-
-Radius has no RBAC of its own today. If you can reach the Radius API through Kubernetes, you can do everything: create or delete any environment, change any Recipe Pack, register cloud credentials, or deploy anywhere. That is fine for one developer on a laptop. It is not fine for a company where many teams share one Radius installation. A platform team wants to say things like:
+Radius has no RBAC of its own today. If you can reach the Radius API through Kubernetes, you can do everything: create or delete any environment, change any Recipe Pack, register cloud credentials, or deploy anywhere. That works for one developer, but not for teams sharing an installation. A platform team wants to say things like:
 
 - "Team A can manage its own applications and deploy them to the staging environment, but not to production."
 - "The platform group can manage Recipe Packs but cannot touch cloud credentials."
 - "Auditors can see who has access to what, but cannot change anything."
 
-This document is the technical design for adding RBAC to Radius. The product requirements come from the [built-in RBAC feature specification](./2026-09-built-in-rbac-feature-spec.md). This design explains how to build it: how Radius identifies callers, how roles are stored, where checks happen, how deployments are checked, and how existing installations turn RBAC on safely.
+This document is the technical design for adding RBAC to Radius. The product requirements come from the [built-in RBAC feature specification](./2026-09-built-in-rbac-feature-spec.md). This design covers how Radius identifies callers, stores roles, checks requests and deployments, and turns RBAC on safely.
 
 This design has a companion: the [internal component authorization design](./2026-09-internal-component-authorization.md), which we call the **internal design** in this document. The internal design says up front that it "assumes UCP already produces an authorization decision for a user's request". This document is where that decision comes from. The two designs split the work like this:
 
@@ -25,7 +19,7 @@ This design has a companion: the [internal component authorization design](./202
 | Decides whether a **user** may do something.                                                                     | Makes sure Radius's **own services** cannot skip or go beyond that decision.                                                                                                                                                     |
 | Roles, role assignments, `rad auth` commands, the checks UCP runs on each request, and the deployment preflight. | Service identities (mTLS), the execution record that carries an approval through a deployment, the data-access service, the credential broker, Kubernetes admission controls, and the service-to-service rollout (Off, Enforce). |
 
-The model is borrowed from Azure Resource Manager (ARM) RBAC. Radius's resource IDs and API already look like ARM's, so ARM's approach fits naturally and many users will already know it.
+The model follows Azure Resource Manager (ARM) RBAC, which matches Radius's ARM-style resource IDs and API.
 
 ## Key terms
 
@@ -50,9 +44,9 @@ The model is borrowed from Azure Resource Manager (ARM) RBAC. Radius's resource 
 
 Today, when you run `rad deploy`:
 
-- **Kubernetes checks who you are.** It uses your kubeconfig. Then it checks Kubernetes RBAC: are you allowed to use the `api.ucp.dev` API group at all? That is an all-or-nothing check.
-- **Kubernetes tells UCP who you are, but UCP throws it away.** Kubernetes forwards your user name and groups in HTTP headers (`X-Remote-User`, `X-Remote-Group`). Today UCP deletes those headers (`pkg/ucp/proxy/kubernetes.go`) because it has no way to confirm they really came from Kubernetes and not from some other program pretending.
-- **After that, everything is trusted.** UCP, the deployment engine, and resource providers all trust each other completely.
+- **Kubernetes authenticates the caller** and checks Kubernetes RBAC on the `api.ucp.dev` API group. That is an all-or-nothing check.
+- **UCP discards the caller's identity.** Kubernetes forwards the user and groups in `X-Remote-User` and `X-Remote-Group`, but UCP deletes those headers (`pkg/ucp/proxy/kubernetes.go`) because it cannot confirm they came from Kubernetes.
+- **Radius services trust each other completely.**
 
 ## Objectives
 
@@ -241,7 +235,7 @@ sequenceDiagram
 
 > **In short:** Kubernetes already knows who you are. UCP will start trusting the user and group names Kubernetes sends, but only after checking the connection really came from Kubernetes.
 
-**Using the names Kubernetes sends.** When Kubernetes forwards a request to UCP, it adds the caller's user name and groups as headers. This is a standard Kubernetes feature called the [authenticating proxy](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authenticating-proxy). The danger is that any program that can reach UCP could add those same headers and pretend to be someone else. That is why UCP deletes them today.
+**Using the names Kubernetes sends.** Kubernetes adds the caller's user and groups as [authenticating proxy](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authenticating-proxy) headers. Any program that can reach UCP could forge them, which is why UCP deletes them today.
 
 The internal design fixes this. Kubernetes presents a client certificate when it connects to UCP. UCP checks that certificate against the certificate authority and names listed in the cluster's `extension-apiserver-authentication` ConfigMap. Only if that check passes does UCP read the headers. On any other connection, identity headers are rejected.
 
@@ -285,19 +279,6 @@ Storing the issuer on every assignment also means later releases can add other s
 
 > **In short:** A scope is a Radius resource ID. Access given at a scope also applies to everything inside it, but never to anything beside it.
 
-Radius resources are organized like folders:
-
-```text
-/                                              installation (everything)
-└── /planes/radius/local                       a plane
-    ├── resourceGroups/platform                a resource group
-    │   ├── .../environments/staging           a resource
-    │   ├── .../environments/production
-    │   └── .../recipePacks/default
-    └── resourceGroups/team-a
-        └── .../applications/shop
-```
-
 | Scope level    | Resource ID                                                          | What is inside it                                                                             |
 |----------------|----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
 | Installation   | `/`                                                                  | Everything. Used only for admin-type roles, `reader`, `auditor`, and the enforcement setting. |
@@ -305,7 +286,7 @@ Radius resources are organized like folders:
 | Resource group | `/planes/radius/local/resourceGroups/<rg>`                           | All resources in the group.                                                                   |
 | Resource       | A resource ID, such as an environment                                | The resource and any child resources.                                                         |
 
-**Inheritance goes down, never sideways.** Like folder permissions:
+**Inheritance goes down, never sideways.**
 
 - Access on `resourceGroups/team-a` covers every application in `team-a`.
 - Access on `/planes/azure/prod` does **not** cover `/planes/azure/dev`.
@@ -451,7 +432,7 @@ Role assignments are `Radius.Core/roleAssignments` resources. Each one is stored
 /planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging/providers/Radius.Core/roleAssignments/<name>   one environment
 ```
 
-A resource stored under another resource like this is called an **extension resource**. UCP's resource ID parser already supports them: the scope is the ID with the last `providers/Radius.Core/roleAssignments/<name>` part removed.
+These are ARM-style extension resources, which UCP's resource ID parser already supports. The scope is the ID with the trailing `providers/Radius.Core/roleAssignments/<name>` removed.
 
 ```json
 {
@@ -502,7 +483,7 @@ A resource stored under another resource like this is called an **extension reso
 
 > **In short:** Roles and assignments are saved in UCP's existing database. Each UCP instance keeps a copy in memory and refreshes it every few seconds. Changes apply everywhere within 30 seconds.
 
-**Storage.** Role definitions, role assignments, and the `authorizationSettings` resource are saved in UCP's existing database (`pkg/components/database`, which is either the Kubernetes API server or PostgreSQL), the same way UCP already saves resource groups. No new database is needed.
+**Storage.** Role definitions, role assignments, and the `authorizationSettings` resource are saved in UCP's existing database (`pkg/components/database`), like resource groups. No new database is needed.
 
 **In-memory copy.** Checking the database on every request would be slow, so each UCP instance keeps:
 
@@ -520,7 +501,7 @@ Every 5 seconds, and right after any access change it handles itself, a UCP inst
 
 > **In short:** For each request, UCP lists every permission it needs, checks each one, and allows the request only if all pass. If a request points to another resource (like an environment), that counts as a permission it needs too.
 
-The check runs as a middleware in UCP's request pipeline (`pkg/ucp/frontend/api/server.go`). A middleware is code that runs on every request before it reaches its handler. It runs after UCP parses the request and before routing.
+The check runs as middleware in UCP's request pipeline (`pkg/ucp/frontend/api/server.go`), after parsing and before routing.
 
 Here is the logic in pseudocode:
 
@@ -580,7 +561,7 @@ The resource group list and the "all resources in a group" list are filtered the
 
 > **In short:** Before a deployment changes anything, UCP checks every resource in it. If any check fails, nothing is created. After that, the deployment can only do what was approved.
 
-**Why deployments need special handling.** `rad deploy` creates a deployment, and then the deployment engine creates each resource one by one. If UCP only checked each resource as it was created, a deployment could create four resources and then fail on the fifth. The specification says that must not happen when the problem could be found ahead of time.
+**Why deployments need special handling.** Checking each resource only as the engine creates it could fail a deployment after it has already created some resources. The specification says that must not happen when the problem could be found ahead of time.
 
 **Steps:**
 
@@ -713,7 +694,7 @@ The workflow's identity becomes the bootstrap admin. When Repo Radius restores s
 
 > **In short:** When the Radius controller deploys something from a Kubernetes namespace, it acts as that namespace. Admins give namespaces access with normal role assignments.
 
-**Background.** The Radius controller watches `DeploymentTemplate` objects in Kubernetes, including ones Flux creates from a Git repository, and deploys them. There is no user request behind these deployments: the object is just there in a namespace. Today the controller also calls UCP without credentials. The internal design says the controller authenticates with its own mTLS identity and acts **for the namespace** the object is in. For each reconcile, UCP creates an execution record with the controller as `submitter` and the namespace as `subject`.
+**Background.** Controller deployments (`DeploymentTemplate` objects, including ones Flux creates) have no user request behind them, and the controller calls UCP without credentials today. The internal design says the controller authenticates with its own mTLS identity and acts **for the namespace** the object is in. For each reconcile, UCP creates an execution record with the controller as `submitter` and the namespace as `subject`.
 
 **Namespaces are principals.** UCP uses a principal called the **namespace principal**: `{type: workload, issuer: radius-controller, subject: <namespace>}`. Both designs use it as the record's `subject`, so the record and the audit log use the same principal. UCP only accepts this principal when the request really comes from the controller (verified with mTLS). Admins give it roles like anyone else:
 
@@ -756,7 +737,7 @@ Kubernetes RBAC still controls who can create `DeploymentTemplate` objects in ea
 
 **The dashboard.** Today the dashboard uses one service account that can do everything on `api.ucp.dev`. Every dashboard user effectively shares it. Under RBAC, that service account is a normal principal **with no access by default**. If we gave it access, every dashboard user would see whatever it can see, and the audit log would show the service account instead of the real user. Both break the specification.
 
-To show each user their own access, the dashboard can forward the signed-in user's identity using **Kubernetes impersonation**. The dashboard tells Kubernetes "act as Alice" (`Impersonate-User` and `Impersonate-Group` headers). Kubernetes checks the dashboard is allowed to do that, then forwards Alice's identity to UCP the normal way. This needs:
+To show each user their own access, the dashboard can forward the signed-in user's identity with **Kubernetes impersonation** (`Impersonate-User` and `Impersonate-Group`). Kubernetes then forwards that identity to UCP the normal way. This needs:
 
 - The dashboard's sign-in to use the same identity provider as the cluster.
 - The Kubernetes `impersonate` permission for the dashboard's service account, which is powerful.
