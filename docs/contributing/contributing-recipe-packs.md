@@ -37,15 +37,21 @@ Write any new Recipes by following the [`resource-types-contrib` contributing gu
 
 ### 3. Publish new Recipe images
 
-Skip this step if every Recipe the pack references is already published with a `latest` tag.
+Skip this step if every image and tag the pack references already exists. Only in-repo Recipes referenced by `:latest` need the steps below. Versioned references, such as Azure Verified Modules (for example `redis-enterprise:0.5.1`), don't need a `latest` tag.
 
 1. Add one step per new Recipe to `.github/workflows/publish-bicep-recipes.yaml`, using a platform-specific registry, for example `REGISTRY=ghcr.io/radius-project/azure-aci-recipes`. After it merges, the push to `main` publishes each image with a commit-SHA tag and `edge`.
 2. Make sure each new GHCR package can be pulled anonymously. A `radius-project` organization admin must make private packages public.
-3. Add a `latest` tag to each **new** image. The pack references `:latest`, which normally moves only during the final Radius release ([release Step 7](./contributing-releases/README.md#step-7-publish-docs-samples-and-recipes)). Packs are released earlier, during the RC, and **Release Recipe Pack** fails its Recipe source check if a `:latest` image is missing. Point `latest` at the commit-SHA tag from step 1, and skip images that already have one:
+3. Add a `latest` tag to each **new** image. The pack references `:latest`, which normally moves only during the final Radius release ([release Step 7](./contributing-releases/README.md#step-7-publish-docs-samples-and-recipes)). Packs are released earlier, during the RC, and **Release Recipe Pack** fails its Recipe source check if a `:latest` image is missing. Point `latest` at the commit-SHA tag from step 1. List the tags first, and tag only when the listing succeeds and `latest` isn't in it, so a registry error never replaces an existing `latest`:
 
    ```bash
    IMAGE=ghcr.io/radius-project/<registry>/<recipe>
-   oras manifest fetch --descriptor "$IMAGE:latest" || oras tag "$IMAGE:<commit-sha>" latest
+   if ! tags="$(oras repo tags "$IMAGE")"; then
+     echo "Could not list tags for $IMAGE; not tagging." >&2
+   elif grep -qx latest <<<"$tags"; then
+     echo "$IMAGE:latest already exists; skipping."
+   else
+     oras tag "$IMAGE:<commit-sha>" latest
+   fi
    ```
 
 Don't run **Publish Bicep Recipes** with an existing `release_version` to create these tags. It republishes every Recipe from `main`, which overwrites that version's released images and moves `latest` for every existing Recipe.
