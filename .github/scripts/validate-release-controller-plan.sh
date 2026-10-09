@@ -173,6 +173,8 @@ write_outputs() {
     else
         cp "${TEMP_DIR}/release-plan.yaml" "${resolved_plan}"
     fi
+    yq -o=json '.expectedOutputs' "${resolved_plan}" \
+        >"${OUTPUT_DIR}/release-targets.json"
     printf '%s\n' "${ready}" >"${OUTPUT_DIR}/ready.txt"
     printf '%s\n' "${VERSION}" >"${OUTPUT_DIR}/version.txt"
     printf '%s\n' "${channel}" >"${OUTPUT_DIR}/channel.txt"
@@ -254,13 +256,13 @@ validate_plan_fields() {
     [[ "$(plan_value '.source.releaseCommitResolution')" == "${expected_resolution}" ]] || fail "release commit resolution is invalid"
     [[ "$(plan_value '.siblingRepositories | type')" == "!!seq" ]] ||
         fail "siblingRepositories must be an array"
-    CHANNEL="${channel}" yq -o=json -I=0 '.' \
-        "${TEMP_DIR}/release-plan.yaml" | jq -e '
+    yq -o=json -I=0 '.' "${TEMP_DIR}/release-plan.yaml" |
+        jq -e --arg channel "${channel}" '
         .siblingRepositories | type == "array" and
         map(.name) == ["recipes", "dashboard", "bicep-types-aws"] and
         all(.[].sourceCommit; test("^[0-9a-f]{40}$")) and
         all(.[].sourceRef;
-            . == "main" or . == ("release/" + env.CHANNEL)) and
+            . == "main" or . == ("release/" + $channel)) and
         all(.[]; .repository == ("radius-project/" + .name))
     ' >/dev/null ||
         fail "sibling repository state is invalid"

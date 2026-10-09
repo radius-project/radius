@@ -42,6 +42,7 @@ async function findReleasePull(github, owner, repo, version) {
     owner,
     repo,
     base: "main",
+    head: `${owner}:${branch}`,
     state: "closed",
     per_page: 100
   });

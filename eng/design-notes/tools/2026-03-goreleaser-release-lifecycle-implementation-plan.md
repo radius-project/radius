@@ -204,6 +204,7 @@ Introduce the release controller workflow and switch the trigger: merging the re
 
 - **Cleanup**: `release.yaml` is deleted outright - its release job, branch-existence special case, and Deployment Engine dispatch move into the controller - and the runbook's trigger documentation is updated in the same PR.
 - **Exit criteria**: injected failures after each stage recover through `Resume Release` without duplicate tags or dispatches; a conflicting version/source pair is rejected.
+- **Recovery checks**: cover existing-channel sibling refs and verify that resuming with newer controller tooling still uses the approved `expectedOutputs`. Inject a lost response after an accepted publisher dispatch with delayed run visibility: the same invocation must observe the run or fail closed, never redispatch the uncertain request. Controller concurrency and correlation alone do not guarantee exactly-once effects across interrupted invocations; that guarantee requires publisher-side idempotency.
 - **Rollback**: revert restores the `versions.yaml` trigger; PRs 9 and 10 improvements are independent and remain.
 
 ### PR 16: Publication gate, verification, and notifications

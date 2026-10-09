@@ -97,6 +97,7 @@ write_plan() {
     local product_ref="$5"
     local product_commit="$6"
     local resolution="$7"
+    local sibling_ref="${8:-main}"
 
     cat >"${plan_file}" <<EOF
 schemaVersion: 2
@@ -114,13 +115,16 @@ releaseBranch: release/${channel}
 releasePlanPath: .github/release-plans/${version}.yaml
 previousVersion: v0.60.0
 siblingRepositories: [{name: recipes, repository: radius-project/recipes,
-        sourceRef: main, sourceCommit: "1111111111111111111111111111111111111111"},
+        sourceRef: ${sibling_ref}, sourceCommit: "1111111111111111111111111111111111111111"},
     {name: dashboard, repository: radius-project/dashboard,
-        sourceRef: main, sourceCommit: "2222222222222222222222222222222222222222"},
+        sourceRef: ${sibling_ref}, sourceCommit: "2222222222222222222222222222222222222222"},
     {name: bicep-types-aws, repository: radius-project/bicep-types-aws,
-        sourceRef: main, sourceCommit: "3333333333333333333333333333333333333333"}]
+        sourceRef: ${sibling_ref}, sourceCommit: "3333333333333333333333333333333333333333"}]
 expectedOutputs:
   repository: radius-project/radius
+  images:
+    - name: deployment-engine
+      requiredPlatforms: [linux/amd64, linux/arm/v7, linux/arm64]
 includedBackports: []
 EOF
 }
@@ -136,7 +140,7 @@ run_validator() {
     set +e
     LAST_OUTPUT="$({
         cd "${REPO}"
-        bash "${SCRIPT}" --plan-file "${plan_file}" \
+        env -u CHANNEL bash "${SCRIPT}" --plan-file "${plan_file}" \
             --version "${version}" \
             --source-pr-commit "${source_pr_commit}" \
             --release-commit "${release_commit}" \
@@ -166,6 +170,18 @@ assert_failure_contains() {
     fi
 }
 
+assert_frozen_outputs() {
+    local plan="$1"
+    local output="$2"
+
+    if ! diff -u \
+        <(yq -o=json '.expectedOutputs' "${plan}" | jq -S .) \
+        <(jq -S . "${output}/release-targets.json"); then
+        fail_test "verification targets differ from the approved output contract"
+        return 1
+    fi
+}
+
 test_first_rc_resolves_squash_commit() {
     local base source plan output
 
@@ -184,6 +200,7 @@ test_first_rc_resolves_squash_commit() {
     run_validator "${plan}" v0.61.0-rc.1 "${source}" "${source}" \
         release-pr "${output}"
     assert_success || return
+    assert_frozen_outputs "${plan}" "${output}" || return
     [[ "$(<"${output}/ready.txt")" == "true" ]] || {
         fail_test "first RC was not ready"
         return
@@ -231,6 +248,8 @@ test_rejects_conflicting_radius_tag() {
 }
 
 create_existing_channel_release() {
+    local version="${1:-v0.61.0}"
+    local release_type="${2:-final}"
     local product_commit source_commit backport_commit plan
 
     git -C "${REPO}" checkout --quiet -b release/0.61 main
@@ -244,14 +263,14 @@ create_existing_channel_release() {
     git -C "${REPO}" push --quiet -u origin release/0.61
 
     git -C "${REPO}" checkout --quiet main
-    write_release_files v0.61.0 0.61
-    plan="${REPO}/.github/release-plans/v0.61.0.yaml"
-    write_plan "${plan}" v0.61.0 final 0.61 \
+    write_release_files "${version}" 0.61
+    plan="${REPO}/.github/release-plans/${version}.yaml"
+    write_plan "${plan}" "${version}" "${release_type}" 0.61 \
         refs/remotes/origin/release/0.61 "${product_commit}" \
-        "generated release backport commit on release/0.61"
+        "generated release backport commit on release/0.61" release/0.61
     git -C "${REPO}" add .
     git -C "${REPO}" commit --quiet \
-        -m "chore(release): prepare v0.61.0"
+        -m "chore(release): prepare ${version}"
     source_commit="$(git -C "${REPO}" rev-parse HEAD)"
     git -C "${REPO}" push --quiet origin main
 
@@ -259,7 +278,7 @@ create_existing_channel_release() {
     git -C "${REPO}" cherry-pick --quiet --no-commit "${source_commit}"
     git -C "${REPO}" rm --quiet .github/workflows/release.yaml
     git -C "${REPO}" commit --quiet \
-        -m "chore(release): prepare v0.61.0" \
+        -m "chore(release): prepare ${version}" \
         -m "(cherry picked from commit ${source_commit})"
     backport_commit="$(git -C "${REPO}" rev-parse HEAD)"
     git -C "${REPO}" push --quiet origin release/0.61
@@ -314,6 +333,20 @@ test_backport_resolves_release_commit() {
     pass_test
 }
 
+test_rejects_sibling_from_another_channel() {
+    local source backport plan
+
+    read -r source <"${TEST_ROOT}/existing-commits.txt"
+    backport="$(sed -n '2p' "${TEST_ROOT}/existing-commits.txt")"
+    plan="${TEST_ROOT}/wrong-sibling-channel.yaml"
+    yq '.siblingRepositories[0].sourceRef = "release/0.62"' \
+        "${REPO}/.github/release-plans/v0.61.0.yaml" >"${plan}"
+    run_validator "${plan}" v0.61.0 "${source}" "${backport}" dispatch \
+        "${TEST_ROOT}/wrong-sibling-channel-output"
+    assert_failure_contains "sibling repository state is invalid" || return
+    pass_test
+}
+
 test_resume_keeps_approved_commit_after_branch_advance() {
     local source backport
 
@@ -329,6 +362,8 @@ test_resume_keeps_approved_commit_after_branch_advance() {
         "${source}" "${backport}" dispatch \
         "${TEST_ROOT}/advanced-output"
     assert_success || return
+    assert_frozen_outputs "${REPO}/.github/release-plans/v0.61.0.yaml" \
+        "${TEST_ROOT}/advanced-output" || return
     [[ "$(yq -r '.source.releaseCommit' \
         "${TEST_ROOT}/advanced-output/release-plan.yaml")" == "${backport}" ]] || {
         fail_test "resume changed the approved source to the newer branch tip"
@@ -368,6 +403,35 @@ test_rejects_divergent_release_branch() {
     pass_test
 }
 
+test_existing_channel_release_type() {
+    local version="$1"
+    local release_type="$2"
+    local source backport plan output
+    local expected_tag="0.61"
+
+    cleanup
+    init_fixture
+    write_initial_files
+    create_existing_channel_release "${version}" "${release_type}"
+    read -r source <"${TEST_ROOT}/existing-commits.txt"
+    backport="$(sed -n '2p' "${TEST_ROOT}/existing-commits.txt")"
+    plan="${REPO}/.github/release-plans/${version}.yaml"
+    output="${TEST_ROOT}/existing-channel-output"
+    run_validator "${plan}" "${version}" "${source}" "${backport}" \
+        release-backport "${output}"
+    assert_success || return
+    assert_frozen_outputs "${plan}" "${output}" || return
+    if [[ "${release_type}" == "rc" ]]; then
+        expected_tag="${version#v}"
+    fi
+    if [[ "$(<"${output}/ready.txt")" != "true" ||
+    "$(<"${output}/de-image-tag.txt")" != "${expected_tag}" ]]; then
+        fail_test "${release_type} did not resolve its existing-channel plan"
+        return
+    fi
+    pass_test
+}
+
 main() {
     command -v yq >/dev/null || {
         echo "yq is required" >&2
@@ -381,9 +445,12 @@ main() {
     create_existing_channel_release
     test_release_pr_waits_for_backport
     test_backport_resolves_release_commit
+    test_rejects_sibling_from_another_channel
     test_resume_keeps_approved_commit_after_branch_advance
     test_rejects_backport_from_unapproved_base
     test_rejects_divergent_release_branch
+    test_existing_channel_release_type v0.61.0-rc.2 rc
+    test_existing_channel_release_type v0.61.1 patch
 
     if ((FAIL > 0)); then
         echo "Controller plan tests failed: ${PASS} passed, ${FAIL} failed"
