@@ -52,6 +52,12 @@ data:
     logging:
       level: "info"
       json: true
+
+    {{- $authzMode := include "radius.authz.mode" . }}
+    {{- if ne $authzMode "off" }}
+    authorization:
+      mode: {{ $authzMode | quote }}
+    {{- end }}
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
       enabled: true
