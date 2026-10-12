@@ -642,7 +642,8 @@ How it works:
 - While the Secret exists and is valid, the named person has `radius-administrator` at `/`, until `expiresAt` or 4 hours after UCP first saw it, whichever is sooner.
 - This access is held in memory only and never saved to the database. Delete the Secret and it is gone.
 - Every request made with it is logged with `recovery: true`, and UCP raises a warning and a metric the whole time it is active.
-- Only Kubernetes cluster admins can create the Secret, which keeps recovery separate from normal access, as the specification asks.
+- **Only cluster admins can create it.** Kubernetes RBAC alone is not enough: namespace admins, CI identities, and Radius's own service accounts can create Secrets in `radius-system`. So the Helm chart installs a `ValidatingAdmissionPolicy` and binding that reject `CREATE` and `UPDATE` of `radius-rbac-recovery` unless the requester is in `system:masters` or a group listed in the Helm value `rbac.recoveryGroups`. Deleting it is always allowed, because that only removes access. Changing the policy or binding needs cluster-scoped permissions, which only cluster admins have.
+- **UCP refuses recovery if the policy is missing.** Before honoring the Secret, UCP confirms the policy and its binding exist, are unchanged from what Helm installed, and use `Deny`. If not, UCP ignores the Secret and logs a warning. This keeps recovery separate from normal access, as the specification asks.
 
 #### Part 10: Turning RBAC on
 
@@ -879,10 +880,11 @@ No access checks are added. Applications RP stops serving the new `Radius.Core` 
 
 Add:
 
-- Values: `rbac.mode`, `rbac.bootstrapAdministrators`, `rbac.kubernetesIssuer`, `dashboard.forwardUserIdentity`.
+- Values: `rbac.mode`, `rbac.bootstrapAdministrators`, `rbac.kubernetesIssuer`, `rbac.recoveryGroups`, `dashboard.forwardUserIdentity`.
 - The `radius-api-user` ClusterRole.
 - Kubernetes RBAC so that, while the mode is `Disabled`, only cluster admins can update `authorizationsettings`.
 - A Role that lets UCP `get` only the `radius-rbac-recovery` Secret (by `resourceNames`). A test confirms UCP cannot read any other Secret through it.
+- The `ValidatingAdmissionPolicy` and binding that limit who can create or update `radius-rbac-recovery`, the `rbac.recoveryGroups` value, and a ClusterRole that lets UCP `get` only that policy and binding (by `resourceNames`).
 
 `rad install kubernetes` fills in the bootstrap admin using `SelfSubjectReview`.
 
@@ -961,6 +963,8 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 | Dashboard without forwarding and without an assignment                     | Shows that identity forwarding is required; no data.                                                          |
 | Enable `Enforce` while service-to-service security is `Off`                | `ComponentProtocolNotEnforced`; mode stays the same.                                                          |
 | A deployment runs past its execution record's `expiresAt`                  | `ExecutionRecordNotActive`; rerunning `rad deploy` rechecks current access.                                   |
+| A namespace admin or Radius service account creates `radius-rbac-recovery` | Rejected by the admission policy; no recovery grant.                                                          |
+| The recovery admission policy is deleted, then the Secret is created       | UCP ignores the Secret and logs a warning.                                                                    |
 | Template creates an `AWS.S3/Bucket` without AWS credential use             | Fails in preflight with `AuthorizationFailed`; nothing is created.                                            |
 | Template creates an Azure resource outside the deployment's provider scope | Fails in preflight; the credential broker issues no token.                                                    |
 
@@ -976,7 +980,7 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 | A user gives themselves more access                                    | The "no giving out what you do not have" rule, immutable assignments, and checks on every path including GitOps and Bicep.                                                              |
 | An Access Administrator grants admin to someone they control           | Expected for that role. Made visible with confirmation, `highImpact` audit events, and alerts.                                                                                          |
 | Everyone gets locked out                                               | "Keep at least one admin" rule, bootstrap admins, and the recovery Secret.                                                                                                              |
-| The recovery path is abused                                            | Needs Kubernetes cluster admin to create one named Secret; time-limited; memory only; logged with alerts.                                                                               |
+| The recovery path is abused                                            | An admission policy limits the Secret to cluster admins, and UCP ignores it if the policy is missing; time-limited; memory only; logged with alerts.                                    |
 | Errors, lists, graphs, or access checks leak information               | Check before lookup, filter lists without counts, hide graph nodes, show policy details only to those who can read assignments.                                                         |
 | A removed user keeps access                                            | Changes apply within 30 seconds, and UCP revokes the user's active execution records; an out-of-date UCP instance refuses requests. Already-issued cloud tokens last until they expire. |
 | A new type or action quietly grants access                             | No wildcards in custom roles; built-in roles change only in reviewed releases; types join the application set only by deliberate opt-in.                                                |
