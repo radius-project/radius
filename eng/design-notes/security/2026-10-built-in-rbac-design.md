@@ -38,7 +38,7 @@ The model follows Azure Resource Manager (ARM) RBAC, which matches Radius's ARM-
 | Implicit deny          | If no assignment allows something, it is denied. There is no "deny" rule to write.                                                                           | A new user with no assignments can do nothing.                                                           |
 | Execution record       | From the internal design. UCP's saved record of "this deployment was approved to do these things". Radius services check it later while the deployment runs. | Record `r-123`: Alice may create these two resources in `team-a`, using staging, until `expiresAt`.      |
 | mTLS                   | Mutual TLS. An encrypted connection where **both** sides prove who they are with certificates. The internal design uses it between Radius services.          |                                                                                                          |
-| Enforcement mode       | A setting that controls whether RBAC is off, only logging what it would block (`Audit`), or actually blocking (`Enforce`).                                   |                                                                                                          |
+| Enforcement mode       | A setting that controls whether RBAC is off, only logging what it would block (`DryRun`), or actually blocking (`Enforce`).                                  |                                                                                                          |
 
 ## How Radius handles a request today
 
@@ -223,7 +223,7 @@ sequenceDiagram
 | 3 | What happens when a user loses access | Follows the internal design. A cancel, expiry, or security incident also stops the deployment.                                          | UCP marks the user's active records as revoked, so the next step fails.                                                                                                              | Open question   |
 | 4 | Nested deployments (Bicep modules)    | Checks module resources in the parent's preflight, so the user is checked once.                                                         | The engine asks UCP for a child record whose `actions` and `targets` are a subset of the parent's (`parentRecordId`). Closing the parent closes its children.                        | Shared contract |
 | 5 | Controllers and GitOps                | Namespaces are principals and get role assignments ([Part 11](#part-11-controllers-and-gitops)).                                        | The record's `subject` is the namespace principal and `submitter` is the controller.                                                                                                 | Shared contract |
-| 6 | Turning enforcement on                | User RBAC mode (`Disabled`, `Audit`, `Enforce`) is set at run time through the API ([Part 10](#part-10-turning-rbac-on)).               | Service-to-service rollout is Off or Enforce, set through Helm (`global.rbac.enabled`), with an optional dry run (`global.rbac.dryRun=true`).                                        | Shared contract |
+| 6 | Turning enforcement on                | User RBAC mode (`Disabled`, `DryRun`, `Enforce`) is set at run time through the API ([Part 10](#part-10-turning-rbac-on)).              | Service-to-service rollout is Off or Enforce, set through Helm (`global.rbac.enabled`), with an optional dry run (`global.rbac.dryRun=true`).                                        | Shared contract |
 | 7 | Install options                       | `rbac.mode` and `rbac.bootstrapAdministrators` Helm values.                                                                             | `rad install kubernetes --skip-rbac` and `global.rbac.enabled=false`.                                                                                                                | Shared contract |
 | 8 | Error codes and logs                  | Adds RBAC error codes and audit events with `executionRecordId` and `correlationId`.                                                    | Adds execution-record and certificate error codes, and logs the same IDs.                                                                                                            | Shared contract |
 
@@ -581,7 +581,7 @@ The resource group list and the "all resources in a group" list are filtered the
     - Some resources have names or references that depend on another resource's output, which is only known while the deployment runs. These are called **deferred** resources. For these, the engine sends what it does know: the resource type, the scope (almost always a fixed resource group), and any known references.
 3. **Preflight.** The engine sends the list to a new internal UCP endpoint, `POST /internal/authorization/preflight`, over mTLS. UCP checks every resource as if it were its own request, for the user who started the deployment.
     - For a deferred resource, UCP checks the permission at the known scope. Thanks to inheritance, that covers any name inside it. UCP saves that scope as a **bound** (a limit).
-    - If even the scope or an important reference is unknown, preflight fails with `AuthorizationIndeterminate` in `Enforce` mode (it only logs in `Audit` mode). Radius would rather refuse than approve something it cannot check.
+    - If even the scope or an important reference is unknown, preflight fails with `AuthorizationIndeterminate` in `Enforce` mode (it only logs in `DryRun` mode). Radius would rather refuse than approve something it cannot check.
 4. **Decide.** If any check fails, UCP returns all failures at once. The engine fails the deployment before creating anything, and the CLI shows every missing permission. If all pass, UCP writes the execution record and returns its ID. UCP fills in `subject` (the user, with issuer), `application` and `environment`, `actions` and `targets` (the approved list, with bounds for deferred resources), `templateDigest`, `recipe`, and `submitter` (the engine or controller).
 5. **Run.** Each resource request includes the record ID. The internal design's checks run first: the caller must be the record's `submitter`, and the record must be active and not past `expiresAt`. Then UCP checks that the resource is on the approved list, or for a deferred resource, inside its bound, and that the user still has the permission it needs. A request outside the approved list is rejected with `GrantScopeExceeded`, even if the user has since gained access. An accepted deployment can never grow.
 
@@ -647,7 +647,7 @@ How it works:
 
 #### Part 10: Turning RBAC on
 
-> **In short:** RBAC has three modes: `Disabled`, `Audit` (log what would be blocked), and `Enforce` (block). New installations start in `Enforce` with the installer as admin. Upgraded installations stay `Disabled` until an admin turns RBAC on.
+> **In short:** RBAC has three modes: `Disabled`, `DryRun` (log what would be blocked), and `Enforce` (block). New installations start in `Enforce` with the installer as admin. Upgraded installations stay `Disabled` until an admin turns RBAC on.
 
 ##### Modes
 
@@ -656,24 +656,24 @@ The mode is stored in `authorizationSettings` at `/providers/Radius.Core/authori
 | Mode       | Checks run? | Blocks requests?          | When to use it                                                    |
 |------------|-------------|---------------------------|-------------------------------------------------------------------|
 | `Disabled` | No          | No                        | Today's behavior. Upgraded installations start here.              |
-| `Audit`    | Yes         | No, everything is allowed | Trying RBAC out. Anything that would have been blocked is logged. |
+| `DryRun`   | Yes         | No, everything is allowed | Trying RBAC out. Anything that would have been blocked is logged. |
 | `Enforce`  | Yes         | Yes                       | Normal use.                                                       |
 
-**How this relates to the internal design.** The internal design has its own rollout for service-to-service security, with two stages: `Off` and `Enforce`. It also has a **dry run**, which is not a stage: the installation stays `Off`, every service-to-service check runs, and failures are only logged. These are installation settings applied through Helm (`global.rbac.enabled` and `global.rbac.dryRun`), because they change listeners, certificates, and admission policies and need pods to restart. The user RBAC mode in this design is different: it is changed at run time through the API.
+**How this relates to the internal design.** The internal design has its own rollout for service-to-service security, with two stages: `Off` and `Enforce`. It also has a **dry run**, which is not a stage: the installation stays `Off`, every service-to-service check runs, and failures are only logged. These are installation settings applied through Helm (`global.rbac.enabled` and `global.rbac.dryRun`), because they change listeners, certificates, and admission policies and need pods to restart. User RBAC's `DryRun` mode follows the same idea and uses the same name, but it is a mode changed at run time through the API rather than a Helm value.
 
 They are linked by one rule: **user RBAC can only be `Enforce` if service-to-service security is also `Enforce`.** Otherwise, someone could skip UCP's checks by calling a resource provider directly. UCP rejects the change with `ComponentProtocolNotEnforced` until every Radius service reports it is enforcing the internal protocol.
 
 | User RBAC mode | Allowed service-to-service setting |
 |----------------|------------------------------------|
 | `Disabled`     | `Off`, dry run, or `Enforce`       |
-| `Audit`        | `Off`, dry run, or `Enforce`       |
+| `DryRun`       | `Off`, dry run, or `Enforce`       |
 | `Enforce`      | `Enforce` only                     |
 
-Turning user RBAC from `Enforce` back to `Audit` does not change service-to-service security.
+Turning user RBAC from `Enforce` back to `DryRun` does not change service-to-service security.
 
-**Recommended order for existing installations.** Run both previews at the same time, then turn both on:
+**Recommended order for existing installations.** Run both dry runs at the same time, then turn both on:
 
-1. Turn on the internal dry run (`global.rbac.dryRun=true`) and user RBAC `Audit` (`rad auth enforcement preview`).
+1. Turn on the internal dry run (`global.rbac.dryRun=true`) and user RBAC `DryRun` (`rad auth enforcement dry-run`).
 2. Fix what both reports show: missing assignments from `rad auth enforcement report`, and services, templates, or pods flagged by the dry run.
 3. Move service-to-service security to `Enforce` with a Helm upgrade.
 4. Run `rad auth enforcement enable`.
@@ -692,11 +692,11 @@ Helm only sets the mode on the first install. After that, `authorizationSettings
 
 Upgrading keeps the mode `Disabled` and creates no assignments. Nothing changes until an admin opts in:
 
-1. **Preview.** `rad auth enforcement preview` switches to `Audit` and makes the person running it a bootstrap admin (there are no assignments yet, so someone has to be first). While the mode is `Disabled`, only people that Kubernetes RBAC allows to update `authorizationsettings` in `api.ucp.dev` can run this. Helm gives that only to cluster admins.
-2. **Observe.** In `Audit`, UCP records who is using Radius and what they are doing.
+1. **Dry run.** `rad auth enforcement dry-run` switches to `DryRun` and makes the person running it a bootstrap admin (there are no assignments yet, so someone has to be first). While the mode is `Disabled`, only people that Kubernetes RBAC allows to update `authorizationsettings` in `api.ucp.dev` can run this. Helm gives that only to cluster admins.
+2. **Observe.** In `DryRun`, UCP records who is using Radius and what they are doing.
 3. **Review.** `rad auth enforcement report` lists who used Radius, what would have been blocked, and suggested assignments using the smallest built-in role at the resource-group level. These are suggestions only; the admin reviews and applies them with `rad auth assignment create` or a Bicep file.
 4. **Enable.** `rad auth enforcement enable` switches to `Enforce`. It first checks that nothing would have been blocked in the last 24 hours, or asks you to accept the listed blocks with `--accept-denials`. It also refuses if there would be no admin.
-5. **Roll back if needed.** For a period defined in each release's notes, a Radius Administrator can go back to `Audit` with `rad auth enforcement disable`. This is logged and raises an alert. Going all the way back to `Disabled` after `Enforce` requires the [recovery procedure](#part-9-safety-rules).
+5. **Roll back if needed.** For a period defined in each release's notes, a Radius Administrator can go back to `DryRun` with `rad auth enforcement disable`. This is logged and raises an alert. Going all the way back to `Disabled` after `Enforce` requires the [recovery procedure](#part-9-safety-rules).
 
 ##### Repo Radius and short-lived installations
 
@@ -817,7 +817,7 @@ A new `rad auth` command group in `pkg/cli/cmd/auth/`. All commands use the Radi
 | `rad auth role list\|show\|create\|update\|delete`              | Manages roles. `create` and `update` take repeated `--permission` and `--assignable-scope` flags, or `--from-file role.json`.                                                                                                                                                                                  |
 | `rad auth assignment list\|show\|create\|delete`                | Manages assignments. Flags: `--principal <type>:<subject>`, `--issuer` (defaults to this installation's Kubernetes issuer), `--role <name or ID>`, `--scope <ID>` (defaults to the workspace's resource group). `list` supports `--include-inherited` and `--principal`. `delete` supports `--take-ownership`. |
 | `rad auth access check\|explain\|list`                          | Checks, explains, or lists access. `--principal` checks someone else.                                                                                                                                                                                                                                          |
-| `rad auth enforcement status\|preview\|report\|enable\|disable` | Manages the mode (see [Part 10](#part-10-turning-rbac-on)).                                                                                                                                                                                                                                                    |
+| `rad auth enforcement status\|dry-run\|report\|enable\|disable` | Manages the mode (see [Part 10](#part-10-turning-rbac-on)).                                                                                                                                                                                                                                                    |
 | `rad deployment cancel <name> [--group <rg>]`                   | Cancels a running deployment (see [Part 8](#part-8-how-ucp-checks-a-deployment)).                                                                                                                                                                                                                              |
 
 Behavior shared by all commands:
@@ -920,7 +920,7 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 | `ScopeNotAssignable`           | 400         | The scope is not allowed for this role, or that resource type cannot be a scope.                                                  | Choose another scope.                                               |
 | `AuthorizationUnavailable`     | 503         | UCP's copy of the access data is too old, or the database is down.                                                                | Retry later.                                                        |
 
-**Fail closed.** In `Enforce` mode, if anything goes wrong while checking access, the request is denied with `AuthorizationUnavailable`. It is never allowed by mistake. In `Audit` mode, errors are logged and the request goes ahead, because `Audit` must not change behavior.
+**Fail closed.** In `Enforce` mode, if anything goes wrong while checking access, the request is denied with `AuthorizationUnavailable`. It is never allowed by mistake. In `DryRun` mode, errors are logged and the request goes ahead, because `DryRun` must not change behavior.
 
 **Codes from the internal design.** Users may also see the internal design's [error codes](./2026-09-internal-component-authorization.md#error-codes), such as `ExecutionRecordNotActive` (rerun `rad deploy`). They mean a Radius service or step was blocked, not that the user is missing a role, so `rad` shows them with `source: Radius` and a note that adding a role assignment will not fix them.
 
@@ -958,7 +958,7 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 | A role is removed during a long deployment                                 | The record is revoked; the next step fails with `ExecutionRecordNotActive`; resources already created remain. |
 | An admin cancels a running deployment                                      | `rad deployment cancel` closes the record; the next step fails.                                               |
 | A new resource type is registered                                          | No role gains access until `permissionSets` is set.                                                           |
-| Upgrade an existing install, then preview, report, enable                  | Nothing blocked before enable; report suggests assignments; enable succeeds.                                  |
+| Upgrade an existing install, then dry run, report, enable                  | Nothing blocked before enable; report suggests assignments; enable succeeds.                                  |
 | Recovery Secret is created, then expires                                   | Admin access works only during that time, and is logged.                                                      |
 | Dashboard without forwarding and without an assignment                     | Shows that identity forwarding is required; no data.                                                          |
 | Enable `Enforce` while service-to-service security is `Off`                | `ComponentProtocolNotEnforced`; mode stays the same.                                                          |
@@ -1029,7 +1029,7 @@ The results set the latency targets and decide whether the limits can be raised.
 
 ## Monitoring and Logging
 
-**Audit events.** UCP writes one event for every access decision (in `Audit` and `Enforce` modes) and one for every change to roles, assignments, or the mode. Events use a fixed JSON format on a dedicated `radius.audit` logger. They go to stdout by default and to an OpenTelemetry log exporter if one is configured, so you can send them to your own log system and keep them as long as you need.
+**Audit events.** UCP writes one event for every access decision (in `DryRun` and `Enforce` modes) and one for every change to roles, assignments, or the mode. Events use a fixed JSON format on a dedicated `radius.audit` logger. They go to stdout by default and to an OpenTelemetry log exporter if one is configured, so you can send them to your own log system and keep them as long as you need.
 
 | Field                                    | What it contains                                                                                  |
 |------------------------------------------|---------------------------------------------------------------------------------------------------|
@@ -1037,7 +1037,7 @@ The results set the latency targets and decide whether the limits can be raised.
 | `principal`, `groups`, `issuer`          | Who was checked. Group lists are cut off at 50 with a count.                                      |
 | `viaComponent`, `executionRecordId`      | For requests the deployment engine or controller made for someone.                                |
 | `permission`, `target`, `checks[]`       | Every check and its result.                                                                       |
-| `result`, `mode`                         | `allow`, `deny`, or `wouldDeny` (in `Audit` mode).                                                |
+| `result`, `mode`                         | `allow`, `deny`, or `wouldDeny` (in `DryRun` mode).                                               |
 | `grantingAssignment`, `roleDefinitionId` | Which assignment allowed it.                                                                      |
 | `policyChange`                           | For changes to roles, assignments, or settings: before and after, and where the change came from. |
 | `highImpact`                             | True for admin-level grants and self-assignments.                                                 |
@@ -1060,13 +1060,13 @@ Events never include request bodies, secrets, or credentials.
 
 The work is split into stages. Each stage ships with RBAC `Disabled` until stage 5, so nothing changes for users until the whole thing is ready.
 
-| Stage                        | What gets built                                                                                                                                                    | Needs first                                                                                                   |
-|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| 1. Model and catalog         | TypeSpec for the new types, the permission catalog generator, and the `pkg/ucp/authorization` checker with unit tests. No checks run yet.                          | Nothing                                                                                                       |
-| 2. Identity and `Audit` mode | Verify Kubernetes's certificate, read identity, run checks in `Audit` mode, audit events and metrics, `rad auth whoami`, `status`, and `access check`.             | Internal design stage 1, "Identify and authenticate callers" (Kubernetes certificate check)                   |
-| 3. Managing access           | UCP APIs for roles and assignments, safety rules, bootstrap, recovery, the rest of `rad auth role`, `assignment`, and `access`, and Bicep at resource-group scope. | Stage 1                                                                                                       |
-| 4. Deployments and lists     | Preflight, approved list in the execution record, list filtering, hidden graph nodes, `rad deploy` summary and `--yes`, deployment cancel.                         | Internal design stage 2, "Carry permissions through execution" (execution records)                            |
-| 5. Enforcement and clients   | `Enforce` mode, the adoption commands, controller namespace principals, dashboard changes, and docs.                                                               | Internal design stage 3, "Restrict remaining direct access", and service-to-service security set to `Enforce` |
+| Stage                         | What gets built                                                                                                                                                    | Needs first                                                                                                   |
+|-------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| 1. Model and catalog          | TypeSpec for the new types, the permission catalog generator, and the `pkg/ucp/authorization` checker with unit tests. No checks run yet.                          | Nothing                                                                                                       |
+| 2. Identity and `DryRun` mode | Verify Kubernetes's certificate, read identity, run checks in `DryRun` mode, audit events and metrics, `rad auth whoami`, `status`, and `access check`.            | Internal design stage 1, "Identify and authenticate callers" (Kubernetes certificate check)                   |
+| 3. Managing access            | UCP APIs for roles and assignments, safety rules, bootstrap, recovery, the rest of `rad auth role`, `assignment`, and `access`, and Bicep at resource-group scope. | Stage 1                                                                                                       |
+| 4. Deployments and lists      | Preflight, approved list in the execution record, list filtering, hidden graph nodes, `rad deploy` summary and `--yes`, deployment cancel.                         | Internal design stage 2, "Carry permissions through execution" (execution records)                            |
+| 5. Enforcement and clients    | `Enforce` mode, the adoption commands, controller namespace principals, dashboard changes, and docs.                                                               | Internal design stage 3, "Restrict remaining direct access", and service-to-service security set to `Enforce` |
 
 Functional tests for each scenario are added in the stage that builds it.
 
