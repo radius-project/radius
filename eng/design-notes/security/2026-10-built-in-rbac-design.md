@@ -323,16 +323,29 @@ For example, `POST .../applications/shop/getGraph` needs `Radius.Core/applicatio
 
 **"Use" permissions.** Some permissions are not about changing a resource but about **pointing to** it from another resource. For example, putting `environment: staging` in your container means "deploy into staging". That needs permission even though you are not changing staging itself.
 
-| Use permission                                                              | Needed when                                                                                                                                                                                   |
-|-----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Radius.Core/environments/use/action` (and the `Applications.Core` version) | A resource's `environment` property points at the environment. In practice, this is "deploy to this environment".                                                                             |
-| `Radius.Core/recipePacks/use/action`                                        | An environment's `recipePacks` list includes the Recipe Pack.                                                                                                                                 |
-| `System.Azure/credentials/use/action`, `System.AWS/credentials/use/action`  | An environment's Azure or AWS provider settings are set or changed. Deployments to that environment will use the plane's cloud credential, so whoever sets this up must be allowed to use it. |
-| `<type>/connect/action`                                                     | A resource adds a connection to a resource of that type.                                                                                                                                      |
+| Use permission                                                              | Needed when                                                                                                                                                                                                                                                         |
+|-----------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Radius.Core/environments/use/action` (and the `Applications.Core` version) | A resource's `environment` property points at the environment. In practice, this is "deploy to this environment".                                                                                                                                                   |
+| `Radius.Core/recipePacks/use/action`                                        | An environment's `recipePacks` list includes the Recipe Pack.                                                                                                                                                                                                       |
+| `System.Azure/credentials/use/action`, `System.AWS/credentials/use/action`  | An environment's Azure or AWS provider settings are set or changed, or a template creates cloud resources directly ([see below](#cloud-resources-in-templates)). Either way Radius acts with the plane's cloud credential, so the caller must be allowed to use it. |
+| `<type>/connect/action`                                                     | A resource adds a connection to a resource of that type.                                                                                                                                                                                                            |
 
 **Why there is no `applications/deploy/action`.** The specification's example uses one, but deploying is not a separate API call in Radius. A deployment is just creating or updating the application's resources. So "deploy my app to staging" is two permissions: `applications/write` (manage the app) and `environments/use/action` on staging (deploy into it).
 
 **New things never sneak into existing roles.** When Radius adds a new action or someone registers a new resource type, the new permission is added to the catalog but **not** to any existing custom role. Custom roles cannot use wildcards, so this is guaranteed. Built-in roles follow the rules in [Part 4](#part-4-roles).
+
+##### Cloud resources in templates
+
+A Bicep template can create cloud resources directly, such as `AWS.S3/Bucket` or `Microsoft.Storage/storageAccounts`. AWS resources go through UCP's AWS plane, which calls AWS Cloud Control with the plane's registered credential. Azure resources go from the deployment engine straight to Azure Resource Manager, using a token from the credential broker (internal design).
+
+These types are **not** added to the permission catalog. Radius does not copy each cloud's types and actions, which number in the thousands and change outside Radius releases. Instead:
+
+- **The Radius permission is using the credential.** Creating, updating, or deleting a cloud resource needs `System.AWS/credentials/use/action` or `System.Azure/credentials/use/action` on the plane whose credential Radius uses.
+- **What the credential can do is the cloud's decision.** The registered IAM role or service principal still limits which types and accounts are reachable. Admins who want to limit what developers create in the cloud scope that credential, as they do today.
+- **Preflight includes cloud resources.** UCP checks the credential permission for each one and that its target (AWS account and region, or Azure subscription and resource group) matches the deployment's provider scope. Approved cloud resources go into the execution record's `targets`. UCP checks AWS requests against the record like any other step, and the credential broker checks the record before issuing an Azure token.
+- **Direct API requests** to `/planes/aws/.../providers/AWS.*` resources outside a deployment, including reads, need the same permission, because UCP calls AWS with the plane's credential to serve them.
+
+Built-in roles: `radius-administrator` and `platform-administrator` include credential use; `application-developer` does not. A developer whose templates create cloud resources directly needs an extra grant of `credentials/use/action` on that plane, or should use a recipe from a Recipe Pack instead. Recipes are covered by `recipePacks/use/action` and need no credential permission.
 
 #### Part 4: Roles
 
@@ -930,24 +943,26 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 
 **Functional tests** (`test/functional-portable`) on a cluster set up to verify Kubernetes's client certificate, with several test users and service accounts:
 
-| Scenario                                                                 | Expected result                                                                                               |
-|--------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| Developer deploys to an environment they can use                         | Succeeds.                                                                                                     |
-| Same template points at a different environment                          | Fails in preflight with `AuthorizationFailed`; nothing is created.                                            |
-| Template has some allowed and some denied resources                      | Fails in preflight listing every denied resource; nothing is created.                                         |
-| Reader runs `getGraph` on an app connected to something in another group | That node is hidden, `incomplete: true`, no ID leaked.                                                        |
-| User without access asks for an existing resource and a missing one      | Both get the same 403.                                                                                        |
-| Non-admin tries to assign a role with permissions they lack              | `PrivilegeEscalationDenied`.                                                                                  |
-| Access Administrator assigns `radius-administrator`                      | Succeeds, with confirmation and a `highImpact` audit event.                                                   |
-| Remove the last admin using the CLI, Bicep, and Flux pruning             | `LastAdministratorProtected` in all three.                                                                    |
-| A role is removed during a long deployment                               | The record is revoked; the next step fails with `ExecutionRecordNotActive`; resources already created remain. |
-| An admin cancels a running deployment                                    | `rad deployment cancel` closes the record; the next step fails.                                               |
-| A new resource type is registered                                        | No role gains access until `permissionSets` is set.                                                           |
-| Upgrade an existing install, then preview, report, enable                | Nothing blocked before enable; report suggests assignments; enable succeeds.                                  |
-| Recovery Secret is created, then expires                                 | Admin access works only during that time, and is logged.                                                      |
-| Dashboard without forwarding and without an assignment                   | Shows that identity forwarding is required; no data.                                                          |
-| Enable `Enforce` while service-to-service security is `Off`              | `ComponentProtocolNotEnforced`; mode stays the same.                                                          |
-| A deployment runs past its execution record's `expiresAt`                | `ExecutionRecordNotActive`; rerunning `rad deploy` rechecks current access.                                   |
+| Scenario                                                                   | Expected result                                                                                               |
+|----------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| Developer deploys to an environment they can use                           | Succeeds.                                                                                                     |
+| Same template points at a different environment                            | Fails in preflight with `AuthorizationFailed`; nothing is created.                                            |
+| Template has some allowed and some denied resources                        | Fails in preflight listing every denied resource; nothing is created.                                         |
+| Reader runs `getGraph` on an app connected to something in another group   | That node is hidden, `incomplete: true`, no ID leaked.                                                        |
+| User without access asks for an existing resource and a missing one        | Both get the same 403.                                                                                        |
+| Non-admin tries to assign a role with permissions they lack                | `PrivilegeEscalationDenied`.                                                                                  |
+| Access Administrator assigns `radius-administrator`                        | Succeeds, with confirmation and a `highImpact` audit event.                                                   |
+| Remove the last admin using the CLI, Bicep, and Flux pruning               | `LastAdministratorProtected` in all three.                                                                    |
+| A role is removed during a long deployment                                 | The record is revoked; the next step fails with `ExecutionRecordNotActive`; resources already created remain. |
+| An admin cancels a running deployment                                      | `rad deployment cancel` closes the record; the next step fails.                                               |
+| A new resource type is registered                                          | No role gains access until `permissionSets` is set.                                                           |
+| Upgrade an existing install, then preview, report, enable                  | Nothing blocked before enable; report suggests assignments; enable succeeds.                                  |
+| Recovery Secret is created, then expires                                   | Admin access works only during that time, and is logged.                                                      |
+| Dashboard without forwarding and without an assignment                     | Shows that identity forwarding is required; no data.                                                          |
+| Enable `Enforce` while service-to-service security is `Off`                | `ComponentProtocolNotEnforced`; mode stays the same.                                                          |
+| A deployment runs past its execution record's `expiresAt`                  | `ExecutionRecordNotActive`; rerunning `rad deploy` rechecks current access.                                   |
+| Template creates an `AWS.S3/Bucket` without AWS credential use             | Fails in preflight with `AuthorizationFailed`; nothing is created.                                            |
+| Template creates an Azure resource outside the deployment's provider scope | Fails in preflight; the credential broker issues no token.                                                    |
 
 **Performance tests:** see [Performance](#performance).
 
@@ -1003,6 +1018,7 @@ The results set the latency targets and decide whether the limits can be raised.
 - **New installs are `Enforce` with the installer as admin.** One developer sees no difference. Scripts that use a different Kubernetes identity than the installer need to be given access. `--skip-rbac` keeps today's behavior.
 - **Older `rad` CLIs** still work but show raw 403 errors without the helpful formatting.
 - **The dashboard** shows no data in `Enforce` mode until identity forwarding is turned on or an admin gives its service account a role.
+- **Templates that create AWS or Azure resources directly** need `credentials/use/action` on that plane, which `application-developer` does not include. Admins either grant it or move those resources into recipes.
 - **Templates** that attach resources to another team's application or connect to another team's resources need the matching `write` or `connect` permission.
 - **`Enforce` needs the internal design's service-to-service security**, and therefore cert-manager, on the control-plane cluster.
 - **Templates that create cluster-wide Kubernetes objects directly** must move them into a recipe once service-to-service security is `Enforce` (internal design). This is separate from user RBAC but usually happens in the same rollout.
@@ -1086,6 +1102,7 @@ Kubernetes impersonation works today but needs a powerful Kubernetes permission.
 | A relationship-based system like OpenFGA or SpiceDB    | Good at relationships between resources, but adds a stateful service to every install and a second source of truth next to UCP's database. Radius's structure is a simple tree with a few kinds of references, which the ARM-style model handles well. |
 | Check access in each resource provider                 | Every provider would repeat the same logic, and user-defined types would need a separate path. Results could differ between providers. UCP as the single checker is simpler and matches what the internal design expects.                              |
 | Name the new types `System.Authorization/*`            | Matches other UCP-only types like `System.Resources`, but does not match the specification's Bicep examples. UCP serves the types either way, so this is a naming choice. Kept as a backup if `Radius.Core` routing gets complicated.                  |
+| Add every AWS and Azure type to the permission catalog | Gives per-type control, but means copying thousands of cloud types and actions that change outside Radius releases. The cloud's own IAM on the registered credential already controls this.                                                            |
 | Allow wildcards in custom roles                        | Convenient, but new types and actions would quietly be included, which the specification forbids.                                                                                                                                                      |
 | Check each deployment resource only when it is created | Simpler, but a deployment could fail after already changing some resources.                                                                                                                                                                            |
 
