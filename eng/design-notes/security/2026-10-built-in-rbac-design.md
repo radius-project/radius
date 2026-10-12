@@ -78,7 +78,7 @@ Everything in the feature specification's [non-goals](./2026-09-built-in-rbac-fe
 
 - Design how Radius services authenticate to each other, the execution record format, or the credential broker. Those are in the internal design.
 - Add a way to sign in other than through Kubernetes. The design stores the issuer on every assignment so other sign-in systems can be added later.
-- Provide an API to search audit history. The first release writes audit events to logs that you send to your own log system.
+- Provide an API to search audit history. Audit events are written to logs that you send to your own log system.
 - Support wildcards (like `Radius.Core/*`) or "deny" rules in custom roles.
 
 ## User Experience (if applicable)
@@ -260,7 +260,7 @@ Two special groups are worth knowing:
 - Installations whose control plane gets recreated, such as Repo Radius, set a fixed value with the Helm value `rbac.kubernetesIssuer`, for example `kubernetes:repo-radius/<owner>/<repo>`.
 - The CLI fills in the issuer for you, so examples in this document just write `kubernetes`.
 
-Storing the issuer on every assignment also means later releases can add other sign-in systems (for example, an OIDC provider for the dashboard) without changing existing data.
+Storing the issuer on every assignment also means Radius can later add other sign-in systems (for example, an OIDC provider for the dashboard) without changing existing data.
 
 **Stable names matter.** For clusters that sign users in with OIDC, the Kubernetes user name comes from a claim in the token. If that claim is something that can change, like an email address, an assignment could stop matching. `rad auth whoami` shows exactly what Radius sees, and the docs recommend a stable claim such as `sub`.
 
@@ -292,7 +292,7 @@ Storing the issuer on every assignment also means later releases can add other s
 - Access on `/planes/azure/prod` does **not** cover `/planes/azure/dev`.
 - Access on an environment does **not** cover the Recipe Packs that environment uses. Pointing to something never gives you access to it.
 
-**Which resources can be scopes in the first release?** Any resource group or plane, plus these individual resource types: `Radius.Core/environments`, `Radius.Core/recipePacks`, `Radius.Core/applications`, `Applications.Core/environments`, and `Applications.Core/applications`. These are the ones the specification's scenarios need. The checking code works for any resource ID, so more types can be added later without changing how data is stored.
+**Which resources can be scopes?** Any resource group or plane, plus these individual resource types: `Radius.Core/environments`, `Radius.Core/recipePacks`, `Radius.Core/applications`, `Applications.Core/environments`, and `Applications.Core/applications`. These are the ones the specification's scenarios need. The checking code works for any resource ID, so more types can be added later without changing how data is stored.
 
 #### Part 3: What you can do (permissions)
 
@@ -986,7 +986,7 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 | Deployments    | One preflight call per deployment. Nested modules get child records without new role checks. Each step checks the execution record.                                       |
 | Access changes | Each instance compares generation numbers every 5 seconds and reloads only when something changed ([Part 6](#part-6-where-access-data-lives-and-how-fast-changes-apply)). |
 
-**Limits.** The first release supports up to 10,000 role assignments and 1,000 custom roles per installation. The limits bound the in-memory copy's size and the time to reload it. Creating an assignment or custom role past a limit is rejected. The limits can be raised once load tests show larger numbers still meet the targets.
+**Limits.** Radius supports up to 10,000 role assignments and 1,000 custom roles per installation. The limits bound the in-memory copy's size and the time to reload it. Creating an assignment or custom role past a limit is rejected. The limits can be raised once load tests show larger numbers still meet the targets.
 
 **Load testing.** Before release, measure at the limits:
 
@@ -1067,11 +1067,11 @@ This design checks module resources in the parent's preflight. The internal desi
 
 **Q: Can Bicep and the deployment engine support role assignments on a single Radius resource?**
 
-Resource-group assignments work today. Assignments on one resource need the Radius Bicep extension and the deployment engine to support extension resources scoped to a Radius resource. If that is not ready for the first release, single-resource assignments are managed only with `rad auth` and the API.
+Resource-group assignments work today. Assignments on one resource need the Radius Bicep extension and the deployment engine to support extension resources scoped to a Radius resource. If that is not ready when RBAC ships, single-resource assignments are managed only with `rad auth` and the API.
 
 **Q: Should Radius store audit events and let the Auditor role search them?**
 
-The first release writes events to logs. A searchable store would let `rad auth` show recent denials directly, but adds questions about retention, volume, and protecting the data. The permission name `Radius.Core/auditEvents/read` is reserved. Until then, the `auditor` role covers access configuration and access checks only, and reviewing activity relies on the exported logs in your own log system. This is narrower than the specification's Auditor and needs product sign-off.
+Audit events are written to logs. A searchable store would let `rad auth` show recent denials directly, but adds questions about retention, volume, and protecting the data. The permission name `Radius.Core/auditEvents/read` is reserved. Until then, the `auditor` role covers access configuration and access checks only, and reviewing activity relies on the exported logs in your own log system. This is narrower than the specification's Auditor and needs product sign-off.
 
 **Q: How should the dashboard identify users long-term?**
 
@@ -1082,7 +1082,7 @@ Kubernetes impersonation works today but needs a powerful Kubernetes permission.
 | Alternative                                            | Why we did not choose it                                                                                                                                                                                                                               |
 |--------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Use Kubernetes RBAC with SubjectAccessReview           | Kubernetes RBAC works on Kubernetes-style API groups, resources, and verbs. It cannot express Radius's planes, resource groups, and resources, the "pointing to" checks, or user-defined resource types.                                               |
-| A policy engine like Open Policy Agent (OPA) or Cedar  | Flexible, but admins would write policy code instead of assigning roles, which the specification rules out for the first release. The checker's interface could use an engine internally later without changing the API.                               |
+| A policy engine like Open Policy Agent (OPA) or Cedar  | Flexible, but admins would write policy code instead of assigning roles, which the specification rules out. The checker's interface could use an engine internally later without changing the API.                                                     |
 | A relationship-based system like OpenFGA or SpiceDB    | Good at relationships between resources, but adds a stateful service to every install and a second source of truth next to UCP's database. Radius's structure is a simple tree with a few kinds of references, which the ARM-style model handles well. |
 | Check access in each resource provider                 | Every provider would repeat the same logic, and user-defined types would need a separate path. Results could differ between providers. UCP as the single checker is simpler and matches what the internal design expects.                              |
 | Name the new types `System.Authorization/*`            | Matches other UCP-only types like `System.Resources`, but does not match the specification's Bicep examples. UCP serves the types either way, so this is a naming choice. Kept as a backup if `Radius.Core` routing gets complicated.                  |
