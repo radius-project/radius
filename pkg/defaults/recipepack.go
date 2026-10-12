@@ -109,7 +109,8 @@ type recipePackTemplate struct {
 // compiled recipe pack template and returns its properties object. The
 // properties must decode into the API models with no unknown or read-only
 // fields, every recipe must have a supported kind and a tagged source, and
-// every value must be a literal: ARM expressions are not evaluated.
+// every value must be a literal: ARM expressions are not evaluated. Literals
+// that Bicep escaped as "[[...]" are returned as authored.
 func parseRecipePack(raw []byte) ([]byte, error) {
 	var template recipePackTemplate
 	if err := json.Unmarshal(raw, &template); err != nil {
@@ -156,6 +157,18 @@ func parseRecipePack(raw []byte) ([]byte, error) {
 		}
 	}
 
+	var literal any
+	if err := json.Unmarshal(pack.Properties.Properties, &literal); err != nil {
+		return nil, err
+	}
+	unescaped, err := json.Marshal(unescapeLiterals(literal))
+	if err != nil {
+		return nil, err
+	}
+	properties = corerpv20250801.RecipePackProperties{}
+	if err := json.Unmarshal(unescaped, &properties); err != nil {
+		return nil, err
+	}
 	return json.Marshal(&properties)
 }
 
@@ -234,7 +247,11 @@ func findExpression(value any, path string) (string, bool) {
 		}
 		slices.Sort(names)
 		for _, name := range names {
-			if p, ok := findExpression(v[name], strings.TrimPrefix(path+"."+name, ".")); ok {
+			namePath := strings.TrimPrefix(path+"."+name, ".")
+			if isExpression(name) {
+				return namePath, true
+			}
+			if p, ok := findExpression(v[name], namePath); ok {
 				return p, true
 			}
 		}
@@ -248,7 +265,44 @@ func findExpression(value any, path string) (string, bool) {
 	return "", false
 }
 
-// isExpression reports whether s is an ARM template expression.
+// isExpression reports whether s is an ARM template expression: it starts with
+// "[" and ends with "]", and is not escaped with a second leading "[".
 func isExpression(s string) bool {
-	return strings.HasPrefix(s, "[") && !strings.HasPrefix(s, "[[")
+	return isBracketed(s) && !strings.HasPrefix(s, "[[")
+}
+
+// unescapeLiteral removes the extra leading "[" that Bicep adds to a literal
+// string that starts with "[" and ends with "]", so "[[x]" becomes "[x]".
+// Other strings are returned unchanged.
+func unescapeLiteral(s string) string {
+	if isBracketed(s) && strings.HasPrefix(s, "[[") {
+		return s[1:]
+	}
+	return s
+}
+
+func isBracketed(s string) bool {
+	return strings.HasPrefix(s, "[") && strings.HasSuffix(s, "]")
+}
+
+// unescapeLiterals applies unescapeLiteral to every string and object key in
+// value, at any depth.
+func unescapeLiterals(value any) any {
+	switch v := value.(type) {
+	case string:
+		return unescapeLiteral(v)
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for name, item := range v {
+			out[unescapeLiteral(name)] = unescapeLiterals(item)
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, item := range v {
+			out[i] = unescapeLiterals(item)
+		}
+		return out
+	}
+	return value
 }

@@ -106,7 +106,8 @@ func TestParseRecipePack(t *testing.T) {
 			name: "valid",
 			raw: pack(`"Radius.Data/redisCaches":{"kind":"bicep","source":"ghcr.io/org/recipes/rediscaches:latest"},` +
 				`"Radius.Compute/routes":{"kind":"terraform","source":"localhost:5000/routes:0.1","plainHttp":true,` +
-				`"parameters":{"gatewayName":"radius","escaped":"[[literal]","list":[1,"a"]}}`),
+				`"parameters":{"gatewayName":"radius","escaped":"[[literal]","twice":"[[[two]","open":"[open","close":"close]","empty":"[[]",` +
+				`"[[key]":{"n":"[[nested]"},"list":[1,"a","[[inarr]"]}}`),
 			want: &corerpv20250801.RecipePackProperties{
 				Recipes: map[string]*corerpv20250801.RecipeDefinition{
 					"Radius.Data/redisCaches": {
@@ -114,10 +115,19 @@ func TestParseRecipePack(t *testing.T) {
 						Source: to.Ptr("ghcr.io/org/recipes/rediscaches:latest"),
 					},
 					"Radius.Compute/routes": {
-						Kind:       to.Ptr(corerpv20250801.RecipeKindTerraform),
-						Source:     to.Ptr("localhost:5000/routes:0.1"),
-						PlainHTTP:  to.Ptr(true),
-						Parameters: map[string]any{"gatewayName": "radius", "escaped": "[[literal]", "list": []any{float64(1), "a"}},
+						Kind:      to.Ptr(corerpv20250801.RecipeKindTerraform),
+						Source:    to.Ptr("localhost:5000/routes:0.1"),
+						PlainHTTP: to.Ptr(true),
+						Parameters: map[string]any{
+							"gatewayName": "radius",
+							"escaped":     "[literal]",
+							"twice":       "[[two]",
+							"open":        "[open",
+							"close":       "close]",
+							"empty":       "[]",
+							"[key]":       map[string]any{"n": "[nested]"},
+							"list":        []any{float64(1), "a", "[inarr]"},
+						},
 					},
 				},
 			},
@@ -145,6 +155,11 @@ func TestParseRecipePack(t *testing.T) {
 			name:    "expression parameter",
 			raw:     pack(`"A/b":{"kind":"bicep","source":"r/b:1","parameters":{"p":{"q":["ok","[parameters('x')]"]}}}`),
 			wantErr: "parameters.p.q[1] is an expression",
+		},
+		{
+			name:    "expression key",
+			raw:     pack(`"A/b":{"kind":"bicep","source":"r/b:1","parameters":{"[parameters('k')]":"v"}}`),
+			wantErr: "parameters.[parameters('k')] is an expression",
 		},
 	}
 
