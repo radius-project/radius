@@ -495,8 +495,6 @@ Every 5 seconds, and right after any access change it handles itself, a UCP inst
 
 **How fast changes apply.** A role or assignment change reaches every UCP instance within **30 seconds** (this includes retries if the database is briefly unavailable). If an instance cannot refresh within 30 seconds, it marks itself not ready and refuses requests with `AuthorizationUnavailable`. It never makes decisions using old data.
 
-**Limits.** The first release supports up to 10,000 assignments and 1,000 custom roles per installation. These are enforced and can be raised after load testing.
-
 #### Part 7: How UCP checks a request
 
 > **In short:** For each request, UCP lists every permission it needs, checks each one, and allows the request only if all pass. If a request points to another resource (like an environment), that counts as a permission it needs too.
@@ -951,10 +949,7 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 | Enable `Enforce` while service-to-service security is `Off`              | `ComponentProtocolNotEnforced`; mode stays the same.                                                          |
 | A deployment runs past its execution record's `expiresAt`                | `ExecutionRecordNotActive`; rerunning `rad deploy` rechecks current access.                                   |
 
-**Performance tests:**
-
-- Check time with 10,000 assignments.
-- Deployment time with preflight for a 200-resource template, compared to `Disabled`.
+**Performance tests:** see [Performance](#performance).
 
 ## Security
 
@@ -977,6 +972,30 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 **What Radius must trust.** UCP, the Kubernetes API server, your identity provider, and your Kubernetes cluster admins. Anyone who can change Secrets, Deployments, or the database in the Radius namespace can get around Radius RBAC. Limit Kubernetes access to the Radius namespace and the database to the platform team. The docs will say this clearly.
 
 **Access is per application; runtime isolation is per environment.** Radius RBAC can stop Team B from changing Team A's application. But if both teams deploy to the same environment, their pods share one Kubernetes namespace and can reach each other's Secrets and service accounts. The internal design's admission controls protect Radius's own Secrets and service accounts, not one app from another. Teams that need runtime isolation from each other should use separate environments, and admins should give each team `environment-deployer` only on its own environments.
+
+## Performance
+
+> **In short:** Checks use each UCP instance's in-memory copy of roles and assignments, so they do not call the database. A deployment adds one preflight call. Limits on roles and assignments keep the in-memory copy small, and load tests confirm the limits before release.
+
+**Where RBAC adds time.**
+
+| Path           | Added work                                                                                                                                                                |
+|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Every request  | Look up assignments in memory for the scope and each parent scope, for the user and each of their groups. No database call.                                               |
+| List requests  | One check per returned item, after the resource provider responds ([Part 7](#part-7-how-ucp-checks-a-request)).                                                           |
+| Deployments    | One preflight call per deployment. Nested modules get child records without new role checks. Each step checks the execution record.                                       |
+| Access changes | Each instance compares generation numbers every 5 seconds and reloads only when something changed ([Part 6](#part-6-where-access-data-lives-and-how-fast-changes-apply)). |
+
+**Limits.** The first release supports up to 10,000 role assignments and 1,000 custom roles per installation. The limits bound the in-memory copy's size and the time to reload it. Creating an assignment or custom role past a limit is rejected. The limits can be raised once load tests show larger numbers still meet the targets.
+
+**Load testing.** Before release, measure at the limits:
+
+- Check time per request for a user in many groups, with 10,000 assignments and 1,000 custom roles.
+- Deployment time for a 200-resource template in `Enforce` compared to `Disabled`.
+- List time when most items are filtered out.
+- Reload time and memory for the in-memory copy, confirming changes still apply within 30 seconds.
+
+The results set the latency targets and decide whether the limits can be raised.
 
 ## Compatibility (optional)
 
