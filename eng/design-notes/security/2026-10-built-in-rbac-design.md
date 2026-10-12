@@ -934,7 +934,11 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 - Group-based access.
 - `assignableScopes`.
 - Reference checks for every built-in type and for `x-radius-reference`.
-- Every safety rule.
+- Every safety rule, including `PrivilegeEscalationDenied`, `LastAdministratorProtected`, and `highImpact` audit events when an Access Administrator assigns `radius-administrator`.
+- A user without access gets the same 403 for an existing resource and a missing one.
+- A newly registered resource type grants no access until `permissionSets` is set.
+- `getGraph` hides nodes the caller cannot read, sets `incomplete: true`, and leaks no IDs.
+- An execution record past its `expiresAt` is rejected with `ExecutionRecordNotActive`, using a fake clock.
 - In-memory copy refresh and the "too old" case.
 - Fuzz tests on the request-to-permission mapping with broken resource IDs, to make sure bad input is denied.
 
@@ -943,30 +947,28 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 - CI fails if the generated permission table is out of date with the Swagger files.
 - A test makes sure every UCP route maps to a permission, so a new route cannot ship unchecked.
 
-**Functional tests** (`test/functional-portable`) on a cluster set up to verify Kubernetes's client certificate, with several test users and service accounts:
+**Functional tests** cover only behavior that crosses components or needs a real Kubernetes API server. They run in `test/functional-portable` on a cluster set up to verify Kubernetes's client certificate, with several test users and service accounts:
 
-| Scenario                                                                   | Expected result                                                                                               |
-|----------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| Developer deploys to an environment they can use                           | Succeeds.                                                                                                     |
-| Same template points at a different environment                            | Fails in preflight with `AuthorizationFailed`; nothing is created.                                            |
-| Template has some allowed and some denied resources                        | Fails in preflight listing every denied resource; nothing is created.                                         |
-| Reader runs `getGraph` on an app connected to something in another group   | That node is hidden, `incomplete: true`, no ID leaked.                                                        |
-| User without access asks for an existing resource and a missing one        | Both get the same 403.                                                                                        |
-| Non-admin tries to assign a role with permissions they lack                | `PrivilegeEscalationDenied`.                                                                                  |
-| Access Administrator assigns `radius-administrator`                        | Succeeds, with confirmation and a `highImpact` audit event.                                                   |
-| Remove the last admin using the CLI, Bicep, and Flux pruning               | `LastAdministratorProtected` in all three.                                                                    |
-| A role is removed during a long deployment                                 | The record is revoked; the next step fails with `ExecutionRecordNotActive`; resources already created remain. |
-| An admin cancels a running deployment                                      | `rad deployment cancel` closes the record; the next step fails.                                               |
-| A new resource type is registered                                          | No role gains access until `permissionSets` is set.                                                           |
-| Upgrade an existing install, then dry run, report, enable                  | Nothing blocked before enable; report suggests assignments; enable succeeds.                                  |
-| Recovery Secret is created, then expires                                   | Admin access works only during that time, and is logged.                                                      |
-| Dashboard without forwarding and without an assignment                     | Shows that identity forwarding is required; no data.                                                          |
-| Enable `Enforce` while service-to-service security is `Off`                | `ComponentProtocolNotEnforced`; mode stays the same.                                                          |
-| A deployment runs past its execution record's `expiresAt`                  | `ExecutionRecordNotActive`; rerunning `rad deploy` rechecks current access.                                   |
-| A namespace admin or Radius service account creates `radius-rbac-recovery` | Rejected by the admission policy; no recovery grant.                                                          |
-| The recovery admission policy is deleted, then the Secret is created       | UCP ignores the Secret and logs a warning.                                                                    |
-| Template creates an `AWS.S3/Bucket` without AWS credential use             | Fails in preflight with `AuthorizationFailed`; nothing is created.                                            |
-| Template creates an Azure resource outside the deployment's provider scope | Fails in preflight; the credential broker issues no token.                                                    |
+| Scenario                                                                                                                     | Expected result                                                                                                                 |
+|------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| Developer deploys to an environment they can use, then to a different one, then a template with allowed and denied resources | The first succeeds. The others fail in preflight with `AuthorizationFailed`, listing every denied resource; nothing is created. |
+| A role is removed during a long deployment                                                                                   | The record is revoked; the next step fails with `ExecutionRecordNotActive`; resources already created remain.                   |
+| An admin cancels a running deployment                                                                                        | `rad deployment cancel` closes the record; the next step fails.                                                                 |
+| Remove the last admin using the CLI                                                                                          | `LastAdministratorProtected`.                                                                                                   |
+| Upgrade an existing install, then dry run, report, enable                                                                    | Nothing blocked before enable; report suggests assignments; enable succeeds.                                                    |
+| Enable `Enforce` while service-to-service security is `Off`                                                                  | `ComponentProtocolNotEnforced`; mode stays the same.                                                                            |
+| Recovery Secret is created, then expires                                                                                     | Admin access works only during that time, and is logged.                                                                        |
+| A namespace admin or Radius service account creates `radius-rbac-recovery`                                                   | Rejected by the admission policy; no recovery grant.                                                                            |
+| The recovery admission policy is deleted, then the Secret is created                                                         | UCP ignores the Secret and logs a warning.                                                                                      |
+
+**Cloud functional tests** run in `test/functional-portable/corerp/cloud`, because they need AWS and Azure credentials:
+
+| Scenario                                                                   | Expected result                                                    |
+|----------------------------------------------------------------------------|--------------------------------------------------------------------|
+| Template creates an `AWS.S3/Bucket` without AWS credential use             | Fails in preflight with `AuthorizationFailed`; nothing is created. |
+| Template creates an Azure resource outside the deployment's provider scope | Fails in preflight; the credential broker issues no token.         |
+
+**Dashboard tests** in the dashboard repository check that, without identity forwarding and without an assignment, the dashboard shows that identity forwarding is required and returns no data.
 
 **Performance tests:** see [Performance](#performance).
 
