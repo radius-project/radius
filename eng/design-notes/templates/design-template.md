@@ -9,13 +9,13 @@
 <!--
 How to use this template
 - Write for a reviewer who has 30 minutes. Sections go from "what we decide" to "how we build it".
-- Tier 1 (Review guide through User Experience) must be readable on its own. Reviewers approve the design from Tier 1.
-- Tier 2 (Design through Alternatives considered) supports the decisions. Reviewers skim it.
+- Tier 1 (Review guide through User Experience) is the agenda. It states the problem, the proposed direction, and the decisions being asked for, and links to the details reviewers need to approve each one.
+- Tier 2 (Design through Alternatives considered) holds the decision details, data flow, and contracts. Reviewers read the Decision details for each decision they approve and skim the rest.
 - Tier 3 (Appendix) holds the lowest-level detail: long code, full schemas, exhaustive tables, and per-file change lists. Reviewers read it only when needed.
 - Be complete. Concise means fewer words, not fewer facts. If a detail is too low-level for a section, move it down a tier; do not delete it.
 - Every section heading below must stay. If a section does not apply, write one sentence saying why (for example, "No CLI changes."). Do not pad it.
 - Short sentences. Bullets and tables over paragraphs. Link to code instead of describing it.
-- See the radius-author-design-note skill and docs/contributing/contributing-code/contributing-code-design/README.md for the writing guide.
+- Writing guide: docs/contributing/contributing-code/contributing-code-design/README.md (repository root path). Agents can use the radius-author-design-note skill.
 -->
 
 ## Review guide
@@ -230,7 +230,7 @@ Unit, functional, and end-to-end coverage per change. Call out new testing chall
 
 <!--
 Required. Describe changes to the Radius security model. For each threat, give the threat and its mitigation, for example in a table. Topics include authentication, authorization, storing secrets and credentials, and cryptography.
-If nothing changes, say which existing Radius security features the design relies on. For larger changes, link a threat model based on templates/threat-model-template.md.
+If nothing changes, say which existing Radius security features the design relies on. For larger changes, link a threat model based on eng/design-notes/templates/threat-model-template.md (repository root path).
 -->
 
 ## Compatibility (optional)
