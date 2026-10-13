@@ -206,12 +206,16 @@ setup() {
         echo "Cluster ${CLUSTER} already exists; use cleanup first." >&2
         exit 1
     fi
-    if [[ -d "${STATE}/results" ]]; then
+    if [[ -d "${STATE}/results" || -d "${STATE}/container_logs" ]]; then
         mkdir -p "${STATE}/results-history"
-        local previous_results
-        previous_results="$(mktemp -d "${STATE}/results-history/run.XXXXXX")"
-        mv "${STATE}/results" "${previous_results}/results"
-        echo "Previous test results retained in ${previous_results}/results."
+        local previous_run directory
+        previous_run="$(mktemp -d "${STATE}/results-history/run.XXXXXX")"
+        for directory in results container_logs; do
+            if [[ -d "${STATE}/${directory}" ]]; then
+                mv "${STATE}/${directory}" "${previous_run}/${directory}"
+            fi
+        done
+        echo "Previous test diagnostics retained in ${previous_run}."
     fi
     mkdir -p "${STATE}"/{certs,home,bin,results,container_logs}
     rm -f "${STATE}/home/.rad/config.yaml"
@@ -384,7 +388,7 @@ EOF
         kill -0 "${git_forward_pid}"
     fi
     export GOTEST_OPTS="${GOTEST_OPTS:--count=1}"
-    make "$@" GOTESTSUM_JSONFILE_DIR="${STATE}/results"
+    make "$@" --jobs=1 GOTESTSUM_JSONFILE_DIR="${STATE}/results"
     finish_tests
     trap - EXIT INT TERM
 }

@@ -78,7 +78,7 @@ This target:
 4. Runs the standard non-cloud functional tests.
 5. Runs the database, multicluster, statestore, and upgrade test groups sequentially in separate clusters.
 
-Each setup refreshes the retained samples checkout from its `edge` branch and archives previous test reports before starting a new run.
+Each setup refreshes the retained samples checkout from its `edge` branch and archives previous test reports and container logs before starting a new run. Test groups always run sequentially, even when your Make settings request parallel execution.
 
 Do not start another local functional test run at the same time. The runs share temporary Bicep configuration files.
 
@@ -130,7 +130,7 @@ The complete test run succeeds when `make test-functional-local-noncloud` exits 
 
 Test output and per-group gotestsum JSON files are stored under `dist/local-functional/results/`. Container logs are stored under `dist/local-functional/container_logs/`.
 
-The results directory contains reports only for the current setup. Previous reports are retained under `dist/local-functional/results-history/run.*/results/`; do not use those archived files to determine whether the current run passed.
+The results and container-log directories contain diagnostics only for the current setup. Previous reports and logs are retained together under `dist/local-functional/results-history/run.*/`, in `results/` and `container_logs/` respectively; do not use those archived files to determine whether the current run passed.
 
 Before cleanup, confirm that Radius is running in the standard test cluster:
 
@@ -145,6 +145,8 @@ Infrastructure removed; logs and isolated CLI configuration remain in dist/local
 ```
 
 For manually selected groups, each package prints `ok` or a successful `gotestsum` summary. A successful end-to-end group creates its expected Radius resources, verifies their state, and removes them according to the selected cleanup mode.
+
+Run `make test-local-functional-runner` to check the runner's platform preflight, fixture locking/restoration, diagnostics rotation, serial execution, and cleanup using mocked infrastructure commands. These regression checks also run as part of `make test` and do not require Docker, Kubernetes, or sudo access.
 
 ## Troubleshooting
 
