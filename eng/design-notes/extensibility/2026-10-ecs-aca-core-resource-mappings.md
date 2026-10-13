@@ -121,7 +121,7 @@ Two Azure recipes do exist that the ACA pack should reuse rather than rewrite:
 - [`azure-file-volumes.bicep`](https://github.com/radius-project/resource-types-contrib/blob/main/Compute/persistentVolumes/recipes/azure/bicep/azure-file-volumes.bicep) — provisions an Azure Files share.
 - [`azure-keyvault-secrets.bicep`](https://github.com/radius-project/resource-types-contrib/blob/main/Security/secrets/recipes/azure/bicep/azure-keyvault-secrets.bicep) — provisions a Key Vault secret.
 
-Both provision Azure resources that are independent of the compute platform. Both are listed today as Azure (ACI) and emit outputs shaped for ACI, so tech design confirms what ACA needs from them. ECS has no equivalent to reuse.
+Both provision Azure resources that are independent of the compute platform. Both are listed today as Azure (ACI) and emit outputs shaped for ACI, so implementation confirms what ACA needs from them. ECS has no equivalent to reuse.
 
 ## Desired user experience outcome
 
@@ -363,21 +363,23 @@ Secrets are the one asymmetry. The ACA pack creates the Key Vault it writes into
 
 Everything in the **Creates** column is owned by the Radius resource that produced it and is deleted with it. Everything in **Consumes** outlives the application — deleting an application never touches Priya's managed environment, cluster, or ALB.
 
+These lists are not final — implementation may identify further infrastructure each pack has to consume or create.
+
 ### Property mapping
 
 What each core-type property becomes on each platform. There is no Kubernetes column — the core schema was designed against Kubernetes, so every property below is supported there.
+
+Two things to know before reading the tables:
+
+- **The mappings are design intent.** No ACA or ECS recipe exists yet, so implementation validates every cell and corrects it where it is wrong.
+- **Every mapping is documented twice.** Inline in the recipe where the property is handled or ignored, and in the per-type and per-pack READMEs `resource-types-contrib` already uses.
+
+The two states are:
 
 - **Supported** — the recipe honors the property. A different target field, or a value the platform rounds to a legal one, still counts as supported. Where behavior differs, a note under the table says how.
 - **Unsupported** — the platform cannot deliver what the property promises, so the recipe ignores it. Setting it never fails a deployment.
 
 Where a platform honors part of a property and not the rest, that part gets its own row rather than being averaged into a single state.
-
-Two caveats before reading:
-
-- **These states are design intent.** No ACA or ECS recipe exists yet, so tech design validates every cell and corrects it where it is wrong.
-- **The tables record what each platform *can* do, not what v1 ships.** `initContainer`, `autoScaling.*`, and `extensions.daprSidecar` are supported but deferred to a later increment. Nothing else supported is deferred — the route kinds in particular ship as stated.
-
-Each state is documented twice: inline in the recipe where the property is handled or ignored, and in the per-type and per-pack READMEs `resource-types-contrib` already uses.
 
 #### Containers
 
