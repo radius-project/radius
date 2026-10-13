@@ -6,30 +6,31 @@ This directory contains design documents that describe the architecture, feature
 
 Design notes are organized by topic area:
 
-| Directory | Description |
-|-----------|-------------|
-| `architecture/` | System-level architecture decisions |
-| `cli/` | CLI-specific designs |
+| Directory        | Description                                                           |
+|------------------|-----------------------------------------------------------------------|
+| `architecture/`  | System-level architecture decisions                                   |
+| `cli/`           | CLI-specific designs                                                  |
 | `extensibility/` | Resource extensibility, user-defined types, and compute extensibility |
-| `gitops/` | GitOps integration designs |
-| `guides/` | Living design guidelines (e.g., API design) |
-| `recipes/` | Recipe engine and providers |
-| `security/` | Threat models and security designs |
-| `templates/` | Design document templates |
-| `tools/` | Engineering tools and workflows |
-| `ucp/` | Universal Control Plane designs |
+| `gitops/`        | GitOps integration designs                                            |
+| `guides/`        | Living design guidelines (e.g., API design)                           |
+| `recipes/`       | Recipe engine and providers                                           |
+| `security/`      | Threat models and security designs                                    |
+| `templates/`     | Design document templates                                             |
+| `tools/`         | Engineering tools and workflows                                       |
+| `ucp/`           | Universal Control Plane designs                                       |
 
 ### Related Directories
 
-| Directory | Description |
-|-----------|-------------|
+| Directory   | Description                                                                                |
+|-------------|--------------------------------------------------------------------------------------------|
 | `../specs/` | Spec Kit specifications (structured project artifacts: plans, research, tasks, checklists) |
 
 ## Adding a New Design Note
 
 1. Place the document in the appropriate topic directory
 2. Use the naming convention `YYYY-MM-description.md` (e.g., `2024-06-private-bicep-registries.md`)
-3. Update this README if adding a new topic directory
+3. Start from the matching template in `templates/` and follow the [design note writing guide](../../docs/contributing/contributing-code/contributing-code-design/README.md#writing-a-design-note)
+4. Update this README if adding a new topic directory
 
 ## Migration Plan
 
