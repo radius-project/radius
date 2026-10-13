@@ -96,6 +96,7 @@ test-release-controller: ## Tests release controller input binding and stage ord
 	@node --test ./.github/scripts/dispatch-release-controller_test.mjs
 	@node --test ./.github/scripts/reconcile-release-controller-lock_test.mjs
 	@node --test ./.github/scripts/resolve-release-controller_test.mjs
+	@node --test ./.github/scripts/verify-release-environment_test.mjs
 	@bash ./.github/scripts/validate-release-controller-plan_test.sh
 	@bash ./.github/scripts/release-controller_test.sh
 	@bash ./.github/scripts/release-controller-resume_test.sh

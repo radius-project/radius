@@ -247,10 +247,23 @@ test_rejects_conflicting_radius_tag() {
     pass_test
 }
 
+test_rejects_backport_trigger_for_new_channel() {
+    local plan source
+
+    plan="${REPO}/.github/release-plans/v0.61.0-rc.1.yaml"
+    source="$(git -C "${REPO}" rev-parse main)"
+    run_validator "${plan}" v0.61.0-rc.1 "${source}" "${source}" \
+        release-backport "${TEST_ROOT}/new-channel-backport-output"
+    assert_failure_contains "do not use a release backport" || return
+    pass_test
+}
+
 create_existing_channel_release() {
     local version="${1:-v0.61.0}"
     local release_type="${2:-final}"
-    local product_commit source_commit backport_commit plan
+    # Defect injected into the generated metadata backport, if any.
+    local variant="${3:-valid}"
+    local product_commit source_commit backport_commit plan trailer
 
     git -C "${REPO}" checkout --quiet -b release/0.61 main
     mkdir -p "${REPO}/.github/workflows"
@@ -276,10 +289,34 @@ create_existing_channel_release() {
 
     git -C "${REPO}" checkout --quiet release/0.61
     git -C "${REPO}" cherry-pick --quiet --no-commit "${source_commit}"
-    git -C "${REPO}" rm --quiet .github/workflows/release.yaml
+    if [[ "${variant}" != "kept-legacy" ]]; then
+        git -C "${REPO}" rm --quiet .github/workflows/release.yaml
+    fi
+    case "${variant}" in
+        extra-file)
+            printf 'unreviewed change\n' >"${REPO}/product.txt"
+            git -C "${REPO}" add product.txt
+            ;;
+        changed-plan)
+            yq -i '.siblingRepositories[0].sourceCommit =
+                "4444444444444444444444444444444444444444"' "${plan}"
+            git -C "${REPO}" add "${plan}"
+            ;;
+    esac
+    trailer="(cherry picked from commit ${source_commit})"
+    if [[ "${variant}" == "no-trailer" ]]; then
+        trailer="Backport the release metadata."
+    fi
     git -C "${REPO}" commit --quiet \
-        -m "chore(release): prepare ${version}" \
-        -m "(cherry picked from commit ${source_commit})"
+        -m "chore(release): prepare ${version}" -m "${trailer}"
+    if [[ "${variant}" == "merge" ]]; then
+        backport_commit="$(
+            git -C "${REPO}" commit-tree 'HEAD^{tree}' \
+                -p "${product_commit}" -p "${source_commit}" \
+                -m "chore(release): prepare ${version}" -m "${trailer}"
+        )"
+        git -C "${REPO}" reset --quiet --hard "${backport_commit}"
+    fi
     backport_commit="$(git -C "${REPO}" rev-parse HEAD)"
     git -C "${REPO}" push --quiet origin release/0.61
     git -C "${REPO}" fetch --quiet origin \
@@ -432,6 +469,28 @@ test_existing_channel_release_type() {
     pass_test
 }
 
+# The backport commit is what the Radius tag will reference, so every way it
+# can differ from the approved release PR must stop the controller.
+test_rejects_invalid_backport() {
+    local variant="$1"
+    local expected="$2"
+    local source backport plan
+
+    cleanup
+    init_fixture
+    write_initial_files
+    create_existing_channel_release v0.61.0 final "${variant}"
+    read -r source <"${TEST_ROOT}/existing-commits.txt"
+    backport="$(sed -n '2p' "${TEST_ROOT}/existing-commits.txt")"
+    plan="${TEST_ROOT}/approved-plan.yaml"
+    git -C "${REPO}" show \
+        "${source}:.github/release-plans/v0.61.0.yaml" >"${plan}"
+    run_validator "${plan}" v0.61.0 "${source}" "${backport}" \
+        release-backport "${TEST_ROOT}/${variant}-output"
+    assert_failure_contains "${expected}" || return
+    pass_test
+}
+
 main() {
     command -v yq >/dev/null || {
         echo "yq is required" >&2
@@ -442,6 +501,7 @@ main() {
     test_first_rc_resolves_squash_commit
     test_rejects_requested_version_mismatch
     test_rejects_conflicting_radius_tag
+    test_rejects_backport_trigger_for_new_channel
     create_existing_channel_release
     test_release_pr_waits_for_backport
     test_backport_resolves_release_commit
@@ -451,6 +511,15 @@ main() {
     test_rejects_divergent_release_branch
     test_existing_channel_release_type v0.61.0-rc.2 rc
     test_existing_channel_release_type v0.61.1 patch
+    test_rejects_invalid_backport no-trailer \
+        "is not the approved release PR backport"
+    test_rejects_invalid_backport extra-file \
+        "changes files outside the plan contract"
+    test_rejects_invalid_backport kept-legacy \
+        "kept the legacy release workflow"
+    test_rejects_invalid_backport changed-plan \
+        "committed release plan differs from approved plan"
+    test_rejects_invalid_backport merge "must have one parent"
 
     if ((FAIL > 0)); then
         echo "Controller plan tests failed: ${PASS} passed, ${FAIL} failed"

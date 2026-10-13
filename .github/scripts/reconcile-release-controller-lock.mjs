@@ -223,6 +223,17 @@ export default async function reconcileReleaseControllerLock({
   ) {
     throw new Error(`Release state branch ${branch} has unexpected history`);
   }
+  // The controller writes the lock through the API with an App token, which
+  // GitHub signs. A person-authored or unsigned commit means the lock was
+  // replaced outside the controller.
+  if (
+    commit.commit?.verification?.verified !== true ||
+    commit.author?.type !== "Bot"
+  ) {
+    throw new Error(
+      `Release state commit ${reference.object.sha} on ${branch} is not a GitHub-verified App commit`
+    );
+  }
 
   core.setOutput("exists", "true");
   core.setOutput("branch", branch);

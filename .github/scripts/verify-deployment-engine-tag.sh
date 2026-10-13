@@ -21,6 +21,8 @@ set -euo pipefail
 GH="${GH:-gh}"
 readonly REPOSITORY="azure-octo/deployment-engine"
 TAG="${1:-}"
+# Optional commit recorded by an earlier verification of the same release run.
+EXPECTED_COMMIT="${2:-}"
 
 fail() {
     echo "Error: $*" >&2
@@ -38,6 +40,10 @@ main() {
     tag_pattern+='(-rc\.[1-9][0-9]*)?$'
     if [[ ! "${TAG}" =~ ${tag_pattern} ]]; then
         fail "tag must use vX.Y.Z or vX.Y.Z-rc.N format"
+    fi
+    if [[ -n "${EXPECTED_COMMIT}" &&
+        ! "${EXPECTED_COMMIT}" =~ ^[0-9a-f]{40}$ ]]; then
+        fail "expected commit must be a full commit SHA"
     fi
     command -v "${GH}" >/dev/null || fail "required command not found: ${GH}"
     command -v jq >/dev/null || fail "required command not found: jq"
@@ -76,6 +82,9 @@ main() {
     if [[ "${target_type}" != "commit" ||
         ! "${target_sha}" =~ ^[0-9a-f]{40}$ ]]; then
         fail "Deployment Engine tag ${TAG} does not target a commit"
+    fi
+    if [[ -n "${EXPECTED_COMMIT}" && "${target_sha}" != "${EXPECTED_COMMIT}" ]]; then
+        fail "Deployment Engine tag ${TAG} moved from approved commit ${EXPECTED_COMMIT} to ${target_sha}"
     fi
 
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then

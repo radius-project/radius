@@ -46,7 +46,11 @@ function fixture() {
           state.content = { type: "file", content };
         },
         getCommit: async () => ({
-          data: { parents: [{ sha: releaseSource }] }
+          data: {
+            parents: [{ sha: releaseSource }],
+            author: { login: "radius-release-bot[bot]", type: "Bot" },
+            commit: { verification: { verified: true } }
+          }
         })
       }
     }
@@ -138,9 +142,57 @@ test("rejects release state with unexpected history", async () => {
     content: Buffer.from(JSON.stringify(lock)).toString("base64")
   };
   state.github.rest.repos.getCommit = async () => ({
-    data: { parents: [{ sha: "f".repeat(40) }] }
+    data: {
+      parents: [{ sha: "f".repeat(40) }],
+      author: { type: "Bot" },
+      commit: { verification: { verified: true } }
+    }
   });
   await assert.rejects(() => reconcileLock(state), /unexpected history/);
+});
+
+function storeLock(state) {
+  const lock = canonicalLock(
+    {
+      version: state.inputs.VERSION,
+      releaseSourceCommit: releaseSource,
+      signedTag: state.inputs.DE_SIGNED_TAG,
+      deSourceCommit: deSource,
+      imageTag: state.inputs.DE_IMAGE_TAG
+    },
+    digest
+  );
+  state.state.ref = { object: { sha: "d".repeat(40) } };
+  state.state.content = {
+    type: "file",
+    content: Buffer.from(JSON.stringify(lock)).toString("base64")
+  };
+}
+
+test("rejects a lock commit written outside the release App", async () => {
+  const state = fixture();
+  storeLock(state);
+  state.github.rest.repos.getCommit = async () => ({
+    data: {
+      parents: [{ sha: releaseSource }],
+      author: { login: "octocat", type: "User" },
+      commit: { verification: { verified: true } }
+    }
+  });
+  await assert.rejects(() => reconcileLock(state), /GitHub-verified App/);
+});
+
+test("rejects an unsigned lock commit", async () => {
+  const state = fixture();
+  storeLock(state);
+  state.github.rest.repos.getCommit = async () => ({
+    data: {
+      parents: [{ sha: releaseSource }],
+      author: { type: "Bot" },
+      commit: { verification: { verified: false } }
+    }
+  });
+  await assert.rejects(() => reconcileLock(state), /GitHub-verified App/);
 });
 
 test("does not write a lock on a conflicting state branch", async () => {

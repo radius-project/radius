@@ -86,6 +86,7 @@ jobs:
     needs: resolve
     if: needs.resolve.outputs.selected == 'true'
     permissions:
+      actions: read
       contents: read
       pull-requests: read
     uses: ./.github/workflows/__release-controller.yaml
@@ -141,7 +142,8 @@ jobs:
             [[ -z "${VERSION}" ]] || echo "- Version: ${VERSION}"
             [[ -z "${SOURCE_COMMIT}" ]] || \
               echo "- Source commit: ${SOURCE_COMMIT}"
-            if [[ "${RESOLVE_RESULT}" != "success" ]]; then
+            # A skipped resolution is a closed, unmerged pull request.
+            if [[ "${RESOLVE_RESULT}" == "failure" ]]; then
               echo
               echo "Correct the generated release plan or event metadata,"
               echo "then rerun Prepare Release or Approve Release."

@@ -44,28 +44,39 @@ write_fake_docker() {
     cat >"${TEST_ROOT}/bin/docker" <<EOF
 #!/bin/bash
 set -euo pipefail
-if [[ "\${DE_IMAGE_MODE:-complete}" == "missing" ]]; then
-    echo "manifest unknown" >&2
-    exit 1
-fi
+mode="\${DE_IMAGE_MODE:-complete}"
+case "\${mode}" in
+    missing)
+        echo "manifest unknown" >&2
+        exit 1
+        ;;
+    registry-error)
+        echo "unauthorized: authentication required" >&2
+        exit 1
+        ;;
+esac
 variant='{"os":"linux","architecture":"arm","variant":"v7"}'
-if [[ "\${DE_IMAGE_MODE:-complete}" == "bad-platforms" ]]; then
-    variant='{"os":"linux","architecture":"arm64"}'
-fi
+ref="refs/tags/v0.61.0-rc.1"
+revision="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+case "\${mode}" in
+    bad-platforms) variant='{"os":"linux","architecture":"arm64"}' ;;
+    wrong-ref) ref="refs/tags/v0.60.0" ;;
+    wrong-revision) revision="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" ;;
+esac
+labels="{\"org.opencontainers.image.ref\":\"\${ref}\",\"org.opencontainers.image.revision\":\"\${revision}\"}"
+# Published Deployment Engine indexes carry BuildKit attestation manifests.
 cat <<JSON
 {"manifest":{"digest":"${DIGEST}","manifests":[
   {"platform":{"os":"linux","architecture":"amd64"}},
   {"platform":{"os":"linux","architecture":"arm64"}},
-  {"platform":\${variant}}
-]},"image":{"linux/amd64":{"config":{"Labels":{
-    "org.opencontainers.image.ref":"refs/tags/v0.61.0-rc.1",
-    "org.opencontainers.image.revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}},
-    "linux/arm64":{"config":{"Labels":{
-    "org.opencontainers.image.ref":"refs/tags/v0.61.0-rc.1",
-    "org.opencontainers.image.revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}},
-    "linux/arm/v7":{"config":{"Labels":{
-    "org.opencontainers.image.ref":"refs/tags/v0.61.0-rc.1",
-    "org.opencontainers.image.revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}}}}
+  {"platform":\${variant}},
+  {"platform":{"os":"unknown","architecture":"unknown"}},
+  {"platform":{"os":"unknown","architecture":"unknown"}}
+]},"image":{
+  "linux/amd64":{"config":{"Labels":\${labels}}},
+  "linux/arm64":{"config":{"Labels":\${labels}}},
+  "linux/arm/v7":{"config":{"Labels":\${labels}}},
+  "unknown/unknown":{"config":{}}}}
 JSON
 EOF
     chmod +x "${TEST_ROOT}/bin/docker"
@@ -136,6 +147,64 @@ test_invalid_output_contract() {
     ((++PASS))
 }
 
+test_rejects_label_mismatches() {
+    local mode
+
+    for mode in wrong-ref wrong-revision; do
+        if run_verifier "${mode}" >/dev/null 2>&1; then
+            fail_test "${mode} Deployment Engine image was accepted"
+            return
+        fi
+    done
+    ((++PASS))
+}
+
+test_reports_stale_image() {
+    local mode state outputs
+
+    for mode in wrong-ref wrong-revision bad-platforms; do
+        state="${TEST_ROOT}/${mode}-state.txt"
+        outputs="${TEST_ROOT}/${mode}-outputs.txt"
+        : >"${outputs}"
+        if ! GITHUB_OUTPUT="${outputs}" run_verifier "${mode}" \
+            --allow-absent --allow-stale --state-output "${state}" \
+            >/dev/null; then
+            fail_test "${mode} Deployment Engine image was not reported as stale"
+            return
+        fi
+        if [[ "$(<"${state}")" != "stale" ||
+        "$(<"${outputs}")" != "state=stale" ]]; then
+            fail_test "${mode} image recorded more than the stale state"
+            return
+        fi
+    done
+    ((++PASS))
+}
+
+test_registry_error_is_not_stale() {
+    if run_verifier registry-error --allow-absent --allow-stale \
+        --state-output "${TEST_ROOT}/registry-error-state.txt" \
+        >/dev/null 2>&1; then
+        fail_test "registry error was treated as an absent or stale image"
+        return
+    fi
+    ((++PASS))
+}
+
+test_stale_mode_requires_safe_options() {
+    if run_verifier wrong-ref --allow-stale >/dev/null 2>&1; then
+        fail_test "--allow-stale ran without a state output"
+        return
+    fi
+    if run_verifier wrong-ref --allow-stale \
+        --state-output "${TEST_ROOT}/digest-state.txt" \
+        --expected-digest "${DIGEST}" >/dev/null 2>&1; then
+        fail_test "--allow-stale accepted a locked digest"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
     local state
 
@@ -175,6 +244,11 @@ main() {
     else
         ((++PASS))
     fi
+
+    test_rejects_label_mismatches
+    test_reports_stale_image
+    test_registry_error_is_not_stale
+    test_stale_mode_requires_safe_options
 
     if ((FAIL > 0)); then
         echo "Deployment Engine image tests failed: ${PASS} passed, ${FAIL} failed"

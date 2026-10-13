@@ -129,8 +129,45 @@ test_shared_controller_contract() {
     assert_json "${CONTROLLER}" '.permissions' '{}' \
         "controller must disable default GITHUB_TOKEN permissions"
     assert_json "${CONTROLLER}" '.jobs.validate.permissions' \
-        '{"contents":"read","pull-requests":"read"}' \
+        '{"actions":"read","contents":"read","pull-requests":"read"}' \
         "controller validation must use a read-only GITHUB_TOKEN"
+    assert_json "${ENTRY}" '.jobs.reconcile.permissions' \
+        '{"actions":"read","contents":"read","pull-requests":"read"}' \
+        "entry must grant only the read scopes the controller uses"
+}
+
+test_approval_gate_and_bindings() {
+    local gateway
+
+    assert_yq "${CONTROLLER}" \
+        '.jobs.approve.environment == "release" and
+        ([.jobs.validate.steps[] |
+        select((.with.script // "") |
+            contains("verify-release-environment.mjs")) |
+        .env.INPUT_ENVIRONMENT] | (length == 1 and .[0] == "release"))' \
+        "validation must fail closed unless approval requires reviewers"
+    assert_json "${CONTROLLER}" '.jobs.validate.outputs."de-source-commit"' \
+        "\"\${{ steps.de-tag.outputs.commit }}\"" \
+        "validation must record the Deployment Engine commit it showed"
+    assert_json "${CONTROLLER}" \
+        '.jobs."publish-deployment-engine".steps[] |
+        select(.id == "de-tag") | .env.APPROVED_DE_COMMIT' \
+        "\"\${{ needs.validate.outputs.de-source-commit }}\"" \
+        "publication must reject a Deployment Engine tag moved after approval"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."publish-deployment-engine".steps[] |
+        select(.id == "existing-image") |
+        ((has("continue-on-error") | not) and
+        (.run | contains("--allow-stale")))' \
+        "image inspection must report stale state and fail on errors"
+    assert_contains "${ENTRY}" \
+        "if [[ \"\${RESOLVE_RESULT}\" == \"failure\" ]]" \
+        "entry summary must suggest remediation only after a failure"
+    for gateway in "${APPROVE}" "${RESUME}"; do
+        assert_json "${gateway}" '.jobs.dispatch.if' \
+            "\"github.repository == 'radius-project/radius'\"" \
+            "$(basename "${gateway}") must not dispatch from forks"
+    done
 }
 
 test_stage_order() {
@@ -299,6 +336,7 @@ main() {
     }
     test_entry_triggers
     test_shared_controller_contract
+    test_approval_gate_and_bindings
     test_frozen_output_contract
     test_unknown_dispatch_summary
     test_stage_order

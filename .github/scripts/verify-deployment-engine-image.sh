@@ -31,6 +31,7 @@ OUTPUT_FILE=""
 STATE_OUTPUT=""
 EXPECTED_DIGEST=""
 ALLOW_ABSENT=false
+ALLOW_STALE=false
 TARGETS_FILE="${GORELEASER_PARITY_TARGETS:-${ROOT}/.github/release-parity/targets.json}"
 TEMP_DIR=""
 readonly RETRY_ATTEMPTS="${RELEASE_RETRY_ATTEMPTS:-5}"
@@ -52,7 +53,11 @@ usage() {
     cat <<'EOF'
 Usage: verify-deployment-engine-image.sh --tag <tag> --signed-tag <vX.Y.Z> \
     --source-commit <sha> --output <path> \
-    [--expected-digest <sha256:...>] [--allow-absent --state-output <path>]
+    [--expected-digest <sha256:...>] \
+    [--allow-absent] [--allow-stale] [--state-output <path>]
+
+--allow-absent and --allow-stale report absent or stale state through
+--state-output instead of failing. A stale tag holds a different build.
 EOF
 }
 
@@ -120,6 +125,23 @@ write_state() {
     fi
 }
 
+# Label and platform mismatches mean the tag holds another build. A caller
+# deciding whether to publish treats that as stale; any other failure stays an
+# error so an unreadable registry never triggers a republish.
+reject_image() {
+    local reference="$1"
+    local reason="$2"
+
+    if [[ "${ALLOW_STALE}" != "true" ]]; then
+        fail "${reason}"
+    fi
+    mkdir -p "$(dirname "${OUTPUT_FILE}")"
+    printf 'null\n' >"${OUTPUT_FILE}"
+    write_state stale
+    echo "Deployment Engine image ${reference} is stale: ${reason}."
+    exit 0
+}
+
 main() {
     local reference raw digest expected_platforms actual_platforms
     local actual_refs actual_revisions
@@ -151,6 +173,10 @@ main() {
                 ALLOW_ABSENT=true
                 shift
                 ;;
+            --allow-stale)
+                ALLOW_STALE=true
+                shift
+                ;;
             --state-output)
                 STATE_OUTPUT="${2:-}"
                 shift 2
@@ -176,6 +202,12 @@ main() {
     fi
     if [[ "${ALLOW_ABSENT}" == "true" && -z "${STATE_OUTPUT}" ]]; then
         fail "--allow-absent requires --state-output"
+    fi
+    if [[ "${ALLOW_STALE}" == "true" && -z "${STATE_OUTPUT}" ]]; then
+        fail "--allow-stale requires --state-output"
+    fi
+    if [[ "${ALLOW_STALE}" == "true" && -n "${EXPECTED_DIGEST}" ]]; then
+        fail "--allow-stale cannot be combined with --expected-digest"
     fi
     command -v docker >/dev/null || fail "required command not found: docker"
     command -v jq >/dev/null || fail "required command not found: jq"
@@ -216,19 +248,22 @@ main() {
             platform_name(.platform)] | sort
     ' "${raw}")"
     [[ "${actual_platforms}" == "${expected_platforms}" ]] ||
-        fail "unexpected platform set for ${reference}"
+        reject_image "${reference}" \
+            "unexpected platform set ${actual_platforms} for ${reference}"
     actual_refs="$(jq -c '[
         .image | to_entries[] | select(.key != "unknown/unknown") |
         .value.config.Labels."org.opencontainers.image.ref"
     ] | unique' "${raw}")"
     [[ "${actual_refs}" == "[\"refs/tags/${SIGNED_TAG}\"]" ]] ||
-        fail "unexpected signed tag label for ${reference}"
+        reject_image "${reference}" \
+            "unexpected signed tag label ${actual_refs} for ${reference}"
     actual_revisions="$(jq -c '[
         .image | to_entries[] | select(.key != "unknown/unknown") |
         .value.config.Labels."org.opencontainers.image.revision"
     ] | unique' "${raw}")"
     [[ "${actual_revisions}" == "[\"${SOURCE_COMMIT}\"]" ]] ||
-        fail "unexpected source revision for ${reference}"
+        reject_image "${reference}" \
+            "unexpected source revision ${actual_revisions} for ${reference}"
     if [[ -n "${EXPECTED_DIGEST}" && "${digest}" != "${EXPECTED_DIGEST}" ]]; then
         fail "Deployment Engine image ${reference} moved from ${EXPECTED_DIGEST} to ${digest}"
     fi
