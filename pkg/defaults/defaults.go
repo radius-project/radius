@@ -67,6 +67,15 @@ limitations under the License.
 // [ResourceTypePin] exposes those entries so release builds can address the
 // artifacts published from exactly that revision — see `pkg/cli/recipepack`,
 // which uses the pinned commit SHA as the OCI tag of each core recipe.
+//
+// # Kubernetes recipe pack
+//
+// recipe-packs/kubernetes/default.json is compiled by `make sync-resource-types`
+// from the resource-types-contrib revision pinned under `recipePacks`.
+// [DefaultKubernetesRecipePack] decodes its properties with the
+// Radius.Core/recipePacks API models so rad can create the default recipe pack
+// without keeping its own copy. Fields the models don't know fail the load
+// instead of being dropped.
 package defaults
 
 import (
@@ -84,7 +93,7 @@ import (
 type Pin struct {
 	// Name identifies the entry: a resource-type namespace (e.g.
 	// "Radius.Compute") under `resourceTypes`, or a recipe pack folder (e.g.
-	// "azure") under `recipePacks`.
+	// "azure-aks") under `recipePacks`.
 	Name string
 	// Repo is the upstream repository the entry is fetched from, without a
 	// scheme (e.g. "github.com/radius-project/resource-types-contrib").
@@ -135,4 +144,5 @@ func init() {
 
 	loadIcons(logger, parsed.DefaultRegistration)
 	loadPins(logger, parsed.ResourceTypes)
+	loadKubernetesRecipePack(logger)
 }

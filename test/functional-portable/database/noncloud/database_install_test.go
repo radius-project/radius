@@ -50,6 +50,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -399,11 +400,8 @@ func requireNoPermissionDeniedInLogs(ctx context.Context, t *testing.T, k8s kube
 func containersToScan(pod corev1.Pod) []string {
 	matched := []string{}
 	for _, container := range pod.Spec.Containers {
-		for _, wanted := range controlPlaneComponents {
-			if container.Name == wanted {
-				matched = append(matched, container.Name)
-				break
-			}
+		if slices.Contains(controlPlaneComponents, container.Name) {
+			matched = append(matched, container.Name)
 		}
 	}
 	return matched
@@ -431,7 +429,7 @@ func readContainerLogs(ctx context.Context, k8s kubernetes.Interface, podName st
 // findLine returns the first line containing marker, so failures report the offending log line
 // instead of an entire container log.
 func findLine(logs string, marker string) (string, bool) {
-	for _, line := range strings.Split(logs, "\n") {
+	for line := range strings.SplitSeq(logs, "\n") {
 		if strings.Contains(line, marker) {
 			return strings.TrimSpace(line), true
 		}

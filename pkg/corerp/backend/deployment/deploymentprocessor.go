@@ -23,6 +23,7 @@ import (
 	"maps"
 	"net"
 	"os"
+	"slices"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -364,8 +365,8 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, depl
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
-	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
-		outputResource := deployedOutputResources[i]
+	for _, outputResource := range slices.Backward(deployedOutputResources) {
+
 		resourceType := outputResource.GetResourceType()
 		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(resourceType)
 		if err != nil {

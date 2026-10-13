@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/kubernetes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -44,14 +43,10 @@ func (r *noop) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterf
 func (r *noop) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Return a deployment so the manualscale extension can modify it
 	deployment := appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: "apps/v1",
-		},
+		Name:       "test-deployment",
+		Namespace:  "test-namespace",
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
 	}
 	resources := []rpv1.OutputResource{rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
 	return renderers.RendererOutput{Resources: resources}, nil
@@ -104,9 +99,7 @@ func Test_Render_NoExtension(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
-		},
+		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 		},
@@ -127,13 +120,9 @@ func Test_Render_NoExtension(t *testing.T) {
 
 func makeResource(properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
-				Name: "test-container",
-				Type: "Applications.Core/containers",
-			},
-		},
+		ID:         "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
+		Name:       "test-container",
+		Type:       "Applications.Core/containers",
 		Properties: properties,
 	}
 	return &resource
@@ -141,9 +130,7 @@ func makeResource(properties datamodel.ContainerProperties) *datamodel.Container
 
 func makeProperties(replicas *int32) datamodel.ContainerProperties {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
-		},
+		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 		},

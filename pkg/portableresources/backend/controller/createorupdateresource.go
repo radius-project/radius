@@ -142,8 +142,8 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 				}
 
 				update := &database.Object{
-					Metadata: database.Metadata{ID: req.ResourceID},
-					Data:     resource,
+					ID:   req.ResourceID,
+					Data: resource,
 				}
 				if err = c.DatabaseClient().Save(ctx, update, database.WithETag(currentETag)); err != nil {
 					logger.Error(err, "Failed to persist redacted resource", "resourceID", req.ResourceID)
@@ -205,9 +205,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	}
 
 	update := &database.Object{
-		Metadata: database.Metadata{
-			ID: req.ResourceID,
-		},
+		ID:   req.ResourceID,
 		Data: recipeDataModel.(rpv1.RadiusResourceModel),
 	}
 	err = c.DatabaseClient().Save(ctx, update, database.WithETag(currentETag))
@@ -227,15 +225,14 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 // when redactionCompleted is true the failure is made terminal (NewFailedResult) to prevent a retry that would fail
 // because sensitive data has already been nullified from the database.
 func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, err error, recipeDataModel datamodel.RecipeDataModel, resourceID string, etag string, logger logr.Logger, redactionCompleted bool) (ctrl.Result, error) {
-	var recipeErr *recipes.RecipeError
-	if errors.As(err, &recipeErr) {
+	if recipeErr, ok := errors.AsType[*recipes.RecipeError](err); ok {
 		logger.Error(recipeErr, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeErr.ErrorDetails.Target))
 
 		// Set the deployment status to the recipe error code
 		recipeDataModel.GetRecipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeErr.DeploymentStatus)
 		update := &database.Object{
-			Metadata: database.Metadata{ID: resourceID},
-			Data:     recipeDataModel.(rpv1.RadiusResourceModel),
+			ID:   resourceID,
+			Data: recipeDataModel.(rpv1.RadiusResourceModel),
 		}
 
 		// Save portable resource with updated deployment status to track errors during deletion.
@@ -314,9 +311,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	}
 
 	return c.engine.Execute(ctx, engine.ExecuteOptions{
-		BaseOptions: engine.BaseOptions{
-			Recipe: metadata,
-		},
+		Recipe:        metadata,
 		PreviousState: prevState,
 		Simulated:     simulated,
 	})

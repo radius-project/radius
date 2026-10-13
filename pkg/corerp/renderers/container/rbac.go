@@ -18,7 +18,6 @@ package container
 
 import (
 	rbacv1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
@@ -29,15 +28,11 @@ func makeRBACRole(appName, name, namespace string, resource *datamodel.Container
 	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
 
 	role := &rbacv1.Role{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Role",
-			APIVersion: "rbac.authorization.k8s.io/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(name),
-			Namespace: namespace,
-			Labels:    labels,
-		},
+		Kind:       "Role",
+		APIVersion: "rbac.authorization.k8s.io/v1",
+		Name:       kubernetes.NormalizeResourceName(name),
+		Namespace:  namespace,
+		Labels:     labels,
 		// At this time, we support only secret rbac permission for the namespace.
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -57,15 +52,11 @@ func makeRBACRoleBinding(appName, name, saName, namespace string, resource *data
 	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
 
 	bindings := &rbacv1.RoleBinding{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "RoleBinding",
-			APIVersion: "rbac.authorization.k8s.io/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(name),
-			Namespace: namespace,
-			Labels:    labels,
-		},
+		Kind:       "RoleBinding",
+		APIVersion: "rbac.authorization.k8s.io/v1",
+		Name:       kubernetes.NormalizeResourceName(name),
+		Namespace:  namespace,
+		Labels:     labels,
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "Role",
 			Name:     kubernetes.NormalizeResourceName(name),

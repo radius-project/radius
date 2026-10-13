@@ -58,6 +58,42 @@ func TestUpdateManifestRefreshesVersionAndChecksum(t *testing.T) {
 	}
 }
 
+func TestUpdateManifestKeepsDisabledToolPinned(t *testing.T) {
+	const checksum = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/latest":
+			fmt.Fprint(response, `{"tag_name":"v2.0.0","published_at":"2020-01-01T00:00:00Z"}`)
+		case "/checksums/v1.0.0/tool-v1.0.0.tar.gz":
+			fmt.Fprintf(response, "%s  tool-v1.0.0.tar.gz\n", checksum)
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	defer server.Close()
+
+	manifest := githubToolManifest(server.URL, 7)
+	update := false
+	manifest.Tools[0].Update = &update
+	client := NewClient("")
+	client.HTTP = server.Client()
+
+	result, err := UpdateManifest(t.Context(), &manifest, client)
+	if err != nil {
+		t.Fatalf("UpdateManifest() error = %v", err)
+	}
+	if len(result.VersionUpdates) != 0 || len(result.Held) != 0 {
+		t.Fatalf("disabled tool was treated as an automatic update: %+v", result)
+	}
+	if got := manifest.Tools[0].Version; got != "v1.0.0" {
+		t.Fatalf("version = %q, want v1.0.0", got)
+	}
+	if got := manifest.Tools[0].Platforms["linux_amd64"].Checksum; got != checksum {
+		t.Fatalf("checksum = %q, want refreshed pinned-version checksum %q", got, checksum)
+	}
+}
+
 func TestUpdateResultPullRequestBodyMarkdown(t *testing.T) {
 	result := UpdateResult{VersionUpdates: []VersionUpdate{
 		{
@@ -76,8 +112,8 @@ func TestUpdateResultPullRequestBodyMarkdown(t *testing.T) {
 	want := "This automated PR refreshes the pinned command-line tool versions and SHA-256\n" +
 		"checksums from the release sources declared in `build/tools.yaml`.\n\n" +
 		"`build/tools.generated.mk` is generated from the manifest and committed with\n" +
-		"it. Bicep remains intentionally held at its compatibility-pinned version until\n" +
-		"local `br:localhost` functional tests support a newer release.\n\n" +
+		"it. Bicep updates remain manual so ACR and trusted local-registry compatibility\n" +
+		"is verified before changing the distributed CLI.\n\n" +
 		"## Updated tool releases\n\n" +
 		"- `linked-tool`: `v1.0.0` -> [`v2.0.0` release notes](https://github.com/example/tool/releases/tag/v2.0.0)\n" +
 		"- `unlinked-tool`: `1.0.0` -> `2.0.0`\n"

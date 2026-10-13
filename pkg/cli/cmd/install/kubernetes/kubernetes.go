@@ -18,7 +18,9 @@ package kubernetes
 
 import (
 	"context"
+	"time"
 
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
@@ -98,6 +100,9 @@ rad install kubernetes --reinstall
 
 # Install Radius with custom Terraform log level
 rad install kubernetes --set global.terraform.loglevel=DEBUG
+
+# Install Radius, allowing more time for the control plane to become ready on a slow cluster
+rad install kubernetes --timeout 15m
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -113,6 +118,8 @@ rad install kubernetes --set global.terraform.loglevel=DEBUG
 	cmd.Flags().StringVar(&runner.ContourChart, "contour-chart", "", "Specify a local file path to a helm chart to install Contour from")
 	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
+
+	cmd.Flags().DurationVar(&runner.Timeout, "timeout", helm.DefaultInstallTimeout, "Specify how long to wait for the Radius control plane to become ready (for example 15m, 1h)")
 
 	return cmd, runner
 }
@@ -136,6 +143,9 @@ type Runner struct {
 	ContourSetFile  []string
 
 	Reinstall bool
+
+	// Timeout is how long to wait for the Radius control plane resources to become ready.
+	Timeout time.Duration
 }
 
 // NewRunner creates an instance of the runner for the `rad install kubernetes` command.
@@ -152,6 +162,10 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad install kubernetes` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
+	if r.Timeout < 0 {
+		return clierrors.Message("--timeout must not be negative, got %q.", r.Timeout)
+	}
+
 	return nil
 }
 
@@ -168,6 +182,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			ChartPath:   r.Chart,
 			SetArgs:     r.Set,
 			SetFileArgs: r.SetFile,
+			Timeout:     r.Timeout,
 		},
 		Contour: helm.ChartOptions{
 			Disabled:    r.ContourDisabled,

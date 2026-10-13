@@ -39,15 +39,13 @@ func TestStartDequeuer(t *testing.T) {
 	lastDequeueCh := make(chan struct{})
 
 	firstCall := mockCli.EXPECT().Dequeue(gomock.Any(), gomock.Any()).Return(&Message{
-		Metadata: Metadata{
-			ID:            "testID",
-			DequeueCount:  1,
-			EnqueueAt:     time.Now(),
-			ExpireAt:      time.Now().Add(10 * time.Hour),
-			NextVisibleAt: time.Now().Add(5 * time.Minute),
-		},
-		ContentType: JSONContentType,
-		Data:        []byte("{}"),
+		ID:            "testID",
+		DequeueCount:  1,
+		EnqueueAt:     time.Now(),
+		ExpireAt:      time.Now().Add(10 * time.Hour),
+		NextVisibleAt: time.Now().Add(5 * time.Minute),
+		ContentType:   JSONContentType,
+		Data:          []byte("{}"),
 	}, nil)
 
 	secondCall := mockCli.EXPECT().Dequeue(gomock.Any(), gomock.Any()).Return(nil, ErrInvalidMessage).After(firstCall.Call)

@@ -64,9 +64,7 @@ func Test_DirectModule_Terraform(t *testing.T) {
 			// Create the Kubernetes namespace the recipe deploys into.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
 				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: appNamespace,
-					},
+					Name: appNamespace,
 				}, metav1.CreateOptions{})
 				if err != nil && !apierrors.IsAlreadyExists(err) {
 					require.NoError(t, err)
@@ -193,9 +191,7 @@ func Test_DirectModule_Bicep(t *testing.T) {
 			// Create the Kubernetes namespace the recipe deploys into.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
 				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: appNamespace,
-					},
+					Name: appNamespace,
 				}, metav1.CreateOptions{})
 				if err != nil && !apierrors.IsAlreadyExists(err) {
 					require.NoError(t, err)

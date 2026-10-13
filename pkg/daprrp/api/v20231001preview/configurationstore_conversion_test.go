@@ -41,23 +41,17 @@ func TestDaprConfigurationStore_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "Manual provisioning of a DaprConfigurationStore",
 			file: "configurationstore_manual_resource.json",
 			expected: &datamodel.DaprConfigurationStore{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/configurationStores/test-dcs",
-						Name:     "test-dcs",
-						Type:     controller.DaprConfigurationStoresResourceType,
-						Location: v1.LocationGlobal,
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
+				ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/configurationStores/test-dcs",
+				Name:     "test-dcs",
+				Type:     controller.DaprConfigurationStoresResourceType,
+				Location: v1.LocationGlobal,
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.DaprConfigurationStoreProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
@@ -83,23 +77,17 @@ func TestDaprConfigurationStore_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "Provisioning by a Recipe of a configuration store",
 			file: "configurationstore_recipe_resource.json",
 			expected: &datamodel.DaprConfigurationStore{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/configurationStores/test-dcs",
-						Name:     "test-dcs",
-						Type:     controller.DaprConfigurationStoresResourceType,
-						Location: v1.LocationGlobal,
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
+				ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/configurationStores/test-dcs",
+				Name:     "test-dcs",
+				Type:     controller.DaprConfigurationStoresResourceType,
+				Location: v1.LocationGlobal,
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.DaprConfigurationStoreProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",

@@ -22,10 +22,10 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	genfake "github.com/radius-project/radius/pkg/cli/clients_new/generated/fake"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -95,7 +95,7 @@ func Test_Materialize(t *testing.T) {
 		},
 	})
 
-	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
 	result, err := m.Materialize(t.Context(), Request{
 		OwnerResourceID: testOwnerID,
@@ -136,7 +136,7 @@ func Test_Materialize_OmitsEmptyApplication(t *testing.T) {
 		},
 	})
 
-	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
 	_, err := m.Materialize(t.Context(), Request{
 		OwnerResourceID: testOwnerID,
@@ -192,7 +192,7 @@ func Test_Delete(t *testing.T) {
 		},
 	})
 
-	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
 	require.NoError(t, m.Delete(t.Context(), testOwnerID))
 	ownerID, err := resources.ParseResource(testOwnerID)
@@ -210,7 +210,54 @@ func Test_Delete_NotFoundIsIgnored(t *testing.T) {
 		},
 	})
 
-	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
 	require.NoError(t, m.Delete(t.Context(), testOwnerID))
+}
+
+func Test_Delete_RetriesOnConflict(t *testing.T) {
+	deleteConflictInterval = time.Millisecond
+	t.Cleanup(func() { deleteConflictInterval = 2 * time.Second })
+
+	calls := 0
+	transport := genfake.NewServerFactoryTransport(&genfake.ServerFactory{
+		GenericResourcesServer: genfake.GenericResourcesServer{
+			BeginDelete: func(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (resp azfake.PollerResponder[generated.GenericResourcesClientDeleteResponse], errResp azfake.ErrorResponder) {
+				calls++
+				if calls < 3 {
+					errResp.SetResponseError(http.StatusConflict, "Conflict")
+					return
+				}
+				resp.SetTerminalResponse(http.StatusOK, generated.GenericResourcesClientDeleteResponse{}, nil)
+				return
+			},
+		},
+	})
+
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
+
+	require.NoError(t, m.Delete(t.Context(), testOwnerID))
+	require.Equal(t, 3, calls)
+}
+
+func Test_Delete_ConflictTimesOut(t *testing.T) {
+	deleteConflictInterval = time.Millisecond
+	deleteConflictTimeout = 20 * time.Millisecond
+	t.Cleanup(func() {
+		deleteConflictInterval = 2 * time.Second
+		deleteConflictTimeout = 2 * time.Minute
+	})
+
+	transport := genfake.NewServerFactoryTransport(&genfake.ServerFactory{
+		GenericResourcesServer: genfake.GenericResourcesServer{
+			BeginDelete: func(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (resp azfake.PollerResponder[generated.GenericResourcesClientDeleteResponse], errResp azfake.ErrorResponder) {
+				errResp.SetResponseError(http.StatusConflict, "Conflict")
+				return
+			},
+		},
+	})
+
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
+
+	require.ErrorContains(t, m.Delete(t.Context(), testOwnerID), "failed to delete managed secret")
 }

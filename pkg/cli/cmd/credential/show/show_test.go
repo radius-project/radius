@@ -106,10 +106,8 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			provider := cli_credential.ProviderCredentialConfiguration{
-				CloudProviderStatus: cli_credential.CloudProviderStatus{
-					Name:    "azure",
-					Enabled: true,
-				},
+				Name:    "azure",
+				Enabled: true,
 				AzureCredentials: &cli_credential.AzureCredentialProperties{
 					Kind: new("ServicePrincipal"),
 				},
@@ -154,10 +152,8 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			provider := cli_credential.ProviderCredentialConfiguration{
-				CloudProviderStatus: cli_credential.CloudProviderStatus{
-					Name:    "azure",
-					Enabled: true,
-				},
+				Name:    "azure",
+				Enabled: true,
 				AzureCredentials: &cli_credential.AzureCredentialProperties{
 					Kind: new("WorkloadIdentity"),
 				},
@@ -227,10 +223,8 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			provider := cli_credential.ProviderCredentialConfiguration{
-				CloudProviderStatus: cli_credential.CloudProviderStatus{
-					Name:    "aws",
-					Enabled: true,
-				},
+				Name:    "aws",
+				Enabled: true,
 				AWSCredentials: &cli_credential.AWSCredentialProperties{
 					Kind: new("AccessKey"),
 				},
@@ -273,10 +267,8 @@ func Test_Run(t *testing.T) {
 		t.Run("Not Found", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			provider := cli_credential.ProviderCredentialConfiguration{
-				CloudProviderStatus: cli_credential.CloudProviderStatus{
-					Name:    "aws",
-					Enabled: false,
-				},
+				Name:    "aws",
+				Enabled: false,
 			}
 			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().

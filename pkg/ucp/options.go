@@ -71,11 +71,10 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 		Config: config,
 
 		Modules: nil, // Default to nil, which implies the default set of modules.
-	}
 
-	options.DatabaseProvider = databaseprovider.FromOptions(config.Database)
-	options.QueueProvider = queueprovider.New(config.Queue)
-	options.SecretProvider = secretprovider.NewSecretProvider(config.Secrets)
+		DatabaseProvider: databaseprovider.FromOptions(config.Database),
+		QueueProvider:    queueprovider.New(config.Queue),
+		SecretProvider:   secretprovider.NewSecretProvider(config.Secrets)}
 
 	databaseClient, err := options.DatabaseProvider.GetClient(ctx)
 	if err != nil {

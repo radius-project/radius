@@ -313,7 +313,7 @@ retry:
 		}
 
 		logger.V(ucplog.LevelDebug).Info("enqueuing tracked resource update")
-		err = p.DatabaseClient().Save(ctx, &database.Object{Metadata: database.Metadata{ID: trackingID.String()}, Data: entry}, database.WithETag(etag))
+		err = p.DatabaseClient().Save(ctx, &database.Object{ID: trackingID.String(), Data: entry}, database.WithETag(etag))
 		if errors.Is(err, &database.ErrConcurrency{}) {
 			// This means we hit a concurrency error saving the tracked resource entry. This means that the resource
 			// was updated in the background. We should retry.

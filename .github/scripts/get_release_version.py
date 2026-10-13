@@ -23,7 +23,7 @@
 # REL_CHANNEL is:
 # 'edge': for most builds
 # 'edge': for PR builds
-# '1.0.0-rc1' (the full version): for a tagged prerelease
+# '1.0.0-rc.1' (the full version): for a tagged prerelease
 # '1.0' (major.minor): for a tagged release
 
 # We set the environment variable UPDATE_RELEASE if it's a full release (tagged and not prerelease)
@@ -35,7 +35,7 @@
 #
 # '0.42.42-dev' for most builds
 # '0.42.42-pr-<pull request #>' for PR builds
-# '1.0.0-rc1' (the full version): for a tagged prerelease
+# '1.0.0-rc.1' (the full version): for a tagged prerelease
 # '1.0.0' (major.minor.patch): for a tagged release
 #
 # note: we always install the helm chart using the tilde-range syntax to match our behavior

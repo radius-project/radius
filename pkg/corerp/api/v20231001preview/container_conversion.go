@@ -108,19 +108,13 @@ func (src *ContainerResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 
 	converted := &datamodel.ContainerResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			},
-		},
+		ID:                     to.String(src.ID),
+		Name:                   to.String(src.Name),
+		Type:                   to.String(src.Type),
+		Location:               to.String(src.Location),
+		Tags:                   to.StringMap(src.Tags),
+		UpdatedAPIVersion:      Version,
+		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 		Properties: datamodel.ContainerProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),

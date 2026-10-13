@@ -23,7 +23,6 @@ import (
 
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
@@ -551,10 +550,8 @@ func testUCPClientFactory(schema map[string]any) (*v20231001preview.ClientFactor
 		Get: func(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (azfake.Responder[v20231001preview.APIVersionsClientGetResponse], azfake.ErrorResponder) {
 			resp := azfake.Responder[v20231001preview.APIVersionsClientGetResponse]{}
 			resp.SetResponse(http.StatusOK, v20231001preview.APIVersionsClientGetResponse{
-				APIVersionResource: v20231001preview.APIVersionResource{
-					Properties: &v20231001preview.APIVersionProperties{
-						Schema: schema,
-					},
+				Properties: &v20231001preview.APIVersionProperties{
+					Schema: schema,
 				},
 			}, nil)
 			return resp, azfake.ErrorResponder{}
@@ -562,11 +559,9 @@ func testUCPClientFactory(schema map[string]any) (*v20231001preview.ClientFactor
 	}
 
 	return v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
-				APIVersionsServer: apiVersionsServer,
-			}),
-		},
+		Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+			APIVersionsServer: apiVersionsServer,
+		}),
 	})
 }
 

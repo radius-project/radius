@@ -56,14 +56,10 @@ func TestPut(t *testing.T) {
 							Type:     "core/Secret",
 						},
 						Data: &corev1.Secret{
-							TypeMeta: metav1.TypeMeta{
-								Kind:       "Secret",
-								APIVersion: "core/v1",
-							},
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "test-secret",
-								Namespace: "test-namespace",
-							},
+							Kind:       "Secret",
+							APIVersion: "core/v1",
+							Name:       "test-secret",
+							Namespace:  "test-namespace",
 						},
 					},
 				},
@@ -128,14 +124,10 @@ func TestPut(t *testing.T) {
 func TestPut_ContourHTTPProxyRouteChildSkipsWait(t *testing.T) {
 	ctx := t.Context()
 	httpProxy := &contourv1.HTTPProxy{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: contourv1.SchemeGroupVersion.String(),
-			Kind:       "HTTPProxy",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "route-proxy",
-			Namespace: "test-namespace",
-		},
+		APIVersion: contourv1.SchemeGroupVersion.String(),
+		Kind:       "HTTPProxy",
+		Name:       "route-proxy",
+		Namespace:  "test-namespace",
 		Spec: contourv1.HTTPProxySpec{
 			Routes: []contourv1.Route{
 				{
@@ -177,14 +169,10 @@ func TestPut_ContourHTTPProxyRouteChildSkipsWait(t *testing.T) {
 func TestPut_ContourHTTPProxyRootWaits(t *testing.T) {
 	ctx := t.Context()
 	httpProxy := &contourv1.HTTPProxy{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: contourv1.SchemeGroupVersion.String(),
-			Kind:       "HTTPProxy",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "root-proxy",
-			Namespace: "test-namespace",
-		},
+		APIVersion: contourv1.SchemeGroupVersion.String(),
+		Kind:       "HTTPProxy",
+		Name:       "root-proxy",
+		Namespace:  "test-namespace",
 		Spec: contourv1.HTTPProxySpec{
 			VirtualHost: &contourv1.VirtualHost{
 				Fqdn: "example.com",
@@ -264,14 +252,10 @@ func TestDelete(t *testing.T) {
 	ctx := t.Context()
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: "apps/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
-		},
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
+		Name:       "test-deployment",
+		Namespace:  "test-namespace",
 	}
 
 	dc := &k8sutil.DiscoveryClient{
@@ -333,10 +317,8 @@ func TestConvertToUnstructured(t *testing.T) {
 						Type:     "apps/Deployment",
 					},
 					Data: &v1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-deployment",
-							Namespace: "test-namespace",
-						},
+						Name:      "test-deployment",
+						Namespace: "test-namespace",
 					},
 				},
 			},
@@ -369,10 +351,8 @@ func TestConvertToUnstructured(t *testing.T) {
 						Type:     "apps/Deployment",
 					},
 					Data: &v1.Deployment{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test-deployment",
-							Namespace: "test-namespace",
-						},
+						Name:      "test-deployment",
+						Namespace: "test-namespace",
 					},
 				},
 			},

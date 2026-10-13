@@ -13,7 +13,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ renderers.Renderer = (*noop)(nil)
@@ -33,19 +32,14 @@ func (r *noop) GetDependencyIDs(ctx context.Context, resource apiv1.DataModelInt
 func (r *noop) Render(ctx context.Context, dm apiv1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Return a deployment so the kubernetes metadata extension renderer can modify it
 	deployment := appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
-		},
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: "apps/v1",
-		},
-	}
+		Name:       "test-deployment",
+		Namespace:  "test-namespace",
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
 
-	// Populate Meta labels with existing values
-	deployment.Annotations = map[string]string{"prior.MetaAnnotation1": "prior.MetaAnnotationVal1", "prior.MetaAnnotation2": "prior.MetaAnnotationVal2"}
-	deployment.Labels = map[string]string{"prior.MetaLabel1": "prior.MetaLabelVal1", "prior.MetaLabel2": "prior.MetaLabelVal2"}
+		// Populate Meta labels with existing values
+		Annotations: map[string]string{"prior.MetaAnnotation1": "prior.MetaAnnotationVal1", "prior.MetaAnnotation2": "prior.MetaAnnotationVal2"},
+		Labels:      map[string]string{"prior.MetaLabel1": "prior.MetaLabelVal1", "prior.MetaLabel2": "prior.MetaLabelVal2"}}
 
 	resources := []rpv1.OutputResource{rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
 
@@ -153,13 +147,9 @@ func TestApplicationDataModelToVersioned(t *testing.T) {
 
 func makeResource(properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
-		BaseResource: apiv1.BaseResource{
-			TrackedResource: apiv1.TrackedResource{
-				ID:   container,
-				Name: "test-container",
-				Type: "Applications.Core/containers",
-			},
-		},
+		ID:         container,
+		Name:       "test-container",
+		Type:       "Applications.Core/containers",
 		Properties: properties,
 	}
 	return &resource
@@ -168,9 +158,7 @@ func makeResource(properties datamodel.ContainerProperties) *datamodel.Container
 func makeProperties(isEmpty bool, hasReservedKey bool) datamodel.ContainerProperties {
 	if isEmpty {
 		return datamodel.ContainerProperties{
-			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Application: application,
-			},
+			Application: application,
 			Container: datamodel.Container{
 				Image: "someimage:latest",
 			},
@@ -183,9 +171,7 @@ func makeProperties(isEmpty bool, hasReservedKey bool) datamodel.ContainerProper
 	)
 
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: application,
-		},
+		Application: application,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 		},

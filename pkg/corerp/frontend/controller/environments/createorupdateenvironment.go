@@ -36,7 +36,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateEnvironment)(nil)
@@ -84,7 +83,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	//
 	// This check is deliberately scoped to the current resource group and to this resource type
 	// only. Applications.Core/environments is on a deprecation path, so its enforcement behavior
-	// is frozen: widening it would start failing writes (rad recipe register, rad env update) for
+	// is frozen: widening it would start failing writes (environment API updates, rad env update) for
 	// existing installs that already have duplicate namespaces across resource groups. Plane-wide
 	// uniqueness is enforced on Radius.Core/environments instead, which is where users migrate to.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
@@ -112,7 +111,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		}
 	} else if newResource.Properties.Compute.Kind == rpv1.KubernetesComputeKind {
 		// Create environment namespace if it doesn't exist.
-		err = e.Options().KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
+		err = e.Options().KubeClient.Create(ctx, &corev1.Namespace{Name: namespace})
 		if apierrors.IsAlreadyExists(err) {
 			logger.Info("Using existing namespace", "namespace", namespace)
 		} else if err != nil {

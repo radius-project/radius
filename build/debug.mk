@@ -35,7 +35,7 @@ POSTGRES_ADMIN_CONNECTION ?= postgresql://postgres:radius_pass@localhost:5432/po
 POSTGRES_FALLBACK_CONNECTION ?= postgresql://$(shell whoami)@localhost:5432/postgres
 POSTGRES_CONTAINER_NAME ?= radius-postgres
 
-.PHONY: debug-setup debug-start debug-stop debug-status debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-deploy debug-deployment-engine-port-forward debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-register-recipes debug-env-init debug-check-prereqs
+.PHONY: debug-setup debug-start debug-stop debug-status debug-help debug-build-all debug-build-ucpd debug-build-applications-rp debug-build-controller debug-build-dynamic-rp debug-build-rad debug-deployment-engine-pull debug-deployment-engine-start debug-deployment-engine-deploy debug-deployment-engine-port-forward debug-deployment-engine-stop debug-deployment-engine-status debug-deployment-engine-logs debug-env-init debug-check-prereqs
 
 debug-help: ## Show debug automation help
 	@echo "Debug Development Automation Commands:"
@@ -52,8 +52,7 @@ debug-help: ## Show debug automation help
 	@echo "  debug-logs           - Tail all component logs"
 	@echo ""
 	@echo "Environment Commands:"
-	@echo "  debug-env-init       - Create resource group, environment, and register recipes (first time only)"
-	@echo "  debug-register-recipes - Register default recipes for common resource types"
+	@echo "  debug-env-init       - Create resource group and environment with default recipe pack (first time only)"
 	@echo ""
 	@echo ""
 	@echo "Deployment Engine Commands:"
@@ -333,16 +332,8 @@ debug-deployment-engine-logs: ## View deployment engine logs
 
 
 
-# Recipe registration
-debug-register-recipes: ## Register default recipes in the debug environment
-	@echo "Registering default recipes..."
-	@if [ ! -f build/scripts/rad-wrapper ]; then \
-		echo "❌ rad-wrapper script not found. This should not happen."; \
-		exit 1; \
-	fi
-	@build/scripts/register-recipes.sh
-
-debug-env-init: ## Create default resource group, environment, and register recipes
+# Environment initialization
+debug-env-init: ## Create default resource group and environment with the default recipe pack
 	@echo "Initializing debug environment resources..."
 	@if [ ! -f build/scripts/rad-wrapper ]; then \
 		echo "❌ rad-wrapper script not found. This should not happen."; \
@@ -350,12 +341,10 @@ debug-env-init: ## Create default resource group, environment, and register reci
 	fi
 	@echo "Creating resource group 'default'..."
 	@build/scripts/rad-wrapper group create default || echo "Resource group may already exist"
-	@echo "Creating environment 'default' with Kubernetes compute configuration..."
-	@build/scripts/rad-wrapper env create default --namespace default || echo "Environment may already exist"
+	@echo "Creating environment 'default' with Kubernetes compute configuration and the default recipe pack..."
+	@build/scripts/rad-wrapper env create default --kubernetes-namespace default --preview || echo "Environment may already exist"
 	@echo "Starting deployment engine in k3d cluster..."
 	@$(MAKE) debug-deployment-engine-start
-	@echo "Registering default recipes..."
-	@$(MAKE) debug-register-recipes
 	@echo "✅ Debug environment ready for application deployment!"
 
 # Integration with existing build system

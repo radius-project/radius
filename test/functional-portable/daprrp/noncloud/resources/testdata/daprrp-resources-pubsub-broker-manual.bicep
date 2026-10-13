@@ -4,6 +4,9 @@ param magpieimage string
 param environment string
 param namespace string = 'default'
 
+@description('Deploy the consumer after the test has verified Redis readiness.')
+param deployContainer bool = true
+
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: 'dpsb-manual-app'
   properties: {
@@ -11,7 +14,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
+resource myapp 'Applications.Core/containers@2023-10-01-preview' = if (deployContainer) {
   name: 'dpsb-manual-app-ctnr'
   properties: {
     application: app.id

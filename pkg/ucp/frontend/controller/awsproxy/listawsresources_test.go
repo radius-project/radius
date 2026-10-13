@@ -21,12 +21,13 @@ import (
 	"net/http"
 	"testing"
 
+	"uuid"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 
 	armrpc_v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -39,8 +40,8 @@ import (
 
 func Test_ListAWSResources(t *testing.T) {
 
-	firstTestResource := CreateKinesisStreamTestResource(uuid.NewString())
-	secondTestResource := CreateKinesisStreamTestResource(uuid.NewString())
+	firstTestResource := CreateKinesisStreamTestResource(uuid.New().String())
+	secondTestResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	firstTestResourceResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
@@ -112,7 +113,7 @@ func Test_ListAWSResources(t *testing.T) {
 }
 
 func Test_ListAWSResourcesEmpty(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
@@ -139,7 +140,7 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 }
 
 func Test_ListAWSResource_UnknownError(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
@@ -163,7 +164,7 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 }
 
 func Test_ListAWSResource_SmithyError(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{

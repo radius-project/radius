@@ -8,7 +8,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 )
 
@@ -16,10 +15,8 @@ import (
 // if the resourceProvisioning is set to manual and the required fields are not specified.
 func (src *DaprStateStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Environment: to.String(src.Properties.Environment),
-			Application: to.String(src.Properties.Application),
-		},
+		Environment: to.String(src.Properties.Environment),
+		Application: to.String(src.Properties.Application),
 	}
 
 	trackedResource := v1.TrackedResource{

@@ -109,7 +109,14 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 
 		// Use the configured Azure scope so subscription-scoped recipes also receive a stable hash.
 		if subID != "" && recipeContext.Resource.ID != "" {
-			seed := strings.ToLower(azureScopeID) + "\x00" + strings.ToLower(recipeContext.Resource.ID)
+			// The application and environment are part of the seed because the
+			// resource ID is scoped to a UCP resource group and names the resource,
+			// not its owner. Without them, two applications that reuse a resource
+			// name in one Azure scope resolve to the same cloud resource.
+			seed := strings.ToLower(azureScopeID) + "\x00" +
+				strings.ToLower(recipeContext.Application.ID) + "\x00" +
+				strings.ToLower(recipeContext.Environment.ID) + "\x00" +
+				strings.ToLower(recipeContext.Resource.ID)
 			recipeContext.Azure.ResourceNameHash = hashutil.Hex([]byte(seed))[:resourceNameHashLength]
 		}
 	}

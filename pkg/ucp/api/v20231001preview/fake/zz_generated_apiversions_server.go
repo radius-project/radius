@@ -109,7 +109,7 @@ func (a *APIVersionsServerTransport) dispatchBeginCreateOrUpdate(req *http.Reque
 	}
 	beginCreateOrUpdate := a.beginCreateOrUpdate.get(req)
 	if beginCreateOrUpdate == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/apiversions/(?P<apiVersionName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcetypes/(?P<resourceTypeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/apiversions/(?P<apiVersionName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 5 {
@@ -165,7 +165,7 @@ func (a *APIVersionsServerTransport) dispatchBeginDelete(req *http.Request) (*ht
 	}
 	beginDelete := a.beginDelete.get(req)
 	if beginDelete == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/apiversions/(?P<apiVersionName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcetypes/(?P<resourceTypeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/apiversions/(?P<apiVersionName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 5 {
@@ -215,7 +215,7 @@ func (a *APIVersionsServerTransport) dispatchGet(req *http.Request) (*http.Respo
 	if a.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/apiversions/(?P<apiVersionName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcetypes/(?P<resourceTypeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/apiversions/(?P<apiVersionName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 5 {
@@ -258,7 +258,7 @@ func (a *APIVersionsServerTransport) dispatchNewListPager(req *http.Request) (*h
 	}
 	newListPager := a.newListPager.get(req)
 	if newListPager == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/apiversions`
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcetypes/(?P<resourceTypeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/apiversions`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 4 {

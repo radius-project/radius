@@ -328,7 +328,7 @@ fi
 
 # Start Controller with dlv
 echo "Starting Controller with dlv on port 40002..."
-dlv exec "$DEBUG_ROOT/bin/controller" --listen=127.0.0.1:40002 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/controller.yaml" --cert-dir="" > "$DEBUG_ROOT/logs/controller.log" 2>&1 &
+dlv exec "$DEBUG_ROOT/bin/controller" --listen=127.0.0.1:40002 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/controller.yaml" > "$DEBUG_ROOT/logs/controller.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/controller.pid"
 
 # Wait for Controller to start (check health endpoint)

@@ -293,7 +293,7 @@ func Test_run(t *testing.T) {
 			Times(1)
 		databaseClient.EXPECT().
 			Get(gomock.Any(), LegacyIDFor(testID).String()).
-			Return(&database.Object{Metadata: database.Metadata{ETag: etag}, Data: dm}, nil).
+			Return(&database.Object{ETag: etag, Data: dm}, nil).
 			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
@@ -332,7 +332,7 @@ func Test_run(t *testing.T) {
 
 		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
-			Return(&database.Object{Metadata: database.Metadata{ETag: etag}, Data: dm}, nil).
+			Return(&database.Object{ETag: etag, Data: dm}, nil).
 			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
@@ -364,7 +364,7 @@ func Test_run(t *testing.T) {
 
 		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
-			Return(&database.Object{Metadata: database.Metadata{ETag: etag}, Data: dm}, nil).
+			Return(&database.Object{ETag: etag, Data: dm}, nil).
 			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.

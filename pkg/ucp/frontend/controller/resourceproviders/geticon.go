@@ -68,8 +68,7 @@ func (r *GetIcon) Run(ctx context.Context, w http.ResponseWriter, req *http.Requ
 
 	result, err := r.DatabaseClient().Get(ctx, id.String())
 	if err != nil {
-		var notFound *database.ErrNotFound
-		if errors.As(err, &notFound) {
+		if _, ok := errors.AsType[*database.ErrNotFound](err); ok {
 			return armrpc_rest.NewNotFoundResponse(id), nil
 		}
 		return nil, err

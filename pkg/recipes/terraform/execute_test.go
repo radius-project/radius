@@ -31,7 +31,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
@@ -57,6 +56,11 @@ func TestMain(m *testing.M) {
 }
 
 func runTerraformTestHelper() error {
+	if os.Getenv(terraformBackendSnapshots) != "" {
+		if err := recordBackendTestExecution(); err != nil {
+			return err
+		}
+	}
 	if commandLog := os.Getenv(terraformCommandLog); commandLog != "" && len(os.Args) > 1 {
 		file, err := os.OpenFile(commandLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
@@ -80,6 +84,20 @@ func runTerraformTestHelper() error {
 		[]byte(`output "endpoint" { value = "declared" }`),
 		0644); err != nil {
 		return fmt.Errorf("writing test module outputs: %w", err)
+	}
+	if provider := os.Getenv("RADIUS_TERRAFORM_REQUIRED_PROVIDER"); provider != "" {
+		content := fmt.Sprintf("terraform {\n required_providers {\n %s = {\n source = \"hashicorp/%s\"\n }\n }\n}\n", provider, provider)
+		if err := os.WriteFile(filepath.Join(moduleDir, "providers.tf"), []byte(content), 0600); err != nil {
+			return err
+		}
+	}
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "version":
+			fmt.Fprint(os.Stdout, `{"terraform_version":"1.15.8","platform":"test","provider_selections":{}}`)
+		case "show":
+			fmt.Fprint(os.Stdout, `{"format_version":"1.0","terraform_version":"1.15.8","values":{"outputs":{"endpoint":{"value":"declared","type":"string","sensitive":false}}}}`)
+		}
 	}
 	return nil
 }
@@ -113,10 +131,8 @@ func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
 	kubernetesClient.Fake.PrependReactor("get", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		getAction := action.(k8stesting.GetAction)
 		return true, &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      getAction.GetName(),
-				Namespace: backends.RadiusNamespace,
-			},
+			Name:      getAction.GetName(),
+			Namespace: backends.RadiusNamespace,
 		}, nil
 	})
 	kubernetesClient.Fake.PrependReactor("delete", "secrets", func(k8stesting.Action) (bool, runtime.Object, error) {
@@ -184,7 +200,7 @@ func TestGenerateConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			_, err = e.generateConfig(ctx, tf, tc.opts, requireValidOutputMappings)
+			_, err = e.generateConfig(ctx, tf, tc.opts, backends.CloudBackendAuth{}, requireValidOutputMappings)
 			require.Error(t, err)
 			require.ErrorContains(t, err, tc.err)
 		})
@@ -208,7 +224,7 @@ func TestGenerateConfigRejectsInvalidOutputMappingBeforeProviderSetup(t *testing
 	}
 
 	e := executor{}
-	_, err = e.generateConfig(t.Context(), tf, options, requireValidOutputMappings)
+	_, err = e.generateConfig(t.Context(), tf, options, backends.CloudBackendAuth{}, requireValidOutputMappings)
 	require.EqualError(t, err, `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches outputs["host"] -> "missing"; available module outputs: "endpoint"`)
 }
 
@@ -467,7 +483,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			err = e.setEnvironmentVariables(tf, tc.opts)
+			_, err = e.prepareExecution(t.Context(), tf, tc.opts)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -485,7 +501,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 	}
 }
 
-func TestApplyTerraformCLIConfig(t *testing.T) {
+func TestPrepareExecutionCLIConfig(t *testing.T) {
 	tests := []struct {
 		name      string
 		opts      Options
@@ -530,7 +546,7 @@ func TestApplyTerraformCLIConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			err = e.applyTerraformCLIConfig(tf, tc.opts)
+			_, err = e.prepareExecution(t.Context(), tf, tc.opts)
 			if tc.wantError {
 				require.Error(t, err)
 				return

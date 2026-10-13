@@ -60,9 +60,9 @@ Analyze the changes using `git diff` and `git log` against the default branch.
 **PR Title Requirements:**
 
 - Maximum 80 characters
-- Use noun phrases, not imperative verbs (e.g., "Authentication improvements for API endpoints" not "Add authentication to API")
-- No conventional commit prefixes (`feat:`, `fix:`, etc.)
-- Capitalize the first word
+- Use `<type>[optional scope][!]: <description>` with a lowercase type
+- Read the [PR title guide](../../docs/contributing/contributing-pull-requests/README.md#3-use-a-conventional-commit-pull-request-title) and use its allowed types
+- Use noun phrases in the description, for example `feat(api): authentication improvements`
 
 **PR Description:**
 

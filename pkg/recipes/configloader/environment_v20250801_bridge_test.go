@@ -26,7 +26,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	v20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/pkg/to"
@@ -44,12 +43,10 @@ const (
 // terraformSettings / bicepSettings requests to the supplied fake servers.
 func fakeArmOptions(tfSrv fake.TerraformSettingsServer, bcSrv fake.BicepSettingsServer) *arm.ClientOptions {
 	return &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
-				TerraformSettingsServer: tfSrv,
-				BicepSettingsServer:     bcSrv,
-			}),
-		},
+		Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+			TerraformSettingsServer: tfSrv,
+			BicepSettingsServer:     bcSrv,
+		}),
 	}
 }
 
@@ -75,28 +72,26 @@ func TestGetConfigurationV20250801_TerraformCredentialsAndEnvAndProviderInstalla
 		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.TerraformSettingsClientGetOptions) (resp azfake.Responder[v20250801.TerraformSettingsClientGetResponse], errResp azfake.ErrorResponder) {
 			require.Equal(t, tfConfigName, name)
 			resp.SetResponse(http.StatusOK, v20250801.TerraformSettingsClientGetResponse{
-				TerraformSettingsResource: v20250801.TerraformSettingsResource{
-					ID:       to.Ptr(tfConfigID),
-					Name:     to.Ptr(tfConfigName),
-					Type:     to.Ptr("Radius.Core/terraformSettings"),
-					Location: to.Ptr("global"),
-					Properties: &v20250801.TerraformSettingsProperties{
-						Terraformrc: &v20250801.TerraformrcConfig{
-							ProviderInstallation: &v20250801.TerraformProviderInstallation{
-								NetworkMirror: &v20250801.TerraformProviderMirror{
-									URL:     to.Ptr("https://mirror.example.com/"),
-									Include: to.SliceOfPtrs("hashicorp/aws"),
-								},
-							},
-							Credentials: map[string]*v20250801.TerraformCredentialConfig{
-								"app.terraform.io":     {Secret: to.Ptr("/planes/.../secretA")},
-								"registry.example.com": {Secret: to.Ptr("/planes/.../secretB")},
+				ID:       to.Ptr(tfConfigID),
+				Name:     to.Ptr(tfConfigName),
+				Type:     to.Ptr("Radius.Core/terraformSettings"),
+				Location: to.Ptr("global"),
+				Properties: &v20250801.TerraformSettingsProperties{
+					Terraformrc: &v20250801.TerraformrcConfig{
+						ProviderInstallation: &v20250801.TerraformProviderInstallation{
+							NetworkMirror: &v20250801.TerraformProviderMirror{
+								URL:     to.Ptr("https://mirror.example.com/"),
+								Include: to.SliceOfPtrs("hashicorp/aws"),
 							},
 						},
-						Env: map[string]*string{
-							"TF_LOG":      to.Ptr("DEBUG"),
-							"TF_LOG_PATH": to.Ptr("/tmp/tf.log"),
+						Credentials: map[string]*v20250801.TerraformCredentialConfig{
+							"app.terraform.io":     {Secret: to.Ptr("/planes/.../secretA")},
+							"registry.example.com": {Secret: to.Ptr("/planes/.../secretB")},
 						},
+					},
+					Env: map[string]*string{
+						"TF_LOG":      to.Ptr("DEBUG"),
+						"TF_LOG_PATH": to.Ptr("/tmp/tf.log"),
 					},
 				},
 			}, nil)
@@ -112,6 +107,7 @@ func TestGetConfigurationV20250801_TerraformCredentialsAndEnvAndProviderInstalla
 
 	cfg, err := getConfigurationV20250801(t.Context(), env, armOpts)
 	require.NoError(t, err)
+	require.Nil(t, cfg.TerraformBackend, "CLI-only settings retain the Kubernetes backend")
 
 	// Credentials map is bridged 1:1.
 	require.Len(t, cfg.RecipeConfig.Terraform.Credentials, 2)
@@ -130,23 +126,57 @@ func TestGetConfigurationV20250801_TerraformCredentialsAndEnvAndProviderInstalla
 	require.Equal(t, []string{"hashicorp/aws"}, cfg.RecipeConfig.Terraform.ProviderInstallation.NetworkMirror.Include)
 }
 
+func TestGetConfigurationV20250801_TerraformBackend(t *testing.T) {
+	for _, backend := range []v20250801.TerraformBackendClassification{
+		&v20250801.TerraformS3Backend{Bucket: new("states"), Region: new("us-west-2"), KeyPrefix: new("radius")},
+		&v20250801.TerraformAzureRMBackend{StorageAccountName: new("states"), ContainerName: new("radius"), KeyPrefix: new("team/install")},
+	} {
+		t.Run(fmt.Sprintf("%T", backend), func(t *testing.T) {
+			server := fake.TerraformSettingsServer{
+				Get: func(ctx context.Context, rootScope, name string, opts *v20250801.TerraformSettingsClientGetOptions) (resp azfake.Responder[v20250801.TerraformSettingsClientGetResponse], errResp azfake.ErrorResponder) {
+					require.Equal(t, tfConfigName, name)
+					resp.SetResponse(http.StatusOK, v20250801.TerraformSettingsClientGetResponse{
+						Properties: &v20250801.TerraformSettingsProperties{Backend: backend, Env: map[string]*string{"KEEP": new("value")}},
+					}, nil)
+					return
+				},
+			}
+			env := minimalEnv(tfConfigID, "")
+			env.Properties.BicepSettings = nil
+			cfg, err := getConfigurationV20250801(t.Context(), env, fakeArmOptions(server, fake.BicepSettingsServer{}))
+			require.NoError(t, err)
+			require.NotNil(t, cfg.TerraformBackend)
+			require.Equal(t, "value", cfg.RecipeConfig.Env.AdditionalProperties["KEEP"])
+			if _, ok := backend.(*v20250801.TerraformS3Backend); ok {
+				require.Equal(t, "s3", cfg.TerraformBackend.Type)
+				require.Equal(t, "states", cfg.TerraformBackend.Bucket)
+				require.Equal(t, "us-west-2", cfg.TerraformBackend.Region)
+				require.Equal(t, "radius", cfg.TerraformBackend.KeyPrefix)
+			} else {
+				require.Equal(t, "azurerm", cfg.TerraformBackend.Type)
+				require.Equal(t, "states", cfg.TerraformBackend.StorageAccountName)
+				require.Equal(t, "radius", cfg.TerraformBackend.ContainerName)
+				require.Equal(t, "team/install", cfg.TerraformBackend.KeyPrefix)
+			}
+		})
+	}
+}
+
 func TestGetConfigurationV20250801_BicepBasicAuthMapped(t *testing.T) {
 	bcSrv := fake.BicepSettingsServer{
 		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepSettingsClientGetOptions) (resp azfake.Responder[v20250801.BicepSettingsClientGetResponse], errResp azfake.ErrorResponder) {
 			require.Equal(t, bcConfigName, name)
 			method := v20250801.BicepAuthenticationMethodBasicAuth
 			resp.SetResponse(http.StatusOK, v20250801.BicepSettingsClientGetResponse{
-				BicepSettingsResource: v20250801.BicepSettingsResource{
-					ID:       to.Ptr(bcConfigID),
-					Name:     to.Ptr(bcConfigName),
-					Type:     to.Ptr("Radius.Core/bicepSettings"),
-					Location: to.Ptr("global"),
-					Properties: &v20250801.BicepSettingsProperties{
-						RegistryAuthentications: map[string]*v20250801.BicepRegistryAuthentication{
-							"corp.acr.io": {
-								AuthenticationMethod: &method,
-								BasicAuthSecretID:    to.Ptr("/planes/.../basic-secret"),
-							},
+				ID:       to.Ptr(bcConfigID),
+				Name:     to.Ptr(bcConfigName),
+				Type:     to.Ptr("Radius.Core/bicepSettings"),
+				Location: to.Ptr("global"),
+				Properties: &v20250801.BicepSettingsProperties{
+					RegistryAuthentications: map[string]*v20250801.BicepRegistryAuthentication{
+						"corp.acr.io": {
+							AuthenticationMethod: &method,
+							BasicAuthSecretID:    to.Ptr("/planes/.../basic-secret"),
 						},
 					},
 				},
@@ -178,26 +208,24 @@ func TestGetConfigurationV20250801_BicepEntriesWithoutBasicAuthSecretAreSkipped(
 			azure := v20250801.BicepAuthenticationMethodAzureWI
 			aws := v20250801.BicepAuthenticationMethodAwsIrsa
 			resp.SetResponse(http.StatusOK, v20250801.BicepSettingsClientGetResponse{
-				BicepSettingsResource: v20250801.BicepSettingsResource{
-					ID:       to.Ptr(bcConfigID),
-					Name:     to.Ptr(bcConfigName),
-					Type:     to.Ptr("Radius.Core/bicepSettings"),
-					Location: to.Ptr("global"),
-					Properties: &v20250801.BicepSettingsProperties{
-						RegistryAuthentications: map[string]*v20250801.BicepRegistryAuthentication{
-							"basic.acr.io": {
-								AuthenticationMethod: &basic,
-								BasicAuthSecretID:    to.Ptr("/planes/.../basic-secret"),
-							},
-							"azure.acr.io": {
-								AuthenticationMethod: &azure,
-								AzureWiClientID:      to.Ptr("client-id"),
-								AzureWiTenantID:      to.Ptr("tenant-id"),
-							},
-							"aws.ecr.io": {
-								AuthenticationMethod: &aws,
-								AwsIamRoleArn:        to.Ptr("arn:aws:iam::123:role/MyRole"),
-							},
+				ID:       to.Ptr(bcConfigID),
+				Name:     to.Ptr(bcConfigName),
+				Type:     to.Ptr("Radius.Core/bicepSettings"),
+				Location: to.Ptr("global"),
+				Properties: &v20250801.BicepSettingsProperties{
+					RegistryAuthentications: map[string]*v20250801.BicepRegistryAuthentication{
+						"basic.acr.io": {
+							AuthenticationMethod: &basic,
+							BasicAuthSecretID:    to.Ptr("/planes/.../basic-secret"),
+						},
+						"azure.acr.io": {
+							AuthenticationMethod: &azure,
+							AzureWiClientID:      to.Ptr("client-id"),
+							AzureWiTenantID:      to.Ptr("tenant-id"),
+						},
+						"aws.ecr.io": {
+							AuthenticationMethod: &aws,
+							AwsIamRoleArn:        to.Ptr("arn:aws:iam::123:role/MyRole"),
 						},
 					},
 				},
@@ -230,18 +258,16 @@ func TestGetConfigurationV20250801_BicepAllEntriesSkipped_LeavesAuthNil(t *testi
 		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepSettingsClientGetOptions) (resp azfake.Responder[v20250801.BicepSettingsClientGetResponse], errResp azfake.ErrorResponder) {
 			azure := v20250801.BicepAuthenticationMethodAzureWI
 			resp.SetResponse(http.StatusOK, v20250801.BicepSettingsClientGetResponse{
-				BicepSettingsResource: v20250801.BicepSettingsResource{
-					ID:       to.Ptr(bcConfigID),
-					Name:     to.Ptr(bcConfigName),
-					Type:     to.Ptr("Radius.Core/bicepSettings"),
-					Location: to.Ptr("global"),
-					Properties: &v20250801.BicepSettingsProperties{
-						RegistryAuthentications: map[string]*v20250801.BicepRegistryAuthentication{
-							"azure.acr.io": {
-								AuthenticationMethod: &azure,
-								AzureWiClientID:      to.Ptr("client-id"),
-								AzureWiTenantID:      to.Ptr("tenant-id"),
-							},
+				ID:       to.Ptr(bcConfigID),
+				Name:     to.Ptr(bcConfigName),
+				Type:     to.Ptr("Radius.Core/bicepSettings"),
+				Location: to.Ptr("global"),
+				Properties: &v20250801.BicepSettingsProperties{
+					RegistryAuthentications: map[string]*v20250801.BicepRegistryAuthentication{
+						"azure.acr.io": {
+							AuthenticationMethod: &azure,
+							AzureWiClientID:      to.Ptr("client-id"),
+							AzureWiTenantID:      to.Ptr("tenant-id"),
 						},
 					},
 				},

@@ -1,7 +1,73 @@
 
 param(
-    [string] $InstallFolder = "$($env:USERPROFILE)\rad-install-test"
+    [string] $InstallFolder = "$($env:USERPROFILE)\rad-install-test",
+    [switch] $EdgeOnly
 )
+
+function Test-EdgeInstallation {
+    $ErrorActionPreference = 'Stop'
+    $tokens = $null
+    $parseErrors = $null
+    $installer = [System.Management.Automation.Language.Parser]::ParseFile(
+        (Join-Path $PSScriptRoot 'install.ps1'), [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) {
+        throw "Installer parse errors: $parseErrors"
+    }
+    $edgeFunction = $installer.Find({
+        param($node)
+        $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+        $node.Name -eq 'Install-RadEdge'
+    }, $true)
+    if ($null -eq $edgeFunction) {
+        throw 'Install-RadEdge was not found in the installer'
+    }
+    . ([scriptblock]::Create($edgeFunction.Extent.Text))
+
+    $GitHubOrg = 'radius-project'
+    $invocation = @{ Arguments = @() }
+    function oras {
+        $invocation.Arguments = @($args)
+        if ($args.Count -ne 4 -or $args[0] -ne 'pull' -or $args[2] -ne '-o') {
+            throw "Unexpected oras arguments: $args"
+        }
+        [System.IO.File]::WriteAllText((Join-Path $args[3] 'rad'), 'edge-test-payload')
+        Set-Variable -Name LASTEXITCODE -Value 0 -Scope 1
+    }
+
+    $testRoot = Join-Path ([System.IO.Path]::GetTempPath()) "rad-edge-test-$([guid]::NewGuid())"
+    New-Item -Path $testRoot -ItemType Directory | Out-Null
+    try {
+        foreach ($architecture in @('amd64', 'arm64')) {
+            $target = Join-Path $testRoot $architecture
+            New-Item -Path $target -ItemType Directory | Out-Null
+            $invocation.Arguments = @()
+            Install-RadEdge -TargetDir $target -DetectedOS windows `
+                -DetectedArch $architecture -CliFileName 'rad.exe'
+
+            $expectedReference = "ghcr.io/radius-project/rad/windows-${architecture}:edge"
+            if ($invocation.Arguments.Count -ne 4 -or
+                $invocation.Arguments[1] -cne $expectedReference -or
+                $invocation.Arguments[3] -cne $target) {
+                throw "Incorrect edge OCI reference or output directory: $($invocation.Arguments)"
+            }
+            $installedFile = Join-Path $target 'rad.exe'
+            if (-not (Test-Path $installedFile -PathType Leaf) -or
+                (Get-Content -Raw $installedFile) -cne 'edge-test-payload' -or
+                (Test-Path (Join-Path $target 'rad'))) {
+                throw 'The edge payload was not installed as rad.exe'
+            }
+            Write-Output "PASS: Windows $architecture edge installer uses :edge and installs rad.exe"
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $testRoot -Recurse -Force
+    }
+}
+
+Test-EdgeInstallation
+if ($EdgeOnly) {
+    return
+}
 
 ## Fetch PATH variable values
 $regKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $false)

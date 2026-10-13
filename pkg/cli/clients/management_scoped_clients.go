@@ -78,10 +78,6 @@ func (c *scopedEnvironmentsClient) NewListByScopePager(options *corerpv20231001.
 	return c.inner.NewListByScopePager(c.scope, options)
 }
 
-func (c *scopedEnvironmentsClient) GetMetadata(ctx context.Context, environmentName string, body corerpv20231001.RecipeGetMetadata, options *corerpv20231001.EnvironmentsClientGetMetadataOptions) (corerpv20231001.EnvironmentsClientGetMetadataResponse, error) {
-	return c.inner.GetMetadata(ctx, c.scope, environmentName, body, options)
-}
-
 // scopedRecipePacksClient binds a root scope to the generated Radius.Core/recipePacks client.
 type scopedRecipePacksClient struct {
 	inner *corerpv20250801.RecipePacksClient

@@ -116,6 +116,39 @@ func TestAPIVersionPutController_updateSummary(t *testing.T) {
 			},
 			expectError: false,
 		},
+		{
+			name: "Resource type entry found with different casing",
+			id:   id,
+			initialSummary: &datamodel.ResourceProviderSummary{
+				Properties: datamodel.ResourceProviderSummaryProperties{
+					ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
+						"testresources": {
+							APIVersions: map[string]datamodel.ResourceProviderSummaryPropertiesAPIVersion{},
+						},
+					},
+				},
+			},
+			expectedSummary: &datamodel.ResourceProviderSummary{
+				Properties: datamodel.ResourceProviderSummaryProperties{
+					ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
+						"testresources": {
+							APIVersions: map[string]datamodel.ResourceProviderSummaryPropertiesAPIVersion{
+								"2025-01-01": {
+									Schema: map[string]any{
+										"properties": map[string]any{
+											"name": map[string]any{
+												"type": "string",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
 	}
 
 	for _, tt := range tests {

@@ -464,13 +464,9 @@ func Test_saveResource(t *testing.T) {
 
 	dbClient := inmemory.NewClient()
 	data := &datamodel.ResourceProvider{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Test",
-				Name: "Test",
-				Type: datamodel.ResourceProviderResourceType,
-			},
-		},
+		ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Test",
+		Name: "Test",
+		Type: datamodel.ResourceProviderResourceType,
 	}
 
 	err := saveResource(t.Context(), dbClient, data.ID, data)

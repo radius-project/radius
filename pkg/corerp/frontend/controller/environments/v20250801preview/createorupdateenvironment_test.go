@@ -37,7 +37,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // testRecipePackID is the recipe pack referenced by the shared environment test
@@ -132,9 +131,7 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 			}
 
 			defaultNamespace := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "default",
-				},
+				Name: "default",
 			}
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
@@ -186,8 +183,8 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 					return &database.Object{
-						Metadata: database.Metadata{ID: id, ETag: tt.resourceETag},
-						Data:     envDataModel,
+						ID: id, ETag: tt.resourceETag,
+						Data: envDataModel,
 					}, nil
 				})
 
@@ -206,9 +203,7 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 			}
 
 			defaultNamespace := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "default",
-				},
+				Name: "default",
 			}
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
@@ -275,9 +270,7 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 			}
 
 			defaultNamespace := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "default",
-				},
+				Name: "default",
 			}
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
@@ -321,8 +314,8 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 					return &database.Object{
-						Metadata: database.Metadata{ID: id, ETag: tt.resourceEtag},
-						Data:     envDataModel,
+						ID: id, ETag: tt.resourceEtag,
+						Data: envDataModel,
 					}, nil
 				})
 
@@ -342,9 +335,7 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 			}
 
 			defaultNamespace := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "default",
-				},
+				Name: "default",
 			}
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
@@ -386,13 +377,13 @@ func TestCreateOrUpdateEnvironment_NamespaceUniqueness(t *testing.T) {
 	// conflictingEnvironment returns a stored Radius.Core environment using the "default" namespace.
 	conflictingEnvironment := func(id string) database.Object {
 		env := &datamodel.Environment_v20250801preview{
-			BaseResource: v1.BaseResource{TrackedResource: v1.TrackedResource{ID: id}},
+			ID: id,
 		}
 		env.Properties.Providers = &datamodel.Providers_v20250801preview{
 			Kubernetes: &datamodel.ProvidersKubernetes_v20250801preview{Namespace: "default"},
 		}
 
-		return database.Object{Metadata: database.Metadata{ID: id}, Data: env}
+		return database.Object{ID: id, Data: env}
 	}
 
 	testCases := []struct {
@@ -473,7 +464,7 @@ func TestCreateOrUpdateEnvironment_NamespaceUniqueness(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
-				KubeClient:     k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}}),
+				KubeClient:     k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{Name: "default"}),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironmentv20250801preview(opts)
@@ -845,9 +836,7 @@ func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
 			}
 
 			defaultNamespace := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "default",
-				},
+				Name: "default",
 			}
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
@@ -957,7 +946,7 @@ func TestCreateOrUpdateEnvironment_RecipePackNormalization(t *testing.T) {
 			return nil
 		})
 
-	defaultNamespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}}
+	defaultNamespace := &corev1.Namespace{Name: "default"}
 	opts := ctrl.Options{
 		DatabaseClient: databaseClient,
 		KubeClient:     k8sutil.NewFakeKubeClient(nil, defaultNamespace),
@@ -1054,8 +1043,8 @@ func TestCreateOrUpdateEnvironment_NamespaceImmutability(t *testing.T) {
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 					return &database.Object{
-						Metadata: database.Metadata{ID: id, ETag: "resource-etag"},
-						Data:     &stored,
+						ID: id, ETag: "resource-etag",
+						Data: &stored,
 					}, nil
 				}).AnyTimes()
 
@@ -1081,7 +1070,7 @@ func TestCreateOrUpdateEnvironment_NamespaceImmutability(t *testing.T) {
 
 			opts := ctrl.Options{
 				DatabaseClient: databaseClient,
-				KubeClient:     k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}}),
+				KubeClient:     k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{Name: "default"}),
 			}
 
 			ctl, err := NewCreateOrUpdateEnvironmentv20250801preview(opts)

@@ -124,7 +124,7 @@ func (r *ResourceProvidersServerTransport) dispatchBeginCreateOrUpdate(req *http
 	}
 	beginCreateOrUpdate := r.beginCreateOrUpdate.get(req)
 	if beginCreateOrUpdate == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 3 {
@@ -172,7 +172,7 @@ func (r *ResourceProvidersServerTransport) dispatchBeginDelete(req *http.Request
 	}
 	beginDelete := r.beginDelete.get(req)
 	if beginDelete == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 3 {
@@ -214,7 +214,7 @@ func (r *ResourceProvidersServerTransport) dispatchGet(req *http.Request) (*http
 	if r.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -247,7 +247,7 @@ func (r *ResourceProvidersServerTransport) dispatchGetProviderSummary(req *http.
 	if r.srv.GetProviderSummary == nil {
 		return nil, &nonRetriableError{errors.New("fake for method GetProviderSummary not implemented")}
 	}
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -293,7 +293,7 @@ func (r *ResourceProvidersServerTransport) dispatchNewListPager(req *http.Reques
 	}
 	newListPager := r.newListPager.get(req)
 	if newListPager == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders`
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {
@@ -330,7 +330,7 @@ func (r *ResourceProvidersServerTransport) dispatchNewListProviderSummariesPager
 	}
 	newListProviderSummariesPager := r.newListProviderSummariesPager.get(req)
 	if newListProviderSummariesPager == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers`
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {

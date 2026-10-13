@@ -30,7 +30,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucpfake "github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -1266,9 +1265,7 @@ func createErrorResourceProviderClientFactory() (*v20231001preview.ClientFactory
 	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
 
 	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
-		},
+		Transport: serverFactoryTransport,
 	}
 
 	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
@@ -1300,9 +1297,7 @@ func createErrorLocationClientFactory() (*v20231001preview.ClientFactory, error)
 	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
 
 	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
-		},
+		Transport: serverFactoryTransport,
 	}
 
 	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
@@ -1319,13 +1314,11 @@ func createLocationClientFactoryWithAddress() (*v20231001preview.ClientFactory, 
 			options *v20231001preview.LocationsClientGetOptions,
 		) (resp azfake.Responder[v20231001preview.LocationsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.LocationsClientGetResponse{
-				LocationResource: v20231001preview.LocationResource{
-					Name: new(locationName),
-					ID:   new("id"),
-					Properties: &v20231001preview.LocationProperties{
-						Address:       new("http://localhost:8080"),
-						ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
-					},
+				Name: new(locationName),
+				ID:   new("id"),
+				Properties: &v20231001preview.LocationProperties{
+					Address:       new("http://localhost:8080"),
+					ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
 				},
 			}
 			resp.SetResponse(http.StatusOK, response, nil)
@@ -1343,9 +1336,7 @@ func createLocationClientFactoryWithAddress() (*v20231001preview.ClientFactory, 
 	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
 
 	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
-		},
+		Transport: serverFactoryTransport,
 	}
 
 	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
@@ -1362,21 +1353,19 @@ func createLocationClientFactoryWithResourceTypes() (*v20231001preview.ClientFac
 			options *v20231001preview.LocationsClientGetOptions,
 		) (resp azfake.Responder[v20231001preview.LocationsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.LocationsClientGetResponse{
-				LocationResource: v20231001preview.LocationResource{
-					Name: new(locationName),
-					ID:   new("id"),
-					Properties: &v20231001preview.LocationProperties{
-						ResourceTypes: map[string]*v20231001preview.LocationResourceType{
-							"testResource": {
-								APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
-									"2023-01-01": {},
-								},
+				Name: new(locationName),
+				ID:   new("id"),
+				Properties: &v20231001preview.LocationProperties{
+					ResourceTypes: map[string]*v20231001preview.LocationResourceType{
+						"testResource": {
+							APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
+								"2023-01-01": {},
 							},
-							"anotherResource": {
-								APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
-									"2023-01-01": {},
-									"2023-06-01": {},
-								},
+						},
+						"anotherResource": {
+							APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
+								"2023-01-01": {},
+								"2023-06-01": {},
 							},
 						},
 					},
@@ -1397,9 +1386,7 @@ func createLocationClientFactoryWithResourceTypes() (*v20231001preview.ClientFac
 	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
 
 	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
-		},
+		Transport: serverFactoryTransport,
 	}
 
 	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)

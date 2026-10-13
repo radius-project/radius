@@ -212,6 +212,31 @@ func Test_Run(t *testing.T) {
 		require.Empty(t, outputSink.Writes)
 	})
 
+	t.Run("Success: Mis-cased Resource Type Found", func(t *testing.T) {
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+		require.NoError(t, err)
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			UCPClientFactory:          clientFactory,
+			Workspace:                 &workspaces.Workspace{Name: "kind-kind", Scope: "/planes/radius/local/resourceGroups/test-group"},
+			Format:                    "table",
+			Output:                    outputSink,
+			ResourceTypeName:          "MyCompany.Resources/TESTRESOURCES",
+			ResourceProviderNamespace: "MyCompany.Resources",
+			ResourceTypeSuffix:        "TESTRESOURCES",
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.NotEmpty(t, outputSink.Writes)
+
+		formatted, ok := outputSink.Writes[0].(output.FormattedOutput)
+		require.True(t, ok)
+		resourceType, ok := formatted.Obj.(common.ResourceType)
+		require.True(t, ok)
+		require.Equal(t, "MyCompany.Resources/testResources", resourceType.Name)
+	})
+
 	t.Run("Error: Resource Type Not Found", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()

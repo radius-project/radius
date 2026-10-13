@@ -35,7 +35,7 @@ on:
     # Expected client_payload:
     #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
-    #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
+    #   tag: Tag for the image (e.g. latest, 0.1, 0.61.0-rc.1, pr-123)
   pull_request:
     branches:
       - main
@@ -163,6 +163,14 @@ jobs:
           # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
           cache: false
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+        with:
+          module-directories: |
+            .
+            test/magpiego
+            test/testrp
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -190,27 +198,23 @@ jobs:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}
           DOCKER_TAG_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
 
-      # Keep JavaScript actions sequential. Parallel action startup rewrites the shared
-      # GITHUB_EVENT_PATH and can expose a partially written payload to another action.
-      - name: Upload rad CLI binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: radius_test_cli
-          path: ./dist/linux_amd64/release/rad
-          if-no-files-found: error
+      - name: Check functional test inputs
+        # A combined upload's if-no-files-found only fails when all inputs are missing.
+        run: |
+          ls ./dist/linux_amd64/release/rad \
+            ./dist/images/*.tar \
+            ./hack/bicep-types-radius/generated/index.json
 
-      - name: Upload container image artifacts
+      - name: Upload functional test inputs
+        # Multiple paths use the workspace as their common root, preserving the
+        # directory layout while avoiding three artifact lookups per matrix leg.
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: radius_test_images
-          path: ./dist/images
-          if-no-files-found: error
-
-      - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: radius_test_bicep_types
-          path: ./hack/bicep-types-radius/generated
+          name: radius_test_inputs
+          path: |
+            ./dist/linux_amd64/release/rad
+            ./dist/images
+            ./hack/bicep-types-radius/generated
           if-no-files-found: error
 
   tests:
@@ -251,6 +255,8 @@ jobs:
     env:
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
+      # Trust only this job's local registry hostnames; TLS verification is unchanged.
+      BICEP_TRUSTED_REGISTRIES: localhost,radius-registry
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
     steps:
@@ -287,29 +293,19 @@ jobs:
           # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
           cache: false
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       # The rad CLI, container images and Bicep types are built once in the
       # "build" job and shared with every matrix leg. Downloading them here avoids
       # recompiling the source and reinstalling the Node/yq toolchain in each leg.
-      # They land in the same paths a local build would produce, so the remaining
-      # steps are unchanged. Keep these JavaScript actions sequential for the same
-      # shared GITHUB_EVENT_PATH constraint as the upload steps above.
-      - name: Download rad CLI binary
+      # One run-scoped artifact restores the original paths on every fresh runner,
+      # including when only failed matrix jobs are re-run.
+      - name: Download functional test inputs
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: radius_test_cli
-          path: ./dist/linux_amd64/release
-
-      - name: Download container image artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: radius_test_images
-          path: ./dist/images
-
-      - name: Download Radius Bicep types artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: radius_test_bicep_types
-          path: ./hack/bicep-types-radius/generated
+          name: radius_test_inputs
+          path: .
 
       - name: Create a secure local registry
         id: create-local-registry
@@ -465,6 +461,35 @@ jobs:
         # PostgreSQL rather than the default Kubernetes API server store. See issue #12227.
         if: matrix.name == 'database-noncloud'
         run: echo "DATABASE_INSTALL_ARGS=--set database.enabled=true" >> "${GITHUB_ENV}"
+
+      - name: Wait for Deployment Engine image to be available
+        # When this run was triggered by deployment-engine's publish dispatch, DE_TAG
+        # names an image that repo just pushed to GHCR. The dispatch that starts this
+        # workflow can race the GHCR push itself (the image isn't necessarily visible
+        # yet when the dispatch lands), and "Install Radius" below waits on every
+        # Deployment becoming ready, so a not-yet-pullable DE image leaves the bicep-de
+        # pod in ImagePullBackOff for the whole install timeout and can fail the job with
+        # a bare "context deadline exceeded" (related to issue #12576). Poll the GHCR
+        # manifest instead of guessing a fixed delay, so we proceed the moment the image
+        # lands and fail fast with a clear reason if it never does.
+        if: github.event_name == 'repository_dispatch' && matrix.name != 'statestore-noncloud'
+        run: |
+          set -euo pipefail
+
+          MAX_ATTEMPTS=10
+          SLEEP_SECONDS=15
+          for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
+            if manifest_error=$(docker manifest inspect "${DE_IMAGE}:${DE_TAG}" 2>&1 >/dev/null); then
+              echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} is available (attempt ${attempt}/${MAX_ATTEMPTS})."
+              exit 0
+            fi
+            echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} not yet available (attempt ${attempt}/${MAX_ATTEMPTS}): ${manifest_error}"
+            echo "Retrying in ${SLEEP_SECONDS}s..."
+            sleep "${SLEEP_SECONDS}"
+          done
+
+          echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} did not become available after $((MAX_ATTEMPTS * SLEEP_SECONDS))s. Last error: ${manifest_error}"
+          exit 1
 
       - name: Install Radius
         # The statestore leg drives its own install/uninstall/reinstall lifecycle
@@ -669,8 +694,9 @@ jobs:
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           # The statestore leg installs/uninstalls/reinstalls Radius, so it needs
-          # far longer than the standard per-leg timeout.
-          TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || env.FUNCTIONALTEST_TIMEOUT }}
+          # far longer than the standard per-leg timeout. The upgrade leg installs
+          # Radius twice and runs several upgrades, so it also needs more time.
+          TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || matrix.name == 'upgrade-noncloud' && '30m' || env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}

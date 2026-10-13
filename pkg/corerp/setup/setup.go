@@ -35,6 +35,7 @@ import (
 	gw_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/gateways"
 	rp_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/recipepacks"
 	secret_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/secretstores"
+	tf_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/terraformsettings"
 	vol_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/volumes"
 	ext_processor "github.com/radius-project/radius/pkg/corerp/processors/extenders"
 	pr_ctrl "github.com/radius-project/radius/pkg/portableresources/backend/controller"
@@ -312,6 +313,12 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 		ResourceParamName: "terraformSettingsName",
 		RequestConverter:  converter.TerraformSettingsDataModelFromVersioned,
 		ResponseConverter: converter.TerraformSettingsDataModelToVersioned,
+		Put: builder.Operation[datamodel.TerraformSettings]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.TerraformSettings]{tf_ctrl.ValidateRequest},
+		},
+		Patch: builder.Operation[datamodel.TerraformSettings]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.TerraformSettings]{tf_ctrl.ValidateRequest},
+		},
 	})
 
 	_ = ns.AddResource("bicepSettings", &builder.ResourceOption[*datamodel.BicepSettings, datamodel.BicepSettings]{

@@ -149,6 +149,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 		r.Namespace = namespace
 	} else {
+		// The environment name becomes the Kubernetes namespace by default, so it must also be a valid namespace name.
+		if err := prompt.ValidateKubernetesNamespace(r.EnvironmentName); err != nil {
+			return clierrors.Message("Environment name %q cannot be used as the default Kubernetes namespace: %s. Use a valid namespace name for the environment, or specify a namespace using the --kubernetes-namespace flag.", r.EnvironmentName, err.Error())
+		}
 		r.Namespace = r.EnvironmentName
 	}
 

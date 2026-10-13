@@ -90,11 +90,10 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 	var err error
 	options := Options{
 		Config: config,
-	}
 
-	options.QueueProvider = queueprovider.New(config.Queue)
-	options.SecretProvider = secretprovider.NewSecretProvider(config.Secrets)
-	options.DatabaseProvider = databaseprovider.FromOptions(config.Database)
+		QueueProvider:    queueprovider.New(config.Queue),
+		SecretProvider:   secretprovider.NewSecretProvider(config.Secrets),
+		DatabaseProvider: databaseprovider.FromOptions(config.Database)}
 
 	databaseClient, err := options.DatabaseProvider.GetClient(ctx)
 	if err != nil {
@@ -182,7 +181,7 @@ func bicepDriver(options *Options) (driver.Driver, error) {
 		return nil, err
 	}
 
-	resourceClient := processors.NewResourceClient(armConfig, options.UCP, options.KubernetesProvider)
+	resourceClientFactory := processors.NewResourceClientFactory(armConfig, options.UCP, options.KubernetesProvider)
 
 	bicepDeleteRetryCount, err := strconv.Atoi(options.Config.Bicep.DeleteRetryCount)
 	if err != nil {
@@ -197,7 +196,7 @@ func bicepDriver(options *Options) (driver.Driver, error) {
 	return bicep.NewBicepDriver(
 		sdk.NewClientOptions(options.UCP),
 		deploymentEngineClient,
-		resourceClient,
+		resourceClientFactory,
 		bicep.BicepOptions{
 			DeleteRetryCount:        bicepDeleteRetryCount,
 			DeleteRetryDelaySeconds: bicepDeleteRetryDeleteSeconds,

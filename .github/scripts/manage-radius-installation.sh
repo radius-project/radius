@@ -31,6 +31,14 @@ set -euo pipefail
 SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_NAME
 
+readonly REQUIRED_CHART_VALUES=(
+    --set global.azureWorkloadIdentity.enabled=true
+    --set global.aws.irsa.enabled=true
+    --set database.enabled=false
+    --set de.resources.requests.memory=256Mi
+    --set de.resources.limits.memory=512Mi
+)
+
 usage() {
     echo "Usage: ${SCRIPT_NAME}"
     echo ""
@@ -180,11 +188,7 @@ aws_irsa_token_volumes_enabled() {
 }
 
 upgrade_radius() {
-    rad upgrade kubernetes \
-        --set global.azureWorkloadIdentity.enabled=true \
-        --set global.aws.irsa.enabled=true \
-        --set database.enabled=false \
-        "$@"
+    rad upgrade kubernetes "${REQUIRED_CHART_VALUES[@]}" "$@"
 }
 
 reconcile_required_chart_values() {
@@ -220,10 +224,7 @@ reconcile_required_chart_values() {
 # Install Radius on the cluster
 install_radius() {
     echo "Installing Radius..."
-    if ! rad install kubernetes \
-        --set global.azureWorkloadIdentity.enabled=true \
-        --set global.aws.irsa.enabled=true \
-        --set database.enabled=false; then
+    if ! rad install kubernetes "${REQUIRED_CHART_VALUES[@]}"; then
         echo ""
         echo "============================================================================"
         echo "ERROR: Radius installation failed"
@@ -336,11 +337,8 @@ main() {
         echo "Version mismatch detected. Attempting upgrade from ${cp_version} to ${cli_version}..."
         # There are scenarios when an upgrade may not be possible, and we are relying on the rad upgrade command to
         # detect and report an error, which will cause the workflow to fail. Manual intervention may be required in such cases.
-        # NOTE: Helm upgrades do not automatically reuse values from the previous release.
-        # We must re-apply critical chart values or they will reset to chart defaults.
-        # - global.azureWorkloadIdentity.enabled defaults to false and is required for Azure WI auth in this workflow.
-        # - global.aws.irsa.enabled defaults to false and is required for AWS IRSA auth in this workflow.
-        # https://github.com/radius-project/radius/issues/11218
+        # Radius preserves stored Helm overrides. Explicit values ensure fresh
+        # installs and upgrades use the same required LRT configuration.
         if ! upgrade_radius; then
             echo ""
             echo "============================================================================"

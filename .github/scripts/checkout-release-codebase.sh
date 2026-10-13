@@ -31,6 +31,10 @@ set -euo pipefail
 SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_NAME
 readonly RELEASE_DIR="current_release"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=.github/scripts/release-version.sh
+source "${SCRIPT_DIR}/release-version.sh"
 
 usage() {
     echo "Usage: ${SCRIPT_NAME}"
@@ -75,10 +79,10 @@ main() {
         exit 1
     fi
 
-    # Validate version format (should be semver like X.Y.Z or X.Y.Z-rcN)
-    if ! [[ "${release_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]]; then
+    # Historical rcN releases remain valid checkout targets.
+    if ! is_radius_release_version "${release_version}"; then
         echo "Error: Invalid version format '${release_version}'"
-        echo "Expected semantic version format (e.g., '0.54.0' or '0.54.0-rc1')"
+        echo "Expected semantic version format (e.g., '0.61.0' or '0.61.0-rc.1')"
         exit 1
     fi
 

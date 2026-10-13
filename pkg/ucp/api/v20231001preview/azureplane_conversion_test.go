@@ -37,20 +37,14 @@ func Test_AzurePlane_ConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "azureplane-resource-empty.json",
 			expected: &datamodel.AzurePlane{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/azure/azurecloud",
-						Name:     "azurecloud",
-						Type:     datamodel.AzurePlaneResourceType,
-						Location: "global",
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
+				ID:       "/planes/azure/azurecloud",
+				Name:     "azurecloud",
+				Type:     datamodel.AzurePlaneResourceType,
+				Location: "global",
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				UpdatedAPIVersion: Version,
 				Properties: datamodel.AzurePlaneProperties{
 					URL: "https://management.azure.com",
 				},

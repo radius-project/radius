@@ -17,7 +17,7 @@ set -euo pipefail
 # Usage: install-bicep.sh [install_dir]
 #
 # Environment (all optional):
-#   BICEP_VERSION                Release tag, e.g. v0.42.1. Empty selects latest.
+#   BICEP_VERSION                Release tag, e.g. v0.46.1. Empty selects latest.
 #   BICEP_CHECKSUM_<OS>_<ARCH>   SHA-256 for that platform (e.g.
 #                                BICEP_CHECKSUM_LINUX_AMD64).
 #   BICEP_OS / BICEP_ARCH        Override the target platform (default: host).
@@ -62,8 +62,15 @@ gh_curl() {
     fi
     # --retry rides out transient failures (timeouts and HTTP 408/429/5xx such as
     # the 504 gateway timeouts GitHub's release CDN returns intermittently) with
-    # exponential backoff, while still failing fast on 404s (a wrong version).
-    curl --proto '=https' --tlsv1.2 --retry 5 --retry-connrefused "${headers[@]}" "$@"
+    # exponential backoff. --retry-all-errors extends that same backoff to
+    # failures curl's default retry logic does not classify as transient,
+    # notably curl 56 ("Connection died"), the dropped/reset mid-download
+    # connections seen intermittently against the release CDN (see #12661).
+    # Combined with -f (used by every caller below), --retry-all-errors also
+    # retries HTTP 404s (e.g. a wrong/nonexistent version) instead of failing
+    # immediately, so a bad version now takes the full retry budget (~31s) to
+    # fail rather than failing fast.
+    curl --proto '=https' --tlsv1.2 --retry 5 --retry-connrefused --retry-all-errors "${headers[@]}" "$@"
 }
 
 detect_os() {
@@ -138,7 +145,7 @@ main() {
     fi
 
     # Normalize the requested version: strip whitespace, treat empty as the latest
-    # release, and accept a bare number (0.42.1) as well as a tag (v0.42.1).
+    # release, and accept a bare number (0.46.1) as well as a tag (v0.46.1).
     version="${BICEP_VERSION:-}"
     version="${version//[[:space:]]/}"
     if [ -z "$version" ]; then
@@ -149,12 +156,15 @@ main() {
     fi
     [ -n "$version" ] || fail "could not determine the bicep version to install"
 
-    # Skip if already present in the target directory, verifying the version when
-    # the binary can run on this host.
+    # Check cross-platform artifacts by checksum because they cannot run on this
+    # host. Otherwise a version bump can leave an older staged binary.
     if [ -x "${install_dir}/bicep" ]; then
         if ! $runnable; then
-            log "bicep already present at ${install_dir}/bicep"
-            return 0
+            if [ -n "$checksum" ] && verify_checksum "$checksum" "${install_dir}/bicep"; then
+                log "bicep ${version} already installed: ${install_dir}/bicep"
+                return 0
+            fi
+            log "cannot verify existing cross-platform bicep; downloading ${version}"
         elif "${install_dir}/bicep" --version 2>/dev/null | grep -q "${version#v}"; then
             log "bicep ${version} already installed: ${install_dir}/bicep"
             return 0

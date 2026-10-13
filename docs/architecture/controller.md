@@ -4,8 +4,7 @@ The `controller` binary runs the Kubernetes controller-manager-based workflows
 for Radius. It watches cluster resources, reconciles them, and drives Radius
 APIs where Kubernetes-native automation is required.
 
-The controller owns reconciliation and webhook behavior. It is not the primary
-home of resource-type authoring or UCP routing logic.
+The controller owns Kubernetes reconciliation for template deployment and Flux GitOps. It is not the primary home of resource-type authoring or UCP routing logic.
 
 ## Entry Points
 
@@ -17,36 +16,33 @@ home of resource-type authoring or UCP routing logic.
 
 ## Quick Reference
 
-| Topic | Start Here |
-|------|------------|
-| Startup | `cmd/controller/cmd/root.go` |
-| Manager setup | `pkg/controller/service.go` |
-| Reconciler logic | `pkg/controller/reconciler` |
-| CRD types | `pkg/controller/api` |
+| Topic            | Start Here                   |
+|------------------|------------------------------|
+| Startup          | `cmd/controller/cmd/root.go` |
+| Manager setup    | `pkg/controller/service.go`  |
+| Reconciler logic | `pkg/controller/reconciler`  |
+| CRD types        | `pkg/controller/api`         |
 
-| Test Focus | Packages |
-|-----------|----------|
-| Reconcile and webhook behavior | `./pkg/controller/reconciler/...` |
-| Broad safety check | `./pkg/controller/...` |
+| Test Focus         | Packages                          |
+|--------------------|-----------------------------------|
+| Reconcile behavior | `./pkg/controller/reconciler/...` |
+| Broad safety check | `./pkg/controller/...`            |
 
 ## Core Packages
 
-| Package | Responsibility |
-|--------|----------------|
-| `pkg/controller/service.go` | controller manager bootstrap |
-| `pkg/controller/reconciler` | reconcilers and webhook wiring |
-| `pkg/controller/api` | CRD-backed Kubernetes API types |
-| `pkg/sdk` | clients used to call back into Radius APIs |
+| Package                     | Responsibility                                                 |
+|-----------------------------|----------------------------------------------------------------|
+| `pkg/controller/service.go` | controller manager bootstrap                                   |
+| `pkg/controller/reconciler` | deployment template, deployment resource, and Flux reconcilers |
+| `pkg/controller/api`        | CRD-backed Kubernetes API types                                |
+| `pkg/sdk`                   | clients used to call back into Radius APIs                     |
 
 ## How It Works
 
 The root command builds shared host options, creates the logger, and starts a
 single `controller.Service` through shared hosting.
 
-Inside [pkg/controller/service.go](../../pkg/controller/service.go), the service
-creates a controller-runtime manager, registers API schemes, configures metrics
-and health probes, then registers reconcilers for recipe, deployment,
-deployment template, deployment resource, and Flux-oriented behavior.
+Inside [pkg/controller/service.go](../../pkg/controller/service.go), the service creates a controller-runtime manager, registers API schemes, configures metrics and health probes, then registers `DeploymentTemplateReconciler`, `DeploymentResourceReconciler`, and `FluxController`. The shared operation types in [operation_types.go](../../pkg/controller/api/radapp.io/v1alpha3/operation_types.go) preserve asynchronous operation tracking for both deployment CRDs.
 
 Some reconcilers call back into Radius APIs using SDK clients configured with
 the current UCP connection. That is the main architectural bridge between the
@@ -72,8 +68,7 @@ controller and the rest of the control plane.
 ### Suggested Test Scope
 
 - `go test ./pkg/controller/...`
-- Pay particular attention to reconciler and webhook tests in
-  `pkg/controller/reconciler/...`
+- Pay particular attention to deployment template, deployment resource, and Flux tests in `pkg/controller/reconciler/...`.
 
 ## Package Dependency View
 

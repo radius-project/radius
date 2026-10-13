@@ -25,18 +25,14 @@ import (
 // ConvertTo converts from the versioned LocationResource resource to version-agnostic datamodel.
 func (src *LocationResource) ConvertTo() (v1.DataModelInterface, error) {
 	dst := &datamodel.Location{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   to.String(src.ID),
-				Name: to.String(src.Name),
-				Type: datamodel.LocationResourceType,
+		TrackedResource: v1.TrackedResource{
+			ID:   to.String(src.ID),
+			Name: to.String(src.Name),
+			Type: datamodel.LocationResourceType,
 
-				// NOTE: this is a child resource. It does not have a location, systemData, or tags.
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
+			// NOTE: this is a child resource. It does not have a location, systemData, or tags.
 		},
+		UpdatedAPIVersion: Version,
 	}
 
 	dst.Properties = datamodel.LocationProperties{

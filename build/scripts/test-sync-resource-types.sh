@@ -4,13 +4,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-readonly REPO_ROOT
 # shellcheck source=build/scripts/sync-resource-types.sh
 source "${SCRIPT_DIR}/sync-resource-types.sh"
-export RADIUS_DEFAULTS_YAML="${REPO_ROOT}/deploy/manifest/defaults.yaml"
-# shellcheck source=.github/extension/scripts/contrib-catalog.sh
-source "${REPO_ROOT}/.github/extension/scripts/contrib-catalog.sh"
 
 assert_equal() {
     local expected="$1" actual="$2" message="$3"
@@ -20,140 +15,6 @@ assert_equal() {
     fi
 }
 
-test_azure_recipe_pack_pinning() {
-    local workflow run_block function_definition fixture function_file warning
-    local sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    workflow="${REPO_ROOT}/.github/extension/run-rad-commands-azure.yml"
-    run_block="$(
-        yq -r '
-            .jobs.deploy.steps[] |
-            select(.name == "Create Radius environment and recipe pack") |
-            .run
-        ' "${workflow}"
-    )"
-    function_definition="$(
-        printf '%s\n' "${run_block}" |
-            sed -n '/^pin_kube_recipe() {$/,/^}$/p'
-    )"
-    [[ -n "${function_definition}" ]] ||
-        fail "pin_kube_recipe function not found in ${workflow}."
-
-    fixture="$(mktemp -d)"
-    function_file="${fixture}/pin-kube-recipe.sh"
-    printf '%s\n' "${function_definition}" >"${function_file}"
-    (
-        # shellcheck disable=SC2329 # Invoked by the sourced workflow function.
-        radius_contrib_kube_recipe_source() {
-            printf 'ghcr.io/radius-project/kube-recipes/%s:%s' "$2" "${sha}"
-        }
-        ENV_BICEP="${fixture}/recipe-pack.bicep"
-        : >"${ENV_BICEP}"
-        # shellcheck disable=SC1090 # Generated from the workflow under test.
-        source "${function_file}"
-
-        warning="$(pin_kube_recipe Radius.Compute/containers containers 2>&1)"
-        grep -Fq \
-            "WARNING: the Azure recipe pack has no Radius.Compute/containers Recipe" \
-            <<<"${warning}" || fail "missing Recipe did not produce a warning."
-
-        printf "source: 'ghcr.io/radius-project/kube-recipes/containers:latest'\n" \
-            >"${ENV_BICEP}"
-        pin_kube_recipe Radius.Compute/containers containers
-        grep -Fq \
-            "source: 'ghcr.io/radius-project/kube-recipes/containers:${sha}'" \
-            "${ENV_BICEP}" || fail "mutable Recipe source was not pinned."
-
-        warning="$(pin_kube_recipe Radius.Compute/containers containers 2>&1)"
-        [[ -z "${warning}" ]] || fail "already-pinned Recipe produced a warning."
-    )
-    rm -rf "${fixture}"
-}
-
-# Regression guard for the drift that broke Azure deploys (#12688): the Azure
-# pack shipped a sixth Kubernetes recipe (RabbitMQ) that the hardcoded pin list
-# never covered, so it survived to the mutable-tag guard and failed the step.
-# The workflow now derives the pin set from the pack, so this asserts that
-# derivation pins every kube recipe a pack ships and leaves the guard nothing to
-# reject, and that the guard still fires for a recipe that cannot be mapped.
-test_azure_recipe_pack_pin_coverage() {
-    local workflow run_block region fixture
-    local sha="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-    workflow="${REPO_ROOT}/.github/extension/run-rad-commands-azure.yml"
-    run_block="$(
-        yq -r '
-            .jobs.deploy.steps[] |
-            select(.name == "Create Radius environment and recipe pack") |
-            .run
-        ' "${workflow}"
-    )"
-    # The self-contained pinning region under test: the pin_kube_recipe helper,
-    # the loop that derives recipes from the pack, and the mutable-tag guard.
-    region="$(
-        printf '%s\n' "${run_block}" |
-            awk '/^pin_kube_recipe\(\) \{$/ { c = 1 } c { print } c && /^fi$/ { exit }'
-    )"
-    [[ -n "${region}" ]] ||
-        fail "kube-recipe pinning region not found in ${workflow}."
-
-    fixture="$(mktemp -d)"
-
-    # A pack shipping two Kubernetes recipes (one of them RabbitMQ, the recipe the
-    # old hardcoded list omitted) plus a managed AVM recipe that must be left
-    # untouched. Derivation must pin both kube recipes and the guard must pass.
-    cat >"${fixture}/pack.bicep" <<'PACK'
-      'Radius.Compute/containers': {
-        kind: 'bicep'
-        source: 'ghcr.io/radius-project/kube-recipes/containers:latest'
-      }
-      'Radius.Data/redisCaches': {
-        kind: 'bicep'
-        source: 'mcr.microsoft.com/bicep/avm/res/cache/redis-enterprise:0.5.1'
-      }
-      'Radius.Messaging/rabbitMQ': {
-        kind: 'bicep'
-        source: 'ghcr.io/radius-project/kube-recipes/rabbitmq:latest'
-      }
-PACK
-    (
-        # shellcheck disable=SC2329 # Invoked by the sourced workflow region.
-        radius_contrib_kube_recipe_source() {
-            printf 'ghcr.io/radius-project/kube-recipes/%s:%s' "$2" "${sha}"
-        }
-        ENV_BICEP="${fixture}/pack.bicep"
-        # shellcheck disable=SC1090 # Generated from the workflow under test.
-        eval "${region}"
-    ) || fail "derivation rejected a pack whose kube recipes are all mappable."
-    ! grep -Eq 'kube-recipes/[a-z0-9._-]+:latest' "${fixture}/pack.bicep" ||
-        fail "a pack kube recipe was left unpinned by the derivation."
-    grep -Fq "kube-recipes/rabbitmq:${sha}" "${fixture}/pack.bicep" ||
-        fail "the RabbitMQ recipe was not pinned by the derivation."
-    grep -Fq "kube-recipes/containers:${sha}" "${fixture}/pack.bicep" ||
-        fail "the containers recipe was not pinned by the derivation."
-    grep -Fq 'redis-enterprise:0.5.1' "${fixture}/pack.bicep" ||
-        fail "the managed AVM recipe was altered by the derivation."
-
-    # A kube recipe not keyed by a Radius resource type cannot be mapped to a
-    # namespace ref, so the guard must catch the leftover mutable tag.
-    cat >"${fixture}/drift.bicep" <<'PACK'
-      'somethingElse': {
-        kind: 'bicep'
-        source: 'ghcr.io/radius-project/kube-recipes/mysteryservice:latest'
-      }
-PACK
-    if (
-        # shellcheck disable=SC2329 # Invoked by the sourced workflow region.
-        radius_contrib_kube_recipe_source() {
-            printf 'ghcr.io/radius-project/kube-recipes/%s:%s' "$2" "${sha}"
-        }
-        ENV_BICEP="${fixture}/drift.bicep"
-        # shellcheck disable=SC1090 # Generated from the workflow under test.
-        eval "${region}"
-    ) 2>/dev/null; then
-        fail "the guard accepted a pack with an unmappable mutable kube recipe."
-    fi
-
-    rm -rf "${fixture}"
-}
 git() {
     [[ "$1" == "ls-remote" ]] || return 2
     if [[ "$2" == "--tags" && "$3" == "--refs" ]]; then
@@ -217,9 +78,117 @@ git() {
     esac
 }
 
+# fake_bicep stands in for the Bicep CLI. build copies the source's single line
+# into a template with a generator block, like the real compiler output.
+fake_bicep() {
+    case "$1" in
+        --version) echo "Bicep CLI version 0.46.1 (fake)" ;;
+        build)
+            [[ "$3" == "--outfile" ]] || return 2
+            [[ -f "$(dirname "$2")/bicepconfig.json" ]] || return 3
+            printf '{"metadata":{"_generator":{"version":"0.46.1"}},"marker":"%s"}\n' \
+                "$(cat "$2")" >"$4"
+            ;;
+        *) return 2 ;;
+    esac
+}
+
+# fake_pack_tree <dir> <ref> writes the recipe pack folders fetched at ref.
+fake_pack_tree() {
+    mkdir -p "$1/recipe-packs/kubernetes" "$1/recipe-packs/azure"
+    printf 'kubernetes@%s' "$2" >"$1/recipe-packs/kubernetes/default.bicep"
+    printf 'azure@%s' "$2" >"$1/recipe-packs/azure/default.bicep"
+}
+
+test_recipe_pack_vendoring() {
+    local tmp actual_order expected_order
+    tmp="$(mktemp -d)"
+
+    (
+        # shellcheck disable=SC2034 # Read by the sourced sync functions.
+        BICEP=fake_bicep BICEP_VERSION=v0.46.1 RECIPE_PACK_DEST_DIR="${tmp}/out"
+        mkdir -p "${tmp}/missing/recipe-packs/kubernetes"
+        if (vendor_recipe_pack "${tmp}/missing/recipe-packs/kubernetes" kubernetes example.invalid abc) >/dev/null 2>&1; then
+            fail "vendored recipe pack without default.bicep was accepted."
+        fi
+        [[ ! -e "${tmp}/out/kubernetes/default.json" ]] ||
+            fail "missing default.bicep still wrote default.json."
+
+        # shellcheck disable=SC2034 # Read by the sourced sync functions.
+        BICEP_VERSION=v0.45.0
+        fake_pack_tree "${tmp}/v1" v1
+        if (vendor_recipe_pack "${tmp}/v1/recipe-packs/kubernetes" kubernetes example.invalid v1) >/dev/null 2>&1; then
+            fail "Bicep version other than the pinned one was accepted."
+        fi
+    )
+
+    (
+        # shellcheck disable=SC2034 # Read by the sourced sync functions.
+        BICEP=fake_bicep BICEP_VERSION=v0.46.1 RECIPE_PACK_DEST_DIR="${tmp}/out"
+        # shellcheck disable=SC2329 # Invoked indirectly by copy_recipe_packs.
+        entry_names() { printf '%s\n' azure kubernetes; }
+        # shellcheck disable=SC2329 # Invoked indirectly by copy_recipe_packs.
+        pin_field() {
+            case "$3" in
+                repo) printf '%s' example.invalid ;;
+                ref) cat "${tmp}/ref" ;;
+            esac
+        }
+        # shellcheck disable=SC2329 # Invoked indirectly by copy_recipe_packs.
+        fetch_ref() { fake_pack_tree "$3" "$2"; }
+
+        printf v1 >"${tmp}/ref"
+        (copy_recipe_packs) >/dev/null
+        assert_equal \
+            '{"marker":"kubernetes@v1"}' \
+            "$(yq -p json -o json -I 0 . "${tmp}/out/kubernetes/default.json")" \
+            "compiled kubernetes recipe pack without generator metadata"
+        [[ ! -e "${tmp}/out/azure" ]] ||
+            fail "non-vendored azure recipe pack was copied."
+
+        printf v2 >"${tmp}/ref"
+        (copy_recipe_packs) >/dev/null
+        assert_equal \
+            '{"marker":"kubernetes@v2"}' \
+            "$(yq -p json -o json -I 0 . "${tmp}/out/kubernetes/default.json")" \
+            "recompiled kubernetes recipe pack after a pin move"
+    )
+
+    actual_order="$(
+        (
+            # shellcheck disable=SC2329 # Invoked indirectly by update_recipe_packs.
+            has_pins() { return 1; }
+            # shellcheck disable=SC2329 # Invoked indirectly by update_recipe_packs.
+            update_section() { echo "update:$1"; }
+            # shellcheck disable=SC2329 # Invoked indirectly by update_recipe_packs.
+            promote_edge_pins() { echo "promote:$1"; }
+            # shellcheck disable=SC2329 # Invoked indirectly by update_recipe_packs.
+            validate_section_pins() { echo "validate:$1"; }
+            # shellcheck disable=SC2329 # Invoked indirectly by update_recipe_packs.
+            copy_recipe_packs() { echo "copy-recipe-packs"; }
+            # shellcheck disable=SC2329 # Must not be invoked by update_recipe_packs.
+            copy_manifests() { echo "copy-manifests"; }
+            update_recipe_packs | grep -v '^Syncing'
+        )
+    )"
+    expected_order="$(
+        cat <<'EOF'
+update:recipePacks
+promote:recipePacks
+validate:recipePacks
+copy-recipe-packs
+EOF
+    )"
+    assert_equal \
+        "${expected_order}" \
+        "${actual_order}" \
+        "update-recipe-packs re-pins then recompiles without copying manifests"
+
+    rm -rf "${tmp}"
+}
+
 main() {
-    local edge_sha resolved_sha resolved_tag azure_ref kubernetes_ref
-    local data_repo data_ref workflow
+    local edge_sha resolved_sha resolved_tag
     edge_sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
     is_stable_tag resourceTypes Radius.Compute Radius.Compute/v1.10.0 ||
@@ -321,119 +290,6 @@ main() {
         fail "global release was accepted while a scoped release exists."
     fi
 
-    azure_ref="$(radius_contrib_catalog_field recipePacks azure ref)"
-    kubernetes_ref="$(radius_contrib_catalog_field recipePacks kubernetes ref)"
-    assert_equal \
-        "${azure_ref}" \
-        "$(radius_contrib_recipe_pack_url azure aks-recipepack.bicep | sed -E 's|.*/([0-9a-f]{40})/recipe-packs/.*|\1|')" \
-        "Azure recipe pack catalog ref"
-    [[ "${kubernetes_ref}" =~ ^[0-9a-f]{40}$ ]] ||
-        fail "Kubernetes recipe pack is not pinned in defaults.yaml."
-    assert_equal \
-        "${kubernetes_ref}" \
-        "$(radius_contrib_recipe_pack_url kubernetes default-recipepack.bicep | sed -E 's|.*/([0-9a-f]{40})/recipe-packs/.*|\1|')" \
-        "Kubernetes recipe pack catalog ref"
-
-    data_repo="$(radius_contrib_catalog_field resourceTypes Radius.Data repo)"
-    data_ref="$(radius_contrib_catalog_field resourceTypes Radius.Data ref)"
-    assert_equal \
-        "git::https://${data_repo}.git//Data/mySqlDatabases/recipes/aws/terraform?ref=${data_ref}" \
-        "$(radius_contrib_resource_git_source Radius.Data/mySqlDatabases recipes/aws/terraform)" \
-        "resource Recipe source from catalog"
-
-    for workflow in \
-        "${REPO_ROOT}/.github/extension/run-rad-commands-azure.yml" \
-        "${REPO_ROOT}/.github/extension/run-rad-commands-aws.yml"; do
-        if grep -Eq '^[[:space:]]*(COMPUTE_RESOURCE_TYPES_REF|DATA_RESOURCE_TYPES_REF|SECURITY_RESOURCE_TYPES_REF|RECIPE_PACK_REF|RESOURCE_TYPES_CONTRIB_REF|RESOURCE_TYPES_CONTRIB_REPO):' "${workflow}"; then
-            fail "workflow contains a mirrored contrib ref: ${workflow}"
-        fi
-        # shellcheck disable=SC2016 # Match the literal workflow variable.
-        grep -Fq 'source "$RADIUS_CONTRIB_CATALOG_HELPER"' "${workflow}" ||
-            fail "workflow does not consume the shared defaults catalog: ${workflow}"
-    done
-
-    test_azure_recipe_pack_pinning
-    test_azure_recipe_pack_pin_coverage
-    invariant_fixture="$(mktemp -d)"
-    cat >"${invariant_fixture}/bad.yml" <<'EOF'
----
-name: bad
-env:
-    renamed_pin: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-jobs: {}
-EOF
-    if EXTENSION_DIR="${invariant_fixture}" \
-        bash "${SCRIPT_DIR}/verify-contrib-consumers.sh" \
-        --source-of-truth-only >/dev/null 2>&1; then
-        fail "generic source-of-truth guard accepted a renamed SHA variable."
-    fi
-    cat >"${invariant_fixture}/bad.yml" <<'EOF'
----
-name: bad
-env:
-  numeric_pin: 1111111111111111111111111111111111111111
-jobs: {}
-EOF
-    if EXTENSION_DIR="${invariant_fixture}" \
-        bash "${SCRIPT_DIR}/verify-contrib-consumers.sh" \
-        --source-of-truth-only >/dev/null 2>&1; then
-        fail "generic source-of-truth guard accepted an unquoted numeric SHA."
-    fi
-    cat >"${invariant_fixture}/bad.yml" <<'EOF'
----
-name: bad
-jobs:
-    test:
-        runs-on: ubuntu-latest
-        steps:
-            - run: curl https://raw.githubusercontent.com/Radius-Project/Resource-Types-Contrib/main/file
-EOF
-    if EXTENSION_DIR="${invariant_fixture}" \
-        bash "${SCRIPT_DIR}/verify-contrib-consumers.sh" \
-        --source-of-truth-only >/dev/null 2>&1; then
-        fail "generic source-of-truth guard accepted a direct contrib URL."
-    fi
-    cat >"${invariant_fixture}/bad.yml" <<'EOF'
----
-name: bad
-env:
-    renamed_ref: "main"
-jobs: {}
-EOF
-    if EXTENSION_DIR="${invariant_fixture}" \
-        bash "${SCRIPT_DIR}/verify-contrib-consumers.sh" \
-        --source-of-truth-only >/dev/null 2>&1; then
-        fail "generic source-of-truth guard accepted a moving ref."
-    fi
-    cat >"${invariant_fixture}/bad.yml" <<'EOF'
----
-name: bad
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCD
-EOF
-    if EXTENSION_DIR="${invariant_fixture}" \
-        bash "${SCRIPT_DIR}/verify-contrib-consumers.sh" \
-        --source-of-truth-only >/dev/null 2>&1; then
-        fail "generic source-of-truth guard accepted an uppercase SHA in a run block."
-    fi
-    cat >"${invariant_fixture}/good.yml" <<'EOF'
----
-name: good
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-EOF
-    rm "${invariant_fixture}/bad.yml"
-    EXTENSION_DIR="${invariant_fixture}" \
-        bash "${SCRIPT_DIR}/verify-contrib-consumers.sh" \
-        --source-of-truth-only >/dev/null
-    rm -rf "${invariant_fixture}"
-
     actual_order="$(
         (
             update_section() { echo "update:$1"; }
@@ -458,7 +314,9 @@ EOF
         "${actual_order}" \
         "atomic update ordering"
 
-    echo "Stable-first resource type pin tests passed."
+    test_recipe_pack_vendoring
+
+    echo "Stable-first resource type pin and recipe pack vendoring tests passed."
 }
 
 main "$@"

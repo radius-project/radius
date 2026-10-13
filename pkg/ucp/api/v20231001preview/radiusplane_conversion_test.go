@@ -37,20 +37,14 @@ func Test_RadiusPlane_ConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "radiusplane-resource-empty.json",
 			expected: &datamodel.RadiusPlane{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/radius/local",
-						Name:     "local",
-						Type:     datamodel.RadiusPlaneResourceType,
-						Location: "global",
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
+				ID:       "/planes/radius/local",
+				Name:     "local",
+				Type:     datamodel.RadiusPlaneResourceType,
+				Location: "global",
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				UpdatedAPIVersion: Version,
 				Properties: datamodel.RadiusPlaneProperties{
 					ResourceProviders: map[string]string{
 						"Applications.Core": "http://applications-rp:9000",

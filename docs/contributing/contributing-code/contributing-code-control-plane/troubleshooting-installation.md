@@ -37,3 +37,28 @@ kubectl logs -n radius-system -l app.kubernetes.io/part-of=radius --all-containe
 ```
 
 See the [observability documentation](https://docs.radapp.io/guides/operations/control-plane/logs/) for more logging guidance.
+
+## The installation times out
+
+`rad install kubernetes` waits for the control-plane resources to become ready and fails with an error like this if they do not:
+
+```text
+Error: failed to apply Radius Helm chart, err: failed to run Helm install, err: resource Deployment/radius-system/ucp not ready. status: InProgress, message: Available: 0/1
+context deadline exceeded
+```
+
+The default budget is 10 minutes, which is ample for a typical install. A cold cluster has to pull every control-plane image before any deployment can become ready, so a slow or throttled network can exceed the default. Allow more time with `--timeout`:
+
+```bash
+rad install kubernetes --timeout 30m
+```
+
+`--timeout` accepts any Go duration (`30m`, `1h`). Negative values are rejected, and `0` means "use the default".
+
+A timed-out install leaves a failed Helm release behind, and `rad install kubernetes` skips a cluster that already has a release. Retrying therefore needs `--reinstall`, otherwise the command reports `Found existing Radius installation` and exits without reapplying the chart:
+
+```bash
+rad install kubernetes --reinstall --timeout 30m
+```
+
+If the install still times out, check whether the pods are actually healthy using the steps above. Pods that are `Running` and `Ready` while the install reports a resource as `InProgress` point at the readiness watcher rather than your cluster — see [radius-project/radius#12975](https://github.com/radius-project/radius/issues/12975).

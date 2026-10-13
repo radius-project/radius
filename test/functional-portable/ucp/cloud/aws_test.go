@@ -28,10 +28,11 @@ import (
 	"testing"
 	"time"
 
+	"uuid"
+
 	awsgo "github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
@@ -205,7 +206,7 @@ func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudCon
 
 func generateLogGroupName(t *testing.T) string {
 	t.Helper()
-	return "ucpfunctionaltest-" + uuid.NewString()
+	return "ucpfunctionaltest-" + uuid.New().String()
 }
 
 func requireResponseStatus(t *testing.T, response *http.Response, expectedStatus int) {

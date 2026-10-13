@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -17,11 +17,111 @@
 DIST_DIR ?= dist
 IMAGES_DIR := $(DIST_DIR)/images
 METRICS_DIR := $(DIST_DIR)/metrics
+RELEASE_PARITY_VERSION ?=
+RELEASE_PARITY_OUTPUT ?= $(DIST_DIR)/release-parity/v$(RELEASE_PARITY_VERSION).json
+GORELEASER ?= goreleaser
+GORELEASER_ARGS ?=
+GORELEASER_DIST_DIR ?= $(DIST_DIR)/goreleaser
+GORELEASER_PRODUCTION_REGISTRY ?= ghcr.io/radius-project
+GORELEASER_PRODUCTION_IMAGE_LOCK ?= $(DIST_DIR)/production-image-digests.json
+GORELEASER_IMAGE_CATEGORIES ?= production
+GORELEASER_IMAGE_NAMES ?=
+GORELEASER_IMAGE_ALLOW_ABSENT ?= false
+GORELEASER_IMAGE_STATE ?=
+GORELEASER_RELEASE_NOTES ?= docs/release-notes/v$(REL_VERSION).md
+GORELEASER_CLI_LOCK ?= $(DIST_DIR)/release-cli-oci.json
+GORELEASER_CLI_ARTIFACTS_DIR ?=
 
 ##@ Artifacts
 
 .PHONY: artifacts
 artifacts: docker-build docker-save-images build-metrics ## Build all artifacts needed for testing/release
+
+.PHONY: release-parity-manifest
+release-parity-manifest: ## Capture observable outputs for RELEASE_PARITY_VERSION.
+	@if [ -z "$(RELEASE_PARITY_VERSION)" ]; then \
+		echo "Error: RELEASE_PARITY_VERSION is required"; \
+		exit 1; \
+	fi
+	@bash ./.github/scripts/release-parity-manifest.sh \
+		--version "$(RELEASE_PARITY_VERSION)" \
+		--output "$(RELEASE_PARITY_OUTPUT)"
+
+.PHONY: goreleaser-check
+goreleaser-check: ## Validate the GoReleaser configuration
+	@REL_CHANNEL="$(REL_CHANNEL)" \
+		REL_VERSION="$(REL_VERSION)" \
+		CHART_VERSION="$(CHART_VERSION)" \
+		GIT_VERSION="$(GIT_VERSION)" \
+		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		$(GORELEASER) check
+
+# GoReleaser builds images only when it publishes, so skipping docker or publish
+# leaves no images for the verifier to inspect.
+GORELEASER_VERIFY_ARGS := $(if $(or $(findstring docker,$(GORELEASER_ARGS)),$(findstring publish,$(GORELEASER_ARGS))),--skip-images)
+
+.PHONY: goreleaser-snapshot
+goreleaser-snapshot: ## Build and verify a GoReleaser snapshot
+	@REL_CHANNEL="$(REL_CHANNEL)" \
+		REL_VERSION="$(REL_VERSION)" \
+		CHART_VERSION="$(CHART_VERSION)" \
+		GIT_VERSION="$(GIT_VERSION)" \
+		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		$(GORELEASER) release --snapshot --clean $(GORELEASER_ARGS)
+	@bash ./.github/scripts/normalize-release-checksums.sh
+	@bash ./.github/scripts/verify-goreleaser-snapshot.sh $(GORELEASER_VERIFY_ARGS)
+
+.PHONY: goreleaser-release
+goreleaser-release: ## Stage immutable release artifacts and a draft GitHub Release
+	@if [ ! -f "$(GORELEASER_RELEASE_NOTES)" ]; then \
+		echo "Error: prepared release notes not found: $(GORELEASER_RELEASE_NOTES)"; \
+		exit 1; \
+	fi
+	@GORELEASER_IMAGE_REGISTRY="$(GORELEASER_PRODUCTION_REGISTRY)" \
+		GORELEASER_RELEASE_DISABLE=false \
+		bash ./.github/scripts/verify-goreleaser-snapshot.sh --config-only
+	@GORELEASER_IMAGE_REGISTRY="$(GORELEASER_PRODUCTION_REGISTRY)" \
+		GORELEASER_RELEASE_DISABLE=false \
+		REL_CHANNEL="$(REL_CHANNEL)" \
+		REL_VERSION="$(REL_VERSION)" \
+		CHART_VERSION="$(CHART_VERSION)" \
+		GIT_VERSION="$(GIT_VERSION)" \
+		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		$(GORELEASER) release --clean $(GORELEASER_ARGS) \
+			--release-notes "$(GORELEASER_RELEASE_NOTES)"
+	@bash ./.github/scripts/normalize-release-checksums.sh
+	@GORELEASER_IMAGE_REGISTRY="$(GORELEASER_PRODUCTION_REGISTRY)" \
+		bash ./.github/scripts/verify-goreleaser-snapshot.sh $(GORELEASER_VERIFY_ARGS)
+
+.PHONY: release-cli-oci
+release-cli-oci: ## Publish immutable CLI OCI artifacts and record their digests
+	@bash ./.github/scripts/release-oci-artifacts.sh stage-cli \
+		--registry "$(GORELEASER_PRODUCTION_REGISTRY)" \
+		--version "$(REL_VERSION)" \
+		--source-sha "$(GIT_COMMIT)" \
+		$(if $(GORELEASER_CLI_ARTIFACTS_DIR),--artifacts-dir "$(GORELEASER_CLI_ARTIFACTS_DIR)",--artifacts "$(GORELEASER_DIST_DIR)/artifacts.json") \
+		--output "$(GORELEASER_CLI_LOCK)"
+
+.PHONY: promote-release-aliases
+promote-release-aliases: ## Promote channel and latest aliases from immutable digests
+	@bash ./.github/scripts/release-oci-artifacts.sh promote \
+		--version "$(REL_VERSION)" \
+		--channel "$(REL_CHANNEL)" \
+		--source-sha "$(GIT_COMMIT)" \
+		--image-lock "$(GORELEASER_PRODUCTION_IMAGE_LOCK)" \
+		--cli-lock "$(GORELEASER_CLI_LOCK)"
+
+.PHONY: capture-release-image-digests
+capture-release-image-digests: ## Verify full-version production images and capture immutable digests
+	@bash ./.github/scripts/capture-release-image-digests.sh \
+		--registry "$(DOCKER_REGISTRY)" \
+		--tag "$(DOCKER_TAG_VERSION)" \
+		--categories "$(GORELEASER_IMAGE_CATEGORIES)" \
+		--names "$(GORELEASER_IMAGE_NAMES)" \
+		--source-sha "$(GIT_COMMIT)" \
+		$(if $(filter true 1,$(GORELEASER_IMAGE_ALLOW_ABSENT)),--allow-absent,) \
+		$(if $(GORELEASER_IMAGE_STATE),--state-output "$(GORELEASER_IMAGE_STATE)",) \
+		--output "$(GORELEASER_PRODUCTION_IMAGE_LOCK)"
 
 .PHONY: docker-save-images
 docker-save-images: ## Save Docker images to dist/images/*.tar

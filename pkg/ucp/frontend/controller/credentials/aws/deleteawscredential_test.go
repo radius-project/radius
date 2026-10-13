@@ -136,9 +136,7 @@ func setupCredentialMocks(mockDatabaseClient database.MockClient) {
 	mockDatabaseClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, id string, options ...database.GetOptions) (*database.Object, error) {
 			return &database.Object{
-				Metadata: database.Metadata{
-					ID: datamodelCredential.TrackedResource.ID,
-				},
+				ID:   datamodelCredential.TrackedResource.ID,
 				Data: &datamodelCredential,
 			}, nil
 		}).Times(1)

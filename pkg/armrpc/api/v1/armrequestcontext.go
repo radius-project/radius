@@ -26,7 +26,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )

@@ -99,20 +99,24 @@ export default async ({ context, github, core }) => {
 
     core.info(`Modified keys: ${JSON.stringify(modifiedKeys)}`);
 
-    // For non-PR events (push, schedule), run all languages
-    // For PR events, filter based on changed files unless "/codeql full" is found
-    const isPrEvent =
-      eventName === "pull_request" || eventName === "pull_request_target";
+    // For push, scheduled, and manual runs, analyze all languages.
+    // For PRs and merge groups, filter unless a PR requests "/codeql full".
+    const isFilteredEvent =
+      eventName === "pull_request" ||
+      eventName === "pull_request_target" ||
+      eventName === "merge_group";
 
     let filteredMatrix;
-    if (!isPrEvent) {
-      core.info("Non-PR event detected - running full matrix");
+    if (!isFilteredEvent) {
+      core.info("Non-PR/merge-group event detected - running full matrix");
       filteredMatrix = FULL_MATRIX;
     } else if (await shouldRunFullMatrix(context, github, core)) {
       core.info(`"${FULL_MATRIX_TRIGGER}" trigger found - running full matrix`);
       filteredMatrix = FULL_MATRIX;
     } else {
-      core.info("PR event detected - filtering matrix based on changed files");
+      core.info(
+        "PR or merge group detected - filtering matrix based on changed files"
+      );
       filteredMatrix = FULL_MATRIX.filter((item) => {
         const requiredKeys = LANGUAGE_TO_KEYS[item.language] || [];
         return requiredKeys.some((key) => modifiedKeys.includes(key));

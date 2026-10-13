@@ -32,9 +32,14 @@
 #                  <namespace>/<typeName>/<typeName>.yaml (with the "Radius."
 #                  prefix stripped) into every destination directory, and prunes
 #                  stale managed files.
-#   recipePacks    per-pack pins for the recipe packs published upstream. Recipe
-#                  packs are not vendored here. Extension workflows resolve
-#                  their immutable sources directly from this catalog.
+#   recipePacks    per-pack pins for the recipe packs published upstream. The
+#                  kubernetes pack is compiled from
+#                  recipe-packs/kubernetes/default.bicep into
+#                  deploy/manifest/recipe-packs/kubernetes/default.json, which
+#                  rad embeds to create the default recipe pack. Compiling
+#                  requires the Bicep CLI pinned in build/tools.yaml
+#                  (make install-bicep). Other packs are not vendored; extension
+#                  workflows resolve their immutable sources from this catalog.
 #
 # At startup UCP's RegisterDirectory loads the committed files unchanged;
 # manifests without a "location" field are routed via DefaultDownstreamEndpoint
@@ -49,11 +54,12 @@
 #                            when no stable release exists, then pin the commit
 #                            SHA and copy the manifest files.
 #   update-recipe-packs    - Apply the same stable-first selection to each
-#                            recipePacks entry. Nothing is copied; only the pins
-#                            are rewritten.
-#   sync-resource-types    - Copy manifest files from the refs already pinned in
-#                            defaults.yaml (no ref bump). Used by CI to verify
-#                            manifest and pin drift.
+#                            recipePacks entry, then recompile the kubernetes
+#                            pack. Resource type manifests are not copied.
+#   sync-resource-types    - Copy manifest files and compile the kubernetes pack
+#                            from the refs already pinned in defaults.yaml (no
+#                            ref bump). Used by CI to verify manifest and pin
+#                            drift.
 
 # Path to the file listing default resource types and the upstream pins.
 DEFAULTS_YAML := deploy/manifest/defaults.yaml
@@ -92,7 +98,7 @@ export RESOURCE_TYPES_REF RESOURCE_TYPES_NAMESPACE RESOURCE_TYPES_PINS
 # recipe-pack/<pack>/vX.Y.Z tag series, so their pins advance independently.
 # Examples:
 #   make update-recipe-packs
-#   make update-recipe-packs RECIPE_PACKS_REF=recipe-pack/azure/v0.2.0 RECIPE_PACKS_NAME=azure
+#   make update-recipe-packs RECIPE_PACKS_REF=recipe-pack/azure-aks/v0.2.0 RECIPE_PACKS_NAME=azure-aks
 RECIPE_PACKS_REF ?= main
 RECIPE_PACKS_NAME ?=
 RECIPE_PACKS_PINS ?=
@@ -104,7 +110,8 @@ export RECIPE_PACKS_REF RECIPE_PACKS_NAME RECIPE_PACKS_PINS
 SYNC_RESOURCE_TYPES_ENV := \
 	DEFAULTS_YAML="$(DEFAULTS_YAML)" \
 	MANIFEST_DEST_DIRS="$(MANIFEST_DEST_DIRS)" \
-	MANUAL_CORE_MANIFESTS="$(MANUAL_CORE_MANIFESTS)"
+	MANUAL_CORE_MANIFESTS="$(MANUAL_CORE_MANIFESTS)" \
+	BICEP_VERSION="$(BICEP_VERSION)"
 
 ##@ Resource Types
 
@@ -117,17 +124,13 @@ update-resource-types: ## Pin stable resource type releases (edge only when unre
 	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh --update
 
 .PHONY: update-recipe-packs
-update-recipe-packs: ## Pin stable recipe pack releases (edge only when unreleased)
+update-recipe-packs: ## Pin stable recipe pack releases (edge only when unreleased) and compile the kubernetes pack
 	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh --update-recipe-packs
 
 .PHONY: sync-resource-types
-sync-resource-types: ## Copy manifest files from the per-namespace refs pinned in defaults.yaml
+sync-resource-types: ## Copy manifest files and compile the kubernetes recipe pack from the refs pinned in defaults.yaml
 	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh
 
 .PHONY: test-sync-resource-types
 test-sync-resource-types: ## Test stable-first resource type and recipe pack pin selection
 	@bash ./build/scripts/test-sync-resource-types.sh
-
-.PHONY: verify-contrib-consumers
-verify-contrib-consumers: ## Verify workflow Recipe sources resolved from defaults.yaml exist upstream
-	@bash ./build/scripts/verify-contrib-consumers.sh

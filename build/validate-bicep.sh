@@ -50,6 +50,11 @@ WARNINGS=()
 for F in $FILES
 do
     echo "validating $F"
+    # Reset the results from the previous iteration. Files without an extension are
+    # not built below, and without this reset they would inherit the previous file's
+    # stderr and exit code and be reported as spurious failures or warnings.
+    STDERR=""
+    EXITCODE=0
     # We need to run bicep and fail in one of two cases:
     # - non-zero exit code
     # - non-empty stderr

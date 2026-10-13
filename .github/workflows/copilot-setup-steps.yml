@@ -22,8 +22,9 @@
 # test Radius without relying on the dev container or its post-create script.
 #
 # The steps below intentionally mirror the tooling installed by the contributor
-# dev container (.devcontainer/) and by the CI workflows (build.yaml and
-# functional-test-noncloud.yaml). Language runtime versions are read from the
+# dev container (.devcontainer/) and by the CI workflows (build-validation.yaml,
+# build-main.yaml, build-release.yaml, and functional-test-noncloud.yaml).
+# Language runtime versions are read from the
 # repo's version files (go.mod, .node-version, .python-version, .terraform-version)
 # so a version bump flows here automatically; CLI tool versions and checksums are
 # pinned in build/tools.yaml and installed via the shared `make install-<tool>`
@@ -97,6 +98,9 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: true
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0

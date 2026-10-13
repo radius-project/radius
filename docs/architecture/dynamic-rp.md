@@ -76,6 +76,8 @@ ARM/Bicep cannot call BuildKit directly, so `dynamic-rp` runs the script where t
 
 All `containerImages` operations in one `dynamic-rp` Pod share its BuildKit sidecar and memory cgroup. The chart configures BuildKit's native OCI worker scheduler through `dynamicrp.buildkit.maxParallelism`, which defaults to one concurrent build step across all active solves. A generated `buildkitd.toml` carries the setting, and its Pod-template checksum restarts `dynamic-rp` when the value changes because BuildKit reads daemon configuration only at startup.
 
+Git build sources need no local storage. For local sources, `dynamicrp.buildkit.localContexts.existingClaim` mounts an operator-managed PVC read-only into `dynamic-rp` at `/var/radius/build-contexts`; the chart does not create or populate the claim.
+
 Keep this limit independent from `workerServer.maxOperationConcurrency`. The worker setting bounds all Dynamic RP operations, while BuildKit's scheduler bounds the memory-intensive execution steps within and across image builds. Increasing BuildKit parallelism requires profiling representative cold builds and sizing the sidecar's memory request and limit with sufficient headroom. This is a concurrency boundary, not per-build isolation: one build can still exceed the configured memory limit.
 
 ### Packages That Usually Move Together
@@ -146,6 +148,7 @@ sequenceDiagram
   participant API as dynamic-rp frontend
   participant Route as frontend/routes.go
   participant DefaultAsync as default async PUT/DELETE controller
+  participant Store as resource database
   participant Status as status manager
   participant Queue
   participant Worker as backend worker
@@ -155,6 +158,15 @@ sequenceDiagram
   UCP->>API: PUT or DELETE dynamic resource request
   API->>Route: match generic route
   Route->>DefaultAsync: default async handler
+  opt PUT request
+    DefaultAsync->>DefaultAsync: apply defaults and validate plaintext properties
+    break Schema-invalid PUT
+      DefaultAsync-->>API: 400 InvalidRequestContent
+      API-->>UCP: synchronous error (resource unchanged)
+    end
+    DefaultAsync->>DefaultAsync: encrypt sensitive fields
+  end
+  DefaultAsync->>Store: persist resource state
   DefaultAsync->>Status: create status + queue message
   Status->>Queue: enqueue request
   API-->>UCP: ARM async response
@@ -167,6 +179,10 @@ The representative Dynamic RP flow is generic request-to-default-controller
 handoff. The frontend builds generic routes and default async handlers, then the
 backend worker resolves the operation through a default controller factory
 instead of a resource-specific registration table.
+
+PUT update filters run in the order **defaults, plaintext schema validation, encryption**, before the shared controller saves the resource or queues an operation. A schema-invalid create returns HTTP 400 with `InvalidRequestContent` and leaves no resource. A rejected update leaves the existing properties, provisioning state, metadata, and ETag unchanged. Valid PUTs and DELETEs retain their asynchronous behavior; the backend also retains validation of stored, encrypted resource data.
+
+Plaintext validation enforces the declared constraints on sensitive fields before encryption can replace their values with encrypted objects. Redacted values returned by GET are not instructions to retain old secrets: supplied null values follow the schema's nullability rules. Validation errors identify schema-declared top-level fields without exposing submitted sensitive values or nested object keys. This ordering prevents new invalid writes; it does not repair invalid properties persisted by earlier versions.
 
 ## Related Docs
 

@@ -87,6 +87,11 @@ jobs:
           cache-dependency-path: radius/go.sum
           cache: false
 
+      - name: Download Go modules
+        uses: ./radius/.github/actions/go-mod-download
+        with:
+          working-directory: radius
+
       - name: Setup NodeJS
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:

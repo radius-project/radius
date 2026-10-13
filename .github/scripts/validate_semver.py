@@ -14,34 +14,41 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-# This script validates that the provided version is a valid semver
+# This script validates that the provided version is valid SemVer.
 
-import os
 import re
 import sys
 
+# Adapted from the suggested SemVer 2.0.0 regular expression:
+# https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+# All groups are non-capturing because only match success is used.
+SEMVER_PATTERN = re.compile(
+    r"(?:0|[1-9][0-9]*)\."
+    r"(?:0|[1-9][0-9]*)\."
+    r"(?:0|[1-9][0-9]*)"
+    r"(?:-(?:(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
+    r"(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?"
+    r"(?:\+(?:[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?"
+)
 
-def main():
+
+def is_valid_semver(version: str) -> bool:
+    return SEMVER_PATTERN.fullmatch(version) is not None
+
+
+def main() -> int:
     if len(sys.argv) != 2:
         print("Usage: validate_semver.py <version>")
-        sys.exit(1)
-
-    # From https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-    SEMVER_REGEX = r"^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
-
-    pattern = re.compile(SEMVER_REGEX)
+        return 1
 
     version = sys.argv[1]
-    match = pattern.search(version)
-
-    # If no match, then return an error (provided version is not valid semver)
-    if match is None:
+    if not is_valid_semver(version):
         print("Provided version is not valid semver")
-        sys.exit(1)
-    else:
-        print("Provided version is valid semver")
-        sys.exit(0)
+        return 1
+
+    print("Provided version is valid semver")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

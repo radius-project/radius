@@ -16,6 +16,14 @@ limitations under the License.
 
 package version
 
+import (
+	"regexp"
+
+	"github.com/Masterminds/semver/v3"
+)
+
+var legacyRCPrereleasePattern = regexp.MustCompile(`^rc([1-9][0-9]*)$`)
+
 // Values for these are injected by the build.
 var (
 	channel      = "edge"
@@ -83,4 +91,16 @@ func Version() string {
 // ChartVersion returns the version of the Helm Chart
 func ChartVersion() string {
 	return chartVersion
+}
+
+// Compare returns -1, 0, or 1 for release precedence without modifying either version.
+// Historical rcN suffixes are compared numerically only when both versions use that form.
+func Compare(left, right *semver.Version) int {
+	leftLegacyRC := legacyRCPrereleasePattern.FindStringSubmatch(left.Prerelease())
+	rightLegacyRC := legacyRCPrereleasePattern.FindStringSubmatch(right.Prerelease())
+	if leftLegacyRC != nil && rightLegacyRC != nil {
+		left = semver.New(left.Major(), left.Minor(), left.Patch(), "rc."+leftLegacyRC[1], left.Metadata())
+		right = semver.New(right.Major(), right.Minor(), right.Patch(), "rc."+rightLegacyRC[1], right.Metadata())
+	}
+	return left.Compare(right)
 }

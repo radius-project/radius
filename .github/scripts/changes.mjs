@@ -15,8 +15,14 @@ export default async ({ context, core }) => {
     core.info(`Base SHA: ${baseSha || "(not provided)"}`);
 
     let result;
-    if (eventName === "pull_request" || eventName === "pull_request_target") {
-      core.info(`PR event detected - using filter result: ${onlyChanged}`);
+    if (
+      eventName === "pull_request" ||
+      eventName === "pull_request_target" ||
+      eventName === "merge_group"
+    ) {
+      core.info(
+        `PR or merge group event detected - using filter result: ${onlyChanged}`
+      );
       result = onlyChanged;
     } else if (baseSha) {
       core.info(

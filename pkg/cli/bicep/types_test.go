@@ -260,8 +260,16 @@ func Test_downloadTemplate_EncodedBackslashStaysInTempDir(t *testing.T) {
 	defer cleanup()
 
 	require.Equal(t, "app.bicep", filepath.Base(localPath))
-	require.NotContains(t, localPath, `\`)
-	require.NotContains(t, localPath, "..")
+	require.Equal(t, filepath.Clean(os.TempDir()), filepath.Dir(filepath.Dir(localPath)))
+	require.True(t, strings.HasPrefix(filepath.Base(filepath.Dir(localPath)), "rad-remote-template-"))
+
+	got, err := os.ReadFile(localPath)
+	require.NoError(t, err)
+	require.Equal(t, content, got)
+
+	cleanup()
+	_, err = os.Stat(localPath)
+	require.True(t, os.IsNotExist(err))
 }
 
 func Test_PrepareTemplate_RemoteJSON(t *testing.T) {
@@ -272,7 +280,7 @@ func Test_PrepareTemplate_RemoteJSON(t *testing.T) {
 	defer server.Close()
 
 	i := newTestImpl()
-	result, err := i.PrepareTemplate(t.Context(), server.URL+"/template.json")
+	result, _, err := i.PrepareTemplate(t.Context(), server.URL+"/template.json")
 	require.NoError(t, err)
 	require.Equal(t, "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#", result["$schema"])
 	require.Empty(t, result["resources"])
@@ -280,9 +288,20 @@ func Test_PrepareTemplate_RemoteJSON(t *testing.T) {
 
 func Test_PrepareTemplate_RemoteUnsupportedExtension(t *testing.T) {
 	i := newTestImpl()
-	_, err := i.PrepareTemplate(t.Context(), "https://example.com/app.txt")
+	_, _, err := i.PrepareTemplate(t.Context(), "https://example.com/app.txt")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "must reference a .json or .bicep file")
+}
+
+func Test_PrepareTemplate_LocalUnsupportedExtension(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app.txt")
+	require.NoError(t, os.WriteFile(path, []byte("not a template"), 0o644))
+
+	i := newTestImpl()
+	_, _, err := i.PrepareTemplate(t.Context(), path)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "must be a .json or .bicep file")
 }
 
 func Test_PrepareTemplate_RemoteJSONInvalidMentionsURL(t *testing.T) {
@@ -293,7 +312,7 @@ func Test_PrepareTemplate_RemoteJSONInvalidMentionsURL(t *testing.T) {
 
 	url := server.URL + "/template.json"
 	i := newTestImpl()
-	_, err := i.PrepareTemplate(t.Context(), url)
+	_, _, err := i.PrepareTemplate(t.Context(), url)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to read remote template")
 	require.Contains(t, err.Error(), url)
@@ -361,7 +380,7 @@ func Test_downloadTemplate_MissingHost(t *testing.T) {
 func Test_PrepareTemplate_MalformedURLNotTreatedAsLocal(t *testing.T) {
 	// A malformed http(s) URL must surface a URL error, not a misleading local file-not-found.
 	i := newTestImpl()
-	_, err := i.PrepareTemplate(t.Context(), "https://[::1/app.bicep")
+	_, _, err := i.PrepareTemplate(t.Context(), "https://[::1/app.bicep")
 	require.ErrorContains(t, err, "invalid template URL")
 	require.NotContains(t, err.Error(), "could not find file")
 }
@@ -541,7 +560,7 @@ func Test_PrepareTemplate_RemoteErrorRedactsCredentials(t *testing.T) {
 	defer server.Close()
 
 	i := newTestImpl()
-	_, err := i.PrepareTemplate(t.Context(), server.URL+"/template.json?sig=TOPSECRET")
+	_, _, err := i.PrepareTemplate(t.Context(), server.URL+"/template.json?sig=TOPSECRET")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to read remote template")
 	require.NotContains(t, err.Error(), "TOPSECRET")

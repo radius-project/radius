@@ -36,20 +36,14 @@ func Test_DynamicResource_ConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "dynamicresource-resource.json",
 			expected: &datamodel.DynamicResource{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/radius/local/resourceGroups/test/providers/Applications.Test/testResources/testResource",
-						Name:     "testResource",
-						Type:     "Applications.Test/testResources",
-						Location: "global",
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: "2025-08-01-preview",
-					},
+				ID:       "/planes/radius/local/resourceGroups/test/providers/Applications.Test/testResources/testResource",
+				Name:     "testResource",
+				Type:     "Applications.Test/testResources",
+				Location: "global",
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				UpdatedAPIVersion: "2025-08-01-preview",
 				Properties: map[string]any{
 					"message": "Hello, world!",
 				},

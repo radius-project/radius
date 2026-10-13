@@ -96,8 +96,8 @@ func (result UpdateResult) PullRequestBodyMarkdown() string {
 	output.WriteString("This automated PR refreshes the pinned command-line tool versions and SHA-256\n" +
 		"checksums from the release sources declared in `build/tools.yaml`.\n\n" +
 		"`build/tools.generated.mk` is generated from the manifest and committed with\n" +
-		"it. Bicep remains intentionally held at its compatibility-pinned version until\n" +
-		"local `br:localhost` functional tests support a newer release.\n")
+		"it. Bicep updates remain manual so ACR and trusted local-registry compatibility\n" +
+		"is verified before changing the distributed CLI.\n")
 	if len(result.VersionUpdates) == 0 {
 		return output.String()
 	}

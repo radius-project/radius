@@ -58,13 +58,13 @@ var _ ApplicationsManagementClient = (*UCPApplicationsManagementClient)(nil)
 
 // ListResourcesOfType lists all resources of a given type in the configured scope.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
-	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+	apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API versions for resource type %q: %w", resourceType, err)
 	}
 	results := []generated.GenericResource{}
 
-	client, err := amc.getGenericClient(amc.RootScope, resourceType, apiVersions, false)
+	client, err := amc.getGenericClient(amc.RootScope, resourceType, apiVersion, false)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInEnvironment(ctx
 
 // GetResource retrieves a resource by its type and name (or id).
 func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, resourceType string, resourceNameOrID string) (generated.GenericResource, error) {
-	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+	apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
@@ -142,7 +142,7 @@ func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, res
 		return generated.GenericResource{}, err
 	}
 
-	client, err := amc.getGenericClient(scope, resourceType, apiVersions, false)
+	client, err := amc.getGenericClient(scope, resourceType, apiVersion, false)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
@@ -157,12 +157,17 @@ func (amc *UCPApplicationsManagementClient) GetResource(ctx context.Context, res
 
 // CreateOrUpdateResource creates or updates a resource using its type name (or id).
 func (amc *UCPApplicationsManagementClient) CreateOrUpdateResource(ctx context.Context, resourceType string, resourceNameOrID string, resource *generated.GenericResource) (generated.GenericResource, error) {
+	apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
+	if err != nil {
+		return generated.GenericResource{}, err
+	}
+
 	scope, name, err := amc.extractScopeAndName(resourceNameOrID)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
 
-	client, err := amc.createGenericClient(scope, resourceType)
+	client, err := amc.getGenericClient(scope, resourceType, apiVersion, false)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
@@ -182,7 +187,7 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResource(ctx context.C
 
 // DeleteResource deletes a resource by its type and name (or id).
 func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string, force bool) (bool, error) {
-	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+	apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
 	if err != nil {
 		return false, err
 	}
@@ -193,7 +198,7 @@ func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, 
 	}
 
 	var client genericResourceClient
-	client, err = amc.getGenericClient(scope, resourceType, apiVersions, force)
+	client, err = amc.getGenericClient(scope, resourceType, apiVersion, force)
 	if err != nil {
 		return false, err
 	}
@@ -627,25 +632,6 @@ func (amc *UCPApplicationsManagementClient) DeleteRecipePack(ctx context.Context
 	return response.StatusCode != 204, nil
 }
 
-// GetRecipeMetadata shows recipe details including list of all parameters for a given recipe registered to an environment.
-func (amc *UCPApplicationsManagementClient) GetRecipeMetadata(ctx context.Context, environmentNameOrID string, recipeMetadata corerpv20231001.RecipeGetMetadata) (corerpv20231001.RecipeGetMetadataResponse, error) {
-	scope, name, err := amc.extractScopeAndName(environmentNameOrID)
-	if err != nil {
-		return corerpv20231001.RecipeGetMetadataResponse{}, err
-	}
-	client, err := amc.createEnvironmentClient(scope)
-	if err != nil {
-		return corerpv20231001.RecipeGetMetadataResponse{}, err
-	}
-
-	resp, err := client.GetMetadata(ctx, name, recipeMetadata, &corerpv20231001.EnvironmentsClientGetMetadataOptions{})
-	if err != nil {
-		return corerpv20231001.RecipeGetMetadataResponse{}, err
-	}
-
-	return resp.RecipeGetMetadataResponse, nil
-}
-
 // CreateOrUpdateEnvironment creates an environment by its name (or id).
 func (amc *UCPApplicationsManagementClient) CreateOrUpdateEnvironment(ctx context.Context, environmentNameOrID string, resource *corerpv20231001.EnvironmentResource) error {
 	scope, name, err := amc.extractScopeAndName(environmentNameOrID)
@@ -768,47 +754,24 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceGroup(ctx cont
 	return nil
 }
 
-// DeleteResourceGroup deletes a resource group by its name.
-func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error) {
-	// First check if the resource group exists
-	_, err := amc.GetResourceGroup(ctx, planeName, resourceGroupName)
-	if err != nil {
-		if clientv2.Is404Error(err) {
-			// Resource group doesn't exist - idempotent success
-			return false, nil
-		}
-		return false, fmt.Errorf("failed to get resource group: %w", err)
-	}
-
-	// Get all resources in the group (we know it exists now)
-	resources, err := amc.ListResourcesInResourceGroup(ctx, planeName, resourceGroupName)
-	if err != nil {
-		return false, fmt.Errorf("failed to list resources in resource group: %w", err)
-	}
-
-	// Delete all resources if there are any
-	if len(resources) > 0 {
-		// Delete all resources in parallel
-		g, groupCtx := errgroup.WithContext(ctx)
-		for _, resource := range resources {
-			g.Go(func() error {
-				// Delete each resource using its full ID to ensure correct scope
-				_, err := amc.DeleteResource(groupCtx, *resource.Type, *resource.ID, false)
-				if err != nil && !clientv2.Is404Error(err) {
-					return err
-				}
-
-				return nil
-			})
-		}
-
-		// Wait for all resources to be deleted
-		if err := g.Wait(); err != nil {
-			return false, fmt.Errorf("failed to delete resources in group: %w", err)
-		}
-	}
-
-	// Now delete the empty resource group
+// DeleteResourceGroupRecord deletes the resource group record itself. It does not delete the
+// resources in the group.
+//
+// The server does not reject this when the group still has contents: the UCP resource group route
+// performs a plain synchronous delete with no child-resource guard. Deleting the record while its
+// resources survive orphans them, and they stay unreachable until a group of the same name is
+// recreated at that scope. Callers must therefore delete the contents first, must not call this if
+// that failed, and must confirm the group is empty immediately beforehand -- the set they deleted
+// was enumerated earlier and does not account for anything deployed into the group since.
+//
+// Deleting the contents is the caller's responsibility, because it has to happen in dependency
+// order: a recipe-driven resource loads its environment, recipe pack and settings while it is being
+// deleted, so those have to outlive it. The ordering lives in the `rad group delete` command, which
+// enumerates the group once, uses that same set to prompt the user, deletes it in tiers, and
+// re-enumerates the group before calling this method. See pkg/cli/cmd/deleteorder.go.
+//
+// Deleting a group that does not exist reports success without having deleted anything.
+func (amc *UCPApplicationsManagementClient) DeleteResourceGroupRecord(ctx context.Context, planeName string, resourceGroupName string) (bool, error) {
 	client, err := amc.createResourceGroupClient()
 	if err != nil {
 		return false, err
@@ -826,6 +789,12 @@ func (amc *UCPApplicationsManagementClient) DeleteResourceGroup(ctx context.Cont
 }
 
 // ListResourcesInResourceGroup lists all resources in a specific resource group.
+//
+// Unlike the inventory queries built on ListAllResourceTypesNames, this includes applications and
+// environments, because they are records that live in the group.
+//
+// Errors are returned rather than skipped. This result drives `rad group delete`, where silently
+// omitting a resource type means deleting the group while leaving its contents behind.
 func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroup(ctx context.Context, planeName string, resourceGroupName string) ([]generated.GenericResource, error) {
 	// First check if the resource group exists
 	_, err := amc.GetResourceGroup(ctx, planeName, resourceGroupName)
@@ -837,28 +806,34 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroup(ctx con
 	groupScope := fmt.Sprintf("/planes/radius/%s/resourceGroups/%s", planeName, resourceGroupName)
 
 	results := []generated.GenericResource{}
-	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, planeName)
+	resourceTypesList, err := amc.listResourceTypeNames(ctx, planeName, scopeExcludedResourceTypes)
 	if err != nil {
 		return nil, err
 	}
 
+	// Failures below are returned as ResourceEnumerationError rather than wrapped with %w. Callers
+	// classify a 404 from this method as "the resource group does not exist", which only the
+	// GetResourceGroup check above can establish. Letting a per-resource-type 404 reach the caller
+	// as a 404 would turn an enumeration failure into a silent no-op that reports success while
+	// the group and its contents survive. getAPIVersionForResourceType converts a provider 404
+	// for the same reason.
 	for _, resourceType := range resourceTypesList {
 		// Create a client scoped to this resource group
-		apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+		apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
 		if err != nil {
-			continue // Skip this resource type if we can't get API versions
+			return nil, NewResourceEnumerationError(resourceType, "failed to get API versions for resource type %q: %v", resourceType, err)
 		}
 
-		client, err := amc.getGenericClient(groupScope, resourceType, apiVersions, false)
+		client, err := amc.getGenericClient(groupScope, resourceType, apiVersion, false)
 		if err != nil {
-			continue
+			return nil, NewResourceEnumerationError(resourceType, "failed to create client for resource type %q: %v", resourceType, err)
 		}
 
 		pager := client.NewListByRootScopePager(&generated.GenericResourcesClientListByRootScopeOptions{})
 		for pager.More() {
 			page, err := pager.NextPage(ctx)
 			if err != nil {
-				break
+				return nil, NewResourceEnumerationError(resourceType, "failed to list resources of type %q: %v", resourceType, err)
 			}
 
 			for _, resource := range page.GenericResourcesList.Value {
@@ -909,12 +884,12 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInResourceGroup(c
 	groupScope := fmt.Sprintf("/planes/radius/%s/resourceGroups/%s", planeName, resourceGroupName)
 
 	// Get API versions for the resource type
-	apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
+	apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := amc.getGenericClient(groupScope, resourceType, apiVersions, false)
+	client, err := amc.getGenericClient(groupScope, resourceType, apiVersion, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1081,16 +1056,44 @@ func (amc *UCPApplicationsManagementClient) GetResourceProviderSummary(ctx conte
 	return response.ResourceProviderSummary, nil
 }
 
-// ListAllResourceTypesNames lists the names of all resource types in all resource providers in the configured plane.
-func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
-	// excludedResourceTypesList contains resource types that should be excluded
-	// Lowercase is used to avoid case sensitivity issues.
-	excludedResourceTypesList := []string{
-		"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
-		"radius.core/environments",
-		"radius.core/applications",
-	}
+// inventoryExcludedResourceTypes are the types omitted from deployed-resource inventory and
+// application-graph queries. In those queries applications and environments are the containers
+// being described rather than members of the result, and deployment records are engine bookkeeping
+// rather than user resources.
+//
+// This set is deliberately narrower than it looks: it must not be used for queries that ask which
+// resource records exist in a scope. See scopeExcludedResourceTypes.
+//
+// Lowercase is used to avoid case sensitivity issues.
+var inventoryExcludedResourceTypes = []string{
+	"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
+	"radius.core/environments",
+	"radius.core/applications",
+}
 
+// scopeExcludedResourceTypes are the types omitted when enumerating the resource records that live
+// in a scope, such as a resource group. Applications and environments are records in their own
+// right and must be included: a group containing only those is not empty, and deleting the group
+// without deleting them orphans them.
+//
+// Lowercase is used to avoid case sensitivity issues.
+var scopeExcludedResourceTypes = []string{
+	"microsoft.resources/deployments", // Internal deployment metadata, not a user resource
+}
+
+// ListAllResourceTypesNames lists the names of all resource types in all resource providers in the configured plane.
+//
+// The result omits applications and environments, so it answers "what has been deployed" rather
+// than "what records exist". Callers enumerating the contents of a scope want the latter and must
+// not use this method.
+func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx context.Context, planeName string) ([]string, error) {
+	return amc.listResourceTypeNames(ctx, planeName, inventoryExcludedResourceTypes)
+}
+
+// listResourceTypeNames lists the names of all resource types in all resource providers in the
+// given plane, omitting the supplied types. Exclusions are compared case-insensitively and must be
+// supplied in lowercase.
+func (amc *UCPApplicationsManagementClient) listResourceTypeNames(ctx context.Context, planeName string, excludedResourceTypesList []string) ([]string, error) {
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list resource provider summaries: %v", err)
@@ -1366,23 +1369,6 @@ func (amc *UCPApplicationsManagementClient) createRadiusCoreEnvironmentClient(sc
 	return &scopedRadiusCoreEnvironmentsClient{inner: inner, scope: strings.TrimPrefix(scope, resources.SegmentSeparator)}, nil
 }
 
-func (amc *UCPApplicationsManagementClient) createGenericClient(scope string, resourceType string, apiVersion ...string) (genericResourceClient, error) {
-	if amc.genericResourceClientFactory == nil {
-		clientOptions := *amc.ClientOptions
-		if len(apiVersion) != 0 {
-			// If an API version is provided, set it in the client options.
-			// Otherwise, the default API version (2023-10-01-preview) will be used.
-			// Note: If multiple API versions are supported for Applications.Core resource types in the future,
-			// update this logic to select the appropriate client.
-			clientOptions.APIVersion = apiVersion[0]
-		}
-		// Generated client doesn't like the leading '/' in the scope.
-		return generated.NewGenericResourcesClient(resourceType, strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, &clientOptions)
-	}
-
-	return amc.genericResourceClientFactory(scope, resourceType)
-}
-
 func (amc *UCPApplicationsManagementClient) createResourceGroupClient() (resourceGroupClient, error) {
 	if amc.resourceGroupClientFactory == nil {
 		return ucpv20231001.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
@@ -1499,38 +1485,65 @@ func (amc *UCPApplicationsManagementClient) captureResponse(ctx context.Context,
 	return amc.capture(ctx, response)
 }
 
-// getApiVersionsForResourceType retrieves the API versions for a given resource type in the configured scope.
-func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx context.Context, resourceType string) ([]string, error) {
-	provider := strings.Split(resourceType, "/")[0]
+// getAPIVersionForResourceType resolves the API version to use for a given resource type in the
+// configured scope. It prefers the resource provider's declared default API version and falls back
+// to the lowest advertised version when no default is set. It returns an empty version when the
+// resource type advertises none, which leaves the caller on the generated client's default.
+func (amc *UCPApplicationsManagementClient) getAPIVersionForResourceType(ctx context.Context, resourceType string) (string, error) {
+	provider, _, _ := strings.Cut(resourceType, "/")
 	summary, err := amc.GetResourceProviderSummary(ctx, "local", provider)
 	if err != nil {
 		if clientv2.Is404Error(err) {
-			return nil, fmt.Errorf("resource provider %q not found in the configured scope", provider)
+			return "", fmt.Errorf("resource provider %q not found in the configured scope", provider)
 		}
-		return nil, err
+		return "", err
 	}
 
 	resType := strings.Split(resourceType, "/")[1]
 	resourceTypeSummary, ok := summary.ResourceTypes[resType]
 	if !ok {
-		return nil, fmt.Errorf("resource type %q not found in the resource provider %q", resType, provider)
+		// Resource type names are case-insensitive, so fall back to a case-insensitive match.
+		for name, rts := range summary.ResourceTypes {
+			if strings.EqualFold(name, resType) {
+				resourceTypeSummary, ok = rts, true
+				break
+			}
+		}
+	}
+	if !ok {
+		return "", fmt.Errorf("resource type %q not found in the resource provider %q", resType, provider)
 	}
 
-	return maps.Keys(resourceTypeSummary.APIVersions), nil
+	// Prefer the API version the resource provider declares as its default. Resource types may
+	// advertise several versions, and map iteration order is not stable, so falling straight
+	// through to an arbitrary key would pick a different version from one call to the next.
+	if resourceTypeSummary.DefaultAPIVersion != nil && *resourceTypeSummary.DefaultAPIVersion != "" {
+		return *resourceTypeSummary.DefaultAPIVersion, nil
+	}
+
+	apiVersions := maps.Keys(resourceTypeSummary.APIVersions)
+	if len(apiVersions) == 0 {
+		return "", nil
+	}
+
+	// No default is declared, so sort to keep the choice stable across invocations.
+	slices.Sort(apiVersions)
+
+	return apiVersions[0], nil
 }
 
-// getGenericClient returns a generic resource client for the specified scope and resource type.
-// If apiVersions is empty, it uses the default version (2023-10-01-preview), else uses any version supported by the resource type.
+// getGenericClient returns a generic resource client for the specified scope and resource type
+// using the supplied API version.
 // When no genericResourceClientFactory is configured and force is true, a per-call policy is added
 // that appends force=true to the request URL query string. This is used for force-deleting resources
 // that are in a non-terminal provisioning state. Factory-based configurations (used in tests) bypass
 // the force policy since mock clients do not exercise the HTTP pipeline.
-func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersions []string, force bool) (client genericResourceClient, err error) {
+func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType string, apiVersion string, force bool) (client genericResourceClient, err error) {
 	// Radius.Core resources require a specific API version.
 	// Eventually version 2023-10-01-preview will be removed along with Applications.Core resources.
 	// Then we will not need this special case.
-	if strings.HasPrefix(resourceType, "Radius.Core") {
-		apiVersions = []string{"2025-08-01-preview"}
+	if isRadiusCoreType(resourceType) {
+		apiVersion = radiusCoreAPIVersion
 	}
 
 	if amc.genericResourceClientFactory != nil {
@@ -1543,11 +1556,22 @@ func (amc *UCPApplicationsManagementClient) getGenericClient(scope, resourceType
 		clientOptions = withForceDeletePolicy(clientOptions)
 	}
 
-	if len(apiVersions) != 0 {
-		clientOptions.APIVersion = apiVersions[0]
+	if apiVersion != "" {
+		clientOptions.APIVersion = apiVersion
 	}
 
 	return generated.NewGenericResourcesClient(resourceType, strings.TrimPrefix(scope, resources.SegmentSeparator), &aztoken.AnonymousCredential{}, &clientOptions)
+}
+
+// radiusCoreAPIVersion is the only API version Radius.Core resource types are served at. Every
+// client path that handles these types must pin it, because the generic client otherwise falls
+// back to the default 2023-10-01-preview and the server rejects the request.
+const radiusCoreAPIVersion = "2025-08-01-preview"
+
+// isRadiusCoreType reports whether resourceType belongs to the Radius.Core namespace, ignoring case.
+func isRadiusCoreType(resourceType string) bool {
+	namespace, _, _ := strings.Cut(resourceType, "/")
+	return strings.EqualFold(namespace, "Radius.Core")
 }
 
 // withForceDeletePolicy returns a copy of opts with forceDeletePolicy appended to PerCallPolicies.

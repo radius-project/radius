@@ -64,10 +64,6 @@ import (
 	install_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/install/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
 	radinit_preview "github.com/radius-project/radius/pkg/cli/cmd/radinit/preview"
-	recipe_list "github.com/radius-project/radius/pkg/cli/cmd/recipe/list"
-	recipe_register "github.com/radius-project/radius/pkg/cli/cmd/recipe/register"
-	recipe_show "github.com/radius-project/radius/pkg/cli/cmd/recipe/show"
-	recipe_unregister "github.com/radius-project/radius/pkg/cli/cmd/recipe/unregister"
 	recipe_pack_delete "github.com/radius-project/radius/pkg/cli/cmd/recipepack/delete"
 	recipe_pack_list "github.com/radius-project/radius/pkg/cli/cmd/recipepack/list"
 	recipe_pack_show "github.com/radius-project/radius/pkg/cli/cmd/recipepack/show"
@@ -110,7 +106,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
-	"github.com/radius-project/radius/pkg/graph/persistence/git"
+	"github.com/radius-project/radius/pkg/graph/persistence/archive"
 	"github.com/radius-project/radius/pkg/statearchive/factory"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -143,7 +139,6 @@ var applicationCmd = NewAppCommand()
 var resourceCmd = NewResourceCommand()
 var resourceProviderCmd = NewResourceProviderCommand()
 var resourceTypeCmd = NewResourceTypeCommand()
-var recipeCmd = NewRecipeCommand()
 var recipePackCmd = NewRecipePackCommand()
 var envCmd = NewEnvironmentCommand()
 var workspaceCmd = NewWorkspaceCommand()
@@ -258,13 +253,13 @@ func init() {
 }
 
 func initSubCommands() {
-	graphStore, err := git.NewStore(git.Options{
+	graphStore, err := archive.NewStore(archive.Options{
 		Archive: factory.NewGraphArchive(os.Getenv(factory.GraphRegistryEnvVar)),
 	})
 	if err != nil {
-		// graphStore is required only when we are in repo radius
-		// it can be nil otherwise.
-		graphStore = nil
+		// These fixed options must be valid. Environment errors are deferred
+		// until Archive.Open, not handled by dropping graph persistence.
+		panic(fmt.Errorf("failed to initialize graph store: %w", err))
 	}
 	framework := &framework.Impl{
 		Bicep: &bicep.Impl{
@@ -335,18 +330,6 @@ func initSubCommands() {
 
 	resourceTypeCreateCmd, _ := resourcetype_create.NewCommand(framework)
 	resourceTypeCmd.AddCommand(resourceTypeCreateCmd)
-
-	listRecipeCmd, _ := recipe_list.NewCommand(framework)
-	recipeCmd.AddCommand(listRecipeCmd)
-
-	registerRecipeCmd, _ := recipe_register.NewCommand(framework)
-	recipeCmd.AddCommand(registerRecipeCmd)
-
-	showRecipeCmd, _ := recipe_show.NewCommand(framework)
-	recipeCmd.AddCommand(showRecipeCmd)
-
-	unregisterRecipeCmd, _ := recipe_unregister.NewCommand(framework)
-	recipeCmd.AddCommand(unregisterRecipeCmd)
 
 	listRecipePackCmd, _ := recipe_pack_list.NewCommand(framework)
 	recipePackCmd.AddCommand(listRecipePackCmd)

@@ -18,6 +18,11 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=.github/scripts/release-version.sh
+source "${SCRIPT_DIR}/release-version.sh"
+
 # Configuration
 readonly NAMESPACE="radius-system"
 readonly GITHUB_ORG="radius-project"
@@ -129,9 +134,9 @@ if [[ -z "$RELEASE_VERSION_NUMBER" ]]; then
     exit 1
 fi
 
-# Validate version format
-if [[ ! "$RELEASE_VERSION_NUMBER" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$ ]]; then
-    echo "Error: Invalid version format. Expected format: X.Y.Z or X.Y.Z-rcN" >&2
+# Validate version format. Historical rcN releases remain verifiable.
+if ! is_radius_release_version "${RELEASE_VERSION_NUMBER}"; then
+    echo "Error: Invalid version format. Expected format: X.Y.Z or X.Y.Z-rc.N" >&2
     exit 1
 fi
 

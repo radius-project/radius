@@ -358,6 +358,46 @@ func Test_Run(t *testing.T) {
 		})
 	})
 
+	t.Run("List resources by type with mis-cased type name", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		resources := []generated.GenericResource{
+			radcli.CreateResource("MyCompany.Resources/testResources", "A"),
+		}
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			ListResourcesOfType(gomock.Any(), "MyCompany.Resources/testResources").
+			Return(resources, nil).Times(1)
+
+		outputSink := &output.MockOutput{}
+
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+		require.NoError(t, err)
+		runner := &Runner{
+			ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			UCPClientFactory:          clientFactory,
+			Output:                    outputSink,
+			Workspace:                 &workspaces.Workspace{},
+			ResourceType:              "MyCompany.Resources/TESTRESOURCES",
+			Format:                    "table",
+			ResourceTypeSuffix:        "TESTRESOURCES",
+			ResourceProviderNamespace: "MyCompany.Resources",
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     resources,
+				Options: objectformats.GetGenericResourceTableFormat(),
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
+	})
+
 	t.Run("List resources by type without application", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)

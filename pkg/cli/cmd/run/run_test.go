@@ -42,7 +42,6 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes/fake"
 )
@@ -71,7 +70,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
@@ -91,7 +90,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/prod").
@@ -110,7 +109,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment").
@@ -136,7 +135,7 @@ func Test_Validate(t *testing.T) {
 				}
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(templateWithEnv, nil).
+					Return(templateWithEnv, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -158,7 +157,7 @@ func Test_Validate(t *testing.T) {
 								"name": "dev",
 							},
 						},
-					}, nil).
+					}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -173,7 +172,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -188,7 +187,7 @@ func Test_Validate(t *testing.T) {
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(map[string]any{}, nil).
+					Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
 					GetEnvironment(gomock.Any(), "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/prod").
@@ -214,7 +213,7 @@ func Test_Validate(t *testing.T) {
 				}
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(templateWithEnv, nil).
+					Return(templateWithEnv, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 			},
 		},
@@ -236,7 +235,7 @@ func Test_Validate(t *testing.T) {
 				}
 				mocks.Bicep.EXPECT().
 					PrepareTemplate(gomock.Any(), "app.bicep").
-					Return(templateWithEnv, nil).
+					Return(templateWithEnv, bicep.RadiusExtensionPin{}, nil).
 					Times(1)
 				// When env flag is explicitly provided, we honor it and validate even if template creates environment
 				mocks.ApplicationManagementClient.EXPECT().
@@ -306,7 +305,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
 			PrepareTemplate(gomock.Any(), "app.bicep").
-			Return(map[string]any{}, nil).
+			Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 			Times(1)
 
 		f := &framework.Impl{
@@ -380,7 +379,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
 			PrepareTemplate(gomock.Any(), "app.bicep").
-			Return(map[string]any{}, nil).
+			Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
 			Times(1)
 
 		f := &framework.Impl{
@@ -529,24 +528,22 @@ func Test_Run(t *testing.T) {
 		},
 	}
 	runner := &Runner{
-		Runner: deploycmd.Runner{
-			Deploy: deployMock,
-			Output: outputSink,
-			ConnectionFactory: &connections.MockFactory{
-				ApplicationsManagementClient: clientMock,
-			},
-
-			FilePath:            "app.bicep",
-			ApplicationName:     "test-application",
-			EnvironmentNameOrID: radcli.TestEnvironmentName,
-			Parameters:          map[string]map[string]any{},
-			Template:            map[string]any{}, // Template is prepared in Validate
-			Workspace:           workspace,
-			Providers:           providers,
+		Deploy: deployMock,
+		Output: outputSink,
+		ConnectionFactory: &connections.MockFactory{
+			ApplicationsManagementClient: clientMock,
 		},
-		Logstream:        logstreamMock,
-		Portforward:      portforwardMock,
-		kubernetesClient: fakeKubernetesClient,
+
+		FilePath:            "app.bicep",
+		ApplicationName:     "test-application",
+		EnvironmentNameOrID: radcli.TestEnvironmentName,
+		Parameters:          map[string]map[string]any{},
+		Template:            map[string]any{}, // Template is prepared in Validate
+		Workspace:           workspace,
+		Providers:           providers,
+		Logstream:           logstreamMock,
+		Portforward:         portforwardMock,
+		kubernetesClient:    fakeKubernetesClient,
 	}
 
 	// We'll run the actual command in the background, and do cancellation and verification in
@@ -695,24 +692,22 @@ func Test_Run_NoDashboard(t *testing.T) {
 		},
 	}
 	runner := &Runner{
-		Runner: deploycmd.Runner{
-			Deploy: deployMock,
-			Output: outputSink,
-			ConnectionFactory: &connections.MockFactory{
-				ApplicationsManagementClient: clientMock,
-			},
-
-			FilePath:            "app.bicep",
-			ApplicationName:     "test-application",
-			EnvironmentNameOrID: radcli.TestEnvironmentName,
-			Parameters:          map[string]map[string]any{},
-			Template:            map[string]any{}, // Template is prepared in Validate
-			Workspace:           workspace,
-			Providers:           providers,
+		Deploy: deployMock,
+		Output: outputSink,
+		ConnectionFactory: &connections.MockFactory{
+			ApplicationsManagementClient: clientMock,
 		},
-		Logstream:        logstreamMock,
-		Portforward:      portforwardMock,
-		kubernetesClient: fakeKubernetesClient,
+
+		FilePath:            "app.bicep",
+		ApplicationName:     "test-application",
+		EnvironmentNameOrID: radcli.TestEnvironmentName,
+		Parameters:          map[string]map[string]any{},
+		Template:            map[string]any{}, // Template is prepared in Validate
+		Workspace:           workspace,
+		Providers:           providers,
+		Logstream:           logstreamMock,
+		Portforward:         portforwardMock,
+		kubernetesClient:    fakeKubernetesClient,
 	}
 
 	// We'll run the actual command in the background, and do cancellation and verification in
@@ -810,19 +805,18 @@ func Test_Run_ExtensibleEnvironment(t *testing.T) {
 	}
 
 	runner := &Runner{
-		Runner: deploycmd.Runner{
-			Deploy:                   deployMock,
-			Output:                   outputSink,
-			FilePath:                 "app.bicep",
-			ApplicationName:          "test-application",
-			Parameters:               map[string]map[string]any{},
-			Template:                 template,
-			Workspace:                workspace,
-			Providers:                providers,
-			TemplateInspectionResult: bicep.InspectTemplateResources(template),
-		},
-		Logstream:   logstreamMock,
-		Portforward: portforwardMock,
+		Deploy:                   deployMock,
+		Output:                   outputSink,
+		FilePath:                 "app.bicep",
+		ApplicationName:          "test-application",
+		Parameters:               map[string]map[string]any{},
+		Template:                 template,
+		RadiusExtensionPin:       bicep.RadiusExtensionPin{Reference: "br:example.io/radius:0.60.2"},
+		Workspace:                workspace,
+		Providers:                providers,
+		TemplateInspectionResult: bicep.InspectTemplateResources(template),
+		Logstream:                logstreamMock,
+		Portforward:              portforwardMock,
 	}
 
 	ctx := t.Context()
@@ -838,7 +832,9 @@ func Test_Run_ExtensibleEnvironment(t *testing.T) {
 			Params: []any{extensibleComputeNotSupportedMessage},
 		},
 	}
-	require.Equal(t, expected, outputSink.Writes)
+	require.Len(t, outputSink.Writes, len(expected)+1)
+	require.Contains(t, fmt.Sprint(outputSink.Writes[0]), "Radius type compatibility is not verified")
+	require.Equal(t, expected, outputSink.Writes[1:])
 }
 
 // Test_Run_ExtensibleEnvironment_PreExisting verifies that `rad run` surfaces the not-supported
@@ -870,22 +866,20 @@ func Test_Run_ExtensibleEnvironment_PreExisting(t *testing.T) {
 		Radius: &clients.RadiusProvider{},
 	}
 	runner := &Runner{
-		Runner: deploycmd.Runner{
-			Deploy:          deployMock,
-			Output:          outputSink,
-			FilePath:        "app.bicep",
-			ApplicationName: "test-application",
-			Parameters:      map[string]map[string]any{},
-			Template:        map[string]any{},
-			Workspace:       workspace,
-			Providers:       providers,
-			// A pre-existing environment was resolved during validation and is backed by the
-			// extensible Radius.Core/environments resource type.
-			EnvResult: &deploycmd.EnvironmentCheckResult{
-				UseApplicationsCore: false,
-				RadiusCoreEnv: &v20250801preview.EnvironmentResource{
-					ID: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/test-env"),
-				},
+		Deploy:          deployMock,
+		Output:          outputSink,
+		FilePath:        "app.bicep",
+		ApplicationName: "test-application",
+		Parameters:      map[string]map[string]any{},
+		Template:        map[string]any{},
+		Workspace:       workspace,
+		Providers:       providers,
+		// A pre-existing environment was resolved during validation and is backed by the
+		// extensible Radius.Core/environments resource type.
+		EnvResult: &deploycmd.EnvironmentCheckResult{
+			UseApplicationsCore: false,
+			RadiusCoreEnv: &v20250801preview.EnvironmentResource{
+				ID: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/test-env"),
 			},
 		},
 		Logstream:   logstreamMock,
@@ -926,13 +920,11 @@ func (p PortForwardOptionsMatcher) String() string {
 
 func createDashboardDeploymentObject() *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "dashboard",
-			Namespace: "radius-system",
-			Labels: map[string]string{
-				"app.kubernetes.io/name":    "dashboard",
-				"app.kubernetes.io/part-of": "radius",
-			},
+		Name:      "dashboard",
+		Namespace: "radius-system",
+		Labels: map[string]string{
+			"app.kubernetes.io/name":    "dashboard",
+			"app.kubernetes.io/part-of": "radius",
 		},
 	}
 }

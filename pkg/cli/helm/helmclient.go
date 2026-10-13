@@ -29,9 +29,17 @@ import (
 )
 
 const (
-	installTimeout   = time.Duration(5) * time.Minute
+	// DefaultInstallTimeout is the timeout applied to `rad install kubernetes` and
+	// `rad upgrade kubernetes` when the caller does not specify one. Installing Radius on a
+	// cold cluster has to pull every control-plane image before any Deployment can become
+	// ready, which on a slow or throttled network can exceed a short timeout and surface as a
+	// spurious "context deadline exceeded" failure. A healthy install completes in about a
+	// minute, so ten minutes leaves ample headroom for a slow network while still failing in
+	// reasonable time; use the --timeout flag when even that is not enough.
+	// See https://github.com/radius-project/radius/issues/10236.
+	DefaultInstallTimeout = time.Duration(10) * time.Minute
+
 	uninstallTimeout = time.Duration(5) * time.Minute
-	upgradeTimeout   = time.Duration(5) * time.Minute
 	rollbackTimeout  = time.Duration(5) * time.Minute
 )
 
@@ -42,7 +50,8 @@ type HelmClient interface {
 	// RunHelmInstall installs the Helm chart using the supplied user-values map as the
 	// override set. The map should contain only user-supplied overrides (not the chart
 	// defaults); Helm merges them on top of the chart's defaults at render time.
-	RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool) (*releasev1.Release, error)
+	// A non-positive timeout falls back to DefaultInstallTimeout.
+	RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, timeout time.Duration) (*releasev1.Release, error)
 
 	// RunHelmUpgrade upgrades the Helm chart. When reuseValues is true,
 	// upgrade uses ResetThenReuseValues semantics: it starts from the new chart's
@@ -53,7 +62,9 @@ type HelmClient interface {
 	//
 	// See https://helm.sh/docs/helm/helm_upgrade/#options for details on
 	// --reset-then-reuse-values behavior.
-	RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool) (*releasev1.Release, error)
+	//
+	// A non-positive timeout falls back to DefaultInstallTimeout.
+	RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool, timeout time.Duration) (*releasev1.Release, error)
 
 	// RunHelmUninstall uninstalls the Helm chart.
 	RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string, wait bool) (*release.UninstallReleaseResponse, error)
@@ -93,13 +104,9 @@ func NewHelmClient() HelmClient {
 // It creates the namespace if it doesn't exist and optionally waits for the deployment to be ready.
 // The vals map should contain only user-supplied overrides; Helm merges them on top of
 // the chart's defaults during rendering.
-func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool) (*releasev1.Release, error) {
-	installClient := helm.NewInstall(helmConf)
-	installClient.ReleaseName = releaseName
-	installClient.Namespace = namespace
-	installClient.CreateNamespace = true
-	installClient.Timeout = installTimeout
-	installClient.WaitStrategy = waitStrategy(wait)
+// A non-positive timeout falls back to DefaultInstallTimeout.
+func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, timeout time.Duration) (*releasev1.Release, error) {
+	installClient := newInstallClient(helmConf, releaseName, namespace, wait, timeout)
 
 	if vals == nil {
 		vals = map[string]any{}
@@ -113,18 +120,25 @@ func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmC
 	return asRelease(rel)
 }
 
+// newInstallClient builds the Helm install action used by RunHelmInstall. It is separated from
+// RunHelmInstall so the wait strategy and timeout configuration can be asserted without a cluster.
+func newInstallClient(helmConf *helm.Configuration, releaseName, namespace string, wait bool, timeout time.Duration) *helm.Install {
+	installClient := helm.NewInstall(helmConf)
+	installClient.ReleaseName = releaseName
+	installClient.Namespace = namespace
+	installClient.CreateNamespace = true
+	installClient.Timeout = effectiveTimeout(timeout)
+	installClient.WaitStrategy = waitStrategy(wait)
+
+	return installClient
+}
+
 // RunHelmUpgrade upgrades an existing Helm release with a new chart version or configuration.
 // It optionally waits for the deployment to be ready.
+// A non-positive timeout falls back to DefaultInstallTimeout.
 // See https://helm.sh/docs/helm/helm_upgrade/#options for details on --reset-then-reuse-values behavior.
-func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool) (*releasev1.Release, error) {
-	upgradeClient := helm.NewUpgrade(helmConf)
-	upgradeClient.Namespace = namespace
-	upgradeClient.WaitStrategy = waitStrategy(wait)
-	upgradeClient.Timeout = upgradeTimeout
-	// ResetThenReuseValues is the desired default for Radius upgrades: pick up new chart defaults but preserve
-	// any user overrides previously stored on the release. When the caller opts out, use ResetValues semantics.
-	upgradeClient.ResetThenReuseValues = reuseValues
-	upgradeClient.ResetValues = !reuseValues
+func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool, timeout time.Duration) (*releasev1.Release, error) {
+	upgradeClient := newUpgradeClient(helmConf, namespace, wait, reuseValues, timeout)
 
 	if vals == nil {
 		vals = map[string]any{}
@@ -136,6 +150,21 @@ func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmC
 	}
 
 	return asRelease(rel)
+}
+
+// newUpgradeClient builds the Helm upgrade action used by RunHelmUpgrade. It is separated from
+// RunHelmUpgrade so the wait strategy and timeout configuration can be asserted without a cluster.
+func newUpgradeClient(helmConf *helm.Configuration, namespace string, wait bool, reuseValues bool, timeout time.Duration) *helm.Upgrade {
+	upgradeClient := helm.NewUpgrade(helmConf)
+	upgradeClient.Namespace = namespace
+	upgradeClient.WaitStrategy = waitStrategy(wait)
+	upgradeClient.Timeout = effectiveTimeout(timeout)
+	// ResetThenReuseValues is the desired default for Radius upgrades: pick up new chart defaults but preserve
+	// any user overrides previously stored on the release. When the caller opts out, use ResetValues semantics.
+	upgradeClient.ResetThenReuseValues = reuseValues
+	upgradeClient.ResetValues = !reuseValues
+
+	return upgradeClient
 }
 
 // RunHelmUninstall removes a Helm release and its associated resources from the cluster.
@@ -222,12 +251,39 @@ func (client *HelmClientImpl) LoadChart(chartPath string) (*chart.Chart, error) 
 // waitStrategy translates the legacy boolean wait flag into the Helm v4 kube.WaitStrategy.
 // A true value waits for all resources to become ready (the v3 "--wait" behavior), while a
 // false value only waits for hooks (the v3 default when "--wait" was omitted).
+//
+// We deliberately use kube.LegacyStrategy rather than the Helm v4 default
+// kube.StatusWatcherStrategy. The kstatus-backed watcher can miss the readiness transition of
+// a resource and report it as InProgress until the timeout expires even though the cluster
+// reports it as ready, which surfaces as a spurious failure such as:
+//
+//	resource Deployment/radius-system/ucp not ready. status: InProgress, message: Available: 0/1
+//
+// See https://github.com/helm/helm/issues/31526 and
+// https://github.com/radius-project/radius/issues/12975. The legacy poller is sufficient for
+// the Radius chart because every kind whose readiness gates a usable control plane
+// (Deployment, StatefulSet, Service, Pod and the hook Jobs) is understood by Helm's legacy
+// ReadyChecker; kinds it does not recognize are treated as immediately ready, which matches
+// the behavior Radius relied on before the Helm v4 migration. Revisit once the upstream
+// watcher bug is fixed.
 func waitStrategy(wait bool) kube.WaitStrategy {
 	if wait {
-		return kube.StatusWatcherStrategy
+		return kube.LegacyStrategy
 	}
 
 	return kube.HookOnlyStrategy
+}
+
+// effectiveTimeout returns the caller-supplied timeout, falling back to DefaultInstallTimeout
+// when the caller did not specify one (the zero value) or supplied a non-positive duration.
+// Helm treats a non-positive timeout as "expire immediately", so guarding here keeps a
+// zero-valued ChartOptions from failing the operation instantly.
+func effectiveTimeout(timeout time.Duration) time.Duration {
+	if timeout <= 0 {
+		return DefaultInstallTimeout
+	}
+
+	return timeout
 }
 
 // asRelease converts a release.Releaser returned by the Helm v4 action API into the concrete

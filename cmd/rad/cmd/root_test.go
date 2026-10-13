@@ -18,11 +18,44 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/statearchive/factory"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_VersionWithoutArchiveConfiguration(t *testing.T) {
+	const childEnv = "RADIUS_TEST_VERSION_WITHOUT_ARCHIVE"
+	if os.Getenv(childEnv) == "1" {
+		configPath := filepath.Join(t.TempDir(), "config.yaml")
+		require.NoError(t, os.WriteFile(configPath, []byte("{}"), 0o600))
+		RootCmd.SetArgs([]string{"version", "--cli", "--output", "json", "--config", configPath})
+		require.NoError(t, RootCmd.ExecuteContext(t.Context()))
+		return
+	}
+
+	executable, err := os.Executable()
+	require.NoError(t, err)
+	for _, backend := range []string{"", "oci", "git", "unknown"} {
+		t.Run("backend="+backend, func(t *testing.T) {
+			t.Setenv(childEnv, "1")
+			t.Setenv(factory.BackendEnvVar, backend)
+			t.Setenv(factory.StateRegistryEnvVar, "")
+			t.Setenv(factory.GraphRegistryEnvVar, "")
+			// A new process exercises root initialization with the environment
+			// already set, rather than reusing this test process's global command.
+			cmd := exec.CommandContext(t.Context(), executable, "-test.run=^Test_VersionWithoutArchiveConfiguration$")
+			result, err := cmd.CombinedOutput()
+			require.NoError(t, err, "%s", result)
+			require.Contains(t, string(result), `"version":`)
+			require.Contains(t, string(result), `"bicep":`)
+		})
+	}
+}
 
 func Test_HandlePanic(t *testing.T) {
 	defer func() {

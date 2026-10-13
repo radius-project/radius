@@ -24,6 +24,28 @@ Pass arguments after the path, for example `go run ./cmd/rad/main.go env list`. 
 
 If you prefer a built binary, run `make build-rad` (see [Building the code](../contributing-code-building/README.md)) and run the binary it writes to `./dist/<GOOS>_<GOARCH>/release/rad`.
 
+### Configure durable archival
+
+`rad startup` and `rad shutdown` require `RADIUS_STATE_REGISTRY` to name an OCI repository without a tag. Modeled `rad app graph app.bicep` output in GitHub Actions requires `RADIUS_GRAPH_REGISTRY`. Authenticate to the registry with Docker credentials; workflows must grant package access and log in before invoking these commands. `RADIUS_STATE_BACKEND` may be unset or `oci`. See [Durable state archive](../../../architecture/state-archive.md#selecting-an-archive) for configuration and GHCR visibility requirements.
+
+Local modeled graph output writes `app-graph.json` without a registry. Missing archive configuration does not prevent `rad version --cli` or other non-archival commands from initializing. Archive failures never fall back to local files. Unit tests for the graph archive adapter use injected archive sessions.
+
+### Diagnose type-version skew
+
+Before resource writes, `rad deploy` checks the CLI release, the selected workspace's control-plane release, and the configured Radius extension pin. Differences produce a warning, not a deployment error. The control-plane release comes from the workspace API's `/version` endpoint, including the Kubernetes API path base, rather than from Helm or the current Kubernetes context. Older targets that do not expose this endpoint produce an explicit unknown-version warning.
+
+Bicep compilation resolves the nearest source `bicepconfig.json` reference and returns it as a `RadiusExtensionPin` alongside the template, rather than writing it into the template's metadata, so generated manifests and published artifacts are not altered by this bookkeeping. This is a configured pin, not proof of the resolved artifact: inline extension declarations can bypass that pin, mutable tags and cached packages can differ, and the compiler does not report the Radius artifact release. Missing configuration, local or digest-pinned extensions, custom tags, floating channel tags, development builds, and configuration that cannot be read as JSON remain unverified. The resolved pin applies only to Radius resources declared directly in the root template; resources declared inside a nested Bicep module always report an unknown pin, since Bicep does not expose per-module pin configuration. The compiler's `imports.version` and `metadata._generator.version` are not Radius release versions.
+
+Use a published exact-version pin for the target release, or upgrade the CLI and target together. The check does not rewrite configuration, refresh the Bicep cache, validate individual properties against server schemas, or assert that matching versions prove compatibility. A deployment failure retains its original error.
+
+Run the portable compatibility scenarios without a cluster:
+
+```sh
+go test ./test/functional-portable/cli/compatibility -count=1
+```
+
+These scenarios run the command, workspace transport, and deployment HTTP client against in-process services. They use a compiler subprocess fixture and exercise the UCP version route. They verify that warnings precede writes, do not block submission, and do not replace the target's error. They do not replace live-cluster functional tests.
+
 ### Create a wrapper script (optional)
 
 If you frequently run a local build of `rad`, wrap `go run` in a script so it behaves like the real command. Create a file named `dev-rad` on your `PATH`:
@@ -49,6 +71,16 @@ Override the destination with `RAD_LOCATION`. The path must end in `rad` and sho
 ```sh
 RAD_LOCATION=/my/custom/location/rad sudo make install
 ```
+
+### Test Windows background execution
+
+Run the focused Windows process tests on a native Windows host:
+
+```powershell
+go test ./pkg/process ./pkg/cli/style ./test/windowless -count=1 -timeout=2m
+```
+
+The process unit tests verify the Windows no-window creation flags. When `RADIUS_TEST_RAD_BINARY` is unset, the integration test builds `rad.exe`; otherwise, it uses the binary at that path. It launches `rad.exe` non-detached with piped output inside a kill-on-close Windows Job Object and verifies `rad version --cli --output json`, a windowless Bicep child, and process-tree cancellation. CI prebuilds the binary outside the Go test process and runs these tests on Windows amd64 and arm64.
 
 ### Debug rad in VS Code
 
@@ -86,6 +118,7 @@ if errors.Is(err, NotFoundError{}) {
 - `go run ./cmd/rad/main.go version` prints version information that includes your local changes.
 - After `sudo make install`, running `rad version` from any directory resolves to your freshly installed build.
 - A breakpoint set in `cmd/rad/` is hit when you run **"Debug rad CLI (prompt for args)"**.
+- On Windows, the focused process tests pass on the native architecture.
 
 ## Troubleshooting
 
@@ -93,3 +126,4 @@ if errors.Is(err, NotFoundError{}) {
 - **The debugger never stops at your breakpoint.** Confirm you selected **"Debug rad CLI (prompt for args)"** and that the breakpoint is on an executable line in code the command actually reaches.
 - **A debugged command hangs waiting for input.** Add `--yes` to the prompted arguments (except for `rad init`).
 - **`make install` is denied.** The destination needs elevated permissions; prefix with `sudo` or point `RAD_LOCATION` at a writable directory on your `PATH`.
+- **Archival reports a configuration error.** Configure `RADIUS_STATE_REGISTRY` for startup/shutdown or `RADIUS_GRAPH_REGISTRY` for GitHub Actions graph output, authenticate to that registry, and unset `RADIUS_STATE_BACKEND` or set it to `oci`.

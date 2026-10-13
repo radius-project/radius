@@ -191,17 +191,11 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 
 	// 1. Save ResourceProvider
 	rpModel := &datamodel.ResourceProvider{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       rpID,
-				Name:     rp.Namespace,
-				Type:     datamodel.ResourceProviderResourceType,
-				Location: locationName,
-			},
-			InternalMetadata: v1.InternalMetadata{
-				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-			},
-		},
+		ID:                     rpID,
+		Name:                   rp.Namespace,
+		Type:                   datamodel.ResourceProviderResourceType,
+		Location:               locationName,
+		AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 	}
 
 	if err := saveResource(ctx, dbClient, rpID, rpModel); err != nil {
@@ -228,16 +222,10 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 		}
 
 		typeModel := &datamodel.ResourceType{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   typeID,
-					Name: typeName,
-					Type: datamodel.ResourceTypeResourceType,
-				},
-				InternalMetadata: v1.InternalMetadata{
-					AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-				},
-			},
+			ID:                     typeID,
+			Name:                   typeName,
+			Type:                   datamodel.ResourceTypeResourceType,
+			AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 			Properties: datamodel.ResourceTypeProperties{
 				Capabilities:      resourceType.Capabilities,
 				DefaultAPIVersion: resourceType.DefaultAPIVersion,
@@ -258,16 +246,10 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 
 			schema, _ := apiVersion.Schema.(map[string]any)
 			avModel := &datamodel.APIVersion{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   avID,
-						Name: apiVersionName,
-						Type: datamodel.APIVersionResourceType,
-					},
-					InternalMetadata: v1.InternalMetadata{
-						AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-					},
-				},
+				ID:                     avID,
+				Name:                   apiVersionName,
+				Type:                   datamodel.APIVersionResourceType,
+				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 				Properties: datamodel.APIVersionProperties{
 					Schema: schema,
 				},
@@ -306,16 +288,10 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	}
 
 	locationModel := &datamodel.Location{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   locationID,
-				Name: locationName,
-				Type: datamodel.LocationResourceType,
-			},
-			InternalMetadata: v1.InternalMetadata{
-				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-			},
-		},
+		ID:                     locationID,
+		Name:                   locationName,
+		Type:                   datamodel.LocationResourceType,
+		AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 		Properties: datamodel.LocationProperties{
 			ResourceTypes: locationResourceTypes,
 		},
@@ -331,13 +307,9 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	// 4. Save ResourceProviderSummary
 	summaryID := rootScope + "/providers/System.Resources/resourceProviderSummaries/" + rp.Namespace
 	summaryModel := &datamodel.ResourceProviderSummary{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   summaryID,
-				Name: rp.Namespace,
-				Type: datamodel.ResourceProviderSummaryResourceType,
-			},
-		},
+		ID:   summaryID,
+		Name: rp.Namespace,
+		Type: datamodel.ResourceProviderSummaryResourceType,
 		Properties: datamodel.ResourceProviderSummaryProperties{
 			Locations: map[string]datamodel.ResourceProviderSummaryPropertiesLocation{
 				locationName: {},
@@ -355,7 +327,7 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 
 func saveResource(ctx context.Context, dbClient database.Client, id string, data any) error {
 	return dbClient.Save(ctx, &database.Object{
-		Metadata: database.Metadata{ID: id},
-		Data:     data,
+		ID:   id,
+		Data: data,
 	})
 }

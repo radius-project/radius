@@ -115,7 +115,7 @@ func (r *ResourceTypesServerTransport) dispatchBeginCreateOrUpdate(req *http.Req
 	}
 	beginCreateOrUpdate := r.beginCreateOrUpdate.get(req)
 	if beginCreateOrUpdate == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcetypes/(?P<resourceTypeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 4 {
@@ -167,7 +167,7 @@ func (r *ResourceTypesServerTransport) dispatchBeginDelete(req *http.Request) (*
 	}
 	beginDelete := r.beginDelete.get(req)
 	if beginDelete == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcetypes/(?P<resourceTypeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 4 {
@@ -213,7 +213,7 @@ func (r *ResourceTypesServerTransport) dispatchGet(req *http.Request) (*http.Res
 	if r.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcetypes/(?P<resourceTypeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 4 {
@@ -250,7 +250,7 @@ func (r *ResourceTypesServerTransport) dispatchGetIcon(req *http.Request) (*http
 	if r.srv.GetIcon == nil {
 		return nil, &nonRetriableError{errors.New("fake for method GetIcon not implemented")}
 	}
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/icons/(?P<hash>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcetypes/(?P<resourceTypeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/icons/(?P<hash>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 5 {
@@ -302,7 +302,7 @@ func (r *ResourceTypesServerTransport) dispatchNewListPager(req *http.Request) (
 	}
 	newListPager := r.newListPager.get(req)
 	if newListPager == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes`
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcetypes`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 3 {

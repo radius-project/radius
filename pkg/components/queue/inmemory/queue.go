@@ -21,7 +21,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/radius-project/radius/pkg/components/queue"
 )
 
@@ -71,7 +72,7 @@ func (q *InmemQueue) Enqueue(msg *queue.Message) {
 	q.vMu.Lock()
 	defer q.vMu.Unlock()
 
-	msg.Metadata.ID = uuid.NewString()
+	msg.Metadata.ID = uuid.New().String()
 	msg.Metadata.DequeueCount = 0
 	msg.Metadata.EnqueueAt = time.Now().UTC()
 	msg.Metadata.ExpireAt = time.Now().UTC().Add(messageExpireDuration)

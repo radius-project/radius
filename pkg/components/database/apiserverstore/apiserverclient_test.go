@@ -24,7 +24,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -138,9 +137,7 @@ func Test_APIServer_Client(t *testing.T) {
 		clear(t)
 
 		obj1 := database.Object{
-			Metadata: database.Metadata{
-				ID: shared.Resource1ID.String(),
-			},
+			ID:   shared.Resource1ID.String(),
 			Data: shared.Data1,
 		}
 		err := client.Save(ctx, &obj1)
@@ -171,10 +168,8 @@ func Test_APIServer_Client(t *testing.T) {
 		// delete it without orphaning the existing data.
 		legacyName := legacyResourceName(shared.Resource1ID)
 		legacyObject := ucpv1alpha1.Resource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      legacyName,
-				Namespace: ns,
-			},
+			Name:      legacyName,
+			Namespace: ns,
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
 					ID:   shared.Resource1ID.String(),
@@ -194,8 +189,8 @@ func Test_APIServer_Client(t *testing.T) {
 		// Save must update the existing legacy object in place rather than creating a new object under
 		// the current (SHA-256) name.
 		obj := database.Object{
-			Metadata: database.Metadata{ID: shared.Resource1ID.String()},
-			Data:     shared.Data2,
+			ID:   shared.Resource1ID.String(),
+			Data: shared.Data2,
 		}
 		err = client.Save(ctx, &obj)
 		require.NoError(t, err)
@@ -223,9 +218,7 @@ func Test_APIServer_Client(t *testing.T) {
 		clear(t)
 
 		obj1 := database.Object{
-			Metadata: database.Metadata{
-				ID: shared.Resource3ID.String(),
-			},
+			ID:   shared.Resource3ID.String(),
 			Data: shared.Data1,
 		}
 		err := client.Save(ctx, &obj1)
@@ -252,9 +245,7 @@ func Test_APIServer_Client(t *testing.T) {
 		clear(t)
 
 		obj1 := database.Object{
-			Metadata: database.Metadata{
-				ID: shared.ResourceGroup1ID.String(),
-			},
+			ID:   shared.ResourceGroup1ID.String(),
 			Data: shared.ResourceGroup1Data,
 		}
 		err := client.Save(ctx, &obj1)
@@ -284,10 +275,8 @@ func Test_APIServer_Client(t *testing.T) {
 		// Let's PRETEND that shared.BasicResource2ID and shared.BasicResource3ID result in the same
 		// resource name. That's obviously not the case, but it's good enough for tests.
 		resource := ucpv1alpha1.Resource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName(shared.Resource2ID),
-				Namespace: ns,
-			},
+			Name:      resourceName(shared.Resource2ID),
+			Namespace: ns,
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
 					ID:   shared.Resource3ID.String(),
@@ -300,9 +289,7 @@ func Test_APIServer_Client(t *testing.T) {
 		require.NoError(t, err)
 
 		obj2 := database.Object{
-			Metadata: database.Metadata{
-				ID: shared.Resource2ID.String(),
-			},
+			ID:   shared.Resource2ID.String(),
 			Data: shared.Data2,
 		}
 		err = client.Save(ctx, &obj2)
@@ -349,10 +336,8 @@ func Test_APIServer_Client(t *testing.T) {
 		expected := []database.Object{
 			*obj,
 			{
-				Metadata: database.Metadata{
-					ID:   shared.Resource3ID.String(),
-					ETag: etag.New(shared.MarshalOrPanic(shared.Data3)),
-				},
+				ID:   shared.Resource3ID.String(),
+				ETag: etag.New(shared.MarshalOrPanic(shared.Data3)),
 				Data: shared.Data3,
 			},
 		}
@@ -379,9 +364,7 @@ func Test_APIServer_Client(t *testing.T) {
 		// Start an operation to "save" resource 1
 		go func() {
 			obj1 := database.Object{
-				Metadata: database.Metadata{
-					ID: shared.Resource1ID.String(),
-				},
+				ID:   shared.Resource1ID.String(),
 				Data: shared.Data1,
 			}
 			err = client.Save(ctx, &obj1)
@@ -393,10 +376,8 @@ func Test_APIServer_Client(t *testing.T) {
 		<-readyChan
 
 		resource := ucpv1alpha1.Resource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName(shared.Resource1ID),
-				Namespace: ns,
-			},
+			Name:      resourceName(shared.Resource1ID),
+			Namespace: ns,
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
 					ID:   shared.Resource2ID.String(),
@@ -466,10 +447,8 @@ func Test_APIServer_Client(t *testing.T) {
 
 		// First we create the resource
 		resource := ucpv1alpha1.Resource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName(shared.Resource1ID),
-				Namespace: ns,
-			},
+			Name:      resourceName(shared.Resource1ID),
+			Namespace: ns,
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
 					ID:   shared.Resource2ID.String(),
@@ -484,9 +463,7 @@ func Test_APIServer_Client(t *testing.T) {
 		// Start an operation to "save" resource 1
 		go func() {
 			obj1 := database.Object{
-				Metadata: database.Metadata{
-					ID: shared.Resource1ID.String(),
-				},
+				ID:   shared.Resource1ID.String(),
 				Data: shared.Data1,
 			}
 			err = client.Save(ctx, &obj1)
@@ -560,10 +537,8 @@ func Test_APIServer_Client(t *testing.T) {
 
 		// First we create the resource
 		resource := ucpv1alpha1.Resource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName(shared.Resource1ID),
-				Namespace: ns,
-			},
+			Name:      resourceName(shared.Resource1ID),
+			Namespace: ns,
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
 					ID:   shared.Resource1ID.String(),
@@ -647,10 +622,8 @@ func Test_APIServer_Client(t *testing.T) {
 
 		// First we create the resource
 		resource := ucpv1alpha1.Resource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName(shared.Resource1ID),
-				Namespace: ns,
-			},
+			Name:      resourceName(shared.Resource1ID),
+			Namespace: ns,
 			Entries: []ucpv1alpha1.ResourceEntry{
 				{
 					ID:   shared.Resource1ID.String(),

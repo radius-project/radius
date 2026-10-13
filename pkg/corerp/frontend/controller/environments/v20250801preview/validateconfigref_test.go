@@ -133,8 +133,8 @@ func TestValidateConfigRef_HappyPath_TerraformSettings(t *testing.T) {
 	databaseClient.EXPECT().
 		Get(gomock.Any(), tfConfigID).
 		Return(&database.Object{
-			Metadata: database.Metadata{ID: tfConfigID, ETag: "etag-1"},
-			Data:     versioned,
+			ID: tfConfigID, ETag: "etag-1",
+			Data: versioned,
 		}, nil)
 
 	e := newControllerForValidateConfigRef(databaseClient)
@@ -153,8 +153,8 @@ func TestValidateConfigRef_HappyPath_BicepSettings(t *testing.T) {
 	databaseClient.EXPECT().
 		Get(gomock.Any(), bicepSettingsID).
 		Return(&database.Object{
-			Metadata: database.Metadata{ID: bicepSettingsID, ETag: "etag-1"},
-			Data:     versioned,
+			ID: bicepSettingsID, ETag: "etag-1",
+			Data: versioned,
 		}, nil)
 
 	e := newControllerForValidateConfigRef(databaseClient)

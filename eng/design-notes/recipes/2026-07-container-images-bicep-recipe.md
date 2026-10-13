@@ -263,23 +263,23 @@ When the script finishes, it must write a JSON file with one non-empty string, `
 
 The Terraform recipe is the baseline. The Bicep port keeps the same public behavior except where the recipe engines work differently.
 
-| Behavior                | Terraform recipe                                                                                   | Bicep recipe                                                                        | Parity            |
-|-------------------------|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------|
-| Recipe parameters       | `registry`, optional `registrySecretName`                                                          | Same parameters                                                                     | Exact             |
-| Image repository        | Lowercased resource name                                                                           | Lowercased resource name                                                            | Exact             |
-| Defaults                | `Dockerfile`; `linux/amd64`, `linux/arm64`                                                         | Same defaults                                                                       | Exact             |
-| Input validation        | Registry, tag, source, Dockerfile, platforms, and build arguments                                  | Same categories, with stricter local-source confinement                             | Semantic          |
-| Git source              | Translate go-getter `git::https://...//subdir?ref=...` to a BuildKit Git context                   | Same translation                                                                    | Exact             |
-| Absolute local source   | Read a directory already available inside `dynamic-rp`                                             | Must resolve beneath `/var/radius/build-contexts` by default                        | Engine difference |
-| Relative local source   | Resolve from Terraform's transient execution directory                                             | Also confined to the operator-managed root after resolution                         | Engine difference |
-| Explicit tag            | Use the non-empty value as supplied                                                                | Same behavior                                                                       | Exact             |
-| Generated tag inputs    | Source content or Git source string, Dockerfile, platform order, and build arguments               | Same categories; the script canonicalizes argument order                            | Semantic          |
-| Generated tag bytes     | Terraform serialization and local-file digest                                                      | Shell serialization and `sha256sum` file-tree digest                                | Engine difference |
-| Registry authentication | Read `username` and `password` from the runtime-namespace Secret and write temporary Docker config | Same Secret contract; registry and Secret selection come from the Recipe definition | Semantic          |
-| Cluster selection       | Shared recipe Kubernetes provider configuration                                                    | Shared target-cluster resolver                                                      | Exact             |
-| Build execution         | Synchronous `buildctl build --push`                                                                | Same command semantics                                                              | Exact             |
-| Recipe result           | Empty resources and `imageReference` after a successful push                                       | Same public result                                                                  | Exact             |
-| Unchanged execution     | Terraform state and `triggers_replace` can skip the build                                          | Rebuild on each recipe execution                                                    | Engine difference |
+| Behavior                | Terraform recipe                                                                                      | Bicep recipe                                                                        | Parity            |
+|-------------------------|-------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|-------------------|
+| Recipe parameters       | `registry`, optional `registrySecretName`                                                             | Same parameters                                                                     | Exact             |
+| Image repository        | Lowercased resource name                                                                              | Lowercased resource name                                                            | Exact             |
+| Defaults                | `Dockerfile`; `linux/amd64`, `linux/arm64`                                                            | Same defaults                                                                       | Exact             |
+| Input validation        | Registry, tag, source, Dockerfile, platforms, and build arguments, including local-source confinement | Same categories                                                                     | Semantic          |
+| Git source              | Translate go-getter `git::https://...//subdir?ref=...` to a BuildKit Git context                      | Same translation                                                                    | Exact             |
+| Absolute local source   | Must resolve beneath `/var/radius/build-contexts`                                                     | Same behavior                                                                       | Exact             |
+| Relative local source   | Rejected                                                                                              | Must resolve beneath `/var/radius/build-contexts`                                   | Engine difference |
+| Explicit tag            | Use the non-empty value as supplied                                                                   | Same behavior                                                                       | Exact             |
+| Generated tag inputs    | Source content or Git source string, Dockerfile, platform order, and build arguments                  | Same categories; the script canonicalizes argument order                            | Semantic          |
+| Generated tag bytes     | Terraform serialization and local-file digest                                                         | Shell serialization and `sha256sum` file-tree digest                                | Engine difference |
+| Registry authentication | Read `username` and `password` from the runtime-namespace Secret and write temporary Docker config    | Same Secret contract; registry and Secret selection come from the Recipe definition | Semantic          |
+| Cluster selection       | Shared recipe Kubernetes provider configuration                                                       | Shared target-cluster resolver                                                      | Exact             |
+| Build execution         | Synchronous `buildctl build --push`                                                                   | Same command semantics                                                              | Exact             |
+| Recipe result           | Empty resources and `imageReference` after a successful push                                          | Same public result                                                                  | Exact             |
+| Unchanged execution     | Terraform state and `triggers_replace` can skip the build                                             | Rebuild on each recipe execution                                                    | Engine difference |
 
 Generated tags are deterministic within each recipe kind when Bicep runs through the Radius driver, and both recipes hash the same input categories. Different serialization and local-file hashing can produce a one-time tag change when an operator switches from Terraform to Bicep without setting `tag`. The generated tag format and exact hash bytes aren't part of the resource API.
 
@@ -470,10 +470,10 @@ The BuildKit sidecar remains opt-in and uses rootless BuildKit without host moun
 - The AKS recipe pack stays on Terraform until a compatible Radius release is available.
 - Switching from Terraform to Bicep can change a generated image tag once because the two recipes serialize hash inputs differently.
 - The Bicep recipe rebuilds on every execution, while Terraform skips unchanged builds through state and `triggers_replace`.
-- Bicep local paths must resolve beneath the operator-managed build-context root. Terraform retains its existing local-path behavior.
+- Local paths in both recipe kinds must resolve beneath the operator-managed build-context root.
 - A moving Git ref is rebuilt by Bicep on a later recipe execution but can be skipped by Terraform because neither the generated tag nor `triggers_replace` inputs include the resolved commit.
 
-The known migration differences are generated-tag bytes, repeated execution, local-source confinement, relative local-path resolution, and moving-ref reconciliation. An explicit tag avoids only the generated-tag byte difference. It doesn't suppress Bicep rebuilds.
+The known migration differences are generated-tag bytes, repeated execution, relative local-path resolution, and moving-ref reconciliation. An explicit tag avoids only the generated-tag byte difference. It doesn't suppress Bicep rebuilds.
 
 ## Monitoring and Logging
 

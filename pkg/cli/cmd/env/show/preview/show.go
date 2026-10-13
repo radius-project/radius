@@ -17,9 +17,7 @@ limitations under the License.
 package preview
 
 import (
-	"cmp"
 	"context"
-	"slices"
 
 	"github.com/spf13/cobra"
 
@@ -65,13 +63,6 @@ rad env show my-env --group my-env
 	commonflags.AddOutputFlag(cmd)
 
 	return cmd, runner
-}
-
-type EnvRecipes struct {
-	RecipePack   string
-	ResourceType string
-	Kind         string
-	Source       string
 }
 
 // Runner is the runner implementation for the `rad env show` preview command.
@@ -137,6 +128,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	if r.Format == output.FormatJson {
+		return r.Output.WriteFormatted(r.Format, resp.EnvironmentResource, objectformats.GetResourceTableFormat())
+	}
+
 	envProviders := []EnvProvider{}
 	if resp.EnvironmentResource.Properties.Providers != nil {
 		if resp.EnvironmentResource.Properties.Providers.Azure != nil {
@@ -164,60 +159,18 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	recipepackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
-	envRecipes := []EnvRecipes{}
+	recipePacks := []corerpv20250801.RecipePackResource{}
 	for _, rp := range resp.EnvironmentResource.Properties.RecipePacks {
-		ID, err := resources.Parse(*rp)
+		id, err := resources.Parse(*rp)
 		if err != nil {
 			return err
 		}
 
-		client := recipepackClient
-		if ID.RootScope() != r.Workspace.Scope {
-			factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
-			if err != nil {
-				return err
-			}
-
-			client = factory.NewRecipePacksClient()
-		}
-
-		pack, err := client.Get(ctx, ID.RootScope(), ID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
-		if err != nil {
-			return err
-		}
-
-		for resourceType, recipe := range pack.RecipePackResource.Properties.Recipes {
-			if recipe == nil {
-				continue
-			}
-
-			kind := "unknown"
-			if recipe.Kind != nil {
-				kind = string(*recipe.Kind)
-			}
-
-			source := ""
-			if recipe.Source != nil {
-				source = *recipe.Source
-			}
-
-			envRecipes = append(envRecipes, EnvRecipes{
-				RecipePack:   ID.Name(),
-				ResourceType: resourceType,
-				Kind:         kind,
-				Source:       source,
-			})
-		}
+		recipePacks = append(recipePacks, corerpv20250801.RecipePackResource{
+			ID:   rp,
+			Name: new(id.Name()),
+		})
 	}
-
-	// Sort for deterministic output
-	slices.SortFunc(envRecipes, func(a, b EnvRecipes) int {
-		if v := cmp.Compare(a.RecipePack, b.RecipePack); v != 0 {
-			return v
-		}
-		return cmp.Compare(a.ResourceType, b.ResourceType)
-	})
 
 	err = r.Output.WriteFormatted(r.Format, resp.EnvironmentResource, objectformats.GetResourceTableFormat())
 	if err != nil {
@@ -232,9 +185,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	if len(envRecipes) > 0 {
+	if len(recipePacks) > 0 {
 		r.Output.LogInfo("")
-		err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetRecipesForEnvironmentTableFormat())
+		err = r.Output.WriteFormatted(r.Format, recipePacks, objectformats.GetRecipePackTableFormat())
 		if err != nil {
 			return err
 		}

@@ -30,18 +30,14 @@ import (
 // ConvertTo converts from the versioned ResourceTypeResource resource to version-agnostic datamodel.
 func (src *ResourceTypeResource) ConvertTo() (v1.DataModelInterface, error) {
 	dst := &datamodel.ResourceType{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   to.String(src.ID),
-				Name: to.String(src.Name),
-				Type: datamodel.ResourceTypeResourceType,
+		TrackedResource: v1.TrackedResource{
+			ID:   to.String(src.ID),
+			Name: to.String(src.Name),
+			Type: datamodel.ResourceTypeResourceType,
 
-				// NOTE: this is a child resource. It does not have a location, systemData, or tags.
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
+			// NOTE: this is a child resource. It does not have a location, systemData, or tags.
 		},
+		UpdatedAPIVersion: Version,
 	}
 
 	capabilities := []string{}

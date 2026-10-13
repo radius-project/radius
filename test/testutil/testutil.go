@@ -29,7 +29,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -416,13 +417,12 @@ func GetPodLogs(ctx context.Context, client k8s.Interface, namespace, podName, c
 	}
 	defer logs.Close()
 
-	buf := make([]byte, 1024*1024) // 1MB buffer
-	n, err := logs.Read(buf)
-	if err != nil && err != io.EOF {
+	contents, err := io.ReadAll(logs)
+	if err != nil {
 		return "", err
 	}
 
-	return string(buf[:n]), nil
+	return string(contents), nil
 }
 
 // GetK8sClient returns a Kubernetes client for testing.

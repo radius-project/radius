@@ -34,6 +34,8 @@ Note that installing a custom build could corrupt existing data or installation.
    rad install kubernetes --chart deploy/Chart/ --set global.imageRegistry=ghcr.io/your-registry --set global.imageTag=latest
    ```
 
+   Installing from a custom build pulls every control-plane image for the first time, which can take a while on a slow connection. If the install times out, rerun the command above with `--reinstall --timeout 30m` added — a timed-out install leaves a release behind, so a plain retry is skipped. See [Troubleshooting Installation](./troubleshooting-installation.md#the-installation-times-out).
+
    For private registries that require authentication, first create a Kubernetes secret:
 
    ```console

@@ -24,8 +24,9 @@ import (
 	"sync"
 	"time"
 
+	"uuid"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
-	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"

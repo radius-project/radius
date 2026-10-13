@@ -27,11 +27,11 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"charm.land/lipgloss/v2/compat"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/style"
 )
 
 // Display constants used to render the summary and progress views shown by
@@ -68,7 +68,7 @@ var (
 		FPS:    time.Second / 4,
 	}
 
-	foregroundBrightStyle = lipgloss.NewStyle().Foreground(compat.AdaptiveColor{Light: lipgloss.Color("#111111"), Dark: lipgloss.Color("#EEEEEE")}).Bold(true)
+	foregroundBrightStyle = lipgloss.NewStyle().Foreground(style.AdaptiveColor{Light: lipgloss.Color("#111111"), Dark: lipgloss.Color("#EEEEEE")}).Bold(true)
 )
 
 // DisplayOptions is the data model rendered by the summary and progress views.

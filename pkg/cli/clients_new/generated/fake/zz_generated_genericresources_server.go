@@ -115,7 +115,7 @@ func (g *GenericResourcesServerTransport) dispatchBeginCreateOrUpdate(req *http.
 	}
 	beginCreateOrUpdate := g.beginCreateOrUpdate.get(req)
 	if beginCreateOrUpdate == nil {
-		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceType>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/(?P<resourceName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/(?P<resourceType>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/(?P<resourceName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 4 {
@@ -159,7 +159,7 @@ func (g *GenericResourcesServerTransport) dispatchBeginDelete(req *http.Request)
 	}
 	beginDelete := g.beginDelete.get(req)
 	if beginDelete == nil {
-		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceType>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/(?P<resourceName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/(?P<resourceType>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/(?P<resourceName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 4 {
@@ -197,7 +197,7 @@ func (g *GenericResourcesServerTransport) dispatchGet(req *http.Request) (*http.
 	if g.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceType>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/(?P<resourceName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/(?P<resourceType>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/(?P<resourceName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 4 {
@@ -228,7 +228,7 @@ func (g *GenericResourcesServerTransport) dispatchNewListByRootScopePager(req *h
 	}
 	newListByRootScopePager := g.newListByRootScopePager.get(req)
 	if newListByRootScopePager == nil {
-		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceType>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+		const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/(?P<resourceType>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 3 {
@@ -259,7 +259,7 @@ func (g *GenericResourcesServerTransport) dispatchListSecrets(req *http.Request)
 	if g.srv.ListSecrets == nil {
 		return nil, &nonRetriableError{errors.New("fake for method ListSecrets not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/(?P<resourceType>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/(?P<resourceName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/listSecrets`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/(?P<resourceType>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/(?P<resourceName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/listSecrets`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 4 {

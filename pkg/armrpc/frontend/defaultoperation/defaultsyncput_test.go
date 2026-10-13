@@ -192,8 +192,8 @@ func TestDefaultSyncPut_Update(t *testing.T) {
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			so := &database.Object{
-				Metadata: database.Metadata{ID: sCtx.ResourceID.String()},
-				Data:     reqDataModel,
+				ID:   sCtx.ResourceID.String(),
+				Data: reqDataModel,
 			}
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).

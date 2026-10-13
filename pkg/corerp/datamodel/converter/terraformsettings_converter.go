@@ -17,6 +17,7 @@ limitations under the License.
 package converter
 
 import (
+	"bytes"
 	"encoding/json"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -43,6 +44,27 @@ func TerraformSettingsDataModelToVersioned(model *datamodel.TerraformSettings, v
 func TerraformSettingsDataModelFromVersioned(content []byte, version string) (*datamodel.TerraformSettings, error) {
 	switch version {
 	case v20250801preview.Version:
+		// Generated polymorphic decoding ignores fields from the other variant.
+		// Validate the original backend first so invalid combinations and credential fields cannot disappear.
+		var input struct {
+			Properties struct {
+				Backend json.RawMessage `json:"backend"`
+			} `json:"properties"`
+		}
+		if err := json.Unmarshal(content, &input); err != nil {
+			return nil, err
+		}
+		if len(input.Properties.Backend) > 0 && !bytes.Equal(input.Properties.Backend, []byte("null")) {
+			var backend datamodel.TerraformBackend
+			decoder := json.NewDecoder(bytes.NewReader(input.Properties.Backend))
+			decoder.DisallowUnknownFields()
+			if err := decoder.Decode(&backend); err != nil {
+				return nil, v1.NewClientErrInvalidRequest("invalid backend: " + err.Error())
+			}
+			if err := backend.Validate(); err != nil {
+				return nil, v1.NewClientErrInvalidRequest(err.Error())
+			}
+		}
 		am := &v20250801preview.TerraformSettingsResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err

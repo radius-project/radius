@@ -26,7 +26,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/stretchr/testify/require"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
