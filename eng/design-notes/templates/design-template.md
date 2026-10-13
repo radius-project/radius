@@ -8,7 +8,7 @@
 
 <!--
 How to use this template
-- Write for a reviewer who has 15 minutes. Sections go from "what we decide" to "how we build it".
+- Write for a reviewer who has 30 minutes. Sections go from "what we decide" to "how we build it".
 - Tier 1 (Review guide through User Experience) must be readable on its own. Reviewers approve the design from Tier 1.
 - Tier 2 (Design through Alternatives considered) supports the decisions. Reviewers skim it.
 - Tier 3 (Appendix) holds long code, full schemas, and exhaustive tables. Reviewers read it only when needed.
