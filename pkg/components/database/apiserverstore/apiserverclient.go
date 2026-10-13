@@ -45,6 +45,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/radius-project/radius/pkg/components/database"
@@ -59,6 +60,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -343,6 +346,21 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 	return err
 }
 
+// transientBackoff is the backoff used to retry reads that fail with a transient API server error.
+var transientBackoff = wait.Backoff{Duration: 200 * time.Millisecond, Factor: 2, Steps: 5}
+
+// isTransient reports whether err is a temporary API server failure (for example a 503 while the
+// API server or an aggregated API is briefly unavailable) that is safe to retry.
+func isTransient(err error) bool {
+	return apierrors.IsServiceUnavailable(err) || apierrors.IsServerTimeout(err) || apierrors.IsTimeout(err) || apierrors.IsTooManyRequests(err)
+}
+
+// get reads an object and retries when the API server returns a transient error.
+func (c *APIServerClient) get(ctx context.Context, key runtimeclient.ObjectKey, obj runtimeclient.Object) error {
+	return retry.OnError(transientBackoff, isTransient, func() error {
+		return c.client.Get(ctx, key, obj)
+	})
+}
 func (c *APIServerClient) doWithRetry(action func() (bool, error)) error {
 	for range RetryCount {
 		retryable, err := action()
@@ -435,9 +453,9 @@ func makeResourceName(id resources.ID, hash string) string {
 // versions of Radius. The returned error is NotFound only if neither object exists. See
 // https://github.com/radius-project/radius/issues/8084.
 func (c *APIServerClient) getResourceWithFallback(ctx context.Context, id resources.ID, resource *ucpv1alpha1.Resource) error {
-	err := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}, resource)
+	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}, resource)
 	if apierrors.IsNotFound(err) {
-		return c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacyResourceName(id)}, resource)
+		return c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacyResourceName(id)}, resource)
 	}
 
 	return err
@@ -452,7 +470,7 @@ func (c *APIServerClient) getResourceWithFallback(ctx context.Context, id resour
 func (c *APIServerClient) getResourceForSave(ctx context.Context, id resources.ID) (string, ucpv1alpha1.Resource, bool, error) {
 	current := resourceName(id)
 	resource := ucpv1alpha1.Resource{}
-	err := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: current}, &resource)
+	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: current}, &resource)
 	if err == nil {
 		return current, resource, true, nil
 	} else if !apierrors.IsNotFound(err) {
@@ -463,7 +481,7 @@ func (c *APIServerClient) getResourceForSave(ctx context.Context, id resources.I
 	// was written by an older version of Radius, so we update it in place.
 	legacy := legacyResourceName(id)
 	legacyResource := ucpv1alpha1.Resource{}
-	err = c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacy}, &legacyResource)
+	err = c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacy}, &legacyResource)
 	if err == nil && findIndex(&legacyResource, id) != nil {
 		return legacy, legacyResource, true, nil
 	} else if err != nil && !apierrors.IsNotFound(err) {
