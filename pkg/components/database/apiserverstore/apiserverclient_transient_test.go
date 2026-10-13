@@ -68,7 +68,7 @@ func Test_Get_RetriesTransientErrors(t *testing.T) {
 			}).Build()
 
 			client := NewAPIServerClient(fakeClient, "radius-test")
-			err := client.get(context.Background(), runtimeclient.ObjectKey{Namespace: "radius-test", Name: "x"}, &ucpv1alpha1.Resource{})
+			err := client.get(t.Context(), runtimeclient.ObjectKey{Namespace: "radius-test", Name: "x"}, &ucpv1alpha1.Resource{})
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -92,7 +92,7 @@ func Test_Get_StopsRetryingWhenContextCancelled(t *testing.T) {
 		},
 	}).Build()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	client := NewAPIServerClient(fakeClient, "radius-test")
@@ -123,16 +123,16 @@ func Test_Operations_UseRetryingGet(t *testing.T) {
 	}).Build()
 	client := NewAPIServerClient(fakeClient, "radius-test")
 
-	_, err := client.Get(context.Background(), id)
+	_, err := client.Get(t.Context(), id)
 	var notFound *database.ErrNotFound
 	require.ErrorAs(t, err, &notFound)
 
 	calls = 0
-	err = client.Delete(context.Background(), id)
+	err = client.Delete(t.Context(), id)
 	require.ErrorAs(t, err, &notFound)
 
 	calls = 0
-	err = client.Save(context.Background(), &database.Object{Metadata: database.Metadata{ID: id}, Data: map[string]any{}})
+	err = client.Save(t.Context(), &database.Object{Metadata: database.Metadata{ID: id}, Data: map[string]any{}})
 	require.NoError(t, err)
 }
 
@@ -156,7 +156,7 @@ func Test_Query_RetriesTransientList(t *testing.T) {
 	}).Build()
 
 	client := NewAPIServerClient(fakeClient, "radius-test")
-	result, err := client.Query(context.Background(), database.Query{
+	result, err := client.Query(t.Context(), database.Query{
 		RootScope:    "/planes/radius/local/resourceGroups/test-group",
 		ResourceType: "Applications.Core/applications",
 	})
