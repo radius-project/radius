@@ -55,7 +55,7 @@ var retryBaseDelay = 500 * time.Millisecond
 
 // Interface is the interface for interacting with Bicep.
 type Interface interface {
-	PrepareTemplate(ctx context.Context, filePath string) (map[string]any, error)
+	PrepareTemplate(ctx context.Context, filePath string) (map[string]any, RadiusExtensionPin, error)
 	Call(args ...string) ([]byte, error)
 }
 
@@ -74,8 +74,11 @@ type Impl struct {
 
 // PrepareTemplate checks if the file is a .json or .bicep file, downloads Bicep if it is not installed, checks if the file
 // exists, and builds the template if it does. The file may be a local path or an http(s) URL; remote templates are
-// downloaded to a temporary local file first. It returns a map of strings to any and an error if one occurs.
-func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string]any, error) {
+// downloaded to a temporary local file first. It returns a map of strings to any, the Radius extension pin resolved
+// for the template (which a JSON template never has), and an error if one occurs. The pin is returned alongside the
+// template, rather than written into its metadata, so that the template itself is unaffected by compatibility
+// bookkeeping when it is also used to generate a manifest or published artifact.
+func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string]any, RadiusExtensionPin, error) {
 	// A remote URL is downloaded to a temporary local file so it can be read or compiled like a
 	// local template. This mirrors the behavior users expect from tools such as kubectl.
 	// displayPath is the only form of the template argument that may be shown to the user, so a
@@ -85,7 +88,7 @@ func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string
 	if remote {
 		localPath, cleanup, err := i.downloadTemplate(ctx, filePath)
 		if err != nil {
-			return nil, err
+			return nil, RadiusExtensionPin{}, err
 		}
 		defer cleanup()
 		filePath = localPath
@@ -94,30 +97,30 @@ func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string
 	if strings.EqualFold(path.Ext(filePath), ".json") {
 		template, err := ReadARMJSON(filePath)
 		if err != nil && remote {
-			return nil, fmt.Errorf("failed to read remote template %q: %w", displayPath, err)
+			return nil, RadiusExtensionPin{}, fmt.Errorf("failed to read remote template %q: %w", displayPath, err)
 		}
-		return template, err
+		return template, RadiusExtensionPin{}, err
 	} else if !strings.EqualFold(path.Ext(filePath), ".bicep") {
-		return nil, fmt.Errorf("the provided file %q must be a .json or .bicep file", displayPath)
+		return nil, RadiusExtensionPin{}, fmt.Errorf("the provided file %q must be a .json or .bicep file", displayPath)
 	}
 
 	ok, err := IsBicepInstalled()
 	if err != nil {
-		return nil, fmt.Errorf("failed to find bicep: %w", err)
+		return nil, RadiusExtensionPin{}, fmt.Errorf("failed to find bicep: %w", err)
 	}
 
 	if !ok {
 		i.Output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
 		err = DownloadBicep()
 		if err != nil {
-			return nil, fmt.Errorf("failed to download bicep: %w", err)
+			return nil, RadiusExtensionPin{}, fmt.Errorf("failed to download bicep: %w", err)
 		}
 	}
 
 	// Check the file manually so we can control the error message.
 	_, err = i.FileSystem.Stat(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("could not find file: %w", err)
+		return nil, RadiusExtensionPin{}, fmt.Errorf("could not find file: %w", err)
 	}
 
 	step := i.Output.BeginStep("Building %s...", displayPath)
@@ -127,19 +130,20 @@ func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string
 		if remote {
 			// The bicep compiler prints detailed diagnostics to stderr, so keep the wrapper
 			// error focused on identifying the remote source rather than guessing the cause.
-			return nil, fmt.Errorf("failed to build remote template %q: %w", displayPath, err)
+			return nil, RadiusExtensionPin{}, fmt.Errorf("failed to build remote template %q: %w", displayPath, err)
 		}
-		return nil, fmt.Errorf("failed to build template: %w", err)
+		return nil, RadiusExtensionPin{}, fmt.Errorf("failed to build template: %w", err)
 	}
 
 	template := map[string]any{}
 	err = json.Unmarshal(bytes, &template)
 	if err != nil {
-		return nil, err
+		return nil, RadiusExtensionPin{}, err
 	}
 
+	pin := resolveRadiusExtensionPin(i.FileSystem, filePath, template)
 	i.Output.CompleteStep(step)
-	return template, nil
+	return template, pin, nil
 }
 
 // isRemoteURL reports whether filePath is intended as an http(s) URL. It classifies by scheme

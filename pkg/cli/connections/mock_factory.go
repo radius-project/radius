@@ -22,19 +22,29 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/version"
 )
 
 var _ Factory = (*MockFactory)(nil)
 
 type MockFactory struct {
+	ControlPlaneVersion          version.VersionInfo
+	ControlPlaneVersionError     error
+	DeploymentClient             clients.DeploymentClient
+	DeploymentClientError        error
 	ApplicationsManagementClient clients.ApplicationsManagementClient
 	CredentialManagementClient   cli_credential.CredentialManagementClient
 	DiagnosticsClient            clients.DiagnosticsClient
 }
 
+// GetControlPlaneVersion returns the configured version result.
+func (f *MockFactory) GetControlPlaneVersion(ctx context.Context, workspace workspaces.Workspace) (version.VersionInfo, error) {
+	return f.ControlPlaneVersion, f.ControlPlaneVersionError
+}
+
 // CreateDeploymentClient function takes in a context and a workspace and returns a DeploymentClient and an error, if any.
 func (f *MockFactory) CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error) {
-	return nil, nil
+	return f.DeploymentClient, f.DeploymentClientError
 }
 
 // CreateDiagnosticsClient function takes in a context and a workspace and returns a DiagnosticsClient without any errors.

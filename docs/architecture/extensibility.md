@@ -21,7 +21,7 @@ This document covers the three flows that make extensibility work:
 graph TD
   Author[Resource type author]
   RecipeAuthor[Recipe author / operator]
-  CLI["rad CLI<br/>pkg/cli/cmd/resourcetype<br/>pkg/cli/cmd/recipe"]
+  CLI["rad CLI<br/>pkg/cli/cmd/resourcetype<br/>pkg/cli/cmd/recipepack"]
   Manifest["Manifest YAML<br/>Radius.&lt;Category&gt;/&lt;type&gt;.yaml"]
   Initializer["UCP initializer<br/>pkg/ucp/initializer"]
   UCP["UCP frontend<br/>pkg/ucp/frontend"]
@@ -182,27 +182,22 @@ sequenceDiagram
 
 ## Recipe Registration
 
-`rad recipe register` stores recipes as entries on an
-`Applications.Core/environments` resource, keyed by the resource type the
-recipe targets. That CLI path is not the only recipe storage model in the
-current code: `Radius.Core/recipePacks` are first-class resources, and
-`Radius.Core/environments` reference them through `properties.recipePacks`.
+`Applications.Core/environments` resources store recipes as entries on the
+environment itself, keyed by the resource type the recipe targets. That is not
+the only recipe storage model in the current code: `Radius.Core/recipePacks`
+are first-class resources, and `Radius.Core/environments` reference them
+through `properties.recipePacks`.
 
-- Command: [pkg/cli/cmd/recipe/register/register.go](../../pkg/cli/cmd/recipe/register/register.go)
 - Environment client: `pkg/cli/clients` (`CreateOrUpdateEnvironment`)
 - Environment data model / properties: `pkg/corerp/datamodel`, `pkg/corerp/api/v20231001preview`
 - Recipe pack resource model: [pkg/corerp/datamodel/recipepack.go](../../pkg/corerp/datamodel/recipepack.go), [pkg/corerp/setup/setup.go](../../pkg/corerp/setup/setup.go)
 
-`rad recipe register` does the following:
-
-1. Fetches the target environment.
-2. Builds either a `BicepRecipeProperties` or `TerraformRecipeProperties`
-   value depending on the `--template-kind` flag, populating
-   `TemplateKind`, `TemplatePath`, optional `TemplateVersion` /
-   `PlainHTTP`, and any `Parameters`.
-3. Inserts the recipe under
-   `envResource.Properties.Recipes[<resourceType>][<recipeName>]`.
-4. Calls `CreateOrUpdateEnvironment` to persist.
+Registering a recipe on an `Applications.Core/environments` resource means
+including it in a PUT of the whole environment resource: the API replaces
+`properties.recipes` wholesale rather than merging entries. Each entry under
+`properties.recipes[<resourceType>][<recipeName>]` is a `BicepRecipeProperties`
+or `TerraformRecipeProperties` value carrying `TemplateKind`, `TemplatePath`,
+optional `TemplateVersion` / `PlainHTTP`, and any `Parameters`.
 
 The resulting `Applications.Core/environments` shape stores a single recipe per
 resource type under `properties.recipes[<type>].default`:
@@ -217,9 +212,11 @@ properties:
         parameters: { ... }
 ```
 
-The same `properties.recipes` map can be edited directly (e.g. by Bicep that
-defines an `Applications.Core` environment) — the CLI is a convenience that
-performs the merge and update.
+The same `properties.recipes` map is edited directly — for example by Bicep
+that defines an `Applications.Core` environment, or through the environment
+API. There is no longer a CLI command that performs the merge and update;
+`rad recipe-pack` commands operate on the `Radius.Core/recipePacks` model
+described below.
 
 For the `Radius.Core` environment path, recipe definitions are stored on
 `Radius.Core/recipePacks` resources. An environment references those packs by

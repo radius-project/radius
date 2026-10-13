@@ -415,6 +415,30 @@ jq -e '
 ' --arg commit "${SOURCE_COMMIT}" "${OUTPUT}" >/dev/null ||
     fail "generated manifest did not match the expected contract"
 
+printf '{}\n' >"${ASSETS}/core-release-lock.json"
+jq '.assets += [{"name":"core-release-lock.json"}]' \
+  "${FIXTURES}/release.json" >"${FIXTURES}/release-lock.json"
+mv "${FIXTURES}/release-lock.json" "${FIXTURES}/release.json"
+run_collector
+
+printf '{}\n' >"${ASSETS}/rad_linux_amd64.sbom.json"
+jq '.assets += [{"name":"rad_linux_amd64.sbom.json"}]' \
+  "${FIXTURES}/release.json" >"${FIXTURES}/release-sbom.json"
+mv "${FIXTURES}/release-sbom.json" "${FIXTURES}/release.json"
+run_collector
+
+printf 'unexpected\n' >"${ASSETS}/unexpected.txt"
+jq '.assets += [{"name":"unexpected.txt"}]' \
+  "${FIXTURES}/release.json" >"${FIXTURES}/release-extra.json"
+mv "${FIXTURES}/release-extra.json" "${FIXTURES}/release.json"
+if run_collector 2>/dev/null; then
+  fail "collector accepted an unknown GitHub Release asset"
+fi
+jq '.assets |= map(select(.name != "unexpected.txt"))' \
+  "${FIXTURES}/release.json" >"${FIXTURES}/release-clean.json"
+mv "${FIXTURES}/release-clean.json" "${FIXTURES}/release.json"
+rm "${ASSETS}/unexpected.txt"
+
 jq '.prerelease = true | .body = "<!-- Release notes generated using configuration -->\n"' \
     "${FIXTURES}/release.json" >"${FIXTURES}/release-rc.json"
 mv "${FIXTURES}/release-rc.json" "${FIXTURES}/release.json"

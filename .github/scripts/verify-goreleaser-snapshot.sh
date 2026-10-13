@@ -103,13 +103,70 @@ verify_native_checksum_config() {
         fail "native GoReleaser checksum configuration is not enabled"
 }
 
+verify_sbom_config() {
+    local expected_artifact="\${artifact}"
+    local expected_document="spdx-json=\${document}"
+
+    EXPECTED_ARTIFACT="${expected_artifact}" \
+        EXPECTED_DOCUMENT="${expected_document}" yq -e '
+        (.sboms | length) == 1
+        and .sboms[0].id == "rad-sbom"
+        and .sboms[0].artifacts == "binary"
+        and (.sboms[0].ids | length) == 1
+        and .sboms[0].ids[0] == "rad"
+        and (.sboms[0].documents | length) == 1
+        and .sboms[0].documents[0]
+            == "{{ .ArtifactName }}.sbom.json"
+        and .sboms[0].cmd == "syft"
+        and (.sboms[0].args | length) == 5
+        and .sboms[0].args[0] == strenv(EXPECTED_ARTIFACT)
+        and .sboms[0].args[1] == "--output"
+        and .sboms[0].args[2] == strenv(EXPECTED_DOCUMENT)
+        and .sboms[0].args[3] == "--enrich"
+        and .sboms[0].args[4] == "golang"
+        and ([.dockers_v2[] | select(.sbom != true)] | length) == 0
+    ' "${CONFIG_FILE}" >/dev/null ||
+        fail "GoReleaser SBOM settings do not match the release contract"
+}
+
+verify_spdx_json() {
+    local file="$1"
+
+    jq -e '
+        type == "object"
+        and (.spdxVersion
+            | type == "string" and test("^SPDX-2\\.[0-9]+$"))
+        and .SPDXID == "SPDXRef-DOCUMENT"
+        and .dataLicense == "CC0-1.0"
+        and (.name | type == "string")
+        and (.documentNamespace
+            | type == "string" and startswith("https://"))
+        and (.creationInfo.created | type == "string" and length > 0)
+        and any(.creationInfo.creators[]?; startswith("Tool: syft-"))
+        and (.packages | type == "array" and length > 0)
+        and all(.packages[];
+            type == "object"
+            and (.SPDXID | type == "string")
+            and (.name | type == "string")
+            and (.downloadLocation | type == "string"))
+        and (.relationships | type == "array")
+    ' "${file}" >/dev/null || fail "invalid SPDX JSON SBOM: ${file}"
+}
+
 verify_release_config() {
     local global_environment
     local expected_disable='{{ .Env.GORELEASER_RELEASE_DISABLE }}'
 
     yq -e '
-        ((.release.ids | length) == 1)
+        ((.release.ids | length) == 2)
         and (.release.ids[0] == "rad")
+        and (.release.ids[1] == "rad-sbom")
+        and (.release.draft == true)
+        and (.release.use_existing_draft == true)
+        and (.release.replace_existing_artifacts == true)
+        and (.release.prerelease == "auto")
+        and (.release.make_latest == false)
+        and (.release.mode == "replace")
     ' "${CONFIG_FILE}" >/dev/null ||
         fail "GoReleaser release settings do not match the parity contract"
     [[ "$(yq -r '.release.disable' "${CONFIG_FILE}")" == "${expected_disable}" ]] ||
@@ -182,7 +239,7 @@ verify_cli_assets() {
         checksum_path="$(resolve_path "${checksum_artifact_path}")"
         [[ -f "${checksum_path}" ]] ||
             fail "missing checksum sidecar: ${asset}.sha256"
-        declared_hash="$(tr -d '\r\n' <"${checksum_path}")"
+        declared_hash="$(awk 'NR == 1 { print $1 }' "${checksum_path}")"
         if [[ ! "${declared_hash}" =~ ^[0-9a-f]{64}$ ]]; then
             fail "invalid checksum format for ${asset}.sha256"
         fi
@@ -190,6 +247,58 @@ verify_cli_assets() {
         [[ "${declared_hash}" == "${actual_hash}" ]] ||
             fail "checksum mismatch for ${asset}"
     done < <(jq -r '.cliAssets[].name' "${TARGETS_FILE}")
+}
+
+verify_cli_sboms() {
+    local artifacts_file="$1"
+    local expected_names
+    local actual_names
+    local unexpected_checksums
+    local name
+    local artifact_path
+
+    expected_names="$(jq -c '[
+        .cliAssets[] | .name + ".sbom.json"
+    ] | sort' "${TARGETS_FILE}")"
+    actual_names="$(jq -c '[
+        .[]
+        | select(.type == "SBOM" and .extra.ID == "rad-sbom")
+        | .name
+    ] | sort' "${artifacts_file}")"
+    assert_json_equal "${actual_names}" "${expected_names}" \
+        "CLI SBOM asset names"
+    unexpected_checksums="$(jq -c '[
+        .[]
+        | select(
+            .type == "Checksum"
+            and (.extra.ChecksumOf // "" | endswith(".sbom.json"))
+        )
+        | .name
+    ]' "${artifacts_file}")"
+    [[ "${unexpected_checksums}" == "[]" ]] ||
+        fail "SBOM checksum sidecars change the release asset contract"
+
+    while IFS= read -r name; do
+        artifact_path="$(jq -er --arg name "${name}" '
+            [
+                .[]
+                | select(
+                    .name == $name
+                    and .type == "SBOM"
+                    and .extra.ID == "rad-sbom"
+                )
+            ]
+            | select(length == 1)
+            | .[0].path
+        ' "${artifacts_file}")"
+        if [[ "${artifact_path}" != /* ]]; then
+            artifact_path="${REPO_ROOT}/${artifact_path}"
+        fi
+        [[ -f "${artifact_path}" ]] ||
+            fail "missing CLI SBOM: ${artifact_path}"
+        verify_spdx_json "${artifact_path}"
+    done < <(jq -r '.cliAssets[] | .name + ".sbom.json"' \
+        "${TARGETS_FILE}")
 }
 
 verify_build_matrix() {
@@ -289,7 +398,7 @@ verify_image_definitions() {
                             and (.ids[0] == strenv(IMAGE))
                             and ((.tags | length) == 1)
                             and (.tags[0] == "{{ .Version }}")
-                            and (.sbom == false)
+                            and (.sbom == true)
                             and (.labels."org.opencontainers.image.description"
                                 == strenv(IMAGE))
                             and (.labels."org.opencontainers.image.source"
@@ -462,6 +571,7 @@ main() {
     require_command yq
 
     verify_native_checksum_config
+    verify_sbom_config
     verify_release_config
     verify_build_matrix --config-only
     verify_image_definitions
@@ -476,13 +586,14 @@ main() {
     [[ -f "${DIST_DIR}/artifacts.json" ]] ||
         fail "missing GoReleaser artifacts metadata"
     verify_cli_assets "${DIST_DIR}/artifacts.json"
+    verify_cli_sboms "${DIST_DIR}/artifacts.json"
     verify_build_matrix
     if [[ "${SKIP_IMAGES}" -eq 1 ]]; then
         echo "skipping built image verification: the snapshot ran without Docker"
     else
         verify_built_images "${DIST_DIR}/artifacts.json"
     fi
-    echo "GoReleaser snapshot matches the release parity contract"
+    echo "GoReleaser output matches the release parity contract"
 }
 
 main "$@"

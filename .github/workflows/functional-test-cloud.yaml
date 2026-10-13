@@ -1093,6 +1093,12 @@ jobs:
           RADIUS_TEST_FAST_CLEANUP: true
           MATRIX_NAME: ${{ matrix.name }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
+          # Let tests mint a fresh federated assertion per token acquisition. The assertion cached
+          # by `azure/login` expires within minutes, so a scope that was not cached at login - the
+          # Blob data plane, for example - otherwise fails with AADSTS700024 later in the job.
+          # ACTIONS_ID_TOKEN_REQUEST_URL/_TOKEN are supplied by the runner via `id-token: write`.
+          AZURE_SP_TESTS_APPID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_SP_TESTS_TENANTID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results

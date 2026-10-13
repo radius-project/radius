@@ -237,9 +237,6 @@ type ApplicationsManagementClient interface {
 	// GetEnvironment retrieves an environment by its name (in the configured scope) or resource ID.
 	GetEnvironment(ctx context.Context, environmentNameOrID string) (corerp.EnvironmentResource, error)
 
-	// GetRecipeMetadata shows recipe details including list of all parameters for a given recipe registered to an environment.
-	GetRecipeMetadata(ctx context.Context, environmentNameOrID string, recipe corerp.RecipeGetMetadata) (corerp.RecipeGetMetadataResponse, error)
-
 	// CreateOrUpdateEnvironment creates an environment by its name (or id).
 	CreateOrUpdateEnvironment(ctx context.Context, environmentNameOrID string, resource *corerp.EnvironmentResource) error
 

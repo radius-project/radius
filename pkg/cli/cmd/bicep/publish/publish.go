@@ -154,7 +154,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Redact any credentials embedded in a remote template URL before displaying it.
 	displayFile := bicep.RedactTemplatePath(r.File)
 
-	template, err := r.Bicep.PrepareTemplate(ctx, r.File)
+	template, _, err := r.Bicep.PrepareTemplate(ctx, r.File)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to prepare Bicep file %q.", displayFile)
 	}

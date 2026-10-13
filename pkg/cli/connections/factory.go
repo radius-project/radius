@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
+	"github.com/radius-project/radius/pkg/version"
 )
 
 // DefaultFactory provides easy access to the default implementation of the factory. DO NOT modify this in your code. Even if it's for tests. DO NOT DO IT.
@@ -39,6 +40,7 @@ var DefaultFactory = &impl{}
 
 // ConnectionFactory is a mockable abstraction for our client-server interactions.
 type Factory interface {
+	GetControlPlaneVersion(ctx context.Context, workspace workspaces.Workspace) (version.VersionInfo, error)
 	CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error)
 	CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
 	CreateDiagnosticsClientPreview(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
@@ -49,6 +51,19 @@ type Factory interface {
 var _ Factory = (*impl)(nil)
 
 type impl struct {
+}
+
+// GetControlPlaneVersion reads version information from the selected workspace, not Helm.
+func (*impl) GetControlPlaneVersion(ctx context.Context, workspace workspaces.Workspace) (version.VersionInfo, error) {
+	config, err := workspace.ConnectionConfig()
+	if err != nil {
+		return version.VersionInfo{}, err
+	}
+	connection, err := config.Connect()
+	if err != nil {
+		return version.VersionInfo{}, err
+	}
+	return sdk.GetVersion(ctx, connection)
 }
 
 // CreateDeploymentClient connects to a workspace, tests the connection, creates a deployment client and an operations
