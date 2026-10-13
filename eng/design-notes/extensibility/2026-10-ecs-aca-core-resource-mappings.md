@@ -5,21 +5,34 @@
 
 ## Topic Summary
 
-Radius core resource types (`Radius.Compute/containers`, `Radius.Compute/routes`, `Radius.Compute/persistentVolumes`, `Radius.Security/secrets`) exist so a developer can describe an application once and a platform engineer can decide where it runs. Today that promise only holds for Kubernetes — the only platform with a complete recipe pack — and the container schema is, in the words of its own README, "heavily biased towards Kubernetes Pods and Deployments."
+Radius core resource types exist so a developer can describe an application once and a platform engineer can decide where it runs. There are four: `Radius.Compute/containers`, `Radius.Compute/routes`, `Radius.Compute/persistentVolumes`, and `Radius.Security/secrets`.
 
-This spec defines what it takes to make that promise real on **Azure Container Apps (ACA)** and **Amazon ECS on Fargate**: two widely adopted serverless container platforms, both named as intended targets in the container type's own documentation.
+Today that promise only holds for Kubernetes. It is the only platform with a complete recipe pack, and the container schema is, in the words of its own README, "heavily biased towards Kubernetes Pods and Deployments."
+
+This spec defines what is required to make it real on **Azure Container Apps (ACA)** and **Amazon ECS on Fargate**: two widely adopted serverless container platforms, both named as intended targets in the container type's own documentation.
+
+### At a glance
+
+|                          | Azure Container Apps      | Amazon ECS on Fargate                                                            |
+|--------------------------|---------------------------|----------------------------------------------------------------------------------|
+| Platform engineer brings | A managed environment     | Cluster, VPC, subnets, security groups, execution role, ALB, Cloud Map namespace |
+| Containers become        | Container Apps            | Task definitions + services                                                      |
+| Routes become            | `httpRouteConfigs` rules  | ALB listener rules                                                               |
+| Volumes become           | Azure Files share         | EFS file system                                                                  |
+| Secrets become           | Key Vault secret          | Secrets Manager secret                                                           |
+| Service discovery        | Environment-internal FQDN | Service Connect alias                                                            |
 
 ### Top level goals
 
 1. **Ship recipe packs for ACA and ECS** covering `containers`, `routes`, `persistentVolumes`, and `secrets`, contributed to `resource-types-contrib` next to the existing `kubernetes`, `azure-aks`, and `azure-aci` packs, so an application is portable across Kubernetes, ACA, and ECS.
-2. **Document property and platform support for each type in `resource-types-contrib`.** Publish per-property, per-platform support documentation with every pack, so both a developer and a platform engineer know what they get before deploying.
+2. **Document property and platform support for each type.** Publish per-property, per-platform support documentation with every pack in `resource-types-contrib`, and a platform page on `docs.radapp.io`, so both a developer and a platform engineer know what they get before deploying.
 3. **Create a reference application for ACA and ECS** that exercises all four core types on each platform.
 
 ### Non-goals (out of scope)
 
 - **Other container platforms.** Google Cloud Run and Nomad.
 - **Live migration between platforms.** Moving a running workload from Kubernetes to ACA is a redeploy.
-- **100% property parity.** A property a platform cannot express stays Unsupported and is documented as such.
+- **100% property parity.** A property a platform cannot express is marked unsupported and documented as such.
 - **New core-type properties for single-platform features.** ACA traffic splitting, ECS capacity providers, Fargate Spot. These stay reachable through `platformOptions`.
 - **Deployment-time validation.** Radius has no mechanism to reject an unsupported property before provisioning, so documentation is the only way a user learns what a platform will do with it.
 - **Non-core resource types.** Databases, caches, and messaging already have their own recipes.
@@ -28,7 +41,10 @@ This spec defines what it takes to make that promise real on **Azure Container A
 
 ### User persona(s) and the challenges they face
 
-**Primary — Priya, platform engineer.** Owns the Radius environments her organization deploys into. Her company standardized on ACA (or ECS) deliberately. She works in two modes: *consuming a pack*, where she registers a published `azure-aca` or `aws-ecs` pack, points an environment at infrastructure she already runs, and hands it to her developers; and *authoring or customizing a pack*, where the published pack does not match her organization's requirements, so she forks `resource-types-contrib` and builds her own recipes.
+**Primary — Priya, platform engineer.** Owns the Radius environments her organization deploys into. Her company standardized on ACA (or ECS) deliberately. She works in two modes:
+
+- *Consuming a pack* — she registers a published `azure-aca` or `aws-ecs` pack, points an environment at infrastructure she already runs, and hands it to her developers.
+- *Authoring or customizing a pack* — the published pack does not match her organization's requirements, so she forks `resource-types-contrib` and builds her own recipes.
 
 She cannot deploy to either platform today. Adopting Radius leaves her two options — move her applications onto Kubernetes, a platform her team deliberately chose not to operate, or build and maintain an ACA or ECS recipe pack herself with no documented contract for what each core type must guarantee.
 
@@ -60,18 +76,31 @@ Dev deploys the same application definition. It becomes task definitions and ser
 
 **Dependency — platform infrastructure must pre-exist.** Neither pack creates an ACA managed environment or an ECS cluster/VPC/ALB. Priya brings those and passes them as `recipeParameters`, as the Kubernetes routes recipe already requires a pre-existing gateway.
 
-**Risk — the schema's Kubernetes bias means fewer properties map than users expect.** Requests vs. limits, `exec` probes, `restartPolicy`, and secret volumes all assume Kubernetes semantics. *Mitigation:* publish the support documentation up front so every Unsupported property is a documented decision, and keep `platformOptions` as the sanctioned way to reach platform-specific settings.
+**Risk — the schema's Kubernetes bias means fewer properties map than users expect.** Requests vs. limits, `exec` probes, `restartPolicy`, and secret volumes all assume Kubernetes semantics. *Mitigation:* publish the support documentation up front so every unsupported property is a documented decision, and keep `platformOptions` as the sanctioned way to reach platform-specific settings.
 
-**Risk — silent divergence between packs.** The two packs share no code: ACA is Bicep, ECS is Terraform, written by different contributors and tested on separate paths. Two independently authored packs can map the same property differently — for example, whether `resources.requests` rounds up or fails when the value is not a legal platform combination. *Mitigation:* the published documentation is the written contract, and the reference applications (Feature 3) exercise each pack against it.
+**Risk — silent divergence between packs.** The two packs share no code. ACA is Bicep, ECS is Terraform, written by different contributors and tested on separate paths. Two independently authored packs can map the same property differently — for example, whether `resources.requests` rounds up or fails when the value is not a legal platform combination.
+
+*Mitigation:* the published documentation is the written contract, and the reference applications (Feature 3) exercise each pack against it.
 
 ## Key assumptions to test and questions to answer
 
-| #  | Assumption / question                                                                                                                                                                                | Working answer                                                                                                                                            | How we validate                                                                                                                 |
-|----|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
-| Q1 | ACA and ECS users use the **existing** four core types; no new types are needed.                                                                                                                     | Yes. All four types map with meaningful coverage. New types would fragment the portability promise, which is the entire point of the feature.             | Feature 1 and Feature 2 packs; the reference application for each platform.                                                     |
-| Q2 | When a property is suported **Partial**, the recipe adjusts the value rather than failing the deployment — for example, `resources.requests` that is not a legal Fargate CPU and memory combination. | Adjust and document. Failing on a value Radius accepts would make the type unportable in practice.                                                        | Prototype both container recipes with a value no platform accepts verbatim, and compare what each one does.                     |
-| Q3 | `sizeInGib` is required by the `persistentVolumes` schema but has no ECS equivalent, so the ECS recipe ignores it.                                                                                   | Ignore it for v1 and test whether the property can be made optional, since a platform that sizes storage elastically should not have to ask for a number. | Make `sizeInGib` optional in a draft schema and confirm the Kubernetes and ACA recipes still provision a volume without it.     |
-| Q4 | No liveness probe is portable across all three platforms: ACA has no `exec`, ECS has no container-level HTTP probe.                                                                                  | Accept for v1. `readinessProbe` gates traffic on all three, and liveness is documented as platform-specific.                                              | Confirm the ECS restart path, then document which platforms restart a failing container and which only remove it from rotation. |
+**Q1 — Do ACA and ECS need new resource types, or do the existing four work?**
+
+The existing four. All of them map with meaningful coverage, and new types would fragment the portability promise that is the entire point of the feature.
+
+*Validated during implementation:* the Feature 1 and Feature 2 packs, and the reference application for each platform.
+
+**Q2 — When a recipe cannot honor a property, does it fail the deployment or ignore the property?**
+
+Ignore it and document it. Failing on a value Radius itself accepts would make the type unportable in practice.
+
+*Validated during implementation:* prototyping both container recipes with a property neither platform supports, and confirming the deployment succeeds.
+
+**Q3 — What happens when a schema marks a property required but a platform has no equivalent?**
+
+A required property forces every application to set a value even when the target platform has no equivalent and will ignore it. Required properties should be revisited with the core type owners as platforms are added, and a property that is not universally meaningful should become optional. Until then the recipe ignores what it cannot honor.
+
+*Validated during implementation:* enumerating every required property with no equivalent on a target platform, making each one optional in a draft schema, and confirming the existing recipes still provision without it.
 
 ## Current state
 
@@ -86,6 +115,13 @@ Three recipe packs ship in [`resource-types-contrib`](https://github.com/radius-
 The ACI pack proved a non-Kubernetes platform can be mapped, and set the convention for documenting it: it records where ACI semantics differ as `Note:` lines in `Compute/containers/README.md`, covering `daprSidecar`, `replicas`, `autoScaling.*`, `args`, and `workingDir`.
 
 Neither ACA nor ECS has a pack today. No recipe exists for either platform for any of the four core types.
+
+Two Azure recipes do exist that the ACA pack should reuse rather than rewrite:
+
+- [`azure-file-volumes.bicep`](https://github.com/radius-project/resource-types-contrib/blob/main/Compute/persistentVolumes/recipes/azure/bicep/azure-file-volumes.bicep) — provisions an Azure Files share.
+- [`azure-keyvault-secrets.bicep`](https://github.com/radius-project/resource-types-contrib/blob/main/Security/secrets/recipes/azure/bicep/azure-keyvault-secrets.bicep) — provisions a Key Vault secret.
+
+Both provision Azure resources that are independent of the compute platform. Both are listed today as Azure (ACI) and emit outputs shaped for ACI, so tech design confirms what ACA needs from them. ECS has no equivalent to reuse.
 
 ## Desired user experience outcome
 
@@ -223,7 +259,7 @@ resource route 'Radius.Compute/routes@2025-08-01-preview' = {
 
 **Step 4 — Dev deploys.** `rad deploy app.bicep` against the ACA environment. It becomes Container Apps, an ACA HTTP route, an Azure Files share, and a Key Vault secret.
 
-**Step 5 — Dev reaches for a property ACA does not support.** He wants an `exec` liveness probe. The developer documentation records it as Unsupported, gives the reason, points him at `httpGet` and `tcpSocket`, and states that the recipe ignores the property if he writes it anyway. He uses `httpGet`.
+**Step 5 — Dev reaches for a property ACA does not support.** He wants an `exec` liveness probe. The developer documentation records it as unsupported, gives the reason, points him at `httpGet` and `tcpSocket`, and states that the recipe ignores the property if he writes it anyway. He uses `httpGet`.
 
 #### Scenario 2 — Run Radius on Amazon ECS
 
@@ -329,86 +365,116 @@ Everything in the **Creates** column is owned by the Radius resource that produc
 
 ### Property mapping
 
-What each core-type property becomes on each platform, and how faithfully. There is no Kubernetes column: the core schema was designed against Kubernetes, so every property below is Supported there.
+What each core-type property becomes on each platform. There is no Kubernetes column — the core schema was designed against Kubernetes, so every property below is supported there.
 
-- **Supported** — maps with equivalent behavior.
-- **Partial** — maps, with a behavioral difference the note records.
-- **Unsupported** — cannot be honored; the note gives the reason, the alternative, and what the recipe does if the property is set anyway.
+- **Supported** — the recipe honors the property. A different target field, or a value the platform rounds to a legal one, still counts as supported. Where behavior differs, a note under the table says how.
+- **Unsupported** — the platform cannot deliver what the property promises, so the recipe ignores it. Setting it never fails a deployment.
 
-These states are the contract each pack documents, in the per-type and per-pack READMEs `resource-types-contrib` already uses.
+Where a platform honors part of a property and not the rest, that part gets its own row rather than being averaged into a single state.
 
-Every property carries a state, including the ones the v1 recipes do not implement. `autoScaling.*`, `initContainer`, `extensions.daprSidecar`, and the L4 route kinds are deferred to a later increment; v1 ships `replicas` for scale and `kind: HTTP` for routing.
+Two caveats before reading:
 
-**Containers**
+- **These states are design intent.** No ACA or ECS recipe exists yet, so tech design validates every cell and corrects it where it is wrong.
+- **The tables record what each platform *can* do, not what v1 ships.** `initContainer`, `autoScaling.*`, and `extensions.daprSidecar` are supported but deferred to a later increment. Nothing else supported is deferred — the route kinds in particular ship as stated.
 
-| Property                               | Azure Container Apps                                                                                                                     | Amazon ECS (Fargate)                                                                                                                   |
-|----------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| `image`                                | Supported — `template.containers[].image`                                                                                                | Supported — `containerDefinitions[].image`                                                                                             |
-| `command` / `args`                     | Supported — `command` / `args`                                                                                                           | Supported — `entryPoint` / `command`                                                                                                   |
-| `env.*.value`                          | Supported — `env[].value`                                                                                                                | Supported — `environment[]`                                                                                                            |
-| `env.*.valueFrom.secretKeyRef`         | Supported — app secret + `env[].secretRef`                                                                                               | Supported — `secrets[].valueFrom`                                                                                                      |
-| `workingDir`                           | **Unsupported** — no equivalent                                                                                                          | Supported — `workingDirectory`                                                                                                         |
-| `containers.*.initContainer`           | Supported — `template.initContainers[]`                                                                                                  | Supported — `dependsOn` condition `SUCCESS` with `essential: false`                                                                    |
-| `ports.*.containerPort`                | Supported — `ingress.targetPort`, `additionalPortMappings`                                                                               | Supported — `portMappings[].containerPort`                                                                                             |
-| `ports.*.protocol: UDP`                | **Unsupported** — ACA ingress is HTTP/TCP only                                                                                           | **Unsupported** — reachability needs an NLB, deferred from v1                                                                          |
-| `resources.requests`                   | Partial — collapses into the single `resources.cpu` / `memory` allocation; the legal values depend on the environment's workload profile | Partial — `memoryReservation`; no per-container CPU reservation, and task `cpu` / `memory` must be one of Fargate's fixed combinations |
-| `resources.limits`                     | Partial — must equal requests; no separate limit exists                                                                                  | Partial — container `memory`; task `cpu` / `memory` must be one of Fargate's fixed combinations                                        |
-| `livenessProbe.exec`                   | **Unsupported** — HTTP/TCP probes only                                                                                                   | Supported — `healthCheck.command`                                                                                                      |
-| `livenessProbe.httpGet` / `tcpSocket`  | Supported — `probes[]` with `type: Liveness`                                                                                             | **Unsupported** — ECS container health checks are command-based; use `readinessProbe` for traffic gating                               |
-| `readinessProbe.*`                     | Supported — `probes[]` with `type: Readiness`                                                                                            | Partial — target group `HealthCheckPath`, not a container-level check                                                                  |
-| `restartPolicy`                        | **Unsupported** — ACA always restarts; not configurable                                                                                  | Partial — `restartPolicy.enabled` on the container; a boolean toggle, not an `Always` / `OnFailure` / `Never` equivalent               |
-| `replicas`                             | Partial — `scale.minReplicas` / `maxReplicas`; an exact count requires setting both to the same value                                    | Supported — service `desiredCount`                                                                                                     |
-| `autoScaling.maxReplicas`              | Supported — `scale.maxReplicas`                                                                                                          | Supported — scalable target maximum capacity                                                                                           |
-| `autoScaling.metrics` `cpu` / `memory` | Partial — KEDA scale rules, but `minReplicas` must be at least 1; no scale to zero                                                       | Partial — target tracking is utilization-percentage only; an absolute `value` target does not map                                      |
-| `autoScaling.metrics` `custom`         | Supported — KEDA custom scaler                                                                                                           | Partial — the metric must be published to CloudWatch first                                                                             |
-| `volumes.*.persistentVolume`           | Supported — environment storage + `template.volumes[]` (Azure Files)                                                                     | Supported — task `volumes[].efsVolumeConfiguration`                                                                                    |
-| `volumes.*.secretName`                 | Supported — `template.volumes[]` with `storageType: Secret`                                                                              | **Unsupported** — no secrets-as-files primitive                                                                                        |
-| `volumes.*.emptyDir` `medium: disk`    | Supported — `storageType: EmptyDir`                                                                                                      | Supported — task `volumes[]` bind mount                                                                                                |
-| `volumes.*.emptyDir` `medium: memory`  | **Unsupported** — no tmpfs-backed option                                                                                                 | Supported — `linuxParameters.tmpfs[]`                                                                                                  |
-| `volumeMounts`                         | Supported — `template.containers[].volumeMounts[]`                                                                                       | Supported — `mountPoints[]`                                                                                                            |
-| `connections`                          | Supported — `CONNECTION_*` + internal FQDN                                                                                               | Supported — `CONNECTION_*` + Service Connect alias                                                                                     |
-| `hosts` (output)                       | Supported — `<app>.internal.<env-id>.<region>.azurecontainerapps.io`                                                                     | Supported — Service Connect client alias                                                                                               |
-| `platformOptions`                      | Supported — Container App passthrough                                                                                                    | Supported — task definition passthrough                                                                                                |
-| `extensions.daprSidecar`               | Supported — native Dapr on the managed environment                                                                                       | **Unsupported** — ECS has no Dapr integration                                                                                          |
+Each state is documented twice: inline in the recipe where the property is handled or ignored, and in the per-type and per-pack READMEs `resource-types-contrib` already uses.
 
-**Routes**
+#### Containers
 
-| Property                            | Azure Container Apps                                                                | Amazon ECS                                               |
-|-------------------------------------|-------------------------------------------------------------------------------------|----------------------------------------------------------|
-| `kind: HTTP`                        | Supported — `httpRouteConfigs.rules[]`                                              | Supported — ALB listener rule → target group             |
-| `kind: TCP`                         | Supported — `ingress.transport: tcp`                                                | **Unsupported** — needs an NLB; the pack consumes an ALB |
-| `kind: TLS`                         | **Unsupported** — no SNI matching at the edge                                       | **Unsupported** — needs an NLB; the pack consumes an ALB |
-| `kind: UDP`                         | **Unsupported** — no UDP ingress                                                    | **Unsupported** — needs an NLB; the pack consumes an ALB |
-| `hostnames`                         | Supported — custom domain + managed certificate                                     | Supported — `host-header` condition                      |
-| `rules.*.matches.*.httpPath`        | Supported — `rules[].routes[].match.prefix`                                         | Supported — `path-pattern` condition                     |
-| `rules.*.matches.*.httpHeaders`     | **Unsupported** — no header matching                                                | Supported — `http-header` condition                      |
-| `rules.*.matches.*.httpMethod`      | **Unsupported** — no method matching                                                | Supported — `http-request-method` condition              |
-| `rules.*.matches.*.httpQueryParams` | **Unsupported** — no query matching                                                 | Supported — `query-string` condition                     |
-| `listener` (output)                 | Supported — `hostname` from the route config FQDN on the environment default domain | Supported — `hostname` from the ALB DNS name             |
+| Property                                                | Azure Container Apps                                   | Amazon ECS (Fargate)                                  |
+|---------------------------------------------------------|--------------------------------------------------------|-------------------------------------------------------|
+| `image`                                                 | Supported — `template.containers[].image`              | Supported — `containerDefinitions[].image`            |
+| `command` / `args`                                      | Supported — `command` / `args`                         | Supported — `entryPoint` / `command`                  |
+| `env.*.value`                                           | Supported — `env[].value`                              | Supported — `environment[]`                           |
+| `env.*.valueFrom.secretKeyRef`                          | Supported — app secret + `env[].secretRef`             | Supported — `secrets[].valueFrom`                     |
+| `workingDir`                                            | **Unsupported** — no equivalent                        | Supported — `workingDirectory`                        |
+| `containers.*.initContainer`                            | Supported — `template.initContainers[]`                | Supported — `dependsOn: SUCCESS` + `essential: false` |
+| `ports.*.containerPort`                                 | Supported — `ingress.targetPort`                       | Supported — `portMappings[].containerPort`            |
+| `ports.*.protocol: UDP`                                 | **Unsupported** — ingress is HTTP/TCP only             | **Unsupported** — needs an NLB                        |
+| `resources.requests`                                    | Supported — `resources.cpu` / `memory`                 | Supported — task `cpu` / `memory`                     |
+| `resources.limits`                                      | **Unsupported** — no separate limit exists             | Supported — container `memory`                        |
+| `livenessProbe.exec`                                    | **Unsupported** — HTTP/TCP probes only                 | Supported — `healthCheck.command`                     |
+| `livenessProbe.httpGet` / `tcpSocket`                   | Supported — `probes[]` type `Liveness`                 | **Unsupported** — health checks are command-based     |
+| `readinessProbe.*`                                      | Supported — `probes[]` type `Readiness`                | Supported — ALB target group health check             |
+| `restartPolicy`                                         | **Unsupported** — always restarts; not configurable    | **Unsupported** — boolean toggle only                 |
+| `replicas`                                              | Supported — `scale.minReplicas` / `maxReplicas`        | Supported — service `desiredCount`                    |
+| `autoScaling.maxReplicas`                               | Supported — `scale.maxReplicas`                        | Supported — scalable target max capacity              |
+| `autoScaling.metrics` `cpu` / `memory`                  | Supported — KEDA scale rules                           | Supported — target tracking policy                    |
+| `autoScaling.metrics` `custom`                          | Supported — KEDA custom scaler                         | Supported — target tracking on a CloudWatch metric    |
+| `autoScaling.metrics.*.target` `averageValue` / `value` | Supported — KEDA absolute threshold                    | **Unsupported** — utilization percentage only         |
+| `volumes.*.persistentVolume`                            | Supported — environment storage + `template.volumes[]` | Supported — `volumes[].efsVolumeConfiguration`        |
+| `volumes.*.secretName`                                  | Supported — `template.volumes[]` type `Secret`         | **Unsupported** — no secrets-as-files primitive       |
+| `volumes.*.emptyDir` `medium: disk`                     | Supported — `storageType: EmptyDir`                    | Supported — task `volumes[]` bind mount               |
+| `volumes.*.emptyDir` `medium: memory`                   | **Unsupported** — no tmpfs-backed option               | Supported — `linuxParameters.tmpfs[]`                 |
+| `volumeMounts`                                          | Supported — `template.containers[].volumeMounts[]`     | Supported — `mountPoints[]`                           |
+| `connections`                                           | Supported — `CONNECTION_*` + internal FQDN             | Supported — `CONNECTION_*` + Service Connect alias    |
+| `hosts` (output)                                        | Supported — environment-internal FQDN                  | Supported — Service Connect client alias              |
+| `platformOptions`                                       | Supported — Container App passthrough                  | Supported — task definition passthrough               |
+| `extensions.daprSidecar`                                | Supported — native Dapr                                | **Unsupported** — ECS has no Dapr integration         |
 
-**Secrets**
+Behavior notes:
 
-| Property                                       | Azure Container Apps                                                                                                                                        | Amazon ECS                                                                       |
-|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
-| `kind: generic`                                | Supported — Key Vault secret via `keyVaultUrl`                                                                                                              | Supported — Secrets Manager secret                                               |
-| `kind: certificate-pem` / `certificate-pkcs12` | Supported — Key Vault secret, same as `generic`; `kind` drives data-key validation, not storage type                                                        | Supported — Secrets Manager secret                                               |
-| `kind: basicAuthentication`                    | **Unsupported** — OCI registry authentication only, not a general-purpose secret                                                                            | **Unsupported** — OCI registry authentication only, not a general-purpose secret |
-| `kind: azureWorkloadIdentity`                  | **Unsupported** — ACA uses managed identity, not workload identity                                                                                          | Not applicable                                                                   |
-| `kind: awsIRSA`                                | Not applicable                                                                                                                                              | **Unsupported** — ECS uses task roles, not IRSA                                  |
-| Rotation behavior                              | Partial — versionless Key Vault references refresh within \~30 min, but the running revision does not restart on its own; direct app secrets do not refresh | Partial — **no live reload**; a value change requires a forced new deployment    |
+- **`resources.requests`** — on ACA this becomes the single allocation, and the legal values depend on the environment's workload profile. On ECS the recipe resolves the task size to the nearest legal Fargate CPU and memory combination, so the value you get may be larger than the value you wrote.
+- **`resources.limits`** — ACA has no separate limit; the request *is* the allocation. On ECS, container `memory` is a hard limit but there is no CPU ceiling, so a CPU limit is ignored.
+- **`livenessProbe`** — no probe kind works on all three platforms. ACA has no `exec`; ECS has no container-level HTTP probe. `readinessProbe` is the portable choice.
+- **`readinessProbe` on ECS** — enforced at the load balancer, so a container with no route in front of it has no readiness gate.
+- **`restartPolicy`** — ACA always restarts and is not configurable. ECS exposes a boolean, so `Always`, `OnFailure`, and `Never` cannot be distinguished.
+- **`replicas` on ACA** — an exact count is expressed by setting `minReplicas` and `maxReplicas` to the same value.
+- **`autoScaling` on ACA** — the floor is 1, so there is no scale to zero.
+- **`autoScaling.metrics` **`custom` on ECS**** — the metric must already be published to CloudWatch.
 
-The last three `kind` values are scoped to OCI registry authentication for Bicep recipe storage, not to workload identity — the schema says so explicitly.
+#### Routes
 
-**Persistent volumes**
+| Property                            | Azure Container Apps                               | Amazon ECS                                   |
+|-------------------------------------|----------------------------------------------------|----------------------------------------------|
+| `kind: HTTP`                        | Supported — `httpRouteConfigs.rules[]`             | Supported — ALB listener rule → target group |
+| `kind: TCP`                         | Supported — `ingress.transport: tcp`               | **Unsupported** — needs an NLB               |
+| `kind: TLS`                         | **Unsupported** — no SNI matching at the edge      | **Unsupported** — needs an NLB               |
+| `kind: UDP`                         | **Unsupported** — no UDP ingress                   | **Unsupported** — needs an NLB               |
+| `hostnames`                         | Supported — custom domain + managed certificate    | Supported — `host-header` condition          |
+| `rules.*.matches.*.httpPath`        | Supported — `match.prefix`                         | Supported — `path-pattern` condition         |
+| `rules.*.matches.*.httpHeaders`     | **Unsupported** — no header matching               | Supported — `http-header` condition          |
+| `rules.*.matches.*.httpMethod`      | **Unsupported** — no method matching               | Supported — `http-request-method` condition  |
+| `rules.*.matches.*.httpQueryParams` | **Unsupported** — no query matching                | Supported — `query-string` condition         |
+| `listener` (output)                 | Supported — FQDN on the environment default domain | Supported — ALB DNS name                     |
 
-| Property                            | Azure Container Apps                                                                                                      | Amazon ECS                                                                                                                                                                             |
-|-------------------------------------|---------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `sizeInGib`                         | Supported — Azure Files share quota                                                                                       | **Unsupported** — EFS is elastic and has no size field; the value is dropped. The `persistentVolumes` schema makes `sizeInGib` required, so every application sets a value ECS ignores |
-| `allowedAccessModes: ReadWriteMany` | Supported — Azure Files share                                                                                             | Supported — EFS mount targets                                                                                                                                                          |
-| `allowedAccessModes: ReadOnlyMany`  | Partial — `ReadOnly` on the environment storage definition, not per mount; mixed RW and RO consumers need two definitions | Supported — `mountPoints[].readOnly`                                                                                                                                                   |
-| `allowedAccessModes: ReadWriteOnce` | Partial — Azure Files is inherently shared; exclusivity is not enforced                                                   | Partial — EFS is shared; true exclusivity needs EBS, which is one volume per task and deleted on termination for service-managed tasks                                                 |
+Behavior notes:
 
-`allowedAccessModes` is a single value, not a set — the rows enumerate the enum, and a volume requests one mode at a time.
+- **The L4 kinds on ECS** are unsupported because the pack consumes an ALB, which is HTTP-only. Supporting them would mean consuming an NLB as well.
+- **Request matching is the mirror image of each other.** ACA matches on path only; ECS matches on path, header, method, and query. An application that routes on a header is not portable to ACA.
+
+#### Secrets
+
+| Property                                       | Azure Container Apps                           | Amazon ECS                                     |
+|------------------------------------------------|------------------------------------------------|------------------------------------------------|
+| `kind: generic`                                | Supported — Key Vault secret via `keyVaultUrl` | Supported — Secrets Manager secret             |
+| `kind: certificate-pem` / `certificate-pkcs12` | Supported — Key Vault secret                   | Supported — Secrets Manager secret             |
+| `kind: basicAuthentication`                    | **Unsupported** — registry authentication only | **Unsupported** — registry authentication only |
+| `kind: azureWorkloadIdentity`                  | **Unsupported** — ACA uses managed identity    | — not applicable                               |
+| `kind: awsIRSA`                                | — not applicable                               | **Unsupported** — ECS uses task roles          |
+| Rotation                                       | Supported — versionless Key Vault references   | **Unsupported** — no live reload               |
+
+Behavior notes:
+
+- **`certificate-*`** stores identically to `generic` on both platforms; `kind` drives data-key validation, not storage type.
+- **`basicAuthentication`, `azureWorkloadIdentity`, and `awsIRSA`** are scoped to OCI registry authentication for Bicep recipe storage, not to workload identity — the schema says so explicitly.
+- **Rotation** — on ACA a versionless reference refreshes within \~30 min, but the running revision is not restarted and direct app secrets do not refresh at all. On ECS a value change requires a new deployment.
+
+#### Persistent volumes
+
+| Property                            | Azure Container Apps                             | Amazon ECS                                             |
+|-------------------------------------|--------------------------------------------------|--------------------------------------------------------|
+| `sizeInGib`                         | Supported — Azure Files share quota              | **Unsupported** — EFS is elastic; the value is dropped |
+| `allowedAccessModes: ReadWriteMany` | Supported — Azure Files share                    | Supported — EFS mount targets                          |
+| `allowedAccessModes: ReadOnlyMany`  | Supported — `ReadOnly` on the storage definition | Supported — `mountPoints[].readOnly`                   |
+| `allowedAccessModes: ReadWriteOnce` | **Unsupported** — Azure Files is shared          | **Unsupported** — EFS is shared                        |
+
+Behavior notes:
+
+- **`sizeInGib` on ECS** — the schema marks it required, so every application must set a value that ECS then ignores. This is the concrete case behind Q3.
+- **`ReadOnlyMany` on ACA** — applied per storage definition, not per mount, so an application with both read-write and read-only consumers of the same share needs two definitions.
+- **`ReadWriteOnce`** — neither platform can enforce single-writer exclusivity. On AWS it would require EBS, which is one volume per task and deleted when the task stops.
+- **`allowedAccessModes`** is a single value, not a set — the rows enumerate the enum, and a volume requests one mode at a time.
 
 ### Feature 1: Azure Container Apps recipe pack
 
@@ -427,3 +493,11 @@ It ships with its documentation: what the pack creates, what Priya brings, the s
 A reference application for each platform, exercising all four core types on it — two containers with a connection between them, an HTTP route with path matching, a persistent volume, and a secret.
 
 Each one shows what the pack actually delivers on its own platform, including the properties that behave differently there, and gives Priya something to deploy before she commits to the pack.
+
+### Feature 4: Platform documentation
+
+A page per container platform on [docs.radapp.io](https://docs.radapp.io/management/container-platforms/), nested under Container platforms — which today carries Azure Container Instances as a single inline example and covers neither ACA nor ECS.
+
+Each page covers how to register the environment, what the platform engineer brings, a deployment walkthrough, and the unsupported properties with their alternatives, in the same shape as the existing Azure Container Instances example.
+
+This is where a developer looks first, before `resource-types-contrib`. The pack READMEs are the reference; these pages are the path in.
