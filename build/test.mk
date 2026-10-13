@@ -49,8 +49,9 @@ ENV_SETUP=go tool setup-envtest
 #
 # See: https://github.com/gotestyourself/gotestsum
 GOTEST_OPTS ?=
+GOTESTSUM_JSONFILE_DIR ?=
 # We need the double dash here to separate the 'gotestsum' options from the 'go test' options
-GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
+GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) $(if $(GOTESTSUM_JSONFILE_DIR),--jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 
 .PHONY: test
 test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms ## Runs unit tests, excluding kubernetes controller tests
@@ -169,6 +170,10 @@ test-functional-all: test-functional-ucp test-functional-kubernetes test-functio
 .PHONY: test-functional-all-noncloud
 # Run all functional tests that do not require cloud resources
 test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud ## Runs all functional tests that do not require cloud resources
+
+.PHONY: test-functional-local-noncloud
+test-functional-local-noncloud: ## Builds and installs Radius locally, then runs standard and isolated non-cloud tests on Linux or macOS
+	bash build/scripts/local-functional.sh all
 
 .PHONY: test-functional-all-cloud
 # Run all functional tests that require cloud resources

@@ -1,75 +1,272 @@
-# Running Radius functional tests
+# Run functional tests locally
 
 ## Purpose
 
-Functional tests (also called end-to-end tests) interact with real hosting environments (Kubernetes), deploy real applications and resources, and cover realistic user scenarios. They verify, for example, that a Radius Environment can be created successfully and that the Bicep templates of sample applications can be deployed to it. This page is for contributors validating a change against a real cluster; for the full set of test tiers and when to run each, start at the [test matrix overview](./README.md).
+Use this guide to build Radius from your checkout and run the non-cloud functional tests in local k3d clusters. The test runner creates its own Kubernetes clusters, Radius configuration, container registry, and test fixtures. It does not use your current Kubernetes context or Radius workspace.
 
-The tests live under `./test/functional-portable`. They use product functionality - the Radius CLI configuration and your local KubeConfig - to detect settings, so the local setup resembles a real user scenario.
+You do not need a cloud account, GitHub personal access token, or external container registry.
 
 ## Prerequisites
 
-1. Place `rad` on your path.
-2. Make sure `bicep` is downloaded (`rad bicep download`).
-3. Make sure your [local dev environment is set up](../contributing-code-debugging/radius-os-processes-debugging.md).
-4. Log into your GitHub account and [generate a PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
-5. Log in to the container registry of your GitHub organization:
+Use a Linux or macOS computer with an `amd64` or `arm64` processor.
 
-   ```sh
+Install these tools and make sure each command is available on `PATH`:
+
+- Docker
+- Git
+- Go
+- A C compiler for the Go tests (GCC on Linux or Xcode Command Line Tools on macOS)
+- GNU Make
+- k3d
+- kubectl
+- Helm
+- OpenSSL 1.1.1 or later
+- jq
+- Python 3
+- curl 7.71.0 or later
+- Flux CLI 2.6.4
+- [yq v4](https://github.com/mikefarah/yq) for Bicep type generation
+- Node.js and Corepack (see the [code-generation prerequisites](../contributing-code-prerequisites/README.md#install-code-generation-tools))
+
+Start Docker before running the tests. The test runner installs the repository-pinned Bicep and Dapr CLIs.
+
+The test runner also requires:
+
+- `sudo` access to trust a temporary registry certificate and add `radius-local-registry` to `/etc/hosts`.
+- Free TCP ports 5443, 6550-6555, and 30080.
+- On Linux, at least 1024 inotify instances per user. Check the current value with `sysctl fs.inotify.max_user_instances`.
+
+### macOS tool selection
+
+Use Docker Desktop with Linux containers. On Apple Silicon, enable support for running `linux/amd64` containers: the current `make docker-build` target builds the Radius server images for that platform, while the runner builds `rad` for your Mac's native architecture.
+
+If you use Homebrew, make GNU Make, OpenSSL, and curl available under the command names used by the runner:
+
+```bash
+brew install make openssl@3 curl
+export PATH="$(brew --prefix make)/libexec/gnubin:$(brew --prefix openssl@3)/bin:$(brew --prefix curl)/bin:$PATH"
+```
+
+Check `make --version`, `openssl version`, and `curl --version` before continuing. Apple's bundled OpenSSL-compatible tool may not support the certificate-generation flags used by this workflow.
+
+## Steps
+
+### 1. Generate the Radius Bicep extension
+
+From the repository root, run:
+
+```bash
+make generate-bicep-types
+```
+
+This command creates the Bicep extension used to compile the test templates against the resource types in your checkout.
+
+### 2. Run all local non-cloud functional tests
+
+Run:
+
+```bash
+make test-functional-local-noncloud
+```
+
+This target:
+
+1. Builds the `rad` CLI and Radius container images from your checkout.
+2. Creates a local container registry and a k3d cluster.
+3. Installs Radius and the test fixtures.
+4. Runs the standard non-cloud functional tests.
+5. Runs the database, multicluster, statestore, and upgrade test groups sequentially in separate clusters.
+
+Do not start another local functional test run at the same time. The runs share temporary Bicep configuration files.
+
+### 3. Clean up
+
+After reviewing the results, remove the clusters, registry, trusted certificate, and `/etc/hosts` entry:
+
+```bash
+bash build/scripts/local-functional.sh cleanup
+```
+
+The command retains logs and test configuration under `dist/local-functional/`.
+
+### Run fewer tests
+
+Use this workflow only when you do not need the complete test suite.
+
+First generate the Bicep extension and create the standard test environment:
+
+```bash
+make generate-bicep-types
+bash build/scripts/local-functional.sh setup
+```
+
+Run one standard test group by passing its Make target:
+
+```bash
+bash build/scripts/local-functional.sh test test-functional-corerp-noncloud
+```
+
+Run one test by passing Go test options through Make:
+
+```bash
+bash build/scripts/local-functional.sh test test-functional-cli-noncloud \
+  GOTEST_OPTS='-count=1 -run Test_CLI_version'
+```
+
+Run one group that needs a separate cluster:
+
+```bash
+bash build/scripts/local-functional.sh isolated database
+```
+
+Replace `database` with `multicluster`, `statestore`, or `upgrade` as needed. Do not run an isolated group concurrently with a standard test group.
+
+## Verification
+
+The complete test run succeeds when `make test-functional-local-noncloud` exits with status 0.
+
+Test output and per-group gotestsum JSON files are stored under `dist/local-functional/results/`. Container logs are stored under `dist/local-functional/container_logs/`.
+
+Before cleanup, confirm that Radius is running in the standard test cluster:
+
+```bash
+bash build/scripts/local-functional.sh exec kubectl get pods -n radius-system
+```
+
+After cleanup, the command prints:
+
+```text
+Infrastructure removed; logs and isolated CLI configuration remain in dist/local-functional.
+```
+
+For manually selected groups, each package prints `ok` or a successful `gotestsum` summary. A successful end-to-end group creates its expected Radius resources, verifies their state, and removes them according to the selected cleanup mode.
+
+## Troubleshooting
+
+### Existing test infrastructure
+
+Setup stops instead of replacing an existing test cluster or registry. Remove the previous test infrastructure, then start the test run again:
+
+```bash
+bash build/scripts/local-functional.sh cleanup
+make test-functional-local-noncloud
+```
+
+### Linux inotify limit is too low
+
+If setup reports that `fs.inotify.max_user_instances` is below 1024, raise it for the current boot:
+
+```bash
+sudo sysctl -w fs.inotify.max_user_instances=1024
+```
+
+An exhausted inotify limit can leave the Kubernetes API server running without a registered node.
+
+### An isolated test group failed
+
+The runner keeps a failed isolated cluster for inspection. Select the failed group and run a command against its cluster:
+
+```bash
+LOCAL_FUNCTIONAL_SUITE=database \
+  bash build/scripts/local-functional.sh exec kubectl get pods -A
+```
+
+Replace `database` with `multicluster`, `statestore`, or `upgrade`.
+
+Retry the matching test target against the retained cluster:
+
+```bash
+LOCAL_FUNCTIONAL_SUITE=database \
+  bash build/scripts/local-functional.sh test test-functional-database-noncloud
+```
+
+### A complete test run failed
+
+Review `dist/local-functional/results/` and `dist/local-functional/container_logs/`. Run cleanup before starting another complete test run because failed tests can leave resources and provider registrations behind.
+
+### An older runner left a fixture lock
+
+If the runner reports `Another local functional test run owns the Bicep fixtures`, first confirm that no local functional test run is still active. An older version of the runner used an empty file at `dist/local-functional/test.lock`; the current version uses a directory containing its owner's process ID.
+
+Only when no test run is active, remove the legacy file if it exists:
+
+```bash
+if test -f dist/local-functional/test.lock; then
+  rm dist/local-functional/test.lock
+fi
+```
+
+Do not remove an active runner's lock directory. Clean up and restart the complete run as described above.
+
+## Functional test reference
+
+The local workflow above is the recommended path for running all non-cloud functional tests. The following reference material covers manual environments, individual Make targets, cleanup behavior, and CI.
+
+### Existing environment or cloud tests
+
+To run functional tests against an existing environment:
+
+1. Place `rad` on your path.
+2. Download Bicep with `rad bicep download`.
+3. Complete the [local development environment setup](../contributing-code-debugging/radius-os-processes-debugging.md).
+4. For tests that publish packages to GHCR, create a GitHub personal access token and log in to your organization's registry:
+
+   ```bash
    export CR_PAT=<your_pat>
-   echo $CR_PAT | docker login ghcr.io -u <your_username> --password-stdin
+   echo "${CR_PAT}" | docker login ghcr.io -u <your_username> --password-stdin
    ```
 
-6. Publish the Bicep test recipes: `BICEP_RECIPE_REGISTRY=<registry-name> make publish-test-bicep-recipes`.
-7. Publish the Terraform test recipes: `make publish-test-terraform-recipes`.
-8. Change the visibility of the published packages to `public`.
+5. Publish the Bicep test recipes:
 
-> ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see test failures.
->
-> ⚠️ If you set environment variables for functional tests you may need to restart VS Code or other editors for them to take effect.
+   ```bash
+   BICEP_RECIPE_REGISTRY=<registry-name> make publish-test-bicep-recipes
+   ```
+
+6. Publish the Terraform test recipes:
+
+   ```bash
+   make publish-test-terraform-recipes
+   ```
+
+   Set `TF_RECIPE_MODULE_SERVER_URL` to the URL that test deployments can reach. CI and the local runner use `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local`; direct local tests default to `http://localhost:8999`.
+
+7. Make packages published for the tests publicly readable.
+
+The tests assume the current Kubernetes namespace is `default`.
 
 ### Local Bicep registry trust
 
-Bicep v0.43 and later reject registry hosts outside their trusted allowlist. When using the secure local registry setup from `functional-test-noncloud.yaml`, explicitly trust its two hostnames: `localhost` for setup and extension restore, and `radius-registry` for the CLI recipe-publishing tests. Scope the variable to the commands that need it:
+Bicep rejects registry hosts outside its trusted allowlist. For the secure local registry used by `functional-test-noncloud.yaml`, trust `localhost` and `radius-registry` only for the commands that need them:
 
-```sh
+```bash
 BICEP_TRUSTED_REGISTRIES=localhost,radius-registry \
   BICEP_RECIPE_REGISTRY=localhost:5000 make publish-test-bicep-recipes
 BICEP_TRUSTED_REGISTRIES=localhost,radius-registry \
   BICEP_RECIPE_REGISTRY=radius-registry:5000 make test-functional-cli-noncloud
 ```
 
-Use bare hostnames, without `br:`, ports, or paths, and add only registries you own or trust. The non-cloud CI test job sets this variable for both direct Bicep commands and `rad` subprocesses; the installer does not set global registry trust. Keep the existing HTTPS, hostname resolution, and CA certificate setup: registry trust does not bypass TLS or certificate verification. ACR hosts remain trusted by default and continue using Azure credentials, including when `ociEnabled` is enabled.
+Use bare hostnames without `br:`, ports, or paths. Registry trust does not bypass TLS or certificate verification.
 
-Keep `ociEnabled` unset or `false` for the existing HTTPS `localhost` registry. Bicep v0.46.1's generic OCI transport automatically uses plain HTTP for loopback hosts; adding hostname trust alone does not change the transport.
+### Run tests against an existing environment
 
-## Steps
+To provision Azure resources and run the cloud-capable Core RP, Messaging RP, Dapr RP, and Datastores RP groups:
 
-### Run the tests locally
-
-Run:
-
-```sh
-./test/executeFunctionalTest.sh <resourcegroup_name>
+```bash
+./test/executeFunctionalTest.sh <resource-group-name>
 ```
 
-When you run locally with this configuration, the tests use your locally selected Radius Environment and your local copy of `rad`. `executeFunctionalTest.sh` creates the Azure resources, exports the values used by the tests, and runs:
+To run a group directly, call its Make target:
 
-```sh
-make test-functional-corerp
-make test-functional-msgrp
-make test-functional-daprrp
-make test-functional-datastoresrp
+```bash
+make test-functional-corerp-noncloud
+make test-functional-all-noncloud
 ```
 
-To run a single group directly, call its `make` target — for example `make test-functional-corerp-noncloud` for the non-cloud Core RP tests, or `make test-functional-all-noncloud` for the standard non-cloud groups. The groups (`ucp`, `kubernetes`, `corerp`, `cli`, `msgrp`, `daprrp`, `datastoresrp`, `dynamicrp`, `samples`, `upgrade`, `multicluster`, `database`, and `statestore`) and the variants each group supports are defined in [`build/test.mk`](../../../../build/test.mk).
-
-You can also run or debug individual tests from VS Code.
-
-`Test_ConfigurationStore_Manual`, `Test_ConfigurationStore_Recipe`, and `Test_DaprPubSubBroker_Manual` deploy their Redis dependencies first, then wait up to three minutes for `redis-cli PING` through the Redis Service to return `PONG` before deploying the Dapr-enabled consumer. The check runs in the Redis container using Kubernetes pod exec; the test identity needs permission to list pods and create `pods/exec` requests in the test namespace. The recipe test uses the application namespace `dcs-recipe`, not the environment namespace `default-dcs-recipe`.
+The supported groups and variants are defined in [`build/test.mk`](../../../../build/test.mk).
 
 ### Run a special test group
 
-The aggregate `make test-functional-all-noncloud` target intentionally excludes these isolated groups:
+`make test-functional-all-noncloud` excludes these isolated groups:
 
 | Target                                       | Requirements and behavior                                                                                                                          |
 |----------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -78,32 +275,13 @@ The aggregate `make test-functional-all-noncloud` target intentionally excludes 
 | `make test-functional-statestore-noncloud`   | Destructive lifecycle test that installs, purges, and reinstalls Radius. Run it only on a dedicated cluster.                                       |
 | `make test-functional-upgrade-noncloud`      | Exercises the Radius upgrade path, including `rad upgrade kubernetes`, and performs its own install/upgrade lifecycle.                             |
 
-The multicluster, database, statestore, and upgrade groups run as isolated CI legs in `functional-test-noncloud.yaml`; do not run them against a shared development cluster. The upgrade tests uninstall the existing Radius release before installing and upgrading their own release.
+The local runner provisions dedicated clusters for these groups. When running them manually, do not use a shared development cluster.
 
-For database tests, install Radius with the PostgreSQL-backed control plane first:
+For database tests, install Radius into a fresh cluster with `--set database.enabled=true`.
 
-```bash
-rad install kubernetes --set database.enabled=true
-```
-
-Running `make test-functional-database-noncloud` against a default (API server-backed) install fails, because the tests check that the PostgreSQL StatefulSet is present before asserting anything else.
-
-Use a cluster that has never had a default install. The tests also assert that the API server store holds no objects, which is how they prove the resource providers actually switched to PostgreSQL rather than only running it alongside. Switching providers does not migrate or delete rows already written to the API server store, so a cluster that was previously installed without `database.enabled=true` keeps those objects and fails that assertion even when the PostgreSQL-backed control plane is healthy. CI creates a fresh cluster for every run.
-
-For multicluster tests, create the namespace and Secret before installing Radius. The kubeconfig stored in the Secret must use an API-server address reachable from the Radius pods:
-
-```bash
-kubectl create namespace radius-system --dry-run=client -o yaml | kubectl apply -f -
-kubectl create secret generic target-kubeconfig \
-  --namespace radius-system \
-  --from-file=kubeconfig=<pod-reachable-external-kubeconfig>
-```
-
-Install Radius with `global.targetCluster.enabled=true`, then set `RADIUS_TEST_EXTERNAL_KUBECONFIG` to the host-side kubeconfig that the test process uses to assert where resources were created.
+For multicluster tests, create a `target-kubeconfig` Secret in `radius-system`, install Radius with `global.targetCluster.enabled=true`, and set `RADIUS_TEST_EXTERNAL_KUBECONFIG` to the host-side kubeconfig.
 
 ### Configure test execution
-
-The Make targets accept these environment variables:
 
 | Variable                          | Purpose                                                                                                                                                                |
 |-----------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -111,157 +289,48 @@ The Make targets accept these environment variables:
 | `DE_IMAGE`, `DE_TAG`              | Select the Deployment Engine repository and tag for every test-owned upgrade-test install and upgrade. Set both together or leave both empty to retain chart defaults. |
 | `RADIUS_TEST_EXTERNAL_KUBECONFIG` | Points multicluster tests at the external workload cluster.                                                                                                            |
 | `TF_RECIPE_MODULE_SERVER_URL`     | Overrides the Terraform recipe module server URL.                                                                                                                      |
-| `RADIUS_TEST_FAST_CLEANUP`        | Selects standard or fast cleanup as described below.                                                                                                                   |
+| `RADIUS_TEST_FAST_CLEANUP`        | Selects standard or fast cleanup.                                                                                                                                      |
 
-The upgrade test's DE selection is independent of `DOCKER_REGISTRY` and `REL_VERSION`, which select the Radius component images. To test a candidate DE with separately built Radius images on a dedicated cluster, use reachable, already-published image references:
-
-```bash
-DOCKER_REGISTRY=ghcr.io/my-org/radius REL_VERSION=radius-candidate \
-DE_IMAGE=ghcr.io/my-org/deployment-engine DE_TAG=de-candidate \
-make test-functional-upgrade-noncloud
-```
-
-Supplying only `DE_IMAGE` or only `DE_TAG` fails before the test accesses Kubernetes or uninstalls Radius. Set the missing value or unset both variables. The test verifies the live DE image after each install, the upgrades, and release recovery, and logs the runtime image and resolved `ImageID` when available. A candidate image falling back to the chart default fails verification; a preflight hook rejecting an upgrade remains an allowed outcome. Without candidate inputs, the test leaves chart defaults unchanged and checks that the running pods match the installed Deployment.
-
-The `rad upgrade kubernetes` test installs from the in-repo chart and then upgrades to temporary copies of it versioned `0.60.0`, `0.61.0`, and `0.61.1`, so its preflight version checks compare real versions. It pins every image, so set `RADIUS_REGISTRY_CERT_FILE` to the registry CA certificate when the Radius images come from a registry that uses a private CA.
+Set `RADIUS_REGISTRY_CERT_FILE` when Radius images come from a registry that uses a private CA.
 
 ### Control test cleanup
 
-Functional tests support two cleanup modes, selected with the `RADIUS_TEST_FAST_CLEANUP` environment variable:
+- **Standard cleanup** is the default for local development. It waits for resource deletion and surfaces failures.
+- **Fast cleanup** is the default in CI. It starts deletion without waiting and relies on removal of the per-run cluster and cloud resource group.
 
-- **Standard cleanup** (default for local development): waits for each resource to be fully deleted before proceeding, logs the deletion process, and shows retries for resources stuck in "Updating". Best for debugging cleanup issues.
-- **Fast cleanup** (default for CI, including the cloud suites): initiates deletions in the background without waiting, which avoids deletion timeouts and dramatically reduces run time. It **skips post-delete verification and ignores deletion errors**, and relies on the per-run cluster and Azure resource group being deleted afterward. CI enables it with `RADIUS_TEST_FAST_CLEANUP=true`.
-
-```bash
-# Enable fast cleanup (useful for local testing with unique resource names)
-export RADIUS_TEST_FAST_CLEANUP=true
-go test ./test/functional-portable/corerp/noncloud/resources
-
-# Disable fast cleanup for debugging (default for local development)
-export RADIUS_TEST_FAST_CLEANUP=false
-go test ./test/functional-portable/corerp/noncloud/resources
-```
-
-> ⚠️ **Important**: Fast cleanup discards deletion errors, so a teardown bug stays invisible in any suite that runs with it enabled. The long-running test runs against a persistent cluster with standard cleanup, which is where such bugs surface.
+Set `RADIUS_TEST_FAST_CLEANUP=true` only for disposable environments. Do not use fast cleanup to validate teardown behavior because it intentionally ignores deletion errors.
 
 ### Resource deletion order
 
-Tests declare the resources they expect in `RPResources`, and the framework deletes them in dependency order rather than declaration order: applications first, then application-scoped resources, then environments, and finally recipe packs. Declaration order is preserved within each of those groups.
+Tests delete applications, application-scoped resources, environments, and recipe packs in that order. Recipe-backed resources must be deleted before their environment or recipe pack because deletion loads environment configuration.
 
-This ordering matters because deleting an application cascades into the resources it owns, and a recipe-backed resource loads its environment configuration to run the recipe's delete. Removing the environment or recipe pack first makes that delete fail with an `Internal` error wrapping a `NotFound` on the environment.
+### Run or debug tests in VS Code
 
-### See log output in VS Code
-
-Some tests take a few minutes because they interact with cloud resources. Configure VS Code to show verbose output so you can follow progress. Open `settings.json` with **Preferences: Open Settings (JSON)** and set:
-
-```json
-{
-    "go.testTimeout": "60m",
-    "go.testFlags": [
-        "-v"
-    ]
-}
-```
-
-### Use Codelens (VS Code)
-
-VS Code starts a child process when you use a `run test`/`debug test` Codelens action. That process may not resolve `rad` correctly. Specify environment variables for Codelens in `settings.json`:
-
-```json
-{
-    "go.testEnvVars": {
-        "RAD_PATH": "${workspaceFolder}/dist/linux_amd64/release"
-    }
-}
-```
-
-![Screenshot of VS Code Codelens UI](./vscode_debug_test.png)
+Set `go.testTimeout` to `60m` and add `-v` to `go.testFlags`. Set `RAD_PATH` in `go.testEnvVars` when CodeLens cannot resolve the locally built CLI.
 
 ### How the tests run in CI
 
-These tests run automatically for every PR via the `functional-test-noncloud.yaml` and `functional-test-cloud.yaml` GitHub workflows. We do not run them for commits to `main` or for tags, since a failure could block the build. For each PR, CI:
+The `functional-test-noncloud.yaml` and `functional-test-cloud.yaml` workflows build Radius, publish test assets, create isolated infrastructure, run each selected group, capture diagnostics, and remove the test infrastructure.
 
-- Builds Radius and publishes the test assets.
-- For each group of tests: creates a Kubernetes cluster, installs the build, runs the tests, and deletes any cloud resources that were created.
+The scheduled purge workflows remove cloud resources left by cancelled or timed-out runs. The `long-running-azure.yaml` workflow uses published Radius artifacts while running diagnostics from the `main` workflow checkout.
 
-Separate scheduled jobs (`purge-azure-test-resources.yaml` and `purge-aws-test-resources.yaml`) delete cloud resources left behind when a run is cancelled or times out.
+Download the `all_container_logs` artifact to investigate a run. Treat downloaded logs as potentially sensitive.
 
-### Diagnose long-running Azure test failures
+Run `make test-cluster-diagnostics` to test the diagnostic scripts without accessing a cluster.
 
-The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
+### Cloud credentials in CI
 
-The LRT setup script [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) defines the required Helm overrides in `REQUIRED_CHART_VALUES`, shared by fresh installs, upgrades, and existing same-version IRSA reconciliation. Keep LRT-specific configuration in that array rather than changing global chart defaults or using `kubectl set resources`, which can cause field-ownership conflicts on later upgrades.
+Cloud workflows use federated identity instead of static credentials. GitHub Actions exchanges GitHub OIDC tokens through the cloud login actions, while Radius pods use Azure Workload Identity or AWS IAM Roles for Service Accounts.
 
-Download the `all_container_logs` artifact from a successful or failed run. Alongside the released test harness's logs, it contains:
+The AWS identities are managed by the `radius-project/wellknown` Terraform layers. Apply `modules/20-functional-tests`, `modules/21-functional-tests-aws`, and `modules/30-functional-tests-github` in order when the long-running test cluster is created or rotated.
 
-- `all-tests-pod-states.log`: final pod, node, and event descriptions.
-- `all-diagnostics/window-start.txt`: the UTC start of the test command, used to filter the final container log sweep.
-- `all-diagnostics/events-*.log`: timestamped event JSON and `radius-system` pod summaries sampled throughout the test command, with a 60-second delay between samples. These preserve events that may expire before the final snapshot.
-- `all-diagnostics/radius-system/containers.tsv`: pod UIDs, restart counts, images, and separate current/previous container identities and start/finish timestamps, without pod environment values. Missing fields are `-`; a running container has no current finish time. The column order is recorded in `collection.log`.
-- `all-diagnostics/radius-system/*.current.log` and `*.previous.log`: timestamped retained container logs from the test window. Previous logs are requested for containers reporting a restart.
-- `all-diagnostics/collection.log` and `sampler.log`: requested windows, collection times, command outcomes, capture failures, and limit notices.
+### Existing-environment troubleshooting
 
-The sampler stops with the wrapped command, including on cancellation, without replacing its exit status. A 130-minute safety ceiling exceeds the workflow's existing 120-minute test-step timeout. Sampling is capped at 20 MiB. The final container log sweep has a 120-second budget, a 10 MiB cap per capture, and a 100 MiB combined cap; individual requests are bounded to 15 seconds plus a two-second termination grace period. Final diagnostic collection has a five-minute workflow timeout and runs before artifact upload and cluster cleanup.
-
-Container logs cannot recover deleted pods or rotated history, and `--previous` covers at most one restart of a surviving container. An old OOM termination is not evidence of an OOM during this run; compare its timestamp with `window-start.txt`. A quiet log interval alone does not prove rotation or a stalled collector. `FAILED` entries, output caps, cancellation, or a collection timeout can leave incomplete captures. Use the cluster's existing Azure monitoring for historical CPU, memory, throttling, and logs no longer retained by Kubernetes. Treat downloaded logs as potentially sensitive.
-
-To collect the same diagnostics locally, use Bash, `kubectl`, `jq`, and GNU coreutils (`timeout`) with your selected cluster. Use an absolute output path and a fresh directory for each run:
-
-```bash
-export RADIUS_CONTAINER_LOG_PATH="$PWD/dist/lrt-diagnostics-local"
-export DIAGNOSTICS_NAME=all
-bash .github/scripts/run-with-cluster-diagnostics.sh \
-  make test-functional-corerp-noncloud
-# Run this even if the test command fails.
-DIAGNOSTICS_LOG_NAMESPACES=radius-system \
-  bash .github/scripts/collect-cluster-diagnostics.sh
-```
-
-`DIAGNOSTICS_SAMPLE_INTERVAL` overrides the sampling delay in seconds. `DIAGNOSTICS_SINCE_TIME` overrides the saved window with a UTC timestamp such as `2026-09-17T10:00:00Z`; without either window, the collector records that container logs were skipped rather than fetching unbounded history. `DIAGNOSTICS_COLLECTION_SECONDS` overrides the container sweep's time budget. Other functional workflows retain their existing snapshot behavior unless they opt in with `DIAGNOSTICS_LOG_NAMESPACES`.
-
-Run `make test-cluster-diagnostics` to exercise collection, limits, failures, command status preservation, and sampler cancellation with a stubbed `kubectl`; it does not access a cluster. This optional target requires `jq` and GNU coreutils (`timeout`). The Ubuntu unit-test CI job invokes it separately; it is not a prerequisite of `make test`, so the standard local unit-test command does not acquire these additional tool requirements.
-
-### Cloud credentials in CI (federated identity)
-
-The cloud CI workflows - `functional-test-cloud.yaml`, the long-running test `long-running-azure.yaml` ("LRT"), and the two scheduled purge jobs - authenticate to Azure and AWS with **federated identity only**. No static cloud secrets (service-principal passwords or AWS access keys) are stored in GitHub; every credential is a short-lived token minted from an OIDC trust. Two distinct trusts are in play:
-
-- **Runner -> cloud.** The GitHub Actions runner gets tokens from GitHub's OIDC provider (`token.actions.githubusercontent.com`), and `azure/login` / `aws-actions/configure-aws-credentials` exchange them for short-lived credentials that the test and purge code use to verify and delete cloud resources. Every such job sets `permissions: id-token: write`.
-- **Radius control plane -> cloud.** The Radius pods (service accounts `ucp`, `applications-rp`, and `dynamic-rp` in `radius-system`) assume a cloud identity through the *cluster's own* OIDC issuer - Azure Workload Identity on Azure, IRSA on AWS - using a projected service-account token (audience `sts.amazonaws.com` for AWS). Radius reads the target identity from the credential registered with `rad credential register azure wi` and `rad credential register aws irsa`; enabling it requires installing the chart with `--set global.azureWorkloadIdentity.enabled=true` and `--set global.aws.irsa.enabled=true` (the LRT does this in [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh)).
-
-The identities are carried in repository secrets rather than in the workflow files:
-
-| Secret                                             | Assumed by                                                              | Trust                                                     |
-|----------------------------------------------------|-------------------------------------------------------------------------|-----------------------------------------------------------|
-| `AWS_GH_ACTIONS_ROLE`                              | the runner, via `configure-aws-credentials`                             | GitHub OIDC -> IAM role                                   |
-| `FUNC_TEST_RAD_IRSA_ROLE`                          | the Radius pods, via IRSA                                               | cluster OIDC issuer -> IAM role                           |
-| `AZURE_SP_TESTS_APPID` + `AZURE_SP_TESTS_TENANTID` | both the runner (`azure/login`) and the Radius pods (workload identity) | GitHub OIDC and AKS OIDC -> AAD app federated credentials |
-| `FUNCTEST_AWS_ACCOUNT_ID`                          | the AWS account id passed to `rad env update` (not a credential)        | -                                                         |
-
-#### Provision the AWS identities
-
-The AWS identity resources are owned by the [`radius-project/wellknown`](https://github.com/radius-project/wellknown) Terraform layers. Do not create OIDC providers or edit role trust policies manually because a later Terraform apply will overwrite that drift.
-
-Apply the layers in order whenever the LRT cluster is created or rotated:
-
-1. `modules/20-functional-tests` publishes `workload_identity_issuers`, containing both the blob-hosted KinD issuer and the managed AKS issuer, plus the Radius service-account subjects.
-2. [`modules/21-functional-tests-aws`](https://github.com/radius-project/wellknown/tree/main/modules/21-functional-tests-aws) creates or reuses an IAM OIDC provider for each issuer. It creates the IRSA role trusted by every issuer and the GitHub Actions role trusted by the Radius repository.
-3. `modules/30-functional-tests-github` publishes the resulting role ARNs as `FUNC_TEST_RAD_IRSA_ROLE` and `AWS_GH_ACTIONS_ROLE`.
-
-The GitHub Actions role allows 5400-second sessions, and the LRT workflow requests that duration to leave headroom over the 60-minute functional-test window. Its generated subject patterns include branch refs, so the scheduled `main` run uses `repo:radius-project/radius:ref:refs/heads/main` without a separate trust-policy edit.
-
-## Verification
-
-- Each group prints `ok` (or the `gotestsum` summary) per package and `go test` exits non-zero on any failure.
-- A successful run creates a Radius Environment, deploys the sample applications, asserts on their state, and then cleans up the resources it created.
-
-## Troubleshooting
-
-- **You changed a recipe.** Re-run the *publish test recipe* prerequisite step so the cluster uses your updated recipe.
-- **Tests cannot pull a package.** Confirm the packages published to your organization have their visibility set to `public`.
-- **Bicep reports that a local registry is not trusted.** Set `BICEP_TRUSTED_REGISTRIES` for the publishing and test commands as described in [Local Bicep registry trust](#local-bicep-registry-trust). A certificate error is separate; fix the local CA setup rather than disabling verification.
-- **You changed the `rad` CLI.** Copy the rebuilt `rad` to your path (or set `RAD_PATH` for Codelens) so the tests use your new binary.
-- **Environment variables seem ignored.** Restart VS Code or your editor so newly set variables take effect.
-- **Many tests fail immediately.** Confirm the Kubernetes namespace in use is `default`.
-- **A staged Dapr test fails waiting for Redis.** Read the readiness error's last observation and the Redis pod logs. A running pod alone does not prove Redis accepts connections. Check the Redis Service endpoints and pod-exec permissions; the consumer is intentionally not deployed if this prerequisite fails.
-- **LRT AWS tests fail with `AccessDenied` on `AssumeRoleWithWebIdentity`.** Confirm the latest `modules/20-functional-tests`, `modules/21-functional-tests-aws`, and `modules/30-functional-tests-github` layers from `radius-project/wellknown` were applied in order. Verify the AKS issuer appears in the AWS layer's `oidc_issuers` output and the current `FUNC_TEST_RAD_IRSA_ROLE` secret matches its `irsa_role_arn` output.
-- **A special test group is skipped or fails during setup.** Confirm that you met the isolated-cluster requirements in [Run a special test group](#run-a-special-test-group).
+- **You changed a recipe.** Republish the Bicep or Terraform test recipes so the cluster uses the updated content.
+- **A Terraform recipe test cannot find its module.** Run `make publish-test-terraform-recipes` against the test cluster and set `TF_RECIPE_MODULE_SERVER_URL` to the module-server URL reachable from the deployment.
+- **Tests cannot pull a package.** Confirm packages published to your organization are publicly readable.
+- **Bicep reports that a local registry is not trusted.** Set `BICEP_TRUSTED_REGISTRIES` as described in [Local Bicep registry trust](#local-bicep-registry-trust). Fix certificate errors in the local CA setup rather than disabling verification.
+- **You changed the `rad` CLI.** Put the rebuilt binary on `PATH`, or set `RAD_PATH` for CodeLens.
+- **Many tests fail immediately.** Confirm the active Kubernetes namespace is `default`.
+- **A special test group fails during setup.** Confirm the cluster meets the requirements in [Run a special test group](#run-a-special-test-group).
+- **Long-running AWS tests fail with `AccessDenied` on `AssumeRoleWithWebIdentity`.** Confirm the three `radius-project/wellknown` functional-test layers were applied in order and that the current `FUNC_TEST_RAD_IRSA_ROLE` secret matches the generated role ARN.
