@@ -8,7 +8,7 @@ You do not need a cloud account, GitHub personal access token, or external conta
 
 ## Prerequisites
 
-Use a Linux or macOS computer with an `amd64` or `arm64` processor.
+Use Debian/Ubuntu Linux with an `amd64` processor, or macOS with an `amd64` or `arm64` processor. Linux certificate setup uses `update-ca-certificates` and `/usr/local/share/ca-certificates`; other Linux distributions are not supported by this runner. Linux `arm64` is not supported because the current image-build targets produce `linux/amd64` images.
 
 Install these tools and make sure each command is available on `PATH`:
 
@@ -23,6 +23,7 @@ Install these tools and make sure each command is available on `PATH`:
 - OpenSSL 1.1.1 or later
 - jq
 - Python 3
+- envsubst (provided by gettext)
 - curl 7.71.0 or later
 - Flux CLI 2.6.4
 - [yq v4](https://github.com/mikefarah/yq) for Bicep type generation
@@ -40,14 +41,14 @@ The test runner also requires:
 
 Use Docker Desktop with Linux containers. On Apple Silicon, enable support for running `linux/amd64` containers: the current `make docker-build` target builds the Radius server images for that platform, while the runner builds `rad` for your Mac's native architecture.
 
-If you use Homebrew, make GNU Make, OpenSSL, and curl available under the command names used by the runner:
+If you use Homebrew, make GNU Make, OpenSSL, curl, and envsubst available under the command names used by the runner:
 
 ```bash
-brew install make openssl@3 curl
-export PATH="$(brew --prefix make)/libexec/gnubin:$(brew --prefix openssl@3)/bin:$(brew --prefix curl)/bin:$PATH"
+brew install make openssl@3 curl gettext
+export PATH="$(brew --prefix make)/libexec/gnubin:$(brew --prefix openssl@3)/bin:$(brew --prefix curl)/bin:$(brew --prefix gettext)/bin:$PATH"
 ```
 
-Check `make --version`, `openssl version`, and `curl --version` before continuing. Apple's bundled OpenSSL-compatible tool may not support the certificate-generation flags used by this workflow.
+Check `make --version`, `openssl version`, `curl --version`, and `envsubst --version` before continuing. Apple's bundled OpenSSL-compatible tool may not support the certificate-generation flags used by this workflow.
 
 ## Steps
 
@@ -76,6 +77,8 @@ This target:
 3. Installs Radius and the test fixtures.
 4. Runs the standard non-cloud functional tests.
 5. Runs the database, multicluster, statestore, and upgrade test groups sequentially in separate clusters.
+
+Each setup refreshes the retained samples checkout from its `edge` branch and archives previous test reports before starting a new run.
 
 Do not start another local functional test run at the same time. The runs share temporary Bicep configuration files.
 
@@ -126,6 +129,8 @@ Replace `database` with `multicluster`, `statestore`, or `upgrade` as needed. Do
 The complete test run succeeds when `make test-functional-local-noncloud` exits with status 0.
 
 Test output and per-group gotestsum JSON files are stored under `dist/local-functional/results/`. Container logs are stored under `dist/local-functional/container_logs/`.
+
+The results directory contains reports only for the current setup. Previous reports are retained under `dist/local-functional/results-history/run.*/results/`; do not use those archived files to determine whether the current run passed.
 
 Before cleanup, confirm that Radius is running in the standard test cluster:
 
