@@ -168,16 +168,26 @@ remove_host_ca() {
 }
 
 setup() {
-    for tool in docker go make k3d kubectl helm openssl jq python3 flux; do
-        command -v "${tool}"
-    done
     case "${HOST_OS}/${HOST_ARCH}" in
-    linux/amd64 | linux/arm64 | darwin/amd64 | darwin/arm64) ;;
+    linux/amd64 | darwin/amd64 | darwin/arm64) ;;
     *)
-        echo "This local runner requires Linux or macOS on amd64 or arm64." >&2
+        echo "This local runner requires Debian/Ubuntu on amd64 or macOS on amd64/arm64." >&2
         exit 1
         ;;
     esac
+    for tool in docker git go make k3d kubectl helm openssl jq python3 \
+        flux curl envsubst sudo; do
+        command -v "${tool}" || {
+            echo "Missing required tool: ${tool}. See running-functional-tests.md." >&2
+            exit 1
+        }
+    done
+    if [[ "${HOST_OS}" == "linux" ]]; then
+        command -v update-ca-certificates || {
+            echo "Linux setup requires Debian/Ubuntu certificate tooling (update-ca-certificates)." >&2
+            exit 1
+        }
+    fi
     openssl req -help 2>&1 | grep -q -- "-addext" || {
         echo "The installed OpenSSL must support 'openssl req -addext'." >&2
         exit 1
@@ -195,6 +205,13 @@ setup() {
         --arg name "${CLUSTER}" 'any(.[]; .name == $name)' >/dev/null; then
         echo "Cluster ${CLUSTER} already exists; use cleanup first." >&2
         exit 1
+    fi
+    if [[ -d "${STATE}/results" ]]; then
+        mkdir -p "${STATE}/results-history"
+        local previous_results
+        previous_results="$(mktemp -d "${STATE}/results-history/run.XXXXXX")"
+        mv "${STATE}/results" "${previous_results}/results"
+        echo "Previous test results retained in ${previous_results}/results."
     fi
     mkdir -p "${STATE}"/{certs,home,bin,results,container_logs}
     rm -f "${STATE}/home/.rad/config.yaml"
@@ -269,6 +286,8 @@ fixtures() {
     if [[ ! -d "${STATE}/samples/.git" ]]; then
         git clone --depth 1 --branch edge \
             https://github.com/radius-project/samples.git "${STATE}/samples"
+    else
+        git -C "${STATE}/samples" pull --ff-only origin edge
     fi
 }
 
