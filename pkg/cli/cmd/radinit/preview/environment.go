@@ -112,7 +112,10 @@ func (r *Runner) CreateEnvironment(ctx context.Context) error {
 		}
 	}
 
-	defaultPack := recipepack.NewDefaultRecipePackResource()
+	defaultPack, err := recipepack.NewDefaultRecipePackResource()
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to build default recipe pack.")
+	}
 	_, err = r.DefaultScopeClientFactory.NewRecipePacksClient().CreateOrUpdate(ctx, recipepack.DefaultResourceGroupScope, recipepack.DefaultRecipePackResourceName, defaultPack, nil)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create default recipe pack.")

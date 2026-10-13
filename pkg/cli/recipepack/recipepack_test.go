@@ -17,55 +17,16 @@ limitations under the License.
 package recipepack
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/helm"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/stretchr/testify/require"
 )
-
-func Test_GetDefaultRecipePackDefinition(t *testing.T) {
-	definitions := GetCoreTypesRecipeInfo()
-
-	// Verify expected resource types
-	expectedResourceTypes := []string{
-		"Radius.Compute/containers",
-		"Radius.Compute/persistentVolumes",
-		"Radius.Compute/routes",
-		"Radius.Security/secrets",
-		"Radius.Data/mySqlDatabases",
-		"Radius.Data/postgreSqlDatabases",
-		"Radius.Data/redisCaches",
-		"Radius.Messaging/rabbitMQ",
-	}
-	require.Len(t, definitions, len(expectedResourceTypes))
-
-	actualResourceTypes := make([]string, len(definitions))
-	for i, def := range definitions {
-		actualResourceTypes[i] = def.ResourceType
-		require.NotEmpty(t, def.Source, "Source should not be empty for %s", def.ResourceType)
-	}
-	require.ElementsMatch(t, expectedResourceTypes, actualResourceTypes)
-	require.Contains(t, definitions, CoreTypesRecipeInfo{
-		ResourceType: "Radius.Messaging/rabbitMQ",
-		Source:       "ghcr.io/radius-project/kube-recipes/rabbitmq:edge",
-	})
-}
-
-func Test_GetDefaultRecipePackDefinition_UsesEdgeTagForEdgeChannel(t *testing.T) {
-	// The test binary is built without ldflags, so channel defaults to "edge".
-	require.True(t, version.IsEdgeChannel(), "default should be on edge channel")
-
-	definitions := GetCoreTypesRecipeInfo()
-	for _, def := range definitions {
-		require.True(t, strings.HasSuffix(def.Source, ":edge"),
-			"Expected :edge tag for edge channel, got %s", def.Source)
-	}
-}
 
 func Test_resolveRecipeTag(t *testing.T) {
 	// Kept in sync with deploy/manifest/defaults.yaml by `make update-resource-types`.
@@ -114,41 +75,158 @@ func Test_resolveRecipeTag(t *testing.T) {
 }
 
 func Test_NewDefaultRecipePackResource(t *testing.T) {
-	resource := NewDefaultRecipePackResource()
+	// The test binary is built without ldflags, so channel defaults to "edge".
+	require.True(t, version.IsEdgeChannel(), "default should be on edge channel")
 
-	// Verify location
+	resource, err := NewDefaultRecipePackResource()
+	require.NoError(t, err)
 	require.NotNil(t, resource.Location)
 	require.Equal(t, "global", *resource.Location)
-
-	// Verify properties exist
 	require.NotNil(t, resource.Properties)
-	require.NotNil(t, resource.Properties.Recipes)
 
-	// Verify the resource contains recipes for all core types.
-	definitions := GetCoreTypesRecipeInfo()
-	require.Len(t, resource.Properties.Recipes, len(definitions))
+	// The pack is the embedded one with only the source tags changed, so
+	// compare against it rather than a list kept here.
+	pack, err := defaults.DefaultKubernetesRecipePack()
+	require.NoError(t, err)
+	require.NotEmpty(t, pack.Recipes)
+	for resourceType, recipe := range pack.Recipes {
+		repository, err := defaults.RecipeSourceRepository(*recipe.Source)
+		require.NoError(t, err)
+		recipe.Source = to.Ptr(repository + ":edge")
+		require.Equal(t, recipe, resource.Properties.Recipes[resourceType], resourceType)
+	}
+	require.Equal(t, pack, resource.Properties)
+}
 
-	for _, def := range definitions {
-		recipe, exists := resource.Properties.Recipes[def.ResourceType]
-		require.True(t, exists, "Expected recipe for resource type %s to exist", def.ResourceType)
-		require.NotNil(t, recipe.Kind)
-		require.Equal(t, corerpv20250801.RecipeKindBicep, *recipe.Kind)
-		require.NotNil(t, recipe.Source)
-		require.Equal(t, def.Source, *recipe.Source)
-		require.Equal(t, def.Parameters, recipe.Parameters)
+func Test_newDefaultRecipePackResource_ReleaseChannelUsesPins(t *testing.T) {
+	t.Parallel()
+
+	pack, err := defaults.DefaultKubernetesRecipePack()
+	require.NoError(t, err)
+	repositories := map[string]string{}
+	for resourceType, recipe := range pack.Recipes {
+		repositories[resourceType], err = defaults.RecipeSourceRepository(*recipe.Source)
+		require.NoError(t, err)
 	}
 
-	require.Contains(t, resource.Properties.Recipes, "Radius.Compute/routes")
-	routeRecipe := resource.Properties.Recipes["Radius.Compute/routes"]
-	require.NotNil(t, routeRecipe)
-	require.Equal(t, map[string]any{
-		"gatewayName":      DefaultRoutesGatewayName,
-		"gatewayNamespace": DefaultRoutesGatewayNamespace,
-	}, routeRecipe.Parameters)
+	resource, err := newDefaultRecipePackResource(pack, false)
+	require.NoError(t, err)
 
-	require.Contains(t, resource.Properties.Recipes, "Radius.Data/postgreSqlDatabases")
-	postgreSQLRecipe := resource.Properties.Recipes["Radius.Data/postgreSqlDatabases"]
-	require.NotNil(t, postgreSQLRecipe)
+	for resourceType, repository := range repositories {
+		namespace, _, ok := defaults.SplitResourceType(resourceType)
+		require.True(t, ok)
+		pin, ok := defaults.ResourceTypePin(namespace)
+		require.True(t, ok, "%s must be pinned under resourceTypes in defaults.yaml", namespace)
+		require.Equal(t, repository+":"+pin.Ref, *resource.Properties.Recipes[resourceType].Source)
+	}
+}
+
+// Test_DefaultRecipePack_RoutesUseInstalledGateway guards the contract between
+// the pinned pack and rad install: if the pack configures the routes recipe's
+// gateway, it must name the Gateway that rad installs.
+func Test_DefaultRecipePack_RoutesUseInstalledGateway(t *testing.T) {
+	t.Parallel()
+
+	pack, err := defaults.DefaultKubernetesRecipePack()
+	require.NoError(t, err)
+	recipe, ok := pack.Recipes["Radius.Compute/routes"]
+	if !ok {
+		return
+	}
+	if name, ok := recipe.Parameters["gatewayName"]; ok {
+		require.Equal(t, helm.DefaultContourGatewayName, name)
+	}
+	if namespace, ok := recipe.Parameters["gatewayNamespace"]; ok {
+		require.Equal(t, helm.DefaultContourGatewayNamespace, namespace)
+	}
+}
+
+func Test_newDefaultRecipePackResource(t *testing.T) {
+	t.Parallel()
+
+	// pack returns a new pack on every call because the builder retags it in
+	// place.
+	pack := func() *corerpv20250801.RecipePackProperties {
+		return &corerpv20250801.RecipePackProperties{
+			Recipes: map[string]*corerpv20250801.RecipeDefinition{
+				"Contoso.Example/widgets": {
+					Kind:       to.Ptr(corerpv20250801.RecipeKindBicep),
+					Source:     to.Ptr("localhost:5000/widgets:latest"),
+					Parameters: map[string]any{"size": "large"},
+					PlainHTTP:  to.Ptr(true),
+				},
+				"Contoso.Example/gadgets": {
+					Kind:   to.Ptr(corerpv20250801.RecipeKindTerraform),
+					Source: to.Ptr("example.com/gadgets:1.0"),
+				},
+			},
+		}
+	}
+
+	testcases := []struct {
+		name    string
+		pack    *corerpv20250801.RecipePackProperties
+		isEdge  bool
+		want    map[string]*corerpv20250801.RecipeDefinition
+		wantErr string
+	}{
+		{
+			name:   "edge channel keeps every field and retags sources",
+			pack:   pack(),
+			isEdge: true,
+			want: map[string]*corerpv20250801.RecipeDefinition{
+				"Contoso.Example/widgets": {
+					Kind:       to.Ptr(corerpv20250801.RecipeKindBicep),
+					Source:     to.Ptr("localhost:5000/widgets:edge"),
+					Parameters: map[string]any{"size": "large"},
+					PlainHTTP:  to.Ptr(true),
+				},
+				"Contoso.Example/gadgets": {Kind: to.Ptr(corerpv20250801.RecipeKindTerraform), Source: to.Ptr("example.com/gadgets:edge")},
+			},
+		},
+		{
+			name:   "release channel falls back to edge for unpinned namespace",
+			pack:   pack(),
+			isEdge: false,
+			want: map[string]*corerpv20250801.RecipeDefinition{
+				"Contoso.Example/widgets": {
+					Kind:       to.Ptr(corerpv20250801.RecipeKindBicep),
+					Source:     to.Ptr("localhost:5000/widgets:edge"),
+					Parameters: map[string]any{"size": "large"},
+					PlainHTTP:  to.Ptr(true),
+				},
+				"Contoso.Example/gadgets": {Kind: to.Ptr(corerpv20250801.RecipeKindTerraform), Source: to.Ptr("example.com/gadgets:edge")},
+			},
+		},
+		{name: "nil pack", wantErr: "has no recipes"},
+		{name: "no recipes", pack: &corerpv20250801.RecipePackProperties{}, wantErr: "has no recipes"},
+		{
+			name:    "missing source",
+			pack:    &corerpv20250801.RecipePackProperties{Recipes: map[string]*corerpv20250801.RecipeDefinition{"Contoso.Example/widgets": {}}},
+			wantErr: "Contoso.Example/widgets has no source",
+		},
+		{
+			name: "untagged source",
+			pack: &corerpv20250801.RecipePackProperties{Recipes: map[string]*corerpv20250801.RecipeDefinition{
+				"Contoso.Example/widgets": {Source: to.Ptr("localhost:5000/widgets")},
+			}},
+			wantErr: "has no tag",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			resource, err := newDefaultRecipePackResource(tc.pack, tc.isEdge)
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.want, resource.Properties.Recipes)
+		})
+	}
 }
 
 func Test_NormalizeRecipePacks(t *testing.T) {
