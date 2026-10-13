@@ -92,7 +92,7 @@ The existing four. All of them map with meaningful coverage, and new types would
 
 **Q2 — When a recipe cannot honor a property, does it fail the deployment or ignore the property?**
 
-Ignore it and document it. Failing on a value Radius itself accepts would make the type unportable in practice.
+Ignore it and document it. Failing on a value Radius itself accepts would break portability in practice.
 
 *Validated during implementation:* prototyping both container recipes with a property neither platform supports, and confirming the deployment succeeds.
 
