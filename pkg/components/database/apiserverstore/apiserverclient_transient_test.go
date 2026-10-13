@@ -24,12 +24,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	"github.com/radius-project/radius/pkg/components/database"
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
 )
 
@@ -75,4 +77,61 @@ func Test_Get_RetriesTransientErrors(t *testing.T) {
 			require.Equal(t, tt.calls, calls)
 		})
 	}
+}
+
+func Test_Get_StopsRetryingWhenContextCancelled(t *testing.T) {
+	original := transientBackoff
+	transientBackoff = wait.Backoff{Duration: time.Hour, Factor: 1, Steps: 5}
+	t.Cleanup(func() { transientBackoff = original })
+
+	calls := 0
+	fakeClient := fake.NewClientBuilder().WithInterceptorFuncs(interceptor.Funcs{
+		Get: func(ctx context.Context, c runtimeclient.WithWatch, key runtimeclient.ObjectKey, obj runtimeclient.Object, opts ...runtimeclient.GetOption) error {
+			calls++
+			return apierrors.NewServiceUnavailable("unavailable")
+		},
+	}).Build()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	client := NewAPIServerClient(fakeClient, "radius-test")
+	err := client.get(ctx, runtimeclient.ObjectKey{Namespace: "radius-test", Name: "x"}, &ucpv1alpha1.Resource{})
+	require.True(t, apierrors.IsServiceUnavailable(err))
+	require.Equal(t, 1, calls)
+}
+
+func Test_Operations_UseRetryingGet(t *testing.T) {
+	original := transientBackoff
+	transientBackoff = wait.Backoff{Duration: time.Millisecond, Factor: 1, Steps: 3}
+	t.Cleanup(func() { transientBackoff = original })
+
+	id := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app"
+
+	// Fail the first read of each operation, then let the fake client answer.
+	calls := 0
+	scheme := runtime.NewScheme()
+	require.NoError(t, ucpv1alpha1.AddToScheme(scheme))
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
+		Get: func(ctx context.Context, c runtimeclient.WithWatch, key runtimeclient.ObjectKey, obj runtimeclient.Object, opts ...runtimeclient.GetOption) error {
+			calls++
+			if calls == 1 {
+				return apierrors.NewServiceUnavailable("unavailable")
+			}
+			return c.Get(ctx, key, obj, opts...)
+		},
+	}).Build()
+	client := NewAPIServerClient(fakeClient, "radius-test")
+
+	_, err := client.Get(context.Background(), id)
+	var notFound *database.ErrNotFound
+	require.ErrorAs(t, err, &notFound)
+
+	calls = 0
+	err = client.Delete(context.Background(), id)
+	require.ErrorAs(t, err, &notFound)
+
+	calls = 0
+	err = client.Save(context.Background(), &database.Object{Metadata: database.Metadata{ID: id}, Data: map[string]any{}})
+	require.NoError(t, err)
 }

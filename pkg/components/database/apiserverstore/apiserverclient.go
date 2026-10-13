@@ -61,7 +61,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/util/retry"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -355,11 +354,27 @@ func isTransient(err error) bool {
 	return apierrors.IsServiceUnavailable(err) || apierrors.IsServerTimeout(err) || apierrors.IsTimeout(err) || apierrors.IsTooManyRequests(err)
 }
 
-// get reads an object and retries when the API server returns a transient error.
+// get reads an object and retries when the API server returns a transient error. It stops waiting
+// as soon as ctx is cancelled.
 func (c *APIServerClient) get(ctx context.Context, key runtimeclient.ObjectKey, obj runtimeclient.Object) error {
-	return retry.OnError(transientBackoff, isTransient, func() error {
-		return c.client.Get(ctx, key, obj)
-	})
+	backoff := transientBackoff
+	for {
+		err := c.client.Get(ctx, key, obj)
+		if err == nil || !isTransient(err) || backoff.Steps <= 1 {
+			return err
+		}
+
+		delay := backoff.Step()
+		ucplog.FromContextOrDiscard(ctx).Info("Retrying Kubernetes read after transient error", "name", key.Name, "namespace", key.Namespace, "delay", delay.String(), "error", err.Error())
+
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return err
+		case <-timer.C:
+		}
+	}
 }
 func (c *APIServerClient) doWithRetry(action func() (bool, error)) error {
 	for range RetryCount {
