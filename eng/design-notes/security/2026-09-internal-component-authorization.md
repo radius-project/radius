@@ -120,7 +120,7 @@ All of these options except ServiceAccount tokens are mTLS-based and therefore r
 | SPIFFE/SPIRE workload identity                | SPIRE attests each workload and issues a short-lived SPIFFE identity (X.509 or JWT).                                                                                                          | Purpose-built for workload identity and portable across clusters and clouds, but adds a component to operate.                                                                                    |
 | Service-mesh mTLS (Istio, Linkerd)            | A sidecar mesh transparently establishes mTLS between pods.                                                                                                                                   | No application code change, but forces a mesh dependency on every Radius install and still needs an application-level authorization check on top.                                                |
 
-**Recommendation:** issue one X.509 identity per service through an in-cluster CA (cert-manager) and require mTLS on all internal connections. It verifies offline, needs no per-call dependency on the Kubernetes API server, and — unlike a service mesh — does not impose a mesh on users. Name **SPIFFE/SPIRE** as the growth path if Radius's own components are hosted across multiple clusters or clouds and must attest each other's identity across that boundary — not merely deploying to remote targets. Do not mandate a service mesh.
+**Recommendation:** issue one X.509 identity per service through an in-cluster CA (cert-manager) and require mTLS on all internal connections. It verifies offline, needs no per-call dependency on the Kubernetes API server, and — unlike a service mesh — does not impose a mesh on users. Name **SPIFFE/SPIRE** as the growth path if Radius's own components are hosted across multiple clusters or clouds and must attest each other's identity across that boundary — not merely deploying to remote targets. Do not mandate a service mesh, but let installations that already run Istio use its mTLS instead (see [Using an existing service mesh](#using-an-existing-service-mesh)).
 
 ##### Issuing and protecting service identities
 
@@ -191,6 +191,28 @@ mTLS is only as strong as the rule that one service cannot obtain another's cert
 | Which identities are valid    | A receiver accepts only certificates from the configured CA (the Radius CA, the provided CA in `caSecret` mode, or the CA bundle the operator sets in `issuerRef` mode) whose DNS SANs all name the same Radius component from a fixed list, and maps them to that component's canonical `<service>.<namespace>.svc` name. A certificate with no SAN, a SAN outside the list, or SANs naming two different components is rejected, even if the chain is valid. This SAN check is what stops other workloads when the CA is shared. |
 | Rotating the CA               | Distribute trust through a bundle (for example trust-manager). Add the new CA to the bundle before issuing from it, reissue every service certificate, then remove the old CA. Radius does this for `selfSigned`. In the other modes the operator supplies the new CA or certificates, and Radius follows the same overlap. Switching modes on an existing installation, such as `selfSigned` to `caSecret` through `rad upgrade kubernetes`, is a CA rotation and uses the same steps.                                            |
 | CA compromise                 | Treat as a full incident: replace the CA as above, reissue all certificates, and revoke all active execution records, because a stolen CA key could have been used to act as any `submitter` or `assignedComponent`. In `caSecret` mode the operator also revokes the intermediate with the organization's CA.                                                                                                                                                                                                                     |
+
+##### Using an existing service mesh
+
+Some organizations already enforce mTLS between all pods with a service mesh and do not want Radius to add a second layer. These installations can use the mesh's mTLS instead of Radius's with `rad install kubernetes --mtls-provider istio` (Helm: `global.rbac.mtls.provider=istio`). The default stays `radius`, so no installation is forced onto a mesh.
+
+Radius needs to know which component called, not only that the connection was encrypted, so the mesh must give the receiver a verified caller identity:
+
+| Network stack                                                                                     | Supported | Why                                                                                                                               |
+|---------------------------------------------------------------------------------------------------|-----------|-----------------------------------------------------------------------------------------------------------------------------------|
+| Istio in sidecar mode, including the Istio-based service mesh add-on for Azure Kubernetes Service | Yes       | The receiver's sidecar verifies the caller's certificate and passes its identity to the component.                                |
+| Istio ambient mode                                                                                | Not yet   | Without a waypoint proxy, the caller's identity does not reach the component.                                                     |
+| Linkerd                                                                                           | Not yet   | Can be added the same way if its proxy passes a verified caller identity.                                                         |
+| Encryption or network policy only, such as Azure network policies or network security groups      | No        | They encrypt or restrict traffic but cannot tell the receiver which component called. They can still run alongside either option. |
+
+In `istio` mode:
+
+- **Identity.** Each Radius component already runs under its own service account (`ucp`, `applications-rp`, `dynamic-rp`, `controller`, `bicep-de`, and so on). The receiver reads the caller's SPIFFE ID, `spiffe://<trust-domain>/ns/<radius-namespace>/sa/<service-account>`, from the `X-Forwarded-Client-Cert` header, using only the entry its own sidecar adds. It maps the service account to the component's canonical `<service>.<namespace>.svc` name from the same fixed list, so the rest of this design is unchanged. A request with no identity, another namespace or trust domain, or an unknown service account is rejected with `InvalidAuthenticationInfo`, so removing the mesh fails closed.
+- **All traffic goes through the mesh.** The chart creates a `STRICT` `PeerAuthentication` for the Radius namespace, so plaintext connections are refused, and an `AuthorizationPolicy` per component that accepts calls only from the Radius service accounts that call it. That policy is a second check that also covers non-HTTP connections. `rad install` fails if Istio is missing or below the minimum supported version, if a Radius pod would run without a sidecar, or if inbound ports are excluded from the sidecar (other than UCP's aggregated API port below).
+- **Trust.** The mesh's control plane and CA become part of what Radius trusts: whoever controls them can issue any Radius identity. The mesh rotates its own certificates, and the CA rules above apply to it instead. Because the identity is the service account, the admission rule that stops application pods from using Radius service accounts (see [Admission controls for application workloads](#admission-controls-for-application-workloads)) is required.
+- **UCP's aggregated API certificate.** The Kubernetes API server is not in the mesh, so UCP's aggregated API port bypasses the sidecar and keeps its serving certificate and front-proxy check (see [Kubernetes API server trust](#kubernetes-api-server-trust)). It is the only certificate Radius manages in this mode, so cert-manager is still installed, and the certificate flags apply to it.
+- **Clients** send plain HTTP to the service name and let the sidecar add mTLS. The deployment engine supports both modes.
+- **Switching** between `radius` and `istio` restarts all Radius components together. Deployments in progress resume as after any restart (see [Asynchronous and in-flight work](#asynchronous-and-in-flight-work)).
 
 #### Keep deployment authority limited
 
@@ -458,9 +480,14 @@ rad install kubernetes --ca-cert ./radius-ca.crt --ca-key ./radius-ca.key
 
 # Production: CA key stays in Vault, an HSM, or a cloud CA
 rad install kubernetes --cert-issuer ClusterIssuer/vault-issuer
+
+# Use the cluster's Istio mesh for mTLS between components
+rad install kubernetes --mtls-provider istio
 ```
 
 `rad` rejects invalid combinations: `--ca-cert` without `--ca-key` (or the reverse), flags for more than one mode, and any of these flags with `--skip-rbac`. Before installing in `caSecret` mode, `rad` checks that the certificate is a CA, matches the key, and is not expired, and warns if it expires within 30 days. On `rad upgrade kubernetes`, omitting the flags keeps the installation's current mode.
+
+`--mtls-provider` takes `radius` (default) or `istio` (see [Using an existing service mesh](#using-an-existing-service-mesh)). With `istio`, the certificate flags apply only to UCP's aggregated API certificate. It cannot be combined with `--skip-rbac`.
 
 ### Implementation Details
 
@@ -550,18 +577,18 @@ If a service certificate cannot be rotated before it expires, fail closed rather
 
 Every authorization failure uses a specific error code, so users and automation can tell what failed. Codes follow the existing ARM-style error format (`error.code` in `pkg/armrpc/api/v1/errorcodes.go`); `AuthorizationFailed` and `InvalidAuthenticationInfo` reuse existing codes, and the rest are new.
 
-| Code                        | HTTP status | Meaning                                                                                                                      |
-|-----------------------------|-------------|------------------------------------------------------------------------------------------------------------------------------|
-| `InvalidAuthenticationInfo` | 401         | The caller's identity could not be verified, for example an unverified Kubernetes proxy certificate.                         |
-| `AuthorizationFailed`       | 403         | The user does not have permission for the requested action on the target.                                                    |
-| `ExecutionRecordNotActive`  | 403         | The execution record is missing, closed, revoked, or past `expiresAt`.                                                       |
-| `GrantScopeExceeded`        | 403         | The request is outside the record's approved `actions` or `targets`.                                                         |
-| `OperationNotAssigned`      | 403         | The caller is not the operation's `assignedComponent`, or the operation is already final.                                    |
-| `OperationInputMismatch`    | 409         | The work's inputs do not match the operation's approved input hash.                                                          |
-| `QueueWaitLimitExceeded`    | 403         | Queued work waited longer than the record's `queueWaitLimit`.                                                                |
-| `CredentialIssuanceDenied`  | 403         | The credential broker refused a token because the requested scope is outside the environment or the record.                  |
-| `AdmissionPolicyDenied`     | 403         | A Kubernetes admission control rejected an application workload; the message names the rule, such as a control-plane Secret. |
-| `AuthorizationUnavailable`  | 503         | Radius could not read the user's permissions or the execution record, so it refused rather than guessed.                     |
+| Code                        | HTTP status | Meaning                                                                                                                                                      |
+|-----------------------------|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `InvalidAuthenticationInfo` | 401         | The caller's identity could not be verified, for example an unverified Kubernetes proxy certificate, or a request without the mesh identity in `istio` mode. |
+| `AuthorizationFailed`       | 403         | The user does not have permission for the requested action on the target.                                                                                    |
+| `ExecutionRecordNotActive`  | 403         | The execution record is missing, closed, revoked, or past `expiresAt`.                                                                                       |
+| `GrantScopeExceeded`        | 403         | The request is outside the record's approved `actions` or `targets`.                                                                                         |
+| `OperationNotAssigned`      | 403         | The caller is not the operation's `assignedComponent`, or the operation is already final.                                                                    |
+| `OperationInputMismatch`    | 409         | The work's inputs do not match the operation's approved input hash.                                                                                          |
+| `QueueWaitLimitExceeded`    | 403         | Queued work waited longer than the record's `queueWaitLimit`.                                                                                                |
+| `CredentialIssuanceDenied`  | 403         | The credential broker refused a token because the requested scope is outside the environment or the record.                                                  |
+| `AdmissionPolicyDenied`     | 403         | A Kubernetes admission control rejected an application workload; the message names the rule, such as a control-plane Secret.                                 |
+| `AuthorizationUnavailable`  | 503         | Radius could not read the user's permissions or the execution record, so it refused rather than guessed.                                                     |
 
 A failed mTLS handshake has no HTTP response, so the component logs it with the code `PeerCertificateInvalid` (or `CertificateExpired` for its own certificate) instead. Deployment errors shown to users include the code, the action, and the target, but never another user's identity or details of resources outside the user's permission.
 
@@ -569,7 +596,7 @@ A failed mTLS handshake has no HTTP response, so the component logs it with the 
 
 Most checks run on paths that already make network or storage calls, so the added latency per request is expected to be small:
 
-- **mTLS** adds a handshake only when a connection is opened. Reused connections pay only encryption overhead.
+- **mTLS** adds a handshake only when a connection is opened. Reused connections pay only encryption overhead. In `istio` mode the mesh's mTLS replaces Radius's, so traffic is encrypted once.
 - **Record checks** add one store read per routed request at UCP and per step at a worker. UCP owns the store and workers already read operation state, so neither adds a network hop.
 - **The data-access service** adds one network hop and a record check to every provider write. This is the largest new cost and grows with the number of resources in a deployment.
 - **The credential broker** adds one call when a component needs a cloud or Kubernetes token, which can be reused until it expires.
@@ -580,19 +607,21 @@ Most checks run on paths that already make network or storage calls, so the adde
 
 Unit tests should cover verification of deployment approvals and grant-scope checks. Functional tests should exercise complete requests across services, using scenarios such as:
 
-| Scenario                                                             | Expected result                                                                                                    |
-|----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
-| An application sends a fake user header or calls a provider directly | It cannot impersonate a user or bypass UCP's approval.                                                             |
-| The engine uses development approval for a production resource       | UCP rejects the request.                                                                                           |
-| A controller object targets another team's resource group            | The controller rejects it before starting the change.                                                              |
-| A worker receives altered inputs or the same message twice           | It rejects the changed work and avoids duplicate effects.                                                          |
-| Permission is removed during deployment                              | New steps stop; any permitted cleanup stays within its limits.                                                     |
-| A provider tries to access unrelated state or credentials            | The backend denies access, not just the HTTP API.                                                                  |
-| An application pod uses a control-plane service account or Secret    | Admission rejects it with `AdmissionPolicyDenied`.                                                                 |
-| A record expires during a deployment                                 | The deployment fails with `ExecutionRecordNotActive`, and rerunning `rad deploy` succeeds.                         |
-| Upgrade an existing installation, then rotate the CA                 | `rad` commands keep working throughout; the APIService stays available.                                            |
-| A peer presents an RSA-1024 or otherwise disallowed key              | The receiver fails the handshake and logs `PeerCertificateInvalid`.                                                |
-| Install with `--ca-cert` and `--ca-key`                              | Service certificates chain to the provided CA. A certificate signed directly by the organization root is rejected. |
+| Scenario                                                                       | Expected result                                                                                                    |
+|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| An application sends a fake user header or calls a provider directly           | It cannot impersonate a user or bypass UCP's approval.                                                             |
+| The engine uses development approval for a production resource                 | UCP rejects the request.                                                                                           |
+| A controller object targets another team's resource group                      | The controller rejects it before starting the change.                                                              |
+| A worker receives altered inputs or the same message twice                     | It rejects the changed work and avoids duplicate effects.                                                          |
+| Permission is removed during deployment                                        | New steps stop; any permitted cleanup stays within its limits.                                                     |
+| A provider tries to access unrelated state or credentials                      | The backend denies access, not just the HTTP API.                                                                  |
+| An application pod uses a control-plane service account or Secret              | Admission rejects it with `AdmissionPolicyDenied`.                                                                 |
+| A record expires during a deployment                                           | The deployment fails with `ExecutionRecordNotActive`, and rerunning `rad deploy` succeeds.                         |
+| Upgrade an existing installation, then rotate the CA                           | `rad` commands keep working throughout; the APIService stays available.                                            |
+| A peer presents an RSA-1024 or otherwise disallowed key                        | The receiver fails the handshake and logs `PeerCertificateInvalid`.                                                |
+| Install with `--ca-cert` and `--ca-key`                                        | Service certificates chain to the provided CA. A certificate signed directly by the organization root is rejected. |
+| `istio` mode: a meshed pod sends a forged `X-Forwarded-Client-Cert` naming UCP | The forged identity is ignored and the call is rejected.                                                           |
+| `istio` mode: a Radius pod has no sidecar, or the namespace allows plaintext   | `rad install` fails. At runtime, requests without the mesh identity get `InvalidAuthenticationInfo`.               |
 
 Use cluster integration tests for certificate renewal, protected service accounts, restarts, upgrades, and interrupted deployments. Include the external engine and both legacy and current resource APIs. Test recipes that create cluster-wide objects separately from namespace-limited application templates.
 
@@ -719,7 +748,7 @@ The design needs an issuer that gives each Radius service its own certificate an
 | cert-manager (chosen)                                 | A CNCF graduated project and the most widely used certificate tool in Kubernetes. It has a built-in CA issuer, automatic renewal, and add-ons for trust bundles and request approval. Many clusters already run it, and other projects such as Cluster API install it when it is missing. |
 | Built-in Radius CA (like Dapr's Sentry)               | Needs no extra install, but Radius would build and maintain a security-critical CA service: verifying callers before signing, rotating certificates and the root CA, and protecting the CA key.                                                                                           |
 | SPIFFE/SPIRE                                          | Stronger workload attestation, but another system to run. Kept as the growth path if Radius components span clusters (see [Options for component identity](#options-for-component-identity)).                                                                                             |
-| Service mesh CA (Istio, Linkerd)                      | Would force a mesh on every Radius installation.                                                                                                                                                                                                                                          |
+| Service mesh CA (Istio, Linkerd)                      | Not the default, because it would force a mesh on every Radius installation. Installations that already run Istio can use it instead (see [Using an existing service mesh](#using-an-existing-service-mesh)).                                                                             |
 | HashiCorp Vault PKI                                   | Suitable for organizations that already run Vault, and usable through a cert-manager Vault issuer. Too heavy to require for every Radius installation.                                                                                                                                    |
 | smallstep step-ca                                     | A lightweight standalone CA that works, but is less widely used in Kubernetes than cert-manager and adds a component Radius would install and support.                                                                                                                                    |
 | Kubernetes pod certificates (`PodCertificateRequest`) | Would let pods receive certificates without cert-manager, but the feature is not generally available. Worth revisiting when it is.                                                                                                                                                        |
