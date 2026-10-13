@@ -28,10 +28,12 @@ export REAL_MAKE
 REAL_MAKE="$(command -v make)"
 mkdir -p "${work_dir}/build/scripts" "${work_dir}/bin" \
     "${work_dir}/dist/local-functional" \
-    "${work_dir}/test/functional-portable/dynamicrp/noncloud/resources" \
+    "${work_dir}/test/functional-portable/dynamicrp/noncloud/resources/testdata" \
     "${work_dir}/hack/bicep-types-radius/generated" \
     "${work_dir}/.github/actions/install-git-http-backend"
 cp "${SCRIPT_DIR}/local-functional.sh" "${work_dir}/build/scripts/"
+extension_fixture="test/functional-portable/dynamicrp/noncloud/resources/testdata/testResourceSchema-validAny.bicep"
+cp "${SCRIPT_DIR}/../../${extension_fixture}" "${work_dir}/${extension_fixture}"
 runner="${work_dir}/build/scripts/local-functional.sh"
 state="${work_dir}/dist/local-functional"
 printf '{}\n' >"${work_dir}/hack/bicep-types-radius/generated/index.json"
@@ -72,7 +74,26 @@ git)
     *) echo "Unexpected git command: $*" >&2; exit 1 ;;
     esac
     ;;
-go | helm | python3 | flux | envsubst | update-ca-certificates | bicep | dapr | rad) ;;
+go | helm | python3 | flux | envsubst | update-ca-certificates | dapr | rad) ;;
+bicep)
+    case "${1:-}" in
+    restore)
+        grep -F '"radius": "br:localhost:5443/radius:deadbeef1"' \
+            test/bicepconfig.json >/dev/null
+        grep -F '"testresources": "br:localhost:5443/testresources:deadbeef1"' \
+            test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json >/dev/null
+        mkdir -p "${HOME}"
+        touch "${HOME}/.bicep-extensions-ready"
+        ;;
+    build)
+        [[ -f "${HOME}/.bicep-extensions-ready" ]] || {
+            echo "BCP190: local extension not restored" >&2
+            exit 1
+        }
+        ;;
+    *) ;;
+    esac
+    ;;
 openssl)
     if [[ "${2:-}" == -help ]]; then
         echo '-addext'
@@ -102,6 +123,7 @@ k3d)
     esac
     ;;
 jq)
+    cat >/dev/null
     case "$1" in
     -e) exit 1 ;;
     -r) printf '%s\n' "${MOCK_CLUSTERS}" ;;
@@ -138,10 +160,14 @@ make)
     install-bicep)
         directory="${2#BICEP_INSTALL_DIR=}"
         mkdir -p "${directory}"
-        printf '#!/bin/bash\nexit 0\n' >"${directory}/bicep"
+        cp "$0" "${directory}/bicep"
         chmod +x "${directory}/bicep"
         ;;
     test-functional-*)
+        [[ -f "${HOME}/.bicep-extensions-ready" ]] || {
+            echo "tests started without restoring extensions" >&2
+            exit 1
+        }
         printf 'external=%s\n' "${RADIUS_TEST_EXTERNAL_KUBECONFIG-<unset>}" \
             >>"${MOCK_LOG}"
         cat test/bicepconfig.json >>"${MOCK_LOG}"
@@ -168,6 +194,7 @@ run_runner() {
     shift
     : >"${MOCK_LOG}"
     rm -f "${MOCK_LOG}.forward-pid"
+    rm -f "${state}/home${LOCAL_FUNCTIONAL_SUITE:+-${LOCAL_FUNCTIONAL_SUITE}}/.bicep-extensions-ready"
     output="$(bash "${runner}" "$@" 2>&1)" || status=$?
     [[ "${status}" == "${expected_status}" ]] ||
         fail "expected exit ${expected_status}, got ${status}: ${output}"
@@ -272,6 +299,20 @@ assert_not_contains "${calls}" "kubectl "
 touch "${state}/external-host.kubeconfig"
 printf 'original config\n' >"${work_dir}/test/bicepconfig.json"
 dynamic_config="${work_dir}/test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json"
+for command in \
+    "bicep restore ${extension_fixture} --force" \
+    "bicep build ${extension_fixture} --stdout --no-restore"; do
+    export MOCK_FAILURE="${command}"
+    run_runner 1 test test-functional-multicluster-noncloud
+    assert_contains "${output}" "mock failure: ${command}"
+    assert_not_contains "${calls}" "make "
+    assert_not_contains "${calls}" "kubectl port-forward"
+    [[ "$(<"${work_dir}/test/bicepconfig.json")" == "original config" ]] ||
+        fail "extension bootstrap failure did not restore config"
+    [[ ! -e "${dynamic_config}" && ! -e "${state}/test.lock" ]] ||
+        fail "extension bootstrap failure leaked fixtures or a lock"
+done
+export MOCK_FAILURE=""
 for outcome in success failure signal; do
     export MOCK_TEST_STATUS=0 MOCK_SIGNAL=""
     expected=0
@@ -283,6 +324,9 @@ for outcome in success failure signal; do
         expected=143
     fi
     run_runner "${expected}" test test-functional-multicluster-noncloud
+    assert_contains "${calls}" "bicep restore ${extension_fixture} --force"
+    assert_contains "${calls}" \
+        "bicep build ${extension_fixture} --stdout --no-restore"
     assert_contains "${calls}" '"radius": "br:localhost:5443/radius:deadbeef1"'
     [[ "$(<"${work_dir}/test/bicepconfig.json")" == "original config" ]] ||
         fail "${outcome} did not restore existing config"

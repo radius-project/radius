@@ -379,6 +379,10 @@ run_tests() {
 }
 EOF
     done
+    local extension_fixture="test/functional-portable/dynamicrp/noncloud/resources/testdata/testResourceSchema-validAny.bicep"
+    echo "Restoring local Bicep extensions before parallel test compilation..."
+    bicep restore "${extension_fixture}" --force
+    bicep build "${extension_fixture}" --stdout --no-restore >/dev/null
     if [[ -z "${LOCAL_FUNCTIONAL_SUITE:-}" ]]; then
         kubectl port-forward -n git-http-backend svc/git-http 30080:3000 \
             >"${STATE}/results/git-port-forward.log" 2>&1 &

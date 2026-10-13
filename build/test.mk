@@ -181,6 +181,10 @@ test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kuber
 test-functional-local-noncloud: ## Builds and installs Radius locally, then runs standard and isolated non-cloud tests on Linux or macOS
 	bash build/scripts/local-functional.sh all
 
+.PHONY: test-functional-local-noncloud-cleanup
+test-functional-local-noncloud-cleanup: ## Removes local functional test infrastructure while retaining diagnostics
+	bash build/scripts/local-functional.sh cleanup
+
 .PHONY: test-functional-all-cloud
 # Run all functional tests that require cloud resources
 test-functional-all-cloud: test-functional-ucp-cloud test-functional-corerp-cloud

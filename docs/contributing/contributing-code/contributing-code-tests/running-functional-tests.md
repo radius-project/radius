@@ -74,7 +74,7 @@ This target:
 
 1. Builds the `rad` CLI and Radius container images from your checkout.
 2. Creates a local container registry and a k3d cluster.
-3. Installs Radius and the test fixtures.
+3. Installs Radius and the test fixtures, then restores and verifies the local Bicep extensions before starting parallel template compilation.
 4. Runs the standard non-cloud functional tests.
 5. Runs the database, multicluster, statestore, and upgrade test groups sequentially in separate clusters.
 
@@ -87,7 +87,7 @@ Do not start another local functional test run at the same time. The runs share 
 After reviewing the results, remove the clusters, registry, trusted certificate, and `/etc/hosts` entry:
 
 ```bash
-bash build/scripts/local-functional.sh cleanup
+make test-functional-local-noncloud-cleanup
 ```
 
 The command retains logs and test configuration under `dist/local-functional/`.
@@ -155,7 +155,7 @@ Run `make test-local-functional-runner` to check the runner's platform preflight
 Setup stops instead of replacing an existing test cluster or registry. Remove the previous test infrastructure, then start the test run again:
 
 ```bash
-bash build/scripts/local-functional.sh cleanup
+make test-functional-local-noncloud-cleanup
 make test-functional-local-noncloud
 ```
 
@@ -190,6 +190,12 @@ LOCAL_FUNCTIONAL_SUITE=database \
 ### A complete test run failed
 
 Review `dist/local-functional/results/` and `dist/local-functional/container_logs/`. Run cleanup before starting another complete test run because failed tests can leave resources and provider registrations behind.
+
+### Bicep reports that a local extension has not been restored
+
+`BCP190` for `br:localhost:5443/radius:<tag>` or `br:localhost:5443/testresources:<tag>` is a local extension-cache error, not a deployed-resource failure. The runner restores both extensions serially in the selected suite's isolated HOME and verifies a template with `--no-restore` before launching the tests. This avoids relying on concurrent builds to populate a shared cold cache.
+
+If this preparation fails, inspect the restore/build error and confirm that the setup completed and the local registry is running. Tests do not start after a failed extension preparation. Keep the same checkout commit between setup and test commands, because the published extension tags are derived from that commit.
 
 ### An older runner left a fixture lock
 
