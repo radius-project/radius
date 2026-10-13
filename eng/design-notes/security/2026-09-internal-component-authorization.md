@@ -208,12 +208,11 @@ Radius does not read identity from mesh-specific headers such as Istio's `X-Forw
 In `external` mode:
 
 - **Identity.** Each Radius component already runs under its own service account (`ucp`, `applications-rp`, `dynamic-rp`, `controller`, `bicep-de`, and so on). Kubernetes mounts a short-lived token (10 minutes, refreshed by the kubelet) for each service the component calls, with that receiver's name as the token's audience, so a receiver cannot replay a token it was sent to another component. The caller sends it as `Authorization: Bearer <token>`.
-- **Verification.** The receiver checks the token offline against the cluster's service account signing keys, which it reads from the API server's OIDC discovery endpoint and caches; it refetches them only when it sees an unknown key ID. It checks the issuer, its own audience, the expiry, the Radius namespace, and that the service account is in the fixed list, then maps it to the component's canonical `<service>.<namespace>.svc` name, so the rest of this design is unchanged. A missing or invalid token is rejected with `InvalidAuthenticationInfo`. If the keys cannot be fetched, the receiver returns `503` rather than accepting the request.
-- **Trust.** The cluster's service account signing key becomes the root of Radius's internal identity, and the customer's network stack is trusted to protect tokens in transit. Because the identity is the service account, the admission rule that stops application pods from using Radius service accounts (see [Admission controls for application workloads](#admission-controls-for-application-workloads)) is required.
-- **The operator owns encryption.** Radius cannot confirm that an arbitrary stack encrypts every connection, so choosing `external` is the operator's statement that it does. `rad install` prints a warning saying so, and the operator must also cover Radius's connections to storage and queues. Radius still limits which components may call each other through the token check.
-- **UCP's aggregated API certificate.** The Kubernetes API server calls UCP directly, so that port keeps its serving certificate and front-proxy check (see [Kubernetes API server trust](#kubernetes-api-server-trust)). It is the only certificate Radius manages in this mode, so cert-manager is still installed, and the certificate flags apply to it.
-- **The deployment engine** supports both modes.
-- **Switching** between `radius` and `external` restarts all Radius components together. Deployments in progress resume as after any restart (see [Asynchronous and in-flight work](#asynchronous-and-in-flight-work)).
+- **Verification.** The receiver checks the token offline against the cluster's service account signing keys, which it reads from the API server's OIDC discovery endpoint and caches; it refetches them only when it sees an unknown key ID. It checks the issuer, its own audience, the expiry, the Radius namespace, and that the service account is in the fixed list, then maps it to the component's canonical `<service>.<namespace>.svc` name, so the rest of this design is unchanged. A missing or invalid token is rejected with `InvalidAuthenticationInfo`.
+- **Trust.** The cluster's service account signing key becomes the root of Radius's internal identity, and the customer's network stack is trusted to protect tokens in transit.
+- **The operator owns encryption.** Radius cannot confirm that an arbitrary stack encrypts every connection, so choosing `external` is the operator's statement that it does. `rad install` prints a warning saying so, and the operator must also cover Radius's connections to storage and queues.
+- **UCP's aggregated API port is unchanged.** The Kubernetes API server calls it directly, so it keeps its certificate (see [Kubernetes API server trust](#kubernetes-api-server-trust)). It is the only certificate Radius manages in this mode.
+- **Switching** between `radius` and `external` restarts all Radius components together, because callers and receivers must use the same mode.
 
 #### Keep deployment authority limited
 
@@ -486,9 +485,9 @@ rad install kubernetes --cert-issuer ClusterIssuer/vault-issuer
 rad install kubernetes --mtls-provider external
 ```
 
-`rad` rejects invalid combinations: `--ca-cert` without `--ca-key` (or the reverse), flags for more than one mode, and any of these flags with `--skip-rbac`. Before installing in `caSecret` mode, `rad` checks that the certificate is a CA, matches the key, and is not expired, and warns if it expires within 30 days. On `rad upgrade kubernetes`, omitting the flags keeps the installation's current mode.
+`rad` rejects invalid combinations: `--ca-cert` without `--ca-key` (or the reverse), flags for more than one mode, and any of these flags or `--mtls-provider` with `--skip-rbac`. Before installing in `caSecret` mode, `rad` checks that the certificate is a CA, matches the key, and is not expired, and warns if it expires within 30 days. On `rad upgrade kubernetes`, omitting the flags keeps the installation's current mode.
 
-`--mtls-provider` takes `radius` (default) or `external` (see [Using the customer's own mTLS](#using-the-customers-own-mtls)). With `external`, the certificate flags apply only to UCP's aggregated API certificate. It cannot be combined with `--skip-rbac`.
+`--mtls-provider` takes `radius` (default) or `external` (see [Using the customer's own mTLS](#using-the-customers-own-mtls)). With `external`, the certificate flags apply only to UCP's aggregated API certificate.
 
 ### Implementation Details
 
@@ -578,18 +577,18 @@ If a service certificate cannot be rotated before it expires, fail closed rather
 
 Every authorization failure uses a specific error code, so users and automation can tell what failed. Codes follow the existing ARM-style error format (`error.code` in `pkg/armrpc/api/v1/errorcodes.go`); `AuthorizationFailed` and `InvalidAuthenticationInfo` reuse existing codes, and the rest are new.
 
-| Code                        | HTTP status | Meaning                                                                                                                                                          |
-|-----------------------------|-------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `InvalidAuthenticationInfo` | 401         | The caller's identity could not be verified, for example an unverified Kubernetes proxy certificate, or a missing or invalid component token in `external` mode. |
-| `AuthorizationFailed`       | 403         | The user does not have permission for the requested action on the target.                                                                                        |
-| `ExecutionRecordNotActive`  | 403         | The execution record is missing, closed, revoked, or past `expiresAt`.                                                                                           |
-| `GrantScopeExceeded`        | 403         | The request is outside the record's approved `actions` or `targets`.                                                                                             |
-| `OperationNotAssigned`      | 403         | The caller is not the operation's `assignedComponent`, or the operation is already final.                                                                        |
-| `OperationInputMismatch`    | 409         | The work's inputs do not match the operation's approved input hash.                                                                                              |
-| `QueueWaitLimitExceeded`    | 403         | Queued work waited longer than the record's `queueWaitLimit`.                                                                                                    |
-| `CredentialIssuanceDenied`  | 403         | The credential broker refused a token because the requested scope is outside the environment or the record.                                                      |
-| `AdmissionPolicyDenied`     | 403         | A Kubernetes admission control rejected an application workload; the message names the rule, such as a control-plane Secret.                                     |
-| `AuthorizationUnavailable`  | 503         | Radius could not read the user's permissions or the execution record, so it refused rather than guessed.                                                         |
+| Code                        | HTTP status | Meaning                                                                                                                      |
+|-----------------------------|-------------|------------------------------------------------------------------------------------------------------------------------------|
+| `InvalidAuthenticationInfo` | 401         | The caller's identity could not be verified, for example an unverified Kubernetes proxy certificate.                         |
+| `AuthorizationFailed`       | 403         | The user does not have permission for the requested action on the target.                                                    |
+| `ExecutionRecordNotActive`  | 403         | The execution record is missing, closed, revoked, or past `expiresAt`.                                                       |
+| `GrantScopeExceeded`        | 403         | The request is outside the record's approved `actions` or `targets`.                                                         |
+| `OperationNotAssigned`      | 403         | The caller is not the operation's `assignedComponent`, or the operation is already final.                                    |
+| `OperationInputMismatch`    | 409         | The work's inputs do not match the operation's approved input hash.                                                          |
+| `QueueWaitLimitExceeded`    | 403         | Queued work waited longer than the record's `queueWaitLimit`.                                                                |
+| `CredentialIssuanceDenied`  | 403         | The credential broker refused a token because the requested scope is outside the environment or the record.                  |
+| `AdmissionPolicyDenied`     | 403         | A Kubernetes admission control rejected an application workload; the message names the rule, such as a control-plane Secret. |
+| `AuthorizationUnavailable`  | 503         | Radius could not read the user's permissions or the execution record, so it refused rather than guessed.                     |
 
 A failed mTLS handshake has no HTTP response, so the component logs it with the code `PeerCertificateInvalid` (or `CertificateExpired` for its own certificate) instead. Deployment errors shown to users include the code, the action, and the target, but never another user's identity or details of resources outside the user's permission.
 
@@ -597,7 +596,7 @@ A failed mTLS handshake has no HTTP response, so the component logs it with the 
 
 Most checks run on paths that already make network or storage calls, so the added latency per request is expected to be small:
 
-- **mTLS** adds a handshake only when a connection is opened. Reused connections pay only encryption overhead. In `external` mode the customer's encryption replaces Radius's, so traffic is encrypted once, and verifying a token is a local signature check.
+- **mTLS** adds a handshake only when a connection is opened. Reused connections pay only encryption overhead.
 - **Record checks** add one store read per routed request at UCP and per step at a worker. UCP owns the store and workers already read operation state, so neither adds a network hop.
 - **The data-access service** adds one network hop and a record check to every provider write. This is the largest new cost and grows with the number of resources in a deployment.
 - **The credential broker** adds one call when a component needs a cloud or Kubernetes token, which can be reused until it expires.
@@ -622,7 +621,6 @@ Unit tests should cover verification of deployment approvals and grant-scope che
 | A peer presents an RSA-1024 or otherwise disallowed key                       | The receiver fails the handshake and logs `PeerCertificateInvalid`.                                                |
 | Install with `--ca-cert` and `--ca-key`                                       | Service certificates chain to the provided CA. A certificate signed directly by the organization root is rejected. |
 | `external` mode: a component replays a token it received to another component | The receiver rejects it because the audience does not match.                                                       |
-| `external` mode: an application pod sends a token for its own service account | The receiver rejects it with `InvalidAuthenticationInfo`.                                                          |
 
 Use cluster integration tests for certificate renewal, protected service accounts, restarts, upgrades, and interrupted deployments. Include the external engine and both legacy and current resource APIs. Test recipes that create cluster-wide objects separately from namespace-limited application templates.
 
