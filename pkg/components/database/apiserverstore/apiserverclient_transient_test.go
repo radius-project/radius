@@ -135,3 +135,32 @@ func Test_Operations_UseRetryingGet(t *testing.T) {
 	err = client.Save(context.Background(), &database.Object{Metadata: database.Metadata{ID: id}, Data: map[string]any{}})
 	require.NoError(t, err)
 }
+
+func Test_Query_RetriesTransientList(t *testing.T) {
+	original := transientBackoff
+	transientBackoff = wait.Backoff{Duration: time.Millisecond, Factor: 1, Steps: 3}
+	t.Cleanup(func() { transientBackoff = original })
+
+	scheme := runtime.NewScheme()
+	require.NoError(t, ucpv1alpha1.AddToScheme(scheme))
+
+	calls := 0
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
+		List: func(ctx context.Context, c runtimeclient.WithWatch, list runtimeclient.ObjectList, opts ...runtimeclient.ListOption) error {
+			calls++
+			if calls == 1 {
+				return apierrors.NewTooManyRequests("slow down", 1)
+			}
+			return c.List(ctx, list, opts...)
+		},
+	}).Build()
+
+	client := NewAPIServerClient(fakeClient, "radius-test")
+	result, err := client.Query(context.Background(), database.Query{
+		RootScope:    "/planes/radius/local/resourceGroups/test-group",
+		ResourceType: "Applications.Core/applications",
+	})
+	require.NoError(t, err)
+	require.Empty(t, result.Items)
+	require.Equal(t, 2, calls)
+}

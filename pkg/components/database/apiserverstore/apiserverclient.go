@@ -118,7 +118,7 @@ func (c *APIServerClient) Query(ctx context.Context, query database.Query, optio
 	}
 
 	rs := ucpv1alpha1.ResourceList{}
-	err = c.client.List(ctx, &rs, runtimeclient.InNamespace(c.namespace), runtimeclient.MatchingLabelsSelector{Selector: selector})
+	err = c.list(ctx, &rs, runtimeclient.InNamespace(c.namespace), runtimeclient.MatchingLabelsSelector{Selector: selector})
 	if err != nil {
 		return nil, err
 	}
@@ -354,18 +354,32 @@ func isTransient(err error) bool {
 	return apierrors.IsServiceUnavailable(err) || apierrors.IsServerTimeout(err) || apierrors.IsTimeout(err) || apierrors.IsTooManyRequests(err)
 }
 
-// get reads an object and retries when the API server returns a transient error. It stops waiting
-// as soon as ctx is cancelled.
+// get reads an object and retries when the API server returns a transient error.
 func (c *APIServerClient) get(ctx context.Context, key runtimeclient.ObjectKey, obj runtimeclient.Object) error {
+	return retryRead(ctx, "get", key.Name, func() error {
+		return c.client.Get(ctx, key, obj)
+	})
+}
+
+// list lists objects and retries when the API server returns a transient error.
+func (c *APIServerClient) list(ctx context.Context, list runtimeclient.ObjectList, opts ...runtimeclient.ListOption) error {
+	return retryRead(ctx, "list", "", func() error {
+		return c.client.List(ctx, list, opts...)
+	})
+}
+
+// retryRead runs a read-only API server call, retrying transient errors with transientBackoff. It
+// stops waiting as soon as ctx is cancelled and returns the last API error.
+func retryRead(ctx context.Context, op string, name string, read func() error) error {
 	backoff := transientBackoff
 	for {
-		err := c.client.Get(ctx, key, obj)
+		err := read()
 		if err == nil || !isTransient(err) || backoff.Steps <= 1 {
 			return err
 		}
 
 		delay := backoff.Step()
-		ucplog.FromContextOrDiscard(ctx).Info("Retrying Kubernetes read after transient error", "name", key.Name, "namespace", key.Namespace, "delay", delay.String(), "error", err.Error())
+		ucplog.FromContextOrDiscard(ctx).Info("Retrying Kubernetes read after transient error", "operation", op, "name", name, "delay", delay.String(), "error", err.Error())
 
 		timer := time.NewTimer(delay)
 		select {
