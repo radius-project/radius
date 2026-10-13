@@ -128,6 +128,12 @@ const (
 	// DefaultRoutesGatewayNamespace is the namespace of the Gateway installed by
 	// the default Radius-managed Contour installation.
 	DefaultRoutesGatewayNamespace = helm.DefaultContourGatewayNamespace
+
+	// DefaultContainerImagesRegistry is the registry that the default Helm install
+	// exposes on every node through the dynamicrp.buildkit.registry NodePort.
+	// BuildKit and kubelet both reach it as localhost, so no registry
+	// credentials or insecure-registry node configuration are needed.
+	DefaultContainerImagesRegistry = "localhost:31500"
 )
 
 // ResourceGroupCreator is a function that creates or updates a Radius resource group.
@@ -236,6 +242,13 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 		{
 			ResourceType: "Radius.Compute/containers",
 			Source:       "ghcr.io/radius-project/kube-recipes/containers:" + resolveRecipeTag("Radius.Compute/containers", isEdge),
+		},
+		{
+			ResourceType: "Radius.Compute/containerImages",
+			Source:       "ghcr.io/radius-project/kube-recipes/containerimages:" + resolveRecipeTag("Radius.Compute/containerImages", isEdge),
+			Parameters: map[string]any{
+				"registry": DefaultContainerImagesRegistry,
+			},
 		},
 		{
 			ResourceType: "Radius.Compute/persistentVolumes",

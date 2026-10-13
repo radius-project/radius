@@ -1,6 +1,7 @@
 suite: test terraform init container path mismatch fix
 templates:
   - rp/deployment.yaml
+  - dynamic-rp/buildkit-config.yaml
   - dynamic-rp/deployment.yaml
 tests:
   # Regression test for https://github.com/radius-project/radius/pull/11880

@@ -72,6 +72,12 @@ The Bicep driver has a hook used only by `Radius.Compute/containerImages`. When 
 
 ARM/Bicep cannot call BuildKit directly, so `dynamic-rp` runs the script where the in-Pod BuildKit endpoint is available. The registry and credential Secret name come from the registered Recipe, which prevents developer overrides from redirecting credentials. Radius reads the Secret from the recipe runtime namespace on the selected cluster, including `RADIUS_TARGET_KUBECONFIG`, and does not fall back when that target is invalid. The build runs on every recipe execution and stores no state.
 
+### Default In-Cluster Registry
+
+The BuildKit sidecar is enabled by default, and so is an in-cluster OCI registry (`radius-registry`) that the chart exposes on a NodePort (default `31500`). The CLI's default recipe pack sets the `containerImages` recipe's `registry` parameter to `localhost:31500`. Container runtimes pull plain-HTTP images only from `localhost`, so the node pulls through its own NodePort. Inside the `dynamic-rp` Pod, `localhost` is the Pod loopback. The `registry proxy` hosted service (`pkg/dynamicrp/registryproxy`) listens on `127.0.0.1:31500` and forwards TCP to the registry Service. BuildKit therefore pushes and nodes pull the same image reference. The generated `buildkitd.toml` marks `localhost:<nodePort>` as plain HTTP.
+
+The proxy is configured through the `registryProxy` block of the `dynamic-rp` configuration, and the chart renders that block only when both `dynamicrp.buildkit.enabled` and `dynamicrp.buildkit.registry.enabled` are true. Operators who use an external registry disable the in-cluster registry and override the recipe's `registry` parameter.
+
 ### Shared BuildKit Capacity
 
 All `containerImages` operations in one `dynamic-rp` Pod share its BuildKit sidecar and memory cgroup. The chart configures BuildKit's native OCI worker scheduler through `dynamicrp.buildkit.maxParallelism`, which defaults to one concurrent build step across all active solves. A generated `buildkitd.toml` carries the setting, and its Pod-template checksum restarts `dynamic-rp` when the value changes because BuildKit reads daemon configuration only at startup.

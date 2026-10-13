@@ -150,15 +150,16 @@ dynamicrp:
   terraform:
     path: "/terraform"
   # buildkit configures an in-Pod rootless BuildKit sidecar that
-  # backs the Radius.Compute/containerImages resource type. Opt-in:
-  # disabled by default. No host Docker socket; no privileged containers.
+  # backs the Radius.Compute/containerImages resource type. Enabled by
+  # default. No host Docker socket; no privileged containers.
   buildkit:
-    # Opt in to enable Radius.Compute/containerImages. When enabled,
-    # the dynamic-rp Pod gets a rootless BuildKit sidecar that requires
-    # PSA "privileged" on radius-system (the sidecar uses Unconfined
-    # seccomp + AppArmor, which PSA "baseline" and "restricted" forbid).
-    # Default install (this disabled) is PSA-baseline-compatible.
-    enabled: false
+    # Enables Radius.Compute/containerImages. The dynamic-rp Pod gets a
+    # rootless BuildKit sidecar that requires PSA "privileged" on the
+    # Radius namespace (the sidecar uses Unconfined seccomp + AppArmor,
+    # which PSA "baseline" and "restricted" forbid). Set to false to
+    # remove the sidecar, the in-cluster registry, and the registry proxy;
+    # the rest of the install is then PSA-baseline-compatible.
+    enabled: true
     # Pinned rootless BuildKit image.
     image: moby/buildkit:v0.33.1-rootless
     # Limit concurrent OCI worker steps across all builds sharing the
@@ -179,6 +180,37 @@ dynamicrp:
       limits:
         cpu: "2000m"
         memory: "4Gi"
+    # registry deploys an in-cluster OCI registry that containerImages
+    # pushes to by default. Images are referenced as
+    # localhost:<nodePort>/<name>:<tag> so the node's container runtime
+    # can pull them over plain HTTP through the NodePort, and a loopback
+    # proxy in dynamic-rp lets BuildKit push to the same reference.
+    #
+    # Intended for development and single-cluster use. The registry is
+    # unauthenticated and reachable from inside the cluster and on the
+    # NodePort. Pulling from localhost:<nodePort> requires kube-proxy to
+    # forward node-loopback NodePort traffic (iptables mode). For
+    # production, targetCluster deployments, or clusters where this is not
+    # supported, set enabled to false and configure the containerImages
+    # recipe's registry parameter with an external registry.
+    registry:
+      # Requires buildkit.enabled. Set to false to use an external registry.
+      enabled: true
+      # Pinned CNCF Distribution registry image.
+      image: docker.io/library/registry:3.0.0
+      # NodePort the registry is exposed on. Must match the host port in the
+      # containerImages recipe's registry parameter (default localhost:31500).
+      nodePort: 31500
+      # Image storage. Leave existingClaim empty to use an emptyDir: images
+      # are lost when the registry Pod restarts and must be rebuilt.
+      persistence:
+        existingClaim: ""
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "64Mi"
+        limits:
+          memory: "256Mi"
 
 rp:
   image: applications-rp
@@ -257,7 +289,9 @@ networkPolicies:
   # This traffic is host-network, so it arrives with the NODE's IP rather than a
   # pod IP and cannot be matched by a namespace/pod selector:
   #   - kube-apiserver -> ucp:9443 (APIService aggregation for api.ucp.dev)
-  # The allow policy is scoped to UCP port 9443 (the only host-network destination).
+  # The allow policy is scoped to UCP port 9443. When the containerImages registry
+  # is enabled, these CIDRs may also reach the registry on port 5000 so nodes can
+  # pull built images through its NodePort.
   # Set this to your cluster's node/control-plane source CIDR(s) -- e.g. the VPC or
   # subnet CIDR on a managed cluster, or the Docker network subnet for KinD. This
   # is REQUIRED when enabled (rendering fails if empty); without it the default-deny

@@ -148,3 +148,29 @@ Usage (pass the root context):
   value: "{{ .Values.global.targetCluster.mountPath }}/{{ .Values.global.targetCluster.secretKey }}"
 {{- end -}}
 {{- end -}}
+
+{{/*
+Returns "true" when the in-cluster containerImages registry and its loopback proxy
+should be deployed. The registry requires the BuildKit sidecar.
+*/}}
+{{- define "radius.buildkit.registryEnabled" -}}
+{{- if and .Values.dynamicrp.buildkit.enabled .Values.dynamicrp.buildkit.registry.enabled -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns the validated NodePort of the in-cluster containerImages registry.
+*/}}
+{{- define "radius.buildkit.registryNodePort" -}}
+{{- $nodePort := .Values.dynamicrp.buildkit.registry.nodePort -}}
+{{- $nodePortError := "dynamicrp.buildkit.registry.nodePort must be an integer between 1 and 65535" -}}
+{{- if not (or (kindIs "int" $nodePort) (kindIs "int64" $nodePort) (kindIs "float64" $nodePort)) -}}
+{{- fail $nodePortError -}}
+{{- end -}}
+{{- $nodePortFloat := float64 $nodePort -}}
+{{- if or (lt $nodePortFloat 1.0) (gt $nodePortFloat 65535.0) (ne $nodePortFloat (floor $nodePortFloat)) -}}
+{{- fail $nodePortError -}}
+{{- end -}}
+{{- int64 $nodePort -}}
+{{- end -}}

@@ -17,7 +17,7 @@ This design extends the [`Radius.Compute/containerImages` resource type design](
 | Build hook               | The post-deploy build step inside the Radius Bicep driver (`dynamic-rp`) that runs after the normal Bicep deployment, only for `Radius.Compute/containerImages`. Radius owns this step; the platform engineer supplies only the embedded `build.sh` it runs, not the hook itself. |
 | `imageBuild`             | Internal Bicep output that tells the Radius Bicep driver what image to build. The driver injects the operator-configured registry; registry credentials are handled separately.                                                                                                   |
 | Build script             | `build.sh` published by the platform engineer and embedded into the compiled Bicep template by `loadTextContent`. This lets the platform engineer customize how images are built.                                                                                                 |
-| BuildKit                 | The image build engine running as an opt-in rootless sidecar in the `dynamic-rp` Pod.                                                                                                                                                                                             |
+| BuildKit                 | The image build engine running as a rootless sidecar in the `dynamic-rp` Pod, enabled by default.                                                                                                                                                                                 |
 | `buildctl`               | BuildKit CLI staged into the `dynamic-rp` container and connected to the sidecar through `BUILDKIT_HOST`.                                                                                                                                                                         |
 | Recipe runtime namespace | Kubernetes namespace from `context.runtime.kubernetes.namespace` where Radius creates recipe resources, including registry Secrets.                                                                                                                                               |
 | Generated tag            | Deterministic `sha256-<16 hex characters>` tag computed by the build script when `properties.tag` is omitted. It is content-addressed only when the source identifier is immutable.                                                                                               |
@@ -324,7 +324,7 @@ Because Bicep has no equivalent to Terraform's `triggers_replace` state, the Bic
 - Rebuilds and pushes on every Bicep recipe execution.
 - Requires a Radius control plane with the `imageBuild` hook; recipe registration does not enforce that capability.
 - Creates a private contract based on fixed output and compiled-variable names plus the argument type rules.
-- Requires the opt-in BuildKit sidecar and a namespace policy that permits its rootless BuildKit security profile.
+- Requires the BuildKit sidecar (enabled by default) and a namespace policy that permits its rootless BuildKit security profile.
 - End-to-end Bicep recipe coverage is still missing.
 
 #### Proposed Option
@@ -358,13 +358,13 @@ rad bicep publish \
   --target br:<registry>/<path>:<tag>
 ```
 
-BuildKit remains an install-time opt-in:
+BuildKit was originally an install-time opt-in. To support `containerImages` in the default Kubernetes recipe pack ([radius-project/resource-types-contrib#277](https://github.com/radius-project/resource-types-contrib/issues/277)), the chart now enables it by default, together with an in-cluster registry that the default pack targets at `localhost:31500`. Operators opt out with Helm values:
 
 ```sh
-rad install kubernetes --set dynamicrp.buildkit.enabled=true
+rad install kubernetes --set dynamicrp.buildkit.enabled=false
 ```
 
-The build hook itself is always present in the driver regardless of this flag; the flag only provisions the BuildKit sidecar the hook needs, so a build fails cleanly if the hook runs without BuildKit enabled.
+The build hook itself is always present in the driver regardless of this flag; the flag only provisions the BuildKit sidecar the hook needs. If the hook runs without BuildKit, the build fails and the error suggests enabling `dynamicrp.buildkit.enabled`.
 
 ### Implementation Details
 
@@ -459,7 +459,7 @@ Developer input is treated as data, not code, and the Bicep hook is actually str
 
 Registry credentials are handled the same careful way in both recipes. They come only from the operator-registered `registrySecretName`, never from developer parameters, so a developer cannot redirect the build to another registry or Secret. The driver reads the Secret from the runtime namespace on the target cluster, writes it as a `0600` `config.json` inside a `0700` directory, points `buildctl` at it through `DOCKER_CONFIG`, and deletes it after the build. These owner-only modes limit access to processes running as the file owner. The credentials are never passed as arguments or logged. The one difference from Terraform is that the Bicep hook writes this config to a temporary directory that is removed after the build, while Terraform writes it under the module directory.
 
-The BuildKit sidecar remains opt-in and uses rootless BuildKit without host mounts or a Docker socket. Its pod-security requirements are an inherited sidecar constraint shared by both recipe kinds, not a new property of the Bicep hook; see the [Rootless BuildKit sidecar design](https://github.com/radius-project/radius/pull/11882).
+The BuildKit sidecar is enabled by default and uses rootless BuildKit without host mounts or a Docker socket. Its pod-security requirements are an inherited sidecar constraint shared by both recipe kinds, not a new property of the Bicep hook; see the [Rootless BuildKit sidecar design](https://github.com/radius-project/radius/pull/11882).
 
 ## Compatibility (optional)
 

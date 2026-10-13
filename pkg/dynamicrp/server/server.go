@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend"
 	"github.com/radius-project/radius/pkg/dynamicrp/frontend"
+	"github.com/radius-project/radius/pkg/dynamicrp/registryproxy"
 )
 
 // NewServer initializes a host for UCP based on the provided options.
@@ -43,6 +44,12 @@ func NewServer(options *dynamicrp.Options) (*hosting.Host, error) {
 	// Tracing is provided via a service.
 	if options.Config.Tracing.Enabled {
 		services = append(services, &traceservice.Service{Options: &options.Config.Tracing})
+	}
+
+	// The registry proxy lets the BuildKit sidecar push to the in-cluster registry at the same
+	// localhost reference that the node uses to pull.
+	if options.Config.RegistryProxy.Enabled {
+		services = append(services, &registryproxy.Service{Options: &options.Config.RegistryProxy})
 	}
 
 	services = append(services, frontend.NewService(options))

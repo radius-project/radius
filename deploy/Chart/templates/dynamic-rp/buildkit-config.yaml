@@ -20,4 +20,10 @@ data:
   buildkitd.toml: |-
     [worker.oci]
       max-parallelism = {{ int64 $maxParallelism }}
+    {{- if include "radius.buildkit.registryEnabled" . }}
+    # The in-cluster registry is reached over plain HTTP through the loopback
+    # proxy in dynamic-rp.
+    [registry."localhost:{{ include "radius.buildkit.registryNodePort" . }}"]
+      http = true
+    {{- end }}
 {{- end }}
