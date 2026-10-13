@@ -15,18 +15,24 @@ set -euo pipefail
 #                  optional SVG icons are copied into every destination
 #                  directory and stale managed files are pruned.
 #   recipePacks    one entry per recipe pack folder published upstream (azure,
-#                  kubernetes, ...). Recipe packs are not vendored into this
-#                  repo, so they are only pinned - never copied.
+#                  kubernetes, ...). Every pinned pack folder is verified to
+#                  exist. Packs listed in VENDORED_RECIPE_PACKS (kubernetes) are
+#                  also compiled from recipe-packs/<pack>/default.bicep to
+#                  RECIPE_PACK_DEST_DIR/<pack>/default.json, which rad embeds
+#                  to create the default recipe pack. Other packs are only
+#                  pinned.
 #
 # Path resolution: strip the "Radius." prefix from a defaultRegistration entry,
 # then <namespace>/<typeName>/<typeName>.yaml (e.g. Radius.Compute/containers ->
 # Compute/containers/containers.yaml) inside the fetched tree.
 #
 # Modes:
-#   (default)             Validate all pins and copy resource type manifests.
+#   (default)             Validate all pins, copy resource type manifests and
+#                         compile vendored recipe packs.
 #   --update              Re-pin `resourceTypes`, then copy.
-#   --update-recipe-packs Re-pin `recipePacks` only (nothing is copied).
-#   --update-all          Atomically re-pin both sections, then copy manifests.
+#   --update-recipe-packs Re-pin `recipePacks`, then compile vendored recipe
+#                         packs (resource type manifests are not copied).
+#   --update-all          Atomically re-pin both sections, then copy.
 #
 # Both update modes select what to pin the same way, with the *_PINS variable
 # winning when set:
@@ -54,6 +60,10 @@ set -euo pipefail
 #   RECIPE_PACKS_PINS         --update-recipe-packs: JSON [{name, ref}, ...].
 #   RECIPE_PACKS_REF          --update-recipe-packs: ref (default "main").
 #   RECIPE_PACKS_NAME         --update-recipe-packs: limit to one pack.
+#   RECIPE_PACK_DEST_DIR      Destination for compiled vendored recipe packs.
+#   VENDORED_RECIPE_PACKS     Space-separated recipe packs to compile and copy.
+#   BICEP                     Bicep CLI used to compile packs (default "bicep").
+#   BICEP_VERSION             Required Bicep version (default: build/tools.yaml).
 
 readonly DEFAULTS_YAML="${DEFAULTS_YAML:-deploy/manifest/defaults.yaml}"
 readonly MANIFEST_DEST_DIRS="${MANIFEST_DEST_DIRS:-deploy/manifest/built-in-providers/dev deploy/manifest/built-in-providers/self-hosted}"
@@ -64,6 +74,16 @@ readonly RESOURCE_TYPES_PINS="${RESOURCE_TYPES_PINS:-}"
 readonly RECIPE_PACKS_REF="${RECIPE_PACKS_REF:-main}"
 readonly RECIPE_PACKS_NAME="${RECIPE_PACKS_NAME:-}"
 readonly RECIPE_PACKS_PINS="${RECIPE_PACKS_PINS:-}"
+RECIPE_PACK_DEST_DIR="${RECIPE_PACK_DEST_DIR:-deploy/manifest/recipe-packs}"
+readonly VENDORED_RECIPE_PACKS="${VENDORED_RECIPE_PACKS:-kubernetes}"
+BICEP="${BICEP:-bicep}"
+BICEP_VERSION="${BICEP_VERSION:-}"
+
+# The vendored pack's entry file and the Radius extension version recorded in
+# its compiled imports. The version is fixed so the output does not depend on
+# the build channel.
+readonly RECIPE_PACK_ENTRY_FILE="default.bicep"
+readonly RECIPE_PACK_RADIUS_EXTENSION="br:biceptypes.azurecr.io/radius:latest"
 
 # YAML keys of the two pin sections in defaults.yaml.
 readonly RESOURCE_TYPES_SECTION="resourceTypes"
@@ -528,7 +548,7 @@ fetch_ref() {
 # type belonging to that resourceTypes entry into all destination directories.
 copy_manifests() {
     local tmp_root pairs_file i=0 repo ref dir entry ns rel type src src_icon dest
-    local pack pack_repo pack_ref
+    local pack
     tmp_root="$(mktemp -d)"
     # shellcheck disable=SC2064
     trap "rm -rf '${tmp_root}'" EXIT
@@ -577,14 +597,106 @@ copy_manifests() {
                 echo "  Copied ${entry}"
             fi
         done
-        for pack in $(entry_names "${RECIPE_PACKS_SECTION}"); do
-            pack_repo="$(pin_field "${RECIPE_PACKS_SECTION}" "${pack}" repo)"
-            pack_ref="$(pin_field "${RECIPE_PACKS_SECTION}" "${pack}" ref)"
-            [[ "${pack_repo}|${pack_ref}" == "${repo}|${ref}" ]] || continue
-            [[ -d "${dir}/recipe-packs/${pack}" ]] ||
-                fail "Recipe pack directory not found: recipe-packs/${pack} at ${repo}@${ref}."
+        process_recipe_packs "${dir}" "${repo}" "${ref}"
+    done <"${pairs_file}"
+}
+
+# is_vendored_recipe_pack <pack> succeeds when the pack is compiled and copied.
+is_vendored_recipe_pack() {
+    local vendored
+    for vendored in ${VENDORED_RECIPE_PACKS}; do
+        [[ "${vendored}" == "$1" ]] && return 0
+    done
+    return 1
+}
+
+# process_recipe_packs <dir> <repo> <ref> verifies every recipePacks entry
+# pinned to (repo, ref) exists in the fetched tree and compiles vendored ones.
+process_recipe_packs() {
+    local dir="$1" repo="$2" ref="$3" pack pack_repo pack_ref
+    for pack in $(entry_names "${RECIPE_PACKS_SECTION}"); do
+        pack_repo="$(pin_field "${RECIPE_PACKS_SECTION}" "${pack}" repo)"
+        pack_ref="$(pin_field "${RECIPE_PACKS_SECTION}" "${pack}" ref)"
+        [[ "${pack_repo}|${pack_ref}" == "${repo}|${ref}" ]] || continue
+        [[ -d "${dir}/recipe-packs/${pack}" ]] ||
+            fail "Recipe pack directory not found: recipe-packs/${pack} at ${repo}@${ref}."
+        if is_vendored_recipe_pack "${pack}"; then
+            vendor_recipe_pack "${dir}/recipe-packs/${pack}" "${pack}" "${repo}" "${ref}"
+            echo "  Compiled recipe pack ${pack}"
+        else
             echo "  Verified recipe pack ${pack}"
-        done
+        fi
+    done
+}
+
+# require_bicep fails unless BICEP is the version pinned in build/tools.yaml, so
+# local and CI runs compile identical JSON.
+require_bicep() {
+    local actual
+    command -v "${BICEP}" >/dev/null 2>&1 ||
+        fail "Bicep CLI '${BICEP}' not found. Install it via: make install-bicep"
+    if [[ -z "${BICEP_VERSION}" ]]; then
+        BICEP_VERSION="$(yq -r '.tools[] | select(.name == "bicep") | .version' build/tools.yaml)"
+    fi
+    actual="$("${BICEP}" --version | sed -n 's/^Bicep CLI version \([0-9.]*\).*/\1/p')"
+    [[ "v${actual}" == "${BICEP_VERSION}" ]] ||
+        fail "Bicep ${BICEP_VERSION} is required but '${BICEP}' is version '${actual}'. Run 'make install-bicep' and put its install dir first on PATH, or set BICEP to that binary."
+}
+
+# vendor_recipe_pack <pack_dir> <pack> <repo> <ref> compiles the pack's entry
+# file to RECIPE_PACK_DEST_DIR/<pack>/default.json.
+vendor_recipe_pack() {
+    local pack_dir="$1" pack="$2" repo="$3" ref="$4" src build_dir dest
+    src="${pack_dir}/${RECIPE_PACK_ENTRY_FILE}"
+    [[ -f "${src}" ]] ||
+        fail "Recipe pack file not found: recipe-packs/${pack}/${RECIPE_PACK_ENTRY_FILE} at ${repo}@${ref}. Vendored recipe packs must provide this file."
+    require_bicep
+
+    # Compile a copy so the bicepconfig.json written here is the only one Bicep
+    # finds, regardless of any config in the fetched tree.
+    build_dir="$(mktemp -d)"
+    cp "${src}" "${build_dir}/${RECIPE_PACK_ENTRY_FILE}"
+    printf '{\n  "extensions": {\n    "radius": "%s"\n  }\n}\n' \
+        "${RECIPE_PACK_RADIUS_EXTENSION}" >"${build_dir}/bicepconfig.json"
+    if ! "${BICEP}" build "${build_dir}/${RECIPE_PACK_ENTRY_FILE}" --outfile "${build_dir}/default.json"; then
+        rm -rf "${build_dir}"
+        fail "Failed to compile recipe-packs/${pack}/${RECIPE_PACK_ENTRY_FILE} at ${repo}@${ref}."
+    fi
+
+    # The generator block records the Bicep version and template hash; drop it
+    # so a Bicep upgrade alone does not change the vendored file.
+    dest="${RECIPE_PACK_DEST_DIR}/${pack}"
+    mkdir -p "${dest}"
+    yq -p json -o json -I 2 \
+        'del(.metadata._generator) | del(.metadata | select(length == 0))' \
+        "${build_dir}/default.json" >"${dest}/default.json"
+    rm -rf "${build_dir}"
+}
+
+# copy_recipe_packs fetches each distinct recipePacks (repo, ref) once and
+# verifies or compiles the packs pinned to it.
+copy_recipe_packs() {
+    local tmp_root pairs_file i=0 repo ref dir pack
+    tmp_root="$(mktemp -d)"
+    # shellcheck disable=SC2064
+    trap "rm -rf '${tmp_root}'" EXIT
+
+    pairs_file="${tmp_root}/pairs"
+    : >"${pairs_file}"
+    for pack in $(entry_names "${RECIPE_PACKS_SECTION}"); do
+        repo="$(pin_field "${RECIPE_PACKS_SECTION}" "${pack}" repo)"
+        ref="$(pin_field "${RECIPE_PACKS_SECTION}" "${pack}" ref)"
+        printf '%s|%s\n' "${repo}" "${ref}" >>"${pairs_file}"
+    done
+    sort -u "${pairs_file}" -o "${pairs_file}"
+
+    while IFS='|' read -r repo ref; do
+        [ -n "${repo}" ] || continue
+        dir="${tmp_root}/src_${i}"
+        i=$((i + 1))
+        echo "  Source: ${repo} @ ${ref}"
+        fetch_ref "${repo}" "${ref}" "${dir}"
+        process_recipe_packs "${dir}" "${repo}" "${ref}"
     done <"${pairs_file}"
 }
 
@@ -624,6 +736,20 @@ prune_stale() {
     done
 }
 
+# update_recipe_packs re-pins recipePacks and recompiles vendored packs. Only
+# recipe packs change here, so resource type manifests are not copied.
+update_recipe_packs() {
+    if has_pins "${RECIPE_PACKS_PINS}"; then
+        apply_pins "${RECIPE_PACKS_SECTION}" "${RECIPE_PACKS_PINS}" RECIPE_PACKS_PINS
+    else
+        update_section "${RECIPE_PACKS_SECTION}" "${RECIPE_PACKS_REF}" "${RECIPE_PACKS_NAME}"
+    fi
+    promote_edge_pins "${RECIPE_PACKS_SECTION}"
+    validate_section_pins "${RECIPE_PACKS_SECTION}"
+    echo "Syncing vendored recipe packs from resource-types-contrib..."
+    copy_recipe_packs
+}
+
 main() {
     local mode="sync"
     case "${1:-}" in
@@ -646,16 +772,9 @@ main() {
         return 0
     fi
 
-    # Recipe packs are pinned but never vendored, so this mode does not copy.
     if [ "${mode}" = update-recipe-packs ]; then
-        if has_pins "${RECIPE_PACKS_PINS}"; then
-            apply_pins "${RECIPE_PACKS_SECTION}" "${RECIPE_PACKS_PINS}" RECIPE_PACKS_PINS
-        else
-            update_section "${RECIPE_PACKS_SECTION}" "${RECIPE_PACKS_REF}" "${RECIPE_PACKS_NAME}"
-        fi
-        promote_edge_pins "${RECIPE_PACKS_SECTION}"
-        validate_section_pins "${RECIPE_PACKS_SECTION}"
-        echo "Done. Review and commit the updated ${DEFAULTS_YAML}."
+        update_recipe_packs
+        echo "Done. Review and commit the updated files."
         return 0
     fi
 

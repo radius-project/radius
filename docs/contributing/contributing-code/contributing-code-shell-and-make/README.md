@@ -23,6 +23,20 @@ The canonical versions, release sources, platform assets, and SHA-256 checksums 
 
 Bicep remains on a manually tested pin (`update: false`) because upgrades must preserve ACR authentication, local registry trust, and extension compatibility. Its `versionFiles` entry synchronizes the version in `pkg/cli/bicep/tools/download_tools.go`, keeping `rad bicep download`, `make install-bicep`, and Bicep container staging on the same release. Local registries require [explicit hostname trust](../contributing-code-tests/running-functional-tests.md#local-bicep-registry-trust); do not disable registry or certificate validation to test an upgrade.
 
+## Updating resource types and recipe packs
+
+[`deploy/manifest/defaults.yaml`](../../../../deploy/manifest/defaults.yaml) pins the resource-types-contrib commits that Radius ships. `make update-resource-types`, `make update-recipe-packs`, and `make update-resource-types-and-recipe-packs` move the pins; `make sync-resource-types` regenerates the vendored files from the current pins without changing them.
+
+These targets compile the pinned Kubernetes recipe pack (`recipe-packs/kubernetes/default.bicep`) into [`deploy/manifest/recipe-packs/kubernetes/default.json`](../../../../deploy/manifest/recipe-packs/kubernetes/default.json), which `rad` embeds to create the default recipe pack. Compiling requires the Bicep CLI version pinned in `build/tools.yaml`:
+
+```bash
+make install-bicep                  # installs into $HOME/.local/bin by default
+export PATH="$HOME/.local/bin:$PATH" # or set BICEP=/path/to/bicep
+make sync-resource-types
+```
+
+The script fails if `bicep` is missing or is a different version. Commit the regenerated `default.json` together with the `defaults.yaml` change; CI fails if the committed file does not match a fresh compile of the pinned pack.
+
 ## Linting shell scripts with ShellCheck
 
 Every tracked `.sh` script is validated with [ShellCheck](https://github.com/koalaman/shellcheck) as part of the pull request checks, so run it locally before you push. Install the pinned version (into a user-owned bin directory — no `sudo`) and lint every tracked script with:
