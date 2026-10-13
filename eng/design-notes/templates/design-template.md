@@ -11,7 +11,8 @@ How to use this template
 - Write for a reviewer who has 30 minutes. Sections go from "what we decide" to "how we build it".
 - Tier 1 (Review guide through User Experience) must be readable on its own. Reviewers approve the design from Tier 1.
 - Tier 2 (Design through Alternatives considered) supports the decisions. Reviewers skim it.
-- Tier 3 (Appendix) holds long code, full schemas, and exhaustive tables. Reviewers read it only when needed.
+- Tier 3 (Appendix) holds the lowest-level detail: long code, full schemas, exhaustive tables, and per-file change lists. Reviewers read it only when needed.
+- Be complete. Concise means fewer words, not fewer facts. If a detail is too low-level for a section, move it down a tier; do not delete it.
 - Every section heading below must stay. If a section does not apply, write one sentence saying why (for example, "No CLI changes."). Do not pad it.
 - Short sentences. Bullets and tables over paragraphs. Link to code instead of describing it.
 - See the radius-author-design-note skill and docs/contributing/contributing-code/contributing-code-design/README.md for the writing guide.
@@ -193,7 +194,7 @@ New or changed rad commands and flags. Show the command, its flags, and sample o
 ### Implementation Details
 
 <!--
-Which sub-components change and how (for example controller, processor, renderer, recipe engine, driver). Use one or two bullets per component. Delete component headings that this design does not touch, and add others as needed (for example Dynamic RP or Controller).
+Which sub-components change and how (for example controller, processor, renderer, recipe engine, driver). For each component, name the packages and types that change, and cover whichever of these apply: data model and storage, state transitions, concurrency and idempotency, retries and timeouts, caching, configuration, and performance limits. Start each component with a one-line summary, then the detail. Put per-file change lists and long code in the Appendix. Delete component headings that this design does not touch, and add others as needed (for example Dynamic RP or Controller).
 -->
 
 #### UCP (if applicable)
@@ -265,7 +266,7 @@ Alternatives to the whole approach, with a one-line reason each was rejected. Pe
 ## Appendix (optional)
 
 <!--
-Long code samples, full schemas, scripts, exhaustive tables, and background research. Link to these from the sections above.
+Low-level implementation detail: long code samples, full schemas, per-file change lists, scripts, exhaustive tables, and background research. Link to these from the sections above.
 -->
 
 ## Design Review Notes

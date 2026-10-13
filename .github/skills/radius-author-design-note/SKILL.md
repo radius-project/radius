@@ -7,7 +7,7 @@ user-invocable: true
 
 # Author a design note
 
-Write a design note that a reviewer can approve from its first page. Build it from decisions down to implementation detail. Be concise.
+Write a design note that a reviewer can approve from its first page. Build it from decisions down to implementation detail. Be complete in content and concise in wording: each tier adds detail, and nothing is lost.
 
 Backing doc: [Working with design documents](../../../docs/contributing/contributing-code/contributing-code-design/README.md#writing-a-design-note). Template: [design-template.md](../../../eng/design-notes/templates/design-template.md).
 
@@ -36,14 +36,15 @@ If the problem or the intended scope is unclear, ask the user before drafting.
 4. **Write Tier 1** (Review guide through User Experience). It must stand alone: a reviewer who reads only this part can approve or reject the design.
 5. **Draw the flow.** Add one Mermaid architecture diagram and one sequence diagram for the main path. Prefer a diagram plus a short numbered list over paragraphs.
 6. **Write Decision details.** One subsection per decision ID: context, options table (advantages and disadvantages), proposed option, and how we'll know it's right.
-7. **Write the remaining Tier 2 sections**, going from contracts (API, CLI) to implementation details, error handling, tests, security, compatibility, monitoring, and development plan.
-8. **Move bulk to the Appendix.** Code blocks longer than about 20 lines, full schemas, scripts, and exhaustive tables go in the Appendix, with a link from the section that needs them.
-9. **Prune.** Apply the writing rules below. Cut every sentence that does not help a reviewer decide or an implementer build.
+7. **Write the remaining Tier 2 sections**, going from contracts (API, CLI) to implementation details, error handling, tests, security, compatibility, monitoring, and development plan. In Implementation Details, give each component a one-line summary, then name the packages and types and cover data model, state transitions, concurrency, retries, configuration, and limits where they apply.
+8. **Move low-level detail to the Appendix.** Code blocks longer than about 20 lines, full schemas, per-file change lists, scripts, and exhaustive tables go in the Appendix, with a link from the section that needs them.
+9. **Tighten without losing facts.** Apply the writing rules below. Cut filler and repetition. If a fact is too detailed for its section, move it down a tier rather than deleting it. When revising an existing note, check that every fact in the original still appears somewhere.
 10. **Self-review** against the Verification checklist, then hand off. A human author owns the note and reviews the draft before it is shared.
 
 ## Writing rules
 
 - **Lead with the point.** First sentence of each section states the conclusion; detail follows.
+- **Layered, not lossy.** Each tier summarizes the one below it. A reader can stop at any tier and have an accurate picture; an implementer who reads to the end has every detail.
 - **Short.** Sentences under about 25 words. Paragraphs of three sentences or fewer. Prefer bullets and tables.
 - **Concrete.** Name the package, type, field, flag, or API path. Link to code instead of describing it.
 - **No filler.** No restating headings, no "This section describes…", no marketing words (seamless, robust, powerful, leverage), no summaries of what was just said.
@@ -71,4 +72,6 @@ If the problem or the intended scope is unclear, ask the user before drafting.
 - [ ] Authoring notes say what was AI-drafted and what was verified by hand.
 - [ ] Every path, symbol, and link resolves, or is marked as new.
 - [ ] No code block over about 20 lines outside the Appendix.
+- [ ] Implementation Details names the packages and types per component, so another developer could implement and estimate it.
+- [ ] No fact from the source material (spec, issue, or prior draft) was dropped; detail cut from Tiers 1–2 is in Tier 2 or the Appendix.
 - [ ] Markdown lint passes (see the [radius-markdown-lint](../radius-markdown-lint/SKILL.md) skill) and `make spellcheck` passes.

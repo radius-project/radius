@@ -49,9 +49,10 @@ In the review meeting, the author walks through the table row by row. The meetin
 ### Writing guidelines
 
 - Lead each section with its conclusion; put detail after.
+- Be complete. Concise means fewer words, not fewer facts: move detail down a tier instead of deleting it.
 - Use short sentences, bullets, and tables. Link to code instead of describing it.
 - Include one architecture diagram and one sequence diagram, in Mermaid, for the main path.
-- Move code blocks longer than about 20 lines, full schemas, and exhaustive tables to the Appendix.
+- Move code blocks longer than about 20 lines, full schemas, per-file change lists, and exhaustive tables to the Appendix.
 - State each fact once and link to it. Summarize the feature spec instead of repeating it.
 - Fill in **Authoring notes**: say which sections were AI-drafted and what you verified by hand.
 
