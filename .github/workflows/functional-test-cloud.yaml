@@ -1005,7 +1005,17 @@ jobs:
           rad group switch kind-radius
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create kind-radius --namespace default
+          #
+          # The environment is deployed declaratively rather than with `rad env create` so that it is
+          # pinned to Applications.Core regardless of which provider the `rad env create` default
+          # targets.
+          rad deploy ./test/infra/radius/legacy-test-environment.bicep \
+            --parameters name=kind-radius \
+            --parameters namespace=default
+
+          # TODO(#11803): `rad env switch` and the `rad env update` calls below resolve names as
+          # Applications.Core today but will target only Radius.Core once `--preview` is removed.
+          # Select and configure this legacy environment without those CLI commands when that happens.
           rad env switch kind-radius
 
           echo "*** Configuring Azure provider ***"
