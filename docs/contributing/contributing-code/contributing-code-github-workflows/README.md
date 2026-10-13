@@ -48,9 +48,11 @@ Jobs that compile only the root module, including the current GoReleaser builds,
 
 [`__changes.yml`](../../../../.github/workflows/__changes.yml) first checks out the caller-selected repository and ref to inspect changes as data. Its Filter step must finish in that checkout at the workspace root. For `pull_request_target` and `workflow_run`, a second checkout then restores `.github/scripts/changes.mjs` from `github.repository` at `github.sha` before Set result imports it. Do not select this executable helper using the comparison inputs or a PR/workflow-run head SHA. A failed trusted checkout or import must fail the job without falling back to PR content.
 
+Before Filter, the workflow checks that the comparison base commit exists locally. It uses `base_sha` when supplied, otherwise the PR or merge-group base SHA. If missing, it fetches that commit and its history from `github.repository` using a command-scoped read token, without changing the checked-out head or persisting credentials. A full-history fork checkout can still lack newer upstream commits; increasing fetch depth does not fix that. A failed base fetch must fail the job rather than continue with an incomplete comparison.
+
 The comparison checkout's `allow-unsafe-pr-checkout: true` permits fetching fork content for inspection; it does not make that content safe to execute. Do not insert repository scripts, local actions, or package installation between comparison checkout and trusted restoration. Ordinary `pull_request` and `merge_group` calls retain their existing behavior. The `files`, `ref`, `repository`, `base_sha`, and string-valued `only_changed` interface is unchanged: PR and merge-group events use the filter result, other events with a base SHA use it, and events without either return `"false"` so downstream work runs.
 
-Run `make test-workflow-changes` for the helper and workflow wiring tests. They cover output/error behavior and import fixtures, not the live checkout action.
+Run `make test-workflow-changes` for the helper and workflow wiring tests. They cover output/error behavior, import fixtures, and the actual base-fetch command against local Git repositories, including a full-history fork missing its upstream base, an already-present base, and an unavailable base. They do not run the live checkout action.
 
 ## Verification
 
