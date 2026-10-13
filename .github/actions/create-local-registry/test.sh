@@ -226,7 +226,7 @@ for TEST_SECURE in true false; do
         block && /^        / { sub(/^        /, ""); print; next }
         block { block = 0 }
     ' "${SCRIPT_DIR}/action.yaml" > "${TEST_DIR}/action.sh"
-    grep -F 'timeout --kill-after=5 600 bash "${PULL_SCRIPT}"' "${TEST_DIR}/action.sh" > /dev/null
+    grep -F "timeout --kill-after=5 600 bash \"\${PULL_SCRIPT}\"" "${TEST_DIR}/action.sh" > /dev/null
     grep -F 'docker run -d' "${TEST_DIR}/action.sh" > /dev/null
 
     : > "${CALL_LOG}"
