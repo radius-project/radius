@@ -134,6 +134,46 @@ test_rejects_mismatched_signed_tag_name() {
     ((++PASS))
 }
 
+test_accepts_tag_at_approved_commit() {
+    write_fake_gh tag true
+    if ! GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 \
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >/dev/null; then
+        fail_test "expected a tag at the approved commit to pass"
+        return
+    fi
+    ((++PASS))
+}
+
+test_rejects_tag_moved_after_approval() {
+    local output status
+
+    write_fake_gh tag true
+    set +e
+    output="$(GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 \
+        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb 2>&1)"
+    status=$?
+    set -e
+    if ((status == 0)); then
+        fail_test "expected a tag that moved after approval to fail"
+        return
+    fi
+    if [[ "${output}" != *"moved from approved commit"* ]]; then
+        fail_test "moved tag error did not name the approved commit"
+        return
+    fi
+    ((++PASS))
+}
+
+test_rejects_malformed_approved_commit() {
+    write_fake_gh tag true
+    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 aaaa \
+        >/dev/null 2>&1; then
+        fail_test "expected a malformed approved commit to fail"
+        return
+    fi
+    ((++PASS))
+}
+
 test_missing_tag_prints_recovery_command() {
     local output
 
@@ -185,6 +225,9 @@ main() {
     test_rejects_unverified_tag
     test_rejects_non_commit_tag_target
     test_rejects_mismatched_signed_tag_name
+    test_accepts_tag_at_approved_commit
+    test_rejects_tag_moved_after_approval
+    test_rejects_malformed_approved_commit
     test_missing_tag_prints_recovery_command
     test_unreadable_repository_is_not_reported_as_missing_tag
 

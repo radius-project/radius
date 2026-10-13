@@ -42,6 +42,37 @@ The original cross-layer findings and follow-up correctness fixes are recorded b
 
 The resolver filters closed pull requests by the exact `owner:automation/prepare-release-<version>` head instead of enumerating every closed `main` pull request. Repository identity, merged state, branch matching, and ambiguity checks remain in place.
 
+### 6. The approval gate fails closed
+
+- **What changed**: before any preflight, the `validate` job checks that the `release` environment requires reviewers and fails otherwise. The job and its caller gain `actions: read` for the environment lookup; a missing deployment branch restriction is reported as a warning.
+- **Why**: the environment had no protection rules, so the `approve` job passed immediately, and every merged release pull request, Approve Release run, or Resume Release run mutated four repositories without the approval the runbook describes.
+- **Value**: the documented approval cannot silently become a no-op.
+- **Impact**: required reviewers must be configured on `release` before the first controller release; the runbook lists it as a prerequisite.
+
+### 7. Approvers see the Deployment Engine commit that ships
+
+- **What changed**: validation records the signed tag's commit as a job output, and its summary lists that commit with the Deployment Engine image tag, the release branch, and the frozen sibling commits. The publish job passes the commit back to `verify-deployment-engine-tag.sh`, which fails when the tag now points elsewhere.
+- **Why**: the publish job resolved the tag again after approval, so a tag re-pointed during the approval wait would have been published and locked without anyone seeing its commit.
+- **Value**: the summary an approver reviews is what the controller releases.
+
+### 8. A stale image is not a registry error
+
+- **What changed**: `verify-deployment-engine-image.sh --allow-stale` reports a tag that holds another build, by platform set, ref label, or revision label, as `state=stale` and exits successfully. The inspection step no longer uses `continue-on-error`.
+- **Why**: every patch release finds the previous build under the `X.Y` tag, so the step was marked failed on routine runs, and a transient registry error took the same path and dispatched the publisher again after a successful run.
+- **Value**: a stale tag is republished as before, a registry error fails the run without a duplicate dispatch, and a healthy release run shows no failed steps.
+- **Coverage**: the fake registry now returns the BuildKit attestation manifests that published images carry, and the tests cover ref and revision mismatches, stale reporting, and registry errors.
+
+### 9. The digest lock is tamper-evident
+
+- **What changed**: the lock reader also requires the state commit to be GitHub-verified and bot-authored, which the controller's API write satisfies.
+- **Why**: a person-written commit with the expected parent and a canonical lock file was accepted as the release's locked digest.
+- **Impact**: deleting the state branch still resets the lock; the runbook recommends rulesets for the state branch and the release tags.
+
+### 10. Backport binding and gateway consistency
+
+- **What changed**: the controller plan tests now reject a backport without the cherry-pick trailer, with files outside the plan contract, that keeps the legacy workflow, that changes the committed plan, or that is a merge commit, and a release-backport trigger for a new channel. Approve Release has the same repository guard as Resume Release, the entry summary suggests remediation only after a resolution failure rather than for every closed unmerged pull request, and the plan's rollback note covers release branches whose legacy workflow is already gone.
+- **Why**: those guards decide which commit the Radius tag references and had no failing-case tests.
+
 ## Remaining boundaries and follow-ups
 
 - **Deployment Engine lock on a state branch** (cross-layer finding 2): the lock is written before any release exists, as a signed App commit on `automation/release-state-<version>`, and every resume verifies it. That is a sound durable store; its cost is one branch per release that nothing deletes. Evaluated at PR 16 together with the release manifest: the branch can be pruned once the release is published and the manifest carries the digest.
@@ -49,11 +80,14 @@ The resolver filters closed pull requests by the exact `owner:automation/prepare
 - **Which code runs**: since [December 8, 2025](https://github.blog/changelog/2025-11-07-actions-pull_request_target-and-environment-branch-protections-changes/), `pull_request_target` uses the default branch's workflow and execution reference, including backport merges into older release branches. Those branches need no local controller copy. Their legacy push-triggered `release.yaml` still needs removal.
 - **Native publisher run IDs**: a coordinated publisher change can replace new-run discovery with `workflow_dispatch` and its [returned run ID](https://github.blog/changelog/2026-02-19-workflow-dispatch-api-now-returns-run-ids/). It requires a matching publisher trigger and App `actions: write`; it does not remove the need for idempotency when responses are lost.
 - **Image provenance**: revision and ref labels are consistency checks against the signed tag, not authenticated build provenance. Digest-bound build attestations require a coordinated publisher change before the controller can enforce them.
-- **Unlocked image inspection is allowed to fail**: the step continues on error so an invalid unlocked image is republished rather than trusted; a transient registry failure after five attempts takes the same path, which the publisher tolerates.
+- **Stable Deployment Engine tag is a channel alias**: final and patch releases publish and lock `X.Y`, the tag the chart consumes; GHCR has no full-version stable Deployment Engine tags, and `publish-de-image.yaml` writes the same tags. The lock detects drift during a release but does not pin what installations pull, and a patch run advances `X.Y` before publication. Publishing and locking `X.Y.Z` and promoting `X.Y` at finalization needs a coordinated publisher change and PR 17's chart change.
+- **Sibling outputs are not awaited**: the Radius tag follows sibling tag creation, not the sibling builds those tags start. PR 16's publication gate verifies external outputs.
+- **Release credentials**: the release and publisher App keys are repository secrets, so the secretless gateways protect the controller code path, not the keys. Moving the keys into an environment restricted to `main` also requires Prepare Release and release backports to adopt that environment.
+- **Equivalent gateways**: Approve Release and Resume Release dispatch the same controller path with the same validation. Keeping both is a naming choice for release engineers; one gateway would be enough.
 - **Shell style**: the layer converts most release scripts to the `shfmt -i 4 -ci` spacing, which is the style the older scripts use; nothing in CI checks either.
 
 ## Verification
 
-- Run `make test-release-controller test-monitor-remote-workflow` for the controller, source binding, output contract, resolver, lock, and dispatch regressions. These fixtures do not dispatch a live release.
+- Run `make test-release-controller test-monitor-remote-workflow` for the controller, source binding, output contract, resolver, lock, approval gate, and dispatch regressions, and `make test-prepare-release` for the Deployment Engine tag binding. These fixtures do not dispatch a live release.
 - Older actionlint versions reject `queue`; [GitHub supports `queue: max`](https://github.blog/changelog/2026-05-07-github-actions-concurrency-groups-now-allow-larger-queues/) with cancellation disabled. Other workflow validation errors must still be fixed.
 - The live App-created tag triggering `build-release.yaml` and the required release-cycle soak remain rollout gates; local fixtures cannot establish them.

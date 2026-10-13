@@ -22,6 +22,8 @@ Before starting a release, ensure you have:
 
 - **Required release checks configured**: The `Validate release plan` check is required for generated release pull requests to `main`. The `release/*` ruleset requires `Validate release branch commits` with **Require branches to be up to date before merging** enabled; this makes the backport's recorded base SHA fail closed if the release branch advances. Backport pull requests use rebase merge; ordinary `main` pull requests continue to use squash merge.
 - **Publisher App access to Deployment Engine**: Prepare Release verifies the signed Deployment Engine tag with the publisher App (`RADIUS_PUBLISHER_BOT`). Its installation on `azure-octo` must include `deployment-engine` with Contents read, because neither `GITHUB_TOKEN` nor the release App can read that private repository.
+- **Protected `release` environment**: The release controller pauses on the `release` environment before any mutation and refuses to start a release unless that environment requires reviewers. Configure required reviewers, enable **Prevent self-review** if the person who merges a release pull request must not also approve it, and restrict deployment branches to `main`, which is the only branch the controller runs from.
+- **Release tag and state protection** (recommended): Add tag rulesets for `v*` in `radius`, `recipes`, `dashboard`, and `bicep-types-aws`, and a branch ruleset for `automation/release-state-*` in `radius`, that block updates and deletion by anyone except the release App. The controller never moves a tag and rejects a Deployment Engine lock that the release App did not write, but only rulesets stop someone else from moving a tag or deleting the lock.
 
 > **Important**: For the entire release process, create branches directly in repositories under the `radius-project` organization. Do not use personal forks.
 
@@ -59,7 +61,7 @@ Seven GitHub Actions workflows drive release preparation, validation, reconcilia
 4. **[Release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml)** (`release-controller.yaml`): Triggered when a generated release pull request is squash-merged to `main`, when its generated metadata backport is rebase-merged to `release/<channel>`, or by an approved default-branch dispatch from Approve Release or Resume Release. This workflow:
    - Resolves exactly one merged generated release pull request and binds its approved plan to the metadata-bearing source commit
    - Reads the immutable committed plan, validates it against the metadata-bearing commit and `versions.yaml`, rejects a conflicting version/source pair, and runs preflight checks for every destination before mutation
-   - Verifies the signed Deployment Engine tag, waits for release-environment approval, publishes the correct RC or stable image tag, and locks the verified GHCR digest for the controller run
+   - Verifies the signed Deployment Engine tag and that the `release` environment requires reviewers, waits for that approval, publishes the correct RC or stable image tag, and locks the verified GHCR digest for the controller run
    - Reconciles branches and tags in `recipes`, `dashboard`, and `bicep-types-aws` at the exact commits frozen in the plan
    - Creates the Radius release branch when needed and pushes the Radius tag last with the release App, which triggers the release build
    - Treats matching completed state as success and rejects an existing tag at any other commit
@@ -160,11 +162,11 @@ If the release controller fails after validating the plan, run [Resume Release](
 | `version`       | The approved version including the `v` prefix, such as `v0.61.0-rc.1`                                                                          |
 | `source-commit` | For a first RC, the generated release PR squash commit; for an existing channel, the merged generated release-backport commit on `release/X.Y` |
 
-Resume Release resolves the merged release PR again, reads its committed plan, checks that the plan and `versions.yaml` select the same version and source, runs preflight checks for every frozen sibling commit, verifies the signed Deployment Engine tag and published image against the original output contract, and reconciles each destination. Updated controller tooling does not change the approved platform requirements on resume. The first verified Deployment Engine digest is stored on `automation/release-state-<version>` and every resume rejects divergence from that lock. An existing matching tag or active correlated publisher run is accepted; a tag at another commit stops before later mutation. Never change the version or source commit to work around a conflict.
+Resume Release resolves the merged release PR again, reads its committed plan, checks that the plan and `versions.yaml` select the same version and source, runs preflight checks for every frozen sibling commit, verifies the signed Deployment Engine tag and published image against the original output contract, and reconciles each destination. Updated controller tooling does not change the approved platform requirements on resume. The Deployment Engine tag must still point at the commit shown in the same run's validation summary. Before a digest is locked, a published image tag that holds another build is reported as stale and republished, while a registry error fails the run instead of dispatching again. The first verified Deployment Engine digest is stored on `automation/release-state-<version>` and every resume rejects divergence from that lock or a lock commit that the release App did not write. An existing matching tag or active correlated publisher run is accepted; a tag at another commit stops before later mutation. Never change the version or source commit to work around a conflict.
 
 Later release-branch commits do not prevent resume while the approved release commit remains reachable. The release still tags the original approved commit, not the newer branch tip. A divergent branch or metadata backport made from an unapproved parent is rejected.
 
-Use [Approve Release](https://github.com/radius-project/radius/actions/workflows/approve-release.yaml) for an explicit approved start when the automatic merge event was unavailable. It runs the same default-branch validation and reconciliation path as Resume Release without exposing release App credentials to branch-selectable workflow code.
+Use [Approve Release](https://github.com/radius-project/radius/actions/workflows/approve-release.yaml) for an explicit approved start when the automatic merge event was unavailable. It runs the same default-branch validation and reconciliation path as Resume Release. Neither gateway holds release credentials, so running one from another branch cannot change the controller code that uses them. This protects the controller code path, not the credentials: the release and publisher App keys are repository secrets, so any workflow a writer pushes can still read them.
 
 ## Creating an RC release
 
@@ -228,7 +230,7 @@ After merging, the [release controller](https://github.com/radius-project/radius
 
 Monitor and verify:
 
-1. Approve the controller's **Approve release reconciliation** job in the `release` environment after reviewing the version and source commit shown in the workflow summary.
+1. Approve the controller's **Approve release reconciliation** job in the `release` environment after reviewing the version, source commit, Deployment Engine commit, and frozen sibling commits shown in the workflow summary.
 2. The [release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml) completes successfully. For the first RC, confirm it created the `release/X.Y` [branch](https://github.com/radius-project/radius/branches) and the `vX.Y.Z-rc.N` [tag](https://github.com/radius-project/radius/tags) after Deployment Engine and all sibling repositories succeeded.
 3. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. This workflow also dispatches Bicep types publishing automatically.
 4. An RC release marked as pre-release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
@@ -300,7 +302,7 @@ After the generated release backport is merged to `release/X.Y`, the [release co
 
 Monitor and verify:
 
-1. Approve the controller's **Approve release reconciliation** job in the `release` environment after reviewing the version and source commit shown in the workflow summary.
+1. Approve the controller's **Approve release reconciliation** job in the `release` environment after reviewing the version, source commit, Deployment Engine commit, and frozen sibling commits shown in the workflow summary.
 2. The [release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml) completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags) last.
 3. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. Its summary must show successful GoReleaser, Helm, Bicep types, and finalization jobs.
 4. A final release (not pre-release) appears on [GitHub Releases](https://github.com/radius-project/radius/releases). Its full-version tags and eligible `X.Y` and `latest` production image and CLI OCI aliases resolve to the recorded digests; aliases for newer published versions remain unchanged.
@@ -353,7 +355,7 @@ After the generated release backport is merged to `release/X.Y`, the [release co
 
 Monitor and verify:
 
-1. Approve the controller's **Approve release reconciliation** job in the `release` environment after reviewing the version and source commit shown in the workflow summary.
+1. Approve the controller's **Approve release reconciliation** job in the `release` environment after reviewing the version, source commit, Deployment Engine commit, and frozen sibling commits shown in the workflow summary.
 2. The [release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml) completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags) last.
 3. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. Its summary must show successful GoReleaser, Helm, Bicep types, and finalization jobs.
 4. A patch release appears on [GitHub Releases](https://github.com/radius-project/radius/releases). Its full-version tags and eligible `X.Y` production image and CLI OCI aliases resolve to the recorded digests. Global `latest` changes only when the patch is the newest stable version; newer versions in the same channel are never replaced.

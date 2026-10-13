@@ -66,6 +66,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     permissions:
+      actions: read # Required to read the release environment protection
       contents: read
       pull-requests: read
     outputs:
@@ -76,6 +77,7 @@ jobs:
       release-branch: ${{ steps.plan.outputs.release-branch }}
       release-identifier: ${{ steps.plan.outputs.release-identifier }}
       de-image-tag: ${{ steps.plan.outputs.de-image-tag }}
+      de-source-commit: ${{ steps.de-tag.outputs.commit }}
       plan-artifact-id: ${{ steps.upload-plan.outputs.artifact-id }}
       recipes-commit: ${{ steps.plan.outputs.recipes-commit }}
       dashboard-commit: ${{ steps.plan.outputs.dashboard-commit }}
@@ -156,6 +158,18 @@ jobs:
             --trigger "${TRIGGER}" \
             --output-dir "${RUNNER_TEMP}/release-controller"
 
+      # The approve job below is the only human gate before mutation. An
+      # environment without required reviewers lets that job pass immediately.
+      - name: Verify release approval gate
+        if: steps.plan.outputs.ready == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_ENVIRONMENT: release
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/verify-release-environment.mjs`)
+            await script({context, github, core})
+
       - name: Checkout planned recipes source
         if: steps.plan.outputs.ready == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -226,17 +240,28 @@ jobs:
 
       - name: Verify signed Deployment Engine tag
         if: steps.plan.outputs.ready == 'true'
+        id: de-tag
         env:
           GH_TOKEN: ${{ steps.de-read-token.outputs.token }}
           VERSION: ${{ steps.plan.outputs.version }}
         run: bash ./.github/scripts/verify-deployment-engine-tag.sh "${VERSION}"
 
+      # Approvers review these values before the approve job; later stages fail
+      # instead of releasing a different source, sibling, or Deployment Engine
+      # commit.
       - name: Summarize validated plan
         env:
           READY: ${{ steps.plan.outputs.ready }}
           VERSION: ${{ steps.plan.outputs.version }}
           SOURCE_COMMIT: ${{ inputs.source-commit }}
           SOURCE_PR: ${{ inputs.source-pr-number }}
+          RELEASE_BRANCH: ${{ steps.plan.outputs.release-branch }}
+          DE_COMMIT: ${{ steps.de-tag.outputs.commit }}
+          DE_IMAGE_TAG: ${{ steps.plan.outputs.de-image-tag }}
+          RECIPES_COMMIT: ${{ steps.plan.outputs.recipes-commit }}
+          DASHBOARD_COMMIT: ${{ steps.plan.outputs.dashboard-commit }}
+          BICEP_TYPES_AWS_COMMIT: >-
+            ${{ steps.plan.outputs.bicep-types-aws-commit }}
         run: |
           {
             echo "## Release controller"
@@ -246,6 +271,12 @@ jobs:
             echo "- Release pull request: #${SOURCE_PR}"
             if [[ "${READY}" == "true" ]]; then
               echo "- State: validated and ready to reconcile"
+              echo "- Release branch: ${RELEASE_BRANCH}"
+              echo "- Deployment Engine: ${VERSION} at ${DE_COMMIT}," \
+                "image tag ${DE_IMAGE_TAG}"
+              echo "- recipes: ${RECIPES_COMMIT}"
+              echo "- dashboard: ${DASHBOARD_COMMIT}"
+              echo "- bicep-types-aws: ${BICEP_TYPES_AWS_COMMIT}"
             else
               echo "- State: waiting for the generated release backport"
             fi
@@ -324,7 +355,14 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.de-read-token.outputs.token }}
           VERSION: ${{ needs.validate.outputs.version }}
-        run: bash ./.github/scripts/verify-deployment-engine-tag.sh "${VERSION}"
+          APPROVED_DE_COMMIT: ${{ needs.validate.outputs.de-source-commit }}
+        run: |
+          [[ -n "${APPROVED_DE_COMMIT}" ]] || {
+            echo "Validation did not record the Deployment Engine commit." >&2
+            exit 1
+          }
+          bash ./.github/scripts/verify-deployment-engine-tag.sh \
+            "${VERSION}" "${APPROVED_DE_COMMIT}"
 
       - name: Read Deployment Engine release lock
         id: de-lock
@@ -341,10 +379,11 @@ jobs:
             const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-release-controller-lock.mjs`)
             await script({context, github, core})
 
+      # A stale tag (another build) is republished below. Registry or contract
+      # errors fail here instead of triggering a duplicate publisher dispatch.
       - name: Inspect unlocked Deployment Engine image
         if: steps.de-lock.outputs.exists != 'true'
         id: existing-image
-        continue-on-error: true
         env:
           GORELEASER_PARITY_TARGETS: ${{ runner.temp }}/release-controller/release-targets.json
           DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
@@ -357,6 +396,7 @@ jobs:
             --source-commit "${DE_SOURCE_COMMIT}" \
             --output "${RUNNER_TEMP}/de-image-before.json" \
             --allow-absent \
+            --allow-stale \
             --state-output "${RUNNER_TEMP}/de-image-state.txt"
 
       - name: Get App token for radius-publisher

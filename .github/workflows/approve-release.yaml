@@ -35,6 +35,7 @@ permissions: {}
 
 jobs:
   dispatch:
+    if: github.repository == 'radius-project/radius'
     permissions:
       contents: write
     uses: ./.github/workflows/__dispatch-release-controller.yaml
