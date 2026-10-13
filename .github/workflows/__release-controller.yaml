@@ -158,6 +158,15 @@ jobs:
             --trigger "${TRIGGER}" \
             --output-dir "${RUNNER_TEMP}/release-controller"
 
+      # A tag runs the tagged commit's workflows, so check them before any mutation.
+      - name: Verify release commit runs the release build
+        if: steps.plan.outputs.ready == 'true'
+        env:
+          RELEASE_COMMIT: ${{ inputs.source-commit }}
+        run: |
+          bash ./.github/scripts/verify-release-build-contract.sh \
+            "${RELEASE_COMMIT}"
+
       # The approve job below is the only human gate before mutation. An
       # environment without required reviewers lets that job pass immediately.
       - name: Verify release approval gate

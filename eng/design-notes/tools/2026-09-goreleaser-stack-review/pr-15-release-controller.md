@@ -73,6 +73,14 @@ The resolver filters closed pull requests by the exact `owner:automation/prepare
 - **What changed**: the controller plan tests now reject a backport without the cherry-pick trailer, with files outside the plan contract, that keeps the legacy workflow, that changes the committed plan, or that is a merge commit, and a release-backport trigger for a new channel. Approve Release has the same repository guard as Resume Release, the entry summary suggests remediation only after a resolution failure rather than for every closed unmerged pull request, and the plan's rollback note covers release branches whose legacy workflow is already gone.
 - **Why**: those guards decide which commit the Radius tag references and had no failing-case tests.
 
+### 11. A release tag must start the current release build
+
+- **What changed**: `verify-release-build-contract.sh` checks the commit a Radius tag will reference. Prepare Release runs it on the release-branch tip before opening the release pull request, and the controller's `validate` job runs it on the exact release commit before approval or any mutation. The commit must contain `.goreleaser.yaml` and a `build-release.yaml` that runs on `v*` tags with the `release-preflight`, `goreleaser-release`, and `finalize-release` jobs, and no other workflow may have a push `tags` or `tags-ignore` filter. The runbook lists migrating older release branches as a prerequisite.
+- **Why**: a pushed tag runs the tagged commit's workflows, not the default branch's. `release/0.60` still publishes through the legacy `build.yaml`, and `release/0.61` has `build-release.yaml` without the controller-era jobs, so a controller-created tag on either branch would publish through an older pipeline while the controller reported success. A file-presence check would pass `release/0.61`. Failing only in the controller would also leave `versions.yaml` naming an untagged version, which blocks the next Prepare Release.
+- **Value**: an unmigrated release branch fails before any repository changes, and the error names the missing piece.
+- **Coverage**: real-Git fixtures cover the current pipeline beside path-only and unfiltered push workflows, a legacy tag publisher, a `tags-ignore` publisher, the older job graph, a missing tag trigger, missing files, and an unknown commit; wiring tests bind both call sites. Against the real branches, the verifier accepts this layer's head and rejects `release/0.61` and `release/0.60`.
+- **Impact**: the required jobs must track later layers. PR 16 should add its publication gate so a branch on this layer's pipeline cannot skip it.
+
 ## Remaining boundaries and follow-ups
 
 - **Deployment Engine lock on a state branch** (cross-layer finding 2): the lock is written before any release exists, as a signed App commit on `automation/release-state-<version>`, and every resume verifies it. That is a sound durable store; its cost is one branch per release that nothing deletes. Evaluated at PR 16 together with the release manifest: the branch can be pruned once the release is published and the manifest carries the digest.
@@ -88,6 +96,6 @@ The resolver filters closed pull requests by the exact `owner:automation/prepare
 
 ## Verification
 
-- Run `make test-release-controller test-monitor-remote-workflow` for the controller, source binding, output contract, resolver, lock, approval gate, and dispatch regressions, and `make test-prepare-release` for the Deployment Engine tag binding. These fixtures do not dispatch a live release.
+- Run `make test-release-controller test-monitor-remote-workflow` for the controller, source binding, output contract, resolver, lock, approval gate, release build contract, and dispatch regressions, and `make test-prepare-release` for the Deployment Engine tag binding. These fixtures do not dispatch a live release.
 - Older actionlint versions reject `queue`; [GitHub supports `queue: max`](https://github.blog/changelog/2026-05-07-github-actions-concurrency-groups-now-allow-larger-queues/) with cancellation disabled. Other workflow validation errors must still be fixed.
 - The live App-created tag triggering `build-release.yaml` and the required release-cycle soak remain rollout gates; local fixtures cannot establish them.

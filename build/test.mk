@@ -101,6 +101,7 @@ test-release-controller: ## Tests release controller input binding and stage ord
 	@bash ./.github/scripts/release-controller_test.sh
 	@bash ./.github/scripts/release-controller-resume_test.sh
 	@bash ./.github/scripts/verify-deployment-engine-image_test.sh
+	@bash ./.github/scripts/verify-release-build-contract_test.sh
 
 .PHONY: test-release-backport
 test-release-backport: ## Tests release backport selection and branch construction

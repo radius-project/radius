@@ -121,6 +121,13 @@ jobs:
           version="$(<"${output_dir}/version.txt")"
           branch="$(<"${output_dir}/pr-branch.txt")"
 
+          # The release tag will run the release branch's workflows, not main's.
+          release_ref="refs/remotes/origin/release/${CHANNEL}"
+          git rev-parse --verify --quiet "${release_ref}^{commit}" \
+            >/dev/null || release_ref=HEAD
+          bash ./.github/scripts/verify-release-build-contract.sh \
+            "${release_ref}"
+
           GH_TOKEN="${DE_TOKEN}" \
             bash ./.github/scripts/verify-deployment-engine-tag.sh "${version}"
 

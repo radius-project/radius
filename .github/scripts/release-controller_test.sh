@@ -329,6 +329,18 @@ test_unknown_dispatch_summary() {
     ((++PASS))
 }
 
+test_release_build_contract() {
+    assert_json "${CONTROLLER}" \
+        '[.jobs.validate.steps[] | select((.run // "") |
+        contains("verify-release-build-contract.sh")) |
+        [.if, .env.RELEASE_COMMIT]]' \
+        "[[\"steps.plan.outputs.ready == 'true'\",\"\${{ inputs.source-commit }}\"]]" \
+        "validation must check the tag workflows of the exact release commit"
+    assert_contains "${WORKFLOWS}/prepare-release.yaml" \
+        'verify-release-build-contract.sh' \
+        "Prepare Release must reject an unmigrated release branch before opening a pull request"
+}
+
 main() {
     command -v yq >/dev/null || {
         echo "yq is required" >&2
@@ -340,6 +352,7 @@ main() {
     test_frozen_output_contract
     test_unknown_dispatch_summary
     test_stage_order
+    test_release_build_contract
     test_identity_and_cleanup
 
     if ((FAIL > 0)); then
