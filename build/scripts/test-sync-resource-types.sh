@@ -78,6 +78,115 @@ git() {
     esac
 }
 
+# fake_bicep stands in for the Bicep CLI. build copies the source's single line
+# into a template with a generator block, like the real compiler output.
+fake_bicep() {
+    case "$1" in
+        --version) echo "Bicep CLI version 0.46.1 (fake)" ;;
+        build)
+            [[ "$3" == "--outfile" ]] || return 2
+            [[ -f "$(dirname "$2")/bicepconfig.json" ]] || return 3
+            printf '{"metadata":{"_generator":{"version":"0.46.1"}},"marker":"%s"}\n' \
+                "$(cat "$2")" >"$4"
+            ;;
+        *) return 2 ;;
+    esac
+}
+
+# fake_pack_tree <dir> <ref> writes the recipe pack folders fetched at ref.
+fake_pack_tree() {
+    mkdir -p "$1/recipe-packs/kubernetes" "$1/recipe-packs/azure"
+    printf 'kubernetes@%s' "$2" >"$1/recipe-packs/kubernetes/default.bicep"
+    printf 'azure@%s' "$2" >"$1/recipe-packs/azure/default.bicep"
+}
+
+test_recipe_pack_vendoring() {
+    local tmp actual_order expected_order
+    tmp="$(mktemp -d)"
+
+    (
+        # shellcheck disable=SC2034 # Read by the sourced sync functions.
+        BICEP=fake_bicep BICEP_VERSION=v0.46.1 RECIPE_PACK_DEST_DIR="${tmp}/out"
+        mkdir -p "${tmp}/missing/recipe-packs/kubernetes"
+        if (vendor_recipe_pack "${tmp}/missing/recipe-packs/kubernetes" kubernetes example.invalid abc) >/dev/null 2>&1; then
+            fail "vendored recipe pack without default.bicep was accepted."
+        fi
+        [[ ! -e "${tmp}/out/kubernetes/default.json" ]] ||
+            fail "missing default.bicep still wrote default.json."
+
+        # shellcheck disable=SC2034 # Read by the sourced sync functions.
+        BICEP_VERSION=v0.45.0
+        fake_pack_tree "${tmp}/v1" v1
+        if (vendor_recipe_pack "${tmp}/v1/recipe-packs/kubernetes" kubernetes example.invalid v1) >/dev/null 2>&1; then
+            fail "Bicep version other than the pinned one was accepted."
+        fi
+    )
+
+    (
+        # shellcheck disable=SC2034 # Read by the sourced sync functions.
+        BICEP=fake_bicep BICEP_VERSION=v0.46.1 RECIPE_PACK_DEST_DIR="${tmp}/out"
+        # shellcheck disable=SC2329 # Invoked indirectly by copy_recipe_packs.
+        entry_names() { printf '%s\n' azure kubernetes; }
+        # shellcheck disable=SC2329 # Invoked indirectly by copy_recipe_packs.
+        pin_field() {
+            case "$3" in
+                repo) printf '%s' example.invalid ;;
+                ref) cat "${tmp}/ref" ;;
+            esac
+        }
+        # shellcheck disable=SC2329 # Invoked indirectly by copy_recipe_packs.
+        fetch_ref() { fake_pack_tree "$3" "$2"; }
+
+        printf v1 >"${tmp}/ref"
+        (copy_recipe_packs) >/dev/null
+        assert_equal \
+            '{"marker":"kubernetes@v1"}' \
+            "$(yq -p json -o json -I 0 . "${tmp}/out/kubernetes/default.json")" \
+            "compiled kubernetes recipe pack without generator metadata"
+        [[ ! -e "${tmp}/out/azure" ]] ||
+            fail "non-vendored azure recipe pack was copied."
+
+        printf v2 >"${tmp}/ref"
+        (copy_recipe_packs) >/dev/null
+        assert_equal \
+            '{"marker":"kubernetes@v2"}' \
+            "$(yq -p json -o json -I 0 . "${tmp}/out/kubernetes/default.json")" \
+            "recompiled kubernetes recipe pack after a pin move"
+    )
+
+    actual_order="$(
+        (
+            # shellcheck disable=SC2329 # Invoked indirectly by update_recipe_packs.
+            has_pins() { return 1; }
+            # shellcheck disable=SC2329 # Invoked indirectly by update_recipe_packs.
+            update_section() { echo "update:$1"; }
+            # shellcheck disable=SC2329 # Invoked indirectly by update_recipe_packs.
+            promote_edge_pins() { echo "promote:$1"; }
+            # shellcheck disable=SC2329 # Invoked indirectly by update_recipe_packs.
+            validate_section_pins() { echo "validate:$1"; }
+            # shellcheck disable=SC2329 # Invoked indirectly by update_recipe_packs.
+            copy_recipe_packs() { echo "copy-recipe-packs"; }
+            # shellcheck disable=SC2329 # Must not be invoked by update_recipe_packs.
+            copy_manifests() { echo "copy-manifests"; }
+            update_recipe_packs | grep -v '^Syncing'
+        )
+    )"
+    expected_order="$(
+        cat <<'EOF'
+update:recipePacks
+promote:recipePacks
+validate:recipePacks
+copy-recipe-packs
+EOF
+    )"
+    assert_equal \
+        "${expected_order}" \
+        "${actual_order}" \
+        "update-recipe-packs re-pins then recompiles without copying manifests"
+
+    rm -rf "${tmp}"
+}
+
 main() {
     local edge_sha resolved_sha resolved_tag
     edge_sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -205,7 +314,9 @@ EOF
         "${actual_order}" \
         "atomic update ordering"
 
-    echo "Stable-first resource type pin tests passed."
+    test_recipe_pack_vendoring
+
+    echo "Stable-first resource type pin and recipe pack vendoring tests passed."
 }
 
 main "$@"
