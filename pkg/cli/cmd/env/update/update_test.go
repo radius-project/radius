@@ -516,7 +516,7 @@ func Test_Update(t *testing.T) {
 		environment := corerp.EnvironmentResource{
 			Name: new("test-env"),
 			Properties: &corerp.EnvironmentProperties{
-				Compute: &corerp.AzureContainerInstanceCompute{},
+				Compute: &corerp.EnvironmentCompute{},
 			},
 		}
 

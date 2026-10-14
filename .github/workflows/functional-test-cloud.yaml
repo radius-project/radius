@@ -1088,8 +1088,7 @@ jobs:
           # Initiate resource deletion without blocking on completion (matches the
           # non-cloud suite). Test assertions for deploy/create still run in full;
           # only the synchronous teardown wait is skipped, and the per-run resource
-          # group is force-deleted afterward. This removes the slow Test_ACI teardown
-          # (~9 min) from the critical path without reducing validation scope.
+          # group is force-deleted afterward.
           RADIUS_TEST_FAST_CLEANUP: true
           MATRIX_NAME: ${{ matrix.name }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
@@ -1193,15 +1192,6 @@ jobs:
           append: true
           message: |
             :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-
-      - name: Release ACI quota before async resource group delete
-        if: always()
-        env:
-          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
-        run: |
-          ./.github/scripts/release-aci-quota.sh \
-            "${AZURE_SUBSCRIPTIONID_TESTS}" \
-            "${AZURE_TEST_RESOURCE_GROUP}"
 
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()

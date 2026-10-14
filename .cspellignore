@@ -1,6 +1,5 @@
 AAD
 ACA
-ACIRuntimeProperties
 ADDENDUMS
 AKS
 APIM
@@ -264,7 +263,6 @@ Mosquitto's
 MySql
 Mycompany
 NFS
-NGroups
 NewInt
 NewServerOptionsFromEnvironment
 Niles
