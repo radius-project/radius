@@ -2,7 +2,17 @@
 // Licensed under the Apache License, Version 2.0.
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync
+} from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import test from "node:test";
@@ -328,11 +338,7 @@ test("workflow keeps OIDC permissions and always clears both Azure sessions", ()
     "utf8"
   );
   assert.equal(
-    (
-      workflow.match(
-        /run: node \.\/\.github\/scripts\/azure-oidc-login\.mjs/g
-      ) ?? []
-    ).length,
+    (workflow.match(/run: node "\$\{AZURE_LOGIN_SCRIPT\}"/g) ?? []).length,
     2
   );
   assert.equal(
@@ -344,4 +350,64 @@ test("workflow keeps OIDC permissions and always clears both Azure sessions", ()
     2
   );
   assert.ok(workflow.includes("id-token: write"));
+});
+
+test("both jobs use the workflow script when the PR checkout lacks it", (t) => {
+  const workflow = readFileSync(
+    new URL("../workflows/functional-test-cloud.yaml", import.meta.url),
+    "utf8"
+  );
+  const root = mkdtempSync(join(tmpdir(), "azure-login-checkout-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  assert.equal(
+    existsSync(join(root, ".github", "scripts", "azure-oidc-login.mjs")),
+    false
+  );
+
+  for (const jobName of ["build", "tests"]) {
+    const job = workflow.match(
+      new RegExp(
+        `^  ${jobName}:\\n[\\s\\S]*?(?=^  [a-z][\\w-]*:|$(?![\\s\\S]))`,
+        "m"
+      )
+    )?.[0];
+    assert.ok(job, `${jobName} job must exist`);
+    const checkout = job.match(
+      /      - name: Checkout workflow Azure login script\n[\s\S]*?(?=\n      - )/
+    )?.[0];
+    assert.ok(checkout, `${jobName} must check out the workflow script`);
+    assert.match(checkout, /repository: \$\{\{ github\.repository \}\}/);
+    assert.match(checkout, /ref: \$\{\{ github\.sha \}\}/);
+    assert.match(
+      checkout,
+      /sparse-checkout: \.github\/scripts\/azure-oidc-login\.mjs/
+    );
+    assert.match(checkout, /sparse-checkout-cone-mode: false/);
+    assert.match(checkout, /persist-credentials: false/);
+    const checkoutPath = checkout.match(/path: (.+)/)?.[1];
+    assert.equal(checkoutPath, ".workflow-azure-login");
+    const scriptPath = job.match(
+      /AZURE_LOGIN_SCRIPT: \$\{\{ github\.workspace \}\}\/(.+)/
+    )?.[1];
+    assert.equal(
+      scriptPath,
+      `${checkoutPath}/.github/scripts/azure-oidc-login.mjs`
+    );
+    const loginStep = job.indexOf('run: node "${AZURE_LOGIN_SCRIPT}"');
+    assert.ok(loginStep > job.indexOf(checkout));
+    assert.match(job, /repository: \$\{\{ env\.CHECKOUT_REPO \}\}/);
+    assert.match(job, /ref: \$\{\{ env\.CHECKOUT_REF \}\}/);
+
+    const script = join(root, ...scriptPath.split("/"));
+    mkdirSync(dirname(script), { recursive: true });
+    copyFileSync(new URL("./azure-oidc-login.mjs", import.meta.url), script);
+    const result = spawnSync(process.execPath, [script], {
+      cwd: root,
+      env: { ...process.env, AZURE_CLIENT_ID: "" },
+      encoding: "utf8"
+    });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /AZURE_CLIENT_ID is required/);
+    assert.doesNotMatch(result.stderr, /MODULE_NOT_FOUND/);
+  }
 });
