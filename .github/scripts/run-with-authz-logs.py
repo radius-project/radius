@@ -70,6 +70,13 @@ def watch_events(pipe, events):
         events.put(None)
 
 
+def container_statuses(pod):
+    status = pod.get("status", {})
+    return (status.get("containerStatuses", []) +
+            status.get("initContainerStatuses", []) +
+            status.get("ephemeralContainerStatuses", []))
+
+
 @dataclass
 class Stream:
     pod: str
@@ -104,6 +111,16 @@ class Collector:
         )
         return json.loads(result.stdout)
 
+    def current_pod(self, name):
+        result = subprocess.run(
+            ["kubectl", "get", "pod", name, "--namespace", self.namespace,
+             "--ignore-not-found", "--request-timeout=20s", "-o", "json"],
+            check=True, stdout=subprocess.PIPE, text=True, timeout=30,
+        )
+        # Only an explicit NotFound becomes empty output. API/permission errors
+        # still fail closed through check=True.
+        return json.loads(result.stdout) if result.stdout.strip() else None
+
     def log_args(self, pod, container):
         return ["kubectl", "logs", pod, "--namespace", self.namespace,
                 "--container", container, "--timestamps=true", "--tail=-1"]
@@ -120,10 +137,7 @@ class Collector:
     def observe(self, pod, deleted=False):
         name = pod["metadata"]["name"]
         uid = pod["metadata"]["uid"]
-        statuses = pod.get("status", {})
-        statuses = (statuses.get("containerStatuses", []) +
-                    statuses.get("initContainerStatuses", []) +
-                    statuses.get("ephemeralContainerStatuses", []))
+        statuses = container_statuses(pod)
         for key, stream in self.streams.items():
             if key[0] == uid:
                 stream.active = False
@@ -167,7 +181,7 @@ class Collector:
                 raise RuntimeError(f"unexpected pod watch event: {event}")
 
     def check_streams(self):
-        for stream in self.streams.values():
+        for key, stream in self.streams.items():
             status = stream.process.poll()
             if status is None:
                 continue
@@ -175,8 +189,23 @@ class Collector:
                 raise RuntimeError(
                     f"log stream failed for {stream.pod}/{stream.container}: {status}")
             if stream.active and stream.running:
-                # A clean EOF can occur without a restart. Re-read all available
-                # logs on reconnect; duplicate lines are harmless for the gate.
+                # EOF can precede a watch event. Never reconnect using the
+                # watch's stale incarnation or a pod name that has been reused.
+                pod = self.current_pod(stream.pod)
+                current = None
+                if pod and pod["metadata"]["uid"] == key[0]:
+                    current = next(
+                        (status for status in container_statuses(pod)
+                         if status["name"] == key[1] and status["restartCount"] == key[2]),
+                        None,
+                    )
+                stream.active = current is not None
+                stream.running = (
+                    current is not None and "running" in current.get("state", {}))
+                if not stream.running:
+                    continue
+                # Re-read all available logs: duplicates are harmless to the
+                # gate, whereas timestamp cutoffs can lose equal-time lines.
                 stream.process = self.follow(
                     self.log_args(stream.pod, stream.container), stream.path)
 

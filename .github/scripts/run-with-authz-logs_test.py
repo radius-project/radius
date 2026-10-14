@@ -32,7 +32,17 @@ if args[0] == "get":
     if "--raw" not in args:
         if (root / "list-error").exists():
             sys.exit("inventory unavailable")
-        print((root / "inventory").read_text())
+        if args[1] == "pod":
+            assert "--ignore-not-found" in args
+            if (root / "lookup-error").exists():
+                sys.exit("pod lookup forbidden")
+            name = args[2]
+            pods = json.loads((root / "inventory").read_text())["items"]
+            match = next((pod for pod in pods if pod["metadata"]["name"] == name), None)
+            print(json.dumps(match) if match else "", flush=True)
+            (root / (name + ".checked")).touch()
+        else:
+            print((root / "inventory").read_text())
     else:
         url = urllib.parse.urlparse(args[args.index("--raw") + 1])
         assert url.path == "/api/v1/namespaces/radius-system/pods"
@@ -62,6 +72,8 @@ elif args[0] == "logs":
     else:
         if (root / "follow-error").exists():
             sys.exit("follow unavailable")
+        with (root / (prefix + ".follows")).open("a") as f:
+            f.write("follow\n")
         (root / (prefix + ".started")).touch()
         with source.open() as f:
             inode = os.fstat(f.fileno()).st_ino
@@ -73,8 +85,13 @@ elif args[0] == "logs":
                     if "authzWouldDeny=true" in line:
                         (root / (prefix + ".denial-read")).touch()
                 elif (root / (prefix + ".deleted")).exists():
+                    if (root / "stream-error").exists():
+                        sys.exit("stream transport failed")
                     break
                 elif source.stat().st_ino != inode:
+                    break
+                elif (root / (prefix + ".disconnect")).exists():
+                    (root / (prefix + ".disconnect")).unlink()
                     break
                 else:
                     time.sleep(.02)
@@ -94,6 +111,10 @@ def wait_for(name):
 def event(kind, pod):
     with (root / "events").open("a") as f:
         f.write(json.dumps({"type": kind, "object": pod}) + "\n")
+def replace_log(prefix, content):
+    replacement = root / (prefix + ".replacement")
+    replacement.write_text(content)
+    os.replace(replacement, root / (prefix + ".log"))
 '''
 
 
@@ -179,19 +200,134 @@ time.sleep(.3)
     def test_restarts_capture_previous_and_new_logs(self):
         restarted = pod("ucp-initial", 1)
         command = f'''
-wait_for("ucp-initial.ucp.started")
-(root / "ucp-initial.ucp.log").rename(root / "old-container.log")
-(root / "ucp-initial.ucp.log").write_text("restarted\\n")
+wait_for("ucp-initial.ucp.read")
 (root / "ucp-initial.ucp.previous.log").write_text("authzWouldDeny=true\\n")
 restarted = {restarted!r}
 (root / "inventory").write_text(json.dumps({{
     "metadata": {{"resourceVersion": "124"}}, "items": [restarted]}}))
+replace_log("ucp-initial.ucp", "restarted\\n")
 event("MODIFIED", restarted)
 time.sleep(.3)
 '''
         self.run_collector(command)
         self.assertTrue(any("authzWouldDeny=true" in f.read_text()
                             for f in self.output.glob("*.previous.log")))
+
+    def test_stream_ends_before_restart_event(self):
+        restarted = pod("ucp-initial", 1)
+        command = f'''
+wait_for("ucp-initial.ucp.read")
+restarted = {restarted!r}
+(root / "inventory").write_text(json.dumps({{
+    "metadata": {{"resourceVersion": "124"}}, "items": [restarted]}}))
+(root / "ucp-initial.ucp.previous.log").write_text("old-container\\n")
+replace_log("ucp-initial.ucp", "new-container authzWouldDeny=true\\n")
+wait_for("ucp-initial.checked")
+event("MODIFIED", restarted)
+wait_for("ucp-initial.ucp.denial-read")
+'''
+        self.run_collector(command)
+        old = self.output / "ucp-initial.ucp-initial-uid.ucp.0.log"
+        new = self.output / "ucp-initial.ucp-initial-uid.ucp.1.log"
+        self.assertNotIn("new-container", old.read_text())
+        self.assertIn("authzWouldDeny=true", new.read_text())
+        self.assertEqual((self.root / "ucp-initial.ucp.follows").read_text().splitlines(),
+                         ["follow", "follow"])
+        self.assertTrue((self.output / "complete").is_file())
+
+    def test_stream_ends_before_deletion_event(self):
+        command = f'''
+wait_for("ucp-initial.ucp.read")
+(root / "inventory").write_text(json.dumps({{
+    "metadata": {{"resourceVersion": "124"}}, "items": []}}))
+(root / "ucp-initial.ucp.deleted").touch()
+(root / "ucp-initial.ucp.log").unlink()
+wait_for("ucp-initial.checked")
+event("DELETED", {self.initial!r})
+'''
+        self.run_collector(command)
+        self.assertEqual((self.root / "ucp-initial.ucp.follows").read_text().splitlines(),
+                         ["follow"])
+        self.assertTrue((self.output / "complete").is_file())
+
+    def test_stream_ends_before_same_name_replacement_event(self):
+        replacement = pod("ucp-initial")
+        replacement["metadata"]["uid"] = "replacement-uid"
+        command = f'''
+wait_for("ucp-initial.ucp.read")
+(root / "inventory").write_text(json.dumps({{
+    "metadata": {{"resourceVersion": "124"}}, "items": [{replacement!r}]}}))
+replace_log("ucp-initial.ucp", "replacement authzWouldDeny=true\\n")
+wait_for("ucp-initial.checked")
+event("DELETED", {self.initial!r})
+event("ADDED", {replacement!r})
+wait_for("ucp-initial.ucp.denial-read")
+'''
+        self.run_collector(command)
+        old = self.output / "ucp-initial.ucp-initial-uid.ucp.0.log"
+        new = self.output / "ucp-initial.replacement-uid.ucp.0.log"
+        self.assertNotIn("replacement", old.read_text())
+        self.assertIn("authzWouldDeny=true", new.read_text())
+        self.assertEqual((self.root / "ucp-initial.ucp.follows").read_text().splitlines(),
+                         ["follow", "follow"])
+
+    def test_stream_ends_before_termination_event(self):
+        terminated = pod("ucp-initial")
+        terminated["status"]["containerStatuses"][0]["state"] = {
+            "terminated": {"exitCode": 0}}
+        command = f'''
+wait_for("ucp-initial.ucp.read")
+(root / "inventory").write_text(json.dumps({{
+    "metadata": {{"resourceVersion": "124"}}, "items": [{terminated!r}]}}))
+(root / "ucp-initial.ucp.disconnect").touch()
+wait_for("ucp-initial.checked")
+event("MODIFIED", {terminated!r})
+'''
+        self.run_collector(command)
+        self.assertEqual((self.root / "ucp-initial.ucp.follows").read_text().splitlines(),
+                         ["follow"])
+
+    def test_reconnect_preserves_lines_at_same_timestamp(self):
+        timestamp = "2026-10-08T00:00:00.000000001Z "
+        (self.root / "ucp-initial.ucp.log").write_text(timestamp + "before\n")
+        command = f'''
+wait_for("ucp-initial.ucp.read")
+(root / "ucp-initial.ucp.disconnect").touch()
+wait_for("ucp-initial.checked")
+with (root / "ucp-initial.ucp.log").open("a") as log:
+    log.write({timestamp!r} + "authzWouldDeny=true\\n")
+wait_for("ucp-initial.ucp.denial-read")
+'''
+        self.run_collector(command)
+        logs = (self.output / "ucp-initial.ucp-initial-uid.ucp.0.log").read_text()
+        self.assertIn(timestamp + "before\n", logs)
+        self.assertIn(timestamp + "authzWouldDeny=true\n", logs)
+        self.assertEqual((self.root / "ucp-initial.ucp.follows").read_text().splitlines(),
+                         ["follow", "follow"])
+
+    def test_reconnect_lookup_errors_fail_closed(self):
+        command = '''
+wait_for("ucp-initial.ucp.read")
+(root / "lookup-error").touch()
+(root / "ucp-initial.ucp.disconnect").touch()
+time.sleep(.5)
+'''
+        result = self.run_collector(command, expected=2)
+        self.assertIn("pod lookup forbidden", result)
+        self.assertFalse((self.output / "complete").exists())
+
+    def test_deleted_pod_does_not_hide_stream_failure(self):
+        command = '''
+wait_for("ucp-initial.ucp.read")
+(root / "inventory").write_text(json.dumps({
+    "metadata": {"resourceVersion": "124"}, "items": []}))
+(root / "stream-error").touch()
+(root / "ucp-initial.ucp.deleted").touch()
+time.sleep(.5)
+'''
+        result = self.run_collector(command, expected=2)
+        self.assertIn("log stream failed", result)
+        self.assertFalse((self.output / "complete").exists())
 
     def test_test_failure_is_preserved_and_logs_are_completed(self):
         self.run_collector('wait_for("ucp-initial.ucp.started")\nraise SystemExit(7)\n',

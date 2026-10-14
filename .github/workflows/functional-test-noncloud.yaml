@@ -772,7 +772,7 @@ jobs:
           AUTHZ_LOG_DIR: ${{ github.workspace }}/dist/authz-logs
         run: |
           test -f "${AUTHZ_LOG_DIR}/complete" || { echo "Authorization log collection did not complete"; exit 1; }
-          make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ${AUTHZ_LOG_DIR}"
+          make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--cluster --collector-dir ${AUTHZ_LOG_DIR}"
 
       - name: Upload authorization gate logs
         if: always() && matrix.authzDryRun

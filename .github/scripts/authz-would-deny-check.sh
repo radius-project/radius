@@ -27,7 +27,9 @@
 # By default it reads current and previous container logs from every pod in
 # the radius-system namespace. With --logs-dir it scans saved log files
 # instead; add --cluster to scan both. --require-dry-run also reads the cluster
-# and requires current startup logs from all four Radius components.
+# and requires current startup logs from all four Radius components. With
+# --collector-dir, startup evidence comes from a completed collector's files
+# matching each current pod UID and container restart count.
 #
 # Known, tracked would-deny lines can be listed in an allowlist file. Each
 # non-comment line is "<issue> <pattern>", where <issue> is a GitHub issue
@@ -44,14 +46,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly WOULD_DENY_PATTERN='authzWouldDeny"?[[:space:]]*[:=][[:space:]]*"?true'
 readonly ISSUE_PATTERN='^(https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[0-9]+|[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+)$'
-# One line per pod: "<pod>\t<container>=<restartCount> ...".
-readonly PODS_JSONPATH='{range .items[*]}{.metadata.name}{"\t"}{range .status.containerStatuses[*]}{.name}{"="}{.restartCount}{" "}{end}{"\n"}{end}'
+# One line per pod: "<pod>\t<uid>\t<container>=<restartCount> ...".
+readonly PODS_JSONPATH='{range .items[*]}{.metadata.name}{"\t"}{.metadata.uid}{"\t"}{range .status.containerStatuses[*]}{.name}{"="}{.restartCount}{" "}{end}{"\n"}{end}'
 
 NAMESPACE="${AUTHZ_NAMESPACE:-radius-system}"
 ALLOWLIST="${AUTHZ_WOULD_DENY_ALLOWLIST:-${SCRIPT_DIR}/authz-would-deny-allowlist.txt}"
 ALLOWLIST_REQUIRED=false
 SCAN_CLUSTER=false
 REQUIRE_DRY_RUN=false
+COLLECTOR_DIR=""
 readonly RADIUS_COMPONENTS=(ucp applications-rp dynamic-rp controller)
 LOG_DIRS=()
 ALLOW_ISSUES=()
@@ -59,11 +62,12 @@ ALLOW_PATTERNS=()
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [--namespace NAME] [--allowlist FILE] [--logs-dir DIR]... [--cluster] [--require-dry-run]
+Usage: $(basename "$0") [--namespace NAME] [--allowlist FILE] [--logs-dir DIR]... [--collector-dir DIR] [--cluster] [--require-dry-run]
 
   --namespace NAME  Namespace to read pod logs from (default: radius-system, env: AUTHZ_NAMESPACE).
   --allowlist FILE  Allowlist of tracked would-deny lines (env: AUTHZ_WOULD_DENY_ALLOWLIST).
   --logs-dir DIR    Scan log files under DIR instead of the cluster. Repeatable.
+  --collector-dir DIR  Scan completed collector logs; use matching current container files for startup evidence.
   --cluster         Also scan cluster pod logs when --logs-dir is set.
   --require-dry-run  Verify all four Radius components' current startup logs. Implies --cluster.
 EOF
@@ -117,12 +121,21 @@ match_lines() {
 }
 
 verify_dry_run() {
-    local pod="$1" container="$2" line
-    kubectl logs "${pod}" --namespace "${NAMESPACE}" --container "${container}" \
-        >"${WORK_DIR}/component.log" \
-        || die "could not read current logs for ${pod}/${container}"
+    local pod="$1" uid="$2" container="$3" restarts="$4" line
+    local startup_file="${WORK_DIR}/component.log"
+    if [[ -n "${COLLECTOR_DIR}" ]]; then
+        [[ -n "${uid}" && "${restarts}" =~ ^[0-9]+$ ]] \
+            || die "missing current container identity for ${pod}/${container}"
+        startup_file="${COLLECTOR_DIR}/${pod}.${uid}.${container}.${restarts}.log"
+        [[ -f "${startup_file}" ]] \
+            || die "collector log not found for ${pod}/${container}: ${startup_file}"
+    else
+        kubectl logs "${pod}" --namespace "${NAMESPACE}" --container "${container}" \
+            >"${startup_file}" \
+            || die "could not read current logs for ${pod}/${container}"
+    fi
     match_lines 'authz mode=[[:alnum:]_]+' \
-        "${WORK_DIR}/component.log" "${WORK_DIR}/startup.log"
+        "${startup_file}" "${WORK_DIR}/startup.log"
     [[ -s "${WORK_DIR}/startup.log" ]] \
         || die "missing authz startup log for ${pod}/${container}"
     while IFS= read -r line; do
@@ -132,7 +145,7 @@ verify_dry_run() {
 }
 
 collect_cluster_logs() {
-    local out_dir="$1" pods pod containers entry container restarts total=0
+    local out_dir="$1" pods pod uid containers entry container restarts total=0
     local component verified=" "
     command -v kubectl >/dev/null || die "kubectl is required to read pod logs"
     pods="$(kubectl get pods --namespace "${NAMESPACE}" --output "jsonpath=${PODS_JSONPATH}")" \
@@ -140,7 +153,7 @@ collect_cluster_logs() {
     [[ -n "${pods//[[:space:]]/}" ]] || die "no pods found in namespace ${NAMESPACE}"
 
     mkdir -p "${out_dir}"
-    while IFS=$'\t' read -r pod containers; do
+    while IFS=$'\t' read -r pod uid containers; do
         [[ -n "${pod}" ]] || continue
         ((++total))
 
@@ -154,7 +167,7 @@ collect_cluster_logs() {
             if [[ "${REQUIRE_DRY_RUN}" == true ]]; then
                 for component in "${RADIUS_COMPONENTS[@]}"; do
                     if [[ "${container}" == "${component}" ]]; then
-                        verify_dry_run "${pod}" "${container}"
+                        verify_dry_run "${pod}" "${uid}" "${container}" "${restarts}"
                         verified+="${component} "
                     fi
                 done
@@ -239,6 +252,15 @@ while [[ $# -gt 0 ]]; do
             LOG_DIRS+=("${2%/}")
             shift 2
             ;;
+        --collector-dir)
+            [[ $# -ge 2 && -n "$2" ]] \
+                || die "--collector-dir requires a value"
+            [[ -z "${COLLECTOR_DIR}" ]] \
+                || die "--collector-dir may only be specified once"
+            COLLECTOR_DIR="${2%/}"
+            LOG_DIRS+=("${COLLECTOR_DIR}")
+            shift 2
+            ;;
         --cluster)
             SCAN_CLUSTER=true
             shift
@@ -263,6 +285,10 @@ done
 for dir in "${LOG_DIRS[@]+"${LOG_DIRS[@]}"}"; do
     [[ -d "${dir}" ]] || die "logs directory not found: ${dir}"
 done
+if [[ -n "${COLLECTOR_DIR}" ]]; then
+    [[ -f "${COLLECTOR_DIR}/complete" ]] \
+        || die "collector completion marker not found: ${COLLECTOR_DIR}/complete"
+fi
 
 load_allowlist
 
