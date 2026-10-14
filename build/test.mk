@@ -73,6 +73,7 @@ test: test-install-bicep
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
 	@bash ./.github/scripts/collect-cluster-diagnostics_test.sh
+	@bash ./.github/scripts/collect-terraform-diagnostics_test.sh
 
 .PHONY: test-release-parity-manifest
 test-release-parity-manifest: ## Tests release parity manifest collection
