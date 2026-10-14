@@ -17,15 +17,24 @@ limitations under the License.
 package preview
 
 import (
-	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
-func (r *Runner) enterApplicationOptions(options *initOptions) error {
-	scaffold, name, err := common.EnterApplicationOptions(r.Prompter)
-	if err != nil {
-		return err
-	}
-	options.Application.Scaffold = scaffold
-	options.Application.Name = name
-	return nil
+func Test_toDisplayOptions_ConfigFiles(t *testing.T) {
+	t.Run("includes bicepconfig.json in the resolved directory", func(t *testing.T) {
+		directory := t.TempDir()
+
+		display := toDisplayOptions(&initOptions{BicepConfigDirectory: directory})
+
+		require.Equal(t, []string{filepath.Join(directory, "bicepconfig.json")}, display.ConfigFiles)
+	})
+
+	t.Run("omits bicepconfig.json when the directory is unresolved", func(t *testing.T) {
+		display := toDisplayOptions(&initOptions{})
+
+		require.Empty(t, display.ConfigFiles)
+	})
 }
