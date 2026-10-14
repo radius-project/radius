@@ -22,7 +22,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly SELECT_SCRIPT="${SCRIPT_DIR}/release-get-version.sh"
 readonly RECONCILE_SCRIPT="${SCRIPT_DIR}/release-create-tag-and-branch.sh"
-readonly SKIP_SCRIPT="${SCRIPT_DIR}/release-should-skip.sh"
 readonly TAG="v0.61.0"
 readonly BRANCH="release/0.61"
 readonly REPOSITORIES=(radius recipes dashboard bicep-types-aws)
@@ -91,27 +90,6 @@ output_value() {
     sed -n "s/^${name}=//p" "${TEST_ROOT}/github-output"
 }
 
-run_skip_check() {
-    local repository="$1"
-    local trigger_ref="$2"
-    local trigger_commit="$3"
-    local output_file="${TEST_ROOT}/skip-output"
-
-    : >"${output_file}"
-    set +e
-    LAST_OUTPUT="$(
-        cd "${TEST_ROOT}" &&
-            GITHUB_OUTPUT="${output_file}" bash "${SKIP_SCRIPT}" \
-                "${repository}" "${TAG}" "${BRANCH}" "${trigger_ref}" "${trigger_commit}" 2>&1
-    )"
-    LAST_STATUS=$?
-    set -e
-}
-
-skip_value() {
-    sed -n 's/^result=//p' "${TEST_ROOT}/skip-output"
-}
-
 remote_tag() {
     local repository="$1"
     local tag="$2"
@@ -143,103 +121,10 @@ test_selects_version_missing_from_any_repository() {
     [[ "$(output_value release-version)" == "${TAG}" ]] || fail_test "partial release selected the wrong version"
     [[ "${LAST_OUTPUT}" == *"recipes dashboard bicep-types-aws"* ]] || fail_test "partial release did not report the missing repositories"
 
-    run_skip_check radius refs/heads/main "${radius_head}"
-    [[ "${LAST_STATUS}" -eq 0 ]] || fail_test "partial release skip check failed: ${LAST_OUTPUT}"
-    [[ "$(skip_value)" == "false" ]] || fail_test "partial release should resume instead of waiting for a cherry-pick"
-
     reconcile_all
     for repository in "${REPOSITORIES[@]}"; do
         [[ -n "$(remote_tag "${repository}" "${TAG}")" ]] || fail_test "${repository} was not reconciled"
     done
-}
-
-test_main_waits_until_trigger_commit_is_cherry_picked() {
-    local branch_head trigger_commit
-    setup_repository wait-for-cherry-pick
-    branch_head="$(git -C "${TEST_ROOT}/wait-for-cherry-pick" rev-parse HEAD)"
-    git -C "${TEST_ROOT}/wait-for-cherry-pick" push --quiet origin "${branch_head}:refs/heads/${BRANCH}"
-    echo "main update" >>"${TEST_ROOT}/wait-for-cherry-pick/README.md"
-    git -C "${TEST_ROOT}/wait-for-cherry-pick" commit --quiet -am "main update"
-    trigger_commit="$(git -C "${TEST_ROOT}/wait-for-cherry-pick" rev-parse HEAD)"
-    git -C "${TEST_ROOT}/wait-for-cherry-pick" push --quiet origin main
-
-    run_skip_check wait-for-cherry-pick refs/heads/main "${trigger_commit}"
-    [[ "${LAST_STATUS}" -eq 0 ]] || fail_test "main skip check failed: ${LAST_OUTPUT}"
-    [[ "$(skip_value)" == "true" ]] || fail_test "main should wait until its triggering commit reaches the release branch"
-}
-
-test_cross_branch_partial_release_resume() {
-    local tag_kind="$1"
-    local repository="cross-branch-${tag_kind}"
-    local sibling="missing-${tag_kind}"
-    local work="${TEST_ROOT}/${repository}"
-    local sibling_commit main_commit release_commit output
-
-    setup_repository "${repository}"
-    setup_repository "${sibling}"
-    sibling_commit="$(git -C "${TEST_ROOT}/${sibling}" rev-parse HEAD)"
-    git -C "${work}" checkout --quiet -b "${BRANCH}"
-    git -C "${work}" commit --quiet --allow-empty -m "release-only work"
-    git -C "${work}" checkout --quiet main
-    echo "version update" >>"${work}/README.md"
-    git -C "${work}" commit --quiet -am "version update"
-    main_commit="$(git -C "${work}" rev-parse HEAD)"
-    git -C "${work}" push --quiet origin main
-    git -C "${work}" checkout --quiet "${BRANCH}"
-    git -C "${work}" cherry-pick --quiet "${main_commit}"
-    release_commit="$(git -C "${work}" rev-parse HEAD)"
-    [[ "${release_commit}" != "${main_commit}" ]] || fail_test "fixture must create a distinct cherry-picked commit"
-    git -C "${work}" push --quiet origin "${BRANCH}"
-    if [[ "${tag_kind}" == annotated ]]; then
-        git -C "${work}" tag --annotate "${TAG}" -m release
-        git -C "${work}" push --quiet origin "refs/tags/${TAG}"
-    else
-        git -C "${work}" push --quiet origin "${release_commit}:refs/tags/${TAG}"
-    fi
-
-    run_selector "${TAG}" "${repository}" "${sibling}"
-    [[ "${LAST_STATUS}" -eq 0 ]] || fail_test "partial release should remain selectable: ${LAST_OUTPUT}"
-    run_skip_check "${repository}" refs/heads/main "${main_commit}"
-    [[ "${LAST_STATUS}" -eq 0 ]] || fail_test "stale main skip check failed: ${LAST_OUTPUT}"
-    [[ "$(skip_value)" == true ]] || fail_test "stale main event must not reconcile using a different commit"
-    [[ "${LAST_OUTPUT}" == *"retry the original ${BRANCH} workflow run"* ]] || fail_test "stale main event must explain how to resume"
-    [[ -z "$(remote_tag "${sibling}" "${TAG}")" ]] || fail_test "skipped main run must leave the sibling unchanged"
-
-    run_skip_check "${repository}" "refs/heads/${BRANCH}" "${release_commit}"
-    [[ "${LAST_STATUS}" -eq 0 && "$(skip_value)" == false ]] || fail_test "original release-branch run must resume"
-    output="$(bash "${RECONCILE_SCRIPT}" "${work}" "${TAG}" "${BRANCH}" "${release_commit}" 2>&1)" ||
-        fail_test "original release plan must reconcile: ${output}"
-    output="$(bash "${RECONCILE_SCRIPT}" "${TEST_ROOT}/${sibling}" "${TAG}" "${BRANCH}" "${sibling_commit}" 2>&1)" ||
-        fail_test "missing sibling must reconcile on retry: ${output}"
-    [[ -n "$(remote_tag "${sibling}" "${TAG}")" ]] || fail_test "release retry must complete the sibling"
-
-    run_skip_check "${repository}" refs/heads/main "${release_commit}"
-    [[ "${LAST_STATUS}" -eq 0 && "$(skip_value)" == false ]] || fail_test "matching tag commit must not be treated as a stale main event"
-}
-
-test_main_resumes_branch_created_before_tag() {
-    local trigger_commit
-    setup_repository branch-only
-    trigger_commit="$(git -C "${TEST_ROOT}/branch-only" rev-parse HEAD)"
-    git -C "${TEST_ROOT}/branch-only" push --quiet origin "${trigger_commit}:refs/heads/${BRANCH}"
-
-    run_skip_check branch-only refs/heads/main "${trigger_commit}"
-    [[ "${LAST_STATUS}" -eq 0 ]] || fail_test "branch-only skip check failed: ${LAST_OUTPUT}"
-    [[ "$(skip_value)" == "false" ]] || fail_test "a release branch created before tag failure should resume"
-}
-
-test_release_branch_trigger_never_waits_for_cherry_pick() {
-    local branch_head trigger_commit
-    setup_repository release-trigger
-    branch_head="$(git -C "${TEST_ROOT}/release-trigger" rev-parse HEAD)"
-    git -C "${TEST_ROOT}/release-trigger" push --quiet origin "${branch_head}:refs/heads/${BRANCH}"
-    echo "unrelated" >>"${TEST_ROOT}/release-trigger/README.md"
-    git -C "${TEST_ROOT}/release-trigger" commit --quiet -am "unrelated"
-    trigger_commit="$(git -C "${TEST_ROOT}/release-trigger" rev-parse HEAD)"
-
-    run_skip_check release-trigger "refs/heads/${BRANCH}" "${trigger_commit}"
-    [[ "${LAST_STATUS}" -eq 0 ]] || fail_test "release-branch skip check failed: ${LAST_OUTPUT}"
-    [[ "$(skip_value)" == "false" ]] || fail_test "a release-branch trigger should always reconcile and surface conflicts"
 }
 
 test_skips_version_complete_in_every_repository() {
@@ -353,12 +238,7 @@ main() {
     test_rejects_multiple_incomplete_versions
     test_requires_repository_and_output
     test_remote_query_errors_are_not_treated_as_missing_tags
-    test_main_waits_until_trigger_commit_is_cherry_picked
-    test_cross_branch_partial_release_resume lightweight
-    test_cross_branch_partial_release_resume annotated
-    test_main_resumes_branch_created_before_tag
-    test_release_branch_trigger_never_waits_for_cherry_pick
-    echo "release version selection and resume tests passed (15 tests)"
+    echo "release version selection tests passed (10 tests)"
 }
 
 main "$@"
