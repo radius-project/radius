@@ -67,7 +67,7 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 
 					// Retrieve configuration details from 'AdditionalProperties' property and add to currentConfig.
 					if len(configDetails.AdditionalProperties) > 0 {
-						currentProviderConfig = configDetails.AdditionalProperties
+						currentProviderConfig = maps.Clone(configDetails.AdditionalProperties)
 					}
 
 					// Extract secrets from provider configuration if they are present.
