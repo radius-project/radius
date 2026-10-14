@@ -44,6 +44,10 @@ Jobs that run `make build`, `make docker-build`, or `make docker-multi-arch-push
 
 Jobs that compile only the root module, including the current GoReleaser builds, can keep the default. Module downloads do not cover unrelated `go install` commands outside these modules.
 
+### Docker image pulls
+
+The `.github/actions/create-local-registry` composite action uses a cached `registry:2` image when available. Otherwise, it pulls the image with up to five attempts. Each pull has a 60-second timeout. The waits start at 5, 10, 20, and 40 seconds, with a random addition of up to the same delay to spread retries across jobs. Known permanent errors, such as authentication failures and missing manifests, stop without retry. The script preserves Docker's final exit code and output. The pull step has a 10-minute timeout.
+
 ### Keep change detection separate from executable helper code
 
 [`__changes.yml`](../../../../.github/workflows/__changes.yml) first checks out the caller-selected repository and ref to inspect changes as data. Its Filter step must finish in that checkout at the workspace root. For `pull_request_target` and `workflow_run`, a second checkout then restores `.github/scripts/changes.mjs` from `github.repository` at `github.sha` before Set result imports it. Do not select this executable helper using the comparison inputs or a PR/workflow-run head SHA. A failed trusted checkout or import must fail the job without falling back to PR content.
@@ -61,6 +65,7 @@ Run `make test-workflow-changes` for the helper and workflow wiring tests. They 
 - A fork run reaches all steps that do not require organization credentials and skips credential-dependent work with an explicit condition.
 - The [github-workflows.instructions.md](../../../../.github/instructions/github-workflows.instructions.md) checklist is satisfied — especially the fork-testability and `permissions:` items.
 - Run `bash .github/actions/go-mod-download/test.sh` for changes to the module download action. It checks retries, exponential backoff, failure propagation, directory handling, and input validation without network access. The unit-test workflow also exercises the action on Ubuntu and Windows.
+- Run `bash .github/actions/create-local-registry/test.sh` for changes to the image pull retry. It checks cached images, retry limits, random-delay bounds, timeout settings, permanent errors, and exit codes with fake commands, so it needs no network.
 
 ## Troubleshooting
 

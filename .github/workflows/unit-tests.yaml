@@ -48,6 +48,10 @@ jobs:
         shell: bash
         run: bash .github/actions/go-mod-download/test.sh
 
+      - name: Test local registry image pull retries
+        shell: bash
+        run: bash .github/actions/create-local-registry/test.sh
+
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:

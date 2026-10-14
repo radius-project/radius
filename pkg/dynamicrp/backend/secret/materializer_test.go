@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
@@ -212,4 +213,51 @@ func Test_Delete_NotFoundIsIgnored(t *testing.T) {
 	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
 	require.NoError(t, m.Delete(t.Context(), testOwnerID))
+}
+
+func Test_Delete_RetriesOnConflict(t *testing.T) {
+	deleteConflictInterval = time.Millisecond
+	t.Cleanup(func() { deleteConflictInterval = 2 * time.Second })
+
+	calls := 0
+	transport := genfake.NewServerFactoryTransport(&genfake.ServerFactory{
+		GenericResourcesServer: genfake.GenericResourcesServer{
+			BeginDelete: func(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (resp azfake.PollerResponder[generated.GenericResourcesClientDeleteResponse], errResp azfake.ErrorResponder) {
+				calls++
+				if calls < 3 {
+					errResp.SetResponseError(http.StatusConflict, "Conflict")
+					return
+				}
+				resp.SetTerminalResponse(http.StatusOK, generated.GenericResourcesClientDeleteResponse{}, nil)
+				return
+			},
+		},
+	})
+
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
+
+	require.NoError(t, m.Delete(t.Context(), testOwnerID))
+	require.Equal(t, 3, calls)
+}
+
+func Test_Delete_ConflictTimesOut(t *testing.T) {
+	deleteConflictInterval = time.Millisecond
+	deleteConflictTimeout = 20 * time.Millisecond
+	t.Cleanup(func() {
+		deleteConflictInterval = 2 * time.Second
+		deleteConflictTimeout = 2 * time.Minute
+	})
+
+	transport := genfake.NewServerFactoryTransport(&genfake.ServerFactory{
+		GenericResourcesServer: genfake.GenericResourcesServer{
+			BeginDelete: func(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (resp azfake.PollerResponder[generated.GenericResourcesClientDeleteResponse], errResp azfake.ErrorResponder) {
+				errResp.SetResponseError(http.StatusConflict, "Conflict")
+				return
+			},
+		},
+	})
+
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
+
+	require.ErrorContains(t, m.Delete(t.Context(), testOwnerID), "failed to delete managed secret")
 }
