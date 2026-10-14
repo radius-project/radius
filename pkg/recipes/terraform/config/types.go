@@ -21,6 +21,8 @@ const (
 	moduleSourceKey = "source"
 	// moduleVersionKey represents the key for the module version parameter.
 	moduleVersionKey = "version"
+	// moduleProvidersKey represents the key for the module providers map.
+	moduleProvidersKey = "providers"
 
 	mainConfigFileName = "main.tf.json"
 )

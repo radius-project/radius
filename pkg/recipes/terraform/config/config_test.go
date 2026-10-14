@@ -638,6 +638,163 @@ func Test_AddProviders(t *testing.T) {
 	}
 }
 
+func Test_AddProviderAliasPlaceholders(t *testing.T) {
+	tests := []struct {
+		desc              string
+		envConfig         *recipes.Configuration
+		expectedProvider  map[string][]map[string]any
+		expectedProviders map[string]string
+	}{
+		{
+			desc: "nil env config",
+		},
+		{
+			desc:      "no recipe providers",
+			envConfig: &recipes.Configuration{},
+		},
+		{
+			desc: "recipe providers without aliases",
+			envConfig: &recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"azurerm": {
+								{AdditionalProperties: map[string]any{"subscription_id": "sub"}},
+								{AdditionalProperties: map[string]any{"alias": ""}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "aliased recipe providers",
+			envConfig: &recipes.Configuration{
+				RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{
+						Providers: map[string][]datamodel.ProviderConfigProperties{
+							"azurerm": {
+								{AdditionalProperties: map[string]any{"subscription_id": "sub"}},
+								{AdditionalProperties: map[string]any{"alias": "custom", "subscription_id": "sub"}},
+								{AdditionalProperties: map[string]any{"alias": "custom", "subscription_id": "other"}},
+							},
+							"kubernetes": {
+								{AdditionalProperties: map[string]any{"alias": "k8s_first", "config_path": "/path1"}},
+								{AdditionalProperties: map[string]any{"alias": "k8s_second", "config_path": "/path2"}},
+							},
+						},
+					},
+				},
+			},
+			expectedProvider: map[string][]map[string]any{
+				"azurerm":    {{"alias": "custom"}},
+				"kubernetes": {{"alias": "k8s_first"}, {"alias": "k8s_second"}},
+			},
+			expectedProviders: map[string]string{
+				"azurerm.custom":        "azurerm.custom",
+				"kubernetes.k8s_first":  "kubernetes.k8s_first",
+				"kubernetes.k8s_second": "kubernetes.k8s_second",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			envRecipe, resourceRecipe := getTestInputs()
+			tfconfig, err := New(t.Context(), testRecipeName, &envRecipe, &resourceRecipe)
+			require.NoError(t, err)
+
+			tfconfig.AddProviderAliasPlaceholders(tc.envConfig)
+
+			require.Equal(t, tc.expectedProvider, tfconfig.Provider)
+			moduleProviders, ok := tfconfig.Module[testRecipeName][moduleProvidersKey]
+			if tc.expectedProviders == nil {
+				require.False(t, ok)
+				return
+			}
+			require.Equal(t, tc.expectedProviders, moduleProviders)
+		})
+	}
+}
+
+func Test_AddProviders_ReplacesAliasPlaceholders(t *testing.T) {
+	aliasEnvConfig := &recipes.Configuration{
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				Providers: map[string][]datamodel.ProviderConfigProperties{
+					"azurerm": {
+						{AdditionalProperties: map[string]any{"alias": "custom", "subscription_id": "sub"}},
+					},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		desc              string
+		envConfig         *recipes.Configuration
+		requiredProviders map[string]*RequiredProviderInfo
+		expectedProvider  map[string][]map[string]any
+		expectedProviders map[string]string
+	}{
+		{
+			desc:      "module declares the alias",
+			envConfig: aliasEnvConfig,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				providers.AzureProviderName: {
+					Source:               "hashicorp/azurerm",
+					ConfigurationAliases: []string{"azurerm.custom"},
+				},
+			},
+			expectedProvider: map[string][]map[string]any{
+				"azurerm": {{"alias": "custom", "subscription_id": "sub"}},
+			},
+			expectedProviders: map[string]string{"azurerm.custom": "azurerm.custom"},
+		},
+		{
+			desc:      "module does not declare the alias",
+			envConfig: aliasEnvConfig,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"random": {Source: "hashicorp/random"},
+			},
+			expectedProvider: map[string][]map[string]any{
+				"azurerm": {{"alias": "custom", "subscription_id": "sub"}},
+			},
+		},
+		{
+			desc:      "no provider configuration is generated",
+			envConfig: &recipes.Configuration{},
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"random": {Source: "hashicorp/random"},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			envRecipe, resourceRecipe := getTestInputs()
+			tfconfig, err := New(t.Context(), testRecipeName, &envRecipe, &resourceRecipe)
+			require.NoError(t, err)
+
+			// Simulate the placeholders that are added before the module download.
+			tfconfig.AddProviderAliasPlaceholders(aliasEnvConfig)
+			require.NotNil(t, tfconfig.Provider)
+			require.Contains(t, tfconfig.Module[testRecipeName], moduleProvidersKey)
+
+			err = tfconfig.AddProviders(t.Context(), tc.requiredProviders, map[string]providers.Provider{}, tc.envConfig, nil)
+			require.NoError(t, err)
+
+			require.Equal(t, tc.expectedProvider, tfconfig.Provider)
+			moduleProviders, ok := tfconfig.Module[testRecipeName][moduleProvidersKey]
+			if tc.expectedProviders == nil {
+				require.False(t, ok)
+				return
+			}
+			require.Equal(t, tc.expectedProviders, moduleProviders)
+		})
+	}
+}
+
 func Test_AddOutputs(t *testing.T) {
 	envRecipe, resourceRecipe := getTestInputs()
 	tests := []struct {

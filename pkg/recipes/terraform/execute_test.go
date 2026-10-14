@@ -307,6 +307,54 @@ func Test_GetTerraformConfig(t *testing.T) {
 	require.Equal(t, &expectedConfig, tfConfig)
 }
 
+func Test_GetTerraformConfig_ProviderAliasPlaceholders(t *testing.T) {
+	testDir := t.TempDir()
+
+	options := Options{
+		EnvConfig: &recipes.Configuration{
+			RecipeConfig: dm.RecipeConfigProperties{
+				Terraform: dm.TerraformConfigProperties{
+					Providers: map[string][]dm.ProviderConfigProperties{
+						"azurerm": {
+							{AdditionalProperties: map[string]any{"subscription_id": "sub"}},
+							{AdditionalProperties: map[string]any{"alias": "custom", "subscription_id": "sub"}},
+						},
+					},
+				},
+			},
+		},
+		EnvRecipe: &recipes.EnvironmentDefinition{
+			Name:         "test-recipe",
+			TemplatePath: "test/module/source",
+		},
+		ResourceRecipe: &recipes.ResourceMetadata{},
+	}
+
+	expectedConfig := config.TerraformConfig{
+		Provider: map[string][]map[string]any{
+			"azurerm": {{"alias": "custom"}},
+		},
+		Module: map[string]config.TFModuleConfig{
+			"test-recipe": {
+				"source":    "test/module/source",
+				"providers": map[string]string{"azurerm.custom": "azurerm.custom"},
+			},
+		},
+	}
+	tfConfig, err := getTerraformConfig(t.Context(), testDir, options)
+	require.NoError(t, err)
+	require.Equal(t, &expectedConfig, tfConfig)
+
+	// The placeholders must be saved before "terraform get" runs.
+	content, err := os.ReadFile(filepath.Join(testDir, "main.tf.json"))
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"terraform": null,
+		"provider": {"azurerm": [{"alias": "custom"}]},
+		"module": {"test-recipe": {"source": "test/module/source", "providers": {"azurerm.custom": "azurerm.custom"}}}
+	}`, string(content))
+}
+
 func Test_GetTerraformConfig_EmptyRecipeName(t *testing.T) {
 	// Create a temporary directory for testing.
 	testDir := t.TempDir()

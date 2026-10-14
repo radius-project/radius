@@ -114,7 +114,10 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 		return err
 	}
 
-	// Add generated provider configs for required providers to the existing terraform json config file
+	// Add generated provider configs for required providers to the existing terraform json config file.
+	// Always replace the existing value so that the placeholders from AddProviderAliasPlaceholders
+	// do not stay in the configuration that Terraform applies.
+	cfg.Provider = nil
 	if len(providerConfigs) > 0 {
 		cfg.Provider = providerConfigs
 	}
@@ -173,14 +176,63 @@ func (cfg *TerraformConfig) updateModuleWithProviderAliases(requiredProviders ma
 	}
 
 	// Update the module provider configuration in the Terraform config.
-	if len(moduleAliasConfig) > 0 {
-		moduleConfig := cfg.Module
-		for _, module := range moduleConfig {
-			module["providers"] = moduleAliasConfig
+	// Remove a providers map from an earlier step (for example, a placeholder) when no alias matches.
+	for _, module := range cfg.Module {
+		if len(moduleAliasConfig) > 0 {
+			module[moduleProvidersKey] = moduleAliasConfig
+		} else {
+			delete(module, moduleProvidersKey)
 		}
 	}
 
 	return nil
+}
+
+// AddProviderAliasPlaceholders adds a placeholder provider block and a module providers map entry for each
+// aliased provider in the environment recipe configuration. A placeholder contains only the alias.
+//
+// Terraform validates the configuration_aliases of a module when it downloads the module (terraform get).
+// Radius downloads the module before it can inspect the module and generate the full provider configuration
+// in AddProviders. Without these placeholders, the download fails for modules that declare configuration_aliases.
+// If the module does not declare an alias, Terraform only gives a warning.
+// AddProviders replaces the placeholders after the module is inspected. Save() must be called to persist the config.
+func (cfg *TerraformConfig) AddProviderAliasPlaceholders(envConfig *recipes.Configuration) {
+	if envConfig == nil {
+		return
+	}
+
+	placeholders := map[string][]map[string]any{}
+	moduleAliasConfig := map[string]string{}
+	for providerName, providerConfigs := range envConfig.RecipeConfig.Terraform.Providers {
+		for _, providerConfig := range providerConfigs {
+			alias, ok := providerConfig.AdditionalProperties["alias"]
+			if !ok {
+				continue
+			}
+
+			aliasName := fmt.Sprintf("%v", alias)
+			if aliasName == "" {
+				continue
+			}
+
+			aliasProviderConfig := providerName + "." + aliasName
+			if _, exists := moduleAliasConfig[aliasProviderConfig]; exists {
+				continue
+			}
+
+			moduleAliasConfig[aliasProviderConfig] = aliasProviderConfig
+			placeholders[providerName] = append(placeholders[providerName], map[string]any{"alias": aliasName})
+		}
+	}
+
+	if len(moduleAliasConfig) == 0 {
+		return
+	}
+
+	cfg.Provider = placeholders
+	for _, module := range cfg.Module {
+		module[moduleProvidersKey] = moduleAliasConfig
+	}
 }
 
 // AddRecipeContext adds RecipeContext to TerraformConfig module parameters if recipeCtx is not nil.
