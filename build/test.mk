@@ -160,6 +160,12 @@ test-workflow-changes: ## Tests reusable workflow change detection
 
 test: test-workflow-changes
 
+.PHONY: test-docker-push
+test-docker-push: ## Tests image push recovery without Docker or a registry
+	@bash ./build/scripts/docker-push_test.sh
+
+test: test-docker-push
+
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
 	@echo "$(ARROW) Compiling unit tests..."
