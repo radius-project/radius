@@ -81,7 +81,7 @@ This target:
 
 Each setup refreshes the retained samples checkout from its `edge` branch and archives previous test reports and container logs before starting a new run. The full lifecycle controls concurrency independently of Make's parallel settings. Manually selected groups still run sequentially, even when your Make settings request parallel execution. All deletion and post-delete checks remain enabled.
 
-Do not start another local functional test run at the same time. Fixture installation drains its workers on failure or interruption. The full lifecycle holds the shared Bicep fixture lock until all test workers finish, then restores the original files. If interrupted, it waits for active workers before restoring fixtures and releasing the lock.
+Do not start another local functional test run at the same time. Fixture publication and test execution each hold the shared Bicep fixture lock and temporarily configure Bicep to use the extensions published from your checkout. Both phases drain their workers before restoring the original files and releasing the lock, including on failure or interruption.
 
 ### 3. Clean up
 
@@ -334,11 +334,68 @@ Download the `all_container_logs` artifact to investigate a run. Treat downloade
 
 Run `make test-cluster-diagnostics` to test the diagnostic scripts without accessing a cluster.
 
-### Cloud credentials in CI
+### Diagnose long-running Azure test failures
 
-Cloud workflows use federated identity instead of static credentials. GitHub Actions exchanges GitHub OIDC tokens through the cloud login actions, while Radius pods use Azure Workload Identity or AWS IAM Roles for Service Accounts.
+The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
 
-The AWS identities are managed by the `radius-project/wellknown` Terraform layers. Apply `modules/20-functional-tests`, `modules/21-functional-tests-aws`, and `modules/30-functional-tests-github` in order when the long-running test cluster is created or rotated.
+The LRT setup script [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) defines the required Helm overrides in `REQUIRED_CHART_VALUES`, shared by fresh installs, upgrades, and existing same-version IRSA reconciliation. Keep LRT-specific configuration in that array rather than changing global chart defaults or using `kubectl set resources`, which can cause field-ownership conflicts on later upgrades.
+
+Download the `all_container_logs` artifact from a successful or failed run. Alongside the released test harness's logs, it contains:
+
+- `all-tests-pod-states.log`: final pod, node, and event descriptions.
+- `all-diagnostics/window-start.txt`: the UTC start of the test command, used to filter the final container log sweep.
+- `all-diagnostics/events-*.log`: timestamped event JSON and `radius-system` pod summaries sampled throughout the test command, with a 60-second delay between samples. These preserve events that may expire before the final snapshot.
+- `all-diagnostics/radius-system/containers.tsv`: pod UIDs, restart counts, images, and separate current/previous container identities and start/finish timestamps, without pod environment values. Missing fields are `-`; a running container has no current finish time. The column order is recorded in `collection.log`.
+- `all-diagnostics/radius-system/*.current.log` and `*.previous.log`: timestamped retained container logs from the test window. Previous logs are requested for containers reporting a restart.
+- `all-diagnostics/collection.log` and `sampler.log`: requested windows, collection times, command outcomes, capture failures, and limit notices.
+
+The sampler stops with the wrapped command, including on cancellation, without replacing its exit status. A 130-minute safety ceiling exceeds the workflow's existing 120-minute test-step timeout. Sampling is capped at 20 MiB. The final container log sweep has a 120-second budget, a 10 MiB cap per capture, and a 100 MiB combined cap; individual requests are bounded to 15 seconds plus a two-second termination grace period. Final diagnostic collection has a five-minute workflow timeout and runs before artifact upload and cluster cleanup.
+
+Container logs cannot recover deleted pods or rotated history, and `--previous` covers at most one restart of a surviving container. An old OOM termination is not evidence of an OOM during this run; compare its timestamp with `window-start.txt`. A quiet log interval alone does not prove rotation or a stalled collector. `FAILED` entries, output caps, cancellation, or a collection timeout can leave incomplete captures. Use the cluster's existing Azure monitoring for historical CPU, memory, throttling, and logs no longer retained by Kubernetes. Treat downloaded logs as potentially sensitive.
+
+To collect the same diagnostics locally, use Bash, `kubectl`, `jq`, and GNU coreutils (`timeout`) with your selected cluster. Use an absolute output path and a fresh directory for each run:
+
+```bash
+export RADIUS_CONTAINER_LOG_PATH="$PWD/dist/lrt-diagnostics-local"
+export DIAGNOSTICS_NAME=all
+bash .github/scripts/run-with-cluster-diagnostics.sh \
+  make test-functional-corerp-noncloud
+# Run this even if the test command fails.
+DIAGNOSTICS_LOG_NAMESPACES=radius-system \
+  bash .github/scripts/collect-cluster-diagnostics.sh
+```
+
+`DIAGNOSTICS_SAMPLE_INTERVAL` overrides the sampling delay in seconds. `DIAGNOSTICS_SINCE_TIME` overrides the saved window with a UTC timestamp such as `2026-09-17T10:00:00Z`; without either window, the collector records that container logs were skipped rather than fetching unbounded history. `DIAGNOSTICS_COLLECTION_SECONDS` overrides the container sweep's time budget. Other functional workflows retain their existing snapshot behavior unless they opt in with `DIAGNOSTICS_LOG_NAMESPACES`.
+
+Run `make test-cluster-diagnostics` to exercise collection, limits, failures, command status preservation, and sampler cancellation with a stubbed `kubectl`; it does not access a cluster. This optional target requires `jq` and GNU coreutils (`timeout`). The Ubuntu unit-test CI job invokes it separately; it is not a prerequisite of `make test`, so the standard local unit-test command does not acquire these additional tool requirements.
+
+### Cloud credentials in CI (federated identity)
+
+The cloud CI workflows - `functional-test-cloud.yaml`, the long-running test `long-running-azure.yaml` ("LRT"), and the two scheduled purge jobs - authenticate to Azure and AWS with **federated identity only**. No static cloud secrets (service-principal passwords or AWS access keys) are stored in GitHub; every credential is a short-lived token minted from an OIDC trust. Two distinct trusts are in play:
+
+- **Runner -> cloud.** The GitHub Actions runner gets tokens from GitHub's OIDC provider (`token.actions.githubusercontent.com`), and Azure CLI / `aws-actions/configure-aws-credentials` exchange them for short-lived credentials that the test and purge code use to verify and delete cloud resources. Every such job sets `permissions: id-token: write`. The cloud functional workflow uses [`.github/scripts/azure-oidc-login.mjs`](../../../../.github/scripts/azure-oidc-login.mjs) for Azure login. Both jobs load this script in a separate checkout from `github.repository` at `github.sha`, so older PR branches do not need to contain it. Builds and tests still use the PR checkout. It retries only GitHub token request timeouts, selected connection errors, and HTTP 408, 429, 500, 502, 503, and 504 responses, with at most three requests, a 30-second limit per request, and two- and four-second delays. Permission, certificate, invalid-response, Azure login, and subscription errors fail without retry. Each job clears the Azure CLI account cache after cleanup. Run `make test-azure-oidc-login` to check this path locally without cloud access.
+- **Radius control plane -> cloud.** The Radius pods (service accounts `ucp`, `applications-rp`, and `dynamic-rp` in `radius-system`) assume a cloud identity through the *cluster's own* OIDC issuer - Azure Workload Identity on Azure, IRSA on AWS - using a projected service-account token (audience `sts.amazonaws.com` for AWS). Radius reads the target identity from the credential registered with `rad credential register azure wi` and `rad credential register aws irsa`; enabling it requires installing the chart with `--set global.azureWorkloadIdentity.enabled=true` and `--set global.aws.irsa.enabled=true` (the LRT does this in [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh)).
+
+The identities are carried in repository secrets rather than in the workflow files:
+
+| Secret                                             | Assumed by                                                          | Trust                                                     |
+|----------------------------------------------------|---------------------------------------------------------------------|-----------------------------------------------------------|
+| `AWS_GH_ACTIONS_ROLE`                              | the runner, via `configure-aws-credentials`                         | GitHub OIDC -> IAM role                                   |
+| `FUNC_TEST_RAD_IRSA_ROLE`                          | the Radius pods, via IRSA                                           | cluster OIDC issuer -> IAM role                           |
+| `AZURE_SP_TESTS_APPID` + `AZURE_SP_TESTS_TENANTID` | both the runner (Azure CLI) and the Radius pods (workload identity) | GitHub OIDC and AKS OIDC -> AAD app federated credentials |
+| `FUNCTEST_AWS_ACCOUNT_ID`                          | the AWS account id passed to `rad env update` (not a credential)    | -                                                         |
+
+#### Provision the AWS identities
+
+The AWS identity resources are owned by the [`radius-project/wellknown`](https://github.com/radius-project/wellknown) Terraform layers. Do not create OIDC providers or edit role trust policies manually because a later Terraform apply will overwrite that drift.
+
+Apply the layers in order whenever the LRT cluster is created or rotated:
+
+1. `modules/20-functional-tests` publishes `workload_identity_issuers`, containing both the blob-hosted KinD issuer and the managed AKS issuer, plus the Radius service-account subjects.
+2. [`modules/21-functional-tests-aws`](https://github.com/radius-project/wellknown/tree/main/modules/21-functional-tests-aws) creates or reuses an IAM OIDC provider for each issuer. It creates the IRSA role trusted by every issuer and the GitHub Actions role trusted by the Radius repository.
+3. `modules/30-functional-tests-github` publishes the resulting role ARNs as `FUNC_TEST_RAD_IRSA_ROLE` and `AWS_GH_ACTIONS_ROLE`.
+
+The GitHub Actions role allows 5400-second sessions, and the LRT workflow requests that duration to leave headroom over the 60-minute functional-test window. Its generated subject patterns include branch refs, so the scheduled `main` run uses `repo:radius-project/radius:ref:refs/heads/main` without a separate trust-policy edit.
 
 ### Terraform cloud backend lifecycle tests
 

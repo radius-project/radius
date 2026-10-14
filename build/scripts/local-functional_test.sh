@@ -204,6 +204,14 @@ make)
         ;;
     publish-test-bicep-recipes)
         [[ "${BICEP_RECIPE_PUBLISH_PARALLELISM}" == 4 ]] || exit 1
+        [[ -d dist/local-functional/test.lock ]] || {
+            echo "recipes published without the fixture lock" >&2
+            exit 1
+        }
+        grep -F '"radius": "br:localhost:5443/radius:deadbeef1"' \
+            test/bicepconfig.json >/dev/null
+        grep -F '"testresources": "br:localhost:5443/testresources:deadbeef1"' \
+            test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json >/dev/null
         ;;
     test-functional-*)
         [[ -f "${HOME}/.bicep/br/extensions-ready" ]] || {
@@ -293,6 +301,8 @@ for existing in both results container_logs neither; do
 done
 
 export MOCK_BUILD_STATUS=0
+printf 'original config\n' >"${work_dir}/test/bicepconfig.json"
+dynamic_config="${work_dir}/test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json"
 for platform in linux/amd64 darwin/amd64 darwin/arm64; do
     export LOCAL_FUNCTIONAL_HOST_OS="${platform%/*}"
     export LOCAL_FUNCTIONAL_HOST_ARCH="${platform#*/}"
@@ -316,6 +326,10 @@ for platform in linux/amd64 darwin/amd64 darwin/arm64; do
     fi
     assert_contains "${calls}" \
         "127.0.0.1 radius-local-registry # radius-local-functional"
+    [[ "$(<"${work_dir}/test/bicepconfig.json")" == "original config" ]] ||
+        fail "${platform} setup did not restore existing config"
+    [[ ! -e "${dynamic_config}" && ! -e "${state}/test.lock" ]] ||
+        fail "${platform} setup leaked fixtures or a lock"
 done
 export MOCK_FAILURE=""
 export LOCAL_FUNCTIONAL_HOST_OS=linux LOCAL_FUNCTIONAL_HOST_ARCH=amd64
@@ -341,8 +355,29 @@ for outcome in success failure signal; do
         [[ -f "${MOCK_LOG}.fixture-${fixture}-done" ]] ||
             fail "${outcome} did not drain ${fixture}"
     done
+    [[ "$(<"${work_dir}/test/bicepconfig.json")" == "original config" ]] ||
+        fail "${outcome} fixture publication did not restore existing config"
+    [[ ! -e "${dynamic_config}" && ! -e "${state}/test.lock" ]] ||
+        fail "${outcome} fixture publication leaked fixtures or a lock"
 done
 export MOCK_FIXTURE_CONCURRENCY="" MOCK_FIXTURE_TEST_STATUS=0 MOCK_FIXTURE_SIGNAL=""
+export MOCK_FAILURE="make publish-test-bicep-recipes BICEP_RECIPE_REGISTRY=localhost:5443"
+run_runner 1 fixtures
+assert_contains "${output}" "mock failure: ${MOCK_FAILURE}"
+[[ "$(<"${work_dir}/test/bicepconfig.json")" == "original config" ]] ||
+    fail "recipe publication failure did not restore existing config"
+[[ ! -e "${dynamic_config}" && ! -e "${state}/test.lock" ]] ||
+    fail "recipe publication failure leaked fixtures or a lock"
+export MOCK_FAILURE=""
+mkdir "${state}/test.lock"
+printf '%s\n' "$$" >"${state}/test.lock/owner"
+run_runner 1 fixtures
+assert_contains "${output}" "Another local functional test run"
+assert_not_contains "${calls}" "make publish-"
+assert_not_contains "${calls}" "flux install"
+printf '2147483647\n' >"${state}/test.lock/owner"
+run_runner 0 fixtures
+[[ ! -e "${state}/test.lock" ]] || fail "fixture publication did not recover stale lock"
 export MOCK_FAILURE="flux install --namespace=flux-system --version=v2.6.4 --components=source-controller --network-policy=false"
 run_runner 1 fixtures
 assert_contains "${output}" "mock failure"
@@ -366,8 +401,6 @@ run_runner 1 test test-functional-multicluster-noncloud
 assert_contains "${output}" "Missing external cluster kubeconfig"
 assert_not_contains "${calls}" "kubectl "
 touch "${state}/external-host.kubeconfig"
-printf 'original config\n' >"${work_dir}/test/bicepconfig.json"
-dynamic_config="${work_dir}/test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json"
 for command in \
     "bicep restore ${extension_fixture} --force" \
     "bicep build ${extension_fixture} --stdout --no-restore"; do

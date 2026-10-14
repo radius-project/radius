@@ -179,7 +179,7 @@ func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
 }
 
 func Test_Run_Logger(t *testing.T) {
-	t.Parallel()
+	// rad run tests share the dashboard's local port 7007.
 	// Will be used to cancel `rad run`
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
@@ -254,7 +254,6 @@ func Test_Run_Logger(t *testing.T) {
 }
 
 func Test_Run_Portforward(t *testing.T) {
-	t.Parallel()
 	// Will be used to cancel `rad run`
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)

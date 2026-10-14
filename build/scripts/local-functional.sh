@@ -274,9 +274,8 @@ EOF
 fixtures() (
     configure_environment
     local fixture_pids=()
-    trap 'trap "" INT TERM; wait_workers "${fixture_pids[@]}" || true' EXIT
-    trap 'exit 130' INT
-    trap 'exit 143' TERM
+    prepare_configs
+    trap 'trap "" INT TERM; wait_workers "${fixture_pids[@]}" || true; finish_tests' EXIT
     (
         flux install --namespace=flux-system --version=v2.6.4 \
             --components=source-controller --network-policy=false
@@ -309,10 +308,14 @@ fixtures() (
         git -C "${STATE}/samples" pull --ff-only origin edge
     fi
     wait_workers "${fixture_pids[@]}"
+    finish_tests
     trap - EXIT INT TERM
 )
 
 restore_configs() {
+    if [[ -z "${config_backup:-}" ]]; then
+        return
+    fi
     local config
     for config in test/bicepconfig.json \
         test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json; do
@@ -481,21 +484,14 @@ acquire_test_lock() {
     exit 1
 }
 
-run_tests() {
-    configure_environment
-    if [[ "${LOCAL_FUNCTIONAL_SUITE}" == "multicluster" &&
-        ! -f "${RADIUS_TEST_EXTERNAL_KUBECONFIG}" ]]; then
-        echo "Missing external cluster kubeconfig: ${RADIUS_TEST_EXTERNAL_KUBECONFIG}" >&2
-        echo "Provision the multicluster suite before running its tests." >&2
-        exit 1
-    fi
-    kubectl cluster-info
+prepare_configs() {
     test_lock_owned=false
     acquire_test_lock
-    config_backup="$(mktemp -d "${STATE}/backup.XXXXXX")"
+    config_backup=""
     trap finish_tests EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
+    config_backup="$(mktemp -d "${STATE}/backup.XXXXXX")"
     local config
     for config in test/bicepconfig.json \
         test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json; do
@@ -515,6 +511,18 @@ run_tests() {
 }
 EOF
     done
+}
+
+run_tests() {
+    configure_environment
+    if [[ "${LOCAL_FUNCTIONAL_SUITE}" == "multicluster" &&
+        ! -f "${RADIUS_TEST_EXTERNAL_KUBECONFIG}" ]]; then
+        echo "Missing external cluster kubeconfig: ${RADIUS_TEST_EXTERNAL_KUBECONFIG}" >&2
+        echo "Provision the multicluster suite before running its tests." >&2
+        exit 1
+    fi
+    kubectl cluster-info
+    prepare_configs
     restore_extensions
     if [[ -z "${LOCAL_FUNCTIONAL_SUITE:-}" ]]; then
         kubectl port-forward -n git-http-backend svc/git-http 30080:3000 \
