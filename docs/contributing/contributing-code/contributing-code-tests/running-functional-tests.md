@@ -186,6 +186,16 @@ These tests run automatically for every PR via the `functional-test-noncloud.yam
 
 Separate scheduled jobs (`purge-azure-test-resources.yaml` and `purge-aws-test-resources.yaml`) delete cloud resources left behind when a run is cancelled or times out.
 
+### Diagnose Terraform provider failures
+
+Failed `corerp-cloud` jobs print a selected Terraform diagnostic summary in the **Collect cluster diagnostics** step. The same summary is saved as `corerp-cloud-terraform-diagnostics.log` in the `corerp-cloud_container_logs` artifact. Collection is limited to 120 seconds, with a 15-second limit per request, and does not replace the test result.
+
+The summary includes runner memory, node capacity and pressure, warning event identities, and the state of `applications-rp` and `dynamic-rp` containers. It includes current and previous termination reasons, exit codes, signals, timestamps, memory requests and limits. For running containers, it reads available cgroup memory usage, peak, limit, OOM counters, CPU counters, and task counts. These are post-test snapshots and container-lifetime counters, not measurements of an individual provider process. A provider can be killed without restarting its parent container; check cgroup OOM counters as well as pod termination state. Unavailable cgroup files are omitted. If no counters can be read, or a container or request is inaccessible, collection reports the failure.
+
+Provider error summaries count JSON log records that match schema errors, provider-start timeouts, or a plugin that did not respond. They read at most the last 40 minutes, 2000 lines, and 1 MiB per container, including the previous container when it has restarted. Counts are not failed-operation counts; one error can appear in several records. Non-JSON records are counted but their contents are not printed. The summary excludes raw provider logs, event and termination messages, pod environment values, and process command lines. This collection does not enable Terraform trace logging.
+
+To collect the same summary locally, use a Linux host with Bash, `kubectl`, `jq`, GNU coreutils (`timeout`), procps (`free`), and access to your selected cluster. Run `bash .github/scripts/collect-terraform-diagnostics.sh` on that host. The collector does not support native macOS execution. Run `make test-cluster-diagnostics` to check the collector with stub commands; it does not require a cluster.
+
 ### Diagnose long-running Azure test failures
 
 The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
@@ -235,7 +245,7 @@ The identities are carried in repository secrets rather than in the workflow fil
 | `AWS_GH_ACTIONS_ROLE`                              | the runner, via `configure-aws-credentials`                         | GitHub OIDC -> IAM role                                   |
 | `FUNC_TEST_RAD_IRSA_ROLE`                          | the Radius pods, via IRSA                                           | cluster OIDC issuer -> IAM role                           |
 | `AZURE_SP_TESTS_APPID` + `AZURE_SP_TESTS_TENANTID` | both the runner (Azure CLI) and the Radius pods (workload identity) | GitHub OIDC and AKS OIDC -> AAD app federated credentials |
-| `FUNCTEST_AWS_ACCOUNT_ID`                          | the AWS account id passed to `rad env update` (not a credential)    | -                                                         |
+| `FUNCTEST_AWS_ACCOUNT_ID`                          | the AWS account id in the environment `awsScope` (not a credential) | -                                                         |
 
 #### Provision the AWS identities
 
