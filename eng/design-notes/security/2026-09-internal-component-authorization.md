@@ -211,7 +211,7 @@ In `external` mode:
 - **Verification.** The receiver checks the token offline against the cluster's service account signing keys, which it reads from the API server's OIDC discovery endpoint and caches; it refetches them only when it sees an unknown key ID. It checks the issuer, its own audience, the expiry, the Radius namespace, and that the service account is in the fixed list, then maps it to the component's canonical `<service>.<namespace>.svc` name, so the rest of this design is unchanged. A missing or invalid token is rejected with `InvalidAuthenticationInfo`.
 - **Trust.** The cluster's service account signing key becomes the root of Radius's internal identity, and the customer's network stack is trusted to protect tokens in transit.
 - **The operator owns encryption.** Radius cannot confirm that an arbitrary stack encrypts every connection, so choosing `external` is the operator's statement that it does. `rad install` prints a warning saying so, and the operator must also cover Radius's connections to storage and queues.
-- **UCP's aggregated API port is unchanged.** The Kubernetes API server calls it directly, so it keeps its certificate (see [Kubernetes API server trust](#kubernetes-api-server-trust)). It is the only certificate Radius manages in this mode.
+- **UCP's aggregated API port is unchanged.** The Kubernetes API server calls it directly, so it keeps its certificate (see [Kubernetes API server trust](#kubernetes-api-server-trust)). It is the only certificate Radius manages in this mode. The certificate mode is chosen independently, so `external` with `caSecret` signs this certificate with the operator's CA.
 - **Switching** between `radius` and `external` restarts all Radius components together, because callers and receivers must use the same mode.
 
 #### Keep deployment authority limited
@@ -487,7 +487,7 @@ rad install kubernetes --mtls-provider external
 
 `rad` rejects invalid combinations: `--ca-cert` without `--ca-key` (or the reverse), flags for more than one mode, and any of these flags or `--mtls-provider` with `--skip-rbac`. Before installing in `caSecret` mode, `rad` checks that the certificate is a CA, matches the key, and is not expired, and warns if it expires within 30 days. On `rad upgrade kubernetes`, omitting the flags keeps the installation's current mode.
 
-`--mtls-provider` takes `radius` (default) or `external` (see [Using the customer's own mTLS](#using-the-customers-own-mtls)). With `external`, the certificate flags apply only to UCP's aggregated API certificate.
+`--mtls-provider` takes `radius` (default) or `external` (see [Using the customer's own mTLS](#using-the-customers-own-mtls)). It is independent of the certificate flags, which work with either value. With `external`, they apply only to UCP's aggregated API certificate.
 
 ### Implementation Details
 
