@@ -5,13 +5,6 @@
 # Each exclude below is a deliberate, reviewed exception. Prefer fixing the
 # workflow over adding an exclude here.
 excludes:
-  # release.yaml checks out several repositories with a token and intentionally
-  # persists those credentials to create tags/branches as part of the release
-  # process. The release workflow is intentionally left unmodified.
-  - policy_name: checkout_persist_credentials_should_be_false
-    workflow_file_path: .github/workflows/release.yaml
-    job_name: release
-
   # The actions below are first-party reusable workflows synced from
   # radius-project/.github and pinned to @main by that sync automation. The
   # calling workflow files are marked "DO NOT EDIT MANUALLY"; the ref is
