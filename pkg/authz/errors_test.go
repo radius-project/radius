@@ -18,6 +18,7 @@ package authz
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -207,7 +208,7 @@ func Test_DeniedError_ErrorResponse(t *testing.T) {
 			err:         &DeniedError{Code: v1.CodeAuthorizationUnavailable, Reason: "permission store unreachable", Action: action, Target: target},
 			wantStatus:  http.StatusServiceUnavailable,
 			wantCode:    v1.CodeAuthorizationUnavailable,
-			wantMessage: "Authorization denied for action '" + action + "' on target '" + target + "'",
+			wantMessage: "Authorization could not be checked for action '" + action + "' on target '" + target + "'. Try again later.",
 			wantTarget:  target,
 		},
 		{
@@ -223,7 +224,7 @@ func Test_DeniedError_ErrorResponse(t *testing.T) {
 			err:         &DeniedError{Code: v1.CodeInvalidAuthenticationInfo, Action: action, Target: target},
 			wantStatus:  http.StatusUnauthorized,
 			wantCode:    v1.CodeInvalidAuthenticationInfo,
-			wantMessage: "Authorization denied for action '" + action + "' on target '" + target + "'",
+			wantMessage: "Authentication failed for action '" + action + "' on target '" + target + "'",
 			wantTarget:  target,
 		},
 		{
@@ -261,6 +262,37 @@ func Test_DeniedError_ErrorResponse(t *testing.T) {
 			require.Equal(t, body, got)
 		})
 	}
+}
+
+type failingResponseWriter struct {
+	*httptest.ResponseRecorder
+	err error
+}
+
+func (w failingResponseWriter) Write([]byte) (int, error) {
+	return 0, w.err
+}
+
+func Test_DeniedResponse_ApplyReturnsWriteError(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("write failed")
+	response := &DeniedResponse{
+		StatusCode: http.StatusForbidden,
+		Body: v1.ErrorResponse{
+			Error: &v1.ErrorDetails{
+				Code:    v1.CodeAuthorizationFailed,
+				Message: "Authorization denied",
+			},
+		},
+	}
+
+	w := failingResponseWriter{
+		ResponseRecorder: httptest.NewRecorder(),
+		err:              sentinel,
+	}
+	err := response.Apply(t.Context(), w, httptest.NewRequest(http.MethodGet, "/", nil))
+	require.ErrorIs(t, err, sentinel)
 }
 
 func Test_DeniedError_ResponseOmitsPrivateReason(t *testing.T) {

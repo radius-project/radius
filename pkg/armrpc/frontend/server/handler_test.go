@@ -335,7 +335,7 @@ func Test_HandlerForController_DeniedError(t *testing.T) {
 			},
 			wantStatus:     http.StatusServiceUnavailable,
 			wantCode:       v1.CodeAuthorizationUnavailable,
-			wantMessage:    "Authorization denied for action 'read' on target '" + target + "'",
+			wantMessage:    "Authorization could not be checked for action 'read' on target '" + target + "'. Try again later.",
 			wantTargetBody: target,
 		},
 		{
@@ -344,6 +344,13 @@ func Test_HandlerForController_DeniedError(t *testing.T) {
 			wantStatus:  http.StatusForbidden,
 			wantCode:    v1.CodeGrantScopeExceeded,
 			wantMessage: "Authorization denied",
+		},
+		{
+			name:        "unavailable without request context falls back to retry message",
+			denied:      &authz.DeniedError{Code: v1.CodeAuthorizationUnavailable, Reason: reason},
+			wantStatus:  http.StatusServiceUnavailable,
+			wantCode:    v1.CodeAuthorizationUnavailable,
+			wantMessage: "Authorization could not be checked. Try again later.",
 		},
 		{
 			name:        "empty code defaults to AuthorizationFailed",
