@@ -119,6 +119,7 @@ APPS_MAP := ucpd:./deploy/images/ucpd \
 	controller:./deploy/images/controller \
 	testrp:./test/testrp \
 	magpiego:./test/magpiego \
+	rogue-client:./test/rogue \
 	bicep:./deploy/images/bicep \
 	pre-upgrade:./deploy/images/pre-upgrade
 

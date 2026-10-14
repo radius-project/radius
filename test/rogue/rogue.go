@@ -15,8 +15,9 @@ limitations under the License.
 */
 
 // Package rogue simulates a compromised workload or component inside the cluster for
-// authorization functional tests. It runs a pod with curl and calls internal Radius
-// endpoints from it, optionally presenting a TLS certificate from a mounted Secret.
+// authorization functional tests. It runs a pod from the rogue-client image (built from
+// ./cmd/rogue-client like magpiego and testrp) and calls internal Radius endpoints from it,
+// optionally presenting a TLS certificate from a mounted Secret.
 package rogue
 
 import (
@@ -43,14 +44,11 @@ import (
 	utilexec "k8s.io/client-go/util/exec"
 
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/test/rogue/rogueclient"
+	"github.com/radius-project/radius/test/testutil"
 )
 
 const (
-	// DefaultImage is the image used for the rogue pod. It must provide curl and sleep.
-	// It is the project's GHCR mirror of docker.io/curlimages/curl:8.17.0; see
-	// docs/contributing/contributing-code/contributing-code-tests/tests-images-pushtoghcr.md.
-	DefaultImage = "ghcr.io/radius-project/mirror/curlimages/curl:8.17.0"
-
 	// TLSMountPath is where the Secret named by Options.TLSSecretName is mounted.
 	// Requests read tls.crt, tls.key, and ca.crt from this directory.
 	TLSMountPath = "/etc/radius-rogue/tls"
@@ -60,14 +58,21 @@ const (
 	labelKey      = "app.kubernetes.io/name"
 	labelValue    = "radius-rogue-client"
 	tlsVolumeName = "tls"
-	statusMarker  = "\nradius-rogue-status:"
-	curlTimeout   = "30"
+	imageName     = "rogue-client"
+	clientBinary  = "/rogue-client"
+	clientTimeout = "30s"
 	readyTimeout  = 2 * time.Minute
 
-	// runAsUser is the curl_user UID in DefaultImage. The image names its user rather than
-	// its UID, so it must be set explicitly for runAsNonRoot to pass.
-	runAsUser = int64(100)
+	// runAsUser is the distroless nonroot UID. It must be numeric for runAsNonRoot to pass.
+	runAsUser = int64(65532)
 )
+
+// DefaultImage returns the rogue-client image from DOCKER_REGISTRY and REL_VERSION,
+// matching how functional tests locate magpiego.
+func DefaultImage() string {
+	registry, tag := testutil.SetDefault()
+	return registry + "/" + imageName + ":" + tag
+}
 
 var fatalWaitingReasons = []string{"ErrImagePull", "ImagePullBackOff", "CreateContainerConfigError"}
 
@@ -76,7 +81,7 @@ type Options struct {
 	// Namespace is the existing namespace to create the pod in.
 	Namespace string
 
-	// Image overrides DefaultImage.
+	// Image overrides DefaultImage().
 	Image string
 
 	// TLSSecretName optionally names a kubernetes.io/tls Secret in Namespace to mount at
@@ -109,9 +114,11 @@ type Response struct {
 	StatusCode int
 	Body       string
 
-	// ExitCode is curl's exit code. Non-zero means curl did not complete the request.
-	// Tests that expect a request failure should assert a specific curl exit code or
-	// HTTP status and error body, plus a positive control from the same pod when possible.
+	// ExitCode is the rogue-client exit code: rogueclient.ExitOK when an HTTP response was
+	// received, rogueclient.ExitTransport when none was, and rogueclient.ExitUsage for
+	// invalid arguments. Tests that expect a request failure should assert the exact
+	// ExitCode or HTTP status and error body, plus a positive control from the same pod
+	// when possible.
 	ExitCode int
 	Stderr   string
 }
@@ -174,11 +181,11 @@ func (c *Client) Pod() *corev1.Pod {
 }
 
 // Do sends req from the rogue pod. It returns an error only when the request could not be
-// run; HTTP errors and curl failures are reported in the Response. Negative tests should
+// run; HTTP errors and transport failures are reported in the Response. Negative tests should
 // distinguish expected rejection from broken connectivity by asserting the exact ExitCode
 // or HTTP status and error body.
 func (c *Client) Do(ctx context.Context, req Request) (Response, error) {
-	args, err := curlArgs(req, c.hasTLS)
+	args, err := clientArgs(req, c.hasTLS)
 	if err != nil {
 		return Response{}, err
 	}
@@ -213,9 +220,9 @@ func (c *Client) Do(ctx context.Context, req Request) (Response, error) {
 		return resp, fmt.Errorf("rogue: exec failed: %w: %s", err, strings.TrimSpace(resp.Stderr))
 	}
 
-	resp.StatusCode, resp.Body, err = parseCurlOutput(stdout.String())
-	if err != nil && resp.ExitCode != 0 {
-		// curl can exit before writing the status, for example on invalid arguments.
+	resp.StatusCode, resp.Body, err = parseOutput(stdout.String())
+	if err != nil && resp.ExitCode != rogueclient.ExitOK {
+		// rogue-client exits before writing the status on invalid arguments.
 		return resp, nil
 	}
 	return resp, err
@@ -225,17 +232,18 @@ func (c *Client) Do(ctx context.Context, req Request) (Response, error) {
 func newPod(options Options) *corev1.Pod {
 	image := options.Image
 	if image == "" {
-		image = DefaultImage
+		image = DefaultImage()
 	}
 
 	container := corev1.Container{
 		Name:    containerName,
 		Image:   image,
-		Command: []string{"sleep", "infinity"},
+		Command: []string{clientBinary, "idle"},
 		SecurityContext: &corev1.SecurityContext{
 			RunAsNonRoot:             to.Ptr(true),
 			RunAsUser:                to.Ptr(runAsUser),
 			AllowPrivilegeEscalation: to.Ptr(false),
+			ReadOnlyRootFilesystem:   to.Ptr(true),
 			Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
 			SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 		},
@@ -313,9 +321,9 @@ func formatWaitingState(status waitingStatus) string {
 	return fmt.Sprintf("%s %q is waiting: %s: %s", status.prefix, status.Name, waiting.Reason, waiting.Message)
 }
 
-// curlArgs builds the curl command for req. The response body is written to stdout,
-// followed by statusMarker and the HTTP status code.
-func curlArgs(req Request, hasTLS bool) ([]string, error) {
+// clientArgs builds the rogue-client command for req. The response body is written to
+// stdout, followed by rogueclient.StatusMarker and the HTTP status code.
+func clientArgs(req Request, hasTLS bool) ([]string, error) {
 	if req.URL == "" {
 		return nil, errors.New("rogue: URL is required")
 	}
@@ -328,7 +336,7 @@ func curlArgs(req Request, hasTLS bool) ([]string, error) {
 		method = http.MethodGet
 	}
 
-	args := []string{"curl", "-sS", "--max-time", curlTimeout, "-w", statusMarker + "%{http_code}", "-X", method}
+	args := []string{clientBinary, "request", "--max-time", clientTimeout, "-X", method}
 
 	keys := make([]string, 0, len(req.Headers))
 	for k := range req.Headers {
@@ -340,7 +348,7 @@ func curlArgs(req Request, hasTLS bool) ([]string, error) {
 	}
 
 	if req.Body != "" {
-		args = append(args, "--data-raw", req.Body)
+		args = append(args, "--data", req.Body)
 	}
 	if req.ClientCert {
 		args = append(args, "--cert", path.Join(TLSMountPath, "tls.crt"), "--key", path.Join(TLSMountPath, "tls.key"))
@@ -355,17 +363,17 @@ func curlArgs(req Request, hasTLS bool) ([]string, error) {
 	return append(args, req.URL), nil
 }
 
-// parseCurlOutput splits curl's stdout into the response body and HTTP status code.
-// A status of 000 (no response) is returned as 0.
-func parseCurlOutput(stdout string) (int, string, error) {
-	i := strings.LastIndex(stdout, statusMarker)
+// parseOutput splits rogue-client's stdout into the response body and HTTP status code.
+// A status of 0 means no HTTP response was received.
+func parseOutput(stdout string) (int, string, error) {
+	i := strings.LastIndex(stdout, rogueclient.StatusMarker)
 	if i < 0 {
-		return 0, stdout, fmt.Errorf("rogue: status marker not found in curl output %q", stdout)
+		return 0, stdout, fmt.Errorf("rogue: status marker not found in client output %q", stdout)
 	}
 
-	status, err := strconv.Atoi(strings.TrimSpace(stdout[i+len(statusMarker):]))
+	status, err := strconv.Atoi(strings.TrimSpace(stdout[i+len(rogueclient.StatusMarker):]))
 	if err != nil {
-		return 0, stdout, fmt.Errorf("rogue: invalid status in curl output: %w", err)
+		return 0, stdout, fmt.Errorf("rogue: invalid status in client output: %w", err)
 	}
 
 	return status, stdout[:i], nil

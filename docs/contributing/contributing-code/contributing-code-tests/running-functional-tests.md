@@ -65,6 +65,8 @@ To run a single group directly, call its `make` target — for example `make tes
 
 The `authz` group (`make test-functional-authz-noncloud`) covers internal component authorization. Its smoke test reads the installed Helm values and checks that every Radius component logs the matching `authz mode=<mode>`, so it passes on any install. The `authz-noncloud` CI leg installs Radius with `--set global.rbac.dryRun=true` so the test checks a non-default mode; to reproduce that locally, run `rad install kubernetes --reinstall --set global.rbac.dryRun=true` before the tests.
 
+Tests that use the rogue client helper (`test/rogue`) run a pod from the `rogue-client` image, which is built from source like `magpiego` and `testrp` and resolved from `DOCKER_REGISTRY` and `REL_VERSION`. CI builds and pushes it with the other images. To use it locally, build and push it to a registry your cluster can pull from, for example `make docker-build-rogue-client docker-push-rogue-client DOCKER_REGISTRY=<registry> DOCKER_TAG_VERSION=<tag>`, then run the tests with the same `DOCKER_REGISTRY` and `REL_VERSION=<tag>`.
+
 You can also run or debug individual tests from VS Code.
 
 `Test_ConfigurationStore_Manual`, `Test_ConfigurationStore_Recipe`, and `Test_DaprPubSubBroker_Manual` deploy their Redis dependencies first, then wait up to three minutes for `redis-cli PING` through the Redis Service to return `PONG` before deploying the Dapr-enabled consumer. The check runs in the Redis container using Kubernetes pod exec; the test identity needs permission to list pods and create `pods/exec` requests in the test namespace. The recipe test uses the application namespace `dcs-recipe`, not the environment namespace `default-dcs-recipe`.
