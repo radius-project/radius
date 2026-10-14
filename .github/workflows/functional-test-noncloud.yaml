@@ -491,6 +491,10 @@ jobs:
           echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} did not become available after $((MAX_ATTEMPTS * SLEEP_SECONDS))s. Last error: ${manifest_error}"
           exit 1
 
+      - name: Install yq
+        # Required to select the test environment in the workspace config.
+        run: make install-yq
+
       - name: Install Radius
         # The statestore leg drives its own install/uninstall/reinstall lifecycle
         # inside the test (it must reinstall to simulate an ephemeral control

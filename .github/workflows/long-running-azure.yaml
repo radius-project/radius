@@ -280,6 +280,10 @@ jobs:
           path: skip-delete-resources-list.txt
           key: skip-delete-resources-list-${{ steps.gen-id.outputs.UNIQUE_ID || github.run_id }}
 
+      - name: Install yq
+        # Required to select the test environment in the workspace config.
+        run: make install-yq
+
       - name: Configure Radius test workspace
         env:
           AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
