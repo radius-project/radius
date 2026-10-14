@@ -258,7 +258,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	helmAction := NewHelmAction(i.Helm)
 
 	// Install Radius
-	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(helmAction, clusterOptions.Radius, kubeContext)
+	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(ctx, helmAction, clusterOptions.Radius, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
@@ -274,7 +274,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 
 	// Install Contour
 	output.LogInfo("Installing Contour...")
-	contourHelmChart, contourHelmConf, contourValues, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
+	contourHelmChart, contourHelmConf, contourValues, err := prepareContourChart(ctx, helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
@@ -399,7 +399,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	reuseValues := !clusterOptions.ResetValues
 
 	output.LogInfo("Upgrading Radius...")
-	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(helmAction, clusterOptions.Radius, kubeContext)
+	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(ctx, helmAction, clusterOptions.Radius, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
@@ -422,7 +422,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	output.LogInfo("Upgrading Contour...")
-	contourHelmChart, contourHelmConf, contourValues, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
+	contourHelmChart, contourHelmConf, contourValues, err := prepareContourChart(ctx, helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
@@ -460,7 +460,7 @@ func (i *Impl) GetLatestRadiusVersion(ctx context.Context) (string, error) {
 
 	// Use the existing HelmChartFromContainerRegistry method with empty version
 	// to fetch the latest chart and extract its version
-	chart, err := helmAction.HelmChartFromContainerRegistry("", helmConf, chartRepo, chartName)
+	chart, err := helmAction.HelmChartFromContainerRegistry(ctx, "", helmConf, chartRepo, chartName)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch latest version from repository: %w", err)
 	}
