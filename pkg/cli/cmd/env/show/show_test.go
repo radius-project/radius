@@ -56,6 +56,15 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
+				Config:         radcli.LoadConfigWithRadiusCoreWorkspace(t),
+			},
+		},
+		{
+			Name:          "Show Command rejects legacy default environment",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
 		},

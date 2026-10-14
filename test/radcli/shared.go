@@ -235,6 +235,23 @@ workspaces:
 	return LoadConfig(t, yamlData)
 }
 
+// LoadConfigWithRadiusCoreWorkspace loads a config whose workspace default environment is a Radius.Core environment.
+func LoadConfigWithRadiusCoreWorkspace(t *testing.T) *viper.Viper {
+	yamlData := `
+workspaces:
+  default: test-workspace
+  items:
+    test-workspace:
+      connection:
+        context: test-context
+        kind: kubernetes
+      environment: /planes/radius/local/resourceGroups/test-resource-group/providers/Radius.Core/environments/test-environment
+      scope: /planes/radius/local/resourceGroups/test-resource-group
+`
+
+	return LoadConfig(t, yamlData)
+}
+
 // LoadEmptyConfig creates a viper instance with an empty workspaces configuration.
 func LoadEmptyConfig(t *testing.T) *viper.Viper {
 

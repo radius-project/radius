@@ -125,7 +125,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Scope = scope
 
-	r.EnvironmentName, err = cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
+	r.EnvironmentName, err = cli.RequireRadiusCoreEnvironmentNameArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}

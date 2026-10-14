@@ -94,7 +94,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return workspaces.ErrEditableWorkspaceRequired
 	}
 
-	r.EnvironmentName, err = cli.RequireEnvironmentNameArgs(cmd, args, *r.Workspace)
+	r.EnvironmentName, err = cli.RequireRadiusCoreEnvironmentNameArgs(cmd, args, *r.Workspace)
 	if err != nil {
 		return err
 	}

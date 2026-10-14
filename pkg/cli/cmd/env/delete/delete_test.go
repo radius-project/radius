@@ -36,6 +36,14 @@ func Test_Validate(t *testing.T) {
 			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
+				Config: radcli.LoadConfigWithRadiusCoreWorkspace(t),
+			},
+		},
+		{
+			Name:          "Delete command rejects legacy default environment",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
 				Config: configWithWorkspace,
 			},
 		},

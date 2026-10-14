@@ -48,7 +48,11 @@ func Test_EnvDelete(t *testing.T) {
 		// Ignore errors as the group might have been successfully deleted.
 		// Use a fresh context because t.Context() is cancelled before cleanup runs.
 		_ = cli.GroupDelete(context.Background(), uniqueGroupName, radcli.DeleteOptions{Confirm: true}) //nolint:usetesting
+		deleteKubernetesNamespace(context.Background(), t, options, envNamespace)                       //nolint:usetesting
 	})
+
+	// Radius.Core requires the environment's namespace to exist.
+	createKubernetesNamespace(ctx, t, options, envNamespace)
 
 	t.Logf("Creating resource group: %s", uniqueGroupName)
 	err := cli.GroupCreate(ctx, uniqueGroupName)
