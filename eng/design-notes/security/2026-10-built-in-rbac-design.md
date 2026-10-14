@@ -516,8 +516,6 @@ Before a deployment changes resources, UCP checks each resource in the deploymen
 - Radius does not roll back resources that the deployment already created or changed. The deployment fails and reports what it left behind, in two places:
   - **CLI.** `rad deploy` lists the resources that were created or changed and not rolled back, the resource that was denied, and the resources that never started.
   - **Audit log.** UCP writes one `radius.audit` event with the `executionRecordId` and the same resource lists in `partialDeployment`. UCP builds the list from the requests it accepted under the record.
-- This also applies when an admin cancels a deployment.
-- To stop a deployment for any other reason, an admin cancels it with `rad deployment cancel <name>`. This needs `Microsoft.Resources/deployments/cancel/action`, included in `radius-administrator` and `application-developer`. UCP closes the execution record.
 - A retry or new `rad deploy` is a new deployment. Radius checks it against current access.
 - The execution record has a hard expiry, `expiresAt`, default 24 hours. Radius never extends it. A deployment that runs past it fails with `ExecutionRecordNotActive`.
 
@@ -591,18 +589,18 @@ UCP records two kinds of audit events:
 
 Events use these fields. Some fields apply to only one kind.
 
-| Field                                    | What it contains                                                                                                                                            |
-|------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `time`, `requestId`, `correlationId`     | When it happened, and IDs to match it with the internal design's logs.                                                                                      |
-| `principal`, `groups`, `issuer`          | Who was checked. Group lists are cut off at 50 with a count.                                                                                                |
-| `viaComponent`, `executionRecordId`      | For requests the deployment engine or controller made for someone.                                                                                          |
-| `permission`, `target`, `checks[]`       | Each check and its result.                                                                                                                                  |
-| `result`, `mode`                         | `allow`, `deny`, or `wouldDeny` (in `DryRun` mode).                                                                                                         |
-| `grantingAssignment`, `roleDefinitionId` | Which assignment allowed it.                                                                                                                                |
-| `policyChange`                           | For changes to roles, assignments, or settings: before and after, and where the change came from.                                                           |
-| `highImpact`                             | True for admin-level grants and self-assignments.                                                                                                           |
-| `recovery`                               | True for requests that use the recovery Secret.                                                                                                             |
-| `partialDeployment`                      | For a deployment stopped by access loss or cancel: resources created or changed and not rolled back, the denied resource, and resources that never started. |
+| Field                                    | What it contains                                                                                                                                  |
+|------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `time`, `requestId`, `correlationId`     | When it happened, and IDs to match it with the internal design's logs.                                                                            |
+| `principal`, `groups`, `issuer`          | Who was checked. Group lists are cut off at 50 with a count.                                                                                      |
+| `viaComponent`, `executionRecordId`      | For requests the deployment engine or controller made for someone.                                                                                |
+| `permission`, `target`, `checks[]`       | Each check and its result.                                                                                                                        |
+| `result`, `mode`                         | `allow`, `deny`, or `wouldDeny` (in `DryRun` mode).                                                                                               |
+| `grantingAssignment`, `roleDefinitionId` | Which assignment allowed it.                                                                                                                      |
+| `policyChange`                           | For changes to roles, assignments, or settings: before and after, and where the change came from.                                                 |
+| `highImpact`                             | True for admin-level grants and self-assignments.                                                                                                 |
+| `recovery`                               | True for requests that use the recovery Secret.                                                                                                   |
+| `partialDeployment`                      | For a deployment stopped by access loss: resources created or changed and not rolled back, the denied resource, and resources that never started. |
 
 Events never include request bodies, secrets, or credentials.
 
@@ -694,7 +692,7 @@ Kubernetes RBAC still controls who can create `DeploymentTemplate` objects in ea
 - **Deleting an object** gets a delete-only record. The record is limited to resources that earlier records created for the same object, matched by its Kubernetes UID. This works even if the namespace later loses access, because cleanup is narrower than creation.
 - **When a namespace loses access**, the controller stops new reconciles for objects outside its access. It does not delete resources that already exist. The object gets a status condition that says it is out of scope.
 - **References outside the namespace's access** (environments, recipes, or resources) are rejected at reconcile. UCP rejects them before any change starts. This is the same reference check as [Checking a request](#checking-a-request).
-- **Flux-created templates** belong to the namespace that contains them, like any other template.
+- **Flux-created templates** go only in the `GitRepository`'s own namespace, or in a namespace whose `radapp.io/gitops-sources` annotation lists that repository. Only a cluster admin can set the annotation. Otherwise the controller creates nothing and records an event on the `GitRepository`. In `Disabled` and `DryRun` modes, it logs a warning and continues.
 
 **Managing roles through GitOps.** To let a Git repository manage role assignments, give its namespace principal `access-administrator`. You can also give a custom role with `roleAssignments/write`. Grant the role at the scopes that the repository manages. The [safety rules](#safety-rules) still apply. If Flux removes an assignment from Git and that would remove the last admin, reconcile fails with that error and does not apply the change.
 
@@ -759,7 +757,6 @@ Actions: `whoAmI`, `checkAccess`, `explainAccess`, and `effectiveAccess` (see [C
 Other API changes:
 
 - Resource type registrations (`System.Resources/resourceProviders/resourceTypes`) get the optional `permissionSets` property.
-- `Microsoft.Resources/deployments` gets a `cancel` action if the deployment engine does not already provide one.
 - A new internal operation, `POST /internal/authorization/preflight`, is available only on the internal mTLS endpoint from the [internal design](./2026-09-internal-component-authorization.md).
 
 **Error format.** Errors use the existing ARM error shape (`pkg/armrpc/api/v1/errorcodes.go`). Authorization errors add one `details` entry per failed check. `additionalInfo` has type `RadiusAuthorization` and contains `principal`, `permission`, `target`, and `source: "Radius"`. A deployment that fails preflight reports all of its problems at once.
@@ -778,7 +775,6 @@ A new `rad auth` command group is in `pkg/cli/cmd/auth/`. Commands use the Radiu
 | `rad auth access check\|explain\|list`                          | Checks, explains, or lists access. `--principal` checks another principal.                                                                                                                                                                                                                                   |
 | `rad auth history list [--principal] [--scope] [--since]`       | Lists access changes from `Radius.Core/accessChanges` (see [Audit log](#piece-5-audit-log)).                                                                                                                                                                                                                 |
 | `rad auth enforcement status\|dry-run\|report\|enable\|disable` | Manages the mode (see [Turning RBAC on](#turning-rbac-on)).                                                                                                                                                                                                                                                  |
-| `rad deployment cancel <name> [--group <rg>]`                   | Cancels a running deployment (see [Checking a deployment](#checking-a-deployment)).                                                                                                                                                                                                                          |
 
 Behavior shared by all commands:
 
@@ -844,8 +840,7 @@ Existing code generation puts the new `Radius.Core` types in the Radius Bicep ex
 
 - Expand the template and call preflight before creating the first resource. Reuse the engine's what-if logic.
 - Send the execution record ID with each request. Ask UCP for a child record for each module, per the internal design.
-- Report each failed check.
-- Support cancellation, which closes the execution record.
+- Report each failed check and the resources left in place.
 - Get Kubernetes tokens from the credential broker for each step, per the internal design. User RBAC adds no change.
 
 #### Piece 5: Audit log
@@ -868,6 +863,7 @@ Existing code generation puts the new `Radius.Core` types in the Radius Bicep ex
 
 **Controller:**
 
+- In `pkg/controller/reconciler/flux_controller.go`, add the `radapp.io/gitops-sources` namespace check before creating anything.
 - Send the namespace principal and Git source details to UCP on each request. Use the controller mTLS identity from the internal design, not today's `aztoken.AnonymousCredential` in `pkg/controller/reconciler/radius_client.go`.
 - Show `AuthorizationFailed`, `LastAdministratorProtected`, and `ManagedByConflict` as a failed `Ready` condition and a Kubernetes event on the `DeploymentTemplate`.
 - Stop retries for access errors that cannot repair themselves until the object or access rules change.
@@ -951,12 +947,12 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 | Developer deploys to an environment they can use, then to a different one, then a template with allowed and denied resources | The first succeeds. The others fail in preflight with `AuthorizationFailed`, list each denied resource, and create nothing.                  |
 | A UCP instance restarts during the dry run, then `enable` is run                                                             | `DryRunHistoryIncomplete` until 24 complete hours exist. The report shows the gap.                                                           |
 | A role is removed during a long deployment                                                                                   | The record is revoked. The next step fails with `ExecutionRecordNotActive`. `rad deploy` and the audit log list the resources left in place. |
-| An admin cancels a running deployment                                                                                        | `rad deployment cancel` closes the record. The next step fails.                                                                              |
 | Remove the last admin using the CLI                                                                                          | `LastAdministratorProtected`.                                                                                                                |
 | While `Disabled`, a user with only `radius-api-user` runs `rad auth enforcement dry-run`                                     | UCP's `SubjectAccessReview` returns 403. Mode stays `Disabled`. No bootstrap admin is created.                                               |
 | Upgrade an existing install, then dry run, report, enable                                                                    | Nothing is blocked before enable. The report suggests assignments. Enable succeeds.                                                          |
 | Enable `Enforce` while service-to-service security is `Off`                                                                  | `ComponentProtocolNotEnforced`. Mode stays the same.                                                                                         |
 | Recovery Secret is created, then expires                                                                                     | Admin access works only during that time, and UCP logs it.                                                                                   |
+| A Git repository targets a namespace that does not list it in `radapp.io/gitops-sources`                                     | In `Enforce`, nothing is created and the `GitRepository` gets an event.                                                                      |
 | A namespace admin or Radius service account creates `radius-rbac-recovery`                                                   | The admission policy rejects it. No recovery grant exists.                                                                                   |
 | The recovery admission policy is deleted, then the Secret is created                                                         | UCP ignores the Secret and logs a warning.                                                                                                   |
 
@@ -1033,6 +1029,7 @@ The results set latency targets and decide whether the limits can increase.
 - **The dashboard** shows no data in `Enforce` until identity forwarding is enabled or an admin gives its service account a role.
 - **Templates that create AWS or Azure resources directly** need `credentials/use/action` on that plane, which `application-developer` does not include. Admins either grant it or move those resources into recipes.
 - **Templates** that attach resources to another team's application or connect to another team's resources need the matching `write` or `connect` permission.
+- **GitOps repositories that deploy outside their own namespace** need that namespace's `radapp.io/gitops-sources` annotation set before `Enforce`.
 - **`Enforce` needs the internal design's service-to-service security**, and therefore cert-manager, on the control-plane cluster.
 - **Templates that create cluster-wide Kubernetes objects directly** must move them into a recipe after service-to-service security is `Enforce` (internal design). This is separate from user RBAC but usually occurs in the same rollout.
 
@@ -1060,7 +1057,7 @@ Each stage ships with RBAC `Disabled` until stage 5. Nothing changes for users u
 | 1. Model and catalog          | TypeSpec for the new types, the permission catalog generator, and the `pkg/ucp/authorization` checker with unit tests. No checks run yet.                                                 | Nothing                                                                                                       |
 | 2. Identity and `DryRun` mode | Verify Kubernetes's certificate, read identity, run checks in `DryRun`, audit events and metrics, `rad auth whoami`, `status`, and `access check`.                                        | Internal design stage 1, "Identify and authenticate callers" (Kubernetes certificate check)                   |
 | 3. Managing access            | UCP APIs for roles and assignments, safety rules, access change history, bootstrap, recovery, the rest of `rad auth role`, `assignment`, and `access`, and Bicep at resource-group scope. | Stage 1                                                                                                       |
-| 4. Deployments and lists      | Preflight, approved list in the execution record, list filtering, hidden graph nodes, `rad deploy` summary and `--yes`, deployment cancel.                                                | Internal design stage 2, "Carry permissions through execution" (execution records)                            |
+| 4. Deployments and lists      | Preflight, approved list in the execution record, list filtering, hidden graph nodes, `rad deploy` summary and `--yes`.                                                                   | Internal design stage 2, "Carry permissions through execution" (execution records)                            |
 | 5. Enforcement and clients    | `Enforce`, adoption commands, controller namespace principals, dashboard changes, and docs.                                                                                               | Internal design stage 3, "Restrict remaining direct access", and service-to-service security set to `Enforce` |
 
 Functional tests for each scenario land in the stage that builds it.
@@ -1069,12 +1066,7 @@ Functional tests for each scenario land in the stage that builds it.
 
 **Q: Should a running deployment stop when the user loses access?**
 
-This design follows the internal design: the deployment stops at its next step. See [Checking a deployment](#checking-a-deployment). The feature specification says the opposite: an accepted deployment keeps its original decision when roles change. Only an explicit cancel stops it.
-
-- **Internal design (current choice):** access loss takes effect quickly. The cost is partially completed deployments, and a role check on each request under the record. To make partial deployments visible, the CLI and the audit log list every resource that was not rolled back (see [Checking a deployment](#checking-a-deployment)).
-- **Feature specification:** deployments behave predictably and never stop halfway because of a role change. The cost is that a removed user's deployment can continue for up to 24 hours unless an admin cancels it.
-
-The feature specification or this design must be updated after this is decided.
+**Answer: yes.** The deployment stops at its next step, as in the internal design. Access loss takes effect quickly. The cost is partially completed deployments and a role check on each request under the record. The CLI and the audit log list every resource that was not rolled back. See [Checking a deployment](#checking-a-deployment). The feature specification will be updated to match.
 
 **Q: Is a single preflight enough for nested deployments?**
 
