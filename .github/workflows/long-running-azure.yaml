@@ -308,24 +308,26 @@ jobs:
           # This path intentionally resolves against the workflow checkout rather than the
           # "current_release" clone: the fixture is workflow infrastructure, and the released tag
           # under test predates it.
+          #
+          # Set cloud scopes in Bicep, not `rad env update`, so this works whichever type `rad env` targets.
           rad deploy ./test/infra/radius/legacy-test-environment.bicep \
             --parameters name="${RADIUS_TEST_ENVIRONMENT_NAME}" \
-            --parameters namespace=default
+            --parameters namespace=default \
+            --parameters azureScope="/subscriptions/${AZURE_SUBSCRIPTIONID_TESTS}/resourceGroups/${AZURE_TEST_RESOURCE_GROUP}" \
+            --parameters awsScope="/planes/aws/aws/accounts/${FUNCTEST_AWS_ACCOUNT_ID}/regions/${AWS_REGION}"
 
-          # TODO(#11803): `rad env switch` and the `rad env update` calls below resolve names as
-          # Applications.Core today but will target only Radius.Core once `--preview` is removed.
-          # Select and configure this legacy environment without those CLI commands when that happens.
-          rad env switch "${RADIUS_TEST_ENVIRONMENT_NAME}"
+          # Select the env with yq, not `rad env switch`, so this works whichever type `rad env` targets.
+          scope="$(yq -e '.workspaces.items[.workspaces.default].scope' ~/.rad/config.yaml)"
+          ENVIRONMENT_ID="${scope}/providers/Applications.Core/environments/${RADIUS_TEST_ENVIRONMENT_NAME}" \
+            yq -i '.workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID)' ~/.rad/config.yaml
+          rad workspace show
 
           echo "*** Configuring Azure provider ***"
-          rad env update "${RADIUS_TEST_ENVIRONMENT_NAME}" --azure-subscription-id "${AZURE_SUBSCRIPTIONID_TESTS}" \
-            --azure-resource-group "${AZURE_TEST_RESOURCE_GROUP}"
           rad credential register azure wi \
             --client-id "${AZURE_SP_TESTS_APPID}" \
             --tenant-id "${AZURE_SP_TESTS_TENANTID}"
 
           echo "*** Configuring AWS provider ***"
-          rad env update "${RADIUS_TEST_ENVIRONMENT_NAME}" --aws-region "${AWS_REGION}" --aws-account-id "${FUNCTEST_AWS_ACCOUNT_ID}"
           # Register AWS credentials using IRSA (IAM Roles for Service Accounts).
           # The Radius pods on the AKS cluster assume this role via their
           # projected service account tokens (workload identity), so no static

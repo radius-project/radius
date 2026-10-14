@@ -235,7 +235,7 @@ The identities are carried in repository secrets rather than in the workflow fil
 | `AWS_GH_ACTIONS_ROLE`                              | the runner, via `configure-aws-credentials`                         | GitHub OIDC -> IAM role                                   |
 | `FUNC_TEST_RAD_IRSA_ROLE`                          | the Radius pods, via IRSA                                           | cluster OIDC issuer -> IAM role                           |
 | `AZURE_SP_TESTS_APPID` + `AZURE_SP_TESTS_TENANTID` | both the runner (Azure CLI) and the Radius pods (workload identity) | GitHub OIDC and AKS OIDC -> AAD app federated credentials |
-| `FUNCTEST_AWS_ACCOUNT_ID`                          | the AWS account id passed to `rad env update` (not a credential)    | -                                                         |
+| `FUNCTEST_AWS_ACCOUNT_ID`                          | the AWS account id in the environment `awsScope` (not a credential) | -                                                         |
 
 #### Provision the AWS identities
 

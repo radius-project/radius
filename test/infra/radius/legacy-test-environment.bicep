@@ -18,7 +18,8 @@ limitations under the License.
 // It is deployed declaratively, rather than with `rad env create`, so that it stays pinned to
 // Applications.Core regardless of which provider the `rad env create` default targets (#11803).
 // The body mirrors what `rad env create <name> --namespace <ns>` sends: location `global` and a
-// Kubernetes compute with `namespace` only, with no `resourceId`.
+// Kubernetes compute with `namespace` only, with no `resourceId`. The optional cloud scopes replace
+// `rad env update --azure-*`/`--aws-*`.
 
 extension radius
 
@@ -28,6 +29,24 @@ param name string
 @description('Kubernetes namespace the environment deploys into.')
 param namespace string
 
+@description('Azure provider scope, in the form /subscriptions/<id>/resourceGroups/<name>. Leave empty to omit the Azure provider.')
+param azureScope string = ''
+
+@description('AWS provider scope, in the form /planes/aws/aws/accounts/<id>/regions/<region>. Leave empty to omit the AWS provider.')
+param awsScope string = ''
+
+var azureProvider = empty(azureScope) ? {} : {
+  azure: {
+    scope: azureScope
+  }
+}
+
+var awsProvider = empty(awsScope) ? {} : {
+  aws: {
+    scope: awsScope
+  }
+}
+
 resource environment 'Applications.Core/environments@2023-10-01-preview' = {
   name: name
   location: 'global'
@@ -36,5 +55,6 @@ resource environment 'Applications.Core/environments@2023-10-01-preview' = {
       kind: 'kubernetes'
       namespace: namespace
     }
+    providers: union(azureProvider, awsProvider)
   }
 }

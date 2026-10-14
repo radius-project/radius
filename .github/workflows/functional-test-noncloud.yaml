@@ -598,10 +598,11 @@ jobs:
             --parameters name=kind-radius \
             --parameters namespace=default
 
-          # TODO(#11803): `rad env switch` resolves names as Applications.Core today but will target
-          # only Radius.Core once `--preview` is removed. Select this legacy environment without the
-          # CLI command when that happens.
-          rad env switch kind-radius
+          # Select the env with yq, not `rad env switch`, so this works whichever type `rad env` targets.
+          scope="$(yq -e '.workspaces.items[.workspaces.default].scope' ~/.rad/config.yaml)"
+          ENVIRONMENT_ID="${scope}/providers/Applications.Core/environments/kind-radius" \
+            yq -i '.workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID)' ~/.rad/config.yaml
+          rad workspace show
 
         env:
           USE_CERT_FILE: "true"
