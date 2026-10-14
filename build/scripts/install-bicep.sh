@@ -59,7 +59,8 @@ cleanup() {
 gh_curl() {
     local url="$1" output="$2"
     shift 2
-    local result status http_code remaining timeout
+    local result status http_code remaining timeout metadata
+    local retry_after retry_time wait_time now
     local deadline=$((SECONDS + 300)) attempt=0 delay=1
     local headers=(-H "User-Agent: ${REPO##*/}-installer")
     if [ -n "${GITHUB_TOKEN:-}" ]; then
@@ -79,24 +80,67 @@ gh_curl() {
         result="$(curl --proto '=https' --tlsv1.2 -fsSL \
             --connect-timeout 15 --max-time "$timeout" \
             "${headers[@]}" "$@" -o "$output" \
+            --dump-header - \
             -w '%{http_code} %{url_effective}' "$url")" || status=$?
+        metadata="${result##*$'\n'}"
         if ((status == 0)); then
-            printf '%s\n' "${result#* }"
+            printf '%s\n' "${metadata#* }"
             return 0
         fi
-        http_code="${result%% *}"
+        http_code="${metadata%% *}"
         case "${status}:${http_code}" in
             22:408 | 22:429 | 22:500 | 22:502 | 22:503 | 22:504) ;;
-            5:* | 6:* | 7:* | 18:* | 28:* | 52:* | 55:* | 56:*) ;;
+            5:* | 6:* | 7:* | 18:* | 28:* | 52:* | 55:* | 56:* | 92:*) ;;
             *) return "$status" ;;
         esac
+        # Redirects can have their own Retry-After; use only the final response.
+        retry_after="$(awk '
+            /^HTTP\// { value = "" }
+            tolower($1) == "retry-after:" {
+                sub(/^[^:]*:[ \t]*/, "")
+                sub(/[ \t\r]*$/, "")
+                value = $0
+            }
+            END { print value }
+        ' <<< "$result")"
+        wait_time="$delay"
+        if [[ -n "$retry_after" ]]; then
+            retry_time=0
+            case "$retry_after" in
+                *[!0-9]*)
+                    now="$(LC_ALL=C date -u +%s)"
+                    if retry_time="$(LC_ALL=C date -u \
+                        -d "$retry_after" +%s 2>/dev/null)" \
+                        || retry_time="$(LC_ALL=C date -j -u \
+                            -f '%a, %d %b %Y %H:%M:%S GMT' \
+                            "$retry_after" +%s 2>/dev/null)"; then
+                        retry_time=$((retry_time - now))
+                    else
+                        log "ignoring invalid Retry-After header"
+                        retry_time=0
+                    fi
+                    ;;
+                *)
+                    while [[ "$retry_after" == 0* ]]; do
+                        retry_after="${retry_after#0}"
+                    done
+                    # Clamp before arithmetic to avoid overflow on large values.
+                    if ((${#retry_after} > 3)); then
+                        retry_time=300
+                    else
+                        retry_time=$((10#${retry_after:-0}))
+                    fi
+                    ;;
+            esac
+            if ((retry_time > wait_time)); then wait_time="$retry_time"; fi
+        fi
         remaining=$((deadline - SECONDS))
-        if ((attempt >= 10 || remaining <= delay)); then
+        if ((attempt >= 10 || remaining <= wait_time)); then
             log "GitHub request exhausted its retry budget"
             return "$status"
         fi
-        log "request failed (curl ${status}, HTTP ${http_code}); retry in ${delay}s"
-        sleep "$delay"
+        log "request failed (curl ${status}, HTTP ${http_code}); retry in ${wait_time}s"
+        sleep "$wait_time"
         attempt=$((attempt + 1))
         delay=$((delay * 2))
         if ((delay > 60)); then delay=60; fi

@@ -30,12 +30,13 @@ count_lines() {
 }
 
 curl() {
-    local output="" timeout="" connect_timeout="" format=""
+    local output="" timeout="" connect_timeout="" format="" dump_header=""
     local status http_code url="${RELEASES_URL}/tag/v0.46.1"
     while (($#)); do
         case "$1" in
             -o) output="$2"; shift ;;
             -w) format="$2"; shift ;;
+            --dump-header) dump_header="$2"; shift ;;
             --max-time) timeout="$2"; shift ;;
             --connect-timeout) connect_timeout="$2"; shift ;;
             --head) echo head >> "${TEST_DIR}/heads" ;;
@@ -44,6 +45,7 @@ curl() {
         shift
     done
     [[ "$connect_timeout" == 15 ]] || fail_test "connection timeout"
+    [[ "$dump_header" == - ]] || fail_test "response headers"
     [[ "$format" == '%{http_code} %{url_effective}' ]] \
         || fail_test "response metadata"
     [[ "$timeout" -gt 0 && "$timeout" -le 60 ]] \
@@ -61,7 +63,12 @@ curl() {
             printf partial > "$output"
         fi
     fi
-    printf '%s %s' "$http_code" "$url"
+    printf '%s' "${RESPONSE_HEADERS:-}"
+    printf 'HTTP/2 %s\r\n' "$http_code"
+    if [[ -n "${RETRY_AFTER:-}" ]]; then
+        printf 'rEtRy-AfTeR: %s\r\n' "$RETRY_AFTER"
+    fi
+    printf '\r\n%s %s' "$http_code" "$url"
     return "$status"
 }
 
@@ -76,6 +83,8 @@ reset_case() {
     : > "${TEST_DIR}/heads"
     RESPONSES=("$@")
     PAYLOAD="verified bicep fixture"
+    RETRY_AFTER=""
+    RESPONSE_HEADERS=""
     SECONDS=0
 }
 
@@ -89,7 +98,7 @@ check_request() {
 }
 
 for response in 22:408 22:429 22:500 22:502 22:503 22:504 \
-    5:000 6:000 7:000 18:200 28:000 52:000 55:200 56:200; do
+    5:000 6:000 7:000 18:200 28:000 52:000 55:200 56:200 92:200; do
     reset_case "$response" 0:200
     check_request 0
     [[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 2 ]] \
@@ -111,6 +120,82 @@ check_request 0
 [[ "$(paste -sd, "${TEST_DIR}/delays")" == 1,2,4,8,16,32 ]] \
     || fail_test "unexpected backoff"
 
+reset_case 22:503 0:200
+RETRY_AFTER=250
+check_request 0
+[[ "$SECONDS" -eq 250 && "$(< "${TEST_DIR}/delays")" == 250 ]] \
+    || fail_test "server wait was not respected"
+[[ "$(tail -1 "${TEST_DIR}/timeouts")" -eq 50 ]] \
+    || fail_test "server wait did not reduce the remaining budget"
+
+reset_case 22:503
+RETRY_AFTER=250
+check_request 22
+[[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 2 \
+    && "$(count_lines "${TEST_DIR}/delays")" -eq 1 ]] \
+    || fail_test "repeated server waits exceeded the shared budget"
+
+for wait in 300 301 9999999999999999999999999999; do
+    reset_case 22:429 0:200
+    RETRY_AFTER="$wait"
+    check_request 22
+    [[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 1 \
+        && ! -s "${TEST_DIR}/delays" ]] \
+        || fail_test "retried beyond the server wait budget"
+done
+
+for wait in 0 000000002 invalid; do
+    reset_case 22:503 0:200
+    RETRY_AFTER="$wait"
+    check_request 0
+    [[ "$SECONDS" -ge 1 && "$SECONDS" -le 2 ]] \
+        || fail_test "invalid or short server wait changed backoff"
+done
+
+reset_case 22:503 0:200
+RESPONSE_HEADERS=$'HTTP/2 302\r\nRetry-After: 301\r\n\r\n'
+check_request 0
+[[ "$SECONDS" -eq 1 ]] || fail_test "used a redirect Retry-After"
+
+reset_case 22:503 0:200
+RETRY_AFTER="$(date -u -r 1250 '+%a, %d %b %Y %H:%M:%S GMT' \
+    2>/dev/null || date -u -d @1250 '+%a, %d %b %Y %H:%M:%S GMT')"
+date() {
+    if [[ "$*" == "-u +%s" ]]; then
+        echo 1000
+    else
+        command date "$@"
+    fi
+}
+check_request 0
+[[ "$SECONDS" -eq 250 ]] || fail_test "HTTP-date server wait"
+reset_case 22:503 0:200
+RETRY_AFTER="$(command date -u -r 1301 '+%a, %d %b %Y %H:%M:%S GMT' \
+    2>/dev/null || command date -u -d @1301 '+%a, %d %b %Y %H:%M:%S GMT')"
+check_request 22
+[[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 1 ]] \
+    || fail_test "HTTP-date exceeded the budget"
+reset_case 22:503 0:200
+RETRY_AFTER="$(command date -u -r 999 '+%a, %d %b %Y %H:%M:%S GMT' \
+    2>/dev/null || command date -u -d @999 '+%a, %d %b %Y %H:%M:%S GMT')"
+check_request 0
+[[ "$SECONDS" -eq 1 ]] || fail_test "past HTTP-date changed backoff"
+unset -f date
+
+reset_case 22:503 0:200
+RETRY_AFTER="Thu, 01 Jan 1970 00:20:50 GMT"
+date() {
+    case "$*" in
+        "-u +%s") echo 1000 ;;
+        "-u -d "*) return 1 ;;
+        "-j -u -f "*) echo 1250 ;;
+        *) fail_test "unexpected date arguments" ;;
+    esac
+}
+check_request 0
+[[ "$SECONDS" -eq 250 ]] || fail_test "BSD date fallback"
+unset -f date
+
 reset_case 22:500
 check_request 22
 [[ "$SECONDS" -eq 243 ]] || fail_test "unexpected retry deadline"
@@ -123,6 +208,11 @@ reset_case 56:200
 check_request 56
 [[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 10 ]] \
     || fail_test "unbounded dropped-connection retries"
+
+reset_case 92:200
+check_request 92
+[[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 10 ]] \
+    || fail_test "unbounded HTTP/2 stream-reset retries"
 
 reset_case 22:500 56:200 22:404 0:200
 check_request 22
