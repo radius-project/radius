@@ -69,6 +69,8 @@ const (
 	runAsUser = int64(100)
 )
 
+var fatalWaitingReasons = []string{"ErrImagePull", "ImagePullBackOff", "CreateContainerConfigError"}
+
 // Options configures the rogue pod.
 type Options struct {
 	// Namespace is the existing namespace to create the pod in.
@@ -107,7 +109,9 @@ type Response struct {
 	StatusCode int
 	Body       string
 
-	// ExitCode is curl's exit code. Non-zero means the request did not complete.
+	// ExitCode is curl's exit code. Non-zero means curl did not complete the request.
+	// Tests that expect a request failure should assert a specific curl exit code or
+	// HTTP status and error body, plus a positive control from the same pod when possible.
 	ExitCode int
 	Stderr   string
 }
@@ -132,7 +136,7 @@ func New(t *testing.T, k8s kubernetes.Interface, config *rest.Config, options Op
 	t.Logf("Created rogue pod %s/%s", pod.Namespace, pod.Name)
 
 	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second) //nolint:usetesting // t.Context() is canceled before cleanup runs.
 		defer cancel()
 		err := pods.Delete(ctx, pod.Name, metav1.DeleteOptions{GracePeriodSeconds: to.Ptr(int64(0))})
 		if err != nil {
@@ -149,8 +153,16 @@ func New(t *testing.T, k8s kubernetes.Interface, config *rest.Config, options Op
 		if pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodSucceeded {
 			return false, fmt.Errorf("pod exited with phase %s", pod.Status.Phase)
 		}
+		if err := podStartFailure(pod); err != nil {
+			return false, err
+		}
 		return pod.Status.Phase == corev1.PodRunning, nil
 	})
+	if err != nil {
+		if waiting := podWaitingState(pod); waiting != "" {
+			err = fmt.Errorf("%w: %s", err, waiting)
+		}
+	}
 	require.NoError(t, err, "rogue: pod %s/%s did not start", pod.Namespace, pod.Name)
 
 	return &Client{k8s: k8s, config: config, pod: pod, hasTLS: options.TLSSecretName != ""}
@@ -162,7 +174,9 @@ func (c *Client) Pod() *corev1.Pod {
 }
 
 // Do sends req from the rogue pod. It returns an error only when the request could not be
-// run; HTTP errors and curl failures are reported in the Response.
+// run; HTTP errors and curl failures are reported in the Response. Negative tests should
+// distinguish expected rejection from broken connectivity by asserting the exact ExitCode
+// or HTTP status and error body.
 func (c *Client) Do(ctx context.Context, req Request) (Response, error) {
 	args, err := curlArgs(req, c.hasTLS)
 	if err != nil {
@@ -252,6 +266,51 @@ func newPod(options Options) *corev1.Pod {
 
 	pod.Spec.Containers = []corev1.Container{container}
 	return pod
+}
+
+func podStartFailure(pod *corev1.Pod) error {
+	for _, status := range waitingStatuses(pod) {
+		if slices.Contains(fatalWaitingReasons, status.State.Waiting.Reason) {
+			return errors.New(formatWaitingState(status))
+		}
+	}
+	return nil
+}
+
+func podWaitingState(pod *corev1.Pod) string {
+	statuses := waitingStatuses(pod)
+	if len(statuses) == 0 {
+		return ""
+	}
+	return formatWaitingState(statuses[0])
+}
+
+type waitingStatus struct {
+	prefix string
+	corev1.ContainerStatus
+}
+
+func waitingStatuses(pod *corev1.Pod) []waitingStatus {
+	statuses := []waitingStatus{}
+	for _, status := range pod.Status.InitContainerStatuses {
+		if status.State.Waiting != nil {
+			statuses = append(statuses, waitingStatus{prefix: "init container", ContainerStatus: status})
+		}
+	}
+	for _, status := range pod.Status.ContainerStatuses {
+		if status.State.Waiting != nil {
+			statuses = append(statuses, waitingStatus{prefix: "container", ContainerStatus: status})
+		}
+	}
+	return statuses
+}
+
+func formatWaitingState(status waitingStatus) string {
+	waiting := status.State.Waiting
+	if waiting.Message == "" {
+		return fmt.Sprintf("%s %q is waiting: %s", status.prefix, status.Name, waiting.Reason)
+	}
+	return fmt.Sprintf("%s %q is waiting: %s: %s", status.prefix, status.Name, waiting.Reason, waiting.Message)
 }
 
 // curlArgs builds the curl command for req. The response body is written to stdout,
