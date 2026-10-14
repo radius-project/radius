@@ -17,17 +17,18 @@ limitations under the License.
 package rogue
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/radius-project/radius/test/rogue/rogueclient"
 )
 
-func Test_CurlArgs(t *testing.T) {
+func Test_ClientArgs(t *testing.T) {
 	t.Parallel()
 
-	base := []string{"curl", "-sS", "--max-time", "30", "-w", statusMarker + "%{http_code}"}
+	base := []string{clientBinary, "request", "--max-time", "30s"}
 	with := func(args ...string) []string {
 		return append(append([]string{}, base...), args...)
 	}
@@ -56,7 +57,7 @@ func Test_CurlArgs(t *testing.T) {
 				"-X", "PUT",
 				"-H", "Content-Type: application/json",
 				"-H", "x-remote-user: admin",
-				"--data-raw", `{"a":"$b"}`,
+				"--data", `{"a":"$b"}`,
 				"http://x/y"),
 		},
 		{
@@ -96,7 +97,7 @@ func Test_CurlArgs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := curlArgs(tt.req, tt.hasTLS)
+			got, err := clientArgs(tt.req, tt.hasTLS)
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				return
@@ -107,7 +108,7 @@ func Test_CurlArgs(t *testing.T) {
 	}
 }
 
-func Test_ParseCurlOutput(t *testing.T) {
+func Test_ParseOutput(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -119,24 +120,24 @@ func Test_ParseCurlOutput(t *testing.T) {
 	}{
 		{
 			name:       "status and body",
-			stdout:     `{"value":[]}` + statusMarker + "200",
+			stdout:     `{"value":[]}` + rogueclient.StatusMarker + "200",
 			wantStatus: 200,
 			wantBody:   `{"value":[]}`,
 		},
 		{
 			name:       "empty body",
-			stdout:     statusMarker + "401",
+			stdout:     rogueclient.StatusMarker + "401",
 			wantStatus: 401,
 		},
 		{
 			name:       "body containing newlines",
-			stdout:     "line1\nline2\n" + statusMarker + "403\n",
+			stdout:     "line1\nline2\n" + rogueclient.StatusMarker + "403\n",
 			wantStatus: 403,
 			wantBody:   "line1\nline2\n",
 		},
 		{
 			name:       "no HTTP response",
-			stdout:     statusMarker + "000",
+			stdout:     rogueclient.StatusMarker + "0",
 			wantStatus: 0,
 		},
 		{
@@ -146,7 +147,7 @@ func Test_ParseCurlOutput(t *testing.T) {
 		},
 		{
 			name:    "non-numeric status",
-			stdout:  statusMarker + "abc",
+			stdout:  rogueclient.StatusMarker + "abc",
 			wantErr: true,
 		},
 	}
@@ -155,7 +156,7 @@ func Test_ParseCurlOutput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			status, body, err := parseCurlOutput(tt.stdout)
+			status, body, err := parseOutput(tt.stdout)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -167,11 +168,19 @@ func Test_ParseCurlOutput(t *testing.T) {
 	}
 }
 
-func Test_DefaultImage_UsesMirror(t *testing.T) {
-	t.Parallel()
+func Test_DefaultImage(t *testing.T) {
+	t.Run("uses the test registry and tag", func(t *testing.T) {
+		t.Setenv("DOCKER_REGISTRY", "radius-registry:5000")
+		t.Setenv("REL_VERSION", "pr-123")
+		require.Equal(t, "radius-registry:5000/rogue-client:pr-123", DefaultImage())
+		require.Equal(t, DefaultImage(), newPod(Options{Namespace: "ns"}).Spec.Containers[0].Image)
+	})
 
-	// Test images are pulled from the project's GHCR mirror rather than Docker Hub.
-	require.True(t, strings.HasPrefix(DefaultImage, "ghcr.io/radius-project/mirror/"), DefaultImage)
+	t.Run("defaults to the published latest image", func(t *testing.T) {
+		t.Setenv("DOCKER_REGISTRY", "")
+		t.Setenv("REL_VERSION", "")
+		require.Equal(t, "ghcr.io/radius-project/rogue-client:latest", DefaultImage())
+	})
 }
 
 func Test_NewPod(t *testing.T) {
@@ -180,7 +189,7 @@ func Test_NewPod(t *testing.T) {
 	t.Run("defaults", func(t *testing.T) {
 		t.Parallel()
 
-		pod := newPod(Options{Namespace: "rogue-ns"})
+		pod := newPod(Options{Namespace: "rogue-ns", Image: "registry/rogue-client:tag"})
 
 		require.Equal(t, "rogue-ns", pod.Namespace)
 		require.Equal(t, podNamePrefix, pod.GenerateName)
@@ -191,10 +200,11 @@ func Test_NewPod(t *testing.T) {
 		require.Empty(t, pod.Spec.Volumes)
 
 		container := pod.Spec.Containers[0]
-		require.Equal(t, DefaultImage, container.Image)
-		require.Equal(t, []string{"sleep", "infinity"}, container.Command)
+		require.Equal(t, "registry/rogue-client:tag", container.Image)
+		require.Equal(t, []string{clientBinary, "idle"}, container.Command)
 		require.True(t, *container.SecurityContext.RunAsNonRoot)
-		require.Equal(t, runAsUser, *container.SecurityContext.RunAsUser)
+		require.Equal(t, int64(65532), *container.SecurityContext.RunAsUser)
+		require.True(t, *container.SecurityContext.ReadOnlyRootFilesystem)
 		require.False(t, *container.SecurityContext.AllowPrivilegeEscalation)
 		require.Equal(t, []corev1.Capability{"ALL"}, container.SecurityContext.Capabilities.Drop)
 		require.Equal(t, corev1.SeccompProfileTypeRuntimeDefault, container.SecurityContext.SeccompProfile.Type)
@@ -204,10 +214,10 @@ func Test_NewPod(t *testing.T) {
 	t.Run("custom image and TLS secret", func(t *testing.T) {
 		t.Parallel()
 
-		pod := newPod(Options{Namespace: "ns", Image: "example.com/curl:1", TLSSecretName: "ucp-tls"})
+		pod := newPod(Options{Namespace: "ns", Image: "example.com/rogue:1", TLSSecretName: "ucp-tls"})
 
 		container := pod.Spec.Containers[0]
-		require.Equal(t, "example.com/curl:1", container.Image)
+		require.Equal(t, "example.com/rogue:1", container.Image)
 		require.Len(t, pod.Spec.Volumes, 1)
 		require.Equal(t, "ucp-tls", pod.Spec.Volumes[0].Secret.SecretName)
 		require.Len(t, container.VolumeMounts, 1)
