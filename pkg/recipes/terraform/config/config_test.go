@@ -845,6 +845,62 @@ func Test_AddProviders_ReplacesAliasPlaceholders(t *testing.T) {
 	}
 }
 
+func Test_AddProviders_CustomAzureConfiguration(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		secrets map[string]recipes.SecretData
+		err     string
+	}{
+		{"resolved secrets", map[string]recipes.SecretData{"settings": {Data: map[string]string{"tenant": "test-tenant"}}}, ""},
+		{"missing source", nil, "missing secret store id: settings"},
+		{"missing key", map[string]recipes.SecretData{"settings": {}}, "missing secret key in secret store id: settings"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			envRecipe, resourceRecipe := getTestInputs()
+			cfg, err := New(t.Context(), testRecipeName, &envRecipe, &resourceRecipe)
+			require.NoError(t, err)
+			env := &recipes.Configuration{RecipeConfig: datamodel.RecipeConfigProperties{
+				Terraform: datamodel.TerraformConfigProperties{Providers: map[string][]datamodel.ProviderConfigProperties{
+					"azurerm": {{
+						AdditionalProperties: map[string]any{
+							"alias": "custom", "subscription_id": "test-sub", "features": map[string]any{}, "use_cli": false,
+						},
+						Secrets: map[string]datamodel.SecretReference{"tenant_id": {Source: "settings", Key: "tenant"}},
+					}},
+				}},
+			}}
+			required := map[string]*RequiredProviderInfo{
+				"azurerm": {Source: "hashicorp/azurerm", Version: "~> 3.114.0", ConfigurationAliases: []string{"azurerm.custom"}},
+			}
+			// An environment override must not fall back to the registered provider.
+			fallback := providers.NewMockProvider(gomock.NewController(t))
+			err = cfg.AddProviders(t.Context(), required, map[string]providers.Provider{"azurerm": fallback}, env, tc.secrets)
+			if tc.err != "" {
+				require.EqualError(t, err, tc.err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, map[string][]map[string]any{"azurerm": {{
+				"alias": "custom", "subscription_id": "test-sub", "features": map[string]any{},
+				"use_cli": false, "tenant_id": "test-tenant",
+			}}}, cfg.Provider)
+			require.Equal(t, map[string]string{"azurerm.custom": "azurerm.custom"}, cfg.Module[testRecipeName]["providers"])
+			require.Equal(t, required, cfg.Terraform.RequiredProviders)
+
+			dir := t.TempDir()
+			require.NoError(t, cfg.Save(t.Context(), dir))
+			data, err := os.ReadFile(getMainConfigFilePath(dir))
+			require.NoError(t, err)
+			var saved TerraformConfig
+			require.NoError(t, json.Unmarshal(data, &saved))
+			require.Equal(t, cfg.Provider, saved.Provider)
+			require.Equal(t, map[string]any{"azurerm.custom": "azurerm.custom"}, saved.Module[testRecipeName]["providers"])
+		})
+	}
+}
+
 func Test_AddOutputs(t *testing.T) {
 	envRecipe, resourceRecipe := getTestInputs()
 	tests := []struct {

@@ -452,13 +452,32 @@ func Test_Terraform_Delete_Success(t *testing.T) {
 
 	tfExecutor, tfDriver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+	envConfig.RecipeConfig.Terraform.Providers = map[string][]datamodel.ProviderConfigProperties{
+		"azurerm": {{
+			AdditionalProperties: map[string]any{"alias": "custom"},
+			Secrets:              map[string]datamodel.SecretReference{"tenant_id": {Source: "settings", Key: "tenant"}},
+		}},
+	}
+	envConfig.RecipeConfig.EnvSecrets = map[string]datamodel.SecretReference{
+		"ARM_CLIENT_ID": {Source: "settings", Key: "client"},
+	}
+	secrets := map[string]recipes.SecretData{
+		"settings": {Data: map[string]string{"tenant": "test-tenant", "client": "test-client"}},
+	}
 
-	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).Times(1).Return(nil)
+	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, opts terraform.Options) error {
+		require.Equal(t, &envConfig, opts.EnvConfig)
+		require.Equal(t, secrets, opts.Secrets, "destroy needs provider and environment secrets")
+		require.Equal(t, &recipeMetadata, opts.ResourceRecipe)
+		require.Equal(t, &envRecipe, opts.EnvRecipe)
+		return nil
+	})
 
 	err := tfDriver.Delete(ctx, driver.DeleteOptions{
 		Configuration:   envConfig,
 		Recipe:          recipeMetadata,
 		Definition:      envRecipe,
+		Secrets:         secrets,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.NoError(t, err)
