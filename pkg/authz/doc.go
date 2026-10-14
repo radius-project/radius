@@ -26,5 +26,6 @@ limitations under the License.
 //     specific error code.
 //
 // Checks build a Decision and pass it to Apply, which acts on it according to the
-// configured mode.
+// configured mode. Decisions carry an error code rather than a free-text reason
+// to avoid exposing sensitive diagnostic text in errors or logs.
 package authz
