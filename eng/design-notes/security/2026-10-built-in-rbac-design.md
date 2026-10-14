@@ -213,18 +213,7 @@ The deployment engine and the controller act for another principal. See [Clients
 
 ##### Permissions
 
-A permission is `<Namespace>/<type>/<operation>`. The operation is `read`, `write`, `delete`, or `<actionName>/action`.
-
-UCP maps each HTTP request to one permission:
-
-| Request                          | Permission needed            |
-|----------------------------------|------------------------------|
-| `GET` a resource or list         | `<type>/read`                |
-| `PUT` or `PATCH`                 | `<type>/write`               |
-| `DELETE`                         | `<type>/delete`              |
-| `POST <resourceId>/<actionName>` | `<type>/<actionName>/action` |
-
-`POST .../applications/shop/getGraph` needs `Radius.Core/applications/getGraph/action`.
+A permission is `<Namespace>/<type>/<operation>`. UCP maps each request to one permission as ARM does: `GET`→`read`, `PUT`/`PATCH`→`write`, `DELETE`→`delete`, and `POST` to an action→`<actionName>/action`.
 
 **Permission catalog.** Radius generates the catalog:
 
