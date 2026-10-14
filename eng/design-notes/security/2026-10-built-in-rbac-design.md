@@ -339,7 +339,7 @@ Notes:
 - A type is part of the built-in **application resource set** only if its registration lists `applicationResources`.
 - A type in the set grants only `read`, `write`, `delete`, and `connect` on that type, never actions. If the type later adds an action, existing assignments do not gain it.
 - Setting or changing `permissionSets` requires `System.Resources/resourceProviders/resourceTypes/joinPermissionSet/action`. Only `resource-type-administrator` and `radius-administrator` have it. A type joins only after a logged decision.
-- Types that ship with Radius (`Applications.*`, `Radius.Compute`, `Radius.Data`, `Radius.Security`) are in the set by default.
+- Built-in types in the set: `Radius.Core/applications`, `Applications.Core/applications`, `containers`, `gateways`, `volumes`, `secretStores`, `extenders`, and the `Applications.Dapr`, `Applications.Datastores`, `Applications.Messaging`, `Radius.Compute`, `Radius.Data`, and `Radius.Security` types. Environments, Recipe Packs, and Bicep and Terraform settings are not in the set.
 
 ```yaml
 namespace: Radius.Data
@@ -929,6 +929,7 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 - Each safety rule, with `PrivilegeEscalationDenied`, `LastAdministratorProtected`, and `highImpact` audit events when an Access Administrator assigns `radius-administrator`.
 - A user without access gets the same 403 for an existing resource and a missing resource.
 - A new registered resource type gives no access until `permissionSets` is set.
+- `application-developer` cannot write or delete environments, Recipe Packs, or Bicep or Terraform settings.
 - `getGraph` hides nodes the caller cannot read, sets `incomplete: true`, and leaks no IDs.
 - An execution record past `expiresAt` returns `ExecutionRecordNotActive`, using a fake clock.
 - Refresh for the in-memory copy and the "too old" case.
