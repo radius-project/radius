@@ -24,6 +24,7 @@ import (
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/hashicorp/terraform-exec/tfexec"
+	dm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/stretchr/testify/require"
@@ -245,11 +246,19 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 	}
 }
 
-func Test_RetryGetWithProviderSources(t *testing.T) {
+func Test_RetryGetWithProviderAliases(t *testing.T) {
 	getErr := errors.New("terraform get failed")
 	recipe := &recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: "http://example.com/module.zip"}
-	placeholders := map[string][]map[string]any{"azurerm": {{"alias": "custom"}}}
-	module := `terraform {
+	envConfig := &recipes.Configuration{
+		RecipeConfig: dm.RecipeConfigProperties{
+			Terraform: dm.TerraformConfigProperties{
+				Providers: map[string][]dm.ProviderConfigProperties{
+					"azurerm": {{AdditionalProperties: map[string]any{"alias": "custom"}}},
+				},
+			},
+		},
+	}
+	aliasModule := `terraform {
   required_providers {
     azurerm = {
       source                = "hashicorp/azurerm"
@@ -258,43 +267,53 @@ func Test_RetryGetWithProviderSources(t *testing.T) {
   }
 }
 `
+	defaultModule := `terraform {
+  required_providers {
+    azurerm = {
+      source = "hashicorp/azurerm"
+    }
+  }
+}
+`
 
 	tests := []struct {
 		name        string
 		tfConfig    *config.TerraformConfig
+		envConfig   *recipes.Configuration
 		setup       func(t *testing.T, workingDir string)
 		expectedErr string
 	}{
 		{
 			name:        "no configuration",
+			envConfig:   envConfig,
 			expectedErr: getErr.Error(),
 		},
 		{
-			name:        "no alias placeholders",
+			name:        "no environment configuration",
 			tfConfig:    &config.TerraformConfig{},
 			expectedErr: getErr.Error(),
 		},
 		{
 			name:        "module not downloaded",
-			tfConfig:    &config.TerraformConfig{Provider: placeholders},
+			tfConfig:    &config.TerraformConfig{},
+			envConfig:   envConfig,
 			expectedErr: getErr.Error(),
 		},
 		{
-			name: "provider sources already set",
-			tfConfig: &config.TerraformConfig{
-				Terraform: &config.TerraformDefinition{RequiredProviders: map[string]*config.RequiredProviderInfo{"azurerm": {Source: "hashicorp/azurerm"}}},
-				Provider:  placeholders,
-			},
+			name:      "module does not declare configuration_aliases",
+			tfConfig:  &config.TerraformConfig{},
+			envConfig: envConfig,
 			setup: func(t *testing.T, workingDir string) {
-				writeModule(t, workingDir, module)
+				writeModule(t, workingDir, defaultModule)
 			},
 			expectedErr: getErr.Error(),
 		},
 		{
-			name:     "configuration cannot be saved",
-			tfConfig: &config.TerraformConfig{Provider: placeholders},
+			name:      "configuration cannot be saved",
+			tfConfig:  &config.TerraformConfig{},
+			envConfig: envConfig,
 			setup: func(t *testing.T, workingDir string) {
-				writeModule(t, workingDir, module)
+				writeModule(t, workingDir, aliasModule)
 				require.NoError(t, os.Mkdir(filepath.Join(workingDir, "main.tf.json"), 0o755))
 			},
 			expectedErr: "error creating file",
@@ -310,7 +329,7 @@ func Test_RetryGetWithProviderSources(t *testing.T) {
 			tf, err := tfexec.NewTerraform(workingDir, os.Args[0])
 			require.NoError(t, err)
 
-			err = retryGetWithProviderSources(t.Context(), tf, tc.tfConfig, Options{EnvRecipe: recipe}, getErr)
+			err = retryGetWithProviderAliases(t.Context(), tf, tc.tfConfig, Options{EnvRecipe: recipe, EnvConfig: tc.envConfig}, getErr)
 			require.ErrorContains(t, err, tc.expectedErr)
 		})
 	}

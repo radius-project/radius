@@ -307,7 +307,7 @@ func Test_GetTerraformConfig(t *testing.T) {
 	require.Equal(t, &expectedConfig, tfConfig)
 }
 
-func Test_GetTerraformConfig_ProviderAliasPlaceholders(t *testing.T) {
+func Test_GetTerraformConfig_NoProviderAliasPlaceholders(t *testing.T) {
 	testDir := t.TempDir()
 
 	options := Options{
@@ -330,28 +330,22 @@ func Test_GetTerraformConfig_ProviderAliasPlaceholders(t *testing.T) {
 		ResourceRecipe: &recipes.ResourceMetadata{},
 	}
 
+	// Placeholders are added only to retry a failed module download, so the first download
+	// uses the module configuration only.
 	expectedConfig := config.TerraformConfig{
-		Provider: map[string][]map[string]any{
-			"azurerm": {{"alias": "custom"}},
-		},
 		Module: map[string]config.TFModuleConfig{
-			"test-recipe": {
-				"source":    "test/module/source",
-				"providers": map[string]string{"azurerm.custom": "azurerm.custom"},
-			},
+			"test-recipe": {"source": "test/module/source"},
 		},
 	}
 	tfConfig, err := getTerraformConfig(t.Context(), testDir, options)
 	require.NoError(t, err)
 	require.Equal(t, &expectedConfig, tfConfig)
 
-	// The placeholders must be saved before "terraform get" runs.
 	content, err := os.ReadFile(filepath.Join(testDir, "main.tf.json"))
 	require.NoError(t, err)
 	require.JSONEq(t, `{
 		"terraform": null,
-		"provider": {"azurerm": [{"alias": "custom"}]},
-		"module": {"test-recipe": {"source": "test/module/source", "providers": {"azurerm.custom": "azurerm.custom"}}}
+		"module": {"test-recipe": {"source": "test/module/source"}}
 	}`, string(content))
 }
 

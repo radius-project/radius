@@ -70,8 +70,8 @@ resource "azurerm_resource_group" "test" {
 `
 
 	// partnerProviderModule declares an aliased provider that is not in the "hashicorp" namespace.
-	// The alias placeholder has no source, so Terraform rejects this module with a provider type mismatch
-	// until Radius adds the source from the module to the configuration.
+	// The alias placeholder must use the source from the module, or Terraform rejects this module
+	// with a provider type mismatch.
 	partnerProviderModule = `terraform {
   required_providers {
     postgresql = {
@@ -84,6 +84,44 @@ resource "azurerm_resource_group" "test" {
 resource "postgresql_database" "test" {
   provider = postgresql.pgdb-test
   name     = "test"
+}
+`
+
+	// partnerDefaultProviderModule uses only the default configuration of a provider that is not in the
+	// "hashicorp" namespace. The environment has an aliased configuration for this provider. Radius must not
+	// add an alias placeholder, because a placeholder without a source causes a provider type mismatch.
+	partnerDefaultProviderModule = `terraform {
+  required_providers {
+    kubectl = {
+      source = "alekc/kubectl"
+    }
+  }
+}
+
+resource "kubectl_manifest" "test" {
+  yaml_body = "apiVersion: v1\nkind: Namespace\nmetadata:\n  name: test\n"
+}
+`
+
+	// childOwnedAliasModule configures its own aliased provider. The environment has an aliased configuration
+	// with the same name. Radius must not pass the alias to the module, because Terraform does not let a
+	// module block override a provider configuration that the module defines.
+	childOwnedAliasModule = `terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+    }
+  }
+}
+
+provider "aws" {
+  alias  = "custom"
+  region = "us-east-1"
+}
+
+resource "aws_s3_bucket" "test" {
+  provider = aws.custom
+  bucket   = "test"
 }
 `
 )
@@ -103,9 +141,11 @@ func TestProviderConfigurationAliasesWithTerraform(t *testing.T) {
 	t.Cleanup(resetGlobalStateForTesting)
 
 	modules := map[string][]byte{
-		"/aliased.zip": zipModule(t, aliasedProviderModule),
-		"/default.zip": zipModule(t, defaultProviderModule),
-		"/partner.zip": zipModule(t, partnerProviderModule),
+		"/aliased.zip":         zipModule(t, aliasedProviderModule),
+		"/default.zip":         zipModule(t, defaultProviderModule),
+		"/partner.zip":         zipModule(t, partnerProviderModule),
+		"/partner-default.zip": zipModule(t, partnerDefaultProviderModule),
+		"/child-owned.zip":     zipModule(t, childOwnedAliasModule),
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		module, ok := modules[r.URL.Path]
@@ -129,6 +169,12 @@ func TestProviderConfigurationAliasesWithTerraform(t *testing.T) {
 					"postgresql": {
 						{AdditionalProperties: map[string]any{"alias": "pgdb-test", "host": "localhost"}},
 					},
+					"kubectl": {
+						{AdditionalProperties: map[string]any{"alias": "custom", "load_config_file": false}},
+					},
+					"aws": {
+						{AdditionalProperties: map[string]any{"alias": "custom", "region": "us-west-2"}},
+					},
 				},
 			},
 		},
@@ -141,6 +187,8 @@ func TestProviderConfigurationAliasesWithTerraform(t *testing.T) {
 			{"alias": "custom", "features": map[string]any{}, "subscription_id": "11111111-1111-1111-1111-111111111111"},
 		},
 		"postgresql": {{"alias": "pgdb-test", "host": "localhost"}},
+		"kubectl":    {{"alias": "custom", "load_config_file": false}},
+		"aws":        {{"alias": "custom", "region": "us-west-2"}},
 	}
 
 	tests := []struct {
@@ -174,6 +222,20 @@ func TestProviderConfigurationAliasesWithTerraform(t *testing.T) {
 			envConfig:         envConfig,
 			expectedSources:   map[string]string{"postgresql": "cyrilgdn/postgresql"},
 			expectedProviders: map[string]any{"postgresql.pgdb-test": "postgresql.pgdb-test"},
+		},
+		{
+			name:            "module uses only the default provider outside the hashicorp namespace",
+			recipeName:      "test-recipe",
+			templatePath:    server.URL + "/partner-default.zip",
+			envConfig:       envConfig,
+			expectedSources: map[string]string{"kubectl": "alekc/kubectl"},
+		},
+		{
+			name:            "module configures its own aliased provider",
+			recipeName:      "test-recipe",
+			templatePath:    server.URL + "/child-owned.zip",
+			envConfig:       envConfig,
+			expectedSources: map[string]string{"aws": "hashicorp/aws"},
 		},
 		{
 			// This case shows that the test detects the bug: without a matching alias in the
@@ -223,7 +285,7 @@ func TestProviderConfigurationAliasesWithTerraform(t *testing.T) {
 			require.Contains(t, metadata, "parameters")
 
 			// generateConfig is used by deploy and delete. It downloads the module with "terraform get"
-			// and then replaces the alias placeholders with the full provider configuration.
+			// and then adds the full provider configuration.
 			tf, err := Install(t.Context(), install.NewInstaller(), InstallOptions{RootDir: options.RootDir})
 			require.NoError(t, err)
 			_, err = e.generateConfig(t.Context(), tf, options, backends.CloudBackendAuth{}, requireValidOutputMappings)

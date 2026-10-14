@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"slices"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
@@ -189,83 +190,67 @@ func (cfg *TerraformConfig) updateModuleWithProviderAliases(requiredProviders ma
 }
 
 // AddProviderAliasPlaceholders adds a placeholder provider block and a module providers map entry for each
-// aliased provider in the environment recipe configuration. A placeholder contains only the alias.
+// aliased provider in the environment recipe configuration that the module declares in configuration_aliases.
+// A placeholder contains only the alias. It returns true if at least one placeholder is added.
 //
 // Terraform validates the configuration_aliases of a module when it downloads the module (terraform get).
-// Radius downloads the module before it can inspect the module and generate the full provider configuration
-// in AddProviders. Without these placeholders, the download fails for modules that declare configuration_aliases.
-// If the module does not declare an alias, Terraform only gives a warning.
-// AddProviders replaces the placeholders after the module is inspected. Save() must be called to persist the config.
-func (cfg *TerraformConfig) AddProviderAliasPlaceholders(envConfig *recipes.Configuration) {
+// Radius cannot generate the full provider configuration in AddProviders until it inspects the downloaded module.
+// So when the first download fails, Radius inspects the module and uses these placeholders to download it again.
+// requiredProviders comes from that inspection. Aliases that the module does not declare are not added, so that
+// provider configurations inside the module are not overridden.
+//
+// A placeholder without a source uses the "hashicorp" namespace. The required_providers entry with the source
+// from the module prevents a provider type mismatch for providers from other namespaces.
+// AddProviders replaces the placeholders. Save() must be called to persist the config.
+func (cfg *TerraformConfig) AddProviderAliasPlaceholders(envConfig *recipes.Configuration, requiredProviders map[string]*RequiredProviderInfo) bool {
 	if envConfig == nil {
-		return
+		return false
 	}
 
 	placeholders := map[string][]map[string]any{}
 	moduleAliasConfig := map[string]string{}
+	requiredProviderSources := map[string]*RequiredProviderInfo{}
 	for providerName, providerConfigs := range envConfig.RecipeConfig.Terraform.Providers {
+		requiredProvider := requiredProviders[providerName]
+		if requiredProvider == nil {
+			continue
+		}
+
 		for _, providerConfig := range providerConfigs {
 			alias, ok := providerConfig.AdditionalProperties["alias"]
 			if !ok {
 				continue
 			}
 
-			aliasName := fmt.Sprintf("%v", alias)
-			if aliasName == "" {
-				continue
-			}
-
-			aliasProviderConfig := providerName + "." + aliasName
-			if _, exists := moduleAliasConfig[aliasProviderConfig]; exists {
+			aliasProviderConfig := providerName + "." + fmt.Sprintf("%v", alias)
+			if _, exists := moduleAliasConfig[aliasProviderConfig]; exists || !slices.Contains(requiredProvider.ConfigurationAliases, aliasProviderConfig) {
 				continue
 			}
 
 			moduleAliasConfig[aliasProviderConfig] = aliasProviderConfig
-			placeholders[providerName] = append(placeholders[providerName], map[string]any{"alias": aliasName})
+			placeholders[providerName] = append(placeholders[providerName], map[string]any{"alias": fmt.Sprintf("%v", alias)})
+			if requiredProvider.Source != "" {
+				requiredProviderSources[providerName] = &RequiredProviderInfo{Source: requiredProvider.Source}
+			}
 		}
 	}
 
 	if len(moduleAliasConfig) == 0 {
-		return
+		return false
 	}
 
 	cfg.Provider = placeholders
-	for _, module := range cfg.Module {
-		module[moduleProvidersKey] = moduleAliasConfig
-	}
-}
-
-// AddProviderAliasPlaceholderSources adds a required_providers entry with the module's provider source
-// for each placeholder provider from AddProviderAliasPlaceholders. It returns true if the configuration changed.
-//
-// A placeholder has no source, so Terraform uses the "hashicorp" namespace for it. If the module requires
-// the provider from a different namespace (for example "cyrilgdn/postgresql"), terraform get fails with a
-// provider type mismatch. requiredProviders comes from the inspection of the downloaded module.
-// AddProviders replaces these entries. Save() must be called to persist the config.
-func (cfg *TerraformConfig) AddProviderAliasPlaceholderSources(requiredProviders map[string]*RequiredProviderInfo) bool {
-	changed := false
-	for providerName := range cfg.Provider {
-		requiredProvider := requiredProviders[providerName]
-		if requiredProvider == nil || requiredProvider.Source == "" {
-			continue
-		}
-
+	if len(requiredProviderSources) > 0 {
 		if cfg.Terraform == nil {
 			cfg.Terraform = &TerraformDefinition{}
 		}
-		if cfg.Terraform.RequiredProviders == nil {
-			cfg.Terraform.RequiredProviders = map[string]*RequiredProviderInfo{}
-		}
-
-		if existing := cfg.Terraform.RequiredProviders[providerName]; existing != nil && existing.Source == requiredProvider.Source {
-			continue
-		}
-
-		cfg.Terraform.RequiredProviders[providerName] = &RequiredProviderInfo{Source: requiredProvider.Source}
-		changed = true
+		cfg.Terraform.RequiredProviders = requiredProviderSources
+	}
+	for _, module := range cfg.Module {
+		module[moduleProvidersKey] = moduleAliasConfig
 	}
 
-	return changed
+	return true
 }
 
 // AddRecipeContext adds RecipeContext to TerraformConfig module parameters if recipeCtx is not nil.

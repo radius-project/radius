@@ -525,11 +525,6 @@ func getTerraformConfig(ctx context.Context, workingDir string, options Options)
 		return nil, err
 	}
 
-	// Terraform validates the provider configuration_aliases of the module when it downloads the module.
-	// Add placeholders for the aliased providers in the environment configuration so that the download succeeds.
-	// AddProviders replaces the placeholders after the module is inspected.
-	tfConfig.AddProviderAliasPlaceholders(options.EnvConfig)
-
 	// Before downloading the module, Teraform configuration needs to be persisted in the working directory.
 	// Terraform Get command uses this config file to download module from the source specified in the config.
 	if err := tfConfig.Save(ctx, workingDir); err != nil {

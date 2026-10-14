@@ -639,61 +639,97 @@ func Test_AddProviders(t *testing.T) {
 }
 
 func Test_AddProviderAliasPlaceholders(t *testing.T) {
+	envConfig := &recipes.Configuration{
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Terraform: datamodel.TerraformConfigProperties{
+				Providers: map[string][]datamodel.ProviderConfigProperties{
+					"azurerm": {
+						{AdditionalProperties: map[string]any{"subscription_id": "sub"}},
+						{AdditionalProperties: map[string]any{"alias": "custom", "subscription_id": "sub"}},
+						{AdditionalProperties: map[string]any{"alias": "custom", "subscription_id": "other"}},
+						{AdditionalProperties: map[string]any{"alias": "unused", "subscription_id": "sub"}},
+					},
+					"postgresql": {
+						{AdditionalProperties: map[string]any{"alias": "pgdb-test", "host": "localhost"}},
+					},
+					"kubectl": {
+						{AdditionalProperties: map[string]any{"alias": "custom"}},
+					},
+				},
+			},
+		},
+	}
+
 	tests := []struct {
-		desc              string
-		envConfig         *recipes.Configuration
-		expectedProvider  map[string][]map[string]any
-		expectedProviders map[string]string
+		desc                      string
+		envConfig                 *recipes.Configuration
+		requiredProviders         map[string]*RequiredProviderInfo
+		expectedAdded             bool
+		expectedProvider          map[string][]map[string]any
+		expectedRequiredProviders map[string]*RequiredProviderInfo
+		expectedProviders         map[string]string
 	}{
 		{
 			desc: "nil env config",
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"azurerm": {Source: "hashicorp/azurerm", ConfigurationAliases: []string{"azurerm.custom"}},
+			},
 		},
 		{
 			desc:      "no recipe providers",
 			envConfig: &recipes.Configuration{},
-		},
-		{
-			desc: "recipe providers without aliases",
-			envConfig: &recipes.Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Terraform: datamodel.TerraformConfigProperties{
-						Providers: map[string][]datamodel.ProviderConfigProperties{
-							"azurerm": {
-								{AdditionalProperties: map[string]any{"subscription_id": "sub"}},
-								{AdditionalProperties: map[string]any{"alias": ""}},
-							},
-						},
-					},
-				},
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"azurerm": {Source: "hashicorp/azurerm", ConfigurationAliases: []string{"azurerm.custom"}},
 			},
 		},
 		{
-			desc: "aliased recipe providers",
-			envConfig: &recipes.Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Terraform: datamodel.TerraformConfigProperties{
-						Providers: map[string][]datamodel.ProviderConfigProperties{
-							"azurerm": {
-								{AdditionalProperties: map[string]any{"subscription_id": "sub"}},
-								{AdditionalProperties: map[string]any{"alias": "custom", "subscription_id": "sub"}},
-								{AdditionalProperties: map[string]any{"alias": "custom", "subscription_id": "other"}},
-							},
-							"kubernetes": {
-								{AdditionalProperties: map[string]any{"alias": "k8s_first", "config_path": "/path1"}},
-								{AdditionalProperties: map[string]any{"alias": "k8s_second", "config_path": "/path2"}},
-							},
-						},
-					},
-				},
+			// A module that uses only the default provider must not get alias placeholders.
+			desc:      "module does not declare configuration_aliases",
+			envConfig: envConfig,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"azurerm": {Source: "hashicorp/azurerm"},
+				"kubectl": {Source: "alekc/kubectl"},
 			},
+		},
+		{
+			desc:      "module declares an alias that is not in the environment",
+			envConfig: envConfig,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"azurerm": {Source: "hashicorp/azurerm", ConfigurationAliases: []string{"azurerm.missing"}},
+			},
+		},
+		{
+			desc:      "module declares configuration_aliases",
+			envConfig: envConfig,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"azurerm":    {Source: "hashicorp/azurerm", Version: ">= 3.0", ConfigurationAliases: []string{"azurerm.custom"}},
+				"postgresql": {Source: "cyrilgdn/postgresql", ConfigurationAliases: []string{"postgresql.pgdb-test"}},
+				"kubectl":    {Source: "alekc/kubectl"},
+			},
+			expectedAdded: true,
 			expectedProvider: map[string][]map[string]any{
 				"azurerm":    {{"alias": "custom"}},
-				"kubernetes": {{"alias": "k8s_first"}, {"alias": "k8s_second"}},
+				"postgresql": {{"alias": "pgdb-test"}},
+			},
+			expectedRequiredProviders: map[string]*RequiredProviderInfo{
+				"azurerm":    {Source: "hashicorp/azurerm"},
+				"postgresql": {Source: "cyrilgdn/postgresql"},
 			},
 			expectedProviders: map[string]string{
-				"azurerm.custom":        "azurerm.custom",
-				"kubernetes.k8s_first":  "kubernetes.k8s_first",
-				"kubernetes.k8s_second": "kubernetes.k8s_second",
+				"azurerm.custom":       "azurerm.custom",
+				"postgresql.pgdb-test": "postgresql.pgdb-test",
+			},
+		},
+		{
+			desc:      "module declares configuration_aliases without a source",
+			envConfig: envConfig,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"azurerm": {ConfigurationAliases: []string{"azurerm.custom"}},
+			},
+			expectedAdded:    true,
+			expectedProvider: map[string][]map[string]any{"azurerm": {{"alias": "custom"}}},
+			expectedProviders: map[string]string{
+				"azurerm.custom": "azurerm.custom",
 			},
 		},
 	}
@@ -704,9 +740,21 @@ func Test_AddProviderAliasPlaceholders(t *testing.T) {
 			tfconfig, err := New(t.Context(), testRecipeName, &envRecipe, &resourceRecipe)
 			require.NoError(t, err)
 
-			tfconfig.AddProviderAliasPlaceholders(tc.envConfig)
+			added := tfconfig.AddProviderAliasPlaceholders(tc.envConfig, tc.requiredProviders)
+			require.Equal(t, tc.expectedAdded, added)
 
 			require.Equal(t, tc.expectedProvider, tfconfig.Provider)
+			if tc.expectedRequiredProviders == nil {
+				require.Nil(t, tfconfig.Terraform)
+			} else {
+				require.Equal(t, tc.expectedRequiredProviders, tfconfig.Terraform.RequiredProviders)
+
+				// Terraform does not accept a null backend, so the saved configuration must not contain it.
+				content, err := json.Marshal(tfconfig)
+				require.NoError(t, err)
+				require.NotContains(t, string(content), "backend")
+			}
+
 			moduleProviders, ok := tfconfig.Module[testRecipeName][moduleProvidersKey]
 			if tc.expectedProviders == nil {
 				require.False(t, ok)
@@ -776,8 +824,10 @@ func Test_AddProviders_ReplacesAliasPlaceholders(t *testing.T) {
 			tfconfig, err := New(t.Context(), testRecipeName, &envRecipe, &resourceRecipe)
 			require.NoError(t, err)
 
-			// Simulate the placeholders that are added before the module download.
-			tfconfig.AddProviderAliasPlaceholders(aliasEnvConfig)
+			// Simulate the placeholders that are added to retry the module download.
+			require.True(t, tfconfig.AddProviderAliasPlaceholders(aliasEnvConfig, map[string]*RequiredProviderInfo{
+				providers.AzureProviderName: {Source: "hashicorp/azurerm", ConfigurationAliases: []string{"azurerm.custom"}},
+			}))
 			require.NotNil(t, tfconfig.Provider)
 			require.Contains(t, tfconfig.Module[testRecipeName], moduleProvidersKey)
 
@@ -791,91 +841,6 @@ func Test_AddProviders_ReplacesAliasPlaceholders(t *testing.T) {
 				return
 			}
 			require.Equal(t, tc.expectedProviders, moduleProviders)
-		})
-	}
-}
-
-func Test_AddProviderAliasPlaceholderSources(t *testing.T) {
-	placeholders := map[string][]map[string]any{
-		"azurerm":    {{"alias": "custom"}},
-		"postgresql": {{"alias": "pgdb-test"}},
-	}
-
-	tests := []struct {
-		name                      string
-		terraform                 *TerraformDefinition
-		provider                  map[string][]map[string]any
-		requiredProviders         map[string]*RequiredProviderInfo
-		expectedChanged           bool
-		expectedRequiredProviders map[string]*RequiredProviderInfo
-	}{
-		{
-			name:              "no placeholders",
-			requiredProviders: map[string]*RequiredProviderInfo{"postgresql": {Source: "cyrilgdn/postgresql"}},
-		},
-		{
-			name:     "module does not require the placeholder providers",
-			provider: placeholders,
-			requiredProviders: map[string]*RequiredProviderInfo{
-				"kubernetes": {Source: "hashicorp/kubernetes"},
-				"azurerm":    {},
-			},
-		},
-		{
-			name:     "sources added for placeholder providers",
-			provider: placeholders,
-			requiredProviders: map[string]*RequiredProviderInfo{
-				"azurerm":    {Source: "hashicorp/azurerm", Version: ">= 3.0"},
-				"postgresql": {Source: "cyrilgdn/postgresql", ConfigurationAliases: []string{"postgresql.pgdb-test"}},
-				"kubernetes": {Source: "hashicorp/kubernetes"},
-			},
-			expectedChanged: true,
-			expectedRequiredProviders: map[string]*RequiredProviderInfo{
-				"azurerm":    {Source: "hashicorp/azurerm"},
-				"postgresql": {Source: "cyrilgdn/postgresql"},
-			},
-		},
-		{
-			name:      "sources already set",
-			terraform: &TerraformDefinition{RequiredProviders: map[string]*RequiredProviderInfo{"postgresql": {Source: "cyrilgdn/postgresql"}}},
-			provider:  placeholders,
-			requiredProviders: map[string]*RequiredProviderInfo{
-				"postgresql": {Source: "cyrilgdn/postgresql"},
-			},
-			expectedRequiredProviders: map[string]*RequiredProviderInfo{
-				"postgresql": {Source: "cyrilgdn/postgresql"},
-			},
-		},
-		{
-			name:      "different source replaced",
-			terraform: &TerraformDefinition{RequiredProviders: map[string]*RequiredProviderInfo{"postgresql": {Source: "hashicorp/postgresql"}}},
-			provider:  placeholders,
-			requiredProviders: map[string]*RequiredProviderInfo{
-				"postgresql": {Source: "cyrilgdn/postgresql"},
-			},
-			expectedChanged: true,
-			expectedRequiredProviders: map[string]*RequiredProviderInfo{
-				"postgresql": {Source: "cyrilgdn/postgresql"},
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			cfg := &TerraformConfig{Terraform: tc.terraform, Provider: tc.provider}
-
-			changed := cfg.AddProviderAliasPlaceholderSources(tc.requiredProviders)
-			require.Equal(t, tc.expectedChanged, changed)
-			if tc.expectedRequiredProviders == nil {
-				require.Nil(t, cfg.Terraform)
-				return
-			}
-			require.Equal(t, tc.expectedRequiredProviders, cfg.Terraform.RequiredProviders)
-
-			// Terraform does not accept a null backend, so the saved configuration must not contain it.
-			content, err := json.Marshal(cfg)
-			require.NoError(t, err)
-			require.NotContains(t, string(content), "backend")
 		})
 	}
 }

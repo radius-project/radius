@@ -75,7 +75,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, tfConfig *con
 	downloadStartTime := time.Now()
 	err := tf.Get(ctx)
 	if err != nil {
-		err = retryGetWithProviderSources(ctx, tf, tfConfig, options, err)
+		err = retryGetWithProviderAliases(ctx, tf, tfConfig, options, err)
 	}
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
@@ -101,14 +101,16 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, tfConfig *con
 	return loadedModule, nil
 }
 
-// retryGetWithProviderSources runs terraform get again after it adds the module's provider sources to the
-// provider alias placeholders. It returns getErr if a retry cannot fix the failure.
+// retryGetWithProviderAliases runs terraform get again after it adds placeholders for the aliased providers that
+// the module declares in configuration_aliases. It returns getErr if a retry cannot fix the failure.
 //
-// The provider alias placeholders have no source. If the module requires an aliased provider from a namespace
-// other than "hashicorp", terraform get fails with a provider type mismatch. Terraform downloads the module
-// before it validates the configuration, so Radius can inspect the downloaded module to get the provider sources.
-func retryGetWithProviderSources(ctx context.Context, tf *tfexec.Terraform, tfConfig *config.TerraformConfig, options Options, getErr error) error {
-	if tfConfig == nil || len(tfConfig.Provider) == 0 {
+// Terraform validates the configuration_aliases of a module when it downloads the module, so the first
+// terraform get fails for a module that declares configuration_aliases. Terraform downloads the module
+// before it validates the configuration, so Radius can inspect the downloaded module to get the declared
+// aliases and the provider sources. Modules that do not need the aliases are downloaded on the first try
+// with no change to the configuration.
+func retryGetWithProviderAliases(ctx context.Context, tf *tfexec.Terraform, tfConfig *config.TerraformConfig, options Options, getErr error) error {
+	if tfConfig == nil || options.EnvConfig == nil {
 		return getErr
 	}
 
@@ -117,12 +119,12 @@ func retryGetWithProviderSources(ctx context.Context, tf *tfexec.Terraform, tfCo
 		return getErr
 	}
 
-	if !tfConfig.AddProviderAliasPlaceholderSources(module.RequiredProviders) {
+	if !tfConfig.AddProviderAliasPlaceholders(options.EnvConfig, module.RequiredProviders) {
 		return getErr
 	}
 
 	logger := ucplog.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("Retrying download of Terraform module %s with provider sources from the module", options.EnvRecipe.TemplatePath))
+	logger.Info(fmt.Sprintf("Retrying download of Terraform module %s with the provider aliases that the module declares. First error: %s", options.EnvRecipe.TemplatePath, getErr.Error()))
 	if err := tfConfig.Save(ctx, tf.WorkingDir()); err != nil {
 		return err
 	}
