@@ -35,9 +35,6 @@ const (
 
 	// LogFieldCode is the log key for the authorization error code.
 	LogFieldCode = "authzCode"
-
-	// LogFieldReason is the log key for the authorization denial reason.
-	LogFieldReason = "authzReason"
 )
 
 // Decision is the result of an authorization check.
@@ -47,23 +44,17 @@ type Decision struct {
 
 	// Code is the error code for a denial, such as "AuthorizationFailed".
 	Code string
-
-	// Reason describes why the check denied the request.
-	Reason string
 }
 
 // DeniedError is returned by Apply when a denial is enforced.
 type DeniedError struct {
 	// Code is the error code for the denial.
 	Code string
-
-	// Reason describes why the request was denied.
-	Reason string
 }
 
 // Error implements the error interface.
 func (e *DeniedError) Error() string {
-	return fmt.Sprintf("authorization denied (%s): %s", e.Code, e.Reason)
+	return fmt.Sprintf("authorization denied (%s)", e.Code)
 }
 
 // CodeAuthorizationFailed is used when a denial does not carry a specific code.
@@ -92,15 +83,13 @@ func Apply(ctx context.Context, mode Mode, decision Decision) error {
 	if mode == ModeDryRun {
 		ucplog.FromContextOrDiscard(ctx).Info("authorization check would deny request",
 			LogFieldWouldDeny, true,
-			LogFieldCode, code,
-			LogFieldReason, decision.Reason)
+			LogFieldCode, code)
 		return nil
 	}
 
 	ucplog.FromContextOrDiscard(ctx).Info("authorization check denied request",
 		LogFieldDenied, true,
-		LogFieldCode, code,
-		LogFieldReason, decision.Reason)
+		LogFieldCode, code)
 
-	return &DeniedError{Code: code, Reason: decision.Reason}
+	return &DeniedError{Code: code}
 }
