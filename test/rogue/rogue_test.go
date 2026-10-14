@@ -216,3 +216,120 @@ func Test_NewPod(t *testing.T) {
 		require.Equal(t, pod.Spec.Volumes[0].Name, container.VolumeMounts[0].Name)
 	})
 }
+
+func Test_PodWaitingState(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		pod  *corev1.Pod
+		want string
+	}{
+		{
+			name: "waiting container includes reason and message",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name:  "rogue",
+						State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ErrImagePull", Message: "pull denied"}},
+					}},
+				},
+			},
+			want: `container "rogue" is waiting: ErrImagePull: pull denied`,
+		},
+		{
+			name: "waiting init container is reported first",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					InitContainerStatuses: []corev1.ContainerStatus{{
+						Name:  "init",
+						State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CreateContainerConfigError"}},
+					}},
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name:  "rogue",
+						State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ContainerCreating"}},
+					}},
+				},
+			},
+			want: `init container "init" is waiting: CreateContainerConfigError`,
+		},
+		{
+			name: "empty when no container is waiting",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name:  "rogue",
+						State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
+					}},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.want, podWaitingState(tt.pod))
+		})
+	}
+}
+
+func Test_PodStartFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		pod     *corev1.Pod
+		wantErr string
+	}{
+		{
+			name: "image pull is fatal",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name:  "rogue",
+						State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ImagePullBackOff", Message: "pull denied"}},
+					}},
+				},
+			},
+			wantErr: `container "rogue" is waiting: ImagePullBackOff: pull denied`,
+		},
+		{
+			name: "missing secret is fatal",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name:  "rogue",
+						State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CreateContainerConfigError", Message: "secret not found"}},
+					}},
+				},
+			},
+			wantErr: `container "rogue" is waiting: CreateContainerConfigError: secret not found`,
+		},
+		{
+			name: "container creating is not fatal",
+			pod: &corev1.Pod{
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Name:  "rogue",
+						State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ContainerCreating"}},
+					}},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := podStartFailure(tt.pod)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
