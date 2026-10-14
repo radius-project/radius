@@ -55,6 +55,9 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 			label = "custom"
 		}
 		t.Run(label, func(t *testing.T) {
+			if custom {
+				t.Skip("Terraform get rejects modules with provider configuration_aliases: https://github.com/radius-project/radius/issues/13299")
+			}
 			ctx := t.Context()
 			name := "corerp-resources-terraform-azrg-" + label
 			appName, envName := name+"-app", name+"-env"
