@@ -142,8 +142,13 @@ run_check --logs-dir "${FIXTURES}/would-deny"
 assert_status 1
 assert_output_contains 'would-deny: applications-rp-5c6d7e8f9-fghij: {"severity":"info"'
 assert_output_contains '"authzCode":"AuthorizationFailed"'
+assert_output_contains '"authzAction":"Applications.Core/containers/write"'
+assert_output_contains '"authzTarget":"/planes/radius/local/resourceGroups/test"'
 assert_output_contains "would-deny: dynamic-rp-6f7a8b9c0-klmno (previous): "
 assert_output_contains '"authzCode": "InvalidClientIdentity"'
+assert_output_contains '"authzAction": "Applications.Test/widgets/write"'
+assert_output_contains '"authzTarget": "/planes/radius/local/resourceGroups/test"'
+assert_output_not_contains 'authzReason'
 assert_output_contains "Found 2 authorization would-deny log line(s)"
 assert_output_not_contains "ucp-7d9f8b6c4-abcde:"
 
@@ -153,6 +158,25 @@ assert_status 0
 assert_output_contains "allowed (https://github.com/radius-project/radius/issues/99901): applications-rp-5c6d7e8f9-fghij:"
 assert_output_contains "allowed (radius-project/radius#99902): dynamic-rp-6f7a8b9c0-klmno (previous):"
 assert_output_contains "No authorization would-deny log lines found (2 allowlisted)"
+
+echo "Test: allowlist exceptions require the exact code, action, and target"
+mkdir -p "${TEST_ROOT}/scoped-exception"
+for field in code action target; do
+    code=AuthorizationFailed
+    action=Applications.Core/containers/write
+    target=/planes/radius/local/resourceGroups/test
+    case "${field}" in
+        code) code=InvalidClientIdentity ;;
+        action) action=Applications.Core/containers/read ;;
+        target) target=/planes/radius/local/resourceGroups/other ;;
+    esac
+    printf '{"authzWouldDeny":true,"authzCode":"%s","authzAction":"%s","authzTarget":"%s"}\n' \
+        "${code}" "${action}" "${target}" >"${TEST_ROOT}/scoped-exception/pod.log"
+    run_check --logs-dir "${TEST_ROOT}/scoped-exception" \
+        --allowlist "${FIXTURES}/allowlist-all.txt"
+    assert_status 1
+    assert_output_contains "Found 1 authorization would-deny"
+done
 
 echo "Test: lines not covered by the allowlist still fail"
 run_check --logs-dir "${FIXTURES}/would-deny" --allowlist "${FIXTURES}/allowlist-partial.txt"
