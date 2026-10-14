@@ -110,7 +110,7 @@ UCP receives every Radius API request, so UCP checks access. The design has six 
 
 | # | Piece                                               | What it does                                                                                                            | Where it lives                   |
 |---|-----------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|----------------------------------|
-| 1 | [Identity](#piece-1-identity)                       | Reads the user and group names Kubernetes forwards. UCP trusts them only after it verifies they came from Kubernetes.   | UCP                              |
+| 1 | [Identity](#piece-1-identity)                       | Reads the user and group names Kubernetes forwards.                                                                     | UCP                              |
 | 2 | [Access model](#piece-2-access-model)               | Defines scopes, permissions, roles, and role assignments. Together they say who can do what and where.                  | New `Radius.Core` API types      |
 | 3 | [Policy store](#piece-3-policy-store)               | Saves the access model and mode in the UCP database. Each UCP instance keeps an in-memory copy.                         | UCP database                     |
 | 4 | [Authorizer](#piece-4-authorizer)                   | Checks each request and deployment. Applies safety rules such as "never remove the last admin".                         | UCP                              |
@@ -192,7 +192,7 @@ UCP checks assignments for the user and each group. An admin can assign `reader`
 
 **User names and groups.** Clusters that use OIDC should choose a stable user-name claim, such as `sub`, so assignments keep matching. `rad auth whoami` shows the principal that Radius sees. Kubernetes reads group membership on each request, so a group change applies after the Kubernetes login refreshes.
 
-**Kubernetes RBAC gates access to Radius.** Kubernetes still checks access to the `api.ucp.dev` API group before it forwards the request. The Helm chart adds ClusterRole `radius-api-user` for that gate. With Radius RBAC on, admins can bind it broadly, for example to `system:authenticated`, and let Radius decide.
+**Kubernetes RBAC gate.** The Helm chart adds ClusterRole `radius-api-user` for the Kubernetes RBAC check on `api.ucp.dev`. With Radius RBAC on, admins can bind it broadly, for example to `system:authenticated`, and let Radius decide.
 
 The deployment engine and the controller act for another principal. See [Clients](#clients-cli-dashboard-automation).
 
@@ -596,7 +596,7 @@ The [internal design](./2026-09-internal-component-authorization.md)'s service-t
 2. Before UCP accepts requests, UCP creates a `radius-administrator` assignment at `/` for each listed identity. It marks each assignment as `Bootstrap` and sets the mode from the proposed Helm value `rbac.mode` (default `Enforce`).
 3. UCP does not accept requests until both steps finish.
 
-`rad install kubernetes --skip-rbac` from the internal design sets user RBAC to `Disabled`. It leaves service-to-service security `Off` (`global.rbac.enabled=false`), so cert-manager is not required.
+`rad install kubernetes --skip-rbac` from the internal design also sets user RBAC to `Disabled`.
 
 Helm sets the mode only on first install. `helm upgrade` does not overwrite `authorizationSettings`. If the Helm value differs from the saved mode, the pre-upgrade check fails and tells the operator to use `rad auth enforcement`.
 
@@ -638,12 +638,9 @@ rad auth assignment create --role environment-deployer \
 
 A namespace with no assignments can do nothing. Kubernetes RBAC still controls who can create `DeploymentTemplate` objects.
 
-**Rules from the internal design.** For namespace principals:
+Deletion, loss of access, and cross-scope references follow the [internal design](./2026-09-internal-component-authorization.md#controller-authority).
 
-- **Deleting an object** gets a delete-only record for resources it created, even if the namespace lost access.
-- **When a namespace loses access**, new reconciles stop. Existing resources stay, and the object gets an out-of-scope condition.
-- **References outside the namespace's access** fail at reconcile ([Checking a request](#checking-a-request)).
-- **Flux-created templates** go only in the `GitRepository`'s own namespace, or in a namespace whose `radapp.io/gitops-sources` annotation lists that repository. Only a cluster admin can set the annotation. Otherwise the controller creates nothing and records an event on the `GitRepository`. In `Disabled` and `DryRun` modes, it logs a warning and continues.
+**Flux-created templates** go only in the `GitRepository`'s own namespace, or in a namespace whose `radapp.io/gitops-sources` annotation lists that repository. Only a cluster admin can set the annotation. Otherwise the controller creates nothing and records an event on the `GitRepository`. In `Disabled` and `DryRun` modes, it logs a warning and continues.
 
 **Managing roles through GitOps.** Give the repository's namespace principal `access-administrator`, or a custom role with `roleAssignments/write`, at the scopes it manages. The [safety rules](#safety-rules) still apply.
 
@@ -837,8 +834,6 @@ Add under `deploy/Chart/templates`:
 | `rbac.recoveryGroups`           | This design     | Groups, in addition to `system:masters`, that can create the recovery Secret.                |
 | `dashboard.forwardUserIdentity` | This design     | Dashboard sends each signed-in user's identity.                                              |
 
-The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=false`.
-
 ### Error Handling
 
 | Code                           | HTTP status | Meaning                                                                                                                                                              | What to do                                                          |
@@ -862,8 +857,6 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 **Fail closed.** In `Enforce`, any access-check error makes UCP deny the request with `AuthorizationUnavailable`. UCP never permits the request. In `DryRun`, UCP logs errors and continues.
 
 **Codes from the internal design.** Users can also see the internal design [error codes](./2026-09-internal-component-authorization.md#error-codes), such as `ExecutionRecordNotActive` (rerun `rad deploy`). `rad` says a role assignment will not fix them.
-
-**Do not leak information.** Error messages show your identity, the permission, and the requested target, but never other people, assignments you cannot read, or whether a resource exists.
 
 ## Test plan
 
@@ -953,12 +946,11 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 
 **Where RBAC adds time.**
 
-| Path           | Added work                                                                                                                                 |
-|----------------|--------------------------------------------------------------------------------------------------------------------------------------------|
-| Every request  | Look up assignments in memory for the scope and each parent scope, for the user and each group. No database call.                          |
-| List requests  | One check per returned item, after the resource provider responds ([Checking a request](#checking-a-request)).                             |
-| Deployments    | One preflight call per deployment. Nested modules get child records without new role checks. Each step checks the execution record.        |
-| Access changes | Each instance compares generation numbers every 5 seconds and reloads only when something changed ([Policy store](#piece-3-policy-store)). |
+| Path          | Added work                                                                                                                          |
+|---------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| Every request | Look up assignments in memory for the scope and each parent scope, for the user and each group. No database call.                   |
+| List requests | One check per returned item, after the resource provider responds ([Checking a request](#checking-a-request)).                      |
+| Deployments   | One preflight call per deployment. Nested modules get child records without new role checks. Each step checks the execution record. |
 
 **Limits.** Radius supports up to 10,000 role assignments and 1,000 custom roles per installation. Radius rejects anything past a limit.
 
@@ -975,11 +967,11 @@ The results set latency targets and whether the limits can increase.
 
 - **Upgrades and new installs** behave as described in [Turning RBAC on](#turning-rbac-on). On new installs, scripts that use a different Kubernetes identity than the installer need access.
 - **Older `rad` CLIs** still work but show raw 403 errors without the useful format.
-- **The dashboard** shows no data in `Enforce` until identity forwarding is enabled or an admin gives its service account a role.
-- **Templates that create AWS or Azure resources directly** need `credentials/use/action` on that plane, which `application-developer` does not include. Admins either grant it or move those resources into recipes.
+- **The dashboard** shows no data in `Enforce` until [configured](#clients-cli-dashboard-automation).
+- **Templates that create cloud resources directly** need [credential use](#cloud-resources-in-templates).
 - **Templates** that attach resources to another team's application or connect to another team's resources need the matching `write` or `connect` permission.
-- **GitOps repositories that deploy outside their own namespace** need that namespace's `radapp.io/gitops-sources` annotation set before `Enforce`.
-- **`Enforce` needs the internal design's service-to-service security**, and therefore cert-manager, on the control-plane cluster.
+- **GitOps repositories that deploy outside their own namespace** need the [`radapp.io/gitops-sources` annotation](#controllers-and-gitops).
+- **`Enforce` needs service-to-service security** ([Modes](#modes)).
 
 ## Monitoring and Logging
 
