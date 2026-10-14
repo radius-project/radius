@@ -77,7 +77,7 @@ var rootCmd = &cobra.Command{
 			services = append(services, &traceservice.Service{Options: &options.Config.TracerProvider})
 		}
 
-		if options.Config.Terraform.PreDownload {
+		if terraform.PreDownloadEnabled() {
 			services = append(services, terraform.NewPreDownloadService())
 		}
 

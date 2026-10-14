@@ -18,6 +18,8 @@ package terraform
 
 import (
 	"context"
+	"os"
+	"strconv"
 	"time"
 
 	install "github.com/hashicorp/hc-install"
@@ -29,6 +31,17 @@ const (
 	preDownloadInitialDelay = 5 * time.Second
 	preDownloadMaxDelay     = time.Minute
 )
+
+// PreDownloadEnvVar enables PreDownloadService when set to a true value. An environment variable is
+// used rather than a config file field so that newer Helm charts remain compatible with older images,
+// which reject unknown config fields.
+const PreDownloadEnvVar = "RADIUS_TERRAFORM_PREDOWNLOAD"
+
+// PreDownloadEnabled reports whether Terraform should be downloaded in the background at startup.
+func PreDownloadEnabled() bool {
+	enabled, err := strconv.ParseBool(os.Getenv(PreDownloadEnvVar))
+	return err == nil && enabled
+}
 
 // PreDownloadService downloads the global shared Terraform binary in the background when the
 // process starts so that the first Terraform recipe does not pay the download cost.

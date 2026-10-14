@@ -103,3 +103,22 @@ func Test_copyExecutable(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, entries, 1, "temporary file should be renamed into place")
 }
+
+func TestPreDownloadEnabled(t *testing.T) {
+	tests := []struct {
+		value string
+		want  bool
+	}{
+		{"", false},
+		{"true", true},
+		{"1", true},
+		{"false", false},
+		{"invalid", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.value, func(t *testing.T) {
+			t.Setenv(PreDownloadEnvVar, tt.value)
+			require.Equal(t, tt.want, PreDownloadEnabled())
+		})
+	}
+}

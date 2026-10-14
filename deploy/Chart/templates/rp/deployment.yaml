@@ -59,7 +59,7 @@ spec:
       {{- if $terraformInit }}
       # Init container to pre-download Terraform before the pod starts. Only used with a custom
       # global.terraform.downloadUrl or when global.terraform.useInitContainer is set. Otherwise, applications-rp downloads Terraform in the background at startup
-      # (terraform.preDownload) so that the pod does not wait for the download to become ready.
+      # (RADIUS_TERRAFORM_PREDOWNLOAD) so that the pod does not wait for the download to become ready.
       - name: terraform-init
         image: "{{ .Values.global.terraform.initImage }}"
         command:
@@ -172,6 +172,10 @@ spec:
             secretKeyRef:
               name: database-secret
               key: POSTGRES_PASSWORD
+        {{- end }}
+        {{- if and (eq .Values.global.terraform.enabled true) (not $terraformInit) }}
+        - name: RADIUS_TERRAFORM_PREDOWNLOAD
+          value: 'true'
         {{- end }}
         - name: SKIP_ARM
           value: 'false'

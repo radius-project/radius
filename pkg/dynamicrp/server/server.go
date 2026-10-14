@@ -47,7 +47,7 @@ func NewServer(options *dynamicrp.Options) (*hosting.Host, error) {
 	}
 
 	// Pre-download Terraform in the background so that the pod does not wait for it at startup.
-	if options.Config.Terraform.PreDownload {
+	if terraform.PreDownloadEnabled() {
 		services = append(services, terraform.NewPreDownloadService())
 	}
 

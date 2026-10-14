@@ -5,27 +5,31 @@ templates:
   - dynamic-rp/deployment.yaml
   - dynamic-rp/configmaps.yaml
 tests:
-  # By default Terraform is downloaded in-process in the background (terraform.preDownload)
+  # By default Terraform is downloaded in-process in the background (RADIUS_TERRAFORM_PREDOWNLOAD)
   # rather than in an init container, so pods do not wait on the download to start.
   - it: rp downloads terraform in-process by default
     asserts:
       - notExists:
           path: spec.template.spec.initContainers
         template: rp/deployment.yaml
-      - matchRegex:
-          path: data["radius-self-host.yaml"]
-          pattern: 'preDownload: true'
-        template: rp/configmaps.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_TERRAFORM_PREDOWNLOAD
+            value: 'true'
+        template: rp/deployment.yaml
 
   - it: dynamic-rp downloads terraform in-process by default
     asserts:
       - notExists:
           path: spec.template.spec.initContainers
         template: dynamic-rp/deployment.yaml
-      - matchRegex:
-          path: data["radius-self-host.yaml"]
-          pattern: 'preDownload: true'
-        template: dynamic-rp/configmaps.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_TERRAFORM_PREDOWNLOAD
+            value: 'true'
+        template: dynamic-rp/deployment.yaml
 
   - it: uses the init container instead of in-process download when downloadUrl is set
     set:
@@ -39,14 +43,18 @@ tests:
           path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
           pattern: 'TERRAFORM_URL="https://example\.com/terraform\.zip"'
         template: dynamic-rp/deployment.yaml
-      - notMatchRegex:
-          path: data["radius-self-host.yaml"]
-          pattern: 'preDownload'
-        template: rp/configmaps.yaml
-      - notMatchRegex:
-          path: data["radius-self-host.yaml"]
-          pattern: 'preDownload'
-        template: dynamic-rp/configmaps.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_TERRAFORM_PREDOWNLOAD
+            value: 'true'
+        template: rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_TERRAFORM_PREDOWNLOAD
+            value: 'true'
+        template: dynamic-rp/deployment.yaml
 
   - it: uses the init container instead of in-process download when useInitContainer is set
     set:
@@ -60,14 +68,18 @@ tests:
           path: spec.template.spec.initContainers
           count: 1
         template: dynamic-rp/deployment.yaml
-      - notMatchRegex:
-          path: data["radius-self-host.yaml"]
-          pattern: 'preDownload'
-        template: rp/configmaps.yaml
-      - notMatchRegex:
-          path: data["radius-self-host.yaml"]
-          pattern: 'preDownload'
-        template: dynamic-rp/configmaps.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_TERRAFORM_PREDOWNLOAD
+            value: 'true'
+        template: rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_TERRAFORM_PREDOWNLOAD
+            value: 'true'
+        template: dynamic-rp/deployment.yaml
 
   - it: does not pre-download terraform when disabled
     set:
@@ -79,14 +91,18 @@ tests:
       - notExists:
           path: spec.template.spec.initContainers
         template: dynamic-rp/deployment.yaml
-      - notMatchRegex:
-          path: data["radius-self-host.yaml"]
-          pattern: 'preDownload'
-        template: rp/configmaps.yaml
-      - notMatchRegex:
-          path: data["radius-self-host.yaml"]
-          pattern: 'preDownload'
-        template: dynamic-rp/configmaps.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_TERRAFORM_PREDOWNLOAD
+            value: 'true'
+        template: rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_TERRAFORM_PREDOWNLOAD
+            value: 'true'
+        template: dynamic-rp/deployment.yaml
 
   # Regression test for https://github.com/radius-project/radius/pull/11880
   # The pre-mounted Terraform binary path written by the init container MUST
