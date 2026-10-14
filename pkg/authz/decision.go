@@ -30,6 +30,9 @@ const (
 	// LogFieldWouldDeny marks a denial that was logged in dry-run mode instead of rejected.
 	LogFieldWouldDeny = "authzWouldDeny"
 
+	// LogFieldDenied marks a denial that was rejected in enforce mode.
+	LogFieldDenied = "authzDenied"
+
 	// LogFieldCode is the log key for the authorization error code.
 	LogFieldCode = "authzCode"
 
@@ -68,8 +71,8 @@ const CodeAuthorizationFailed = "AuthorizationFailed"
 
 // Apply acts on an authorization decision according to mode. It returns nil when the
 // decision is allowed or mode is off, logs and returns nil for a denial in dry-run mode,
-// and returns a *DeniedError for a denial in enforce mode. An unknown mode fails closed,
-// even for allowed decisions.
+// and logs and returns a *DeniedError for a denial in enforce mode. An unknown mode
+// fails closed, even for allowed decisions.
 func Apply(ctx context.Context, mode Mode, decision Decision) error {
 	switch mode {
 	case "", ModeOff, ModeDryRun, ModeEnforce:
@@ -93,6 +96,11 @@ func Apply(ctx context.Context, mode Mode, decision Decision) error {
 			LogFieldReason, decision.Reason)
 		return nil
 	}
+
+	ucplog.FromContextOrDiscard(ctx).Info("authorization check denied request",
+		LogFieldDenied, true,
+		LogFieldCode, code,
+		LogFieldReason, decision.Reason)
 
 	return &DeniedError{Code: code, Reason: decision.Reason}
 }

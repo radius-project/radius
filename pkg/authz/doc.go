@@ -22,7 +22,8 @@ limitations under the License.
 //   - ModeOff (default): authorization checks are not applied.
 //   - ModeDryRun: checks run, and denials are logged instead of rejected. This is
 //     the preflight run operators use before turning on enforcement.
-//   - ModeEnforce: denials are rejected with a specific error code.
+//   - ModeEnforce: checks run, and denials are logged and rejected with a
+//     specific error code.
 //
 // Checks build a Decision and pass it to Apply, which acts on it according to the
 // configured mode.
