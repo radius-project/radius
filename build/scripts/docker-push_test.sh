@@ -153,7 +153,7 @@ assert_calls "push ${IMAGE}" "sleep 5" "push ${IMAGE}" \
 assert_output "(exit 1, attempt 3/3)"
 
 FAILURES=0
-run_case 0 make --no-print-directory -s -f build/docker.mk docker-push \
+run_case 0 make -j1 --no-print-directory -s -f build/docker.mk docker-push \
     DOCKER_REGISTRY=ghcr.io/radius-project/dev DOCKER_TAG_VERSION=test
 assert_calls \
     "push ghcr.io/radius-project/dev/ucpd:test" \
