@@ -51,6 +51,7 @@ export MOCK_PULL_STATUS=0 MOCK_SIGNAL="" MOCK_MAKEFILE=""
 export MOCK_FIXTURE_CONCURRENCY="" MOCK_FIXTURE_TEST_STATUS=0 MOCK_FIXTURE_SIGNAL=""
 export MOCK_FIXTURE_HELPER="${work_dir}/fixture-worker.sh"
 export MOCK_CLUSTERS="" MOCK_CONTAINERS="" MOCK_NETWORKS=""
+export MOCK_DOCKER_PLATFORM=linux/x86_64
 export MOCK_GOTEST_OPTS="-count=1"
 unset MAKEFLAGS MFLAGS GOTEST_OPTS
 cat >"${MOCK_FIXTURE_HELPER}" <<'EOF'
@@ -129,6 +130,7 @@ openssl)
     ;;
 docker)
     case "${1:-} ${2:-}" in
+    "info --format") printf '%s\n' "${MOCK_DOCKER_PLATFORM}" ;;
     "container inspect") exit 1 ;;
     "container ls") printf '%s\n' "${MOCK_CONTAINERS}" ;;
     "network ls") printf '%s\n' "${MOCK_NETWORKS}" ;;
@@ -255,11 +257,11 @@ run_runner() {
     calls="$(<"${MOCK_LOG}")"
 }
 
-for platform in linux/arm64 windows/amd64; do
+for platform in linux/arm windows/amd64 windows/arm64; do
     export LOCAL_FUNCTIONAL_HOST_OS="${platform%/*}"
     export LOCAL_FUNCTIONAL_HOST_ARCH="${platform#*/}"
     run_runner 1 setup
-    assert_contains "${output}" "requires Debian/Ubuntu on amd64"
+    assert_contains "${output}" "requires Debian/Ubuntu or macOS"
     assert_not_contains "${calls}" "docker "
     assert_not_contains "${calls}" "make "
 done
@@ -272,6 +274,47 @@ for tool in envsubst update-ca-certificates; do
     assert_not_contains "${calls}" "make "
     ln -s mock "${work_dir}/bin/${tool}"
 done
+
+for platform in windows/amd64 linux/arm; do
+    export MOCK_DOCKER_PLATFORM="${platform}"
+    run_runner 1 setup
+    assert_contains "${output}" "Unsupported Docker daemon platform: ${platform}"
+    assert_not_contains "${calls}" "make "
+    assert_not_contains "${calls}" "sudo "
+done
+export MOCK_DOCKER_PLATFORM=linux/aarch64
+export LOCAL_FUNCTIONAL_HOST_ARCH=arm64
+export MOCK_FAILURE="docker run --rm --platform linux/amd64 alpine:3.24.2 /bin/true"
+run_runner 1 setup
+assert_contains "${output}" "must support linux/amd64 emulation"
+assert_not_contains "${calls}" "make "
+assert_not_contains "${calls}" "sudo "
+assert_not_contains "${calls}" "docker network create"
+export MOCK_FAILURE=""
+for platform in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+    export LOCAL_FUNCTIONAL_HOST_OS="${platform%/*}"
+    export LOCAL_FUNCTIONAL_HOST_ARCH="${platform#*/}"
+    for daemon in linux/x86_64 linux/amd64 linux/aarch64 linux/arm64; do
+        export MOCK_DOCKER_PLATFORM="${daemon}"
+        run_runner 77 setup
+        case "${daemon}" in
+        linux/x86_64 | linux/amd64)
+            arch=amd64
+            assert_not_contains "${calls}" "docker run --rm --platform"
+            ;;
+        *)
+            arch=arm64
+            assert_contains "${calls}" \
+                "docker run --rm --platform linux/amd64 alpine:3.24.2 /bin/true"
+            ;;
+        esac
+        assert_contains "${calls}" \
+            "make build-rad docker-build DOCKER_REGISTRY=radius-local DOCKER_TAG_VERSION=deadbeef1 DOCKER_BUILD_ARCH=${arch}"
+        assert_not_contains "${calls}" "sudo "
+    done
+done
+export LOCAL_FUNCTIONAL_HOST_OS=linux LOCAL_FUNCTIONAL_HOST_ARCH=amd64
+export MOCK_DOCKER_PLATFORM=linux/x86_64
 
 for existing in both results container_logs neither; do
     for directory in results container_logs; do
@@ -303,9 +346,10 @@ done
 export MOCK_BUILD_STATUS=0
 printf 'original config\n' >"${work_dir}/test/bicepconfig.json"
 dynamic_config="${work_dir}/test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json"
-for platform in linux/amd64 darwin/amd64 darwin/arm64; do
+for platform in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
     export LOCAL_FUNCTIONAL_HOST_OS="${platform%/*}"
     export LOCAL_FUNCTIONAL_HOST_ARCH="${platform#*/}"
+    export MOCK_DOCKER_PLATFORM="linux/${LOCAL_FUNCTIONAL_HOST_ARCH}"
     export MOCK_FAILURE=""
     expected=0
     if [[ "${LOCAL_FUNCTIONAL_HOST_OS}" == linux ]]; then
@@ -326,6 +370,7 @@ for platform in linux/amd64 darwin/amd64 darwin/arm64; do
     fi
     assert_contains "${calls}" \
         "127.0.0.1 radius-local-registry # radius-local-functional"
+    assert_contains "${calls}" "DOCKER_BUILD_ARCH=${LOCAL_FUNCTIONAL_HOST_ARCH}"
     [[ "$(<"${work_dir}/test/bicepconfig.json")" == "original config" ]] ||
         fail "${platform} setup did not restore existing config"
     [[ ! -e "${dynamic_config}" && ! -e "${state}/test.lock" ]] ||
@@ -333,6 +378,7 @@ for platform in linux/amd64 darwin/amd64 darwin/arm64; do
 done
 export MOCK_FAILURE=""
 export LOCAL_FUNCTIONAL_HOST_OS=linux LOCAL_FUNCTIONAL_HOST_ARCH=amd64
+export MOCK_DOCKER_PLATFORM=linux/x86_64
 [[ -d "${state}/samples/.git" ]] || fail "samples were not cloned"
 run_runner 0 fixtures
 assert_contains "${calls}" "git -C ${state}/samples pull --ff-only origin edge"

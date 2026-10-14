@@ -189,6 +189,12 @@ test-docker-push: ## Tests image push recovery without Docker or a registry
 
 test: test-docker-push
 
+.PHONY: test-docker-build
+test-docker-build: ## Tests image architecture selection without Docker
+	@bash ./build/scripts/docker-build_test.sh
+
+test: test-docker-build
+
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
 	@echo "$(ARROW) Compiling unit tests..."

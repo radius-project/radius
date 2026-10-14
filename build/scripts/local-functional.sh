@@ -171,9 +171,9 @@ remove_host_ca() {
 
 setup() {
     case "${HOST_OS}/${HOST_ARCH}" in
-    linux/amd64 | darwin/amd64 | darwin/arm64) ;;
+    linux/amd64 | linux/arm64 | darwin/amd64 | darwin/arm64) ;;
     *)
-        echo "This local runner requires Debian/Ubuntu on amd64 or macOS on amd64/arm64." >&2
+        echo "This local runner requires Debian/Ubuntu or macOS on amd64/arm64." >&2
         exit 1
         ;;
     esac
@@ -194,7 +194,24 @@ setup() {
         echo "The installed OpenSSL must support 'openssl req -addext'." >&2
         exit 1
     }
-    docker info >/dev/null
+    local docker_platform image_arch
+    docker_platform="$(docker info --format '{{.OSType}}/{{.Architecture}}')"
+    case "${docker_platform}" in
+    linux/amd64 | linux/x86_64) image_arch=amd64 ;;
+    linux/arm64 | linux/aarch64)
+        image_arch=arm64
+        # The published dashboard and some test fixtures are still amd64-only.
+        if ! docker run --rm --platform linux/amd64 alpine:3.24.2 /bin/true; then
+            echo "The arm64 Docker daemon must support linux/amd64 emulation." >&2
+            echo "Enable amd64 emulation in your Docker environment; see running-functional-tests.md." >&2
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Unsupported Docker daemon platform: ${docker_platform}. Use Linux containers on amd64/arm64." >&2
+        exit 1
+        ;;
+    esac
     [[ -f hack/bicep-types-radius/generated/index.json ]] || {
         echo "Generate local Bicep types with make generate-bicep-types first." >&2
         exit 1
@@ -222,7 +239,8 @@ setup() {
     mkdir -p "${STATE}"/{certs,home,bin,results,container_logs}
     rm -f "${STATE}/home/.rad/config.yaml"
     make build-rad docker-build \
-        DOCKER_REGISTRY=radius-local DOCKER_TAG_VERSION="${TAG}"
+        DOCKER_REGISTRY=radius-local DOCKER_TAG_VERSION="${TAG}" \
+        DOCKER_BUILD_ARCH="${image_arch}"
     make install-bicep BICEP_INSTALL_DIR="${STATE}/bin"
     make install-bicep BICEP_INSTALL_DIR="${STATE}/home/.rad/bin"
     make install-dapr DAPR_INSTALL_DIR="${STATE}/bin"

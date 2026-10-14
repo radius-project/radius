@@ -8,7 +8,9 @@ You do not need a cloud account, GitHub personal access token, or external conta
 
 ## Prerequisites
 
-Use Debian/Ubuntu Linux with an `amd64` processor, or macOS with an `amd64` or `arm64` processor. Linux certificate setup uses `update-ca-certificates` and `/usr/local/share/ca-certificates`; other Linux distributions are not supported by this runner. Linux `arm64` is not supported because the current image-build targets produce `linux/amd64` images.
+Use Debian/Ubuntu Linux (including Windows with WSL 2) or macOS, on an `amd64` or `arm64` processor. Linux certificate setup uses `update-ca-certificates` and `/usr/local/share/ca-certificates`; other Linux distributions are not supported by this runner.
+
+The runner builds `rad` for the host and Linux service images for the Docker daemon's architecture. An arm64 Docker daemon must also support amd64 container emulation because the published dashboard and some test fixtures are amd64-only. Setup checks this before building images or changing host trust.
 
 Install these tools and make sure each command is available on `PATH`:
 
@@ -38,9 +40,33 @@ The test runner also requires:
 - Sufficient CPU and memory to run up to seven k3d clusters concurrently. Use the selected-group workflow below on resource-constrained machines.
 - On Linux, at least 1024 inotify instances per user. Check the current value with `sysctl fs.inotify.max_user_instances`.
 
+### Windows and WSL
+
+Run the workflow inside a Debian/Ubuntu WSL 2 distribution, not PowerShell, Command Prompt, or Git Bash. Install Linux versions of Go and the other tools for the distribution's architecture (`amd64` or `arm64`); do not use Windows executables from the shared Windows `PATH`.
+
+Run Docker Engine inside the WSL distribution. The runner changes the distribution's Linux certificate trust and hosts file; it does not configure Windows or a separate Docker Desktop VM's certificate trust. Use a checkout on the WSL Linux filesystem for better build performance.
+
+### Arm64 container emulation
+
+On an arm64 Docker daemon, this compatibility check must succeed:
+
+```bash
+docker run --rm --platform linux/amd64 alpine:3.24.2 /bin/true
+```
+
+For an arm64 Linux Docker Engine, an administrator can register amd64 QEMU emulation with the following command. It changes the Docker host's binary-format handlers and requires a trusted daemon:
+
+```bash
+docker run --privileged --rm \
+  tonistiigi/binfmt@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0 \
+  --install amd64
+```
+
+Rerun the compatibility check afterward. Registration may need repeating after the Docker host or WSL VM restarts. The runner does not register emulators or change these host settings automatically.
+
 ### macOS tool selection
 
-Use Docker Desktop with Linux containers. On Apple Silicon, enable support for running `linux/amd64` containers: the current `make docker-build` target builds the Radius server images for that platform, while the runner builds `rad` for your Mac's native architecture.
+Use Docker Desktop with Linux containers. On Apple Silicon, enable support for running `linux/amd64` containers and verify it with the compatibility check above. Radius service images are built natively for the Docker daemon, while `rad` is built for your Mac's native architecture.
 
 If you use Homebrew, make GNU Make, OpenSSL, curl, and envsubst available under the command names used by the runner:
 
@@ -73,7 +99,7 @@ make test-functional-local-noncloud
 
 This target:
 
-1. Builds the `rad` CLI and Radius container images from your checkout.
+1. Builds the `rad` CLI for your host and Radius Linux container images for the Docker daemon's architecture (`amd64` or `arm64`) from your checkout.
 2. Creates a local container registry and a k3d cluster.
 3. Installs Radius, then installs Flux, Git HTTP, and Dapr concurrently with recipe publishing. Publishes Bicep recipes with at most four workers; other callers of the publisher remain serial unless they set `BICEP_RECIPE_PUBLISH_PARALLELISM` to 2, 3, or 4. Waits for every fixture to be ready, restores and verifies the local Bicep extensions, and copies the validated cache into independent worker caches before parallel template compilation.
 4. Runs the UCP group first, preserving the custom-provider discovery coverage in Core RP, then runs the other seven standard groups through three concurrent, sequential worker lanes. Each group has its own HOME, Radius configuration, Bicep extension cache, and container-log directory. Core RP retains ten parallel test slots; other standard groups use five.
@@ -147,11 +173,17 @@ Infrastructure removed; logs and isolated CLI configuration remain in dist/local
 
 For manually selected groups, each package prints `ok` or a successful `gotestsum` summary. A successful end-to-end group creates its expected Radius resources, verifies their state, and removes them according to the selected cleanup mode.
 
-Run `make test-local-functional-runner` to check the runner's platform preflight, fixture locking/restoration, diagnostics rotation, bounded full-lifecycle concurrency, worker failure propagation, serial selected-group execution, and cleanup using mocked infrastructure commands. These regression checks also run as part of `make test` and do not require Docker, Kubernetes, or sudo access.
+Run `make test-local-functional-runner` to check the runner's amd64/arm64 platform and emulation preflight, image architecture selection, fixture locking/restoration, diagnostics rotation, bounded full-lifecycle concurrency, worker failure propagation, serial selected-group execution, and cleanup using mocked infrastructure commands. These regression checks also run as part of `make test` and do not require Docker, Kubernetes, or sudo access.
+
+Run `make test-docker-build` to verify the default amd64 and explicit amd64/arm64 Make image recipes without Docker or Go builds. These checks also run as part of `make test`.
 
 Run `make test-publish-recipes` to check serial and bounded concurrent recipe publishing, module-file exclusion, failure propagation, and worker draining without a registry. These checks also run as part of `make test`.
 
 ## Troubleshooting
+
+### Arm64 setup fails its amd64 compatibility check
+
+Read the Docker error printed before the runner's emulation message. Resolve image-pull or daemon connectivity errors first. An `exec format error` means the Docker host cannot execute the amd64 probe; enable emulation as described in [Arm64 container emulation](#arm64-container-emulation), then retry. Do not just set `DOCKER_DEFAULT_PLATFORM`: that selects images but does not install an emulator.
 
 ### Existing test infrastructure
 
