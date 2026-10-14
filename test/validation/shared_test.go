@@ -159,11 +159,11 @@ func Test_DeleteRPResource_Applications(t *testing.T) {
 
 	// Both teardown variants share the same branch, so run every case against both. A nil CLI
 	// is passed deliberately: this branch must not depend on the legacy CLI command.
-	variants := map[string]func(ctx context.Context, client clients.ApplicationsManagementClient) error{
-		"DeleteRPResource": func(ctx context.Context, client clients.ApplicationsManagementClient) error {
+	variants := map[string]func(t *testing.T, ctx context.Context, client clients.ApplicationsManagementClient) error{
+		"DeleteRPResource": func(t *testing.T, ctx context.Context, client clients.ApplicationsManagementClient) error {
 			return DeleteRPResource(ctx, t, nil, client, resource)
 		},
-		"DeleteRPResourceSilent": func(ctx context.Context, client clients.ApplicationsManagementClient) error {
+		"DeleteRPResourceSilent": func(_ *testing.T, ctx context.Context, client clients.ApplicationsManagementClient) error {
 			return DeleteRPResourceSilent(ctx, nil, client, resource)
 		},
 	}
@@ -202,7 +202,7 @@ func Test_DeleteRPResource_Applications(t *testing.T) {
 					Return(returnErr == nil, returnErr).
 					Times(1)
 
-				err := deleteFn(t.Context(), client)
+				err := deleteFn(t, t.Context(), client)
 
 				if tc.expectErr == "" {
 					require.NoError(t, err)
