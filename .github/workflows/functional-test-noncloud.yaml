@@ -491,6 +491,10 @@ jobs:
           echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} did not become available after $((MAX_ATTEMPTS * SLEEP_SECONDS))s. Last error: ${manifest_error}"
           exit 1
 
+      - name: Install yq
+        # Required to select the test environment in the workspace config.
+        run: make install-yq
+
       - name: Install Radius
         # The statestore leg drives its own install/uninstall/reinstall lifecycle
         # inside the test (it must reinstall to simulate an ephemeral control
@@ -590,8 +594,19 @@ jobs:
           rad group switch kind-radius
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create kind-radius --namespace default
-          rad env switch kind-radius
+          #
+          # The environment is deployed declaratively rather than with `rad env create` so that it is
+          # pinned to Applications.Core regardless of which provider the `rad env create` default
+          # targets.
+          rad deploy ./test/infra/radius/legacy-test-environment.bicep \
+            --parameters name=kind-radius \
+            --parameters namespace=default
+
+          # Select the env with yq, not `rad env switch`, so this works whichever type `rad env` targets.
+          scope="$(yq -e '.workspaces.items[.workspaces.default].scope' ~/.rad/config.yaml)"
+          ENVIRONMENT_ID="${scope}/providers/Applications.Core/environments/kind-radius" \
+            yq -i '.workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID)' ~/.rad/config.yaml
+          rad workspace show
 
         env:
           USE_CERT_FILE: "true"

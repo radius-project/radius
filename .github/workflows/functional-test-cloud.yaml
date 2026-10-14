@@ -932,6 +932,10 @@ jobs:
           echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} did not become available after $((MAX_ATTEMPTS * SLEEP_SECONDS))s. Last error: ${manifest_error}"
           exit 1
 
+      - name: Install yq
+        # Required to select the test environment in the workspace config.
+        run: make install-yq
+
       - name: Install Radius
         env:
           AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
@@ -1005,19 +1009,30 @@ jobs:
           rad group switch kind-radius
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create kind-radius --namespace default
-          rad env switch kind-radius
+          #
+          # The environment is deployed declaratively rather than with `rad env create` so that it is
+          # pinned to Applications.Core regardless of which provider the `rad env create` default
+          # targets.
+          #
+          # Set cloud scopes in Bicep, not `rad env update`, so this works whichever type `rad env` targets.
+          rad deploy ./test/infra/radius/legacy-test-environment.bicep \
+            --parameters name=kind-radius \
+            --parameters namespace=default \
+            --parameters azureScope="/subscriptions/${AZURE_SUBSCRIPTIONID_TESTS}/resourceGroups/${AZURE_TEST_RESOURCE_GROUP}" \
+            --parameters awsScope="/planes/aws/aws/accounts/${FUNCTEST_AWS_ACCOUNT_ID}/regions/${AWS_REGION}"
+
+          # Select the env with yq, not `rad env switch`, so this works whichever type `rad env` targets.
+          scope="$(yq -e '.workspaces.items[.workspaces.default].scope' ~/.rad/config.yaml)"
+          ENVIRONMENT_ID="${scope}/providers/Applications.Core/environments/kind-radius" \
+            yq -i '.workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID)' ~/.rad/config.yaml
+          rad workspace show
 
           echo "*** Configuring Azure provider ***"
-          rad env update kind-radius --azure-subscription-id "${AZURE_SUBSCRIPTIONID_TESTS}" \
-            --azure-resource-group "${AZURE_TEST_RESOURCE_GROUP}"
           rad credential register azure wi \
             --client-id "${AZURE_SP_TESTS_APPID}" \
             --tenant-id "${AZURE_SP_TESTS_TENANTID}"
 
           echo "*** Configuring AWS provider ***"
-          rad env update kind-radius --aws-region "${AWS_REGION}" --aws-account-id "${FUNCTEST_AWS_ACCOUNT_ID}"
-
           rad credential register aws irsa \
             --iam-role "${FUNC_TEST_RAD_IRSA_ROLE}"
 
