@@ -31,7 +31,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 readonly CHECK_SCRIPT="${AUTHZ_REPO_ROOT}/.github/scripts/authz-would-deny-check.sh"
 
 TEMP_DIR=""
-# shellcheck disable=SC2329 # Invoked by the EXIT trap.
+# shellcheck disable=SC2317,SC2329 # Invoked by the EXIT trap.
 cleanup() {
     if [[ -n "${TEMP_DIR}" && -d "${TEMP_DIR}" ]]; then
         rm -rf "${TEMP_DIR}"

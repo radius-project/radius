@@ -210,7 +210,8 @@ if command -v shellcheck >/dev/null; then
     for script in lib.sh kit_test.sh "${SCRIPTS[@]}"; do
         files+=("${KIT_DIR}/${script}")
     done
-    if (cd "${REPO_ROOT}" && shellcheck --rcfile .github/linters/.shellcheckrc "${files[@]}"); then
+    # Runner ShellCheck lacks --rcfile; no repo-wide suppressions are needed here.
+    if (cd "${REPO_ROOT}" && shellcheck --norc "${files[@]}"); then
         pass_test
     else
         fail_test "shellcheck reported issues"
