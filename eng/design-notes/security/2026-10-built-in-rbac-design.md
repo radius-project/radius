@@ -200,12 +200,7 @@ The deployment engine and the controller act for another principal. See [Clients
 
 ##### Scopes
 
-| Scope level    | Resource ID                                                          | What is inside it                                                                                 |
-|----------------|----------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
-| Installation   | `/`                                                                  | Everything. Used only for admin-type roles, `reader`, `auditor`, and the setting for enforcement. |
-| Plane          | `/planes/radius/local`, `/planes/azure/<name>`, `/planes/aws/<name>` | Its resource groups, resource type registrations, and cloud credentials.                          |
-| Resource group | `/planes/radius/local/resourceGroups/<rg>`                           | All resources in the group.                                                                       |
-| Resource       | A resource ID, such as an environment                                | The resource and any child resources.                                                             |
+Scopes are listed in [Key terms](#key-terms). The installation scope (`/`) is used only for admin-type roles, `reader`, `auditor`, and the enforcement setting.
 
 **A reference does not grant access.** Access on an environment does not cover the Recipe Packs that the environment uses.
 
@@ -239,8 +234,6 @@ A permission is `<Namespace>/<type>/<operation>`. UCP maps each request to one p
 **New permissions never enter existing custom roles.** New actions and registered types are added to the catalog only.
 
 ###### Cloud resources in templates
-
-A Bicep template can create cloud resources directly, such as `AWS.S3/Bucket` or `Microsoft.Storage/storageAccounts`. AWS resources go through UCP's AWS plane, which calls AWS Cloud Control with the plane's registered credential. Azure resources go from the deployment engine to Azure Resource Manager and use a token from the credential broker in the internal design.
 
 Radius does not add cloud resource types to the catalog. Instead:
 
