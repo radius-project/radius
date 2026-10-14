@@ -25,9 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
-	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
-	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -57,6 +55,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 Interactively install the Radius control-plane and setup a Radius.Core environment.
 
 If an environment already exists, 'rad init --preview' will prompt the user to use the existing environment or create a new one.
+
+'rad init --preview' writes a bicepconfig.json file to the current directory so that Radius Bicep files can be authored and deployed. An existing bicepconfig.json is never overwritten.
 
 By default, 'rad init --preview' will optimize for a developer-focused environment with an environment named "default" and a default recipe pack that includes recipes to support prototyping, development and testing in Kubernetes. These environments are great for building and testing your application.
 
@@ -238,51 +238,28 @@ func (r *Runner) Run(ctx context.Context) error {
 	progress.EnvironmentComplete = true
 	progressChan <- progress
 
-	if r.Options.Application.Scaffold {
-		// Initialize the Radius.Core client factory if not already set
-		if r.RadiusCoreClientFactory == nil {
-			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
-			if err != nil {
-				return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client.")
-			}
-			r.RadiusCoreClientFactory = clientFactory
-		}
-
-		// Create the Radius.Core application resource if it's not found.
-		appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
-		_, err := appClient.Get(ctx, r.Workspace.Scope, r.Options.Application.Name, nil)
-		if clients.Is404Error(err) {
-			// Application does not exist, create it.
-			_, err = appClient.CreateOrUpdate(ctx, r.Workspace.Scope, r.Options.Application.Name, corerpv20250801.ApplicationResource{
-				Location: to.Ptr(v1.LocationGlobal),
-				Properties: &corerpv20250801.ApplicationProperties{
-					Environment: &r.Workspace.Environment,
-				},
-			}, nil)
-			if err != nil {
-				return clierrors.MessageWithCause(err, "Failed to create application.")
-			}
-		} else if err != nil {
-			return clierrors.MessageWithCause(err, "Failed to check for existing application.")
-		}
-
-		// Scaffold application files in the current directory
-		wd, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-
-		err = setup.ScaffoldApplication(wd, setup.PreviewAppBicepTemplate)
-		if err != nil {
-			return err
-		}
-	}
 	progress.ApplicationComplete = true
 	progressChan <- progress
 
 	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace)
 	if err != nil {
 		return err
+	}
+
+	// Always write bicepconfig.json to the current directory so that Bicep files can be authored and
+	// deployed with Radius. An existing file is never overwritten. This runs after the workspace is
+	// saved so that an unwritable working directory does not prevent the workspace from being configured.
+	bicepConfigDirectory := r.Options.BicepConfigDirectory
+	if bicepConfigDirectory == "" {
+		bicepConfigDirectory, err = os.Getwd()
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to get the current directory.")
+		}
+	}
+
+	err = setup.WriteBicepConfig(bicepConfigDirectory)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to write bicepconfig.json.")
 	}
 	progress.ConfigComplete = true
 	progressChan <- progress
