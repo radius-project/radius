@@ -1193,6 +1193,15 @@ jobs:
           message: |
             :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
 
+      - name: Release ACI quota before async resource group delete
+        if: always()
+        env:
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+        run: |
+          ./.github/scripts/release-aci-quota.sh \
+            "${AZURE_SUBSCRIPTIONID_TESTS}" \
+            "${AZURE_TEST_RESOURCE_GROUP}"
+
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
         env:

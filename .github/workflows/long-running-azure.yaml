@@ -497,6 +497,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
+      - name: Release ACI quota before async resource group delete
+        if: always()
+        env:
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
+        run: |
+          ./.github/scripts/release-aci-quota.sh \
+            "${AZURE_SUBSCRIPTIONID_TESTS}" \
+            "${AZURE_TEST_RESOURCE_GROUP}"
+
       - name: Delete azure resource group - ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
         env:
