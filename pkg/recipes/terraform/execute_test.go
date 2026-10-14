@@ -86,7 +86,11 @@ func runTerraformTestHelper() error {
 		return fmt.Errorf("writing test module outputs: %w", err)
 	}
 	if provider := os.Getenv("RADIUS_TERRAFORM_REQUIRED_PROVIDER"); provider != "" {
-		content := fmt.Sprintf("terraform {\n required_providers {\n %s = {\n source = \"hashicorp/%s\"\n }\n }\n}\n", provider, provider)
+		content := fmt.Sprintf("terraform {\n required_providers {\n %s = {\n source = \"hashicorp/%s\"\n", provider, provider)
+		if alias := os.Getenv("RADIUS_TERRAFORM_PROVIDER_ALIAS"); alias != "" {
+			content += fmt.Sprintf(" configuration_aliases = [%s.%s]\n", provider, alias)
+		}
+		content += " }\n }\n}\n"
 		if err := os.WriteFile(filepath.Join(moduleDir, "providers.tf"), []byte(content), 0600); err != nil {
 			return err
 		}

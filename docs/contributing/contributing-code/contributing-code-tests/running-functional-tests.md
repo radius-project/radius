@@ -249,6 +249,19 @@ Apply the layers in order whenever the LRT cluster is created or rotated:
 
 The GitHub Actions role allows 5400-second sessions, and the LRT workflow requests that duration to leave headroom over the 60-minute functional-test window. Its generated subject patterns include branch refs, so the scheduled `main` run uses `repo:radius-project/radius:ref:refs/heads/main` without a separate trust-policy edit.
 
+### Terraform provider configuration test
+
+`Test_TerraformRecipe_AzureResourceGroup` in `test/functional-portable/corerp/cloud/resources` checks both the registered Azure provider and a custom provider alias. The custom case loads the tenant from a secret store, loads the client ID through `envSecrets`, and enables OIDC through `env`. Invalid environment defaults ensure the explicit provider fields and secret-backed environment value must take effect. It uses the registered Azure workload identity and replaces the skipped PostgreSQL provider test; no database or fixed readiness delay is needed.
+
+Both cases keep their Kubernetes state Secret until normal Terraform destroy completes. They check that the Azure resource group exists after deployment and that both the group and state Secret are absent after deletion, even when `RADIUS_TEST_FAST_CLEANUP=true`. SDK fallback cleanup runs only after those checks and cannot turn a failed destroy into a passing test.
+
+Use the normal cloud-suite setup, including `AZURE_SUBSCRIPTION_ID`, the Terraform module server, and the same Entra service principal for the runner and Radius pods. The custom case reads `AZURE_SP_TESTS_TENANTID` and `AZURE_SP_TESTS_APPID`, or the service-principal identity from `az account show`. Publish both `azure-rg` and `azure-rg-custom-provider` with `make publish-test-terraform-recipes`, then run:
+
+```bash
+go test ./test/functional-portable/corerp/cloud/resources \
+  -run '^Test_TerraformRecipe_AzureResourceGroup$' -count=20 -timeout 60m -v
+```
+
 ### Terraform cloud backend lifecycle tests
 
 `Test_TerraformCloudBackend_S3` and `Test_TerraformCloudBackend_AzureRM` live in `test/functional-portable/corerp/cloud/resources`. The existing `functional-test-cloud.yaml` → `corerp-cloud` matrix leg → `make test-functional-corerp-cloud` discovers both without build tags or an opt-in flag. Missing cloud credentials or configuration fail these tests rather than silently skipping them. They use the management API through `RPTest` to create `Radius.Core/terraformSettings`, a recipe pack, an environment and an application, then deploy real Terraform recipes through two resources.
