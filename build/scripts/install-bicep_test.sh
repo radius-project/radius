@@ -21,6 +21,14 @@ fail_test() {
     exit 1
 }
 
+count_lines() {
+    local _line count=0
+    while IFS= read -r _line; do
+        count=$((count + 1))
+    done < "$1"
+    printf '%s\n' "$count"
+}
+
 curl() {
     local output="" timeout="" connect_timeout="" format=""
     local status http_code url="${RELEASES_URL}/tag/v0.46.1"
@@ -42,7 +50,7 @@ curl() {
         || fail_test "attempt timeout"
     echo "$timeout" >> "${TEST_DIR}/timeouts"
     local count
-    count="$(wc -l < "${TEST_DIR}/timeouts")"
+    count="$(count_lines "${TEST_DIR}/timeouts")"
     status="${RESPONSES[count - 1]:-${RESPONSES[${#RESPONSES[@]} - 1]}}"
     http_code="${status#*:}"
     status="${status%%:*}"
@@ -84,16 +92,16 @@ for response in 22:408 22:429 22:500 22:502 22:503 22:504 \
     5:000 6:000 7:000 18:200 28:000 52:000 55:200 56:200; do
     reset_case "$response" 0:200
     check_request 0
-    [[ "$(wc -l < "${TEST_DIR}/timeouts")" -eq 2 ]] \
+    [[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 2 ]] \
         || fail_test "did not retry ${response}"
-    [[ "$(cat "${TEST_DIR}/download")" == "$PAYLOAD" ]] \
+    [[ "$(< "${TEST_DIR}/download")" == "$PAYLOAD" ]] \
         || fail_test "partial download was retained"
 done
 
 for response in 22:400 22:401 22:403 22:404 22:501 23:200 60:000; do
     reset_case "$response" 0:200
     check_request "${response%%:*}"
-    [[ "$(wc -l < "${TEST_DIR}/timeouts")" -eq 1 ]] \
+    [[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 1 ]] \
         || fail_test "retried permanent error ${response}"
 done
 
@@ -108,37 +116,37 @@ check_request 22
 [[ "$SECONDS" -eq 243 ]] || fail_test "unexpected retry deadline"
 [[ "$(tail -1 "${TEST_DIR}/timeouts")" -eq 57 ]] \
     || fail_test "last attempt did not use remaining budget"
-[[ "$(wc -l < "${TEST_DIR}/timeouts")" -eq 10 ]] \
+[[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 10 ]] \
     || fail_test "unbounded HTTP retries"
 
 reset_case 56:200
 check_request 56
-[[ "$(wc -l < "${TEST_DIR}/timeouts")" -eq 10 ]] \
+[[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 10 ]] \
     || fail_test "unbounded dropped-connection retries"
 
 reset_case 22:500 56:200 22:404 0:200
 check_request 22
-[[ "$(wc -l < "${TEST_DIR}/timeouts")" -eq 3 ]] \
+[[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 3 ]] \
     || fail_test "permanent error after transient errors"
 
 # A request must not start after the shared deadline.
 sleep() { SECONDS=$((SECONDS + 300)); }
 reset_case 22:500
 check_request 28
-[[ "$(wc -l < "${TEST_DIR}/timeouts")" -eq 1 ]] \
+[[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 1 ]] \
     || fail_test "request started after deadline"
 
 # A clock that does not advance still stops at the retry-count limit.
 sleep() { echo "$1" >> "${TEST_DIR}/delays"; }
 reset_case 22:500
 check_request 22
-[[ "$(wc -l < "${TEST_DIR}/timeouts")" -eq 11 ]] \
+[[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 11 ]] \
     || fail_test "retry-count limit"
 
 reset_case 0:200
 [[ "$(resolve_latest_version)" == v0.46.1 ]] \
     || fail_test "latest version resolution"
-[[ "$(wc -l < "${TEST_DIR}/heads")" -eq 1 ]] \
+[[ "$(count_lines "${TEST_DIR}/heads")" -eq 1 ]] \
     || fail_test "latest version must use HEAD"
 
 # Exercise checksum validation and preserve an existing binary on failure.
@@ -155,11 +163,15 @@ GITHUB_TOKEN=""
 GITHUB_PATH="${TEST_DIR}/github-path"
 export BICEP_VERSION BICEP_OS BICEP_ARCH GITHUB_TOKEN GITHUB_PATH
 reset_case 0:200
-BICEP_CHECKSUM_LINUX_ARM64="$(printf '%s' "$PAYLOAD" | sha256sum)"
+if command -v sha256sum >/dev/null 2>&1; then
+    BICEP_CHECKSUM_LINUX_ARM64="$(printf '%s' "$PAYLOAD" | sha256sum)"
+else
+    BICEP_CHECKSUM_LINUX_ARM64="$(printf '%s' "$PAYLOAD" | shasum -a 256)"
+fi
 BICEP_CHECKSUM_LINUX_ARM64="${BICEP_CHECKSUM_LINUX_ARM64%% *}"
 export BICEP_CHECKSUM_LINUX_ARM64
 main "${TEST_DIR}/install" > "${TEST_DIR}/main-log" 2>&1
-[[ "$(cat "${TEST_DIR}/install/bicep")" == "$PAYLOAD" ]] \
+[[ "$(< "${TEST_DIR}/install/bicep")" == "$PAYLOAD" ]] \
     || fail_test "verified binary was not installed"
 [[ ! -e "$GITHUB_PATH" ]] || fail_test "cross-platform PATH export"
 cleanup
@@ -170,7 +182,7 @@ if (trap cleanup EXIT; main "${TEST_DIR}/install") \
     > "${TEST_DIR}/main-log" 2>&1; then
     fail_test "checksum mismatch was accepted"
 fi
-[[ "$(cat "${TEST_DIR}/install/bicep")" == "verified bicep fixture" ]] \
+[[ "$(< "${TEST_DIR}/install/bicep")" == "verified bicep fixture" ]] \
     || fail_test "checksum failure replaced the existing binary"
 
 echo "PASS: Bicep download policy and checksum checks"
