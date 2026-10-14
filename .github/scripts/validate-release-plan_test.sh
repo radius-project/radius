@@ -141,6 +141,7 @@ setup_repo() {
     git -C "${REPO}" config user.name "Radius Test"
     git -C "${REPO}" config user.email "test@example.com"
     git -C "${REPO}" config commit.gpgsign false
+    git -C "${REPO}" config tag.gpgsign false
     cat >"${REPO}/versions.yaml" <<'EOF'
 supported:
   - channel: '0.60'

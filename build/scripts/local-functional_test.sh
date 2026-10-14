@@ -51,7 +51,8 @@ export MOCK_PULL_STATUS=0 MOCK_SIGNAL="" MOCK_MAKEFILE=""
 export MOCK_FIXTURE_CONCURRENCY="" MOCK_FIXTURE_TEST_STATUS=0 MOCK_FIXTURE_SIGNAL=""
 export MOCK_FIXTURE_HELPER="${work_dir}/fixture-worker.sh"
 export MOCK_CLUSTERS="" MOCK_CONTAINERS="" MOCK_NETWORKS=""
-unset MAKEFLAGS MFLAGS
+export MOCK_GOTEST_OPTS="-count=1"
+unset MAKEFLAGS MFLAGS GOTEST_OPTS
 cat >"${MOCK_FIXTURE_HELPER}" <<'EOF'
 #!/bin/bash
 set -euo pipefail
@@ -480,9 +481,9 @@ if [[ -z "${LOCAL_FUNCTIONAL_SUITE}" ]]; then
     [[ "${HOME}" == *"/home-${target}" ]] || exit 1
     [[ "$(<"${HOME}/.rad/config.yaml")" == "standard CLI config" ]] || exit 1
     if [[ "${target}" == test-functional-corerp-noncloud ]]; then
-        [[ "${GOTEST_OPTS}" == "-count=1 -parallel 10" ]] || exit 1
+        [[ "${GOTEST_OPTS}" == "${MOCK_GOTEST_OPTS} -parallel 10" ]] || exit 1
     else
-        [[ "${GOTEST_OPTS}" == "-count=1 -parallel 5" ]] || exit 1
+        [[ "${GOTEST_OPTS}" == "${MOCK_GOTEST_OPTS} -parallel 5" ]] || exit 1
     fi
     mkdir "${SERIAL_STATE}/active/${target}"
     trap 'rmdir "${SERIAL_STATE}/active/${target}"' EXIT
@@ -494,9 +495,9 @@ if [[ -z "${LOCAL_FUNCTIONAL_SUITE}" ]]; then
 else
     [[ "${HOME}" == *"/home-${LOCAL_FUNCTIONAL_SUITE}" ]] || exit 1
     if [[ "${LOCAL_FUNCTIONAL_SUITE}" == dynamicrp ]]; then
-        [[ "${GOTEST_OPTS}" == *"-parallel 5" ]] || exit 1
+        [[ "${GOTEST_OPTS}" == "${MOCK_GOTEST_OPTS} -parallel 5" ]] || exit 1
     else
-        [[ "${GOTEST_OPTS}" != *"-parallel 5" ]] || exit 1
+        [[ "${GOTEST_OPTS}" == "${MOCK_GOTEST_OPTS}" ]] || exit 1
     fi
 fi
 printf '%s\n' "${target}" >>"${SERIAL_STATE}/started"
@@ -544,6 +545,17 @@ for suite in database multicluster statestore upgrade dynamicrp; do
 done
 assert_contains "${calls}" "k3d cluster delete radius-functional-external"
 rm "${SERIAL_STATE}/started" "${SERIAL_STATE}/completed"
+export GOTEST_OPTS="-race -coverprofile ./dist/unit_test/ut_coverage.out"
+export MOCK_GOTEST_OPTS="${GOTEST_OPTS}"
+run_runner 0 test --all-groups
+completed=()
+while IFS= read -r target; do completed+=("${target}"); done \
+    <"${SERIAL_STATE}/completed"
+[[ "${#completed[@]}" == 13 ]] ||
+    fail "custom test options run omitted test groups"
+rm "${SERIAL_STATE}/started" "${SERIAL_STATE}/completed"
+unset GOTEST_OPTS
+export MOCK_GOTEST_OPTS="-count=1"
 export MOCK_FAILED_TARGET=test-functional-database-noncloud
 run_runner 1 test --all-groups
 assert_contains "${output}" "intentional worker failure"

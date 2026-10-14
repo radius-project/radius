@@ -94,7 +94,8 @@ remote_tag() {
     local repository="$1"
     local tag="$2"
 
-    git -C "${TEST_ROOT}/${repository}.git" rev-parse --verify --quiet "refs/tags/${tag}" || true
+    git --git-dir="${TEST_ROOT}/${repository}.git" \
+        rev-parse --verify --quiet "refs/tags/${tag}" || true
 }
 
 reconcile_all() {
