@@ -550,6 +550,31 @@ else
     fail_test "README would-deny.sh row must explain --require-dry-run and not claim it equals make authz-would-deny-check"
 fi
 
+if [[ -z "${AUTHZ_TEST_SHELLCHECK_STATUS:-}" ]]; then
+    echo "Test: runner ShellCheck compatibility and lint failure propagation"
+    cat >"${TEST_ROOT}/bin/shellcheck" <<'MOCK'
+#!/bin/bash
+set -euo pipefail
+for arg in "$@"; do
+    if [[ "${arg}" == --rcfile* ]]; then
+        echo "unrecognized option --rcfile" >&2
+        exit 2
+    fi
+done
+echo "runner-compatible shellcheck invoked"
+exit "${AUTHZ_TEST_SHELLCHECK_STATUS}"
+MOCK
+    chmod +x "${TEST_ROOT}/bin/shellcheck"
+    for lint_status in 0 1; do
+        AUTHZ_TEST_SHELLCHECK_STATUS="${lint_status}" run_kit kit_test.sh
+        assert_status "${lint_status}"
+        assert_output_contains "runner-compatible shellcheck invoked"
+        if [[ "${lint_status}" -ne 0 ]]; then
+            assert_output_contains "shellcheck reported issues"
+        fi
+    done
+fi
+
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"
 if [[ "${FAIL}" -gt 0 ]]; then
