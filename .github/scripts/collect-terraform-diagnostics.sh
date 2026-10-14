@@ -17,7 +17,8 @@
 # ------------------------------------------------------------
 
 # Print selected Terraform failure diagnostics, not raw logs or pod specs.
-# Requires kubectl, jq, and GNU timeout. Each request has a 15-second limit.
+# Requires Linux, kubectl, jq, GNU timeout, and free (procps).
+# Each request has a 15-second limit.
 set -euo pipefail
 
 for tool in kubectl jq timeout; do

@@ -194,7 +194,7 @@ The summary includes runner memory, node capacity and pressure, warning event id
 
 Provider error summaries count JSON log records that match schema errors, provider-start timeouts, or a plugin that did not respond. They read at most the last 40 minutes, 2000 lines, and 1 MiB per container, including the previous container when it has restarted. Counts are not failed-operation counts; one error can appear in several records. Non-JSON records are counted but their contents are not printed. The summary excludes raw provider logs, event and termination messages, pod environment values, and process command lines. This collection does not enable Terraform trace logging.
 
-To collect the same summary locally, run `bash .github/scripts/collect-terraform-diagnostics.sh` with Bash, `kubectl`, `jq`, GNU coreutils (`timeout`), and access to your selected cluster. Run `make test-cluster-diagnostics` to check the collector with stub commands; it does not require a cluster.
+To collect the same summary locally, use a Linux host with Bash, `kubectl`, `jq`, GNU coreutils (`timeout`), procps (`free`), and access to your selected cluster. Run `bash .github/scripts/collect-terraform-diagnostics.sh` on that host. The collector does not support native macOS execution. Run `make test-cluster-diagnostics` to check the collector with stub commands; it does not require a cluster.
 
 ### Diagnose long-running Azure test failures
 
