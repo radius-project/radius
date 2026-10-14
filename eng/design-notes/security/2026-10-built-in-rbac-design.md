@@ -612,11 +612,13 @@ Events never include request bodies, secrets, or credentials.
 
 The mode is stored in `authorizationSettings` at `/providers/Radius.Core/authorizationSettings/default`.
 
-| Mode       | Checks run? | Blocks requests?      | When to use it                                       |
-|------------|-------------|-----------------------|------------------------------------------------------|
-| `Disabled` | No          | No                    | Current behavior. Upgraded installations start here. |
-| `DryRun`   | Yes         | No, all requests pass | Test RBAC. UCP logs requests that RBAC would block.  |
-| `Enforce`  | Yes         | Yes                   | Normal use.                                          |
+| Mode       | Checks run? | Blocks requests?    | When to use it                                               |
+|------------|-------------|---------------------|--------------------------------------------------------------|
+| `Disabled` | No          | No                  | Current behavior. Upgraded installations start here.         |
+| `DryRun`   | Yes         | Only access changes | Test RBAC. UCP logs resource requests that RBAC would block. |
+| `Enforce`  | Yes         | Yes                 | Normal use.                                                  |
+
+In `DryRun`, changes to roles, role assignments, and `authorizationSettings` are checked and blocked as in `Enforce`.
 
 **How this relates to the internal design.** The [internal design](./2026-09-internal-component-authorization.md) rolls out service-to-service security separately. It has `Off` and `Enforce` stages. Its dry run is not a stage: the installation stays `Off`, each service-to-service check runs, and UCP logs failures. Those proposed `deploy/Chart` Helm values are `global.rbac.enabled` and `global.rbac.dryRun`. They change listeners, certificates, and admission policies, so pods restart. User RBAC `DryRun` is a run-time mode changed through the API, not a Helm value.
 
@@ -912,7 +914,7 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 | `ScopeNotAssignable`           | 400         | The scope is not allowed for this role, or that resource type cannot be a scope.                                                                                     | Choose another scope.                                               |
 | `AuthorizationUnavailable`     | 503         | UCP's access data is too old, or the database is down.                                                                                                               | Retry later.                                                        |
 
-**Fail closed.** In `Enforce`, any access-check error makes UCP deny the request with `AuthorizationUnavailable`. UCP never permits the request. In `DryRun`, UCP logs errors and continues the request, because `DryRun` must not change behavior.
+**Fail closed.** In `Enforce`, any access-check error makes UCP deny the request with `AuthorizationUnavailable`. UCP never permits the request. In `DryRun`, UCP logs errors and continues resource requests. Access changes fail closed.
 
 **Codes from the internal design.** Users can also see the internal design [error codes](./2026-09-internal-component-authorization.md#error-codes), such as `ExecutionRecordNotActive` (rerun `rad deploy`). They mean a Radius service or step was blocked, not that the user needs a role. `rad` shows them with `source: Radius` and says adding a role assignment will not fix them.
 
@@ -950,6 +952,7 @@ The pre-install check fails if `rbac.mode=Enforce` and `global.rbac.enabled=fals
 | A role is removed during a long deployment                                                                                   | The record is revoked. The next step fails with `ExecutionRecordNotActive`. `rad deploy` and the audit log list the resources left in place. |
 | Remove the last admin using the CLI                                                                                          | `LastAdministratorProtected`.                                                                                                                |
 | While `Disabled`, a user with only `radius-api-user` runs `rad auth enforcement dry-run`                                     | UCP's `SubjectAccessReview` returns 403. Mode stays `Disabled`. No bootstrap admin is created.                                               |
+| In `DryRun`, a user without access permissions changes a role assignment or the mode                                         | 403. Nothing changes.                                                                                                                        |
 | Upgrade an existing install, then dry run, report, enable                                                                    | Nothing is blocked before enable. The report suggests assignments. Enable succeeds.                                                          |
 | Enable `Enforce` while service-to-service security is `Off`                                                                  | `ComponentProtocolNotEnforced`. Mode stays the same.                                                                                         |
 | Recovery Secret is created, then expires                                                                                     | Admin access works only during that time, and UCP logs it.                                                                                   |
