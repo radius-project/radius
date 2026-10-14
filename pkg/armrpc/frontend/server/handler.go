@@ -29,6 +29,7 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
@@ -272,6 +273,7 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	logger.Error(err, "unhandled error")
 
 	var response rest.Response
+	var denied *authz.DeniedError
 	// Try to use the ARM format to send back the error info
 	// if the error is due to api conversion failure return bad resquest
 	switch v := err.(type) {
@@ -290,7 +292,9 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 			},
 		})
 	default:
-		if errors.Is(err, v1.ErrInvalidModelConversion) {
+		if errors.As(err, &denied) {
+			response = deniedErrorResponse(denied)
+		} else if errors.Is(err, v1.ErrInvalidModelConversion) {
 			response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
 				Error: &v1.ErrorDetails{
 					Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
@@ -318,5 +322,29 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 		// There's no way to recover if we fail writing here, we likly partially wrote to the response stream.
 		w.WriteHeader(http.StatusInternalServerError)
 		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
+	}
+}
+
+// deniedErrorResponse converts an authorization denial to its public ARM response. The
+// denial's Reason and any wrapping context are never included. If the denial lacks the
+// request context needed for the normal message, a generic message is returned instead.
+func deniedErrorResponse(denied *authz.DeniedError) rest.Response {
+	if response, err := denied.Response(); err == nil {
+		return response
+	}
+
+	code := denied.Code
+	if code == "" {
+		code = authz.CodeAuthorizationFailed
+	}
+
+	return &authz.DeniedResponse{
+		StatusCode: authz.StatusForCode(code),
+		Body: v1.ErrorResponse{
+			Error: &v1.ErrorDetails{
+				Code:    code,
+				Message: "Authorization denied",
+			},
+		},
 	}
 }
