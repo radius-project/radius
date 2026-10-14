@@ -83,22 +83,24 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 				testutil.GetTerraformRecipeModuleServerURL(), "appName=" + appName, "envName=" + envName,
 				"resourceName=" + name, "azureResourceGroupName=" + groupName,
 			}
+			template := "testdata/corerp-resources-terraform-azurerg.bicep"
 			if custom {
 				tenant, client := azureFederatedIdentity(ctx, t)
 				require.NotEmpty(t, tenant, "custom provider test requires the workload identity tenant")
 				require.NotEmpty(t, client, "custom provider test requires the workload identity client")
-				parameters = append(parameters, "useCustomProviderConfig=true", "tenantId="+tenant, "clientId="+client,
+				template = "testdata/corerp-resources-terraform-azurerg-custom-provider.bicep"
+				parameters = append(parameters, "tenantId="+tenant, "clientId="+client,
 					"oidcTokenFilePath="+providers.AzureOIDCTokenFilePath)
 			}
 
+			// The driver omits Azure scope IDs such as resource groups from output resources,
+			// so the Azure SDK checks below verify the recipe lifecycle instead.
 			ct := rp.NewRPTest(t, name, []rp.TestStep{{
-				Executor: step.NewDeployExecutor("testdata/corerp-resources-terraform-azurerg.bicep", parameters...),
+				Executor: step.NewDeployExecutor(template, parameters...),
 				RPResources: &validation.RPResourceSet{Resources: []validation.RPResource{
 					{Name: envName, Type: validation.EnvironmentsResource},
 					{Name: appName, Type: validation.ApplicationsResource},
-					{Name: name, Type: validation.ExtendersResource, App: appName, OutputResources: []validation.OutputResourceResponse{
-						{ID: "/subscriptions/" + subscription + "/resourceGroups/" + groupName},
-					}},
+					{Name: name, Type: validation.ExtendersResource, App: appName},
 				}},
 				SkipObjectValidation: true, // This recipe creates no Kubernetes workload.
 				PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
