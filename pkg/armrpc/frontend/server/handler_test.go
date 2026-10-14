@@ -301,7 +301,7 @@ func (c *deniedController) Run(ctx context.Context, w http.ResponseWriter, req *
 }
 
 func Test_HandlerForController_DeniedError(t *testing.T) {
-	const reason = "operation belongs to alice@example.com"
+	const identity = "alice@example.com"
 	const target = "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/containers/c"
 
 	tests := []struct {
@@ -316,7 +316,6 @@ func Test_HandlerForController_DeniedError(t *testing.T) {
 			name: "converts to authorization response",
 			denied: &authz.DeniedError{
 				Code:   v1.CodeOperationNotAssigned,
-				Reason: reason,
 				Action: "Applications.Core/containers/write",
 				Target: target,
 			},
@@ -329,7 +328,6 @@ func Test_HandlerForController_DeniedError(t *testing.T) {
 			name: "uses status for code",
 			denied: &authz.DeniedError{
 				Code:   v1.CodeAuthorizationUnavailable,
-				Reason: reason,
 				Action: "read",
 				Target: target,
 			},
@@ -340,21 +338,21 @@ func Test_HandlerForController_DeniedError(t *testing.T) {
 		},
 		{
 			name:        "missing request context falls back to generic denial",
-			denied:      &authz.DeniedError{Code: v1.CodeGrantScopeExceeded, Reason: reason},
+			denied:      &authz.DeniedError{Code: v1.CodeGrantScopeExceeded},
 			wantStatus:  http.StatusForbidden,
 			wantCode:    v1.CodeGrantScopeExceeded,
 			wantMessage: "Authorization denied",
 		},
 		{
 			name:        "unavailable without request context falls back to retry message",
-			denied:      &authz.DeniedError{Code: v1.CodeAuthorizationUnavailable, Reason: reason},
+			denied:      &authz.DeniedError{Code: v1.CodeAuthorizationUnavailable},
 			wantStatus:  http.StatusServiceUnavailable,
 			wantCode:    v1.CodeAuthorizationUnavailable,
 			wantMessage: "Authorization could not be checked. Try again later.",
 		},
 		{
 			name:        "empty code defaults to AuthorizationFailed",
-			denied:      &authz.DeniedError{Reason: reason},
+			denied:      &authz.DeniedError{},
 			wantStatus:  http.StatusForbidden,
 			wantCode:    v1.CodeAuthorizationFailed,
 			wantMessage: "Authorization denied",
@@ -364,7 +362,7 @@ func Test_HandlerForController_DeniedError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			controller := &deniedController{err: fmt.Errorf("checking access: %w", tt.denied)}
+			controller := &deniedController{err: fmt.Errorf("checking access for %s: %w", identity, tt.denied)}
 			handler := HandlerForController(controller, v1.OperationType{Type: "Applications.Core/containers", Method: http.MethodPut})
 
 			req := httptest.NewRequest(http.MethodPut, "/", nil)
@@ -373,7 +371,7 @@ func Test_HandlerForController_DeniedError(t *testing.T) {
 			handler.ServeHTTP(w, req)
 
 			require.Equal(t, tt.wantStatus, w.Code)
-			require.NotContains(t, w.Body.String(), reason)
+			require.NotContains(t, w.Body.String(), identity)
 			require.NotContains(t, w.Body.String(), "checking access")
 
 			armerr := v1.ErrorResponse{}
