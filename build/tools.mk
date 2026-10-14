@@ -18,8 +18,9 @@
 
 TOOL_MANIFEST := build/tools.yaml
 TOOL_MAKE_INCLUDE := build/tools.generated.mk
-TOOL_UPDATER_GOOS := $(shell go env GOHOSTOS)
-TOOL_UPDATER_GOARCH := $(shell go env GOHOSTARCH)
+TOOL_UPDATER_PLATFORM := $(shell go env GOHOSTOS GOHOSTARCH)
+TOOL_UPDATER_GOOS := $(word 1,$(TOOL_UPDATER_PLATFORM))
+TOOL_UPDATER_GOARCH := $(word 2,$(TOOL_UPDATER_PLATFORM))
 TOOL_UPDATER_BINARY := bin/tool-updater$(if $(filter windows,$(TOOL_UPDATER_GOOS)),.exe,)
 TOOL_UPDATER_SOURCES := $(wildcard cmd/tool-updater/*.go) $(wildcard internal/tooling/*.go)
 TOOL_UPDATE_PR_BODY_OUTPUT ?=
