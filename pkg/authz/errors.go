@@ -79,12 +79,14 @@ func (e *DeniedError) code() string {
 // must identify the caller's requested action and target; conversion fails if either
 // is blank. AdmissionPolicyDenied responses also name Rule, which must be a short
 // identifier. Reason is an internal diagnostic and is never included in the response.
+// The public message varies by error code so unavailable checks and authentication
+// failures are not described as authorization denials.
 func (e *DeniedError) ErrorResponse() (v1.ErrorResponse, error) {
 	if strings.TrimSpace(e.Action) == "" || strings.TrimSpace(e.Target) == "" {
 		return v1.ErrorResponse{}, fmt.Errorf("authorization response requires an action and target")
 	}
 
-	message := fmt.Sprintf("Authorization denied for action '%s' on target '%s'", e.Action, e.Target)
+	message := messageForCode(e.code(), e.Action, e.Target)
 	if e.code() == v1.CodeAdmissionPolicyDenied {
 		if !ruleIdentifierPattern.MatchString(e.Rule) {
 			return v1.ErrorResponse{}, fmt.Errorf("admission policy response requires a valid rule identifier")
@@ -99,6 +101,30 @@ func (e *DeniedError) ErrorResponse() (v1.ErrorResponse, error) {
 			Target:  e.Target,
 		},
 	}, nil
+}
+
+func messageForCode(code, action, target string) string {
+	switch code {
+	case v1.CodeAuthorizationUnavailable:
+		return fmt.Sprintf("Authorization could not be checked for action '%s' on target '%s'. Try again later.", action, target)
+	case v1.CodeInvalidAuthenticationInfo:
+		return fmt.Sprintf("Authentication failed for action '%s' on target '%s'", action, target)
+	default:
+		return fmt.Sprintf("Authorization denied for action '%s' on target '%s'", action, target)
+	}
+}
+
+// GenericMessageForCode returns a public authorization error message for code when
+// request action and target details are unavailable.
+func GenericMessageForCode(code string) string {
+	switch code {
+	case v1.CodeAuthorizationUnavailable:
+		return "Authorization could not be checked. Try again later."
+	case v1.CodeInvalidAuthenticationInfo:
+		return "Authentication failed"
+	default:
+		return "Authorization denied"
+	}
 }
 
 // Response converts the denial to a rest.Response with the HTTP status for its code.
