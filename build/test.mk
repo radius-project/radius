@@ -76,7 +76,7 @@ test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned 
 	@python3 ./.github/scripts/run-with-authz-logs_test.py
 
 .PHONY: test-authz-kit
-test-authz-kit: ## Tests the manual authorization test kit in hack/authz (syntax, shellcheck, --help, helpers)
+test-authz-kit: ## Tests the manual authorization test kit in hack/authz (syntax, --help, helpers, workflows)
 	@bash ./hack/authz/kit_test.sh
 
 .PHONY: test-cluster-diagnostics

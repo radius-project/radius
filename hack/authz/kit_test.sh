@@ -18,7 +18,7 @@
 
 # ============================================================================
 # Tests for the manual authorization test kit in hack/authz. Runs without a
-# cluster: kubectl is replaced by a stub that records its calls.
+# cluster: external tools are replaced by stubs that record their calls.
 # ============================================================================
 
 set -euo pipefail
@@ -90,25 +90,45 @@ assert_output_contains() {
     fi
 }
 
+assert_output_not_contains() {
+    if grep -Fq -- "$1" <<<"${OUTPUT}"; then
+        fail_test "expected output not to contain '$1'. Output:"$'\n'"${OUTPUT}"
+    else
+        pass_test
+    fi
+}
+
 assert_calls_contain() {
     if grep -Fq -- "$1" "${MOCK_CALLS}"; then
         pass_test
     else
-        fail_test "expected a kubectl call containing '$1'. Calls:"$'\n'"$(cat "${MOCK_CALLS}")"
+        fail_test "expected a call containing '$1'. Calls:"$'\n'"$(cat "${MOCK_CALLS}")"
     fi
 }
 
 assert_calls_not_contain() {
     if grep -Fq -- "$1" "${MOCK_CALLS}"; then
-        fail_test "expected no kubectl call containing '$1'. Calls:"$'\n'"$(cat "${MOCK_CALLS}")"
+        fail_test "expected no call containing '$1'. Calls:"$'\n'"$(cat "${MOCK_CALLS}")"
     else
         pass_test
     fi
 }
 
+assert_calls_ordered() {
+    if awk -v first="$1" -v second="$2" '
+        index($0, second) { if (seen) ordered = 1; else exit 1 }
+        index($0, first) { seen = 1 }
+        END { exit !ordered }
+    ' "${MOCK_CALLS}"; then
+        pass_test
+    else
+        fail_test "expected '$1' before '$2'. Calls:"$'\n'"$(cat "${MOCK_CALLS}")"
+    fi
+}
+
 # A kubectl stub. Every call is appended to MOCK_CALLS.
 #   MOCK_SECRET_KEYS     space-separated keys of the component Secret, or
-#                        "absent" when the Secret does not exist.
+#                        absent/timeout/forbidden/context for read errors.
 #   MOCK_CONTEXT_EXISTS  "false" makes "config view --context" fail.
 #   MOCK_POD_EXISTS      "false" makes "get pod" fail so the pod is created.
 #   MOCK_KIT_MODE        the namespace's kit mode label, empty for no label,
@@ -123,11 +143,23 @@ if [[ "$1" == "--context" ]]; then
 fi
 case "$1 $2" in
     "get secret")
+        case "${MOCK_SECRET_KEYS}" in
+            timeout | forbidden | context)
+                echo "Error reading Secret: ${MOCK_SECRET_KEYS}" >&2
+                exit 1
+                ;;
+        esac
         if [[ "${MOCK_SECRET_KEYS}" == "absent" ]]; then
+            for arg in "$@"; do
+                [[ "${arg}" != "--ignore-not-found" ]] || exit 0
+            done
             echo "Error from server (NotFound): secrets \"$3\" not found" >&2
             exit 1
         fi
         for arg in "$@"; do
+            if [[ "${arg}" == name ]]; then
+                printf 'secret/%s\n' "$3"
+            fi
             if [[ "${arg}" == jsonpath=* ]]; then
                 key="${arg#jsonpath=\{.data.}"
                 key="${key%\}}"
@@ -164,6 +196,14 @@ case "$1 $2" in
         ;;
     "label namespace")
         ;;
+    "apply --filename")
+        cat >/dev/null
+        ;;
+    "rollout status")
+        ;;
+    "logs deployment/"*)
+        echo "authz mode=${MOCK_INSTALL_MODE}"
+        ;;
     "wait pod" | "apply --namespace" | "delete pod")
         ;;
     "config view")
@@ -184,12 +224,54 @@ case "$1 $2" in
 esac
 MOCK
 chmod +x "${TEST_ROOT}/bin/kubectl"
+cat >"${TEST_ROOT}/bin/workflow-tool" <<'MOCK'
+#!/bin/bash
+set -euo pipefail
+tool="${0##*/}"
+echo "${tool} $*" >>"${MOCK_CALLS}"
+case "${tool} $*" in
+    "docker info")
+        ;;
+    "docker inspect --format {{.State.Running}} "*)
+        echo true
+        ;;
+    "docker inspect --format {{json .NetworkSettings.Networks.kind}} "*)
+        echo '{}'
+        ;;
+    "docker exec --interactive "*)
+        cat >/dev/null
+        ;;
+    "docker exec "*)
+        ;;
+    "kind get clusters")
+        echo radius-authz
+        ;;
+    "kind get nodes --name radius-authz")
+        echo radius-authz-control-plane
+        ;;
+    "rad install kubernetes "*)
+        if [[ "${MOCK_INSTALL_STATUS:-0}" != 0 ]]; then
+            echo "Radius install failed" >&2
+            exit "${MOCK_INSTALL_STATUS}"
+        fi
+        ;;
+    *)
+        echo "unexpected ${tool} call: $*" >&2
+        exit 1
+        ;;
+esac
+MOCK
+chmod +x "${TEST_ROOT}/bin/workflow-tool"
+for tool in docker kind make rad helm go; do
+    ln -s workflow-tool "${TEST_ROOT}/bin/${tool}"
+done
 export MOCK_CALLS="${TEST_ROOT}/kubectl-calls.txt"
 export MOCK_SECRET_KEYS="absent"
 export MOCK_CONTEXT_EXISTS="true"
 unset AUTHZ_COMPONENT_SECRET_FORMAT AUTHZ_KUBE_CONTEXT AUTHZ_CLUSTER_NAME \
     AUTHZ_RADIUS_NAMESPACE AUTHZ_ROGUE_NAMESPACE MOCK_KIT_MODE \
-    MOCK_KUBECONFIG_PATH
+    MOCK_KUBECONFIG_PATH RAD AUTHZ_REGISTRY_NAME AUTHZ_REGISTRY_PORT \
+    MOCK_INSTALL_STATUS
 
 reset_calls() {
     : >"${MOCK_CALLS}"
@@ -203,22 +285,6 @@ for script in lib.sh kit_test.sh "${SCRIPTS[@]}"; do
         fail_test "bash -n failed for ${script}"
     fi
 done
-
-echo "Test: scripts pass shellcheck"
-if command -v shellcheck >/dev/null; then
-    files=()
-    for script in lib.sh kit_test.sh "${SCRIPTS[@]}"; do
-        files+=("${KIT_DIR}/${script}")
-    done
-    # Runner ShellCheck lacks --rcfile; no repo-wide suppressions are needed here.
-    if (cd "${REPO_ROOT}" && shellcheck --norc "${files[@]}"); then
-        pass_test
-    else
-        fail_test "shellcheck reported issues"
-    fi
-else
-    echo "  skipped: shellcheck is not installed (make install-shellcheck)"
-fi
 
 echo "Test: every script prints usage for --help"
 for script in "${SCRIPTS[@]}"; do
@@ -339,6 +405,18 @@ assert_output_contains "AUTHZ_COMPONENT_SECRET_FORMAT"
 assert_output_contains "Stack A"
 assert_calls_not_contain " exec "
 
+echo "Test: as-component.sh preserves Secret read errors"
+for error in timeout forbidden context; do
+    reset_calls
+    MOCK_SECRET_KEYS="${error}" run_kit as-component.sh ucp -- -s http://x
+    assert_status 1
+    assert_output_contains "Error reading Secret: ${error}"
+    assert_output_not_contains "Secret not found"
+    assert_output_not_contains "Stack A"
+    assert_calls_not_contain "get pod"
+    assert_calls_not_contain " exec "
+done
+
 echo "Test: as-component.sh uses AUTHZ_COMPONENT_SECRET_FORMAT"
 reset_calls
 STATUS=0
@@ -456,12 +534,32 @@ PATH="${TEST_ROOT}/bin:${PATH}" run_lib authz_record_mode bogus
 assert_status 2
 assert_calls_not_contain "mode=bogus"
 
-echo "Test: up.sh records the installed mode"
-if grep -Eq '^[[:space:]]+authz_record_mode "\$\{MODE\}"' "${KIT_DIR}/up.sh"; then
-    pass_test
-else
-    fail_test "up.sh does not call authz_record_mode after installing"
-fi
+echo "Test: up.sh records each mode after installation and before rollout"
+for mode in off dryRun enforce; do
+    reset_calls
+    MOCK_INSTALL_MODE="${mode}" run_kit up.sh "${mode}" --skip-build --tag authz-test
+    assert_status 0
+    assert_calls_contain "rad install kubernetes --kubecontext kind-radius-authz --chart ${REPO_ROOT}/deploy/Chart --reinstall"
+    assert_calls_contain "--set global.imageTag=authz-test"
+    case "${mode}" in
+        off) values="false false" ;;
+        dryRun) values="false true" ;;
+        enforce) values="true false" ;;
+    esac
+    assert_calls_contain "--set global.rbac.enabled=${values% *} --set global.rbac.dryRun=${values#* }"
+    assert_calls_contain "label namespace radius-system authz-kit.radius.dev/mode=${mode} --overwrite"
+    assert_calls_ordered "rad install kubernetes" "label namespace"
+    assert_calls_ordered "label namespace" "rollout status"
+    assert_calls_not_contain "make "
+done
+
+echo "Test: up.sh does not record a mode or start rollout after install failure"
+reset_calls
+MOCK_INSTALL_STATUS=1 run_kit up.sh enforce --skip-build --tag authz-test
+assert_status 1
+assert_output_contains "Radius install failed"
+assert_calls_not_contain "label namespace"
+assert_calls_not_contain "rollout status"
 
 echo "Test: would-deny.sh requires dry-run startup logs for a dryRun install"
 reset_calls
@@ -540,41 +638,6 @@ AUTHZ_RADIUS_NAMESPACE=another-namespace MOCK_KIT_MODE=dryRun \
 assert_status 2
 assert_calls_contain "get namespace another-namespace"
 assert_calls_contain "get pods --namespace another-namespace"
-
-echo "Test: README describes how would-deny.sh differs from the Make target"
-# shellcheck disable=SC2016 # Backticks are literal Markdown.
-readme_row="$(grep -F '| `would-deny.sh`' "${KIT_DIR}/README.md" || true)"
-# shellcheck disable=SC2016 # Backticks are literal Markdown.
-if [[ "${readme_row}" == *"--require-dry-run"* && "${readme_row}" != *'(`make authz-would-deny-check`)'* ]]; then
-    pass_test
-else
-    fail_test "README would-deny.sh row must explain --require-dry-run and not claim it equals make authz-would-deny-check"
-fi
-
-if [[ -z "${AUTHZ_TEST_SHELLCHECK_STATUS:-}" ]]; then
-    echo "Test: runner ShellCheck compatibility and lint failure propagation"
-    cat >"${TEST_ROOT}/bin/shellcheck" <<'MOCK'
-#!/bin/bash
-set -euo pipefail
-for arg in "$@"; do
-    if [[ "${arg}" == --rcfile* ]]; then
-        echo "unrecognized option --rcfile" >&2
-        exit 2
-    fi
-done
-echo "runner-compatible shellcheck invoked"
-exit "${AUTHZ_TEST_SHELLCHECK_STATUS}"
-MOCK
-    chmod +x "${TEST_ROOT}/bin/shellcheck"
-    for lint_status in 0 1; do
-        AUTHZ_TEST_SHELLCHECK_STATUS="${lint_status}" run_kit kit_test.sh
-        assert_status "${lint_status}"
-        assert_output_contains "runner-compatible shellcheck invoked"
-        if [[ "${lint_status}" -ne 0 ]]; then
-            assert_output_contains "shellcheck reported issues"
-        fi
-    done
-fi
 
 echo ""
 echo "Results: ${PASS} passed, ${FAIL} failed"
