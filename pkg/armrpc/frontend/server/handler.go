@@ -343,7 +343,7 @@ func deniedErrorResponse(denied *authz.DeniedError) rest.Response {
 		Body: v1.ErrorResponse{
 			Error: &v1.ErrorDetails{
 				Code:    code,
-				Message: "Authorization denied",
+				Message: authz.GenericMessageForCode(code),
 			},
 		},
 	}

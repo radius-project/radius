@@ -39,6 +39,15 @@ const (
 
 	// LogFieldReason is the log key for the authorization denial reason.
 	LogFieldReason = "authzReason"
+
+	// LogFieldAction is the log key for the caller's requested action.
+	LogFieldAction = "authzAction"
+
+	// LogFieldTarget is the log key for the caller's requested target.
+	LogFieldTarget = "authzTarget"
+
+	// LogFieldRule is the log key for the public admission rule identifier.
+	LogFieldRule = "authzRule"
 )
 
 // Decision is the result of an authorization check.
@@ -70,8 +79,8 @@ type DeniedError struct {
 	// Code is the error code for the denial.
 	Code string
 
-	// Reason is an internal diagnostic. It is included in Error() but never in
-	// ErrorResponse() or Response().
+	// Reason is an internal diagnostic. It may be logged where the denial happens,
+	// but is never included in Error(), ErrorResponse(), or Response().
 	Reason string
 
 	// Action is the caller's requested action. It is required for ARM responses.
@@ -88,7 +97,20 @@ type DeniedError struct {
 
 // Error implements the error interface.
 func (e *DeniedError) Error() string {
-	return fmt.Sprintf("authorization denied (%s): %s", e.Code, e.Reason)
+	code := e.Code
+	if code == "" {
+		code = CodeAuthorizationFailed
+	}
+
+	message := fmt.Sprintf("authorization denied (%s)", code)
+	if e.Action != "" {
+		message += fmt.Sprintf(" for action %q", e.Action)
+	}
+	if e.Target != "" {
+		message += fmt.Sprintf(" on target %q", e.Target)
+	}
+
+	return message
 }
 
 // CodeAuthorizationFailed is used when a denial does not carry a specific code.
@@ -118,14 +140,20 @@ func Apply(ctx context.Context, mode Mode, decision Decision) error {
 		ucplog.FromContextOrDiscard(ctx).Info("authorization check would deny request",
 			LogFieldWouldDeny, true,
 			LogFieldCode, code,
-			LogFieldReason, decision.Reason)
+			LogFieldReason, decision.Reason,
+			LogFieldAction, decision.Action,
+			LogFieldTarget, decision.Target,
+			LogFieldRule, decision.Rule)
 		return nil
 	}
 
 	ucplog.FromContextOrDiscard(ctx).Info("authorization check denied request",
 		LogFieldDenied, true,
 		LogFieldCode, code,
-		LogFieldReason, decision.Reason)
+		LogFieldReason, decision.Reason,
+		LogFieldAction, decision.Action,
+		LogFieldTarget, decision.Target,
+		LogFieldRule, decision.Rule)
 
 	return &DeniedError{Code: code, Reason: decision.Reason, Action: decision.Action, Target: decision.Target, Rule: decision.Rule}
 }
