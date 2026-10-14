@@ -795,6 +795,91 @@ func Test_AddProviders_ReplacesAliasPlaceholders(t *testing.T) {
 	}
 }
 
+func Test_AddProviderAliasPlaceholderSources(t *testing.T) {
+	placeholders := map[string][]map[string]any{
+		"azurerm":    {{"alias": "custom"}},
+		"postgresql": {{"alias": "pgdb-test"}},
+	}
+
+	tests := []struct {
+		name                      string
+		terraform                 *TerraformDefinition
+		provider                  map[string][]map[string]any
+		requiredProviders         map[string]*RequiredProviderInfo
+		expectedChanged           bool
+		expectedRequiredProviders map[string]*RequiredProviderInfo
+	}{
+		{
+			name:              "no placeholders",
+			requiredProviders: map[string]*RequiredProviderInfo{"postgresql": {Source: "cyrilgdn/postgresql"}},
+		},
+		{
+			name:     "module does not require the placeholder providers",
+			provider: placeholders,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"kubernetes": {Source: "hashicorp/kubernetes"},
+				"azurerm":    {},
+			},
+		},
+		{
+			name:     "sources added for placeholder providers",
+			provider: placeholders,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"azurerm":    {Source: "hashicorp/azurerm", Version: ">= 3.0"},
+				"postgresql": {Source: "cyrilgdn/postgresql", ConfigurationAliases: []string{"postgresql.pgdb-test"}},
+				"kubernetes": {Source: "hashicorp/kubernetes"},
+			},
+			expectedChanged: true,
+			expectedRequiredProviders: map[string]*RequiredProviderInfo{
+				"azurerm":    {Source: "hashicorp/azurerm"},
+				"postgresql": {Source: "cyrilgdn/postgresql"},
+			},
+		},
+		{
+			name:      "sources already set",
+			terraform: &TerraformDefinition{RequiredProviders: map[string]*RequiredProviderInfo{"postgresql": {Source: "cyrilgdn/postgresql"}}},
+			provider:  placeholders,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"postgresql": {Source: "cyrilgdn/postgresql"},
+			},
+			expectedRequiredProviders: map[string]*RequiredProviderInfo{
+				"postgresql": {Source: "cyrilgdn/postgresql"},
+			},
+		},
+		{
+			name:      "different source replaced",
+			terraform: &TerraformDefinition{RequiredProviders: map[string]*RequiredProviderInfo{"postgresql": {Source: "hashicorp/postgresql"}}},
+			provider:  placeholders,
+			requiredProviders: map[string]*RequiredProviderInfo{
+				"postgresql": {Source: "cyrilgdn/postgresql"},
+			},
+			expectedChanged: true,
+			expectedRequiredProviders: map[string]*RequiredProviderInfo{
+				"postgresql": {Source: "cyrilgdn/postgresql"},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &TerraformConfig{Terraform: tc.terraform, Provider: tc.provider}
+
+			changed := cfg.AddProviderAliasPlaceholderSources(tc.requiredProviders)
+			require.Equal(t, tc.expectedChanged, changed)
+			if tc.expectedRequiredProviders == nil {
+				require.Nil(t, cfg.Terraform)
+				return
+			}
+			require.Equal(t, tc.expectedRequiredProviders, cfg.Terraform.RequiredProviders)
+
+			// Terraform does not accept a null backend, so the saved configuration must not contain it.
+			content, err := json.Marshal(cfg)
+			require.NoError(t, err)
+			require.NotContains(t, string(content), "backend")
+		})
+	}
+}
+
 func Test_AddOutputs(t *testing.T) {
 	envRecipe, resourceRecipe := getTestInputs()
 	tests := []struct {

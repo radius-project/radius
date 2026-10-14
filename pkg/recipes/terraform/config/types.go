@@ -95,8 +95,9 @@ type TerraformConfig struct {
 
 type TerraformDefinition struct {
 	// Backend defines where Terraform stores its state.
+	// It is omitted when it is not set, because Terraform does not accept a null backend.
 	// https://developer.hashicorp.com/terraform/language/state
-	Backend map[string]any `json:"backend"`
+	Backend map[string]any `json:"backend,omitempty"`
 
 	// RequiredProviders is the list of required Terraform providers.
 	// The json serialised json field name reflects the fieldname "required_providers" expected

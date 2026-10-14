@@ -235,6 +235,39 @@ func (cfg *TerraformConfig) AddProviderAliasPlaceholders(envConfig *recipes.Conf
 	}
 }
 
+// AddProviderAliasPlaceholderSources adds a required_providers entry with the module's provider source
+// for each placeholder provider from AddProviderAliasPlaceholders. It returns true if the configuration changed.
+//
+// A placeholder has no source, so Terraform uses the "hashicorp" namespace for it. If the module requires
+// the provider from a different namespace (for example "cyrilgdn/postgresql"), terraform get fails with a
+// provider type mismatch. requiredProviders comes from the inspection of the downloaded module.
+// AddProviders replaces these entries. Save() must be called to persist the config.
+func (cfg *TerraformConfig) AddProviderAliasPlaceholderSources(requiredProviders map[string]*RequiredProviderInfo) bool {
+	changed := false
+	for providerName := range cfg.Provider {
+		requiredProvider := requiredProviders[providerName]
+		if requiredProvider == nil || requiredProvider.Source == "" {
+			continue
+		}
+
+		if cfg.Terraform == nil {
+			cfg.Terraform = &TerraformDefinition{}
+		}
+		if cfg.Terraform.RequiredProviders == nil {
+			cfg.Terraform.RequiredProviders = map[string]*RequiredProviderInfo{}
+		}
+
+		if existing := cfg.Terraform.RequiredProviders[providerName]; existing != nil && existing.Source == requiredProvider.Source {
+			continue
+		}
+
+		cfg.Terraform.RequiredProviders[providerName] = &RequiredProviderInfo{Source: requiredProvider.Source}
+		changed = true
+	}
+
+	return changed
+}
+
 // AddRecipeContext adds RecipeContext to TerraformConfig module parameters if recipeCtx is not nil.
 // Save() must be called after adding recipe context to the module config.
 func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName string, recipeCtx *recipecontext.Context) error {

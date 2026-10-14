@@ -17,6 +17,7 @@ limitations under the License.
 package terraform
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -369,18 +370,26 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
 	tfExecutor, tfDriver := setup(t)
-	_, _, envRecipe := buildTestInputs()
+	envConfig, _, envRecipe := buildTestInputs()
 
 	expectedOutput := map[string]any{
 		"parameters": map[string]any{
 			"redis_cache_name": "redis-test",
 		},
 	}
-	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).DoAndReturn(
+		func(_ context.Context, options terraform.Options) (map[string]any, error) {
+			// The environment configuration is required to add provider alias placeholders before the module download.
+			require.NotNil(t, options.EnvConfig)
+			require.Equal(t, envConfig, *options.EnvConfig)
+			require.Equal(t, envRecipe, *options.EnvRecipe)
+			return expectedOutput, nil
+		})
 
 	recipeData, err := tfDriver.GetRecipeMetadata(ctx, driver.BaseOptions{
-		Recipe:     recipes.ResourceMetadata{},
-		Definition: envRecipe,
+		Recipe:        recipes.ResourceMetadata{},
+		Definition:    envRecipe,
+		Configuration: envConfig,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeData)

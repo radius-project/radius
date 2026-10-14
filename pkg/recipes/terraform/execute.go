@@ -245,12 +245,12 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 		return nil, err
 	}
 
-	_, err = getTerraformConfig(ctx, tf.WorkingDir(), options)
+	tfConfig, err := getTerraformConfig(ctx, tf.WorkingDir(), options)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := downloadAndInspect(ctx, tf, options)
+	result, err := downloadAndInspect(ctx, tf, tfConfig, options)
 	if err != nil {
 		return nil, err
 	}
@@ -354,7 +354,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		return nil, err
 	}
 
-	loadedModule, err := downloadAndInspect(ctx, tf, options)
+	loadedModule, err := downloadAndInspect(ctx, tf, tfConfig, options)
 	if err != nil {
 		return nil, err
 	}

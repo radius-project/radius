@@ -17,11 +17,13 @@ limitations under the License.
 package terraform
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
+	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/stretchr/testify/require"
@@ -241,4 +243,82 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 			require.Equal(t, tc.result, result)
 		})
 	}
+}
+
+func Test_RetryGetWithProviderSources(t *testing.T) {
+	getErr := errors.New("terraform get failed")
+	recipe := &recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: "http://example.com/module.zip"}
+	placeholders := map[string][]map[string]any{"azurerm": {{"alias": "custom"}}}
+	module := `terraform {
+  required_providers {
+    azurerm = {
+      source                = "hashicorp/azurerm"
+      configuration_aliases = [azurerm.custom]
+    }
+  }
+}
+`
+
+	tests := []struct {
+		name        string
+		tfConfig    *config.TerraformConfig
+		setup       func(t *testing.T, workingDir string)
+		expectedErr string
+	}{
+		{
+			name:        "no configuration",
+			expectedErr: getErr.Error(),
+		},
+		{
+			name:        "no alias placeholders",
+			tfConfig:    &config.TerraformConfig{},
+			expectedErr: getErr.Error(),
+		},
+		{
+			name:        "module not downloaded",
+			tfConfig:    &config.TerraformConfig{Provider: placeholders},
+			expectedErr: getErr.Error(),
+		},
+		{
+			name: "provider sources already set",
+			tfConfig: &config.TerraformConfig{
+				Terraform: &config.TerraformDefinition{RequiredProviders: map[string]*config.RequiredProviderInfo{"azurerm": {Source: "hashicorp/azurerm"}}},
+				Provider:  placeholders,
+			},
+			setup: func(t *testing.T, workingDir string) {
+				writeModule(t, workingDir, module)
+			},
+			expectedErr: getErr.Error(),
+		},
+		{
+			name:     "configuration cannot be saved",
+			tfConfig: &config.TerraformConfig{Provider: placeholders},
+			setup: func(t *testing.T, workingDir string) {
+				writeModule(t, workingDir, module)
+				require.NoError(t, os.Mkdir(filepath.Join(workingDir, "main.tf.json"), 0o755))
+			},
+			expectedErr: "error creating file",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			workingDir := t.TempDir()
+			if tc.setup != nil {
+				tc.setup(t, workingDir)
+			}
+			tf, err := tfexec.NewTerraform(workingDir, os.Args[0])
+			require.NoError(t, err)
+
+			err = retryGetWithProviderSources(t.Context(), tf, tc.tfConfig, Options{EnvRecipe: recipe}, getErr)
+			require.ErrorContains(t, err, tc.expectedErr)
+		})
+	}
+}
+
+// writeModule writes main.tf with the given content to the download directory of the "test-recipe" module.
+func writeModule(t *testing.T, workingDir string, content string) {
+	moduleDir := filepath.Join(workingDir, moduleRootDir, "test-recipe")
+	require.NoError(t, os.MkdirAll(moduleDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(moduleDir, "main.tf"), []byte(content), 0o600))
 }

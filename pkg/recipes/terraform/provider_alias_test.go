@@ -68,6 +68,24 @@ resource "azurerm_resource_group" "test" {
   location = "westus3"
 }
 `
+
+	// partnerProviderModule declares an aliased provider that is not in the "hashicorp" namespace.
+	// The alias placeholder has no source, so Terraform rejects this module with a provider type mismatch
+	// until Radius adds the source from the module to the configuration.
+	partnerProviderModule = `terraform {
+  required_providers {
+    postgresql = {
+      source                = "cyrilgdn/postgresql"
+      configuration_aliases = [postgresql.pgdb-test]
+    }
+  }
+}
+
+resource "postgresql_database" "test" {
+  provider = postgresql.pgdb-test
+  name     = "test"
+}
+`
 )
 
 // TestProviderConfigurationAliasesWithTerraform runs a real Terraform binary to download modules
@@ -87,6 +105,7 @@ func TestProviderConfigurationAliasesWithTerraform(t *testing.T) {
 	modules := map[string][]byte{
 		"/aliased.zip": zipModule(t, aliasedProviderModule),
 		"/default.zip": zipModule(t, defaultProviderModule),
+		"/partner.zip": zipModule(t, partnerProviderModule),
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		module, ok := modules[r.URL.Path]
@@ -107,9 +126,21 @@ func TestProviderConfigurationAliasesWithTerraform(t *testing.T) {
 						{AdditionalProperties: map[string]any{"features": map[string]any{}, "subscription_id": "00000000-0000-0000-0000-000000000000"}},
 						{AdditionalProperties: map[string]any{"alias": "custom", "features": map[string]any{}, "subscription_id": "11111111-1111-1111-1111-111111111111"}},
 					},
+					"postgresql": {
+						{AdditionalProperties: map[string]any{"alias": "pgdb-test", "host": "localhost"}},
+					},
 				},
 			},
 		},
+	}
+
+	// Radius adds the provider configurations from the environment for all providers in the environment.
+	expectedProviderConfigs := map[string][]map[string]any{
+		"azurerm": {
+			{"features": map[string]any{}, "subscription_id": "00000000-0000-0000-0000-000000000000"},
+			{"alias": "custom", "features": map[string]any{}, "subscription_id": "11111111-1111-1111-1111-111111111111"},
+		},
+		"postgresql": {{"alias": "pgdb-test", "host": "localhost"}},
 	}
 
 	tests := []struct {
@@ -118,6 +149,7 @@ func TestProviderConfigurationAliasesWithTerraform(t *testing.T) {
 		templatePath      string
 		envConfig         *recipes.Configuration
 		expectedErr       string
+		expectedSources   map[string]string
 		expectedProviders map[string]any
 	}{
 		{
@@ -125,13 +157,23 @@ func TestProviderConfigurationAliasesWithTerraform(t *testing.T) {
 			recipeName:        "test-recipe",
 			templatePath:      server.URL + "/aliased.zip",
 			envConfig:         envConfig,
+			expectedSources:   map[string]string{"azurerm": "hashicorp/azurerm"},
 			expectedProviders: map[string]any{"azurerm.custom": "azurerm.custom"},
 		},
 		{
-			name:         "module uses only the default provider",
-			recipeName:   "test-recipe",
-			templatePath: server.URL + "/default.zip",
-			envConfig:    envConfig,
+			name:            "module uses only the default provider",
+			recipeName:      "test-recipe",
+			templatePath:    server.URL + "/default.zip",
+			envConfig:       envConfig,
+			expectedSources: map[string]string{"azurerm": "hashicorp/azurerm"},
+		},
+		{
+			name:              "module declares configuration_aliases for a provider outside the hashicorp namespace",
+			recipeName:        "test-recipe",
+			templatePath:      server.URL + "/partner.zip",
+			envConfig:         envConfig,
+			expectedSources:   map[string]string{"postgresql": "cyrilgdn/postgresql"},
+			expectedProviders: map[string]any{"postgresql.pgdb-test": "postgresql.pgdb-test"},
 		},
 		{
 			// This case shows that the test detects the bug: without a matching alias in the
@@ -190,16 +232,24 @@ func TestProviderConfigurationAliasesWithTerraform(t *testing.T) {
 			content, err := os.ReadFile(filepath.Join(tf.WorkingDir(), "main.tf.json"))
 			require.NoError(t, err)
 			var generated struct {
+				Terraform struct {
+					RequiredProviders map[string]struct {
+						Source string `json:"source"`
+					} `json:"required_providers"`
+				} `json:"terraform"`
 				Provider map[string][]map[string]any `json:"provider"`
 				Module   map[string]map[string]any   `json:"module"`
 			}
 			require.NoError(t, json.Unmarshal(content, &generated))
 
 			// The placeholders are replaced with the full provider configuration from the environment.
-			require.Equal(t, []map[string]any{
-				{"features": map[string]any{}, "subscription_id": "00000000-0000-0000-0000-000000000000"},
-				{"alias": "custom", "features": map[string]any{}, "subscription_id": "11111111-1111-1111-1111-111111111111"},
-			}, generated.Provider["azurerm"])
+			require.Equal(t, expectedProviderConfigs, generated.Provider)
+
+			sources := map[string]string{}
+			for name, requiredProvider := range generated.Terraform.RequiredProviders {
+				sources[name] = requiredProvider.Source
+			}
+			require.Equal(t, tc.expectedSources, sources)
 
 			moduleProviders, ok := generated.Module["test-recipe"]["providers"]
 			if tc.expectedProviders == nil {
