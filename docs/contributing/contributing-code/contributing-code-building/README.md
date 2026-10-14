@@ -68,6 +68,10 @@ These commands assume you are already logged in to the target registry (`docker 
 DOCKER_REGISTRY=ghcr.io/my-registry make docker-build docker-push
 ```
 
+`make docker-push` and the single-image `docker-push-<name>` targets retry only when Docker exits with code 1 and its last output line is `unknown blob`. They allow three push attempts, with waits of 5 and 10 seconds. Each attempt uses the same local image and tag; it does not repeat the build. Other errors fail at once, and a repeated `unknown blob` error still fails after the third attempt. These retries do not apply to the multi-architecture Buildx targets.
+
+Run `make test-docker-push` to check this behavior with a fake Docker command. This test also runs as part of `make test` and does not need a Docker daemon or registry.
+
 If you work with Radius frequently, set `DOCKER_REGISTRY` in your shell profile. The [radius-build-images](../../../../.github/skills/radius-build-images/SKILL.md) skill wraps this workflow, including single-image and multi-architecture builds.
 
 #### Build multi-architecture images
