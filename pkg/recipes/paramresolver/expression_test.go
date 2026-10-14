@@ -36,6 +36,12 @@ func expressionContext() *recipecontext.Context {
 	ctx.Resource.Properties["tags"] = map[string]any{"team": "data"}
 	ctx.Resource.Properties["zones"] = []any{"1", "2"}
 	ctx.Resource.Properties["quote"] = `say "hi" }}`
+	ctx.Resource.Properties["config"] = map[string]any{
+		"tier":   "premium",
+		"limits": map[string]any{"cpu": float64(2)},
+		"unset":  nil,
+	}
+	ctx.Resource.Connections["db"].Properties["auth"] = map[string]any{"mode": "password"}
 	return ctx
 }
 
@@ -114,6 +120,17 @@ func Test_Expressions(t *testing.T) {
 		{name: "null equals null", expr: `{{context.resource.properties.missing == null && null == null}}`, expected: true},
 		{name: "null not equal to empty string", expr: `{{context.resource.properties.missing == ""}}`, expected: false},
 
+		// Nested property paths.
+		{name: "nested property", expr: `{{context.resource.properties.config.tier}}`, expected: "premium"},
+		{name: "nested property in condition", expr: `{{context.resource.properties.config.tier == "premium" ? "L" : "S"}}`, expected: "L"},
+		{name: "deeply nested property keeps type", expr: `{{context.resource.properties.config.limits.cpu}}`, expected: float64(2)},
+		{name: "nested object result", expr: `{{context.resource.properties.config.limits}}`, expected: map[string]any{"cpu": float64(2)}},
+		{name: "absent nested key is null", expr: `{{context.resource.properties.config.missing == null}}`, expected: true},
+		{name: "key under absent object is null", expr: `{{context.resource.properties.missing.tier == null}}`, expected: true},
+		{name: "key under null value is null", expr: `{{context.resource.properties.config.unset.tier == null}}`, expected: true},
+		{name: "nested connection property", expr: `{{context.resource.connections.db.properties.auth.mode}}`, expected: "password"},
+		{name: "absent nested connection property is null", expr: `{{context.resource.connections.db.properties.auth.missing == null}}`, expected: true},
+
 		// Truthiness.
 		{name: "empty string is falsy", expr: `{{context.resource.properties.empty ? "a" : "b"}}`, expected: "b"},
 		{name: "non-empty string is truthy", expr: `{{context.resource.properties.size ? "a" : "b"}}`, expected: "a"},
@@ -167,6 +184,9 @@ func Test_Expressions_Errors(t *testing.T) {
 		{name: "trailing dot in path", expr: `{{context.resource.name. == "x"}}`, expectedErr: "empty path segment"},
 		{name: "unterminated expression", expr: `{{context.resource.name`, expectedErr: `missing closing "}}"`},
 		{name: "compare objects", expr: `{{context.resource.properties.tags == "x"}}`, expectedErr: "cannot compare object or array values"},
+		{name: "key under string value", expr: `{{context.resource.properties.size.value == "x"}}`, expectedErr: `cannot resolve context path "context.resource.properties.size.value": the value before "value" is not an object`},
+		{name: "key under array value", expr: `{{context.resource.properties.zones.first}}`, expectedErr: `the value before "first" is not an object`},
+		{name: "key under connection string property", expr: `{{context.resource.connections.db.properties.connectionString.host}}`, expectedErr: `the value before "host" is not an object`},
 		{name: "syntax error in arm not taken", expr: `{{context.resource.properties.enabled ? "a" : (}}`, expectedErr: "expected a value"},
 		{name: "unknown path on chosen arm", expr: `{{true ? context.unknown : "x"}}`, expectedErr: `unknown context path "context.unknown"`},
 		{name: "too long", expr: "{{context.resource.name == \"" + strings.Repeat("a", maxExpressionLength) + "\"}}", expectedErr: "maximum length"},

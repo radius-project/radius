@@ -50,12 +50,15 @@ The supported paths are context.resource.{name,id,type}, context.application.{na
 context.environment.{name,id}, context.runtime.kubernetes.{namespace,environmentNamespace},
 context.azure.resourceGroup.{name,id}, context.azure.subscription.{subscriptionId,id},
 context.azure.resourceNameHash, context.aws.{region,account},
-context.resource.properties.<name>, and
-context.resource.connections.<name>.{id,name,type,properties.<name>}.
+context.resource.properties.<path>, and
+context.resource.connections.<name>.{id,name,type,properties.<path>}, where <path> is a property
+name optionally followed by nested object keys, such as properties.config.tier.
 
-Resource and connection properties that are not set evaluate to null, so optional properties can be
-tested with "== null", "!= null", or as a condition. Any other path that is not available, such as an
-Azure path when no Azure provider is configured, is an error.
+Resource and connection properties that are not set, including nested keys under a missing or null
+object, evaluate to null, so optional properties can be tested with "== null", "!= null", or as a
+condition. Reading a nested key from a value that is not an object, such as a string or an array, is
+an error. Any other path that is not available, such as an Azure path when no Azure provider is
+configured, is an error.
 
 # Semantics
 
