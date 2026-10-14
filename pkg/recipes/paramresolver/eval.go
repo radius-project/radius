@@ -111,7 +111,7 @@ func (r *contextResolver) resolve(path string) (any, error) {
 	}
 
 	if key, ok := strings.CutPrefix(path, resourcePropertiesPrefix); ok {
-		return r.properties[key], nil
+		return lookupProperty(r.properties, key, path)
 	}
 
 	if rest, ok := strings.CutPrefix(path, resourceConnectionsPrefix); ok {
@@ -122,7 +122,7 @@ func (r *contextResolver) resolve(path string) (any, error) {
 				if !exists {
 					return nil, nil
 				}
-				return conn.Properties[key], nil
+				return lookupProperty(conn.Properties, key, path)
 			}
 			if !exists && (field == "id" || field == "name" || field == "type") {
 				return nil, nil
@@ -131,6 +131,23 @@ func (r *contextResolver) resolve(path string) (any, error) {
 	}
 
 	return nil, fmt.Errorf("unknown context path %q", path)
+}
+
+// lookupProperty resolves a dotted property key such as "config.tier" by walking nested objects.
+// A missing or null segment resolves to nil; indexing into a value that is not an object is an error.
+func lookupProperty(properties map[string]any, key string, path string) (any, error) {
+	var current any = properties
+	for segment := range strings.SplitSeq(key, ".") {
+		if current == nil {
+			return nil, nil
+		}
+		obj, ok := current.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("cannot resolve context path %q: the value before %q is not an object", path, segment)
+		}
+		current = obj[segment]
+	}
+	return current, nil
 }
 
 // evaluate evaluates an AST node. Evaluation is lazy: only the chosen ternary arm is evaluated, and
