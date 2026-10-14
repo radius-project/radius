@@ -65,7 +65,6 @@ func Test_Apply_DeniedErrorCarriesActionAndTarget(t *testing.T) {
 
 	decision := Decision{
 		Code:   v1.CodeGrantScopeExceeded,
-		Reason: "target is outside the record",
 		Action: "Applications.Core/containers/write",
 		Target: "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/containers/c",
 	}
@@ -102,7 +101,6 @@ func Test_DeniedError_AdmissionPolicyDeniedNamesRule(t *testing.T) {
 	)
 	denied := &DeniedError{
 		Code:   v1.CodeAdmissionPolicyDenied,
-		Reason: "pod mounts secret radius-system/ucp-cert owned by bob@example.com",
 		Action: action,
 		Target: target,
 		Rule:   "control-plane-secret",
@@ -189,7 +187,7 @@ func Test_DeniedError_ErrorResponse(t *testing.T) {
 	}{
 		{
 			name:        "forbidden with action and target",
-			err:         &DeniedError{Code: v1.CodeGrantScopeExceeded, Reason: "target is outside the record", Action: action, Target: target},
+			err:         &DeniedError{Code: v1.CodeGrantScopeExceeded, Action: action, Target: target},
 			wantStatus:  http.StatusForbidden,
 			wantCode:    v1.CodeGrantScopeExceeded,
 			wantMessage: "Authorization denied for action '" + action + "' on target '" + target + "'",
@@ -197,7 +195,7 @@ func Test_DeniedError_ErrorResponse(t *testing.T) {
 		},
 		{
 			name:        "conflict",
-			err:         &DeniedError{Code: v1.CodeOperationInputMismatch, Reason: "input hash does not match", Action: action, Target: target},
+			err:         &DeniedError{Code: v1.CodeOperationInputMismatch, Action: action, Target: target},
 			wantStatus:  http.StatusConflict,
 			wantCode:    v1.CodeOperationInputMismatch,
 			wantMessage: "Authorization denied for action '" + action + "' on target '" + target + "'",
@@ -205,7 +203,7 @@ func Test_DeniedError_ErrorResponse(t *testing.T) {
 		},
 		{
 			name:        "unavailable",
-			err:         &DeniedError{Code: v1.CodeAuthorizationUnavailable, Reason: "permission store unreachable", Action: action, Target: target},
+			err:         &DeniedError{Code: v1.CodeAuthorizationUnavailable, Action: action, Target: target},
 			wantStatus:  http.StatusServiceUnavailable,
 			wantCode:    v1.CodeAuthorizationUnavailable,
 			wantMessage: "Authorization could not be checked for action '" + action + "' on target '" + target + "'. Try again later.",
@@ -213,14 +211,14 @@ func Test_DeniedError_ErrorResponse(t *testing.T) {
 		},
 		{
 			name:        "empty code defaults to AuthorizationFailed",
-			err:         &DeniedError{Reason: "no permission", Action: action, Target: target},
+			err:         &DeniedError{Action: action, Target: target},
 			wantStatus:  http.StatusForbidden,
 			wantCode:    v1.CodeAuthorizationFailed,
 			wantMessage: "Authorization denied for action '" + action + "' on target '" + target + "'",
 			wantTarget:  target,
 		},
 		{
-			name:        "unauthorized without diagnostic reason",
+			name:        "unauthorized",
 			err:         &DeniedError{Code: v1.CodeInvalidAuthenticationInfo, Action: action, Target: target},
 			wantStatus:  http.StatusUnauthorized,
 			wantCode:    v1.CodeInvalidAuthenticationInfo,
@@ -295,29 +293,22 @@ func Test_DeniedResponse_ApplyReturnsWriteError(t *testing.T) {
 	require.ErrorIs(t, err, sentinel)
 }
 
-func Test_DeniedError_ResponseOmitsPrivateReason(t *testing.T) {
+func Test_Apply_DeniedErrorConvertsToResponse(t *testing.T) {
 	t.Parallel()
 
-	const identity = "alice@example.com"
-	const privateTarget = "/planes/radius/local/resourceGroups/private/providers/Applications.Core/containers/secret"
 	decision := Decision{
 		Code:   v1.CodeOperationNotAssigned,
-		Reason: "operation belongs to " + identity + " on " + privateTarget,
 		Action: "Applications.Core/containers/write",
 		Target: "/planes/radius/local/resourceGroups/public/providers/Applications.Core/containers/requested",
 	}
 	var denied *DeniedError
 	require.ErrorAs(t, Apply(t.Context(), ModeEnforce, decision), &denied)
-	require.Equal(t, decision.Reason, denied.Reason)
 
 	response, err := denied.Response()
 	require.NoError(t, err)
 	w := httptest.NewRecorder()
 	require.NoError(t, response.Apply(t.Context(), w, httptest.NewRequest(http.MethodPut, "/", nil)))
 	require.Equal(t, http.StatusForbidden, w.Code)
-	require.NotContains(t, w.Body.String(), identity)
-	require.NotContains(t, w.Body.String(), privateTarget)
-	require.NotContains(t, w.Body.String(), decision.Reason)
 
 	var body v1.ErrorResponse
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
@@ -345,7 +336,6 @@ func Test_DeniedError_ResponseRequiresRequestContext(t *testing.T) {
 			t.Parallel()
 			denied := &DeniedError{
 				Code:   v1.CodeAuthorizationFailed,
-				Reason: "private diagnostic",
 				Action: tt.action,
 				Target: tt.target,
 			}

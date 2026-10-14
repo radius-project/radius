@@ -33,7 +33,6 @@ func Test_Apply(t *testing.T) {
 	deny := Decision{
 		Allowed: false,
 		Code:    "GrantScopeExceeded",
-		Reason:  "target is outside the record",
 		Action:  "Applications.Core/containers/write",
 		Target:  "/planes/radius/local/resourceGroups/test/providers/Applications.Core/applications/app/containers/web",
 		Rule:    "grant-scope",
@@ -41,7 +40,6 @@ func Test_Apply(t *testing.T) {
 	allow := Decision{Allowed: true}
 	noCode := Decision{
 		Allowed: false,
-		Reason:  "missing code",
 		Action:  "Applications.Core/applications/read",
 		Target:  "/planes/radius/local/resourceGroups/test",
 		Rule:    "default-code",
@@ -117,7 +115,6 @@ func Test_Apply(t *testing.T) {
 					var denied *DeniedError
 					require.True(t, errors.As(err, &denied))
 					require.Equal(t, tt.wantCode, denied.Code)
-					require.Equal(t, tt.decision.Reason, denied.Reason)
 				}
 			} else {
 				require.NoError(t, err)
@@ -139,7 +136,7 @@ func Test_Apply(t *testing.T) {
 				wantCode = tt.wantCode
 			}
 			require.Equal(t, wantCode, fields[LogFieldCode])
-			require.Equal(t, tt.decision.Reason, fields[LogFieldReason])
+			require.NotContains(t, fields, "authzReason")
 			require.Equal(t, tt.decision.Action, fields[LogFieldAction])
 			require.Equal(t, tt.decision.Target, fields[LogFieldTarget])
 			require.Equal(t, tt.decision.Rule, fields[LogFieldRule])
@@ -152,26 +149,18 @@ func Test_DeniedError_Error(t *testing.T) {
 
 	err := &DeniedError{
 		Code:   "AuthorizationFailed",
-		Reason: "no permission",
 		Action: "Applications.Core/containers/write",
 		Target: "/planes/radius/local/resourceGroups/test/providers/Applications.Core/applications/app/containers/web",
 	}
 	require.Equal(t, `authorization denied (AuthorizationFailed) for action "Applications.Core/containers/write" on target "/planes/radius/local/resourceGroups/test/providers/Applications.Core/applications/app/containers/web"`, err.Error())
 }
 
-func Test_DeniedError_ErrorOmitsReason(t *testing.T) {
+func Test_DeniedError_ErrorDefaultsCode(t *testing.T) {
 	t.Parallel()
 
 	err := &DeniedError{
-		Code:   "",
-		Reason: "alice@example.com cannot access /planes/radius/local/resourceGroups/private-rg/providers/Applications.Core/applications/secret-app",
 		Action: "Applications.Core/applications/read",
-		Target: "/planes/radius/local/resourceGroups/public-rg/providers/Applications.Core/applications/public-app",
+		Target: "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/applications/app",
 	}
-
-	message := err.Error()
-	require.Equal(t, `authorization denied (AuthorizationFailed) for action "Applications.Core/applications/read" on target "/planes/radius/local/resourceGroups/public-rg/providers/Applications.Core/applications/public-app"`, message)
-	require.NotContains(t, message, "alice@example.com")
-	require.NotContains(t, message, "private-rg")
-	require.NotContains(t, message, "secret-app")
+	require.Equal(t, `authorization denied (AuthorizationFailed) for action "Applications.Core/applications/read" on target "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/applications/app"`, err.Error())
 }
