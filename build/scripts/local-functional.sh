@@ -25,9 +25,10 @@ readonly HOSTS_ENTRY="127.0.0.1 ${REGISTRY} # radius-local-functional"
 readonly TEST_LOCK="${STATE}/test.lock"
 readonly IMAGES=(ucpd applications-rp dynamic-rp controller bicep pre-upgrade
     testrp magpiego)
+worker_pids=()
 export LOCAL_FUNCTIONAL_SUITE="${LOCAL_FUNCTIONAL_SUITE:-}"
 case "${LOCAL_FUNCTIONAL_SUITE}" in
-"" | database | multicluster | statestore | upgrade) ;;
+"" | database | multicluster | statestore | upgrade | dynamicrp) ;;
 *)
     echo "Invalid LOCAL_FUNCTIONAL_SUITE: ${LOCAL_FUNCTIONAL_SUITE}" >&2
     exit 2
@@ -90,6 +91,7 @@ create_cluster() {
     "${CLUSTER}-statestore") api_port=6553 ;;
     "${CLUSTER}-upgrade") api_port=6554 ;;
     "${CLUSTER}-external") api_port=6555 ;;
+    "${CLUSTER}-dynamicrp") api_port=6556 ;;
     *)
         echo "Unknown local test cluster: ${name}" >&2
         exit 2
@@ -269,31 +271,46 @@ EOF
     echo "Local test infrastructure is ready."
 }
 
-fixtures() {
+fixtures() (
     configure_environment
+    local fixture_pids=()
+    trap 'trap "" INT TERM; wait_workers "${fixture_pids[@]}" || true' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    (
+        flux install --namespace=flux-system --version=v2.6.4 \
+            --components=source-controller --network-policy=false
+        kubectl wait --for=condition=available deployment/source-controller \
+            -n flux-system --timeout=180s
+    ) &
+    fixture_pids+=("$!")
+    (
+        bash .github/actions/install-git-http-backend/install-git-http-backend.sh \
+            "${GIT_HTTP_USERNAME}" "${GIT_HTTP_PASSWORD}" \
+            git-http-backend alpine/git:2.45.2
+    ) &
+    fixture_pids+=("$!")
+    (
+        dapr init -k --wait --timeout 600 --runtime-version 1.18.2
+    ) &
+    fixture_pids+=("$!")
     make publish-test-terraform-recipes
     bicep publish-extension hack/bicep-types-radius/generated/index.json \
         --target "br:localhost:${REGISTRY_PORT}/radius:${TAG}" --force
     rad bicep publish-extension \
         -f test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml \
         --target "br:localhost:${REGISTRY_PORT}/testresources:${TAG}" --force
-    make publish-test-bicep-recipes \
+    BICEP_RECIPE_PUBLISH_PARALLELISM=4 make publish-test-bicep-recipes \
         BICEP_RECIPE_REGISTRY="localhost:${REGISTRY_PORT}"
-    flux install --namespace=flux-system --version=v2.6.4 \
-        --components=source-controller --network-policy=false
-    kubectl wait --for=condition=available deployment/source-controller \
-        -n flux-system --timeout=180s
-    bash .github/actions/install-git-http-backend/install-git-http-backend.sh \
-        "${GIT_HTTP_USERNAME}" "${GIT_HTTP_PASSWORD}" \
-        git-http-backend alpine/git:2.45.2
-    dapr init -k --wait --timeout 600 --runtime-version 1.18.2
     if [[ ! -d "${STATE}/samples/.git" ]]; then
         git clone --depth 1 --branch edge \
             https://github.com/radius-project/samples.git "${STATE}/samples"
     else
         git -C "${STATE}/samples" pull --ff-only origin edge
     fi
-}
+    wait_workers "${fixture_pids[@]}"
+    trap - EXIT INT TERM
+)
 
 restore_configs() {
     local config
@@ -308,6 +325,10 @@ restore_configs() {
 }
 
 finish_tests() {
+    # Workers share the temporary fixtures, so drain them before restoration.
+    trap '' INT TERM
+    wait_workers "${worker_pids[@]}" || true
+    worker_pids=()
     if [[ -n "${git_forward_pid:-}" ]]; then
         if kill -0 "${git_forward_pid}" 2>/dev/null; then
             kill "${git_forward_pid}"
@@ -321,6 +342,121 @@ finish_tests() {
         rmdir "${TEST_LOCK}"
         test_lock_owned=false
     fi
+}
+
+restore_extensions() {
+    local extension_fixture="test/functional-portable/dynamicrp/noncloud/resources/testdata/testResourceSchema-validAny.bicep"
+    echo "Restoring local Bicep extensions before parallel test compilation..."
+    bicep restore "${extension_fixture}" --force
+    bicep build "${extension_fixture}" --stdout --no-restore >/dev/null
+}
+
+copy_extensions() {
+    mkdir -p "${HOME}/.bicep/br"
+    cp -R "${STATE}/home/.bicep/br/." "${HOME}/.bicep/br"
+}
+
+run_standard_group() {
+    local target="$1"
+    local parallel=5
+    if [[ "${target}" == "test-functional-corerp-noncloud" ]]; then
+        parallel=10
+    fi
+    export HOME="${STATE}/home-${target}"
+    export RADIUS_CONTAINER_LOG_PATH="${STATE}/container_logs/${target}"
+    mkdir -p "${HOME}/.rad/bin" "${HOME}/.kube"
+    cp "${STATE}/home/.rad/config.yaml" "${HOME}/.rad/config.yaml"
+    cp "${STATE}/kubeconfig" "${HOME}/.kube/config"
+    cp "${STATE}/bin/bicep" "${HOME}/.rad/bin/bicep"
+    copy_extensions
+    GOTEST_OPTS="${GOTEST_OPTS} -parallel ${parallel}" \
+        make "${target}" --jobs=1 GOTESTSUM_JSONFILE_DIR="${STATE}/results"
+}
+
+wait_workers() {
+    local pid status=0
+    for pid in "$@"; do
+        if ! wait "${pid}"; then
+            status=1
+        fi
+    done
+    return "${status}"
+}
+
+run_all_groups() {
+    local suite target lane status=0 ucp_pid
+    local lane_targets=() standard_pids=() isolated_pids=()
+    local targets=(
+        test-functional-corerp-noncloud
+        test-functional-cli-noncloud
+        test-functional-kubernetes-noncloud
+        test-functional-daprrp-noncloud
+        test-functional-datastoresrp-noncloud
+        test-functional-msgrp-noncloud
+        test-functional-samples-noncloud
+        test-functional-ucp-noncloud
+    )
+    # Make remains serial; only this full lifecycle owns concurrent workers.
+    for suite in database multicluster statestore upgrade dynamicrp; do
+        (
+            prepare_isolated "${suite}"
+            export RADIUS_CONTAINER_LOG_PATH="${STATE}/container_logs/${suite}"
+            isolated_opts="${GOTEST_OPTS}"
+            if [[ "${suite}" == "dynamicrp" ]]; then
+                # Custom routes must not affect standard provider-discovery tests.
+                rad resource-provider create --from-file \
+                    test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml
+                isolated_opts+=" -parallel 5"
+            fi
+            copy_extensions
+            GOTEST_OPTS="${isolated_opts}" \
+                make "test-functional-${suite}-noncloud" --jobs=1 \
+                GOTESTSUM_JSONFILE_DIR="${STATE}/results"
+            k3d cluster delete "${CLUSTER}-${suite}"
+            if [[ "${suite}" == "multicluster" ]]; then
+                k3d cluster delete "${CLUSTER}-external"
+            fi
+        ) >"${STATE}/results/${suite}.log" 2>&1 &
+        isolated_pids+=("$!")
+        worker_pids+=("$!")
+    done
+    # UCP registers the provider that Core RP's discovery test must also list.
+    (
+        run_standard_group test-functional-ucp-noncloud
+    ) >"${STATE}/results/test-functional-ucp-noncloud.log" 2>&1 &
+    ucp_pid="$!"
+    worker_pids+=("${ucp_pid}")
+    wait_workers "${ucp_pid}" || status=1
+    if ((status == 0)); then
+        for lane in \
+            "test-functional-corerp-noncloud" \
+            "test-functional-cli-noncloud test-functional-daprrp-noncloud" \
+            "test-functional-kubernetes-noncloud test-functional-datastoresrp-noncloud test-functional-msgrp-noncloud test-functional-samples-noncloud"; do
+            read -r -a lane_targets <<<"${lane}"
+            (
+                for target in "${lane_targets[@]}"; do
+                    run_standard_group "${target}" \
+                        >"${STATE}/results/${target}.log" 2>&1
+                done
+            ) &
+            standard_pids+=("$!")
+            worker_pids+=("$!")
+        done
+    fi
+    wait_workers "${standard_pids[@]}" || status=1
+    wait_workers "${isolated_pids[@]}" || status=1
+    for suite in database multicluster statestore upgrade dynamicrp; do
+        cat "${STATE}/results/${suite}.log"
+    done
+    for target in "${targets[@]}"; do
+        if [[ -f "${STATE}/results/${target}.log" ]]; then
+            cat "${STATE}/results/${target}.log"
+        fi
+    done
+    if ((status != 0)); then
+        echo "Local functional workers failed; see ${STATE}/results." >&2
+    fi
+    return "${status}"
 }
 
 acquire_test_lock() {
@@ -379,10 +515,7 @@ run_tests() {
 }
 EOF
     done
-    local extension_fixture="test/functional-portable/dynamicrp/noncloud/resources/testdata/testResourceSchema-validAny.bicep"
-    echo "Restoring local Bicep extensions before parallel test compilation..."
-    bicep restore "${extension_fixture}" --force
-    bicep build "${extension_fixture}" --stdout --no-restore >/dev/null
+    restore_extensions
     if [[ -z "${LOCAL_FUNCTIONAL_SUITE:-}" ]]; then
         kubectl port-forward -n git-http-backend svc/git-http 30080:3000 \
             >"${STATE}/results/git-port-forward.log" 2>&1 &
@@ -392,16 +525,20 @@ EOF
         kill -0 "${git_forward_pid}"
     fi
     export GOTEST_OPTS="${GOTEST_OPTS:--count=1}"
-    make "$@" --jobs=1 GOTESTSUM_JSONFILE_DIR="${STATE}/results"
+    if [[ "${1:-}" == "--all-groups" ]]; then
+        run_all_groups
+    else
+        make "$@" --jobs=1 GOTESTSUM_JSONFILE_DIR="${STATE}/results"
+    fi
     finish_tests
     trap - EXIT INT TERM
 }
 
 prepare_isolated() {
     case "${1:-}" in
-    database | multicluster | statestore | upgrade) ;;
+    database | multicluster | statestore | upgrade | dynamicrp) ;;
     *)
-        echo "Expected database, multicluster, statestore, or upgrade." >&2
+        echo "Expected database, multicluster, statestore, upgrade, or dynamicrp." >&2
         exit 2
         ;;
     esac
@@ -458,7 +595,8 @@ cleanup() {
     if names="$(k3d cluster list -o json | jq -r '.[].name')"; then
         for name in "${CLUSTER}" "${CLUSTER}-database" \
             "${CLUSTER}-multicluster" "${CLUSTER}-statestore" \
-            "${CLUSTER}-upgrade" "${CLUSTER}-external"; do
+            "${CLUSTER}-upgrade" "${CLUSTER}-external" \
+            "${CLUSTER}-dynamicrp"; do
             if grep -Fxq -- "${name}" <<<"${names}"; then
                 k3d cluster delete "${name}" || status=1
             fi
@@ -496,10 +634,7 @@ case "${1:-}" in
 all)
     export LOCAL_FUNCTIONAL_SUITE=""
     setup
-    run_tests test-functional-all-noncloud
-    for suite in database multicluster statestore upgrade; do
-        isolated "${suite}"
-    done
+    run_tests --all-groups
     ;;
 setup) setup ;;
 test)

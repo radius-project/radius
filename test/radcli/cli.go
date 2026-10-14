@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,6 +35,9 @@ import (
 const (
 	HeartbeatInterval = 10 * time.Second
 )
+
+// Provider and type registration both rewrite a shared location map without an ETag.
+var resourceRegistrationLock sync.Mutex
 
 type CLI struct {
 	T                *testing.T
@@ -691,6 +695,9 @@ func (cli *CLI) BicepPublish(ctx context.Context, file, target string) (string, 
 // ResourceProviderCreate runs a command to create or update a resource provider and it's associated resource types from a manifest file.
 // It returns the output string or an error if the command fails.
 func (cli *CLI) ResourceProviderCreate(ctx context.Context, manifestFilePath string) (string, error) {
+	resourceRegistrationLock.Lock()
+	defer resourceRegistrationLock.Unlock()
+
 	args := []string{
 		"resource-provider",
 		"create",
@@ -703,6 +710,9 @@ func (cli *CLI) ResourceProviderCreate(ctx context.Context, manifestFilePath str
 // ResourceTypeCreate runs a command to create or update a resource type.
 // It returns the output string or an error if the command fails.
 func (cli *CLI) ResourceTypeCreate(ctx context.Context, resourceTypeName string, manifestFilePath string) (string, error) {
+	resourceRegistrationLock.Lock()
+	defer resourceRegistrationLock.Unlock()
+
 	args := []string{
 		"resource-type",
 		"create",

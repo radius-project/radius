@@ -37,16 +37,33 @@ cp "${SCRIPT_DIR}/../../${extension_fixture}" "${work_dir}/${extension_fixture}"
 runner="${work_dir}/build/scripts/local-functional.sh"
 state="${work_dir}/dist/local-functional"
 printf '{}\n' >"${work_dir}/hack/bicep-types-radius/generated/index.json"
-printf 'exit 0\n' \
-    >"${work_dir}/.github/actions/install-git-http-backend/install-git-http-backend.sh"
+cat >"${work_dir}/.github/actions/install-git-http-backend/install-git-http-backend.sh" <<'EOF'
+if [[ "${MOCK_FIXTURE_CONCURRENCY}" == true ]]; then
+    bash "${MOCK_FIXTURE_HELPER}" git-http
+fi
+EOF
 export MOCK_LOG="${work_dir}/commands.log"
 export GOPATH="${work_dir}/gopath" GOCACHE="${work_dir}/gocache"
 export LOCAL_FUNCTIONAL_HOST_OS=linux LOCAL_FUNCTIONAL_HOST_ARCH=amd64
 export LOCAL_FUNCTIONAL_SUITE=""
 export MOCK_FAILURE="" MOCK_BUILD_STATUS=77 MOCK_TEST_STATUS=0
 export MOCK_PULL_STATUS=0 MOCK_SIGNAL="" MOCK_MAKEFILE=""
+export MOCK_FIXTURE_CONCURRENCY="" MOCK_FIXTURE_TEST_STATUS=0 MOCK_FIXTURE_SIGNAL=""
+export MOCK_FIXTURE_HELPER="${work_dir}/fixture-worker.sh"
 export MOCK_CLUSTERS="" MOCK_CONTAINERS="" MOCK_NETWORKS=""
 unset MAKEFLAGS MFLAGS
+cat >"${MOCK_FIXTURE_HELPER}" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+touch "${MOCK_LOG}.fixture-$1"
+for attempt in {1..50}; do
+    [[ -f "${MOCK_LOG}.fixtures-release" ]] && break
+    sleep 0.02
+done
+[[ -f "${MOCK_LOG}.fixtures-release" ]] || exit 1
+sleep 0.2
+touch "${MOCK_LOG}.fixture-$1-done"
+EOF
 
 # Only filesystem utilities and GNU Make are real; infrastructure is mocked.
 for tool in dirname mkdir mktemp mv rm grep bash cp touch rmdir sleep sed cat chmod ln; do
@@ -60,6 +77,9 @@ printf '%s %s\n' "${tool}" "$*" >>"${MOCK_LOG}"
 if [[ "${tool} $*" == "${MOCK_FAILURE}" ]]; then
     echo "mock failure: ${tool} $*" >&2
     exit 1
+fi
+if [[ "${MOCK_FIXTURE_CONCURRENCY}" == true && "${tool}" =~ ^(flux|dapr)$ ]]; then
+    bash "${MOCK_FIXTURE_HELPER}" "${tool}"
 fi
 case "${tool}" in
 git)
@@ -82,11 +102,11 @@ bicep)
             test/bicepconfig.json >/dev/null
         grep -F '"testresources": "br:localhost:5443/testresources:deadbeef1"' \
             test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json >/dev/null
-        mkdir -p "${HOME}"
-        touch "${HOME}/.bicep-extensions-ready"
+        mkdir -p "${HOME}/.bicep/br"
+        touch "${HOME}/.bicep/br/extensions-ready"
         ;;
     build)
-        [[ -f "${HOME}/.bicep-extensions-ready" ]] || {
+        [[ -f "${HOME}/.bicep/br/extensions-ready" ]] || {
             echo "BCP190: local extension not restored" >&2
             exit 1
         }
@@ -152,7 +172,7 @@ sudo)
     fi
     ;;
 make)
-    if [[ -n "${MOCK_MAKEFILE}" ]]; then
+    if [[ -n "${MOCK_MAKEFILE}" && "${1:-}" == test-functional-* ]]; then
         exec "${REAL_MAKE}" --no-print-directory -f "${MOCK_MAKEFILE}" "$@"
     fi
     case "${1:-}" in
@@ -163,8 +183,29 @@ make)
         cp "$0" "${directory}/bicep"
         chmod +x "${directory}/bicep"
         ;;
+    publish-test-terraform-recipes)
+        if [[ "${MOCK_FIXTURE_CONCURRENCY}" == true ]]; then
+            for attempt in {1..50}; do
+                [[ -f "${MOCK_LOG}.fixture-flux" &&
+                    -f "${MOCK_LOG}.fixture-dapr" &&
+                    -f "${MOCK_LOG}.fixture-git-http" ]] && break
+                sleep 0.02
+            done
+            [[ -f "${MOCK_LOG}.fixture-flux" &&
+                -f "${MOCK_LOG}.fixture-dapr" &&
+                -f "${MOCK_LOG}.fixture-git-http" ]] || exit 1
+            touch "${MOCK_LOG}.fixtures-release"
+            if [[ -n "${MOCK_FIXTURE_SIGNAL}" ]]; then
+                kill "-${MOCK_FIXTURE_SIGNAL}" "${PPID}"
+            fi
+            exit "${MOCK_FIXTURE_TEST_STATUS}"
+        fi
+        ;;
+    publish-test-bicep-recipes)
+        [[ "${BICEP_RECIPE_PUBLISH_PARALLELISM}" == 4 ]] || exit 1
+        ;;
     test-functional-*)
-        [[ -f "${HOME}/.bicep-extensions-ready" ]] || {
+        [[ -f "${HOME}/.bicep/br/extensions-ready" ]] || {
             echo "tests started without restoring extensions" >&2
             exit 1
         }
@@ -194,7 +235,11 @@ run_runner() {
     shift
     : >"${MOCK_LOG}"
     rm -f "${MOCK_LOG}.forward-pid"
-    rm -f "${state}/home${LOCAL_FUNCTIONAL_SUITE:+-${LOCAL_FUNCTIONAL_SUITE}}/.bicep-extensions-ready"
+    rm -f "${MOCK_LOG}.fixtures-release"
+    for fixture in flux dapr git-http; do
+        rm -f "${MOCK_LOG}.fixture-${fixture}" "${MOCK_LOG}.fixture-${fixture}-done"
+    done
+    rm -f "${state}/home${LOCAL_FUNCTIONAL_SUITE:+-${LOCAL_FUNCTIONAL_SUITE}}/.bicep/br/extensions-ready"
     output="$(bash "${runner}" "$@" 2>&1)" || status=$?
     [[ "${status}" == "${expected_status}" ]] ||
         fail "expected exit ${expected_status}, got ${status}: ${output}"
@@ -279,8 +324,30 @@ assert_contains "${calls}" "git -C ${state}/samples pull --ff-only origin edge"
 export MOCK_PULL_STATUS=77
 run_runner 77 fixtures
 export MOCK_PULL_STATUS=0
+export MOCK_FIXTURE_CONCURRENCY=true
+for outcome in success failure signal; do
+    export MOCK_FIXTURE_TEST_STATUS=0 MOCK_FIXTURE_SIGNAL=""
+    expected=0
+    if [[ "${outcome}" == failure ]]; then
+        export MOCK_FIXTURE_TEST_STATUS=77
+        expected=77
+    elif [[ "${outcome}" == signal ]]; then
+        export MOCK_FIXTURE_SIGNAL=TERM
+        expected=143
+    fi
+    run_runner "${expected}" fixtures
+    for fixture in flux dapr git-http; do
+        [[ -f "${MOCK_LOG}.fixture-${fixture}-done" ]] ||
+            fail "${outcome} did not drain ${fixture}"
+    done
+done
+export MOCK_FIXTURE_CONCURRENCY="" MOCK_FIXTURE_TEST_STATUS=0 MOCK_FIXTURE_SIGNAL=""
+export MOCK_FAILURE="flux install --namespace=flux-system --version=v2.6.4 --components=source-controller --network-policy=false"
+run_runner 1 fixtures
+assert_contains "${output}" "mock failure"
+export MOCK_FAILURE=""
 
-for suite in "" database statestore upgrade multicluster; do
+for suite in "" database statestore upgrade multicluster dynamicrp; do
     export LOCAL_FUNCTIONAL_SUITE="${suite}"
     export RADIUS_TEST_EXTERNAL_KUBECONFIG=/unrelated/kubeconfig
     # shellcheck disable=SC2016 # Expanded after the child selects its environment.
@@ -293,6 +360,7 @@ for suite in "" database statestore upgrade multicluster; do
     fi
 done
 unset RADIUS_TEST_EXTERNAL_KUBECONFIG
+export LOCAL_FUNCTIONAL_SUITE=multicluster
 run_runner 1 test test-functional-multicluster-noncloud
 assert_contains "${output}" "Missing external cluster kubeconfig"
 assert_not_contains "${calls}" "kubectl "
@@ -386,6 +454,130 @@ forward_pid="$(<"${MOCK_LOG}.forward-pid")"
 runner="${work_dir}/build/scripts/local-functional.sh"
 unset MAKEFLAGS
 export MOCK_MAKEFILE=""
+
+export MOCK_MAKEFILE="${work_dir}/concurrent.mk"
+export MOCK_FAILED_TARGET=""
+export LOCAL_FUNCTIONAL_HOST_OS=darwin
+rm -f "${SERIAL_STATE}/completed"
+mkdir -p "${state}/home/.rad" "${SERIAL_STATE}/active"
+printf 'standard CLI config\n' >"${state}/home/.rad/config.yaml"
+cat >"${MOCK_MAKEFILE}" <<'EOF'
+test-functional-%:
+	@bash "$(SERIAL_STATE)/worker.sh" "$@"
+EOF
+cat >"${SERIAL_STATE}/worker.sh" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+target="$1"
+[[ -d "dist/local-functional/test.lock" ]] || exit 1
+[[ -f "${HOME}/.bicep/br/extensions-ready" ]] || exit 1
+printf '%s\n' "${target}" >"${HOME}/.bicep/br/worker-owner"
+[[ "${RADIUS_TEST_FAST_CLEANUP}" == false ]] || exit 1
+if [[ "${target}" == test-functional-corerp-noncloud ]]; then
+    [[ -f "${SERIAL_STATE}/ucp-ready" ]] || exit 1
+fi
+if [[ -z "${LOCAL_FUNCTIONAL_SUITE}" ]]; then
+    [[ "${HOME}" == *"/home-${target}" ]] || exit 1
+    [[ "$(<"${HOME}/.rad/config.yaml")" == "standard CLI config" ]] || exit 1
+    if [[ "${target}" == test-functional-corerp-noncloud ]]; then
+        [[ "${GOTEST_OPTS}" == "-count=1 -parallel 10" ]] || exit 1
+    else
+        [[ "${GOTEST_OPTS}" == "-count=1 -parallel 5" ]] || exit 1
+    fi
+    mkdir "${SERIAL_STATE}/active/${target}"
+    trap 'rmdir "${SERIAL_STATE}/active/${target}"' EXIT
+    slots=("${SERIAL_STATE}"/active/*)
+    ((${#slots[@]} <= 3)) || exit 1
+    if ((${#slots[@]} > 1)); then
+        touch "${SERIAL_STATE}/overlap"
+    fi
+else
+    [[ "${HOME}" == *"/home-${LOCAL_FUNCTIONAL_SUITE}" ]] || exit 1
+    if [[ "${LOCAL_FUNCTIONAL_SUITE}" == dynamicrp ]]; then
+        [[ "${GOTEST_OPTS}" == *"-parallel 5" ]] || exit 1
+    else
+        [[ "${GOTEST_OPTS}" != *"-parallel 5" ]] || exit 1
+    fi
+fi
+printf '%s\n' "${target}" >>"${SERIAL_STATE}/started"
+if [[ -n "${MOCK_SIGNAL}" && "${target}" == test-functional-corerp-noncloud ]]; then
+    kill "-${MOCK_SIGNAL}" "$(<dist/local-functional/test.lock/owner)"
+fi
+sleep 0.2
+[[ "${target}" != "${MOCK_FAILED_TARGET}" ]] || {
+    echo "intentional worker failure: ${target}" >&2
+    exit 77
+}
+printf '%s\n' "${target}" >>"${SERIAL_STATE}/completed"
+if [[ "${target}" == test-functional-ucp-noncloud ]]; then
+    touch "${SERIAL_STATE}/ucp-ready"
+fi
+EOF
+export MAKEFLAGS=-j12
+run_runner 0 test --all-groups
+[[ -f "${SERIAL_STATE}/overlap" ]] || fail "standard groups never overlapped"
+completed=()
+while IFS= read -r target; do completed+=("${target}"); done \
+    <"${SERIAL_STATE}/completed"
+[[ "${#completed[@]}" == 13 ]] || fail "full lifecycle omitted test groups"
+[[ "$(<"${state}/home/.rad/config.yaml")" == "standard CLI config" ]] ||
+    fail "concurrent workers changed the standard CLI config"
+[[ ! -e "${state}/home/.bicep/br/worker-owner" ]] ||
+    fail "concurrent workers shared the standard extension cache"
+for target in "${completed[@]}"; do
+    suite="${target#test-functional-}"
+    suite="${suite%-noncloud}"
+    if [[ "${suite}" =~ ^(database|multicluster|statestore|upgrade|dynamicrp)$ ]]; then
+        cache="${state}/home-${suite}/.bicep/br"
+    else
+        cache="${state}/home-${target}/.bicep/br"
+    fi
+    [[ "$(<"${cache}/worker-owner")" == "${target}" ]] ||
+        fail "${target} did not have an independent extension cache"
+done
+[[ ! -e "${state}/test.lock" && ! -e "${dynamic_config}" ]] ||
+    fail "concurrent run leaked fixtures or a lock"
+[[ "$(<"${work_dir}/test/bicepconfig.json")" == "original config" ]] ||
+    fail "concurrent run did not restore fixtures"
+for suite in database multicluster statestore upgrade dynamicrp; do
+    assert_contains "${calls}" "k3d cluster delete radius-functional-${suite}"
+done
+assert_contains "${calls}" "k3d cluster delete radius-functional-external"
+rm "${SERIAL_STATE}/started" "${SERIAL_STATE}/completed"
+export MOCK_FAILED_TARGET=test-functional-database-noncloud
+run_runner 1 test --all-groups
+assert_contains "${output}" "intentional worker failure"
+assert_contains "${output}" "Local functional workers failed"
+assert_not_contains "${calls}" "k3d cluster delete radius-functional-database"
+started=() completed=()
+while IFS= read -r target; do started+=("${target}"); done \
+    <"${SERIAL_STATE}/started"
+while IFS= read -r target; do completed+=("${target}"); done \
+    <"${SERIAL_STATE}/completed"
+[[ "${#started[@]}" == 13 && "${#completed[@]}" == 12 ]] ||
+    fail "failed run did not drain the other workers"
+[[ ! -e "${state}/test.lock" && ! -e "${dynamic_config}" ]] ||
+    fail "failed concurrent run leaked fixtures or a lock"
+forward_pid="$(<"${MOCK_LOG}.forward-pid")"
+! kill -0 "${forward_pid}" 2>/dev/null ||
+    fail "failed concurrent run leaked its port-forward"
+rm "${SERIAL_STATE}/started" "${SERIAL_STATE}/completed" \
+    "${SERIAL_STATE}/ucp-ready"
+export MOCK_FAILED_TARGET="" MOCK_SIGNAL=TERM
+run_runner 143 test --all-groups
+completed=()
+while IFS= read -r target; do completed+=("${target}"); done \
+    <"${SERIAL_STATE}/completed"
+[[ "${#completed[@]}" == 13 ]] ||
+    fail "interrupted run restored fixtures before draining workers"
+[[ ! -e "${state}/test.lock" && ! -e "${dynamic_config}" ]] ||
+    fail "interrupted concurrent run leaked fixtures or a lock"
+forward_pid="$(<"${MOCK_LOG}.forward-pid")"
+! kill -0 "${forward_pid}" 2>/dev/null ||
+    fail "interrupted concurrent run leaked its port-forward"
+unset MAKEFLAGS
+export MOCK_MAKEFILE="" MOCK_FAILED_TARGET="" MOCK_SIGNAL=""
+export LOCAL_FUNCTIONAL_HOST_OS=linux
 
 export MOCK_CLUSTERS=$'radius-functional\nradius-functional-multicluster\nradius-functional-unrelated'
 export MOCK_CONTAINERS=$'radius-local-registry\nradius-local-registry-unrelated'

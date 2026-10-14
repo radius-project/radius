@@ -67,6 +67,12 @@ test-local-functional-runner: ## Tests local functional runner safety without in
 
 test: test-local-functional-runner
 
+.PHONY: test-publish-recipes
+test-publish-recipes: ## Tests bounded recipe publishing without a registry
+	@bash ./.github/scripts/publish-recipes_test.sh
+
+test: test-publish-recipes
+
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
 	@bash ./.github/scripts/collect-cluster-diagnostics_test.sh

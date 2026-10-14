@@ -34,7 +34,8 @@ Start Docker before running the tests. The test runner installs the repository-p
 The test runner also requires:
 
 - `sudo` access to trust a temporary registry certificate and add `radius-local-registry` to `/etc/hosts`.
-- Free TCP ports 5443, 6550-6555, and 30080.
+- Free TCP ports 5443, 6550-6556, and 30080.
+- Sufficient CPU and memory to run up to seven k3d clusters concurrently. Use the selected-group workflow below on resource-constrained machines.
 - On Linux, at least 1024 inotify instances per user. Check the current value with `sysctl fs.inotify.max_user_instances`.
 
 ### macOS tool selection
@@ -74,13 +75,13 @@ This target:
 
 1. Builds the `rad` CLI and Radius container images from your checkout.
 2. Creates a local container registry and a k3d cluster.
-3. Installs Radius and the test fixtures, then restores and verifies the local Bicep extensions before starting parallel template compilation.
-4. Runs the standard non-cloud functional tests.
-5. Runs the database, multicluster, statestore, and upgrade test groups sequentially in separate clusters.
+3. Installs Radius, then installs Flux, Git HTTP, and Dapr concurrently with recipe publishing. Publishes Bicep recipes with at most four workers; other callers of the publisher remain serial unless they set `BICEP_RECIPE_PUBLISH_PARALLELISM` to 2, 3, or 4. Waits for every fixture to be ready, restores and verifies the local Bicep extensions, and copies the validated cache into independent worker caches before parallel template compilation.
+4. Runs the UCP group first, preserving the custom-provider discovery coverage in Core RP, then runs the other seven standard groups through three concurrent, sequential worker lanes. Each group has its own HOME, Radius configuration, Bicep extension cache, and container-log directory. Core RP retains ten parallel test slots; other standard groups use five.
+5. Concurrently runs Dynamic RP, database, multicluster, statestore, and upgrade groups in separate clusters. Dynamic RP uses five parallel test slots and serializes shared provider/type registration; the other isolated groups retain one slot each. Dynamic RP's custom provider metadata is kept out of the standard cluster so it cannot interfere with provider-discovery tests.
 
-Each setup refreshes the retained samples checkout from its `edge` branch and archives previous test reports and container logs before starting a new run. Test groups always run sequentially, even when your Make settings request parallel execution.
+Each setup refreshes the retained samples checkout from its `edge` branch and archives previous test reports and container logs before starting a new run. The full lifecycle controls concurrency independently of Make's parallel settings. Manually selected groups still run sequentially, even when your Make settings request parallel execution. All deletion and post-delete checks remain enabled.
 
-Do not start another local functional test run at the same time. The runs share temporary Bicep configuration files.
+Do not start another local functional test run at the same time. Fixture installation drains its workers on failure or interruption. The full lifecycle holds the shared Bicep fixture lock until all test workers finish, then restores the original files. If interrupted, it waits for active workers before restoring fixtures and releasing the lock.
 
 ### 3. Clean up
 
@@ -122,13 +123,13 @@ Run one group that needs a separate cluster:
 bash build/scripts/local-functional.sh isolated database
 ```
 
-Replace `database` with `multicluster`, `statestore`, or `upgrade` as needed. Do not run an isolated group concurrently with a standard test group.
+Replace `database` with `multicluster`, `statestore`, `upgrade`, or `dynamicrp` as needed. Manually selected isolated groups are serialized; do not launch separate runner commands concurrently.
 
 ## Verification
 
 The complete test run succeeds when `make test-functional-local-noncloud` exits with status 0.
 
-Test output and per-group gotestsum JSON files are stored under `dist/local-functional/results/`. Container logs are stored under `dist/local-functional/container_logs/`.
+Test output and per-group gotestsum JSON files are stored under `dist/local-functional/results/`. During the full lifecycle, each worker writes a separate `.log` file there; the runner prints these logs after the workers finish and fails if any worker failed. Container logs are stored under `dist/local-functional/container_logs/`, with separate subdirectories for full-lifecycle groups.
 
 The results and container-log directories contain diagnostics only for the current setup. Previous reports and logs are retained together under `dist/local-functional/results-history/run.*/`, in `results/` and `container_logs/` respectively; do not use those archived files to determine whether the current run passed.
 
@@ -146,7 +147,9 @@ Infrastructure removed; logs and isolated CLI configuration remain in dist/local
 
 For manually selected groups, each package prints `ok` or a successful `gotestsum` summary. A successful end-to-end group creates its expected Radius resources, verifies their state, and removes them according to the selected cleanup mode.
 
-Run `make test-local-functional-runner` to check the runner's platform preflight, fixture locking/restoration, diagnostics rotation, serial execution, and cleanup using mocked infrastructure commands. These regression checks also run as part of `make test` and do not require Docker, Kubernetes, or sudo access.
+Run `make test-local-functional-runner` to check the runner's platform preflight, fixture locking/restoration, diagnostics rotation, bounded full-lifecycle concurrency, worker failure propagation, serial selected-group execution, and cleanup using mocked infrastructure commands. These regression checks also run as part of `make test` and do not require Docker, Kubernetes, or sudo access.
+
+Run `make test-publish-recipes` to check serial and bounded concurrent recipe publishing, module-file exclusion, failure propagation, and worker draining without a registry. These checks also run as part of `make test`.
 
 ## Troubleshooting
 
@@ -178,7 +181,7 @@ LOCAL_FUNCTIONAL_SUITE=database \
   bash build/scripts/local-functional.sh exec kubectl get pods -A
 ```
 
-Replace `database` with `multicluster`, `statestore`, or `upgrade`.
+Replace `database` with `multicluster`, `statestore`, `upgrade`, or `dynamicrp`.
 
 Retry the matching test target against the retained cluster:
 
