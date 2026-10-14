@@ -95,7 +95,7 @@ type ChartOptions struct {
 // HelmAction is an interface for performing actions on Helm charts.
 type HelmAction interface {
 	// HelmChartFromContainerRegistry downloads a helm chart (using helm pull) from a container registry and returns the chart object.
-	HelmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error)
+	HelmChartFromContainerRegistry(ctx context.Context, version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error)
 
 	// ApplyHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the "Reinstall" option is set.
 	// The vals map carries the user-supplied overrides to apply on top of the chart's defaults.
@@ -123,7 +123,7 @@ func NewHelmAction(helmClient HelmClient) *HelmActionImpl {
 	return &HelmActionImpl{HelmClient: helmClient}
 }
 
-func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
+func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Context, version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
 	pullopts := []helm.PullOpt{
 		helm.WithConfig(config),
 		func(p *helm.Pull) {
@@ -188,7 +188,7 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(version string,
 	}
 
 	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: helmChartPullBackoff()})
-	err = retryer.RetryFunc(context.Background(), func(context.Context) error {
+	err = retryer.RetryFunc(ctx, func(context.Context) error {
 		_, err := helmAction.HelmClient.RunHelmPull(pullopts, chartRef)
 		if err != nil && isTransientHelmChartError(err) {
 			return retry.RetryableError(err)
@@ -233,7 +233,7 @@ func isTransientHelmChartError(err error) bool {
 	}
 
 	if errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.ECONNREFUSED) ||
-		errors.Is(err, syscall.EPIPE) || errors.Is(err, io.ErrUnexpectedEOF) {
+		errors.Is(err, syscall.EPIPE) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 		return true
 	}
 

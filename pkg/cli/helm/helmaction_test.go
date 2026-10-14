@@ -30,6 +30,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	goretry "github.com/sethvargo/go-retry"
@@ -74,6 +75,7 @@ func Test_isTransientHelmChartError(t *testing.T) {
 		{"refused", fmt.Errorf("dial: %w", syscall.ECONNREFUSED), true},
 		{"broken pipe", fmt.Errorf("read: %w", syscall.EPIPE), true},
 		{"short response", fmt.Errorf("read: %w", io.ErrUnexpectedEOF), true},
+		{"closed connection", &url.Error{Op: "Get", URL: "https://example.com", Err: io.EOF}, true},
 		{"local file", os.ErrPermission, false},
 	}
 	for _, status := range []int{408, 429, 500, 502, 503, 504, 401, 403, 404, 501} {
@@ -127,6 +129,7 @@ func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 		{"chart recovers from 500", "/contour-0.1.0.tgz", 500, 1, 2, false},
 		{"index recovers from 503", "/index.yaml", 503, 1, 2, false},
 		{"rate limit recovers", "/contour-0.1.0.tgz", 429, 2, 3, false},
+		{"chart recovers from EOF", "/contour-0.1.0.tgz", 0, 1, 2, false},
 		{"chart retry limit", "/contour-0.1.0.tgz", 500, 10, 3, true},
 		{"index retry limit", "/index.yaml", 503, 10, 3, true},
 		{"missing chart", "/contour-0.1.0.tgz", 404, 10, 1, true},
@@ -139,6 +142,17 @@ func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == tt.failPath {
 					if requests.Add(1) <= int32(tt.failures) {
+						if tt.status == 0 {
+							conn, _, err := http.NewResponseController(w).Hijack()
+							if err != nil {
+								t.Errorf("hijack connection: %v", err)
+								return
+							}
+							if err := conn.Close(); err != nil {
+								t.Errorf("close connection: %v", err)
+							}
+							return
+						}
 						http.Error(w, http.StatusText(tt.status), tt.status)
 						return
 					}
@@ -155,7 +169,7 @@ func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 			defer server.Close()
 
 			action := NewHelmAction(NewHelmClient())
-			got, err := action.HelmChartFromContainerRegistry("0.1.0", &helm.Configuration{}, server.URL, "contour")
+			got, err := action.HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, server.URL, "contour")
 			if tt.wantError {
 				require.Error(t, err)
 				assert.Nil(t, got)
@@ -171,6 +185,72 @@ func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 	}
 }
 
+func Test_HelmChartPull_Cancellation(t *testing.T) {
+	originalBackoff := helmChartPullBackoff
+	helmChartPullBackoff = func() goretry.Backoff {
+		return goretry.WithMaxRetries(2, goretry.NewConstant(time.Hour))
+	}
+	t.Cleanup(func() { helmChartPullBackoff = originalBackoff })
+
+	tests := []struct {
+		name string
+		pull func(context.Context, HelmClient) error
+	}{
+		{"direct pull", func(ctx context.Context, client HelmClient) error {
+			_, err := NewHelmAction(client).HelmChartFromContainerRegistry(ctx, "0.1.0", &helm.Configuration{}, "https://example.com", "contour")
+			return err
+		}},
+		{"Contour preparation", func(ctx context.Context, client HelmClient) error {
+			_, _, _, err := prepareContourChart(ctx, NewHelmAction(client), NewDefaultClusterOptions().Contour, "")
+			return err
+		}},
+		{"install", func(ctx context.Context, client HelmClient) error {
+			return (&Impl{Helm: client}).InstallRadius(ctx, NewDefaultClusterOptions(), "")
+		}},
+		{"upgrade", func(ctx context.Context, client HelmClient) error {
+			return (&Impl{Helm: client}).UpgradeRadius(ctx, NewDefaultClusterOptions(), "")
+		}},
+		{"latest version", func(ctx context.Context, client HelmClient) error {
+			_, err := (&Impl{Helm: client}).GetLatestRadiusVersion(ctx)
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, alreadyCanceled := range []bool{true, false} {
+				t.Run(fmt.Sprintf("already canceled=%t", alreadyCanceled), func(t *testing.T) {
+					synctest.Test(t, func(t *testing.T) {
+						ctx, cancel := context.WithCancel(t.Context())
+						defer cancel()
+						client := NewMockHelmClient(gomock.NewController(t))
+						if alreadyCanceled {
+							cancel()
+						} else {
+							client.EXPECT().RunHelmPull(gomock.Any(), gomock.Any()).
+								DoAndReturn(func([]helm.PullOpt, string) (string, error) {
+									go func() {
+										time.Sleep(time.Second)
+										cancel()
+									}()
+									return "", &url.Error{Op: "Get", URL: "https://example.com", Err: io.EOF}
+								}).Times(1)
+						}
+
+						start := time.Now()
+						err := tt.pull(ctx, client)
+						require.ErrorIs(t, err, context.Canceled)
+						if alreadyCanceled {
+							assert.Zero(t, time.Since(start))
+						} else {
+							assert.Equal(t, time.Second, time.Since(start), "cancellation must stop the one-hour retry wait")
+						}
+					})
+				})
+			}
+		})
+	}
+}
+
 func Test_HelmChartFromContainerRegistry_LoadFailure(t *testing.T) {
 	client := NewMockHelmClient(gomock.NewController(t))
 	client.EXPECT().RunHelmPull(gomock.Any(), "contour").
@@ -181,7 +261,7 @@ func Test_HelmChartFromContainerRegistry_LoadFailure(t *testing.T) {
 		}).Times(1)
 	loadErr := io.ErrUnexpectedEOF
 	client.EXPECT().LoadChart(gomock.Any()).Return(nil, loadErr).Times(1)
-	got, err := NewHelmAction(client).HelmChartFromContainerRegistry("0.1.0", &helm.Configuration{}, "https://example.com", "contour")
+	got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, "https://example.com", "contour")
 	assert.Nil(t, got)
 	assert.ErrorIs(t, err, loadErr)
 }
@@ -191,7 +271,7 @@ func Test_HelmChartFromContainerRegistry_GHCRForbidden(t *testing.T) {
 	client.EXPECT().RunHelmPull(gomock.Any(), "oci://ghcr.io/radius-project/helm-chart/radius").
 		Return("", &errcode.ErrorResponse{StatusCode: http.StatusForbidden, URL: &url.URL{Host: "ghcr.io"}}).
 		Times(1)
-	got, err := NewHelmAction(client).HelmChartFromContainerRegistry("0.1.0", &helm.Configuration{}, "oci://ghcr.io/radius-project/helm-chart", "radius")
+	got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, "oci://ghcr.io/radius-project/helm-chart", "radius")
 	assert.Nil(t, got)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "docker logout ghcr.io")
@@ -278,7 +358,7 @@ func Test_prepareRadiusChart_DoesNotMutateChartValues(t *testing.T) {
 		SetArgs:   []string{"global.zipkin.url=url"},
 	}
 
-	_, _, values, err := prepareRadiusChart(helmAction, *options, "")
+	_, _, values, err := prepareRadiusChart(t.Context(), helmAction, *options, "")
 	require.NoError(t, err)
 
 	global, ok := values["global"].(map[string]any)
@@ -335,7 +415,7 @@ func Test_prepareRadiusChart_LoadChartError(t *testing.T) {
 		ChartPath: "bad-chart",
 	}
 
-	_, _, _, err := prepareRadiusChart(helmAction, *options, "")
+	_, _, _, err := prepareRadiusChart(t.Context(), helmAction, *options, "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load Helm chart")
 }
@@ -354,7 +434,7 @@ func Test_prepareRadiusChart_ParseValuesError(t *testing.T) {
 		SetArgs:   []string{"invalid_no_equals"},
 	}
 
-	_, _, _, err := prepareRadiusChart(helmAction, *options, "")
+	_, _, _, err := prepareRadiusChart(t.Context(), helmAction, *options, "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to parse Radius values")
 }
