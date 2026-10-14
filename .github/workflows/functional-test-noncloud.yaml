@@ -724,6 +724,7 @@ jobs:
           # Radius twice and runs several upgrades, so it also needs more time.
           TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || matrix.name == 'upgrade-noncloud' && '30m' || env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          AUTHZ_EXPECTED_MODE: ${{ matrix.name == 'authz-noncloud' && 'dryRun' || '' }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
