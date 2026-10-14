@@ -3,7 +3,8 @@
 #
 # Each entry is "<issue> <pattern>":
 #   <issue>    The issue tracking the fix, as https://github.com/OWNER/REPO/issues/N or OWNER/REPO#N.
-#   <pattern>  An extended regular expression matched against the full log line.
+#   <pattern>  An extended regular expression matched anywhere in the log line.
+#              Lines may start with a timestamp or [pod/...] prefix, not the raw message.
 #
 # Keep entries narrow (match authzCode, authzAction, and authzTarget) and remove
 # them when the tracking issue is fixed. Example:

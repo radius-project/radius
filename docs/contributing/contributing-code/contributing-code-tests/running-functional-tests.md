@@ -122,10 +122,10 @@ CI wraps the entire functional-test command with [`.github/scripts/run-with-auth
 ```bash
 AUTHZ_LOG_DIR=./dist/authz-logs-run1 \
   python3 .github/scripts/run-with-authz-logs.py make test-functional-corerp-noncloud
-make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--logs-dir ./dist/authz-logs-run1"
+make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--collector-dir ./dist/authz-logs-run1"
 ```
 
-The Make target also passes `--require-dry-run`: it requires current startup logs reporting `authz mode=dryRun` from `ucp`, `applications-rp`, `dynamic-rp`, and `controller`, checking every replica found. Previous-container or saved logs cannot substitute for this evidence. Missing components, missing startup messages (including rotated-away messages), and other modes fail the check. Pod-listing failures, unreadable current or previous logs, file traversal/read errors, and empty saved-log directories also fail rather than reporting a clean run. An allowlist cannot bypass these errors. To scan saved logs without accessing a cluster or verifying startup modes, invoke the script directly with `--logs-dir DIR`.
+The Make target also passes `--require-dry-run`: it requires startup logs reporting `authz mode=dryRun` from `ucp`, `applications-rp`, `dynamic-rp`, and `controller`, checking every current replica. With `--collector-dir DIR`, the check requires the collector's `complete` marker and reads startup evidence only from `<pod>.<uid>.<container>.<restart>.log` files matching the live pod UID and container restart count. This preserves startup evidence after kubelet log rotation without accepting logs from replaced pods or earlier container restarts. All retained collector logs are still scanned for would-deny lines, including replaced pods. Without `--collector-dir`, startup verification reads live container logs; arbitrary `--logs-dir` files and previous-container logs cannot substitute for startup evidence. Missing components, missing matching collector files or startup messages, and other modes fail the check. Pod-listing failures, unreadable current or previous logs, file traversal/read errors, and empty saved-log directories also fail rather than reporting a clean run. An allowlist cannot bypass these errors. To scan saved logs without accessing a cluster or verifying startup modes, invoke the script directly with `--logs-dir DIR`.
 
 ### Configure test execution
 

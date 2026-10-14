@@ -79,7 +79,7 @@ assert_output_not_contains() {
 }
 
 # A kubectl stub that serves pod inventory and logs from fixture directories.
-#   MOCK_PODS       jsonpath output for "get pods": "<pod>\t<container>=<restarts> ...", one pod per line.
+#   MOCK_PODS       "<pod>\t<uid>\t<container>=<restarts> ...", one pod per line.
 #   MOCK_LOGS       directory with <pod>.log (current) and <pod>.<container>.previous.log files.
 #   MOCK_CALLS      file that records every invocation.
 mkdir -p "${TEST_ROOT}/bin"
@@ -237,7 +237,7 @@ cp "${FIXTURES}/would-deny/dynamic-rp-6f7a8b9c0-klmno.previous.log" \
     "${MOCK_DIR}/dynamic-rp-6f7a8b9c0-klmno.dynamic-rp.previous.log"
 : >"${MOCK_CALLS}"
 export MOCK_LOGS="${MOCK_DIR}"
-export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp=0 \napplications-rp-5c6d7e8f9-fghij\tapplications-rp=0 \ndynamic-rp-6f7a8b9c0-klmno\tdynamic-rp=2 sidecar=0 \n'
+export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp-uid\tucp=0 \napplications-rp-5c6d7e8f9-fghij\tapp-uid\tapplications-rp=0 \ndynamic-rp-6f7a8b9c0-klmno\tdynamic-uid\tdynamic-rp=2 sidecar=0 \n'
 run_check --namespace custom-ns
 assert_status 1
 assert_output_contains "would-deny: applications-rp-5c6d7e8f9-fghij: "
@@ -257,7 +257,7 @@ fi
 echo "Test: cluster mode passes when no pod logged a would-deny line"
 rm "${MOCK_DIR}/applications-rp-5c6d7e8f9-fghij.log" "${MOCK_DIR}/dynamic-rp-6f7a8b9c0-klmno.dynamic-rp.previous.log"
 cp "${FIXTURES}/clean/applications-rp-5c6d7e8f9-fghij.log" "${MOCK_DIR}/applications-rp-5c6d7e8f9-fghij.log"
-export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp=0 \napplications-rp-5c6d7e8f9-fghij\tapplications-rp=0 \n'
+export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp-uid\tucp=0 \napplications-rp-5c6d7e8f9-fghij\tapp-uid\tapplications-rp=0 \n'
 run_check
 assert_status 0
 assert_output_contains "No authorization would-deny log lines found"
@@ -268,20 +268,20 @@ else
 fi
 
 echo "Test: one readable pod cannot hide another pod's log failure"
-export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp=0 \npending-pod\tpending=0 \n'
+export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp-uid\tucp=0 \npending-pod\tpending-uid\tpending=0 \n'
 run_check
 assert_status 2
 assert_output_contains "could not read logs for pod pending-pod"
 assert_output_not_contains "No authorization would-deny"
 
 echo "Test: cluster mode fails when no pod logs can be read"
-export MOCK_PODS='pending-pod\tpending=0 \n'
+export MOCK_PODS='pending-pod\tpending-uid\tpending=0 \n'
 run_check
 assert_status 2
 assert_output_contains "could not read logs for pod pending-pod"
 
 echo "Test: missing previous logs fail even when current logs are readable"
-export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp=1 \n'
+export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp-uid\tucp=1 \n'
 run_check
 assert_status 2
 assert_output_contains "could not read previous logs for container ucp"
@@ -300,7 +300,7 @@ assert_status 2
 assert_output_contains "no pods found in namespace radius-system"
 
 echo "Test: --cluster combines cluster logs with --logs-dir"
-export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp=0 \n'
+export MOCK_PODS='ucp-7d9f8b6c4-abcde\tucp-uid\tucp=0 \n'
 : >"${MOCK_CALLS}"
 run_check --cluster --logs-dir "${FIXTURES}/would-deny"
 assert_status 1
@@ -372,7 +372,7 @@ rm "${TEST_ROOT}/bin/grep"
 echo "Test: all four live components must report dryRun"
 export MOCK_PODS=''
 for component in ucp applications-rp dynamic-rp controller; do
-    MOCK_PODS+="${component}-pod"$'\t'"${component}=0 "$'\n'
+    MOCK_PODS+="${component}-pod"$'\t'"${component}-uid"$'\t'"${component}=0 "$'\n'
     printf '{"message":"authz mode=dryRun","authzMode":"dryRun"}\n' \
         >"${MOCK_DIR}/${component}-pod.${component}.log"
     cp "${MOCK_DIR}/${component}-pod.${component}.log" \
@@ -421,6 +421,72 @@ run_check --require-dry-run --logs-dir "${MOCK_DIR}"
 assert_status 2
 assert_output_contains "missing authz startup log for controller-pod/controller"
 
+echo "Test: completed collector startup survives current log rotation"
+COLLECTOR_DIR="${TEST_ROOT}/collector"
+mkdir -p "${COLLECTOR_DIR}"
+for component in ucp applications-rp dynamic-rp controller; do
+    restart=0
+    [[ "${component}" != controller ]] || restart=1
+    cp "${MOCK_DIR}/${component}-pod.log" \
+        "${COLLECTOR_DIR}/${component}-pod.${component}-uid.${component}.${restart}.log"
+done
+touch "${COLLECTOR_DIR}/complete"
+run_check --require-dry-run --collector-dir "${COLLECTOR_DIR}"
+assert_status 0
+assert_output_contains "Verified dryRun startup for all four Radius components"
+
+echo "Test: arbitrary saved logs cannot substitute for collector evidence"
+run_check --require-dry-run --logs-dir "${COLLECTOR_DIR}"
+assert_status 2
+assert_output_contains "missing authz startup log for controller-pod/controller"
+
+echo "Test: collector mode also scans retained would-deny lines"
+cp "${FIXTURES}/would-deny/applications-rp-5c6d7e8f9-fghij.log" \
+    "${COLLECTOR_DIR}/deleted-pod.old-uid.applications-rp.0.log"
+run_check --require-dry-run --collector-dir "${COLLECTOR_DIR}"
+assert_status 1
+assert_output_contains "Found 1 authorization would-deny"
+rm "${COLLECTOR_DIR}/deleted-pod.old-uid.applications-rp.0.log"
+
+echo "Test: incomplete collector cannot provide startup evidence"
+rm "${COLLECTOR_DIR}/complete"
+run_check --require-dry-run --collector-dir "${COLLECTOR_DIR}"
+assert_status 2
+assert_output_contains "collector completion marker not found"
+touch "${COLLECTOR_DIR}/complete"
+
+for mismatch in old-uid old-restart wrong-container; do
+    echo "Test: ${mismatch} collector file cannot verify the current container"
+    current="${COLLECTOR_DIR}/controller-pod.controller-uid.controller.1.log"
+    case "${mismatch}" in
+        old-uid) stale="${COLLECTOR_DIR}/controller-pod.previous-uid.controller.1.log" ;;
+        old-restart) stale="${COLLECTOR_DIR}/controller-pod.controller-uid.controller.0.log" ;;
+        wrong-container) stale="${COLLECTOR_DIR}/controller-pod.controller-uid.sidecar.1.log" ;;
+    esac
+    mv "${current}" "${stale}"
+    run_check --require-dry-run --collector-dir "${COLLECTOR_DIR}"
+    assert_status 2
+    assert_output_contains "collector log not found for controller-pod/controller"
+    mv "${stale}" "${current}"
+done
+
+echo "Test: matching collector file must contain startup evidence"
+current="${COLLECTOR_DIR}/controller-pod.controller-uid.controller.1.log"
+cp "${current}" "${TEST_ROOT}/collector-startup"
+printf 'No startup message\n' >"${current}"
+run_check --require-dry-run --collector-dir "${COLLECTOR_DIR}"
+assert_status 2
+assert_output_contains "missing authz startup log for controller-pod/controller"
+
+echo "Test: collector evidence with mixed modes fails even if dryRun is present"
+cat "${TEST_ROOT}/collector-startup" >"${current}"
+printf 'INFO controller authz mode=enforce\n' >>"${current}"
+run_check --require-dry-run --collector-dir "${COLLECTOR_DIR}" \
+    --allowlist "${FIXTURES}/allowlist-all.txt"
+assert_status 2
+assert_output_contains "controller-pod/controller did not start in dryRun"
+mv "${TEST_ROOT}/collector-startup" "${current}"
+
 echo "Test: console startup format is accepted"
 printf 'INFO controller authz mode=dryRun {"authzMode": "dryRun"}\n' \
     >"${MOCK_DIR}/controller-pod.controller.log"
@@ -428,7 +494,7 @@ run_check --require-dry-run
 assert_status 0
 
 echo "Test: a healthy replica cannot hide another replica in off mode"
-MOCK_PODS+='controller-other'$'\tcontroller=0 \n'
+MOCK_PODS+='controller-other'$'\tother-uid\tcontroller=0 \n'
 cp "${MOCK_DIR}/controller-pod.log" "${MOCK_DIR}/controller-other.log"
 printf 'INFO controller authz mode=off {"authzMode": "off"}\n' \
     >"${MOCK_DIR}/controller-other.controller.log"
@@ -439,7 +505,7 @@ assert_output_contains "controller-other/controller did not start in dryRun"
 echo "Test: repeated ucp replicas cannot count as four different components"
 MOCK_PODS=''
 for replica in 1 2 3 4; do
-    MOCK_PODS+="ucp-${replica}"$'\tucp=0 \n'
+    MOCK_PODS+="ucp-${replica}"$'\t'"ucp-${replica}-uid"$'\tucp=0 \n'
     cp "${MOCK_DIR}/ucp-pod.log" "${MOCK_DIR}/ucp-${replica}.log"
     cp "${MOCK_DIR}/ucp-pod.log" "${MOCK_DIR}/ucp-${replica}.ucp.log"
 done
