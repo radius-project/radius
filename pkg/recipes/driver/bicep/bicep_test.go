@@ -831,6 +831,44 @@ func Test_Bicep_Execute_LogsDeploymentOutputResourceIDs(t *testing.T) {
 	}
 }
 
+func Test_Bicep_Execute_UnresolvedExpressionDoesNotDeploy(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	deploymentClient := &deploymentClientSpy{}
+	driverBicep := &bicepDriver{
+		DeploymentClient: deploymentClient,
+		RegistryClient:   ts.TestServer.Client(),
+	}
+
+	output, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+		Recipe: recipes.ResourceMetadata{
+			Name:          "mongo",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+		},
+		Definition: recipes.EnvironmentDefinition{
+			Name:         "mongo-azure",
+			Driver:       recipes.TemplateKindBicep,
+			TemplatePath: ts.TestImageURL,
+			ResourceType: "Applications.Datastores/mongoDatabases",
+			Parameters: map[string]any{
+				"documentdbName": "{{context.resource.unknown}}",
+			},
+		},
+	})
+
+	require.Nil(t, output)
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeploymentFailed,
+			Message: `failed to resolve recipe parameter expressions: parameter "documentdbName": unresolved expression {{context.resource.unknown}}: unknown context path "context.resource.unknown"`,
+		},
+		DeploymentStatus: recipes_util.RecipeSetupError,
+	}, err)
+	require.Zero(t, deploymentClient.createOrUpdateCalls)
+}
+
 func Test_ValidateOutputMappings(t *testing.T) {
 	tests := []struct {
 		name          string

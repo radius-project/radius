@@ -62,7 +62,7 @@ A platform engineer references an internal module hosted in a private OCI regist
 - **Community module coverage** — Not every Radius Resource Type has a suitable community module. Where gaps exist, platform engineers will still author custom modules. For the `resource-types-contrib` repository, we will continue to write and maintain Recipes for Resource Types that lack community module coverage.
 - **Terraform version compatibility** — Direct modules may use features from newer Terraform versions. Mitigation: Terraform settings feature enables specifying the Terraform version.
 - **Module API stability** — Direct modules expose platform engineers to upstream breaking changes. Mitigation: version pinning via `?ref=` for Git or registry version constraints.
-- **Expression resolution correctness** — Unresolved `{{context.*}}` expressions are left as literal strings, which may cause cryptic downstream errors from the IaC engine. Mitigation: clear documentation of available expression paths.
+- **Expression resolution correctness** — A `{{context.*}}` expression that cannot be resolved (unknown path, syntax error, or null result) fails the deployment with `RecipeDeploymentFailed` before the IaC engine runs, naming the parameter and the reason. Recipe deletion is lenient and passes unresolved expressions through unchanged so that cleanup is not blocked. Mitigation: clear documentation of available expression paths and the expression grammar.
 
 ## Current state
 
@@ -224,7 +224,28 @@ Use any standard Bicep or Terraform module directly as a Recipe by pointing `sou
 
 ### Feature 2: Template Expression Resolution
 
-The `{{context.*}}` expression system resolves Radius application context into Recipe parameters at deploy time. It supports resource metadata, application and Environment data, Kubernetes runtime data, Azure and AWS provider data, and single-level ternary expressions. For Azure resources whose names must be globally unique, `{{context.azure.resourceNameHash}}` returns the first 16 lowercase hexadecimal characters of the SHA-256 hash of the lowercased Azure provider scope ID, the application ID, the environment ID, and the Radius resource ID, NUL-separated. The provider scope is the resource-group ID when configured and otherwise the subscription ID. The application and environment are part of the seed because the resource ID is scoped to a UCP resource group and names the resource rather than its owner: hashing it alone gives two applications that reuse a common resource name in one Azure scope, or one application deployed to two environments, the same name for a globally named cloud resource. The application ID is empty for a resource deployed without one, which is itself a distinct seed.
+The `{{context.*}}` expression system resolves Radius application context into Recipe parameters at deploy time. It supports resource metadata, application and Environment data, Kubernetes runtime data, Azure and AWS provider data, and conditional expressions. For Azure resources whose names must be globally unique, `{{context.azure.resourceNameHash}}` returns the first 16 lowercase hexadecimal characters of the SHA-256 hash of the lowercased Azure provider scope ID, the application ID, the environment ID, and the Radius resource ID, NUL-separated. The provider scope is the resource-group ID when configured and otherwise the subscription ID. The application and environment are part of the seed because the resource ID is scoped to a UCP resource group and names the resource rather than its owner: hashing it alone gives two applications that reuse a common resource name in one Azure scope, or one application deployed to two environments, the same name for a globally named cloud resource. The application ID is empty for a resource deployed without one, which is itself a distinct seed.
+
+Expressions are evaluated by a small, closed expression language implemented in `pkg/recipes/paramresolver`. It has no function calls, arithmetic, or user-defined identifiers. The grammar, from lowest to highest precedence, is:
+
+```text
+expression := or ( "?" expression ":" expression )?
+or         := and ( "||" and )*
+and        := equality ( "&&" equality )*
+equality   := unary ( ( "==" | "!=" ) unary )*
+unary      := "!" unary | primary
+primary    := literal | path | "(" expression ")"
+literal    := "string" | number | true | false | null
+path       := context.<segment>(.<segment>)*
+```
+
+- Ternaries are right-associative and can be nested, for example `{{context.resource.properties.size == "S" ? "small" : context.resource.properties.size == "M" ? "medium" : "large"}}`.
+- Evaluation is lazy: only the selected branch of a ternary is evaluated, and `&&` and `||` short-circuit, so an unresolvable path in an unselected branch is not an error.
+- An absent `context.resource.properties.*` or connection property evaluates to `null`, so optional properties can be tested with `== null` or `!= null`. Any other unknown path is an error.
+- Equality compares numbers numerically and other scalars by their string form, so `context.resource.properties.port == "5432"` matches an integer port. Comparing objects or arrays is an error.
+- When a parameter value is exactly one expression, the result keeps its type. For example, `'{{context.resource.properties.large ? 100 : 20}}'` passes the number `100`, not the string `"100"`. Expressions embedded in surrounding text are interpolated as strings.
+- Only `{{...}}` blocks that reference a `context.` path are evaluated. Other `{{...}}` text, such as a Helm or Go template, passes through unchanged.
+- A parameter whose expression fails to resolve, or resolves to `null`, fails the deployment with an error that names the parameter. All failures in a Recipe are reported together.
 
 Changing the seed changes every name derived from it, and an existing deployment does not keep its old resource. On a Bicep recipe the driver garbage-collects output resources that are absent from the new deployment: `getGCOutputResources` stamps each one `RadiusManaged`, so the guard in `Delete` does not filter them and the previous resource is deleted rather than orphaned. On a Terraform recipe the context reaches the module on both paths in `pkg/recipes/terraform/execute.go`, and where the hash lands on a `ForceNew` attribute Terraform destroys and recreates the resource under its own plan. Both routes end in a replaced resource; only the mechanism differs.
 
@@ -364,7 +385,7 @@ Radius determines sensitivity from the Resource Type schema — any output mappe
 1. **Module with no outputs** — A module that declares no outputs succeeds when the Recipe configures no output mappings. If the Recipe maps an undeclared output, Radius returns `InvalidRecipeOutputs` before deployment.
 2. **Missing mapped output** — Radius rejects `outputs` and `outputs.secrets` mappings that reference undeclared module outputs. If a declared output is absent or null at runtime, an ordinary `outputs` mapping remains unset, while an `outputs.secrets` mapping fails with `InvalidRecipeOutputs` rather than silently clearing previously materialized secret data.
 3. **Required parameters not supplied** — If the module requires an input variable that is not provided through `parameters` or environment-level `recipeParameters`, Radius surfaces the error from IaC engine indicating which variable is missing.
-4. **Invalid `{{context.*}}` expression path** — If a template expression references a context path that does not exist (e.g., `{{context.resource.properties.nonexistent}}`), the expression resolves to an empty string. The IaC engine may then fail if the parameter requires a non-empty value.
+4. **Invalid `{{context.*}}` expression path** — If a template expression references an unknown context path (e.g., `{{context.resource.unknown}}`), or a parameter value resolves to `null` (e.g., `{{context.resource.properties.nonexistent}}`), the deployment fails with `RecipeDeploymentFailed` before the IaC engine runs. An absent property used inside a condition, such as `{{context.resource.properties.tier != null ? context.resource.properties.tier : "basic"}}`, is not an error.
 5. **Large module with many unused variables** — Some community modules expose dozens of input variables with defaults. Only variables explicitly mapped in `parameters` are passed; all others use the module's defaults. This is expected behavior.
 6. **Module version yanked or deleted** — If the pinned module version is removed from the registry, the Recipe deployment fails at the module download step with a fetch error. Mitigation: platform engineers should monitor upstream module availability.
 
