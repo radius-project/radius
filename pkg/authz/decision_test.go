@@ -35,24 +35,59 @@ func Test_Apply(t *testing.T) {
 	noCode := Decision{Allowed: false, Reason: "missing code"}
 
 	tests := []struct {
-		name     string
-		mode     Mode
-		decision Decision
-		wantCode string
-		wantErr  bool
-		wantLog  bool
+		name            string
+		mode            Mode
+		decision        Decision
+		wantCode        string
+		wantErr         bool
+		wantLogMessage  string
+		wantLogField    string
+		wantAbsentField string
 	}{
 		{name: "unset mode allows denial", mode: "", decision: deny},
 		{name: "off allows denial without logging", mode: ModeOff, decision: deny},
 		{name: "off allows allowed", mode: ModeOff, decision: allow},
-		{name: "dryRun logs denial", mode: ModeDryRun, decision: deny, wantLog: true},
+		{
+			name:            "dryRun logs denial",
+			mode:            ModeDryRun,
+			decision:        deny,
+			wantLogMessage:  "authorization check would deny request",
+			wantLogField:    LogFieldWouldDeny,
+			wantAbsentField: LogFieldDenied,
+		},
 		{name: "dryRun allows allowed without logging", mode: ModeDryRun, decision: allow},
-		{name: "enforce rejects denial", mode: ModeEnforce, decision: deny, wantErr: true, wantCode: "GrantScopeExceeded"},
+		{
+			name:            "enforce rejects denial and logs denial",
+			mode:            ModeEnforce,
+			decision:        deny,
+			wantErr:         true,
+			wantCode:        "GrantScopeExceeded",
+			wantLogMessage:  "authorization check denied request",
+			wantLogField:    LogFieldDenied,
+			wantAbsentField: LogFieldWouldDeny,
+		},
 		{name: "enforce allows allowed", mode: ModeEnforce, decision: allow},
 		{name: "unknown mode fails closed", mode: Mode("audit"), decision: deny, wantErr: true},
 		{name: "unknown mode fails closed for allowed", mode: Mode("audit"), decision: allow, wantErr: true},
-		{name: "dryRun logs default code when code is empty", mode: ModeDryRun, decision: noCode, wantLog: true, wantCode: CodeAuthorizationFailed},
-		{name: "enforce uses default code when code is empty", mode: ModeEnforce, decision: noCode, wantErr: true, wantCode: CodeAuthorizationFailed},
+		{
+			name:            "dryRun logs default code when code is empty",
+			mode:            ModeDryRun,
+			decision:        noCode,
+			wantCode:        CodeAuthorizationFailed,
+			wantLogMessage:  "authorization check would deny request",
+			wantLogField:    LogFieldWouldDeny,
+			wantAbsentField: LogFieldDenied,
+		},
+		{
+			name:            "enforce uses default code when code is empty",
+			mode:            ModeEnforce,
+			decision:        noCode,
+			wantErr:         true,
+			wantCode:        CodeAuthorizationFailed,
+			wantLogMessage:  "authorization check denied request",
+			wantLogField:    LogFieldDenied,
+			wantAbsentField: LogFieldWouldDeny,
+		},
 	}
 
 	for _, tt := range tests {
@@ -75,15 +110,17 @@ func Test_Apply(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			if !tt.wantLog {
+			if tt.wantLogMessage == "" {
 				require.Zero(t, logs.Len())
 				return
 			}
 
 			entries := logs.All()
 			require.Len(t, entries, 1)
+			require.Equal(t, tt.wantLogMessage, entries[0].Message)
 			fields := entries[0].ContextMap()
-			require.Equal(t, true, fields[LogFieldWouldDeny])
+			require.Equal(t, true, fields[tt.wantLogField])
+			require.NotContains(t, fields, tt.wantAbsentField)
 			wantCode := tt.decision.Code
 			if tt.wantCode != "" {
 				wantCode = tt.wantCode
