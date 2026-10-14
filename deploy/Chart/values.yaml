@@ -60,9 +60,16 @@ global:
   # Configure terraform binary source for pre-downloading terraform binaries
   # This avoids downloading terraform on each recipe execution
   terraform:
-    # Enable terraform binary pre-downloading during pod startup
+    # Enable terraform binary pre-downloading. By default applications-rp and
+    # dynamic-rp download Terraform in the background after they start (with
+    # checksum and signature verification), so pods become ready without
+    # waiting for the download.
     enabled: true
-    # Init image used to pre-download Terraform binaries.
+    # Pre-download Terraform in an init container instead, so the binary is in
+    # place before the pod starts at the cost of slower pod startup. Always
+    # used when `downloadUrl` is set.
+    useInitContainer: false
+    # Init image used to pre-download Terraform binaries in the init container.
     initImage: "alpine:3.23.4"
     # Terraform version to pre-download. MUST match terraformVersion in
     # pkg/recipes/terraform/version.go -- the runtime download fallback

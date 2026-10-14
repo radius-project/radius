@@ -18,6 +18,7 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -92,6 +93,43 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, gatewayCalls.configureCalls)
 	require.Equal(t, kubeContext, gatewayCalls.kubeContext)
+}
+
+func Test_Helm_InstallRadius_ContourPrepareError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	gatewayCalls := &defaultContourGatewayCalls{}
+	impl := &Impl{
+		Helm:                           mockHelmClient,
+		configureDefaultContourGateway: gatewayCalls.configure,
+	}
+	options := NewDefaultClusterOptions()
+
+	mockHelmClient.EXPECT().
+		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
+		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
+			pull := helm.NewPull(pullopts...)
+			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
+			require.NoError(t, err)
+			return "Pulled", nil
+		}).Times(1)
+	mockHelmClient.EXPECT().
+		RunHelmPull(gomock.Any(), options.Contour.ReleaseName).
+		Return("", errors.New("network unreachable")).Times(1)
+
+	radiusRelease := &releasev1.Release{
+		Name:  options.Radius.ReleaseName,
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+	}
+	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return(nil, driver.ErrReleaseNotFound).Times(1)
+	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, gomock.Any()).Return(radiusRelease, nil).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+
+	err := impl.InstallRadius(t.Context(), options, "test-context")
+	require.ErrorContains(t, err, "failed to prepare Contour Helm chart")
+	require.Equal(t, 0, gatewayCalls.configureCalls)
 }
 
 func Test_Helm_UninstallRadius(t *testing.T) {

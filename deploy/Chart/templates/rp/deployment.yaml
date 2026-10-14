@@ -37,9 +37,8 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
       {{- end }}
-      {{- if eq .Values.global.terraform.enabled true }}
-      # Init container to pre-download Terraform binary to a shared volume
-      # This avoids downloading Terraform at runtime and improves recipe execution performance
+      {{- $terraformInit := and (eq .Values.global.terraform.enabled true) (or .Values.global.terraform.useInitContainer .Values.global.terraform.downloadUrl) }}
+      {{- if or $terraformInit .Values.global.appendRootCA.cert }}
       initContainers:
       {{- if .Values.global.appendRootCA.cert }}
       - name: append-root-ca
@@ -57,6 +56,10 @@ spec:
         - name: ssl-certs
           mountPath: /etc/radius-ssl/certs
       {{- end }}
+      {{- if $terraformInit }}
+      # Init container to pre-download Terraform before the pod starts. Only used with a custom
+      # global.terraform.downloadUrl or when global.terraform.useInitContainer is set. Otherwise, applications-rp downloads Terraform in the background at startup
+      # (terraform.preDownload) so that the pod does not wait for the download to become ready.
       - name: terraform-init
         image: "{{ .Values.global.terraform.initImage }}"
         command:
@@ -155,6 +158,7 @@ spec:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
           runAsUser: 65532
+      {{- end }}
       {{- end }}
       containers:
       - name: applications-rp

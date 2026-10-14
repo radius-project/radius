@@ -218,22 +218,23 @@ rad install kubernetes \
 
 ### Terraform Binary Pre-downloading
 
-By default, Radius downloads Terraform binaries at runtime when Terraform recipes are executed. You can optionally configure Radius to pre-download Terraform binaries during pod startup to improve performance.
+Pre-downloading is enabled by default (`global.terraform.enabled=true`). After `applications-rp` and `dynamic-rp` start, they download the pinned Terraform version in the background. hc-install verifies the release checksum and signature. Pods do not wait for the download to become ready. If a Terraform recipe runs before the download finishes, it waits for the download. If the download fails, the recipe downloads Terraform on demand.
 
-To enable Terraform pre-downloading:
+To pre-download Terraform in an init container instead, so the binary is in place before the pod starts at the cost of slower pod startup:
 
 ```console
 helm upgrade --wait --install radius deploy/Chart -n radius-system \
-  --set global.terraform.enabled=true
+  --set global.terraform.useInitContainer=true
 ```
 
-This automatically downloads the latest Terraform version. For custom sources (private repositories, proxies, etc.), specify a complete download URL:
+For custom sources (private repositories, proxies, etc.), specify a complete download URL. The init container is always used when `downloadUrl` is set:
 
 ```console
 helm upgrade --wait --install radius deploy/Chart -n radius-system \
-  --set global.terraform.enabled=true \
   --set global.terraform.downloadUrl="https://my-artifactory.com/terraform_1.5.7_linux_amd64.zip"
 ```
+
+To disable pre-downloading so Terraform is downloaded when the first Terraform recipe runs, set `global.terraform.enabled=false`.
 
 #### Terraform Logging Configuration
 

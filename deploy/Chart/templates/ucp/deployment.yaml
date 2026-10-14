@@ -98,10 +98,13 @@ spec:
             path: /apis/api.ucp.dev/v1alpha3
             port: ucp
             scheme: HTTPS
-          initialDelaySeconds: 5
-          periodSeconds: 5
+          # Probe frequently so the pod is marked ready within ~2s of UCP serving, which
+          # shortens install time. failureThreshold keeps roughly the same ~15s tolerance
+          # to transient failures once the pod is ready.
+          initialDelaySeconds: 1
+          periodSeconds: 2
           timeoutSeconds: 5
-          failureThreshold: 3
+          failureThreshold: 8
         securityContext:
           allowPrivilegeEscalation: false
         {{- if .Values.ucp.resources }}

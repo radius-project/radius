@@ -47,7 +47,8 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
       {{- end }}
-      {{- if or (eq .Values.global.terraform.enabled true) .Values.dynamicrp.buildkit.enabled .Values.global.appendRootCA.cert }}
+      {{- $terraformInit := and (eq .Values.global.terraform.enabled true) (or .Values.global.terraform.useInitContainer .Values.global.terraform.downloadUrl) }}
+      {{- if or $terraformInit .Values.dynamicrp.buildkit.enabled .Values.global.appendRootCA.cert }}
       initContainers:
       {{- if .Values.global.appendRootCA.cert }}
       # Populate the shared ssl-certs emptyDir before any container that
@@ -70,9 +71,10 @@ spec:
         - name: ssl-certs
           mountPath: /etc/radius-ssl/certs
       {{- end }}
-      {{- if eq .Values.global.terraform.enabled true }}
-      # Init container to pre-download Terraform binary to a shared volume
-      # This avoids downloading Terraform at runtime and improves recipe execution performance
+      {{- if $terraformInit }}
+      # Init container to pre-download Terraform before the pod starts. Only used with a custom
+      # global.terraform.downloadUrl or when global.terraform.useInitContainer is set. Otherwise, dynamic-rp downloads Terraform in the background at startup
+      # (terraform.preDownload) so that the pod does not wait for the download to become ready.
       - name: terraform-init
         image: "{{ .Values.global.terraform.initImage }}"
         command:

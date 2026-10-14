@@ -101,4 +101,8 @@ type TerraformOptions struct {
 
 	// LogLevel is the log level for Terraform execution (ERROR, DEBUG, etc.).
 	LogLevel string `yaml:"logLevel,omitempty"`
+
+	// PreDownload downloads the Terraform binary in the background at startup so the first
+	// Terraform recipe does not wait for it.
+	PreDownload bool `yaml:"preDownload,omitempty"`
 }

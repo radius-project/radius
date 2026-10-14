@@ -1,8 +1,93 @@
 suite: test terraform init container path mismatch fix
 templates:
   - rp/deployment.yaml
+  - rp/configmaps.yaml
   - dynamic-rp/deployment.yaml
+  - dynamic-rp/configmaps.yaml
 tests:
+  # By default Terraform is downloaded in-process in the background (terraform.preDownload)
+  # rather than in an init container, so pods do not wait on the download to start.
+  - it: rp downloads terraform in-process by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers
+        template: rp/deployment.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'preDownload: true'
+        template: rp/configmaps.yaml
+
+  - it: dynamic-rp downloads terraform in-process by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers
+        template: dynamic-rp/deployment.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'preDownload: true'
+        template: dynamic-rp/configmaps.yaml
+
+  - it: uses the init container instead of in-process download when downloadUrl is set
+    set:
+      global.terraform.downloadUrl: "https://example.com/terraform.zip"
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'TERRAFORM_URL="https://example\.com/terraform\.zip"'
+        template: rp/deployment.yaml
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'TERRAFORM_URL="https://example\.com/terraform\.zip"'
+        template: dynamic-rp/deployment.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'preDownload'
+        template: rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'preDownload'
+        template: dynamic-rp/configmaps.yaml
+
+  - it: uses the init container instead of in-process download when useInitContainer is set
+    set:
+      global.terraform.useInitContainer: true
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.initContainers
+          count: 1
+        template: rp/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.initContainers
+          count: 1
+        template: dynamic-rp/deployment.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'preDownload'
+        template: rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'preDownload'
+        template: dynamic-rp/configmaps.yaml
+
+  - it: does not pre-download terraform when disabled
+    set:
+      global.terraform.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers
+        template: rp/deployment.yaml
+      - notExists:
+          path: spec.template.spec.initContainers
+        template: dynamic-rp/deployment.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'preDownload'
+        template: rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'preDownload'
+        template: dynamic-rp/configmaps.yaml
+
   # Regression test for https://github.com/radius-project/radius/pull/11880
   # The pre-mounted Terraform binary path written by the init container MUST
   # match the constants in pkg/recipes/terraform/install.go:
@@ -11,6 +96,8 @@ tests:
   # If these strings drift, ensureGlobalTerraformBinary falls through to
   # downloadAndInstallTerraform and the init container's work is wasted.
   - it: rp init container writes terraform binary to the global path expected by install.go
+    set:
+      global.terraform.useInitContainer: true
     asserts:
       - matchRegex:
           path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
@@ -26,6 +113,8 @@ tests:
         template: rp/deployment.yaml
 
   - it: dynamic-rp init container writes terraform binary to the global path expected by install.go
+    set:
+      global.terraform.useInitContainer: true
     asserts:
       - matchRegex:
           path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
@@ -83,6 +172,7 @@ tests:
   # of here lets the tool updater bump Terraform without editing this file.
   - it: rp init container installs the version from global.terraform.version
     set:
+      global.terraform.useInitContainer: true
       global.terraform.version: "9.9.9"
     asserts:
       - matchRegex:
@@ -92,6 +182,7 @@ tests:
 
   - it: dynamic-rp init container installs the version from global.terraform.version
     set:
+      global.terraform.useInitContainer: true
       global.terraform.version: "9.9.9"
     asserts:
       - matchRegex:

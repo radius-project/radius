@@ -66,3 +66,6 @@ data:
       deleteRetryDelaySeconds: 60
     terraform:
       path: "/terraform"
+      {{- if and (eq .Values.global.terraform.enabled true) (not .Values.global.terraform.useInitContainer) (not .Values.global.terraform.downloadUrl) }}
+      preDownload: true
+      {{- end }}

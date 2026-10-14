@@ -556,6 +556,7 @@ tests:
     set:
       dynamicrp.image: dynamic-rp
       global.terraform.enabled: true
+      global.terraform.useInitContainer: true
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].name
@@ -635,6 +636,7 @@ tests:
       dynamicrp.image: dynamic-rp
       rp.image: applications-rp
       global.terraform.enabled: true
+      global.terraform.useInitContainer: true
       global.terraform.initImage: alpine:3.22
     asserts:
       - equal:
@@ -756,6 +758,7 @@ tests:
     set:
       rp.image: applications-rp
       global.terraform.enabled: true
+      global.terraform.useInitContainer: true
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].name

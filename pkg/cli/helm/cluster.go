@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"slices"
 
+	helm "helm.sh/helm/v4/pkg/action"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
@@ -247,6 +249,14 @@ func (i *Impl) removeContourGateway(ctx context.Context, kubeContext string) err
 	return remove(ctx, kubeContext)
 }
 
+// preparedChart is the result of preparing a Helm chart for installation.
+type preparedChart struct {
+	chart  *chart.Chart
+	conf   *helm.Configuration
+	values map[string]any
+	err    error
+}
+
 // InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Do note: the namespace passed in to rad install kubernetes
@@ -256,6 +266,19 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	// where pods/services/deployments will be put for rad deploy.
 
 	helmAction := NewHelmAction(i.Helm)
+
+	// Download the Contour chart while Radius installs so the download is not on the critical
+	// path. Contour is still applied after Radius succeeds so that its images do not compete with
+	// the Radius images that `helm install --wait` is waiting on.
+	var contourPrepared chan preparedChart
+	if !clusterOptions.Contour.Disabled {
+		contourPrepared = make(chan preparedChart, 1)
+		go func() {
+			var p preparedChart
+			p.chart, p.conf, p.values, p.err = prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
+			contourPrepared <- p
+		}()
+	}
 
 	// Install Radius
 	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(helmAction, clusterOptions.Radius, kubeContext)
@@ -274,12 +297,12 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 
 	// Install Contour
 	output.LogInfo("Installing Contour...")
-	contourHelmChart, contourHelmConf, contourValues, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
-	if err != nil {
-		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
+	contour := <-contourPrepared
+	if contour.err != nil {
+		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", contour.err)
 	}
 
-	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions, contourValues)
+	err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, clusterOptions.Contour.ChartOptions, contour.values)
 	if err != nil {
 		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
 	}
