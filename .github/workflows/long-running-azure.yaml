@@ -269,7 +269,13 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
+      - name: Install jq and yq
+        run: make install-jq install-yq
+
       - name: Manage Radius control plane installation
+        env:
+          # Built-in manifests from the release tag that matches the rad CLI.
+          RADIUS_MANIFEST_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}/deploy/manifest/built-in-providers/self-hosted
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           ./.github/scripts/manage-radius-installation.sh

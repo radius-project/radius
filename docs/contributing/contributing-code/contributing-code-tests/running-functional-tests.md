@@ -192,6 +192,8 @@ The scheduled `long-running-azure.yaml` workflow uses a published release for th
 
 The LRT setup script [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) defines the required Helm overrides in `REQUIRED_CHART_VALUES`, shared by fresh installs, upgrades, and existing same-version IRSA reconciliation. Keep LRT-specific configuration in that array rather than changing global chart defaults or using `kubectl set resources`, which can cause field-ownership conflicts on later upgrades.
 
+The same script checks that the built-in resource types are usable. It reads the release manifests from `RADIUS_MANIFEST_DIR` (the workflow sets it to `deploy/manifest/built-in-providers/self-hosted` in the release checkout). Then it uses `kubectl get --raw` to get each resource provider, location, resource type, API version, and provider summary from UCP. If a same-version installation has missing records, the script reinstalls Radius. After each install or upgrade, the script checks again and fails if records are still missing. The script needs `jq` and `yq`.
+
 Download the `all_container_logs` artifact from a successful or failed run. Alongside the released test harness's logs, it contains:
 
 - `all-tests-pod-states.log`: final pod, node, and event descriptions.
