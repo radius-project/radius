@@ -37,9 +37,6 @@ const (
 	// LogFieldCode is the log key for the authorization error code.
 	LogFieldCode = "authzCode"
 
-	// LogFieldReason is the log key for the authorization denial reason.
-	LogFieldReason = "authzReason"
-
 	// LogFieldAction is the log key for the caller's requested action.
 	LogFieldAction = "authzAction"
 
@@ -58,10 +55,6 @@ type Decision struct {
 	// Code is the error code for a denial, such as "AuthorizationFailed".
 	Code string
 
-	// Reason is an internal diagnostic describing why the check denied the request.
-	// It may be logged, but is omitted from ARM responses.
-	Reason string
-
 	// Action is the caller's requested action, such as "Applications.Core/containers/write".
 	Action string
 
@@ -78,10 +71,6 @@ type Decision struct {
 type DeniedError struct {
 	// Code is the error code for the denial.
 	Code string
-
-	// Reason is an internal diagnostic. It may be logged where the denial happens,
-	// but is never included in Error(), ErrorResponse(), or Response().
-	Reason string
 
 	// Action is the caller's requested action. It is required for ARM responses.
 	Action string
@@ -140,7 +129,6 @@ func Apply(ctx context.Context, mode Mode, decision Decision) error {
 		ucplog.FromContextOrDiscard(ctx).Info("authorization check would deny request",
 			LogFieldWouldDeny, true,
 			LogFieldCode, code,
-			LogFieldReason, decision.Reason,
 			LogFieldAction, decision.Action,
 			LogFieldTarget, decision.Target,
 			LogFieldRule, decision.Rule)
@@ -150,10 +138,9 @@ func Apply(ctx context.Context, mode Mode, decision Decision) error {
 	ucplog.FromContextOrDiscard(ctx).Info("authorization check denied request",
 		LogFieldDenied, true,
 		LogFieldCode, code,
-		LogFieldReason, decision.Reason,
 		LogFieldAction, decision.Action,
 		LogFieldTarget, decision.Target,
 		LogFieldRule, decision.Rule)
 
-	return &DeniedError{Code: code, Reason: decision.Reason, Action: decision.Action, Target: decision.Target, Rule: decision.Rule}
+	return &DeniedError{Code: code, Action: decision.Action, Target: decision.Target, Rule: decision.Rule}
 }
