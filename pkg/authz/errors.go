@@ -78,8 +78,7 @@ func (e *DeniedError) code() string {
 // ErrorResponse converts the denial to an ARM error response body. Action and Target
 // must identify the caller's requested action and target; conversion fails if either
 // is blank. AdmissionPolicyDenied responses also name Rule, which must be a short
-// identifier. Reason is an internal diagnostic and is never included in the response.
-// The public message varies by error code so unavailable checks and authentication
+// identifier. The public message varies by error code so unavailable checks and authentication
 // failures are not described as authorization denials.
 func (e *DeniedError) ErrorResponse() (v1.ErrorResponse, error) {
 	if strings.TrimSpace(e.Action) == "" || strings.TrimSpace(e.Target) == "" {

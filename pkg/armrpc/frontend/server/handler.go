@@ -325,8 +325,8 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	}
 }
 
-// deniedErrorResponse converts an authorization denial to its public ARM response. The
-// denial's Reason and any wrapping context are never included. If the denial lacks the
+// deniedErrorResponse converts an authorization denial to its public ARM response. Any
+// wrapping error context is never included. If the denial lacks the
 // request context needed for the normal message, a generic message is returned instead.
 func deniedErrorResponse(denied *authz.DeniedError) rest.Response {
 	if response, err := denied.Response(); err == nil {
