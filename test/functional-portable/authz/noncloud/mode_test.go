@@ -18,7 +18,9 @@ package authz
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"testing"
 	"time"
@@ -40,6 +42,7 @@ const (
 	radiusNamespace   = "radius-system"
 	radiusReleaseName = "radius"
 	readyTimeout      = 2 * time.Minute
+	expectedModeEnv   = "AUTHZ_EXPECTED_MODE"
 )
 
 // component is a Radius service that reads the authorization mode at startup.
@@ -61,7 +64,7 @@ var modeLogPattern = regexp.MustCompile(`authz mode=(\w+)`)
 // Radius component logs the authorization mode derived from the installed Helm values.
 func Test_AuthzMode_LoggedByEveryComponent(t *testing.T) {
 	options := test.NewTestOptions(t)
-	want := installedMode(t)
+	want := expectedInstalledMode(t)
 	t.Logf("Helm values select authz mode=%s", want)
 
 	for _, c := range components {
@@ -83,7 +86,11 @@ func Test_AuthzMode_LoggedByEveryComponent(t *testing.T) {
 				}
 				logs := podLogs(ctx, t, options.K8sClient, pod.Name, c.container)
 				got, ok := loggedMode(logs)
-				require.Truef(t, ok, "pod %s did not log %q", pod.Name, "authz mode=<mode>")
+				startTime := "<unknown>"
+				if pod.Status.StartTime != nil {
+					startTime = pod.Status.StartTime.Time.Format(time.RFC3339)
+				}
+				require.Truef(t, ok, "pod %s (started %s) did not log %q; log output may have rotated before the test read it", pod.Name, startTime, "authz mode=<mode>")
 				require.Equalf(t, string(want), got, "pod %s logged the wrong authz mode", pod.Name)
 			}
 		})
@@ -124,6 +131,37 @@ func Test_LoggedMode(t *testing.T) {
 	require.False(t, ok)
 }
 
+func Test_ExpectedTestMode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		helmMode authz.Mode
+		env      string
+		want     authz.Mode
+		wantErr  string
+	}{
+		{name: "unset uses helm mode", helmMode: authz.ModeOff, want: authz.ModeOff},
+		{name: "env matches helm mode", helmMode: authz.ModeDryRun, env: "dryRun", want: authz.ModeDryRun},
+		{name: "env may expect off", helmMode: authz.ModeOff, env: "off", want: authz.ModeOff},
+		{name: "invalid env mode", helmMode: authz.ModeDryRun, env: "audit", wantErr: "invalid authorization mode"},
+		{name: "env mismatches helm mode", helmMode: authz.ModeOff, env: "dryRun", wantErr: "does not match Helm values"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := expectedTestMode(tt.helmMode, tt.env)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func rbacValues(rbac map[string]any) map[string]any {
 	global := map[string]any{}
 	if rbac != nil {
@@ -132,9 +170,9 @@ func rbacValues(rbac map[string]any) map[string]any {
 	return map[string]any{"global": global}
 }
 
-// installedMode reads the installed Radius Helm release and returns the authorization mode
-// its values select.
-func installedMode(t *testing.T) authz.Mode {
+// expectedInstalledMode reads the installed Radius Helm release and returns the authorization
+// mode the test must observe.
+func expectedInstalledMode(t *testing.T) authz.Mode {
 	t.Helper()
 
 	contextName, err := kubernetes.GetContextFromConfigFileIfExists("", "")
@@ -155,7 +193,10 @@ func installedMode(t *testing.T) authz.Mode {
 	values, err := get.Run(radiusReleaseName)
 	require.NoError(t, err, "failed to read Helm values for release %q", radiusReleaseName)
 
-	return expectedMode(values)
+	helmMode := expectedMode(values)
+	want, err := expectedTestMode(helmMode, os.Getenv(expectedModeEnv))
+	require.NoError(t, err)
+	return want
 }
 
 // expectedMode mirrors the chart's radius.authz.mode helper.
@@ -169,6 +210,21 @@ func expectedMode(values map[string]any) authz.Mode {
 		return authz.ModeEnforce
 	}
 	return authz.ModeOff
+}
+
+func expectedTestMode(helmMode authz.Mode, expected string) (authz.Mode, error) {
+	if expected == "" {
+		return helmMode, nil
+	}
+
+	mode, err := authz.ParseMode(expected)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", expectedModeEnv, err)
+	}
+	if mode != helmMode {
+		return "", fmt.Errorf("%s=%s does not match Helm values selecting authz mode=%s", expectedModeEnv, mode, helmMode)
+	}
+	return mode, nil
 }
 
 func loggedMode(logs string) (string, bool) {
