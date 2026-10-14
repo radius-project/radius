@@ -30,9 +30,9 @@ import (
 func Test_Apply(t *testing.T) {
 	t.Parallel()
 
-	deny := Decision{Allowed: false, Code: "GrantScopeExceeded", Reason: "target is outside the record"}
+	deny := Decision{Allowed: false, Code: "GrantScopeExceeded"}
 	allow := Decision{Allowed: true}
-	noCode := Decision{Allowed: false, Reason: "missing code"}
+	noCode := Decision{Allowed: false}
 
 	tests := []struct {
 		name            string
@@ -104,7 +104,6 @@ func Test_Apply(t *testing.T) {
 					var denied *DeniedError
 					require.True(t, errors.As(err, &denied))
 					require.Equal(t, tt.wantCode, denied.Code)
-					require.Equal(t, tt.decision.Reason, denied.Reason)
 				}
 			} else {
 				require.NoError(t, err)
@@ -126,7 +125,7 @@ func Test_Apply(t *testing.T) {
 				wantCode = tt.wantCode
 			}
 			require.Equal(t, wantCode, fields[LogFieldCode])
-			require.Equal(t, tt.decision.Reason, fields[LogFieldReason])
+			require.NotContains(t, fields, "authzReason")
 		})
 	}
 }
@@ -134,6 +133,6 @@ func Test_Apply(t *testing.T) {
 func Test_DeniedError_Error(t *testing.T) {
 	t.Parallel()
 
-	err := &DeniedError{Code: "AuthorizationFailed", Reason: "no permission"}
-	require.Equal(t, "authorization denied (AuthorizationFailed): no permission", err.Error())
+	err := &DeniedError{Code: "AuthorizationFailed"}
+	require.Equal(t, "authorization denied (AuthorizationFailed)", err.Error())
 }
