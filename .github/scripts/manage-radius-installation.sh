@@ -135,6 +135,7 @@ list_expected_registrations() {
     local manifest_dir="$1"
     local -A locations=()
     local file namespace location type_name api_version count=0
+    local type_names api_versions
 
     for file in "${manifest_dir}"/*; do
         [[ -f "${file}" ]] || continue
@@ -154,19 +155,30 @@ list_expected_registrations() {
             locations["${namespace}"]="global"
         fi
 
+        # Capture each query before the loop so that a yq failure stops the
+        # enumeration. A failed process substitution does not fail the loop.
+        if ! type_names=$(yq -r '(.types // {}) | keys | .[]' "${file}"); then
+            echo "ERROR: Failed to read resource types from ${file}." >&2
+            return 1
+        fi
+        # shellcheck disable=SC2016 # $t is a yq variable.
+        if ! api_versions=$(yq -r '(.types // {}) | to_entries[] | .key as $t
+            | (.value.apiVersions // {}) | keys | .[] | $t + "\t" + .' \
+            "${file}"); then
+            echo "ERROR: Failed to read API versions from ${file}." >&2
+            return 1
+        fi
+
         while IFS= read -r type_name; do
             [[ -n "${type_name}" ]] || continue
             printf 'type\t%s\t%s\n' "${namespace}" "${type_name}"
-        done < <(yq -r '(.types // {}) | keys | .[]' "${file}")
+        done <<<"${type_names}"
 
-        # shellcheck disable=SC2016 # $t is a yq variable.
         while IFS=$'\t' read -r type_name api_version; do
             [[ -n "${type_name}" ]] || continue
             printf 'apiVersion\t%s\t%s\t%s\n' \
                 "${namespace}" "${type_name}" "${api_version}"
-        done < <(yq -r '(.types // {}) | to_entries[] | .key as $t
-            | (.value.apiVersions // {}) | keys | .[] | $t + "\t" + .' \
-            "${file}")
+        done <<<"${api_versions}"
     done
 
     if ((count == 0)); then
@@ -208,10 +220,13 @@ get_ucp_resource() {
     return 2
 }
 
-# Verify that every record from the built-in manifests is registered in UCP
-# and that each provider summary lists all of its types, API versions, and
-# location. A provider entry alone does not make the built-in types usable.
-# Returns: 0 = complete, 1 = records missing, 2 = query failed
+# Verify that every record from the built-in manifests is registered in UCP.
+# Also verify that each provider summary lists all of its types, API versions,
+# and location, and that each location maps all of its types and API versions.
+# UCP routing uses the location mappings, so a provider entry alone does not
+# make the built-in types usable.
+# Returns: 0 = complete, 1 = records missing, 2 = query failed. A query
+# failure has precedence, so an unknown state never starts a reinstall.
 verify_manifest_registration_complete() {
     echo ""
     echo "Verifying built-in manifest registration in ${RADIUS_MANIFEST_DIR}..."
@@ -221,7 +236,7 @@ verify_manifest_registration_complete() {
         return 2
     fi
 
-    local -A summaries=()
+    local -A summaries=() location_bodies=()
     local -a missing=()
     local kind namespace name version path body status query_failed=0
     local rp_path
@@ -250,7 +265,34 @@ verify_manifest_registration_complete() {
             missing+=("${kind} ${path}")
         elif [[ "${kind}" == "summary" ]]; then
             summaries["${namespace}"]="${body}"
+        elif [[ "${kind}" == "location" ]]; then
+            location_bodies["${namespace}"]="${name}"$'\t'"${body}"
         fi
+    done <<<"${expected}"
+
+    # UCP matches the location's resource type names without regard to case.
+    local location_name location_body
+    while IFS=$'\t' read -r kind namespace name version; do
+        [[ -n "${location_bodies["${namespace}"]+set}" ]] || continue
+        location_name="${location_bodies["${namespace}"]%%$'\t'*}"
+        location_body="${location_bodies["${namespace}"]#*$'\t'}"
+        case "${kind}" in
+            type)
+                jq -e --arg t "${name}" \
+                    '.properties.resourceTypes // {} | keys
+                    | any(ascii_downcase == ($t | ascii_downcase))' \
+                    <<<"${location_body}" >/dev/null ||
+                    missing+=("location type ${namespace}/${location_name}/${name}")
+                ;;
+            apiVersion)
+                jq -e --arg t "${name}" --arg v "${version}" \
+                    '.properties.resourceTypes // {} | to_entries
+                    | any((.key | ascii_downcase) == ($t | ascii_downcase)
+                        and ((.value.apiVersions // {}) | has($v)))' \
+                    <<<"${location_body}" >/dev/null ||
+                    missing+=("location apiVersion ${namespace}/${location_name}/${name}@${version}")
+                ;;
+        esac
     done <<<"${expected}"
 
     while IFS=$'\t' read -r kind namespace name version; do
@@ -278,11 +320,15 @@ verify_manifest_registration_complete() {
     if ((${#missing[@]} > 0)); then
         echo "ERROR: ${#missing[@]} built-in registration records are missing:"
         printf '  %s\n' "${missing[@]}"
-        return 1
     fi
 
     if ((query_failed == 1)); then
+        echo "ERROR: One or more UCP queries failed. Registration state is unknown."
         return 2
+    fi
+
+    if ((${#missing[@]} > 0)); then
+        return 1
     fi
 
     echo "All built-in resource providers, types, API versions, and locations are registered."

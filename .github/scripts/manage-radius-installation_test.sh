@@ -70,16 +70,16 @@ EOF
 }
 
 # Fill UCP_STORE with every record the initializer writes for the fixture.
+readonly COMPLETE_COMPUTE_LOCATION='{"name":"global","properties":{"resourceTypes":{"containers":{"apiVersions":{"2025-08-01-preview":{}}},"routes":{"apiVersions":{"2025-08-01-preview":{},"2026-01-01-preview":{}}}}}}'
+
 populate_complete_store() {
     UCP_STORE=()
     local path
     for path in \
         "${RP_PATH}/Test.Core" \
-        "${RP_PATH}/Test.Core/locations/global" \
         "${RP_PATH}/Test.Core/resourcetypes/widgets" \
         "${RP_PATH}/Test.Core/resourcetypes/widgets/apiversions/2023-10-01-preview" \
         "${RP_PATH}/Test.Compute" \
-        "${RP_PATH}/Test.Compute/locations/global" \
         "${RP_PATH}/Test.Compute/resourcetypes/containers" \
         "${RP_PATH}/Test.Compute/resourcetypes/containers/apiversions/2025-08-01-preview" \
         "${RP_PATH}/Test.Compute/resourcetypes/routes" \
@@ -87,6 +87,9 @@ populate_complete_store() {
         "${RP_PATH}/Test.Compute/resourcetypes/routes/apiversions/2026-01-01-preview"; do
         UCP_STORE["${path}"]="{}"
     done
+    # UCP stores type names in their manifest case, and routing ignores case.
+    UCP_STORE["${RP_PATH}/Test.Core/locations/global"]='{"name":"global","properties":{"resourceTypes":{"Widgets":{"apiVersions":{"2023-10-01-preview":{}}}}}}'
+    UCP_STORE["${RP_PATH}/Test.Compute/locations/global"]="${COMPLETE_COMPUTE_LOCATION}"
     UCP_STORE["/providers/Test.Core"]='{"name":"Test.Core","locations":{"global":{}},"resourceTypes":{"widgets":{"apiVersions":{"2023-10-01-preview":{}}}}}'
     UCP_STORE["/providers/Test.Compute"]='{"name":"Test.Compute","locations":{"global":{}},"resourceTypes":{"containers":{"apiVersions":{"2025-08-01-preview":{}}},"routes":{"apiVersions":{"2025-08-01-preview":{},"2026-01-01-preview":{}}}}}'
 }
@@ -109,6 +112,7 @@ setup_case() {
 
     declare -gA UCP_STORE=()
     UCP_QUERY_FAILS="false"
+    UCP_FAILING_PATH=""
     IRSA_ENABLED="true"
     populate_complete_store
 
@@ -122,7 +126,7 @@ setup_case() {
         if [[ "$1 $2" == "get --raw" ]]; then
             local path="${3#"${UCP_PLANE_PATH}"}"
             path="${path%%\?*}"
-            if [[ "${UCP_QUERY_FAILS}" == "true" ]]; then
+            if [[ "${UCP_QUERY_FAILS}" == "true" || "${path}" == "${UCP_FAILING_PATH}" ]]; then
                 echo "Error from server (ServiceUnavailable): the server is currently unable to handle the request" >&2
                 return 1
             fi
@@ -216,6 +220,51 @@ test_verify_reports_query_failure() (
     setup_case
     UCP_QUERY_FAILS="true"
     expect_verify_status 2 "ServiceUnavailable"
+)
+
+# A missing record together with a failed query leaves the state unknown. The
+# check must report a query failure so that the caller does not reinstall.
+test_verify_query_failure_has_precedence() (
+    setup_case
+    unset 'UCP_STORE[${RP_PATH}/Test.Compute/resourcetypes/routes]'
+    UCP_FAILING_PATH="${RP_PATH}/Test.Core/resourcetypes/widgets"
+    expect_verify_status 2 "type ${RP_PATH}/Test.Compute/resourcetypes/routes"
+)
+
+# UCP routes requests with the location's type mappings, so a location that
+# exists but lacks a type or API version must fail the check.
+test_verify_detects_stale_location() (
+    setup_case
+    UCP_STORE["${RP_PATH}/Test.Compute/locations/global"]='{"name":"global","properties":{"resourceTypes":{"containers":{"apiVersions":{"2025-08-01-preview":{}}},"routes":{"apiVersions":{"2025-08-01-preview":{}}}}}}'
+    expect_verify_status 1 "location apiVersion Test.Compute/global/routes@2026-01-01-preview"
+
+    UCP_STORE["${RP_PATH}/Test.Compute/locations/global"]='{"name":"global","properties":{"resourceTypes":{"containers":{"apiVersions":{"2025-08-01-preview":{}}}}}}'
+    expect_verify_status 1 "location type Test.Compute/global/routes"
+
+    UCP_STORE["${RP_PATH}/Test.Compute/locations/global"]='{"name":"global","properties":{}}'
+    expect_verify_status 1 "location type Test.Compute/global/containers"
+)
+
+# A yq failure while reading types or API versions must stop the parser.
+# Otherwise the check could pass with records left out.
+test_parser_failure_is_reported() (
+    setup_case
+    local query
+    for query in "keys | .[]" "to_entries"; do
+        FAILING_YQ_QUERY="${query}"
+        # shellcheck disable=SC2329 # Invoked indirectly by the sourced script.
+        yq() {
+            if [[ "$2" == *"${FAILING_YQ_QUERY}"* && "$2" == *".types"* ]]; then
+                echo "yq: parse error" >&2
+                return 1
+            fi
+            command yq "$@"
+        }
+        if list_expected_registrations "${RADIUS_MANIFEST_DIR}" >/dev/null 2>&1; then
+            fail "expected a yq failure on '${query}' to stop the parser"
+        fi
+        expect_verify_status 2 "Failed to read"
+    done
 )
 
 run_matching_version_case() (
@@ -368,6 +417,9 @@ test_verify_complete_registration
 test_verify_detects_partial_registration
 test_verify_detects_stale_summary
 test_verify_reports_query_failure
+test_verify_query_failure_has_precedence
+test_verify_detects_stale_location
+test_parser_failure_is_reported
 test_requires_manifest_dir
 run_matching_version_case "false" "true"
 run_matching_version_case "true" "false"
