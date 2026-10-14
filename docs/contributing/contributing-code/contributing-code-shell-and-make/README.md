@@ -23,6 +23,8 @@ The canonical versions, release sources, platform assets, and SHA-256 checksums 
 
 Bicep remains on a manually tested pin (`update: false`) because upgrades must preserve ACR authentication, local registry trust, and extension compatibility. Its `versionFiles` entry synchronizes the version in `pkg/cli/bicep/tools/download_tools.go`, keeping `rad bicep download`, `make install-bicep`, and Bicep container staging on the same release. Local registries require [explicit hostname trust](../contributing-code-tests/running-functional-tests.md#local-bicep-registry-trust); do not disable registry or certificate validation to test an upgrade.
 
+The Bicep installer retries temporary download failures with increasing delays, up to 10 retries within a 300-second budget per request. Each attempt has a 15-second connection timeout and a total timeout of at most 60 seconds, reduced to the remaining budget. HTTP 408, 429, 500, 502, 503, and 504, connection failures, and incomplete transfers can be retried. Permanent errors, such as HTTP 403 or 404 and invalid certificates, fail at once. The installer checks the pinned checksum before it replaces the binary. Run `make test-install-bicep` to check this policy without network access.
+
 ## Updating resource types and recipe packs
 
 [`deploy/manifest/defaults.yaml`](../../../../deploy/manifest/defaults.yaml) pins the resource-types-contrib commits that Radius ships. `make update-resource-types`, `make update-recipe-packs`, and `make update-resource-types-and-recipe-packs` move the pins; `make sync-resource-types` regenerates the vendored files from the current pins without changing them.

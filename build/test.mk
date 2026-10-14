@@ -60,6 +60,12 @@ test: test-get-envtools test-helm test-manage-radius-installation test-release-p
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh
 
+.PHONY: test-install-bicep
+test-install-bicep: ## Tests bounded Bicep downloads without network access
+	@bash ./build/scripts/install-bicep_test.sh
+
+test: test-install-bicep
+
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
 	@bash ./.github/scripts/collect-cluster-diagnostics_test.sh
