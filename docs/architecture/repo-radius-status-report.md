@@ -3,7 +3,7 @@
 Status as of October 14, 2026.
 
 
-This document assesses what work is complete for Repo Radius today and what work (according to open GitHub issues) is still outstanding. Outstanding work does not mean the work is necessary or prioritized. This document is intended to help us (eng + pm) discuss whether that work is necessary at this time. If yes, then product will own the prioritization.
+This document assesses what work is complete for Repo Radius today and what work (according to open GitHub issues) is still outstanding. This document is intended to help us (eng + pm) discuss whether that work is necessary at this time. If yes, then product will own the prioritization.
 
 
 ## Repo Radius Today
@@ -126,7 +126,5 @@ Terraform state in Blob/S3 is separate from the Radius control-plane archive and
 - Radius remote main: `5e65916a3a6eac2a6a25d0014db05aa2ec2157bf`. The latest state lifecycle run tested the earlier commit `10e59be314d9bd6782f8b7689a76704155218564`.
 - ai-extensions remote main: `f48eba0d02fdaa7147acefe209e4ac84fc015023`. Merged source is not necessarily included in an installed plugin release.
 - Issue discussions, PR states, source changes, and workflow runs: checked October 14, 2026.
-- The latest [cloud lifecycle run](https://github.com/radius-project/ai-extensions/actions/runs/38512311559) failed during Azure federated-credential creation. It preceded the retry fix in radius-project/ai-extensions#1014; no later cloud lifecycle run was available to verify that fix.
-- The historical state-test investigation, [#13112](https://github.com/radius-project/radius/issues/13112), remains open. Subsequent passing runs do not establish a root-cause fix.
 
 This snapshot does not cover every frontend/cloud combination or assign owners and delivery dates.
