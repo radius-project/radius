@@ -40,6 +40,7 @@ import (
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/getter"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -130,6 +131,7 @@ func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 		{"index recovers from 503", "/index.yaml", 503, 1, 2, false},
 		{"rate limit recovers", "/contour-0.1.0.tgz", 429, 2, 3, false},
 		{"chart recovers from EOF", "/contour-0.1.0.tgz", 0, 1, 2, false},
+		{"chart recovers from reset", "/contour-0.1.0.tgz", -1, 1, 2, false},
 		{"chart retry limit", "/contour-0.1.0.tgz", 500, 10, 3, true},
 		{"index retry limit", "/index.yaml", 503, 10, 3, true},
 		{"missing chart", "/contour-0.1.0.tgz", 404, 10, 1, true},
@@ -142,11 +144,19 @@ func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == tt.failPath {
 					if requests.Add(1) <= int32(tt.failures) {
-						if tt.status == 0 {
+						if tt.status <= 0 {
 							conn, _, err := http.NewResponseController(w).Hijack()
 							if err != nil {
 								t.Errorf("hijack connection: %v", err)
 								return
+							}
+							if tt.status == -1 {
+								tcpConn, ok := conn.(*net.TCPConn)
+								if !ok {
+									t.Errorf("expected TCP connection, got %T", conn)
+								} else if err := tcpConn.SetLinger(0); err != nil {
+									t.Errorf("set reset on close: %v", err)
+								}
 							}
 							if err := conn.Close(); err != nil {
 								t.Errorf("close connection: %v", err)
@@ -183,6 +193,68 @@ func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 			assert.EqualValues(t, tt.wantRequests, requests.Load())
 		})
 	}
+}
+
+func Test_HelmChartFromContainerRegistry_RefusedConnection(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	chartURL := "http://" + listener.Addr().String() + "/chart.tgz"
+	require.NoError(t, listener.Close())
+
+	httpGetter, err := getter.NewHTTPGetter(getter.WithTimeout(time.Second))
+	require.NoError(t, err)
+	_, fetchErr := httpGetter.Get(chartURL)
+	require.Error(t, fetchErr)
+	require.True(t, isTransientHelmSocketError(fetchErr), "real refused connection must be retryable: %v", fetchErr)
+	require.True(t, isTransientHelmChartError(fetchErr))
+
+	originalBackoff := helmChartPullBackoff
+	helmChartPullBackoff = func() goretry.Backoff {
+		return goretry.WithMaxRetries(1, goretry.NewConstant(time.Millisecond))
+	}
+	t.Cleanup(func() { helmChartPullBackoff = originalBackoff })
+
+	client := NewMockHelmClient(gomock.NewController(t))
+	gomock.InOrder(
+		client.EXPECT().RunHelmPull(gomock.Any(), "contour").Return("", fetchErr),
+		client.EXPECT().RunHelmPull(gomock.Any(), "contour").
+			DoAndReturn(func(opts []helm.PullOpt, ref string) (string, error) {
+				pull := helm.NewPull(opts...)
+				require.NoError(t, os.WriteFile(filepath.Join(pull.DestDir, "chart.tgz"), []byte("chart"), 0600))
+				return "", nil
+			}),
+	)
+	want := &chart.Chart{}
+	client.EXPECT().LoadChart(gomock.Any()).Return(want, nil).Times(1)
+	got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, "https://example.com", "contour")
+	require.NoError(t, err)
+	assert.Same(t, want, got)
+}
+
+func Test_isTransientHelmSocketError_RealReset(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, _, err := http.NewResponseController(w).Hijack()
+		if err != nil {
+			t.Errorf("hijack connection: %v", err)
+			return
+		}
+		tcpConn, ok := conn.(*net.TCPConn)
+		if !ok {
+			t.Errorf("expected TCP connection, got %T", conn)
+		} else if err := tcpConn.SetLinger(0); err != nil {
+			t.Errorf("set reset on close: %v", err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Errorf("close connection: %v", err)
+		}
+	}))
+	defer server.Close()
+	httpGetter, err := getter.NewHTTPGetter(getter.WithTimeout(time.Second))
+	require.NoError(t, err)
+	_, fetchErr := httpGetter.Get(server.URL + "/chart.tgz")
+	require.Error(t, fetchErr)
+	require.True(t, isTransientHelmSocketError(fetchErr), "real reset connection must be retryable: %v", fetchErr)
+	require.True(t, isTransientHelmChartError(fetchErr))
 }
 
 func Test_HelmChartPull_Cancellation(t *testing.T) {
