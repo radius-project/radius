@@ -1117,6 +1117,7 @@ jobs:
 
       - name: Collect cluster diagnostics
         if: always()
+        timeout-minutes: 5
         # Diagnostic-only post-mortem snapshot. The script records each command's
         # failure inline and keeps going, because the failures worth debugging are
         # usually the ones where the control plane is unreachable and every
@@ -1128,6 +1129,7 @@ jobs:
           # kube-apiserver/etcd/kubelet logs are only worth the artifact size when
           # something went wrong. An empty name skips the export.
           KIND_CLUSTER_NAME: ${{ job.status != 'success' && 'radius' || '' }}
+          DIAGNOSTICS_TERRAFORM: ${{ matrix.name == 'corerp-cloud' && job.status != 'success' && 'true' || 'false' }}
         run: ./.github/scripts/collect-cluster-diagnostics.sh
 
       - name: Upload container logs
