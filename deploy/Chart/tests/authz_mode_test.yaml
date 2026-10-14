@@ -27,6 +27,27 @@ tests:
           pattern: '(?m)^authorization:'
         template: controller/configmaps.yaml
 
+  - it: omits the authorization section when global.rbac is missing
+    set:
+      global.rbac: null
+    asserts:
+      - notMatchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^authorization:'
+        template: ucp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:'
+        template: rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:'
+        template: dynamic-rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["controller-config.yaml"]
+          pattern: '(?m)^authorization:'
+        template: controller/configmaps.yaml
+
   - it: omits the authorization section when rbac is explicitly disabled
     set:
       global.rbac.enabled: false

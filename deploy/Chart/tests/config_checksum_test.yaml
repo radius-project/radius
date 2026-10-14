@@ -16,6 +16,14 @@ tests:
           path: spec.template.metadata.annotations["checksum/authz-config"]
           value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
 
+  - it: hashes the off mode when global.rbac is missing
+    set:
+      global.rbac: null
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
+
   - it: hashes the dryRun mode
     set:
       global.rbac.dryRun: true
