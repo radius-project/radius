@@ -121,9 +121,10 @@ EOF
     exit 3
 }
 
-if ! authz_kubectl get secret "${SECRET_NAME}" \
-    --namespace "${AUTHZ_RADIUS_NAMESPACE}" >/dev/null 2>&1; then
-    secret_missing "The Secret does not exist (or the current user cannot read it)."
+secret="$(authz_kubectl get secret "${SECRET_NAME}" \
+    --namespace "${AUTHZ_RADIUS_NAMESPACE}" --ignore-not-found --output name)"
+if [[ -z "${secret}" ]]; then
+    secret_missing "The Secret does not exist."
 fi
 
 for key in "${SECRET_KEYS[@]}"; do
