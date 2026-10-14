@@ -178,11 +178,16 @@ cleanup
 
 reset_case 0:200
 PAYLOAD="corrupt fixture"
+printf '%s' "previous bicep fixture" > "${TEST_DIR}/install/bicep"
 if (trap cleanup EXIT; main "${TEST_DIR}/install") \
     > "${TEST_DIR}/main-log" 2>&1; then
     fail_test "checksum mismatch was accepted"
 fi
-[[ "$(< "${TEST_DIR}/install/bicep")" == "verified bicep fixture" ]] \
+[[ "$(count_lines "${TEST_DIR}/timeouts")" -eq 1 ]] \
+    || fail_test "corrupt download was not requested"
+grep -q "checksum verification failed" "${TEST_DIR}/main-log" \
+    || fail_test "download did not fail checksum verification"
+[[ "$(< "${TEST_DIR}/install/bicep")" == "previous bicep fixture" ]] \
     || fail_test "checksum failure replaced the existing binary"
 
 echo "PASS: Bicep download policy and checksum checks"
