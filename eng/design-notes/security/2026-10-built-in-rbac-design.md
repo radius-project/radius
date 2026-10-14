@@ -200,11 +200,11 @@ The deployment engine and the controller act for another principal. See [Clients
 
 ##### Scopes
 
-Scopes are listed in [Key terms](#key-terms). The installation scope (`/`) is used only for admin-type roles, `reader`, `auditor`, and the enforcement setting.
+A scope is where a role assignment applies. Access at a scope also covers everything under it in the resource ID path: installation, then plane, then resource group, then resource. This design adds three rules:
 
-**A reference does not grant access.** Access on an environment does not cover the Recipe Packs that the environment uses.
-
-**Resource-level scopes.** These resource types can be scopes: `Radius.Core/environments`, `Radius.Core/recipePacks`, `Radius.Core/applications`, `Applications.Core/environments`, and `Applications.Core/applications`.
+- **The installation scope (`/`) is limited.** Only admin-type roles, `reader`, and `auditor` can be assigned there. The enforcement setting also lives there.
+- **Only some resource types can be scopes.** These are `Radius.Core/environments`, `Radius.Core/recipePacks`, `Radius.Core/applications`, `Applications.Core/environments`, and `Applications.Core/applications`. Other types fail with `ScopeNotAssignable`.
+- **A reference does not grant access.** Access follows the resource ID path, not references between resources. Access on an environment does not cover the Recipe Packs that the environment uses.
 
 ##### Permissions
 
