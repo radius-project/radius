@@ -51,19 +51,22 @@ setup_repo() {
     git -C "${seed}" config user.name "Radius Test"
     git -C "${seed}" config user.email "test@example.com"
     git -C "${seed}" config commit.gpgsign false
-    printf 'base\n' > "${seed}/file.txt"
-    git -C "${seed}" add file.txt
+    mkdir -p "${seed}/.github/workflows"
+    printf 'base\n' >"${seed}/file.txt"
+    printf 'name: legacy-release\n' \
+        >"${seed}/.github/workflows/release.yaml"
+    git -C "${seed}" add file.txt .github/workflows/release.yaml
     git -C "${seed}" commit -q -m "chore: initial"
     git -C "${seed}" branch release/0.60
 
     if [[ "${conflict}" == "true" ]]; then
         git -C "${seed}" checkout -q release/0.60
-        printf 'release change\n' > "${seed}/file.txt"
+        printf 'release change\n' >"${seed}/file.txt"
         git -C "${seed}" commit -qam "fix: release branch change"
         git -C "${seed}" checkout -q main
     fi
 
-    printf 'source change\n' > "${seed}/file.txt"
+    printf 'source change\n' >"${seed}/file.txt"
     git -C "${seed}" commit -qam "fix: source change" \
         --author "Source Author <source@example.test>" \
         -m $'BREAKING CHANGE: preserve this source footer\n\nEOF\nbranch=attacker'
@@ -83,7 +86,7 @@ run_backport() {
     rm -rf "${REPO}/out"
     git -C "${REPO}" config --unset user.name || true
     git -C "${REPO}" config --unset user.email || true
-    pushd "${REPO}" > /dev/null
+    pushd "${REPO}" >/dev/null
     bash "${SCRIPT}" --source-pr 123 --source-commit "${SOURCE_COMMIT}" \
         --source-title 'fix: source change' \
         --source-url 'https://example.test/pull/123' --channel 0.60 \
@@ -118,6 +121,11 @@ test_successful_backport() {
         fail_test "successful backport created a conflict handoff"
         return
     fi
+    if git -C "${REPO}" diff --cached --name-only --diff-filter=D |
+        grep -Fq '.github/workflows/release.yaml'; then
+        fail_test "ordinary backport deleted the legacy release workflow"
+        return
+    fi
     if [[ "$(git -C "${REPO}" rev-parse HEAD)" != "$(git -C "${REPO}" rev-parse origin/release/0.60)" ]]; then
         fail_test "script created an unsigned local commit"
         return
@@ -139,6 +147,30 @@ test_successful_backport() {
     ((++PASS))
 }
 
+test_release_metadata_backport_removes_legacy_workflow() {
+    setup_repo false
+    mkdir -p "${REPO}/.github/release-plans"
+    printf 'schemaVersion: 2\n' \
+        >"${REPO}/.github/release-plans/v0.60.1.yaml"
+    git -C "${REPO}" add .github/release-plans/v0.60.1.yaml
+    git -C "${REPO}" commit -q \
+        -m "chore(release): prepare v0.60.1"
+    SOURCE_COMMIT="$(git -C "${REPO}" rev-parse HEAD)"
+
+    run_backport
+    if ! git -C "${REPO}" diff --cached --name-only --diff-filter=D |
+        grep -Fqx '.github/workflows/release.yaml'; then
+        fail_test "release metadata backport kept the legacy workflow"
+        return
+    fi
+    if ! git -C "${REPO}" diff --cached --name-only --diff-filter=A |
+        grep -Fqx '.github/release-plans/v0.60.1.yaml'; then
+        fail_test "release metadata backport dropped the immutable plan"
+        return
+    fi
+    ((++PASS))
+}
+
 test_conflict_creates_safe_handoff() {
     local handoff
     local fresh="${TEST_ROOT}/fresh"
@@ -151,15 +183,15 @@ test_conflict_creates_safe_handoff() {
         return
     fi
     if git -C "${REPO}" grep -nE '^(<<<<<<<|=======|>>>>>>>)' HEAD -- \
-        ':!*.md' > /dev/null; then
+        ':!*.md' >/dev/null; then
         fail_test "conflict markers were committed"
         return
     fi
     handoff="${REPO}/out/conflict-handoff.md"
     local base_commit
     base_commit="$(git -C "${REPO}" rev-parse origin/release/0.60)"
-    if ! grep -Fq "git reset --hard ${base_commit}" "${handoff}" \
-                                                                 || ! grep -Fq "git cherry-pick -x ${SOURCE_COMMIT}" "${handoff}"; then
+    if ! grep -Fq "git reset --hard ${base_commit}" "${handoff}" ||
+        ! grep -Fq "git cherry-pick -x ${SOURCE_COMMIT}" "${handoff}"; then
         fail_test "handoff does not contain exact recovery commands"
         return
     fi
@@ -184,7 +216,7 @@ test_conflict_creates_safe_handoff() {
         origin/automation/backport-123-to-0.60
     git -C "${fresh}" reset --hard -q "${base_commit}"
     set +e
-    git -C "${fresh}" cherry-pick -x "${SOURCE_COMMIT}" > /dev/null 2>&1
+    git -C "${fresh}" cherry-pick -x "${SOURCE_COMMIT}" >/dev/null 2>&1
     cherry_pick_status=$?
     set -e
     if ((cherry_pick_status == 0)); then
@@ -267,7 +299,7 @@ test_rejects_advanced_release_branch() {
             --source-title 'fix: source change' \
             --source-url 'https://example.test/pull/123' --channel 0.60 \
             --output-dir out --expected-base "${stale_base}"
-    ) > /dev/null 2>&1; then
+    ) >/dev/null 2>&1; then
         fail_test "expected an advanced release branch to fail"
         return
     fi
@@ -280,6 +312,7 @@ main() {
     REPO="${TEST_ROOT}/repo"
 
     test_successful_backport
+    test_release_metadata_backport_removes_legacy_workflow
     test_conflict_creates_safe_handoff
     test_already_present_source_is_satisfied tip
     test_already_present_source_is_satisfied ancestor
