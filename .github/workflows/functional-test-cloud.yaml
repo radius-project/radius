@@ -532,12 +532,23 @@ jobs:
         # the unpinned 'latest', which could pull v0.43+).
         run: make install-bicep
 
-      - name: Login to Azure (for private test bicep-types ACR)
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+      - name: Checkout workflow Azure login script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
-          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          path: .workflow-azure-login
+          sparse-checkout: .github/scripts/azure-oidc-login.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Login to Azure (for private test bicep-types ACR)
+        run: node "${AZURE_LOGIN_SCRIPT}"
+        env:
+          AZURE_LOGIN_SCRIPT: ${{ github.workspace }}/.workflow-azure-login/.github/scripts/azure-oidc-login.mjs
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Publish Radius test bicep types
         env:
@@ -596,6 +607,10 @@ jobs:
           append: true
           message: |
             :x: Test recipe publishing failed
+
+      - name: Clear Azure session
+        if: always()
+        run: az account clear
 
   skip-tests:
     name: Skip Functional Tests
@@ -739,12 +754,23 @@ jobs:
            # Verify it is the expected rad CLI binary by running a harmless command
           ./bin/rad version >/dev/null 2>&1 || { echo "Downloaded rad binary is not a working rad CLI executable"; exit 1; }
 
-      - name: Login to Azure
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+      - name: Checkout workflow Azure login script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
-          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          path: .workflow-azure-login
+          sparse-checkout: .github/scripts/azure-oidc-login.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Login to Azure
+        run: node "${AZURE_LOGIN_SCRIPT}"
+        env:
+          AZURE_LOGIN_SCRIPT: ${{ github.workspace }}/.workflow-azure-login/.github/scripts/azure-oidc-login.mjs
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         continue-on-error: true
@@ -1217,6 +1243,10 @@ jobs:
             --yes \
             --verbose \
             --no-wait
+
+      - name: Clear Azure session
+        if: always()
+        run: az account clear
 
   report-test-results:
     # Report final test status. Runs after all tests complete (or are skipped).

@@ -77,7 +77,7 @@ func Test_prepareContourChart_LoadChartError(t *testing.T) {
 		ChartPath: "bad-contour-chart",
 	}
 
-	_, _, _, err := prepareContourChart(helmAction, options, "")
+	_, _, _, err := prepareContourChart(t.Context(), helmAction, options, "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load Helm chart")
 }
@@ -103,7 +103,7 @@ func Test_prepareContourChart_DoesNotMutateChartValues(t *testing.T) {
 		HostNetwork: true,
 	}
 
-	_, _, values, err := prepareContourChart(helmAction, options, "")
+	_, _, values, err := prepareContourChart(t.Context(), helmAction, options, "")
 	require.NoError(t, err)
 
 	// Verify that user values contain HostNetwork overrides
