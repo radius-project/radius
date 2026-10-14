@@ -19,20 +19,20 @@ package show
 import (
 	"context"
 
+	"github.com/spf13/cobra"
+
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/spf13/cobra"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
-
-// NewCommand creates an instance of the command and runner for the `rad env show` command.
-//
 
 // NewCommand creates a new Cobra command and a Runner object to show environment details, with flags for workspace,
 // resource group, environment name and output.
@@ -67,29 +67,23 @@ rad env show my-env --group my-env
 
 // Runner is the runner implementation for the `rad env show` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Workspace         *workspaces.Workspace
-	Output            output.Interface
-
-	EnvironmentName string
-	Format          string
+	ConfigHolder            *framework.ConfigHolder
+	Output                  output.Interface
+	Workspace               *workspaces.Workspace
+	EnvironmentName         string
+	Format                  string
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 }
 
 // NewRunner creates a new instance of the `rad env show` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 	}
 }
 
 // Validate runs validation for the `rad env show` command.
-//
-
-// Validate checks the request object for a workspace, scope, environment name, and output format, and sets the
-// corresponding fields in the Runner struct if they are found. If any of these fields are not found, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
@@ -97,45 +91,107 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	// Allow '--group' to override scope
-	scope, err := cli.RequireScope(cmd, *r.Workspace)
-	if err != nil {
-		return err
-	}
-	r.Workspace.Scope = scope
-
 	r.EnvironmentName, err = cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
 
-	format, err := cli.RequireOutput(cmd)
+	r.Workspace.Scope, err = cli.RequireScope(cmd, *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	r.Format = format
+	r.Format, err = cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-// Run runs the `rad env run` command.
-//
-
-// Run attempts to retrieve environment details from an ApplicationsManagementClient and write the details to an
-// output in a specified format, returning an error if any of these operations fail.
+// Run runs the `rad env show` command.
 func (r *Runner) Run(ctx context.Context) error {
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	env, err := client.GetEnvironment(ctx, r.EnvironmentName)
+	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
+
+	resp, err := envClient.Get(ctx, r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientGetOptions{})
 	if clients.Is404Error(err) {
-		return clierrors.Message("The environment %q was not found or has been deleted.", r.EnvironmentName)
+		return clierrors.Message("The environment %q does not exist. Please select a new environment and try again.", r.EnvironmentName)
 	} else if err != nil {
 		return err
 	}
 
-	return r.Output.WriteFormatted(r.Format, env, objectformats.GetResourceTableFormat())
+	if r.Format == output.FormatJson {
+		return r.Output.WriteFormatted(r.Format, resp.EnvironmentResource, objectformats.GetResourceTableFormat())
+	}
+
+	envProviders := []EnvProvider{}
+	if resp.EnvironmentResource.Properties.Providers != nil {
+		if resp.EnvironmentResource.Properties.Providers.Azure != nil {
+			azureProvider := EnvProvider{
+				Provider:   "azure",
+				Properties: formatAzureProperties(resp.EnvironmentResource.Properties.Providers.Azure),
+			}
+			envProviders = append(envProviders, azureProvider)
+		}
+
+		if resp.EnvironmentResource.Properties.Providers.Aws != nil {
+			awsProvider := EnvProvider{
+				Provider:   "aws",
+				Properties: formatAWSProperties(resp.EnvironmentResource.Properties.Providers.Aws),
+			}
+			envProviders = append(envProviders, awsProvider)
+		}
+
+		if resp.EnvironmentResource.Properties.Providers.Kubernetes != nil {
+			k8sProvider := EnvProvider{
+				Provider:   "kubernetes",
+				Properties: formatKubernetesProperties(resp.EnvironmentResource.Properties.Providers.Kubernetes),
+			}
+			envProviders = append(envProviders, k8sProvider)
+		}
+	}
+
+	recipePacks := []corerpv20250801.RecipePackResource{}
+	for _, rp := range resp.EnvironmentResource.Properties.RecipePacks {
+		id, err := resources.Parse(*rp)
+		if err != nil {
+			return err
+		}
+
+		recipePacks = append(recipePacks, corerpv20250801.RecipePackResource{
+			ID:   rp,
+			Name: new(id.Name()),
+		})
+	}
+
+	err = r.Output.WriteFormatted(r.Format, resp.EnvironmentResource, objectformats.GetResourceTableFormat())
+	if err != nil {
+		return err
+	}
+
+	if len(envProviders) > 0 {
+		r.Output.LogInfo("")
+		err = r.Output.WriteFormatted(r.Format, envProviders, objectformats.GetProvidersForEnvironmentTableFormat())
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(recipePacks) > 0 {
+		r.Output.LogInfo("")
+		err = r.Output.WriteFormatted(r.Format, recipePacks, objectformats.GetRecipePackTableFormat())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

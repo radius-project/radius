@@ -345,7 +345,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.ApplicationName != "" {
 		// Environment validation has already happened, so only create application if we have an environment
 		if r.Providers.Radius.EnvironmentID != "" {
-			if r.Preview {
+			if r.useRadiusCoreApplication() {
 				if err := r.createRadiusCoreApplicationIfNotFound(ctx); err != nil {
 					return err
 				}
@@ -495,6 +495,15 @@ func resolvePreview(cmd *cobra.Command) (bool, error) {
 		preview = strings.EqualFold(os.Getenv("RADIUS_PREVIEW"), "true")
 	}
 	return preview, nil
+}
+
+// useRadiusCoreApplication reports whether to create a Radius.Core application. It must match the
+// application ID derived in configureProviders.
+func (r *Runner) useRadiusCoreApplication() bool {
+	if r.EnvResult != nil && !r.EnvResult.UseApplicationsCore {
+		return true
+	}
+	return r.Preview
 }
 
 // createRadiusCoreApplicationIfNotFound creates the application as a Radius.Core/applications

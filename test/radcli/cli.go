@@ -256,7 +256,7 @@ type CreateOptions struct {
 	Group       string // Resource group name (--group)
 	Workspace   string // Workspace name (--workspace)
 	Environment string // Environment name (--environment)
-	Namespace   string // Kubernetes namespace (--namespace, for env create)
+	Namespace   string // Kubernetes namespace (--kubernetes-namespace, for env create)
 	Context     string // Kubernetes context (--context, for workspace create)
 	Force       bool   // Overwrite if exists (--force, for workspace create)
 	Output      string // Output format (--output)
@@ -350,7 +350,7 @@ func (cli *CLI) EnvCreate(ctx context.Context, environmentName string, opts ...C
 	if len(opts) > 0 {
 		opt := opts[0]
 		if opt.Namespace != "" {
-			args = append(args, "--namespace", opt.Namespace)
+			args = append(args, "--kubernetes-namespace", opt.Namespace)
 		}
 		if opt.Group != "" {
 			args = append(args, "--group", opt.Group)
@@ -588,14 +588,13 @@ func (cli *CLI) RecipePackShow(ctx context.Context, recipepackName, groupName st
 	return cli.RunCommand(ctx, args)
 }
 
-// EnvironmentCreatePreview runs the "env create" command for the specified environment name and returns the output as a string, returning
+// EnvironmentCreatePreview runs "env create" for a Radius.Core environment and returns the output as a string, returning
 // an error if the command fails.
 func (cli *CLI) EnvironmentCreatePreview(ctx context.Context, environmentName, groupName, kubernetesNamespace string) (string, error) {
 	args := []string{
 		"env",
 		"create",
 		environmentName,
-		"--preview",
 	}
 
 	if kubernetesNamespace != "" {
@@ -615,7 +614,6 @@ func (cli *CLI) EnvironmentListPreview(ctx context.Context, groupName string) (s
 	args := []string{
 		"env",
 		"list",
-		"--preview",
 	}
 
 	if groupName != "" {
@@ -625,7 +623,7 @@ func (cli *CLI) EnvironmentListPreview(ctx context.Context, groupName string) (s
 	return cli.RunCommand(ctx, args)
 }
 
-// EnvironmentUpdatePreview runs the "env update --preview" command for the specified environment name
+// EnvironmentUpdatePreview runs the "env update" command for the specified environment name
 // and returns the output as a string, returning an error if the command fails.
 // Optional parameters groupName, recipePack, and kubernetesNamespace are applied when non-empty.
 func (cli *CLI) EnvironmentUpdatePreview(ctx context.Context, environmentName, groupName, recipePack, kubernetesNamespace string) (string, error) {
@@ -633,7 +631,6 @@ func (cli *CLI) EnvironmentUpdatePreview(ctx context.Context, environmentName, g
 		"env",
 		"update",
 		environmentName,
-		"--preview",
 	}
 
 	if recipePack != "" {
@@ -658,7 +655,6 @@ func (cli *CLI) EnvironmentShowPreview(ctx context.Context, environmentName, gro
 		"env",
 		"show",
 		environmentName,
-		"--preview",
 	}
 
 	if groupName != "" {
@@ -668,14 +664,13 @@ func (cli *CLI) EnvironmentShowPreview(ctx context.Context, environmentName, gro
 	return cli.RunCommand(ctx, args)
 }
 
-// EnvironmentDeletePreview runs the "env delete" command with the --preview flag for the specified environment name
+// EnvironmentDeletePreview runs the "env delete" command for the specified Radius.Core environment name
 // and returns the output as a string, returning an error if the command fails.
 func (cli *CLI) EnvironmentDeletePreview(ctx context.Context, environmentName, groupName string) (string, error) {
 	args := []string{
 		"env",
 		"delete",
 		environmentName,
-		"--preview",
 		"--yes",
 	}
 
