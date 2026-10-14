@@ -174,11 +174,7 @@ If Alice points at production, step 5 fails and Radius creates nothing.
 
 #### Piece 1: Identity
 
-**Using Kubernetes proxy identity.** Kubernetes sends the caller in [authenticating proxy](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authenticating-proxy) headers. Any client that reaches UCP could forge them unless UCP authenticates the proxy.
-
-The [internal design](./2026-09-internal-component-authorization.md) makes UCP read these headers only after it verifies the Kubernetes API server's client certificate. UCP rejects identity headers on every other connection.
-
-UCP maps trusted headers to principals:
+Kubernetes sends the caller in [authenticating proxy](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#authenticating-proxy) headers, which UCP reads only from the verified API server ([internal design](./2026-09-internal-component-authorization.md)). UCP maps them to principals:
 
 | Header value                                       | Principal                                                                                       |
 |----------------------------------------------------|-------------------------------------------------------------------------------------------------|
@@ -194,11 +190,11 @@ UCP checks assignments for the user and each group. An admin can assign `reader`
 - Installations with a recreated control plane, such as Repo Radius, set a new Helm value `rbac.kubernetesIssuer`. Example: `kubernetes:repo-radius/<owner>/<repo>`.
 - The CLI adds the issuer. Examples use `kubernetes`.
 
-**User names and groups.** Clusters that use OIDC should choose a stable user-name claim, such as `sub`, so assignments keep matching. `rad auth whoami` shows the principal that Radius sees. UCP stores the user name as a display name. Admins can set `principal.displayName` for groups. Kubernetes reads group membership on each request, so a group change applies after the Kubernetes login refreshes.
+**User names and groups.** Clusters that use OIDC should choose a stable user-name claim, such as `sub`, so assignments keep matching. `rad auth whoami` shows the principal that Radius sees. Kubernetes reads group membership on each request, so a group change applies after the Kubernetes login refreshes.
 
 **Kubernetes RBAC gates access to Radius.** Kubernetes still checks access to the `api.ucp.dev` API group before it forwards the request. The Helm chart adds ClusterRole `radius-api-user` for that gate. With Radius RBAC on, admins can bind it broadly, for example to `system:authenticated`, and let Radius decide.
 
-**Radius services** use mTLS from the internal design. The deployment engine and the controller act for another principal. See [Clients](#clients-cli-dashboard-automation).
+The deployment engine and the controller act for another principal. See [Clients](#clients-cli-dashboard-automation).
 
 #### Piece 2: Access model
 
