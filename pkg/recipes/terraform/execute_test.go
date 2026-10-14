@@ -17,6 +17,8 @@ limitations under the License.
 package terraform
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -27,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	dm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/stretchr/testify/require"
@@ -204,7 +207,7 @@ func TestGenerateConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			_, err = e.generateConfig(ctx, tf, tc.opts, backends.CloudBackendAuth{}, requireValidOutputMappings)
+			_, err = e.generateConfig(ctx, tf, tc.opts, backends.CloudBackendAuth{}, requireValidOutputMappings, strictParameterResolution)
 			require.Error(t, err)
 			require.ErrorContains(t, err, tc.err)
 		})
@@ -228,8 +231,90 @@ func TestGenerateConfigRejectsInvalidOutputMappingBeforeProviderSetup(t *testing
 	}
 
 	e := executor{}
-	_, err = e.generateConfig(t.Context(), tf, options, backends.CloudBackendAuth{}, requireValidOutputMappings)
+	_, err = e.generateConfig(t.Context(), tf, options, backends.CloudBackendAuth{}, requireValidOutputMappings, strictParameterResolution)
 	require.EqualError(t, err, `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches outputs["host"] -> "missing"; available module outputs: "endpoint"`)
+}
+
+func TestGenerateConfigDirectModuleParameterResolution(t *testing.T) {
+	tests := []struct {
+		name           string
+		validationMode outputMappingValidationMode
+		paramMode      parameterResolutionMode
+		expectedErr    string
+		expectedParams map[string]any
+	}{
+		{
+			name:           "deploy fails on unresolved expression",
+			validationMode: requireValidOutputMappings,
+			paramMode:      strictParameterResolution,
+			expectedErr:    `parameter "missing": unresolved expression {{context.resource.properties.missing}}: expression evaluated to null`,
+		},
+		{
+			name:           "delete passes unresolved expression through",
+			validationMode: skipOutputMappingValidation,
+			paramMode:      bestEffortParameterResolution,
+			expectedParams: map[string]any{
+				"name":    "widget",
+				"missing": "{{context.resource.properties.missing}}",
+				"size":    "large",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			workingDir := t.TempDir()
+			tf, err := tfexec.NewTerraform(workingDir, os.Args[0])
+			require.NoError(t, err)
+			require.NoError(t, tf.SetEnv(map[string]string{terraformGetTestHelper: "1"}))
+
+			kubernetesClients := kubernetesclientprovider.KubernetesClientProvider{}
+			kubernetesClients.SetClientGoClient(fake.NewSimpleClientset())
+
+			options := Options{
+				EnvConfig: &recipes.Configuration{},
+				EnvRecipe: &recipes.EnvironmentDefinition{
+					Name:         "test-recipe",
+					TemplatePath: "test/module/source",
+					ResourceType: "Test.Resources/widgets",
+					Parameters: map[string]any{
+						"name": "{{context.resource.name}}",
+						"size": "{{context.resource.properties.tier == \"premium\" ? \"large\" : \"small\"}}",
+					},
+				},
+				ResourceRecipe: &recipes.ResourceMetadata{
+					Name:          "widget",
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/widgets/widget",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/test-env",
+					Properties:    map[string]any{"tier": "premium"},
+					Parameters: map[string]any{
+						"missing": "{{context.resource.properties.missing}}",
+					},
+				},
+			}
+
+			e := executor{kubernetesClients: kubernetesClients}
+			_, err = e.generateConfig(t.Context(), tf, options, backends.CloudBackendAuth{}, tc.validationMode, tc.paramMode)
+			if tc.expectedErr != "" {
+				require.ErrorContains(t, err, tc.expectedErr)
+				_, ok := errors.AsType[*paramresolver.ResolutionError](err)
+				require.True(t, ok, "expected a *paramresolver.ResolutionError, got %T", err)
+				return
+			}
+			require.NoError(t, err)
+
+			content, err := os.ReadFile(filepath.Join(workingDir, "main.tf.json"))
+			require.NoError(t, err)
+			var generated struct {
+				Module map[string]map[string]any `json:"module"`
+			}
+			require.NoError(t, json.Unmarshal(content, &generated))
+			module := generated.Module["test-recipe"]
+			for key, expected := range tc.expectedParams {
+				require.Equal(t, expected, module[key], "parameter %q", key)
+			}
+		})
+	}
 }
 
 func TestValidateOutputMappings(t *testing.T) {
