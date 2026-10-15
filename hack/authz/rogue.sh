@@ -48,7 +48,7 @@ Environment:
   AUTHZ_ROGUE_IMAGE   Override the image recorded by up.sh in radius-authz-kit.
 
 Request flags (before the URL): -X, -H (repeatable), --data, --cert, --key,
---cacert, -k, --max-time (duration, e.g. 30s). Curl-only flags are not supported.
+--cacert, -k, --max-time (duration, e.g. 30s). Other flags are not supported.
 Output: response body followed by radius-rogue-status:<HTTP code>.
 Exit codes: 0 HTTP response (including 4xx/5xx), 1 transport failure, 2 usage.
 
