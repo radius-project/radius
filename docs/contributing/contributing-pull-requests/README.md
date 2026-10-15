@@ -88,6 +88,10 @@ The commit-signature verification workflow posts a non-blocking reminder when an
 
 Open the pull request from your fork against `main`. The form is pre-populated with our [template](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md). Complete its summary, reason for change, test instructions, and per-file change summary so reviewers can understand both the intent and the verification.
 
+Remove the template's HTML comments from the PR description after filling out the sections.
+
+The **How to test** section must give reproducible instructions a reviewer can follow: prerequisites, commands or actions, and expected outcomes. This section should not contain a list of validations performed by the PR author when creating the PR.
+
 Every non-Dependabot pull request must have exactly one release-impact label:
 
 - **`pr:standard`** — ongoing maintenance, minor improvements, documentation updates, and routine development work.
