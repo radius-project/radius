@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -50,6 +51,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
@@ -1034,8 +1036,45 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 
 			// Create a RadiusCoreClientFactory for testing
 			rootScope := "/planes/radius/local/resourceGroups/default"
-			radiusCoreClientFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(rootScope, nil, nil)
+			type environmentRequest struct {
+				rootScope string
+				name      string
+				resource  corerpv20250801.EnvironmentResource
+			}
+			var environmentRequests []environmentRequest
+			envServer := func() corerpfake.EnvironmentsServer {
+				server := test_client_factory.WithEnvironmentServerNoError()
+				createOrUpdate := server.CreateOrUpdate
+				server.CreateOrUpdate = func(
+					ctx context.Context,
+					rootScope string,
+					environmentName string,
+					resource corerpv20250801.EnvironmentResource,
+					options *corerpv20250801.EnvironmentsClientCreateOrUpdateOptions,
+				) (azfake.Responder[corerpv20250801.EnvironmentsClientCreateOrUpdateResponse], azfake.ErrorResponder) {
+					environmentRequests = append(environmentRequests, environmentRequest{rootScope: rootScope, name: environmentName, resource: resource})
+					return createOrUpdate(ctx, rootScope, environmentName, resource, options)
+				}
+				return server
+			}
+			radiusCoreClientFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(rootScope, envServer, nil)
 			require.NoError(t, err)
+
+			expectedProviders := &corerpv20250801.Providers{
+				Kubernetes: &corerpv20250801.ProvidersKubernetes{Namespace: to.Ptr("defaultNamespace")},
+			}
+			if tc.azureProvider != nil {
+				expectedProviders.Azure = &corerpv20250801.ProvidersAzure{
+					SubscriptionID:    to.Ptr(tc.azureProvider.SubscriptionID),
+					ResourceGroupName: to.Ptr(tc.azureProvider.ResourceGroup),
+				}
+			}
+			if tc.awsProvider != nil {
+				expectedProviders.Aws = &corerpv20250801.ProvidersAws{
+					AccountID: to.Ptr(tc.awsProvider.AccountID),
+					Region:    to.Ptr(tc.awsProvider.Region),
+				}
+			}
 
 			credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
 			if tc.azureProvider != nil {
@@ -1153,6 +1192,17 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 
 			err = runner.Run(t.Context())
 			require.NoError(t, err)
+
+			require.Len(t, environmentRequests, 1)
+			require.Equal(t, strings.TrimPrefix(rootScope, "/"), environmentRequests[0].rootScope)
+			require.Equal(t, "default", environmentRequests[0].name)
+			require.Equal(t, corerpv20250801.EnvironmentResource{
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &corerpv20250801.EnvironmentProperties{
+					Providers:   expectedProviders,
+					RecipePacks: []*string{to.Ptr(recipepack.DefaultRecipePackID())},
+				},
+			}, environmentRequests[0].resource)
 
 			require.FileExists(t, filepath.Join(tempDir, "bicepconfig.json"))
 			require.NoFileExists(t, filepath.Join(tempDir, "app.bicep"))
