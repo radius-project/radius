@@ -212,7 +212,7 @@ export function verifyReleaseManifest({
     compare(
       "images",
       `${target.name} reference`,
-      `${targets.imageRegistry}/${target.name}:${target.radiusBuild ? version : artifactTag}`,
+      `${targets.imageRegistry}/${target.name}:${version}`,
       image?.reference
     );
     if (target.radiusBuild) {
@@ -274,7 +274,7 @@ export function verifyReleaseManifest({
       `${target.name} chart reference`,
       true,
       observed.helm?.renderedImages?.includes(
-        `${targets.imageRegistry}/${target.name}:${artifactTag}`
+        `${targets.imageRegistry}/${target.name}:${version}`
       )
     );
   }
