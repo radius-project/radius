@@ -23,7 +23,7 @@ spec:
       type: RuntimeDefault
   containers:
     - name: curl
-      image: ghcr.io/radius-project/mirror/curlimages/curl:8.17.0
+      image: docker.io/curlimages/curl:8.17.0@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40
       command: ["sleep", "infinity"]
       securityContext:
         # curl_user in the curl image. The image names its user rather than its UID.
