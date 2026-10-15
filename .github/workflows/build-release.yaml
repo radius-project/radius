@@ -1021,6 +1021,7 @@ jobs:
       contents: write # Required for publishing the draft GitHub Release
       packages: write # Required for promoting image and CLI OCI aliases
       actions: read
+      deployments: read # Required to recheck the previous RC's coordination receipts
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1068,6 +1069,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERIFY_APPROVED_MANIFEST: dist/approved/release-manifest.json
         run: make recheck-release-publication
+
+      - name: Recheck RC prerequisites after approval
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: check-rc
+          INPUT_PLAN_FILE: dist/verification/plan.json
+        with:
+          retries: 5
+          script: |
+            const { default: coordinate } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
+            await coordinate({ github, context, core })
 
       - name: Select release aliases
         id: alias-policy

@@ -404,10 +404,23 @@ export async function coordinateTask({
       run.html_url,
       `Retry after attempt ${run.run_attempt}`
     );
-    await call(
-      "POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs",
-      { run_id: runID }
-    );
+    try {
+      await call(
+        "POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs",
+        { run_id: runID }
+      );
+    } catch (error) {
+      // A 4xx response proves no attempt was created; keep the marker otherwise.
+      const status = Number(error?.status ?? error?.response?.status ?? 0);
+      if (status >= 400 && status < 500) {
+        await record(
+          "failure",
+          run.html_url,
+          `Rerun rejected with HTTP ${status}; resume to retry`
+        );
+      }
+      throw error;
+    }
   }
   while (run.status !== "completed" || run.run_attempt < requiredAttempt) {
     if (now() >= deadline)

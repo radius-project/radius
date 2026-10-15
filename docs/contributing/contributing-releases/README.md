@@ -152,7 +152,7 @@ If `main` advances while the generated release pull request is open, rerun Prepa
 
 If an explicit pull request still needs a backport, the workflow adds the channel label and fails with the pending pull request number. Merge the generated backport pull request, then rerun Prepare Release. It never silently excludes a selected backport.
 
-Final preparation also requires successful coordination receipts for the plan's previous RC: both upmerges must be merged and the subsequent sample tests must pass. This check runs again at publication, including when preparation used the break-glass path. Receipts exist only for RCs published with this coordination in place; if the last validated RC predates it, cut another RC before preparing the final.
+Final preparation also requires successful coordination receipts for the plan's previous RC: both upmerges must be merged and the subsequent sample tests must pass. This check runs again during verification and after publication approval, before any alias moves, including when preparation used the break-glass path. Receipts exist only for RCs published with this coordination in place; if the last validated RC predates it, cut another RC before preparing the final.
 
 ### Backporting changes to a release branch
 

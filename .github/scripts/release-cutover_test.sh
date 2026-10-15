@@ -101,6 +101,11 @@ test_publication_gate() {
         (."finalize-release".if | contains("needs.approve-publication.result")) and
         (."finalize-release".steps | map(.name) |
           index("Recheck outputs after approval") < index("Select release aliases")) and
+        ."finalize-release".permissions.deployments == "read" and
+        (."finalize-release".steps | map(.name) |
+          index("Recheck outputs after approval") < index("Recheck RC prerequisites after approval") and
+          index("Recheck RC prerequisites after approval") < index("Select release aliases")) and
+        (."finalize-release".steps | any(.env.INPUT_MODE == "check-rc")) and
         (."finalize-release".steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json"))
     ' >/dev/null; then
         fail_test "failed verification or missing approval can reach publication"

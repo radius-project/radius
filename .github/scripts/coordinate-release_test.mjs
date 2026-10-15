@@ -249,6 +249,61 @@ test("failed downstream work retries the same run ID", async () => {
   );
 });
 
+test("an explicitly rejected rerun can be requested again on resume", async () => {
+  for (const status of [403, 429]) {
+    const state = fixture();
+    const remote = state.remote;
+    state.run.conclusion = "failure";
+    await assert.rejects(() => coordinateTask(state), /docs-upmerge failed/);
+    state.remote = async (route, request) => {
+      if (route.endsWith("/rerun-failed-jobs")) {
+        state.calls.push({ route, request });
+        throw Object.assign(new Error("rerun rejected"), { status });
+      }
+      return remote(route, request);
+    };
+    await assert.rejects(() => coordinateTask(state), /rerun rejected/);
+    assert.equal(state.statuses.at(-1).state, "failure", `${status}`);
+    state.remote = remote;
+    await coordinateTask(state);
+    assert.equal(state.run.run_attempt, 2, `${status}`);
+    assert.equal(
+      state.calls.filter((call) => call.route.endsWith("/rerun-failed-jobs"))
+        .length,
+      2,
+      `${status}`
+    );
+  }
+});
+
+test("an uncertain rerun outcome is never requested twice", async () => {
+  const state = fixture();
+  const remote = state.remote;
+  let clock = 0;
+  state.deadline = 10;
+  state.now = () => clock;
+  state.sleep = async () => {
+    clock += 10;
+  };
+  state.run.conclusion = "failure";
+  await assert.rejects(() => coordinateTask(state), /docs-upmerge failed/);
+  state.remote = async (route, request) => {
+    if (route.endsWith("/rerun-failed-jobs")) {
+      state.calls.push({ route, request });
+      throw new Error("lost response after acceptance");
+    }
+    return remote(route, request);
+  };
+  await assert.rejects(() => coordinateTask(state), /lost response/);
+  assert.equal(state.statuses.at(-1).description, "Retry after attempt 1");
+  await assert.rejects(() => coordinateTask(state), /Timed out monitoring/);
+  assert.equal(
+    state.calls.filter((call) => call.route.endsWith("/rerun-failed-jobs"))
+      .length,
+    1
+  );
+});
+
 test("rejects a conflicting source and a receipt pointing to another workflow", async () => {
   const state = fixture();
   await coordinateTask(state);

@@ -18,6 +18,7 @@ export function verifyReleaseManifest({
   targets,
   observed,
   imageLocks,
+  cliLock,
   controllerLock,
   sourceSha,
   parentSha,
@@ -359,6 +360,8 @@ export function verifyReleaseManifest({
   delete stableObserved.observedAt;
   delete stableObserved.release.publishedAt;
   delete stableObserved.release.draft;
+  // Promotion reads the lock, so the approved snapshot must bind it.
+  stableObserved.cli = { ...stableObserved.cli, ociLock: cliLock ?? null };
   return {
     schemaVersion: 1,
     tag: plan.version,
@@ -404,6 +407,7 @@ async function main(directory, mode) {
     targets: await load("targets.json"),
     observed,
     imageLocks: await load("release-image-digests.json"),
+    cliLock: await load("release-cli-oci.json"),
     controllerLock: await load("controller-lock.json")
   });
   await writeFile(

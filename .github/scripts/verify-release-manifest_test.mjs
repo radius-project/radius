@@ -118,6 +118,20 @@ function fixture(releaseType = "final") {
     imageLocks: targets.images
       .filter((image) => image.radiusBuild)
       .map((image) => ({ name: image.name, digest })),
+    cliLock: {
+      version,
+      sourceSha,
+      artifacts: targets.cliAssets.map((asset) => {
+        const repository = `${targets.imageRegistry}/rad/${asset.os}-${asset.arch}`;
+        return {
+          name: asset.name,
+          repository,
+          reference: `${repository}:${version}`,
+          digest,
+          immutableReference: `${repository}@${digest}`
+        };
+      })
+    },
     controllerLock: {
       releaseSourceCommit: sourceSha,
       deploymentEngine: { signedTag: plan.version, digest }
@@ -279,6 +293,12 @@ test("approval waits cannot replace verified digests or bypass installation", ()
     () => recheckPublication(verifyReleaseManifest(changedSbom), approved),
     /changed after installation/
   );
+  const changedLock = fixture();
+  changedLock.cliLock.artifacts[0].digest = `sha256:${"d".repeat(64)}`;
+  assert.throws(
+    () => recheckPublication(verifyReleaseManifest(changedLock), approved),
+    /changed after installation/
+  );
 });
 
 test("the manifest command verifies files and rejects a changed approved snapshot", async () => {
@@ -291,7 +311,6 @@ test("the manifest command verifies files and rejects a changed approved snapsho
       SPDXID: "SPDXRef-DOCUMENT",
       name: "radius",
       dataLicense: "CC0-1.0",
-      name: "radius",
       documentNamespace: "https://example.test/sbom",
       creationInfo: {
         created: "2026-09-09T00:00:00Z",
@@ -316,6 +335,7 @@ test("the manifest command verifies files and rejects a changed approved snapsho
       "versions.json": input.versions,
       "observed.json": input.observed,
       "release-image-digests.json": input.imageLocks,
+      "release-cli-oci.json": input.cliLock,
       "controller-lock.json": input.controllerLock,
       "context.json": {
         sourceSha,
@@ -353,6 +373,20 @@ test("the manifest command verifies files and rejects a changed approved snapsho
     );
     result = execute("recheck");
     assert.equal(result.status, 0, result.stderr);
+    const replacedLock = structuredClone(input.cliLock);
+    replacedLock.artifacts[0].digest = `sha256:${"d".repeat(64)}`;
+    replacedLock.artifacts[0].immutableReference = `${replacedLock.artifacts[0].repository}@${replacedLock.artifacts[0].digest}`;
+    await writeFile(
+      path.join(directory, "release-cli-oci.json"),
+      JSON.stringify(replacedLock)
+    );
+    result = execute("recheck");
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /changed after installation/);
+    await writeFile(
+      path.join(directory, "release-cli-oci.json"),
+      JSON.stringify(input.cliLock)
+    );
     input.observed.helm.descriptor.digest = `sha256:${"d".repeat(64)}`;
     await writeFile(
       path.join(directory, "observed.json"),
