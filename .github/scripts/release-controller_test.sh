@@ -285,9 +285,10 @@ test_frozen_output_contract() {
         assert_json "${CONTROLLER}" \
             ".jobs.\"${job}\".steps[] |
             select(.name == \"Download approved release contract\") |
-            [.uses, .with.artifact-ids, .with.path, .with.merge-multiple]" \
-            "[\"actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c\",\"\${{ needs.validate.outputs.plan-artifact-id }}\",\"\${{ runner.temp }}/release-controller\",true]" \
-            "${job} must download the exact validated artifact into the expected path"
+            [(.uses | test(\"^actions/download-artifact@[0-9a-fA-F]{40}\$\")),
+            .with.artifact-ids, .with.path, .with.merge-multiple]" \
+            "[true,\"\${{ needs.validate.outputs.plan-artifact-id }}\",\"\${{ runner.temp }}/release-controller\",true]" \
+            "${job} must use SHA-pinned actions/download-artifact to download the exact validated artifact into the expected path"
     done
 }
 
