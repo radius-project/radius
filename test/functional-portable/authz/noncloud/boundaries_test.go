@@ -30,6 +30,12 @@ func Test_Boundary_UnauthenticatedCallToApplicationsRP(t *testing.T) {
 	t.Skip("enabled by A4")
 }
 
+// Expected: a pod presenting an RSA-1024 (or otherwise disallowed) certificate signed by the
+// Radius CA fails the mTLS handshake, and the receiver logs PeerCertificateInvalid.
+func Test_Boundary_DisallowedPeerKey(t *testing.T) {
+	t.Skip("enabled by A4")
+}
+
 // Expected: a request to UCP carrying a forged x-remote-user header, without a verified
 // Kubernetes proxy certificate, is rejected with InvalidAuthenticationInfo (401).
 func Test_Boundary_ForgedRemoteUserHeader(t *testing.T) {
@@ -70,4 +76,11 @@ func Test_Boundary_TemplateClusterRoleDenied(t *testing.T) {
 // by admission with AdmissionPolicyDenied (403).
 func Test_Boundary_ControlPlaneSecretReferenceDenied(t *testing.T) {
 	t.Skip("enabled by E2")
+}
+
+// Expected: with --mtls-provider external, a ServiceAccount token issued for one receiver
+// and replayed to another component is rejected with InvalidAuthenticationInfo (401)
+// because the audience does not match.
+func Test_Boundary_ExternalModeTokenReplay(t *testing.T) {
+	t.Skip("enabled by A11")
 }
