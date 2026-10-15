@@ -130,7 +130,7 @@ assert_calls_ordered() {
 #   MOCK_SECRET_KEYS     space-separated keys of the component Secret, or
 #                        absent/timeout/forbidden/context for read errors.
 #   MOCK_CONTEXT_EXISTS  "false" makes "config view --context" fail.
-#   MOCK_POD_EXISTS      "false" makes "get pod" fail so the pod is created.
+#   MOCK_POD_EXISTS      "false" returns no pod so the pod is created.
 #   MOCK_KIT_MODE        the namespace's kit mode label, empty for no label,
 #                        or absent/timeout/forbidden for namespace read errors.
 mkdir -p "${TEST_ROOT}/bin"
@@ -171,7 +171,19 @@ case "$1 $2" in
         done
         ;;
     "get pod")
-        [[ "${MOCK_POD_EXISTS:-true}" == "true" ]] || exit 1
+        if [[ "${MOCK_POD_EXISTS:-true}" == "true" ]]; then
+            echo "${MOCK_POD_IMAGE:-localhost:5001/rogue-client:authz-test}"
+        fi
+        ;;
+    "get configmap")
+        if [[ "${MOCK_IMAGE_MISSING:-false}" == true ]]; then
+            echo "configmap not found" >&2
+            exit 1
+        fi
+        echo "localhost:5001/rogue-client:authz-test"
+        ;;
+    "create configmap")
+        echo "apiVersion: v1"
         ;;
     "get namespace")
         if [[ -n "${MOCK_KUBECONFIG_PATH:-}" ]]; then
@@ -204,7 +216,10 @@ case "$1 $2" in
     "logs deployment/"*)
         echo "authz mode=${MOCK_INSTALL_MODE}"
         ;;
-    "wait pod" | "apply --namespace" | "delete pod")
+    "apply --namespace")
+        cat >"${MOCK_MANIFEST}"
+        ;;
+    "wait pod" | "delete pod")
         ;;
     "config view")
         if [[ "${MOCK_CONTEXT_EXISTS}" == "false" ]]; then
@@ -215,7 +230,8 @@ case "$1 $2" in
         ;;
     exec*)
         [[ -t 0 ]] || cat >/dev/null
-        echo "exec ok"
+        echo "radius-rogue-status:${MOCK_HTTP_STATUS:-200}"
+        exit "${MOCK_REQUEST_STATUS:-0}"
         ;;
     *)
         echo "unexpected kubectl call: $*" >&2
@@ -279,12 +295,15 @@ for tool in docker kind make rad helm go uname; do
     ln -s workflow-tool "${TEST_ROOT}/bin/${tool}"
 done
 export MOCK_CALLS="${TEST_ROOT}/kubectl-calls.txt"
+export MOCK_MANIFEST="${TEST_ROOT}/rogue-pod.yaml"
 export MOCK_SECRET_KEYS="absent"
 export MOCK_CONTEXT_EXISTS="true"
 unset AUTHZ_COMPONENT_SECRET_FORMAT AUTHZ_KUBE_CONTEXT AUTHZ_CLUSTER_NAME \
     AUTHZ_RADIUS_NAMESPACE AUTHZ_ROGUE_NAMESPACE MOCK_KIT_MODE \
     MOCK_KUBECONFIG_PATH RAD AUTHZ_REGISTRY_NAME AUTHZ_REGISTRY_PORT \
-    MOCK_INSTALL_STATUS MOCK_ARCHITECTURE MOCK_BUILD_STATUS
+    MOCK_INSTALL_STATUS MOCK_ARCHITECTURE MOCK_BUILD_STATUS \
+    AUTHZ_ROGUE_IMAGE MOCK_POD_IMAGE MOCK_IMAGE_MISSING MOCK_REQUEST_STATUS \
+    MOCK_HTTP_STATUS
 
 reset_calls() {
     : >"${MOCK_CALLS}"
@@ -373,18 +392,47 @@ assert_status 2
 assert_output_contains "expected off, dryRun, or enforce"
 assert_calls_not_contain "kubectl"
 
-echo "Test: rogue.sh exec runs curl in the rogue pod and drops a leading curl"
+echo "Test: rogue.sh exec runs the shell-free request client"
 reset_calls
-run_kit rogue.sh exec -- curl -s http://applications-rp.radius-system:5443/healthz
+run_kit rogue.sh exec -- -H 'X-Test: one' -H 'X-Test: two' --max-time 5s http://applications-rp.radius-system:5443/healthz
 assert_status 0
-assert_calls_contain "--context kind-radius-authz exec radius-authz-rogue --namespace default --container curl -- curl -s http://applications-rp.radius-system:5443/healthz"
+assert_calls_contain "--context kind-radius-authz exec radius-authz-rogue --namespace default --container rogue -- /rogue-client request -H X-Test: one -H X-Test: two --max-time 5s http://applications-rp.radius-system:5443/healthz"
+assert_output_contains "radius-rogue-status:200"
 
 echo "Test: rogue.sh honors --namespace"
 reset_calls
-MOCK_POD_EXISTS=false run_kit rogue.sh --namespace team-a exec -- -s http://example
+MOCK_POD_EXISTS=false run_kit rogue.sh --namespace team-a exec -- http://example
 assert_status 0
 assert_calls_contain "apply --namespace team-a"
-assert_calls_contain "exec radius-authz-rogue --namespace team-a --container curl -- curl -s http://example"
+assert_calls_contain "exec radius-authz-rogue --namespace team-a --container rogue -- /rogue-client request http://example"
+if grep -Fq 'image: localhost:5001/rogue-client:authz-test' "${MOCK_MANIFEST}" &&
+    ! grep -Fq AUTHZ_ROGUE_IMAGE "${MOCK_MANIFEST}"; then
+    pass_test
+else
+    fail_test "rogue pod must use the recorded, rendered image"
+fi
+
+echo "Test: rogue.sh refuses stale pods and missing image settings"
+reset_calls
+MOCK_POD_IMAGE=old-image run_kit rogue.sh up
+assert_status 2
+assert_output_contains "down, then retry"
+assert_calls_not_contain "wait pod"
+MOCK_IMAGE_MISSING=true run_kit rogue.sh up
+assert_status 2
+assert_output_contains "run hack/authz/up.sh first"
+AUTHZ_ROGUE_IMAGE='bad|image' run_kit rogue.sh up
+assert_status 2
+assert_output_contains "invalid rogue-client image"
+
+echo "Test: request status and HTTP error responses propagate"
+for code in 1 2; do
+    MOCK_REQUEST_STATUS="${code}" run_kit rogue.sh exec -- http://example
+    assert_status "${code}"
+done
+MOCK_HTTP_STATUS=403 run_kit rogue.sh exec -- http://example
+assert_status 0
+assert_output_contains "radius-rogue-status:403"
 
 echo "Test: rogue.sh openssl runs in the openssl container"
 reset_calls
@@ -404,14 +452,14 @@ assert_status 2
 assert_output_contains "a command is required"
 run_kit rogue.sh exec
 assert_status 2
-assert_output_contains "no curl arguments"
+assert_output_contains "no request arguments"
 run_kit rogue.sh bogus
 assert_status 2
 
 echo "Test: as-component.sh names the missing Secret"
 reset_calls
 export MOCK_SECRET_KEYS="absent"
-run_kit as-component.sh dynamic-rp -- -s http://applications-rp.radius-system:5443/
+run_kit as-component.sh dynamic-rp -- http://applications-rp.radius-system:5443/
 assert_status 3
 assert_output_contains "Component certificate Secret not found: radius-system/dynamic-rp-mtls"
 assert_output_contains "AUTHZ_COMPONENT_SECRET_FORMAT"
@@ -421,7 +469,7 @@ assert_calls_not_contain " exec "
 echo "Test: as-component.sh preserves Secret read errors"
 for error in timeout forbidden context; do
     reset_calls
-    MOCK_SECRET_KEYS="${error}" run_kit as-component.sh ucp -- -s http://x
+    MOCK_SECRET_KEYS="${error}" run_kit as-component.sh ucp -- http://x
     assert_status 1
     assert_output_contains "Error reading Secret: ${error}"
     assert_output_not_contains "Secret not found"
@@ -434,27 +482,29 @@ echo "Test: as-component.sh uses AUTHZ_COMPONENT_SECRET_FORMAT"
 reset_calls
 STATUS=0
 OUTPUT="$(AUTHZ_COMPONENT_SECRET_FORMAT="radius-%s-cert" PATH="${TEST_ROOT}/bin:${PATH}" \
-    bash "${KIT_DIR}/as-component.sh" ucp -- -s http://x 2>&1)" || STATUS=$?
+    bash "${KIT_DIR}/as-component.sh" ucp -- http://x 2>&1)" || STATUS=$?
 assert_status 3
 assert_output_contains "radius-system/radius-ucp-cert"
 
 echo "Test: as-component.sh reports a Secret without a CA"
 reset_calls
 export MOCK_SECRET_KEYS="tls.crt tls.key"
-run_kit as-component.sh ucp -- -s http://x
+run_kit as-component.sh ucp -- http://x
 assert_status 3
 assert_output_contains "The Secret has no 'ca.crt' key."
 assert_calls_not_contain " exec "
 
-echo "Test: as-component.sh copies the certificate and calls curl with it"
+echo "Test: as-component.sh streams through OpenSSL and puts cert flags before URL"
 reset_calls
 export MOCK_SECRET_KEYS="tls.crt tls.key ca.crt"
-run_kit as-component.sh ucp -- curl -s https://applications-rp.radius-system:5443/
+run_kit as-component.sh ucp -- https://applications-rp.radius-system:5443/
 assert_status 0
 assert_output_contains "Calling as ucp with radius-system/ucp-mtls"
 assert_calls_contain "jsonpath={.data.tls\.key}"
 assert_calls_contain "sh /work/ucp tls.key"
-assert_calls_contain "--container curl -- curl -s https://applications-rp.radius-system:5443/ --cert /work/ucp/tls.crt --key /work/ucp/tls.key --cacert /work/ucp/ca.crt"
+assert_calls_contain "--container openssl -- sh -c"
+assert_calls_not_contain "--container rogue -- sh"
+assert_calls_contain "--container rogue -- /rogue-client request --cert /work/ucp/tls.crt --key /work/ucp/tls.key --cacert /work/ucp/ca.crt https://applications-rp.radius-system:5443/"
 export MOCK_SECRET_KEYS="absent"
 
 echo "Test: as-component.sh validates its arguments"
@@ -463,11 +513,11 @@ assert_status 2
 assert_output_contains "a component is required"
 run_kit as-component.sh ucp
 assert_status 2
-assert_output_contains "no curl arguments"
-run_kit as-component.sh Bad_Name -- -s http://x
+assert_output_contains "no request arguments"
+run_kit as-component.sh Bad_Name -- http://x
 assert_status 2
 assert_output_contains "invalid component name"
-run_kit as-component.sh ucp dynamic-rp -- -s http://x
+run_kit as-component.sh ucp dynamic-rp -- http://x
 assert_status 2
 
 echo "Test: records.sh is a placeholder until Stack B"
@@ -563,6 +613,7 @@ for mode in off dryRun enforce; do
     assert_calls_contain "label namespace radius-system authz-kit.radius.dev/mode=${mode} --overwrite"
     assert_calls_ordered "rad install kubernetes" "label namespace"
     assert_calls_ordered "label namespace" "rollout status"
+    assert_calls_contain "--from-literal=rogue-image=localhost:5001/rogue-client:authz-test"
     assert_calls_not_contain "make "
 done
 
@@ -587,6 +638,7 @@ for architecture in x86_64 amd64 unsupported; do
     assert_status 0
     assert_output_not_contains "can't evaluate field Architecture"
     assert_calls_ordered "make -C " "rad install kubernetes"
+    assert_calls_contain "docker-build-rogue-client docker-push-rogue-client"
     if [[ "${architecture}" == unsupported ]]; then
         assert_calls_contain "uname -m"
         assert_output_contains "amd64 emulation"
