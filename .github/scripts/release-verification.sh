@@ -27,6 +27,7 @@ source "${SCRIPT_DIR}/release-version.sh"
 readonly NAMESPACE="radius-system"
 readonly GITHUB_ORG="radius-project"
 readonly GITHUB_REPO="radius"
+readonly CHART_REFERENCE="oci://ghcr.io/${GITHUB_ORG}/helm-chart/radius"
 
 # Parse arguments: version [os] [arch]
 RELEASE_VERSION_NUMBER="${1:-}"
@@ -170,6 +171,11 @@ if [[ -z "${CLI_PATH}" ]]; then
     CLI_PATH="${TEMP_DIR}/rad"
     curl --fail --silent --show-error --location --retry 5 \
         --max-time 120 "${DOWNLOAD_URL}" -o "${CLI_PATH}"
+    # Without --chart, rad installs the newest patch chart in the CLI's channel.
+    helm pull "${CHART_REFERENCE}" --version "${RELEASE_VERSION_NUMBER}" \
+        --destination "${TEMP_DIR}"
+    CHART_PATH="${TEMP_DIR}/radius-${RELEASE_VERSION_NUMBER}.tgz"
+    INSTALL_ARGS+=(--chart "${CHART_PATH}")
 elif [[ -z "${MANIFEST_FILE}" || ! -f "${CHART_PATH}" ]]; then
     echo "Staged installation requires a manifest and downloaded chart." >&2
     exit 1

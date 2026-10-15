@@ -23,6 +23,10 @@ EOF
 cat > "${TEST_ROOT}/bin/helm" << 'EOF'
 #!/bin/bash
 echo "$*" >>"${TEST_ROOT}/helm-calls"
+if [[ "$1" == "pull" ]]; then
+    : > "$6/radius-$4.tgz"
+    exit
+fi
 [[ "$*" == *"--set preupgrade.checks.version=false"* ]] || exit 1
 EOF
 cat > "${TEST_ROOT}/bin/curl" << 'EOF'
@@ -47,7 +51,11 @@ case "$*" in
             ucp) name=ucpd ;;
         esac
         if [[ "${FAKE_PUBLIC_INSTALL:-false}" == "true" ]]; then
-            echo "ghcr.io/radius-project/${name}:${PUBLIC_TAG}"
+            # Without --chart, rad installs the newest patch chart in the channel.
+            tag="${NEWEST_PATCH}"
+            chart='--chart [^ ]*/radius-([^ /]+)\.tgz'
+            [[ "$(tail -n 1 "${TEST_ROOT}/rad-calls")" =~ ${chart} ]] && tag="${BASH_REMATCH[1]}"
+            echo "ghcr.io/radius-project/${name}:${tag}"
             exit
         fi
         jq -r --arg name "${name}" '.observed.images[] | select(.name == $name) | .reference + "@" + .digest' "${TEST_ROOT}/manifest.json"
@@ -112,9 +120,14 @@ jq -e '.checks.installation == "verified"' "${RELEASE_VERIFY_MANIFEST}" > /dev/n
 grep -Fq -- "--chart ${TEST_ROOT}/radius.tgz" "${TEST_ROOT}/rad-calls"
 [[ "$(grep -o '@sha256:' "${TEST_ROOT}/rad-calls" | wc -l)" == "8" ]]
 grep -Fq -- 'delete cluster --name radius-verification-' "${TEST_ROOT}/kind-calls"
-FAKE_PUBLIC_INSTALL=true PUBLIC_TAG=0.61.0 RELEASE_VERIFY_CLI="" \
+FAKE_PUBLIC_INSTALL=true NEWEST_PATCH=0.61.1 RELEASE_VERIFY_CLI="" \
     RELEASE_VERIFY_CHART="" RELEASE_VERIFY_MANIFEST="" \
     bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null
+pull="$(grep '^pull ' "${TEST_ROOT}/helm-calls")"
+[[ "${pull}" == "pull oci://ghcr.io/radius-project/helm-chart/radius --version 0.61.0 --destination "* ]]
+chart="${pull##* }/radius-0.61.0.tgz"
+[[ "$(tail -n 1 "${TEST_ROOT}/rad-calls")" == *"--chart ${chart}"* ]]
+[[ "$(tail -n 1 "${TEST_ROOT}/helm-calls")" == "upgrade radius ${chart} "* ]]
 if FAIL_INSTALL=true bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null 2>&1; then
     echo "A failed installation was accepted" >&2
     exit 1

@@ -71,9 +71,11 @@ func TestHelmClientImpl_UpgradeImmutableImageDefaults(t *testing.T) {
 			}
 			client := NewHelmClient()
 			values := map[string]any{
-				"global":     map[string]any{"imageTag": testCase.storedTag},
 				"rp":         map[string]any{"publicEndpointOverride": "retained.example.test"},
 				"preupgrade": map[string]any{"enabled": true},
+			}
+			if testCase.storedTag != "" {
+				values["global"] = map[string]any{"imageTag": testCase.storedTag}
 			}
 			installed, err := client.RunHelmInstall(configuration, previousChart, values, "radius", "radius-system", false, DefaultInstallTimeout)
 			require.NoError(t, err)
