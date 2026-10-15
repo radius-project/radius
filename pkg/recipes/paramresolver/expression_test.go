@@ -36,6 +36,7 @@ func expressionContext() *recipecontext.Context {
 	ctx.Resource.Properties["tags"] = map[string]any{"team": "data"}
 	ctx.Resource.Properties["zones"] = []any{"1", "2"}
 	ctx.Resource.Properties["quote"] = `say "hi" }}`
+	ctx.Resource.Properties["bigint"] = int64(9007199254740993)
 	ctx.Resource.Properties["config"] = map[string]any{
 		"tier":   "premium",
 		"limits": map[string]any{"cpu": float64(2)},
@@ -96,6 +97,9 @@ func Test_Expressions(t *testing.T) {
 		{name: "string arm from context", expr: `{{context.resource.properties.enabled ? context.resource.name : "x"}}`, expected: "my-resource"},
 		{name: "surrounding whitespace keeps typed result", expr: `  {{context.resource.properties.port}}  `, expected: 5432},
 		{name: "surrounding whitespace kept for string result", expr: ` {{context.resource.name}} `, expected: " my-resource "},
+		{name: "surrounding whitespace dropped for string property", expr: ` {{context.resource.properties.host}} `, expected: "myhost.example.com"},
+		{name: "surrounding whitespace dropped for string connection property", expr: "\t{{context.resource.connections.db.properties.connectionString}}\n", expected: "postgres://myhost:5432/mydb"},
+		{name: "surrounding whitespace kept for string ternary result", expr: ` {{context.resource.properties.enabled ? context.resource.properties.host : "x"}} `, expected: " myhost.example.com "},
 
 		// Interpolation stringifies.
 		{name: "interpolated number", expr: `size-{{context.resource.properties.size == "L" ? 512 : 128}}`, expected: "size-128"},
@@ -110,6 +114,11 @@ func Test_Expressions(t *testing.T) {
 		{name: "bool equals string form", expr: `{{context.resource.properties.enabled == "true"}}`, expected: true},
 		{name: "bool equals bool", expr: `{{context.resource.properties.enabled == true}}`, expected: true},
 		{name: "decimal property", expr: `{{context.resource.properties.ratio == 0.5}}`, expected: true},
+		{name: "large integers compare exactly", expr: `{{context.resource.name != null && 9007199254740992 == 9007199254740993}}`, expected: false},
+		{name: "large integers not equal", expr: `{{context.resource.name != null && 9007199254740992 != 9007199254740993}}`, expected: true},
+		{name: "large integer property equals literal", expr: `{{context.resource.properties.bigint == 9007199254740993}}`, expected: true},
+		{name: "large integer property vs nearby literal", expr: `{{context.resource.properties.bigint == 9007199254740992}}`, expected: false},
+		{name: "large integer property vs rounded decimal", expr: `{{context.resource.properties.bigint == 9007199254740992.0}}`, expected: false},
 
 		// Null handling for absent optional properties.
 		{name: "absent property equals null", expr: `{{context.resource.properties.missing == null}}`, expected: true},
@@ -145,6 +154,13 @@ func Test_Expressions(t *testing.T) {
 		{name: "single brace inside string literal", expr: `x-{{context.resource.properties.enabled ? "a}b" : "c"}}-y`, expected: "x-a}b-y"},
 		{name: "hyphenated property name", expr: `{{context.resource.properties.my-prop == null}}`, expected: true},
 		{name: "whitespace inside braces", expr: "{{  context.resource.name\t}}", expected: "my-resource"},
+
+		// Ownership ignores context paths inside string literals.
+		{name: "template function with quoted context text passes through", expr: `{{ printf "use context.resource.name" }}`, expected: `{{ printf "use context.resource.name" }}`},
+		{name: "string literal with context text passes through", expr: `{{ "use context.resource.name" }}`, expected: `{{ "use context.resource.name" }}`},
+		{name: "quoted context text with escaped quote passes through", expr: `{{ printf "a \" context.resource.name" }}`, expected: `{{ printf "a \" context.resource.name" }}`},
+		{name: "context path after string literal is owned", expr: `{{"x" == "x" ? context.resource.name : "y"}}`, expected: "my-resource"},
+		{name: "context text in compared literal", expr: `{{context.resource.name == "context.resource.name"}}`, expected: false},
 	}
 
 	for _, tt := range tests {

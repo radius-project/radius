@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 	"strings"
 
@@ -232,9 +233,9 @@ func valuesEqual(a, b any) (bool, error) {
 	if isComposite(a) || isComposite(b) {
 		return false, fmt.Errorf("cannot compare object or array values")
 	}
-	if an, ok := toFloat(a); ok {
-		if bn, ok := toFloat(b); ok {
-			return an == bn, nil
+	if an, ok := toRat(a); ok {
+		if bn, ok := toRat(b); ok {
+			return an.Cmp(bn) == 0, nil
 		}
 	}
 	if ab, ok := a.(bool); ok {
@@ -257,8 +258,8 @@ func truthy(v any) bool {
 	case string:
 		return val != ""
 	}
-	if f, ok := toFloat(v); ok {
-		return f != 0
+	if n, ok := toRat(v); ok {
+		return n.Sign() != 0
 	}
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
@@ -276,35 +277,38 @@ func isComposite(v any) bool {
 	return false
 }
 
-func toFloat(v any) (float64, bool) {
+// toRat converts a number to an exact rational so that equality does not lose precision, for
+// example between integers larger than 2^53. Non-finite floats are not converted.
+func toRat(v any) (*big.Rat, bool) {
 	switch n := v.(type) {
 	case int:
-		return float64(n), true
+		return new(big.Rat).SetInt64(int64(n)), true
 	case int8:
-		return float64(n), true
+		return new(big.Rat).SetInt64(int64(n)), true
 	case int16:
-		return float64(n), true
+		return new(big.Rat).SetInt64(int64(n)), true
 	case int32:
-		return float64(n), true
+		return new(big.Rat).SetInt64(int64(n)), true
 	case int64:
-		return float64(n), true
+		return new(big.Rat).SetInt64(n), true
 	case uint:
-		return float64(n), true
+		return new(big.Rat).SetUint64(uint64(n)), true
 	case uint8:
-		return float64(n), true
+		return new(big.Rat).SetUint64(uint64(n)), true
 	case uint16:
-		return float64(n), true
+		return new(big.Rat).SetUint64(uint64(n)), true
 	case uint32:
-		return float64(n), true
+		return new(big.Rat).SetUint64(uint64(n)), true
 	case uint64:
-		return float64(n), true
+		return new(big.Rat).SetUint64(n), true
 	case float32:
-		return float64(n), true
+		r := new(big.Rat).SetFloat64(float64(n))
+		return r, r != nil
 	case float64:
-		return n, true
+		r := new(big.Rat).SetFloat64(n)
+		return r, r != nil
 	case json.Number:
-		f, err := n.Float64()
-		return f, err == nil
+		return new(big.Rat).SetString(n.String())
 	}
-	return 0, false
+	return nil, false
 }
