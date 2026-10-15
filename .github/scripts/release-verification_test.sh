@@ -11,7 +11,8 @@ cat > "${TEST_ROOT}/rad" << 'EOF'
 set -euo pipefail
 echo "$*" >>"${TEST_ROOT}/rad-calls"
 if [[ "$1" == "version" ]]; then
-    printf '{"version":"v0.61.0","release":"0.61.0"}\n'
+    release="${RAD_RELEASE:-0.61.0}"
+    printf '{"version":"v%s","release":"%s"}\n' "${release}" "${release}"
 elif [[ "${FAIL_INSTALL:-false}" == "true" ]]; then
     exit 1
 fi
@@ -25,6 +26,14 @@ cat > "${TEST_ROOT}/bin/helm" << 'EOF'
 echo "$*" >>"${TEST_ROOT}/helm-calls"
 if [[ "$1" == "pull" ]]; then
     : > "$6/radius-$4.tgz"
+    exit
+fi
+if [[ "$1" == "template" ]]; then
+    # Charts render their version unless CHART_IMAGE_TAG models an older tag scheme.
+    version="$(basename "$3" .tgz)"
+    for name in applications-rp bicep controller dashboard deployment-engine dynamic-rp pre-upgrade ucpd; do
+        printf '          image: "ghcr.io/radius-project/%s:%s"\n' "${name}" "${CHART_IMAGE_TAG:-${version#radius-}}"
+    done
     exit
 fi
 [[ "$*" == *"--set preupgrade.checks.version=false"* ]] || exit 1
@@ -54,7 +63,7 @@ case "$*" in
             # Without --chart, rad installs the newest patch chart in the channel.
             tag="${NEWEST_PATCH}"
             chart='--chart [^ ]*/radius-([^ /]+)\.tgz'
-            [[ "$(tail -n 1 "${TEST_ROOT}/rad-calls")" =~ ${chart} ]] && tag="${BASH_REMATCH[1]}"
+            [[ "$(tail -n 1 "${TEST_ROOT}/rad-calls")" =~ ${chart} ]] && tag="${CHART_IMAGE_TAG:-${BASH_REMATCH[1]}}"
             echo "ghcr.io/radius-project/${name}:${tag}"
             exit
         fi
@@ -62,9 +71,11 @@ case "$*" in
         ;;
     "get job pre-upgrade "*)
         if [[ "${FAKE_PUBLIC_INSTALL:-false}" == "true" ]]; then
-            # The checkout chart renders its edge appVersion unless the upgrade sets a tag.
-            tag="$(tail -n 1 "${TEST_ROOT}/helm-calls" | grep -o 'global.imageTag=[^ ]*' | cut -d = -f 2 || true)"
-            jq -n --arg image "ghcr.io/radius-project/pre-upgrade:${tag:-edge}" '{spec:{template:{spec:{containers:[{image:$image}]}}}}'
+            # The upgrade renders its chart's default tag unless it sets one.
+            upgrade="$(tail -n 1 "${TEST_ROOT}/helm-calls")"
+            chart="$(basename "$(cut -d ' ' -f 3 <<<"${upgrade}")" .tgz)"
+            tag="$(grep -o 'global.imageTag=[^ ]*' <<<"${upgrade}" | cut -d = -f 2 || true)"
+            jq -n --arg image "ghcr.io/radius-project/pre-upgrade:${tag:-${CHART_IMAGE_TAG:-${chart#radius-}}}" '{spec:{template:{spec:{containers:[{image:$image}]}}}}'
             exit
         fi
         jq '{spec:{template:{spec:{containers:[{image:(.observed.images[] | select(.name == "pre-upgrade") | .reference + "@" + .digest)}]}}}}' "${TEST_ROOT}/manifest.json"
@@ -128,6 +139,25 @@ pull="$(grep '^pull ' "${TEST_ROOT}/helm-calls")"
 chart="${pull##* }/radius-0.61.0.tgz"
 [[ "$(tail -n 1 "${TEST_ROOT}/rad-calls")" == *"--chart ${chart}"* ]]
 [[ "$(tail -n 1 "${TEST_ROOT}/helm-calls")" == "upgrade radius ${chart} "* ]]
+# Charts published before full-version image tags render major.minor tags.
+: > "${TEST_ROOT}/helm-calls"
+FAKE_PUBLIC_INSTALL=true NEWEST_PATCH=0.61.2 RAD_RELEASE=0.61.1 CHART_IMAGE_TAG=0.61 \
+    RELEASE_VERIFY_CLI="" RELEASE_VERIFY_CHART="" RELEASE_VERIFY_MANIFEST="" \
+    bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.1 > /dev/null
+if grep -q 'global.imageTag' "${TEST_ROOT}/helm-calls"; then
+    echo "Public verification overrode the chart's image tag" >&2
+    exit 1
+fi
+for case in 0.61.1:0.60 0.60.0-rc3:0.60; do
+    if FAKE_PUBLIC_INSTALL=true NEWEST_PATCH=0.61.2 RAD_RELEASE="${case%%:*}" \
+        CHART_IMAGE_TAG="${case#*:}" RELEASE_VERIFY_CLI="" RELEASE_VERIFY_CHART="" \
+        RELEASE_VERIFY_MANIFEST="" bash "${ROOT}/.github/scripts/release-verification.sh" \
+        "${case%%:*}" > /dev/null 2> "${TEST_ROOT}/stderr"; then
+        echo "Chart image tag ${case#*:} was accepted for ${case%%:*}" >&2
+        exit 1
+    fi
+    grep -Fq 'do not match release' "${TEST_ROOT}/stderr"
+done
 if FAIL_INSTALL=true bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null 2>&1; then
     echo "A failed installation was accepted" >&2
     exit 1
@@ -145,4 +175,4 @@ if bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null 2>&
     echo "A changed staged binary was accepted" >&2
     exit 1
 fi
-echo "Release installation tests passed (6 tests)"
+echo "Release installation tests passed (8 tests)"

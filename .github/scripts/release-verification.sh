@@ -28,6 +28,7 @@ readonly NAMESPACE="radius-system"
 readonly GITHUB_ORG="radius-project"
 readonly GITHUB_REPO="radius"
 readonly CHART_REFERENCE="oci://ghcr.io/${GITHUB_ORG}/helm-chart/radius"
+readonly CHART_IMAGE_PATTERN='ghcr\.io/radius-project/(applications-rp|bicep|controller|dashboard|deployment-engine|dynamic-rp|pre-upgrade|ucpd):[^"[:space:]]+'
 
 # Parse arguments: version [os] [arch]
 RELEASE_VERSION_NUMBER="${1:-}"
@@ -106,13 +107,9 @@ verify_pod_image() {
 # This verification checks the container image used in the pre-upgrade job.
 verify_pre_upgrade_image() {
     local expected_image="$1"
-    local upgrade_args=(upgrade radius "${CHART_PATH}" --namespace radius-system --reuse-values)
-    # Staged installs reuse pinned digests; public installs set no image values to reuse.
-    if [[ -z "${MANIFEST_FILE}" ]]; then
-        upgrade_args+=(--set global.imageTag="${EXPECTED_TAG_VERSION}")
-    fi
 
-    helm "${upgrade_args[@]}" \
+    # Staged installs reuse pinned digests; public installs keep the exact chart's defaults.
+    helm upgrade radius "${CHART_PATH}" --namespace radius-system --reuse-values \
         --set preupgrade.enabled=true \
         --set preupgrade.checks.version=false \
         --set preupgrade.targetVersion="${EXPECTED_CLI_VERSION}" \
@@ -127,6 +124,24 @@ verify_pre_upgrade_image() {
     else
         echo "Pre-upgrade image verified: $PRE_UPGRADE_IMAGE"
     fi
+}
+
+# Expects the image tag that the exact public chart renders. Charts published
+# before full-version image tags render major.minor tags for final releases.
+set_public_image_tag() {
+    local rendered tags legacy_tag="${RELEASE_VERSION_NUMBER}"
+    if [[ "${RELEASE_VERSION_NUMBER}" != *-* ]]; then
+        legacy_tag="${RELEASE_VERSION_NUMBER%.*}"
+    fi
+    rendered="$(helm template radius "${CHART_PATH}" --namespace "${NAMESPACE}" \
+        --set preupgrade.enabled=true)"
+    tags="$(grep -oE "${CHART_IMAGE_PATTERN}" <<< "${rendered}" | sed 's/.*://' | sort -u || true)"
+    if [[ "${tags}" != "${RELEASE_VERSION_NUMBER}" && "${tags}" != "${legacy_tag}" ]]; then
+        echo "Error: Chart image tags [$(paste -sd , - <<< "${tags}")] do not match release ${RELEASE_VERSION_NUMBER}." >&2
+        exit 1
+    fi
+    EXPECTED_TAG_VERSION="${tags}"
+    echo "EXPECTED_TAG_VERSION: ${EXPECTED_TAG_VERSION}"
 }
 
 if [[ -z "$RELEASE_VERSION_NUMBER" ]]; then
@@ -159,13 +174,10 @@ readonly DOWNLOAD_URL="${DOWNLOAD_BASE}/v${RELEASE_VERSION_NUMBER}/${RADIUS_CLI_
 # EXPECTED_CLI_VERSION is the same as the RELEASE_VERSION_NUMBER
 EXPECTED_CLI_VERSION=$RELEASE_VERSION_NUMBER
 
-EXPECTED_TAG_VERSION="$RELEASE_VERSION_NUMBER"
-
 echo "RELEASE_VERSION_NUMBER: ${RELEASE_VERSION_NUMBER}"
 echo "OS: ${OS}"
 echo "ARCH: ${ARCH}"
 echo "EXPECTED_CLI_VERSION: ${EXPECTED_CLI_VERSION}"
-echo "EXPECTED_TAG_VERSION: ${EXPECTED_TAG_VERSION}"
 
 if [[ -z "${CLI_PATH}" ]]; then
     CLI_PATH="${TEMP_DIR}/rad"
@@ -176,6 +188,7 @@ if [[ -z "${CLI_PATH}" ]]; then
         --destination "${TEMP_DIR}"
     CHART_PATH="${TEMP_DIR}/radius-${RELEASE_VERSION_NUMBER}.tgz"
     INSTALL_ARGS+=(--chart "${CHART_PATH}")
+    set_public_image_tag
 elif [[ -z "${MANIFEST_FILE}" || ! -f "${CHART_PATH}" ]]; then
     echo "Staged installation requires a manifest and downloaded chart." >&2
     exit 1
