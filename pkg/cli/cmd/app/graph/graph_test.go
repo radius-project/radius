@@ -9,27 +9,27 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/bicep"
-	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/pkg/graph/persistence"
 	archivestore "github.com/radius-project/radius/pkg/graph/persistence/archive"
 	"github.com/radius-project/radius/pkg/statearchive"
 	archivefactory "github.com/radius-project/radius/pkg/statearchive/factory"
 	"github.com/radius-project/radius/test/radcli"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -39,70 +39,31 @@ func Test_CommandValidation(t *testing.T) {
 }
 
 func Test_Validate(t *testing.T) {
-	application := corerpv20231001preview.ApplicationResource{
-		Name: new("test-app"),
-		ID:   new(applicationResourceID),
-		Type: new("Applications.Core/applications"),
-		Properties: &corerpv20231001preview.ApplicationProperties{
-			Environment: new(environmentResourceID),
-		},
-	}
-
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
+
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Graph command application (positional)",
+			Name:          "Graph command with flag",
+			Input:         []string{"-a", "test-app"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Graph command with positional arg",
 			Input:         []string{"test-app"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				mocks.ApplicationManagementClient.EXPECT().
-					GetApplication(gomock.Any(), "test-app").
-					Return(application, nil).
-					Times(1)
-			},
-			ValidateCallback: func(t *testing.T, r framework.Runner) {
-				runner := r.(*Runner)
-				// These values are used by Run()
-				require.Equal(t, "test-app", runner.ApplicationName)
+				Config: configWithWorkspace,
 			},
 		},
 		{
-			Name:          "Graph command application (flag)",
-			Input:         []string{"-a", "test-app"},
+			Name:          "Graph command with fallback workspace",
+			Input:         []string{"--application", "test-app", "--group", "test-group"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				mocks.ApplicationManagementClient.EXPECT().
-					GetApplication(gomock.Any(), "test-app").
-					Return(application, nil).
-					Times(1)
-			},
-			ValidateCallback: func(t *testing.T, r framework.Runner) {
-				runner := r.(*Runner)
-				// These values are used by Run()
-				require.Equal(t, "test-app", runner.ApplicationName)
-			},
-		},
-		{
-			Name:          "Graph command missing application",
-			Input:         []string{"-a", "test-app"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				mocks.ApplicationManagementClient.EXPECT().
-					GetApplication(gomock.Any(), "test-app").
-					Return(corerpv20231001preview.ApplicationResource{}, &azcore.ResponseError{ErrorCode: v1.CodeNotFound}).
-					Times(1)
+				Config: radcli.LoadEmptyConfig(t),
 			},
 		},
 		{
@@ -110,176 +71,433 @@ func Test_Validate(t *testing.T) {
 			Input:         []string{"foo", "bar"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
+				Config: configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Enriched: -a name plus bicep file path selects enriched mode",
+			Input:         []string{"-a", "test-app", "./app.bicep"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ValidateCallback: func(t *testing.T, r framework.Runner) {
+				runner := r.(*Runner)
+				require.Equal(t, "test-app", runner.ApplicationName)
+				require.Equal(t, "./app.bicep", runner.BicepFilePath)
+				require.NotNil(t, runner.Workspace)
+			},
+		},
+		{
+			Name:          "Modeled: bicep file path without -a selects modeled mode",
+			Input:         []string{"./app.bicep", "--include-icons"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ValidateCallback: func(t *testing.T, r framework.Runner) {
+				runner := r.(*Runner)
+				require.Empty(t, runner.ApplicationName)
+				require.Equal(t, "./app.bicep", runner.BicepFilePath)
+				require.True(t, runner.IncludeIcons)
+				require.Nil(t, runner.Workspace, "modeled mode must not resolve a workspace")
+			},
+		},
+		{
+			Name:          "Modeled: bicep file path does not require a workspace",
+			Input:         []string{"./app.bicep"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: radcli.LoadEmptyConfig(t),
+			},
+		},
+		{
+			Name:          "Enriched: explicitly empty -a with bicep file path is invalid",
+			Input:         []string{"./app.bicep", "-a", ""},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Enriched: explicitly empty --application= with bicep file path is invalid",
+			Input:         []string{"./app.bicep", "--application="},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Deployed: positional name and -a are mutually exclusive",
+			Input:         []string{"test-app", "-a", "other-app"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
 			},
 		},
 	}
+
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
 func Test_Run(t *testing.T) {
-	// This example is a very simple example of the application graph as an integration test.
-	// The unit tests for this package cover the more complex cases.
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	graph := corerpv20231001preview.ApplicationGraphResponse{
-		Resources: []*corerpv20231001preview.ApplicationGraphResource{
-			{
-				ID:                new(containerResourceID),
-				Name:              new(containerResourceName),
-				Type:              new(containerResourceType),
-				ProvisioningState: new(provisioningStateSuccess),
-				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
-					{
-						ID:   new("/planes/radius/local/resourcegroups/test-group/providers/kubernetes/Deployments/demo"),
-						Type: new("kubernetes: apps/Deployment"),
-						Name: new("demo"),
-					},
-				},
-				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
-					{
-						ID:        new(redisResourceID),
-						Direction: &directionOutbound,
-					},
-				},
-			},
-			{
-				ID:                new(redisResourceID),
-				Name:              new(redisResourceName),
-				Type:              new(redisResourceType),
-				ProvisioningState: new(provisioningStateSuccess),
-				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
-					{
-						ID:   new("/planes/radius/local/resourcegroups/test-group/providers/AWS.MemoryDB/Cluster/redis-aqbjixghynqgg"),
-						Type: new("aws: AWS.MemoryDB/Cluster"),
-						Name: new("redis-aqbjixghynqgg"),
-					},
-				},
-				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
-					{
-						ID:        new(containerResourceID),
-						Direction: &directionInbound,
-					},
-				},
-			},
-		},
-	}
-
-	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appManagementClient.EXPECT().
-		GetApplicationGraph(gomock.Any(), "test-app").
-		Return(graph, nil).
-		Times(1)
-
 	workspace := &workspaces.Workspace{
-		Connection: map[string]any{
-			"kind":    "kubernetes",
-			"context": "kind-kind",
-		},
-		Name:  "kind-kind",
+		Name:  "test-workspace",
 		Scope: "/planes/radius/local/resourceGroups/test-group",
 	}
-	outputSink := &output.MockOutput{}
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-		Workspace:         workspace,
-		Output:            outputSink,
 
-		// Populated by Validate()
-		ApplicationName: "test-app",
-	}
+	t.Run("Success: empty graph (table)", func(t *testing.T) {
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+		require.NoError(t, err)
 
-	err := runner.Run(t.Context())
-	require.NoError(t, err)
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "table",
+			Output:                  outputSink,
+		}
 
-	expectedOutput := `Displaying application: test-app
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.Len(t, outputSink.Writes, 1)
 
-Name: webapp (Applications.Core/containers)
-Connections:
-  webapp -> redis (Applications.Datastores/redisCaches)
-Resources:
-  demo (kubernetes: apps/Deployment)
+		logOutput, ok := outputSink.Writes[0].(output.LogOutput)
+		require.True(t, ok)
+		require.Contains(t, logOutput.Format, "Displaying application: test-app")
+		require.Contains(t, logOutput.Format, "(empty)")
+	})
 
-Name: redis (Applications.Datastores/redisCaches)
-Connections:
-  webapp (Applications.Core/containers) -> redis
-Resources:
-  redis-aqbjixghynqgg (aws: AWS.MemoryDB/Cluster)
+	t.Run("Success: graph with resources (table)", func(t *testing.T) {
+		graphServer := func() fake.ApplicationsServer {
+			srv := test_client_factory.WithApplicationsServerNoError()
+			srv.GetGraph = func(
+				ctx context.Context,
+				rootScope string,
+				applicationName string,
+				body corerpv20250801preview.GetGraphRequest,
+				options *corerpv20250801preview.ApplicationsClientGetGraphOptions,
+			) (resp azfake.Responder[corerpv20250801preview.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
+				containerID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/web"
+				containerName := "web"
+				containerType := "Applications.Core/containers"
 
-`
+				resp.SetResponse(http.StatusOK, corerpv20250801preview.ApplicationsClientGetGraphResponse{
+					Resources: []*corerpv20250801preview.ApplicationGraphResource{
+						{
+							ID:              &containerID,
+							Name:            &containerName,
+							Type:            &containerType,
+							Connections:     []*corerpv20250801preview.ApplicationGraphConnection{},
+							OutputResources: []*corerpv20250801preview.ApplicationGraphOutputResource{},
+						},
+					},
+				}, nil)
+				return
+			}
+			return srv
+		}
 
-	expected := []any{
-		output.LogOutput{
-			Format: expectedOutput,
-		},
-	}
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, graphServer)
+		require.NoError(t, err)
 
-	require.Equal(t, expected, outputSink.Writes)
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "table",
+			Output:                  outputSink,
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.Len(t, outputSink.Writes, 1)
+
+		logOutput, ok := outputSink.Writes[0].(output.LogOutput)
+		require.True(t, ok)
+		require.Contains(t, logOutput.Format, "Name: web (Applications.Core/containers)")
+	})
+
+	t.Run("Success: graph (JSON)", func(t *testing.T) {
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+		require.NoError(t, err)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "json",
+			Output:                  outputSink,
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.Len(t, outputSink.Writes, 1)
+
+		formatted, ok := outputSink.Writes[0].(output.FormattedOutput)
+		require.True(t, ok)
+		require.Equal(t, "json", formatted.Format)
+	})
+
+	// Assert the --include-icons flag threads through into GetGraphRequest.IncludeIcons.
+	// The default (flag not set) must send nil so the server treats it as false.
+	t.Run("Success: IncludeIcons defaults to nil on request body", func(t *testing.T) {
+		var received corerpv20250801preview.GetGraphRequest
+		observeServer := func() fake.ApplicationsServer {
+			srv := test_client_factory.WithApplicationsServerNoError()
+			srv.GetGraph = func(
+				ctx context.Context,
+				rootScope string,
+				applicationName string,
+				body corerpv20250801preview.GetGraphRequest,
+				options *corerpv20250801preview.ApplicationsClientGetGraphOptions,
+			) (resp azfake.Responder[corerpv20250801preview.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
+				received = body
+				resp.SetResponse(http.StatusOK, corerpv20250801preview.ApplicationsClientGetGraphResponse{}, nil)
+				return
+			}
+			return srv
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, observeServer)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "table",
+			IncludeIcons:            false,
+			Output:                  &output.MockOutput{},
+		}
+
+		require.NoError(t, runner.Run(t.Context()))
+		require.Nil(t, received.IncludeIcons, "IncludeIcons must be nil by default (opt-in only)")
+	})
+
+	t.Run("Success: --include-icons forwards includeIcons=true", func(t *testing.T) {
+		var received corerpv20250801preview.GetGraphRequest
+		observeServer := func() fake.ApplicationsServer {
+			srv := test_client_factory.WithApplicationsServerNoError()
+			srv.GetGraph = func(
+				ctx context.Context,
+				rootScope string,
+				applicationName string,
+				body corerpv20250801preview.GetGraphRequest,
+				options *corerpv20250801preview.ApplicationsClientGetGraphOptions,
+			) (resp azfake.Responder[corerpv20250801preview.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
+				received = body
+				resp.SetResponse(http.StatusOK, corerpv20250801preview.ApplicationsClientGetGraphResponse{}, nil)
+				return
+			}
+			return srv
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, observeServer)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "json",
+			IncludeIcons:            true,
+			Output:                  &output.MockOutput{},
+		}
+
+		require.NoError(t, runner.Run(t.Context()))
+		require.NotNil(t, received.IncludeIcons)
+		require.True(t, *received.IncludeIcons)
+	})
+
+	t.Run("Error: application not found (404)", func(t *testing.T) {
+		notFoundServer := func() fake.ApplicationsServer {
+			return fake.ApplicationsServer{
+				GetGraph: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					body corerpv20250801preview.GetGraphRequest,
+					options *corerpv20250801preview.ApplicationsClientGetGraphOptions,
+				) (resp azfake.Responder[corerpv20250801preview.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
+					errResp.SetResponseError(http.StatusNotFound, "NotFound")
+					return
+				},
+			}
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, notFoundServer)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "table",
+			Output:                  &output.MockOutput{},
+		}
+
+		err = runner.Run(t.Context())
+		require.Error(t, err)
+		require.Equal(t, clierrors.Message("Application %q does not exist or has been deleted. %s", "test-app", "`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource show Applications.Core/applications test-app`."), err)
+	})
+
+	t.Run("Error: GetGraph failure is propagated", func(t *testing.T) {
+		graphErrorServer := func() fake.ApplicationsServer {
+			srv := test_client_factory.WithApplicationsServerNoError()
+			srv.GetGraph = func(
+				ctx context.Context,
+				rootScope string,
+				applicationName string,
+				body corerpv20250801preview.GetGraphRequest,
+				options *corerpv20250801preview.ApplicationsClientGetGraphOptions,
+			) (resp azfake.Responder[corerpv20250801preview.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
+				errResp.SetResponseError(http.StatusInternalServerError, "InternalServerError")
+				return
+			}
+			return srv
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, graphErrorServer)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "table",
+			Output:                  &output.MockOutput{},
+		}
+
+		err = runner.Run(t.Context())
+		require.Error(t, err)
+	})
 }
 
-func Test_Run_JSON(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+// Test_Run_EnrichedMode asserts that when a Bicep path is provided the runner
+// compiles the template and attaches the extracted dependsOn edges to
+// GetGraphRequest.DependsOnEdges. The transport-shape and merge-policy sides
+// are covered elsewhere (ExtractDependsOnEdges and MergeDependencyEdges tests
+// in pkg/cli/graph and pkg/graph/edges); this test only pins the CLI-side
+// plumbing between BicepFilePath, PrepareTemplate, and the request body.
+func Test_Run_EnrichedMode(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
 
-	graph := corerpv20231001preview.ApplicationGraphResponse{
-		Resources: []*corerpv20231001preview.ApplicationGraphResource{
-			{
-				ID:                new(containerResourceID),
-				Name:              new(containerResourceName),
-				Type:              new(containerResourceType),
-				ProvisioningState: new(provisioningStateSuccess),
-				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
-					{
-						ID:   new("/planes/radius/local/resourcegroups/test-group/providers/kubernetes/Deployments/demo"),
-						Type: new("kubernetes: apps/Deployment"),
-						Name: new("demo"),
-					},
+	// Template: a container that dependsOn a rabbitmq queue via
+	// resourceId(). ExtractDependsOnEdges resolves both endpoints to
+	// canonical Radius IDs.
+	template := map[string]any{
+		"resources": []any{
+			map[string]any{
+				"type": "Radius.Compute/containers",
+				"name": "consumer",
+				"dependsOn": []any{
+					"[resourceId('Radius.Messaging/rabbitMQQueues', 'queue')]",
 				},
-				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
-					{
-						ID:        new(redisResourceID),
-						Direction: &directionOutbound,
-					},
-				},
+			},
+			map[string]any{
+				"type": "Radius.Messaging/rabbitMQQueues",
+				"name": "queue",
 			},
 		},
 	}
+	const (
+		consumerID = "/planes/radius/local/resourceGroups/test-group/providers/Radius.Compute/containers/consumer"
+		queueID    = "/planes/radius/local/resourceGroups/test-group/providers/Radius.Messaging/rabbitMQQueues/queue"
+	)
 
-	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appManagementClient.EXPECT().
-		GetApplicationGraph(gomock.Any(), "test-app").
-		Return(graph, nil).
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(gomock.Any(), "./app.bicep").
+		Return(template, bicep.RadiusExtensionPin{}, nil).
 		Times(1)
 
-	workspace := &workspaces.Workspace{
-		Connection: map[string]any{
-			"kind":    "kubernetes",
-			"context": "kind-kind",
-		},
-		Name:  "kind-kind",
-		Scope: "/planes/radius/local/resourceGroups/test-group",
-	}
-	outputSink := &output.MockOutput{}
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-		Workspace:         workspace,
-		Output:            outputSink,
-		Format:            output.FormatJson,
-
-		// Populated by Validate()
-		ApplicationName: "test-app",
+	var received corerpv20250801preview.GetGraphRequest
+	observeServer := func() fake.ApplicationsServer {
+		srv := test_client_factory.WithApplicationsServerNoError()
+		srv.GetGraph = func(
+			ctx context.Context,
+			rootScope string,
+			applicationName string,
+			body corerpv20250801preview.GetGraphRequest,
+			options *corerpv20250801preview.ApplicationsClientGetGraphOptions,
+		) (resp azfake.Responder[corerpv20250801preview.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
+			received = body
+			resp.SetResponse(http.StatusOK, corerpv20250801preview.ApplicationsClientGetGraphResponse{}, nil)
+			return
+		}
+		return srv
 	}
 
-	err := runner.Run(t.Context())
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, observeServer)
 	require.NoError(t, err)
 
-	require.Len(t, outputSink.Writes, 1)
-	formatted, ok := outputSink.Writes[0].(output.FormattedOutput)
-	require.True(t, ok, "expected FormattedOutput but got %T", outputSink.Writes[0])
-	require.Equal(t, output.FormatJson, formatted.Format)
-	require.Equal(t, graph, formatted.Obj)
+	runner := &Runner{
+		RadiusCoreClientFactory: factory,
+		Bicep:                   bicepMock,
+		Workspace:               workspace,
+		ApplicationName:         "test-app",
+		BicepFilePath:           "./app.bicep",
+		Format:                  "table",
+		Output:                  &output.MockOutput{},
+	}
+
+	require.NoError(t, runner.Run(t.Context()))
+
+	require.NotNil(t, received.DependsOnEdges, "enriched mode must forward extracted edges")
+	entries, ok := received.DependsOnEdges[consumerID]
+	require.True(t, ok, "consumer entry missing; got keys %v", received.DependsOnEdges)
+	require.Len(t, entries, 1)
+	require.NotNil(t, entries[0].ID)
+	require.Equal(t, queueID, *entries[0].ID)
+	require.NotNil(t, entries[0].Direction)
+	require.Equal(t, corerpv20250801preview.DirectionOutbound, *entries[0].Direction)
+	require.NotNil(t, entries[0].Kind)
+	require.Equal(t, corerpv20250801preview.ConnectionKindDependency, *entries[0].Kind)
+}
+
+// Test_Run_EnrichedMode_CompileError_Wrapped asserts that a Bicep compile
+// failure is surfaced as a clierrors.Message so users see the file path in the
+// error rather than the raw underlying error.
+func Test_Run_EnrichedMode_CompileError_Wrapped(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(gomock.Any(), "./bad.bicep").
+		Return(nil, bicep.RadiusExtensionPin{}, clierrors.Message("syntax error"))
+
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+	require.NoError(t, err)
+
+	runner := &Runner{
+		RadiusCoreClientFactory: factory,
+		Bicep:                   bicepMock,
+		Workspace:               workspace,
+		ApplicationName:         "test-app",
+		BicepFilePath:           "./bad.bicep",
+		Format:                  "table",
+		Output:                  &output.MockOutput{},
+	}
+
+	err = runner.Run(t.Context())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "./bad.bicep")
 }
 
 const sampleBicepPath = "/tmp/app.bicep"

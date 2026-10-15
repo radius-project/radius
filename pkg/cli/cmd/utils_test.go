@@ -169,3 +169,12 @@ func TestPopulateRecipePackClients(t *testing.T) {
 		require.Len(t, clientsByScope, 1, "no new scopes should be added")
 	})
 }
+
+func Test_LegacyApplicationHint(t *testing.T) {
+	require.Equal(t,
+		"`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource show Applications.Core/applications my-app`.",
+		LegacyApplicationHint("show", "my-app"))
+	require.Equal(t,
+		"`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource delete Applications.Core/applications my-app`, which deletes only the application record, not its resources.",
+		LegacyApplicationHint("delete", "my-app"))
+}

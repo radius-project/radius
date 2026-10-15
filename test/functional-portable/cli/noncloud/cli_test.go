@@ -35,6 +35,7 @@ import (
 
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/radius-project/radius/pkg/cli/bicep"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -70,7 +71,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 	require.NoError(t, err)
 
 	t.Run("Validate rad application show", func(t *testing.T) {
-		actualOutput, err := cli.ApplicationShow(ctx, appName, radcli.ShowOptions{Preview: true})
+		actualOutput, err := cli.ApplicationShow(ctx, appName)
 		require.NoError(t, err)
 
 		lines := strings.Split(actualOutput, "\n")
@@ -243,8 +244,10 @@ func Test_Run_Logger(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		t.Cleanup(cancel)
 
-		err := cli.ApplicationDelete(ctx, applicationName)
-		require.NoErrorf(t, err, "failed to delete %s", applicationName)
+		_, err := options.ManagementClient.DeleteApplication(ctx, applicationName, false)
+		if err != nil && !clients.Is404Error(err) {
+			require.NoErrorf(t, err, "failed to delete %s", applicationName)
+		}
 	})
 
 	// We should have an error, but only because we canceled the context.
@@ -342,8 +345,10 @@ func Test_Run_Portforward(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		t.Cleanup(cancel)
 
-		err := cli.ApplicationDelete(ctx, applicationName)
-		require.NoErrorf(t, err, "failed to delete %s", applicationName)
+		_, err := options.ManagementClient.DeleteApplication(ctx, applicationName, false)
+		if err != nil && !clients.Is404Error(err) {
+			require.NoErrorf(t, err, "failed to delete %s", applicationName)
+		}
 	})
 
 	// We should have an error, but only because we canceled the context.
@@ -493,7 +498,7 @@ func Test_CLI_Delete(t *testing.T) {
 			},
 		})
 
-		_, err = cli.ApplicationDeletePreview(ctx, appName, "")
+		_, err = cli.ApplicationDelete(ctx, appName, "")
 		require.NoErrorf(t, err, "failed to delete %s", appName)
 	})
 
@@ -503,12 +508,12 @@ func Test_CLI_Delete(t *testing.T) {
 		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", "", envParam)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
-		_, err = cli.ApplicationDeletePreview(ctx, appNameEmptyResources, "")
+		_, err = cli.ApplicationDelete(ctx, appNameEmptyResources, "")
 		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
 	})
 
 	t.Run("Validate rad app delete with non existent app", func(t *testing.T) {
-		_, err = cli.ApplicationDeletePreview(ctx, appName, "")
+		_, err = cli.ApplicationDelete(ctx, appName, "")
 		require.NoErrorf(t, err, "failed to delete %s", appName)
 	})
 
@@ -537,7 +542,7 @@ func Test_CLI_Delete(t *testing.T) {
 		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", "", envParam)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
-		_, err = cli.ApplicationDeletePreview(ctx, appNameEmptyResources, "")
+		_, err = cli.ApplicationDelete(ctx, appNameEmptyResources, "")
 		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
 
 		//ignore response for tests
@@ -715,7 +720,7 @@ func GetAvailablePort() (int, error) {
 // resources remain, returning an error if one occurs.
 func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, options rp.RPTestOptions, applicationName string) error {
 	// Deleting the Radius.Core/applications resource directly removes only the application,
-	// leaving its associated resources in place (unlike "rad app delete --preview" which cascades).
+	// leaving its associated resources in place (unlike "rad app delete", which cascades).
 	_, err := options.ManagementClient.DeleteResource(ctx, "Radius.Core/applications", applicationName, false)
 	return err
 }

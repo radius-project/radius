@@ -17,641 +17,574 @@ limitations under the License.
 package delete
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"strings"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
+	generated "github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/connections"
-	"github.com/radius-project/radius/pkg/cli/delete"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/test/radcli"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
+
+func Test_Run_ManagedSecretCleanup(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(fmt.Sprintf("secret deletion fails=%v", fail), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				const scope = "/planes/radius/local/resourceGroups/test-group"
+				const ownerType = "Radius.Messaging/rabbitMQ"
+				const secretType = "Radius.Security/secrets"
+				ownerID := scope + "/providers/" + ownerType + "/rabbitmq"
+				secretID := scope + "/providers/" + secretType + "/rabbitmq-secret"
+				var appDeletes atomic.Int32
+				factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, nil, nil, func() fake.ApplicationsServer {
+					server := test_client_factory.WithApplicationsServerNoError()
+					server.Delete = func(context.Context, string, string, *corerpv20250801.ApplicationsClientDeleteOptions) (resp azfake.Responder[corerpv20250801.ApplicationsClientDeleteResponse], errResp azfake.ErrorResponder) {
+						appDeletes.Add(1)
+						resp.SetResponse(http.StatusNoContent, corerpv20250801.ApplicationsClientDeleteResponse{}, nil)
+						return
+					}
+					return server
+				})
+				require.NoError(t, err)
+				client := clients.NewMockApplicationsManagementClient(gomock.NewController(t))
+				client.EXPECT().ListResourcesInApplication(gomock.Any(), scope+"/providers/Radius.Core/applications/test-app").
+					Return([]generated.GenericResource{
+						{ID: &ownerID, Type: new(ownerType), Properties: map[string]any{"secrets": map[string]any{"name": "rabbitmq-secret"}}},
+						{ID: &secretID, Type: new(secretType)},
+					}, nil)
+				client.EXPECT().DeleteResource(gomock.Any(), ownerType, ownerID, false).Return(true, nil)
+				release := make(chan struct{})
+				client.EXPECT().GetResource(gomock.Any(), secretType, strings.ToLower(secretID)).
+					DoAndReturn(func(ctx context.Context, _, _ string) (generated.GenericResource, error) {
+						select {
+						case <-release:
+						case <-ctx.Done():
+							return generated.GenericResource{}, ctx.Err()
+						}
+						if fail {
+							return generated.GenericResource{Properties: map[string]any{"provisioningState": "Failed"}}, nil
+						}
+						return generated.GenericResource{}, &azcore.ResponseError{StatusCode: http.StatusNotFound}
+					})
+				runner := &Runner{
+					RadiusCoreClientFactory: factory,
+					ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: client},
+					Workspace:               &workspaces.Workspace{Name: "test-workspace", Scope: scope},
+					Output:                  &output.MockOutput{}, ApplicationName: "test-app", Confirm: true,
+				}
+				done := make(chan error, 1)
+				go func() { done <- runner.Run(t.Context()) }()
+				synctest.Wait()
+				require.Zero(t, appDeletes.Load())
+				select {
+				case err := <-done:
+					t.Fatalf("application cleanup returned before secret cleanup: %v", err)
+				default:
+				}
+				close(release)
+				err = <-done
+				if fail {
+					require.ErrorContains(t, err, strings.ToLower(secretID))
+					require.Zero(t, appDeletes.Load())
+				} else {
+					require.NoError(t, err)
+					require.EqualValues(t, 1, appDeletes.Load())
+				}
+			})
+		})
+	}
+}
 
 func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
 }
 
 func Test_Validate(t *testing.T) {
+	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
+
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Delete Command with flag",
-			Input:         []string{"-a", "test-application"},
+			Name:          "Delete command with flag",
+			Input:         []string{"-a", "test-app"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
+				Config: configWithWorkspace,
 			},
 		},
 		{
-			Name:          "Delete Command with positional arg",
-			Input:         []string{"test-application"},
+			Name:          "Delete command with positional arg",
+			Input:         []string{"test-app"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
+				Config: configWithWorkspace,
 			},
 		},
 		{
-			Name:          "Delete Command with confirm",
-			Input:         []string{"--yes", "-a", "test-application"},
+			Name:          "Delete command with fallback workspace",
+			Input:         []string{"--application", "test-app", "--group", "test-group"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
+				Config: radcli.LoadEmptyConfig(t),
 			},
 		},
 		{
-			Name:          "Delete Command with confirm and positional arg",
-			Input:         []string{"--yes", "test-application"},
-			ExpectedValid: true,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
-			},
-		},
-		{
-			Name:          "Delete Command with no application - invalid",
-			Input:         []string{},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
-			},
-		},
-		{
-			Name:          "Delete Command with fallback workspace",
-			Input:         []string{"--application", "test-application", "--group", "test-group"},
-			ExpectedValid: true,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadEmptyConfig(t),
-			},
-		},
-		{
-			Name:          "Delete Command with incorrect args",
+			Name:          "Delete command with incorrect args",
 			Input:         []string{"foo", "bar"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
+				Config: configWithWorkspace,
 			},
 		},
 		{
-			Name:          "Delete Command with Bicep filename",
+			Name:          "Delete command with Bicep filename",
 			Input:         []string{"app.bicep", "--yes"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
+				Config: configWithWorkspace,
 			},
 		},
 	}
+
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func Test_Delete(t *testing.T) {
-	t.Run("Success: Application Found", func(t *testing.T) {
+// mockManagementClientNoResources returns a mock that has no resources to delete.
+func mockManagementClientNoResources(ctrl *gomock.Controller) clients.ApplicationsManagementClient {
+	mock := clients.NewMockApplicationsManagementClient(ctrl)
+	mock.EXPECT().
+		ListResourcesInApplication(gomock.Any(), gomock.Any()).
+		Return([]generated.GenericResource{}, nil).
+		AnyTimes()
+	return mock
+}
+
+// mockManagementClientWithResources returns a mock that has resources owned by the app.
+// The force flag controls the expected force argument on DeleteResource.
+func mockManagementClientWithResources(ctrl *gomock.Controller, appID string, force bool) clients.ApplicationsManagementClient {
+	mock := clients.NewMockApplicationsManagementClient(ctrl)
+
+	resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/my-redis"
+	resourceType := "Applications.Datastores/redisCaches"
+
+	mock.EXPECT().
+		ListResourcesInApplication(gomock.Any(), appID).
+		Return([]generated.GenericResource{
+			{
+				ID:   &resourceID,
+				Type: &resourceType,
+			},
+		}, nil).
+		Times(1)
+	mock.EXPECT().
+		DeleteResource(gomock.Any(), resourceType, resourceID, force).
+		Return(true, nil).
+		Times(1)
+	return mock
+}
+
+func Test_Run(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	t.Run("Success: application deleted (no resources)", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		deleteMock := delete.NewMockInterface(ctrl)
-
-		appManagementClient.EXPECT().
-			GetApplication(gomock.Any(), "test-app").
-			Return(v20231001preview.ApplicationResource{
-				Properties: &v20231001preview.ApplicationProperties{
-					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
-				},
-			}, nil).
-			Times(1)
-
-		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
-		deleteMock.EXPECT().
-			DeleteApplicationWithProgress(
-				gomock.Any(),
-				appManagementClient,
-				clients.DeleteOptions{
-					ApplicationNameOrID: "test-app",
-					ProgressText:        progressText,
-				},
-			).
-			Return(true, nil).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:        "kind-kind",
-			Scope:       "/planes/radius/local/resourceGroups/test-group",
-			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
-		}
-		outputSink := &output.MockOutput{}
-		runner := &Runner{
-			Delete:            deleteMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			ApplicationName:   "test-app",
-			EnvironmentName:   "default",
-			Confirm:           true,
-		}
-
-		err := runner.Run(t.Context())
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
 		require.NoError(t, err)
 
-		expected := []any{
-			output.LogOutput{
-				Format: "Applications.Core/applications/%s deleted",
-				Params: []any{"test-app"},
-			},
-		}
-
-		require.Equal(t, expected, outputSink.Writes)
-	})
-
-	t.Run("Success: Prompt Confirmed", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:        "kind-kind",
-			Scope:       "/planes/radius/local/resourceGroups/test-group",
-			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
-		}
-
-		promptMock := prompt.NewMockInterface(ctrl)
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		deleteMock := delete.NewMockInterface(ctrl)
-
-		appManagementClient.EXPECT().
-			GetApplication(gomock.Any(), "test-app").
-			Return(v20231001preview.ApplicationResource{
-				Properties: &v20231001preview.ApplicationProperties{
-					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
-				},
-			}, nil).
-			Times(1)
-
-		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "another-env")).
-			Return(prompt.ConfirmYes, nil).
-			Times(1)
-
-		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "another-env")
-		deleteMock.EXPECT().
-			DeleteApplicationWithProgress(
-				gomock.Any(),
-				appManagementClient,
-				clients.DeleteOptions{
-					ApplicationNameOrID: "test-app",
-					ProgressText:        progressText,
-				},
-			).
-			Return(true, nil).
-			Times(1)
+		mockMgmt := mockManagementClientNoResources(ctrl)
 
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Delete:            deleteMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			InputPrompter:     promptMock,
-			Workspace:         workspace,
-			Output:            outputSink,
-			ApplicationName:   "test-app",
-			EnvironmentName:   "default",
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               workspace,
+			Output:                  outputSink,
+			ApplicationName:         "test-app",
+			Confirm:                 true,
 		}
 
-		err := runner.Run(t.Context())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
-
-		expected := []any{
+		require.Equal(t, []any{
 			output.LogOutput{
-				Format: "Applications.Core/applications/%s deleted",
+				Format: msgDeletingApplication,
 				Params: []any{"test-app"},
 			},
-		}
-
-		require.Equal(t, expected, outputSink.Writes)
+			output.LogOutput{
+				Format: msgApplicationDeleted,
+			},
+		}, outputSink.Writes)
 	})
 
-	t.Run("Success: Prompt Cancelled", func(t *testing.T) {
+	t.Run("Success: application deleted with cascade resource deletion", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:        "kind-kind",
-			Scope:       "/planes/radius/local/resourceGroups/test-group",
-			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+		require.NoError(t, err)
+
+		appID := workspace.Scope + "/providers/Radius.Core/applications/test-app"
+		mockMgmt := mockManagementClientWithResources(ctrl, appID, false)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               workspace,
+			Output:                  outputSink,
+			ApplicationName:         "test-app",
+			Confirm:                 true,
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		deleteMock := delete.NewMockInterface(ctrl)
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
 
-		appManagementClient.EXPECT().
-			GetApplication(gomock.Any(), "test-app").
-			Return(v20231001preview.ApplicationResource{
-				Properties: &v20231001preview.ApplicationProperties{
-					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
+		// Verify resource count message and final deleted message are present
+		require.GreaterOrEqual(t, len(outputSink.Writes), 3)
+
+		// First output should be the resource count message
+		firstLog, ok := outputSink.Writes[0].(output.LogOutput)
+		require.True(t, ok)
+		require.Equal(t, msgDeletingResources, firstLog.Format)
+
+		// Last output should be the application deleted message
+		lastLog, ok := outputSink.Writes[len(outputSink.Writes)-1].(output.LogOutput)
+		require.True(t, ok)
+		require.Equal(t, msgApplicationDeleted, lastLog.Format)
+	})
+
+	t.Run("Success: application not found (404)", func(t *testing.T) {
+		notFoundServer := func() fake.ApplicationsServer {
+			return fake.ApplicationsServer{
+				Get: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					options *corerpv20250801.ApplicationsClientGetOptions,
+				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
+					errResp.SetResponseError(http.StatusNotFound, "NotFound")
+					return
 				},
-			}, nil).
-			Times(1)
+			}
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, notFoundServer)
+		require.NoError(t, err)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			Output:                  outputSink,
+			ApplicationName:         "test-app",
+			Confirm:                 true,
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, []any{
+			output.LogOutput{
+				Format: "Application '%s' does not exist or has already been deleted. %s",
+				Params: []any{"test-app", "`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource delete Applications.Core/applications test-app`, which deletes only the application record, not its resources."},
+			},
+		}, outputSink.Writes)
+	})
+
+	t.Run("Success: user declines confirmation", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "another-env")).
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf("Are you sure you want to delete application '%s'?", "test-app")).
 			Return(prompt.ConfirmNo, nil).
 			Times(1)
 
-		outputSink := &output.MockOutput{}
-		runner := &Runner{
-			Delete:            deleteMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			InputPrompter:     promptMock,
-			Workspace:         workspace,
-			Output:            outputSink,
-			ApplicationName:   "test-app",
-			EnvironmentName:   "default",
-		}
-
-		err := runner.Run(t.Context())
-		require.NoError(t, err)
-		require.Empty(t, outputSink.Writes)
-	})
-
-	// YES, this is a success case. Delete means "make it be gone", so if the application is already
-	// gone that counts as a success.
-	//
-	// We print a different message which is why it has a separate test
-	t.Run("Success: Application Not Found", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		deleteMock := delete.NewMockInterface(ctrl)
-
-		appManagementClient.EXPECT().
-			GetApplication(gomock.Any(), "test-app").
-			Return(v20231001preview.ApplicationResource{
-				Properties: &v20231001preview.ApplicationProperties{
-					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
-				},
-			}, nil).
-			Times(1)
-
-		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
-		deleteMock.EXPECT().
-			DeleteApplicationWithProgress(
-				gomock.Any(),
-				appManagementClient,
-				clients.DeleteOptions{
-					ApplicationNameOrID: "test-app",
-					ProgressText:        progressText,
-				},
-			).
-			Return(false, nil).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:        "kind-kind",
-			Scope:       "/planes/radius/local/resourceGroups/test-group",
-			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
-		}
-		outputSink := &output.MockOutput{}
-		runner := &Runner{
-			Delete:            deleteMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			ApplicationName:   "test-app",
-			EnvironmentName:   "default",
-			Confirm:           true,
-		}
-
-		err := runner.Run(t.Context())
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
 		require.NoError(t, err)
 
-		expected := []any{
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			Output:                  outputSink,
+			InputPrompter:           promptMock,
+			ApplicationName:         "test-app",
+			Confirm:                 false,
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, []any{
 			output.LogOutput{
-				Format: "Applications.Core/applications/%s not found",
+				Format: "Application %q NOT deleted",
 				Params: []any{"test-app"},
 			},
-		}
-
-		require.Equal(t, expected, outputSink.Writes)
+		}, outputSink.Writes)
 	})
 
-	// This is a success scenario because the user intended for the interrupt
-	t.Run("Success: Console Interrupt", func(t *testing.T) {
+	t.Run("Success: --force passes force=true to child resource deletes", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:        "kind-kind",
-			Scope:       "/planes/radius/local/resourceGroups/test-group",
-			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+		require.NoError(t, err)
+
+		appID := workspace.Scope + "/providers/Radius.Core/applications/test-app"
+		mockMgmt := mockManagementClientWithResources(ctrl, appID, true)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               workspace,
+			Output:                  outputSink,
+			ApplicationName:         "test-app",
+			Confirm:                 true,
+			Force:                   true,
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		deleteMock := delete.NewMockInterface(ctrl)
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
 
-		appManagementClient.EXPECT().
-			GetApplication(gomock.Any(), "test-app").
-			Return(v20231001preview.ApplicationResource{
-				Properties: &v20231001preview.ApplicationProperties{
-					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/another-env"),
-				},
-			}, nil).
-			Times(1)
+		// First log should be the force warning.
+		require.NotEmpty(t, outputSink.Writes)
+		firstLog, ok := outputSink.Writes[0].(output.LogOutput)
+		require.True(t, ok)
+		require.Contains(t, firstLog.Format, "Force deleting an application")
+	})
 
+	t.Run("Success: the force warning is shown before the confirmation prompt", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+		require.NoError(t, err)
+
+		appID := workspace.Scope + "/providers/Radius.Core/applications/test-app"
+		mockMgmt := mockManagementClientWithResources(ctrl, appID, true)
+
+		outputSink := &output.MockOutput{}
+		var logsAtPromptTime []any
+
+		// The warning explains that force can leave orphaned external resources, so it is only
+		// useful if the user sees it before consenting to the delete.
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf(deleteConfirmation, "test-app", "another-env")).
-			Return("", &prompt.ErrExitConsole{}).
+			GetListInput(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(choices []string, promptMsg string) (string, error) {
+				logsAtPromptTime = append([]any{}, outputSink.Writes...)
+				return prompt.ConfirmYes, nil
+			}).
 			Times(1)
 
-		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Delete:            deleteMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			InputPrompter:     promptMock,
-			Output:            outputSink,
-			Workspace:         workspace,
-			ApplicationName:   "test-app",
-			EnvironmentName:   "default",
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               workspace,
+			Output:                  outputSink,
+			InputPrompter:           promptMock,
+			ApplicationName:         "test-app",
+			Confirm:                 false,
+			Force:                   true,
 		}
 
-		err := runner.Run(t.Context())
-		require.Equal(t, &prompt.ErrExitConsole{}, err)
-		require.Empty(t, outputSink.Writes)
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+
+		require.NotEmpty(t, logsAtPromptTime, "the force warning must be logged before the user is asked to confirm")
+		firstLog, ok := logsAtPromptTime[0].(output.LogOutput)
+		require.True(t, ok)
+		require.Contains(t, firstLog.Format, "Force deleting an application")
 	})
 
-	t.Run("Error: Delete Operation Fails", func(t *testing.T) {
+	t.Run("Failure: child resource delete failure surfaces error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		deleteMock := delete.NewMockInterface(ctrl)
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+		require.NoError(t, err)
 
-		// Since GetApplication is now always called, we need to mock it
-		appManagementClient.EXPECT().
-			GetApplication(gomock.Any(), "test-app").
-			Return(v20231001preview.ApplicationResource{
-				Properties: &v20231001preview.ApplicationProperties{
-					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
-				},
-			}, nil).
+		appID := workspace.Scope + "/providers/Radius.Core/applications/test-app"
+		resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/my-redis"
+		resourceType := "Applications.Datastores/redisCaches"
+
+		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
+		mockMgmt.EXPECT().
+			ListResourcesInApplication(gomock.Any(), appID).
+			Return([]generated.GenericResource{{
+				ID:   &resourceID,
+				Type: &resourceType,
+			}}, nil).
+			Times(1)
+		mockMgmt.EXPECT().
+			DeleteResource(gomock.Any(), resourceType, resourceID, false).
+			Return(false, fmt.Errorf("simulated delete failure")).
 			Times(1)
 
-		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
-		deleteMock.EXPECT().
-			DeleteApplicationWithProgress(
-				gomock.Any(),
-				appManagementClient,
-				clients.DeleteOptions{
-					ApplicationNameOrID: "test-app",
-					ProgressText:        progressText,
-				},
-			).
-			Return(false, fmt.Errorf("delete operation failed")).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:        "kind-kind",
-			Scope:       "/planes/radius/local/resourceGroups/test-group",
-			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
-		}
-		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Delete:            deleteMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			ApplicationName:   "test-app",
-			EnvironmentName:   "default",
-			Confirm:           true,
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               workspace,
+			Output:                  &output.MockOutput{},
+			ApplicationName:         "test-app",
+			Confirm:                 true,
 		}
 
-		err := runner.Run(t.Context())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "Failed to delete application")
-		require.Contains(t, err.Error(), "delete operation failed")
+		require.Contains(t, err.Error(), "Failed to delete resources for application 'test-app'")
 	})
 
-	t.Run("Error: Delete Operation Returns 'not found' Error", func(t *testing.T) {
+	t.Run("Failure: resource enumeration failure surfaces error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		deleteMock := delete.NewMockInterface(ctrl)
-
-		// Since GetApplication is now always called, we need to mock it
-		appManagementClient.EXPECT().
-			GetApplication(gomock.Any(), "test-app").
-			Return(v20231001preview.ApplicationResource{
-				Properties: &v20231001preview.ApplicationProperties{
-					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
-				},
-			}, nil).
-			Times(1)
-
-		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
-		deleteMock.EXPECT().
-			DeleteApplicationWithProgress(
-				gomock.Any(),
-				appManagementClient,
-				clients.DeleteOptions{
-					ApplicationNameOrID: "test-app",
-					ProgressText:        progressText,
-				},
-			).
-			Return(false, fmt.Errorf("application not found")).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:        "kind-kind",
-			Scope:       "/planes/radius/local/resourceGroups/test-group",
-			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
-		}
-		outputSink := &output.MockOutput{}
-		runner := &Runner{
-			Delete:            deleteMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			ApplicationName:   "test-app",
-			EnvironmentName:   "default",
-			Confirm:           true,
-		}
-
-		err := runner.Run(t.Context())
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
 		require.NoError(t, err)
 
-		expected := []any{
-			output.LogOutput{
-				Format: "Applications.Core/applications/%s not found",
-				Params: []any{"test-app"},
-			},
+		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
+		mockMgmt.EXPECT().
+			ListResourcesInApplication(gomock.Any(), gomock.Any()).
+			Return(nil, fmt.Errorf("simulated list error")).
+			Times(1)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               workspace,
+			Output:                  &output.MockOutput{},
+			ApplicationName:         "test-app",
+			Confirm:                 true,
 		}
 
-		require.Equal(t, expected, outputSink.Writes)
+		err = runner.Run(t.Context())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "simulated list error")
 	})
 
-	t.Run("Success: Delete Returns False (already gone)", func(t *testing.T) {
+	t.Run("Success: ownership query uses the fully qualified Radius.Core application ID", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		deleteMock := delete.NewMockInterface(ctrl)
-
-		appManagementClient.EXPECT().
-			GetApplication(gomock.Any(), "test-app").
-			Return(v20231001preview.ApplicationResource{
-				Properties: &v20231001preview.ApplicationProperties{
-					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
-				},
-			}, nil).
-			Times(1)
-
-		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
-		deleteMock.EXPECT().
-			DeleteApplicationWithProgress(
-				gomock.Any(),
-				appManagementClient,
-				clients.DeleteOptions{
-					ApplicationNameOrID: "test-app",
-					ProgressText:        progressText,
-				},
-			).
-			Return(false, nil).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:        "kind-kind",
-			Scope:       "/planes/radius/local/resourceGroups/test-group",
-			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
-		}
-		outputSink := &output.MockOutput{}
-		runner := &Runner{
-			Delete:            deleteMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			ApplicationName:   "test-app",
-			EnvironmentName:   "default",
-			Confirm:           true,
-		}
-
-		err := runner.Run(t.Context())
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
 		require.NoError(t, err)
 
-		expected := []any{
-			output.LogOutput{
-				Format: "Applications.Core/applications/%s not found",
-				Params: []any{"test-app"},
-			},
+		// The management client filters on properties.application, so the runner must hand it a
+		// Radius.Core ID. A bare name would be qualified as Applications.Core and match nothing.
+		expectedAppID := workspace.Scope + "/providers/Radius.Core/applications/test-app"
+
+		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
+		mockMgmt.EXPECT().
+			ListResourcesInApplication(gomock.Any(), expectedAppID).
+			Return([]generated.GenericResource{}, nil).
+			Times(1)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               workspace,
+			Output:                  &output.MockOutput{},
+			ApplicationName:         "test-app",
+			Confirm:                 true,
 		}
 
-		require.Equal(t, expected, outputSink.Writes)
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
 	})
 
-	t.Run("Success: Force Delete Application", func(t *testing.T) {
+	t.Run("Success: resources without an ID or type are skipped", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		deleteMock := delete.NewMockInterface(ctrl)
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+		require.NoError(t, err)
 
-		appManagementClient.EXPECT().
-			GetApplication(gomock.Any(), "test-app").
-			Return(v20231001preview.ApplicationResource{
-				Properties: &v20231001preview.ApplicationProperties{
-					Environment: new("/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default"),
-				},
+		appID := workspace.Scope + "/providers/Radius.Core/applications/test-app"
+		resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/my-redis"
+		resourceType := "Applications.Datastores/redisCaches"
+
+		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
+		mockMgmt.EXPECT().
+			ListResourcesInApplication(gomock.Any(), appID).
+			Return([]generated.GenericResource{
+				{ID: &resourceID, Type: &resourceType},
+				{ID: nil, Type: &resourceType},
+				{ID: &resourceID, Type: nil},
 			}, nil).
 			Times(1)
-
-		progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", "test-app", "default")
-		deleteMock.EXPECT().
-			DeleteApplicationWithProgress(
-				gomock.Any(),
-				appManagementClient,
-				clients.DeleteOptions{
-					ApplicationNameOrID: "test-app",
-					ProgressText:        progressText,
-					Force:               true,
-				},
-			).
+		// Only the well-formed resource is deleted.
+		mockMgmt.EXPECT().
+			DeleteResource(gomock.Any(), resourceType, resourceID, false).
 			Return(true, nil).
 			Times(1)
 
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:        "kind-kind",
-			Scope:       "/planes/radius/local/resourceGroups/test-group",
-			Environment: "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default",
-		}
-		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Delete:            deleteMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			ApplicationName:   "test-app",
-			EnvironmentName:   "default",
-			Confirm:           true,
-			Force:             true,
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               workspace,
+			Output:                  &output.MockOutput{},
+			ApplicationName:         "test-app",
+			Confirm:                 true,
 		}
 
-		err := runner.Run(t.Context())
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+	})
+
+	t.Run("Success: user accepts confirmation prompt", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		promptMock := prompt.NewMockInterface(ctrl)
+		promptMock.EXPECT().
+			GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, fmt.Sprintf("Are you sure you want to delete application '%s'?", "test-app")).
+			Return(prompt.ConfirmYes, nil).
+			Times(1)
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
 		require.NoError(t, err)
 
-		// Verify warning was logged before the delete result
-		require.GreaterOrEqual(t, len(outputSink.Writes), 2)
-		warningOutput, ok := outputSink.Writes[0].(output.LogOutput)
+		mockMgmt := mockManagementClientNoResources(ctrl)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               workspace,
+			Output:                  outputSink,
+			InputPrompter:           promptMock,
+			ApplicationName:         "test-app",
+			Confirm:                 false,
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+
+		// Must reach the final "Application deleted" log.
+		lastLog, ok := outputSink.Writes[len(outputSink.Writes)-1].(output.LogOutput)
 		require.True(t, ok)
-		require.Contains(t, warningOutput.Format, "WARNING")
-		lastOutput, ok := outputSink.Writes[len(outputSink.Writes)-1].(output.LogOutput)
-		require.True(t, ok)
-		require.Equal(t, "Applications.Core/applications/%s deleted", lastOutput.Format)
+		require.Equal(t, msgApplicationDeleted, lastLog.Format)
 	})
 }

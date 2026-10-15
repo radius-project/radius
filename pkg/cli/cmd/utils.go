@@ -162,3 +162,15 @@ func PopulateRecipePackClients(
 
 	return nil
 }
+
+// LegacyApplicationHint returns guidance appended to `rad app` not-found messages. `rad app`
+// commands manage Radius.Core applications only, so a legacy Applications.Core application with
+// the same name is reported as not found. verb is the `rad resource` subcommand to suggest
+// ("show" or "delete").
+func LegacyApplicationHint(verb string, applicationName string) string {
+	hint := fmt.Sprintf("`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource %s Applications.Core/applications %s`", verb, applicationName)
+	if verb == "delete" {
+		hint += ", which deletes only the application record, not its resources"
+	}
+	return hint + "."
+}
