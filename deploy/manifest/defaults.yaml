@@ -76,11 +76,11 @@ resourceTypes:
 recipePacks:
   - name: azure-aks
     repo: github.com/radius-project/resource-types-contrib
-    ref: b390a6f858a07e3392643625dcf3df1ecdfd1e2a
+    ref: 8ef549c8ed6e14cd6c2486309dd04d0404b205fd
     tag: ""
   - name: azure-aci
     repo: github.com/radius-project/resource-types-contrib
-    ref: b390a6f858a07e3392643625dcf3df1ecdfd1e2a
+    ref: 8ef549c8ed6e14cd6c2486309dd04d0404b205fd
     tag: ""
   - name: kubernetes
     repo: github.com/radius-project/resource-types-contrib
