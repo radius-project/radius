@@ -501,7 +501,6 @@ test-functional-all-noncloud: group-one group-two
 group-one group-two:
 	@mkdir "$(SERIAL_STATE)/active" 2>/dev/null || { echo "parallel groups detected" >&2; exit 1; }; \
 	trap 'rmdir "$(SERIAL_STATE)/active"' EXIT; \
-	sleep 0.2; \
 	echo "$@" >>"$(SERIAL_STATE)/completed"
 EOF
 for parallelism in inherited forwarded both; do
@@ -520,12 +519,40 @@ for parallelism in inherited forwarded both; do
     forward_pid="$(<"${MOCK_LOG}.forward-pid")"
     ! kill -0 "${forward_pid}" 2>/dev/null || fail "port-forward survived the test run"
 done
-# The same fixture must detect concurrency without the serialization fix.
+# Only the negative control waits for a peer, so serial runs cannot deadlock.
+export MOCK_MAKEFILE="${work_dir}/unserialized.mk"
+cat >"${MOCK_MAKEFILE}" <<'EOF'
+.PHONY: test-functional-all-noncloud group-one group-two
+test-functional-all-noncloud: group-one group-two
+group-one group-two:
+	@bash "$(SERIAL_STATE)/overlap-worker.sh" "$@"
+EOF
+cat >"${SERIAL_STATE}/overlap-worker.sh" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+if [[ "$1" == group-one ]]; then
+    peer=group-two
+else
+    peer=group-one
+    sleep 0.3
+fi
+touch "${SERIAL_STATE}/$1-ready"
+for attempt in {1..200}; do
+    if [[ -f "${SERIAL_STATE}/${peer}-ready" ]]; then
+        echo "parallel groups detected" >&2
+        exit 1
+    fi
+    sleep 0.05
+done
+echo "Timed out waiting for ${peer} to start" >&2
+exit 1
+EOF
 sed 's/make "\$@" --jobs=1/make "\$@"/' "${runner}" \
     >"${work_dir}/build/scripts/unserialized.sh"
 runner="${work_dir}/build/scripts/unserialized.sh"
 run_runner 2 test test-functional-all-noncloud -j12
 assert_contains "${output}" "parallel groups detected"
+assert_not_contains "${output}" "Timed out waiting"
 forward_pid="$(<"${MOCK_LOG}.forward-pid")"
 ! kill -0 "${forward_pid}" 2>/dev/null || fail "failed run leaked its port-forward"
 [[ ! -e "${state}/test.lock" ]] || fail "failed run leaked its fixture lock"
