@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
 // CreateEnvProviders forms the provider scope from the given
@@ -166,9 +167,22 @@ func PopulateRecipePackClients(
 // LegacyApplicationHint returns guidance appended to `rad app` not-found messages. `rad app`
 // commands manage Radius.Core applications only, so a legacy Applications.Core application with
 // the same name is reported as not found. verb is the `rad resource` subcommand to suggest
-// ("show" or "delete").
-func LegacyApplicationHint(verb string, applicationName string) string {
-	hint := fmt.Sprintf("`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource %s Applications.Core/applications %s`", verb, applicationName)
+// ("show" or "delete"). The suggested command carries the workspace and resource group that the
+// `rad app` command resolved, so following it targets the same scope even when overrides were used.
+func LegacyApplicationHint(verb string, workspace *workspaces.Workspace, applicationName string) string {
+	command := fmt.Sprintf("rad resource %s Applications.Core/applications %s", verb, applicationName)
+	if workspace != nil {
+		if workspace.Name != "" {
+			command += " --workspace " + workspace.Name
+		}
+		if scope, err := resources.ParseScope(workspace.Scope); err == nil {
+			if group := scope.FindScope(resources_radius.ScopeResourceGroups); group != "" {
+				command += " --group " + group
+			}
+		}
+	}
+
+	hint := fmt.Sprintf("`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `%s`", command)
 	if verb == "delete" {
 		hint += ", which deletes only the application record, not its resources"
 	}

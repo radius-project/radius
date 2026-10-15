@@ -306,7 +306,7 @@ func Test_Run(t *testing.T) {
 		require.Equal(t, []any{
 			output.LogOutput{
 				Format: "Application '%s' does not exist or has already been deleted. %s",
-				Params: []any{"test-app", "`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource delete Applications.Core/applications test-app`, which deletes only the application record, not its resources."},
+				Params: []any{"test-app", "`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource delete Applications.Core/applications test-app --workspace test-workspace --group test-group`, which deletes only the application record, not its resources."},
 			},
 		}, outputSink.Writes)
 	})

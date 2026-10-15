@@ -171,10 +171,53 @@ func TestPopulateRecipePackClients(t *testing.T) {
 }
 
 func Test_LegacyApplicationHint(t *testing.T) {
-	require.Equal(t,
-		"`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource show Applications.Core/applications my-app`.",
-		LegacyApplicationHint("show", "my-app"))
-	require.Equal(t,
-		"`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource delete Applications.Core/applications my-app`, which deletes only the application record, not its resources.",
-		LegacyApplicationHint("delete", "my-app"))
+	const prefix = "`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use "
+
+	tests := []struct {
+		name      string
+		verb      string
+		workspace *workspaces.Workspace
+		expected  string
+	}{
+		{
+			name:     "show without workspace",
+			verb:     "show",
+			expected: prefix + "`rad resource show Applications.Core/applications my-app`.",
+		},
+		{
+			name:     "delete without workspace",
+			verb:     "delete",
+			expected: prefix + "`rad resource delete Applications.Core/applications my-app`, which deletes only the application record, not its resources.",
+		},
+		{
+			name:      "show carries workspace and group",
+			verb:      "show",
+			workspace: &workspaces.Workspace{Name: "dev", Scope: "/planes/radius/local/resourceGroups/default"},
+			expected:  prefix + "`rad resource show Applications.Core/applications my-app --workspace dev --group default`.",
+		},
+		{
+			name:      "delete carries overridden group",
+			verb:      "delete",
+			workspace: &workspaces.Workspace{Name: "dev", Scope: "/planes/radius/local/resourceGroups/prod"},
+			expected:  prefix + "`rad resource delete Applications.Core/applications my-app --workspace dev --group prod`, which deletes only the application record, not its resources.",
+		},
+		{
+			name:      "unnamed workspace omits workspace flag",
+			verb:      "show",
+			workspace: &workspaces.Workspace{Scope: "/planes/radius/local/resourceGroups/prod"},
+			expected:  prefix + "`rad resource show Applications.Core/applications my-app --group prod`.",
+		},
+		{
+			name:      "invalid scope omits group flag",
+			verb:      "show",
+			workspace: &workspaces.Workspace{Name: "dev", Scope: "not-a-scope"},
+			expected:  prefix + "`rad resource show Applications.Core/applications my-app --workspace dev`.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, LegacyApplicationHint(tt.verb, tt.workspace, "my-app"))
+		})
+	}
 }

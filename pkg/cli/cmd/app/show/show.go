@@ -118,7 +118,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	resp, err := client.Get(ctx, r.Workspace.Scope, r.ApplicationName, &corerpv20250801.ApplicationsClientGetOptions{})
 	if clients.Is404Error(err) {
-		return clierrors.Message("The application %q was not found or has been deleted. %s", r.ApplicationName, cmd.LegacyApplicationHint("show", r.ApplicationName))
+		return clierrors.Message("The application %q was not found or has been deleted. %s", r.ApplicationName, cmd.LegacyApplicationHint("show", r.Workspace, r.ApplicationName))
 	} else if err != nil {
 		return err
 	}

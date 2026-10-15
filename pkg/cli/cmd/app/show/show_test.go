@@ -161,7 +161,7 @@ func Test_Run(t *testing.T) {
 
 		err = runner.Run(t.Context())
 		require.Error(t, err)
-		require.Equal(t, clierrors.Message("The application %q was not found or has been deleted. %s", "test-app", "`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource show Applications.Core/applications test-app`."), err)
+		require.Equal(t, clierrors.Message("The application %q was not found or has been deleted. %s", "test-app", "`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource show Applications.Core/applications test-app --workspace test-workspace --group test-group`."), err)
 		require.Empty(t, outputSink.Writes)
 	})
 
@@ -195,7 +195,7 @@ func Test_Run(t *testing.T) {
 		err = runner.Run(t.Context())
 		require.Error(t, err)
 		// Should NOT be the 404 user-facing message.
-		require.NotEqual(t, clierrors.Message("The application %q was not found or has been deleted. %s", "test-app", "`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource show Applications.Core/applications test-app`."), err)
+		require.NotEqual(t, clierrors.Message("The application %q was not found or has been deleted. %s", "test-app", "`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource show Applications.Core/applications test-app --workspace test-workspace --group test-group`."), err)
 		require.Empty(t, outputSink.Writes)
 	})
 
