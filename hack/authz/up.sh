@@ -164,7 +164,11 @@ build_images() {
     done
 
     echo "Building and pushing ${IMAGES[*]} as ${REGISTRY}/<image>:${IMAGE_TAG}"
-    if [[ "$(docker info --format '{{.Architecture}}')" != "x86_64" ]]; then
+    local architecture
+    # Podman's Docker-compatible CLI does not expose this info template field.
+    architecture="$(docker info --format '{{.Architecture}}' 2>/dev/null)" \
+        || architecture="$(uname -m)"
+    if [[ "${architecture}" != "x86_64" && "${architecture}" != "amd64" ]]; then
         echo "note: make docker-build builds linux/amd64 images; on this host they run under Docker's amd64 emulation."
     fi
     make -C "${AUTHZ_REPO_ROOT}" "${targets[@]}" \
