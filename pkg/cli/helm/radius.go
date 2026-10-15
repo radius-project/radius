@@ -56,8 +56,6 @@ func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeC
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to get Helm config, err: %w", err)
 	}
-	// Wait only for the core control plane. The dashboard keeps rolling out in the background.
-	helmConf.KubeClient = newSkipDashboardWaitKubeClient(helmConf.KubeClient, options.Namespace)
 
 	if options.ChartPath == "" {
 		helmChart, err = helmAction.HelmChartFromContainerRegistry(options.ChartVersion, helmConf, options.ChartRepo, options.ReleaseName)

@@ -238,7 +238,7 @@ To disable pre-downloading so Terraform is downloaded when the first Terraform r
 
 ### Dashboard Startup Gate
 
-By default (`dashboard.startupGate.enabled=true`), the dashboard pod has an init container that waits until the core Radius control plane is available: `ucp`, `applications-rp`, `dynamic-rp`, `controller`, and `bicep-de`. Kubelet pulls images one at a time, so the gate stops the large dashboard image from delaying the core images. `rad install` and `rad upgrade` wait for the core control plane only. The dashboard keeps starting in the background. The init container uses the `controlPlaneReadiness` image and a Role that can only `get` those Deployments. `dashboard.startupGate.timeoutSeconds` (default `900`) sets how long the gate waits.
+By default (`dashboard.startupGate.enabled=true`), the dashboard pod has an init container that waits until the core Radius control plane is available: `ucp`, `applications-rp`, `dynamic-rp`, `controller`, and `bicep-de`. Kubelet pulls images one at a time, so the gate stops the large dashboard image from delaying the core images. `rad install` and `rad upgrade` still wait for every pod, including the dashboard. The init container uses the `controlPlaneReadiness` image and a Role that can only `get` those Deployments. `dashboard.startupGate.timeoutSeconds` (default `900`) sets how long the gate waits.
 
 To start the dashboard at the same time as the other components, set `dashboard.startupGate.enabled=false`.
 
