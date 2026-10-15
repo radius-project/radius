@@ -232,6 +232,19 @@ echo "${tool} $*" >>"${MOCK_CALLS}"
 case "${tool} $*" in
     "docker info")
         ;;
+    "docker info --format {{.Architecture}}")
+        if [[ "${MOCK_ARCHITECTURE}" == unsupported ]]; then
+            echo "can't evaluate field Architecture" >&2
+            exit 1
+        fi
+        echo "${MOCK_ARCHITECTURE}"
+        ;;
+    "uname -m")
+        echo arm64
+        ;;
+    "make -C "*)
+        exit "${MOCK_BUILD_STATUS:-0}"
+        ;;
     "docker inspect --format {{.State.Running}} "*)
         echo true
         ;;
@@ -262,7 +275,7 @@ case "${tool} $*" in
 esac
 MOCK
 chmod +x "${TEST_ROOT}/bin/workflow-tool"
-for tool in docker kind make rad helm go; do
+for tool in docker kind make rad helm go uname; do
     ln -s workflow-tool "${TEST_ROOT}/bin/${tool}"
 done
 export MOCK_CALLS="${TEST_ROOT}/kubectl-calls.txt"
@@ -271,7 +284,7 @@ export MOCK_CONTEXT_EXISTS="true"
 unset AUTHZ_COMPONENT_SECRET_FORMAT AUTHZ_KUBE_CONTEXT AUTHZ_CLUSTER_NAME \
     AUTHZ_RADIUS_NAMESPACE AUTHZ_ROGUE_NAMESPACE MOCK_KIT_MODE \
     MOCK_KUBECONFIG_PATH RAD AUTHZ_REGISTRY_NAME AUTHZ_REGISTRY_PORT \
-    MOCK_INSTALL_STATUS
+    MOCK_INSTALL_STATUS MOCK_ARCHITECTURE MOCK_BUILD_STATUS
 
 reset_calls() {
     : >"${MOCK_CALLS}"
@@ -560,6 +573,37 @@ assert_status 1
 assert_output_contains "Radius install failed"
 assert_calls_not_contain "label namespace"
 assert_calls_not_contain "rollout status"
+
+echo "Test: build architecture detection supports Docker and Podman"
+mkdir -p "${TEST_ROOT}/build-repo/hack/authz"
+cp "${KIT_DIR}/up.sh" "${KIT_DIR}/lib.sh" "${TEST_ROOT}/build-repo/hack/authz/"
+for architecture in x86_64 amd64 unsupported; do
+    reset_calls
+    STATUS=0
+    OUTPUT="$(PATH="${TEST_ROOT}/bin:${PATH}" \
+        MOCK_ARCHITECTURE="${architecture}" MOCK_INSTALL_MODE=dryRun \
+        bash "${TEST_ROOT}/build-repo/hack/authz/up.sh" dryRun \
+        --tag authz-test 2>&1)" || STATUS=$?
+    assert_status 0
+    assert_output_not_contains "can't evaluate field Architecture"
+    assert_calls_ordered "make -C " "rad install kubernetes"
+    if [[ "${architecture}" == unsupported ]]; then
+        assert_calls_contain "uname -m"
+        assert_output_contains "amd64 emulation"
+    else
+        assert_calls_not_contain "uname -m"
+        assert_output_not_contains "amd64 emulation"
+    fi
+done
+
+echo "Test: architecture fallback does not hide a build failure"
+reset_calls
+STATUS=0
+OUTPUT="$(PATH="${TEST_ROOT}/bin:${PATH}" MOCK_ARCHITECTURE=unsupported \
+    MOCK_BUILD_STATUS=1 bash "${TEST_ROOT}/build-repo/hack/authz/up.sh" \
+    dryRun --tag authz-test 2>&1)" || STATUS=$?
+assert_status 1
+assert_calls_not_contain "rad install kubernetes"
 
 echo "Test: would-deny.sh requires dry-run startup logs for a dryRun install"
 reset_calls
