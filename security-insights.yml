@@ -41,7 +41,10 @@ repository:
       - name: CodeQL
         type: SAST
         version: 4.38.3
-        comment: Version is the pinned github/codeql-action release; query suites are set in .github/configs/.codeql.yml.
+        comment: |
+          Version is the pinned github/codeql-action release; query suites are
+          set in .github/configs/.codeql.yml. Runs through
+          https://github.com/radius-project/radius/actions/workflows/codeql.yml.
         rulesets:
           - security-extended
           - security-and-quality
@@ -50,65 +53,46 @@ repository:
           adhoc: true
           ci: true
           release: false
-        results:
-          adhoc:
-            name: Scheduled and manually dispatched CodeQL analysis
-            predicate-uri: https://github.com/github/codeql-action
-            location: https://github.com/radius-project/radius/actions/workflows/codeql.yml
-          ci:
-            name: Pull request and main-branch CodeQL analysis
-            predicate-uri: https://github.com/github/codeql-action
-            location: https://github.com/radius-project/radius/actions/workflows/codeql.yml
+        results: {}
       - name: GoSec
         type: SAST
         version: 2.29.0
+        comment: |
+          Runs through
+          https://github.com/radius-project/radius/actions/workflows/codeql.yml.
         rulesets:
           - default
         integration:
           adhoc: true
           ci: true
           release: false
-        results:
-          adhoc:
-            name: Scheduled and manually dispatched GoSec analysis
-            predicate-uri: https://github.com/securego/gosec
-            location: https://github.com/radius-project/radius/actions/workflows/codeql.yml
-          ci:
-            name: Pull request and main-branch GoSec analysis
-            predicate-uri: https://github.com/securego/gosec
-            location: https://github.com/radius-project/radius/actions/workflows/codeql.yml
+        results: {}
       - name: Dependency Review
         type: SCA
-        comment: Runs actions/dependency-review-action through the radius-project/.github reusable workflow.
+        comment: |
+          Runs actions/dependency-review-action through the radius-project/.github
+          reusable workflow at
+          https://github.com/radius-project/radius/actions/workflows/dependency-review.yml.
         rulesets:
           - default
         integration:
           adhoc: false
           ci: true
           release: false
-        results:
-          ci:
-            name: Pull request dependency review
-            predicate-uri: https://github.com/actions/dependency-review-action
-            location: https://github.com/radius-project/radius/actions/workflows/dependency-review.yml
+        results: {}
       - name: OpenSSF Scorecard
         type: other
         version: 2.4.4
+        comment: |
+          Runs through
+          https://github.com/radius-project/radius/actions/workflows/scorecard.yaml.
         rulesets:
           - default
         integration:
           adhoc: true
           ci: true
           release: false
-        results:
-          adhoc:
-            name: Scheduled OpenSSF Scorecard analysis
-            predicate-uri: https://github.com/ossf/scorecard-action
-            location: https://github.com/radius-project/radius/actions/workflows/scorecard.yaml
-          ci:
-            name: Main-branch OpenSSF Scorecard analysis
-            predicate-uri: https://github.com/ossf/scorecard-action
-            location: https://github.com/radius-project/radius/actions/workflows/scorecard.yaml
+        results: {}
   release:
     automated-pipeline: true
     distribution-points:
