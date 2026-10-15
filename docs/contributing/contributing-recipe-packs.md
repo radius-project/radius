@@ -98,7 +98,7 @@ The pack is ready to ship when:
 
   ```bash
   rad deploy recipe-packs/<pack>/<pack>.bicep --environment <env>
-  rad env update <env> --recipe-packs <pack> --preview
+  rad env update <env> --recipe-packs <pack>
   rad deploy <Category>/<resourceType>/test/app.bicep --environment <env>
   ```
 

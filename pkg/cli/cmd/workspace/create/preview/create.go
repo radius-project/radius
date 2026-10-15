@@ -53,7 +53,7 @@ Available workspaceTypes: kubernetes
 
 Workspaces allow you to manage multiple Radius platforms and environments using a local configuration file.
 
-Use this command together with environments created via 'rad env create --preview'.`,
+Use this command together with environments created via 'rad env create'.`,
 		Args: workspace_create.ValidateArgs(),
 		Example: `
 # Create a workspace bound to a Radius.Core (preview) environment
@@ -109,7 +109,7 @@ func (r *Runner) validateRadiusCoreEnvironment(ctx context.Context, ws *workspac
 
 	if _, err := r.RadiusCoreClientFactory.NewEnvironmentsClient().Get(ctx, ws.Scope, envName, nil); err != nil {
 		if clients.Is404Error(err) {
-			return "", clierrors.Message("The environment %q does not exist. Run `rad env create --preview` and try again.", envID)
+			return "", clierrors.Message("The environment %q does not exist. Run `rad env create` and try again.", envID)
 		}
 		return "", clierrors.MessageWithCause(err, "Failed to get environment %q.", envID)
 	}

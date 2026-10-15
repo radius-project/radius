@@ -156,7 +156,7 @@ func Test_Validate_Environment(t *testing.T) {
 		err = runner.Validate(cmd, []string{"kubernetes"})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Radius.Core/environments/env1")
-		require.Contains(t, err.Error(), "rad env create --preview")
+		require.Contains(t, err.Error(), "Run `rad env create` and try again")
 	})
 
 	t.Run("non-404 error is propagated and not masked as not-found", func(t *testing.T) {

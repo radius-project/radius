@@ -47,18 +47,12 @@ import (
 	credential "github.com/radius-project/radius/pkg/cli/cmd/credential"
 	cmd_deploy "github.com/radius-project/radius/pkg/cli/cmd/deploy"
 	env_create "github.com/radius-project/radius/pkg/cli/cmd/env/create"
-	env_create_preview "github.com/radius-project/radius/pkg/cli/cmd/env/create/preview"
 	env_delete "github.com/radius-project/radius/pkg/cli/cmd/env/delete"
-	env_delete_preview "github.com/radius-project/radius/pkg/cli/cmd/env/delete/preview"
 	env_switch "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch"
-	env_switch_preview "github.com/radius-project/radius/pkg/cli/cmd/env/envswitch/preview"
 	env_list "github.com/radius-project/radius/pkg/cli/cmd/env/list"
-	env_list_preview "github.com/radius-project/radius/pkg/cli/cmd/env/list/preview"
 	"github.com/radius-project/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/radius-project/radius/pkg/cli/cmd/env/show"
-	env_show_preview "github.com/radius-project/radius/pkg/cli/cmd/env/show/preview"
 	env_update "github.com/radius-project/radius/pkg/cli/cmd/env/update"
-	env_update_preview "github.com/radius-project/radius/pkg/cli/cmd/env/update/preview"
 	group "github.com/radius-project/radius/pkg/cli/cmd/group"
 	"github.com/radius-project/radius/pkg/cli/cmd/install"
 	install_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/install/kubernetes"
@@ -357,30 +351,20 @@ func initSubCommands() {
 	shutdownCmd, _ := cmd_shutdown.NewCommand(framework)
 	RootCmd.AddCommand(shutdownCmd)
 
-	legacyEnvCreateCmd, _ := env_create.NewCommand(framework)
-	previewCreateCmd, _ := env_create_preview.NewCommand(framework)
-	wirePreviewSubcommandPreviewBase(previewCreateCmd, legacyEnvCreateCmd.RunE, "Use the Radius.Core preview implementation for environment create", "recipe-packs")
-	envCmd.AddCommand(previewCreateCmd)
+	envCreateCmd, _ := env_create.NewCommand(framework)
+	envCmd.AddCommand(envCreateCmd)
 
 	envDeleteCmd, _ := env_delete.NewCommand(framework)
-	previewDeleteCmd, _ := env_delete_preview.NewCommand(framework)
-	wirePreviewSubcommandPreviewBase(previewDeleteCmd, envDeleteCmd.RunE, "Use the Radius.Core preview implementation for environment delete", "force")
-	envCmd.AddCommand(previewDeleteCmd)
+	envCmd.AddCommand(envDeleteCmd)
 
 	envListCmd, _ := env_list.NewCommand(framework)
-	previewListCmd, _ := env_list_preview.NewCommand(framework)
-	wirePreviewSubcommand(envListCmd, previewListCmd)
 	envCmd.AddCommand(envListCmd)
 
 	envShowCmd, _ := env_show.NewCommand(framework)
-	previewShowCmd, _ := env_show_preview.NewCommand(framework)
-	wirePreviewSubcommand(envShowCmd, previewShowCmd)
 	envCmd.AddCommand(envShowCmd)
 
-	legacyEnvUpdateCmd, _ := env_update.NewCommand(framework)
-	previewEnvUpdateCmd, _ := env_update_preview.NewCommand(framework)
-	wirePreviewSubcommandPreviewBase(previewEnvUpdateCmd, legacyEnvUpdateCmd.RunE, "Use the Radius.Core preview implementation for environment update", "recipe-packs", "clear-kubernetes")
-	envCmd.AddCommand(previewEnvUpdateCmd)
+	envUpdateCmd, _ := env_update.NewCommand(framework)
+	envCmd.AddCommand(envUpdateCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
 	previewWorkspaceCreateCmd, _ := workspace_create_preview.NewCommand(framework)
@@ -425,8 +409,6 @@ func initSubCommands() {
 	applicationCmd.AddCommand(appGraphCmd)
 
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
-	previewEnvSwitchCmd, _ := env_switch_preview.NewCommand(framework)
-	wirePreviewSubcommand(envSwitchCmd, previewEnvSwitchCmd)
 	envCmd.AddCommand(envSwitchCmd)
 
 	bicepPublishCmd, _ := bicep_publish.NewCommand(framework)
@@ -519,46 +501,6 @@ func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
 			return previewRun(c, args)
 		}
 		return legacyRun(c, args)
-	}
-}
-
-// wirePreviewSubcommandPreviewBase wires a subcommand whose preview implementation carries
-// flags that the legacy implementation lacks (e.g. env update's --recipe-packs), so the
-// preview command must be used as the base to expose those flags. The legacy runner is
-// invoked as a fallback. Like wirePreviewSubcommand, preview is activated by the --preview
-// flag or the RADIUS_PREVIEW environment variable, with the flag taking precedence.
-//
-// previewOnlyFlags names flags that only the preview implementation understands. When preview
-// mode is not active, setting any of them is rejected instead of silently routing to the legacy
-// runner (which would ignore them).
-func wirePreviewSubcommandPreviewBase(previewCmd *cobra.Command, legacyRunE func(*cobra.Command, []string) error, previewFlagUsage string, previewOnlyFlags ...string) {
-	previewCmd.Flags().Bool("preview", false, withPreviewEnvVarNote(previewFlagUsage))
-
-	// Fail loudly at wiring time if a preview-only flag name does not match a real flag.
-	// Otherwise Changed() would silently return false and the guard below would never fire,
-	// reintroducing the silent fall-through to the legacy runner this guard prevents.
-	for _, name := range previewOnlyFlags {
-		if previewCmd.Flags().Lookup(name) == nil {
-			panic(fmt.Sprintf("wirePreviewSubcommandPreviewBase: preview-only flag %q is not defined on command %q", name, previewCmd.Name()))
-		}
-	}
-
-	previewRun := previewCmd.RunE
-
-	previewCmd.RunE = func(c *cobra.Command, args []string) error {
-		usePreview, err := resolveUsePreview(c)
-		if err != nil {
-			return err
-		}
-		if usePreview {
-			return previewRun(c, args)
-		}
-		for _, name := range previewOnlyFlags {
-			if c.Flags().Changed(name) {
-				return clierrors.Message("The --%s flag requires preview mode. Re-run with --preview or set RADIUS_PREVIEW=true.", name)
-			}
-		}
-		return legacyRunE(c, args)
 	}
 }
 

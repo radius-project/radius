@@ -640,9 +640,6 @@ func Test_DevRecipes(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
-	options := rp.NewTestOptions(t)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
-
 	envName := "test-dev-recipes"
 	envNamespace := "test-dev-recipes"
 
@@ -694,7 +691,8 @@ func Test_DevRecipes(t *testing.T) {
 		require.Equal(t, devRecipe.RepoPath+":"+tag, *bicepProperties.TemplatePath)
 	}
 
-	err = cli.EnvDelete(ctx, envName)
+	// `rad env delete` only targets Radius.Core.
+	_, err = managementClient.DeleteEnvironment(ctx, envName)
 	require.NoError(t, err)
 }
 

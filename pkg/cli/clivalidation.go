@@ -73,6 +73,32 @@ func RequireEnvironmentNameArgs(cmd *cobra.Command, args []string, workspace wor
 	return environmentName, err
 }
 
+// RequireRadiusCoreEnvironmentNameArgs is RequireEnvironmentNameArgs for commands that only manage
+// Radius.Core environments. When no name is supplied and the workspace default is another
+// environment type, it returns an error rather than reusing that environment's name, which could
+// select a different environment of the same name.
+func RequireRadiusCoreEnvironmentNameArgs(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
+	environmentName, err := ReadEnvironmentNameArgs(cmd, args)
+	if err != nil {
+		return "", err
+	}
+
+	if environmentName == "" && workspace.Environment != "" {
+		id, err := resources.ParseResource(workspace.Environment)
+		if err != nil {
+			return "", err
+		}
+
+		if !strings.EqualFold(id.Type(), radiusCoreEnvironmentType) {
+			return "", clierrors.Message("The default environment %q is not a %s resource. Pass an environment name, or select a %s environment using `rad env switch`.", workspace.Environment, radiusCoreEnvironmentType, radiusCoreEnvironmentType)
+		}
+	}
+
+	return RequireEnvironmentNameArgs(cmd, args, workspace)
+}
+
+const radiusCoreEnvironmentType = "Radius.Core/environments"
+
 // RequireEnvironmentName checks if an environment name is provided as a flag or as a default environment in the workspace,
 // and returns an error if neither is present. It also handles any errors that occur while parsing the resource.
 func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
