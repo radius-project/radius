@@ -60,7 +60,7 @@ func (client *RabbitMQQueuesClient) BeginCreateOrUpdate(ctx context.Context, roo
 	}
 }
 
-// CreateOrUpdate - Create a RabbitMQQueueResource
+// createOrUpdate - Create a RabbitMQQueueResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *RabbitMQQueuesClient) createOrUpdate(ctx context.Context, rootScope string, rabbitMQQueueName string, resource RabbitMQQueueResource, options *RabbitMQQueuesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -78,7 +78,7 @@ func (client *RabbitMQQueuesClient) createOrUpdate(ctx context.Context, rootScop
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *RabbitMQQueuesClient) createOrUpdateCreateRequest(ctx context.Context, rootScope string, rabbitMQQueueName string, resource RabbitMQQueueResource, _ *RabbitMQQueuesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}"
 	if rootScope == "" {
@@ -113,7 +113,7 @@ func (client *RabbitMQQueuesClient) createOrUpdateCreateRequest(ctx context.Cont
 //     method.
 func (client *RabbitMQQueuesClient) BeginDelete(ctx context.Context, rootScope string, rabbitMQQueueName string, options *RabbitMQQueuesClientBeginDeleteOptions) (*runtime.Poller[RabbitMQQueuesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.deleteOperation(ctx, rootScope, rabbitMQQueueName, options)
+		resp, err := client.delete(ctx, rootScope, rabbitMQQueueName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -126,9 +126,9 @@ func (client *RabbitMQQueuesClient) BeginDelete(ctx context.Context, rootScope s
 	}
 }
 
-// Delete - Delete a RabbitMQQueueResource
+// delete - Delete a RabbitMQQueueResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *RabbitMQQueuesClient) deleteOperation(ctx context.Context, rootScope string, rabbitMQQueueName string, options *RabbitMQQueuesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *RabbitMQQueuesClient) delete(ctx context.Context, rootScope string, rabbitMQQueueName string, options *RabbitMQQueuesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, rabbitMQQueueName, options)
 	if err != nil {
@@ -144,7 +144,7 @@ func (client *RabbitMQQueuesClient) deleteOperation(ctx context.Context, rootSco
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *RabbitMQQueuesClient) deleteCreateRequest(ctx context.Context, rootScope string, rabbitMQQueueName string, _ *RabbitMQQueuesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}"
 	if rootScope == "" {
@@ -162,6 +162,73 @@ func (client *RabbitMQQueuesClient) deleteCreateRequest(ctx context.Context, roo
 	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", version20231001Preview)
 	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	return req, nil
+}
+
+// BeginUpdate - Update a RabbitMQQueueResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - rabbitMQQueueName - The name of the RabbitMQQueue portable resource resource
+//   - properties - The resource properties to be updated.
+//   - options - RabbitMQQueuesClientBeginUpdateOptions contains the optional parameters for the RabbitMQQueuesClient.BeginUpdate
+//     method.
+func (client *RabbitMQQueuesClient) BeginUpdate(ctx context.Context, rootScope string, rabbitMQQueueName string, properties RabbitMQQueueResource, options *RabbitMQQueuesClientBeginUpdateOptions) (*runtime.Poller[RabbitMQQueuesClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, rootScope, rabbitMQQueueName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RabbitMQQueuesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[RabbitMQQueuesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// update - Update a RabbitMQQueueResource
+// If the operation fails it returns an *azcore.ResponseError type.
+func (client *RabbitMQQueuesClient) update(ctx context.Context, rootScope string, rabbitMQQueueName string, properties RabbitMQQueueResource, options *RabbitMQQueuesClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, rootScope, rabbitMQQueueName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		return nil, runtime.NewResponseError(httpResp)
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the update request.
+func (client *RabbitMQQueuesClient) updateCreateRequest(ctx context.Context, rootScope string, rabbitMQQueueName string, properties RabbitMQQueueResource, _ *RabbitMQQueuesClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if rabbitMQQueueName == "" {
+		return nil, errors.New("parameter rabbitMQQueueName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQQueueName}", url.PathEscape(rabbitMQQueueName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 
@@ -214,6 +281,65 @@ func (client *RabbitMQQueuesClient) getHandleResponse(resp *http.Response, succe
 	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQQueueResource); err != nil {
 		return RabbitMQQueuesClientGetResponse{}, err
+	}
+	return result, nil
+}
+
+// ListSecrets - Lists secrets values for the specified RabbitMQQueue resource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - rabbitMQQueueName - The name of the RabbitMQQueue portable resource resource
+//   - body - The content of the action request
+//   - options - RabbitMQQueuesClientListSecretsOptions contains the optional parameters for the RabbitMQQueuesClient.ListSecrets
+//     method.
+func (client *RabbitMQQueuesClient) ListSecrets(ctx context.Context, rootScope string, rabbitMQQueueName string, body ListSecretsRequest, options *RabbitMQQueuesClientListSecretsOptions) (RabbitMQQueuesClientListSecretsResponse, error) {
+	var err error
+	req, err := client.listSecretsCreateRequest(ctx, rootScope, rabbitMQQueueName, body, options)
+	if err != nil {
+		return RabbitMQQueuesClientListSecretsResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return RabbitMQQueuesClientListSecretsResponse{}, err
+	}
+	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
+}
+
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *RabbitMQQueuesClient) listSecretsCreateRequest(ctx context.Context, rootScope string, rabbitMQQueueName string, body ListSecretsRequest, _ *RabbitMQQueuesClientListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}/listSecrets"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if rabbitMQQueueName == "" {
+		return nil, errors.New("parameter rabbitMQQueueName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQQueueName}", url.PathEscape(rabbitMQQueueName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, body); err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *RabbitMQQueuesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (RabbitMQQueuesClientListSecretsResponse, error) {
+	result := RabbitMQQueuesClientListSecretsResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
+	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQListSecretsResult); err != nil {
+		return RabbitMQQueuesClientListSecretsResponse{}, err
 	}
 	return result, nil
 }
@@ -283,130 +409,4 @@ func (client *RabbitMQQueuesClient) listByScopeHandleResponse(resp *http.Respons
 		return RabbitMQQueuesClientListByScopeResponse{}, err
 	}
 	return result, nil
-}
-
-// ListSecrets - Lists secrets values for the specified RabbitMQQueue resource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - rabbitMQQueueName - The name of the RabbitMQQueue portable resource resource
-//   - body - The content of the action request
-//   - options - RabbitMQQueuesClientListSecretsOptions contains the optional parameters for the RabbitMQQueuesClient.ListSecrets
-//     method.
-func (client *RabbitMQQueuesClient) ListSecrets(ctx context.Context, rootScope string, rabbitMQQueueName string, body ListSecretsRequest, options *RabbitMQQueuesClientListSecretsOptions) (RabbitMQQueuesClientListSecretsResponse, error) {
-	var err error
-	req, err := client.listSecretsCreateRequest(ctx, rootScope, rabbitMQQueueName, body, options)
-	if err != nil {
-		return RabbitMQQueuesClientListSecretsResponse{}, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return RabbitMQQueuesClientListSecretsResponse{}, err
-	}
-	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
-}
-
-// listSecretsCreateRequest creates the ListSecrets request.
-func (client *RabbitMQQueuesClient) listSecretsCreateRequest(ctx context.Context, rootScope string, rabbitMQQueueName string, body ListSecretsRequest, _ *RabbitMQQueuesClientListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}/listSecrets"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if rabbitMQQueueName == "" {
-		return nil, errors.New("parameter rabbitMQQueueName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQQueueName}", url.PathEscape(rabbitMQQueueName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, body); err != nil {
-		return nil, err
-	}
-	return req, nil
-}
-
-// listSecretsHandleResponse handles the ListSecrets response.
-func (client *RabbitMQQueuesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (RabbitMQQueuesClientListSecretsResponse, error) {
-	result := RabbitMQQueuesClientListSecretsResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQListSecretsResult); err != nil {
-		return RabbitMQQueuesClientListSecretsResponse{}, err
-	}
-	return result, nil
-}
-
-// BeginUpdate - Update a RabbitMQQueueResource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - rabbitMQQueueName - The name of the RabbitMQQueue portable resource resource
-//   - properties - The resource properties to be updated.
-//   - options - RabbitMQQueuesClientBeginUpdateOptions contains the optional parameters for the RabbitMQQueuesClient.BeginUpdate
-//     method.
-func (client *RabbitMQQueuesClient) BeginUpdate(ctx context.Context, rootScope string, rabbitMQQueueName string, properties RabbitMQQueueResource, options *RabbitMQQueuesClientBeginUpdateOptions) (*runtime.Poller[RabbitMQQueuesClientUpdateResponse], error) {
-	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, rootScope, rabbitMQQueueName, properties, options)
-		if err != nil {
-			return nil, err
-		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RabbitMQQueuesClientUpdateResponse]{
-			FinalStateVia: runtime.FinalStateViaLocation,
-		})
-		return poller, err
-	} else {
-		return runtime.NewPollerFromResumeToken[RabbitMQQueuesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
-	}
-}
-
-// Update - Update a RabbitMQQueueResource
-// If the operation fails it returns an *azcore.ResponseError type.
-func (client *RabbitMQQueuesClient) update(ctx context.Context, rootScope string, rabbitMQQueueName string, properties RabbitMQQueueResource, options *RabbitMQQueuesClientBeginUpdateOptions) (*http.Response, error) {
-	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, rabbitMQQueueName, properties, options)
-	if err != nil {
-		return nil, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		return nil, runtime.NewResponseError(httpResp)
-	}
-	return httpResp, nil
-}
-
-// updateCreateRequest creates the Update request.
-func (client *RabbitMQQueuesClient) updateCreateRequest(ctx context.Context, rootScope string, rabbitMQQueueName string, properties RabbitMQQueueResource, _ *RabbitMQQueuesClientBeginUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if rabbitMQQueueName == "" {
-		return nil, errors.New("parameter rabbitMQQueueName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQQueueName}", url.PathEscape(rabbitMQQueueName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-		return nil, err
-	}
-	return req, nil
 }
