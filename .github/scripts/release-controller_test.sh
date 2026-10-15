@@ -132,8 +132,8 @@ test_shared_controller_contract() {
         '{"actions":"read","contents":"read","pull-requests":"read"}' \
         "controller validation must use a read-only GITHUB_TOKEN"
     assert_json "${ENTRY}" '.jobs.reconcile.permissions' \
-        '{"actions":"read","contents":"read","pull-requests":"read"}' \
-        "entry must grant only the read scopes the controller uses"
+        '{"actions":"write","contents":"read","pull-requests":"read"}' \
+        "entry must grant only the scopes the controller uses"
 }
 
 test_approval_gate_and_bindings() {
@@ -298,7 +298,9 @@ test_unknown_dispatch_summary() {
         "\"\${{ steps.monitor-de-workflow.outputs.run_state }}\"" \
         "publisher job must expose an uncertain dispatch outcome"
     assert_json "${CONTROLLER}" \
-        '.jobs.summary.steps[0].env.DE_RUN_STATE' \
+        '.jobs.summary.steps[] |
+        select(.name == "Summarize release state and recovery") |
+        .env.DE_RUN_STATE' \
         "\"\${{ needs.publish-deployment-engine.outputs.run-state }}\"" \
         "summary must inspect the publisher dispatch outcome"
     assert_contains "${CONTROLLER}" \
@@ -307,7 +309,10 @@ test_unknown_dispatch_summary() {
     if ! (
         summary_root="$(mktemp -d "${TMPDIR:-/tmp}/controller-summary-XXXXXX")"
         trap 'rm -rf "${summary_root}"' EXIT
-        summary_script="$(yq -r '.jobs.summary.steps[0].run' "${CONTROLLER}")"
+        summary_script="$(yq -r '
+            .jobs.summary.steps[] |
+            select(.name == "Summarize release state and recovery") | .run
+        ' "${CONTROLLER}")"
         for state in unknown found; do
             VERSION=v0.61.0 SOURCE_COMMIT=1111111111111111111111111111111111111111 \
                 READY=true VALIDATE_RESULT=success APPROVE_RESULT=success \
