@@ -152,11 +152,15 @@ DOCKER_BUILD_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))
 # list of 'outputs' to push all images
 DOCKER_PUSH_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-push-$(NAME))
 
+# Test-only images are built and pushed for CI and local registries but excluded from the
+# multi-arch targets, which publish to ghcr.io/radius-project from main.
+TEST_ONLY_APPS := rogue-client
+
 # list of 'outputs' to build all multi arch images
-DOCKER_BUILD_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-multi-arch-build-$(NAME))
+DOCKER_BUILD_MULTI_TARGETS := $(filter-out $(addprefix docker-multi-arch-build-,$(TEST_ONLY_APPS)),$(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-multi-arch-build-$(NAME)))
 
 # list of 'outputs' to push all multi arch images
-DOCKER_PUSH_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-multi-arch-push-$(NAME))
+DOCKER_PUSH_MULTI_TARGETS := $(filter-out $(addprefix docker-multi-arch-push-,$(TEST_ONLY_APPS)),$(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-multi-arch-push-$(NAME)))
 
 # targets to build development images
 .PHONY: docker-build
