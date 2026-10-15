@@ -24,12 +24,28 @@
 # - If not installed: runs rad install kubernetes
 # - If same version as CLI: reconciles required chart values when needed
 # - If different version: attempts rad upgrade kubernetes
+#
+# After each path, the script confirms that every resource provider, resource
+# type, API version, location, and provider summary in the built-in manifests
+# is registered in UCP. A same-version installation with missing records is
+# reinstalled.
+#
+# Environment:
+#   RADIUS_MANIFEST_DIR  Directory with the built-in provider manifests that
+#                        match the CLI version (required).
+#
+# Requires: rad, kubectl, jq, yq (mikefarah)
 # ============================================================================
 
 set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_NAME
+
+readonly UCP_PLANE_PATH="/apis/api.ucp.dev/v1alpha3/planes/radius/local"
+readonly UCP_API_VERSION="2023-10-01-preview"
+REGISTRATION_CHECK_ATTEMPTS="${REGISTRATION_CHECK_ATTEMPTS:-10}"
+REGISTRATION_CHECK_INTERVAL_SECONDS="${REGISTRATION_CHECK_INTERVAL_SECONDS:-15}"
 
 readonly REQUIRED_CHART_VALUES=(
     --set global.azureWorkloadIdentity.enabled=true
@@ -43,7 +59,8 @@ usage() {
     echo "Usage: ${SCRIPT_NAME}"
     echo ""
     echo "Manages Radius control plane installation based on version comparison."
-    echo "Requires rad CLI to be installed and in PATH."
+    echo "Requires rad, kubectl, jq, and yq in PATH, and RADIUS_MANIFEST_DIR set"
+    echo "to the built-in manifest directory for the CLI version."
     exit 0
 }
 
@@ -108,45 +125,236 @@ verify_manifests_registered() {
     echo "Manifest verification complete."
 }
 
-# Actively verify that resource types are registered and the Radius API is
-# able to serve requests. Unlike verify_manifests_registered (which reads
-# historical pod logs), this makes a live API call.
-# Returns: 0 = healthy, 1 = provider missing, 2 = query failed
-verify_resource_types_available() {
-    echo ""
-    echo "Verifying resource types are available..."
+# Print one tab-separated record for each UCP resource that the initializer
+# writes for the manifests in $1:
+#   provider <ns>, location <ns> <name>, type <ns> <name>,
+#   apiVersion <ns> <type> <version>, summary <ns>
+# The initializer reads every non-SVG file and merges files by namespace. A
+# later file's location wins, and "global" is the default.
+list_expected_registrations() {
+    local manifest_dir="$1"
+    local -A locations=()
+    local file namespace location type_name api_version count=0
+    local type_names api_versions
 
-    # Ensure a workspace exists so rad CLI can reach the cluster.
-    local workspace_output workspace_exit_code
-    workspace_output=$(rad workspace create kubernetes --force 2>&1) &&
-        workspace_exit_code=0 || workspace_exit_code=$?
+    for file in "${manifest_dir}"/*; do
+        [[ -f "${file}" ]] || continue
+        [[ "${file,,}" == *.svg ]] && continue
+        count=$((count + 1))
 
-    if [[ ${workspace_exit_code} -ne 0 ]]; then
-        echo "ERROR: Failed to create Radius Kubernetes workspace (exit code: ${workspace_exit_code})."
-        echo "rad workspace create output: ${workspace_output}"
-        return 2
+        namespace=$(yq -r '.namespace // ""' "${file}")
+        if [[ -z "${namespace}" ]]; then
+            echo "ERROR: Manifest ${file} has no namespace." >&2
+            return 1
+        fi
+
+        location=$(yq -r '(.location // {}) | keys | .[0] // ""' "${file}")
+        if [[ -n "${location}" ]]; then
+            locations["${namespace}"]="${location}"
+        elif [[ -z "${locations["${namespace}"]+set}" ]]; then
+            locations["${namespace}"]="global"
+        fi
+
+        # Capture each query before the loop so that a yq failure stops the
+        # enumeration. A failed process substitution does not fail the loop.
+        if ! type_names=$(yq -r '(.types // {}) | keys | .[]' "${file}"); then
+            echo "ERROR: Failed to read resource types from ${file}." >&2
+            return 1
+        fi
+        # shellcheck disable=SC2016 # $t is a yq variable.
+        if ! api_versions=$(yq -r '(.types // {}) | to_entries[] | .key as $t
+            | (.value.apiVersions // {}) | keys | .[] | $t + "\t" + .' \
+            "${file}"); then
+            echo "ERROR: Failed to read API versions from ${file}." >&2
+            return 1
+        fi
+
+        while IFS= read -r type_name; do
+            [[ -n "${type_name}" ]] || continue
+            printf 'type\t%s\t%s\n' "${namespace}" "${type_name}"
+        done <<<"${type_names}"
+
+        while IFS=$'\t' read -r type_name api_version; do
+            [[ -n "${type_name}" ]] || continue
+            printf 'apiVersion\t%s\t%s\t%s\n' \
+                "${namespace}" "${type_name}" "${api_version}"
+        done <<<"${api_versions}"
+    done
+
+    if ((count == 0)); then
+        echo "ERROR: No manifests found in ${manifest_dir}." >&2
+        return 1
     fi
 
-    # List registered resource providers. Applications.Core must be present
-    # for environment/container operations to work.
-    local output exit_code
-    output=$(rad resource-provider list 2>&1) && exit_code=0 || exit_code=$?
+    for namespace in "${!locations[@]}"; do
+        printf 'provider\t%s\n' "${namespace}"
+        printf 'location\t%s\t%s\n' "${namespace}" "${locations["${namespace}"]}"
+        printf 'summary\t%s\n' "${namespace}"
+    done
+}
 
-    if [[ ${exit_code} -ne 0 ]]; then
-        echo "ERROR: Failed to query registered resource providers (exit code: ${exit_code})."
-        echo "rad resource-provider list output: ${output}"
-        return 2
-    fi
+# GET a UCP resource through the Kubernetes API aggregation layer and print
+# the response body.
+# Returns: 0 = found, 1 = not found, 2 = query failed
+get_ucp_resource() {
+    local path="$1" err_file body status=0
+    err_file=$(mktemp)
+    body=$(kubectl get --raw \
+        "${UCP_PLANE_PATH}${path}?api-version=${UCP_API_VERSION}" \
+        2>"${err_file}") || status=$?
 
-    if echo "${output}" | grep -Fq "Applications.Core"; then
-        echo "Resource types are available (Applications.Core provider found)."
+    if ((status == 0)); then
+        rm -f "${err_file}"
+        printf '%s' "${body}"
         return 0
     fi
 
-    echo "ERROR: Applications.Core resource provider is NOT registered."
-    echo "rad resource-provider list output: ${output}"
+    if grep -Fq "NotFound" "${err_file}"; then
+        rm -f "${err_file}"
+        return 1
+    fi
+
+    echo "ERROR: Failed to query UCP resource ${path}:" >&2
+    cat "${err_file}" >&2
+    rm -f "${err_file}"
+    return 2
+}
+
+# Verify that every record from the built-in manifests is registered in UCP.
+# Also verify that each provider summary lists all of its types, API versions,
+# and location, and that each location maps all of its types and API versions.
+# UCP routing uses the location mappings, so a provider entry alone does not
+# make the built-in types usable.
+# Returns: 0 = complete, 1 = records missing, 2 = query failed. A query
+# failure has precedence, so an unknown state never starts a reinstall.
+verify_manifest_registration_complete() {
+    echo ""
+    echo "Verifying built-in manifest registration in ${RADIUS_MANIFEST_DIR}..."
+
+    local expected
+    if ! expected=$(list_expected_registrations "${RADIUS_MANIFEST_DIR}"); then
+        return 2
+    fi
+
+    local -A summaries=() location_bodies=()
+    local -a missing=()
+    local kind namespace name version path body status query_failed=0
+    local rp_path
+
+    while IFS=$'\t' read -r kind namespace name version; do
+        rp_path="/providers/System.Resources/resourceproviders/${namespace}"
+        case "${kind}" in
+            provider) path="${rp_path}" ;;
+            location) path="${rp_path}/locations/${name}" ;;
+            type) path="${rp_path}/resourcetypes/${name}" ;;
+            apiVersion)
+                path="${rp_path}/resourcetypes/${name}/apiversions/${version}"
+                ;;
+            summary) path="/providers/${namespace}" ;;
+            *)
+                echo "ERROR: Unknown registration kind '${kind}'." >&2
+                return 2
+                ;;
+        esac
+
+        status=0
+        body=$(get_ucp_resource "${path}") || status=$?
+        if ((status == 2)); then
+            query_failed=1
+        elif ((status == 1)); then
+            missing+=("${kind} ${path}")
+        elif [[ "${kind}" == "summary" ]]; then
+            summaries["${namespace}"]="${body}"
+        elif [[ "${kind}" == "location" ]]; then
+            location_bodies["${namespace}"]="${name}"$'\t'"${body}"
+        fi
+    done <<<"${expected}"
+
+    # UCP matches the location's resource type names without regard to case.
+    local location_name location_body
+    while IFS=$'\t' read -r kind namespace name version; do
+        [[ -n "${location_bodies["${namespace}"]+set}" ]] || continue
+        location_name="${location_bodies["${namespace}"]%%$'\t'*}"
+        location_body="${location_bodies["${namespace}"]#*$'\t'}"
+        case "${kind}" in
+            type)
+                jq -e --arg t "${name}" \
+                    '.properties.resourceTypes // {} | keys
+                    | any(ascii_downcase == ($t | ascii_downcase))' \
+                    <<<"${location_body}" >/dev/null ||
+                    missing+=("location type ${namespace}/${location_name}/${name}")
+                ;;
+            apiVersion)
+                jq -e --arg t "${name}" --arg v "${version}" \
+                    '.properties.resourceTypes // {} | to_entries
+                    | any((.key | ascii_downcase) == ($t | ascii_downcase)
+                        and ((.value.apiVersions // {}) | has($v)))' \
+                    <<<"${location_body}" >/dev/null ||
+                    missing+=("location apiVersion ${namespace}/${location_name}/${name}@${version}")
+                ;;
+        esac
+    done <<<"${expected}"
+
+    while IFS=$'\t' read -r kind namespace name version; do
+        [[ -n "${summaries["${namespace}"]+set}" ]] || continue
+        case "${kind}" in
+            location)
+                jq -e --arg l "${name}" '.locations | has($l)' \
+                    <<<"${summaries["${namespace}"]}" >/dev/null ||
+                    missing+=("summary location ${namespace}/${name}")
+                ;;
+            type)
+                jq -e --arg t "${name}" '.resourceTypes | has($t)' \
+                    <<<"${summaries["${namespace}"]}" >/dev/null ||
+                    missing+=("summary type ${namespace}/${name}")
+                ;;
+            apiVersion)
+                jq -e --arg t "${name}" --arg v "${version}" \
+                    '.resourceTypes[$t].apiVersions // {} | has($v)' \
+                    <<<"${summaries["${namespace}"]}" >/dev/null ||
+                    missing+=("summary apiVersion ${namespace}/${name}@${version}")
+                ;;
+        esac
+    done <<<"${expected}"
+
+    if ((${#missing[@]} > 0)); then
+        echo "ERROR: ${#missing[@]} built-in registration records are missing:"
+        printf '  %s\n' "${missing[@]}"
+    fi
+
+    if ((query_failed == 1)); then
+        echo "ERROR: One or more UCP queries failed. Registration state is unknown."
+        return 2
+    fi
+
+    if ((${#missing[@]} > 0)); then
+        return 1
+    fi
+
+    echo "All built-in resource providers, types, API versions, and locations are registered."
+    return 0
+}
+
+# Poll until the built-in manifests are fully registered. Use this after an
+# install or upgrade because the UCP initializer runs after the pod starts.
+wait_for_manifest_registration() {
+    local attempt
+    for ((attempt = 1; attempt <= REGISTRATION_CHECK_ATTEMPTS; attempt++)); do
+        if verify_manifest_registration_complete; then
+            return 0
+        fi
+        if ((attempt < REGISTRATION_CHECK_ATTEMPTS)); then
+            echo "Registration incomplete (check ${attempt}/${REGISTRATION_CHECK_ATTEMPTS})." \
+                "Retrying in ${REGISTRATION_CHECK_INTERVAL_SECONDS} seconds..."
+            sleep "${REGISTRATION_CHECK_INTERVAL_SECONDS}"
+        fi
+    done
+
+    echo "ERROR: Built-in resource types are not fully registered after" \
+        "${REGISTRATION_CHECK_ATTEMPTS} checks."
     return 1
 }
+
 
 # Save the list of Radius UCP resources to skip-delete-resources-list.txt
 # This file is used by the cleanup job to avoid deleting Radius-managed resources.
@@ -237,7 +445,27 @@ install_radius() {
 
     verify_manifests_registered
 
+    if ! wait_for_manifest_registration; then
+        exit 1
+    fi
+
     save_skip_resources_list
+}
+
+require_prerequisites() {
+    local cmd
+    for cmd in rad kubectl jq yq; do
+        if ! command -v "${cmd}" &>/dev/null; then
+            echo "Error: ${cmd} not found in PATH" >&2
+            exit 1
+        fi
+    done
+
+    if [[ -z "${RADIUS_MANIFEST_DIR:-}" || ! -d "${RADIUS_MANIFEST_DIR}" ]]; then
+        echo "Error: RADIUS_MANIFEST_DIR must name the built-in manifest" \
+            "directory for the CLI version (got '${RADIUS_MANIFEST_DIR:-}')." >&2
+        exit 1
+    fi
 }
 
 main() {
@@ -245,11 +473,7 @@ main() {
         usage
     fi
 
-    # Verify rad CLI is available
-    if ! command -v rad &> /dev/null; then
-        echo "Error: rad CLI not found in PATH"
-        exit 1
-    fi
+    require_prerequisites
 
     echo "============================================================================"
     echo "Radius Control Plane Management"
@@ -303,32 +527,33 @@ main() {
             exit 1
         fi
 
-        # Verify resource types with retry for transient failures.
+        # Verify the full built-in registration. Retry once for both outcomes:
+        # a query failure can be a transient connectivity issue, and missing
+        # records can be an initializer that is still running after a restart.
+        # Only reinstall when the second check also finds missing records.
         local check_result=0
-        verify_resource_types_available || check_result=$?
+        verify_manifest_registration_complete || check_result=$?
 
-        if [[ ${check_result} -eq 2 ]]; then
-            # Query failed (connectivity/auth issue). Retry once after a brief wait
-            # before taking destructive action.
+        if [[ ${check_result} -ne 0 ]]; then
             echo ""
-            echo "Resource type query failed. Retrying in 30 seconds..."
+            echo "Registration check did not pass. Retrying in 30 seconds..."
             sleep 30
             check_result=0
-            verify_resource_types_available || check_result=$?
+            verify_manifest_registration_complete || check_result=$?
         fi
 
         if [[ ${check_result} -eq 0 ]]; then
             save_skip_resources_list
         elif [[ ${check_result} -eq 1 ]]; then
             echo ""
-            echo "Resource types missing despite matching versions. Reinstalling Radius..."
+            echo "Built-in registration is incomplete despite matching versions. Reinstalling Radius..."
             if ! rad uninstall kubernetes --purge --yes; then
                 echo "Warning: Uninstall failed, continuing with install attempt..."
             fi
             install_radius
         else
             echo ""
-            echo "ERROR: Unable to verify resource types after retry."
+            echo "ERROR: Unable to verify built-in registration after retry."
             echo "This may indicate a connectivity or authentication issue."
             exit 1
         fi
@@ -350,6 +575,9 @@ main() {
             exit 1
         fi
         echo "Radius upgrade complete."
+        if ! wait_for_manifest_registration; then
+            exit 1
+        fi
         save_skip_resources_list
     fi
 
