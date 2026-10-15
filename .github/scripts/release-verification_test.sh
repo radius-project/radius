@@ -27,6 +27,10 @@ echo "$*" >>"${TEST_ROOT}/helm-calls"
 EOF
 cat > "${TEST_ROOT}/bin/curl" << 'EOF'
 #!/bin/bash
+if [[ "${FAKE_PUBLIC_INSTALL:-false}" == "true" ]]; then
+    cp "${TEST_ROOT}/rad" "${@: -1}"
+    exit
+fi
 echo "Staged verification must not download a public binary" >&2
 exit 1
 EOF
@@ -42,9 +46,19 @@ case "$*" in
             bicep-de) name=deployment-engine ;;
             ucp) name=ucpd ;;
         esac
+        if [[ "${FAKE_PUBLIC_INSTALL:-false}" == "true" ]]; then
+            echo "ghcr.io/radius-project/${name}:${PUBLIC_TAG}"
+            exit
+        fi
         jq -r --arg name "${name}" '.observed.images[] | select(.name == $name) | .reference + "@" + .digest' "${TEST_ROOT}/manifest.json"
         ;;
     "get job pre-upgrade "*)
+        if [[ "${FAKE_PUBLIC_INSTALL:-false}" == "true" ]]; then
+            # The checkout chart renders its edge appVersion unless the upgrade sets a tag.
+            tag="$(tail -n 1 "${TEST_ROOT}/helm-calls" | grep -o 'global.imageTag=[^ ]*' | cut -d = -f 2 || true)"
+            jq -n --arg image "ghcr.io/radius-project/pre-upgrade:${tag:-edge}" '{spec:{template:{spec:{containers:[{image:$image}]}}}}'
+            exit
+        fi
         jq '{spec:{template:{spec:{containers:[{image:(.observed.images[] | select(.name == "pre-upgrade") | .reference + "@" + .digest)}]}}}}' "${TEST_ROOT}/manifest.json"
         ;;
     "get pods "*)
@@ -98,6 +112,9 @@ jq -e '.checks.installation == "verified"' "${RELEASE_VERIFY_MANIFEST}" > /dev/n
 grep -Fq -- "--chart ${TEST_ROOT}/radius.tgz" "${TEST_ROOT}/rad-calls"
 [[ "$(grep -o '@sha256:' "${TEST_ROOT}/rad-calls" | wc -l)" == "8" ]]
 grep -Fq -- 'delete cluster --name radius-verification-' "${TEST_ROOT}/kind-calls"
+FAKE_PUBLIC_INSTALL=true PUBLIC_TAG=0.61 RELEASE_VERIFY_CLI="" \
+    RELEASE_VERIFY_CHART="" RELEASE_VERIFY_MANIFEST="" \
+    bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null
 if FAIL_INSTALL=true bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null 2>&1; then
     echo "A failed installation was accepted" >&2
     exit 1
@@ -115,4 +132,4 @@ if bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null 2>&
     echo "A changed staged binary was accepted" >&2
     exit 1
 fi
-echo "Staged installation tests passed (5 tests)"
+echo "Release installation tests passed (6 tests)"

@@ -223,7 +223,30 @@ export function verifyReleaseManifest({
         lock?.digest,
         image?.digest
       );
+      const repository = `${targets.imageRegistry}/${target.name}`;
+      compare(
+        "images",
+        `${target.name} lock repository`,
+        [`${repository}:${version}`, `${repository}@${lock?.digest}`],
+        [lock?.reference, lock?.immutableReference]
+      );
     }
+  }
+  for (const asset of targets.cliAssets) {
+    const artifact = cliLock?.artifacts?.find(
+      (entry) => entry.name === asset.name
+    );
+    const repository = `${targets.imageRegistry}/rad/${asset.os}-${asset.arch}`;
+    compare(
+      "images",
+      `${asset.name} CLI OCI lock repository`,
+      [
+        repository,
+        `${repository}:${version}`,
+        `${repository}@${artifact?.digest}`
+      ],
+      [artifact?.repository, artifact?.reference, artifact?.immutableReference]
+    );
   }
   compare(
     "helm",
@@ -360,8 +383,9 @@ export function verifyReleaseManifest({
   delete stableObserved.observedAt;
   delete stableObserved.release.publishedAt;
   delete stableObserved.release.draft;
-  // Promotion reads the lock, so the approved snapshot must bind it.
+  // Promotion reads the locks, so the approved snapshot must bind them.
   stableObserved.cli = { ...stableObserved.cli, ociLock: cliLock ?? null };
+  stableObserved.imageLocks = imageLocks;
   return {
     schemaVersion: 1,
     tag: plan.version,

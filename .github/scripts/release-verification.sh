@@ -105,10 +105,13 @@ verify_pod_image() {
 # This verification checks the container image used in the pre-upgrade job.
 verify_pre_upgrade_image() {
     local expected_image="$1"
+    local upgrade_args=(upgrade radius "${CHART_PATH}" --namespace radius-system --reuse-values)
+    # Staged installs reuse pinned digests; public installs set no image values to reuse.
+    if [[ -z "${MANIFEST_FILE}" ]]; then
+        upgrade_args+=(--set global.imageTag="${EXPECTED_TAG_VERSION}")
+    fi
 
-    helm upgrade radius "${CHART_PATH}" \
-        --namespace radius-system \
-        --reuse-values \
+    helm "${upgrade_args[@]}" \
         --set preupgrade.enabled=true \
         --set preupgrade.checks.version=false \
         --set preupgrade.targetVersion="${EXPECTED_CLI_VERSION}" \

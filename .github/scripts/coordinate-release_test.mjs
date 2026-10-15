@@ -170,6 +170,30 @@ test("uncertain dispatch fails closed and cannot be repeated by resume", async (
   );
 });
 
+test("an explicitly rejected dispatch can be dispatched again on resume", async () => {
+  for (const status of [403, 429]) {
+    const state = fixture();
+    const remote = state.remote;
+    state.remote = async (route, request) => {
+      if (route.endsWith("/dispatches")) {
+        state.calls.push({ route, request });
+        throw Object.assign(new Error("dispatch rejected"), { status });
+      }
+      return remote(route, request);
+    };
+    await assert.rejects(() => coordinateTask(state), /dispatch rejected/);
+    assert.equal(state.statuses.at(-1).state, "failure", `${status}`);
+    state.remote = remote;
+    const result = await coordinateTask(state);
+    assert.equal(result.runId, 77, `${status}`);
+    assert.equal(
+      state.calls.filter((call) => call.route.endsWith("/dispatches")).length,
+      2,
+      `${status}`
+    );
+  }
+});
+
 test("an open upmerge PR is not a successful final-release gate", async () => {
   const state = fixture();
   state.pulls[1].state = "open";

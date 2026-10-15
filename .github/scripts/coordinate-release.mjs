@@ -317,7 +317,12 @@ export async function coordinateTask({
       `Conflicting coordination payload for ${version} ${task.id}`
     );
   }
-  const status = await latestStatus(github, context, deployment);
+  const latest = await latestStatus(github, context, deployment);
+  // An explicitly rejected dispatch created no run, so resume may dispatch again.
+  const status =
+    latest?.description?.startsWith("Dispatch rejected with HTTP ") ?
+      undefined
+    : latest;
   const record = async (state, logUrl, description, environmentUrl) =>
     github.rest.repos.createDeploymentStatus({
       ...context.repo,
@@ -351,14 +356,28 @@ export async function coordinateTask({
       "",
       "Dispatch requested; missing run URL requires reconciliation"
     );
-    const { data } = await call(
-      "POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches",
-      {
-        workflow_id: task.workflow,
-        ref,
-        inputs: task.inputs
+    let data;
+    try {
+      ({ data } = await call(
+        "POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches",
+        {
+          workflow_id: task.workflow,
+          ref,
+          inputs: task.inputs
+        }
+      ));
+    } catch (error) {
+      // A 4xx response proves no run was created; keep the marker otherwise.
+      const httpStatus = Number(error?.status ?? error?.response?.status ?? 0);
+      if (httpStatus >= 400 && httpStatus < 500) {
+        await record(
+          "failure",
+          "",
+          `Dispatch rejected with HTTP ${httpStatus}; resume to retry`
+        );
       }
-    );
+      throw error;
+    }
     runID = data.workflow_run_id;
     if (!Number.isSafeInteger(runID) || runID < 1)
       throw new Error(

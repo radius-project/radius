@@ -117,7 +117,13 @@ function fixture(releaseType = "final") {
     terraformVersion: "1.15.8",
     imageLocks: targets.images
       .filter((image) => image.radiusBuild)
-      .map((image) => ({ name: image.name, digest })),
+      .map((image) => ({
+        name: image.name,
+        reference: `${targets.imageRegistry}/${image.name}:${version}`,
+        digest,
+        sourceSha,
+        immutableReference: `${targets.imageRegistry}/${image.name}@${digest}`
+      })),
     cliLock: {
       version,
       sourceSha,
@@ -257,6 +263,20 @@ test("reports expected and observed mismatches without weakening other checks", 
         input.observed.cli.sboms.pop();
       },
       "assets"
+    ],
+    [
+      "image lock repository",
+      (input) => {
+        input.imageLocks[0].immutableReference = `${targets.imageRegistry}/other@${digest}`;
+      },
+      "images"
+    ],
+    [
+      "CLI OCI lock repository",
+      (input) => {
+        input.cliLock.artifacts[0].immutableReference = `${targets.imageRegistry}/other@${digest}`;
+      },
+      "images"
     ]
   ]) {
     const input = fixture();
@@ -297,6 +317,18 @@ test("approval waits cannot replace verified digests or bypass installation", ()
   changedLock.cliLock.artifacts[0].digest = `sha256:${"d".repeat(64)}`;
   assert.throws(
     () => recheckPublication(verifyReleaseManifest(changedLock), approved),
+    /changed after installation/
+  );
+  const movedImageLock = fixture();
+  movedImageLock.imageLocks[0].immutableReference = `${targets.imageRegistry}/other@${digest}`;
+  assert.throws(
+    () => recheckPublication(verifyReleaseManifest(movedImageLock), approved),
+    /changed after installation/
+  );
+  const changedImageLock = fixture();
+  changedImageLock.imageLocks[0].sourceSha = parentSha;
+  assert.throws(
+    () => recheckPublication(verifyReleaseManifest(changedImageLock), approved),
     /changed after installation/
   );
 });
