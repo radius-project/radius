@@ -36,7 +36,7 @@ repository:
         comment: |
           The repository contains threat models for major Radius components and
           additional security design notes. These artifacts do not constitute a
-          completed project-wide security self-assessment.
+          completed project-wide OSPS self-assessment.
     tools:
       - name: CodeQL
         type: SAST
