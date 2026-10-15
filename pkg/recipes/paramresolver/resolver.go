@@ -129,12 +129,14 @@ func (r *resolver) resolveValue(v any, path string) any {
 }
 
 // resolveString resolves every {{...}} expression in s. If s consists of exactly one context
-// expression (ignoring surrounding whitespace) whose result is not a string, the typed result is
-// returned. Otherwise each result is stringified into the surrounding text. Unresolvable
-// expressions are recorded as errors and left unchanged in the output.
+// expression (ignoring surrounding whitespace) whose result is not a string, or that is a bare
+// resource or connection property path, the result is returned as is. Otherwise each result is
+// stringified into the surrounding text. Unresolvable expressions are recorded as errors and left
+// unchanged in the output.
 func (r *resolver) resolveString(s string, path string) any {
 	var b strings.Builder
 	var typed any
+	directProperty := false
 	segments := 0
 	ownedResolved := 0
 	onlyWhitespace := true
@@ -167,7 +169,7 @@ func (r *resolver) resolveString(s string, path string) any {
 			continue
 		}
 
-		value, err := r.evaluateExpression(inner, terminated)
+		value, ast, err := r.evaluateExpression(inner, terminated)
 		if err != nil {
 			r.errs = append(r.errs, fmt.Errorf("parameter %q: unresolved expression %s: %w", path, raw, err))
 			b.WriteString(raw)
@@ -176,6 +178,7 @@ func (r *resolver) resolveString(s string, path string) any {
 
 		ownedResolved++
 		typed = value
+		directProperty = isPropertyPath(ast)
 		if str, ok := value.(string); ok {
 			b.WriteString(str)
 		} else {
@@ -188,7 +191,7 @@ func (r *resolver) resolveString(s string, path string) any {
 	}
 
 	if segments == 1 && ownedResolved == 1 && onlyWhitespace {
-		if _, isString := typed.(string); !isString {
+		if _, isString := typed.(string); !isString || directProperty {
 			return typed
 		}
 	}
@@ -196,22 +199,41 @@ func (r *resolver) resolveString(s string, path string) any {
 }
 
 // evaluateExpression parses and evaluates the body of a single {{...}} expression.
-func (r *resolver) evaluateExpression(inner string, terminated bool) (any, error) {
+func (r *resolver) evaluateExpression(inner string, terminated bool) (any, node, error) {
 	if !terminated {
-		return nil, fmt.Errorf("missing closing %q", closeDelimiter)
+		return nil, nil, fmt.Errorf("missing closing %q", closeDelimiter)
 	}
 	ast, err := parseExpression(inner)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	value, err := r.context.evaluate(ast)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if value == nil {
-		return nil, errNullResult
+		return nil, nil, errNullResult
 	}
-	return value, nil
+	return value, ast, nil
+}
+
+// isPropertyPath reports whether n is a bare resource or connection property path. Such a whole-value
+// expression is replaced by the property value without its surrounding whitespace, as it was before
+// expressions were evaluated.
+func isPropertyPath(n node) bool {
+	p, ok := n.(pathNode)
+	if !ok {
+		return false
+	}
+	if strings.HasPrefix(p.path, resourcePropertiesPrefix) {
+		return true
+	}
+	rest, ok := strings.CutPrefix(p.path, resourceConnectionsPrefix)
+	if !ok {
+		return false
+	}
+	_, field, _ := strings.Cut(rest, ".")
+	return strings.HasPrefix(field, "properties.")
 }
 
 // splitExpression locates the end of the {{...}} expression whose body (the text after "{{") starts
@@ -266,9 +288,34 @@ func indexCloseOutsideQuotes(s string) int {
 	return -1
 }
 
-// ownsExpression reports whether an expression body references a context path.
+// ownsExpression reports whether an expression body references a context path outside of a
+// double-quoted string literal, so text such as `{{ printf "context.x" }}` is not claimed.
 func ownsExpression(inner string) bool {
-	return ownedExpressionPattern.MatchString(inner)
+	return ownedExpressionPattern.MatchString(stripQuoted(inner))
+}
+
+// stripQuoted replaces each double-quoted string literal in s, including an unterminated one, with a
+// single space.
+func stripQuoted(s string) string {
+	if !strings.Contains(s, `"`) {
+		return s
+	}
+	var b strings.Builder
+	inQuote := false
+	for i := 0; i < len(s); i++ {
+		switch {
+		case inQuote && s[i] == '\\':
+			i++
+		case s[i] == '"':
+			if !inQuote {
+				b.WriteByte(' ')
+			}
+			inQuote = !inQuote
+		case !inQuote:
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String()
 }
 
 func sortedKeys(m map[string]any) []string {

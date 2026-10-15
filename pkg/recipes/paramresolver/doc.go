@@ -21,7 +21,8 @@ recipes (Bicep or Terraform modules that do not declare a recipe context paramet
 # Expressions
 
 An expression is the text between "{{" and "}}". Only expressions that reference a context path
-are evaluated; any other {{...}} text, such as a Helm or Go template, is passed through unchanged.
+outside a string literal are evaluated; any other {{...}} text, such as a Helm or Go template, is
+passed through unchanged.
 
 The expression language is closed and side-effect free: there are no function calls, arithmetic,
 indexing, or identifiers other than context paths and the keywords below. From lowest to highest
@@ -75,8 +76,10 @@ false; every other value is true. The logical operators produce booleans.
 # Results
 
 When a parameter value is exactly one expression (surrounding whitespace aside), the typed result is
-used, so a conditional can produce a number, boolean, object, or array. When an expression is
-embedded in other text, its result is formatted as a string.
+used, so a conditional can produce a number, boolean, object, or array. A string result keeps the
+surrounding whitespace, except for a bare resource or connection property path, which is replaced by
+the property value alone. When an expression is embedded in other text, its result is formatted as
+a string.
 
 An expression that is malformed, references an unknown path, or evaluates to null fails resolution
 with an error that names the parameter and the expression.
