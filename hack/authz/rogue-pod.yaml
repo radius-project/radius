@@ -3,9 +3,9 @@
 # no special permissions. hack/authz/rogue.sh and as-component.sh create it with
 # "kubectl apply --namespace <ns>".
 #
-# The curl image matches test/rogue (rogue.DefaultImage). That image has no
-# openssl binary, so a second container provides openssl. Both share /work, where
-# as-component.sh writes copied component certificates.
+# lib.sh renders the locally built rogue-client image recorded by up.sh.
+# The shell-free client shares /work with the OpenSSL sidecar, which writes
+# copied component certificates for as-component.sh.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -19,15 +19,16 @@ spec:
   terminationGracePeriodSeconds: 0
   securityContext:
     runAsNonRoot: true
+    fsGroup: 65532
     seccompProfile:
       type: RuntimeDefault
   containers:
-    - name: curl
-      image: docker.io/curlimages/curl:8.17.0@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40
-      command: ["sleep", "infinity"]
+    - name: rogue
+      image: AUTHZ_ROGUE_IMAGE
+      command: ["/rogue-client", "idle"]
       securityContext:
-        # curl_user in the curl image. The image names its user rather than its UID.
-        runAsUser: 100
+        runAsUser: 65532
+        readOnlyRootFilesystem: true
         allowPrivilegeEscalation: false
         capabilities:
           drop: ["ALL"]
@@ -38,7 +39,7 @@ spec:
       image: docker.io/alpine/openssl:3.5.9@sha256:e8a2319d15637db5296c0ff540bb028cfabc480b22fcdd4a020582393d32673f
       command: ["sleep", "infinity"]
       securityContext:
-        runAsUser: 100
+        runAsUser: 65532
         allowPrivilegeEscalation: false
         capabilities:
           drop: ["ALL"]

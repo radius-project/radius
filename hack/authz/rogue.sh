@@ -17,7 +17,7 @@
 # ------------------------------------------------------------
 
 # ============================================================================
-# Runs a rogue workload pod (curl + openssl) and sends requests from it, to
+# Runs a rogue workload pod (rogue-client + openssl) and sends requests from it, to
 # check what an unprivileged workload in the cluster can reach.
 # ============================================================================
 
@@ -34,7 +34,7 @@ Runs a rogue workload pod (${AUTHZ_ROGUE_POD}) and sends requests from it.
 
 Commands:
   up                  Create the pod if needed and wait until it is ready.
-  exec -- ARGS...     Run curl ARGS in the pod. A leading "curl" is optional.
+  exec -- ARGS...     Run /rogue-client request ARGS in the pod.
   openssl -- ARGS...  Run openssl ARGS in the pod, for example s_client.
   down                Delete the pod and wait until it is gone.
 
@@ -45,9 +45,15 @@ Options:
 
 Environment:
   AUTHZ_KUBE_CONTEXT  kubeconfig context (default: ${AUTHZ_KUBE_CONTEXT}).
+  AUTHZ_ROGUE_IMAGE   Override the image recorded by up.sh in radius-authz-kit.
+
+Request flags (before the URL): -X, -H (repeatable), --data, --cert, --key,
+--cacert, -k, --max-time (duration, e.g. 30s). Curl-only flags are not supported.
+Output: response body followed by radius-rogue-status:<HTTP code>.
+Exit codes: 0 HTTP response (including 4xx/5xx), 1 transport failure, 2 usage.
 
 Example:
-  $(basename "$0") exec -- curl -s -o /dev/null -w '%{http_code}' \\
+  $(basename "$0") exec -- \\
     'http://applications-rp.radius-system:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
 EOF
 }
@@ -96,9 +102,9 @@ case "${COMMAND}" in
         echo "Rogue pod ${AUTHZ_ROGUE_NAMESPACE}/${AUTHZ_ROGUE_POD} is ready."
         ;;
     exec)
-        ((${#ARGS[@]} > 0)) || authz_die "no curl arguments given after --"
+        ((${#ARGS[@]} > 0)) || authz_die "no request arguments given after --"
         authz_ensure_rogue_pod
-        authz_rogue_curl "${ARGS[@]}"
+        authz_rogue_request "${ARGS[@]}"
         ;;
     openssl)
         ((${#ARGS[@]} > 0)) || authz_die "no openssl arguments given after --"
