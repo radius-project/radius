@@ -18,10 +18,10 @@
 
 # ============================================================================
 # Impersonates a compromised Radius component: copies the component's mTLS
-# certificate, key, and CA from its Secret into the rogue pod and runs curl
+# certificate, key, and CA from its Secret into the rogue pod and runs rogue-client
 # with them.
 #
-# Exit codes: curl's exit code, 2 usage error, 3 the component's Secret does
+# Exit codes: 0 HTTP response, 1 transport failure, 2 usage error, 3 the Secret does
 # not exist or is incomplete.
 # ============================================================================
 
@@ -34,13 +34,14 @@ readonly SECRET_KEYS=(tls.crt tls.key ca.crt)
 
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [-n NAMESPACE] COMPONENT -- CURL_ARGS...
+Usage: $(basename "$0") [-n NAMESPACE] COMPONENT -- REQUEST_ARGS...
 
-Runs curl from the rogue pod presenting COMPONENT's mTLS certificate, to act
+Runs /rogue-client request presenting COMPONENT's mTLS certificate, to act
 as a compromised component. The certificate, key, and CA are copied from the
 Secret "${AUTHZ_COMPONENT_SECRET_FORMAT//%s/COMPONENT}" in ${AUTHZ_RADIUS_NAMESPACE} into the
-pod and passed to curl as --cert, --key, and --cacert. A leading "curl" in
-CURL_ARGS is optional.
+pod and passed as --cert, --key, and --cacert before REQUEST_ARGS.
+Use rogue.sh --help for request flags, output format, and exit codes.
+All flags must precede the URL.
 
 Components: ${AUTHZ_KNOWN_COMPONENTS[*]}
 
@@ -55,7 +56,7 @@ Environment:
   AUTHZ_KUBE_CONTEXT             kubeconfig context (default: ${AUTHZ_KUBE_CONTEXT}).
 
 Example:
-  $(basename "$0") dynamic-rp -- -s -o /dev/null -w '%{http_code}' \\
+  $(basename "$0") dynamic-rp -- \\
     'https://applications-rp.radius-system:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
 
 Component certificates are added in Stack A. Until then this reports which
@@ -64,7 +65,7 @@ EOF
 }
 
 COMPONENT=""
-CURL_ARGS=()
+REQUEST_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -79,7 +80,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --)
             shift
-            CURL_ARGS=("$@")
+            REQUEST_ARGS=("$@")
             break
             ;;
         -*)
@@ -98,7 +99,7 @@ done
     usage >&2
     authz_die "a component is required"
 }
-((${#CURL_ARGS[@]} > 0)) || authz_die "no curl arguments given after --"
+((${#REQUEST_ARGS[@]} > 0)) || authz_die "no request arguments given after --"
 
 SECRET_NAME="$(authz_component_secret_name "${COMPONENT}")" || exit 2
 readonly SECRET_NAME
@@ -147,12 +148,11 @@ for key in "${SECRET_KEYS[@]}"; do
         --output "jsonpath={.data.${key//./\\.}}" |
         authz_kubectl exec --stdin "${AUTHZ_ROGUE_POD}" \
             --namespace "${AUTHZ_ROGUE_NAMESPACE}" \
-            --container "${AUTHZ_ROGUE_CURL_CONTAINER}" -- \
+            --container "${AUTHZ_ROGUE_OPENSSL_CONTAINER}" -- \
             sh -c "${WRITE_KEY_SCRIPT}" sh "${CERT_DIR}" "${key}"
 done
 
 echo "Calling as ${COMPONENT} with ${AUTHZ_RADIUS_NAMESPACE}/${SECRET_NAME}" >&2
-authz_rogue_curl "${CURL_ARGS[@]}" \
-    --cert "${CERT_DIR}/tls.crt" \
+authz_rogue_request --cert "${CERT_DIR}/tls.crt" \
     --key "${CERT_DIR}/tls.key" \
-    --cacert "${CERT_DIR}/ca.crt"
+    --cacert "${CERT_DIR}/ca.crt" "${REQUEST_ARGS[@]}"

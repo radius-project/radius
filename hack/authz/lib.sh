@@ -47,9 +47,10 @@ AUTHZ_KIT_MODE_LABEL="authz-kit.radius.dev/mode"
 
 # Must match metadata.name and the container names in rogue-pod.yaml.
 AUTHZ_ROGUE_POD="radius-authz-rogue"
-AUTHZ_ROGUE_CURL_CONTAINER="curl"
+AUTHZ_ROGUE_CLIENT_CONTAINER="rogue"
 AUTHZ_ROGUE_OPENSSL_CONTAINER="openssl"
 AUTHZ_ROGUE_WORKDIR="/work"
+AUTHZ_KIT_CONFIGMAP="radius-authz-kit"
 
 # Components that call each other inside the control plane today.
 AUTHZ_KNOWN_COMPONENTS=(ucp applications-rp dynamic-rp controller bicep-de)
@@ -159,25 +160,37 @@ authz_component_secret_name() {
 
 # Creates the rogue pod if it does not exist and waits for it to be ready.
 authz_ensure_rogue_pod() {
-    if ! authz_kubectl get pod "${AUTHZ_ROGUE_POD}" \
-        --namespace "${AUTHZ_ROGUE_NAMESPACE}" >/dev/null 2>&1; then
+    local image="${AUTHZ_ROGUE_IMAGE:-}"
+    if [[ -z "${image}" ]]; then
+        image="$(authz_kubectl get configmap "${AUTHZ_KIT_CONFIGMAP}" \
+            --namespace "${AUTHZ_RADIUS_NAMESPACE}" \
+            --output 'jsonpath={.data.rogue-image}')" || \
+            authz_die "could not read the rogue-client image; run hack/authz/up.sh first"
+    fi
+    [[ "${image}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._:/@-]*$ ]] || \
+        authz_die "missing or invalid rogue-client image: '${image}'"
+    local current_image
+    current_image="$(authz_kubectl get pod "${AUTHZ_ROGUE_POD}" \
+        --namespace "${AUTHZ_ROGUE_NAMESPACE}" --ignore-not-found \
+        --output 'jsonpath={.spec.containers[0].image}')" || \
+        authz_die "could not inspect rogue pod ${AUTHZ_ROGUE_NAMESPACE}/${AUTHZ_ROGUE_POD}"
+    if [[ -z "${current_image}" ]]; then
         echo "Creating rogue pod ${AUTHZ_ROGUE_NAMESPACE}/${AUTHZ_ROGUE_POD}" >&2
-        authz_kubectl apply --namespace "${AUTHZ_ROGUE_NAMESPACE}" \
-            --filename "${AUTHZ_KIT_DIR}/rogue-pod.yaml" >&2
+        sed "s|AUTHZ_ROGUE_IMAGE|${image}|" "${AUTHZ_KIT_DIR}/rogue-pod.yaml" |
+            authz_kubectl apply --namespace "${AUTHZ_ROGUE_NAMESPACE}" \
+                --filename - >&2
+    elif [[ "${current_image}" != "${image}" ]]; then
+        authz_die "rogue pod uses ${current_image}, expected ${image}; run rogue.sh --namespace ${AUTHZ_ROGUE_NAMESPACE} down, then retry"
     fi
     authz_kubectl wait pod "${AUTHZ_ROGUE_POD}" \
         --namespace "${AUTHZ_ROGUE_NAMESPACE}" \
         --for condition=Ready --timeout 120s >/dev/null
 }
 
-# Runs curl in the rogue pod. A leading "curl" argument is accepted and dropped
-# so both "-- -s URL" and "-- curl -s URL" work.
-authz_rogue_curl() {
-    if [[ "${1:-}" == "curl" ]]; then
-        shift
-    fi
-    (($# > 0)) || authz_die "no curl arguments given after --"
+# Runs the shell-free client; all request flags must precede the URL.
+authz_rogue_request() {
+    (($# > 0)) || authz_die "no request arguments given after --"
     authz_kubectl exec "${AUTHZ_ROGUE_POD}" \
         --namespace "${AUTHZ_ROGUE_NAMESPACE}" \
-        --container "${AUTHZ_ROGUE_CURL_CONTAINER}" -- curl "$@"
+        --container "${AUTHZ_ROGUE_CLIENT_CONTAINER}" -- /rogue-client request "$@"
 }

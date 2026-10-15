@@ -27,8 +27,8 @@ set -euo pipefail
 # shellcheck source=hack/authz/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-# Images built from this repository that the chart installs.
-readonly IMAGES=(ucpd applications-rp dynamic-rp controller bicep pre-upgrade)
+# Control-plane images and the kit's probe client.
+readonly IMAGES=(ucpd applications-rp dynamic-rp controller bicep pre-upgrade rogue-client)
 readonly DEPLOYMENTS=(ucp applications-rp dynamic-rp controller bicep-de)
 readonly LOG_MODE_DEPLOYMENTS=(ucp applications-rp dynamic-rp controller)
 readonly TAG_FILE="${AUTHZ_REPO_ROOT}/dist/authz-kit/image-tag"
@@ -189,6 +189,11 @@ install_radius() {
     "${RAD}" install kubernetes --kubecontext "${AUTHZ_KUBE_CONTEXT}" \
         --chart "${AUTHZ_REPO_ROOT}/deploy/Chart" --reinstall "${set_args[@]}"
     authz_record_mode "${MODE}"
+    authz_kubectl create configmap "${AUTHZ_KIT_CONFIGMAP}" \
+        --namespace "${AUTHZ_RADIUS_NAMESPACE}" \
+        --from-literal="rogue-image=${REGISTRY}/rogue-client:${IMAGE_TAG}" \
+        --dry-run=client --output yaml |
+        authz_kubectl apply --filename - >/dev/null
 
     local deployment
     for deployment in "${DEPLOYMENTS[@]}"; do
@@ -215,9 +220,10 @@ print_next_steps() {
 Radius is installed on ${AUTHZ_KUBE_CONTEXT} in authz mode ${MODE}. Next steps:
 
   # Call applications-rp from a rogue workload
-  hack/authz/rogue.sh exec -- curl -s -o /dev/null -w '%{http_code}\n' \\
+  hack/authz/rogue.sh exec -- \\
     'http://applications-rp.${AUTHZ_RADIUS_NAMESPACE}:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
 
+  # The response ends with radius-rogue-status:200 on success.
   # Fail if any component logged a dry-run would-deny line
   hack/authz/would-deny.sh
 
