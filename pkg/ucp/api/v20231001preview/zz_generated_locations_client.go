@@ -61,7 +61,7 @@ func (client *LocationsClient) BeginCreateOrUpdate(ctx context.Context, planeNam
 	}
 }
 
-// CreateOrUpdate - Create or update a location. The location resource represents a logical location where the resource provider
+// createOrUpdate - Create or update a location. The location resource represents a logical location where the resource provider
 // operates.
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *LocationsClient) createOrUpdate(ctx context.Context, planeName string, resourceProviderName string, locationName string, resource LocationResource, options *LocationsClientBeginCreateOrUpdateOptions) (*http.Response, error) {
@@ -81,7 +81,7 @@ func (client *LocationsClient) createOrUpdate(ctx context.Context, planeName str
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *LocationsClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, resourceProviderName string, locationName string, resource LocationResource, _ *LocationsClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/locations/{locationName}"
 	if planeName == "" {
@@ -119,7 +119,7 @@ func (client *LocationsClient) createOrUpdateCreateRequest(ctx context.Context, 
 //   - options - LocationsClientBeginDeleteOptions contains the optional parameters for the LocationsClient.BeginDelete method.
 func (client *LocationsClient) BeginDelete(ctx context.Context, planeName string, resourceProviderName string, locationName string, options *LocationsClientBeginDeleteOptions) (*runtime.Poller[LocationsClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.deleteOperation(ctx, planeName, resourceProviderName, locationName, options)
+		resp, err := client.delete(ctx, planeName, resourceProviderName, locationName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -132,9 +132,9 @@ func (client *LocationsClient) BeginDelete(ctx context.Context, planeName string
 	}
 }
 
-// Delete - Delete a location. The location resource represents a logical location where the resource provider operates.
+// delete - Delete a location. The location resource represents a logical location where the resource provider operates.
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *LocationsClient) deleteOperation(ctx context.Context, planeName string, resourceProviderName string, locationName string, options *LocationsClientBeginDeleteOptions) (*http.Response, error) {
+func (client *LocationsClient) delete(ctx context.Context, planeName string, resourceProviderName string, locationName string, options *LocationsClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "LocationsClient.BeginDelete")
 	req, err := client.deleteCreateRequest(ctx, planeName, resourceProviderName, locationName, options)
@@ -151,7 +151,7 @@ func (client *LocationsClient) deleteOperation(ctx context.Context, planeName st
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *LocationsClient) deleteCreateRequest(ctx context.Context, planeName string, resourceProviderName string, locationName string, _ *LocationsClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/locations/{locationName}"
 	if planeName == "" {

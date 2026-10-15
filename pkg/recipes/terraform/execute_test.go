@@ -86,7 +86,11 @@ func runTerraformTestHelper() error {
 		return fmt.Errorf("writing test module outputs: %w", err)
 	}
 	if provider := os.Getenv("RADIUS_TERRAFORM_REQUIRED_PROVIDER"); provider != "" {
-		content := fmt.Sprintf("terraform {\n required_providers {\n %s = {\n source = \"hashicorp/%s\"\n }\n }\n}\n", provider, provider)
+		content := fmt.Sprintf("terraform {\n required_providers {\n %s = {\n source = \"hashicorp/%s\"\n", provider, provider)
+		if alias := os.Getenv("RADIUS_TERRAFORM_PROVIDER_ALIAS"); alias != "" {
+			content += fmt.Sprintf(" configuration_aliases = [%s.%s]\n", provider, alias)
+		}
+		content += " }\n }\n}\n"
 		if err := os.WriteFile(filepath.Join(moduleDir, "providers.tf"), []byte(content), 0600); err != nil {
 			return err
 		}
@@ -305,6 +309,48 @@ func Test_GetTerraformConfig(t *testing.T) {
 	tfConfig, err := getTerraformConfig(t.Context(), testDir, options)
 	require.NoError(t, err)
 	require.Equal(t, &expectedConfig, tfConfig)
+}
+
+func Test_GetTerraformConfig_NoProviderAliasPlaceholders(t *testing.T) {
+	testDir := t.TempDir()
+
+	options := Options{
+		EnvConfig: &recipes.Configuration{
+			RecipeConfig: dm.RecipeConfigProperties{
+				Terraform: dm.TerraformConfigProperties{
+					Providers: map[string][]dm.ProviderConfigProperties{
+						"azurerm": {
+							{AdditionalProperties: map[string]any{"subscription_id": "sub"}},
+							{AdditionalProperties: map[string]any{"alias": "custom", "subscription_id": "sub"}},
+						},
+					},
+				},
+			},
+		},
+		EnvRecipe: &recipes.EnvironmentDefinition{
+			Name:         "test-recipe",
+			TemplatePath: "test/module/source",
+		},
+		ResourceRecipe: &recipes.ResourceMetadata{},
+	}
+
+	// Placeholders are added only to retry a failed module download, so the first download
+	// uses the module configuration only.
+	expectedConfig := config.TerraformConfig{
+		Module: map[string]config.TFModuleConfig{
+			"test-recipe": {"source": "test/module/source"},
+		},
+	}
+	tfConfig, err := getTerraformConfig(t.Context(), testDir, options)
+	require.NoError(t, err)
+	require.Equal(t, &expectedConfig, tfConfig)
+
+	content, err := os.ReadFile(filepath.Join(testDir, "main.tf.json"))
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"terraform": null,
+		"module": {"test-recipe": {"source": "test/module/source"}}
+	}`, string(content))
 }
 
 func Test_GetTerraformConfig_EmptyRecipeName(t *testing.T) {

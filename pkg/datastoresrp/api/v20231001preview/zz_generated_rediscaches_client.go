@@ -60,7 +60,7 @@ func (client *RedisCachesClient) BeginCreateOrUpdate(ctx context.Context, rootSc
 	}
 }
 
-// CreateOrUpdate - Create a RedisCacheResource
+// createOrUpdate - Create a RedisCacheResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *RedisCachesClient) createOrUpdate(ctx context.Context, rootScope string, redisCacheName string, resource RedisCacheResource, options *RedisCachesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -78,7 +78,7 @@ func (client *RedisCachesClient) createOrUpdate(ctx context.Context, rootScope s
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context, rootScope string, redisCacheName string, resource RedisCacheResource, _ *RedisCachesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}"
 	if rootScope == "" {
@@ -112,7 +112,7 @@ func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context
 //   - options - RedisCachesClientBeginDeleteOptions contains the optional parameters for the RedisCachesClient.BeginDelete method.
 func (client *RedisCachesClient) BeginDelete(ctx context.Context, rootScope string, redisCacheName string, options *RedisCachesClientBeginDeleteOptions) (*runtime.Poller[RedisCachesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.deleteOperation(ctx, rootScope, redisCacheName, options)
+		resp, err := client.delete(ctx, rootScope, redisCacheName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -125,9 +125,9 @@ func (client *RedisCachesClient) BeginDelete(ctx context.Context, rootScope stri
 	}
 }
 
-// Delete - Delete a RedisCacheResource
+// delete - Delete a RedisCacheResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *RedisCachesClient) deleteOperation(ctx context.Context, rootScope string, redisCacheName string, options *RedisCachesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *RedisCachesClient) delete(ctx context.Context, rootScope string, redisCacheName string, options *RedisCachesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, redisCacheName, options)
 	if err != nil {
@@ -143,7 +143,7 @@ func (client *RedisCachesClient) deleteOperation(ctx context.Context, rootScope 
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *RedisCachesClient) deleteCreateRequest(ctx context.Context, rootScope string, redisCacheName string, _ *RedisCachesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}"
 	if rootScope == "" {
@@ -161,6 +161,72 @@ func (client *RedisCachesClient) deleteCreateRequest(ctx context.Context, rootSc
 	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", version20231001Preview)
 	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	return req, nil
+}
+
+// BeginUpdate - Update a RedisCacheResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - redisCacheName - The name of the RedisCache portable resource resource
+//   - properties - The resource properties to be updated.
+//   - options - RedisCachesClientBeginUpdateOptions contains the optional parameters for the RedisCachesClient.BeginUpdate method.
+func (client *RedisCachesClient) BeginUpdate(ctx context.Context, rootScope string, redisCacheName string, properties RedisCacheResource, options *RedisCachesClientBeginUpdateOptions) (*runtime.Poller[RedisCachesClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, rootScope, redisCacheName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RedisCachesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[RedisCachesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// update - Update a RedisCacheResource
+// If the operation fails it returns an *azcore.ResponseError type.
+func (client *RedisCachesClient) update(ctx context.Context, rootScope string, redisCacheName string, properties RedisCacheResource, options *RedisCachesClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, rootScope, redisCacheName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		return nil, runtime.NewResponseError(httpResp)
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the update request.
+func (client *RedisCachesClient) updateCreateRequest(ctx context.Context, rootScope string, redisCacheName string, properties RedisCacheResource, _ *RedisCachesClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if redisCacheName == "" {
+		return nil, errors.New("parameter redisCacheName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{redisCacheName}", url.PathEscape(redisCacheName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 
@@ -213,6 +279,64 @@ func (client *RedisCachesClient) getHandleResponse(resp *http.Response, successC
 	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheResource); err != nil {
 		return RedisCachesClientGetResponse{}, err
+	}
+	return result, nil
+}
+
+// ListSecrets - Lists secrets values for the specified RedisCache resource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - redisCacheName - The name of the RedisCache portable resource resource
+//   - body - The content of the action request
+//   - options - RedisCachesClientListSecretsOptions contains the optional parameters for the RedisCachesClient.ListSecrets method.
+func (client *RedisCachesClient) ListSecrets(ctx context.Context, rootScope string, redisCacheName string, body ListSecretsRequest1, options *RedisCachesClientListSecretsOptions) (RedisCachesClientListSecretsResponse, error) {
+	var err error
+	req, err := client.listSecretsCreateRequest(ctx, rootScope, redisCacheName, body, options)
+	if err != nil {
+		return RedisCachesClientListSecretsResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return RedisCachesClientListSecretsResponse{}, err
+	}
+	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
+}
+
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, rootScope string, redisCacheName string, body ListSecretsRequest1, _ *RedisCachesClientListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}/listSecrets"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if redisCacheName == "" {
+		return nil, errors.New("parameter redisCacheName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{redisCacheName}", url.PathEscape(redisCacheName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, body); err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *RedisCachesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (RedisCachesClientListSecretsResponse, error) {
+	result := RedisCachesClientListSecretsResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
+	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheListSecretsResult); err != nil {
+		return RedisCachesClientListSecretsResponse{}, err
 	}
 	return result, nil
 }
@@ -282,128 +406,4 @@ func (client *RedisCachesClient) listByScopeHandleResponse(resp *http.Response, 
 		return RedisCachesClientListByScopeResponse{}, err
 	}
 	return result, nil
-}
-
-// ListSecrets - Lists secrets values for the specified RedisCache resource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - redisCacheName - The name of the RedisCache portable resource resource
-//   - body - The content of the action request
-//   - options - RedisCachesClientListSecretsOptions contains the optional parameters for the RedisCachesClient.ListSecrets method.
-func (client *RedisCachesClient) ListSecrets(ctx context.Context, rootScope string, redisCacheName string, body ListSecretsRequest1, options *RedisCachesClientListSecretsOptions) (RedisCachesClientListSecretsResponse, error) {
-	var err error
-	req, err := client.listSecretsCreateRequest(ctx, rootScope, redisCacheName, body, options)
-	if err != nil {
-		return RedisCachesClientListSecretsResponse{}, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return RedisCachesClientListSecretsResponse{}, err
-	}
-	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
-}
-
-// listSecretsCreateRequest creates the ListSecrets request.
-func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, rootScope string, redisCacheName string, body ListSecretsRequest1, _ *RedisCachesClientListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}/listSecrets"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if redisCacheName == "" {
-		return nil, errors.New("parameter redisCacheName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{redisCacheName}", url.PathEscape(redisCacheName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, body); err != nil {
-		return nil, err
-	}
-	return req, nil
-}
-
-// listSecretsHandleResponse handles the ListSecrets response.
-func (client *RedisCachesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (RedisCachesClientListSecretsResponse, error) {
-	result := RedisCachesClientListSecretsResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheListSecretsResult); err != nil {
-		return RedisCachesClientListSecretsResponse{}, err
-	}
-	return result, nil
-}
-
-// BeginUpdate - Update a RedisCacheResource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - redisCacheName - The name of the RedisCache portable resource resource
-//   - properties - The resource properties to be updated.
-//   - options - RedisCachesClientBeginUpdateOptions contains the optional parameters for the RedisCachesClient.BeginUpdate method.
-func (client *RedisCachesClient) BeginUpdate(ctx context.Context, rootScope string, redisCacheName string, properties RedisCacheResource, options *RedisCachesClientBeginUpdateOptions) (*runtime.Poller[RedisCachesClientUpdateResponse], error) {
-	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, rootScope, redisCacheName, properties, options)
-		if err != nil {
-			return nil, err
-		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RedisCachesClientUpdateResponse]{
-			FinalStateVia: runtime.FinalStateViaLocation,
-		})
-		return poller, err
-	} else {
-		return runtime.NewPollerFromResumeToken[RedisCachesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
-	}
-}
-
-// Update - Update a RedisCacheResource
-// If the operation fails it returns an *azcore.ResponseError type.
-func (client *RedisCachesClient) update(ctx context.Context, rootScope string, redisCacheName string, properties RedisCacheResource, options *RedisCachesClientBeginUpdateOptions) (*http.Response, error) {
-	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, redisCacheName, properties, options)
-	if err != nil {
-		return nil, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		return nil, runtime.NewResponseError(httpResp)
-	}
-	return httpResp, nil
-}
-
-// updateCreateRequest creates the Update request.
-func (client *RedisCachesClient) updateCreateRequest(ctx context.Context, rootScope string, redisCacheName string, properties RedisCacheResource, _ *RedisCachesClientBeginUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if redisCacheName == "" {
-		return nil, errors.New("parameter redisCacheName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{redisCacheName}", url.PathEscape(redisCacheName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-		return nil, err
-	}
-	return req, nil
 }

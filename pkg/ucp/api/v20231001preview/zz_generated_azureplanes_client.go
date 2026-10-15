@@ -58,7 +58,7 @@ func (client *AzurePlanesClient) BeginCreateOrUpdate(ctx context.Context, planeN
 	}
 }
 
-// CreateOrUpdate - Create or update a plane
+// createOrUpdate - Create or update a plane
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *AzurePlanesClient) createOrUpdate(ctx context.Context, planeName string, resource AzurePlaneResource, options *AzurePlanesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -77,7 +77,7 @@ func (client *AzurePlanesClient) createOrUpdate(ctx context.Context, planeName s
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *AzurePlanesClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, resource AzurePlaneResource, _ *AzurePlanesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/planes/azure/{planeName}"
 	if planeName == "" {
@@ -105,7 +105,7 @@ func (client *AzurePlanesClient) createOrUpdateCreateRequest(ctx context.Context
 //   - options - AzurePlanesClientBeginDeleteOptions contains the optional parameters for the AzurePlanesClient.BeginDelete method.
 func (client *AzurePlanesClient) BeginDelete(ctx context.Context, planeName string, options *AzurePlanesClientBeginDeleteOptions) (*runtime.Poller[AzurePlanesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.deleteOperation(ctx, planeName, options)
+		resp, err := client.delete(ctx, planeName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -118,9 +118,9 @@ func (client *AzurePlanesClient) BeginDelete(ctx context.Context, planeName stri
 	}
 }
 
-// Delete - Delete a plane
+// delete - Delete a plane
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *AzurePlanesClient) deleteOperation(ctx context.Context, planeName string, options *AzurePlanesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *AzurePlanesClient) delete(ctx context.Context, planeName string, options *AzurePlanesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AzurePlanesClient.BeginDelete")
 	req, err := client.deleteCreateRequest(ctx, planeName, options)
@@ -137,7 +137,7 @@ func (client *AzurePlanesClient) deleteOperation(ctx context.Context, planeName 
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *AzurePlanesClient) deleteCreateRequest(ctx context.Context, planeName string, _ *AzurePlanesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/planes/azure/{planeName}"
 	if planeName == "" {
@@ -151,6 +151,67 @@ func (client *AzurePlanesClient) deleteCreateRequest(ctx context.Context, planeN
 	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", version20231001Preview)
 	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	return req, nil
+}
+
+// BeginUpdate - Update a plane
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - planeName - The plane name.
+//   - properties - The resource properties to be updated.
+//   - options - AzurePlanesClientBeginUpdateOptions contains the optional parameters for the AzurePlanesClient.BeginUpdate method.
+func (client *AzurePlanesClient) BeginUpdate(ctx context.Context, planeName string, properties AzurePlaneResourceTagsUpdate, options *AzurePlanesClientBeginUpdateOptions) (*runtime.Poller[AzurePlanesClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, planeName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[AzurePlanesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[AzurePlanesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// update - Update a plane
+// If the operation fails it returns an *azcore.ResponseError type.
+func (client *AzurePlanesClient) update(ctx context.Context, planeName string, properties AzurePlaneResourceTagsUpdate, options *AzurePlanesClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AzurePlanesClient.BeginUpdate")
+	req, err := client.updateCreateRequest(ctx, planeName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		return nil, runtime.NewResponseError(httpResp)
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the update request.
+func (client *AzurePlanesClient) updateCreateRequest(ctx context.Context, planeName string, properties AzurePlaneResourceTagsUpdate, _ *AzurePlanesClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/azure/{planeName}"
+	if planeName == "" {
+		return nil, errors.New("parameter planeName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 
@@ -261,65 +322,4 @@ func (client *AzurePlanesClient) listHandleResponse(resp *http.Response, success
 		return AzurePlanesClientListResponse{}, err
 	}
 	return result, nil
-}
-
-// BeginUpdate - Update a plane
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - planeName - The plane name.
-//   - properties - The resource properties to be updated.
-//   - options - AzurePlanesClientBeginUpdateOptions contains the optional parameters for the AzurePlanesClient.BeginUpdate method.
-func (client *AzurePlanesClient) BeginUpdate(ctx context.Context, planeName string, properties AzurePlaneResourceTagsUpdate, options *AzurePlanesClientBeginUpdateOptions) (*runtime.Poller[AzurePlanesClientUpdateResponse], error) {
-	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, planeName, properties, options)
-		if err != nil {
-			return nil, err
-		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[AzurePlanesClientUpdateResponse]{
-			FinalStateVia: runtime.FinalStateViaLocation,
-		})
-		return poller, err
-	} else {
-		return runtime.NewPollerFromResumeToken[AzurePlanesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
-	}
-}
-
-// Update - Update a plane
-// If the operation fails it returns an *azcore.ResponseError type.
-func (client *AzurePlanesClient) update(ctx context.Context, planeName string, properties AzurePlaneResourceTagsUpdate, options *AzurePlanesClientBeginUpdateOptions) (*http.Response, error) {
-	var err error
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AzurePlanesClient.BeginUpdate")
-	req, err := client.updateCreateRequest(ctx, planeName, properties, options)
-	if err != nil {
-		return nil, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		return nil, runtime.NewResponseError(httpResp)
-	}
-	return httpResp, nil
-}
-
-// updateCreateRequest creates the Update request.
-func (client *AzurePlanesClient) updateCreateRequest(ctx context.Context, planeName string, properties AzurePlaneResourceTagsUpdate, _ *AzurePlanesClientBeginUpdateOptions) (*policy.Request, error) {
-	urlPath := "/planes/azure/{planeName}"
-	if planeName == "" {
-		return nil, errors.New("parameter planeName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-		return nil, err
-	}
-	return req, nil
 }

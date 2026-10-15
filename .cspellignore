@@ -410,6 +410,7 @@ StateStore
 Stateful
 Statestores
 StaticCredential
+strenv
 Subramanian
 Swappable
 Sylvain

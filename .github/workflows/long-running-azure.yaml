@@ -280,6 +280,10 @@ jobs:
           path: skip-delete-resources-list.txt
           key: skip-delete-resources-list-${{ steps.gen-id.outputs.UNIQUE_ID || github.run_id }}
 
+      - name: Install yq
+        # Required to select the test environment in the workspace config.
+        run: make install-yq
+
       - name: Configure Radius test workspace
         env:
           AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
@@ -300,18 +304,34 @@ jobs:
           rad group switch "${RADIUS_TEST_ENVIRONMENT_NAME}"
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create "${RADIUS_TEST_ENVIRONMENT_NAME}" --namespace default
-          rad env switch "${RADIUS_TEST_ENVIRONMENT_NAME}"
+          #
+          # The environment is deployed declaratively rather than with `rad env create` so that it is
+          # pinned to Applications.Core regardless of which provider the `rad env create` default
+          # targets.
+          #
+          # This path intentionally resolves against the workflow checkout rather than the
+          # "current_release" clone: the fixture is workflow infrastructure, and the released tag
+          # under test predates it.
+          #
+          # Set cloud scopes in Bicep, not `rad env update`, so this works whichever type `rad env` targets.
+          rad deploy ./test/infra/radius/legacy-test-environment.bicep \
+            --parameters name="${RADIUS_TEST_ENVIRONMENT_NAME}" \
+            --parameters namespace=default \
+            --parameters azureScope="/subscriptions/${AZURE_SUBSCRIPTIONID_TESTS}/resourceGroups/${AZURE_TEST_RESOURCE_GROUP}" \
+            --parameters awsScope="/planes/aws/aws/accounts/${FUNCTEST_AWS_ACCOUNT_ID}/regions/${AWS_REGION}"
+
+          # Select the env with yq, not `rad env switch`, so this works whichever type `rad env` targets.
+          scope="$(yq -e '.workspaces.items[.workspaces.default].scope' ~/.rad/config.yaml)"
+          ENVIRONMENT_ID="${scope}/providers/Applications.Core/environments/${RADIUS_TEST_ENVIRONMENT_NAME}" \
+            yq -i '.workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID)' ~/.rad/config.yaml
+          rad workspace show
 
           echo "*** Configuring Azure provider ***"
-          rad env update "${RADIUS_TEST_ENVIRONMENT_NAME}" --azure-subscription-id "${AZURE_SUBSCRIPTIONID_TESTS}" \
-            --azure-resource-group "${AZURE_TEST_RESOURCE_GROUP}"
           rad credential register azure wi \
             --client-id "${AZURE_SP_TESTS_APPID}" \
             --tenant-id "${AZURE_SP_TESTS_TENANTID}"
 
           echo "*** Configuring AWS provider ***"
-          rad env update "${RADIUS_TEST_ENVIRONMENT_NAME}" --aws-region "${AWS_REGION}" --aws-account-id "${FUNCTEST_AWS_ACCOUNT_ID}"
           # Register AWS credentials using IRSA (IAM Roles for Service Accounts).
           # The Radius pods on the AKS cluster assume this role via their
           # projected service account tokens (workload identity), so no static
@@ -474,7 +494,7 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: all_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}

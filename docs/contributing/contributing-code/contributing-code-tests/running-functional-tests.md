@@ -366,6 +366,16 @@ Download the `all_container_logs` artifact to investigate a run. Treat downloade
 
 Run `make test-cluster-diagnostics` to test the diagnostic scripts without accessing a cluster.
 
+### Diagnose Terraform provider failures
+
+Failed `corerp-cloud` jobs print a selected Terraform diagnostic summary in the **Collect cluster diagnostics** step. The same summary is saved as `corerp-cloud-terraform-diagnostics.log` in the `corerp-cloud_container_logs` artifact. Collection is limited to 120 seconds, with a 15-second limit per request, and does not replace the test result.
+
+The summary includes runner memory, node capacity and pressure, warning event identities, and the state of `applications-rp` and `dynamic-rp` containers. It includes current and previous termination reasons, exit codes, signals, timestamps, memory requests and limits. For running containers, it reads available cgroup memory usage, peak, limit, OOM counters, CPU counters, and task counts. These are post-test snapshots and container-lifetime counters, not measurements of an individual provider process. A provider can be killed without restarting its parent container; check cgroup OOM counters as well as pod termination state. Unavailable cgroup files are omitted. If no counters can be read, or a container or request is inaccessible, collection reports the failure.
+
+Provider error summaries count JSON log records that match schema errors, provider-start timeouts, or a plugin that did not respond. They read at most the last 40 minutes, 2000 lines, and 1 MiB per container, including the previous container when it has restarted. Counts are not failed-operation counts; one error can appear in several records. Non-JSON records are counted but their contents are not printed. The summary excludes raw provider logs, event and termination messages, pod environment values, and process command lines. This collection does not enable Terraform trace logging.
+
+To collect the same summary locally, use a Linux host with Bash, `kubectl`, `jq`, GNU coreutils (`timeout`), procps (`free`), and access to your selected cluster. Run `bash .github/scripts/collect-terraform-diagnostics.sh` on that host. The collector does not support native macOS execution. Run `make test-cluster-diagnostics` to check the collector with stub commands; it does not require a cluster.
+
 ### Diagnose long-running Azure test failures
 
 The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
@@ -415,7 +425,7 @@ The identities are carried in repository secrets rather than in the workflow fil
 | `AWS_GH_ACTIONS_ROLE`                              | the runner, via `configure-aws-credentials`                         | GitHub OIDC -> IAM role                                   |
 | `FUNC_TEST_RAD_IRSA_ROLE`                          | the Radius pods, via IRSA                                           | cluster OIDC issuer -> IAM role                           |
 | `AZURE_SP_TESTS_APPID` + `AZURE_SP_TESTS_TENANTID` | both the runner (Azure CLI) and the Radius pods (workload identity) | GitHub OIDC and AKS OIDC -> AAD app federated credentials |
-| `FUNCTEST_AWS_ACCOUNT_ID`                          | the AWS account id passed to `rad env update` (not a credential)    | -                                                         |
+| `FUNCTEST_AWS_ACCOUNT_ID`                          | the AWS account id in the environment `awsScope` (not a credential) | -                                                         |
 
 #### Provision the AWS identities
 
@@ -428,6 +438,21 @@ Apply the layers in order whenever the LRT cluster is created or rotated:
 3. `modules/30-functional-tests-github` publishes the resulting role ARNs as `FUNC_TEST_RAD_IRSA_ROLE` and `AWS_GH_ACTIONS_ROLE`.
 
 The GitHub Actions role allows 5400-second sessions, and the LRT workflow requests that duration to leave headroom over the 60-minute functional-test window. Its generated subject patterns include branch refs, so the scheduled `main` run uses `repo:radius-project/radius:ref:refs/heads/main` without a separate trust-policy edit.
+
+### Terraform provider configuration test
+
+`Test_TerraformRecipe_AzureResourceGroup` in `test/functional-portable/corerp/cloud/resources` checks both the registered Azure provider and a custom provider alias. The custom case loads the tenant from a secret store, loads the client ID through `envSecrets`, and enables OIDC through `env`. Invalid environment defaults ensure the explicit provider fields and secret-backed environment value must take effect. It uses the registered Azure workload identity and replaces the skipped PostgreSQL provider test; no database or fixed readiness delay is needed. The custom case uses a separate fixture, `corerp-resources-terraform-azurerg-custom-provider.bicep`, so neither fixture needs conditional resources.
+
+The custom case is skipped until [#13299](https://github.com/radius-project/radius/issues/13299) is fixed. Radius runs `terraform get` before it adds aliased providers, so modules that declare `configuration_aliases` fail to download. Remove the skip as part of that fix.
+
+Both cases keep their Kubernetes state Secret until normal Terraform destroy completes. The Terraform driver does not record Azure scope IDs, such as resource groups, as output resources, so the test uses the Azure SDK instead. It checks that the Azure resource group exists after deployment and that both the group and state Secret are absent after deletion, even when `RADIUS_TEST_FAST_CLEANUP=true`. SDK fallback cleanup runs only after those checks and cannot turn a failed destroy into a passing test.
+
+Use the normal cloud-suite setup, including `AZURE_SUBSCRIPTION_ID`, the Terraform module server, and the same Entra service principal for the runner and Radius pods. The custom case reads `AZURE_SP_TESTS_TENANTID` and `AZURE_SP_TESTS_APPID`, or the service-principal identity from `az account show`. Publish both `azure-rg` and `azure-rg-custom-provider` with `make publish-test-terraform-recipes`, then run:
+
+```bash
+go test ./test/functional-portable/corerp/cloud/resources \
+  -run '^Test_TerraformRecipe_AzureResourceGroup$' -count=20 -timeout 60m -v
+```
 
 ### Terraform cloud backend lifecycle tests
 
