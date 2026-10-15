@@ -157,7 +157,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Check if the application exists
 	_, err := appClient.Get(ctx, r.Workspace.Scope, r.ApplicationName, &corerpv20250801.ApplicationsClientGetOptions{})
 	if clients.Is404Error(err) {
-		r.Output.LogInfo("Application '%s' does not exist or has already been deleted. %s", r.ApplicationName, cmd.LegacyApplicationHint("delete", r.Workspace, r.ApplicationName))
+		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
 		return nil
 	} else if err != nil {
 		return err

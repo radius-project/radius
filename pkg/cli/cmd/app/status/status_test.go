@@ -243,7 +243,6 @@ func Test_Run(t *testing.T) {
 		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "was not found or has been deleted")
-		require.Contains(t, err.Error(), "`rad app` commands manage Radius.Core applications only. For an Applications.Core application, use `rad resource show Applications.Core/applications test-app --workspace test-workspace --group test-group`.")
 	})
 
 	t.Run("Success: JSON output format", func(t *testing.T) {

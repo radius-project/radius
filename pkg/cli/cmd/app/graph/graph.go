@@ -263,7 +263,7 @@ func (r *Runner) runDeployed(ctx context.Context) error {
 	}
 	graphResponse, err := appClient.GetGraph(ctx, r.Workspace.Scope, r.ApplicationName, body, &corerpv20250801preview.ApplicationsClientGetGraphOptions{})
 	if clients.Is404Error(err) {
-		return clierrors.Message("Application %q does not exist or has been deleted. %s", r.ApplicationName, cmd.LegacyApplicationHint("show", r.Workspace, r.ApplicationName))
+		return clierrors.Message("Application %q does not exist or has been deleted.", r.ApplicationName)
 	} else if err != nil {
 		return err
 	}
