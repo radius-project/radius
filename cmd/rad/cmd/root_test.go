@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/statearchive/factory"
@@ -306,6 +307,32 @@ func Test_EnvCommands_RegisteredWithoutPreview(t *testing.T) {
 			require.Nil(t, cmd.Flags().Lookup("preview"), "rad env %s must not expose --preview", tc.command)
 			for _, flag := range tc.flags {
 				require.NotNilf(t, cmd.Flags().Lookup(flag), "rad env %s must expose --%s", tc.command, flag)
+			}
+		})
+	}
+}
+
+// Test_InitAndWorkspaceCreate_RegisteredWithoutPreview checks that `rad init` and
+// `rad workspace create` have no --preview flag and define every flag their runners read.
+func Test_InitAndWorkspaceCreate_RegisteredWithoutPreview(t *testing.T) {
+	testcases := []struct {
+		args  []string
+		name  string
+		flags []string
+	}{
+		{args: []string{"init"}, name: "initialize", flags: []string{"full", "set", "set-file", "output"}},
+		{args: []string{"workspace", "create"}, name: "create", flags: []string{"workspace", "group", "environment", "force", "context"}},
+	}
+
+	for _, tc := range testcases {
+		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
+			cmd, _, err := RootCmd.Find(tc.args)
+			require.NoError(t, err)
+			require.Equal(t, tc.name, cmd.Name())
+
+			require.Nil(t, cmd.Flags().Lookup("preview"), "rad %s must not expose --preview", strings.Join(tc.args, " "))
+			for _, flag := range tc.flags {
+				require.NotNilf(t, cmd.Flags().Lookup(flag), "rad %s must expose --%s", strings.Join(tc.args, " "), flag)
 			}
 		})
 	}
