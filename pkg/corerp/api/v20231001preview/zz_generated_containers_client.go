@@ -60,7 +60,7 @@ func (client *ContainersClient) BeginCreateOrUpdate(ctx context.Context, rootSco
 	}
 }
 
-// CreateOrUpdate - Create a ContainerResource
+// createOrUpdate - Create a ContainerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *ContainersClient) createOrUpdate(ctx context.Context, rootScope string, containerName string, resource ContainerResource, options *ContainersClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -78,7 +78,7 @@ func (client *ContainersClient) createOrUpdate(ctx context.Context, rootScope st
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *ContainersClient) createOrUpdateCreateRequest(ctx context.Context, rootScope string, containerName string, resource ContainerResource, _ *ContainersClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/containers/{containerName}"
 	if rootScope == "" {
@@ -112,7 +112,7 @@ func (client *ContainersClient) createOrUpdateCreateRequest(ctx context.Context,
 //   - options - ContainersClientBeginDeleteOptions contains the optional parameters for the ContainersClient.BeginDelete method.
 func (client *ContainersClient) BeginDelete(ctx context.Context, rootScope string, containerName string, options *ContainersClientBeginDeleteOptions) (*runtime.Poller[ContainersClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.deleteOperation(ctx, rootScope, containerName, options)
+		resp, err := client.delete(ctx, rootScope, containerName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -125,9 +125,9 @@ func (client *ContainersClient) BeginDelete(ctx context.Context, rootScope strin
 	}
 }
 
-// Delete - Delete a ContainerResource
+// delete - Delete a ContainerResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *ContainersClient) deleteOperation(ctx context.Context, rootScope string, containerName string, options *ContainersClientBeginDeleteOptions) (*http.Response, error) {
+func (client *ContainersClient) delete(ctx context.Context, rootScope string, containerName string, options *ContainersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, containerName, options)
 	if err != nil {
@@ -143,7 +143,7 @@ func (client *ContainersClient) deleteOperation(ctx context.Context, rootScope s
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *ContainersClient) deleteCreateRequest(ctx context.Context, rootScope string, containerName string, _ *ContainersClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/containers/{containerName}"
 	if rootScope == "" {
@@ -161,6 +161,72 @@ func (client *ContainersClient) deleteCreateRequest(ctx context.Context, rootSco
 	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", version20231001Preview)
 	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	return req, nil
+}
+
+// BeginUpdate - Update a ContainerResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - containerName - Container name
+//   - properties - The resource properties to be updated.
+//   - options - ContainersClientBeginUpdateOptions contains the optional parameters for the ContainersClient.BeginUpdate method.
+func (client *ContainersClient) BeginUpdate(ctx context.Context, rootScope string, containerName string, properties ContainerResource, options *ContainersClientBeginUpdateOptions) (*runtime.Poller[ContainersClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, rootScope, containerName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ContainersClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[ContainersClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// update - Update a ContainerResource
+// If the operation fails it returns an *azcore.ResponseError type.
+func (client *ContainersClient) update(ctx context.Context, rootScope string, containerName string, properties ContainerResource, options *ContainersClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, rootScope, containerName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		return nil, runtime.NewResponseError(httpResp)
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the update request.
+func (client *ContainersClient) updateCreateRequest(ctx context.Context, rootScope string, containerName string, properties ContainerResource, _ *ContainersClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/containers/{containerName}"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if containerName == "" {
+		return nil, errors.New("parameter containerName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{containerName}", url.PathEscape(containerName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 
@@ -282,70 +348,4 @@ func (client *ContainersClient) listByScopeHandleResponse(resp *http.Response, s
 		return ContainersClientListByScopeResponse{}, err
 	}
 	return result, nil
-}
-
-// BeginUpdate - Update a ContainerResource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - containerName - Container name
-//   - properties - The resource properties to be updated.
-//   - options - ContainersClientBeginUpdateOptions contains the optional parameters for the ContainersClient.BeginUpdate method.
-func (client *ContainersClient) BeginUpdate(ctx context.Context, rootScope string, containerName string, properties ContainerResource, options *ContainersClientBeginUpdateOptions) (*runtime.Poller[ContainersClientUpdateResponse], error) {
-	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, rootScope, containerName, properties, options)
-		if err != nil {
-			return nil, err
-		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ContainersClientUpdateResponse]{
-			FinalStateVia: runtime.FinalStateViaLocation,
-		})
-		return poller, err
-	} else {
-		return runtime.NewPollerFromResumeToken[ContainersClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
-	}
-}
-
-// Update - Update a ContainerResource
-// If the operation fails it returns an *azcore.ResponseError type.
-func (client *ContainersClient) update(ctx context.Context, rootScope string, containerName string, properties ContainerResource, options *ContainersClientBeginUpdateOptions) (*http.Response, error) {
-	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, containerName, properties, options)
-	if err != nil {
-		return nil, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		return nil, runtime.NewResponseError(httpResp)
-	}
-	return httpResp, nil
-}
-
-// updateCreateRequest creates the Update request.
-func (client *ContainersClient) updateCreateRequest(ctx context.Context, rootScope string, containerName string, properties ContainerResource, _ *ContainersClientBeginUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Core/containers/{containerName}"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if containerName == "" {
-		return nil, errors.New("parameter containerName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{containerName}", url.PathEscape(containerName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-		return nil, err
-	}
-	return req, nil
 }

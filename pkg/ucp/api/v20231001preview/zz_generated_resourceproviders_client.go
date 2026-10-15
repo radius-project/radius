@@ -60,7 +60,7 @@ func (client *ResourceProvidersClient) BeginCreateOrUpdate(ctx context.Context, 
 	}
 }
 
-// CreateOrUpdate - Create or update a resource provider
+// createOrUpdate - Create or update a resource provider
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *ResourceProvidersClient) createOrUpdate(ctx context.Context, planeName string, resourceProviderName string, resource ResourceProviderResource, options *ResourceProvidersClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -79,7 +79,7 @@ func (client *ResourceProvidersClient) createOrUpdate(ctx context.Context, plane
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *ResourceProvidersClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resource ResourceProviderResource, _ *ResourceProvidersClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}"
 	if planeName == "" {
@@ -113,7 +113,7 @@ func (client *ResourceProvidersClient) createOrUpdateCreateRequest(ctx context.C
 //     method.
 func (client *ResourceProvidersClient) BeginDelete(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientBeginDeleteOptions) (*runtime.Poller[ResourceProvidersClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.deleteOperation(ctx, planeName, resourceProviderName, options)
+		resp, err := client.delete(ctx, planeName, resourceProviderName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -126,9 +126,9 @@ func (client *ResourceProvidersClient) BeginDelete(ctx context.Context, planeNam
 	}
 }
 
-// Delete - Delete a resource provider
+// delete - Delete a resource provider
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *ResourceProvidersClient) deleteOperation(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientBeginDeleteOptions) (*http.Response, error) {
+func (client *ResourceProvidersClient) delete(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceProvidersClient.BeginDelete")
 	req, err := client.deleteCreateRequest(ctx, planeName, resourceProviderName, options)
@@ -145,7 +145,7 @@ func (client *ResourceProvidersClient) deleteOperation(ctx context.Context, plan
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *ResourceProvidersClient) deleteCreateRequest(ctx context.Context, planeName string, resourceProviderName string, _ *ResourceProvidersClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}"
 	if planeName == "" {
