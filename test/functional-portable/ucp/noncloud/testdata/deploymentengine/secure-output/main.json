@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.42.1.51946",
+      "templateHash": "573779034638936688"
+    }
+  },
+  "resources": {
+    "child": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "securechild",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "15961985433535672517"
+            }
+          },
+          "resources": {},
+          "outputs": {
+            "s": {
+              "type": "securestring",
+              "value": "test-value"
+            },
+            "x": {
+              "type": "string",
+              "value": "hi"
+            }
+          }
+        }
+      }
+    }
+  },
+  "outputs": {
+    "len": {
+      "type": "int",
+      "value": "[length(listOutputsWithSecureValues('child', '2025-04-01').s)]"
+    }
+  }
+}

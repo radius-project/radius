@@ -1,0 +1,29 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "imports": {
+    "radius": {
+      "provider": "Radius",
+      "version": "latest"
+    }
+  },
+  "resources": {
+    "invalidRecipePack": {
+      "import": "radius",
+      "type": "Radius.Core/recipePacks@2025-08-01-preview",
+      "properties": {
+        "name": "[parameters('name')]",
+        "location": "global",
+        "properties": {
+          "recipes": 17
+        }
+      }
+    }
+  }
+}

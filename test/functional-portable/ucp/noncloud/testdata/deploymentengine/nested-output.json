@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "childName": {
+      "type": "string"
+    }
+  },
+  "resources": {
+    "child": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[parameters('childName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": [],
+          "outputs": {
+            "message": {
+              "type": "string",
+              "value": "ordinary-child-output"
+            }
+          }
+        }
+      }
+    }
+  },
+  "outputs": {
+    "result": {
+      "type": "string",
+      "value": "[reference('child').outputs.message.value]"
+    }
+  }
+}

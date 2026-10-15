@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    }
+  },
+  "imports": {
+    "radius": {
+      "provider": "Radius",
+      "version": "latest",
+      "config": {
+        "scope": "/planes/radius/local/resourceGroups/replaced-by-test-inline-scope"
+      }
+    }
+  },
+  "resources": {
+    "legacy": {
+      "import": "radius",
+      "type": "Applications.Core/extenders@2023-10-01-preview",
+      "properties": {
+        "name": "[parameters('name')]",
+        "location": "global",
+        "properties": {
+          "environment": "[parameters('environment')]",
+          "resourceProvisioning": "manual"
+        }
+      }
+    },
+    "modern": {
+      "import": "radius",
+      "type": "Radius.Core/recipePacks@2025-08-01-preview",
+      "properties": {
+        "name": "[parameters('name')]",
+        "location": "global",
+        "properties": {
+          "recipes": {}
+        }
+      }
+    }
+  }
+}
