@@ -16,6 +16,16 @@ limitations under the License.
 
 package terraform
 
+import (
+	"os"
+	"strings"
+)
+
+// VersionEnvVar overrides the Terraform version Radius downloads. The Helm chart sets it from
+// global.terraform.version. An environment variable is used rather than a config file field so
+// that newer Helm charts remain compatible with older images, which reject unknown config fields.
+const VersionEnvVar = "RADIUS_TERRAFORM_VERSION"
+
 // terraformVersion is the version of Terraform that Radius downloads and
 // uses to execute Terraform recipes.
 //
@@ -28,7 +38,11 @@ package terraform
 // sync with the compatibility file.
 var terraformVersion = "1.16.5"
 
-// TerraformVersion returns the Terraform version Radius will install.
+// TerraformVersion returns the Terraform version Radius will install: the value of
+// VersionEnvVar when set, otherwise the built-in default.
 func TerraformVersion() string {
+	if v := strings.TrimSpace(os.Getenv(VersionEnvVar)); v != "" {
+		return v
+	}
 	return terraformVersion
 }

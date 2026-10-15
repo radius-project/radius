@@ -27,8 +27,11 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/kubernetes/fake"
 	kubernetesscheme "k8s.io/client-go/kubernetes/scheme"
 	restfake "k8s.io/client-go/rest/fake"
 )
@@ -179,11 +182,68 @@ func TestWaitForControlPlaneOptionsValidate(t *testing.T) {
 		{name: "timeout", options: waitForControlPlaneOptions{pollInterval: time.Second, requestTimeout: time.Second}},
 		{name: "poll interval", options: waitForControlPlaneOptions{timeout: time.Second, requestTimeout: time.Second}},
 		{name: "request timeout", options: waitForControlPlaneOptions{timeout: time.Second, pollInterval: time.Second}},
+		{name: "deployments without namespace", options: waitForControlPlaneOptions{timeout: time.Second, pollInterval: time.Second, requestTimeout: time.Second, deployments: []string{"ucp"}}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Error(t, tt.options.validate())
+		})
+	}
+}
+
+func TestNewCommandParsesDeploymentFlags(t *testing.T) {
+	cmd := newWaitForControlPlaneCommand()
+	require.NoError(t, cmd.ParseFlags([]string{"--namespace=radius-system", "--deployment=ucp", "--deployment=controller"}))
+
+	deployments, err := cmd.Flags().GetStringArray("deployment")
+	require.NoError(t, err)
+	require.Equal(t, []string{"ucp", "controller"}, deployments)
+	namespace, err := cmd.Flags().GetString("namespace")
+	require.NoError(t, err)
+	require.Equal(t, "radius-system", namespace)
+}
+
+func TestProbeDeployments(t *testing.T) {
+	replicas := int32(1)
+	deployment := func(name string, generation, observed int64, updated, available int32) *appsv1.Deployment {
+		return &appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "radius-system", Generation: generation},
+			Spec:       appsv1.DeploymentSpec{Replicas: &replicas},
+			Status:     appsv1.DeploymentStatus{ObservedGeneration: observed, UpdatedReplicas: updated, AvailableReplicas: available},
+		}
+	}
+
+	tests := []struct {
+		name        string
+		deployments []*appsv1.Deployment
+		wantErr     string
+		notFound    bool
+	}{
+		{name: "all available", deployments: []*appsv1.Deployment{deployment("ucp", 2, 2, 1, 1), deployment("controller", 1, 1, 1, 1)}},
+		{name: "generation not observed", deployments: []*appsv1.Deployment{deployment("ucp", 2, 1, 1, 1), deployment("controller", 1, 1, 1, 1)}, wantErr: "has not observed generation 2"},
+		{name: "rollout not updated", deployments: []*appsv1.Deployment{deployment("ucp", 1, 1, 1, 1), deployment("controller", 2, 2, 0, 1)}, wantErr: "0 of 1 replicas updated"},
+		{name: "not available", deployments: []*appsv1.Deployment{deployment("ucp", 1, 1, 1, 0), deployment("controller", 1, 1, 1, 1)}, wantErr: "0 of 1 replicas available"},
+		{name: "missing deployment", deployments: []*appsv1.Deployment{deployment("ucp", 1, 1, 1, 1)}, notFound: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := fake.NewClientset()
+			for _, d := range tt.deployments {
+				_, err := client.AppsV1().Deployments(d.Namespace).Create(t.Context(), d, metav1.CreateOptions{})
+				require.NoError(t, err)
+			}
+
+			err := probeDeployments(t.Context(), client, "radius-system", []string{"ucp", "controller"}, time.Second)
+			switch {
+			case tt.notFound:
+				require.True(t, apierrors.IsNotFound(err), "expected NotFound, got %v", err)
+			case tt.wantErr != "":
+				require.ErrorContains(t, err, tt.wantErr)
+			default:
+				require.NoError(t, err)
+			}
 		})
 	}
 }

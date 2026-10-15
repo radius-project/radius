@@ -148,3 +148,45 @@ Usage (pass the root context):
   value: "{{ .Values.global.targetCluster.mountPath }}/{{ .Values.global.targetCluster.secretKey }}"
 {{- end -}}
 {{- end -}}
+
+{{/*
+radius.controlPlaneReadiness.image renders the full image reference used by the
+control-plane readiness hook and the dashboard startup gate. When
+controlPlaneReadiness.image is unset, it honors an explicitly configured
+preupgrade image; otherwise it uses the pre-upgrade image from the same registry
+and tag as UCP so custom and CI builds stay aligned.
+*/}}
+{{- define "radius.controlPlaneReadiness.image" -}}
+{{- $appversion := include "radius.versiontag" . }}
+{{- $readiness := .Values.controlPlaneReadiness | default dict }}
+{{- $readinessImage := get $readiness "image" | default "" }}
+{{- $readinessTag := get $readiness "tag" | default "" }}
+{{- if not $readinessImage }}
+  {{- if ne .Values.preupgrade.image "pre-upgrade" }}
+    {{- $readinessImage = .Values.preupgrade.image }}
+    {{- $readinessTag = $readinessTag | default .Values.preupgrade.tag }}
+  {{- else }}
+    {{- $ucpImageName := last (splitList "/" .Values.ucp.image) }}
+    {{- $ucpEmbeddedTag := "" }}
+    {{- if contains ":" $ucpImageName }}
+      {{- $ucpEmbeddedTag = regexReplaceAll "^.*:" $ucpImageName "" }}
+    {{- end }}
+    {{- if contains "/" .Values.ucp.image }}
+      {{- $readinessImage = regexReplaceAll "/[^/]+$" .Values.ucp.image "/pre-upgrade" }}
+    {{- else }}
+      {{- $readinessImage = "pre-upgrade" }}
+    {{- end }}
+    {{- $readinessTag = $readinessTag | default $ucpEmbeddedTag | default .Values.ucp.tag }}
+  {{- end }}
+{{- end }}
+{{- $readinessTag = $readinessTag | default .Values.global.imageTag | default $appversion }}
+{{- include "radius.image" (dict "image" $readinessImage "tag" $readinessTag "global" .Values.global) }}
+{{- end -}}
+
+{{/*
+radius.dashboard.startupGate.deployments lists the core control-plane Deployments,
+comma separated, that must be available before the dashboard container image is pulled.
+*/}}
+{{- define "radius.dashboard.startupGate.deployments" -}}
+ucp,applications-rp,dynamic-rp,controller,bicep-de
+{{- end -}}

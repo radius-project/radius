@@ -1,30 +1,8 @@
-{{- $appversion := include "radius.versiontag" . }}
 {{- $readiness := .Values.controlPlaneReadiness | default dict }}
 {{- $timeoutSeconds := get $readiness "timeoutSeconds" | default 240 }}
 {{- $pollIntervalSeconds := get $readiness "pollIntervalSeconds" | default 2 }}
 {{- $requestTimeoutSeconds := get $readiness "requestTimeoutSeconds" | default 10 }}
 {{- $ttlSecondsAfterFinished := get $readiness "ttlSecondsAfterFinished" | default 300 }}
-{{- $readinessImage := get $readiness "image" | default "" }}
-{{- $readinessTag := get $readiness "tag" | default "" }}
-{{- if not $readinessImage }}
-  {{- if ne .Values.preupgrade.image "pre-upgrade" }}
-    {{- $readinessImage = .Values.preupgrade.image }}
-    {{- $readinessTag = $readinessTag | default .Values.preupgrade.tag }}
-  {{- else }}
-    {{- $ucpImageName := last (splitList "/" .Values.ucp.image) }}
-    {{- $ucpEmbeddedTag := "" }}
-    {{- if contains ":" $ucpImageName }}
-      {{- $ucpEmbeddedTag = regexReplaceAll "^.*:" $ucpImageName "" }}
-    {{- end }}
-    {{- if contains "/" .Values.ucp.image }}
-      {{- $readinessImage = regexReplaceAll "/[^/]+$" .Values.ucp.image "/pre-upgrade" }}
-    {{- else }}
-      {{- $readinessImage = "pre-upgrade" }}
-    {{- end }}
-    {{- $readinessTag = $readinessTag | default $ucpEmbeddedTag | default .Values.ucp.tag }}
-  {{- end }}
-{{- end }}
-{{- $readinessTag = $readinessTag | default .Values.global.imageTag | default $appversion }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -58,7 +36,7 @@ spec:
       {{- end }}
       containers:
         - name: radius-api-readiness
-          image: "{{ include "radius.image" (dict "image" $readinessImage "tag" $readinessTag "global" .Values.global) }}"
+          image: "{{ include "radius.controlPlaneReadiness.image" . }}"
           imagePullPolicy: Always
           args:
             - wait-for-control-plane

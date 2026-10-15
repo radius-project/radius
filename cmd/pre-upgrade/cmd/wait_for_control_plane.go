@@ -23,7 +23,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
+	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -41,6 +43,8 @@ type waitForControlPlaneOptions struct {
 	timeout        time.Duration
 	pollInterval   time.Duration
 	requestTimeout time.Duration
+	namespace      string
+	deployments    []string
 }
 
 type controlPlaneProbe func(context.Context) error
@@ -54,7 +58,7 @@ func newWaitForControlPlaneCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "wait-for-control-plane",
-		Short: "Wait for the Radius aggregated API to become available",
+		Short: "Wait for the Radius aggregated API, and optionally core Deployments, to become available",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := options.validate(); err != nil {
@@ -67,13 +71,16 @@ func newWaitForControlPlaneCommand() *cobra.Command {
 			}
 			defer flush()
 
-			client, err := newInClusterDiscoveryClient()
+			client, err := newInClusterClient()
 			if err != nil {
 				return err
 			}
 
 			return waitForControlPlane(cmd.Context(), options, logger, func(ctx context.Context) error {
-				return probeControlPlane(ctx, client, options.requestTimeout)
+				if err := probeControlPlane(ctx, client.Discovery().RESTClient(), options.requestTimeout); err != nil {
+					return err
+				}
+				return probeDeployments(ctx, client, options.namespace, options.deployments, options.requestTimeout)
 			})
 		},
 	}
@@ -81,6 +88,8 @@ func newWaitForControlPlaneCommand() *cobra.Command {
 	cmd.Flags().DurationVar(&options.timeout, "timeout", options.timeout, "Maximum time to wait for the Radius aggregated API")
 	cmd.Flags().DurationVar(&options.pollInterval, "poll-interval", options.pollInterval, "Delay between readiness probes")
 	cmd.Flags().DurationVar(&options.requestTimeout, "request-timeout", options.requestTimeout, "Timeout for each readiness probe")
+	cmd.Flags().StringVar(&options.namespace, "namespace", "", "Namespace of the Deployments passed with --deployment")
+	cmd.Flags().StringArrayVar(&options.deployments, "deployment", nil, "Deployment that must also be available (repeatable; requires --namespace)")
 	return cmd
 }
 
@@ -92,12 +101,14 @@ func (o waitForControlPlaneOptions) validate() error {
 		return fmt.Errorf("poll interval must be greater than zero")
 	case o.requestTimeout <= 0:
 		return fmt.Errorf("request timeout must be greater than zero")
+	case len(o.deployments) > 0 && o.namespace == "":
+		return fmt.Errorf("namespace is required when deployments are specified")
 	default:
 		return nil
 	}
 }
 
-func newInClusterDiscoveryClient() (rest.Interface, error) {
+func newInClusterClient() (kubernetes.Interface, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load in-cluster Kubernetes configuration: %w", err)
@@ -107,13 +118,48 @@ func newInClusterDiscoveryClient() (rest.Interface, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
-	return client.Discovery().RESTClient(), nil
+	return client, nil
 }
 
 func probeControlPlane(ctx context.Context, client rest.Interface, requestTimeout time.Duration) error {
 	probeCtx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 	return client.Get().AbsPath(radiusAggregatedAPIPath).Do(probeCtx).Error()
+}
+
+// probeDeployments returns an error unless every named Deployment has finished rolling out
+// its current generation and all of its desired replicas are available.
+func probeDeployments(ctx context.Context, client kubernetes.Interface, namespace string, names []string, requestTimeout time.Duration) error {
+	for _, name := range names {
+		probeCtx, cancel := context.WithTimeout(ctx, requestTimeout)
+		deployment, err := client.AppsV1().Deployments(namespace).Get(probeCtx, name, metav1.GetOptions{})
+		cancel()
+		if err != nil {
+			return err
+		}
+		if err := deploymentAvailable(deployment); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deploymentAvailable(deployment *appsv1.Deployment) error {
+	desired := int32(1)
+	if deployment.Spec.Replicas != nil {
+		desired = *deployment.Spec.Replicas
+	}
+	status := deployment.Status
+	switch {
+	case status.ObservedGeneration < deployment.Generation:
+		return fmt.Errorf("deployment %q has not observed generation %d", deployment.Name, deployment.Generation)
+	case status.UpdatedReplicas < desired:
+		return fmt.Errorf("deployment %q has %d of %d replicas updated", deployment.Name, status.UpdatedReplicas, desired)
+	case status.AvailableReplicas < desired:
+		return fmt.Errorf("deployment %q has %d of %d replicas available", deployment.Name, status.AvailableReplicas, desired)
+	default:
+		return nil
+	}
 }
 
 func waitForControlPlane(ctx context.Context, options waitForControlPlaneOptions, logger logr.Logger, probe controlPlaneProbe) error {
@@ -129,7 +175,7 @@ func waitForControlPlane(ctx context.Context, options waitForControlPlaneOptions
 		attempts++
 		lastErr = probe(waitCtx)
 		if lastErr == nil {
-			logger.Info("Radius aggregated API is available", "attempts", attempts, "elapsed", time.Since(started))
+			logger.Info("Radius control plane is available", "attempts", attempts, "elapsed", time.Since(started))
 			return nil
 		}
 
@@ -142,14 +188,14 @@ func waitForControlPlane(ctx context.Context, options waitForControlPlaneOptions
 			return fmt.Errorf("control plane readiness probe failed with a non-retryable authorization error after %d attempt(s): %w", attempts, lastErr)
 		}
 
-		logger.Info("Waiting for the Radius aggregated API", "attempt", attempts, "error", lastErr)
+		logger.Info("Waiting for the Radius control plane", "attempt", attempts, "error", lastErr)
 
 		timer := time.NewTimer(options.pollInterval)
 		select {
 		case <-timer.C:
 		case <-waitCtx.Done():
 			timer.Stop()
-			return fmt.Errorf("Radius aggregated API did not become available within %s after %d attempt(s): %w (last probe failure: %v)",
+			return fmt.Errorf("Radius control plane did not become available within %s after %d attempt(s): %w (last probe failure: %v)",
 				options.timeout, attempts, waitCtx.Err(), lastErr)
 		}
 	}

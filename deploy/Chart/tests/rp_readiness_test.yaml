@@ -1,0 +1,39 @@
+suite: test resource provider readiness probes
+templates:
+  - rp/deployment.yaml
+  - dynamic-rp/deployment.yaml
+  - dynamic-rp/configmaps.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  # Terraform is downloaded in the background, so readiness must track the API listener
+  # rather than container start.
+  - it: gates applications-rp readiness on its health endpoint
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /healthz
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: applications-rp
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 5443
+        template: rp/deployment.yaml
+
+  - it: gates dynamic-rp readiness on its API listener
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.tcpSocket.port
+          value: 8082
+        template: dynamic-rp/deployment.yaml
+
+  - it: keeps the dynamic-rp probe port aligned with the configured server port
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: "server:\\n\\s+host: \"0.0.0.0\"\\n\\s+port: 8082\\n"
+        template: dynamic-rp/configmaps.yaml

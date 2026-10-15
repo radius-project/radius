@@ -18,7 +18,13 @@ package databaseprovider
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
+	"fmt"
+	"io"
+	"net"
+	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -29,7 +35,7 @@ import (
 func Test_waitForPostgreSQL(t *testing.T) {
 	t.Parallel()
 
-	connRefused := errors.New("dial tcp: connect: connection refused")
+	connRefused := &net.OpError{Op: "dial", Net: "tcp", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}
 
 	tests := []struct {
 		name         string
@@ -42,6 +48,8 @@ func Test_waitForPostgreSQL(t *testing.T) {
 		{name: "ready after connection errors", errs: []error{connRefused, connRefused, connRefused}, timeout: 5 * time.Second, wantAttempts: 4},
 		{name: "ready after server starting up", errs: []error{&pgconn.PgError{Code: postgresCannotConnectNow}}, timeout: 5 * time.Second, wantAttempts: 2},
 		{name: "auth failure is not retried", errs: []error{&pgconn.PgError{Code: "28P01"}}, timeout: 5 * time.Second, wantErr: true, wantAttempts: 1},
+		{name: "certificate failure is not retried", errs: []error{x509.UnknownAuthorityError{}}, timeout: 5 * time.Second, wantErr: true, wantAttempts: 1},
+		{name: "unknown error is not retried", errs: []error{errors.New("boom")}, timeout: 5 * time.Second, wantErr: true, wantAttempts: 1},
 	}
 
 	for _, tt := range tests {
@@ -57,7 +65,7 @@ func Test_waitForPostgreSQL(t *testing.T) {
 				return nil
 			}
 
-			err := waitForPostgreSQL(context.Background(), ping, tt.timeout, time.Millisecond, 5*time.Millisecond)
+			err := waitForPostgreSQL(context.Background(), ping, testWaitOptions(tt.timeout))
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -72,7 +80,7 @@ func Test_waitForPostgreSQL(t *testing.T) {
 	t.Run("times out", func(t *testing.T) {
 		t.Parallel()
 
-		err := waitForPostgreSQL(context.Background(), func(context.Context) error { return connRefused }, 50*time.Millisecond, time.Millisecond, 5*time.Millisecond)
+		err := waitForPostgreSQL(context.Background(), func(context.Context) error { return connRefused }, testWaitOptions(50*time.Millisecond))
 		require.ErrorContains(t, err, "timed out")
 	})
 
@@ -81,7 +89,70 @@ func Test_waitForPostgreSQL(t *testing.T) {
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		err := waitForPostgreSQL(ctx, func(context.Context) error { return connRefused }, time.Minute, time.Millisecond, time.Millisecond)
-		require.Error(t, err)
+		err := waitForPostgreSQL(ctx, func(context.Context) error { return connRefused }, testWaitOptions(time.Minute))
+		require.ErrorIs(t, err, context.Canceled)
+		require.NotContains(t, err.Error(), "timed out")
 	})
+
+	t.Run("hung attempt is bounded and retried", func(t *testing.T) {
+		t.Parallel()
+
+		attempts := 0
+		ping := func(ctx context.Context) error {
+			attempts++
+			if attempts == 1 {
+				<-ctx.Done()
+				return ctx.Err()
+			}
+			return nil
+		}
+		opts := testWaitOptions(5 * time.Second)
+		opts.attemptTimeout = 10 * time.Millisecond
+		require.NoError(t, waitForPostgreSQL(context.Background(), ping, opts))
+		require.Equal(t, 2, attempts)
+	})
+}
+
+func Test_isRetryablePostgreSQLError(t *testing.T) {
+	t.Parallel()
+
+	dial := func(errno syscall.Errno) error {
+		return fmt.Errorf("failed to connect: %w", &net.OpError{Op: "dial", Net: "tcp", Err: os.NewSyscallError("connect", errno)})
+	}
+
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "connection refused", err: dial(syscall.ECONNREFUSED), want: true},
+		{name: "connection reset", err: dial(syscall.ECONNRESET), want: true},
+		{name: "host unreachable", err: dial(syscall.EHOSTUNREACH), want: true},
+		{name: "network unreachable", err: dial(syscall.ENETUNREACH), want: true},
+		{name: "dns not found", err: &net.DNSError{Err: "no such host", Name: "database", IsNotFound: true}, want: true},
+		{name: "attempt deadline", err: fmt.Errorf("ping: %w", context.DeadlineExceeded), want: true},
+		{name: "unexpected eof", err: fmt.Errorf("read: %w", io.ErrUnexpectedEOF), want: true},
+		{name: "server starting up", err: &pgconn.PgError{Code: postgresCannotConnectNow}, want: true},
+		{name: "password authentication failed", err: &pgconn.PgError{Code: "28P01"}, want: false},
+		{name: "permission denied", err: dial(syscall.EACCES), want: false},
+		{name: "remote tls alert", err: &net.OpError{Op: "remote error", Err: errors.New("tls: bad certificate")}, want: false},
+		{name: "unknown certificate authority", err: fmt.Errorf("tls: %w", x509.UnknownAuthorityError{}), want: false},
+		{name: "cancelled", err: context.Canceled, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, isRetryablePostgreSQLError(tt.err))
+		})
+	}
+}
+
+func testWaitOptions(timeout time.Duration) postgresWaitOptions {
+	return postgresWaitOptions{
+		timeout:        timeout,
+		attemptTimeout: time.Second,
+		initialDelay:   time.Millisecond,
+		maxDelay:       5 * time.Millisecond,
+	}
 }

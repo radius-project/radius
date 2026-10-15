@@ -26,6 +26,27 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
       {{- end }}
+      {{- if .Values.dashboard.startupGate.enabled }}
+      # The dashboard image is much larger than the core control-plane images and kubelet
+      # pulls images serially by default. Waiting here keeps the dashboard pull from
+      # delaying the core control plane during install and upgrade.
+      initContainers:
+      - name: wait-for-control-plane
+        image: "{{ include "radius.controlPlaneReadiness.image" . }}"
+        imagePullPolicy: Always
+        args:
+        - wait-for-control-plane
+        - "--timeout={{ .Values.dashboard.startupGate.timeoutSeconds }}s"
+        - "--namespace={{ .Release.Namespace }}"
+        {{- range include "radius.dashboard.startupGate.deployments" . | splitList "," }}
+        - "--deployment={{ . }}"
+        {{- end }}
+        terminationMessagePolicy: FallbackToLogsOnError
+        resources:
+          {{- toYaml .Values.preupgrade.resources | nindent 10 }}
+        securityContext:
+          {{- toYaml .Values.preupgrade.securityContext | nindent 10 }}
+      {{- end }}
       containers:
       - name: dashboard
         image: "{{ include "radius.image" (dict "image" .Values.dashboard.image "tag" (.Values.dashboard.tag | default .Values.global.imageTag | default (include "radius.externalversiontag" $appversion)) "global" .Values.global) }}"

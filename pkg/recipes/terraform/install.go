@@ -168,7 +168,12 @@ func verifyBinaryWorks(ctx context.Context, workingDir, binaryPath string) error
 
 // downloadAndInstallTerraform downloads and installs Terraform to the global location.
 func downloadAndInstallTerraform(ctx context.Context, installer *install.Installer, globalDir, globalBinary, globalMarker string, logger logr.Logger) error {
-	logger.Info("Downloading Terraform to global shared location")
+	tfVersion, err := version.NewVersion(TerraformVersion())
+	if err != nil {
+		return fmt.Errorf("invalid Terraform version %q: %w", TerraformVersion(), err)
+	}
+
+	logger.Info("Downloading Terraform to global shared location", "version", tfVersion.String())
 
 	// Create global terraform directory
 	if err := os.MkdirAll(globalDir, 0755); err != nil {
@@ -177,7 +182,7 @@ func downloadAndInstallTerraform(ctx context.Context, installer *install.Install
 
 	installStartTime := time.Now()
 	execPath, err := installer.Ensure(ctx, []src.Source{
-		&releases.ExactVersion{Product: product.Terraform, Version: version.Must(version.NewVersion(terraformVersion))},
+		&releases.ExactVersion{Product: product.Terraform, Version: tfVersion},
 	})
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
@@ -232,7 +237,11 @@ func downloadAndInstallTerraform(ctx context.Context, installer *install.Install
 					metrics.OperationStateAttrKey.String(metrics.FailedOperationState),
 				},
 			)
-			time.Sleep(time.Duration(installVerificationRetryDelaySecs) * time.Second)
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("cancelled while verifying global Terraform installation: %w", ctx.Err())
+			case <-time.After(time.Duration(installVerificationRetryDelaySecs) * time.Second):
+			}
 			continue
 		}
 		return fmt.Errorf("failed to verify global Terraform installation after %d attempts. Error: %s", installVerificationRetryCount, err.Error())

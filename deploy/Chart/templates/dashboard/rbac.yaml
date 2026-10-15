@@ -29,4 +29,41 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: dashboard
+{{- if .Values.dashboard.startupGate.enabled }}
+---
+# Lets the dashboard startup gate observe core control-plane rollout status.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dashboard-startup-gate
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: dashboard
+    app.kubernetes.io/part-of: radius
+rules:
+  - apiGroups: ['apps']
+    resources: ['deployments']
+    resourceNames:
+      {{- range include "radius.dashboard.startupGate.deployments" . | splitList "," }}
+      - {{ . | quote }}
+      {{- end }}
+    verbs: ['get']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dashboard-startup-gate
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: dashboard
+    app.kubernetes.io/part-of: radius
+subjects:
+- kind: ServiceAccount
+  name: dashboard
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dashboard-startup-gate
+{{- end }}
 {{- end }}

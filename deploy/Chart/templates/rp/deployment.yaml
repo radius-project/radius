@@ -176,6 +176,10 @@ spec:
         {{- if and (eq .Values.global.terraform.enabled true) (not $terraformInit) }}
         - name: RADIUS_TERRAFORM_PREDOWNLOAD
           value: 'true'
+        {{- if .Values.global.terraform.version }}
+        - name: RADIUS_TERRAFORM_VERSION
+          value: {{ .Values.global.terraform.version | quote }}
+        {{- end }}
         {{- end }}
         - name: SKIP_ARM
           value: 'false'
@@ -206,6 +210,16 @@ spec:
           name: metrics
           protocol: TCP
         {{- end }}
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: applications-rp
+          # Probe frequently so the pod becomes ready shortly after the API starts serving,
+          # which shortens install time without hiding a slow or failed startup.
+          initialDelaySeconds: 1
+          periodSeconds: 2
+          timeoutSeconds: 5
+          failureThreshold: 8
         securityContext:
           allowPrivilegeEscalation: false
         volumeMounts:

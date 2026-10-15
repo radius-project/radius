@@ -20,9 +20,12 @@ import (
 	context "context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"os"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -131,7 +134,7 @@ func initPostgreSQLClient(ctx context.Context, opt Options) (store.Client, error
 	// pgxpool.New connects lazily. On a fresh install the database pod usually starts after the
 	// control plane, so wait for it here instead of failing the first query and crash-looping the
 	// process into kubelet's exponential restart back-off.
-	if err := waitForPostgreSQL(ctx, pool.Ping, postgresStartupTimeout, postgresStartupInitialDelay, postgresStartupMaxDelay); err != nil {
+	if err := waitForPostgreSQL(ctx, pool.Ping, defaultPostgresWaitOptions); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("failed to initialize PostgreSQL client: %w", err)
 	}
@@ -139,31 +142,40 @@ func initPostgreSQLClient(ctx context.Context, opt Options) (store.Client, error
 	return postgres.NewPostgresClient(pool), nil
 }
 
-const (
-	// postgresStartupTimeout bounds how long startup waits for PostgreSQL to accept connections.
-	postgresStartupTimeout = 3 * time.Minute
+// postgresWaitOptions controls how startup waits for PostgreSQL to accept connections.
+type postgresWaitOptions struct {
+	// timeout bounds the total wait.
+	timeout time.Duration
+	// attemptTimeout bounds each connection attempt so a dropped packet cannot consume the whole wait.
+	attemptTimeout time.Duration
+	// initialDelay is the first delay between attempts. It doubles up to maxDelay.
+	initialDelay time.Duration
+	maxDelay     time.Duration
+}
 
-	// postgresStartupInitialDelay is the first delay between connection attempts.
-	postgresStartupInitialDelay = 250 * time.Millisecond
+var defaultPostgresWaitOptions = postgresWaitOptions{
+	timeout:        3 * time.Minute,
+	attemptTimeout: 5 * time.Second,
+	initialDelay:   250 * time.Millisecond,
+	maxDelay:       2 * time.Second,
+}
 
-	// postgresStartupMaxDelay caps the delay between connection attempts.
-	postgresStartupMaxDelay = 2 * time.Second
-
-	// postgresCannotConnectNow is the SQLSTATE PostgreSQL returns while it is starting up.
-	postgresCannotConnectNow = "57P03"
-)
+// postgresCannotConnectNow is the SQLSTATE PostgreSQL returns while it is starting up.
+const postgresCannotConnectNow = "57P03"
 
 // waitForPostgreSQL calls ping until it succeeds, a non-retryable error is returned, the timeout
 // elapses, or ctx is cancelled.
-func waitForPostgreSQL(ctx context.Context, ping func(context.Context) error, timeout, initialDelay, maxDelay time.Duration) error {
+func waitForPostgreSQL(ctx context.Context, ping func(context.Context) error, opts postgresWaitOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	waitCtx, cancel := context.WithTimeout(ctx, opts.timeout)
 	defer cancel()
 
-	delay := initialDelay
+	delay := opts.initialDelay
 	for attempt := 1; ; attempt++ {
-		err := ping(ctx)
+		attemptCtx, cancelAttempt := context.WithTimeout(waitCtx, opts.attemptTimeout)
+		err := ping(attemptCtx)
+		cancelAttempt()
 		if err == nil {
 			if attempt > 1 {
 				logger.Info("PostgreSQL is accepting connections", "attempts", attempt)
@@ -171,6 +183,12 @@ func waitForPostgreSQL(ctx context.Context, ping func(context.Context) error, ti
 			return nil
 		}
 
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if waitCtx.Err() != nil {
+			return fmt.Errorf("timed out waiting for PostgreSQL to accept connections: %w", err)
+		}
 		if !isRetryablePostgreSQLError(err) {
 			return err
 		}
@@ -181,22 +199,49 @@ func waitForPostgreSQL(ctx context.Context, ping func(context.Context) error, ti
 
 		select {
 		case <-ctx.Done():
+			return ctx.Err()
+		case <-waitCtx.Done():
 			return fmt.Errorf("timed out waiting for PostgreSQL to accept connections: %w", err)
 		case <-time.After(delay):
 		}
 
-		delay = min(delay*2, maxDelay)
+		delay = min(delay*2, opts.maxDelay)
 	}
 }
 
-// isRetryablePostgreSQLError reports whether err may resolve on its own while the database starts.
-// Errors reported by the server itself (for example, authentication failures) are not retried,
-// except for "cannot_connect_now", which PostgreSQL returns while it is still starting up.
+// isRetryablePostgreSQLError reports whether err is a transient connectivity error that may resolve
+// on its own while the database starts. Everything else, including authentication, authorization,
+// TLS and certificate errors, fails fast so misconfiguration is reported immediately.
 func isRetryablePostgreSQLError(err error) bool {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
+		// "cannot_connect_now" is returned while PostgreSQL is still starting up.
 		return pgErr.Code == postgresCannotConnectNow
 	}
 
-	return true
+	// The per-attempt timeout elapsed. The caller has already checked the overall deadline.
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+
+	// The server closed the connection, for example while it is restarting.
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+
+	// Nothing is listening yet, or the pod network is not routable yet.
+	for _, errno := range []syscall.Errno{syscall.ECONNREFUSED, syscall.ECONNRESET, syscall.ECONNABORTED, syscall.EHOSTUNREACH, syscall.ENETUNREACH} {
+		if errors.Is(err, errno) {
+			return true
+		}
+	}
+
+	// The service name is not resolvable yet.
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return true
+	}
+
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }

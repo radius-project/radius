@@ -48,8 +48,7 @@ func PreDownloadEnabled() bool {
 //
 // Downloading in-process (rather than in an init container) lets the pod become ready without
 // waiting for the download, and uses hc-install, which verifies the release checksum and signature.
-// Failures are logged and never returned: recipes fall back to downloading Terraform on demand,
-// and returning an error from a hosting service would shut down the whole process.
+// Failures are logged and never returned: recipes fall back to downloading Terraform on demand.
 type PreDownloadService struct {
 	// ensure installs the binary. Defaults to ensureGlobalTerraformBinary; overridden in tests.
 	ensure func(ctx context.Context) error

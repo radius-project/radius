@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -91,4 +92,20 @@ func TestTerraformVersionMatchesHelmChart(t *testing.T) {
 		"global.terraform.version in deploy/Chart/values.yaml must match terraformVersion in pkg/recipes/terraform/version.go (%q)",
 		terraformVersion,
 	)
+}
+
+func TestTerraformVersionHonorsEnvVar(t *testing.T) {
+	t.Setenv(VersionEnvVar, "")
+	require.Equal(t, terraformVersion, TerraformVersion())
+
+	t.Setenv(VersionEnvVar, " 1.9.0 ")
+	require.Equal(t, "1.9.0", TerraformVersion())
+}
+
+func TestDownloadAndInstallTerraformRejectsInvalidVersion(t *testing.T) {
+	t.Setenv(VersionEnvVar, "not-a-version")
+	dir := t.TempDir()
+
+	err := downloadAndInstallTerraform(t.Context(), nil, dir, filepath.Join(dir, "terraform"), filepath.Join(dir, ".marker"), logr.Discard())
+	require.ErrorContains(t, err, `invalid Terraform version "not-a-version"`)
 }

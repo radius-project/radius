@@ -221,6 +221,13 @@ dashboard:
       memory: "60Mi"
     limits:
       memory: "300Mi"
+  # The dashboard image is large. When enabled, an init container (using the
+  # controlPlaneReadiness image) waits until the core control-plane Deployments are
+  # available before the dashboard image is pulled, so the dashboard does not delay
+  # the core control plane. `rad install` does not wait for the dashboard.
+  startupGate:
+    enabled: true
+    timeoutSeconds: 900
 
 database:
   enabled: false # Enable the Postgres database install

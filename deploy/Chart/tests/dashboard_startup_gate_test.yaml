@@ -1,0 +1,66 @@
+suite: test dashboard startup gate
+templates:
+  - dashboard/deployment.yaml
+  - dashboard/rbac.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: waits for the core control plane before pulling the dashboard image
+    template: dashboard/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-control-plane
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].image
+          pattern: ^ghcr.io/radius-project/pre-upgrade:.+$
+      - equal:
+          path: spec.template.spec.initContainers[0].args
+          value:
+            - wait-for-control-plane
+            - --timeout=900s
+            - --namespace=radius-system
+            - --deployment=ucp
+            - --deployment=applications-rp
+            - --deployment=dynamic-rp
+            - --deployment=controller
+            - --deployment=bicep-de
+      - equal:
+          path: spec.template.spec.initContainers[0].securityContext.runAsNonRoot
+          value: true
+
+  - it: uses the same image as the control-plane readiness hook
+    template: dashboard/deployment.yaml
+    set:
+      ucp.image: myregistry.example.com/radius/ucpd
+      ucp.tag: pr-123
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: myregistry.example.com/radius/pre-upgrade:pr-123
+
+  - it: grants read access only to the gated deployments
+    template: dashboard/rbac.yaml
+    documentSelector:
+      path: kind
+      value: Role
+    asserts:
+      - equal:
+          path: rules
+          value:
+            - apiGroups: ["apps"]
+              resources: ["deployments"]
+              resourceNames: ["ucp", "applications-rp", "dynamic-rp", "controller", "bicep-de"]
+              verbs: ["get"]
+
+  - it: can be disabled
+    set:
+      dashboard.startupGate.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers
+        template: dashboard/deployment.yaml
+      - hasDocuments:
+          count: 2
+        template: dashboard/rbac.yaml
