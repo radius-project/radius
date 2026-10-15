@@ -30,9 +30,20 @@ import (
 func Test_Apply(t *testing.T) {
 	t.Parallel()
 
-	deny := Decision{Allowed: false, Code: "GrantScopeExceeded"}
+	deny := Decision{
+		Allowed: false,
+		Code:    "GrantScopeExceeded",
+		Action:  "Applications.Core/containers/write",
+		Target:  "/planes/radius/local/resourceGroups/test/providers/Applications.Core/applications/app/containers/web",
+		Rule:    "grant-scope",
+	}
 	allow := Decision{Allowed: true}
-	noCode := Decision{Allowed: false}
+	noCode := Decision{
+		Allowed: false,
+		Action:  "Applications.Core/applications/read",
+		Target:  "/planes/radius/local/resourceGroups/test",
+		Rule:    "default-code",
+	}
 
 	tests := []struct {
 		name            string
@@ -126,6 +137,9 @@ func Test_Apply(t *testing.T) {
 			}
 			require.Equal(t, wantCode, fields[LogFieldCode])
 			require.NotContains(t, fields, "authzReason")
+			require.Equal(t, tt.decision.Action, fields[LogFieldAction])
+			require.Equal(t, tt.decision.Target, fields[LogFieldTarget])
+			require.Equal(t, tt.decision.Rule, fields[LogFieldRule])
 		})
 	}
 }
@@ -133,6 +147,20 @@ func Test_Apply(t *testing.T) {
 func Test_DeniedError_Error(t *testing.T) {
 	t.Parallel()
 
-	err := &DeniedError{Code: "AuthorizationFailed"}
-	require.Equal(t, "authorization denied (AuthorizationFailed)", err.Error())
+	err := &DeniedError{
+		Code:   "AuthorizationFailed",
+		Action: "Applications.Core/containers/write",
+		Target: "/planes/radius/local/resourceGroups/test/providers/Applications.Core/applications/app/containers/web",
+	}
+	require.Equal(t, `authorization denied (AuthorizationFailed) for action "Applications.Core/containers/write" on target "/planes/radius/local/resourceGroups/test/providers/Applications.Core/applications/app/containers/web"`, err.Error())
+}
+
+func Test_DeniedError_ErrorDefaultsCode(t *testing.T) {
+	t.Parallel()
+
+	err := &DeniedError{
+		Action: "Applications.Core/applications/read",
+		Target: "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/applications/app",
+	}
+	require.Equal(t, `authorization denied (AuthorizationFailed) for action "Applications.Core/applications/read" on target "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/applications/app"`, err.Error())
 }
