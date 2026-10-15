@@ -338,11 +338,14 @@ func Test_InitAndWorkspaceCreate_RegisteredWithoutPreview(t *testing.T) {
 	}
 }
 
-func Test_ResourceList_ExposesPreviewFlag(t *testing.T) {
+func Test_ResourceList_RegisteredWithoutPreview(t *testing.T) {
 	listCmd, _, err := RootCmd.Find([]string{"resource", "list"})
 	require.NoError(t, err)
 	require.Equal(t, "list", listCmd.Name())
-	require.NotNil(t, listCmd.Flags().Lookup("preview"), "rad resource list must expose --preview")
+	require.Nil(t, listCmd.Flags().Lookup("preview"), "rad resource list must not expose --preview")
+	for _, flag := range []string{"application", "environment", "group", "output", "workspace"} {
+		require.NotNilf(t, listCmd.Flags().Lookup(flag), "rad resource list must expose --%s", flag)
+	}
 }
 
 // Test_ResourceExposeAndLogs_RegisteredWithoutPreview checks that `rad resource expose` and

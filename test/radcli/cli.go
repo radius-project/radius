@@ -429,17 +429,6 @@ func (cli *CLI) ResourceList(ctx context.Context, resourceType string, applicati
 	return cli.RunCommand(ctx, args)
 }
 
-// ResourceListInResourceGroup runs the "resource list --group" command to list all resources in a specific resource group
-// and returns the output as a string, returning an error if the command fails.
-func (cli *CLI) ResourceListInResourceGroup(ctx context.Context, groupName string) (string, error) {
-	args := []string{
-		"resource",
-		"list",
-		"--group", groupName,
-	}
-	return cli.RunCommand(ctx, args)
-}
-
 // GroupCreate creates a resource group with the given name.
 // The options parameter is optional and allows specifying workspace and output format.
 func (cli *CLI) GroupCreate(ctx context.Context, groupName string, opts ...CreateOptions) error {
