@@ -19,8 +19,6 @@ package terraform
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -78,30 +76,6 @@ func Test_PreDownloadService_Run(t *testing.T) {
 		require.NoError(t, svc.Run(ctx))
 		require.Equal(t, 1, attempts)
 	})
-}
-
-func Test_copyExecutable(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	src := filepath.Join(dir, "src")
-	dst := filepath.Join(dir, "global", "terraform")
-	require.NoError(t, os.WriteFile(src, []byte("binary"), 0600))
-	require.NoError(t, os.MkdirAll(filepath.Dir(dst), 0755))
-
-	require.NoError(t, copyExecutable(src, dst))
-
-	data, err := os.ReadFile(dst)
-	require.NoError(t, err)
-	require.Equal(t, "binary", string(data))
-
-	info, err := os.Stat(dst)
-	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0755), info.Mode().Perm())
-
-	entries, err := os.ReadDir(filepath.Dir(dst))
-	require.NoError(t, err)
-	require.Len(t, entries, 1, "temporary file should be renamed into place")
 }
 
 func TestPreDownloadEnabled(t *testing.T) {

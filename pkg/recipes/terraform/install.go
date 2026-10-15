@@ -19,9 +19,7 @@ package terraform
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -182,7 +180,8 @@ func downloadAndInstallTerraform(ctx context.Context, installer *install.Install
 
 	installStartTime := time.Now()
 	execPath, err := installer.Ensure(ctx, []src.Source{
-		&releases.ExactVersion{Product: product.Terraform, Version: tfVersion},
+		// Unpack straight into the global directory so the binary is not copied after download.
+		&releases.ExactVersion{Product: product.Terraform, Version: tfVersion, InstallDir: globalDir},
 	})
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInstallationDuration(ctx, installStartTime,
@@ -203,17 +202,8 @@ func downloadAndInstallTerraform(ctx context.Context, installer *install.Install
 
 	logger.Info(fmt.Sprintf("Terraform installed to global location: %q", execPath))
 
-	// Copy to our standardized global path if different
 	if execPath != globalBinary {
-		if err := copyExecutable(execPath, globalBinary); err != nil {
-			return fmt.Errorf("failed to copy terraform binary to global path: %w", err)
-		}
-		logger.Info("Copied Terraform binary to standardized global path")
-
-		// Remove the temporary download now that the binary has been copied.
-		if err := installer.Remove(ctx); err != nil {
-			logger.Error(err, "Failed to remove temporary Terraform download")
-		}
+		return fmt.Errorf("terraform was installed to %q, expected %q", execPath, globalBinary)
 	}
 
 	// Verify installation with retries
@@ -253,36 +243,6 @@ func downloadAndInstallTerraform(ctx context.Context, installer *install.Install
 	}
 
 	return nil
-}
-
-// copyExecutable streams src to dst with mode 0755 without buffering the whole binary in memory.
-// The copy is written to a temporary file in dst's directory and renamed into place.
-func copyExecutable(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	tmp, err := os.CreateTemp(filepath.Dir(dst), filepath.Base(dst)+".tmp-*")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tmp.Name())
-
-	if _, err := io.Copy(tmp, in); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Chmod(0755); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-
-	return os.Rename(tmp.Name(), dst)
 }
 
 // resetGlobalStateForTesting resets the global terraform state for testing purposes
