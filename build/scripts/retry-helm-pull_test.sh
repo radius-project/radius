@@ -49,12 +49,22 @@ retry_helm_pull oci://example.test/chart --version 1.0.0
     fail_test "retry delays"
 
 for error in "401 Unauthorized" "403 Forbidden" "404 Not Found" \
-    "manifest unknown" "invalid reference"; do
+    "manifest unknown" "invalid reference" \
+    "404 Not Found: https://example.test/500/chart.tgz" \
+    "401 Unauthorized from registry.example.test:5000"; do
     reset_case "${error}" success
     status=0
     retry_helm_pull oci://example.test/chart || status=$?
     [[ "${status}" -eq 1 && "$(< "${TEST_DIR}/calls")" -eq 1 ]] ||
         fail_test "retried permanent error ${error}"
+done
+
+for error in "HTTP/2 503 Service Unavailable" \
+    "unexpected status code 429 Too Many Requests"; do
+    reset_case "${error}" success
+    retry_helm_pull oci://example.test/chart
+    [[ "$(< "${TEST_DIR}/calls")" -eq 2 ]] ||
+        fail_test "did not retry HTTP status ${error}"
 done
 
 reset_case "connection reset" "connection reset"

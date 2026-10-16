@@ -55,11 +55,11 @@ list_packages() {
     while true; do
         path="/orgs/${PACKAGE_OWNER}/packages"
         path+="?package_type=container&per_page=100&page=${page}"
-        api_get "${path}" "${response}"
+        api_get "${path}" "${response}" || return "$?"
         jq -r --arg prefix "${PACKAGE_PREFIX}" '
             .[] | .name | select(startswith($prefix))
-        ' "${response}"
-        count="$(jq -er 'length' "${response}")"
+        ' "${response}" || return "$?"
+        count="$(jq -er 'length' "${response}")" || return "$?"
         ((count == 100)) || return 0
         page=$((page + 1))
     done
@@ -74,19 +74,19 @@ list_expired_versions() {
     local count
     local path
 
-    encoded_name="$(urlencode "${package_name}")"
+    encoded_name="$(urlencode "${package_name}")" || return "$?"
     while true; do
         path="/orgs/${PACKAGE_OWNER}/packages/container/${encoded_name}"
         path+="/versions?per_page=100&page=${page}"
-        api_get "${path}" "${response}"
+        api_get "${path}" "${response}" || return "$?"
         jq -r --arg prefix "${PACKAGE_TAG_PREFIX}" \
             --argjson cutoff "${cutoff}" '
             .[] |
             select((.updated_at | fromdateiso8601) < $cutoff) |
             select(any(.metadata.container.tags[]?; startswith($prefix))) |
             .id
-        ' "${response}"
-        count="$(jq -er 'length' "${response}")"
+        ' "${response}" || return "$?"
+        count="$(jq -er 'length' "${response}")" || return "$?"
         ((count == 100)) || return 0
         page=$((page + 1))
     done
@@ -154,10 +154,12 @@ main() {
     local version_id
     local packages
     local versions
-    packages="$(list_packages)"
+    packages="$(list_packages)" || return "$?"
     while IFS= read -r package_name; do
         [[ -n "${package_name}" ]] || continue
-        versions="$(list_expired_versions "${package_name}" "${cutoff}")"
+        versions="$(
+            list_expired_versions "${package_name}" "${cutoff}"
+        )" || return "$?"
         while IFS= read -r version_id; do
             [[ -n "${version_id}" ]] || continue
             delete_version "${package_name}" "${version_id}"

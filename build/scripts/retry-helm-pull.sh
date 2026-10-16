@@ -41,9 +41,13 @@ retry_helm_pull() {
 }
 
 retry_helm_is_transient() {
-    local error="${1,,}"
+    local error
+    error="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
 
-    [[ "${error}" =~ (408|429|500|502|503|504) ]] && return 0
+    [[ "${error}" =~ (^|[^[:alnum:]])http[/0-9.]*[[:space:]]+(408|429|500|502|503|504)([^0-9]|$) ]] &&
+        return 0
+    [[ "${error}" =~ (^|[^[:alnum:]])status([[:space:]]+code)?[^0-9]*(408|429|500|502|503|504)([^0-9]|$) ]] &&
+        return 0
     [[ "${error}" =~ (timeout|timed[[:space:]]out) ]] && return 0
     [[ "${error}" =~ connection[[:space:]](reset|refused) ]] && return 0
     [[ "${error}" =~ (temporary|unexpected[[:space:]]eof) ]] && return 0

@@ -41,9 +41,17 @@ curl() {
     fi
 
     printf '%s\n' "${url}" >> "${TEST_DIR}/gets"
+    if [[ "${GET_FAILURE_PATH:-}" == packages && "${url}" == *"/packages?"* ]] ||
+        [[ "${GET_FAILURE_PATH:-}" == versions && "${url}" == *"/versions?"* ]]; then
+        printf 'HTTP/2 400\r\n\r\n' > "${header_file}"
+        printf 'request failed' > "${output}"
+        printf '400 %s' "${url}"
+        return 22
+    fi
     local get_count
     get_count="$(wc -l < "${TEST_DIR}/gets")"
-    if [[ "${get_count}" -eq 1 ]]; then
+    if [[ "${SKIP_TRANSIENT_FAILURE:-false}" != true &&
+        "${get_count}" -eq 1 ]]; then
         printf 'HTTP/2 503\r\n\r\n' > "${header_file}"
         printf 'temporary' > "${output}"
         printf '503 %s' "${url}"
@@ -58,7 +66,10 @@ curl() {
 JSON
             ;;
         *"/dev%2Fexample/versions"*)
-            cat > "${output}" <<'JSON'
+            if [[ "${INVALID_JSON_PATH:-}" == versions ]]; then
+                printf 'invalid JSON' > "${output}"
+            else
+                cat > "${output}" <<'JSON'
 [
   {
     "id": 101,
@@ -77,6 +88,7 @@ JSON
   }
 ]
 JSON
+            fi
             ;;
         *) fail_test "unexpected GET ${url}" ;;
     esac
@@ -110,5 +122,27 @@ fi
     fail_test "delete was retried"
 grep -q "Delete failed with HTTP 500" "${TEST_DIR}/output" ||
     fail_test "delete failure was not reported"
+
+unset DELETE_CODE DELETE_BODY
+cleanup
+for failure_path in packages versions; do
+    : > "${TEST_DIR}/gets"
+    GET_FAILURE_PATH="${failure_path}"
+    SKIP_TRANSIENT_FAILURE=true
+    export GET_FAILURE_PATH SKIP_TRANSIENT_FAILURE
+    if main > "${TEST_DIR}/output" 2>&1; then
+        fail_test "${failure_path} read failure was accepted"
+    fi
+done
+unset GET_FAILURE_PATH
+
+cleanup
+: > "${TEST_DIR}/gets"
+INVALID_JSON_PATH=versions
+export INVALID_JSON_PATH
+if main > "${TEST_DIR}/output" 2>&1; then
+    fail_test "versions JSON failure was accepted"
+fi
+unset INVALID_JSON_PATH SKIP_TRANSIENT_FAILURE
 
 echo "purge-old-images tests passed"

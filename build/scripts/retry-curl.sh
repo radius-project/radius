@@ -88,13 +88,22 @@ retry_curl() {
 
         : > "${headers}"
         status=0
-        result="$(
-            curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
-                --location --connect-timeout 15 --max-time "${timeout}" \
-                "${curl_args[@]}" --output "${output}" \
-                --dump-header "${headers}" \
-                --write-out '%{http_code} %{url_effective}' "${url}"
-        )" || status=$?
+        if ((${#curl_args[@]})); then
+            result="$(
+                curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+                    --location --connect-timeout 15 --max-time "${timeout}" \
+                    "${curl_args[@]}" --output "${output}" \
+                    --dump-header "${headers}" \
+                    --write-out '%{http_code} %{url_effective}' "${url}"
+            )" || status=$?
+        else
+            result="$(
+                curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+                    --location --connect-timeout 15 --max-time "${timeout}" \
+                    --output "${output}" --dump-header "${headers}" \
+                    --write-out '%{http_code} %{url_effective}' "${url}"
+            )" || status=$?
+        fi
         http_code="${result%% *}"
         effective_url="${result#* }"
 
