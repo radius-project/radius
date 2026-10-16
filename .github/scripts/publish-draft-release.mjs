@@ -2,6 +2,45 @@
 
 import { readFile } from "node:fs/promises";
 
+export const mandatoryChecks = [
+  "plan",
+  "assets",
+  "metadata",
+  "images",
+  "helm",
+  "external",
+  "installation"
+];
+
+export function validatePublicationManifest(manifest, tag, sourceSha) {
+  if (
+    manifest.schemaVersion !== 1 ||
+    manifest.tag !== tag ||
+    !/^[a-f0-9]{40}$/.test(sourceSha) ||
+    manifest.sourceSha !== sourceSha ||
+    mandatoryChecks.some((name) => manifest.checks?.[name] !== "verified")
+  ) {
+    throw new Error(
+      "Release manifest is incomplete, failed, or bound to another source"
+    );
+  }
+}
+
+async function requirePublicationManifest(core, tag) {
+  const file = core.getInput("MANIFEST_FILE", { required: true });
+  if (!file) {
+    throw new Error(
+      "A verified release manifest is required before publication"
+    );
+  }
+  const manifest = JSON.parse(await readFile(file, "utf8"));
+  validatePublicationManifest(
+    manifest,
+    tag,
+    core.getInput("SOURCE_SHA", { required: true })
+  );
+}
+
 /** @param {any} github @param {string} owner @param {string} repo */
 async function listReleases(github, owner, repo) {
   return github.paginate(github.rest.repos.listReleases, {
@@ -57,6 +96,7 @@ export default async function publishDraftRelease({ github, core }) {
   const releases = await listReleases(github, owner, repo);
   const aliases = selectAliases(releases, tag);
   if (mode === "select-aliases") {
+    await requirePublicationManifest(core, tag);
     core.setOutput("promote_channel", String(aliases.channel));
     core.setOutput("promote_latest", String(aliases.latest));
     return;
@@ -83,6 +123,7 @@ export default async function publishDraftRelease({ github, core }) {
       throw new Error(`Published release ${tag} has the wrong classification`);
     }
   } else {
+    await requirePublicationManifest(core, tag);
     try {
       await github.rest.repos.updateRelease({
         owner,

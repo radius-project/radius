@@ -24,7 +24,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly REPO_ROOT
 readonly WORKFLOWS_DIR="${REPO_ROOT}/.github/workflows"
 readonly RELEASE_WORKFLOW="${WORKFLOWS_DIR}/build-release.yaml"
-readonly SNAPSHOT_WORKFLOW="${WORKFLOWS_DIR}/goreleaser-snapshot.yaml"
+readonly SNAPSHOT_WORKFLOW="${WORKFLOWS_DIR}/__build-snapshot.yaml"
 readonly TOOLS_MANIFEST="${REPO_ROOT}/build/tools.yaml"
 readonly TOOLS_MAKEFILE="${REPO_ROOT}/build/tools.generated.mk"
 readonly RELEASE_DOCS_DIR="${REPO_ROOT}/docs/contributing"
@@ -76,7 +76,8 @@ verify_workflow_wiring() {
     if [[ "${asset_verifiers}" != "2" ]]; then
         fail "draft and published CLI SBOM verification is incomplete"
     fi
-    image_verifiers="$(grep -Fc -- '--sboms' "${RELEASE_WORKFLOW}")"
+    image_verifiers="$(awk '/--sboms/ { count++ } END { print count + 0 }' \
+        "${RELEASE_WORKFLOW}" "${SCRIPT_DIR}/verify-release-publication.sh")"
     if [[ "${image_verifiers}" != "3" ]]; then
         fail "image SBOM verification is missing from a release path"
     fi

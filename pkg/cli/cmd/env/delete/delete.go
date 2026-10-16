@@ -20,34 +20,44 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/spf13/cobra"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 )
 
 const (
-	msgEnvironmentDeleted  = "Applications.Core/environments/%s deleted"
-	msgEnvironmentNotFound = "Applications.Core/environments/%s not found"
+	msgEnvironmentDeletedPreview  = "Radius.Core/environments/%s deleted"
+	msgEnvironmentNotFoundPreview = "Radius.Core/environments/%s not found"
+	msgDeletingResources          = "Deleting %d resource(s) in environment %s...\n"
+	msgDeletingApplications       = "Deleting %d application(s) in environment %s...\n"
+	msgDeletingApplication        = "  Deleting application %s..."
+	msgSkippingApplication        = "  Warning: skipping an application that reports no name. It must be deleted manually."
+	msgForceWarning               = "WARNING: Force deleting an environment. Resources in non-terminal states may leave orphaned external resources that require manual cleanup."
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env delete` command.
-//
-
-// NewCommand creates a new cobra command that can be used to delete an environment, with options to specify the
-// environment name, resource group, workspace, output format, and confirmation prompt.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete environment",
-		Long:  `Delete environment. Deletes the user's default environment by default.`,
-		Args:  cobra.MaximumNArgs(1),
+		Long: `Delete environment. Deletes the user's default environment by default.
+
+Deleting an environment also deletes the applications in that environment and the resources
+deployed into it.`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: framework.RunCommand(runner),
 		Example: `
 # Delete current environment
 rad env delete
@@ -60,14 +70,17 @@ rad env delete my-env
 
 # Delete specified environment in a specified resource group
 rad env delete my-env --group my-env
+
+# Delete specified environment, forcing deletion of resources in a non-terminal state
+rad env delete my-env --force
 `,
-		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddConfirmationFlag(cmd)
+	commonflags.AddForceFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
 
 	return cmd, runner
@@ -75,29 +88,29 @@ rad env delete my-env --group my-env
 
 // Runner is the runner implementation for the `rad env delete` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Workspace         *workspaces.Workspace
-	Output            output.Interface
-	InputPrompter     prompt.Interface
+	ConfigHolder            *framework.ConfigHolder
+	Output                  output.Interface
+	InputPrompter           prompt.Interface
+	ConnectionFactory       connections.Factory
+	Workspace               *workspaces.Workspace
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 
 	Confirm         bool
+	Force           bool
 	EnvironmentName string
-	Format          string
 }
 
 // NewRunner creates a new instance of the `rad env delete` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
 		Output:            factory.GetOutput(),
 		InputPrompter:     factory.GetPrompter(),
+		ConnectionFactory: factory.GetConnectionFactory(),
 	}
 }
 
-// Validate takes in a command and a slice of strings and sets the workspace, scope, environment name, confirmation and output
-// format of the runner based on the command and the strings. It returns an error if any of these values cannot be set.
+// Validate runs validation for the `rad env delete` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
@@ -112,7 +125,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Scope = scope
 
-	r.EnvironmentName, err = cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
+	r.EnvironmentName, err = cli.RequireRadiusCoreEnvironmentNameArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
@@ -122,39 +135,93 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	format, err := cli.RequireOutput(cmd)
+	r.Force, err = cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
 	}
 
-	r.Format = format
+	_, err = cli.RequireOutput(cmd) // we ignore format for delete
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-// Run prompts the user to confirm the deletion of an environment, creates an applications management client, and
-// deletes the environment if confirmed. It returns an error if the prompt or client creation fails.
+// Run runs the `rad env delete` command.
+//
+// Deleting an environment cascades to everything deployed into it: the resources that reference
+// the environment, the applications in the environment, and finally the environment itself. This
+// matches the behavior of the legacy Applications.Core/environments delete path, so that deleting
+// an environment does not leave orphaned resources behind.
+// Resource deletion also waits for server-side managed-secret cleanup before removing scopes.
 func (r *Runner) Run(ctx context.Context) error {
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if r.RadiusCoreClientFactory == nil {
+		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+		r.RadiusCoreClientFactory = factory
+	}
+
+	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
+
+	// Check that the environment exists before enumerating its contents, so that deleting an
+	// already-deleted environment is a no-op rather than an error.
+	_, err := envClient.Get(ctx, r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientGetOptions{})
+	if clients.Is404Error(err) {
+		r.Output.LogInfo(msgEnvironmentNotFoundPreview, r.EnvironmentName)
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	managementClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	// Get resource counts for better user feedback
-	resourcesInEnvironment, err := client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
-	if err != nil {
+	environmentID := cmd.PreviewEnvironmentID(r.Workspace.Scope, r.EnvironmentName)
+
+	applications, err := cmd.ListPreviewApplicationsInEnvironment(ctx, r.RadiusCoreClientFactory.NewApplicationsClient(), r.Workspace, environmentID)
+	if err != nil && !clients.Is404Error(err) {
 		return err
 	}
 
-	totalResourceCount := len(resourcesInEnvironment)
+	// Resources are collected from two directions: those that reference the environment directly,
+	// and those owned by an application in the environment. A resource usually carries both
+	// properties, but neither query is guaranteed to be a superset of the other, so both are
+	// applied. This is a single enumeration pass; listing per application would re-fetch the same
+	// data once per application.
+	applicationIDs := make([]string, 0, len(applications))
+	for _, application := range applications {
+		if application.ID == nil {
+			continue
+		}
+
+		applicationIDs = append(applicationIDs, *application.ID)
+	}
+
+	resourcesToDelete, err := managementClient.ListResourcesInEnvironmentOrApplications(ctx, environmentID, applicationIDs)
+	if err != nil && !clients.Is404Error(err) {
+		return err
+	}
+
+	if r.Force {
+		r.Output.LogInfo(msgForceWarning)
+	}
 
 	// Prompt user to confirm deletion
 	if !r.Confirm {
 		var promptMsg string
-		if totalResourceCount > 0 {
+		switch {
+		case len(applications) > 0:
+			promptMsg = fmt.Sprintf("The environment %s contains %d application(s) and %d deployed resource(s). Are you sure you want to delete the environment, its applications and its resources?",
+				r.EnvironmentName, len(applications), len(resourcesToDelete))
+		case len(resourcesToDelete) > 0:
 			promptMsg = fmt.Sprintf("The environment %s contains %d deployed resource(s). Are you sure you want to delete the environment and its resources?",
-				r.EnvironmentName, totalResourceCount)
-		} else {
+				r.EnvironmentName, len(resourcesToDelete))
+		default:
 			promptMsg = fmt.Sprintf("The environment %s is empty. Are you sure you want to delete the environment?",
 				r.EnvironmentName)
 		}
@@ -168,16 +235,47 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	deleted, err := client.DeleteEnvironment(ctx, r.EnvironmentName)
-	if err != nil {
+	if len(resourcesToDelete) > 0 {
+		r.Output.LogInfo(msgDeletingResources, len(resourcesToDelete), r.EnvironmentName)
+
+		if err := cmd.DeleteResourcesInParallel(ctx, managementClient, r.Output, resourcesToDelete, r.Force); err != nil {
+			return clierrors.Message("Failed to delete resources in environment '%s': %v", r.EnvironmentName, err)
+		}
+	}
+
+	// Applications are deleted after their resources, so that an interrupted delete leaves the
+	// application behind as a recovery point rather than orphaning its resources.
+	if len(applications) > 0 {
+		r.Output.LogInfo(msgDeletingApplications, len(applications), r.EnvironmentName)
+
+		appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
+		for _, application := range applications {
+			if application.Name == nil {
+				// An application that cannot be addressed cannot be deleted. Warn rather than
+				// skipping silently, so the cascade does not report success for an application it
+				// leaves behind when the environment goes away.
+				r.Output.LogInfo(msgSkippingApplication)
+				continue
+			}
+
+			r.Output.LogInfo(msgDeletingApplication, *application.Name)
+
+			_, err := appClient.Delete(ctx, r.Workspace.Scope, *application.Name, &corerpv20250801.ApplicationsClientDeleteOptions{})
+			if err != nil && !clients.Is404Error(err) {
+				return clierrors.Message("Failed to delete application '%s' in environment '%s': %v", *application.Name, r.EnvironmentName, err)
+			}
+		}
+	}
+
+	_, err = envClient.Delete(ctx, r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientDeleteOptions{})
+	if clients.Is404Error(err) {
+		r.Output.LogInfo(msgEnvironmentNotFoundPreview, r.EnvironmentName)
+		return nil
+	} else if err != nil {
 		return err
 	}
 
-	if deleted {
-		r.Output.LogInfo(msgEnvironmentDeleted, r.EnvironmentName)
-	} else {
-		r.Output.LogInfo(msgEnvironmentNotFound, r.EnvironmentName)
-	}
+	r.Output.LogInfo(msgEnvironmentDeletedPreview, r.EnvironmentName)
 
 	return nil
 }

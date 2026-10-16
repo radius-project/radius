@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import dispatchReleaseController from "./dispatch-release-controller.mjs";
+import dispatchReleaseController, {
+  resumeReleasePublication
+} from "./dispatch-release-controller.mjs";
 
 function fixture() {
   const inputs = {
@@ -69,6 +71,50 @@ test("rejects malformed requests before dispatch", async () => {
   await assert.rejects(
     () => dispatchReleaseController(state),
     /SOURCE_SHA must be a full commit SHA/
+  );
+  assert.deepEqual(state.dispatches, []);
+});
+
+test("resumes failed publication jobs without creating another tag or dispatch", async () => {
+  const state = fixture();
+  const reruns = [];
+  const run = {
+    id: 77,
+    head_sha: state.inputs.SOURCE_SHA,
+    head_branch: state.inputs.VERSION,
+    event: "push",
+    status: "completed",
+    conclusion: "failure",
+    html_url: "https://example.test/run/77"
+  };
+  state.github.paginate = async (method) => method();
+  state.github.rest.actions = {
+    listWorkflowRuns: async () => [run],
+    reRunWorkflowFailedJobs: async (request) => reruns.push(request)
+  };
+  await resumeReleasePublication(state);
+  assert.equal(reruns[0].run_id, 77);
+  assert.equal(state.outputs["run-url"], run.html_url);
+  assert.deepEqual(state.dispatches, []);
+  run.status = "in_progress";
+  await resumeReleasePublication(state);
+  assert.equal(reruns.length, 1);
+});
+
+test("publication resume rejects other tags at the same commit", async () => {
+  const state = fixture();
+  let clock = 0;
+  state.now = () => clock;
+  state.sleep = async () => {
+    clock += 90000;
+  };
+  state.github.paginate = async () => [
+    { head_sha: state.inputs.SOURCE_SHA, head_branch: "v0.60.0", event: "push" }
+  ];
+  state.github.rest.actions = { listWorkflowRuns() {} };
+  await assert.rejects(
+    () => resumeReleasePublication(state),
+    /No tag-build run/
   );
   assert.deepEqual(state.dispatches, []);
 });

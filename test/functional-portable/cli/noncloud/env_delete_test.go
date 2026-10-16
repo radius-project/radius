@@ -19,19 +19,17 @@ package resource_test
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testutil"
-	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
+// Test_EnvDelete covers group-scoped env create, show, and delete. Cascade is covered by
+// Test_Environment_CascadeDelete.
 func Test_EnvDelete(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
@@ -40,12 +38,10 @@ func Test_EnvDelete(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
-	// Generate a unique resource group name to avoid conflicts with parallel tests
+	// Generate unique names to avoid conflicts with parallel tests
 	uniqueGroupName := fmt.Sprintf("test-env-delete-%d", time.Now().Unix())
-	envName := "env-delete-test-env"
-	appName := "env-delete-test-app"
-	containerA := "env-delete-container-a"
-	containerB := "env-delete-container-b"
+	envName := fmt.Sprintf("test-empty-env-%d", time.Now().Unix())
+	envNamespace := fmt.Sprintf("empty-env-ns-%d", time.Now().Unix())
 
 	// Ensure cleanup even if test fails
 	t.Cleanup(func() {
@@ -53,108 +49,38 @@ func Test_EnvDelete(t *testing.T) {
 		// Ignore errors as the group might have been successfully deleted.
 		// Use a fresh context because t.Context() is cancelled before cleanup runs.
 		_ = cli.GroupDelete(context.Background(), uniqueGroupName, radcli.DeleteOptions{Confirm: true}) //nolint:usetesting
+		deleteKubernetesNamespace(context.Background(), t, options, envNamespace)                       //nolint:usetesting
 	})
 
-	// Create the unique resource group
+	// Radius.Core requires the environment's namespace to exist.
+	createKubernetesNamespace(ctx, t, options, envNamespace)
+
 	t.Logf("Creating resource group: %s", uniqueGroupName)
 	err := cli.GroupCreate(ctx, uniqueGroupName)
 	require.NoError(t, err, "Failed to create resource group")
 
-	// Get the template file path
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	templateFilePath := filepath.Join(cwd, "testdata/corerp-env-delete-test.bicep")
-
-	// Deploy resources to the specific resource group
-	t.Logf("Deploying resources to group: %s", uniqueGroupName)
-	err = cli.DeployWithGroup(ctx, templateFilePath, "", "", uniqueGroupName, testutil.GetMagpieImage())
-	require.NoError(t, err, "Failed to deploy resources to resource group")
-
-	// Validate that resources were created successfully
-	// Note: We need to wait a bit for Kubernetes resources to be created
-	validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
-		Namespaces: map[string][]validation.K8sObject{
-			"default-env-delete-test-env-env-delete-test-app": {
-				validation.NewK8sPodForResource(appName, containerA),
-				validation.NewK8sPodForResource(appName, containerB),
-			},
-		},
-	})
-
-	// Set options for group-scoped operations
 	showOpts := radcli.ShowOptions{Group: uniqueGroupName}
 	deleteOpts := radcli.DeleteOptions{Group: uniqueGroupName, Confirm: true}
+	createOpts := radcli.CreateOptions{
+		Namespace: envNamespace,
+		Group:     uniqueGroupName,
+	}
 
-	// Verify environment exists
-	t.Logf("Verifying environment exists: %s", envName)
+	t.Logf("Creating environment: %s in group: %s", envName, uniqueGroupName)
+	err = cli.EnvCreate(ctx, envName, createOpts)
+	require.NoError(t, err, "Failed to create environment")
+
 	output, err := cli.EnvShow(ctx, envName, showOpts)
 	require.NoError(t, err, "Failed to show environment")
 	require.Contains(t, output, envName, "Environment should exist")
 
-	// Verify application exists
-	output, err = cli.ApplicationShow(ctx, appName, showOpts)
-	require.NoError(t, err, "Failed to show application")
-	require.Contains(t, output, appName, "Application should exist")
-
-	// Delete the environment with all its resources
-	t.Logf("Deleting environment: %s in group: %s", envName, uniqueGroupName)
+	t.Logf("Deleting environment: %s", envName)
 	err = cli.EnvDelete(ctx, envName, deleteOpts)
-	require.NoError(t, err, "Failed to delete environment with resources")
+	require.NoError(t, err, "Failed to delete environment")
 
-	// Verify environment is deleted - checking in the specific group
-	t.Logf("Verifying environment deletion: %s", envName)
 	output, err = cli.EnvShow(ctx, envName, showOpts)
 	require.Error(t, err, "Environment should be deleted")
-	outputStr := strings.ToLower(output)
-	require.Contains(t, outputStr, "not found", "Expected 'not found' in output but got: %s", output)
+	require.Contains(t, strings.ToLower(output), "does not exist", "Expected 'does not exist' in output but got: %s", output)
 
-	// Verify all associated resources are deleted
-	output, err = cli.ApplicationShow(ctx, appName, showOpts)
-	require.Error(t, err, "Application should be deleted")
-	outputStr = strings.ToLower(output)
-	require.Contains(t, outputStr, "not found", "Expected 'not found' in output but got: %s", output)
-
-	output, err = cli.ResourceShow(ctx, "Applications.Core/containers", containerA, showOpts)
-	require.Error(t, err, "Container A should be deleted")
-	outputStr = strings.ToLower(output)
-	require.Contains(t, outputStr, "not found", "Expected 'not found' in output but got: %s", output)
-
-	output, err = cli.ResourceShow(ctx, "Applications.Core/containers", containerB, showOpts)
-	require.Error(t, err, "Container B should be deleted")
-	outputStr = strings.ToLower(output)
-	require.Contains(t, outputStr, "not found", "Expected 'not found' in output but got: %s", output)
-
-	t.Logf("Successfully verified deletion of environment %s and all its resources", envName)
-
-	// Test 2: Delete empty environment
-	t.Log("Testing deletion of empty environment")
-	emptyEnvName := fmt.Sprintf("test-empty-env-%d", time.Now().Unix())
-	emptyEnvNamespace := fmt.Sprintf("empty-env-ns-%d", time.Now().Unix())
-
-	// Create an empty environment in the unique group
-	t.Logf("Creating empty environment: %s in group: %s", emptyEnvName, uniqueGroupName)
-	createOpts := radcli.CreateOptions{
-		Namespace: emptyEnvNamespace,
-		Group:     uniqueGroupName,
-	}
-	err = cli.EnvCreate(ctx, emptyEnvName, createOpts)
-	require.NoError(t, err, "Failed to create empty environment")
-
-	// Verify empty environment exists
-	output, err = cli.EnvShow(ctx, emptyEnvName, showOpts)
-	require.NoError(t, err, "Failed to show empty environment")
-	require.Contains(t, output, emptyEnvName, "Empty environment should exist")
-
-	// Delete the empty environment
-	t.Logf("Deleting empty environment: %s", emptyEnvName)
-	err = cli.EnvDelete(ctx, emptyEnvName, deleteOpts)
-	require.NoError(t, err, "Failed to delete empty environment")
-
-	// Verify empty environment is deleted
-	output, err = cli.EnvShow(ctx, emptyEnvName, showOpts)
-	require.Error(t, err, "Empty environment should be deleted")
-	outputStr = strings.ToLower(output)
-	require.Contains(t, outputStr, "not found", "Expected 'not found' in output but got: %s", output)
-
-	t.Logf("Successfully tested deletion of empty environment %s", emptyEnvName)
+	t.Logf("Successfully tested deletion of environment %s", envName)
 }

@@ -378,7 +378,7 @@ To collect the same summary locally, use a Linux host with Bash, `kubectl`, `jq`
 
 ### Diagnose long-running Azure test failures
 
-The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
+The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Releases do not publish test images, so the workflow builds the Magpie test image from that test source and pushes it to the functional-test registry under a run-specific `test-` tag. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
 
 The LRT setup script [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) defines the required Helm overrides in `REQUIRED_CHART_VALUES`, shared by fresh installs, upgrades, and existing same-version IRSA reconciliation. Keep LRT-specific configuration in that array rather than changing global chart defaults or using `kubectl set resources`, which can cause field-ownership conflicts on later upgrades.
 
@@ -442,8 +442,6 @@ The GitHub Actions role allows 5400-second sessions, and the LRT workflow reques
 ### Terraform provider configuration test
 
 `Test_TerraformRecipe_AzureResourceGroup` in `test/functional-portable/corerp/cloud/resources` checks both the registered Azure provider and a custom provider alias. The custom case loads the tenant from a secret store, loads the client ID through `envSecrets`, and enables OIDC through `env`. Invalid environment defaults ensure the explicit provider fields and secret-backed environment value must take effect. It uses the registered Azure workload identity and replaces the skipped PostgreSQL provider test; no database or fixed readiness delay is needed. The custom case uses a separate fixture, `corerp-resources-terraform-azurerg-custom-provider.bicep`, so neither fixture needs conditional resources.
-
-The custom case is skipped until [#13299](https://github.com/radius-project/radius/issues/13299) is fixed. Radius runs `terraform get` before it adds aliased providers, so modules that declare `configuration_aliases` fail to download. Remove the skip as part of that fix.
 
 Both cases keep their Kubernetes state Secret until normal Terraform destroy completes. The Terraform driver does not record Azure scope IDs, such as resource groups, as output resources, so the test uses the Azure SDK instead. It checks that the Azure resource group exists after deployment and that both the group and state Secret are absent after deletion, even when `RADIUS_TEST_FAST_CLEANUP=true`. SDK fallback cleanup runs only after those checks and cannot turn a failed destroy into a passing test.
 
