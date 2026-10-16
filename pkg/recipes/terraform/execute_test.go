@@ -18,6 +18,7 @@ package terraform
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -110,7 +111,7 @@ func runTerraformTestHelper() error {
 	return nil
 }
 
-func TestInitializeTerraformRetriesTransientProviderDiscoveryFailure(t *testing.T) {
+func TestRetryTerraformInitRetriesTransientProviderDiscoveryFailure(t *testing.T) {
 	retryer := retry.NewRetryer(&retry.RetryConfig{
 		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
 	})
@@ -119,7 +120,7 @@ func TestInitializeTerraformRetriesTransientProviderDiscoveryFailure(t *testing.
 	err := retryTerraformInit(t.Context(), retryer, func(context.Context) error {
 		attempts++
 		if attempts < 3 {
-			return fmt.Errorf("failed to\nrequest discovery document: context deadline exceeded (Client.Timeout\nexceeded while awaiting headers)")
+			return errors.New("failed to\nrequest discovery document: Client.Timeout\nexceeded while awaiting headers")
 		}
 
 		return nil
@@ -129,7 +130,7 @@ func TestInitializeTerraformRetriesTransientProviderDiscoveryFailure(t *testing.
 	require.Equal(t, 3, attempts)
 }
 
-func TestInitializeTerraformDoesNotRetryPermanentFailure(t *testing.T) {
+func TestRetryTerraformInitDoesNotRetryPermanentFailure(t *testing.T) {
 	retryer := retry.NewRetryer(&retry.RetryConfig{
 		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
 	})
@@ -145,7 +146,7 @@ func TestInitializeTerraformDoesNotRetryPermanentFailure(t *testing.T) {
 	require.Equal(t, 1, attempts)
 }
 
-func TestInitializeTerraformDoesNotRetryCancellation(t *testing.T) {
+func TestRetryTerraformInitDoesNotRetryCancellation(t *testing.T) {
 	retryer := retry.NewRetryer(&retry.RetryConfig{
 		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
 	})
@@ -159,6 +160,29 @@ func TestInitializeTerraformDoesNotRetryCancellation(t *testing.T) {
 
 	require.ErrorIs(t, err, context.Canceled)
 	require.Equal(t, 1, attempts)
+}
+
+func TestIsTransientTerraformInitError(t *testing.T) {
+	tests := []struct {
+		name      string
+		signature string
+	}{
+		{name: "client timeout", signature: "Client.Timeout exceeded"},
+		{name: "context deadline", signature: "context deadline exceeded"},
+		{name: "connection refused", signature: "connection refused"},
+		{name: "connection reset", signature: "connection reset"},
+		{name: "DNS failure", signature: "no such host"},
+		{name: "temporary DNS failure", signature: "temporary failure in name resolution"},
+		{name: "TLS timeout", signature: "TLS handshake timeout"},
+		{name: "truncated response", signature: "unexpected EOF"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := errors.New("failed to request discovery document: " + tc.signature)
+			require.True(t, isTransientTerraformInitError(err))
+		})
+	}
 }
 
 func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
