@@ -291,3 +291,28 @@ func Test_ResourceList_ExposesPreviewFlag(t *testing.T) {
 	require.Equal(t, "list", listCmd.Name())
 	require.NotNil(t, listCmd.Flags().Lookup("preview"), "rad resource list must expose --preview")
 }
+
+// Test_ResourceExposeAndLogs_RegisteredWithoutPreview checks that `rad resource expose` and
+// `rad resource logs` have no --preview flag and define every flag their RunE reads.
+func Test_ResourceExposeAndLogs_RegisteredWithoutPreview(t *testing.T) {
+	testcases := []struct {
+		command string
+		flags   []string
+	}{
+		{command: "expose", flags: []string{"workspace", "group", "application", "type", "resource", "port", "remote-port", "replica"}},
+		{command: "logs", flags: []string{"workspace", "group", "application", "follow", "container"}},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.command, func(t *testing.T) {
+			cmd, _, err := RootCmd.Find([]string{"resource", tc.command})
+			require.NoError(t, err)
+			require.Equal(t, tc.command, cmd.Name())
+
+			require.Nil(t, cmd.Flag("preview"), "rad resource %s must not expose --preview", tc.command)
+			for _, flag := range tc.flags {
+				require.NotNilf(t, cmd.Flag(flag), "rad resource %s must expose --%s", tc.command, flag)
+			}
+		})
+	}
+}

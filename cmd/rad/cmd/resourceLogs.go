@@ -34,7 +34,7 @@ import (
 var resourceLogsCmd = &cobra.Command{
 	Use:   "logs [resource]",
 	Short: "Read logs from a running containers resource",
-	Long: `Reads logs from a running resource. Supports the resource type 'Applications.Core/containers', or 'Radius.Compute/containers' when the '--preview' flag is set.
+	Long: `Reads logs from a running resource. Supports the resource type 'Radius.Compute/containers'.
 This command allows you to access logs of a deployed application and output those logs to the local console.
 
 'rad resource logs' will output all currently available logs for the resource and then exit.
@@ -43,36 +43,21 @@ This command allows you to access logs of a deployed application and output thos
 
 Specify the '--follow' option to stream additional logs as they are emitted by the resource. When following, press CTRL+C to exit the command and terminate the stream.`,
 	Example: `# read logs from the 'webapp' resource of the current default app
-rad resource logs Applications.Core/containers webapp
+rad resource logs Radius.Compute/containers webapp
 
 # read logs from the 'orders' resource of the 'icecream-store' application
-rad resource logs Applications.Core/containers orders --application icecream-store
+rad resource logs Radius.Compute/containers orders --application icecream-store
 
 # stream logs from the 'orders' resource of the 'icecream-store' application
-rad resource logs Applications.Core/containers orders --application icecream-store --follow
+rad resource logs Radius.Compute/containers orders --application icecream-store --follow
 
 # read logs from the 'daprd' sidecar container of the 'orders' resource of the 'icecream-store' application
-rad resource logs Applications.Core/containers orders --application icecream-store --container daprd
-
-# read logs from the 'orders' resource using the preview resource type 'Radius.Compute/containers'
-rad resource logs Radius.Compute/containers orders --application icecream-store --preview`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return logsResource(cmd, args, false)
-	},
+rad resource logs Radius.Compute/containers orders --application icecream-store --container daprd`,
+	RunE: logsResource,
 }
 
-// resourceLogsPreviewCmd holds the preview implementation of "rad resource logs".
-// It is wired to resourceLogsCmd via wirePreviewSubcommand so it is selected by the
-// --preview flag or the RADIUS_PREVIEW environment variable.
-var resourceLogsPreviewCmd = &cobra.Command{
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return logsResource(cmd, args, true)
-	},
-}
-
-// logsResource runs "rad resource logs" against either the legacy
-// (Applications.Core/containers) or preview (Radius.Compute/containers) API surface.
-func logsResource(cmd *cobra.Command, args []string, preview bool) error {
+// logsResource runs "rad resource logs" for a Radius.Compute/containers resource.
+func logsResource(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()))
 	if err != nil {
 		return err
@@ -94,12 +79,8 @@ func logsResource(cmd *cobra.Command, args []string, preview bool) error {
 		return err
 	}
 
-	expectedType := ContainerType
-	if preview {
-		expectedType = PreviewContainerType
-	}
-	if !strings.EqualFold(resourceType, expectedType) {
-		return fmt.Errorf("only %s is supported", expectedType)
+	if !strings.EqualFold(resourceType, ContainerType) {
+		return fmt.Errorf("only %s is supported", ContainerType)
 	}
 	follow, err := cmd.Flags().GetBool("follow")
 	if err != nil {
@@ -111,12 +92,7 @@ func logsResource(cmd *cobra.Command, args []string, preview bool) error {
 		return err
 	}
 
-	var client clients.DiagnosticsClient
-	if preview {
-		client, err = connections.DefaultFactory.CreateDiagnosticsClientPreview(cmd.Context(), *workspace)
-	} else {
-		client, err = connections.DefaultFactory.CreateDiagnosticsClient(cmd.Context(), *workspace)
-	}
+	client, err := connections.DefaultFactory.CreateDiagnosticsClientPreview(cmd.Context(), *workspace)
 	if err != nil {
 		return err
 	}
@@ -209,6 +185,5 @@ func init() {
 	resourceLogsCmd.Flags().BoolP("follow", "f", false, "specify that logs should be stream until the command is canceled")
 	resourceLogsCmd.Flags().String("replica", "", "specify the replica to collect logs from")
 	commonflags.AddResourceGroupFlag(resourceLogsCmd)
-	wirePreviewSubcommand(resourceLogsCmd, resourceLogsPreviewCmd)
 	resourceCmd.AddCommand(resourceLogsCmd)
 }
