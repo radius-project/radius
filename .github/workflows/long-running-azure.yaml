@@ -53,6 +53,8 @@ env:
 
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY || 'ghcr.io/radius-project/dev' }}
+  # Container registry for the Magpie test image built from the release source
+  TEST_IMAGE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_CONTAINER_REGISTRY || 'ghcr.io/radius-project/dev' }}
   # bicep-types ACR url for pulling latest Radius Bicep types (AWS)
   BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
   # bicep-types ACR url for uploading test Radius Bicep types
@@ -98,15 +100,18 @@ jobs:
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for actions/checkout
-      packages: write # Required for publishing Bicep recipes to ghcr.io
+      packages: write # Required for publishing Bicep recipes and the Magpie test image to ghcr.io
     steps:
       - name: Generate unique ID for test run
         id: gen-id
         run: |
           BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}|${GITHUB_RUN_NUMBER}"
           UNIQUE_ID=longr$(echo "${BASE_STR}" | sha1sum | head -c 10)
-          echo "UNIQUE_ID=${UNIQUE_ID}" >> "${GITHUB_OUTPUT}"
-          echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "UNIQUE_ID=${UNIQUE_ID}"
+            echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}"
+            echo "TEST_IMAGE_TAG=test-${UNIQUE_ID}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
@@ -171,6 +176,9 @@ jobs:
         uses: ./.github/actions/go-mod-download
         with:
           working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+          module-directories: |
+            .
+            test/magpiego
 
       - name: Login to Azure
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
@@ -267,6 +275,15 @@ jobs:
         env:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
+        working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+
+      - name: Build and push Magpie test image
+        # Releases do not publish test images, so build Magpie from the release
+        # source under test and push it with a run-specific tag.
+        run: make docker-build-magpiego docker-push-magpiego
+        env:
+          DOCKER_REGISTRY: ${{ env.TEST_IMAGE_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ steps.gen-id.outputs.TEST_IMAGE_TAG }}
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Manage Radius control plane installation
@@ -433,6 +450,8 @@ jobs:
           FUNC_TEST_OIDC_ISSUER: ${{ steps.get-oidc-issuer.outputs.FUNCTEST_OIDC_ISSUER }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
+          DOCKER_REGISTRY: ${{ env.TEST_IMAGE_REGISTRY }}
+          REL_VERSION: ${{ steps.gen-id.outputs.TEST_IMAGE_TAG }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}

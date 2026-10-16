@@ -43,9 +43,16 @@ jq -e --slurpfile targets "${TARGETS}" --arg registry "${REGISTRY}" --arg versio
 ' "${DIST_DIR}/artifacts.json" >/dev/null
 
 mkdir -p "${IMAGES_DIR}"
-mapfile -t image_ids < <(jq -r '[.[] | select(.type == "Docker Image") | .extra.ID] | unique[]' "${DIST_DIR}/artifacts.json")
+# Read loops instead of mapfile keep the script working with macOS's Bash 3.2.
+image_ids=()
+while IFS= read -r image_id; do
+    image_ids+=("${image_id}")
+done < <(jq -r '[.[] | select(.type == "Docker Image") | .extra.ID] | unique[]' "${DIST_DIR}/artifacts.json")
 for image_id in "${image_ids[@]}"; do
-    mapfile -t images < <(jq -r --arg id "${image_id}" '
+    images=()
+    while IFS= read -r image; do
+        images+=("${image}")
+    done < <(jq -r --arg id "${image_id}" '
         .[] | select(.type == "Docker Image" and .extra.ID == $id) | .path
     ' "${DIST_DIR}/artifacts.json")
     if [[ "${MODE}" == save ]]; then

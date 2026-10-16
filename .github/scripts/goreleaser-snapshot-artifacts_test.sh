@@ -49,6 +49,13 @@ if grep -Eq '^docker push .*0.0.0-snapshot' "${COMMAND_LOG}"; then exit 1; fi
 [[ "$(grep -c '^docker buildx imagetools create ' "${COMMAND_LOG}")" == 5 ]]
 grep -Eq '^docker buildx imagetools create --tag registry.example/radius/ucpd:edge( registry.example/radius/ucpd@sha256:[a-f0-9]{64}){3}$' "${COMMAND_LOG}"
 if grep -Eq ':latest|:0\.[0-9]+ |testrp|magpiego' "${COMMAND_LOG}"; then exit 1; fi
+cp "${COMMAND_LOG}" "${TEST_ROOT}/push-edge.log"
+
+# macOS ships Bash 3.2, which has no mapfile or readarray builtin.
+: > "${COMMAND_LOG}"
+DOCKER_TAG_VERSION=edge bash -c 'enable -n mapfile readarray && source "$@"' _ \
+    "${SCRIPT_DIR}/goreleaser-snapshot-artifacts.sh" push-edge
+cmp -s "${TEST_ROOT}/push-edge.log" "${COMMAND_LOG}"
 
 for mutation in '.[1:]' '. + [.[0]]' '.[0].extra.Platforms = ["linux/386"]' '.[0].path = "unexpected/image:tag"'; do
     jq "${mutation}" "${TEST_ROOT}/complete.json" >"${GORELEASER_DIST_DIR}/artifacts.json"

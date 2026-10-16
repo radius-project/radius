@@ -26,6 +26,7 @@ readonly RELEASE_WORKFLOW="${REPO_ROOT}/.github/workflows/build-release.yaml"
 readonly CLI_WORKFLOW="${REPO_ROOT}/.github/workflows/__build-cli.yaml"
 readonly IMAGE_WORKFLOW="${REPO_ROOT}/.github/workflows/__build-images.yaml"
 readonly HELM_WORKFLOW="${REPO_ROOT}/.github/workflows/__build-helm-chart.yaml"
+readonly BICEP_TYPES_WORKFLOW="${REPO_ROOT}/.github/workflows/__build-bicep-types.yaml"
 readonly CONFIG="${REPO_ROOT}/.goreleaser.yaml"
 readonly ARTIFACTS_MAKEFILE="${REPO_ROOT}/build/artifacts.mk"
 PASS=0
@@ -302,6 +303,17 @@ test_final_cleanup_contract() {
             return
         fi
     done
+    if ! yq -o=json '.jobs."build-and-push-bicep-types".steps' "${BICEP_TYPES_WORKFLOW}" | jq -e '
+        (map(.id) | index("current-main")) as $check |
+        (map(.id) | index("monitor-remote-workflow")) as $dispatch |
+        $check != null and $dispatch != null and $check < $dispatch and
+        (.[$check].if | contains("refs/heads/main")) and
+        (.[$check].with.script | contains("getBranch")) and
+        (.[$dispatch].if | contains("steps.current-main.outputs.current"))
+    ' > /dev/null; then
+        fail_test "edge Bicep types dispatch lost its main-head guard"
+        return
+    fi
     ((++PASS))
 }
 
@@ -319,6 +331,19 @@ test_test_image_tags_are_attempt_scoped() {
         any(.[]; .id == "gen-id" and (.run | contains("REL_VERSION=test-") and contains("${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}")))
     ' >/dev/null; then
         fail_test "noncloud test images do not use attempt-specific tags"
+        return
+    fi
+    if ! yq -o=json '.jobs.tests.steps' "${REPO_ROOT}/.github/workflows/long-running-azure.yaml" | jq -e '
+        (map(.run // "" | contains("make docker-build-magpiego docker-push-magpiego")) | index(true)) as $build |
+        (map(.name) | index("Run functional tests")) as $test |
+        $build != null and $test != null and $build < $test and
+        (.[$build]."working-directory" | contains("checkout-release-codebase")) and
+        .[$build].env.DOCKER_REGISTRY == .[$test].env.DOCKER_REGISTRY and
+        .[$build].env.DOCKER_TAG_VERSION == .[$test].env.REL_VERSION and
+        (.[$test].env.REL_VERSION | contains("steps.gen-id.outputs.TEST_IMAGE_TAG")) and
+        any(.[]; .id == "gen-id" and (.run | contains("TEST_IMAGE_TAG=test-") and contains("${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}")))
+    ' > /dev/null; then
+        fail_test "long-running tests do not build their own attempt-scoped Magpie image"
         return
     fi
     ((++PASS))
