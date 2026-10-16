@@ -54,7 +54,7 @@ GOTESTSUM_JSONFILE_DIR ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) $(if $(GOTESTSUM_JSONFILE_DIR),--jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-azure-oidc-login
@@ -77,8 +77,22 @@ test-publish-recipes: ## Tests bounded recipe publishing without a registry
 
 test: test-publish-recipes
 
+.PHONY: test-purge-old-images
+test-purge-old-images: ## Tests package cleanup retries without GitHub access
+	@bash ./.github/scripts/purge-old-images_test.sh
+
+.PHONY: test-retry-curl
+test-retry-curl: ## Tests bounded curl downloads without network access
+	@bash ./build/scripts/retry-curl_test.sh
+
+.PHONY: test-retry-helm-pull
+test-retry-helm-pull: ## Tests bounded Helm pulls without registry access
+	@bash ./build/scripts/retry-helm-pull_test.sh
+
+test: test-retry-helm-pull
+
 .PHONY: test-install-bicep
-test-install-bicep: ## Tests bounded Bicep downloads without network access
+test-install-bicep: test-retry-curl ## Tests bounded Bicep downloads without network access
 	@bash ./build/scripts/install-bicep_test.sh
 
 test: test-install-bicep

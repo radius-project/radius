@@ -22,6 +22,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 # shellcheck source=.github/scripts/release-version.sh
 source "${SCRIPT_DIR}/release-version.sh"
+# shellcheck source=build/scripts/retry-curl.sh
+source "${SCRIPT_DIR}/../../build/scripts/retry-curl.sh"
+# shellcheck source=build/scripts/retry-helm-pull.sh
+source "${SCRIPT_DIR}/../../build/scripts/retry-helm-pull.sh"
 
 # Configuration
 readonly NAMESPACE="radius-system"
@@ -181,10 +185,10 @@ echo "EXPECTED_CLI_VERSION: ${EXPECTED_CLI_VERSION}"
 
 if [[ -z "${CLI_PATH}" ]]; then
     CLI_PATH="${TEMP_DIR}/rad"
-    curl --fail --silent --show-error --location --retry 5 \
-        --max-time 120 "${DOWNLOAD_URL}" -o "${CLI_PATH}"
+    retry_curl -o "${CLI_PATH}" "${DOWNLOAD_URL}"
     # Without --chart, rad installs the newest patch chart in the CLI's channel.
-    helm pull "${CHART_REFERENCE}" --version "${RELEASE_VERSION_NUMBER}" \
+    retry_helm_pull "${CHART_REFERENCE}" \
+        --version "${RELEASE_VERSION_NUMBER}" \
         --destination "${TEMP_DIR}"
     CHART_PATH="${TEMP_DIR}/radius-${RELEASE_VERSION_NUMBER}.tgz"
     INSTALL_ARGS+=(--chart "${CHART_PATH}")
