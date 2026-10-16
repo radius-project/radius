@@ -20,7 +20,9 @@
 ifeq ($(origin GIT_COMMIT),undefined)
 GIT_COMMIT := $(shell git rev-list -1 HEAD)
 endif
+ifeq ($(origin GIT_VERSION),undefined)
 GIT_VERSION := $(shell git describe --always --abbrev=7 --dirty --tags)
+endif
 
 REL_VERSION ?= edge
 REL_CHANNEL ?= edge

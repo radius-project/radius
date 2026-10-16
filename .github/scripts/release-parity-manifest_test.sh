@@ -502,7 +502,11 @@ MISSING_DOWNSTREAM="false"
 for baseline in "${SCRIPT_DIR}/../release-parity/baselines/"*.json; do
     jq -e --slurpfile targets "${SCRIPT_DIR}/../release-parity/targets.json" '
         . as $manifest
-        | ($targets[0].images
+        | ($targets[0].images + [
+                {name: "magpiego", requiredPlatforms: ["linux/amd64", "linux/arm/v7", "linux/arm64"]},
+                {name: "testrp", requiredPlatforms: ["linux/amd64", "linux/arm/v7", "linux/arm64"]}
+            ]) as $historical_images
+        | ($historical_images
             | map({key: .name, value: (.requiredPlatforms | sort)})
             | from_entries) as $expected_platforms
         | .schemaVersion == 1
@@ -517,7 +521,7 @@ for baseline in "${SCRIPT_DIR}/../release-parity/baselines/"*.json; do
                 == $manifest.release.sourceCommit
         )
         and ([.images[].name] | sort)
-            == ([$targets[0].images[].name] | sort)
+            == ([$historical_images[].name] | sort)
         and all(.images[];
             ([.platforms[].platform] | sort)
                 == $expected_platforms[.name]
