@@ -245,7 +245,7 @@ publish-bicep-extension: ## Publish the unified `radius` Bicep extension to BICE
 # API changes directly to the Go sources under pkg/sdk/v20241101preview.
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))/..
+PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))..
 define go-get-tool
 @[ -f $(1) ] || { \
 set -e ;\

@@ -342,7 +342,7 @@ debug-env-init: ## Create default resource group and environment with the defaul
 	@echo "Creating resource group 'default'..."
 	@build/scripts/rad-wrapper group create default || echo "Resource group may already exist"
 	@echo "Creating environment 'default' with Kubernetes compute configuration and the default recipe pack..."
-	@build/scripts/rad-wrapper env create default --kubernetes-namespace default --preview || echo "Environment may already exist"
+	@build/scripts/rad-wrapper env create default --kubernetes-namespace default || echo "Environment may already exist"
 	@echo "Starting deployment engine in k3d cluster..."
 	@$(MAKE) debug-deployment-engine-start
 	@echo "✅ Debug environment ready for application deployment!"

@@ -364,8 +364,10 @@ jobs:
       packages: write # Required for uploading the package
       pull-requests: write # Required for updating pull requests
       id-token: write # Required for azure/login
+    outputs:
+      REL_VERSION: ${{ steps.test-image-version.outputs.REL_VERSION }}
     env:
-      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      REL_VERSION: test-${{ needs.setup.outputs.UNIQUE_ID }}-${{ github.run_id }}-${{ github.run_attempt }}
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
@@ -376,6 +378,10 @@ jobs:
       DAPR_VER: 1.14.4
       ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
+      - name: Record immutable test image version
+        id: test-image-version
+        run: echo "REL_VERSION=${REL_VERSION}" >>"${GITHUB_OUTPUT}"
+
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -473,11 +479,12 @@ jobs:
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
 
       - name: Upload CLI binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: |
             ./dist/linux_amd64/release/rad
+          overwrite: true
 
       - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: success() && env.PR_NUMBER != ''
@@ -513,7 +520,7 @@ jobs:
             :hourglass: Publishing Bicep Recipes for functional tests...
 
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
@@ -532,12 +539,23 @@ jobs:
         # the unpinned 'latest', which could pull v0.43+).
         run: make install-bicep
 
-      - name: Login to Azure (for private test bicep-types ACR)
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+      - name: Checkout workflow Azure login script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
-          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          path: .workflow-azure-login
+          sparse-checkout: .github/scripts/azure-oidc-login.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Login to Azure (for private test bicep-types ACR)
+        run: node "${AZURE_LOGIN_SCRIPT}"
+        env:
+          AZURE_LOGIN_SCRIPT: ${{ github.workspace }}/.workflow-azure-login/.github/scripts/azure-oidc-login.mjs
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Publish Radius test bicep types
         env:
@@ -597,6 +615,10 @@ jobs:
           message: |
             :x: Test recipe publishing failed
 
+      - name: Clear Azure session
+        if: always()
+        run: az account clear
+
   skip-tests:
     name: Skip Functional Tests
     needs: [setup, changes]
@@ -651,7 +673,7 @@ jobs:
       pull-requests: write # Required for posting a PR comment
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
-      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
       PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
@@ -665,7 +687,7 @@ jobs:
       # purge workflow still cleans up any orphaned groups.
       AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.setup.outputs.UNIQUE_ID }}-${{ matrix.name }}-${{ github.run_attempt }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
-      BICEP_RECIPE_TAG_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
@@ -724,7 +746,7 @@ jobs:
         uses: ./.github/actions/go-mod-download
 
       - name: Download rad CLI
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: ${{ runner.temp }}/rad-cli-artifact
@@ -739,12 +761,23 @@ jobs:
            # Verify it is the expected rad CLI binary by running a harmless command
           ./bin/rad version >/dev/null 2>&1 || { echo "Downloaded rad binary is not a working rad CLI executable"; exit 1; }
 
-      - name: Login to Azure
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+      - name: Checkout workflow Azure login script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
-          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          path: .workflow-azure-login
+          sparse-checkout: .github/scripts/azure-oidc-login.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Login to Azure
+        run: node "${AZURE_LOGIN_SCRIPT}"
+        env:
+          AZURE_LOGIN_SCRIPT: ${{ github.workspace }}/.workflow-azure-login/.github/scripts/azure-oidc-login.mjs
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         continue-on-error: true
@@ -906,6 +939,10 @@ jobs:
           echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} did not become available after $((MAX_ATTEMPTS * SLEEP_SECONDS))s. Last error: ${manifest_error}"
           exit 1
 
+      - name: Install yq
+        # Required to select the test environment in the workspace config.
+        run: make install-yq
+
       - name: Install Radius
         env:
           AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
@@ -979,19 +1016,30 @@ jobs:
           rad group switch kind-radius
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create kind-radius --namespace default
-          rad env switch kind-radius
+          #
+          # The environment is deployed declaratively rather than with `rad env create` so that it is
+          # pinned to Applications.Core regardless of which provider the `rad env create` default
+          # targets.
+          #
+          # Set cloud scopes in Bicep, not `rad env update`, so this works whichever type `rad env` targets.
+          rad deploy ./test/infra/radius/legacy-test-environment.bicep \
+            --parameters name=kind-radius \
+            --parameters namespace=default \
+            --parameters azureScope="/subscriptions/${AZURE_SUBSCRIPTIONID_TESTS}/resourceGroups/${AZURE_TEST_RESOURCE_GROUP}" \
+            --parameters awsScope="/planes/aws/aws/accounts/${FUNCTEST_AWS_ACCOUNT_ID}/regions/${AWS_REGION}"
+
+          # Select the env with yq, not `rad env switch`, so this works whichever type `rad env` targets.
+          scope="$(yq -e '.workspaces.items[.workspaces.default].scope' ~/.rad/config.yaml)"
+          ENVIRONMENT_ID="${scope}/providers/Applications.Core/environments/kind-radius" \
+            yq -i '.workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID)' ~/.rad/config.yaml
+          rad workspace show
 
           echo "*** Configuring Azure provider ***"
-          rad env update kind-radius --azure-subscription-id "${AZURE_SUBSCRIPTIONID_TESTS}" \
-            --azure-resource-group "${AZURE_TEST_RESOURCE_GROUP}"
           rad credential register azure wi \
             --client-id "${AZURE_SP_TESTS_APPID}" \
             --tenant-id "${AZURE_SP_TESTS_TENANTID}"
 
           echo "*** Configuring AWS provider ***"
-          rad env update kind-radius --aws-region "${AWS_REGION}" --aws-account-id "${FUNCTEST_AWS_ACCOUNT_ID}"
-
           rad credential register aws irsa \
             --iam-role "${FUNC_TEST_RAD_IRSA_ROLE}"
 
@@ -1117,6 +1165,7 @@ jobs:
 
       - name: Collect cluster diagnostics
         if: always()
+        timeout-minutes: 5
         # Diagnostic-only post-mortem snapshot. The script records each command's
         # failure inline and keeps going, because the failures worth debugging are
         # usually the ones where the control plane is unreachable and every
@@ -1128,11 +1177,12 @@ jobs:
           # kube-apiserver/etcd/kubelet logs are only worth the artifact size when
           # something went wrong. An empty name skips the export.
           KIND_CLUSTER_NAME: ${{ job.status != 'success' && 'radius' || '' }}
+          DIAGNOSTICS_TERRAFORM: ${{ matrix.name == 'corerp-cloud' && job.status != 'success' && 'true' || 'false' }}
         run: ./.github/scripts/collect-cluster-diagnostics.sh
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -1154,7 +1204,7 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs
@@ -1215,6 +1265,10 @@ jobs:
             --yes \
             --verbose \
             --no-wait
+
+      - name: Clear Azure session
+        if: always()
+        run: az account clear
 
   report-test-results:
     # Report final test status. Runs after all tests complete (or are skipped).

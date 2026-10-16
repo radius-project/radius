@@ -17,7 +17,6 @@ limitations under the License.
 package setup
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,12 +24,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const latest = "latest"
-
 func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 	templates := map[string]string{
 		"classic": AppBicepTemplate,
-		"preview": PreviewAppBicepTemplate,
 	}
 
 	for name, tmpl := range templates {
@@ -49,7 +45,7 @@ func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 
 			b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
 			require.NoError(t, err)
-			require.Equal(t, fmt.Sprintf(bicepConfigTemplate, latest, latest), string(b))
+			require.Equal(t, GetVersionedBicepConfig(), string(b))
 		})
 	}
 }
@@ -57,7 +53,6 @@ func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 func Test_ScaffoldApplication_KeepsExistingFiles(t *testing.T) {
 	templates := map[string]string{
 		"classic": AppBicepTemplate,
-		"preview": PreviewAppBicepTemplate,
 	}
 
 	for name, tmpl := range templates {
@@ -84,4 +79,56 @@ func Test_ScaffoldApplication_KeepsExistingFiles(t *testing.T) {
 			require.Equal(t, "something else", string(b))
 		})
 	}
+}
+
+func Test_WriteBicepConfig_CreatesFile(t *testing.T) {
+	directory := t.TempDir()
+
+	err := WriteBicepConfig(directory)
+	require.NoError(t, err)
+
+	b, err := os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
+	require.NoError(t, err)
+	require.Equal(t, GetVersionedBicepConfig(), string(b))
+	require.NoFileExists(t, filepath.Join(directory, "app.bicep"))
+}
+
+func Test_WriteBicepConfig_KeepsExistingFile(t *testing.T) {
+	directory := t.TempDir()
+
+	err := os.WriteFile(filepath.Join(directory, "bicepconfig.json"), []byte("something else"), 0644)
+	require.NoError(t, err)
+
+	err = WriteBicepConfig(directory)
+	require.NoError(t, err)
+
+	b, err := os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
+	require.NoError(t, err)
+	require.Equal(t, "something else", string(b))
+}
+
+func Test_WriteBicepConfig_ExistingDirectoryIsPreserved(t *testing.T) {
+	directory := t.TempDir()
+	bicepConfigPath := filepath.Join(directory, "bicepconfig.json")
+
+	err := os.Mkdir(bicepConfigPath, 0755)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(bicepConfigPath, "keep.txt"), []byte("keep"), 0644)
+	require.NoError(t, err)
+
+	err = WriteBicepConfig(directory)
+	require.NoError(t, err)
+
+	require.DirExists(t, bicepConfigPath)
+	b, err := os.ReadFile(filepath.Join(bicepConfigPath, "keep.txt"))
+	require.NoError(t, err)
+	require.Equal(t, "keep", string(b))
+}
+
+func Test_WriteBicepConfig_ReturnsErrorWhenDirectoryMissing(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "does-not-exist")
+
+	err := WriteBicepConfig(directory)
+	require.Error(t, err)
+	require.NoFileExists(t, filepath.Join(directory, "bicepconfig.json"))
 }

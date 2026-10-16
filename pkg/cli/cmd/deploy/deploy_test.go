@@ -1002,112 +1002,127 @@ func Test_Run(t *testing.T) {
 		require.Empty(t, outputSink.Writes)
 	})
 
-	t.Run("Application-scoped deployment with preview creates Radius.Core application", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+	// A Radius.Core environment always gets a Radius.Core application, with or without preview.
+	radiusCoreAppTestcases := []struct {
+		name      string
+		preview   bool
+		envResult *EnvironmentCheckResult
+	}{
+		{name: "Application-scoped deployment with preview creates Radius.Core application", preview: true},
+		{
+			name:      "Application-scoped deployment into a Radius.Core environment creates Radius.Core application without preview",
+			envResult: &EnvironmentCheckResult{UseApplicationsCore: false, RadiusCoreEnv: &v20250801preview.EnvironmentResource{}},
+		},
+	}
+	for _, tc := range radiusCoreAppTestcases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-		bicepMock := bicep.NewMockInterface(ctrl)
+			bicepMock := bicep.NewMockInterface(ctrl)
 
-		options := deploy.Options{}
+			options := deploy.Options{}
 
-		// Capture the CreateOrUpdate request so we can assert on the created resource.
-		var capturedRootScope, capturedAppName string
-		var capturedResource v20250801preview.ApplicationResource
-		createdRadiusCoreApp := false
-		appsServer := func() corerpfake.ApplicationsServer {
-			return corerpfake.ApplicationsServer{
-				Get: func(
-					_ context.Context,
-					_ string,
-					_ string,
-					_ *v20250801preview.ApplicationsClientGetOptions,
-				) (resp azfake.Responder[v20250801preview.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
-					errResp.SetResponseError(http.StatusNotFound, "NotFound")
-					return
+			// Capture the CreateOrUpdate request so we can assert on the created resource.
+			var capturedRootScope, capturedAppName string
+			var capturedResource v20250801preview.ApplicationResource
+			createdRadiusCoreApp := false
+			appsServer := func() corerpfake.ApplicationsServer {
+				return corerpfake.ApplicationsServer{
+					Get: func(
+						_ context.Context,
+						_ string,
+						_ string,
+						_ *v20250801preview.ApplicationsClientGetOptions,
+					) (resp azfake.Responder[v20250801preview.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
+						errResp.SetResponseError(http.StatusNotFound, "NotFound")
+						return
+					},
+					CreateOrUpdate: func(
+						_ context.Context,
+						rootScope string,
+						applicationName string,
+						resource v20250801preview.ApplicationResource,
+						_ *v20250801preview.ApplicationsClientCreateOrUpdateOptions,
+					) (resp azfake.Responder[v20250801preview.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+						createdRadiusCoreApp = true
+						capturedRootScope = rootScope
+						capturedAppName = applicationName
+						capturedResource = resource
+						resp.SetResponse(http.StatusOK, v20250801preview.ApplicationsClientCreateOrUpdateResponse{
+							Name: to.Ptr(applicationName),
+						}, nil)
+						return
+					},
+				}
+			}
+
+			workspace := &workspaces.Workspace{
+				Connection: map[string]any{
+					"kind":    "kubernetes",
+					"context": "kind-kind",
 				},
-				CreateOrUpdate: func(
-					_ context.Context,
-					rootScope string,
-					applicationName string,
-					resource v20250801preview.ApplicationResource,
-					_ *v20250801preview.ApplicationsClientCreateOrUpdateOptions,
-				) (resp azfake.Responder[v20250801preview.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
-					createdRadiusCoreApp = true
-					capturedRootScope = rootScope
-					capturedAppName = applicationName
-					capturedResource = resource
-					resp.SetResponse(http.StatusOK, v20250801preview.ApplicationsClientCreateOrUpdateResponse{
-						Name: to.Ptr(applicationName),
-					}, nil)
-					return
+				Name:  "kind-kind",
+				Scope: fmt.Sprintf("/planes/radius/local/resourceGroups/%s", radcli.TestEnvironmentName),
+			}
+
+			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, appsServer)
+			require.NoError(t, err)
+
+			deployMock := deploy.NewMockInterface(ctrl)
+			deployMock.EXPECT().
+				DeployWithProgress(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, o deploy.Options) (clients.DeploymentResult, error) {
+					options = o
+					return clients.DeploymentResult{}, nil
+				}).
+				Times(1)
+
+			outputSink := &output.MockOutput{}
+			environmentID := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName)
+			applicationID := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/applications/test-application", radcli.TestEnvironmentName)
+			providers := clients.Providers{
+				Radius: &clients.RadiusProvider{
+					EnvironmentID: environmentID,
+					ApplicationID: applicationID,
 				},
 			}
-		}
 
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:  "kind-kind",
-			Scope: fmt.Sprintf("/planes/radius/local/resourceGroups/%s", radcli.TestEnvironmentName),
-		}
+			runner := &Runner{
+				Bicep:                   bicepMock,
+				ConnectionFactory:       &connections.MockFactory{},
+				RadiusCoreClientFactory: factory,
+				Deploy:                  deployMock,
+				Output:                  outputSink,
+				Providers:               &providers,
+				FilePath:                "app.bicep",
+				ApplicationName:         "test-application",
+				EnvironmentNameOrID:     environmentID,
+				Parameters:              map[string]map[string]any{},
+				Workspace:               workspace,
+				Template:                map[string]any{},
+				Preview:                 tc.preview,
+				EnvResult:               tc.envResult,
+			}
 
-		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, appsServer)
-		require.NoError(t, err)
+			err = runner.Run(t.Context())
+			require.NoError(t, err)
 
-		deployMock := deploy.NewMockInterface(ctrl)
-		deployMock.EXPECT().
-			DeployWithProgress(gomock.Any(), gomock.Any()).
-			DoAndReturn(func(ctx context.Context, o deploy.Options) (clients.DeploymentResult, error) {
-				options = o
-				return clients.DeploymentResult{}, nil
-			}).
-			Times(1)
+			// The application must have been created as a Radius.Core/applications resource.
+			require.True(t, createdRadiusCoreApp, "expected the application to be created via the Radius.Core applications client")
+			// The Radius.Core client normalizes the root scope by trimming the leading slash.
+			require.Equal(t, strings.TrimPrefix(workspace.Scope, "/"), capturedRootScope)
+			require.Equal(t, "test-application", capturedAppName)
+			require.NotNil(t, capturedResource.Properties)
+			require.NotNil(t, capturedResource.Properties.Environment)
+			require.Equal(t, environmentID, *capturedResource.Properties.Environment)
 
-		outputSink := &output.MockOutput{}
-		environmentID := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName)
-		applicationID := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/applications/test-application", radcli.TestEnvironmentName)
-		providers := clients.Providers{
-			Radius: &clients.RadiusProvider{
-				EnvironmentID: environmentID,
-				ApplicationID: applicationID,
-			},
-		}
-
-		runner := &Runner{
-			Bicep:                   bicepMock,
-			ConnectionFactory:       &connections.MockFactory{},
-			RadiusCoreClientFactory: factory,
-			Deploy:                  deployMock,
-			Output:                  outputSink,
-			Providers:               &providers,
-			FilePath:                "app.bicep",
-			ApplicationName:         "test-application",
-			EnvironmentNameOrID:     environmentID,
-			Parameters:              map[string]map[string]any{},
-			Workspace:               workspace,
-			Template:                map[string]any{},
-			Preview:                 true,
-		}
-
-		err = runner.Run(t.Context())
-		require.NoError(t, err)
-
-		// The application must have been created as a Radius.Core/applications resource.
-		require.True(t, createdRadiusCoreApp, "expected the application to be created via the Radius.Core applications client")
-		// The Radius.Core client normalizes the root scope by trimming the leading slash.
-		require.Equal(t, strings.TrimPrefix(workspace.Scope, "/"), capturedRootScope)
-		require.Equal(t, "test-application", capturedAppName)
-		require.NotNil(t, capturedResource.Properties)
-		require.NotNil(t, capturedResource.Properties.Environment)
-		require.Equal(t, environmentID, *capturedResource.Properties.Environment)
-
-		// Deployment is scoped to the Radius.Core app and env.
-		require.Equal(t, applicationID, options.Providers.Radius.ApplicationID)
-		require.Equal(t, environmentID, options.Providers.Radius.EnvironmentID)
-		require.Empty(t, outputSink.Writes)
-	})
+			// Deployment is scoped to the Radius.Core app and env.
+			require.Equal(t, applicationID, options.Providers.Radius.ApplicationID)
+			require.Equal(t, environmentID, options.Providers.Radius.EnvironmentID)
+			require.Empty(t, outputSink.Writes)
+		})
+	}
 
 	t.Run("Preview creates Radius.Core application pointing at an Applications.Core environment", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
