@@ -31,6 +31,7 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	goretry "github.com/sethvargo/go-retry"
 
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
@@ -43,6 +44,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
+	"github.com/radius-project/radius/pkg/retry"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -549,7 +551,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout st
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
 	terraformInitStartTime := time.Now()
-	if err := tf.Init(ctx); err != nil {
+	if err := initializeTerraform(ctx, tf); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
@@ -590,7 +592,7 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout 
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
 	terraformInitStartTime := time.Now()
-	if err := tf.Init(ctx); err != nil {
+	if err := initializeTerraform(ctx, tf); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
@@ -605,4 +607,52 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout 
 	}
 
 	return nil
+}
+
+func initializeTerraform(ctx context.Context, tf *tfexec.Terraform) error {
+	backoff := goretry.WithMaxRetries(2, goretry.NewExponential(time.Second))
+	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: backoff})
+	return retryTerraformInit(ctx, retryer, func(ctx context.Context) error {
+		return tf.Init(ctx)
+	})
+}
+
+func retryTerraformInit(ctx context.Context, retryer *retry.Retryer, initFn func(context.Context) error) error {
+	return retryer.RetryFunc(ctx, func(ctx context.Context) error {
+		err := initFn(ctx)
+		if err != nil && isTransientTerraformInitError(err) {
+			return retry.RetryableError(err)
+		}
+
+		return err
+	})
+}
+
+func isTransientTerraformInitError(err error) bool {
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
+
+	message := strings.ToLower(err.Error())
+	if !strings.Contains(message, "failed to request discovery document") {
+		return false
+	}
+
+	transientErrors := []string{
+		"client.timeout exceeded",
+		"context deadline exceeded",
+		"connection refused",
+		"connection reset",
+		"no such host",
+		"temporary failure in name resolution",
+		"tls handshake timeout",
+		"unexpected eof",
+	}
+	for _, transientError := range transientErrors {
+		if strings.Contains(message, transientError) {
+			return true
+		}
+	}
+
+	return false
 }

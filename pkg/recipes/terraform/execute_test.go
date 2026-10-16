@@ -17,11 +17,13 @@ limitations under the License.
 package terraform
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	reflect "reflect"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
@@ -29,6 +31,8 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
+	"github.com/radius-project/radius/pkg/retry"
+	goretry "github.com/sethvargo/go-retry"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -104,6 +108,57 @@ func runTerraformTestHelper() error {
 		}
 	}
 	return nil
+}
+
+func TestInitializeTerraformRetriesTransientProviderDiscoveryFailure(t *testing.T) {
+	retryer := retry.NewRetryer(&retry.RetryConfig{
+		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
+	})
+
+	attempts := 0
+	err := retryTerraformInit(t.Context(), retryer, func(context.Context) error {
+		attempts++
+		if attempts < 3 {
+			return fmt.Errorf("failed to request discovery document: context deadline exceeded (Client.Timeout exceeded while awaiting headers)")
+		}
+
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 3, attempts)
+}
+
+func TestInitializeTerraformDoesNotRetryPermanentFailure(t *testing.T) {
+	retryer := retry.NewRetryer(&retry.RetryConfig{
+		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
+	})
+
+	attempts := 0
+	expectedErr := fmt.Errorf("failed to query available provider packages: provider does not exist")
+	err := retryTerraformInit(t.Context(), retryer, func(context.Context) error {
+		attempts++
+		return expectedErr
+	})
+
+	require.ErrorIs(t, err, expectedErr)
+	require.Equal(t, 1, attempts)
+}
+
+func TestInitializeTerraformDoesNotRetryCancellation(t *testing.T) {
+	retryer := retry.NewRetryer(&retry.RetryConfig{
+		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
+	})
+
+	attempts := 0
+	expectedErr := fmt.Errorf("failed to request discovery document: %w", context.Canceled)
+	err := retryTerraformInit(t.Context(), retryer, func(context.Context) error {
+		attempts++
+		return expectedErr
+	})
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, 1, attempts)
 }
 
 func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
