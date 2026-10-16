@@ -100,6 +100,22 @@ global:
     secretKey: "kubeconfig"
     mountPath: "/etc/radius/target-kubeconfig"
 
+  # Configure internal component authorization. Both settings are disabled by default.
+  # The settings map to the authorization mode every Radius service reads:
+  #   enabled=false, dryRun=false -> off (default)
+  #   dryRun=true                 -> dryRun (denials will be logged, not rejected)
+  #   enabled=true                -> enforce (denials will be rejected)
+  # Setting both enabled=true and dryRun=true fails installation: the dry run is a
+  # preflight check for an installation that is not yet enforcing.
+  # NOTE: these settings are reserved. Services read and log the mode, but no
+  # authorization checks are implemented yet, so no mode changes runtime behavior.
+  # Example: rad install kubernetes --set global.rbac.dryRun=true
+  rbac:
+    # Enforce internal component authorization (reserved; no checks yet).
+    enabled: false
+    # Log what authorization checks would deny without rejecting requests (reserved; no checks yet).
+    dryRun: false
+
 controller:
   image: controller
   # Default tag uses Chart AppVersion.

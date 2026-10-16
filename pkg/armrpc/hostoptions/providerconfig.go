@@ -19,6 +19,7 @@ package hostoptions
 import (
 	"fmt"
 
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
@@ -46,6 +47,7 @@ type ProviderConfig struct {
 	Logging          ucplog.LoggingOptions                `yaml:"logging"`
 	Bicep            BicepOptions                         `yaml:"bicep,omitempty"`
 	Terraform        TerraformOptions                     `yaml:"terraform,omitempty"`
+	Authorization    authz.Options                        `yaml:"authorization,omitempty"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
