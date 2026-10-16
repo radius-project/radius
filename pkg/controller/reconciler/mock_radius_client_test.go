@@ -31,6 +31,7 @@ import (
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // This file contains mocks for the RadiusClient interface.
@@ -93,6 +94,10 @@ func (rc *mockRadiusClient) Groups(scope string) ResourceGroupClient {
 
 func (rc *mockRadiusClient) Resources(scope string, resourceType string) ResourceClient {
 	return &mockResourceClient{mock: rc, scope: scope, resourceType: resourceType}
+}
+
+func (rc *mockRadiusClient) ResolveAPIVersion(ctx context.Context, id resources.ID) (string, error) {
+	return "2023-10-01-preview", nil
 }
 
 func (rc *mockRadiusClient) CompleteOperation(operationID string, update func(state *sdkclients.OperationState)) {

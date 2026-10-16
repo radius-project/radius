@@ -33,6 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/test/k8sutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -409,6 +410,85 @@ func Test_Delete_UCP(t *testing.T) {
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 	})
+}
+
+func Test_Delete_RadiusAPIVersion(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name        string
+		provider    string
+		version     string
+		status      int
+		summaryCode int
+	}{
+		{name: "modern", provider: "Radius.Data", version: "2025-08-01-preview", status: http.StatusNoContent},
+		{name: "legacy", provider: "Applications.Datastores", version: "2023-10-01-preview", status: http.StatusNoContent},
+		{name: "user defined", provider: "Contoso.Test", version: "release-blue", status: http.StatusNoContent},
+		{name: "not found", provider: "Radius.Data", version: "2025-08-01-preview", status: http.StatusNotFound},
+		{name: "async", provider: "Radius.Data", version: "2025-08-01-preview", status: http.StatusAccepted},
+		{name: "missing provider is not successful deletion", provider: "Radius.Data", summaryCode: http.StatusNotFound},
+		{name: "empty versions", provider: "Radius.Data"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			id := "/planes/radius/remote/resourceGroups/test/providers/" + tt.provider + "/rediscaches/one"
+			var deletes, summaries, polls int
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/planes/radius/remote/providers/" + tt.provider:
+					summaries++
+					assert.Equal(t, http.MethodGet, r.Method)
+					if tt.summaryCode != 0 {
+						w.WriteHeader(tt.summaryCode)
+						return
+					}
+					versions := map[string]any{}
+					if tt.version != "" {
+						versions[tt.version] = map[string]any{}
+						versions["another-version"] = map[string]any{}
+					}
+					assert.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+						"resourceTypes": map[string]any{
+							"redisCaches": map[string]any{"apiVersions": versions, "defaultApiVersion": tt.version},
+						},
+					}))
+				case id:
+					deletes++
+					assert.Equal(t, http.MethodDelete, r.Method)
+					assert.Equal(t, tt.version, r.URL.Query().Get("api-version"))
+					if tt.status == http.StatusAccepted {
+						w.Header().Set("Azure-AsyncOperation", "http://"+r.Host+"/operations/delete")
+						w.Header().Set("Retry-After", "0")
+					}
+					w.WriteHeader(tt.status)
+				case "/operations/delete":
+					polls++
+					assert.Equal(t, http.MethodGet, r.Method)
+					assert.NoError(t, json.NewEncoder(w).Encode(map[string]string{"status": "Succeeded"}))
+				default:
+					t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+					w.WriteHeader(http.StatusBadRequest)
+				}
+			}))
+			t.Cleanup(server.Close)
+			connection, err := sdk.NewDirectConnection(server.URL)
+			require.NoError(t, err)
+			err = NewResourceClient(nil, connection, nil).Delete(t.Context(), id)
+			if tt.summaryCode != 0 || tt.version == "" {
+				require.Error(t, err)
+				require.IsType(t, &ResourceError{}, err)
+				require.Zero(t, deletes)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, 1, deletes)
+			}
+			require.Equal(t, 1, summaries)
+			if tt.status == http.StatusAccepted {
+				require.Equal(t, 1, polls)
+			}
+		})
+	}
 }
 
 func newArmOptions(url string) *armauth.ArmConfig {
