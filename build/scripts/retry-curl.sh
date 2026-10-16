@@ -47,9 +47,15 @@ retry_curl() {
         echo "retry_curl only supports HTTPS URLs" >&2
         return 2
     fi
-    if [[ -n "${write_out}" && "${write_out}" != '%{url_effective}' ]]; then
-        echo "retry_curl only supports %{url_effective} for --write-out" >&2
-        return 2
+    if [[ -n "${write_out}" ]]; then
+        case "${write_out}" in
+            '%{http_code}' | '%{url_effective}') ;;
+            *)
+                echo "retry_curl only supports %{http_code} or" \
+                    "%{url_effective} for --write-out" >&2
+                return 2
+                ;;
+        esac
     fi
 
     local temporary_directory
@@ -81,10 +87,7 @@ retry_curl() {
             rm -rf "${temporary_directory}"
             return 28
         fi
-        timeout=60
-        if ((remaining < timeout)); then
-            timeout="${remaining}"
-        fi
+        timeout="${remaining}"
 
         : > "${headers}"
         status=0
@@ -92,6 +95,7 @@ retry_curl() {
             result="$(
                 curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
                     --location --connect-timeout 15 --max-time "${timeout}" \
+                    --speed-limit 1024 --speed-time 30 \
                     "${curl_args[@]}" --output "${output}" \
                     --dump-header "${headers}" \
                     --write-out '%{http_code} %{url_effective}' "${url}"
@@ -100,6 +104,7 @@ retry_curl() {
             result="$(
                 curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
                     --location --connect-timeout 15 --max-time "${timeout}" \
+                    --speed-limit 1024 --speed-time 30 \
                     --output "${output}" --dump-header "${headers}" \
                     --write-out '%{http_code} %{url_effective}' "${url}"
             )" || status=$?
@@ -109,7 +114,8 @@ retry_curl() {
 
         if ((status == 0)); then
             if [[ -n "${write_out}" ]]; then
-                printf '%s' "${effective_url}"
+                retry_curl_write_out \
+                    "${write_out}" "${http_code}" "${effective_url}"
             elif [[ "${temporary_output}" == true ]]; then
                 cat "${output}"
             fi
@@ -118,6 +124,8 @@ retry_curl() {
         fi
 
         if ! retry_curl_is_transient "${status}" "${http_code}"; then
+            retry_curl_write_out \
+                "${write_out}" "${http_code}" "${effective_url}"
             rm -rf "${temporary_directory}"
             return "${status}"
         fi
@@ -126,6 +134,8 @@ retry_curl() {
         remaining=$((deadline - SECONDS))
         if ((attempt >= max_attempts || remaining <= wait_time)); then
             echo "curl request exhausted its retry budget" >&2
+            retry_curl_write_out \
+                "${write_out}" "${http_code}" "${effective_url}"
             rm -rf "${temporary_directory}"
             return "${status}"
         fi
@@ -139,6 +149,17 @@ retry_curl() {
             delay="${max_delay}"
         fi
     done
+}
+
+retry_curl_write_out() {
+    local write_out="$1"
+    local http_code="$2"
+    local effective_url="$3"
+
+    case "${write_out}" in
+        '%{http_code}') printf '%s' "${http_code}" ;;
+        '%{url_effective}') printf '%s' "${effective_url}" ;;
+    esac
 }
 
 retry_curl_is_transient() {

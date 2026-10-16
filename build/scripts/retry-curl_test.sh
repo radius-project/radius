@@ -22,7 +22,7 @@ fail_test() {
 }
 
 curl() {
-    local output="" headers="" timeout=""
+    local output="" headers="" timeout="" speed_limit="" speed_time=""
     local status http_code effective_url="https://example.test/final"
 
     while (($#)); do
@@ -30,13 +30,17 @@ curl() {
             --output) output="$2"; shift ;;
             --dump-header) headers="$2"; shift ;;
             --max-time) timeout="$2"; shift ;;
+            --speed-limit) speed_limit="$2"; shift ;;
+            --speed-time) speed_time="$2"; shift ;;
         esac
         shift
     done
     [[ -n "${output}" && -n "${headers}" ]] ||
         fail_test "curl output paths"
-    [[ "${timeout}" -gt 0 && "${timeout}" -le 60 ]] ||
+    [[ "${timeout}" -gt 0 && "${timeout}" -le 300 ]] ||
         fail_test "attempt timeout"
+    [[ "${speed_limit}" -eq 1024 && "${speed_time}" -eq 30 ]] ||
+        fail_test "stalled transfer limits"
 
     local curl_calls
     curl_calls="$(( $(< "${TEST_DIR}/curl-calls") + 1 ))"
@@ -92,6 +96,15 @@ for response in 22:400 22:401 22:403 22:404 22:501 23:200 60:000; do
     [[ "$(< "${TEST_DIR}/curl-calls")" -eq 1 ]] ||
         fail_test "retried permanent status ${response}"
 done
+
+reset_case 22:404
+status=0
+http_code="$(
+    retry_curl -fsSL -o "${TEST_DIR}/download" -w '%{http_code}' \
+        https://example.test/file
+)" || status=$?
+[[ "${status}" -eq 22 && "${http_code}" == 404 ]] ||
+    fail_test "HTTP code output on failure"
 
 reset_case 22:429 0:200
 RETRY_AFTER=10

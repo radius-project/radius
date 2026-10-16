@@ -112,15 +112,9 @@ delete_version() {
     path+="/versions/${version_id}"
     mapfile -t headers < <(api_headers)
     http_code="$(
-        curl --proto '=https' --tlsv1.2 --silent --show-error \
-            --connect-timeout 15 --max-time 60 \
-            --request DELETE "${headers[@]}" --output "${response}" \
+        retry_curl --request DELETE "${headers[@]}" --output "${response}" \
             --write-out '%{http_code}' "${API_URL}${path}"
     )" || status=$?
-    if ((status != 0)); then
-        cat "${response}" >&2 || true
-        return "${status}"
-    fi
     case "${http_code}" in
         204)
             echo "Deleted ${package_name} version ${version_id}"
@@ -130,8 +124,11 @@ delete_version() {
             ;;
         *)
             cat "${response}" >&2 || true
-            echo "Delete failed with HTTP ${http_code}" >&2
-            return 22
+            if ((status != 0)); then
+                return "${status}"
+            fi
+            echo "Delete returned unexpected HTTP ${http_code}" >&2
+            return 1
             ;;
     esac
 }

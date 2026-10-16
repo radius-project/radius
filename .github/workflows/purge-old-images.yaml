@@ -5,6 +5,12 @@ name: Purge test container images
 on:
   # Enable manual trigger
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report matching versions without deleting them
+        required: true
+        default: true
+        type: boolean
   schedule:
     # Run twice a day
     - cron: 30 0,12 * * *
@@ -43,6 +49,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           PACKAGE_OWNER: ${{ github.repository_owner }}
+          PURGE_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
         run: bash ./.github/scripts/purge-old-images.sh
 
   create_issue_on_failure:

@@ -35,9 +35,20 @@ curl() {
     done
     if [[ "${method}" == DELETE ]]; then
         printf '%s\n' "${url}" >> "${TEST_DIR}/deletes"
+        local delete_count
+        local -a delete_codes
+        delete_count="$(wc -l < "${TEST_DIR}/deletes")"
+        read -r -a delete_codes <<< "${DELETE_CODES:-204}"
+        local code_index=$((delete_count - 1))
+        if ((code_index >= ${#delete_codes[@]})); then
+            code_index=$((${#delete_codes[@]} - 1))
+        fi
+        local delete_code="${delete_codes[code_index]}"
+        printf 'HTTP/2 %s\r\n\r\n' "${delete_code}" > "${header_file}"
         printf '%s' "${DELETE_BODY:-}" > "${output}"
-        printf '%s' "${DELETE_CODE:-204}"
-        return "${DELETE_STATUS:-0}"
+        printf '%s %s' "${delete_code}" "${url}"
+        [[ "${delete_code}" =~ ^2 ]] && return 0
+        return 22
     fi
 
     printf '%s\n' "${url}" >> "${TEST_DIR}/gets"
@@ -61,13 +72,49 @@ curl() {
     printf 'HTTP/2 200\r\n\r\n' > "${header_file}"
     case "${url}" in
         *"/packages?package_type="*)
-            cat > "${output}" <<'JSON'
+            if [[ "${PACKAGE_PAGINATION:-false}" == true &&
+                "${url}" == *"&page=1" ]]; then
+                printf '[' > "${output}"
+                local index
+                for ((index = 1; index <= 100; index++)); do
+                    ((index == 1)) || printf ',' >> "${output}"
+                    printf '{"name":"dev/package-%s"}' "${index}" \
+                        >> "${output}"
+                done
+                printf ']' >> "${output}"
+            elif [[ "${PACKAGE_PAGINATION:-false}" == true ]]; then
+                printf '[{"name":"dev/package-final"}]' > "${output}"
+            else
+                cat > "${output}" <<'JSON'
 [{"name":"dev/example"},{"name":"production/example"}]
 JSON
+            fi
             ;;
         *"/dev%2Fexample/versions"*)
             if [[ "${INVALID_JSON_PATH:-}" == versions ]]; then
                 printf 'invalid JSON' > "${output}"
+            elif [[ "${VERSION_PAGINATION:-false}" == true &&
+                "${url}" == *"&page=1" ]]; then
+                printf '[' > "${output}"
+                local index
+                for ((index = 1; index <= 100; index++)); do
+                    ((index == 1)) || printf ',' >> "${output}"
+                    printf '{"id":%s,"updated_at":"2020-01-01T00:00:00Z",' \
+                        "${index}" >> "${output}"
+                    printf '"metadata":{"container":{"tags":["pr-%s"]}}}' \
+                        "${index}" >> "${output}"
+                done
+                printf ']' >> "${output}"
+            elif [[ "${VERSION_PAGINATION:-false}" == true ]]; then
+                cat > "${output}" <<'JSON'
+[
+  {
+    "id": 201,
+    "updated_at": "2020-01-01T00:00:00Z",
+    "metadata": {"container": {"tags": ["pr-201"]}}
+  }
+]
+JSON
             else
                 cat > "${output}" <<'JSON'
 [
@@ -112,18 +159,16 @@ grep -q '/versions/101$' "${TEST_DIR}/deletes" ||
 cleanup
 : > "${TEST_DIR}/gets"
 : > "${TEST_DIR}/deletes"
-DELETE_CODE=500
+DELETE_CODES="500 204"
 DELETE_BODY='Server Error'
-export DELETE_CODE DELETE_BODY
-if main > "${TEST_DIR}/output" 2>&1; then
-    fail_test "delete failure was accepted"
-fi
-[[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 1 ]] ||
-    fail_test "delete was retried"
-grep -q "Delete failed with HTTP 500" "${TEST_DIR}/output" ||
-    fail_test "delete failure was not reported"
+export DELETE_CODES DELETE_BODY
+main > "${TEST_DIR}/output" 2>&1
+[[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 2 ]] ||
+    fail_test "transient delete was not retried"
+grep -q "Deleted dev/example version 101" "${TEST_DIR}/output" ||
+    fail_test "retried delete did not succeed"
 
-unset DELETE_CODE DELETE_BODY
+unset DELETE_CODES DELETE_BODY
 cleanup
 for failure_path in packages versions; do
     : > "${TEST_DIR}/gets"
@@ -144,5 +189,34 @@ if main > "${TEST_DIR}/output" 2>&1; then
     fail_test "versions JSON failure was accepted"
 fi
 unset INVALID_JSON_PATH SKIP_TRANSIENT_FAILURE
+
+cleanup
+: > "${TEST_DIR}/gets"
+PACKAGE_PAGINATION=true
+SKIP_TRANSIENT_FAILURE=true
+export PACKAGE_PAGINATION SKIP_TRANSIENT_FAILURE
+WORK_DIR="$(mktemp -d)"
+packages="$(list_packages)"
+[[ "$(wc -l <<< "${packages}")" -eq 101 ]] ||
+    fail_test "package pagination count"
+grep -q '^dev/package-1$' <<< "${packages}" ||
+    fail_test "first package page missing"
+grep -q '^dev/package-final$' <<< "${packages}" ||
+    fail_test "second package page missing"
+unset PACKAGE_PAGINATION
+
+cleanup
+: > "${TEST_DIR}/gets"
+: > "${TEST_DIR}/deletes"
+VERSION_PAGINATION=true
+export VERSION_PAGINATION
+main > "${TEST_DIR}/output" 2>&1
+[[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 101 ]] ||
+    fail_test "version pagination delete count"
+grep -q '/versions/1$' "${TEST_DIR}/deletes" ||
+    fail_test "first version page was not deleted"
+grep -q '/versions/201$' "${TEST_DIR}/deletes" ||
+    fail_test "second version page was not deleted"
+unset VERSION_PAGINATION SKIP_TRANSIENT_FAILURE
 
 echo "purge-old-images tests passed"
