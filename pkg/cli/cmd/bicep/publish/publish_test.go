@@ -497,7 +497,7 @@ func TestRunner_Run_PrintsPinnedRecipeURL(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	bicepMock := bicep.NewMockInterface(gomock.NewController(t))
-	bicepMock.EXPECT().PrepareTemplate(gomock.Any(), "recipe.bicep").Return(map[string]any{}, nil)
+	bicepMock.EXPECT().PrepareTemplate(gomock.Any(), "recipe.bicep").Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil)
 	outputSink := &output.MockOutput{}
 	repository := strings.TrimPrefix(server.URL, "http://") + "/test/recipe"
 	runner := &Runner{
@@ -510,6 +510,13 @@ func TestRunner_Run_PrintsPinnedRecipeURL(t *testing.T) {
 
 	require.NoError(t, runner.Run(t.Context()))
 
-	last := outputSink.Writes[len(outputSink.Writes)-1].(output.LogOutput)
-	require.Regexp(t, "Recipe url: "+regexp.QuoteMeta(repository)+"@sha256:[0-9a-f]{64}$", fmt.Sprintf(last.Format, last.Params...))
+	var lines []string
+	for _, write := range outputSink.Writes {
+		logOutput := write.(output.LogOutput)
+		lines = append(lines, fmt.Sprintf(logOutput.Format, logOutput.Params...))
+	}
+	printed := strings.Join(lines, "\n")
+	pinned := regexp.QuoteMeta(repository) + "@sha256:[0-9a-f]{64}$"
+	require.Regexp(t, "(?m)^Pushed to "+pinned, printed)
+	require.Regexp(t, "(?m)Recipe url: "+pinned, printed)
 }
