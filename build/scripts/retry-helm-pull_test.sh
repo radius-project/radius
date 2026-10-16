@@ -23,6 +23,7 @@ helm() {
     printf '%s\n' "$*" >> "${TEST_DIR}/arguments"
     case "${RESPONSES[call - 1]}" in
         success) return 0 ;;
+        hang) command sleep 5; return 1 ;;
         *) printf '%s\n' "${RESPONSES[call - 1]}" >&2; return 1 ;;
     esac
 }
@@ -60,7 +61,8 @@ for error in "401 Unauthorized" "403 Forbidden" "404 Not Found" \
 done
 
 for error in "HTTP/2 503 Service Unavailable" \
-    "unexpected status code 429 Too Many Requests"; do
+    "unexpected status code 429 Too Many Requests" \
+    "failed to fetch http://example.test/chart.tgz : 503 Service Unavailable"; do
     reset_case "${error}" success
     retry_helm_pull oci://example.test/chart
     [[ "$(< "${TEST_DIR}/calls")" -eq 2 ]] ||
@@ -74,5 +76,14 @@ retry_helm_pull oci://example.test/chart || status=$?
 unset RETRY_HELM_MAX_ATTEMPTS
 [[ "${status}" -eq 1 && "$(< "${TEST_DIR}/calls")" -eq 2 ]] ||
     fail_test "attempt limit"
+
+reset_case hang
+RETRY_HELM_ATTEMPT_TIMEOUT_SECONDS=1
+RETRY_HELM_MAX_ATTEMPTS=1
+status=0
+retry_helm_pull oci://example.test/chart || status=$?
+unset RETRY_HELM_ATTEMPT_TIMEOUT_SECONDS RETRY_HELM_MAX_ATTEMPTS
+[[ "${status}" -eq 124 && "$(< "${TEST_DIR}/calls")" -eq 1 ]] ||
+    fail_test "stalled pull timeout"
 
 echo "retry-helm-pull tests passed"

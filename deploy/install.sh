@@ -34,9 +34,13 @@
 
 set -euo pipefail
 
-INSTALL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_SCRIPT_DIR=""
+if [[ -n "${BASH_SOURCE:-}" ]]; then
+    INSTALL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
 RADIUS_RETRY_CURL_AVAILABLE=false
-if [[ -f "${INSTALL_SCRIPT_DIR}/../build/scripts/retry-curl.sh" ]] &&
+if [[ -n "${INSTALL_SCRIPT_DIR}" ]] &&
+    [[ -f "${INSTALL_SCRIPT_DIR}/../build/scripts/retry-curl.sh" ]] &&
     command -v curl >/dev/null 2>&1; then
     # shellcheck source=build/scripts/retry-curl.sh
     source "${INSTALL_SCRIPT_DIR}/../build/scripts/retry-curl.sh"
