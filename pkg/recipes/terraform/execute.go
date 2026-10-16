@@ -633,7 +633,7 @@ func isTransientTerraformInitError(err error) bool {
 		return false
 	}
 
-	message := strings.ToLower(err.Error())
+	message := strings.ToLower(strings.Join(strings.Fields(err.Error()), " "))
 	if !strings.Contains(message, "failed to request discovery document") {
 		return false
 	}

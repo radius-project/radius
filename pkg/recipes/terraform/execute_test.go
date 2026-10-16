@@ -119,7 +119,7 @@ func TestInitializeTerraformRetriesTransientProviderDiscoveryFailure(t *testing.
 	err := retryTerraformInit(t.Context(), retryer, func(context.Context) error {
 		attempts++
 		if attempts < 3 {
-			return fmt.Errorf("failed to request discovery document: context deadline exceeded (Client.Timeout exceeded while awaiting headers)")
+			return fmt.Errorf("failed to\nrequest discovery document: context deadline exceeded (Client.Timeout\nexceeded while awaiting headers)")
 		}
 
 		return nil
