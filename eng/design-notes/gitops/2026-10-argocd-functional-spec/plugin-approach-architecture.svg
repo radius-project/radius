@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" font-family="Helvetica, Arial, sans-serif" font-size="14">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1e1e1e"/></marker></defs>
+<rect width="1200" height="600" fill="#ffffff"/>
+<rect x="240" y="40" width="500" height="520" rx="10" ry="10" fill="#f8f9fa" stroke="#868e96" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="254" y="64" font-weight="bold" fill="#495057">argocd namespace (Argo CD owns)</text>
+<rect x="800" y="40" width="360" height="520" rx="10" ry="10" fill="#f8f9fa" stroke="#868e96" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="814" y="64" font-weight="bold" fill="#495057">radius-system (Radius owns)</text>
+<rect x="265" y="85" width="450" height="155" rx="10" ry="10" fill="#e7f5ff" stroke="#1971c2" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="279" y="109" font-weight="bold" fill="#495057">argocd-repo-server pod</text>
+<rect x="40" y="130" width="170" height="80" rx="10" ry="10" fill="#fff9db" stroke="#1e1e1e" stroke-width="2"/>
+<text x="125.0" y="165.0" text-anchor="middle" font-weight="bold">Git (ops repo)</text>
+<text x="125.0" y="185.0" text-anchor="middle" fill="#495057" font-size="13">app.bicep, app.bicepparam</text>
+<rect x="290" y="130" width="170" height="80" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="375.0" y="165.0" text-anchor="middle" font-weight="bold">repo-server</text>
+<text x="375.0" y="185.0" text-anchor="middle" fill="#495057" font-size="13">checks out the commit</text>
+<rect x="530" y="130" width="170" height="80" rx="10" ry="10" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text x="615.0" y="165.0" text-anchor="middle" font-weight="bold">Radius CMP sidecar</text>
+<text x="615.0" y="185.0" text-anchor="middle" fill="#495057" font-size="13">new: compiles Bicep</text>
+<rect x="290" y="300" width="400" height="80" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="490.0" y="335.0" text-anchor="middle" font-weight="bold">application-controller</text>
+<text x="490.0" y="355.0" text-anchor="middle" fill="#495057" font-size="13">diff, apply, prune, self-heal</text>
+<rect x="290" y="440" width="400" height="70" rx="10" ry="10" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text x="490.0" y="470.0" text-anchor="middle" font-weight="bold">Radius Lua health checks</text>
+<text x="490.0" y="490.0" text-anchor="middle" fill="#495057" font-size="13">new: read DeploymentTemplate status</text>
+<rect x="850" y="110" width="280" height="80" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="990.0" y="145.0" text-anchor="middle" font-weight="bold">Radius API / UCP</text>
+<text x="990.0" y="165.0" text-anchor="middle" fill="#495057" font-size="13">Recipes → cloud resources</text>
+<rect x="850" y="300" width="280" height="80" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="990.0" y="335.0" text-anchor="middle" font-weight="bold">DeploymentTemplate controller</text>
+<text x="990.0" y="355.0" text-anchor="middle" fill="#495057" font-size="13">richer status (D4, D6)</text>
+<rect x="850" y="440" width="280" height="70" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="990.0" y="470.0" text-anchor="middle" font-weight="bold">DeploymentResource controller</text>
+<text x="990.0" y="490.0" text-anchor="middle" fill="#495057" font-size="13">one per Radius resource</text>
+<polyline points="210,170 290,170" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="214.0" y="145" width="46.0" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="237" y="159" text-anchor="middle" font-size="13" font-style="italic">fetch</text>
+<polyline points="460,170 530,170" fill="none" stroke="#1e1e1e" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+<rect x="468.4" y="145" width="53.2" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="495" y="159" text-anchor="middle" font-size="13" font-style="italic">render</text>
+<polyline points="385,210 385,300" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="347.6" y="249" width="74.8" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="385" y="263" text-anchor="middle" font-size="13" font-style="italic">manifests</text>
+<polyline points="690,325 850,325" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="678.6" y="274" width="182.8" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="770" y="288" text-anchor="middle" font-size="13" font-style="italic">apply DeploymentTemplate</text>
+<polyline points="850,358 690,358" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<rect x="743.4" y="363" width="53.2" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="770" y="377" text-anchor="middle" font-size="13" font-style="italic">status</text>
+<polyline points="490,440 490,380" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<rect x="463.4" y="401" width="53.2" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="490" y="415" text-anchor="middle" font-size="13" font-style="italic">health</text>
+<polyline points="990,300 990,190" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="963.4" y="235" width="53.2" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="990" y="249" text-anchor="middle" font-size="13" font-style="italic">deploy</text>
+<polyline points="990,380 990,440" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="927.4" y="401" width="125.2" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="990" y="415" text-anchor="middle" font-size="13" font-style="italic">creates and owns</text>
+<rect x="40" y="440" width="22" height="16" rx="3" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/><text x="70" y="453" font-size="13">new Radius code</text>
+</svg>
