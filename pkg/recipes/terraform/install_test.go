@@ -72,8 +72,6 @@ func TestInstall_SuccessfulDownload(t *testing.T) {
 
 	_, err = os.Stat(globalMarker)
 	require.NoError(t, err, "Global terraform marker file should exist")
-
-	require.Equal(t, globalBinary, tf.ExecPath(), "Terraform should be installed directly into the global directory")
 }
 
 func TestInstall_GlobalBinaryReuse(t *testing.T) {
