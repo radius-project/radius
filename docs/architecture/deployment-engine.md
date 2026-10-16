@@ -461,14 +461,12 @@ and flow through the system as follows:
 
 1. **User configures an environment** — When a user runs `rad init`, interactive
    prompts collect Azure credentials (subscription ID, resource group) and/or
-   AWS credentials (account ID, region). These are converted into scope strings
-   by `CreateEnvProviders()` in
-   [pkg/cli/cmd/utils.go](../../pkg/cli/cmd/utils.go):
+   AWS credentials (account ID, region). `CreateEnvironment()` in
+   [pkg/cli/cmd/radinit/environment.go](../../pkg/cli/cmd/radinit/environment.go)
+   stores these values in the `Providers` field of the `Radius.Core`
+   **Environment** resource. They map to the following scope strings:
    - Azure: `/subscriptions/{sub-id}/resourceGroups/{rg}`
    - AWS: `/planes/aws/aws/accounts/{account-id}/regions/{region}`
-
-   The scopes are stored as part of the `Providers` field on the Radius
-  **Environment** resource.
 
 2. **CLI reads providers from the environment** — At deploy time, the `rad
    deploy` runner fetches the environment resource and extracts the provider

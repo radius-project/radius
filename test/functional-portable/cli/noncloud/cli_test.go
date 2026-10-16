@@ -36,15 +36,15 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/version"
 
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
@@ -639,66 +639,63 @@ func Test_CLI_Only_version(t *testing.T) {
 	require.Regexp(t, expected, objectformats.TrimSpaceMulti(output))
 }
 
-// This test creates an environment by directly calling the CreateEnvironment function to test dev recipes.
-// After dev recipes are confirmed, the environment is deleted.
-func Test_DevRecipes(t *testing.T) {
+// Test_InitCreateEnvironment runs the `rad init` environment step and checks that it creates a
+// Radius.Core environment linked to the default recipe pack.
+func Test_InitCreateEnvironment(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
-	envName := "test-dev-recipes"
-	envNamespace := "test-dev-recipes"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
-	basicRunner := radinit.NewRunner(
-		&framework.Impl{
-			ConnectionFactory: connections.DefaultFactory,
-		},
-	)
-	basicRunner.UpdateEnvironmentOptions(true, envName, envNamespace)
-	basicRunner.UpdateRecipePackOptions(true)
-	basicRunner.DevRecipeClient = radinit.NewDevRecipeClient()
-	basicRunner.Workspace = &workspaces.Workspace{
+	suffix := time.Now().Unix()
+	envName := fmt.Sprintf("test-init-env-%d", suffix)
+	envNamespace := fmt.Sprintf("test-init-env-ns-%d", suffix)
+
+	t.Cleanup(func() {
+		// The resource group is named after the environment; deleting it also deletes the environment.
+		// Use a fresh context because t.Context() is cancelled before cleanup runs.
+		if err := cli.GroupDelete(context.Background(), envName, radcli.DeleteOptions{Confirm: true}); err != nil { //nolint:usetesting
+			t.Logf("failed to delete resource group %q: %v", envName, err)
+		}
+		deleteKubernetesNamespace(context.Background(), t, options, envNamespace) //nolint:usetesting
+	})
+
+	// Radius.Core requires the environment's namespace to exist.
+	createKubernetesNamespace(ctx, t, options, envNamespace)
+
+	runner := radinit.NewRunner(&framework.Impl{ConnectionFactory: connections.DefaultFactory})
+	runner.UpdateEnvironmentOptions(true, envName, envNamespace)
+	runner.Workspace = &workspaces.Workspace{
 		Name: envName,
 		Connection: map[string]any{
 			"kind": workspaces.KindKubernetes,
 		},
-		Environment: fmt.Sprintf("/planes/radius/local/resourceGroups/kind-radius/providers/Applications.Core/environments/%s", envName),
-		Scope:       "/planes/radius/local/resourceGroups/kind-radius",
+		Environment: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/environments/%s", envName, envName),
+		Scope:       fmt.Sprintf("/planes/radius/local/resourceGroups/%s", envName),
 	}
 
-	// Create the environment
-	err := basicRunner.CreateEnvironment(ctx)
+	err := runner.CreateEnvironment(ctx)
 	require.NoError(t, err)
 
-	// Read the registered recipes back from the environment resource. `rad recipe list` used to
-	// provide this readout, but the recipe commands have been removed in favour of recipe packs.
-	managementClient, err := connections.DefaultFactory.CreateApplicationsManagementClient(ctx, *basicRunner.Workspace)
+	clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, runner.Workspace)
 	require.NoError(t, err)
 
-	environment, err := managementClient.GetEnvironment(ctx, envName)
+	environment, err := clientFactory.NewEnvironmentsClient().Get(ctx, runner.Workspace.Scope, envName, nil)
 	require.NoError(t, err)
 	require.NotNil(t, environment.Properties)
+	require.NotNil(t, environment.Properties.Providers)
+	require.NotNil(t, environment.Properties.Providers.Kubernetes)
+	require.Equal(t, envNamespace, *environment.Properties.Providers.Kubernetes.Namespace)
 
-	tag := version.Channel()
-	if version.IsEdgeChannel() {
-		tag = "latest"
+	recipePacks := []string{}
+	for _, pack := range environment.Properties.RecipePacks {
+		recipePacks = append(recipePacks, *pack)
 	}
+	require.Equal(t, []string{recipepack.DefaultRecipePackID()}, recipePacks)
 
-	for _, devRecipe := range radinit.AvailableDevRecipes() {
-		recipes, ok := environment.Properties.Recipes[devRecipe.ResourceType]
-		require.Truef(t, ok, "no recipes registered for resource type %q", devRecipe.ResourceType)
-
-		properties, ok := recipes["default"]
-		require.Truef(t, ok, "no %q recipe registered for resource type %q", "default", devRecipe.ResourceType)
-
-		bicepProperties, ok := properties.(*corerp.BicepRecipeProperties)
-		require.Truef(t, ok, "recipe %q for resource type %q is not a Bicep recipe", "default", devRecipe.ResourceType)
-		require.NotNil(t, bicepProperties.TemplatePath)
-		require.Equal(t, devRecipe.RepoPath+":"+tag, *bicepProperties.TemplatePath)
-	}
-
-	// `rad env delete` only targets Radius.Core.
-	_, err = managementClient.DeleteEnvironment(ctx, envName)
-	require.NoError(t, err)
+	_, err = clientFactory.NewRecipePacksClient().Get(ctx, recipepack.DefaultResourceGroupScope, recipepack.DefaultRecipePackResourceName, nil)
+	require.NoError(t, err, "the default recipe pack should exist")
 }
 
 // GetAvailablePort attempts to find an available port on the localhost and returns it, or returns an error if it fails.

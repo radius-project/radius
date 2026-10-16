@@ -27,28 +27,6 @@ import (
 )
 
 const (
-	// AppBicepTemplate is the app.bicep template used by `rad init`.
-	AppBicepTemplate = `extension radius
-
-@description('The Radius Application ID. Injected automatically by the rad CLI.')
-param application string
-
-resource demo 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'demo'
-  properties: {
-    application: application
-    container: {
-      image: 'ghcr.io/radius-project/samples/demo:latest'
-      ports: {
-        web: {
-          containerPort: 3000
-        }
-      }
-    }
-  }
-}
-` // Trailing newline intentional.
-
 	// BicepConfigFileName is the name of the Bicep configuration file written by `rad init`.
 	BicepConfigFileName = "bicepconfig.json"
 
@@ -59,24 +37,6 @@ resource demo 'Applications.Core/containers@2023-10-01-preview' = {
 	}
 }`
 )
-
-// ScaffoldApplication creates a working sample application in the provided directory.
-func ScaffoldApplication(directory string, template string) error {
-	// We NEVER overwrite app.bicep or the bicepconfig.json if it exists. We assume the user might have changed it, and don't
-	// want them to lose their content.
-	appBicepFilepath := filepath.Join(directory, "app.bicep")
-	_, err := os.Stat(appBicepFilepath)
-	if os.IsNotExist(err) {
-		err = os.WriteFile(appBicepFilepath, []byte(template), 0644)
-		if err != nil {
-			return err
-		}
-	} else if err != nil {
-		return err
-	}
-
-	return WriteBicepConfig(directory)
-}
 
 // WriteBicepConfig writes the default bicepconfig.json into directory if it does not already exist.
 // It never overwrites an existing file because the user may have customized it.

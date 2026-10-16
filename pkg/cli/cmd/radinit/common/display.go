@@ -51,9 +51,6 @@ const (
 	SummaryEnvironmentCreateAzureCloudProviderFmt = SummaryIndent + "Azure: subscription %s and resource group %s\n"
 	SummaryEnvironmentCreateRecipePackyFmt        = SummaryIndent + "Recipe pack: %s\n"
 	SummaryEnvironmentExistingHeadingFmt          = "Use existing environment %s\n"
-	SummaryApplicationHeadingIcon                 = "🚧 "
-	SummaryApplicationScaffoldHeadingFmt          = "Scaffold application %s\n"
-	SummaryApplicationScaffoldFile                = SummaryIndent + "Create %s\n"
 	SummaryConfigurationHeadingIcon               = "📋 "
 	SummaryConfigurationUpdateHeading             = "Update local configuration\n"
 	SummaryConfigurationFile                      = SummaryIndent + "%s\n"
@@ -80,7 +77,6 @@ type DisplayOptions struct {
 	Cluster        ClusterDisplay
 	Environment    EnvironmentDisplay
 	CloudProviders CloudProvidersDisplay
-	Application    ApplicationDisplay
 
 	// RecipePackLabel is the label of the recipe pack to display in the summary.
 	// An empty value omits the recipe pack line entirely.
@@ -112,19 +108,10 @@ type CloudProvidersDisplay struct {
 	AWS   *aws.Provider
 }
 
-// ApplicationDisplay holds the application fields rendered by the summary and progress views.
-type ApplicationDisplay struct {
-	Scaffold bool
-	Name     string
-	// ScaffoldFiles are the files to list under the scaffold application heading.
-	ScaffoldFiles []string
-}
-
 // ProgressMsg is a message sent to the progress display to update the status of the installation.
 type ProgressMsg struct {
 	InstallComplete     bool
 	EnvironmentComplete bool
-	ApplicationComplete bool
 	ConfigComplete      bool
 }
 
@@ -290,14 +277,6 @@ func (m *SummaryModel) View() tea.View {
 	message.WriteString(SummaryEnvironmentHeadingIcon)
 	writeEnvironmentSummary(message, options)
 
-	if options.Application.Scaffold {
-		message.WriteString(SummaryApplicationHeadingIcon)
-		message.WriteString(fmt.Sprintf(SummaryApplicationScaffoldHeadingFmt, highlight(options.Application.Name)))
-		for _, file := range options.Application.ScaffoldFiles {
-			message.WriteString(fmt.Sprintf(SummaryApplicationScaffoldFile, highlight(file)))
-		}
-	}
-
 	message.WriteString(SummaryConfigurationHeadingIcon)
 	message.WriteString(SummaryConfigurationUpdateHeading)
 	writeConfigFiles(message, options.ConfigFiles)
@@ -394,11 +373,6 @@ func (m *ProgressModel) View() tea.View {
 	m.writeProgressIcon(message, m.Progress.EnvironmentComplete, &waiting)
 	writeEnvironmentSummary(message, options)
 
-	if options.Application.Scaffold {
-		m.writeProgressIcon(message, m.Progress.ApplicationComplete, &waiting)
-		message.WriteString(fmt.Sprintf(SummaryApplicationScaffoldHeadingFmt, highlight(options.Application.Name)))
-	}
-
 	m.writeProgressIcon(message, m.Progress.ConfigComplete, &waiting)
 	message.WriteString(SummaryConfigurationUpdateHeading)
 	writeConfigFiles(message, options.ConfigFiles)
@@ -411,7 +385,7 @@ func (m *ProgressModel) View() tea.View {
 }
 
 func (m *ProgressModel) isComplete() bool {
-	return m.Progress.InstallComplete && m.Progress.EnvironmentComplete && m.Progress.ApplicationComplete && m.Progress.ConfigComplete
+	return m.Progress.InstallComplete && m.Progress.EnvironmentComplete && m.Progress.ConfigComplete
 }
 
 // writeProgressIcon writes the correct icon for the progress step depending on the current step.
