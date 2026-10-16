@@ -29,7 +29,7 @@ fail() {
 api_headers() {
     printf '%s\n' \
         -H "Accept: application/vnd.github+json" \
-        -H "Authorization: ******" \
+        -H "Authorization: Bearer ${GH_TOKEN}" \
         -H "X-GitHub-Api-Version: 2022-11-28"
 }
 

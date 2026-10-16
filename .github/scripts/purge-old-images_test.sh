@@ -21,10 +21,14 @@ fail_test() {
 }
 
 curl() {
-    local output="" header_file="" method="GET" url=""
+    local output="" header_file="" method="GET" url="" authorization=""
 
     while (($#)); do
         case "$1" in
+            -H)
+                [[ "$2" == Authorization:* ]] && authorization="$2"
+                shift
+                ;;
             --output) output="$2"; shift ;;
             --dump-header) header_file="$2"; shift ;;
             --request) method="$2"; shift ;;
@@ -33,6 +37,8 @@ curl() {
         esac
         shift
     done
+    [[ "${authorization}" == "Authorization: Bearer test-token" ]] ||
+        fail_test "GitHub token was not sent"
     if [[ "${method}" == DELETE ]]; then
         printf '%s\n' "${url}" >> "${TEST_DIR}/deletes"
         local delete_count
