@@ -258,6 +258,32 @@ func Test_withPreviewEnvVarNote(t *testing.T) {
 
 // Test_EnvCommands_RegisteredWithoutPreview checks that each `rad env` subcommand has no --preview
 // flag and defines every flag its runner reads.
+func Test_AppCommands_RegisteredWithoutPreview(t *testing.T) {
+	testcases := []struct {
+		command string
+		flags   []string
+	}{
+		{command: "delete", flags: []string{"workspace", "group", "application", "yes", "force"}},
+		{command: "graph", flags: []string{"workspace", "group", "application", "output", "include-icons"}},
+		{command: "list", flags: []string{"workspace", "group", "output"}},
+		{command: "show", flags: []string{"workspace", "group", "application", "output"}},
+		{command: "status", flags: []string{"workspace", "group", "application", "output"}},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.command, func(t *testing.T) {
+			cmd, _, err := RootCmd.Find([]string{"app", tc.command})
+			require.NoError(t, err)
+			require.Equal(t, tc.command, cmd.Name())
+
+			require.Nil(t, cmd.Flags().Lookup("preview"), "rad app %s must not expose --preview", tc.command)
+			for _, flag := range tc.flags {
+				require.NotNilf(t, cmd.Flags().Lookup(flag), "rad app %s must expose --%s", tc.command, flag)
+			}
+		})
+	}
+}
+
 func Test_EnvCommands_RegisteredWithoutPreview(t *testing.T) {
 	testcases := []struct {
 		command string

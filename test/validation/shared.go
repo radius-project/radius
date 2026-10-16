@@ -183,10 +183,10 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 
 		return nil
 	} else if resource.Type == CoreApplicationsResource {
-		// Radius.Core applications require cascade delete via the CLI --preview flag,
-		// which deletes owned resources before deleting the application itself.
+		// Radius.Core applications require cascade delete via the CLI, which
+		// deletes owned resources before deleting the application itself.
 		t.Logf("deleting Radius.Core application: %s", resource.Name)
-		_, err := cli.ApplicationDeletePreview(ctx, resource.Name, "")
+		_, err := cli.ApplicationDelete(ctx, resource.Name, "")
 		return err
 	} else if resource.Type == CoreEnvironmentsResource {
 		t.Logf("deleting Radius.Core environment: %s", resource.Name)
@@ -230,8 +230,8 @@ func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients
 
 		return nil
 	} else if resource.Type == CoreApplicationsResource {
-		// Radius.Core applications require cascade delete via the CLI --preview flag.
-		_, err := silentCLI.ApplicationDeletePreview(ctx, resource.Name, "")
+		// Radius.Core applications require cascade delete via the CLI.
+		_, err := silentCLI.ApplicationDelete(ctx, resource.Name, "")
 		return err
 	} else if resource.Type == CoreEnvironmentsResource {
 		_, err := silentCLI.EnvironmentDeletePreview(ctx, resource.Name, "")

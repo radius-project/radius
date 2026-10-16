@@ -52,10 +52,6 @@ func (c *scopedApplicationsClient) NewListByScopePager(options *corerpv20231001.
 	return c.inner.NewListByScopePager(c.scope, options)
 }
 
-func (c *scopedApplicationsClient) GetGraph(ctx context.Context, applicationName string, body corerpv20231001.GetGraphRequest, options *corerpv20231001.ApplicationsClientGetGraphOptions) (corerpv20231001.ApplicationsClientGetGraphResponse, error) {
-	return c.inner.GetGraph(ctx, c.scope, applicationName, body, options)
-}
-
 // scopedEnvironmentsClient binds a root scope to the generated Applications.Core/environments client.
 type scopedEnvironmentsClient struct {
 	inner *corerpv20231001.EnvironmentsClient

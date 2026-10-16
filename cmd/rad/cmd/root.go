@@ -32,15 +32,10 @@ import (
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	app_delete "github.com/radius-project/radius/pkg/cli/cmd/app/delete"
-	app_delete_preview "github.com/radius-project/radius/pkg/cli/cmd/app/delete/preview"
 	app_graph "github.com/radius-project/radius/pkg/cli/cmd/app/graph"
-	app_graph_preview "github.com/radius-project/radius/pkg/cli/cmd/app/graph/preview"
 	app_list "github.com/radius-project/radius/pkg/cli/cmd/app/list"
-	app_list_preview "github.com/radius-project/radius/pkg/cli/cmd/app/list/preview"
 	app_show "github.com/radius-project/radius/pkg/cli/cmd/app/show"
-	app_show_preview "github.com/radius-project/radius/pkg/cli/cmd/app/show/preview"
 	app_status "github.com/radius-project/radius/pkg/cli/cmd/app/status"
-	app_status_preview "github.com/radius-project/radius/pkg/cli/cmd/app/status/preview"
 	bicep_generate_kubernetes_manifest "github.com/radius-project/radius/pkg/cli/cmd/bicep/generatekubernetesmanifest"
 	bicep_publish "github.com/radius-project/radius/pkg/cli/cmd/bicep/publish"
 	bicep_publishextension "github.com/radius-project/radius/pkg/cli/cmd/bicep/publishextension"
@@ -384,28 +379,18 @@ func initSubCommands() {
 	workspaceCmd.AddCommand(workspaceSwitchCmd)
 
 	appDeleteCmd, _ := app_delete.NewCommand(framework)
-	previewAppDeleteCmd, _ := app_delete_preview.NewCommand(framework)
-	wirePreviewSubcommand(appDeleteCmd, previewAppDeleteCmd)
 	applicationCmd.AddCommand(appDeleteCmd)
 
 	appListCmd, _ := app_list.NewCommand(framework)
-	previewAppListCmd, _ := app_list_preview.NewCommand(framework)
-	wirePreviewSubcommand(appListCmd, previewAppListCmd)
 	applicationCmd.AddCommand(appListCmd)
 
 	appShowCmd, _ := app_show.NewCommand(framework)
-	previewAppShowCmd, _ := app_show_preview.NewCommand(framework)
-	wirePreviewSubcommand(appShowCmd, previewAppShowCmd)
 	applicationCmd.AddCommand(appShowCmd)
 
 	appStatusCmd, _ := app_status.NewCommand(framework)
-	previewAppStatusCmd, _ := app_status_preview.NewCommand(framework)
-	wirePreviewSubcommand(appStatusCmd, previewAppStatusCmd)
 	applicationCmd.AddCommand(appStatusCmd)
 
 	appGraphCmd, _ := app_graph.NewCommand(framework)
-	previewAppGraphCmd, _ := app_graph_preview.NewCommand(framework)
-	wirePreviewSubcommand(appGraphCmd, previewAppGraphCmd)
 	applicationCmd.AddCommand(appGraphCmd)
 
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
