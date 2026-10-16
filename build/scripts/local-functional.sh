@@ -134,8 +134,13 @@ install_radius() {
     rad workspace create kubernetes
     rad group create kind-radius
     rad group switch kind-radius
-    rad env create kind-radius --namespace default
-    rad env switch kind-radius
+    rad deploy ./test/infra/radius/legacy-test-environment.bicep \
+        --parameters name=kind-radius --parameters namespace=default
+    local scope
+    scope="$(yq -e '.workspaces.items[.workspaces.default].scope' "${HOME}/.rad/config.yaml")"
+    ENVIRONMENT_ID="${scope}/providers/Applications.Core/environments/kind-radius" \
+        yq -i '.workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID)' \
+        "${HOME}/.rad/config.yaml"
 }
 
 install_host_ca() {
@@ -177,7 +182,7 @@ setup() {
         exit 1
         ;;
     esac
-    for tool in docker git go make k3d kubectl helm openssl jq python3 \
+    for tool in docker git go make k3d kubectl helm openssl jq yq python3 \
         flux curl envsubst sudo; do
         command -v "${tool}" || {
             echo "Missing required tool: ${tool}. See running-functional-tests.md." >&2

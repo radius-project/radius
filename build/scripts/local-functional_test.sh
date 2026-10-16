@@ -97,6 +97,15 @@ git)
     esac
     ;;
 go | helm | python3 | flux | envsubst | update-ca-certificates | dapr | rad) ;;
+yq)
+    case "${1:-}" in
+    -e) echo /planes/radius/local/resourceGroups/kind-radius ;;
+    -i)
+        printf 'environment=%s\n' "${ENVIRONMENT_ID}" >>"${MOCK_LOG}"
+        ;;
+    *) echo "Unexpected yq command: $*" >&2; exit 1 ;;
+    esac
+    ;;
 bicep)
     case "${1:-}" in
     restore)
@@ -235,7 +244,7 @@ make)
 esac
 EOF
 chmod +x "${work_dir}/bin/mock"
-for tool in git go docker make k3d kubectl helm openssl jq python3 \
+for tool in git go docker make k3d kubectl helm openssl jq yq python3 \
     flux curl envsubst sudo update-ca-certificates bicep dapr rad; do
     ln -s mock "${work_dir}/bin/${tool}"
 done
@@ -266,7 +275,7 @@ for platform in linux/arm windows/amd64 windows/arm64; do
     assert_not_contains "${calls}" "make "
 done
 export LOCAL_FUNCTIONAL_HOST_OS=linux LOCAL_FUNCTIONAL_HOST_ARCH=amd64
-for tool in envsubst update-ca-certificates; do
+for tool in envsubst update-ca-certificates yq; do
     rm "${work_dir}/bin/${tool}"
     run_runner 1 setup
     assert_contains "${output}" "${tool}"
@@ -379,6 +388,30 @@ done
 export MOCK_FAILURE=""
 export LOCAL_FUNCTIONAL_HOST_OS=linux LOCAL_FUNCTIONAL_HOST_ARCH=amd64
 export MOCK_DOCKER_PLATFORM=linux/x86_64
+for suite in "" database multicluster upgrade dynamicrp; do
+    export LOCAL_FUNCTIONAL_SUITE="${suite}"
+    run_runner 0 install
+    assert_contains "${calls}" \
+        "rad deploy ./test/infra/radius/legacy-test-environment.bicep --parameters name=kind-radius --parameters namespace=default"
+    assert_contains "${calls}" \
+        "yq -e .workspaces.items[.workspaces.default].scope ${state}/home${suite:+-${suite}}/.rad/config.yaml"
+    assert_contains "${calls}" \
+        "yq -i .workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID) ${state}/home${suite:+-${suite}}/.rad/config.yaml"
+    assert_contains "${calls}" \
+        "environment=/planes/radius/local/resourceGroups/kind-radius/providers/Applications.Core/environments/kind-radius"
+    assert_not_contains "${calls}" "rad env "
+done
+export LOCAL_FUNCTIONAL_SUITE=""
+for command in \
+    "rad deploy ./test/infra/radius/legacy-test-environment.bicep --parameters name=kind-radius --parameters namespace=default" \
+    "yq -e .workspaces.items[.workspaces.default].scope ${state}/home/.rad/config.yaml" \
+    "yq -i .workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID) ${state}/home/.rad/config.yaml"; do
+    export MOCK_FAILURE="${command}"
+    run_runner 1 install
+    assert_contains "${output}" "mock failure: ${command}"
+    assert_not_contains "${calls}" "environment="
+done
+export MOCK_FAILURE=""
 [[ -d "${state}/samples/.git" ]] || fail "samples were not cloned"
 run_runner 0 fixtures
 assert_contains "${calls}" "git -C ${state}/samples pull --ff-only origin edge"
