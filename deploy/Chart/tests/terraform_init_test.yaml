@@ -5,97 +5,141 @@ templates:
   - dynamic-rp/deployment.yaml
   - dynamic-rp/configmaps.yaml
 tests:
-  # By default Terraform is downloaded in-process in the background (RADIUS_TERRAFORM_PREDOWNLOAD)
-  # rather than in an init container, so pods do not wait on the download to start.
-  - it: rp downloads terraform in-process by default
+  # By default Terraform is downloaded by the pre-upgrade image in an init container, so the
+  # download stays out of the resource provider container and a failure blocks the pod.
+  - it: rp downloads terraform with the pre-upgrade image by default
     asserts:
-      - notExists:
-          path: spec.template.spec.initContainers
+      - equal:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].image
+          value: example.com/pre-upgrade:test
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].args
+          value:
+            - download-terraform
+            - --version=9.9.9
+            - --dir=/terraform/.terraform-global
+            - --legacy-dir=/terraform
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].volumeMounts
+          content:
+            name: terraform-init-tmp
+            mountPath: /tmp
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].securityContext.readOnlyRootFilesystem
+          value: true
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: terraform-init-tmp
+            emptyDir:
+              sizeLimit: 256Mi
         template: rp/deployment.yaml
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: RADIUS_TERRAFORM_PREDOWNLOAD
-            value: 'true'
+            name: RADIUS_TERRAFORM_VERSION
+            value: "9.9.9"
         template: rp/deployment.yaml
-
-  - it: dynamic-rp downloads terraform in-process by default
-    asserts:
-      - notExists:
-          path: spec.template.spec.initContainers
-        template: dynamic-rp/deployment.yaml
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: RADIUS_TERRAFORM_PREDOWNLOAD
-            value: 'true'
-        template: dynamic-rp/deployment.yaml
-
-  - it: passes the configured terraform version to the in-process download
     set:
-      global.terraform.version: "1.9.0"
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: RADIUS_TERRAFORM_VERSION
-            value: "1.9.0"
-        template: rp/deployment.yaml
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: RADIUS_TERRAFORM_VERSION
-            value: "1.9.0"
-        template: dynamic-rp/deployment.yaml
+      global.terraform.version: "9.9.9"
+      controlPlaneReadiness.image: example.com/pre-upgrade
+      controlPlaneReadiness.tag: test
 
-  - it: uses the init container instead of in-process download when downloadUrl is set
+  - it: rp uses the shell init container when downloadUrl is set
     set:
       global.terraform.downloadUrl: "https://example.com/terraform.zip"
     asserts:
-      - matchRegex:
-          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
-          pattern: 'TERRAFORM_URL="https://example\.com/terraform\.zip"'
+      - equal:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].image
+          value: alpine:3.23.4
         template: rp/deployment.yaml
       - matchRegex:
           path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
           pattern: 'TERRAFORM_URL="https://example\.com/terraform\.zip"'
-        template: dynamic-rp/deployment.yaml
-      - notContains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: RADIUS_TERRAFORM_PREDOWNLOAD
-            value: 'true'
         template: rp/deployment.yaml
       - notContains:
-          path: spec.template.spec.containers[0].env
+          path: spec.template.spec.volumes
           content:
-            name: RADIUS_TERRAFORM_PREDOWNLOAD
-            value: 'true'
-        template: dynamic-rp/deployment.yaml
+            name: terraform-init-tmp
+            emptyDir:
+              sizeLimit: 256Mi
+        template: rp/deployment.yaml
 
-  - it: uses the init container instead of in-process download when useInitContainer is set
+  # Rendering stops at the first failing template, so this is asserted once on rp.
+  - it: fails when the terraform version is empty and downloadUrl is not set
     set:
-      global.terraform.useInitContainer: true
+      global.terraform.version: ""
     asserts:
-      - lengthEqual:
-          path: spec.template.spec.initContainers
-          count: 1
+      - failedTemplate:
+          errorMessage: global.terraform.version is required when global.terraform.downloadUrl is empty
         template: rp/deployment.yaml
-      - lengthEqual:
-          path: spec.template.spec.initContainers
-          count: 1
+
+  # By default Terraform is downloaded by the pre-upgrade image in an init container, so the
+  # download stays out of the resource provider container and a failure blocks the pod.
+  - it: dynamic-rp downloads terraform with the pre-upgrade image by default
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].image
+          value: example.com/pre-upgrade:test
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].args
+          value:
+            - download-terraform
+            - --version=9.9.9
+            - --dir=/terraform/.terraform-global
+            - --legacy-dir=/terraform
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].volumeMounts
+          content:
+            name: terraform-init-tmp
+            mountPath: /tmp
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].securityContext.readOnlyRootFilesystem
+          value: true
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: terraform-init-tmp
+            emptyDir:
+              sizeLimit: 256Mi
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_TERRAFORM_VERSION
+            value: "9.9.9"
+        template: dynamic-rp/deployment.yaml
+    set:
+      global.terraform.version: "9.9.9"
+      controlPlaneReadiness.image: example.com/pre-upgrade
+      controlPlaneReadiness.tag: test
+
+  - it: dynamic-rp uses the shell init container when downloadUrl is set
+    set:
+      global.terraform.downloadUrl: "https://example.com/terraform.zip"
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].image
+          value: alpine:3.23.4
+        template: dynamic-rp/deployment.yaml
+      - matchRegex:
+          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
+          pattern: 'TERRAFORM_URL="https://example\.com/terraform\.zip"'
         template: dynamic-rp/deployment.yaml
       - notContains:
-          path: spec.template.spec.containers[0].env
+          path: spec.template.spec.volumes
           content:
-            name: RADIUS_TERRAFORM_PREDOWNLOAD
-            value: 'true'
-        template: rp/deployment.yaml
-      - notContains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: RADIUS_TERRAFORM_PREDOWNLOAD
-            value: 'true'
+            name: terraform-init-tmp
+            emptyDir:
+              sizeLimit: 256Mi
         template: dynamic-rp/deployment.yaml
 
   - it: does not pre-download terraform when disabled
@@ -111,15 +155,9 @@ tests:
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
-            name: RADIUS_TERRAFORM_PREDOWNLOAD
-            value: 'true'
+            name: RADIUS_TERRAFORM_VERSION
+            value: "1.16.5"
         template: rp/deployment.yaml
-      - notContains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: RADIUS_TERRAFORM_PREDOWNLOAD
-            value: 'true'
-        template: dynamic-rp/deployment.yaml
 
   # Regression test for https://github.com/radius-project/radius/pull/11880
   # The pre-mounted Terraform binary path written by the init container MUST
@@ -128,9 +166,10 @@ tests:
   #   defaultGlobalMarkerFile      = "/terraform/.terraform-global/.terraform-ready"
   # If these strings drift, ensureGlobalTerraformBinary falls through to
   # downloadAndInstallTerraform and the init container's work is wasted.
+  # The default init container passes --dir (asserted above); these cover the downloadUrl script.
   - it: rp init container writes terraform binary to the global path expected by install.go
     set:
-      global.terraform.useInitContainer: true
+      global.terraform.downloadUrl: "https://example.com/terraform.zip"
     asserts:
       - matchRegex:
           path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
@@ -147,7 +186,7 @@ tests:
 
   - it: dynamic-rp init container writes terraform binary to the global path expected by install.go
     set:
-      global.terraform.useInitContainer: true
+      global.terraform.downloadUrl: "https://example.com/terraform.zip"
     asserts:
       - matchRegex:
           path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
@@ -196,29 +235,3 @@ tests:
           errorMessage: 'dynamicrp.terraform.path must be "/terraform" -- the runtime configmap (deploy/Chart/templates/dynamic-rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching.'
         template: dynamic-rp/deployment.yaml
 
-  # Regression test for the second half of #11880: the init container must
-  # install the same version the runtime falls back to, or recipes behave
-  # differently between cold and warm starts. The literal below is arbitrary
-  # -- these cases only prove the chart value reaches the command. Drift
-  # between values.yaml and pkg/recipes/terraform/version.go is covered by
-  # TestTerraformVersionMatchesHelmChart, so keeping the pinned version out
-  # of here lets the tool updater bump Terraform without editing this file.
-  - it: rp init container installs the version from global.terraform.version
-    set:
-      global.terraform.useInitContainer: true
-      global.terraform.version: "9.9.9"
-    asserts:
-      - matchRegex:
-          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
-          pattern: 'TERRAFORM_VERSION="9\.9\.9"'
-        template: rp/deployment.yaml
-
-  - it: dynamic-rp init container installs the version from global.terraform.version
-    set:
-      global.terraform.useInitContainer: true
-      global.terraform.version: "9.9.9"
-    asserts:
-      - matchRegex:
-          path: spec.template.spec.initContainers[?(@.name=='terraform-init')].command[2]
-          pattern: 'TERRAFORM_VERSION="9\.9\.9"'
-        template: dynamic-rp/deployment.yaml

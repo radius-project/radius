@@ -556,7 +556,6 @@ tests:
     set:
       dynamicrp.image: dynamic-rp
       global.terraform.enabled: true
-      global.terraform.useInitContainer: true
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].name
@@ -564,7 +563,7 @@ tests:
         template: dynamic-rp/deployment.yaml
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: alpine:3.23.4
+          value: ghcr.io/radius-project/pre-upgrade:edge
         template: dynamic-rp/deployment.yaml
 
   - it: should render append-root-ca init container on dynamic-rp when cert is set and both terraform and buildkit are disabled
@@ -636,7 +635,7 @@ tests:
       dynamicrp.image: dynamic-rp
       rp.image: applications-rp
       global.terraform.enabled: true
-      global.terraform.useInitContainer: true
+      global.terraform.downloadUrl: https://example.com/terraform.zip
       global.terraform.initImage: alpine:3.22
     asserts:
       - equal:
@@ -758,7 +757,6 @@ tests:
     set:
       rp.image: applications-rp
       global.terraform.enabled: true
-      global.terraform.useInitContainer: true
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].name
@@ -766,7 +764,7 @@ tests:
         template: rp/deployment.yaml
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: alpine:3.23.4
+          value: ghcr.io/radius-project/pre-upgrade:edge
         template: rp/deployment.yaml
 
   - it: should add append-root-ca init container and mounts for ucp when cert provided

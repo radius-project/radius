@@ -7,8 +7,7 @@ release:
   name: radius
   namespace: radius-system
 tests:
-  # Terraform is downloaded in the background, so readiness must track the API listener
-  # rather than container start.
+  # Readiness must track the API listener rather than container start.
   - it: gates applications-rp readiness on its health endpoint
     asserts:
       - equal:

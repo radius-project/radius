@@ -60,16 +60,13 @@ global:
   # Configure terraform binary source for pre-downloading terraform binaries
   # This avoids downloading terraform on each recipe execution
   terraform:
-    # Enable terraform binary pre-downloading. By default applications-rp and
-    # dynamic-rp download Terraform in the background after they start (with
-    # checksum and signature verification), so pods become ready without
-    # waiting for the download.
+    # Enable terraform binary pre-downloading. A `terraform-init` init container
+    # downloads Terraform to a volume shared with applications-rp and
+    # dynamic-rp before they start. By default it runs the small pre-upgrade
+    # image (see `controlPlaneReadiness`), which verifies the release checksum
+    # and signature.
     enabled: true
-    # Pre-download Terraform in an init container instead, so the binary is in
-    # place before the pod starts at the cost of slower pod startup. Always
-    # used when `downloadUrl` is set.
-    useInitContainer: false
-    # Init image used to pre-download Terraform binaries in the init container.
+    # Image used for the init container only when `downloadUrl` is set.
     initImage: "alpine:3.23.4"
     # Terraform version to pre-download. MUST match terraformVersion in
     # pkg/recipes/terraform/version.go -- the runtime download fallback
@@ -224,7 +221,7 @@ dashboard:
   # The dashboard image is large. When enabled, an init container (using the
   # controlPlaneReadiness image) waits until the core control-plane Deployments are
   # available before the dashboard image is pulled, so the dashboard does not delay
-  # the core control plane. `rad install` does not wait for the dashboard.
+  # the core control plane. `rad install` still waits for the dashboard.
   startupGate:
     enabled: true
     timeoutSeconds: 900

@@ -218,16 +218,11 @@ rad install kubernetes \
 
 ### Terraform Binary Pre-downloading
 
-Pre-downloading is enabled by default (`global.terraform.enabled=true`). After `applications-rp` and `dynamic-rp` start, they download the pinned Terraform version in the background. hc-install verifies the release checksum and signature. Pods do not wait for the download to become ready. If a Terraform recipe runs before the download finishes, it waits for the download. If the download fails, the recipe downloads Terraform on demand.
+Pre-downloading is enabled by default (`global.terraform.enabled=true`). Before `applications-rp` and `dynamic-rp` start, a `terraform-init` init container downloads the pinned Terraform version (`global.terraform.version`) to a volume shared with the resource provider. The download runs outside the resource provider container. If it fails, the pod does not start and the init container is retried.
 
-To pre-download Terraform in an init container instead, so the binary is in place before the pod starts at the cost of slower pod startup:
+The init container runs the small `pre-upgrade` image (the `controlPlaneReadiness` image) with its `download-terraform` command. hc-install verifies the release checksum and signature. The container uses a read-only root filesystem with a dedicated scratch volume for the download.
 
-```console
-helm upgrade --wait --install radius deploy/Chart -n radius-system \
-  --set global.terraform.useInitContainer=true
-```
-
-For custom sources (private repositories, proxies, etc.), specify a complete download URL. The init container is always used when `downloadUrl` is set:
+For custom sources (private repositories, proxies, etc.), specify a complete download URL. The init container then uses `global.terraform.initImage` with a shell script instead:
 
 ```console
 helm upgrade --wait --install radius deploy/Chart -n radius-system \

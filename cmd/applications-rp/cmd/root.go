@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
-	"github.com/radius-project/radius/pkg/recipes/terraform"
 	"github.com/radius-project/radius/pkg/server"
 
 	"github.com/radius-project/radius/pkg/components/hosting"
@@ -75,10 +74,6 @@ var rootCmd = &cobra.Command{
 
 		if options.Config.TracerProvider.Enabled {
 			services = append(services, &traceservice.Service{Options: &options.Config.TracerProvider})
-		}
-
-		if terraform.PreDownloadEnabled() {
-			services = append(services, terraform.NewPreDownloadService())
 		}
 
 		builders, err := builders(options)

@@ -24,7 +24,6 @@ import (
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend"
 	"github.com/radius-project/radius/pkg/dynamicrp/frontend"
-	"github.com/radius-project/radius/pkg/recipes/terraform"
 )
 
 // NewServer initializes a host for UCP based on the provided options.
@@ -44,11 +43,6 @@ func NewServer(options *dynamicrp.Options) (*hosting.Host, error) {
 	// Tracing is provided via a service.
 	if options.Config.Tracing.Enabled {
 		services = append(services, &traceservice.Service{Options: &options.Config.Tracing})
-	}
-
-	// Pre-download Terraform in the background so that the pod does not wait for it at startup.
-	if terraform.PreDownloadEnabled() {
-		services = append(services, terraform.NewPreDownloadService())
 	}
 
 	services = append(services, frontend.NewService(options))

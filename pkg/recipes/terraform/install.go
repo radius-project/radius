@@ -19,9 +19,7 @@ package terraform
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -33,6 +31,7 @@ import (
 	"github.com/hashicorp/hc-install/src"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/components/metrics"
+	"github.com/radius-project/radius/pkg/recipes/terraform/tfbinary"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -44,9 +43,9 @@ const (
 
 	// Global shared terraform binary paths (persistent hidden directory under terraform root)
 	// Using .terraform-global as a more recognizable and persistent directory name
-	defaultGlobalTerraformDir    = "/terraform/.terraform-global"
-	defaultGlobalTerraformBinary = "/terraform/.terraform-global/terraform"
-	defaultGlobalMarkerFile      = "/terraform/.terraform-global/.terraform-ready"
+	defaultGlobalTerraformDir    = tfbinary.DefaultGlobalDir
+	defaultGlobalTerraformBinary = tfbinary.DefaultGlobalDir + "/" + tfbinary.BinaryName
+	defaultGlobalMarkerFile      = tfbinary.DefaultGlobalDir + "/" + tfbinary.MarkerFileName
 )
 
 // InstallOptions configures how Terraform is installed and initialized.
@@ -205,7 +204,7 @@ func downloadAndInstallTerraform(ctx context.Context, installer *install.Install
 
 	// Copy to our standardized global path if different
 	if execPath != globalBinary {
-		if err := copyExecutable(execPath, globalBinary); err != nil {
+		if err := tfbinary.CopyExecutable(execPath, globalBinary); err != nil {
 			return fmt.Errorf("failed to copy terraform binary to global path: %w", err)
 		}
 		logger.Info("Copied Terraform binary to standardized global path")
@@ -253,36 +252,6 @@ func downloadAndInstallTerraform(ctx context.Context, installer *install.Install
 	}
 
 	return nil
-}
-
-// copyExecutable streams src to dst with mode 0755 without buffering the whole binary in memory.
-// The copy is written to a temporary file in dst's directory and renamed into place.
-func copyExecutable(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	tmp, err := os.CreateTemp(filepath.Dir(dst), filepath.Base(dst)+".tmp-*")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tmp.Name())
-
-	if _, err := io.Copy(tmp, in); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Chmod(0755); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-
-	return os.Rename(tmp.Name(), dst)
 }
 
 // resetGlobalStateForTesting resets the global terraform state for testing purposes
