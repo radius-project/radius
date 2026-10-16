@@ -69,7 +69,7 @@ sudo make install
 Override the destination with `RAD_LOCATION`. The path must end in `rad` and should be on your `PATH`:
 
 ```sh
-RAD_LOCATION=/my/custom/location/rad sudo make install
+sudo RAD_LOCATION=/my/custom/location/rad make install
 ```
 
 ### Test Windows background execution
