@@ -21,23 +21,15 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/agnivade/levenshtein"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/spf13/cobra"
 )
 
-const (
-	LevenshteinCutoff = 2
-
-	ContainerType = "Applications.Core/containers"
-
-	// PreviewContainerType is the preview container resource type used with the --preview flag.
-	PreviewContainerType = "Radius.Compute/containers"
-)
+// ContainerType is the only resource type supported by "rad resource expose" and "rad resource logs".
+const ContainerType = "Radius.Compute/containers"
 
 var resourceExposeCmd = &cobra.Command{
 	Use:   "expose [type] [resource]",
@@ -48,27 +40,12 @@ This command is useful for testing resources that accept network traffic but are
 Press CTRL+C to exit the command and terminate the tunnel.`,
 	Example: `# expose port 80 on the 'orders' resource of the 'icecream-store' application
 # on local port 5000
-rad resource expose --application icecream-store Applications.Core/containers orders --port 5000 --remote-port 80
-
-# expose port 80 using the preview resource type 'Radius.Compute/containers'
-rad resource expose --application icecream-store Radius.Compute/containers orders --port 5000 --remote-port 80 --preview`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return exposeResource(cmd, args, false)
-	},
+rad resource expose --application icecream-store Radius.Compute/containers orders --port 5000 --remote-port 80`,
+	RunE: exposeResource,
 }
 
-// resourceExposePreviewCmd holds the preview implementation of "rad resource expose".
-// It is wired to resourceExposeCmd via wirePreviewSubcommand so it is selected by the
-// --preview flag or the RADIUS_PREVIEW environment variable.
-var resourceExposePreviewCmd = &cobra.Command{
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return exposeResource(cmd, args, true)
-	},
-}
-
-// exposeResource runs "rad resource expose" against either the legacy
-// (Applications.Core/containers) or preview (Radius.Compute/containers) API surface.
-func exposeResource(cmd *cobra.Command, args []string, preview bool) error {
+// exposeResource runs "rad resource expose" for a Radius.Compute/containers resource.
+func exposeResource(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()))
 	if err != nil {
 		return err
@@ -86,51 +63,13 @@ func exposeResource(cmd *cobra.Command, args []string, preview bool) error {
 		return err
 	}
 
-	if !preview {
-		// Check if the application provided exists or suggest a closest application in the scope
-		managementClient, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
-		if err != nil {
-			return err
-		}
-
-		// Ignore applicationresource as we only check for existence of application
-		_, err = managementClient.GetApplication(cmd.Context(), application)
-		if err != nil {
-			appNotFound := clients.Is404Error(err)
-			if !appNotFound {
-				return clierrors.MessageWithCause(err, "Unable to find application %s.", application)
-			}
-
-			// Suggest an application only when an existing one is not found.
-			// Ignore errors as we are trying to suggest an application and don't care about the errors in the suggestion process.
-			appList, err := managementClient.ListApplications(cmd.Context())
-			if err != nil {
-				return clierrors.MessageWithCause(err, "Unable to list applications.")
-			}
-
-			msg := fmt.Sprintf("Application %s does not exist.", application)
-			for _, app := range appList {
-				distance := levenshtein.ComputeDistance(*app.Name, application)
-				if distance <= LevenshteinCutoff {
-					msg = msg + fmt.Sprintf("Did you mean %s?", *app.Name)
-					break
-				}
-			}
-			fmt.Println(msg)
-		}
-	}
-
 	resourceType, resourceName, err := cli.RequireResource(cmd, args)
 	if err != nil {
 		return err
 	}
 
-	expectedType := ContainerType
-	if preview {
-		expectedType = PreviewContainerType
-	}
-	if !strings.EqualFold(resourceType, expectedType) {
-		return fmt.Errorf("only %s is supported", expectedType)
+	if !strings.EqualFold(resourceType, ContainerType) {
+		return fmt.Errorf("only %s is supported", ContainerType)
 	}
 
 	localPort, err := cmd.Flags().GetInt("port")
@@ -152,13 +91,7 @@ func exposeResource(cmd *cobra.Command, args []string, preview bool) error {
 		remotePort = localPort
 	}
 
-	var client clients.DiagnosticsClient
-	if preview {
-		client, err = connections.DefaultFactory.CreateDiagnosticsClientPreview(cmd.Context(), *workspace)
-	} else {
-		client, err = connections.DefaultFactory.CreateDiagnosticsClient(cmd.Context(), *workspace)
-	}
-
+	client, err := connections.DefaultFactory.CreateDiagnosticsClientPreview(cmd.Context(), *workspace)
 	if err != nil {
 		return err
 	}
@@ -203,6 +136,5 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	wirePreviewSubcommand(resourceExposeCmd, resourceExposePreviewCmd)
 	resourceCmd.AddCommand(resourceExposeCmd)
 }

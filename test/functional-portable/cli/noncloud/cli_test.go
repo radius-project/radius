@@ -124,7 +124,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 	})
 
 	t.Run("Validate rad resource logs containers", func(t *testing.T) {
-		output, err := cli.ResourceLogs(ctx, "Radius.Compute/containers", appName, containerName, true)
+		output, err := cli.ResourceLogs(ctx, "Radius.Compute/containers", appName, containerName)
 		require.NoError(t, err)
 
 		// We don't want to be too fragile so we're not validating the logs in depth
@@ -140,7 +140,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 
 		done := make(chan error)
 		go func() {
-			output, err := cli.ResourceExpose(child, "Radius.Compute/containers", appName, containerName, port, 3000, true)
+			output, err := cli.ResourceExpose(child, "Radius.Compute/containers", appName, containerName, port, 3000)
 			t.Logf("ResourceExpose - output: %s", output)
 			done <- err
 		}()

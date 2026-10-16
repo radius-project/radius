@@ -527,9 +527,8 @@ func (cli *CLI) GroupShow(ctx context.Context, groupName string) (string, error)
 	return cli.RunCommand(ctx, args)
 }
 
-// ResourceLogs runs the CLI command to get the logs of a resource in an application. When preview is
-// true the "--preview" flag is added so the command operates against the preview resource types.
-func (cli *CLI) ResourceLogs(ctx context.Context, resourceType string, applicationName string, resourceName string, preview bool) (string, error) {
+// ResourceLogs runs the CLI command to get the logs of a resource in an application.
+func (cli *CLI) ResourceLogs(ctx context.Context, resourceType string, applicationName string, resourceName string) (string, error) {
 	args := []string{
 		"resource",
 		"logs",
@@ -537,15 +536,11 @@ func (cli *CLI) ResourceLogs(ctx context.Context, resourceType string, applicati
 		resourceType,
 		resourceName,
 	}
-	if preview {
-		args = append(args, "--preview")
-	}
 	return cli.RunCommand(ctx, args)
 }
 
-// ResourceExpose runs a command to expose a resource from an application on a given port. When preview
-// is true the "--preview" flag is added so the command operates against the preview resource types.
-func (cli *CLI) ResourceExpose(ctx context.Context, resourceType string, applicationName string, resourceName string, localPort int, remotePort int, preview bool) (string, error) {
+// ResourceExpose runs a command to expose a resource from an application on a given port.
+func (cli *CLI) ResourceExpose(ctx context.Context, resourceType string, applicationName string, resourceName string, localPort int, remotePort int) (string, error) {
 	args := []string{
 		"resource",
 		"expose",
@@ -554,9 +549,6 @@ func (cli *CLI) ResourceExpose(ctx context.Context, resourceType string, applica
 		resourceName,
 		"--port", fmt.Sprintf("%d", localPort),
 		"--remote-port", fmt.Sprintf("%d", remotePort),
-	}
-	if preview {
-		args = append(args, "--preview")
 	}
 	return cli.RunCommand(ctx, args)
 }
