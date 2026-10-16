@@ -39,6 +39,67 @@ type CLI struct {
 	T                *testing.T
 	ConfigFilePath   string
 	WorkingDirectory string
+
+	// suppressLogs disables all test logging from this CLI. It is set when commands may
+	// still be running after the test function returns, because logging to a completed test
+	// panics with "Log in goroutine after <test> has completed". It is unexported so the
+	// only way to obtain a suppressed CLI is Silent, which copies rather than mutating a
+	// CLI that concurrent goroutines may share.
+	suppressLogs bool
+
+	// logDestination overrides T as the log destination. It exists so tests can observe
+	// suppression; production callers leave it nil and logging goes to T.
+	logDestination logger
+
+	// heartbeatInterval overrides HeartbeatInterval so tests need not wait on the real one.
+	heartbeatInterval time.Duration
+}
+
+// logger is the destination for CLI test logging. *testing.T satisfies it.
+type logger interface {
+	Logf(format string, args ...any)
+}
+
+// Silent returns a copy of the CLI that performs no test logging. Use it for commands run
+// from background goroutines that are not joined before the test completes.
+//
+// It returns a copy rather than mutating the receiver because teardown runs these commands
+// concurrently from goroutines that share one CLI.
+func (cli *CLI) Silent() *CLI {
+	if cli == nil {
+		return nil
+	}
+
+	copied := *cli
+	copied.suppressLogs = true
+	return &copied
+}
+
+// logf writes to the test log unless logging is suppressed.
+func (cli *CLI) logf(format string, args ...any) {
+	if cli.suppressLogs {
+		return
+	}
+
+	if cli.logDestination != nil {
+		cli.logDestination.Logf(format, args...)
+		return
+	}
+
+	if cli.T == nil {
+		return
+	}
+
+	cli.T.Logf(format, args...)
+}
+
+// heartbeatPeriod returns the interval between heartbeat log lines.
+func (cli *CLI) heartbeatPeriod() time.Duration {
+	if cli.heartbeatInterval > 0 {
+		return cli.heartbeatInterval
+	}
+
+	return HeartbeatInterval
 }
 
 // NewCLI creates a new CLI instance with the given testing.T and config file path.
@@ -195,7 +256,7 @@ type CreateOptions struct {
 	Group       string // Resource group name (--group)
 	Workspace   string // Workspace name (--workspace)
 	Environment string // Environment name (--environment)
-	Namespace   string // Kubernetes namespace (--namespace, for env create)
+	Namespace   string // Kubernetes namespace (--kubernetes-namespace, for env create)
 	Context     string // Kubernetes context (--context, for workspace create)
 	Force       bool   // Overwrite if exists (--force, for workspace create)
 	Output      string // Output format (--output)
@@ -289,7 +350,7 @@ func (cli *CLI) EnvCreate(ctx context.Context, environmentName string, opts ...C
 	if len(opts) > 0 {
 		opt := opts[0]
 		if opt.Namespace != "" {
-			args = append(args, "--namespace", opt.Namespace)
+			args = append(args, "--kubernetes-namespace", opt.Namespace)
 		}
 		if opt.Group != "" {
 			args = append(args, "--group", opt.Group)
@@ -527,14 +588,13 @@ func (cli *CLI) RecipePackShow(ctx context.Context, recipepackName, groupName st
 	return cli.RunCommand(ctx, args)
 }
 
-// EnvironmentCreatePreview runs the "env create" command for the specified environment name and returns the output as a string, returning
+// EnvironmentCreatePreview runs "env create" for a Radius.Core environment and returns the output as a string, returning
 // an error if the command fails.
 func (cli *CLI) EnvironmentCreatePreview(ctx context.Context, environmentName, groupName, kubernetesNamespace string) (string, error) {
 	args := []string{
 		"env",
 		"create",
 		environmentName,
-		"--preview",
 	}
 
 	if kubernetesNamespace != "" {
@@ -554,7 +614,6 @@ func (cli *CLI) EnvironmentListPreview(ctx context.Context, groupName string) (s
 	args := []string{
 		"env",
 		"list",
-		"--preview",
 	}
 
 	if groupName != "" {
@@ -564,7 +623,7 @@ func (cli *CLI) EnvironmentListPreview(ctx context.Context, groupName string) (s
 	return cli.RunCommand(ctx, args)
 }
 
-// EnvironmentUpdatePreview runs the "env update --preview" command for the specified environment name
+// EnvironmentUpdatePreview runs the "env update" command for the specified environment name
 // and returns the output as a string, returning an error if the command fails.
 // Optional parameters groupName, recipePack, and kubernetesNamespace are applied when non-empty.
 func (cli *CLI) EnvironmentUpdatePreview(ctx context.Context, environmentName, groupName, recipePack, kubernetesNamespace string) (string, error) {
@@ -572,7 +631,6 @@ func (cli *CLI) EnvironmentUpdatePreview(ctx context.Context, environmentName, g
 		"env",
 		"update",
 		environmentName,
-		"--preview",
 	}
 
 	if recipePack != "" {
@@ -597,7 +655,6 @@ func (cli *CLI) EnvironmentShowPreview(ctx context.Context, environmentName, gro
 		"env",
 		"show",
 		environmentName,
-		"--preview",
 	}
 
 	if groupName != "" {
@@ -607,14 +664,13 @@ func (cli *CLI) EnvironmentShowPreview(ctx context.Context, environmentName, gro
 	return cli.RunCommand(ctx, args)
 }
 
-// EnvironmentDeletePreview runs the "env delete" command with the --preview flag for the specified environment name
+// EnvironmentDeletePreview runs the "env delete" command for the specified Radius.Core environment name
 // and returns the output as a string, returning an error if the command fails.
 func (cli *CLI) EnvironmentDeletePreview(ctx context.Context, environmentName, groupName string) (string, error) {
 	args := []string{
 		"env",
 		"delete",
 		environmentName,
-		"--preview",
 		"--yes",
 	}
 
@@ -768,7 +824,7 @@ func (cli *CLI) CreateCommand(ctx context.Context, args []string) (*exec.Cmd, fu
 func (cli *CLI) ReportCommandResult(ctx context.Context, out string, description string, err error) error {
 	// If there's no context error, we know the command completed (or errored).
 	for line := range strings.SplitSeq(out, "\n") {
-		cli.T.Logf("[rad] %s", line)
+		cli.logf("[rad] %s", line)
 	}
 
 	if ctx.Err() == context.DeadlineExceeded {
@@ -820,8 +876,8 @@ func (cli *CLI) heartbeat(description string, done <-chan struct{}) {
 	start := time.Now()
 	for {
 		select {
-		case <-time.After(HeartbeatInterval):
-			cli.T.Logf("[heartbeat] command %s is still running after %s", description, time.Since(start))
+		case <-time.After(cli.heartbeatPeriod()):
+			cli.logf("[heartbeat] command %s is still running after %s", description, time.Since(start))
 		case <-done:
 			return
 		}

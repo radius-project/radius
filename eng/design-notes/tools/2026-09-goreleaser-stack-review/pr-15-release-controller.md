@@ -1,0 +1,101 @@
+# Review note: PR 15 - Release controller and trigger swap
+
+- **Pull request**: [#12872](https://github.com/radius-project/radius/pull/12872)
+- **Plan phase**: [PR 15](../2026-03-goreleaser-release-lifecycle-implementation-plan.md#pr-15-release-controller-and-trigger-swap)
+- **Stack index**: [README](./README.md)
+
+## Verdict
+
+The layer implements the design's release reconciliation stages. One reusable controller resolves exactly one merged generated release pull request, reads the plan committed under `.github/release-plans/`, binds it to the metadata-bearing commit, preflights every destination with the reconciliation script in check-only mode, verifies the signed Deployment Engine tag, waits for approval, publishes and verifies the Deployment Engine image and locks its digest, reconciles the sibling repositories at the commits frozen in the plan, and creates the Radius tag last with the release App so the tag starts the release build. Concurrency is keyed by version and source commit with up to 100 pending attempts and no cancellation of the active run. Every job checks out the executing workflow's commit, so an approval wait cannot change the code between stages; image verification also retains the plan's original output contract across resume invocations. Approve Release and Resume Release are secretless gateways that dispatch the default-branch controller. The legacy `versions.yaml` trigger is deleted outright, and the generated metadata backport removes each release branch's copy before it can fire. Plan validation regenerates the plan from trusted code on pull requests and in the merge group, and the controller rejects a conflicting version or source pair. Stage-boundary failure injection exercises idempotent tag reconciliation; separate monitor tests cover delayed visibility after an accepted dispatch. These checks do not prove exactly-once publication across interrupted invocations or replace the live App-tag-trigger and release-cycle soak gates.
+
+The original cross-layer findings and follow-up correctness fixes are recorded below.
+
+## Changes made in this review
+
+### 1. Both signed-tag verifications can read the Deployment Engine repository
+
+- **What changed**: the `validate` and `publish-deployment-engine` jobs mint a publisher App token for `azure-octo/deployment-engine` with Contents read and verify the signed tag with it instead of `GITHUB_TOKEN`. The plan's PR 15 text names the exception to the "validation runs on `GITHUB_TOKEN`" rule.
+- **Why**: the repository is private and belongs to another organization, so `GITHUB_TOKEN` receives a 404 for every tag, which the script until PR 12 reported as a missing tag. With the PR 12 script the controller would instead stop at validation with "the token cannot read azure-octo/deployment-engine" on every run. Either way no release could pass the first job (cross-layer finding 10).
+- **Value**: the controller's hard block on the signed tag works as the design intends.
+- **Impact**: the publisher App installation on `azure-octo` must include `deployment-engine`, which PR 12 already requires and the runbook lists.
+
+### 2. Frozen sibling commits are authoritative
+
+- **What changed**: plan validation no longer requires the plan's sibling commits to equal the live branch heads. It checks that each frozen commit is still reachable from the branch it was captured on, by fetching that branch into a scratch repository, and regenerates the plan from the plan's own sibling entries. Two tests replace the drift test: a sibling `main` that advances after planning passes, and a planned commit that no branch contains fails. The runbook says when a rerun of Prepare Release is needed. This closes cross-layer finding 3.
+- **Why**: the design records the required repositories in the release plan precisely so that a later run does not recompute them from mutable branch heads. The equality check did the opposite: any unrelated merge to `recipes`, `dashboard`, or `bicep-types-aws` while the release pull request was open failed the pull request check and the merge group, and forced a regenerated plan that then raced the next sibling merge. The reachability check keeps the guarantee that matters, which is that the controller can create the sibling release branch and tag at the frozen commit.
+- **Value**: a release pull request stays mergeable through ordinary sibling activity, and the reviewed plan is what gets released.
+- **Impact**: a sibling change merged after preparation is included only by rerunning Prepare Release, which is now the documented way to say it belongs in the release. The validator fetches one branch from each sibling repository per run; measured cost is recorded below.
+
+### 3. Existing-channel validation and frozen output verification
+
+- **What changed**: the controller passes the channel directly to `jq` rather than setting it only for the upstream `yq` process. The resolved plan artifact now carries its `expectedOutputs` as `release-targets.json`; both image-verification jobs download that exact artifact by ID and pass it to the verifier. Missing or invalid Deployment Engine platform contracts fail explicitly.
+- **Why**: valid sibling refs such as `release/0.61` were rejected when `jq` could not see `CHANNEL`. Separately, using the controller checkout's `targets.json` changed the meaning of an approved plan when a resume ran newer tooling.
+- **Coverage**: real-Git fixtures cover subsequent RCs, finals, patches, wrong-channel rejection, and output-contract extraction. Image-verifier fixtures change controller defaults between attempts while preserving the approved targets and locked digest.
+
+### 4. Ambiguous dispatches fail closed
+
+- **What changed**: after a server error or lost dispatch response, the monitor waits for the correlated run until the existing deadline without issuing another dispatch. Explicit rate-limit rejections retain bounded retries. An unknown outcome is propagated to the controller summary with inspection instructions instead of an immediate resume command.
+- **Why**: a dispatch can be accepted before its run becomes visible. Retrying after one empty lookup duplicated accepted work. The stage-resume fixture's local completion marker did not exercise that boundary.
+- **Coverage**: the actual monitor module is exercised with delayed visibility, lost responses, network timeouts, failed discovery, and deadline expiry. Full protection across interrupted invocations still needs publisher-side idempotency.
+
+### 5. Release lookup is scoped to the known branch
+
+The resolver filters closed pull requests by the exact `owner:automation/prepare-release-<version>` head instead of enumerating every closed `main` pull request. Repository identity, merged state, branch matching, and ambiguity checks remain in place.
+
+### 6. The approval gate fails closed
+
+- **What changed**: before any preflight, the `validate` job checks that the `release` environment requires reviewers and fails otherwise. The job and its caller gain `actions: read` for the environment lookup; a missing deployment branch restriction is reported as a warning.
+- **Why**: the environment had no protection rules, so the `approve` job passed immediately, and every merged release pull request, Approve Release run, or Resume Release run mutated four repositories without the approval the runbook describes.
+- **Value**: the documented approval cannot silently become a no-op.
+- **Impact**: required reviewers must be configured on `release` before the first controller release; the runbook lists it as a prerequisite.
+
+### 7. Approvers see the Deployment Engine commit that ships
+
+- **What changed**: validation records the signed tag's commit as a job output, and its summary lists that commit with the Deployment Engine image tag, the release branch, and the frozen sibling commits. The publish job passes the commit back to `verify-deployment-engine-tag.sh`, which fails when the tag now points elsewhere.
+- **Why**: the publish job resolved the tag again after approval, so a tag re-pointed during the approval wait would have been published and locked without anyone seeing its commit.
+- **Value**: the summary an approver reviews is what the controller releases.
+
+### 8. A stale image is not a registry error
+
+- **What changed**: `verify-deployment-engine-image.sh --allow-stale` reports a tag that holds another build, by platform set, ref label, or revision label, as `state=stale` and exits successfully. The inspection step no longer uses `continue-on-error`.
+- **Why**: every patch release finds the previous build under the `X.Y` tag, so the step was marked failed on routine runs, and a transient registry error took the same path and dispatched the publisher again after a successful run.
+- **Value**: a stale tag is republished as before, a registry error fails the run without a duplicate dispatch, and a healthy release run shows no failed steps.
+- **Coverage**: the fake registry now returns the BuildKit attestation manifests that published images carry, and the tests cover ref and revision mismatches, stale reporting, and registry errors.
+
+### 9. The digest lock is tamper-evident
+
+- **What changed**: the lock reader also requires the state commit to be GitHub-verified and bot-authored, which the controller's API write satisfies.
+- **Why**: a person-written commit with the expected parent and a canonical lock file was accepted as the release's locked digest.
+- **Impact**: deleting the state branch still resets the lock; the runbook recommends rulesets for the state branch and the release tags.
+
+### 10. Backport binding and gateway consistency
+
+- **What changed**: the controller plan tests now reject a backport without the cherry-pick trailer, with files outside the plan contract, that keeps the legacy workflow, that changes the committed plan, or that is a merge commit, and a release-backport trigger for a new channel. Approve Release has the same repository guard as Resume Release, the entry summary suggests remediation only after a resolution failure rather than for every closed unmerged pull request, and the plan's rollback note covers release branches whose legacy workflow is already gone.
+- **Why**: those guards decide which commit the Radius tag references and had no failing-case tests.
+
+### 11. A release tag must start the current release build
+
+- **What changed**: `verify-release-build-contract.sh` checks the commit a Radius tag will reference. Prepare Release runs it on the release-branch tip before opening the release pull request, and the controller's `validate` job runs it on the exact release commit before approval or any mutation. The commit must contain `.goreleaser.yaml` and a `build-release.yaml` that runs on `v*` tags with the `release-preflight`, `goreleaser-release`, and `finalize-release` jobs, and no other workflow may have a push `tags` or `tags-ignore` filter. The runbook lists migrating older release branches as a prerequisite.
+- **Why**: a pushed tag runs the tagged commit's workflows, not the default branch's. `release/0.60` still publishes through the legacy `build.yaml`, and `release/0.61` has `build-release.yaml` without the controller-era jobs, so a controller-created tag on either branch would publish through an older pipeline while the controller reported success. A file-presence check would pass `release/0.61`. Failing only in the controller would also leave `versions.yaml` naming an untagged version, which blocks the next Prepare Release.
+- **Value**: an unmigrated release branch fails before any repository changes, and the error names the missing piece.
+- **Coverage**: real-Git fixtures cover the current pipeline beside path-only and unfiltered push workflows, a legacy tag publisher, a `tags-ignore` publisher, the older job graph, a missing tag trigger, missing files, and an unknown commit; wiring tests bind both call sites. Against the real branches, the verifier accepts this layer's head and rejects `release/0.61` and `release/0.60`.
+- **Impact**: the required jobs must track later layers. PR 16 should add its publication gate so a branch on this layer's pipeline cannot skip it.
+
+## Remaining boundaries and follow-ups
+
+- **Deployment Engine lock on a state branch** (cross-layer finding 2): the lock is written before any release exists, as a signed App commit on `automation/release-state-<version>`, and every resume verifies it. That is a sound durable store; its cost is one branch per release that nothing deletes. Evaluated at PR 16 together with the release manifest: the branch can be pruned once the release is published and the manifest carries the digest.
+- **Approval before mutation**: the `approve` job gates every release, including candidates, on the `release` environment before the Deployment Engine publish. PR 16 moves the approval to publication and removes this job, so the double gate is transitional.
+- **Which code runs**: since [December 8, 2025](https://github.blog/changelog/2025-11-07-actions-pull_request_target-and-environment-branch-protections-changes/), `pull_request_target` uses the default branch's workflow and execution reference, including backport merges into older release branches. Those branches need no local controller copy. Their legacy push-triggered `release.yaml` still needs removal.
+- **Native publisher run IDs**: a coordinated publisher change can replace new-run discovery with `workflow_dispatch` and its [returned run ID](https://github.blog/changelog/2026-02-19-workflow-dispatch-api-now-returns-run-ids/). It requires a matching publisher trigger and App `actions: write`; it does not remove the need for idempotency when responses are lost.
+- **Image provenance**: revision and ref labels are consistency checks against the signed tag, not authenticated build provenance. Digest-bound build attestations require a coordinated publisher change before the controller can enforce them.
+- **Stable Deployment Engine tag is a channel alias**: final and patch releases publish and lock `X.Y`, the tag the chart consumes; GHCR has no full-version stable Deployment Engine tags, and `publish-de-image.yaml` writes the same tags. The lock detects drift during a release but does not pin what installations pull, and a patch run advances `X.Y` before publication. Publishing and locking `X.Y.Z` and promoting `X.Y` at finalization needs a coordinated publisher change and PR 17's chart change.
+- **Sibling outputs are not awaited**: the Radius tag follows sibling tag creation, not the sibling builds those tags start. PR 16's publication gate verifies external outputs.
+- **Release credentials**: the release and publisher App keys are repository secrets, so the secretless gateways protect the controller code path, not the keys. Moving the keys into an environment restricted to `main` also requires Prepare Release and release backports to adopt that environment.
+- **Equivalent gateways**: Approve Release and Resume Release dispatch the same controller path with the same validation. Keeping both is a naming choice for release engineers; one gateway would be enough.
+- **Shell style**: the layer converts most release scripts to the `shfmt -i 4 -ci` spacing, which is the style the older scripts use; nothing in CI checks either.
+
+## Verification
+
+- Run `make test-release-controller test-monitor-remote-workflow` for the controller, source binding, output contract, resolver, lock, approval gate, release build contract, and dispatch regressions, and `make test-prepare-release` for the Deployment Engine tag binding. These fixtures do not dispatch a live release.
+- Older actionlint versions reject `queue`; [GitHub supports `queue: max`](https://github.blog/changelog/2026-05-07-github-actions-concurrency-groups-now-allow-larger-queues/) with cancellation disabled. Other workflow validation errors must still be fixed.
+- The live App-created tag triggering `build-release.yaml` and the required release-cycle soak remain rollout gates; local fixtures cannot establish them.

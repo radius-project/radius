@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -62,7 +62,7 @@ endif
 .PHONY: docker-push-$(1)
 docker-push-$(1):
 	@echo "$(ARROW) Pushing image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
-	docker push $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)
+	bash ./build/scripts/docker-push.sh "$(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 endef
 
 define generateDockerMultiArches
@@ -135,8 +135,8 @@ copy-manifests:
 
 # Function to extract the name and the directory of the Dockerfile from the app string
 define parseApp
-$(eval NAME := $(shell echo $(1) | cut -d: -f1))
-$(eval DIR := $(shell echo $(1) | cut -d: -f2))
+$(eval NAME := $(word 1,$(subst :, ,$(1))))
+$(eval DIR := $(word 2,$(subst :, ,$(1))))
 endef
 
 # This command will dynamically generate the targets for each image in the APPS_MAP list.

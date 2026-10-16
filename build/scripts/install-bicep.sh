@@ -55,22 +55,96 @@ cleanup() {
 # cross-host redirects, so the token is not sent to the download CDN. The array is
 # seeded with the User-Agent so it is never empty -- expanding an empty array
 # under 'set -u' is an error on bash 3.2 (macOS).
+# Takes a URL and output file; prints the final URL only after success.
 gh_curl() {
+    local url="$1" output="$2"
+    shift 2
+    local result status http_code remaining timeout metadata
+    local retry_after retry_time wait_time now
+    local deadline=$((SECONDS + 300)) attempt=0 delay=1
     local headers=(-H "User-Agent: ${REPO##*/}-installer")
     if [ -n "${GITHUB_TOKEN:-}" ]; then
         headers+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
     fi
-    # --retry rides out transient failures (timeouts and HTTP 408/429/5xx such as
-    # the 504 gateway timeouts GitHub's release CDN returns intermittently) with
-    # exponential backoff. --retry-all-errors extends that same backoff to
-    # failures curl's default retry logic does not classify as transient,
-    # notably curl 56 ("Connection died"), the dropped/reset mid-download
-    # connections seen intermittently against the release CDN (see #12661).
-    # Combined with -f (used by every caller below), --retry-all-errors also
-    # retries HTTP 404s (e.g. a wrong/nonexistent version) instead of failing
-    # immediately, so a bad version now takes the full retry budget (~31s) to
-    # fail rather than failing fast.
-    curl --proto '=https' --tlsv1.2 --retry 5 --retry-connrefused --retry-all-errors "${headers[@]}" "$@"
+    # Keep one budget for HTTP failures and dropped connections. curl's
+    # --retry-all-errors also retries permanent HTTP and certificate errors.
+    while true; do
+        remaining=$((deadline - SECONDS))
+        if ((remaining <= 0)); then
+            log "GitHub request exceeded the 300-second retry budget"
+            return 28
+        fi
+        timeout=60
+        if ((remaining < timeout)); then timeout="$remaining"; fi
+        status=0
+        result="$(curl --proto '=https' --tlsv1.2 -fsSL \
+            --connect-timeout 15 --max-time "$timeout" \
+            "${headers[@]}" "$@" -o "$output" \
+            --dump-header - \
+            -w '%{http_code} %{url_effective}' "$url")" || status=$?
+        metadata="${result##*$'\n'}"
+        if ((status == 0)); then
+            printf '%s\n' "${metadata#* }"
+            return 0
+        fi
+        http_code="${metadata%% *}"
+        case "${status}:${http_code}" in
+            22:408 | 22:429 | 22:500 | 22:502 | 22:503 | 22:504) ;;
+            5:* | 6:* | 7:* | 18:* | 28:* | 52:* | 55:* | 56:* | 92:*) ;;
+            *) return "$status" ;;
+        esac
+        # Redirects can have their own Retry-After; use only the final response.
+        retry_after="$(awk '
+            /^HTTP\// { value = "" }
+            tolower($1) == "retry-after:" {
+                sub(/^[^:]*:[ \t]*/, "")
+                sub(/[ \t\r]*$/, "")
+                value = $0
+            }
+            END { print value }
+        ' <<< "$result")"
+        wait_time="$delay"
+        if [[ -n "$retry_after" ]]; then
+            retry_time=0
+            case "$retry_after" in
+                *[!0-9]*)
+                    now="$(LC_ALL=C date -u +%s)"
+                    if retry_time="$(LC_ALL=C date -u \
+                        -d "$retry_after" +%s 2>/dev/null)" \
+                        || retry_time="$(LC_ALL=C date -j -u \
+                            -f '%a, %d %b %Y %H:%M:%S GMT' \
+                            "$retry_after" +%s 2>/dev/null)"; then
+                        retry_time=$((retry_time - now))
+                    else
+                        log "ignoring invalid Retry-After header"
+                        retry_time=0
+                    fi
+                    ;;
+                *)
+                    while [[ "$retry_after" == 0* ]]; do
+                        retry_after="${retry_after#0}"
+                    done
+                    # Clamp before arithmetic to avoid overflow on large values.
+                    if ((${#retry_after} > 3)); then
+                        retry_time=300
+                    else
+                        retry_time=$((10#${retry_after:-0}))
+                    fi
+                    ;;
+            esac
+            if ((retry_time > wait_time)); then wait_time="$retry_time"; fi
+        fi
+        remaining=$((deadline - SECONDS))
+        if ((attempt >= 10 || remaining <= wait_time)); then
+            log "GitHub request exhausted its retry budget"
+            return "$status"
+        fi
+        log "request failed (curl ${status}, HTTP ${http_code}); retry in ${wait_time}s"
+        sleep "$wait_time"
+        attempt=$((attempt + 1))
+        delay=$((delay * 2))
+        if ((delay > 60)); then delay=60; fi
+    done
 }
 
 detect_os() {
@@ -93,7 +167,7 @@ detect_arch() {
 # Avoids the GitHub API (no token, no rate limit).
 resolve_latest_version() {
     local effective_url
-    effective_url="$(gh_curl -fsSLI -o /dev/null -w '%{url_effective}' "${RELEASES_URL}/latest")" \
+    effective_url="$(gh_curl "${RELEASES_URL}/latest" /dev/null --head)" \
         || fail "could not resolve the latest bicep version"
     printf '%s\n' "${effective_url##*/tag/}"
 }
@@ -174,13 +248,15 @@ main() {
     WORKDIR="$(mktemp -d)"
 
     log "downloading ${asset} ${version}..."
-    gh_curl -fsSL "${RELEASES_URL}/download/${version}/${asset}" -o "${WORKDIR}/bicep" \
+    gh_curl "${RELEASES_URL}/download/${version}/${asset}" \
+        "${WORKDIR}/bicep" >/dev/null \
         || fail "could not download ${asset} ${version}"
 
     # Azure/bicep does not publish checksums, so verification only happens when a
     # pinned checksum is supplied (the common case via build/tools.yaml).
     if [ -n "$checksum" ]; then
-        verify_checksum "$checksum" "${WORKDIR}/bicep"
+        verify_checksum "$checksum" "${WORKDIR}/bicep" \
+            || fail "checksum verification failed for ${asset} ${version}"
     else
         log "WARNING: no checksum supplied for ${platform}; installing without verification."
     fi
@@ -200,5 +276,7 @@ main() {
     fi
 }
 
-trap cleanup EXIT
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    trap cleanup EXIT
+    main "$@"
+fi

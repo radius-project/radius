@@ -113,6 +113,16 @@ runs:
       env:
         INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}
 
+    - name: Pull registry image (retry on Docker Hub errors)
+      shell: bash
+      run: timeout --kill-after=5 600 bash "${PULL_SCRIPT}"
+      env:
+        INPUT_IMAGE: registry:2
+        INPUT_RETRIES: "5"
+        INPUT_RETRY_WAIT_SECONDS: "5"
+        INPUT_PULL_TIMEOUT_SECONDS: "60"
+        PULL_SCRIPT: ${{ github.action_path }}/pull-image.sh
+
     - name: Create secure Docker registry
       if: ${{ inputs.secure == 'true' }}
       shell: bash

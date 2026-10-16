@@ -28,6 +28,10 @@ type AwsPlanesServer struct {
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusAccepted, http.StatusNoContent
 	BeginDelete func(ctx context.Context, planeName string, options *v20231001preview.AwsPlanesClientBeginDeleteOptions) (resp azfake.PollerResponder[v20231001preview.AwsPlanesClientDeleteResponse], errResp azfake.ErrorResponder)
 
+	// BeginUpdate is the fake for method AwsPlanesClient.BeginUpdate
+	// HTTP status codes to indicate success: http.StatusOK, http.StatusAccepted, http.StatusNoContent
+	BeginUpdate func(ctx context.Context, planeName string, properties v20231001preview.AwsPlaneResourceTagsUpdate, options *v20231001preview.AwsPlanesClientBeginUpdateOptions) (resp azfake.PollerResponder[v20231001preview.AwsPlanesClientUpdateResponse], errResp azfake.ErrorResponder)
+
 	// Get is the fake for method AwsPlanesClient.Get
 	// HTTP status codes to indicate success: http.StatusOK
 	Get func(ctx context.Context, planeName string, options *v20231001preview.AwsPlanesClientGetOptions) (resp azfake.Responder[v20231001preview.AwsPlanesClientGetResponse], errResp azfake.ErrorResponder)
@@ -35,10 +39,6 @@ type AwsPlanesServer struct {
 	// NewListPager is the fake for method AwsPlanesClient.NewListPager
 	// HTTP status codes to indicate success: http.StatusOK
 	NewListPager func(options *v20231001preview.AwsPlanesClientListOptions) (resp azfake.PagerResponder[v20231001preview.AwsPlanesClientListResponse])
-
-	// BeginUpdate is the fake for method AwsPlanesClient.BeginUpdate
-	// HTTP status codes to indicate success: http.StatusOK, http.StatusAccepted, http.StatusNoContent
-	BeginUpdate func(ctx context.Context, planeName string, properties v20231001preview.AwsPlaneResourceTagsUpdate, options *v20231001preview.AwsPlanesClientBeginUpdateOptions) (resp azfake.PollerResponder[v20231001preview.AwsPlanesClientUpdateResponse], errResp azfake.ErrorResponder)
 }
 
 // NewAwsPlanesServerTransport creates a new instance of AwsPlanesServerTransport with the provided implementation.
@@ -49,8 +49,8 @@ func NewAwsPlanesServerTransport(srv *AwsPlanesServer) *AwsPlanesServerTransport
 		srv:                 srv,
 		beginCreateOrUpdate: newTracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientCreateOrUpdateResponse]](),
 		beginDelete:         newTracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientDeleteResponse]](),
-		newListPager:        newTracker[azfake.PagerResponder[v20231001preview.AwsPlanesClientListResponse]](),
 		beginUpdate:         newTracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientUpdateResponse]](),
+		newListPager:        newTracker[azfake.PagerResponder[v20231001preview.AwsPlanesClientListResponse]](),
 	}
 }
 
@@ -60,8 +60,8 @@ type AwsPlanesServerTransport struct {
 	srv                 *AwsPlanesServer
 	beginCreateOrUpdate *tracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientCreateOrUpdateResponse]]
 	beginDelete         *tracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientDeleteResponse]]
-	newListPager        *tracker[azfake.PagerResponder[v20231001preview.AwsPlanesClientListResponse]]
 	beginUpdate         *tracker[azfake.PollerResponder[v20231001preview.AwsPlanesClientUpdateResponse]]
+	newListPager        *tracker[azfake.PagerResponder[v20231001preview.AwsPlanesClientListResponse]]
 }
 
 // Do implements the policy.Transporter interface for AwsPlanesServerTransport.
@@ -89,12 +89,12 @@ func (a *AwsPlanesServerTransport) dispatchToMethodFake(req *http.Request, metho
 				res.resp, res.err = a.dispatchBeginCreateOrUpdate(req)
 			case "AwsPlanesClient.BeginDelete":
 				res.resp, res.err = a.dispatchBeginDelete(req)
+			case "AwsPlanesClient.BeginUpdate":
+				res.resp, res.err = a.dispatchBeginUpdate(req)
 			case "AwsPlanesClient.Get":
 				res.resp, res.err = a.dispatchGet(req)
 			case "AwsPlanesClient.NewListPager":
 				res.resp, res.err = a.dispatchNewListPager(req)
-			case "AwsPlanesClient.BeginUpdate":
-				res.resp, res.err = a.dispatchBeginUpdate(req)
 			default:
 				res.err = fmt.Errorf("unhandled API %s", method)
 			}
@@ -195,6 +195,50 @@ func (a *AwsPlanesServerTransport) dispatchBeginDelete(req *http.Request) (*http
 	return resp, nil
 }
 
+func (a *AwsPlanesServerTransport) dispatchBeginUpdate(req *http.Request) (*http.Response, error) {
+	if a.srv.BeginUpdate == nil {
+		return nil, &nonRetriableError{errors.New("fake for method BeginUpdate not implemented")}
+	}
+	beginUpdate := a.beginUpdate.get(req)
+	if beginUpdate == nil {
+		const regexStr = `/planes/aws/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		body, err := server.UnmarshalRequestAsJSON[v20231001preview.AwsPlaneResourceTagsUpdate](req)
+		if err != nil {
+			return nil, err
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := a.srv.BeginUpdate(req.Context(), planeNameParam, body, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
+		beginUpdate = &respr
+		a.beginUpdate.add(req, beginUpdate)
+	}
+
+	resp, err := server.PollerResponderNext(beginUpdate, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if !slices.Contains([]int{http.StatusOK, http.StatusAccepted, http.StatusNoContent}, resp.StatusCode) {
+		a.beginUpdate.remove(req)
+		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK, http.StatusAccepted, http.StatusNoContent", resp.StatusCode)}
+	}
+	if !server.PollerResponderMore(beginUpdate) {
+		a.beginUpdate.remove(req)
+	}
+
+	return resp, nil
+}
+
 func (a *AwsPlanesServerTransport) dispatchGet(req *http.Request) (*http.Response, error) {
 	if a.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
@@ -248,50 +292,6 @@ func (a *AwsPlanesServerTransport) dispatchNewListPager(req *http.Request) (*htt
 	if !server.PagerResponderMore(newListPager) {
 		a.newListPager.remove(req)
 	}
-	return resp, nil
-}
-
-func (a *AwsPlanesServerTransport) dispatchBeginUpdate(req *http.Request) (*http.Response, error) {
-	if a.srv.BeginUpdate == nil {
-		return nil, &nonRetriableError{errors.New("fake for method BeginUpdate not implemented")}
-	}
-	beginUpdate := a.beginUpdate.get(req)
-	if beginUpdate == nil {
-		const regexStr = `/planes/aws/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
-		regex := regexp.MustCompile(regexStr)
-		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-		if len(matches) < 2 {
-			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-		}
-		body, err := server.UnmarshalRequestAsJSON[v20231001preview.AwsPlaneResourceTagsUpdate](req)
-		if err != nil {
-			return nil, err
-		}
-		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-		if err != nil {
-			return nil, err
-		}
-		respr, errRespr := a.srv.BeginUpdate(req.Context(), planeNameParam, body, nil)
-		if respErr := server.GetError(errRespr, req); respErr != nil {
-			return nil, respErr
-		}
-		beginUpdate = &respr
-		a.beginUpdate.add(req, beginUpdate)
-	}
-
-	resp, err := server.PollerResponderNext(beginUpdate, req)
-	if err != nil {
-		return nil, err
-	}
-
-	if !slices.Contains([]int{http.StatusOK, http.StatusAccepted, http.StatusNoContent}, resp.StatusCode) {
-		a.beginUpdate.remove(req)
-		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK, http.StatusAccepted, http.StatusNoContent", resp.StatusCode)}
-	}
-	if !server.PollerResponderMore(beginUpdate) {
-		a.beginUpdate.remove(req)
-	}
-
 	return resp, nil
 }
 

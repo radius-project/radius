@@ -17,8 +17,15 @@
 BASE_PACKAGE_NAME := github.com/radius-project/radius
 OUT_DIR := ./dist
 
-GOOS ?= $(shell go env GOOS)
-GOARCH ?= $(shell go env GOARCH)
+ifneq ($(filter undefined,$(origin GOOS) $(origin GOARCH)),)
+GO_PLATFORM := $(shell go env GOOS GOARCH)
+endif
+ifeq ($(origin GOOS),undefined)
+GOOS := $(word 1,$(GO_PLATFORM))
+endif
+ifeq ($(origin GOARCH),undefined)
+GOARCH := $(word 2,$(GO_PLATFORM))
+endif
 GOPATH := $(shell go env GOPATH)
 
 # Set GOBIN environment variable.
@@ -125,8 +132,8 @@ BINARIES := docgen:./cmd/docgen \
 
 # This function parses binary name and entrypoint from an item in the BINARIES list.
 define parseBinary
-$(eval NAME := $(shell echo $(1) | cut -d: -f1))
-$(eval ENTRYPOINT := $(shell echo $(1) | cut -d: -f2))
+$(eval NAME := $(word 1,$(subst :, ,$(1))))
+$(eval ENTRYPOINT := $(word 2,$(subst :, ,$(1))))
 endef
 
 # Generate build targets for each binary.

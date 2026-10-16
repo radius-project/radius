@@ -55,7 +55,7 @@ jobs:
       - name: Checkout trusted validator at the PR base
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -206,7 +206,7 @@ jobs:
           if [[ ! -f ./.github/scripts/validate-release-merge-group.sh ]]; then
             changed_files="${RUNNER_TEMP}/release-bootstrap-changes.txt"
             git diff --no-renames --name-only "${BASE_SHA}" "${GITHUB_SHA}" > "${changed_files}"
-            if grep -Eq '^(CHANGELOG\.md|versions\.yaml|docs/release-notes/v[0-9]+\.[0-9]+\.[0-9]+[^/]*\.md)$' "${changed_files}"; then
+            if grep -Eq '^(CHANGELOG\.md|versions\.yaml|docs/release-notes/v[0-9]+\.[0-9]+\.[0-9]+[^/]*\.md|\.github/release-plans/.+\.yaml)$' "${changed_files}"; then
               echo "::error::Release metadata cannot be queued before the trusted release validator is installed on main."
               exit 1
             fi
