@@ -149,7 +149,8 @@ jobs:
           # Install the latest Radius CLI, including release candidates if available.
           # INSTALL_DIR places rad directly into the workspace bin directory — no copy needed.
           mkdir -p "$GITHUB_WORKSPACE/bin"
-          wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | INSTALL_DIR="$GITHUB_WORKSPACE/bin" INCLUDE_RC=true /bin/bash
+          INSTALL_DIR="$GITHUB_WORKSPACE/bin" INCLUDE_RC=true \
+            bash ./deploy/install.sh
 
       - name: Verify CLI installation
         run: |

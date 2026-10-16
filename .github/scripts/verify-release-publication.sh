@@ -2,6 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=build/scripts/retry-helm-pull.sh
+source "${ROOT}/build/scripts/retry-helm-pull.sh"
 DIRECTORY="${RELEASE_VERIFY_DIR:-${ROOT}/dist/verification}"
 MODE="${1:-verify}"
 VERSION="${REL_VERSION:?REL_VERSION is required}"
@@ -56,7 +58,8 @@ bash "${ROOT}/.github/scripts/verify-deployment-engine-image.sh" \
 node "${ROOT}/.github/scripts/verify-release-manifest.mjs" "${DIRECTORY}" "${MODE}"
 
 if [[ "${MODE}" == "verify" ]]; then
-    helm pull "$(jq -er '.helm.ociReference' "${DIRECTORY}/targets.json")" \
+    retry_helm_pull \
+        "$(jq -er '.helm.ociReference' "${DIRECTORY}/targets.json")" \
         --version "${VERSION}" --destination "${DIRECTORY}"
     RELEASE_VERIFY_CLI="${DIRECTORY}/assets/rad_linux_amd64" \
         RELEASE_VERIFY_CHART="${DIRECTORY}/radius-${VERSION}.tgz" \
