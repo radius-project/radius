@@ -1,0 +1,21 @@
+{
+	"mcpServers": {
+		"github": {
+			"type": "http",
+			"url": "https://api.githubcopilot.com/mcp/",
+			"tools": [
+				"*"
+			]
+		},
+		"gopls": {
+			"type": "local",
+			"command": "gopls",
+			"args": [
+				"mcp"
+			],
+			"tools": [
+				"*"
+			]
+		}
+	}
+}

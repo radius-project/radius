@@ -1,22 +1,8 @@
 ---
-agent: agent
+name: radius-create-pr
 description: Automates GitHub pull request creation from the current branch
-name: radius.create-pr
-tools:
-  - runCommands
-  - edit
-  - search
-  - fetch
-  - githubRepo
-  - github.vscode-pull-request-github/issue_fetch
-  - github.vscode-pull-request-github/suggest-fix
-  - github.vscode-pull-request-github/searchSyntax
-  - github.vscode-pull-request-github/doSearch
-  - github.vscode-pull-request-github/renderIssues
-  - github.vscode-pull-request-github/activePullRequest
-  - github.vscode-pull-request-github/openPullRequest
+disable-model-invocation: true
 ---
-
 # Create GitHub Pull Request
 
 Create a pull request from the current branch following the steps below.
