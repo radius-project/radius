@@ -125,6 +125,10 @@ ucp:
   image: ucpd
   # Default tag uses Chart AppVersion.
   # tag: latest
+  workerServer:
+    # How long the async worker waits before polling again after finding its queue empty,
+    # such as "2s". Empty keeps the 200ms default. See the chart README.
+    dequeueInterval: ""
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
@@ -136,6 +140,10 @@ dynamicrp:
   image: dynamic-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
+  workerServer:
+    # How long the async worker waits before polling again after finding its queue empty,
+    # such as "2s". Empty keeps the 200ms default. See the chart README.
+    dequeueInterval: ""
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
@@ -184,6 +192,10 @@ rp:
   image: applications-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
+  workerServer:
+    # How long the async worker waits before polling again after finding its queue empty,
+    # such as "2s". Empty keeps the 200ms default. See the chart README.
+    dequeueInterval: ""
   publicEndpointOverride: ""
   resources:
     requests:

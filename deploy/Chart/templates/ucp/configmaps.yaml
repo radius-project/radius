@@ -61,6 +61,11 @@ data:
 
     identity:
       authMethod: UCPCredential
+    {{- with .Values.ucp.workerServer.dequeueInterval }}
+
+    workerServer:
+      dequeueInterval: {{ . | quote }}
+    {{- end }}
 
     ucp:
       kind: kubernetes
