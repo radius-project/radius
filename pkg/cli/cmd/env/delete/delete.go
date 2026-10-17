@@ -36,13 +36,13 @@ import (
 )
 
 const (
-	msgEnvironmentDeletedPreview  = "Radius.Core/environments/%s deleted"
-	msgEnvironmentNotFoundPreview = "Radius.Core/environments/%s not found"
-	msgDeletingResources          = "Deleting %d resource(s) in environment %s...\n"
-	msgDeletingApplications       = "Deleting %d application(s) in environment %s...\n"
-	msgDeletingApplication        = "  Deleting application %s..."
-	msgSkippingApplication        = "  Warning: skipping an application that reports no name. It must be deleted manually."
-	msgForceWarning               = "WARNING: Force deleting an environment. Resources in non-terminal states may leave orphaned external resources that require manual cleanup."
+	msgEnvironmentDeleted   = "Radius.Core/environments/%s deleted"
+	msgEnvironmentNotFound  = "Radius.Core/environments/%s not found"
+	msgDeletingResources    = "Deleting %d resource(s) in environment %s...\n"
+	msgDeletingApplications = "Deleting %d application(s) in environment %s...\n"
+	msgDeletingApplication  = "  Deleting application %s..."
+	msgSkippingApplication  = "  Warning: skipping an application that reports no name. It must be deleted manually."
+	msgForceWarning         = "WARNING: Force deleting an environment. Resources in non-terminal states may leave orphaned external resources that require manual cleanup."
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env delete` command.
@@ -170,7 +170,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// already-deleted environment is a no-op rather than an error.
 	_, err := envClient.Get(ctx, r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientGetOptions{})
 	if clients.Is404Error(err) {
-		r.Output.LogInfo(msgEnvironmentNotFoundPreview, r.EnvironmentName)
+		r.Output.LogInfo(msgEnvironmentNotFound, r.EnvironmentName)
 		return nil
 	} else if err != nil {
 		return err
@@ -181,9 +181,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	environmentID := cmd.PreviewEnvironmentID(r.Workspace.Scope, r.EnvironmentName)
+	environmentID := cmd.EnvironmentID(r.Workspace.Scope, r.EnvironmentName)
 
-	applications, err := cmd.ListPreviewApplicationsInEnvironment(ctx, r.RadiusCoreClientFactory.NewApplicationsClient(), r.Workspace, environmentID)
+	applications, err := cmd.ListApplicationsInEnvironment(ctx, r.RadiusCoreClientFactory.NewApplicationsClient(), r.Workspace, environmentID)
 	if err != nil && !clients.Is404Error(err) {
 		return err
 	}
@@ -269,13 +269,13 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	_, err = envClient.Delete(ctx, r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientDeleteOptions{})
 	if clients.Is404Error(err) {
-		r.Output.LogInfo(msgEnvironmentNotFoundPreview, r.EnvironmentName)
+		r.Output.LogInfo(msgEnvironmentNotFound, r.EnvironmentName)
 		return nil
 	} else if err != nil {
 		return err
 	}
 
-	r.Output.LogInfo(msgEnvironmentDeletedPreview, r.EnvironmentName)
+	r.Output.LogInfo(msgEnvironmentDeleted, r.EnvironmentName)
 
 	return nil
 }

@@ -55,20 +55,20 @@ const (
 	managedSecretPollInterval  = time.Second
 )
 
-// PreviewResourceID builds a fully qualified Radius.Core resource ID from a workspace
-// scope, resource type and resource name.
-func PreviewResourceID(scope string, resourceType string, name string) string {
+// ResourceID builds a fully qualified resource ID from a workspace scope, resource type
+// and resource name.
+func ResourceID(scope string, resourceType string, name string) string {
 	return scope + "/providers/" + resourceType + "/" + name
 }
 
-// PreviewApplicationID builds a fully qualified Radius.Core application ID.
-func PreviewApplicationID(scope string, applicationName string) string {
-	return PreviewResourceID(scope, datamodel.ApplicationResourceType_v20250801preview, applicationName)
+// ApplicationID builds a fully qualified Radius.Core application ID.
+func ApplicationID(scope string, applicationName string) string {
+	return ResourceID(scope, datamodel.ApplicationResourceType_v20250801preview, applicationName)
 }
 
-// PreviewEnvironmentID builds a fully qualified Radius.Core environment ID.
-func PreviewEnvironmentID(scope string, environmentName string) string {
-	return PreviewResourceID(scope, datamodel.EnvironmentResourceType_v20250801preview, environmentName)
+// EnvironmentID builds a fully qualified Radius.Core environment ID.
+func EnvironmentID(scope string, environmentName string) string {
+	return ResourceID(scope, datamodel.EnvironmentResourceType_v20250801preview, environmentName)
 }
 
 // DeleteResourcesInParallel deletes the given resources concurrently, tolerating resources that
@@ -281,9 +281,9 @@ func describeResource(resource generated.GenericResource) string {
 	}
 }
 
-// ListPreviewApplicationsInEnvironment lists the Radius.Core applications in the workspace scope
+// ListApplicationsInEnvironment lists the Radius.Core applications in the workspace scope
 // whose properties.environment references the given environment ID.
-func ListPreviewApplicationsInEnvironment(ctx context.Context, client *corerpv20250801.ApplicationsClient, workspace *workspaces.Workspace, environmentID string) ([]corerpv20250801.ApplicationResource, error) {
+func ListApplicationsInEnvironment(ctx context.Context, client *corerpv20250801.ApplicationsClient, workspace *workspaces.Workspace, environmentID string) ([]corerpv20250801.ApplicationResource, error) {
 	results := []corerpv20250801.ApplicationResource{}
 
 	pager := client.NewListByScopePager(workspace.Scope, &corerpv20250801.ApplicationsClientListByScopeOptions{})

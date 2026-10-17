@@ -265,14 +265,14 @@ func (r *Runner) requireApplicationExists(ctx context.Context) error {
 	return err
 }
 
-func (r *Runner) requireEnvironmentNameOrID(cmd *cobra.Command, args []string) (string, error) {
-	environmentNameOrID, err := cli.RequireEnvironmentNameOrID(cmd, args, *r.Workspace)
+func (r *Runner) requireEnvironmentNameOrID(command *cobra.Command, args []string) (string, error) {
+	environmentNameOrID, err := cli.RequireEnvironmentNameOrID(command, args, *r.Workspace)
 	if err != nil {
 		return "", err
 	}
 
 	if !strings.HasPrefix(environmentNameOrID, resources.SegmentSeparator) {
-		return resourceID(r.Workspace.Scope, datamodel.EnvironmentResourceType_v20250801preview, environmentNameOrID), nil
+		return cmd.EnvironmentID(r.Workspace.Scope, environmentNameOrID), nil
 	}
 
 	environmentID, err := resources.ParseResource(environmentNameOrID)
@@ -291,7 +291,7 @@ func (r *Runner) requireEnvironmentNameOrID(cmd *cobra.Command, args []string) (
 
 func (r *Runner) resolveApplication() error {
 	if !strings.HasPrefix(r.ApplicationName, resources.SegmentSeparator) {
-		r.ApplicationID = resourceID(r.Workspace.Scope, datamodel.ApplicationResourceType_v20250801preview, r.ApplicationName)
+		r.ApplicationID = cmd.ApplicationID(r.Workspace.Scope, r.ApplicationName)
 		return nil
 	}
 
@@ -319,8 +319,4 @@ func (r *Runner) requireWorkspaceScope(id resources.ID) error {
 	}
 
 	return clierrors.Message("The resource ID %q is in scope %q, but workspace %q is scoped to %q. Switch to a workspace with a matching scope to list its resources.", id.String(), id.RootScope(), r.Workspace.Name, r.Workspace.Scope)
-}
-
-func resourceID(scope string, resourceType string, name string) string {
-	return scope + "/providers/" + resourceType + "/" + name
 }
