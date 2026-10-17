@@ -482,7 +482,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
   return "APPROVED";
 }
 
-function addReviewFeedback(feedback, commits, reviewer, submittedAt, commit) {
+function addReviewFeedback(feedback, reviewer, submittedAt) {
   const key = reviewerKey(reviewer);
   if (key == null || !Number.isFinite(submittedAt)) {
     throw new Error(
@@ -490,10 +490,20 @@ function addReviewFeedback(feedback, commits, reviewer, submittedAt, commit) {
     );
   }
   feedback.set(key, Math.max(feedback.get(key) ?? -Infinity, submittedAt));
-  // An unknown reviewed commit cannot prove a later push.
-  commits.add(
-    /^[0-9a-f]{40}$/i.test(commit ?? "") ? commit.toLowerCase() : null
-  );
+}
+
+function addReviewedCommit(reviewed, submittedAt, commit) {
+  // Only the newest submission shows which head the latest feedback saw.
+  if (submittedAt > reviewed.at) {
+    reviewed.at = submittedAt;
+    reviewed.commits.clear();
+  }
+  if (submittedAt === reviewed.at) {
+    // An unknown reviewed commit cannot prove a later push.
+    reviewed.commits.add(
+      /^[0-9a-f]{40}$/i.test(commit ?? "") ? commit.toLowerCase() : null
+    );
+  }
 }
 
 function humanReviewEvidence(pull, reviews) {
@@ -532,7 +542,7 @@ async function unresolvedReviewFeedback(
   feedbackApprovals
 ) {
   const feedback = new Map();
-  const commits = new Set();
+  const reviewed = { at: -Infinity, commits: new Set() };
   let blockingBot = false;
   const cursors = new Set();
   let cursor = null;
@@ -590,9 +600,12 @@ async function unresolvedReviewFeedback(
           if (comment.author.__typename === "User") {
             addReviewFeedback(
               feedback,
-              commits,
               comment.author,
-              Math.max(submittedAt, createdAt, Date.parse(comment.updatedAt)),
+              Math.max(submittedAt, createdAt, Date.parse(comment.updatedAt))
+            );
+            addReviewedCommit(
+              reviewed,
+              submittedAt,
               comment.pullRequestReview.commit?.oid
             );
           } else if (comment.author.__typename === "Bot") {
@@ -604,13 +617,8 @@ async function unresolvedReviewFeedback(
             for (const approval of feedbackApprovals) {
               const approvedAt = Date.parse(approval.submitted_at);
               if (createdAt <= approvedAt && submittedAt <= approvedAt) {
-                addReviewFeedback(
-                  feedback,
-                  commits,
-                  approval.user,
-                  approvedAt,
-                  approval.commit_id
-                );
+                addReviewFeedback(feedback, approval.user, approvedAt);
+                addReviewedCommit(reviewed, approvedAt, approval.commit_id);
               }
             }
           }
@@ -646,7 +654,7 @@ async function unresolvedReviewFeedback(
     cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
     cursors.add(cursor);
   } while (cursor);
-  return { feedback, commits, blockingBot };
+  return { feedback, reviewed, blockingBot };
 }
 
 function desiredLabels(
@@ -814,13 +822,18 @@ function isPullAuthor(pull, user) {
   );
 }
 
-function hasAuthorResponse(pull, feedback, commits, reviews, timeline) {
+function hasAuthorResponse(pull, feedback, reviewed, reviews, timeline) {
   if (feedback.size === 0) {
     return false;
   }
-  // Feedback records the head it was submitted on, so a new head proves a later push.
+  // The latest feedback records the head it saw, so a different head proves a later push.
   const head = pull.headRefOid?.toLowerCase();
-  if (head && !commits.has(null) && !commits.has(head)) {
+  if (
+    head &&
+    reviewed.commits.size > 0 &&
+    !reviewed.commits.has(null) &&
+    !reviewed.commits.has(head)
+  ) {
     return true;
   }
   const responses = [
@@ -1037,7 +1050,7 @@ async function syncPull(github, core, owner, repo, number) {
   let humanReviews = [];
   let submittedReviews = [];
   let feedback = new Map();
-  let feedbackCommits = new Set();
+  let reviewedCommits = { at: -Infinity, commits: new Set() };
   let blockingBotFeedback = false;
   if (
     pull.state === "OPEN" &&
@@ -1056,7 +1069,7 @@ async function syncPull(github, core, owner, repo, number) {
     changeRequests = evidence.changeRequests;
     ({
       feedback,
-      commits: feedbackCommits,
+      reviewed: reviewedCommits,
       blockingBot: blockingBotFeedback
     } = await unresolvedReviewFeedback(
       github,
@@ -1069,23 +1082,15 @@ async function syncPull(github, core, owner, repo, number) {
   }
   const hasUnresolvedReviewFeedback = feedback.size > 0;
   for (const review of changeRequests) {
-    addReviewFeedback(
-      feedback,
-      feedbackCommits,
-      review.user,
-      Date.parse(review.submitted_at),
-      review.commit_id
-    );
+    const submittedAt = Date.parse(review.submitted_at);
+    addReviewFeedback(feedback, review.user, submittedAt);
+    addReviewedCommit(reviewedCommits, submittedAt, review.commit_id);
   }
   for (const review of humanReviews) {
     if (feedback.has(reviewerKey(review.user))) {
-      addReviewFeedback(
-        feedback,
-        feedbackCommits,
-        review.user,
-        Date.parse(review.submitted_at),
-        review.commit_id
-      );
+      const submittedAt = Date.parse(review.submitted_at);
+      addReviewFeedback(feedback, review.user, submittedAt);
+      addReviewedCommit(reviewedCommits, submittedAt, review.commit_id);
     }
   }
   if (blockingBotFeedback) {
@@ -1131,7 +1136,7 @@ async function syncPull(github, core, owner, repo, number) {
       hasAuthorResponse(
         pull,
         feedback,
-        feedbackCommits,
+        reviewedCommits,
         submittedReviews,
         timeline
       )
