@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_RedirectStdout(t *testing.T) {
+func Test_redirectStdout(t *testing.T) {
 	original := os.Stdout
 
 	out, restore := redirectStdout()
@@ -54,7 +54,7 @@ func Test_RedirectStdout(t *testing.T) {
 	require.Same(t, original, os.Stdout)
 }
 
-func Test_ProgressModel_Update_CtrlC(t *testing.T) {
+func Test_progressModel_Update_CtrlC(t *testing.T) {
 	model := newProgressModel(initOptions{})
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
@@ -62,7 +62,7 @@ func Test_ProgressModel_Update_CtrlC(t *testing.T) {
 	// Ctrl+C marks the model as interrupted so the caller can abort rad init.
 	pm, ok := updated.(*progressModel)
 	require.True(t, ok)
-	require.True(t, pm.Interrupted)
+	require.True(t, pm.interrupted)
 
 	// The returned command quits the Bubble Tea program.
 	require.NotNil(t, cmd)
@@ -78,7 +78,7 @@ func renderedText(view tea.View) string {
 	return strings.Join(lines, "\n")
 }
 
-func Test_SummaryModel_View_ConfigFiles(t *testing.T) {
+func Test_summaryModel_View_ConfigFiles(t *testing.T) {
 	t.Run("lists config files under the configuration heading", func(t *testing.T) {
 		model := newSummaryModel(initOptions{BicepConfigDirectory: "/home/user/my-project"})
 
@@ -99,7 +99,7 @@ func Test_SummaryModel_View_ConfigFiles(t *testing.T) {
 	})
 }
 
-func Test_SummaryModel_View_RecipePack(t *testing.T) {
+func Test_summaryModel_View_RecipePack(t *testing.T) {
 	t.Run("shows the default recipe pack for a new environment", func(t *testing.T) {
 		model := newSummaryModel(initOptions{
 			Environment: environmentOptions{Create: true, Name: "default", Namespace: "default"},
@@ -118,12 +118,12 @@ func Test_SummaryModel_View_RecipePack(t *testing.T) {
 	})
 }
 
-func Test_ProgressModel_View_ConfigFiles(t *testing.T) {
+func Test_progressModel_View_ConfigFiles(t *testing.T) {
 	complete := progressMsg{InstallComplete: true, EnvironmentComplete: true, ConfigComplete: true}
 
 	t.Run("lists config files under the configuration heading", func(t *testing.T) {
 		model := newProgressModel(initOptions{BicepConfigDirectory: "/home/user/my-project"}).(*progressModel)
-		model.Progress = complete
+		model.progress = complete
 
 		text := renderedText(model.View())
 
@@ -134,7 +134,7 @@ func Test_ProgressModel_View_ConfigFiles(t *testing.T) {
 
 	t.Run("lists no config files when empty", func(t *testing.T) {
 		model := newProgressModel(initOptions{}).(*progressModel)
-		model.Progress = complete
+		model.progress = complete
 
 		text := renderedText(model.View())
 

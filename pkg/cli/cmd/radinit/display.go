@@ -96,7 +96,7 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 		return false, err
 	}
 
-	switch model.(*summaryModel).Result {
+	switch model.(*summaryModel).result {
 	case resultConfirmed:
 		return true, nil
 	case resultCanceled:
@@ -104,7 +104,7 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 	case resultQuit:
 		return false, &prompt.ErrExitConsole{}
 	default:
-		panic("unknown result " + model.(*summaryModel).Result)
+		panic("unknown result " + model.(*summaryModel).result)
 	}
 }
 
@@ -162,7 +162,7 @@ func (r *Runner) showProgress(ctx context.Context, options *initOptions, progres
 	// in another goroutine and may be blocked in a call (such as a Helm install) that
 	// cannot be canceled cooperatively, so terminate the process the way Helm does on
 	// interrupt. The terminal has already been restored by Bubble Tea at this point.
-	if pm, ok := finalModel.(*progressModel); ok && pm.Interrupted {
+	if pm, ok := finalModel.(*progressModel); ok && pm.interrupted {
 		os.Exit(130) //nolint:forbidigo // Intentional: match Helm's behavior and abort rad init on Ctrl+C.
 	}
 
@@ -174,8 +174,8 @@ var _ tea.Model = &summaryModel{}
 // summaryModel is the bubble tea model for the options summary shown during 'rad init'.
 type summaryModel struct {
 	style   lipgloss.Style
-	Result  summaryResult
-	Options initOptions
+	result  summaryResult
+	options initOptions
 	width   int
 }
 
@@ -183,7 +183,7 @@ type summaryModel struct {
 func newSummaryModel(options initOptions) tea.Model {
 	return &summaryModel{
 		style:   lipgloss.NewStyle().Margin(1, 0),
-		Options: options,
+		options: options,
 	}
 }
 
@@ -201,15 +201,15 @@ func (m *summaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c":
 			copy := *m
-			copy.Result = resultQuit
+			copy.result = resultQuit
 			return &copy, tea.Quit
 		case "esc":
 			copy := *m
-			copy.Result = resultCanceled
+			copy.result = resultCanceled
 			return &copy, tea.Quit
 		case "enter":
 			copy := *m
-			copy.Result = resultConfirmed
+			copy.result = resultConfirmed
 			return &copy, tea.Quit
 		}
 	}
@@ -219,11 +219,11 @@ func (m *summaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model. It renders the summary of selected options.
 func (m *summaryModel) View() tea.View {
-	if m.Result != "" {
+	if m.result != "" {
 		return tea.NewView("")
 	}
 
-	options := m.Options
+	options := m.options
 
 	message := &strings.Builder{}
 	message.WriteString(summaryHeading)
@@ -253,7 +253,7 @@ var _ tea.Model = &progressModel{}
 // newProgressModel creates a new model for the initialization progress dialog shown during 'rad init'.
 func newProgressModel(options initOptions) tea.Model {
 	return &progressModel{
-		Options: options,
+		options: options,
 		spinner: spinner.New(spinner.WithSpinner(progressSpinner)),
 
 		// Setting a height here to avoid double-printing issues when the
@@ -264,22 +264,22 @@ func newProgressModel(options initOptions) tea.Model {
 
 // progressModel is the bubble tea model for the progress display shown during 'rad init'.
 type progressModel struct {
-	Options  initOptions
-	Progress progressMsg
+	options  initOptions
+	progress progressMsg
 	spinner  spinner.Model
 	style    lipgloss.Style
 
-	// Interrupted is set when the user cancels the progress display with Ctrl+C.
-	Interrupted bool
+	// interrupted is set when the user cancels the progress display with Ctrl+C.
+	interrupted bool
 
-	// SuppressSpinner is used to suppress the ticking of the spinner for testing.
-	SuppressSpinner bool
+	// suppressSpinner is used to suppress the ticking of the spinner for testing.
+	suppressSpinner bool
 	width           int
 }
 
 // Init implements tea.Model.
 func (m *progressModel) Init() tea.Cmd {
-	if m.SuppressSpinner {
+	if m.suppressSpinner {
 		return nil
 	}
 
@@ -291,7 +291,7 @@ func (m *progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		if msg.String() == "ctrl+c" {
-			m.Interrupted = true
+			m.interrupted = true
 			return m, tea.Quit
 		}
 		return m, nil
@@ -299,7 +299,7 @@ func (m *progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		return m, nil
 	case progressMsg:
-		m.Progress = msg
+		m.progress = msg
 		if m.isComplete() {
 			return m, tea.Quit
 		}
@@ -317,14 +317,14 @@ func (m *progressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model. It renders the progress of the initialization steps.
 func (m *progressModel) View() tea.View {
-	options := m.Options
+	options := m.options
 
 	message := &strings.Builder{}
 	message.WriteString(progressHeading)
 
 	waiting := false
 
-	m.writeProgressIcon(message, m.Progress.InstallComplete, &waiting)
+	m.writeProgressIcon(message, m.progress.InstallComplete, &waiting)
 	if options.Cluster.Install {
 		message.WriteString(fmt.Sprintf(summaryKubernetesInstallHeadingFmt, highlight(options.Cluster.Version), highlight(options.Cluster.Context), highlight(options.Cluster.Namespace)))
 		writeCloudProviderInstallSummary(message, options.CloudProviders)
@@ -332,10 +332,10 @@ func (m *progressModel) View() tea.View {
 		message.WriteString(fmt.Sprintf(summaryKubernetesExistingHeadingFmt, highlight(options.Cluster.Version), highlight(options.Cluster.Context)))
 	}
 
-	m.writeProgressIcon(message, m.Progress.EnvironmentComplete, &waiting)
+	m.writeProgressIcon(message, m.progress.EnvironmentComplete, &waiting)
 	writeEnvironmentSummary(message, options)
 
-	m.writeProgressIcon(message, m.Progress.ConfigComplete, &waiting)
+	m.writeProgressIcon(message, m.progress.ConfigComplete, &waiting)
 	message.WriteString(summaryConfigurationUpdateHeading)
 	writeConfigFiles(message, options)
 
@@ -347,7 +347,7 @@ func (m *progressModel) View() tea.View {
 }
 
 func (m *progressModel) isComplete() bool {
-	return m.Progress.InstallComplete && m.Progress.EnvironmentComplete && m.Progress.ConfigComplete
+	return m.progress.InstallComplete && m.progress.EnvironmentComplete && m.progress.ConfigComplete
 }
 
 // writeProgressIcon writes the correct icon for the progress step depending on the current step.
@@ -363,7 +363,7 @@ func (m *progressModel) writeProgressIcon(message *strings.Builder, condition bo
 		message.WriteString(progressStepCompleteIcon)
 	} else if *waiting {
 		message.WriteString(progressStepWaitingIcon)
-	} else if m.SuppressSpinner {
+	} else if m.suppressSpinner {
 		// We can't render the *real* spinner without starting it, so just render a static glyph.
 		message.WriteString(progressSpinner.Frames[0])
 		*waiting = true
