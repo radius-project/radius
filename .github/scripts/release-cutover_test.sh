@@ -108,9 +108,26 @@ test_publication_gate() {
           index("Recheck outputs after approval") < index("Recheck RC prerequisites after approval") and
           index("Recheck RC prerequisites after approval") < index("Select release aliases")) and
         (."finalize-release".steps | any(.env.INPUT_MODE == "check-rc")) and
-        (."finalize-release".steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json"))
+        (."finalize-release".steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json")) and
+        (."finalize-release".steps | map(.name) |
+          index("Persist the verified release manifest") < index("Promote verified Bicep aliases") and
+          index("Promote verified Bicep aliases") < index("Publish and verify draft GitHub Release")) and
+        (."finalize-release".steps | any(
+          .name == "Promote verified Bicep aliases" and
+          (.if | contains("promote_channel")) and
+          (."continue-on-error" // false) == false))
     ' >/dev/null; then
         fail_test "failed verification or missing approval can reach publication"
+        return
+    fi
+    if ! yq -o=json '.jobs."build-and-push-aws-bicep-types"' \
+        "${BICEP_TYPES_WORKFLOW}" | jq -e '
+        (.if | contains("refs/tags/v")) and
+        ."timeout-minutes" > 45 and
+        (.steps | any(.env.INPUT_EVENT_TYPE == "bicep-types-aws" and
+            (.env.INPUT_CLIENT_PAYLOAD | contains("steps.source.outputs.sha"))))
+    ' > /dev/null; then
+        fail_test "publication does not await the planned immutable AWS types"
         return
     fi
     if ! yq -o=json '.jobs."build-and-push-helm-chart".steps' \
@@ -423,6 +440,63 @@ test_release_resume_contract() {
     ((++PASS))
 }
 
+test_draft_locks_are_reloaded_on_every_staging_attempt() {
+    if ! yq -o=json '.jobs' "${RELEASE_WORKFLOW}" | jq -e '
+        ."release-preflight".permissions.contents == "write" and
+        (."goreleaser-release".steps |
+            (map(.name) | index("Ensure source-bound draft release")) as $draft |
+            [.[] | select(.id == "image-lock-download" or
+                .id == "cli-lock-download")] as $downloads |
+            ($downloads | length) == 2 and
+            all($downloads[];
+                .if == null and
+                .env.INPUT_MODE == "download" and
+                .env.INPUT_OPTIONAL == "true") and
+            $draft != null and
+            (map(.id) | index("image-lock-download")) > $draft and
+            (map(.id) | index("cli-lock-download")) > $draft)
+    ' > /dev/null; then
+        fail_test "staging retries cannot recover locks when the original preflight reported absent"
+        return
+    fi
+    ((++PASS))
+}
+
+test_bicep_image_uses_staged_extension_versions() {
+    if ! yq -o=json '.jobs."build-and-push-remaining-images".steps' \
+        "${RELEASE_WORKFLOW}" | jq -e '
+        any(.[]; .run == "make docker-publish-bicep" and
+            .env.BICEP_EXTENSION_TAG == "${{ env.REL_VERSION }}")
+    ' >/dev/null; then
+        fail_test "release Bicep image still depends on unpublished channel aliases"
+        return
+    fi
+    # shellcheck disable=SC2016 # Literal Make variable under test.
+    if ! grep -Fq 'generate-bicepconfig.sh $(BICEP_EXTENSION_TAG)' \
+        "${REPO_ROOT}/build/build.mk"; then
+        fail_test "Bicep image build ignores its immutable extension tag"
+        return
+    fi
+    if ! (
+        directory="$(mktemp -d "${TMPDIR:-/tmp}/bicep-config-test-XXXXXX")"
+        trap 'rm -rf "${directory}"' EXIT
+        for tag in edge 0.61.0 0.61.2 0.61.0-rc.1; do
+            expected="${tag}"
+            [[ "${tag}" != edge ]] || expected=latest
+            bash "${REPO_ROOT}/build/scripts/generate-bicepconfig.sh" \
+                "${tag}" "${directory}"
+            jq -e --arg tag "${expected}" '
+                .extensions.radius == ("br:biceptypes.azurecr.io/radius:" + $tag) and
+                .extensions.aws == ("br:biceptypes.azurecr.io/aws:" + $tag)
+            ' "${directory}/bicepconfig.json" >/dev/null || exit 1
+        done
+    ); then
+        fail_test "Bicep extension configuration changed its tag contract"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
     command -v jq > /dev/null
     command -v yq > /dev/null
@@ -438,6 +512,8 @@ main() {
     test_final_cleanup_contract
     test_test_image_tags_are_attempt_scoped
     test_release_resume_contract
+    test_draft_locks_are_reloaded_on_every_staging_attempt
+    test_bicep_image_uses_staged_extension_versions
 
     if ((FAIL > 0)); then
         echo "release cutover tests failed: ${PASS} passed, ${FAIL} failed"

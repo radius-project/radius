@@ -143,6 +143,38 @@ test("reports optional missing assets without writing", async () => {
   assert.equal(state.outputs.all_found, "false");
 });
 
+test("optional staging downloads recover locks from a previous attempt", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
+  try {
+    const locks = [
+      { id: 1, name: "production-image-digests.json", contents: "image lock" },
+      { id: 2, name: "release-cli-oci.json", contents: "CLI lock" }
+    ];
+    const state = fixture({ assets: locks });
+    Object.assign(state.inputs, {
+      OWNER: "radius-project",
+      REPO: "radius",
+      TAG: "v0.61.0",
+      MODE: "download",
+      OUTPUT_DIR: root,
+      OPTIONAL: "true"
+    });
+    for (const lock of locks) {
+      state.inputs.NAMES = JSON.stringify([lock.name]);
+      await releaseAssets(state);
+      assert.equal(state.outputs.all_found, "true");
+      assert.equal(
+        await readFile(path.join(root, lock.name), "utf8"),
+        lock.contents
+      );
+    }
+    assert.deepEqual(state.calls.deleted, []);
+    assert.deepEqual(state.calls.uploaded, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("reuses an identical release asset", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
   try {

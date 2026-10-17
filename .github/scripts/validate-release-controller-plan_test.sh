@@ -363,7 +363,8 @@ test_backport_resolves_release_commit() {
         fail_test "release backport was not ready"
         return
     }
-    [[ "$(<"${output}/de-image-tag.txt")" == "0.61" ]] || {
+    [[ "$(<"${output}/de-image-tag.txt")" == "0.61.0" &&
+        "$(<"${output}/de-source-tag.txt")" == "0.61" ]] || {
         fail_test "stable release selected the wrong Deployment Engine tag"
         return
     }
@@ -444,7 +445,7 @@ test_existing_channel_release_type() {
     local version="$1"
     local release_type="$2"
     local source backport plan output
-    local expected_tag="0.61"
+    local expected_source_tag="0.61"
 
     cleanup
     init_fixture
@@ -459,10 +460,11 @@ test_existing_channel_release_type() {
     assert_success || return
     assert_frozen_outputs "${plan}" "${output}" || return
     if [[ "${release_type}" == "rc" ]]; then
-        expected_tag="${version#v}"
+        expected_source_tag="${version#v}"
     fi
     if [[ "$(<"${output}/ready.txt")" != "true" ||
-    "$(<"${output}/de-image-tag.txt")" != "${expected_tag}" ]]; then
+    "$(<"${output}/de-image-tag.txt")" != "${version#v}" ||
+    "$(<"${output}/de-source-tag.txt")" != "${expected_source_tag}" ]]; then
         fail_test "${release_type} did not resolve its existing-channel plan"
         return
     fi

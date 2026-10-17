@@ -465,6 +465,7 @@ jq -e '
   .release.draft == true
   and .release.notes.matchesSource == true
   and .images[0].reference == "ghcr.io/radius-project/ucpd:0.60.0"
+  and .downstream.ociArtifacts[0].reference == "biceptypes.azurecr.io/radius:0.60.0"
 ' "${OUTPUT}" >/dev/null || fail "staged collection used mutable Radius images"
 [[ -f "${TEST_ROOT}/staged-assets/rad_linux_amd64" ]] ||
   fail "staged collector did not retain the installation binary"

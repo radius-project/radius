@@ -158,8 +158,9 @@ test_approval_gate_and_bindings() {
         '.jobs."publish-deployment-engine".steps[] |
         select(.id == "existing-image") |
         ((has("continue-on-error") | not) and
-        (.run | contains("--allow-stale")))' \
-        "image inspection must report stale state and fail on errors"
+        (.run | contains("--allow-absent")) and
+        (.run | contains("--allow-stale") | not))' \
+        "immutable image conflicts must fail rather than dispatch a replacement"
     assert_contains "${ENTRY}" \
         "if [[ \"\${RESOLVE_RESULT}\" == \"failure\" ]]" \
         "entry summary must suggest remediation only after a failure"
@@ -350,6 +351,38 @@ test_release_build_contract() {
         "Prepare Release must reject an unmigrated release branch before opening a pull request"
 }
 
+test_de_bridge_uses_immutable_destinations() {
+    if ! (
+        directory="$(mktemp -d "${TMPDIR:-/tmp}/de-bridge-test-XXXXXX")"
+        trap 'rm -rf "${directory}"' EXIT
+        script="$(yq -r '.jobs."dispatch-publish".steps[] |
+            select(.id == "payload") | .run' "${WORKFLOWS}/publish-de-image.yaml")"
+        for tag in latest pr-42 0.61.0-rc.1 0.61.2; do
+            source_tag="${tag}"
+            [[ "${tag}" != "0.61.2" ]] || source_tag=0.61
+            SRC_IMAGE=example.azurecr.io/deployment-engine \
+                DEST_IMAGE=ghcr.io/radius-project/deployment-engine \
+                TAG="${tag}" SOURCE_TAG="${source_tag}" \
+                EXPECTED_REVISION=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+                EXPECTED_REF=refs/tags/v0.61.2 \
+                GITHUB_OUTPUT="${directory}/${tag}" \
+                bash -euo pipefail -c "${script}" || exit 1
+            grep -Fxq "tag=${tag}" "${directory}/${tag}" || exit 1
+            grep -Fxq "source_tag=${source_tag}" "${directory}/${tag}" || exit 1
+        done
+        if TAG=0.61 GITHUB_OUTPUT="${directory}/channel" \
+            bash -euo pipefail -c "${script}" >"${directory}/error" 2>&1; then
+            exit 1
+        fi
+        grep -Fq "promoted only by the approved release finalizer" \
+            "${directory}/error"
+    ); then
+        fail_test "the DE bridge can move stable aliases or lose its source tag"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
     command -v yq >/dev/null || {
         echo "yq is required" >&2
@@ -362,6 +395,7 @@ main() {
     test_unknown_dispatch_summary
     test_stage_order
     test_release_build_contract
+    test_de_bridge_uses_immutable_destinations
     test_identity_and_cleanup
 
     if ((FAIL > 0)); then

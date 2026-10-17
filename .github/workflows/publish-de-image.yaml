@@ -12,8 +12,17 @@ on:
         description: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
         required: true
       tag:
-        description: Tag for the image (e.g. 1.0)
+        description: Destination tag (full release version, latest, or development tag; not X.Y)
         required: true
+      source_tag:
+        description: Source tag in ACR, when different from the destination
+        required: false
+      expected_revision:
+        description: Expected source image commit SHA
+        required: false
+      expected_ref:
+        description: Expected source image Git ref
+        required: false
   repository_dispatch:
     types: [deployment-engine.publish]
     # Expected client_payload:
@@ -44,11 +53,22 @@ jobs:
           SRC_IMAGE: ${{ github.event.client_payload.src_image || github.event.inputs.src_image }}
           DEST_IMAGE: ${{ github.event.client_payload.dest_image || github.event.inputs.dest_image }}
           TAG: ${{ github.event.client_payload.tag || github.event.inputs.tag }}
+          SOURCE_TAG: ${{ github.event.client_payload.source_tag || inputs.source_tag }}
+          EXPECTED_REVISION: ${{ github.event.client_payload.expected_revision || inputs.expected_revision }}
+          EXPECTED_REF: ${{ github.event.client_payload.expected_ref || inputs.expected_ref }}
         run: |
+          if [[ "${TAG}" =~ ^[0-9]+\.[0-9]+$ ]]; then
+            echo "Stable channel aliases are promoted only by the approved release finalizer." >&2
+            exit 1
+          fi
+          source_tag="${SOURCE_TAG:-${TAG}}"
           {
             echo "src_image=${SRC_IMAGE}"
             echo "dest_image=${DEST_IMAGE}"
             echo "tag=${TAG}"
+            echo "source_tag=${source_tag}"
+            echo "expected_revision=${EXPECTED_REVISION:-}"
+            echo "expected_ref=${EXPECTED_REF:-}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Get App Token
@@ -85,7 +105,10 @@ jobs:
               "source_repository": ${{ toJSON(github.repository) }},
               "src_image": ${{ toJSON(steps.payload.outputs.src_image) }},
               "dest_image": ${{ toJSON(steps.payload.outputs.dest_image) }},
-              "tag": ${{ toJSON(steps.payload.outputs.tag) }}
+              "tag": ${{ toJSON(steps.payload.outputs.tag) }},
+              "source_tag": ${{ toJSON(steps.payload.outputs.source_tag) }},
+              "expected_revision": ${{ toJSON(steps.payload.outputs.expected_revision) }},
+              "expected_ref": ${{ toJSON(steps.payload.outputs.expected_ref) }}
             }
           INPUT_MAX_WAIT_SECONDS: "720"
           INPUT_POLL_INTERVAL_SECONDS: "15"
