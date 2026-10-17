@@ -61,7 +61,7 @@ data:
 
     identity:
       authMethod: UCPCredential
-    {{- with .Values.ucp.workerServer.dequeueInterval }}
+    {{- with dig "workerServer" "dequeueInterval" "" .Values.ucp }}
 
     workerServer:
       dequeueInterval: {{ . | quote }}

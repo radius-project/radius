@@ -49,7 +49,7 @@ data:
     workerServer:
       maxOperationConcurrency: 10
       maxOperationRetryCount: 2
-      {{- with .Values.dynamicrp.workerServer.dequeueInterval }}
+      {{- with dig "workerServer" "dequeueInterval" "" .Values.dynamicrp }}
       dequeueInterval: {{ . | quote }}
       {{- end }}
     ucp:

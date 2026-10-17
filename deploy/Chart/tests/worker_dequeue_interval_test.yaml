@@ -37,3 +37,24 @@ tests:
           path: data["radius-self-host.yaml"]
           pattern: 'workerServer:\n  maxOperationConcurrency: 10\n  maxOperationRetryCount: 2\n  dequeueInterval: "4s"\n'
         template: dynamic-rp/configmaps.yaml
+
+  # helm upgrade --reuse-values renders with the previous release's values, which predate
+  # workerServer.
+  - it: renders values from releases that predate the dequeue interval
+    set:
+      ucp.workerServer: null
+      rp.workerServer: null
+      dynamicrp.workerServer: null
+    asserts:
+      - notMatchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'dequeueInterval'
+        template: ucp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'dequeueInterval'
+        template: rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'dequeueInterval'
+        template: dynamic-rp/configmaps.yaml
