@@ -117,7 +117,7 @@ After reviewing the results, remove the clusters, registry, trusted certificate,
 make test-functional-local-noncloud-cleanup
 ```
 
-The command retains logs and test configuration under `dist/local-functional/`.
+The command retains logs and test configuration under `dist/local-functional/`. `make test-functional-noncloud-cleanup` is an alias for the same cleanup.
 
 ### Run fewer tests
 
@@ -173,7 +173,7 @@ Infrastructure removed; logs and isolated CLI configuration remain in dist/local
 
 For manually selected groups, each package prints `ok` or a successful `gotestsum` summary. A successful end-to-end group creates its expected Radius resources, verifies their state, and removes them according to the selected cleanup mode.
 
-Run `make test-local-functional-runner` to check the runner's amd64/arm64 platform and emulation preflight, image architecture selection, explicit legacy environment deployment and selection, fixture locking/restoration, diagnostics rotation, bounded full-lifecycle concurrency, worker failure propagation, serial selected-group execution, and cleanup using mocked infrastructure commands. These regression checks also run as part of `make test` and do not require Docker, Kubernetes, or sudo access.
+Run `make test-local-functional-runner` to check the runner's amd64/arm64 platform and emulation preflight, image architecture selection, bounded Gateway API discovery readiness, explicit legacy environment deployment and selection, fixture locking/restoration, diagnostics rotation, bounded full-lifecycle concurrency, worker failure propagation, serial selected-group execution, and cleanup using mocked infrastructure commands. These regression checks also run as part of `make test` and do not require Docker, Kubernetes, or sudo access.
 
 Run `make test-docker-build` to verify the default amd64 and explicit amd64/arm64 Make image recipes without Docker or Go builds. These checks also run as part of `make test`.
 
@@ -225,6 +225,10 @@ LOCAL_FUNCTIONAL_SUITE=database \
 ### A complete test run failed
 
 Review `dist/local-functional/results/` and `dist/local-functional/container_logs/`. Run cleanup before starting another complete test run because failed tests can leave resources and provider registrations behind.
+
+### Gateway API discovery is not ready after installation
+
+Newly installed Gateway API resources may not appear immediately in Kubernetes API discovery. The runner refreshes discovery and waits up to three minutes for both GatewayClass and Gateway resource types before checking the Contour gateway. If that wait fails, inspect the Gateway API CRDs and the Radius installation in the retained cluster; authentication and API connection errors fail immediately rather than being retried as missing resources.
 
 ### Bicep reports that a local extension has not been restored
 

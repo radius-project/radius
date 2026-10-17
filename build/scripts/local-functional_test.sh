@@ -24,8 +24,9 @@ assert_not_contains() {
     [[ "$1" != *"$2"* ]] || fail "did not expect '$1' to contain '$2'"
 }
 
-export REAL_MAKE
+export REAL_MAKE REAL_SLEEP
 REAL_MAKE="$(command -v make)"
+REAL_SLEEP="$(command -v sleep)"
 mkdir -p "${work_dir}/build/scripts" "${work_dir}/bin" \
     "${work_dir}/dist/local-functional" \
     "${work_dir}/test/functional-portable/dynamicrp/noncloud/resources/testdata" \
@@ -53,6 +54,7 @@ export MOCK_FIXTURE_HELPER="${work_dir}/fixture-worker.sh"
 export MOCK_CLUSTERS="" MOCK_CONTAINERS="" MOCK_NETWORKS=""
 export MOCK_DOCKER_PLATFORM=linux/x86_64
 export MOCK_GOTEST_OPTS="-count=1"
+export MOCK_GATEWAY_DISCOVERY=ready
 unset MAKEFLAGS MFLAGS GOTEST_OPTS
 cat >"${MOCK_FIXTURE_HELPER}" <<'EOF'
 #!/bin/bash
@@ -68,13 +70,14 @@ touch "${MOCK_LOG}.fixture-$1-done"
 EOF
 
 # Only filesystem utilities and GNU Make are real; infrastructure is mocked.
-for tool in dirname mkdir mktemp mv rm grep bash cp touch rmdir sleep sed cat chmod ln; do
+for tool in dirname mkdir mktemp mv rm grep bash cp touch rmdir sed cat chmod ln; do
     ln -s "$(command -v "${tool}")" "${work_dir}/bin/${tool}"
 done
 cat >"${work_dir}/bin/mock" <<'EOF'
 #!/bin/bash
 set -euo pipefail
 tool="${0##*/}"
+gateway_discovery_pending="${MOCK_LOG}.gateway-discovery-pending-${LOCAL_FUNCTIONAL_SUITE:-standard}"
 printf '%s %s\n' "${tool}" "$*" >>"${MOCK_LOG}"
 if [[ "${tool} $*" == "${MOCK_FAILURE}" ]]; then
     echo "mock failure: ${tool} $*" >&2
@@ -96,7 +99,18 @@ git)
     *) echo "Unexpected git command: $*" >&2; exit 1 ;;
     esac
     ;;
-go | helm | python3 | flux | envsubst | update-ca-certificates | dapr | rad) ;;
+go | helm | python3 | flux | envsubst | update-ca-certificates | dapr) ;;
+rad)
+    if [[ "${1:-} ${2:-}" == "install kubernetes" ]]; then
+        touch "${gateway_discovery_pending}"
+    fi
+    ;;
+sleep)
+    # Skip readiness delays without changing the concurrency tests' short sleeps.
+    if [[ "$*" != 5 ]]; then
+        exec "${REAL_SLEEP}" "$@"
+    fi
+    ;;
 yq)
     case "${1:-}" in
     -e) echo /planes/radius/local/resourceGroups/kind-radius ;;
@@ -163,6 +177,23 @@ jq)
     esac
     ;;
 kubectl)
+    if [[ "${1:-}" == api-resources ]]; then
+        if [[ "${MOCK_GATEWAY_DISCOVERY}" == missing ]]; then
+            echo httproutes.gateway.networking.k8s.io
+        elif [[ "${MOCK_GATEWAY_DISCOVERY}" == delayed &&
+            -f "${gateway_discovery_pending}" ]]; then
+            rm "${gateway_discovery_pending}"
+            echo httproutes.gateway.networking.k8s.io
+        else
+            rm -f "${gateway_discovery_pending}"
+            printf '%s\n' gatewayclasses.gateway.networking.k8s.io \
+                gateways.gateway.networking.k8s.io
+        fi
+    elif [[ "$*" == "get gatewayclass contour" &&
+        -f "${gateway_discovery_pending}" ]]; then
+        echo 'error: the server does not have a resource type "gatewayclass"' >&2
+        exit 1
+    fi
     if [[ "${1:-}" == port-forward ]]; then
         printf '%s\n' "$$" >"${MOCK_LOG}.forward-pid"
         exec sleep 60
@@ -244,7 +275,7 @@ make)
 esac
 EOF
 chmod +x "${work_dir}/bin/mock"
-for tool in git go docker make k3d kubectl helm openssl jq yq python3 \
+for tool in git go docker make k3d kubectl helm openssl jq yq python3 sleep \
     flux curl envsubst sudo update-ca-certificates bicep dapr rad; do
     ln -s mock "${work_dir}/bin/${tool}"
 done
@@ -399,10 +430,28 @@ for suite in "" database multicluster upgrade dynamicrp; do
         "yq -i .workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID) ${state}/home${suite:+-${suite}}/.rad/config.yaml"
     assert_contains "${calls}" \
         "environment=/planes/radius/local/resourceGroups/kind-radius/providers/Applications.Core/environments/kind-radius"
+    assert_contains "${calls}" \
+        "kubectl api-resources --api-group=gateway.networking.k8s.io --cached=false -o name"
     assert_not_contains "${calls}" "rad env "
 done
 export LOCAL_FUNCTIONAL_SUITE=""
+export MOCK_GATEWAY_DISCOVERY=delayed
+run_runner 0 install
+assert_contains "${output}" "Waiting for Gateway API discovery (1/36)"
+assert_contains "${calls}" "sleep 5"
+assert_contains "${calls}" "kubectl get gatewayclass contour"
+[[ "$(grep -c '^kubectl api-resources ' <<<"${calls}")" == 2 ]] ||
+    fail "delayed discovery did not stop after becoming ready"
+export MOCK_GATEWAY_DISCOVERY=missing
+run_runner 1 install
+assert_contains "${output}" "Gateway API discovery did not become ready"
+assert_not_contains "${calls}" "kubectl get gatewayclass contour"
+assert_not_contains "${calls}" "rad workspace create"
+[[ "$(grep -c '^kubectl api-resources ' <<<"${calls}")" == 36 ]] ||
+    fail "missing Gateway API discovery did not exhaust its bounded attempts"
+export MOCK_GATEWAY_DISCOVERY=ready
 for command in \
+    "kubectl api-resources --api-group=gateway.networking.k8s.io --cached=false -o name" \
     "rad deploy ./test/infra/radius/legacy-test-environment.bicep --parameters name=kind-radius --parameters namespace=default" \
     "yq -e .workspaces.items[.workspaces.default].scope ${state}/home/.rad/config.yaml" \
     "yq -i .workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID) ${state}/home/.rad/config.yaml"; do

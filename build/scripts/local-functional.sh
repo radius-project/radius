@@ -128,6 +128,23 @@ install_radius() {
         --set dashboard.image=ghcr.io/radius-project/dashboard \
         --set dashboard.tag=latest \
         --set-file "global.rootCA.cert=${CA_FILE}" "$@"
+    local gateway_resources attempt
+    for attempt in {1..36}; do
+        gateway_resources="$(kubectl api-resources \
+            --api-group=gateway.networking.k8s.io --cached=false -o name)"
+        if grep -Fxq gatewayclasses.gateway.networking.k8s.io \
+            <<<"${gateway_resources}" &&
+            grep -Fxq gateways.gateway.networking.k8s.io \
+                <<<"${gateway_resources}"; then
+            break
+        fi
+        if ((attempt == 36)); then
+            echo "Gateway API discovery did not become ready within 180 seconds." >&2
+            return 1
+        fi
+        echo "Waiting for Gateway API discovery (${attempt}/36)..."
+        sleep 5
+    done
     kubectl get gatewayclass contour
     kubectl wait --for=condition=Programmed gateway/radius \
         -n radius-system --timeout=180s

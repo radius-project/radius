@@ -243,6 +243,9 @@ test-functional-local-noncloud: ## Builds and installs Radius locally, then runs
 test-functional-local-noncloud-cleanup: ## Removes local functional test infrastructure while retaining diagnostics
 	bash build/scripts/local-functional.sh cleanup
 
+.PHONY: test-functional-noncloud-cleanup
+test-functional-noncloud-cleanup: test-functional-local-noncloud-cleanup ## Alias for local non-cloud functional test cleanup
+
 .PHONY: test-functional-all-cloud
 # Run all functional tests that require cloud resources
 test-functional-all-cloud: test-functional-ucp-cloud test-functional-corerp-cloud
