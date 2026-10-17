@@ -59,6 +59,7 @@ setup_repo() {
     git -C "${REPO}" config user.name "Radius Test"
     git -C "${REPO}" config user.email "test@example.com"
     git -C "${REPO}" config commit.gpgsign false
+    git -C "${REPO}" config tag.gpgsign false
 
     commit "initial"
     commit "old work"
@@ -148,6 +149,7 @@ test_repo_without_stable_tags_fails() {
     git -C "${bare}" config user.name "Radius Test"
     git -C "${bare}" config user.email "test@example.com"
     git -C "${bare}" config commit.gpgsign false
+    git -C "${bare}" config tag.gpgsign false
     git -C "${bare}" commit -q --allow-empty -m "initial"
     git -C "${bare}" tag v0.61.0-rc.1
 
