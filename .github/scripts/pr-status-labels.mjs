@@ -73,8 +73,9 @@ const SUBMITTED_REVIEW_STATES = Object.freeze([
   "CHANGES_REQUESTED"
 ]);
 
-// GraphQL Bot login of the Copilot pull request reviewer app.
-const COPILOT_REVIEWER_LOGIN = "copilot-pull-request-reviewer";
+// Lowercase GraphQL Bot logins (no REST "[bot]" suffix) whose unresolved review
+// threads keep a PR waiting for the author, regardless of other handoffs.
+const BLOCKING_BOT_REVIEWERS = Object.freeze(["copilot-pull-request-reviewer"]);
 
 // GitHub's merge-queue GraphQL fields require this feature header.
 const MERGE_QUEUE_HEADERS = Object.freeze({
@@ -532,7 +533,7 @@ async function unresolvedReviewFeedback(
 ) {
   const feedback = new Map();
   const commits = new Set();
-  let copilot = false;
+  let blockingBot = false;
   const cursors = new Set();
   let cursor = null;
   do {
@@ -595,9 +596,10 @@ async function unresolvedReviewFeedback(
               comment.pullRequestReview.commit?.oid
             );
           } else if (comment.author.__typename === "Bot") {
-            // Copilot review threads need the author until they are resolved.
-            copilot ||=
-              comment.author.login.toLowerCase() === COPILOT_REVIEWER_LOGIN;
+            // Blocking bot review threads need the author until they are resolved.
+            blockingBot ||= BLOCKING_BOT_REVIEWERS.includes(
+              comment.author.login.toLowerCase()
+            );
             // A nonempty approval summary endorses earlier bot feedback on behalf of that human.
             for (const approval of feedbackApprovals) {
               const approvedAt = Date.parse(approval.submitted_at);
@@ -644,7 +646,7 @@ async function unresolvedReviewFeedback(
     cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
     cursors.add(cursor);
   } while (cursor);
-  return { feedback, commits, copilot };
+  return { feedback, commits, blockingBot };
 }
 
 function desiredLabels(
@@ -655,7 +657,7 @@ function desiredLabels(
   unresolvedReviewFeedback = false,
   hasSubmittedHumanReview = false,
   hasOutstandingHumanChanges = false,
-  unresolvedCopilotFeedback = false
+  unresolvedBlockingBotFeedback = false
 ) {
   const existing = currentLabels(pull);
   const desired = new Set();
@@ -693,7 +695,7 @@ function desiredLabels(
   let handoff;
   if (
     existing.has(MANUAL_LABELS.needsAuthorResponse) ||
-    unresolvedCopilotFeedback
+    unresolvedBlockingBotFeedback
   ) {
     handoff = STATUS_LABELS.waitingForAuthor;
   } else if (
@@ -1036,7 +1038,7 @@ async function syncPull(github, core, owner, repo, number) {
   let submittedReviews = [];
   let feedback = new Map();
   let feedbackCommits = new Set();
-  let copilotFeedback = false;
+  let blockingBotFeedback = false;
   if (
     pull.state === "OPEN" &&
     !pull.isDraft &&
@@ -1055,7 +1057,7 @@ async function syncPull(github, core, owner, repo, number) {
     ({
       feedback,
       commits: feedbackCommits,
-      copilot: copilotFeedback
+      blockingBot: blockingBotFeedback
     } = await unresolvedReviewFeedback(
       github,
       owner,
@@ -1086,8 +1088,8 @@ async function syncPull(github, core, owner, repo, number) {
       );
     }
   }
-  if (copilotFeedback) {
-    core.info(`#${number}: unresolved Copilot review threads need the author`);
+  if (blockingBotFeedback) {
+    core.info(`#${number}: unresolved bot review threads need the author`);
   }
 
   const reviewDecision =
@@ -1095,7 +1097,7 @@ async function syncPull(github, core, owner, repo, number) {
       pull.state === "OPEN" &&
       !pull.isDraft &&
       !hasUnresolvedReviewFeedback &&
-      !copilotFeedback &&
+      !blockingBotFeedback &&
       pull.reviewDecision === null &&
       !existing.has(MANUAL_LABELS.doNotMerge) &&
       !existing.has(MANUAL_LABELS.needsAuthorResponse)
@@ -1107,7 +1109,7 @@ async function syncPull(github, core, owner, repo, number) {
   if (
     pull.state === "OPEN" &&
     !pull.isDraft &&
-    !copilotFeedback &&
+    !blockingBotFeedback &&
     (feedback.size > 0 || reviewDecision === "CHANGES_REQUESTED") &&
     !existing.has(MANUAL_LABELS.doNotMerge) &&
     !existing.has(MANUAL_LABELS.needsAuthorResponse)
@@ -1146,7 +1148,7 @@ async function syncPull(github, core, owner, repo, number) {
     pull.state === "OPEN" &&
     !pull.isDraft &&
     !hasUnresolvedReviewFeedback &&
-    !copilotFeedback &&
+    !blockingBotFeedback &&
     reviewDecision === "APPROVED" &&
     pull.mergeable === "MERGEABLE" &&
     pull.mergeStateStatus === "BEHIND" &&
@@ -1174,7 +1176,7 @@ async function syncPull(github, core, owner, repo, number) {
     hasUnresolvedReviewFeedback,
     humanReviews.length > 0,
     changeRequests.length > 0,
-    copilotFeedback
+    blockingBotFeedback
   );
   if (mergeabilityUnknown) {
     core.warning(
