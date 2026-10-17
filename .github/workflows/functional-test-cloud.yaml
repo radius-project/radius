@@ -839,6 +839,7 @@ jobs:
           AZURE_OIDC_ISSUER="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER')"
           AZURE_OIDC_ISSUER_PUBLIC_KEY="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER_PUBLIC_KEY')"
           AZURE_OIDC_ISSUER_PRIVATE_KEY="$(echo "${OIDC_JSON}" | jq -er '.AZURE_OIDC_ISSUER_PRIVATE_KEY')"
+          echo "FUNCTEST_OIDC_ISSUER=${AZURE_OIDC_ISSUER}" >> "${GITHUB_ENV}"
 
           AUTHKEY=$(printf '%s' "${GITHUB_ACTOR}:${GITHUB_TOKEN}" | base64)
           echo "{\"auths\":{\"ghcr.io\":{\"auth\":\"${AUTHKEY}\"}}}" > "./ghcr_secret.json"
