@@ -188,7 +188,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// Build the fully qualified Radius.Core application ID for ownership matching
-	applicationID := cmd.PreviewApplicationID(r.Workspace.Scope, r.ApplicationName)
+	applicationID := cmd.ApplicationID(r.Workspace.Scope, r.ApplicationName)
 
 	resourcesList, err := managementClient.ListResourcesInApplication(ctx, applicationID)
 	if err != nil && !clients.Is404Error(err) {

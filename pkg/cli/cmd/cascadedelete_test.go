@@ -48,9 +48,9 @@ func testResource(name string) generated.GenericResource {
 	}
 }
 
-func Test_PreviewResourceIDs(t *testing.T) {
-	require.Equal(t, testScope+"/providers/Radius.Core/applications/my-app", PreviewApplicationID(testScope, "my-app"))
-	require.Equal(t, testScope+"/providers/Radius.Core/environments/my-env", PreviewEnvironmentID(testScope, "my-env"))
+func Test_ResourceIDs(t *testing.T) {
+	require.Equal(t, testScope+"/providers/Radius.Core/applications/my-app", ApplicationID(testScope, "my-app"))
+	require.Equal(t, testScope+"/providers/Radius.Core/environments/my-env", EnvironmentID(testScope, "my-env"))
 }
 
 func Test_DeleteResourcesInParallel(t *testing.T) {
