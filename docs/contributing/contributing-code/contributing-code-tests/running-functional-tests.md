@@ -31,7 +31,7 @@ Install these tools and make sure each command is available on `PATH`:
 - [yq v4](https://github.com/mikefarah/yq) for Bicep type generation
 - Node.js and Corepack (see the [code-generation prerequisites](../contributing-code-prerequisites/README.md#install-code-generation-tools))
 
-Start Docker before running the tests. The test runner installs the repository-pinned Bicep and Dapr CLIs.
+Start Docker before running the tests. The test runner installs the repository-pinned Bicep and Dapr CLIs. It adds the temporary registry CA to the host trust store without overriding `SSL_CERT_FILE`, preserving public HTTPS trust and any caller-supplied CA bundle.
 
 The test runner also requires:
 

@@ -511,6 +511,20 @@ run_runner 1 fixtures
 assert_contains "${output}" "mock failure"
 export MOCK_FAILURE=""
 
+(
+    unset SSL_CERT_FILE
+    # shellcheck disable=SC2016 # Expanded after the child configures its TLS environment.
+    run_runner 0 exec bash -c 'printf "%s|%s" "${SSL_CERT_FILE-<unset>}" "${RADIUS_REGISTRY_CERT_FILE}"'
+    [[ "${output}" == "<unset>|${state}/certs/registry.crt" ]] ||
+        fail "runner replaced system TLS roots with the private registry CA"
+
+    export SSL_CERT_FILE="${work_dir}/public-ca-bundle.crt"
+    # shellcheck disable=SC2016 # Expanded after the child configures its TLS environment.
+    run_runner 0 exec bash -c 'printf "%s|%s" "${SSL_CERT_FILE}" "${RADIUS_REGISTRY_CERT_FILE}"'
+    [[ "${output}" == "${SSL_CERT_FILE}|${state}/certs/registry.crt" ]] ||
+        fail "runner replaced the caller's TLS bundle with the private registry CA"
+)
+
 for suite in "" database statestore upgrade multicluster dynamicrp; do
     export LOCAL_FUNCTIONAL_SUITE="${suite}"
     export RADIUS_TEST_EXTERNAL_KUBECONFIG=/unrelated/kubeconfig

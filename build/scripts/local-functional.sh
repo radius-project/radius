@@ -50,7 +50,6 @@ configure_environment() {
     fi
     export PATH="${STATE}/bin:${REPO_ROOT}/dist/${HOST_OS}_${HOST_ARCH}/release:${PATH}"
     export RAD_PATH="${REPO_ROOT}/dist/${HOST_OS}_${HOST_ARCH}/release"
-    export SSL_CERT_FILE="${CA_FILE}"
     export BICEP_TRUSTED_REGISTRIES="localhost,${REGISTRY}"
     export DOCKER_REGISTRY="${REGISTRY}:${REGISTRY_PORT}"
     export REL_VERSION="${TAG}"
