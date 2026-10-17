@@ -43,7 +43,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -137,7 +136,7 @@ func Test_Validate(t *testing.T) {
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -165,7 +164,7 @@ func Test_Validate(t *testing.T) {
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -198,7 +197,7 @@ func Test_Validate(t *testing.T) {
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -226,7 +225,7 @@ func Test_Validate(t *testing.T) {
 
 				// No need to choose env settings since we're using existing
 
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -254,7 +253,7 @@ func Test_Validate(t *testing.T) {
 
 				// No need to choose env settings since we're using existing
 
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -286,7 +285,7 @@ func Test_Validate(t *testing.T) {
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -318,7 +317,7 @@ func Test_Validate(t *testing.T) {
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -350,7 +349,7 @@ func Test_Validate(t *testing.T) {
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -382,7 +381,7 @@ func Test_Validate(t *testing.T) {
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -589,7 +588,7 @@ func Test_Validate(t *testing.T) {
 				initAddCloudProviderPromptYes(mocks.Prompter)
 				initSelectCloudProvider(mocks.Prompter, confirmCloudProviderBackNavigationSentinel)
 
-				setConfirmOption(mocks.Prompter, common.ResultConfirmed)
+				setConfirmOption(mocks.Prompter, resultConfirmed)
 			},
 		},
 		{
@@ -1242,19 +1241,19 @@ func getTestKubeConfig() *api.Config {
 
 func initKubeContextWithKind(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), common.SelectClusterPrompt).
+		GetListInput(gomock.Any(), selectClusterPrompt).
 		Return("kind-kind", nil).Times(1)
 }
 
 func initKubeContextSelectionError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), common.SelectClusterPrompt).
+		GetListInput(gomock.Any(), selectClusterPrompt).
 		Return("", errors.New("cannot read selection")).Times(1)
 }
 
 func initKubeContextWithInterruptSignal(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		GetListInput(gomock.Any(), common.SelectClusterPrompt).
+		GetListInput(gomock.Any(), selectClusterPrompt).
 		Return("", &prompt.ErrExitConsole{}).Times(1)
 }
 
@@ -1343,20 +1342,20 @@ func initExistingEnvironmentSelection(prompter *prompt.MockInterface, choice str
 
 func setAWSRegionPrompt(prompter *prompt.MockInterface, regions []string, region string) {
 	prompter.EXPECT().
-		GetListInput(regions, common.SelectAWSRegionPrompt).
+		GetListInput(regions, selectAWSRegionPrompt).
 		Return(region, nil).
 		Times(1)
 }
 
 func setAWSAccessKeyIDPrompt(prompter *prompt.MockInterface, accessKeyID string) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterAWSIAMAcessKeyIDPrompt, gomock.Any()).
+		GetTextInput(enterAWSIAMAcessKeyIDPrompt, gomock.Any()).
 		Return(accessKeyID, nil).Times(1)
 }
 
 func setAWSSecretAccessKeyPrompt(prompter *prompt.MockInterface, secretAccessKey string) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterAWSIAMSecretAccessKeyPrompt, gomock.Any()).
+		GetTextInput(enterAWSIAMSecretAccessKeyPrompt, gomock.Any()).
 		Return(secretAccessKey, nil).Times(1)
 }
 
@@ -1369,7 +1368,7 @@ func setAWSCallerIdentity(client *aws.MockClient, callerIdentityOutput *sts.GetC
 
 func setAWSAccountIDConfirmPrompt(prompter *prompt.MockInterface, accountName string, choice string) {
 	prompter.EXPECT().
-		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, fmt.Sprintf(common.ConfirmAWSAccountIDPromptFmt, accountName)).
+		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, fmt.Sprintf(confirmAWSAccountIDPromptFmt, accountName)).
 		Return(choice, nil).
 		Times(1)
 }
@@ -1439,98 +1438,98 @@ func setAzureLocations(client *azure.MockClient, subscriptionID string, location
 
 func setAzureResourceGroupNamePrompt(prompter *prompt.MockInterface, name string) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterAzureResourceGroupNamePrompt, gomock.Any()).
+		GetTextInput(enterAzureResourceGroupNamePrompt, gomock.Any()).
 		Return(name, nil).
 		Times(1)
 }
 
 func setSelectAzureResourceGroupLocationPrompt(prompter *prompt.MockInterface, locations []string, location string) {
 	prompter.EXPECT().
-		GetListInput(locations, common.SelectAzureResourceGroupLocationPrompt).
+		GetListInput(locations, selectAzureResourceGroupLocationPrompt).
 		Return(location, nil).
 		Times(1)
 }
 
 func setAzureSubscriptionConfirmPrompt(prompter *prompt.MockInterface, subscriptionName string, choice string) {
 	prompter.EXPECT().
-		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, fmt.Sprintf(common.ConfirmAzureSubscriptionPromptFmt, subscriptionName)).
+		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, fmt.Sprintf(confirmAzureSubscriptionPromptFmt, subscriptionName)).
 		Return(choice, nil).
 		Times(1)
 }
 
 func setAzureSubsubscriptionPrompt(prompter *prompt.MockInterface, names []string, name string) {
 	prompter.EXPECT().
-		GetListInput(names, common.SelectAzureSubscriptionPrompt).
+		GetListInput(names, selectAzureSubscriptionPrompt).
 		Return(name, nil).
 		Times(1)
 }
 
 func setAzureResourceGroupCreatePrompt(prompter *prompt.MockInterface, choice string) {
 	prompter.EXPECT().
-		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, common.ConfirmAzureCreateResourceGroupPrompt).
+		GetListInput([]string{prompt.ConfirmYes, prompt.ConfirmNo}, confirmAzureCreateResourceGroupPrompt).
 		Return(choice, nil).
 		Times(1)
 }
 
 func setAzureResourceGroupPrompt(prompter *prompt.MockInterface, names []string, name string) {
 	prompter.EXPECT().
-		GetListInput(names, common.SelectAzureResourceGroupPrompt).
+		GetListInput(names, selectAzureResourceGroupPrompt).
 		Return(name, nil).
 		Times(1)
 }
 
 func setAzureServicePrincipalAppIDPrompt(prompter *prompt.MockInterface, appID string) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterAzureServicePrincipalAppIDPrompt, gomock.Any()).
+		GetTextInput(enterAzureServicePrincipalAppIDPrompt, gomock.Any()).
 		Return(appID, nil).
 		Times(1)
 }
 
 func setAzureServicePrincipalPasswordPrompt(prompter *prompt.MockInterface, password string) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterAzureServicePrincipalPasswordPrompt, gomock.Any()).
+		GetTextInput(enterAzureServicePrincipalPasswordPrompt, gomock.Any()).
 		Return(password, nil).
 		Times(1)
 }
 
 func setAzureServicePrincipalTenantIDPrompt(prompter *prompt.MockInterface, tenantID string) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterAzureServicePrincipalTenantIDPrompt, gomock.Any()).
+		GetTextInput(enterAzureServicePrincipalTenantIDPrompt, gomock.Any()).
 		Return(tenantID, nil).
 		Times(1)
 }
 
 func setAzureWorkloadIdentityAppIDPrompt(prompter *prompt.MockInterface, appID string) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterAzureWorkloadIdentityAppIDPrompt, gomock.Any()).
+		GetTextInput(enterAzureWorkloadIdentityAppIDPrompt, gomock.Any()).
 		Return(appID, nil).
 		Times(1)
 }
 
 func setAzureWorkloadIdentityTenantIDPrompt(prompter *prompt.MockInterface, tenantID string) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterAzureWorkloadIdentityTenantIDPrompt, gomock.Any()).
+		GetTextInput(enterAzureWorkloadIdentityTenantIDPrompt, gomock.Any()).
 		Return(tenantID, nil).
 		Times(1)
 }
 
 func setAzureCredentialKindPrompt(prompter *prompt.MockInterface, choice string) {
 	prompter.EXPECT().
-		GetListInput([]string{"Service Principal", "Workload Identity"}, common.SelectAzureCredentialKindPrompt).
+		GetListInput([]string{"Service Principal", "Workload Identity"}, selectAzureCredentialKindPrompt).
 		Return(choice, nil).
 		Times(1)
 }
 
 func setAWSCredentialKindPrompt(prompter *prompt.MockInterface, choice string) {
 	prompter.EXPECT().
-		GetListInput([]string{"Access Key", "IRSA"}, common.SelectAWSCredentialKindPrompt).
+		GetListInput([]string{"Access Key", "IRSA"}, selectAWSCredentialKindPrompt).
 		Return(choice, nil).
 		Times(1)
 }
 
 func setAwsIRSARoleARNPrompt(prompter *prompt.MockInterface, roleARN string) {
 	prompter.EXPECT().
-		GetTextInput(common.EnterAWSRoleARNPrompt, gomock.Any()).
+		GetTextInput(enterAWSRoleARNPrompt, gomock.Any()).
 		Return(roleARN, nil).
 		Times(1)
 }
@@ -1578,10 +1577,10 @@ func setAzureCloudProviderWorkloadIdentity(prompter *prompt.MockInterface, clien
 	setAzureWorkloadIdentityTenantIDPrompt(prompter, provider.WorkloadIdentity.TenantID)
 }
 
-func setConfirmOption(prompter *prompt.MockInterface, choice common.SummaryResult) {
+func setConfirmOption(prompter *prompt.MockInterface, choice summaryResult) {
 	prompter.EXPECT().
 		RunProgram(gomock.Any()).
-		Return(&common.SummaryModel{Result: choice}, nil).
+		Return(&summaryModel{result: choice}, nil).
 		Times(1)
 }
 
@@ -1590,7 +1589,7 @@ func setProgressHandler(prompter *prompt.MockInterface) {
 		RunProgram(gomock.Any()).
 		DoAndReturn(func(program *tea.Program) (tea.Model, error) {
 			program.Kill() // Quit the program immediately
-			return &common.ProgressModel{}, nil
+			return &progressModel{}, nil
 		}).
 		Times(1)
 }
