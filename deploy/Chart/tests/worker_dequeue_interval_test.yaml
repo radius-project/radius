@@ -1,0 +1,39 @@
+suite: test async worker dequeue interval
+templates:
+  - ucp/configmaps.yaml
+  - rp/configmaps.yaml
+  - dynamic-rp/configmaps.yaml
+tests:
+  - it: keeps the worker default when no dequeue interval is set
+    asserts:
+      - notMatchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'dequeueInterval'
+        template: ucp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'dequeueInterval'
+        template: rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'dequeueInterval'
+        template: dynamic-rp/configmaps.yaml
+
+  - it: renders each component's dequeue interval into its worker settings
+    set:
+      ucp.workerServer.dequeueInterval: 2s
+      rp.workerServer.dequeueInterval: 3s
+      dynamicrp.workerServer.dequeueInterval: 4s
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^workerServer:\n  dequeueInterval: "2s"$'
+        template: ucp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'workerServer:\n  maxOperationConcurrency: 10\n  maxOperationRetryCount: 2\n  dequeueInterval: "3s"\n'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'workerServer:\n  maxOperationConcurrency: 10\n  maxOperationRetryCount: 2\n  dequeueInterval: "4s"\n'
+        template: dynamic-rp/configmaps.yaml

@@ -113,7 +113,7 @@ func New(
 	if options.DeduplicationDuration == time.Duration(0) {
 		options.DeduplicationDuration = defaultDeduplicationDuration
 	}
-	if options.DequeueIntervalDuration == time.Duration(0) {
+	if options.DequeueIntervalDuration <= time.Duration(0) {
 		options.DequeueIntervalDuration = defaultDequeueInterval
 	}
 
