@@ -27,7 +27,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
-func Test_SelectCluster(t *testing.T) {
+func Test_selectCluster(t *testing.T) {
 	t.Run("full mode prompts user", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		k8s := kubernetes.NewMockInterface(ctrl)
@@ -54,7 +54,7 @@ func Test_SelectCluster(t *testing.T) {
 	})
 }
 
-func Test_BuildClusterList(t *testing.T) {
+func Test_buildClusterList(t *testing.T) {
 	config := &api.Config{
 		CurrentContext: "c-test-cluster",
 		Contexts: map[string]*api.Context{
