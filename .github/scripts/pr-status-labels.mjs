@@ -73,6 +73,9 @@ const SUBMITTED_REVIEW_STATES = Object.freeze([
   "CHANGES_REQUESTED"
 ]);
 
+// GraphQL Bot login of the Copilot pull request reviewer app.
+const COPILOT_REVIEWER_LOGIN = "copilot-pull-request-reviewer";
+
 // GitHub's merge-queue GraphQL fields require this feature header.
 const MERGE_QUEUE_HEADERS = Object.freeze({
   "GraphQL-Features": "merge_queue"
@@ -184,6 +187,9 @@ const REVIEW_THREAD_FRAGMENT = `
         pullRequestReview {
           state
           submittedAt
+          commit {
+            oid
+          }
         }
       }
       pageInfo {
@@ -475,7 +481,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
   return "APPROVED";
 }
 
-function addReviewFeedback(feedback, reviewer, submittedAt) {
+function addReviewFeedback(feedback, commits, reviewer, submittedAt, commit) {
   const key = reviewerKey(reviewer);
   if (key == null || !Number.isFinite(submittedAt)) {
     throw new Error(
@@ -483,6 +489,10 @@ function addReviewFeedback(feedback, reviewer, submittedAt) {
     );
   }
   feedback.set(key, Math.max(feedback.get(key) ?? -Infinity, submittedAt));
+  // An unknown reviewed commit cannot prove a later push.
+  commits.add(
+    /^[0-9a-f]{40}$/i.test(commit ?? "") ? commit.toLowerCase() : null
+  );
 }
 
 function humanReviewEvidence(pull, reviews) {
@@ -521,6 +531,8 @@ async function unresolvedReviewFeedback(
   feedbackApprovals
 ) {
   const feedback = new Map();
+  const commits = new Set();
+  let copilot = false;
   const cursors = new Set();
   let cursor = null;
   do {
@@ -577,15 +589,26 @@ async function unresolvedReviewFeedback(
           if (comment.author.__typename === "User") {
             addReviewFeedback(
               feedback,
+              commits,
               comment.author,
-              Math.max(submittedAt, createdAt, Date.parse(comment.updatedAt))
+              Math.max(submittedAt, createdAt, Date.parse(comment.updatedAt)),
+              comment.pullRequestReview.commit?.oid
             );
           } else if (comment.author.__typename === "Bot") {
+            // Copilot review threads need the author until they are resolved.
+            copilot ||=
+              comment.author.login.toLowerCase() === COPILOT_REVIEWER_LOGIN;
             // A nonempty approval summary endorses earlier bot feedback on behalf of that human.
             for (const approval of feedbackApprovals) {
               const approvedAt = Date.parse(approval.submitted_at);
               if (createdAt <= approvedAt && submittedAt <= approvedAt) {
-                addReviewFeedback(feedback, approval.user, approvedAt);
+                addReviewFeedback(
+                  feedback,
+                  commits,
+                  approval.user,
+                  approvedAt,
+                  approval.commit_id
+                );
               }
             }
           }
@@ -621,17 +644,18 @@ async function unresolvedReviewFeedback(
     cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
     cursors.add(cursor);
   } while (cursor);
-  return feedback;
+  return { feedback, commits, copilot };
 }
 
 function desiredLabels(
   pull,
-  rereviewRequested = false,
+  handedBack = false,
   requiredChecksPassed = false,
   reviewDecision = pull.reviewDecision,
   unresolvedReviewFeedback = false,
   hasSubmittedHumanReview = false,
-  hasOutstandingHumanChanges = false
+  hasOutstandingHumanChanges = false,
+  unresolvedCopilotFeedback = false
 ) {
   const existing = currentLabels(pull);
   const desired = new Set();
@@ -667,7 +691,10 @@ function desiredLabels(
   }
 
   let handoff;
-  if (existing.has(MANUAL_LABELS.needsAuthorResponse)) {
+  if (
+    existing.has(MANUAL_LABELS.needsAuthorResponse) ||
+    unresolvedCopilotFeedback
+  ) {
     handoff = STATUS_LABELS.waitingForAuthor;
   } else if (
     unresolvedReviewFeedback ||
@@ -675,7 +702,7 @@ function desiredLabels(
     reviewDecision === "CHANGES_REQUESTED"
   ) {
     handoff =
-      rereviewRequested ?
+      handedBack ?
         STATUS_LABELS.waitingForReview
       : STATUS_LABELS.waitingForAuthor;
   } else if (reviewDecision === "APPROVED") {
@@ -773,6 +800,45 @@ function hasRereviewRequest(pull, feedback, timeline) {
     ([key, submittedAt]) =>
       requested.get(key) > Math.max(submittedAt, removed.get(key) ?? -Infinity)
   );
+}
+
+function isPullAuthor(pull, user) {
+  // REST bot logins carry a [bot] suffix that GraphQL logins omit.
+  return (
+    Boolean(user?.login) &&
+    user.type === pull.author?.__typename &&
+    user.login.toLowerCase().replace(/\[bot\]$/, "") ===
+      pull.author.login?.toLowerCase()
+  );
+}
+
+function hasAuthorResponse(pull, feedback, commits, reviews, timeline) {
+  if (feedback.size === 0) {
+    return false;
+  }
+  // Feedback records the head it was submitted on, so a new head proves a later push.
+  const head = pull.headRefOid?.toLowerCase();
+  if (head && !commits.has(null) && !commits.has(head)) {
+    return true;
+  }
+  const responses = [
+    ...reviews
+      .filter(
+        (review) =>
+          SUBMITTED_REVIEW_STATES.includes(review.state) &&
+          isPullAuthor(pull, review.user)
+      )
+      .map((review) => review.submitted_at),
+    ...timeline
+      .filter(
+        (event) => event.event === "commented" && isPullAuthor(pull, event.user)
+      )
+      .map((event) => event.created_at)
+  ].map((time) => Date.parse(time));
+  if (responses.some((time) => !Number.isFinite(time))) {
+    throw new Error("An author response has an invalid timestamp");
+  }
+  return Math.max(...responses) > Math.max(...feedback.values());
 }
 
 function reviewSignal(run, pull) {
@@ -967,42 +1033,61 @@ async function syncPull(github, core, owner, repo, number) {
 
   let changeRequests = [];
   let humanReviews = [];
+  let submittedReviews = [];
   let feedback = new Map();
+  let feedbackCommits = new Set();
+  let copilotFeedback = false;
   if (
     pull.state === "OPEN" &&
     !pull.isDraft &&
     !existing.has(MANUAL_LABELS.doNotMerge) &&
     !existing.has(MANUAL_LABELS.needsAuthorResponse)
   ) {
-    const submittedReviews = await github.paginate(
-      github.rest.pulls.listReviews,
-      {
-        owner,
-        repo,
-        pull_number: number,
-        per_page: 100
-      }
-    );
+    submittedReviews = await github.paginate(github.rest.pulls.listReviews, {
+      owner,
+      repo,
+      pull_number: number,
+      per_page: 100
+    });
     const evidence = humanReviewEvidence(pull, submittedReviews);
     humanReviews = evidence.submittedReviews;
     changeRequests = evidence.changeRequests;
-    feedback = await unresolvedReviewFeedback(
+    ({
+      feedback,
+      commits: feedbackCommits,
+      copilot: copilotFeedback
+    } = await unresolvedReviewFeedback(
       github,
       owner,
       repo,
       number,
       pull,
       evidence.feedbackApprovals
-    );
+    ));
   }
   const hasUnresolvedReviewFeedback = feedback.size > 0;
   for (const review of changeRequests) {
-    addReviewFeedback(feedback, review.user, Date.parse(review.submitted_at));
+    addReviewFeedback(
+      feedback,
+      feedbackCommits,
+      review.user,
+      Date.parse(review.submitted_at),
+      review.commit_id
+    );
   }
   for (const review of humanReviews) {
     if (feedback.has(reviewerKey(review.user))) {
-      addReviewFeedback(feedback, review.user, Date.parse(review.submitted_at));
+      addReviewFeedback(
+        feedback,
+        feedbackCommits,
+        review.user,
+        Date.parse(review.submitted_at),
+        review.commit_id
+      );
     }
+  }
+  if (copilotFeedback) {
+    core.info(`#${number}: unresolved Copilot review threads need the author`);
   }
 
   const reviewDecision =
@@ -1010,6 +1095,7 @@ async function syncPull(github, core, owner, repo, number) {
       pull.state === "OPEN" &&
       !pull.isDraft &&
       !hasUnresolvedReviewFeedback &&
+      !copilotFeedback &&
       pull.reviewDecision === null &&
       !existing.has(MANUAL_LABELS.doNotMerge) &&
       !existing.has(MANUAL_LABELS.needsAuthorResponse)
@@ -1017,12 +1103,12 @@ async function syncPull(github, core, owner, repo, number) {
       await inferredReviewDecision(github, core, owner, repo, number, pull)
     : pull.reviewDecision;
 
-  let rereviewRequested = false;
+  let handedBack = false;
   if (
     pull.state === "OPEN" &&
     !pull.isDraft &&
+    !copilotFeedback &&
     (feedback.size > 0 || reviewDecision === "CHANGES_REQUESTED") &&
-    pull.reviewRequests.totalCount > 0 &&
     !existing.has(MANUAL_LABELS.doNotMerge) &&
     !existing.has(MANUAL_LABELS.needsAuthorResponse)
   ) {
@@ -1039,8 +1125,19 @@ async function syncPull(github, core, owner, repo, number) {
       core.warning(
         `#${number} reports changes requested but has no active change-request review`
       );
+    } else if (
+      hasAuthorResponse(
+        pull,
+        feedback,
+        feedbackCommits,
+        submittedReviews,
+        timeline
+      )
+    ) {
+      handedBack = true;
+      core.info(`#${number}: the author responded after the latest feedback`);
     } else {
-      rereviewRequested = hasRereviewRequest(pull, feedback, timeline);
+      handedBack = hasRereviewRequest(pull, feedback, timeline);
     }
   }
 
@@ -1049,6 +1146,7 @@ async function syncPull(github, core, owner, repo, number) {
     pull.state === "OPEN" &&
     !pull.isDraft &&
     !hasUnresolvedReviewFeedback &&
+    !copilotFeedback &&
     reviewDecision === "APPROVED" &&
     pull.mergeable === "MERGEABLE" &&
     pull.mergeStateStatus === "BEHIND" &&
@@ -1070,12 +1168,13 @@ async function syncPull(github, core, owner, repo, number) {
 
   const { desired, mergeabilityUnknown } = desiredLabels(
     pull,
-    rereviewRequested,
+    handedBack,
     requiredChecksPassed,
     reviewDecision,
     hasUnresolvedReviewFeedback,
     humanReviews.length > 0,
-    changeRequests.length > 0
+    changeRequests.length > 0,
+    copilotFeedback
   );
   if (mergeabilityUnknown) {
     core.warning(
