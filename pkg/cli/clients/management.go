@@ -283,26 +283,6 @@ func (amc *UCPApplicationsManagementClient) GetApplication(ctx context.Context, 
 	return response.ApplicationResource, nil
 }
 
-// GetApplicationGraph retrieves the application graph of an application by its name (or id).
-func (amc *UCPApplicationsManagementClient) GetApplicationGraph(ctx context.Context, applicationNameOrID string) (corerpv20231001.ApplicationGraphResponse, error) {
-	scope, name, err := amc.extractScopeAndName(applicationNameOrID)
-	if err != nil {
-		return corerpv20231001.ApplicationGraphResponse{}, err
-	}
-
-	client, err := amc.createApplicationClient(scope)
-	if err != nil {
-		return corerpv20231001.ApplicationGraphResponse{}, err
-	}
-
-	getResponse, err := client.GetGraph(ctx, name, corerpv20231001.GetGraphRequest{}, &corerpv20231001.ApplicationsClientGetGraphOptions{})
-	if err != nil {
-		return corerpv20231001.ApplicationGraphResponse{}, err
-	}
-
-	return getResponse.ApplicationGraphResponse, nil
-}
-
 // CreateOrUpdateApplication creates or updates an application by its name (or id).
 func (amc *UCPApplicationsManagementClient) CreateOrUpdateApplication(ctx context.Context, applicationNameOrID string, resource *corerpv20231001.ApplicationResource) error {
 	scope, name, err := amc.extractScopeAndName(applicationNameOrID)

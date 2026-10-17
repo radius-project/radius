@@ -1386,27 +1386,6 @@ func Test_Application(t *testing.T) {
 		require.Equal(t, expectedResource, application)
 	})
 
-	t.Run("GetApplicationGraph", func(t *testing.T) {
-		mock := NewMockapplicationResourceClient(gomock.NewController(t))
-		client := createClient(mock)
-
-		expectedGraph := corerp.ApplicationGraphResponse{
-			Resources: []*corerp.ApplicationGraphResource{
-				{
-					ID: &testResourceID,
-				},
-			},
-		}
-
-		mock.EXPECT().
-			GetGraph(gomock.Any(), testResourceName, gomock.Any(), gomock.Any()).
-			Return(corerp.ApplicationsClientGetGraphResponse{ApplicationGraphResponse: expectedGraph}, nil)
-
-		graph, err := client.GetApplicationGraph(t.Context(), testResourceID)
-		require.NoError(t, err)
-		require.Equal(t, expectedGraph, graph)
-	})
-
 	t.Run("CreateOrUpdateApplication", func(t *testing.T) {
 		mock := NewMockapplicationResourceClient(gomock.NewController(t))
 		client := createClient(mock)

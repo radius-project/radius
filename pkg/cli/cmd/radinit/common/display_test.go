@@ -102,7 +102,7 @@ func Test_SummaryModel_View_ConfigFiles(t *testing.T) {
 }
 
 func Test_ProgressModel_View_ConfigFiles(t *testing.T) {
-	complete := ProgressMsg{InstallComplete: true, EnvironmentComplete: true, ApplicationComplete: true, ConfigComplete: true}
+	complete := ProgressMsg{InstallComplete: true, EnvironmentComplete: true, ConfigComplete: true}
 
 	t.Run("lists config files under the configuration heading", func(t *testing.T) {
 		model := NewProgressModel(DisplayOptions{

@@ -244,7 +244,6 @@ type ShowOptions struct {
 	Workspace   string // The workspace name
 	Output      string // Output format (json, table, plain-text)
 	Application string // Application name (for resource show)
-	Preview     bool   // Use the preview API surface (--preview)
 }
 
 // DeleteOptions provides configuration for delete commands
@@ -290,9 +289,6 @@ func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string, opt
 		if opt.Output != "" {
 			args = append(args, "--output", opt.Output)
 		}
-		if opt.Preview {
-			args = append(args, "--preview")
-		}
 	}
 
 	return cli.RunCommand(ctx, args)
@@ -328,18 +324,6 @@ func (cli *CLI) EnvShow(ctx context.Context, environmentName string, opts ...Sho
 }
 
 // ApplicationDelete deletes the specified application deployed by Radius and returns an error if one occurs.
-func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) error {
-	command := "application"
-
-	args := []string{
-		command,
-		"delete",
-		"--yes",
-		"-a", applicationName,
-	}
-	_, err := cli.RunCommand(ctx, args)
-	return err
-}
 
 // EnvCreate runs the command to create an environment with the given name.
 // The options parameter is optional and allows specifying namespace, group, workspace, and output format.
@@ -449,17 +433,6 @@ func (cli *CLI) ResourceList(ctx context.Context, resourceType string, applicati
 	return cli.RunCommand(ctx, args)
 }
 
-// ResourceListInResourceGroup runs the "resource list --group" command to list all resources in a specific resource group
-// and returns the output as a string, returning an error if the command fails.
-func (cli *CLI) ResourceListInResourceGroup(ctx context.Context, groupName string) (string, error) {
-	args := []string{
-		"resource",
-		"list",
-		"--group", groupName,
-	}
-	return cli.RunCommand(ctx, args)
-}
-
 // GroupCreate creates a resource group with the given name.
 // The options parameter is optional and allows specifying workspace and output format.
 func (cli *CLI) GroupCreate(ctx context.Context, groupName string, opts ...CreateOptions) error {
@@ -531,9 +504,8 @@ func (cli *CLI) GroupShow(ctx context.Context, groupName string) (string, error)
 	return cli.RunCommand(ctx, args)
 }
 
-// ResourceLogs runs the CLI command to get the logs of a resource in an application. When preview is
-// true the "--preview" flag is added so the command operates against the preview resource types.
-func (cli *CLI) ResourceLogs(ctx context.Context, resourceType string, applicationName string, resourceName string, preview bool) (string, error) {
+// ResourceLogs runs the CLI command to get the logs of a resource in an application.
+func (cli *CLI) ResourceLogs(ctx context.Context, resourceType string, applicationName string, resourceName string) (string, error) {
 	args := []string{
 		"resource",
 		"logs",
@@ -541,15 +513,11 @@ func (cli *CLI) ResourceLogs(ctx context.Context, resourceType string, applicati
 		resourceType,
 		resourceName,
 	}
-	if preview {
-		args = append(args, "--preview")
-	}
 	return cli.RunCommand(ctx, args)
 }
 
-// ResourceExpose runs a command to expose a resource from an application on a given port. When preview
-// is true the "--preview" flag is added so the command operates against the preview resource types.
-func (cli *CLI) ResourceExpose(ctx context.Context, resourceType string, applicationName string, resourceName string, localPort int, remotePort int, preview bool) (string, error) {
+// ResourceExpose runs a command to expose a resource from an application on a given port.
+func (cli *CLI) ResourceExpose(ctx context.Context, resourceType string, applicationName string, resourceName string, localPort int, remotePort int) (string, error) {
 	args := []string{
 		"resource",
 		"expose",
@@ -558,9 +526,6 @@ func (cli *CLI) ResourceExpose(ctx context.Context, resourceType string, applica
 		resourceName,
 		"--port", fmt.Sprintf("%d", localPort),
 		"--remote-port", fmt.Sprintf("%d", remotePort),
-	}
-	if preview {
-		args = append(args, "--preview")
 	}
 	return cli.RunCommand(ctx, args)
 }
@@ -685,14 +650,13 @@ func (cli *CLI) EnvironmentDeletePreview(ctx context.Context, environmentName, g
 	return cli.RunCommand(ctx, args)
 }
 
-// ApplicationDeletePreview runs the "application delete" command with the --preview flag for the specified application name
+// ApplicationDelete runs the "application delete" command for the specified Radius.Core application name
 // and returns the output as a string, returning an error if the command fails.
-func (cli *CLI) ApplicationDeletePreview(ctx context.Context, applicationName, groupName string) (string, error) {
+func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName, groupName string) (string, error) {
 	args := []string{
 		"application",
 		"delete",
 		"-a", applicationName,
-		"--preview",
 		"--yes",
 	}
 

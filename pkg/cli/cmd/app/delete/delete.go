@@ -21,38 +21,37 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
+
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
-	"github.com/radius-project/radius/pkg/cli/delete"
-
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/spf13/cobra"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 )
 
 const (
-	deleteConfirmation = "Are you sure you want to delete application '%v' from environment '%v'?"
-	bicepWarning       = "'%v' is a Bicep filename or path and not the name of a Radius Application. Specify the name of a valid application and try again"
+	msgApplicationDeleted  = "Application deleted"
+	msgDeletingApplication = "Deleting application %s...\n"
+	msgDeletingResources   = "Deleting %d resource(s) associated with application %s...\n"
+	bicepWarning           = "'%v' is a Bicep filename or path and not the name of a Radius Application. Specify the name of a valid application and try again"
 )
 
-// NewCommand creates an instance of the `rad app delete` command and runner.
-//
-
-// NewCommand creates a new Cobra command for deleting a Radius Application, with flags for workspace, resource group,
-// application name and confirmation, and returns the command and a Runner object.
+// NewCommand creates an instance of the command and runner for the `rad app delete` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete Radius Application",
-		Long:  "Delete the specified Radius Application deployed in the default environment",
+		Long:  `Delete the specified Radius Application and its associated resources.`,
+		Args:  cobra.MaximumNArgs(1),
 		Example: `
 # Delete specified application and bypass confirmation prompt
 rad app delete --yes --application my-app
@@ -66,7 +65,6 @@ rad app delete my-app --group my-group
 # Force delete an application with resources stuck in a non-terminal state
 rad app delete my-app --force
 `,
-		Args: cobra.MaximumNArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
 
@@ -79,38 +77,31 @@ rad app delete my-app --force
 	return cmd, runner
 }
 
-// Runner is the Runner implementation for the `rad app delete` command.
+// Runner is the runner implementation for the `rad app delete` command.
 type Runner struct {
-	Delete            delete.Interface
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	InputPrompter     prompt.Interface
-	Output            output.Interface
+	ConfigHolder            *framework.ConfigHolder
+	Output                  output.Interface
+	InputPrompter           prompt.Interface
+	ConnectionFactory       connections.Factory
+	Workspace               *workspaces.Workspace
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 
-	ApplicationName string
-	EnvironmentName string
-	Scope           string
 	Confirm         bool
 	Force           bool
-	Workspace       *workspaces.Workspace
+	ApplicationName string
 }
 
-// NewRunner creates an instance of the runner for the `rad app delete` command.
+// NewRunner creates a new instance of the delete runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		Delete:            factory.GetDelete(),
 		ConfigHolder:      factory.GetConfigHolder(),
-		ConnectionFactory: factory.GetConnectionFactory(),
-		InputPrompter:     factory.GetPrompter(),
 		Output:            factory.GetOutput(),
+		InputPrompter:     factory.GetPrompter(),
+		ConnectionFactory: factory.GetConnectionFactory(),
 	}
 }
 
-// Validate runs validation for the `rad app delete` command.
-//
-
-// Validate checks the workspace, scope, application name, and confirm flag from the command line arguments and
-// request object, and returns an error if any of these are invalid.
+// Validate runs validation for the delete command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
@@ -118,7 +109,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	// Allow '--group' to override scope
 	scope, err := cli.RequireScope(cmd, *r.Workspace)
 	if err != nil {
 		return err
@@ -130,17 +120,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Lookup the environment name for use in the confirmation prompt
-	if workspace.Environment != "" {
-		id, err := resources.ParseResource(workspace.Environment)
-		if err != nil {
-			return err
-		}
-
-		r.EnvironmentName = id.Name()
-	}
-
-	// Throw error if user specifies a Bicep filename or path instead of an application name
 	if strings.HasSuffix(r.ApplicationName, ".bicep") {
 		return clierrors.Message(bicepWarning, r.ApplicationName)
 	}
@@ -158,31 +137,29 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad app delete` command.
+// Run executes the delete command logic.
 //
-
-// "Run" prompts the user to confirm the deletion of an application, creates a connection to the application management
-// client, and deletes the application if it exists. If the application does not exist, it logs a message. It returns an
-// error if there is an issue with the connection or the prompt.
+// This discovers resources owned by the application using the management client's
+// resource enumeration (ownership-based via properties.application), deletes them
+// in parallel without competing with server-side managed-secret cleanup, verifies that managed
+// secrets are gone, then deletes the application via the Radius.Core API.
 func (r *Runner) Run(ctx context.Context) error {
-	// Prompt user to confirm deletion
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
+	if r.RadiusCoreClientFactory == nil {
+		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+		r.RadiusCoreClientFactory = factory
 	}
 
-	app, err := client.GetApplication(ctx, r.ApplicationName)
+	appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
+
+	// Check if the application exists
+	_, err := appClient.Get(ctx, r.Workspace.Scope, r.ApplicationName, &corerpv20250801.ApplicationsClientGetOptions{})
 	if clients.Is404Error(err) {
-		r.Output.LogInfo("Applications.Core/applications/%s not found", r.ApplicationName)
+		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
 		return nil
 	} else if err != nil {
-		return err
-	}
-
-	var environmentID resources.ID
-
-	environmentID, err = resources.ParseResource(*app.Properties.Environment)
-	if err != nil {
 		return err
 	}
 
@@ -191,36 +168,54 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if !r.Confirm {
-		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.ApplicationName, environmentID.Name()), prompt.ConfirmNo, r.InputPrompter)
+		promptMsg := fmt.Sprintf("Are you sure you want to delete application '%s'?", r.ApplicationName)
+		confirmed, err := prompt.YesOrNoPrompt(promptMsg, prompt.ConfirmNo, r.InputPrompter)
 		if err != nil {
 			return err
 		}
 		if !confirmed {
+			r.Output.LogInfo("Application %q NOT deleted", r.ApplicationName)
 			return nil
 		}
 	}
-	r.EnvironmentName = environmentID.Name()
 
-	progressText := fmt.Sprintf("Deleting application '%s' from environment '%s'...", r.ApplicationName, r.EnvironmentName)
-
-	deleted, err := r.Delete.DeleteApplicationWithProgress(ctx, client, clients.DeleteOptions{
-		ApplicationNameOrID: r.ApplicationName,
-		ProgressText:        progressText,
-		Force:               r.Force,
-	})
+	// Use the management client to discover and delete owned resources.
+	// This uses ownership-based filtering (properties.application matches our app ID)
+	// rather than GetGraph which returns a connectivity graph that may include shared resources.
+	managementClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			r.Output.LogInfo("Applications.Core/applications/%s not found", r.ApplicationName)
-			return nil
-		}
-		return clierrors.Message("Failed to delete application '%s': %v", r.ApplicationName, err)
-	}
-	if deleted {
-		r.Output.LogInfo("Applications.Core/applications/%s deleted", r.ApplicationName)
-	} else {
-		r.Output.LogInfo("Applications.Core/applications/%s not found", r.ApplicationName)
-		return nil
+		return err
 	}
 
+	// Build the fully qualified Radius.Core application ID for ownership matching
+	applicationID := cmd.PreviewApplicationID(r.Workspace.Scope, r.ApplicationName)
+
+	resourcesList, err := managementClient.ListResourcesInApplication(ctx, applicationID)
+	if err != nil && !clients.Is404Error(err) {
+		return err
+	}
+
+	// Delete associated resources in parallel
+	if len(resourcesList) > 0 {
+		r.Output.LogInfo(msgDeletingResources, len(resourcesList), r.ApplicationName)
+
+		if err := cmd.DeleteResourcesInParallel(ctx, managementClient, r.Output, resourcesList, r.Force); err != nil {
+			return clierrors.Message("Failed to delete resources for application '%s': %v", r.ApplicationName, err)
+		}
+	}
+
+	// Delete the application itself.
+	// Re-check for 404 in case the app was concurrently deleted during resource cleanup.
+	r.Output.LogInfo(msgDeletingApplication, r.ApplicationName)
+
+	_, err = appClient.Delete(ctx, r.Workspace.Scope, r.ApplicationName, &corerpv20250801.ApplicationsClientDeleteOptions{})
+	if clients.Is404Error(err) {
+		r.Output.LogInfo("Application '%s' does not exist or has already been deleted.", r.ApplicationName)
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	r.Output.LogInfo(msgApplicationDeleted)
 	return nil
 }
