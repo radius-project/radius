@@ -19,14 +19,14 @@ package graph
 import (
 	"testing"
 
-	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_display(t *testing.T) {
 	t.Run("empty graph", func(t *testing.T) {
-		graph := []*corerpv20231001preview.ApplicationGraphResource{}
+		graph := []*corerpv20250801.ApplicationGraphResource{}
 		expected := `Displaying application: cool-app
 
 (empty)
@@ -59,17 +59,17 @@ func Test_display(t *testing.T) {
 		azureRedisPortalURL := "https://portal.azure.com/#@test-tenant/resource" + azureRedisID
 
 		provisioningStateSuccess := "Succeeded"
-		dirInbound := corerpv20231001preview.DirectionInbound
-		dirOutbound := corerpv20231001preview.DirectionOutbound
+		dirInbound := corerpv20250801.DirectionInbound
+		dirOutbound := corerpv20250801.DirectionOutbound
 
-		graph := []*corerpv20231001preview.ApplicationGraphResource{
+		graph := []*corerpv20250801.ApplicationGraphResource{
 			{
 				ID:                &backendID,
 				Name:              &backendName,
 				Type:              &backendType,
 				ProvisioningState: &provisioningStateSuccess,
-				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
-				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+				OutputResources:   []*corerpv20250801.ApplicationGraphOutputResource{},
+				Connections: []*corerpv20250801.ApplicationGraphConnection{
 					{
 						Direction: &dirInbound,
 						ID:        &sqlCntrID,
@@ -81,8 +81,8 @@ func Test_display(t *testing.T) {
 				Name:              &sqlCntrName,
 				Type:              &sqlCntrType,
 				ProvisioningState: &provisioningStateSuccess,
-				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
-				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+				OutputResources:   []*corerpv20250801.ApplicationGraphOutputResource{},
+				Connections: []*corerpv20250801.ApplicationGraphConnection{
 					{
 						ID:        &backendID,
 						Direction: &dirOutbound,
@@ -94,15 +94,15 @@ func Test_display(t *testing.T) {
 				Name:              &sqlDbName,
 				Type:              &sqlDbType,
 				ProvisioningState: &provisioningStateSuccess,
-				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
+				OutputResources:   []*corerpv20250801.ApplicationGraphOutputResource{},
 			},
 			{
 				ID:                &sqlAppCntrID,
 				Name:              &sqlAppCntrName,
 				Type:              &sqlAppCntrType,
 				ProvisioningState: &provisioningStateSuccess,
-				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
-				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+				OutputResources:   []*corerpv20250801.ApplicationGraphOutputResource{},
+				Connections: []*corerpv20250801.ApplicationGraphConnection{
 					{
 						Direction: &dirInbound,
 						ID:        &sqlDbID,
@@ -114,7 +114,7 @@ func Test_display(t *testing.T) {
 				Name:              &azureRedisName,
 				Type:              &azureRedisType,
 				ProvisioningState: &provisioningStateSuccess,
-				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
+				OutputResources: []*corerpv20250801.ApplicationGraphOutputResource{
 					{
 						ID:        &azureRedisID,
 						Name:      &azureRedisName,
@@ -122,7 +122,7 @@ func Test_display(t *testing.T) {
 						PortalURL: &azureRedisPortalURL,
 					},
 				},
-				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+				Connections: []*corerpv20250801.ApplicationGraphConnection{
 					{
 						Direction: &dirInbound,
 						ID:        &sqlDbID,

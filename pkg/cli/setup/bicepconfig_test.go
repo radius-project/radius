@@ -24,63 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
-	templates := map[string]string{
-		"classic": AppBicepTemplate,
-	}
-
-	for name, tmpl := range templates {
-		t.Run(name, func(t *testing.T) {
-			directory := t.TempDir()
-
-			err := ScaffoldApplication(directory, tmpl)
-			require.NoError(t, err)
-
-			require.FileExists(t, filepath.Join(directory, "app.bicep"))
-			require.FileExists(t, filepath.Join(directory, "bicepconfig.json"))
-
-			b, err := os.ReadFile(filepath.Join(directory, "app.bicep"))
-			require.NoError(t, err)
-			require.Equal(t, tmpl, string(b))
-
-			b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
-			require.NoError(t, err)
-			require.Equal(t, GetVersionedBicepConfig(), string(b))
-		})
-	}
-}
-
-func Test_ScaffoldApplication_KeepsExistingFiles(t *testing.T) {
-	templates := map[string]string{
-		"classic": AppBicepTemplate,
-	}
-
-	for name, tmpl := range templates {
-		t.Run(name, func(t *testing.T) {
-			directory := t.TempDir()
-
-			// Pre-create files
-			err := os.WriteFile(filepath.Join(directory, "app.bicep"), []byte("something else"), 0644)
-			require.NoError(t, err)
-			err = os.WriteFile(filepath.Join(directory, "bicepconfig.json"), []byte("something else"), 0644)
-			require.NoError(t, err)
-
-			err = ScaffoldApplication(directory, tmpl)
-			require.NoError(t, err)
-
-			require.FileExists(t, filepath.Join(directory, "app.bicep"))
-
-			b, err := os.ReadFile(filepath.Join(directory, "app.bicep"))
-			require.NoError(t, err)
-			require.Equal(t, "something else", string(b))
-
-			b, err = os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
-			require.NoError(t, err)
-			require.Equal(t, "something else", string(b))
-		})
-	}
-}
-
 func Test_WriteBicepConfig_CreatesFile(t *testing.T) {
 	directory := t.TempDir()
 

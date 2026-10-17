@@ -14,28 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package list
+package show
 
 import (
 	"context"
 
+	"github.com/spf13/cobra"
+
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/spf13/cobra"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 )
 
-// NewCommand creates an instance of the `rad app show` command and runner.
-//
-
-// NewCommand creates a new Cobra command for showing Radius application details, which takes in a factory object and
-// returns a Cobra command and a Runner object.
+// NewCommand creates an instance of the command and runner for the `rad app show` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -62,31 +60,25 @@ rad app show my-app --group my-group
 	return cmd, runner
 }
 
-// Runner is the Runner implementation for the `rad app show` command.
+// Runner is the runner implementation for the `rad app show` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Workspace         *workspaces.Workspace
-	Output            output.Interface
-
-	ApplicationName string
-	Format          string
+	ConfigHolder            *framework.ConfigHolder
+	Output                  output.Interface
+	Workspace               *workspaces.Workspace
+	ApplicationName         string
+	Format                  string
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 }
 
-// NewRunner creates an instance of the runner for the `rad app show` command.
+// NewRunner creates a new instance of the `rad app show` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 	}
 }
 
 // Validate runs validation for the `rad app show` command.
-//
-
-// Validate checks the workspace, scope, application name and output format from the command line arguments and
-// request object, and returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
@@ -94,46 +86,42 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	// Allow '--group' to override scope
-	scope, err := cli.RequireScope(cmd, *r.Workspace)
-	if err != nil {
-		return err
-	}
-	r.Workspace.Scope = scope
-
 	r.ApplicationName, err = cli.RequireApplicationArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
 
-	format, err := cli.RequireOutput(cmd)
+	r.Workspace.Scope, err = cli.RequireScope(cmd, *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	r.Format = format
+	r.Format, err = cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
 // Run runs the `rad app show` command.
-//
-
-// Run() uses the provided context and connection factory to create an applications management client, then attempts to
-// show the application with the given name. If the application is not found or has been deleted, an error is
-// returned. Otherwise, the application is written to the output in the specified format, and nil is returned.
 func (r *Runner) Run(ctx context.Context) error {
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	app, err := client.GetApplication(ctx, r.ApplicationName)
+	client := r.RadiusCoreClientFactory.NewApplicationsClient()
+
+	resp, err := client.Get(ctx, r.Workspace.Scope, r.ApplicationName, &corerpv20250801.ApplicationsClientGetOptions{})
 	if clients.Is404Error(err) {
 		return clierrors.Message("The application %q was not found or has been deleted.", r.ApplicationName)
 	} else if err != nil {
 		return err
 	}
 
-	return r.Output.WriteFormatted(r.Format, app, objectformats.GetResourceTableFormat())
+	return r.Output.WriteFormatted(r.Format, resp.ApplicationResource, objectformats.GetResourceTableFormat())
 }

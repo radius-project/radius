@@ -41,7 +41,20 @@ EOF
 cat > "${TEST_ROOT}/bin/curl" << 'EOF'
 #!/bin/bash
 if [[ "${FAKE_PUBLIC_INSTALL:-false}" == "true" ]]; then
-    cp "${TEST_ROOT}/rad" "${@: -1}"
+    output=""
+    headers=""
+    url=""
+    while (($#)); do
+        case "$1" in
+            --output) output="$2"; shift ;;
+            --dump-header) headers="$2"; shift ;;
+            https://*) url="$1" ;;
+        esac
+        shift
+    done
+    cp "${TEST_ROOT}/rad" "${output}"
+    printf 'HTTP/2 200\r\n\r\n' > "${headers}"
+    printf '200 %s' "${url}"
     exit
 fi
 echo "Staged verification must not download a public binary" >&2

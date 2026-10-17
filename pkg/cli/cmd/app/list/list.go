@@ -19,28 +19,26 @@ package list
 import (
 	"context"
 
+	"github.com/spf13/cobra"
+
 	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/spf13/cobra"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 )
 
-// NewCommand creates an instance of the `rad app list` command and runner.
-//
-
-// NewCommand creates a new Cobra command and a new Runner, and configures the command with flags and usage information
-// to list Radius Applications in a resource group associated with the default environment.
+// NewCommand creates an instance of the command and runner for the `rad app list` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List Radius Applications",
-		Long:  `Lists Radius Applications deployed in the resource group associated with the default environment`,
+		Long:  `Lists Radius Applications in the current resource group.`,
 		Args:  cobra.NoArgs,
 		Example: `
 # List applications
@@ -59,30 +57,24 @@ rad app list --group my-group
 	return cmd, runner
 }
 
-// Runner is the Runner implementation for the `rad app list` command.
+// Runner is the runner implementation for the `rad app list` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Workspace         *workspaces.Workspace
-	Output            output.Interface
-
-	Format string
+	ConfigHolder            *framework.ConfigHolder
+	Output                  output.Interface
+	Workspace               *workspaces.Workspace
+	Format                  string
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 }
 
-// NewRunner creates an instance of the runner for the `rad app list` command.
+// NewRunner creates a new instance of the list runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 	}
 }
 
-// Validate runs validation for the `rad app list` command.
-//
-
-// Validate checks the workspace, scope, and output format of the command and sets them in the Runner struct,
-// returning an error if any of these checks fail.
+// Validate runs validation for the list command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
@@ -90,7 +82,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	// Allow '--group' to override scope
 	scope, err := cli.RequireScope(cmd, *r.Workspace)
 	if err != nil {
 		return err
@@ -101,27 +92,32 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	r.Format = format
 
 	return nil
 }
 
-// Run runs the `rad app list` command.
-//
-
-// Run() creates an ApplicationsManagementClient using the provided ConnectionFactory, then lists the applications and
-// writes the output in the specified format, returning an error if any of these steps fail.
+// Run executes the list command logic.
 func (r *Runner) Run(ctx context.Context) error {
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
+	if r.RadiusCoreClientFactory == nil {
+		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+		r.RadiusCoreClientFactory = factory
 	}
 
-	apps, err := client.ListApplications(ctx)
-	if err != nil {
-		return err
+	client := r.RadiusCoreClientFactory.NewApplicationsClient()
+	pager := client.NewListByScopePager(r.Workspace.Scope, &corerpv20250801.ApplicationsClientListByScopeOptions{})
+
+	var applications []*corerpv20250801.ApplicationResource
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return err
+		}
+		applications = append(applications, page.Value...)
 	}
 
-	return r.Output.WriteFormatted(r.Format, apps, objectformats.GetResourceTableFormat())
+	return r.Output.WriteFormatted(r.Format, applications, objectformats.GetResourceTableFormat())
 }

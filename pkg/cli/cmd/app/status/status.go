@@ -19,19 +19,23 @@ package status
 import (
 	"context"
 
+	"github.com/spf13/cobra"
+
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the `rad app status` command and runner.
+// NewCommand creates an instance of the command and runner for the `rad app status` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -58,31 +62,28 @@ rad app status my-app --group my-group
 	return cmd, runner
 }
 
-// Runner is the Runner implementation for the `rad app status` command.
+// Runner is the runner implementation for the `rad app status` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Workspace         *workspaces.Workspace
-	Output            output.Interface
+	ConfigHolder            *framework.ConfigHolder
+	ConnectionFactory       connections.Factory
+	Output                  output.Interface
+	Workspace               *workspaces.Workspace
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 
 	ApplicationName string
 	Format          string
 }
 
-// NewRunner creates an instance of the runner for the `rad app status` command.
+// NewRunner creates a new instance of the status runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
+		ConnectionFactory: factory.GetConnectionFactory(),
 		Output:            factory.GetOutput(),
 	}
 }
 
-// Validate runs validation for the `rad app status` command.
-//
-
-// Runner.Validate checks the workspace, scope, application name and output format from the command line arguments and
-// request object, and returns an error if any of these are invalid.
+// Validate runs validation for the status command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
@@ -90,47 +91,52 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	// Allow '--group' to override scope
-	scope, err := cli.RequireScope(cmd, *r.Workspace)
+	r.Workspace.Scope, err = cli.RequireScope(cmd, *r.Workspace)
 	if err != nil {
 		return err
 	}
-	r.Workspace.Scope = scope
 
 	r.ApplicationName, err = cli.RequireApplicationArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
 
-	format, err := cli.RequireOutput(cmd)
+	r.Format, err = cli.RequireOutput(cmd)
 	if err != nil {
 		return err
 	}
-
-	r.Format = format
 
 	return nil
 }
 
 // Run runs the `rad app status` command.
-//
-
-// Run() retrieves the application status and its associated gateways from the given workspace and returns it in the specified format.
-// It returns an error if the application is not found or if there is an error while retrieving the application status.
 func (r *Runner) Run(ctx context.Context) error {
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
+	if r.RadiusCoreClientFactory == nil {
+		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+		r.RadiusCoreClientFactory = factory
 	}
 
-	application, err := client.GetApplication(ctx, r.ApplicationName)
+	appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
+
+	// Fetch the application resource.
+	application, err := appClient.Get(ctx, r.Workspace.Scope, r.ApplicationName, &corerpv20250801.ApplicationsClientGetOptions{})
 	if clients.Is404Error(err) {
 		return clierrors.Message("The application %q was not found or has been deleted.", r.ApplicationName)
 	} else if err != nil {
 		return err
 	}
 
-	resourceList, err := client.ListResourcesInApplication(ctx, r.ApplicationName)
+	// Enumerate resources owned by this application using the management client.
+	managementClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+
+	applicationID := r.Workspace.Scope + "/providers/" + datamodel.ApplicationResourceType_v20250801preview + "/" + r.ApplicationName
+	resourceList, err := managementClient.ListResourcesInApplication(ctx, applicationID)
 	if err != nil {
 		return err
 	}
@@ -140,6 +146,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		ResourceCount: len(resourceList),
 	}
 
+	// Gather public endpoints from gateway resources.
 	diagnosticsClient, err := r.ConnectionFactory.CreateDiagnosticsClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -172,9 +179,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if r.Format == output.FormatTable && len(applicationStatus.Gateways) > 0 {
-		// Print newline for readability
 		r.Output.LogInfo("")
-
 		err = r.Output.WriteFormatted(r.Format, applicationStatus.Gateways, GatewayFormat())
 		if err != nil {
 			return err

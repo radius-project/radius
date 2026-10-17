@@ -26,6 +26,7 @@ readonly RELEASE_WORKFLOW="${REPO_ROOT}/.github/workflows/build-release.yaml"
 readonly CLI_WORKFLOW="${REPO_ROOT}/.github/workflows/__build-cli.yaml"
 readonly IMAGE_WORKFLOW="${REPO_ROOT}/.github/workflows/__build-images.yaml"
 readonly HELM_WORKFLOW="${REPO_ROOT}/.github/workflows/__build-helm-chart.yaml"
+readonly BICEP_TYPES_WORKFLOW="${REPO_ROOT}/.github/workflows/__build-bicep-types.yaml"
 readonly CONFIG="${REPO_ROOT}/.goreleaser.yaml"
 readonly ARTIFACTS_MAKEFILE="${REPO_ROOT}/build/artifacts.mk"
 PASS=0
@@ -256,6 +257,111 @@ test_old_release_paths_are_deleted() {
     ((++PASS))
 }
 
+test_final_cleanup_contract() {
+    local file workflow
+    for file in get_release_version.py release-get-version.sh; do
+        if [[ -e "${SCRIPT_DIR}/${file}" ]]; then
+            fail_test "obsolete release helper remains: ${file}"
+            return
+        fi
+    done
+    for file in release-verification.yaml goreleaser-snapshot.yaml; do
+        if [[ -e "${REPO_ROOT}/.github/workflows/${file}" ]]; then
+            fail_test "obsolete workflow remains: ${file}"
+            return
+        fi
+    done
+    if grep -Fq 'docker-multi-arch' "${REPO_ROOT}/build/docker.mk"; then
+        fail_test "legacy multi-architecture build targets remain"
+        return
+    fi
+    if ! yq -o=json '.jobs."build-and-push-remaining-images".strategy.matrix.image' \
+        "${RELEASE_WORKFLOW}" | jq -e '. == ["bicep"]' >/dev/null ||
+        ! jq -e 'all(.images[]; .category != "test")' \
+            "${REPO_ROOT}/.github/release-parity/targets.json" >/dev/null; then
+        fail_test "test images are still official release outputs"
+        return
+    fi
+    for workflow in build-main.yaml build-validation.yaml; do
+        if ! yq -o=json '.jobs' "${REPO_ROOT}/.github/workflows/${workflow}" | jq -e '
+            ."build-snapshot".uses == "./.github/workflows/__build-snapshot.yaml" and
+            (."build-and-push-cli".needs | index("build-snapshot") != null) and
+            (."build-and-push-images".needs | index("build-snapshot") != null) and
+            (."build-check".needs | index("build-snapshot") != null and index("build-and-push-images") != null)
+        ' >/dev/null; then
+            fail_test "${workflow} bypasses the shared snapshot or its required check"
+            return
+        fi
+    done
+    for workflow in "${CLI_WORKFLOW}" "${IMAGE_WORKFLOW}"; do
+        if ! yq -o=json '.jobs' "${workflow}" | jq -e '
+            ([to_entries[] | select(.key != "publish-edge") | .value.permissions.packages] | all(. == null)) and
+            (."publish-edge".if | contains("refs/heads/main") and contains("radius-project/radius")) and
+            (."publish-edge".steps | any(.id == "current-main" and (.with.script | contains("getBranch"))))
+        ' >/dev/null; then
+            fail_test "snapshot exports gained registry permissions or edge lost its main-head guard"
+            return
+        fi
+    done
+    if ! yq -o=json '.jobs."build-and-push-bicep-types".steps' "${BICEP_TYPES_WORKFLOW}" | jq -e '
+        (map(.id) | index("current-main")) as $check |
+        (map(.id) | index("monitor-remote-workflow")) as $dispatch |
+        $check != null and $dispatch != null and $check < $dispatch and
+        (.[$check].if | contains("refs/heads/main")) and
+        (.[$check].with.script | contains("getBranch")) and
+        (.[$dispatch].if | contains("steps.current-main.outputs.current"))
+    ' > /dev/null; then
+        fail_test "edge Bicep types dispatch lost its main-head guard"
+        return
+    fi
+    if ! yq -o=json '.jobs."build-and-push-images".steps' \
+        "${IMAGE_WORKFLOW}" | jq -e \
+        --arg name "bicep-image-\${{ steps.release-metadata.outputs.REL_VERSION }}" '
+        map(select((.uses // "") | startswith("actions/upload-artifact@")) | .with) |
+        any(.[]; .name == $name and
+            .path == "./dist/images/bicep.tar" and
+            ."retention-days" == 1 and
+            ."if-no-files-found" == "error" and .overwrite == true) and
+        all(.[]; .path == "./dist/images/bicep.tar" or .path == "dist/metrics/")
+    ' > /dev/null; then
+        fail_test "snapshot image exports must retain only the Bicep tar and metrics"
+        return
+    fi
+    ((++PASS))
+}
+
+test_test_image_tags_are_attempt_scoped() {
+    if ! yq -o=json '.jobs' "${REPO_ROOT}/.github/workflows/functional-test-cloud.yaml" | jq -e '
+        (.build.env.REL_VERSION | startswith("test-") and contains("github.run_id") and contains("github.run_attempt")) and
+        .build.outputs.REL_VERSION == "${{ steps.test-image-version.outputs.REL_VERSION }}" and
+        .tests.env.REL_VERSION == "${{ needs.build.outputs.REL_VERSION }}" and
+        .tests.env.BICEP_RECIPE_TAG_VERSION == .tests.env.REL_VERSION
+    ' >/dev/null; then
+        fail_test "cloud test images can reuse tags across build attempts"
+        return
+    fi
+    if ! yq -o=json '.jobs.build.steps' "${REPO_ROOT}/.github/workflows/functional-test-noncloud.yaml" | jq -e '
+        any(.[]; .id == "gen-id" and (.run | contains("REL_VERSION=test-") and contains("${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}")))
+    ' >/dev/null; then
+        fail_test "noncloud test images do not use attempt-specific tags"
+        return
+    fi
+    if ! yq -o=json '.jobs.tests.steps' "${REPO_ROOT}/.github/workflows/long-running-azure.yaml" | jq -e '
+        (map(.run // "" | contains("make docker-build-magpiego docker-push-magpiego")) | index(true)) as $build |
+        (map(.name) | index("Run functional tests")) as $test |
+        $build != null and $test != null and $build < $test and
+        (.[$build]."working-directory" | contains("checkout-release-codebase")) and
+        .[$build].env.DOCKER_REGISTRY == .[$test].env.DOCKER_REGISTRY and
+        .[$build].env.DOCKER_TAG_VERSION == .[$test].env.REL_VERSION and
+        (.[$test].env.REL_VERSION | contains("steps.gen-id.outputs.TEST_IMAGE_TAG")) and
+        any(.[]; .id == "gen-id" and (.run | contains("TEST_IMAGE_TAG=test-") and contains("${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}")))
+    ' > /dev/null; then
+        fail_test "long-running tests do not build their own attempt-scoped Magpie image"
+        return
+    fi
+    ((++PASS))
+}
+
 test_release_resume_contract() {
     local published_guards
     local retry_count
@@ -329,6 +435,8 @@ main() {
     test_finalization_is_digest_locked
     test_main_publishes_only_edge
     test_old_release_paths_are_deleted
+    test_final_cleanup_contract
+    test_test_image_tags_are_attempt_scoped
     test_release_resume_contract
 
     if ((FAIL > 0)); then
