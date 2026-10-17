@@ -10,6 +10,11 @@ param oidcIssuer string = 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
 @description('Specifies the Azure resource group scope.')
 param azureScope string
 
+@description('Specifies the name of the test-owned Azure Key Vault.')
+@minLength(3)
+@maxLength(24)
+param keyVaultName string
+
 var applicationName = 'corerp-azure-keyvault-volume'
 var containerName = 'volume-consumer'
 var volumeName = 'keyvault-volume'
@@ -17,7 +22,7 @@ var secretName = 'csi-test-secret'
 var secretValue = 'radius-csi-secret-value'
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
-  name: 'radcsi${uniqueString(resourceGroup().id, deployment().name)}'
+  name: keyVaultName
   location: resourceGroup().location
   properties: {
     enableRbacAuthorization: true
@@ -96,6 +101,7 @@ resource container 'Applications.Core/containers@2023-10-01-preview' = {
       ]
       args: [
         '''
+          set -eu
           test "$(cat /var/secrets/secret-value)" = "radius-csi-secret-value"
           echo csi-secret-mounted
           while true; do sleep 30; done

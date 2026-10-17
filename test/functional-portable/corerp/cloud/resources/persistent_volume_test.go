@@ -19,9 +19,11 @@ package resource_test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -34,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"uuid"
 )
 
 func Test_PersistentVolume_AzureKeyVault(t *testing.T) {
@@ -48,6 +51,34 @@ func Test_PersistentVolume_AzureKeyVault(t *testing.T) {
 	subscriptionID := requiredCloudEnv(t, "AZURE_SUBSCRIPTION_ID")
 	resourceGroup := requiredCloudEnv(t, "INTEGRATION_TEST_RESOURCE_GROUP_NAME")
 	azureScope := fmt.Sprintf("azureScope=/subscriptions/%s/resourceGroups/%s", subscriptionID, resourceGroup)
+	keyVaultName := "radcsi" + strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
+	resourcesClient, err := armresources.NewClient(subscriptionID, azureTestCredential(t.Context(), t), nil)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), 5*time.Minute)
+		defer cancel()
+
+		poller, err := resourcesClient.BeginDelete(
+			ctx,
+			resourceGroup,
+			"Microsoft.KeyVault",
+			"",
+			"vaults",
+			keyVaultName,
+			"2023-07-01",
+			nil,
+		)
+		if isNotFoundResponse(err) {
+			return
+		}
+		if err == nil {
+			_, err = poller.PollUntilDone(ctx, nil)
+		}
+		if err != nil {
+			t.Errorf("delete test Azure Key Vault %s: %v", keyVaultName, err)
+		}
+	})
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
@@ -56,6 +87,7 @@ func Test_PersistentVolume_AzureKeyVault(t *testing.T) {
 				testutil.GetMagpieImage(),
 				testutil.GetOIDCIssuer(),
 				azureScope,
+				"keyVaultName="+keyVaultName,
 			),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
