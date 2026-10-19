@@ -46,6 +46,10 @@ scalar AuthorizationScope extends string;
 @doc("The installation, a plane, or a resource group. Role definitions cannot be created beneath individual resources.")
 scalar RoleDefinitionScope extends AuthorizationScope;
 
+@doc("A scope ID as a URI path prefix, without the leading slash. Resource properties and IDs always retain their leading slash. Installation operations have separate paths.")
+@pattern("^[^/\\s*]+(/[^/\\s*]+)*$")
+scalar AuthorizationScopePath extends string;
+
 @doc("An explicit catalog permission such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.")
 @pattern("^[^*/\\s]+(/[^*/\\s]+){2,}$")
 scalar PermissionName extends string;
@@ -62,31 +66,27 @@ scalar PolicyGenerationName extends string;
 
 @doc("The non-installation scope of a role definition.")
 model RoleDefinitionScopeParameter {
-  @path(#{ allowReserved: true })
+  @path
   @extension("x-ms-skip-url-encoding", true)
-  @doc("The plane or resource-group ID. Use the installation operations for scope /. The scope must not end with a slash.")
-  scope: RoleDefinitionScope;
+  @doc("The plane or resource-group ID without a leading or trailing slash, for example planes/radius/local/resourceGroups/team-a. Use the installation operations for scope /.")
+  scope: AuthorizationScopePath;
 }
 
 @doc("The non-installation scope of an assignment or access check.")
 model AuthorizationScopeParameter {
-  @path(#{ allowReserved: true })
+  @path
   @extension("x-ms-skip-url-encoding", true)
-  @doc("The plane, resource-group, or supported-resource ID. Use the installation operations for scope /. The scope must not end with a slash.")
-  scope: AuthorizationScope;
+  @doc("The plane, resource-group, or supported-resource ID without a leading or trailing slash, for example planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging. Use the installation operations for scope /.")
+  scope: AuthorizationScopePath;
 }
 
 @doc("A role definition. Built-ins live at /providers/Radius.Core/roleDefinitions/<name> and cannot be changed or deleted. Custom roles can live at installation, plane, or resource-group scope.")
-@extensionResource
-model RoleDefinitionResource is ProxyResource<RoleDefinitionProperties> {
+model RoleDefinitionResource is ProxyResource<RoleDefinitionProperties, false> {
   @key("roleDefinitionName")
   @path
   @segment("roleDefinitions")
   @doc("The role definition name.")
   name: AuthorizationResourceName;
-
-  @doc("Required role definition properties.")
-  properties: RoleDefinitionProperties;
 }
 
 @doc("The role definition properties.")
@@ -115,16 +115,15 @@ enum RoleType {
 }
 
 @doc("An ARM-style extension assignment whose ID ends with /providers/Radius.Core/roleAssignments/<name>. Supported resource scopes include a single environment. A repeated PUT with the same role, principal identity, and scope is a no-op; changing that tuple fails with RoleAssignmentImmutable.")
-@extensionResource
-model RoleAssignmentResource is ProxyResource<RoleAssignmentProperties> {
+model RoleAssignmentResource is ExtensionResource<
+  RoleAssignmentProperties,
+  false
+> {
   @key("roleAssignmentName")
   @path
   @segment("roleAssignments")
   @doc("A stable assignment name.")
   name: AuthorizationResourceName;
-
-  @doc("Required role assignment properties.")
-  properties: RoleAssignmentProperties;
 }
 
 @doc("Role assignment properties. Only the description and principal display label may change; assignment ownership is checked independently.")
@@ -180,16 +179,16 @@ enum AssignmentManagementKind {
 
 @doc("Installation-only user-facing authorization settings. Exactly one resource exists, named default. These settings do not control internal component authorization.")
 @tenantResource
-model AuthorizationSettingsResource
-  is ProxyResource<AuthorizationSettingsProperties> {
+@singleton("default")
+model AuthorizationSettingsResource is ProxyResource<
+  AuthorizationSettingsProperties,
+  false
+> {
   @key("authorizationSettingsName")
   @path
   @segment("authorizationSettings")
   @doc("The singleton name.")
   name: "default";
-
-  @doc("Required user-facing authorization settings.")
-  properties: AuthorizationSettingsProperties;
 }
 
 @doc("User-facing authorization configuration. Mode writes remain subject to bootstrap, history, last-administrator, and internal-protocol checks even when user checks do not block requests.")
@@ -223,16 +222,12 @@ model Permission {
 
 @doc("An immutable installation-scoped access change. One record exists per applied policy generation and is never deleted. Access decisions are not access-change records.")
 @tenantResource
-model AccessChangeResource is ProxyResource<AccessChangeProperties> {
+model AccessChangeResource is ProxyResource<AccessChangeProperties, false> {
   @key("accessChangeName")
   @path
   @segment("accessChanges")
   @doc("The decimal policy generation, used as the record key.")
   name: PolicyGenerationName;
-
-  @doc("Server-owned access change details.")
-  @visibility(Lifecycle.Read)
-  properties: AccessChangeProperties;
 }
 
 @doc("The committed access change, written atomically with the applied generation by the future policy store.")
@@ -477,7 +472,7 @@ model AccessChangeListOptions {
 
 @doc("UCP-served installation role definitions. Custom roles can be created here; BuiltInRoleImmutable protects built-ins and RoleDefinitionInUse protects assigned roles from deletion.")
 @route("/providers/Radius.Core/roleDefinitions")
-@armResourceOperations
+@armResourceOperations(#{ allowStaticRoutes: true })
 interface InstallationRoleDefinitions {
   @get
   @route("/{roleDefinitionName}")
@@ -491,9 +486,9 @@ interface InstallationRoleDefinitions {
   @list
   @extension("x-ms-pageable", #{ nextLinkName: "nextLink" })
   @armResourceList(RoleDefinitionResource)
-  list(
-    ...AuthorizationParameters,
-  ): ArmResponse<AuthorizationList<RoleDefinitionResource>> | ErrorResponse;
+  list(...AuthorizationParameters):
+    | ArmResponse<AuthorizationList<RoleDefinitionResource>>
+    | ErrorResponse;
 
   @put
   @route("/{roleDefinitionName}")
@@ -502,7 +497,10 @@ interface InstallationRoleDefinitions {
     ...AuthorizationParameters,
     @path roleDefinitionName: AuthorizationResourceName,
     @bodyRoot resource: RoleDefinitionResource,
-  ): ArmResourceUpdatedResponse<RoleDefinitionResource> | ArmResourceCreatedSyncResponse<RoleDefinitionResource> | ErrorResponse;
+  ):
+    | ArmResourceUpdatedResponse<RoleDefinitionResource>
+    | ArmResourceCreatedSyncResponse<RoleDefinitionResource>
+    | ErrorResponse;
 
   @delete
   @route("/{roleDefinitionName}")
@@ -514,8 +512,8 @@ interface InstallationRoleDefinitions {
 }
 
 @doc("UCP-served role definitions on a plane or resource group.")
-@route("/{scope}/providers/Radius.Core/roleDefinitions")
-@armResourceOperations
+@route("/{+scope}/providers/Radius.Core/roleDefinitions")
+@armResourceOperations(#{ allowStaticRoutes: true })
 interface ScopedRoleDefinitions {
   @get
   @route("/{roleDefinitionName}")
@@ -530,10 +528,9 @@ interface ScopedRoleDefinitions {
   @list
   @extension("x-ms-pageable", #{ nextLinkName: "nextLink" })
   @armResourceList(RoleDefinitionResource)
-  list(
-    ...AuthorizationParameters,
-    ...RoleDefinitionScopeParameter,
-  ): ArmResponse<AuthorizationList<RoleDefinitionResource>> | ErrorResponse;
+  list(...AuthorizationParameters, ...RoleDefinitionScopeParameter):
+    | ArmResponse<AuthorizationList<RoleDefinitionResource>>
+    | ErrorResponse;
 
   @put
   @route("/{roleDefinitionName}")
@@ -543,7 +540,10 @@ interface ScopedRoleDefinitions {
     ...RoleDefinitionScopeParameter,
     @path roleDefinitionName: AuthorizationResourceName,
     @bodyRoot resource: RoleDefinitionResource,
-  ): ArmResourceUpdatedResponse<RoleDefinitionResource> | ArmResourceCreatedSyncResponse<RoleDefinitionResource> | ErrorResponse;
+  ):
+    | ArmResourceUpdatedResponse<RoleDefinitionResource>
+    | ArmResourceCreatedSyncResponse<RoleDefinitionResource>
+    | ErrorResponse;
 
   @delete
   @route("/{roleDefinitionName}")
@@ -557,7 +557,7 @@ interface ScopedRoleDefinitions {
 
 @doc("UCP-served installation assignments. Installation grants are limited to admin-type roles, reader, and auditor.")
 @route("/providers/Radius.Core/roleAssignments")
-@armResourceOperations
+@armResourceOperations(#{ allowStaticRoutes: true })
 interface InstallationRoleAssignments {
   @get
   @route("/{roleAssignmentName}")
@@ -571,10 +571,9 @@ interface InstallationRoleAssignments {
   @list
   @extension("x-ms-pageable", #{ nextLinkName: "nextLink" })
   @armResourceList(RoleAssignmentResource)
-  list(
-    ...AuthorizationParameters,
-    ...AssignmentListOptions,
-  ): ArmResponse<AuthorizationList<RoleAssignmentResource>> | ErrorResponse;
+  list(...AuthorizationParameters, ...AssignmentListOptions):
+    | ArmResponse<AuthorizationList<RoleAssignmentResource>>
+    | ErrorResponse;
 
   @put
   @route("/{roleAssignmentName}")
@@ -583,7 +582,10 @@ interface InstallationRoleAssignments {
     ...AuthorizationParameters,
     @path roleAssignmentName: AuthorizationResourceName,
     @bodyRoot resource: RoleAssignmentResource,
-  ): ArmResourceUpdatedResponse<RoleAssignmentResource> | ArmResourceCreatedSyncResponse<RoleAssignmentResource> | ErrorResponse;
+  ):
+    | ArmResourceUpdatedResponse<RoleAssignmentResource>
+    | ArmResourceCreatedSyncResponse<RoleAssignmentResource>
+    | ErrorResponse;
 
   @delete
   @route("/{roleAssignmentName}")
@@ -596,8 +598,8 @@ interface InstallationRoleAssignments {
 }
 
 @doc("UCP-served extension assignments on a plane, group, or supported resource. Resource-scoped IDs preserve the target's entire ID before appending /providers/Radius.Core/roleAssignments/<name>.")
-@route("/{scope}/providers/Radius.Core/roleAssignments")
-@armResourceOperations
+@route("/{+scope}/providers/Radius.Core/roleAssignments")
+@armResourceOperations(#{ allowStaticRoutes: true })
 interface ScopedRoleAssignments {
   @get
   @route("/{roleAssignmentName}")
@@ -626,7 +628,10 @@ interface ScopedRoleAssignments {
     ...AuthorizationScopeParameter,
     @path roleAssignmentName: AuthorizationResourceName,
     @bodyRoot resource: RoleAssignmentResource,
-  ): ArmResourceUpdatedResponse<RoleAssignmentResource> | ArmResourceCreatedSyncResponse<RoleAssignmentResource> | ErrorResponse;
+  ):
+    | ArmResourceUpdatedResponse<RoleAssignmentResource>
+    | ArmResourceCreatedSyncResponse<RoleAssignmentResource>
+    | ErrorResponse;
 
   @delete
   @route("/{roleAssignmentName}")
@@ -641,13 +646,13 @@ interface ScopedRoleAssignments {
 
 @doc("UCP-served singleton settings. No delete, patch, or list operation is defined.")
 @route("/providers/Radius.Core/authorizationSettings/default")
-@armResourceOperations
+@armResourceOperations(#{ allowStaticRoutes: true })
 interface AuthorizationSettings {
   @get
   @armResourceRead(AuthorizationSettingsResource)
-  get(
-    ...AuthorizationParameters,
-  ): ArmResponse<AuthorizationSettingsResource> | ErrorResponse;
+  get(...AuthorizationParameters):
+    | ArmResponse<AuthorizationSettingsResource>
+    | ErrorResponse;
 
   @put
   @armResourceCreateOrUpdate(AuthorizationSettingsResource)
@@ -663,14 +668,14 @@ interface Permissions {
   @get
   @list
   @extension("x-ms-pageable", #{ nextLinkName: "nextLink" })
-  list(
-    ...AuthorizationParameters,
-  ): ArmResponse<AuthorizationList<Permission>> | ErrorResponse;
+  list(...AuthorizationParameters):
+    | ArmResponse<AuthorizationList<Permission>>
+    | ErrorResponse;
 }
 
 @doc("Read-only, append-only access history. There are deliberately no public write or delete operations.")
 @route("/providers/Radius.Core/accessChanges")
-@armResourceOperations
+@armResourceOperations(#{ allowStaticRoutes: true })
 interface AccessChanges {
   @get
   @route("/{accessChangeName}")
@@ -684,10 +689,9 @@ interface AccessChanges {
   @list
   @extension("x-ms-pageable", #{ nextLinkName: "nextLink" })
   @armResourceList(AccessChangeResource)
-  list(
-    ...AuthorizationParameters,
-    ...AccessChangeListOptions,
-  ): ArmResponse<AuthorizationList<AccessChangeResource>> | ErrorResponse;
+  list(...AuthorizationParameters, ...AccessChangeListOptions):
+    | ArmResponse<AuthorizationList<AccessChangeResource>>
+    | ErrorResponse;
 }
 
 @doc("Access inspection for the installation. Signed-in users can inspect their own identity and evaluate their own access; inspecting another identity and reading assignments require the documented permissions.")
@@ -699,28 +703,25 @@ interface InstallationAccess {
 
   @post
   @route("/checkAccess")
-  checkAccess(
-    ...AuthorizationParameters,
-    @body request: AccessCheckRequest,
-  ): ArmResponse<CheckAccessResponse> | ErrorResponse;
+  checkAccess(...AuthorizationParameters, @body request: AccessCheckRequest):
+    | ArmResponse<CheckAccessResponse>
+    | ErrorResponse;
 
   @post
   @route("/explainAccess")
-  explainAccess(
-    ...AuthorizationParameters,
-    @body request: AccessCheckRequest,
-  ): ArmResponse<ExplainAccessResponse> | ErrorResponse;
+  explainAccess(...AuthorizationParameters, @body request: AccessCheckRequest):
+    | ArmResponse<ExplainAccessResponse>
+    | ErrorResponse;
 
   @get
   @route("/effectiveAccess")
-  effectiveAccess(
-    ...AuthorizationParameters,
-    ...PrincipalQuery,
-  ): ArmResponse<EffectiveAccessResponse> | ErrorResponse;
+  effectiveAccess(...AuthorizationParameters, ...PrincipalQuery):
+    | ArmResponse<EffectiveAccessResponse>
+    | ErrorResponse;
 }
 
 @doc("Access inspection at plane, group, and supported-resource scopes. A denial in these results describes policy, not whether the current mode blocks the actual operation.")
-@route("/{scope}/providers/Radius.Core")
+@route("/{+scope}/providers/Radius.Core")
 interface ScopedAccess {
   @post
   @route("/checkAccess")

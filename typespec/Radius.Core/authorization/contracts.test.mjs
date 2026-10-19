@@ -16,8 +16,9 @@ test("examples preserve the requested role and assignment shapes", async (t) => 
     await t.test(example.file, () => {
       const { parameters } = example;
       const response = example.responses["201"].body;
+      assert.deepEqual(example.responses["200"].body, response);
       assert.equal(parameters["api-version"], "2025-08-01-preview");
-      assert.ok(parameters.scope.startsWith("/planes/"));
+      assert.ok(parameters.scope.startsWith("planes/"));
       assert.equal(parameters.scope.endsWith("/"), false);
       assert.equal(
         response.name,
@@ -25,7 +26,7 @@ test("examples preserve the requested role and assignment shapes", async (t) => 
       );
       assert.equal(
         response.id,
-        `${parameters.scope}/providers/${response.type}/${response.name}`,
+        `/${parameters.scope}/providers/${response.type}/${response.name}`,
       );
       const request = parameters.resource.properties;
       if (response.type === "Radius.Core/roleDefinitions") {
@@ -37,7 +38,7 @@ test("examples preserve the requested role and assignment shapes", async (t) => 
         );
       } else {
         assert.equal(response.type, "Radius.Core/roleAssignments");
-        assert.equal(response.properties.scope, parameters.scope);
+        assert.equal(response.properties.scope, `/${parameters.scope}`);
         for (const field of ["scope", "managedBy", "createdBy"]) {
           assert.equal(
             field in request,
@@ -69,7 +70,7 @@ test("examples preserve the requested role and assignment shapes", async (t) => 
   const environment = examples.find(({ file }) => file.includes("Environment"));
   assert.equal(
     environment.parameters.scope,
-    "/planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging",
+    "planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging",
   );
   assert.match(
     environment.responses["201"].body.id,
@@ -149,6 +150,74 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
     "Radius.Core/applications/read ",
   ]) {
     assert.equal(permission.test(value), false, value);
+  }
+  const path = scalarPattern("AuthorizationScopePath");
+  assert.ok(path.test(group.slice(1)));
+  assert.equal(path.test(group), false);
+  assert.equal(path.test(`${group.slice(1)}/`), false);
+});
+
+test("Bicep merges existing resources, preserves extensions and singleton, and excludes read-only APIs", () => {
+  const types = json(
+    new URL(
+      "hack/bicep-types-radius/generated/radius/radius.core/2025-08-01-preview/types.json",
+      root,
+    ),
+  );
+  const resolve = (reference) => types[Number(reference.$ref.slice(2))];
+  const resource = (name) => {
+    const found = types.find(
+      (type) =>
+        type.$type === "ResourceType" &&
+        type.name === `Radius.Core/${name}@2025-08-01-preview`,
+    );
+    assert.ok(found, name);
+    return found;
+  };
+  for (const name of [
+    "applications",
+    "environments",
+    "recipePacks",
+    "bicepSettings",
+    "terraformSettings",
+  ]) {
+    resource(name);
+  }
+  assert.equal(resource("roleDefinitions").readableScopes, 0);
+  assert.equal(resource("roleDefinitions").writableScopes, 0);
+  assert.equal(resource("roleAssignments").readableScopes, 16);
+  assert.equal(resource("roleAssignments").writableScopes, 16);
+  const body = (name) => resolve(resource(name).body);
+  const properties = (name) =>
+    resolve(body(name).properties.properties.type).properties;
+  for (const key of ["scope", "managedBy", "createdBy"]) {
+    assert.equal(properties("roleAssignments")[key].flags, 2, key);
+  }
+  assert.equal(properties("roleDefinitions").roleType.flags, 2);
+  assert.deepEqual(
+    resolve(body("authorizationSettings").properties.name.type),
+    {
+      $type: "StringLiteralType",
+      value: "default",
+    },
+  );
+  assert.equal(
+    types.some(
+      (type) =>
+        type.$type === "ResourceType" &&
+        /\/(accessChanges|permissions)@/.test(type.name),
+    ),
+    false,
+  );
+  const index = json(
+    new URL("hack/bicep-types-radius/generated/index.json", root),
+  );
+  for (const name of [
+    "roleDefinitions",
+    "roleAssignments",
+    "authorizationSettings",
+  ]) {
+    assert.ok(index.resources[`Radius.Core/${name}@2025-08-01-preview`]);
   }
 });
 
@@ -234,7 +303,7 @@ test("generated Swagger preserves scope routes, read-only fields, and operation 
   assert.deepEqual([...mode.enum].sort(), ["Disabled", "DryRun", "Enforce"]);
 
   const resolve = (parameter) =>
-    parameter.$ref
+    parameter.$ref?.startsWith("#/parameters/")
       ? spec.parameters[parameter.$ref.split("/").at(-1)]
       : parameter;
   const scopedPut =
