@@ -1,0 +1,84 @@
+{{- if ne (include "radius.authz.mode" .) "off" }}
+{{- $mode := ((.Values.global.rbac).certificates).mode | default "selfSigned" }}
+{{- if has $mode (list "caSecret" "issuerRef") }}
+{{- fail (printf "global.rbac.certificates.mode=%s is not supported yet. Use selfSigned." $mode) }}
+{{- else if ne $mode "selfSigned" }}
+{{- fail (printf "global.rbac.certificates.mode=%s is not valid. Use selfSigned." $mode) }}
+{{- end }}
+{{- $ns := .Release.Namespace }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: radius-selfsigned-bootstrap
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: radius-ca
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  isCA: true
+  commonName: radius-ca
+  secretName: radius-ca
+  # 1 year, renewed at two-thirds of its lifetime.
+  duration: 8760h
+  renewBefore: 2920h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: radius-selfsigned-bootstrap
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: radius-ca-issuer
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  ca:
+    secretName: radius-ca
+{{- range $component := list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $component }}-cert
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: {{ $component }}
+    app.kubernetes.io/part-of: radius
+spec:
+  secretName: {{ $component }}-mtls
+  # 24 hours, renewed at two-thirds of its lifetime.
+  duration: 24h
+  renewBefore: 8h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - server auth
+    - client auth
+  dnsNames:
+    - {{ $component }}
+    - {{ $component }}.{{ $ns }}
+    - {{ $component }}.{{ $ns }}.svc
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: radius-ca-issuer
+{{- end }}
+{{- end }}
