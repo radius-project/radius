@@ -224,7 +224,7 @@ tools:
 
   - name: goreleaser
     makePrefix: GORELEASER
-    version: v2.18.2
+    version: v2.18.3
     source:
       type: github-release
       repository: goreleaser/goreleaser
@@ -233,16 +233,16 @@ tools:
     platforms:
       linux_amd64:
         asset: goreleaser_Linux_x86_64.tar.gz
-        checksum: 0a96edc9d9bc594e4a41cc4d59467c182062910ab24d9d1f6dd7b667d32606d3
+        checksum: b8dee4728bca1aba0d71a832a17cd0a3799f75372878e7ffa36aef2343bce0bc
       linux_arm64:
         asset: goreleaser_Linux_arm64.tar.gz
-        checksum: a71681b29194f08f057a68cfcaa5c6b15d907a83a2622c51900c4faff828f322
+        checksum: fa7011a7f8de3b504326b8552cf21c708ed3089519b01d372da32ef4e8d298d7
       darwin_amd64:
         asset: goreleaser_Darwin_x86_64.tar.gz
-        checksum: 5e97d6517f73a0b6f71675a2911b15d3136c03c8907650c2b18e114b1c0f5205
+        checksum: dbc39347d9ca25a2da9bcc03633f39130bb3a67c9f2a0da86ba15b8b00bf86ce
       darwin_arm64:
         asset: goreleaser_Darwin_arm64.tar.gz
-        checksum: a811ff154fe136a0cfb55d00126c151fc39ec370a663d805a9ca5547445aa70c
+        checksum: 821c58ab8c31d57bb331cab9f1a703eb3673bff4fce0db9cc3c4a038af14f76f
     checksumSource:
       type: github-release-file
       fileTemplate: checksums.txt
