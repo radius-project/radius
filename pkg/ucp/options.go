@@ -106,7 +106,7 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 		}
 	}
 
-	options.UCP, err = ucpconfig.NewConnectionFromUCPConfig(&config.UCP, cfg)
+	options.UCP, err = ucpconfig.NewConnectionFromUCPConfig(&config.UCP, cfg, config.Authorization)
 	if err != nil {
 		return nil, err
 	}
