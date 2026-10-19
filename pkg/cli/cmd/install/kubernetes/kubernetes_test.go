@@ -242,8 +242,9 @@ func Test_Run(t *testing.T) {
 			Reinstall:   true,
 		}
 
+		storedValues := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
-			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
+			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", RadiusValues: storedValues}, nil).
 			Times(1)
 
 		expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
@@ -253,6 +254,7 @@ func Test_Run(t *testing.T) {
 				Reinstall: true,
 			},
 		})
+		expectedOptions.RadiusReleaseValues = storedValues
 		helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").
 			Return(nil).
 			Times(1)
