@@ -27,8 +27,8 @@ import "testing"
 // fails the mTLS handshake (logged as PeerCertificateInvalid) or is rejected with
 // InvalidAuthenticationInfo (401).
 //
-// The test calls applications-rp from a rogue pod rather than through UCP, so it does not
-// depend on UCP presenting a client certificate (added in A5).
+// The test calls applications-rp from a rogue pod rather than through UCP, which presents
+// its own client certificate.
 func Test_Boundary_UnauthenticatedCallToApplicationsRP(t *testing.T) {
 	testUnauthenticatedCallToApplicationsRP(t)
 }
