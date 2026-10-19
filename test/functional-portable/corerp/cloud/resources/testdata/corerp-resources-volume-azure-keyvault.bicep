@@ -50,7 +50,7 @@ resource environment 'Applications.Core/environments@2023-10-01-preview' = {
   properties: {
     compute: {
       kind: 'kubernetes'
-      namespace: applicationName
+      namespace: '${applicationName}-env'
       identity: {
         kind: 'azure.com.workload'
         oidcIssuer: oidcIssuer
