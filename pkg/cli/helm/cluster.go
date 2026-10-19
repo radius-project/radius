@@ -230,6 +230,9 @@ type Interface interface {
 	// GetLatestRadiusVersion gets the latest available version of the Radius chart from the Helm repository.
 	GetLatestRadiusVersion(ctx context.Context) (string, error)
 
+	// CertManagerInstalledByRad reports whether the cluster has a cert-manager release that rad installed.
+	CertManagerInstalledByRad(kubeContext string) (bool, error)
+
 	// RollbackRadius rolls back the Radius installation to the previous revision.
 	RollbackRadius(ctx context.Context, kubeContext string) error
 
