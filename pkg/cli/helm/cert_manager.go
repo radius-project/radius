@@ -26,6 +26,8 @@ import (
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/authz"
@@ -277,12 +279,77 @@ func (i *Impl) CertManagerInstalledByRad(kubeContext string) (bool, error) {
 	return i.isRadOwnedCertManager(NewDefaultClusterOptions().CertManager.ChartOptions, kubeContext)
 }
 
-// uninstallCertManager removes cert-manager only when rad installed it.
-func (i *Impl) uninstallCertManager(options ClusterOptions, kubeContext string) error {
+// certManagerResources are the cert-manager resources that other workloads may depend on. Uninstalling
+// cert-manager deletes its CRDs, which deletes every one of these resources in the cluster.
+var certManagerResources = []schema.GroupVersionResource{
+	{Group: "cert-manager.io", Version: "v1", Resource: "certificates"},
+	{Group: "cert-manager.io", Version: "v1", Resource: "certificaterequests"},
+	{Group: "cert-manager.io", Version: "v1", Resource: "issuers"},
+	{Group: "cert-manager.io", Version: "v1", Resource: "clusterissuers"},
+}
+
+func newCertManagerDynamicClient(kubeContext string) (dynamic.Interface, error) {
+	config, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
+		ContextName: kubeContext,
+		QPS:         kubeutil.DefaultCLIQPS,
+		Burst:       kubeutil.DefaultCLIBurst,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return dynamic.NewForConfig(config)
+}
+
+// foreignCertManagerResources lists cert-manager resources outside radiusNamespace. ClusterIssuers always count.
+func foreignCertManagerResources(ctx context.Context, client dynamic.Interface, radiusNamespace string) ([]string, error) {
+	var found []string
+	for _, gvr := range certManagerResources {
+		list, err := client.Resource(gvr).Namespace(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list %s: %w", gvr.Resource, err)
+		}
+		for _, item := range list.Items {
+			switch ns := item.GetNamespace(); ns {
+			case radiusNamespace:
+			case "":
+				found = append(found, item.GetKind()+"/"+item.GetName())
+			default:
+				found = append(found, ns+"/"+item.GetKind()+"/"+item.GetName())
+			}
+		}
+	}
+	return found, nil
+}
+
+// uninstallCertManager removes cert-manager only when rad installed it and no other workload uses it. It keeps
+// cert-manager, without failing, when other workloads have cert-manager resources or the check itself fails.
+func (i *Impl) uninstallCertManager(ctx context.Context, options ClusterOptions, kubeContext string) error {
 	chartOptions := options.CertManager.ChartOptions
 	owned, err := i.isRadOwnedCertManager(chartOptions, kubeContext)
 	if err != nil || !owned {
 		return err
+	}
+
+	logInfo := i.logInfo
+	if logInfo == nil {
+		logInfo = output.LogInfo
+	}
+	newClient := i.newCertManagerDynamicClient
+	if newClient == nil {
+		newClient = newCertManagerDynamicClient
+	}
+	client, err := newClient(kubeContext)
+	var foreign []string
+	if err == nil {
+		foreign, err = foreignCertManagerResources(ctx, client, options.Radius.Namespace)
+	}
+	if err != nil {
+		logInfo("Keeping cert-manager: could not check whether other workloads use it: %v", err)
+		return nil
+	}
+	if len(foreign) > 0 {
+		logInfo("Keeping cert-manager: other workloads use it (%d resources, e.g. %s)", len(foreign), foreign[0])
+		return nil
 	}
 	return i.uninstallHelmRelease("cert-manager", chartOptions.ReleaseName, chartOptions.Namespace, kubeContext)
 }

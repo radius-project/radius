@@ -24,6 +24,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/dynamic"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -250,6 +251,8 @@ type Impl struct {
 	configureDefaultContourGateway func(ctx context.Context, kubeContext string) error
 	removeDefaultContourGateway    func(ctx context.Context, kubeContext string) error
 	newCertManagerClients          certManagerClientsFunc
+	newCertManagerDynamicClient    func(kubeContext string) (dynamic.Interface, error)
+	logInfo                        func(format string, v ...any)
 }
 
 var _ Interface = &Impl{}
@@ -337,7 +340,7 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 	}
 
 	// Uninstall cert-manager only if rad installed it.
-	return i.uninstallCertManager(clusterOptions, kubeContext)
+	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
 }
 
 func (i *Impl) uninstallHelmRelease(componentName, releaseName, namespace, kubeContext string) error {

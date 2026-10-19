@@ -18,8 +18,10 @@ package helm
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -35,9 +37,14 @@ import (
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apiextfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/radius-project/radius/pkg/authz"
 )
@@ -362,20 +369,74 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	require.ErrorContains(t, err, "v"+CertManagerMinimumVersion)
 }
 
+func certManagerResource(kind, namespace, name string) *unstructured.Unstructured {
+	u := &unstructured.Unstructured{}
+	u.SetAPIVersion("cert-manager.io/v1")
+	u.SetKind(kind)
+	u.SetNamespace(namespace)
+	u.SetName(name)
+	return u
+}
+
+func fakeCertManagerDynamicClient(listErr error, objects ...runtime.Object) *dynamicfake.FakeDynamicClient {
+	listKinds := map[schema.GroupVersionResource]string{}
+	for _, r := range certManagerResources {
+		listKinds[r] = r.Resource + "List"
+	}
+	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), listKinds, objects...)
+	if listErr != nil {
+		client.PrependReactor("list", "*", func(k8stesting.Action) (bool, runtime.Object, error) {
+			return true, nil, listErr
+		})
+	}
+	return client
+}
+
 func Test_uninstallCertManager(t *testing.T) {
 	t.Parallel()
+
+	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels()}
 
 	tests := []struct {
 		name          string
 		release       *releasev1.Release
 		getErr        error
+		objects       []runtime.Object
+		listErr       error
 		wantUninstall bool
+		wantLog       string
 		wantErr       bool
 	}{
 		{name: "not installed", getErr: driver.ErrReleaseNotFound},
 		{name: "user-owned is kept", release: &releasev1.Release{Name: certManagerReleaseName}},
-		{name: "rad-owned is removed", release: &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels()}, wantUninstall: true},
 		{name: "get error", getErr: errors.New("boom"), wantErr: true},
+		{
+			name:          "rad-owned without foreign resources is removed",
+			release:       radOwned,
+			objects:       []runtime.Object{certManagerResource("Certificate", RadiusSystemNamespace, "radius-cert")},
+			wantUninstall: true,
+		},
+		{
+			name:    "rad-owned with a foreign Certificate is kept",
+			release: radOwned,
+			objects: []runtime.Object{
+				certManagerResource("Certificate", RadiusSystemNamespace, "radius-cert"),
+				certManagerResource("Certificate", "app", "web-tls"),
+			},
+			wantLog: "Keeping cert-manager: other workloads use it (1 resources, e.g. app/Certificate/web-tls)",
+		},
+		{
+			name:    "rad-owned with a ClusterIssuer is kept",
+			release: radOwned,
+			objects: []runtime.Object{certManagerResource("ClusterIssuer", "", "letsencrypt")},
+			wantLog: "Keeping cert-manager: other workloads use it (1 resources, e.g. ClusterIssuer/letsencrypt)",
+		},
+		{
+			name:    "list error keeps cert-manager",
+			release: radOwned,
+			listErr: errors.New("forbidden"),
+			wantLog: "Keeping cert-manager: could not check whether other workloads use it:",
+		},
 	}
 
 	for _, tt := range tests {
@@ -390,13 +451,26 @@ func Test_uninstallCertManager(t *testing.T) {
 					Return(&release.UninstallReleaseResponse{}, nil)
 			}
 
-			impl := &Impl{Helm: mockHelmClient}
-			err := impl.uninstallCertManager(NewDefaultClusterOptions(), "test-context")
+			var logs []string
+			impl := &Impl{
+				Helm: mockHelmClient,
+				newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
+					return fakeCertManagerDynamicClient(tt.listErr, tt.objects...), nil
+				},
+				logInfo: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
+			}
+			err := impl.uninstallCertManager(t.Context(), NewDefaultClusterOptions(), "test-context")
 			if tt.wantErr {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
+			if tt.wantLog == "" {
+				require.Empty(t, logs)
+				return
+			}
+			require.Len(t, logs, 1)
+			require.True(t, strings.HasPrefix(logs[0], tt.wantLog), logs[0])
 		})
 	}
 }
