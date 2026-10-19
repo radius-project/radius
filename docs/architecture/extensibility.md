@@ -375,7 +375,9 @@ with `x-radius-sensitive`, and encrypts those property values before the
 accepted resource is stored. During backend processing,
 `CreateOrUpdateResource` decrypts a recipe-only copy of those values, persists
 a redacted resource, and passes the decrypted copy to the recipe engine. This
-keeps recipe input usable without storing sensitive plaintext.
+keeps recipe input usable without storing sensitive plaintext in the Radius resource record.
+
+Terraform recipes also retain module inputs in the reserved, sensitive `_radius_recipe_inputs` state output. Before destroy, the executor reads this output and restores the prior inputs. Terraform can then validate required arguments even when the Radius resource properties have been redacted. This applies to wrapped recipes and direct modules on all state backends. Create and update do not restore prior inputs, so missing required values still fail validation. The executor removes this internal output from the deployment response; it is not a recipe output or a managed secret. Terraform's `sensitive` flag hides the output in normal CLI logs but does not encrypt state. Protect access to the state backend. Older state files have no saved inputs and keep the previous deletion behavior; redeploy with the required values to save inputs before deletion.
 
 ### How The Recipe Runs
 

@@ -18,14 +18,19 @@ package terraform
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	reflect "reflect"
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	dm "github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -90,6 +95,11 @@ func runTerraformTestHelper() error {
 		0644); err != nil {
 		return fmt.Errorf("writing test module outputs: %w", err)
 	}
+	if os.Getenv("RADIUS_TERRAFORM_CONTEXT_VARIABLE") == "1" {
+		if err := os.WriteFile(filepath.Join(moduleDir, "variables.tf"), []byte(`variable "context" { type = any }`), 0600); err != nil {
+			return fmt.Errorf("writing test module context variable: %w", err)
+		}
+	}
 	if provider := os.Getenv("RADIUS_TERRAFORM_REQUIRED_PROVIDER"); provider != "" {
 		content := fmt.Sprintf("terraform {\n required_providers {\n %s = {\n source = \"hashicorp/%s\"\n", provider, provider)
 		if alias := os.Getenv("RADIUS_TERRAFORM_PROVIDER_ALIAS"); alias != "" {
@@ -106,6 +116,12 @@ func runTerraformTestHelper() error {
 			fmt.Fprint(os.Stdout, `{"terraform_version":"1.15.8","platform":"test","provider_selections":{}}`)
 		case "show":
 			fmt.Fprint(os.Stdout, `{"format_version":"1.0","terraform_version":"1.15.8","values":{"outputs":{"endpoint":{"value":"declared","type":"string","sensitive":false}}}}`)
+		case "output":
+			output := os.Getenv("RADIUS_TERRAFORM_TEST_OUTPUT")
+			if output == "" {
+				output = "{}"
+			}
+			fmt.Fprint(os.Stdout, output)
 		}
 	}
 	return nil
@@ -243,6 +259,172 @@ func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
 	require.Contains(t, string(commands), "destroy\n")
 }
 
+func TestInitAndDestroyRestoresRecipeInputs(t *testing.T) {
+	inputs := map[string]any{
+		"context": map[string]any{
+			"resource": map[string]any{
+				"properties": map[string]any{
+					"data": map[string]any{
+						"password": map[string]any{"value": "previous-secret"},
+					},
+				},
+			},
+		},
+	}
+	saved := &config.TerraformConfig{Module: map[string]config.TFModuleConfig{"recipe": config.TFModuleConfig(inputs)}}
+	require.NoError(t, saved.AddRecipeInputs("recipe"))
+	encoded := saved.Output[config.RecipeInputsOutputName].(map[string]any)["value"]
+
+	for _, tt := range []struct {
+		name       string
+		outputs    map[string]any
+		failOutput bool
+		wantError  string
+		restored   bool
+	}{
+		{name: "saved inputs", outputs: map[string]any{
+			config.RecipeInputsOutputName: map[string]any{"value": encoded, "type": "string", "sensitive": true},
+		}, restored: true},
+		{name: "legacy state", outputs: map[string]any{}},
+		{name: "invalid output type", outputs: map[string]any{
+			config.RecipeInputsOutputName: map[string]any{"value": 42, "type": "number"},
+		}, wantError: "expected a string"},
+		{name: "invalid saved inputs", outputs: map[string]any{
+			config.RecipeInputsOutputName: map[string]any{"value": base64.StdEncoding.EncodeToString([]byte("secret")), "type": "string"},
+		}, wantError: "expected a JSON object"},
+		{name: "output failure", outputs: map[string]any{}, failOutput: true, wantError: "reading terraform recipe inputs for deletion"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			workingDir := t.TempDir()
+			cfg := &config.TerraformConfig{Module: map[string]config.TFModuleConfig{
+				"recipe": {
+					"source": "test/module",
+					"context": map[string]any{
+						"resource": map[string]any{
+							"properties": map[string]any{
+								"data": map[string]any{"password": map[string]any{"value": nil}},
+							},
+						},
+					},
+				},
+			}}
+			require.NoError(t, cfg.AddRecipeInputs("recipe"))
+			require.NoError(t, cfg.Save(t.Context(), workingDir))
+			snapshotsPath := filepath.Join(t.TempDir(), "executions.jsonl")
+			outputs, err := json.Marshal(tt.outputs)
+			require.NoError(t, err)
+			tf, err := tfexec.NewTerraform(workingDir, os.Args[0])
+			require.NoError(t, err)
+			env := map[string]string{
+				terraformGetTestHelper:         "1",
+				terraformBackendSnapshots:      snapshotsPath,
+				"RADIUS_TERRAFORM_TEST_OUTPUT": string(outputs),
+			}
+			if tt.failOutput {
+				env["RADIUS_TERRAFORM_FAIL_COMMAND"] = "output"
+			}
+			require.NoError(t, tf.SetEnv(env))
+
+			var logs string
+			logger := funcr.New(func(_, message string) { logs += message }, funcr.Options{})
+			ctx := logr.NewContext(t.Context(), logger)
+			tf.SetStdout(&tfLogWrapper{logger: logger})
+			err = initAndDestroy(ctx, tf, "37s", cfg, "recipe")
+			require.NotContains(t, logs, encoded.(string))
+			require.NotContains(t, logs, "previous-secret")
+			if tt.wantError != "" {
+				require.ErrorContains(t, err, tt.wantError)
+			} else {
+				require.NoError(t, err)
+			}
+			var destroyed bool
+			for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
+				if snapshot.Command != "destroy" {
+					continue
+				}
+				destroyed = true
+				var actual config.TerraformConfig
+				require.NoError(t, json.Unmarshal(snapshot.Config, &actual))
+				require.Equal(t, "test/module", actual.Module["recipe"]["source"])
+				if tt.restored {
+					require.Equal(t, inputs["context"], actual.Module["recipe"]["context"])
+				} else {
+					require.NotContains(t, string(snapshot.Config), "previous-secret")
+				}
+				require.Contains(t, snapshot.Args, "-lock-timeout=37s")
+			}
+			require.Equal(t, tt.wantError == "", destroyed)
+		})
+	}
+}
+
+func TestRecipeInputsTerraformLifecycle(t *testing.T) {
+	terraformPath, err := exec.LookPath("terraform")
+	if err != nil {
+		t.Skip("Terraform is not installed")
+	}
+	workingDir := t.TempDir()
+	moduleDir := filepath.Join(workingDir, "module")
+	require.NoError(t, os.Mkdir(moduleDir, 0700))
+	require.NoError(t, os.WriteFile(filepath.Join(moduleDir, "main.tf"), []byte(`
+variable "context" {
+  type = any
+  validation {
+    condition = var.context.resource.properties.data.password.value != null
+    error_message = "A secret value is required."
+  }
+}
+resource "terraform_data" "secret" {
+  input = var.context.resource.properties.data.password.value
+}
+output "result" {
+  value = {}
+}
+`), 0600))
+	tf, err := tfexec.NewTerraform(workingDir, terraformPath)
+	require.NoError(t, err)
+	newConfig := func(value any) *config.TerraformConfig {
+		t.Helper()
+		cfg := &config.TerraformConfig{Module: map[string]config.TFModuleConfig{
+			"recipe": {
+				"source": "./module",
+				"context": map[string]any{
+					"resource": map[string]any{
+						"properties": map[string]any{
+							"data": map[string]any{"password": map[string]any{"value": value}},
+						},
+					},
+				},
+			},
+		}}
+		require.NoError(t, cfg.AddRecipeInputs("recipe"))
+		require.NoError(t, cfg.Save(t.Context(), workingDir))
+		return cfg
+	}
+
+	newConfig(nil)
+	_, err = initAndApply(t.Context(), tf, "37s")
+	require.ErrorContains(t, err, "A secret value is required")
+
+	newConfig("previous-secret")
+	state, err := initAndApply(t.Context(), tf, "37s")
+	require.NoError(t, err)
+	require.NotContains(t, state.Values.Outputs, config.RecipeInputsOutputName)
+	outputs, err := tf.Output(t.Context())
+	require.NoError(t, err)
+	require.True(t, outputs[config.RecipeInputsOutputName].Sensitive)
+
+	redacted := newConfig(nil)
+	_, err = initAndApply(t.Context(), tf, "37s")
+	require.ErrorContains(t, err, "A secret value is required")
+	require.ErrorContains(t, tf.Destroy(t.Context()), "A secret value is required")
+
+	require.NoError(t, initAndDestroy(t.Context(), tf, "37s", redacted, "recipe"))
+	state, err = tf.Show(t.Context())
+	require.NoError(t, err)
+	require.Nil(t, state.Values)
+}
+
 func TestGenerateConfig(t *testing.T) {
 	configTests := []struct {
 		name       string
@@ -309,6 +491,55 @@ func TestGenerateConfigRejectsInvalidOutputMappingBeforeProviderSetup(t *testing
 	e := executor{}
 	_, err = e.generateConfig(t.Context(), tf, options, backends.CloudBackendAuth{}, requireValidOutputMappings)
 	require.EqualError(t, err, `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches outputs["host"] -> "missing"; available module outputs: "endpoint"`)
+}
+
+func TestGenerateConfigRetainsRecipeInputs(t *testing.T) {
+	for _, wrapped := range []bool{true, false} {
+		t.Run(fmt.Sprintf("context_variable_%t", wrapped), func(t *testing.T) {
+			workingDir := t.TempDir()
+			tf, err := tfexec.NewTerraform(workingDir, os.Args[0])
+			require.NoError(t, err)
+			env := map[string]string{terraformGetTestHelper: "1"}
+			if wrapped {
+				env["RADIUS_TERRAFORM_CONTEXT_VARIABLE"] = "1"
+			}
+			require.NoError(t, tf.SetEnv(env))
+			kubernetesClients := kubernetesclientprovider.KubernetesClientProvider{}
+			kubernetesClients.SetClientGoClient(fake.NewSimpleClientset())
+			e := executor{kubernetesClients: kubernetesClients}
+			options := Options{
+				EnvConfig: &recipes.Configuration{},
+				EnvRecipe: &recipes.EnvironmentDefinition{
+					Name: "test-recipe", TemplatePath: "test/module/source",
+				},
+				ResourceRecipe: &recipes.ResourceMetadata{
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/widgets/widget",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+					Properties: map[string]any{
+						"data": map[string]any{"password": map[string]any{"value": "previous-secret"}},
+					},
+				},
+			}
+			if !wrapped {
+				options.EnvRecipe.Parameters = map[string]any{
+					"secret_data": "{{context.resource.properties.data}}",
+				}
+			}
+
+			backend, err := e.generateConfig(t.Context(), tf, options, backends.CloudBackendAuth{}, requireValidOutputMappings)
+			require.NoError(t, err)
+			output := backend.config.Output[config.RecipeInputsOutputName].(map[string]any)
+			require.Equal(t, true, output["sensitive"])
+			require.NoError(t, backend.config.RestoreRecipeInputs("test-recipe", output["value"].(string)))
+			if wrapped {
+				recipeContext := backend.config.Module["test-recipe"]["context"].(map[string]any)
+				resource := recipeContext["resource"].(map[string]any)
+				require.Equal(t, options.ResourceRecipe.Properties, resource["properties"])
+			} else {
+				require.Equal(t, options.ResourceRecipe.Properties["data"], backend.config.Module["test-recipe"]["secret_data"])
+			}
+		})
+	}
 }
 
 func TestValidateOutputMappings(t *testing.T) {

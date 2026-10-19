@@ -18,6 +18,7 @@ package terraform
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -101,6 +102,8 @@ type executor struct {
 
 // backendResult carries the extra lifecycle operations each backend needs after Terraform runs.
 type backendResult struct {
+	config *config.TerraformConfig
+
 	// kubernetesSecretName is set only for the Kubernetes backend, whose state secret Radius manages.
 	kubernetesSecretName string
 
@@ -191,7 +194,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	stateLockTimeout := getStateLockTimeout(options.StateLockTimeout)
 	if backend.kubernetesSecretName == "" {
 		// Native cloud backends handle missing state, locking and permissions.
-		if err := initAndDestroy(ctx, tf, stateLockTimeout); err != nil {
+		if err := initAndDestroy(ctx, tf, stateLockTimeout, backend.config, options.EnvRecipe.Name); err != nil {
 			return err
 		}
 
@@ -223,7 +226,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Run TF Destroy in the working directory to delete the resources deployed by the recipe
-	err = initAndDestroy(ctx, tf, stateLockTimeout)
+	err = initAndDestroy(ctx, tf, stateLockTimeout, backend.config, options.EnvRecipe.Name)
 	if err != nil {
 		return err
 	}
@@ -391,7 +394,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		return nil, err
 	}
 
-	result := &backendResult{}
+	result := &backendResult{config: tfConfig}
 	if backendDetails, ok := backendConfig[backends.BackendKubernetes]; ok {
 		backendMap := backendDetails.(map[string]any)
 		if secret, ok := backendMap["secret_suffix"]; ok {
@@ -477,6 +480,10 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	}
 
 	// Add more configurations here.
+
+	if err := tfConfig.AddRecipeInputs(options.EnvRecipe.Name); err != nil {
+		return nil, err
+	}
 
 	// Ensure that we need to save the configuration after adding providers and recipecontext.
 	if err := tfConfig.Save(ctx, workingDir); err != nil {
@@ -582,11 +589,19 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout st
 	tf.SetStdout(io.Discard)
 	defer tf.SetStdout(&tfLogWrapper{logger: logger})
 
-	return tf.Show(ctx)
+	state, err := tf.Show(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Internal inputs must not reach recipe outputs or managed secret materialization.
+	if state != nil && state.Values != nil {
+		delete(state.Values.Outputs, config.RecipeInputsOutputName)
+	}
+	return state, nil
 }
 
 // initAndDestroy runs Terraform init and destroy in the provided working directory.
-func initAndDestroy(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout string) error {
+func initAndDestroy(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout string, cfg *config.TerraformConfig, moduleName string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Initialize Terraform
@@ -600,6 +615,10 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout 
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 
+	if err := restoreRecipeInputs(ctx, tf, cfg, moduleName); err != nil {
+		return err
+	}
+
 	// Destroy Terraform configuration with state lock timeout
 	logger.Info("Running Terraform destroy with state lock timeout: " + stateLockTimeout)
 	if err := tf.Destroy(ctx, tfexec.Lock(true), tfexec.LockTimeout(stateLockTimeout)); err != nil {
@@ -607,6 +626,29 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout 
 	}
 
 	return nil
+}
+
+func restoreRecipeInputs(ctx context.Context, tf *tfexec.Terraform, cfg *config.TerraformConfig, moduleName string) error {
+	// Output -json exposes sensitive values. Keep them out of the Radius logs.
+	tf.SetStdout(io.Discard)
+	outputs, err := tf.Output(ctx)
+	tf.SetStdout(&tfLogWrapper{logger: ucplog.FromContextOrDiscard(ctx)})
+	if err != nil {
+		return fmt.Errorf("reading terraform recipe inputs for deletion: %w", err)
+	}
+	output, ok := outputs[config.RecipeInputsOutputName]
+	if !ok {
+		// Older state has no saved inputs. Preserve its existing deletion behavior.
+		return nil
+	}
+	var encoded string
+	if err := json.Unmarshal(output.Value, &encoded); err != nil {
+		return errors.New("invalid saved terraform recipe inputs: expected a string")
+	}
+	if err := cfg.RestoreRecipeInputs(moduleName, encoded); err != nil {
+		return err
+	}
+	return cfg.Save(ctx, tf.WorkingDir())
 }
 
 func initializeTerraform(ctx context.Context, tf *tfexec.Terraform) error {
