@@ -176,10 +176,10 @@ func Test_DefaultImage(t *testing.T) {
 		require.Equal(t, DefaultImage(), newPod(Options{Namespace: "ns"}).Spec.Containers[0].Image)
 	})
 
-	t.Run("defaults to the published latest image", func(t *testing.T) {
+	t.Run("defaults to the local test tag", func(t *testing.T) {
 		t.Setenv("DOCKER_REGISTRY", "")
 		t.Setenv("REL_VERSION", "")
-		require.Equal(t, "ghcr.io/radius-project/rogue-client:latest", DefaultImage())
+		require.Equal(t, "ghcr.io/radius-project/rogue-client:test-local", DefaultImage())
 	})
 }
 
