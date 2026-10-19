@@ -119,6 +119,11 @@ func Test_Expressions(t *testing.T) {
 		{name: "large integer property equals literal", expr: `{{context.resource.properties.bigint == 9007199254740993}}`, expected: true},
 		{name: "large integer property vs nearby literal", expr: `{{context.resource.properties.bigint == 9007199254740992}}`, expected: false},
 		{name: "large integer property vs rounded decimal", expr: `{{context.resource.properties.bigint == 9007199254740992.0}}`, expected: false},
+		{name: "integers above int64 compare exactly", expr: `{{context.resource.name != null && 18446744073709551615 == 18446744073709551614}}`, expected: false},
+		{name: "integers above int64 not equal", expr: `{{context.resource.name != null && 18446744073709551615 != 18446744073709551614}}`, expected: true},
+		{name: "integer above int64 equals itself", expr: `{{context.resource.name != null && 18446744073709551615 == 18446744073709551615}}`, expected: true},
+		{name: "integer above int64 result keeps value", expr: `{{context.resource.properties.enabled ? 18446744073709551615 : 0}}`, expected: uint64(18446744073709551615)},
+		{name: "minimum int64 literal", expr: `{{context.resource.properties.enabled ? -9223372036854775808 : 0}}`, expected: int64(-9223372036854775808)},
 
 		// Null handling for absent optional properties.
 		{name: "absent property equals null", expr: `{{context.resource.properties.missing == null}}`, expected: true},
@@ -197,6 +202,8 @@ func Test_Expressions_Errors(t *testing.T) {
 		{name: "unterminated string", expr: `{{context.resource.name == "abc}}`, expectedErr: "unterminated string literal"},
 		{name: "unsupported escape", expr: `{{context.resource.name == "a\nb"}}`, expectedErr: "unsupported escape sequence"},
 		{name: "invalid number", expr: `{{context.resource.properties.port == 12ab}}`, expectedErr: "invalid number literal"},
+		{name: "integer above uint64 range", expr: `{{context.resource.properties.port == 18446744073709551616}}`, expectedErr: `integer literal "18446744073709551616" at position 36 is out of range`},
+		{name: "integer below int64 range", expr: `{{context.resource.properties.port == -9223372036854775809}}`, expectedErr: `integer literal "-9223372036854775809" at position 36 is out of range`},
 		{name: "trailing dot in path", expr: `{{context.resource.name. == "x"}}`, expectedErr: "empty path segment"},
 		{name: "unterminated expression", expr: `{{context.resource.name`, expectedErr: `missing closing "}}"`},
 		{name: "compare objects", expr: `{{context.resource.properties.tags == "x"}}`, expectedErr: "cannot compare object or array values"},

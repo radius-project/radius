@@ -18,6 +18,7 @@ package paramresolver
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -168,7 +169,8 @@ func lexString(src string, start int) (token, int, error) {
 }
 
 // lexNumber reads an integer or decimal literal with an optional leading minus sign. Integers are
-// decoded as int64 (falling back to float64 when out of range) and decimals as float64.
+// decoded as int64, or as uint64 when they exceed the int64 range, so they are never rounded. Integers
+// outside both ranges are rejected. Decimals are decoded as float64.
 func lexNumber(src string, start int) (token, int, error) {
 	i := start
 	if src[i] == '-' {
@@ -197,6 +199,10 @@ func lexNumber(src string, start int) (token, int, error) {
 		if n, err := strconv.ParseInt(text, 10, 64); err == nil {
 			return token{kind: tokNumber, text: text, value: n, pos: start}, i, nil
 		}
+		if n, err := strconv.ParseUint(text, 10, 64); err == nil {
+			return token{kind: tokNumber, text: text, value: n, pos: start}, i, nil
+		}
+		return token{}, 0, fmt.Errorf("integer literal %q at position %d is out of range: integers must be between %d and %d", text, start, int64(math.MinInt64), uint64(math.MaxUint64))
 	}
 	f, err := strconv.ParseFloat(text, 64)
 	if err != nil {

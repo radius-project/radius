@@ -39,6 +39,7 @@ precedence:
 	PATH     := "context" ( "." SEGMENT )+             SEGMENT is [A-Za-z0-9_-]+
 	STRING   := double-quoted; the only escapes are \" and \\
 	NUMBER   := optional "-", digits, optional "." digits
+	            integers must be between -2^63 and 2^64-1; decimals are 64-bit floats
 
 For example, to map a developer-facing size enum onto a module SKU and a typed storage size:
 
