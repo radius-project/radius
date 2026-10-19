@@ -104,7 +104,7 @@ The reusable foundation is the deployment model beneath that Flux-specific sourc
 
 - **Deployment inputs:** The [DeploymentTemplate API](../../../pkg/controller/api/radapp.io/v1alpha3/deploymenttemplate_types.go) represents compiled template content, parameters, and provider scope. Argo CD can target this shared input model instead of requiring users to adopt a separate Radius definition format.
 - **Execution and lifecycle:** The [DeploymentTemplate reconciler](../../../pkg/controller/reconciler/deploymenttemplate_reconciler.go) drives asynchronous Radius deployments, emits failure events, and creates owned `DeploymentResource` records for successful outputs. The proposed Argo CD integration reuses this execution and cleanup behavior; the source plugin and UI do not execute Recipes.
-- **Status:** The existing API exposes an observed generation, deployment phrase, operation state, and output resource IDs. Phrases include `Updating`, `Ready`, `ReadyPendingCleanup`, `Failed`, `Deleting`, and `Deleted`. These are the starting point for Argo CD health reporting, not proof of complete dependency-health aggregation or continuous runtime monitoring.
+- **Status:** The existing API exposes an observed generation, deployment phrase, operation state, and output resource IDs. Phrases include `Updating`, `Ready`, `ReadyPendingCleanup`, `Failed`, `Deleting`, and `Deleted`. These are the starting points for Argo CD health reporting, not proof of complete dependency-health aggregation or continuous runtime monitoring.
 - **Manifest generation:** The [`rad bicep generate-kubernetes-manifest` command](../../../pkg/cli/cmd/bicep/generatekubernetesmanifest/generatekubernetesmanifest.go) already generates a `DeploymentTemplate` manifest. It provides a declarative entry point for the proposed Argo CD path without requiring the Flux source controller.
 
 Separately, the [`rad app graph` command](../../../pkg/cli/cmd/app/graph/graph.go) distinguishes modeled graphs from queries for deployed resources. This broader Radius capability is a foundation for graph presentation, not a graph feature already delivered by the Flux integration.
@@ -189,6 +189,22 @@ For recovery, I normally revert the desired configuration, including the image o
 **Stay within scope and remain usable.** I enter through my authorized Argo CD project/application and select only permitted Radius context. Filtering is a convenience, not an authorization boundary: graph queries, error details, direct URLs, and deployment requests must be checked against the corresponding application and Radius scope. Read-only viewers cannot sync, retry, delete, or modify resources through the extension. Existing Argo CD controls retain their permissions; no new broad permissions are granted simply to enable visualization.
 
 I can search and expand a large graph incrementally instead of loading an unrestricted inventory. The extension provides keyboard navigation, visible focus, textual status labels that do not rely on color, and an accessible list equivalent for graph relationships. Empty, loading, partial, stale, and permission-denied states retain application context and give an appropriate next action. Disabling the optional graph extension leaves core synchronization and configured health reporting available.
+
+#### Example Argo CD UI screenshots
+
+These mockups use synthetic data and Argo CD's existing visual layout to illustrate the proposed Radius experience; they are not screenshots of a released or working integration. Tab placement, labels, and controls remain subject to compatibility and usability validation. Unlike the manual-sync manifest example above, these screenshots show an application configured for automated sync.
+
+**Native resource tree and convergence.** The application is `Synced`, but its health remains `Progressing` while Radius finishes cleanup in `ReadyPendingCleanup`. The tree shows tracked Kubernetes resources and discoverable relationships, not fabricated child objects for external dependencies.
+
+![Proposed Argo CD resource tree showing a Synced application, a Radius DeploymentTemplate awaiting cleanup, and tracked DeploymentResource outputs.](2026-10-argocd-feature-spec/argocd-native-resource-tree.png)
+
+**Radius dependency graph.** The proposed graph view follows logical dependencies beyond Kubernetes ownership. It distinguishes previously provisioned workloads from the current failed database change and marks the shared external cache as unobserved rather than healthy. Dependency links do not confer ownership or prune authority.
+
+![Proposed Radius graph showing frontend and worker dependencies on a failed database change, a shared cache with no observation, and scoped resource details.](2026-10-argocd-feature-spec/argocd-radius-dependency-graph.png)
+
+**Recipe failure diagnostics.** The proposed resource tab exposes a sanitized Terraform policy error, attempted revision, operation context, and deployment trace even when the attempt creates no new output records. Source and diagnostic links support an authorized correction through Git rather than direct cloud mutations.
+
+![Proposed Radius diagnostics tab showing a Synced but Degraded deployment, a Terraform policy denial before new outputs exist, and Git-based recovery guidance.](2026-10-argocd-feature-spec/argocd-recipe-diagnostics.png)
 
 ## Key investments
 
