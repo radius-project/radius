@@ -47,6 +47,44 @@ Integration tests exercise a feature together with its dependencies. In Radius t
 
 There is no separate `make test-integration` target today: because these tests need no external dependencies, they are part of the standard `make test` run. When a test needs an optional or external dependency, prefer the functional tier so that `make test` stays runnable with only the basic prerequisites.
 
+#### Reviewing RBAC policy storage evidence
+
+The policy store in `pkg/ucp/authorization` supplies storage, safety, immutable snapshots and readiness integration interfaces only. These tests do not expose management APIs, enable enforcement, or demonstrate a working `rad auth` command.
+
+Run the fast checks, including fake-clock refresh/staleness, ownership, privilege-escalation rules, immutable assignments, concurrent administrator removals and interrupted writes:
+
+```sh
+go test -race ./pkg/ucp/authorization ./pkg/components/database/inmemory -short -count=1
+```
+
+Omit `-short` to include the exact 10,000-assignment/1,000-role capacity exercise and real API-server suite. To inspect only the capacity result, run `go test -race ./pkg/ucp/authorization -run '^TestPolicyStoreManifestCapacity$' -count=1 -v`; it must report 86 index pages and an anchor smaller than 1 KiB.
+
+Review the same initialization, concurrent-write and recovery scenarios against the real Kubernetes API server. This uses the repository's existing `setup-envtest` binaries and an isolated API server, not your current cluster:
+
+```sh
+go test -race ./pkg/ucp/authorization -run '^TestPolicyStoreAPIServer$' -count=1 -v
+go test ./pkg/components/database/apiserverstore -run '^Test_APIServer_Client$' -count=1 -v
+```
+
+For Postgres, use a disposable database and set `TEST_POSTGRES_URL` to its connection string (see `make db-init`). The policy suite creates a uniquely named schema per scenario and drops only those schemas; its database user needs permission to create schemas. The existing backend contract test **clears the database's `resources` table**, so never point it at a shared installation:
+
+```sh
+go test -race ./pkg/ucp/authorization -run '^TestPolicyStorePostgres$' -count=1 -v
+go test ./pkg/components/database/postgres -run '^Test_PostgresClient$' -count=1 -v
+```
+
+Require actual `PASS` output for each backend's scenarios. `SKIP` because `TEST_POSTGRES_URL` is absent is missing evidence, not proof of Postgres concurrency. The shared database contract additionally checks atomic `WithCreateOnly`, ETag preconditions, and unchanged ordinary upsert behavior.
+
+Inspect the policy output for `generation=2 permanentAdministrators=1 committed history=1..2`. One concurrent removal must return `LastAdministratorProtected`. The crash table interrupts both before and after object, index page, root, event preparation, intent claim, history persistence and final publication; recovery and retry must produce exactly one history record with the original actor, request ID and timestamp. The delayed-recovery case pauses one worker, lets another publish generation 1 and delete the assignment at generation 2, then resumes the old worker: the assignment must stay deleted. Concurrent role deletion/scope restriction and assignment creation must not both succeed.
+
+**Protocol clarification:** the store does not replay writes to mutable public role/assignment IDs. Such replay could resurrect a deleted assignment when an old recovery worker resumes after a later generation. It prepares intent-UUID-specific immutable objects and two-level index pages first, then claims an ETag-protected anchor containing the next root/event references. Recovery verifies the prepared policy, creates the generation-keyed history record idempotently, and CAS-publishes the new applied root/generation while clearing the intent. Reads recover pending intent before returning policy or history; no published root references an incomplete preparation. Replays compare existing payloads and reject mismatches. Built-ins come only from the trusted catalog.
+
+**Initialization boundary:** `PolicyInitializer` requires a trusted `InitializationVerifier` and uses backend-native atomic `WithCreateOnly` to publish a complete generation-zero baseline. Ordinary `PolicyStore` operations cannot initialize missing state, create Bootstrap ownership, modify Bootstrap assignments, or enable a mode without a `SettingsChangeGuard`. This layer deliberately supplies neither production verifier nor rollout guard, and wires no startup code. Future initialization must authenticate its startup authority, validate bootstrap identities and mode prerequisites, and finish before readiness. A bootstrap-only baseline is distinct from normal initialized administration: bootstrap grants never satisfy the permanent-administrator invariant; ordinary mutations must establish or retain a permanent user/group administrator.
+
+**Bounds and retention:** there are at most 10,000 assignments and 1,000 custom roles. Each private encoded object/event is limited to 128 KiB, each index page to 128 references, and each root to 128 page references; the anchor holds only fixed-size references, not the full policy or manifest. Oversized data fails explicitly with `PolicyCapacityExceeded`. Generations never wrap or reuse and stop at the JSON-exact integer bound; UUIDs are freshly generated for each preparation. Generation zero is the trusted startup baseline, not an access-change event. Successful changes, losing preparations and interrupted initialization retain immutable objects; pages/root/event preparation grows storage per attempt. There is intentionally no garbage collection: deleting old objects while suspended readers/recoverers can resume needs a separate proven lifetime protocol.
+
+For later integration, use `PolicyStore.MutateAndRefresh` with its `PolicyCache` for local writes, run/join `PolicyCache.Run` under the service lifetime context, report refresh errors, and expose `Ready` through readiness. The five-second checks renew freshness only on successful reads; at exactly thirty seconds without a successful refresh, `Evaluate` refuses decisions with `AuthorizationUnavailable`. Do not use a previously retained raw snapshot as a runtime freshness bypass.
+
 ### CLI integration tests
 
 Run the CLI command tests with:

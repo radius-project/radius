@@ -72,6 +72,10 @@ type DatabaseOptions struct {
 
 	// ETag represents the entity tag for optimistic consistency control.
 	ETag ETag
+
+	// CreateOnly atomically rejects Save when the resource already exists.
+	// It cannot be combined with a nonempty ETag.
+	CreateOnly bool
 }
 
 // Query Options
@@ -139,6 +143,23 @@ func (s *saveOptions) ApplySaveOption(cfg DatabaseOptions) DatabaseOptions {
 }
 
 func (s saveOptions) private() {}
+
+// WithCreateOnly makes Save an atomic insert, returning ErrConcurrency if the
+// resource exists. Combining this option with a nonempty ETag returns ErrInvalid.
+func WithCreateOnly() SaveOptions {
+	return &saveOptions{fn: func(cfg DatabaseOptions) DatabaseOptions {
+		cfg.CreateOnly = true
+		return cfg
+	}}
+}
+
+// ValidateSave rejects incompatible write preconditions.
+func (o DatabaseOptions) ValidateSave() error {
+	if o.CreateOnly && o.ETag != "" {
+		return &ErrInvalid{Message: "CreateOnly and ETag cannot be combined"}
+	}
+	return nil
+}
 
 // WithETag sets the ETag field in the StoreConfig struct.
 func WithETag(etag ETag) MutatingOptions {
