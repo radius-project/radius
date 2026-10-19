@@ -216,6 +216,13 @@ func (r *Runner) buildCleanupPlan(ctx context.Context, state helm.InstallState) 
 	if state.ContourInstalled {
 		plan.HelmReleases = append(plan.HelmReleases, "contour")
 	}
+	certManagerOwned, err := r.Helm.CertManagerInstalledByRad(r.KubeContext)
+	if err != nil {
+		return plan, fmt.Errorf("failed to check for a cert-manager installed by rad: %w", err)
+	}
+	if certManagerOwned {
+		plan.HelmReleases = append(plan.HelmReleases, "cert-manager")
+	}
 
 	if !r.Purge {
 		return plan, nil
