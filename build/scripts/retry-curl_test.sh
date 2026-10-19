@@ -44,6 +44,7 @@ curl() {
         fail_test "attempt timeout"
     [[ "${speed_limit}" -eq 1024 && "${speed_time}" -eq 30 ]] ||
         fail_test "stalled transfer limits"
+    printf '%s\n' "${headers%/*}" > "${TEST_DIR}/request-directory"
 
     local curl_calls
     curl_calls="$(( $(< "${TEST_DIR}/curl-calls") + 1 ))"
@@ -60,7 +61,7 @@ curl() {
     if ((status == 0)); then
         printf 'complete' > "${output}"
     else
-        printf 'partial' > "${output}"
+        printf 'partial-%s' "${curl_calls}" > "${output}"
     fi
     printf '%s %s' "${http_code}" "${effective_url}"
     return "${status}"
@@ -68,7 +69,7 @@ curl() {
 
 sleep() {
     DELAYS+=("$1")
-    SECONDS=$((SECONDS + $1))
+    SECONDS=$((SECONDS + $1 + ${SLEEP_OVERRUN:-0}))
 }
 
 reset_case() {
@@ -185,5 +186,89 @@ grep -q '^X-Test: kept' "${TEST_DIR}/headers" ||
     fail_test "response headers were not copied"
 grep -q '^HTTP/2 400' "${TEST_DIR}/headers" ||
     fail_test "response status header was not copied"
+
+for response in 0:200 22:400 22:503; do
+    reset_case "${response}"
+    RETRY_CURL_MAX_ATTEMPTS=1
+    status=0
+    retry_curl --dump-header "${TEST_DIR}/missing/headers" \
+        -o "${TEST_DIR}/download" https://example.test/file \
+        2> "${TEST_DIR}/copy-error" || status=$?
+    unset RETRY_CURL_MAX_ATTEMPTS
+    [[ "${status}" -eq 23 ]] ||
+        fail_test "header copy failure status for ${response}"
+    [[ -s "${TEST_DIR}/copy-error" ]] ||
+        fail_test "header copy failure was not reported"
+    [[ ! -d "$(< "${TEST_DIR}/request-directory")" ]] ||
+        fail_test "temporary directory retained after header copy failure"
+    [[ "$(< "${TEST_DIR}/curl-calls")" -eq 1 ]] ||
+        fail_test "header copy failure retried the request"
+done
+
+reset_case 0:200
+RETRY_CURL_MAX_SECONDS=0
+status=0
+retry_curl --dump-header "${TEST_DIR}/missing/headers" \
+    -o "${TEST_DIR}/download" https://example.test/file \
+    2> "${TEST_DIR}/copy-error" || status=$?
+unset RETRY_CURL_MAX_SECONDS
+[[ "${status}" -eq 23 ]] ||
+    fail_test "header copy failure status after deadline"
+[[ "$(< "${TEST_DIR}/curl-calls")" -eq 0 ]] ||
+    fail_test "request started after deadline"
+
+for mode in permanent exhausted; do
+    if [[ "${mode}" == permanent ]]; then
+        reset_case 22:400
+        expected_calls=1
+    else
+        reset_case 22:503 22:503
+        expected_calls=2
+    fi
+    RETRY_CURL_MAX_ATTEMPTS=2
+    status=0
+    payload="$(retry_curl --fail-with-body https://example.test/file)" ||
+        status=$?
+    unset RETRY_CURL_MAX_ATTEMPTS
+    [[ "${status}" -eq 22 ]] ||
+        fail_test "${mode} stdout error status"
+    [[ "${payload}" == "partial-${expected_calls}" ]] ||
+        fail_test "${mode} stdout did not contain only the final error body"
+    [[ "$(< "${TEST_DIR}/curl-calls")" -eq "${expected_calls}" ]] ||
+        fail_test "${mode} stdout attempt count"
+    [[ ! -d "$(< "${TEST_DIR}/request-directory")" ]] ||
+        fail_test "${mode} stdout temporary directory retained"
+done
+
+reset_case 22:503
+RETRY_CURL_MAX_SECONDS=2
+SLEEP_OVERRUN=2
+status=0
+payload="$(retry_curl --fail-with-body https://example.test/file)" ||
+    status=$?
+unset RETRY_CURL_MAX_SECONDS SLEEP_OVERRUN
+[[ "${status}" -eq 28 && "${payload}" == partial-1 ]] ||
+    fail_test "deadline discarded the final error body or timeout status"
+[[ "$(< "${TEST_DIR}/curl-calls")" -eq 1 ]] ||
+    fail_test "deadline started another request"
+[[ ! -d "$(< "${TEST_DIR}/request-directory")" ]] ||
+    fail_test "deadline stdout temporary directory retained"
+
+reset_case 22:400
+status=0
+payload="$(retry_curl https://example.test/file)" || status=$?
+[[ "${status}" -eq 22 && -z "${payload}" ]] ||
+    fail_test "default failure mode emitted an error body"
+
+reset_case 22:400
+status=0
+payload="$(
+    retry_curl --fail-with-body -o "${TEST_DIR}/download" \
+        https://example.test/file
+)" || status=$?
+[[ "${status}" -eq 22 && -z "${payload}" ]] ||
+    fail_test "file output mode emitted the error body on stdout"
+[[ "$(< "${TEST_DIR}/download")" == partial-1 ]] ||
+    fail_test "file output mode discarded the error body"
 
 echo "retry-curl tests passed"

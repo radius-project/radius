@@ -93,8 +93,14 @@ retry_curl() {
         remaining=$((deadline - SECONDS))
         if ((remaining <= 0)); then
             echo "curl request exceeded the ${max_seconds}-second budget" >&2
-            retry_curl_cleanup "${temporary_directory}" "${headers_output}"
-            return 28
+            status=28
+            if [[ "${fail_flag}" == --fail-with-body &&
+                "${temporary_output}" == true && -f "${output}" ]]; then
+                cat "${output}" || status=23
+            fi
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}" ||
+                return "$?"
+            return "${status}"
         fi
         timeout="${remaining}"
 
@@ -130,14 +136,20 @@ retry_curl() {
             elif [[ "${temporary_output}" == true ]]; then
                 cat "${output}"
             fi
-            retry_curl_cleanup "${temporary_directory}" "${headers_output}"
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}" ||
+                return "$?"
             return 0
         fi
 
         if ! retry_curl_is_transient "${status}" "${http_code}"; then
+            if [[ "${fail_flag}" == --fail-with-body &&
+                "${temporary_output}" == true && -f "${output}" ]]; then
+                cat "${output}" || status=23
+            fi
             retry_curl_write_out \
                 "${write_out}" "${http_code}" "${effective_url}"
-            retry_curl_cleanup "${temporary_directory}" "${headers_output}"
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}" ||
+                return "$?"
             return "${status}"
         fi
 
@@ -145,9 +157,14 @@ retry_curl() {
         remaining=$((deadline - SECONDS))
         if ((attempt >= max_attempts || remaining <= wait_time)); then
             echo "curl request exhausted its retry budget" >&2
+            if [[ "${fail_flag}" == --fail-with-body &&
+                "${temporary_output}" == true && -f "${output}" ]]; then
+                cat "${output}" || status=23
+            fi
             retry_curl_write_out \
                 "${write_out}" "${http_code}" "${effective_url}"
-            retry_curl_cleanup "${temporary_directory}" "${headers_output}"
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}" ||
+                return "$?"
             return "${status}"
         fi
 
@@ -165,11 +182,13 @@ retry_curl() {
 retry_curl_cleanup() {
     local temporary_directory="$1"
     local headers_output="$2"
+    local status=0
 
     if [[ -n "${headers_output}" ]]; then
-        cp "${temporary_directory}/headers" "${headers_output}"
+        cp "${temporary_directory}/headers" "${headers_output}" || status=23
     fi
-    rm -rf "${temporary_directory}"
+    rm -rf "${temporary_directory}" || return "$?"
+    return "${status}"
 }
 
 retry_curl_write_out() {
