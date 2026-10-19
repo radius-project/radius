@@ -26,14 +26,17 @@ import "testing"
 // Expected: a pod without a Radius component certificate calling applications-rp directly
 // fails the mTLS handshake (logged as PeerCertificateInvalid) or is rejected with
 // InvalidAuthenticationInfo (401).
+//
+// The test calls applications-rp from a rogue pod rather than through UCP, so it does not
+// depend on UCP presenting a client certificate (added in A5).
 func Test_Boundary_UnauthenticatedCallToApplicationsRP(t *testing.T) {
-	t.Skip("enabled by A4")
+	testUnauthenticatedCallToApplicationsRP(t)
 }
 
 // Expected: a pod presenting an RSA-1024 (or otherwise disallowed) certificate signed by the
 // Radius CA fails the mTLS handshake, and the receiver logs PeerCertificateInvalid.
 func Test_Boundary_DisallowedPeerKey(t *testing.T) {
-	t.Skip("enabled by A4")
+	testDisallowedPeerKey(t)
 }
 
 // Expected: a request to UCP carrying a forged x-remote-user header, without a verified
