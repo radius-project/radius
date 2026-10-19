@@ -69,6 +69,12 @@ resource application 'Applications.Core/applications@2023-10-01-preview' = {
   location: 'global'
   properties: {
     environment: environment.id
+    extensions: [
+      {
+        kind: 'kubernetesNamespace'
+        namespace: applicationName
+      }
+    ]
   }
 }
 

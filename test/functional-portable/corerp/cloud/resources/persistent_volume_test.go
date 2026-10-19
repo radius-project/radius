@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -36,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	k8s "k8s.io/client-go/kubernetes"
 	"uuid"
 )
 
@@ -52,6 +54,8 @@ func Test_PersistentVolume_AzureKeyVault(t *testing.T) {
 	resourceGroup := requiredCloudEnv(t, "INTEGRATION_TEST_RESOURCE_GROUP_NAME")
 	azureScope := fmt.Sprintf("azureScope=/subscriptions/%s/resourceGroups/%s", subscriptionID, resourceGroup)
 	keyVaultName := "radcsi" + strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
+	test := rp.NewRPTest(t, name, nil)
+	oidcIssuer := getKubernetesOIDCIssuer(t.Context(), t, test.Options.K8sClient)
 	resourcesClient, err := armresources.NewClient(subscriptionID, azureTestCredential(t.Context(), t), nil)
 	require.NoError(t, err)
 
@@ -80,12 +84,12 @@ func Test_PersistentVolume_AzureKeyVault(t *testing.T) {
 		}
 	})
 
-	test := rp.NewRPTest(t, name, []rp.TestStep{
+	test.Steps = []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(
 				"testdata/corerp-resources-volume-azure-keyvault.bicep",
 				testutil.GetMagpieImage(),
-				testutil.GetOIDCIssuer(),
+				"oidcIssuer="+oidcIssuer,
 				azureScope,
 				"keyVaultName="+keyVaultName,
 			),
@@ -163,8 +167,22 @@ func Test_PersistentVolume_AzureKeyVault(t *testing.T) {
 				}, 30*time.Second, time.Second)
 			},
 		},
-	})
+	}
 
 	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureCSIDriver, rp.FeatureAzure}
 	test.Test(t)
+}
+
+func getKubernetesOIDCIssuer(ctx context.Context, t *testing.T, client k8s.Interface) string {
+	t.Helper()
+
+	data, err := client.Discovery().RESTClient().Get().AbsPath("/.well-known/openid-configuration").DoRaw(ctx)
+	require.NoError(t, err)
+
+	config := struct {
+		Issuer string `json:"issuer"`
+	}{}
+	require.NoError(t, json.Unmarshal(data, &config))
+	require.NotEmpty(t, config.Issuer)
+	return config.Issuer
 }
