@@ -82,7 +82,7 @@ func TestHelmClientImpl_UpgradeImmutableImageDefaults(t *testing.T) {
 			if testCase.storedTag != "" {
 				values["global"] = map[string]any{"imageTag": testCase.storedTag}
 			}
-			installed, err := client.RunHelmInstall(configuration, previousChart, values, "radius", "radius-system", false, DefaultInstallTimeout)
+			installed, err := client.RunHelmInstall(configuration, previousChart, values, "radius", "radius-system", false, DefaultInstallTimeout, nil)
 			require.NoError(t, err)
 			require.Contains(t, helmWorkloadImages(t, installed.Manifest), "ghcr.io/radius-project/controller:0.61")
 

@@ -216,6 +216,7 @@ func TestRunner_Run(t *testing.T) {
 				installState := helm.InstallState{
 					RadiusInstalled: true,
 					RadiusVersion:   "v0.46.0",
+					RadiusValues:    map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}},
 				}
 				mockHelm.EXPECT().CheckRadiusInstall("").Return(installState, nil)
 				// Verify the correct options are passed
@@ -226,6 +227,7 @@ func TestRunner_Run(t *testing.T) {
 						expectedSetFileArgs := []string{"global.rootCA.cert=/path/to/cert.crt"}
 						assert.Equal(t, expectedSetArgs, clusterOptions.Radius.SetArgs)
 						assert.Equal(t, expectedSetFileArgs, clusterOptions.Radius.SetFileArgs)
+						assert.Equal(t, installState.RadiusValues, clusterOptions.RadiusReleaseValues)
 						return nil
 					})
 				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any()).AnyTimes()
