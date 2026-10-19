@@ -37,6 +37,7 @@ import (
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/registry"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"oras.land/oras-go/v2/registry/remote/errcode"
@@ -260,7 +261,7 @@ func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *
 	}
 
 	if !chartInstalled {
-		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, options.Timeout)
+		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, options.Timeout, nil)
 		if err != nil {
 			return fmt.Errorf("failed to run Helm install, err: %w", err)
 		}
@@ -278,6 +279,29 @@ func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *
 }
 
 func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespace string) (bool, string, error) {
+	installed, version, _, err := helmAction.queryReleaseValues(kubeContext, releaseName, namespace)
+	return installed, version, err
+}
+
+// queryReleaseValues is QueryRelease that also returns the user-supplied values stored on the release.
+func (helmAction *HelmActionImpl) queryReleaseValues(kubeContext, releaseName, namespace string) (bool, string, map[string]any, error) {
+	release, err := helmAction.getRelease(kubeContext, releaseName, namespace)
+	if err != nil {
+		return false, "", nil, err
+	}
+	if release == nil {
+		return false, "", nil, nil
+	}
+
+	if release.Chart == nil || release.Chart.Metadata == nil {
+		return false, "", nil, fmt.Errorf("failed to get chart version for release: %s (chart or metadata is nil)", releaseName)
+	}
+
+	return true, release.Chart.Metadata.AppVersion, release.Config, nil
+}
+
+// getRelease returns the named release, or nil when it is not installed.
+func (helmAction *HelmActionImpl) getRelease(kubeContext, releaseName, namespace string) (*releasev1.Release, error) {
 	flags := genericclioptions.ConfigFlags{
 		Namespace: &namespace,
 		Context:   &kubeContext,
@@ -285,26 +309,43 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 
 	helmConf, err := initHelmConfig(&flags)
 	if err != nil {
-		return false, "", fmt.Errorf("failed to get helm config, err: %w", err)
+		return nil, fmt.Errorf("failed to get helm config, err: %w", err)
 	}
 
 	release, err := helmAction.HelmClient.RunHelmGet(helmConf, releaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		// Release not found is not an error - it just means it's not installed
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to run helm get for release %s in namespace %s (context: %s): %w", releaseName, namespace, kubeContext, err)
+	}
+
+	return release, nil
+}
+
+// loadChart initializes Helm for the chart's namespace and loads the chart from ChartPath or its repository.
+func loadChart(ctx context.Context, helmAction HelmAction, options ChartOptions, kubeContext string) (*chart.Chart, *helm.Configuration, error) {
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &options.Namespace,
+		Context:   &kubeContext,
+	}
+
+	helmConf, err := initHelmConfig(&flags)
 	if err != nil {
-		if errors.Is(err, driver.ErrReleaseNotFound) {
-			// Release not found is not an error - it just means it's not installed
-			return false, "", nil
-		} else {
-			return false, "", fmt.Errorf("failed to run helm get for release %s in namespace %s (context: %s): %w", releaseName, namespace, kubeContext, err)
-		}
+		return nil, nil, fmt.Errorf("failed to get Helm config, err: %w", err)
 	}
 
-	if release.Chart == nil || release.Chart.Metadata == nil {
-		return false, "", fmt.Errorf("failed to get chart version for release: %s (chart or metadata is nil)", releaseName)
+	var helmChart *chart.Chart
+	if options.ChartPath == "" {
+		helmChart, err = helmAction.HelmChartFromContainerRegistry(ctx, options.ChartVersion, helmConf, options.ChartRepo, options.ReleaseName)
+	} else {
+		helmChart, err = helmAction.LoadChart(options.ChartPath)
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load Helm chart, err: %w", err)
 	}
 
-	version := release.Chart.Metadata.AppVersion
-
-	return true, version, nil
+	return helmChart, helmConf, nil
 }
 
 func (helmAction *HelmActionImpl) GetPreviousReleaseVersion(kubeContext, releaseName, namespace string) (string, error) {
