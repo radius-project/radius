@@ -232,7 +232,7 @@ resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
         image: 'ghcr.io/contoso/storefront:1.4.2'
         ports: { http: { containerPort: 8080, protocol: 'TCP' } }
         resources: { requests: { cpu: '0.5', memoryInMib: 1024 } }
-        readinessProbe: { httpGet: { path: '/healthz', containerPort: 8080 } }
+        readinessProbe: { httpGet: { path: '/healthz', port: 8080 } }
         volumeMounts: [{ volumeName: 'uploads', mountPath: '/var/uploads' }]
       }
     }
