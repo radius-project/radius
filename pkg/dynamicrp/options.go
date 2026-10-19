@@ -112,7 +112,7 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 		return nil, err
 	}
 
-	options.UCP, err = ucpconfig.NewConnectionFromUCPConfig(&config.UCP, options.KubernetesProvider.Config())
+	options.UCP, err = ucpconfig.NewConnectionFromUCPConfig(&config.UCP, options.KubernetesProvider.Config(), config.Authorization)
 	if err != nil {
 		return nil, err
 	}
