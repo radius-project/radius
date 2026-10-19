@@ -64,7 +64,11 @@ export function discoverResources(program: Program): DiscoveredResource[] {
   const discovered: DiscoveredResource[] = [];
 
   for (const resource of getArmResources(program)) {
-    if (!resource.collectionName) {
+    // Read-only APIs, such as access history, are not deployable Bicep resources.
+    if (
+      !resource.collectionName ||
+      !resource.operations.lifecycle.createOrUpdate
+    ) {
       continue;
     }
 
