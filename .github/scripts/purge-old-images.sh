@@ -17,7 +17,6 @@ readonly RATE_LIMIT_STATUS=75
 WORK_DIR=""
 DELETED_COUNT=0
 MISSING_COUNT=0
-SKIPPED_COUNT=0
 
 cleanup() {
     if [[ -n "${WORK_DIR}" && -d "${WORK_DIR}" ]]; then
@@ -70,22 +69,6 @@ response_message() {
         head -c 500 "${response}"
 }
 
-header_value() {
-    local header_file="$1"
-    local name="$2"
-
-    [[ -f "${header_file}" ]] || return 0
-    awk -v name="${name}" '
-        /^HTTP\// { value = "" }
-        tolower($1) == name ":" {
-            sub(/^[^:]*:[ \t]*/, "")
-            sub(/[ \t\r]*$/, "")
-            value = $0
-        }
-        END { print value }
-    ' "${header_file}"
-}
-
 # GitHub reports primary limits with x-ratelimit-remaining: 0 and
 # secondary limits with HTTP 429 or a 403 that includes Retry-After.
 is_rate_limited() {
@@ -95,8 +78,10 @@ is_rate_limited() {
     case "${http_code}" in
         429) return 0 ;;
         403)
-            [[ "$(header_value "${header_file}" x-ratelimit-remaining)" == 0 ||
-                -n "$(header_value "${header_file}" retry-after)" ]]
+            [[ "$(retry_curl_header_value \
+                "${header_file}" x-ratelimit-remaining)" == 0 ||
+                -n "$(retry_curl_header_value \
+                    "${header_file}" retry-after)" ]]
             return
             ;;
     esac
@@ -196,16 +181,6 @@ delete_version() {
         return "${RATE_LIMIT_STATUS}"
     fi
     message="$(response_message "${response}" | tr '\n' ' ')"
-    case "${http_code}" in
-        # GitHub rejects some versions permanently, for example the last
-        # tagged version of a package or a popular public version.
-        400 | 409 | 422)
-            echo "::warning::Skipped ${package_name} version" \
-                "${version_id}: HTTP ${http_code} ${message}"
-            SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
-            return 0
-            ;;
-    esac
     echo "Delete of ${package_name} version ${version_id} returned" \
         "HTTP ${http_code}: ${message}" >&2
     if ((status != 0)); then
@@ -245,7 +220,6 @@ main() {
     trap cleanup EXIT
     DELETED_COUNT=0
     MISSING_COUNT=0
-    SKIPPED_COUNT=0
 
     local cutoff
     cutoff="${PURGE_CUTOFF_EPOCH:-$(
@@ -259,8 +233,8 @@ main() {
     fi
 
     if [[ "${DRY_RUN}" != true ]]; then
-        echo "Deleted ${DELETED_COUNT}, already deleted ${MISSING_COUNT}," \
-            "skipped ${SKIPPED_COUNT} package versions"
+        echo "Deleted ${DELETED_COUNT}, already deleted ${MISSING_COUNT}" \
+            "package versions"
     fi
     if ((status == RATE_LIMIT_STATUS)); then
         echo "::warning::GitHub API rate limit reached; the next" \

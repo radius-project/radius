@@ -141,7 +141,8 @@ retry_curl() {
             return 0
         fi
 
-        if ! retry_curl_is_transient "${status}" "${http_code}"; then
+        if ! retry_curl_is_transient \
+            "${status}" "${http_code}" "${headers}"; then
             if [[ "${fail_flag}" == --fail-with-body &&
                 "${temporary_output}" == true && -f "${output}" ]]; then
                 cat "${output}" || status=23
@@ -205,8 +206,16 @@ retry_curl_write_out() {
 retry_curl_is_transient() {
     local status="$1"
     local http_code="$2"
+    local headers="${3:-}"
 
     case "${status}:${http_code}" in
+        22:403)
+            [[ -n "${headers}" &&
+                "$(retry_curl_header_value \
+                    "${headers}" x-ratelimit-remaining)" != 0 &&
+                -n "$(retry_curl_header_value "${headers}" retry-after)" ]]
+            return
+            ;;
         22:408 | 22:429 | 22:500 | 22:502 | 22:503 | 22:504)
             return 0
             ;;
@@ -219,6 +228,22 @@ retry_curl_is_transient() {
     esac
 }
 
+retry_curl_header_value() {
+    local headers="$1"
+    local name="$2"
+
+    [[ -f "${headers}" ]] || return 0
+    awk -v name="${name}" '
+        /^HTTP\// { value = "" }
+        tolower($1) == name ":" {
+            sub(/^[^:]*:[ \t]*/, "")
+            sub(/[ \t\r]*$/, "")
+            value = $0
+        }
+        END { print value }
+    ' "${headers}"
+}
+
 retry_curl_wait_seconds() {
     local headers="$1"
     local delay="$2"
@@ -227,17 +252,7 @@ retry_curl_wait_seconds() {
     local wait_time="${delay}"
     local now
 
-    retry_after="$(
-        awk '
-            /^HTTP\// { value = "" }
-            tolower($1) == "retry-after:" {
-                sub(/^[^:]*:[ \t]*/, "")
-                sub(/[ \t\r]*$/, "")
-                value = $0
-            }
-            END { print value }
-        ' "${headers}"
-    )"
+    retry_after="$(retry_curl_header_value "${headers}" retry-after)"
     if [[ -n "${retry_after}" ]]; then
         case "${retry_after}" in
             *[!0-9]*)

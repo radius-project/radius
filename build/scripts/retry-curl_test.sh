@@ -54,6 +54,7 @@ curl() {
     status="${status%%:*}"
     printf '%s' "${RESPONSE_HEADERS:-}" > "${headers}"
     printf 'HTTP/2 %s\r\n' "${http_code}" >> "${headers}"
+    printf '%s' "${FINAL_RESPONSE_HEADERS:-}" >> "${headers}"
     if [[ -n "${RETRY_AFTER:-}" ]]; then
         printf 'Retry-After: %s\r\n' "${RETRY_AFTER}" >> "${headers}"
     fi
@@ -78,6 +79,7 @@ reset_case() {
     DELAYS=()
     RETRY_AFTER=""
     RESPONSE_HEADERS=""
+    FINAL_RESPONSE_HEADERS=""
     SECONDS=0
 }
 
@@ -115,6 +117,38 @@ RETRY_AFTER=10
 retry_curl -fsSL -o "${TEST_DIR}/download" \
     https://example.test/file
 [[ "${DELAYS[*]}" == 10 ]] || fail_test "Retry-After"
+
+reset_case 22:403 0:200
+RETRY_AFTER=10
+retry_curl -fsSL -o "${TEST_DIR}/download" \
+    https://example.test/file
+[[ "$(< "${TEST_DIR}/curl-calls")" -eq 2 &&
+    "${DELAYS[*]}" == 10 ]] || fail_test "403 Retry-After"
+
+reset_case 22:403 0:200
+RETRY_AFTER=10
+FINAL_RESPONSE_HEADERS=$'X-RateLimit-Remaining: 0\r\n'
+status=0
+retry_curl -fsSL -o "${TEST_DIR}/download" \
+    https://example.test/file || status=$?
+[[ "${status}" -eq 22 && "$(< "${TEST_DIR}/curl-calls")" -eq 1 &&
+    "${#DELAYS[@]}" -eq 0 ]] || fail_test "403 primary limit was retried"
+
+reset_case 22:403 0:200
+RETRY_AFTER=300
+status=0
+retry_curl -fsSL -o "${TEST_DIR}/download" \
+    https://example.test/file || status=$?
+[[ "${status}" -eq 22 && "$(< "${TEST_DIR}/curl-calls")" -eq 1 &&
+    "${#DELAYS[@]}" -eq 0 ]] || fail_test "403 wait exceeded budget"
+
+reset_case 22:403 0:200
+RESPONSE_HEADERS=$'HTTP/2 302\r\nRetry-After: 10\r\n\r\n'
+status=0
+retry_curl -fsSL -o "${TEST_DIR}/download" \
+    https://example.test/file || status=$?
+[[ "${status}" -eq 22 && "$(< "${TEST_DIR}/curl-calls")" -eq 1 ]] ||
+    fail_test "403 used redirect Retry-After"
 
 reset_case 22:503 0:200
 RETRY_AFTER="Thu, 01 Jan 1970 00:20:50 GMT"
