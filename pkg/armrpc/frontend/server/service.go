@@ -24,6 +24,7 @@ import (
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/authentication"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/kubeutil"
@@ -105,7 +106,7 @@ func (s *Service) Start(ctx context.Context, opt Options) error {
 	}()
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", address))
-	err = server.ListenAndServe()
+	err = mtls.ListenAndServe(ctx, server, s.Options.Config.Authorization, opt.AllowedCallers)
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")

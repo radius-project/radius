@@ -100,7 +100,20 @@ func (s *Source) verifyServer(pool *x509.CertPool, certs []*x509.Certificate, se
 	if _, err := identityFromSAN(serverName, namespace); err != nil {
 		return Identity{}, peerError(fmt.Sprintf("server name %q is not a canonical Radius component name", serverName), nil)
 	}
+	return s.verifyPeer(pool, certs, serverName, x509.ExtKeyUsageServerAuth, namespace)
+}
 
+// verifyClient checks a client's certificate chain against the CA bundle of the
+// handshake's material and returns its identity. Servers use it when the TLS handshake
+// requests but does not verify a client certificate, as in dry-run mode.
+func (s *Source) verifyClient(pool *x509.CertPool, certs []*x509.Certificate, namespace string) (Identity, error) {
+	if len(certs) == 0 {
+		return Identity{}, peerError("no client certificate", nil)
+	}
+	return s.verifyPeer(pool, certs, "", x509.ExtKeyUsageClientAuth, namespace)
+}
+
+func (s *Source) verifyPeer(pool *x509.CertPool, certs []*x509.Certificate, dnsName string, usage x509.ExtKeyUsage, namespace string) (Identity, error) {
 	intermediates := x509.NewCertPool()
 	for _, cert := range certs[1:] {
 		intermediates.AddCert(cert)
@@ -109,9 +122,9 @@ func (s *Source) verifyServer(pool *x509.CertPool, certs []*x509.Certificate, se
 	chains, err := certs[0].Verify(x509.VerifyOptions{
 		Roots:         pool,
 		Intermediates: intermediates,
-		DNSName:       serverName,
+		DNSName:       dnsName,
 		CurrentTime:   s.now(),
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		KeyUsages:     []x509.ExtKeyUsage{usage},
 	})
 	if err != nil {
 		return Identity{}, peerError("certificate verification failed", err)
