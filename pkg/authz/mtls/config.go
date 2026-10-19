@@ -102,6 +102,31 @@ func (s *Source) ClientConfig(namespace string) (*tls.Config, error) {
 	}, nil
 }
 
+// verifyClient checks a client's certificate chain against pool, the CA bundle of the
+// handshake's snapshot, and returns its identity. Servers use it when the TLS handshake
+// requests but does not verify a client certificate, as in dry-run mode.
+func (s *Source) verifyClient(pool *x509.CertPool, certs []*x509.Certificate, namespace string) (Identity, error) {
+	if len(certs) == 0 {
+		return Identity{}, peerError("no client certificate", nil)
+	}
+
+	intermediates := x509.NewCertPool()
+	for _, cert := range certs[1:] {
+		intermediates.AddCert(cert)
+	}
+
+	chains, err := certs[0].Verify(x509.VerifyOptions{
+		Roots:         pool,
+		Intermediates: intermediates,
+		CurrentTime:   s.now(),
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	})
+	if err != nil {
+		return Identity{}, peerError("certificate verification failed", err)
+	}
+	return identityFromChains(chains, namespace)
+}
+
 // identityFromChains returns the identity from the first verified chain that passes
 // PeerIdentity, or the first chain's error.
 func identityFromChains(chains [][]*x509.Certificate, namespace string) (Identity, error) {
