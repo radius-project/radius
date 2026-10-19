@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/authorization/routetest"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"go.uber.org/mock/gomock"
 )
@@ -210,6 +211,8 @@ func Test_Routes(t *testing.T) {
 			return nil, err
 		}
 
-		return handler.(chi.Router), nil
+		router := handler.(chi.Router)
+		routetest.AssertMapped(t, router, pathBase)
+		return router, nil
 	})
 }
