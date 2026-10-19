@@ -68,24 +68,33 @@ These commands assume you are already logged in to the target registry (`docker 
 DOCKER_REGISTRY=ghcr.io/my-registry make docker-build docker-push
 ```
 
+`make docker-push` and the single-image `docker-push-<name>` targets retry only when Docker exits with code 1 and its last output line is `unknown blob`. They allow three push attempts, with waits of 5 and 10 seconds. Each attempt uses the same local image and tag; it does not repeat the build. Other errors fail at once, and a repeated `unknown blob` error still fails after the third attempt. These retries do not apply to the multi-architecture Buildx targets.
+
+Run `make test-docker-push` to check this behavior with a fake Docker command. This test also runs as part of `make test` and does not need a Docker daemon or registry.
+
 If you work with Radius frequently, set `DOCKER_REGISTRY` in your shell profile. The [radius-build-images](../../../../.github/skills/radius-build-images/SKILL.md) skill wraps this workflow, including single-image and multi-architecture builds.
 
 #### Build multi-architecture images
 
-The multi-architecture targets build `linux/amd64`, `linux/arm64`, and `linux/arm` images with Docker Buildx. Initialize the QEMU and Buildx builder once:
+GoReleaser snapshots build the five core service images for `linux/amd64`, `linux/arm64`, and `linux/arm/v7` from the same configuration as releases. Initialize QEMU and Buildx once:
 
 ```bash
 make configure-buildx
 docker buildx use radius-builder
 ```
 
-The Make target creates and bootstraps the `radius-builder` builder when needed; `docker buildx use` selects it for the commands that follow. Then build and push a multi-architecture image index:
+Select your own registry and build the snapshot without publishing:
 
 ```bash
-DOCKER_REGISTRY=ghcr.io/my-registry DOCKER_TAG_VERSION=latest make docker-multi-arch-push
+export DOCKER_REGISTRY=ghcr.io/my-registry
+export GORELEASER_IMAGE_REGISTRY="$DOCKER_REGISTRY"
+make install-goreleaser install-syft install-jq install-yq install-oras
+make goreleaser-check goreleaser-snapshot
 ```
 
-Use `make docker-multi-arch-build` to build without pushing, or append an image name such as `make docker-multi-arch-push-applications-rp` to build and push one image.
+The snapshot loads platform-suffixed images locally and writes binary, checksum, SBOM, and image metadata under `dist/goreleaser`. Snapshot CLI SBOMs skip Go module proxy enrichment and Syft update checks; release builds retain Go license enrichment. To publish the already-built core images as multi-platform `edge` indices in your registry, run `make goreleaser-push-edge`. Each platform manifest is pushed under a moving `edge-<os>-<arch>` tag and the `edge` index references those digests, so a build leaves no snapshot-version tags behind. Publish Bicep separately with `make docker-publish-bicep DOCKER_TAG_VERSION=edge`. Neither command publishes test images or changes `latest`.
+
+PR and merge-queue builds use one read-only snapshot job, retain `rad_cli_<os>_<arch>`, `core-snapshot-images-<sha>`, and `bicep-image-<version>` artifacts, and perform no registry writes. Main uses the same outputs for edge publication. Test images belong to functional workflows and use build-attempt-specific tags; test-only retries reuse their original artifacts. For local functional tests, set `DOCKER_REGISTRY`, `REL_VERSION`, and `DOCKER_TAG_VERSION` to your registry and a matching `test-<id>` tag before building and pushing. `make docker-build-testrp`, `make docker-build-magpiego`, their push targets, and the ordinary single-platform developer targets remain available.
 
 ### Generate code
 

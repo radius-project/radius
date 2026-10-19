@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"context"
 	"fmt"
 
 	helm "helm.sh/helm/v4/pkg/action"
@@ -42,7 +43,7 @@ type ContourChartOptions struct {
 // values for this invocation. The returned values map is separate from helmChart.Values
 // so that Helm's release storage records only the overrides we explicitly want to apply,
 // allowing ResetThenReuseValues semantics to work correctly on upgrade.
-func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kubeContext string) (*chart.Chart, *helm.Configuration, map[string]any, error) {
+func prepareContourChart(ctx context.Context, helmAction HelmAction, options ContourChartOptions, kubeContext string) (*chart.Chart, *helm.Configuration, map[string]any, error) {
 	var helmChart *chart.Chart
 
 	flags := genericclioptions.ConfigFlags{
@@ -56,7 +57,7 @@ func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kub
 	}
 
 	if options.ChartPath == "" {
-		helmChart, err = helmAction.HelmChartFromContainerRegistry(options.ChartVersion, helmConf, options.ChartRepo, options.ReleaseName)
+		helmChart, err = helmAction.HelmChartFromContainerRegistry(ctx, options.ChartVersion, helmConf, options.ChartRepo, options.ReleaseName)
 	} else {
 		helmChart, err = helmAction.LoadChart(options.ChartPath)
 	}

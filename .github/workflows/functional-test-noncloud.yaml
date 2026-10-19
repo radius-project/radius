@@ -136,11 +136,11 @@ jobs:
             BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
           fi
           UNIQUE_ID=func$(echo $BASE_STR | sha1sum | head -c 10)
-          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
+          echo "REL_VERSION=test-${UNIQUE_ID}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> $GITHUB_ENV
 
           # Set output variables to be used in the other jobs
           {
-            echo "REL_VERSION=pr-${UNIQUE_ID}"
+            echo "REL_VERSION=test-${UNIQUE_ID}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
             echo "DE_IMAGE=${DE_IMAGE}"
             echo "DE_TAG=${DE_TAG}"
           } >> "${GITHUB_OUTPUT}"
@@ -172,7 +172,7 @@ jobs:
             test/testrp
 
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
@@ -208,7 +208,7 @@ jobs:
       - name: Upload functional test inputs
         # Multiple paths use the workspace as their common root, preserving the
         # directory layout while avoiding three artifact lookups per matrix leg.
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: radius_test_inputs
           path: |
@@ -216,6 +216,7 @@ jobs:
             ./dist/images
             ./hack/bicep-types-radius/generated
           if-no-files-found: error
+          overwrite: true
 
   tests:
     name: Run ${{ matrix.name }} functional tests
@@ -248,7 +249,7 @@ jobs:
             ucp-noncloud,
             datastoresrp-noncloud,
             dynamicrp-noncloud,
-            upgrade-noncloud,
+            upgrade-noncloud
           ]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
@@ -302,7 +303,7 @@ jobs:
       # One run-scoped artifact restores the original paths on every fresh runner,
       # including when only failed matrix jobs are re-run.
       - name: Download functional test inputs
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: radius_test_inputs
           path: .
@@ -491,6 +492,10 @@ jobs:
           echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} did not become available after $((MAX_ATTEMPTS * SLEEP_SECONDS))s. Last error: ${manifest_error}"
           exit 1
 
+      - name: Install yq
+        # Required to select the test environment in the workspace config.
+        run: make install-yq
+
       - name: Install Radius
         # The statestore leg drives its own install/uninstall/reinstall lifecycle
         # inside the test (it must reinstall to simulate an ephemeral control
@@ -590,8 +595,19 @@ jobs:
           rad group switch kind-radius
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create kind-radius --namespace default
-          rad env switch kind-radius
+          #
+          # The environment is deployed declaratively rather than with `rad env create` so that it is
+          # pinned to Applications.Core regardless of which provider the `rad env create` default
+          # targets.
+          rad deploy ./test/infra/radius/legacy-test-environment.bicep \
+            --parameters name=kind-radius \
+            --parameters namespace=default
+
+          # Select the env with yq, not `rad env switch`, so this works whichever type `rad env` targets.
+          scope="$(yq -e '.workspaces.items[.workspaces.default].scope' ~/.rad/config.yaml)"
+          ENVIRONMENT_ID="${scope}/providers/Applications.Core/environments/kind-radius" \
+            yq -i '.workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID)' ~/.rad/config.yaml
+          rad workspace show
 
         env:
           USE_CERT_FILE: "true"
@@ -745,7 +761,7 @@ jobs:
           kubectl get events -n $namespace > "func-nc/radius-logs-events/${MATRIX_NAME}/events.txt"
 
       - name: Upload Pod logs for failed tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.radius-logs-events.outcome == 'success'
         with:
           name: ${{ matrix.name }}-radius-pod-logs
@@ -770,7 +786,7 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -792,7 +808,7 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs

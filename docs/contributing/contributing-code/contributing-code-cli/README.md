@@ -30,6 +30,22 @@ If you prefer a built binary, run `make build-rad` (see [Building the code](../c
 
 Local modeled graph output writes `app-graph.json` without a registry. Missing archive configuration does not prevent `rad version --cli` or other non-archival commands from initializing. Archive failures never fall back to local files. Unit tests for the graph archive adapter use injected archive sessions.
 
+### Diagnose type-version skew
+
+Before resource writes, `rad deploy` checks the CLI release, the selected workspace's control-plane release, and the configured Radius extension pin. Differences produce a warning, not a deployment error. The control-plane release comes from the workspace API's `/version` endpoint, including the Kubernetes API path base, rather than from Helm or the current Kubernetes context. Older targets that do not expose this endpoint produce an explicit unknown-version warning.
+
+Bicep compilation resolves the nearest source `bicepconfig.json` reference and returns it as a `RadiusExtensionPin` alongside the template, rather than writing it into the template's metadata, so generated manifests and published artifacts are not altered by this bookkeeping. This is a configured pin, not proof of the resolved artifact: inline extension declarations can bypass that pin, mutable tags and cached packages can differ, and the compiler does not report the Radius artifact release. Missing configuration, local or digest-pinned extensions, custom tags, floating channel tags, development builds, and configuration that cannot be read as JSON remain unverified. The resolved pin applies only to Radius resources declared directly in the root template; resources declared inside a nested Bicep module always report an unknown pin, since Bicep does not expose per-module pin configuration. The compiler's `imports.version` and `metadata._generator.version` are not Radius release versions.
+
+Use a published exact-version pin for the target release, or upgrade the CLI and target together. The check does not rewrite configuration, refresh the Bicep cache, validate individual properties against server schemas, or assert that matching versions prove compatibility. A deployment failure retains its original error.
+
+Run the portable compatibility scenarios without a cluster:
+
+```sh
+go test ./test/functional-portable/cli/compatibility -count=1
+```
+
+These scenarios run the command, workspace transport, and deployment HTTP client against in-process services. They use a compiler subprocess fixture and exercise the UCP version route. They verify that warnings precede writes, do not block submission, and do not replace the target's error. They do not replace live-cluster functional tests.
+
 ### Create a wrapper script (optional)
 
 If you frequently run a local build of `rad`, wrap `go run` in a script so it behaves like the real command. Create a file named `dev-rad` on your `PATH`:

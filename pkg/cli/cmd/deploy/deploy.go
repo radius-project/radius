@@ -161,6 +161,7 @@ type Runner struct {
 	FilePath                 string
 	Parameters               map[string]map[string]any
 	Template                 map[string]any
+	RadiusExtensionPin       bicep.RadiusExtensionPin
 	TemplateInspectionResult bicep.TemplateInspectionResult
 	Workspace                *workspaces.Workspace
 	Providers                *clients.Providers
@@ -211,7 +212,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// Prepare the template early to check if it contains an environment resource.
 	// This allows us to skip environment validation if the template will create one.
-	r.Template, err = r.Bicep.PrepareTemplate(cmd.Context(), r.FilePath)
+	r.Template, r.RadiusExtensionPin, err = r.Bicep.PrepareTemplate(cmd.Context(), r.FilePath)
 	if err != nil {
 		return err
 	}
@@ -306,6 +307,14 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Use the template that was prepared during validation
 	template := r.Template
 
+	warning, err := deploy.CheckCompatibility(ctx, r.ConnectionFactory, *r.Workspace, template, r.RadiusExtensionPin)
+	if err != nil {
+		return err
+	}
+	if warning != "" {
+		r.Output.LogInfo("%s", warning)
+	}
+
 	// Warn about legacy Applications.* resource types before deploying, so the message is visible
 	// above the deployment progress output.
 	if warning := bicep.FormatDeprecationWarning(r.TemplateInspectionResult.DeprecatedResources); warning != "" {
@@ -315,7 +324,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// This is the earliest point where we can inject parameters, we have
 	// to wait until the template is prepared.
-	err := r.injectAutomaticParameters(template)
+	err = r.injectAutomaticParameters(template)
 	if err != nil {
 		return err
 	}
@@ -336,7 +345,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.ApplicationName != "" {
 		// Environment validation has already happened, so only create application if we have an environment
 		if r.Providers.Radius.EnvironmentID != "" {
-			if r.Preview {
+			if r.useRadiusCoreApplication() {
 				if err := r.createRadiusCoreApplicationIfNotFound(ctx); err != nil {
 					return err
 				}
@@ -486,6 +495,15 @@ func resolvePreview(cmd *cobra.Command) (bool, error) {
 		preview = strings.EqualFold(os.Getenv("RADIUS_PREVIEW"), "true")
 	}
 	return preview, nil
+}
+
+// useRadiusCoreApplication reports whether to create a Radius.Core application. It must match the
+// application ID derived in configureProviders.
+func (r *Runner) useRadiusCoreApplication() bool {
+	if r.EnvResult != nil && !r.EnvResult.UseApplicationsCore {
+		return true
+	}
+	return r.Preview
 }
 
 // createRadiusCoreApplicationIfNotFound creates the application as a Radius.Core/applications

@@ -63,11 +63,33 @@ setup_repo() {
     git -C "${REPO}" config user.email "test@example.com"
     git -C "${REPO}" config commit.gpgsign false
     printf "supported:\n  - channel: '0.60'\n    version: '%s'\n" \
-        "${version}" > "${REPO}/versions.yaml"
+        "${version}" >"${REPO}/versions.yaml"
     printf 'deprecated:\n  - channel: '\''0.59'\''\n    version: '\''v0.59.0'\''\n' \
-        >> "${REPO}/versions.yaml"
-    printf '[]\n' > "${REPO}/backports.json"
-    cat > "${REPO}/CHANGELOG.md" << EOF
+        >>"${REPO}/versions.yaml"
+    printf '[]\n' >"${REPO}/backports.json"
+    cat >"${REPO}/siblings.json" <<'EOF'
+[
+    {
+        "name": "recipes",
+        "repository": "radius-project/recipes",
+        "sourceRef": "main",
+        "sourceCommit": "1111111111111111111111111111111111111111"
+    },
+    {
+        "name": "dashboard",
+        "repository": "radius-project/dashboard",
+        "sourceRef": "main",
+        "sourceCommit": "2222222222222222222222222222222222222222"
+    },
+    {
+        "name": "bicep-types-aws",
+        "repository": "radius-project/bicep-types-aws",
+        "sourceRef": "main",
+        "sourceCommit": "3333333333333333333333333333333333333333"
+    }
+]
+EOF
+    cat >"${REPO}/CHANGELOG.md" <<EOF
 # Changelog
 
 ## [Unreleased]
@@ -79,7 +101,7 @@ Previous release.
 [Unreleased]: https://example.test/compare/v${previous_changelog_version}...HEAD
 [${previous_changelog_version}]: https://example.test/releases/v${previous_changelog_version}
 EOF
-    cat > "${REPO}/docs/release-notes/template.md" << 'EOF'
+    cat >"${REPO}/docs/release-notes/template.md" <<'EOF'
 ## Announcing Radius vX.Y.Z
 <!-- REMINDER TO UPDATE THE VERSION ABOVE AND DELETE THIS COMMENT -->
 
@@ -103,7 +125,7 @@ EOF
 
 <!-- PASTE THE OUTPUT OF THE GENERATED CHANGELOG HERE -->
 EOF
-    cat > "${REPO}/docs/release-notes/template_patch.md" << 'EOF'
+    cat >"${REPO}/docs/release-notes/template_patch.md" <<'EOF'
 ## Radius vX.Y.Z
 
 ## Changelog
@@ -111,9 +133,9 @@ EOF
 <!-- PASTE THE OUTPUT OF THE GENERATED CHANGELOG HERE -->
 EOF
     printf '{"cliAssets":[{"name":"rad_linux_amd64"}]}\n' \
-        > "${REPO}/.github/release-parity/targets.json"
-    printf '[changelog]\n' > "${REPO}/cliff.toml"
-    cat > "${REPO}/fake-git-cliff" << 'EOF'
+        >"${REPO}/.github/release-parity/targets.json"
+    printf '[changelog]\n' >"${REPO}/cliff.toml"
+    cat >"${REPO}/fake-git-cliff" <<'EOF'
 #!/bin/bash
 set -euo pipefail
 output=""
@@ -142,7 +164,7 @@ cat >"${output}" <<BODY
 BODY
 EOF
     chmod +x "${REPO}/fake-git-cliff"
-    cat > "${REPO}/fake-range.sh" << 'EOF'
+    cat >"${REPO}/fake-range.sh" <<'EOF'
 #!/bin/bash
 printf '%s\n' 'HEAD~1..HEAD'
 EOF
@@ -161,13 +183,14 @@ run_prepare() {
 
     set +e
     LAST_OUTPUT="$(
-        cd "${REPO}" \
-                     && GIT_CLIFF="${renderer}" \
+        cd "${REPO}" &&
+            GIT_CLIFF="${renderer}" \
                 CHANGELOG_RANGE_SCRIPT="${range_script}" \
                 bash "${SCRIPT}" \
                 --release-type "${release_type}" \
                 --channel "${channel}" \
                 --backports-file backports.json \
+                --sibling-repositories-file siblings.json \
                 --output-dir out \
                 --release-date 2026-08-24 2>&1
     )"
@@ -236,6 +259,16 @@ test_first_rc() {
         '@first made their first contribution' || return
     assert_file_contains "${REPO}/out/release-plan.yaml" \
         'version: v0.61.0-rc.1' || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.schemaVersion' '2' || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.siblingRepositories[1].sourceCommit' \
+        '2222222222222222222222222222222222222222' || return
+    if ! cmp -s "${REPO}/out/release-plan.yaml" \
+        "${REPO}/.github/release-plans/v0.61.0-rc.1.yaml"; then
+        fail_test "tracked release plan differs from generated output"
+        return
+    fi
     assert_yq_value "${REPO}/out/release-plan.yaml" \
         '.expectedOutputs.cliAssets[0].name' 'rad_linux_amd64' || return
     assert_yq_value "${REPO}/out/release-plan.yaml" \
@@ -427,6 +460,8 @@ test_subsequent_rc_rejects_historical_form() {
 
 test_final() {
     setup_repo "v0.60.0-rc.3"
+    cp "${SCRIPT_DIR}/../../docs/release-notes/template.md" \
+        "${REPO}/docs/release-notes/template.md"
     make_release_branch 0.60
     git -C "${REPO}" tag v0.60.0-rc.3
     run_prepare final 0.60
@@ -436,6 +471,8 @@ test_final() {
     assert_file_contains "${REPO}/out/requires-backport.txt" 'true' || return
     assert_file_contains "${REPO}/docs/release-notes/v0.60.0.md" \
         '## Upgrading to Radius v0.60.0' || return
+    assert_file_contains "${REPO}/docs/release-notes/v0.60.0.md" \
+        'Restarting pods no longer picks up later patches implicitly' || return
     ((++PASS))
 }
 
@@ -512,7 +549,7 @@ test_version_only_does_not_mutate_files() {
         fail_test "expected version-only success, got: ${LAST_OUTPUT}"
         return
     fi
-    if [[ "$(< "${output_dir}/version.txt")" != "v0.61.0-rc.1" ]]; then
+    if [[ "$(<"${output_dir}/version.txt")" != "v0.61.0-rc.1" ]]; then
         fail_test "version-only mode selected the wrong version"
         return
     fi
@@ -525,11 +562,15 @@ test_version_only_does_not_mutate_files() {
 
 test_patch() {
     setup_repo "v0.60.2"
+    cp "${SCRIPT_DIR}/../../docs/release-notes/template_patch.md" \
+        "${REPO}/docs/release-notes/template_patch.md"
     make_release_branch 0.60
     git -C "${REPO}" tag v0.60.2
     git -C "${REPO}" tag v0.61.0
     run_prepare patch 0.60
     assert_version "v0.60.3" || return
+    assert_file_contains "${REPO}/docs/release-notes/v0.60.3.md" \
+        'Restarting pods no longer picks up later patches implicitly' || return
     assert_file_contains "${REPO}/CHANGELOG.md" \
         'compare/v0.60.2...v0.60.3' || return
     ((++PASS))
@@ -539,7 +580,7 @@ test_unmerged_backport_fails() {
     setup_repo "v0.60.0-rc.1"
     make_release_branch 0.60
     git -C "${REPO}" tag v0.60.0-rc.1
-    cat > "${REPO}/backports.json" << 'EOF'
+    cat >"${REPO}/backports.json" <<'EOF'
 [{"source_pr":123,"backport_merged":false}]
 EOF
     run_prepare rc 0.60

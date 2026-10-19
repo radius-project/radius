@@ -52,10 +52,6 @@ func (c *scopedApplicationsClient) NewListByScopePager(options *corerpv20231001.
 	return c.inner.NewListByScopePager(c.scope, options)
 }
 
-func (c *scopedApplicationsClient) GetGraph(ctx context.Context, applicationName string, body corerpv20231001.GetGraphRequest, options *corerpv20231001.ApplicationsClientGetGraphOptions) (corerpv20231001.ApplicationsClientGetGraphResponse, error) {
-	return c.inner.GetGraph(ctx, c.scope, applicationName, body, options)
-}
-
 // scopedEnvironmentsClient binds a root scope to the generated Applications.Core/environments client.
 type scopedEnvironmentsClient struct {
 	inner *corerpv20231001.EnvironmentsClient
@@ -76,10 +72,6 @@ func (c *scopedEnvironmentsClient) Get(ctx context.Context, environmentName stri
 
 func (c *scopedEnvironmentsClient) NewListByScopePager(options *corerpv20231001.EnvironmentsClientListByScopeOptions) *runtime.Pager[corerpv20231001.EnvironmentsClientListByScopeResponse] {
 	return c.inner.NewListByScopePager(c.scope, options)
-}
-
-func (c *scopedEnvironmentsClient) GetMetadata(ctx context.Context, environmentName string, body corerpv20231001.RecipeGetMetadata, options *corerpv20231001.EnvironmentsClientGetMetadataOptions) (corerpv20231001.EnvironmentsClientGetMetadataResponse, error) {
-	return c.inner.GetMetadata(ctx, c.scope, environmentName, body, options)
 }
 
 // scopedRecipePacksClient binds a root scope to the generated Radius.Core/recipePacks client.

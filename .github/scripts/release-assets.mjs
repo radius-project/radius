@@ -66,7 +66,7 @@ function findAsset(assets, name) {
 }
 
 /** @param {Buffer} data @param {string} name */
-function verifySpdxDocument(data, name) {
+export function verifySpdxDocument(data, name) {
   let document;
   try {
     document = JSON.parse(data.toString("utf8"));

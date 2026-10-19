@@ -95,12 +95,12 @@ func Test_GroupDelete(t *testing.T) {
 	// Verify all resources are deleted - checking in the specific group
 	opts := radcli.ShowOptions{Group: uniqueGroupName}
 
-	output, err = cli.ApplicationShow(ctx, appName, opts)
+	output, err = cli.ResourceShow(ctx, "Applications.Core/applications", appName, opts)
 	require.Error(t, err, "Application should be deleted")
 	outputStr = strings.ToLower(output)
 	require.Contains(t, outputStr, "not found", "Expected 'not found' in output but got: %s", output)
 
-	output, err = cli.EnvShow(ctx, envName, opts)
+	output, err = cli.ResourceShow(ctx, "Applications.Core/environments", envName, opts)
 	require.Error(t, err, "Environment should be deleted")
 	outputStr = strings.ToLower(output)
 	require.Contains(t, outputStr, "not found", "Expected 'not found' in output but got: %s", output)

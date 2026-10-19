@@ -35,14 +35,16 @@ import (
 
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/radius-project/radius/pkg/cli/bicep"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/pkg/version"
 
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
@@ -55,104 +57,6 @@ import (
 const (
 	retries = 10
 )
-
-func verifyRecipeCLI(ctx context.Context, t *testing.T, test rp.RPTest) {
-	options := rp.NewRPTestOptions(t)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	envName := test.Steps[0].RPResources.Resources[0].Name
-	registry := strings.TrimPrefix(testutil.GetBicepRecipeRegistry(), "registry=")
-	version := strings.TrimPrefix(testutil.GetBicepRecipeVersion(), "version=")
-	resourceType := "Applications.Datastores/redisCaches"
-	file := "../../../testrecipes/test-bicep-recipes/corerp-redis-recipe.bicep"
-
-	target := fmt.Sprintf("br:%s/dev/test-bicep-recipes/redis-recipe:%s",
-		strings.TrimPrefix(registry, "registry="), generateUniqueTag())
-
-	recipeName := "recipeName"
-	recipeTemplate := fmt.Sprintf("%s/recipes/local-dev/rediscaches:%s", registry, version)
-
-	bicepRecipe := "recipe1"
-	bicepRecipeTemplate := fmt.Sprintf("%s/test/testrecipes/test-bicep-recipes/corerp-redis-recipe:%s", registry, version)
-	templateKindBicep := "bicep"
-
-	terraformRecipe := "recipe2"
-	terraformRecipeTemplate := "Azure/cosmosdb/azurerm"
-	templateKindTerraform := "terraform"
-
-	t.Run("Validate rad recipe register", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, false)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully linked recipe")
-	})
-
-	t.Run("Validate rad recipe register with insecure registry", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, recipeName, templateKindBicep, recipeTemplate, resourceType, true)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully linked recipe")
-	})
-
-	t.Run("Validate rad recipe list", func(t *testing.T) {
-		output, err := cli.RecipeList(ctx, envName)
-		require.NoError(t, err)
-		require.Regexp(t, bicepRecipe, output)
-		require.Regexp(t, terraformRecipe, output)
-		require.Regexp(t, recipeName, output)
-		require.Regexp(t, resourceType, output)
-		require.Regexp(t, bicepRecipeTemplate, output)
-		require.Regexp(t, terraformRecipeTemplate, output)
-		require.Regexp(t, recipeTemplate, output)
-		require.Regexp(t, templateKindBicep, output)
-		require.Regexp(t, templateKindTerraform, output)
-	})
-
-	t.Run("Validate rad recipe unregister", func(t *testing.T) {
-		output, err := cli.RecipeUnregister(ctx, envName, recipeName, resourceType)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully unregistered recipe")
-	})
-
-	t.Run("Validate rad recipe show", func(t *testing.T) {
-		output, err := cli.RecipeShow(ctx, envName, bicepRecipe, resourceType)
-		require.NoError(t, err)
-		require.Contains(t, output, bicepRecipe)
-		require.Contains(t, output, bicepRecipeTemplate)
-		require.Contains(t, output, resourceType)
-		require.Contains(t, output, "redisName")
-		require.Contains(t, output, "string")
-	})
-
-	t.Run("Validate rad recipe show - terraform recipe", func(t *testing.T) {
-		showRecipeName := "redistesttf"
-		moduleServer := strings.TrimPrefix(testutil.GetTerraformRecipeModuleServerURL(), "moduleServer=")
-		showRecipeTemplate := fmt.Sprintf("%s/kubernetes-redis.zip//modules", moduleServer)
-		showRecipeResourceType := "Applications.Datastores/redisCaches"
-		output, err := cli.RecipeRegister(ctx, envName, showRecipeName, "terraform", showRecipeTemplate, showRecipeResourceType, false)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully linked recipe")
-		output, err = cli.RecipeShow(ctx, envName, showRecipeName, showRecipeResourceType)
-		require.NoError(t, err)
-		require.Contains(t, output, showRecipeName)
-		require.Contains(t, output, showRecipeTemplate)
-		require.Contains(t, output, showRecipeResourceType)
-		require.Contains(t, output, "redis_cache_name")
-		require.Contains(t, output, "string")
-	})
-
-	t.Run("Validate `rad bicep publish` is publishing the file to the given target", func(t *testing.T) {
-		output, err := cli.BicepPublish(ctx, file, target)
-		require.NoError(t, err)
-		require.Contains(t, output, "Successfully published")
-	})
-
-	t.Run("Validate rad recipe register with recipe name conflicting with existing recipe", func(t *testing.T) {
-		output, err := cli.RecipeRegister(ctx, envName, bicepRecipe, templateKindBicep, recipeTemplate, resourceType, false)
-		require.Contains(t, output, "Successfully linked recipe")
-		require.NoError(t, err)
-		output, err = cli.RecipeList(ctx, envName)
-		require.NoError(t, err)
-		require.Regexp(t, recipeTemplate, output)
-	})
-}
 
 func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 	options := rp.NewRPTestOptions(t)
@@ -167,7 +71,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 	require.NoError(t, err)
 
 	t.Run("Validate rad application show", func(t *testing.T) {
-		actualOutput, err := cli.ApplicationShow(ctx, appName, radcli.ShowOptions{Preview: true})
+		actualOutput, err := cli.ApplicationShow(ctx, appName)
 		require.NoError(t, err)
 
 		lines := strings.Split(actualOutput, "\n")
@@ -221,7 +125,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 	})
 
 	t.Run("Validate rad resource logs containers", func(t *testing.T) {
-		output, err := cli.ResourceLogs(ctx, "Radius.Compute/containers", appName, containerName, true)
+		output, err := cli.ResourceLogs(ctx, "Radius.Compute/containers", appName, containerName)
 		require.NoError(t, err)
 
 		// We don't want to be too fragile so we're not validating the logs in depth
@@ -237,7 +141,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 
 		done := make(chan error)
 		go func() {
-			output, err := cli.ResourceExpose(child, "Radius.Compute/containers", appName, containerName, port, 3000, true)
+			output, err := cli.ResourceExpose(child, "Radius.Compute/containers", appName, containerName, port, 3000)
 			t.Logf("ResourceExpose - output: %s", output)
 			done <- err
 		}()
@@ -340,8 +244,10 @@ func Test_Run_Logger(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		t.Cleanup(cancel)
 
-		err := cli.ApplicationDelete(ctx, applicationName)
-		require.NoErrorf(t, err, "failed to delete %s", applicationName)
+		_, err := options.ManagementClient.DeleteApplication(ctx, applicationName, false)
+		if err != nil && !clients.Is404Error(err) {
+			require.NoErrorf(t, err, "failed to delete %s", applicationName)
+		}
 	})
 
 	// We should have an error, but only because we canceled the context.
@@ -439,8 +345,10 @@ func Test_Run_Portforward(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		t.Cleanup(cancel)
 
-		err := cli.ApplicationDelete(ctx, applicationName)
-		require.NoErrorf(t, err, "failed to delete %s", applicationName)
+		_, err := options.ManagementClient.DeleteApplication(ctx, applicationName, false)
+		if err != nil && !clients.Is404Error(err) {
+			require.NoErrorf(t, err, "failed to delete %s", applicationName)
+		}
 	})
 
 	// We should have an error, but only because we canceled the context.
@@ -590,7 +498,7 @@ func Test_CLI_Delete(t *testing.T) {
 			},
 		})
 
-		_, err = cli.ApplicationDeletePreview(ctx, appName, "")
+		_, err = cli.ApplicationDelete(ctx, appName, "")
 		require.NoErrorf(t, err, "failed to delete %s", appName)
 	})
 
@@ -600,12 +508,12 @@ func Test_CLI_Delete(t *testing.T) {
 		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", "", envParam)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
-		_, err = cli.ApplicationDeletePreview(ctx, appNameEmptyResources, "")
+		_, err = cli.ApplicationDelete(ctx, appNameEmptyResources, "")
 		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
 	})
 
 	t.Run("Validate rad app delete with non existent app", func(t *testing.T) {
-		_, err = cli.ApplicationDeletePreview(ctx, appName, "")
+		_, err = cli.ApplicationDelete(ctx, appName, "")
 		require.NoErrorf(t, err, "failed to delete %s", appName)
 	})
 
@@ -634,7 +542,7 @@ func Test_CLI_Delete(t *testing.T) {
 		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", "", envParam)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
-		_, err = cli.ApplicationDeletePreview(ctx, appNameEmptyResources, "")
+		_, err = cli.ApplicationDelete(ctx, appNameEmptyResources, "")
 		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
 
 		//ignore response for tests
@@ -731,79 +639,63 @@ func Test_CLI_Only_version(t *testing.T) {
 	require.Regexp(t, expected, objectformats.TrimSpaceMulti(output))
 }
 
-func Test_RecipeCommands(t *testing.T) {
-	template := "testdata/corerp-resources-recipe-env.bicep"
-	name := "corerp-resources-recipe-env"
-
-	test := rp.NewRPTest(t, name, []rp.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: "corerp-resources-recipe-env",
-						Type: validation.EnvironmentsResource,
-					},
-				},
-			},
-			// Environment should not render any K8s Objects directly
-			K8sObjects:     &validation.K8sObjectSet{},
-			PostStepVerify: verifyRecipeCLI,
-		},
-	})
-
-	test.Test(t)
-}
-
-// This test creates an environment by directly calling the CreateEnvironment function to test dev recipes.
-// After dev recipes are confirmed, the environment is deleted.
-func Test_DevRecipes(t *testing.T) {
+// Test_InitCreateEnvironment runs the `rad init` environment step and checks that it creates a
+// Radius.Core environment linked to the default recipe pack.
+func Test_InitCreateEnvironment(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
-	options := rp.NewTestOptions(t)
+	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
-	envName := "test-dev-recipes"
-	envNamespace := "test-dev-recipes"
+	suffix := time.Now().Unix()
+	envName := fmt.Sprintf("test-init-env-%d", suffix)
+	envNamespace := fmt.Sprintf("test-init-env-ns-%d", suffix)
 
-	basicRunner := radinit.NewRunner(
-		&framework.Impl{
-			ConnectionFactory: connections.DefaultFactory,
-		},
-	)
-	basicRunner.UpdateEnvironmentOptions(true, envName, envNamespace)
-	basicRunner.UpdateRecipePackOptions(true)
-	basicRunner.DevRecipeClient = radinit.NewDevRecipeClient()
-	basicRunner.Workspace = &workspaces.Workspace{
+	t.Cleanup(func() {
+		// The resource group is named after the environment; deleting it also deletes the environment.
+		// Use a fresh context because t.Context() is cancelled before cleanup runs.
+		if err := cli.GroupDelete(context.Background(), envName, radcli.DeleteOptions{Confirm: true}); err != nil { //nolint:usetesting
+			t.Logf("failed to delete resource group %q: %v", envName, err)
+		}
+		deleteKubernetesNamespace(context.Background(), t, options, envNamespace) //nolint:usetesting
+	})
+
+	// Radius.Core requires the environment's namespace to exist.
+	createKubernetesNamespace(ctx, t, options, envNamespace)
+
+	runner := radinit.NewRunner(&framework.Impl{ConnectionFactory: connections.DefaultFactory})
+	runner.UpdateEnvironmentOptions(true, envName, envNamespace)
+	runner.Workspace = &workspaces.Workspace{
 		Name: envName,
 		Connection: map[string]any{
 			"kind": workspaces.KindKubernetes,
 		},
-		Environment: fmt.Sprintf("/planes/radius/local/resourceGroups/kind-radius/providers/Applications.Core/environments/%s", envName),
-		Scope:       "/planes/radius/local/resourceGroups/kind-radius",
+		Environment: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/environments/%s", envName, envName),
+		Scope:       fmt.Sprintf("/planes/radius/local/resourceGroups/%s", envName),
 	}
 
-	// Create the environment
-	err := basicRunner.CreateEnvironment(ctx)
+	err := runner.CreateEnvironment(ctx)
 	require.NoError(t, err)
 
-	output, err := cli.RecipeList(ctx, envName)
+	clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, runner.Workspace)
 	require.NoError(t, err)
-	require.Regexp(t, "default", output)
 
-	tag := version.Channel()
-	if version.IsEdgeChannel() {
-		tag = "latest"
+	environment, err := clientFactory.NewEnvironmentsClient().Get(ctx, runner.Workspace.Scope, envName, nil)
+	require.NoError(t, err)
+	require.NotNil(t, environment.Properties)
+	require.NotNil(t, environment.Properties.Providers)
+	require.NotNil(t, environment.Properties.Providers.Kubernetes)
+	require.Equal(t, envNamespace, *environment.Properties.Providers.Kubernetes.Namespace)
+
+	recipePacks := []string{}
+	for _, pack := range environment.Properties.RecipePacks {
+		recipePacks = append(recipePacks, *pack)
 	}
+	require.Equal(t, []string{recipepack.DefaultRecipePackID()}, recipePacks)
 
-	for _, devRecipe := range radinit.AvailableDevRecipes() {
-		require.Regexp(t, devRecipe.ResourceType, output)
-		require.Regexp(t, devRecipe.RepoPath+":"+tag, output)
-	}
-
-	err = cli.EnvDelete(ctx, envName)
-	require.NoError(t, err)
+	_, err = clientFactory.NewRecipePacksClient().Get(ctx, recipepack.DefaultResourceGroupScope, recipepack.DefaultRecipePackResourceName, nil)
+	require.NoError(t, err, "the default recipe pack should exist")
 }
 
 // GetAvailablePort attempts to find an available port on the localhost and returns it, or returns an error if it fails.
@@ -825,7 +717,7 @@ func GetAvailablePort() (int, error) {
 // resources remain, returning an error if one occurs.
 func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, options rp.RPTestOptions, applicationName string) error {
 	// Deleting the Radius.Core/applications resource directly removes only the application,
-	// leaving its associated resources in place (unlike "rad app delete --preview" which cascades).
+	// leaving its associated resources in place (unlike "rad app delete", which cascades).
 	_, err := options.ManagementClient.DeleteResource(ctx, "Radius.Core/applications", applicationName, false)
 	return err
 }
@@ -835,6 +727,26 @@ func generateUniqueTag() string {
 	random := rand.Intn(1000)
 	tag := fmt.Sprintf("test-%d-%d", timestamp, random)
 	return tag
+}
+
+// Test_BicepPublish validates that `rad bicep publish` pushes a Bicep file to the given OCI target.
+// This previously ran as a subtest of the recipe CLI verification, which was removed along with the
+// `rad recipe` commands. `rad bicep publish` is unaffected by that removal, so the coverage is kept
+// here as a standalone test.
+func Test_BicepPublish(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	registry := strings.TrimPrefix(testutil.GetBicepRecipeRegistry(), "registry=")
+	file := "../../../testrecipes/test-bicep-recipes/corerp-redis-recipe.bicep"
+	target := fmt.Sprintf("br:%s/dev/test-bicep-recipes/redis-recipe:%s", registry, generateUniqueTag())
+
+	output, err := cli.BicepPublish(ctx, file, target)
+	require.NoError(t, err)
+	require.Contains(t, output, "Successfully published")
 }
 
 func Test_RecipePack(t *testing.T) {

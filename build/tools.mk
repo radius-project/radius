@@ -18,9 +18,11 @@
 
 TOOL_MANIFEST := build/tools.yaml
 TOOL_MAKE_INCLUDE := build/tools.generated.mk
-TOOL_UPDATER_GOOS := $(shell go env GOHOSTOS)
-TOOL_UPDATER_GOARCH := $(shell go env GOHOSTARCH)
-TOOL_UPDATER_BINARY := bin/tool-updater$(if $(filter windows,$(TOOL_UPDATER_GOOS)),.exe,)
+# Recursive assignments keep `go` out of Make parsing, so `make install-<tool>` works without Go.
+TOOL_UPDATER_PLATFORM = $(shell go env GOHOSTOS GOHOSTARCH)
+TOOL_UPDATER_GOOS = $(word 1,$(TOOL_UPDATER_PLATFORM))
+TOOL_UPDATER_GOARCH = $(word 2,$(TOOL_UPDATER_PLATFORM))
+TOOL_UPDATER_BINARY = bin/tool-updater$(if $(filter windows,$(TOOL_UPDATER_GOOS)),.exe,)
 TOOL_UPDATER_SOURCES := $(wildcard cmd/tool-updater/*.go) $(wildcard internal/tooling/*.go)
 TOOL_UPDATE_PR_BODY_OUTPUT ?=
 TOOL_UPDATE_ARGS := --manifest "$(TOOL_MANIFEST)"
@@ -29,14 +31,14 @@ ifneq ($(strip $(TOOL_UPDATE_PR_BODY_OUTPUT)),)
 TOOL_UPDATE_ARGS += --pr-body-output "$(TOOL_UPDATE_PR_BODY_OUTPUT)"
 endif
 
+# The include is committed and has no remake rule. A rule would make every
+# `make install-<tool>` build tool-updater with Go. Staleness is caught by the
+# tests in internal/tooling. Run `make update-tools` to regenerate it.
 include $(TOOL_MAKE_INCLUDE)
 
 $(TOOL_UPDATER_BINARY): $(TOOL_UPDATER_SOURCES) go.mod go.sum
 	@mkdir -p bin
 	@GOOS="$(TOOL_UPDATER_GOOS)" GOARCH="$(TOOL_UPDATER_GOARCH)" go build -o "$@" ./cmd/tool-updater
-
-$(TOOL_MAKE_INCLUDE): $(TOOL_MANIFEST) $(TOOL_UPDATER_BINARY)
-	@"$(TOOL_UPDATER_BINARY)" generate-make --manifest "$(TOOL_MANIFEST)" --output "$@"
 
 .PHONY: update-tools
 update-tools: $(TOOL_UPDATER_BINARY) ## Check tool releases and refresh versions and checksums in the manifest.

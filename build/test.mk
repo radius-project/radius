@@ -53,16 +53,41 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
+
+.PHONY: test-azure-oidc-login
+test-azure-oidc-login: ## Tests cloud CI token request retries and Azure login
+	@node --test ./.github/scripts/azure-oidc-login_test.mjs
 
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh
 
+.PHONY: test-purge-old-images
+test-purge-old-images: ## Tests package cleanup retries without GitHub access
+	@bash ./.github/scripts/purge-old-images_test.sh
+
+.PHONY: test-retry-curl
+test-retry-curl: ## Tests bounded curl downloads without network access
+	@bash ./build/scripts/retry-curl_test.sh
+
+.PHONY: test-retry-helm-pull
+test-retry-helm-pull: ## Tests bounded Helm pulls without registry access
+	@bash ./build/scripts/retry-helm-pull_test.sh
+
+test: test-retry-helm-pull
+
+.PHONY: test-install-bicep
+test-install-bicep: test-retry-curl ## Tests bounded Bicep downloads without network access
+	@bash ./build/scripts/install-bicep_test.sh
+
+test: test-install-bicep
+
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
 	@bash ./.github/scripts/collect-cluster-diagnostics_test.sh
+	@bash ./.github/scripts/collect-terraform-diagnostics_test.sh
 
 .PHONY: test-release-parity-manifest
 test-release-parity-manifest: ## Tests release parity manifest collection
@@ -87,8 +112,21 @@ test-prepare-release: install-git-cliff ## Tests release version, changelog, not
 
 .PHONY: test-release-plan
 test-release-plan: ## Tests release plan schema, policy, source, and file validation
+	@bash ./.github/scripts/capture-release-sibling-commits_test.sh
 	@bash ./.github/scripts/validate-release-plan_test.sh
 	@bash ./.github/scripts/validate-release-merge-group_test.sh
+
+.PHONY: test-release-controller
+test-release-controller: ## Tests release controller input binding and stage ordering
+	@node --test ./.github/scripts/dispatch-release-controller_test.mjs
+	@node --test ./.github/scripts/reconcile-release-controller-lock_test.mjs
+	@node --test ./.github/scripts/resolve-release-controller_test.mjs
+	@node --test ./.github/scripts/verify-release-environment_test.mjs
+	@bash ./.github/scripts/validate-release-controller-plan_test.sh
+	@bash ./.github/scripts/release-controller_test.sh
+	@bash ./.github/scripts/release-controller-resume_test.sh
+	@bash ./.github/scripts/verify-deployment-engine-image_test.sh
+	@bash ./.github/scripts/verify-release-build-contract_test.sh
 
 .PHONY: test-release-backport
 test-release-backport: ## Tests release backport selection and branch construction
@@ -111,6 +149,7 @@ test-capture-release-image-digests: ## Tests production release image digest cap
 .PHONY: test-release-cutover
 test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
 	@bash ./.github/scripts/release-cutover_test.sh
+	@bash ./.github/scripts/goreleaser-snapshot-artifacts_test.sh
 	@bash ./.github/scripts/normalize-release-checksums_test.sh
 	@bash ./.github/scripts/publish-helm-chart_test.sh
 	@node --test ./.github/scripts/ensure-draft-release_test.mjs
@@ -118,6 +157,11 @@ test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
 	@node --test ./.github/scripts/publish-draft-release_test.mjs
 
 .PHONY: test-release-oci-artifacts
+.PHONY: test-release-publication
+test-release-publication: ## Tests mandatory publication gates, staged installation, coordination, and reporting
+	@node --test ./.github/scripts/verify-release-manifest_test.mjs ./.github/scripts/coordinate-release_test.mjs ./.github/scripts/release-status_test.mjs
+	@bash ./.github/scripts/release-verification_test.sh
+
 test-release-oci-artifacts: install-oras ## Tests immutable OCI staging and alias promotion
 	@bash ./.github/scripts/release-oci-artifacts_test.sh
 
@@ -128,10 +172,6 @@ test-release-sboms: ## Tests release SBOM generation and verification wiring
 .PHONY: test-release-tag-and-branch
 test-release-tag-and-branch: ## Tests release tag and branch reconciliation
 	@bash ./.github/scripts/release-create-tag-and-branch_test.sh
-
-.PHONY: test-release-get-version
-test-release-get-version: ## Tests release version selection across repositories
-	@bash ./.github/scripts/release-get-version_test.sh
 
 .PHONY: test-release-version-format
 test-release-version-format: ## Tests release SemVer validation and tag parsing
@@ -146,6 +186,12 @@ test-workflow-changes: ## Tests reusable workflow change detection
 	@node --test ./.github/scripts/changes_test.mjs
 
 test: test-workflow-changes
+
+.PHONY: test-docker-push
+test-docker-push: ## Tests image push recovery without Docker or a registry
+	@bash ./build/scripts/docker-push_test.sh
+
+test: test-docker-push
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them

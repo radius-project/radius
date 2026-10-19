@@ -89,7 +89,7 @@ Either path runs the same automation. It:
 - Checks prerequisites and builds all components with debug symbols (`-gcflags="all=-N -l"`).
 - Creates a disposable k3d cluster named `radius-debug` and switches your kubectl context to `k3d-radius-debug`.
 - Starts UCP, Controller, Applications RP, and Dynamic RP as OS processes, each under `dlv`.
-- Initializes the database, creates the `default` resource group and environment, starts the Deployment Engine in the cluster, and registers default recipes.
+- Initializes the database, creates the `default` resource group and a `Radius.Core` environment with the default recipe pack, and starts the Deployment Engine in the cluster.
 - Creates a `./drad` wrapper that runs your debug build of `rad` against the local endpoints.
 
 ### 2. Set breakpoints
@@ -189,7 +189,7 @@ make debug-build-dynamic-rp
 make debug-build-rad
 
 # Environment and Deployment Engine
-make debug-env-init                  # Re-create resource group, environment, and recipes
+make debug-env-init                  # Re-create resource group, environment, and default recipe pack
 make debug-deployment-engine-status  # Check the Deployment Engine running in k3d
 make debug-deployment-engine-logs    # Tail Deployment Engine logs
 ```
