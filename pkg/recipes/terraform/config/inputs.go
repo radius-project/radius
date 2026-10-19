@@ -17,10 +17,12 @@ limitations under the License.
 package config
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 )
 
 // RecipeInputsOutputName is reserved for inputs retained in Terraform state for deletion.
@@ -73,7 +75,7 @@ func (cfg *TerraformConfig) RestoreRecipeInputs(moduleName, encoded string) erro
 		return errors.New("invalid saved terraform recipe inputs: expected base64")
 	}
 	var inputs RecipeParams
-	if err := json.Unmarshal(data, &inputs); err != nil || inputs == nil {
+	if err := decodeJSON(data, &inputs); err != nil || inputs == nil {
 		// Do not include the decoder error: it can contain secret input data.
 		return errors.New("invalid saved terraform recipe inputs: expected a JSON object")
 	}
@@ -117,10 +119,24 @@ func normalizeInput(value any) (any, error) {
 		return nil, err
 	}
 	var normalized any
-	if err := json.Unmarshal(data, &normalized); err != nil {
+	if err := decodeJSON(data, &normalized); err != nil {
 		return nil, err
 	}
 	return normalized, nil
+}
+
+// decodeJSON decodes a single JSON value and keeps numbers as json.Number, so that integers
+// larger than 2^53 are not rounded through float64 when the config is written again.
+func decodeJSON(data []byte, v any) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := decoder.Decode(v); err != nil {
+		return err
+	}
+	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
+		return errors.New("unexpected data after JSON value")
+	}
+	return nil
 }
 
 // fillMissingValues returns current with null values and missing object keys taken from saved.

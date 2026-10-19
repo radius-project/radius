@@ -18,6 +18,7 @@ package config
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -87,12 +88,47 @@ func TestRecipeInputsRoundTrip(t *testing.T) {
 			},
 		},
 		"enabled":  true,
-		"counted":  float64(3),
+		"counted":  json.Number("3"),
 		"list":     []any{"first", "second-secret"},
 		"null":     nil,
 		"newInput": "kept",
 	}, cfg.Module["recipe"])
 	require.Equal(t, map[string]any{"value": encoded, "sensitive": true}, cfg.Output[RecipeInputsOutputName])
+}
+
+func TestRecipeInputsPreserveNumericPrecision(t *testing.T) {
+	t.Parallel()
+	// 2^53 + 1 cannot be represented exactly as float64.
+	const large = "9007199254740993"
+	cfg := &TerraformConfig{Module: map[string]TFModuleConfig{
+		"recipe": {
+			moduleSourceKey: "source",
+			"saved":         int64(9007199254740993),
+			"current":       uint64(9007199254740993),
+			"nested":        map[string]any{"value": int64(9007199254740993)},
+		},
+	}}
+	require.NoError(t, cfg.AddRecipeInputs("recipe"))
+	encoded := cfg.Output[RecipeInputsOutputName].(map[string]any)["value"].(string)
+	data, err := base64.StdEncoding.DecodeString(encoded)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"current":`+large+`,"nested":{"value":`+large+`},"saved":`+large+`}`, string(data))
+
+	cfg.Module["recipe"] = TFModuleConfig{
+		moduleSourceKey: "source",
+		"saved":         nil,
+		"current":       uint64(9007199254740993),
+		"nested":        map[string]any{"value": nil},
+	}
+	require.NoError(t, cfg.RestoreRecipeInputs("recipe", encoded))
+
+	// The config is written with json.Marshal, so check the JSON that Terraform receives.
+	written, err := json.Marshal(cfg.Module["recipe"])
+	require.NoError(t, err)
+	require.JSONEq(t, `{"source":"source","current":`+large+`,"nested":{"value":`+large+`},"saved":`+large+`}`, string(written))
+	require.Contains(t, string(written), `"saved":`+large)
+	require.Contains(t, string(written), `"current":`+large)
+	require.Contains(t, string(written), `"value":`+large)
 }
 
 func TestRecipeInputsRestoreTypedValues(t *testing.T) {
@@ -150,6 +186,8 @@ func TestRecipeInputsRejectInvalidState(t *testing.T) {
 		{name: "not JSON", encoded: base64.StdEncoding.EncodeToString([]byte("secret"))},
 		{name: "null", encoded: base64.StdEncoding.EncodeToString([]byte("null"))},
 		{name: "array", encoded: base64.StdEncoding.EncodeToString([]byte("[]"))},
+		{name: "trailing invalid data", encoded: base64.StdEncoding.EncodeToString([]byte(`{"input":"secret"} secret`))},
+		{name: "trailing JSON value", encoded: base64.StdEncoding.EncodeToString([]byte(`{"input":"secret"} {}`))},
 		{name: "source override", encoded: base64.StdEncoding.EncodeToString([]byte(`{"source":"secret"}`))},
 		{name: "version override", encoded: base64.StdEncoding.EncodeToString([]byte(`{"version":"secret"}`))},
 		{name: "provider override", encoded: base64.StdEncoding.EncodeToString([]byte(`{"providers":"secret"}`))},
