@@ -71,6 +71,12 @@ test-cloud-test-helpers-native: install-yq install-oras ## Tests TLS capture (re
 	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$(or $(ORAS_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
 		node --test .github/scripts/cloud-test-artifacts.integration.test.mjs
 
+.PHONY: test-authorization-contracts
+test-authorization-contracts: ## Checks generated RBAC contracts, examples, and Applications RP separation.
+	@node --test typespec/Radius.Core/authorization/contracts.test.mjs
+
+test: test-authorization-contracts
+
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh
