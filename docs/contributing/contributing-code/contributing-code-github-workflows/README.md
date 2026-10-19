@@ -50,7 +50,7 @@ The `.github/actions/create-local-registry` composite action uses a cached `regi
 
 ### GitHub Packages cleanup
 
-The scheduled `purge-old-images.yaml` workflow uses `.github/scripts/purge-old-images.sh` to remove old `dev/*` package versions with `pr-*` tags. Package and version list requests use the shared bounded HTTP retry policy. Deletes use the same selective retry policy; HTTP 404 is accepted because a previous attempt may have completed before its response failed. Authentication, authorization, and other permanent errors fail at once. Manual workflow runs default to dry-run mode so contributors can verify the selected versions before enabling deletion. Run `bash .github/scripts/purge-old-images_test.sh` to check retries, filtering, pagination, and deletes without GitHub access.
+The scheduled `purge-old-images.yaml` workflow uses `.github/scripts/purge-old-images.sh` to remove old `dev/*` package versions with `pr-*` tags. Package and version list requests use the shared bounded HTTP retry policy. Deletes use the same selective retry policy; HTTP 404 is accepted because a previous attempt may have completed before its response failed. When GitHub rejects one version with HTTP 400, 409, or 422, for example the last tagged version of a package, the script writes a warning and continues with the next version. When the GitHub API rate limit is reached, the script writes a warning and stops without failing, so the next scheduled run continues the cleanup. Authentication, authorization, and other permanent errors fail at once. Error messages from the GitHub API are written to the log. Manual workflow runs default to dry-run mode so contributors can verify the selected versions before enabling deletion. Run `bash .github/scripts/purge-old-images_test.sh` to check retries, filtering, pagination, and deletes without GitHub access.
 
 ### Keep change detection separate from executable helper code
 
@@ -70,7 +70,7 @@ Run `make test-workflow-changes` for the helper and workflow wiring tests. They 
 - The [github-workflows.instructions.md](../../../../.github/instructions/github-workflows.instructions.md) checklist is satisfied — especially the fork-testability and `permissions:` items.
 - Run `bash .github/actions/go-mod-download/test.sh` for changes to the module download action. It checks retries, exponential backoff, failure propagation, directory handling, and input validation without network access. The unit-test workflow also exercises the action on Ubuntu and Windows.
 - Run `bash .github/actions/create-local-registry/test.sh` for changes to the image pull retry. It checks cached images, retry limits, random-delay bounds, timeout settings, permanent errors, and exit codes with fake commands, so it needs no network.
-- Run `bash .github/scripts/purge-old-images_test.sh` for changes to package cleanup. It checks transient read and delete retries, package and tag filtering, pagination, and permanent failure handling with fake HTTP responses.
+- Run `bash .github/scripts/purge-old-images_test.sh` for changes to package cleanup. It checks transient read and delete retries, package and tag filtering, pagination, skipped versions, rate limits, and permanent failure handling with fake HTTP responses.
 
 ## Troubleshooting
 

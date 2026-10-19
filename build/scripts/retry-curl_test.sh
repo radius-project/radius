@@ -27,6 +27,9 @@ curl() {
 
     while (($#)); do
         case "$1" in
+            --fail | --fail-with-body)
+                printf '%s\n' "$1" > "${TEST_DIR}/fail-flag"
+                ;;
             --output) output="$2"; shift ;;
             --dump-header) headers="$2"; shift ;;
             --max-time) timeout="$2"; shift ;;
@@ -164,5 +167,23 @@ unset RETRY_CURL_MAX_ATTEMPTS
 status=0
 retry_curl -fsSL http://example.test/file || status=$?
 [[ "${status}" -eq 2 ]] || fail_test "HTTP rejection"
+
+reset_case 0:200
+retry_curl -o "${TEST_DIR}/download" https://example.test/file
+[[ "$(< "${TEST_DIR}/fail-flag")" == --fail ]] ||
+    fail_test "default fail flag"
+
+reset_case 22:400
+RESPONSE_HEADERS=$'X-Test: kept\r\n'
+status=0
+retry_curl --fail-with-body --dump-header "${TEST_DIR}/headers" \
+    -o "${TEST_DIR}/download" https://example.test/file || status=$?
+[[ "${status}" -eq 22 ]] || fail_test "fail-with-body status"
+[[ "$(< "${TEST_DIR}/fail-flag")" == --fail-with-body ]] ||
+    fail_test "fail-with-body flag"
+grep -q '^X-Test: kept' "${TEST_DIR}/headers" ||
+    fail_test "response headers were not copied"
+grep -q '^HTTP/2 400' "${TEST_DIR}/headers" ||
+    fail_test "response status header was not copied"
 
 echo "retry-curl tests passed"

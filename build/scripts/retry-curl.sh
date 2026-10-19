@@ -4,7 +4,8 @@
 
 retry_curl() {
     local -a curl_args=()
-    local url="" output="" write_out=""
+    local url="" output="" write_out="" headers_output=""
+    local fail_flag="--fail"
     local temporary_output=false
     local argument
 
@@ -14,6 +15,14 @@ retry_curl() {
             -o | --output)
                 output="${2:-}"
                 shift 2
+                ;;
+            -D | --dump-header)
+                headers_output="${2:-}"
+                shift 2
+                ;;
+            --fail-with-body)
+                fail_flag="--fail-with-body"
+                shift
                 ;;
             -w | --write-out)
                 write_out="${2:-}"
@@ -84,7 +93,7 @@ retry_curl() {
         remaining=$((deadline - SECONDS))
         if ((remaining <= 0)); then
             echo "curl request exceeded the ${max_seconds}-second budget" >&2
-            rm -rf "${temporary_directory}"
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}"
             return 28
         fi
         timeout="${remaining}"
@@ -93,7 +102,8 @@ retry_curl() {
         status=0
         if ((${#curl_args[@]})); then
             result="$(
-                curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+                curl --proto '=https' --tlsv1.2 "${fail_flag}" \
+                    --silent --show-error \
                     --location --connect-timeout 15 --max-time "${timeout}" \
                     --speed-limit 1024 --speed-time 30 \
                     "${curl_args[@]}" --output "${output}" \
@@ -102,7 +112,8 @@ retry_curl() {
             )" || status=$?
         else
             result="$(
-                curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+                curl --proto '=https' --tlsv1.2 "${fail_flag}" \
+                    --silent --show-error \
                     --location --connect-timeout 15 --max-time "${timeout}" \
                     --speed-limit 1024 --speed-time 30 \
                     --output "${output}" --dump-header "${headers}" \
@@ -119,14 +130,14 @@ retry_curl() {
             elif [[ "${temporary_output}" == true ]]; then
                 cat "${output}"
             fi
-            rm -rf "${temporary_directory}"
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}"
             return 0
         fi
 
         if ! retry_curl_is_transient "${status}" "${http_code}"; then
             retry_curl_write_out \
                 "${write_out}" "${http_code}" "${effective_url}"
-            rm -rf "${temporary_directory}"
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}"
             return "${status}"
         fi
 
@@ -136,7 +147,7 @@ retry_curl() {
             echo "curl request exhausted its retry budget" >&2
             retry_curl_write_out \
                 "${write_out}" "${http_code}" "${effective_url}"
-            rm -rf "${temporary_directory}"
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}"
             return "${status}"
         fi
 
@@ -149,6 +160,16 @@ retry_curl() {
             delay="${max_delay}"
         fi
     done
+}
+
+retry_curl_cleanup() {
+    local temporary_directory="$1"
+    local headers_output="$2"
+
+    if [[ -n "${headers_output}" ]]; then
+        cp "${temporary_directory}/headers" "${headers_output}"
+    fi
+    rm -rf "${temporary_directory}"
 }
 
 retry_curl_write_out() {
