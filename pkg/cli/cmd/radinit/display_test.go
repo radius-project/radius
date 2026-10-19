@@ -18,6 +18,7 @@ package radinit
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -69,6 +70,9 @@ func Test_progressModel_Update_CtrlC(t *testing.T) {
 	require.IsType(t, tea.QuitMsg{}, cmd())
 }
 
+// testBicepConfigDirectory is built with filepath.Join because the views join config paths natively, so expectations hold on Windows.
+var testBicepConfigDirectory = filepath.Join("home", "user", "my-project")
+
 // renderedText strips styling and trailing padding from a rendered view so it can be compared as plain text.
 func renderedText(view tea.View) string {
 	lines := strings.Split(ansi.Strip(view.Content), "\n")
@@ -80,12 +84,12 @@ func renderedText(view tea.View) string {
 
 func Test_summaryModel_View_ConfigFiles(t *testing.T) {
 	t.Run("lists config files under the configuration heading", func(t *testing.T) {
-		model := newSummaryModel(initOptions{BicepConfigDirectory: "/home/user/my-project"})
+		model := newSummaryModel(initOptions{BicepConfigDirectory: testBicepConfigDirectory})
 
 		text := renderedText(model.View())
 
 		require.Contains(t, text, summaryConfigurationHeadingIcon+"Update local configuration\n"+
-			"   - /home/user/my-project/bicepconfig.json\n"+
+			"   - "+filepath.Join(testBicepConfigDirectory, "bicepconfig.json")+"\n"+
 			"\n(press enter to confirm or esc to restart)")
 	})
 
@@ -122,13 +126,13 @@ func Test_progressModel_View_ConfigFiles(t *testing.T) {
 	complete := progressMsg{InstallComplete: true, EnvironmentComplete: true, ConfigComplete: true}
 
 	t.Run("lists config files under the configuration heading", func(t *testing.T) {
-		model := newProgressModel(initOptions{BicepConfigDirectory: "/home/user/my-project"}).(*progressModel)
+		model := newProgressModel(initOptions{BicepConfigDirectory: testBicepConfigDirectory}).(*progressModel)
 		model.progress = complete
 
 		text := renderedText(model.View())
 
 		require.Contains(t, text, progressStepCompleteIcon+"Update local configuration\n"+
-			"   - /home/user/my-project/bicepconfig.json\n"+
+			"   - "+filepath.Join(testBicepConfigDirectory, "bicepconfig.json")+"\n"+
 			"\nInitialization complete!")
 	})
 
