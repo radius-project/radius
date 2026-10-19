@@ -122,6 +122,11 @@ jobs:
         # Version pinned in build/tools.yaml (HELM_VERSION).
         run: make install-helm
 
+      # Terraform recipe lifecycle tests run the real Terraform CLI.
+      - name: Install Terraform
+        # Version defaults to .terraform-version; checksums pinned in build/tools.yaml.
+        run: make install-terraform
+
       - name: Run cluster diagnostics tests
         # Ubuntu provides jq and GNU timeout; keep these optional for make test.
         run: make test-cluster-diagnostics
@@ -130,6 +135,8 @@ jobs:
         env:
           GOTESTSUM_OPTS: --junitfile ./dist/unit_test/results.xml
           GOTEST_OPTS: -race -coverprofile ./dist/unit_test/ut_coverage.out
+          # Fail instead of skipping tests that need the Terraform CLI.
+          RADIUS_REQUIRE_TERRAFORM_TESTS: "true"
         run: |
           mkdir -p ./dist/unit_test
           make test

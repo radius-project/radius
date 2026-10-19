@@ -615,40 +615,62 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout 
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime, nil)
 
-	if err := restoreRecipeInputs(ctx, tf, cfg, moduleName); err != nil {
+	restored, err := restoreRecipeInputs(ctx, tf, cfg, moduleName)
+	if err != nil {
 		return err
 	}
 
 	// Destroy Terraform configuration with state lock timeout
 	logger.Info("Running Terraform destroy with state lock timeout: " + stateLockTimeout)
 	if err := tf.Destroy(ctx, tfexec.Lock(true), tfexec.LockTimeout(stateLockTimeout)); err != nil {
+		if restored {
+			preserveRecipeInputs(ctx, tf, stateLockTimeout)
+		}
 		return fmt.Errorf("terraform destroy failure: %w", err)
 	}
 
 	return nil
 }
 
-func restoreRecipeInputs(ctx context.Context, tf *tfexec.Terraform, cfg *config.TerraformConfig, moduleName string) error {
+// preserveRecipeInputs writes the saved inputs back to state after a failed destroy.
+// Terraform removes root outputs during a destroy apply, even when it fails. Without this,
+// a retry has no saved inputs and fails validation on the redacted values.
+// This is best effort: the destroy error is the actionable failure.
+func preserveRecipeInputs(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout string) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info("Restoring saved Terraform recipe inputs in state after destroy failure")
+	err := tf.Apply(ctx, tfexec.RefreshOnly(true), tfexec.Lock(true), tfexec.LockTimeout(stateLockTimeout))
+	if err != nil {
+		logger.Error(err, "Failed to restore saved Terraform recipe inputs in state; a retry of the deletion may fail validation")
+	}
+}
+
+// restoreRecipeInputs fills redacted module inputs from the saved state output. It reports
+// whether saved inputs were found.
+func restoreRecipeInputs(ctx context.Context, tf *tfexec.Terraform, cfg *config.TerraformConfig, moduleName string) (bool, error) {
 	// Output -json exposes sensitive values. Keep them out of the Radius logs.
 	tf.SetStdout(io.Discard)
 	outputs, err := tf.Output(ctx)
 	tf.SetStdout(&tfLogWrapper{logger: ucplog.FromContextOrDiscard(ctx)})
 	if err != nil {
-		return fmt.Errorf("reading terraform recipe inputs for deletion: %w", err)
+		return false, fmt.Errorf("reading terraform recipe inputs for deletion: %w", err)
 	}
 	output, ok := outputs[config.RecipeInputsOutputName]
 	if !ok {
 		// Older state has no saved inputs. Preserve its existing deletion behavior.
-		return nil
+		return false, nil
 	}
 	var encoded string
 	if err := json.Unmarshal(output.Value, &encoded); err != nil {
-		return errors.New("invalid saved terraform recipe inputs: expected a string")
+		return false, errors.New("invalid saved terraform recipe inputs: expected a string")
 	}
 	if err := cfg.RestoreRecipeInputs(moduleName, encoded); err != nil {
-		return err
+		return false, err
 	}
-	return cfg.Save(ctx, tf.WorkingDir())
+	if err := cfg.Save(ctx, tf.WorkingDir()); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func initializeTerraform(ctx context.Context, tf *tfexec.Terraform) error {

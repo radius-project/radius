@@ -26,6 +26,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	reflect "reflect"
+	goruntime "runtime"
+	"strconv"
 	"testing"
 	"time"
 
@@ -275,24 +277,30 @@ func TestInitAndDestroyRestoresRecipeInputs(t *testing.T) {
 	require.NoError(t, saved.AddRecipeInputs("recipe"))
 	encoded := saved.Output[config.RecipeInputsOutputName].(map[string]any)["value"]
 
+	savedOutputs := map[string]any{
+		config.RecipeInputsOutputName: map[string]any{"value": encoded, "type": "string", "sensitive": true},
+	}
+
 	for _, tt := range []struct {
-		name       string
-		outputs    map[string]any
-		failOutput bool
-		wantError  string
-		restored   bool
+		name        string
+		outputs     map[string]any
+		failCommand string
+		wantError   string
+		restored    bool
+		noDestroy   bool
+		wantRefresh bool
 	}{
-		{name: "saved inputs", outputs: map[string]any{
-			config.RecipeInputsOutputName: map[string]any{"value": encoded, "type": "string", "sensitive": true},
-		}, restored: true},
+		{name: "saved inputs", outputs: savedOutputs, restored: true},
 		{name: "legacy state", outputs: map[string]any{}},
 		{name: "invalid output type", outputs: map[string]any{
 			config.RecipeInputsOutputName: map[string]any{"value": 42, "type": "number"},
-		}, wantError: "expected a string"},
+		}, wantError: "expected a string", noDestroy: true},
 		{name: "invalid saved inputs", outputs: map[string]any{
 			config.RecipeInputsOutputName: map[string]any{"value": base64.StdEncoding.EncodeToString([]byte("secret")), "type": "string"},
-		}, wantError: "expected a JSON object"},
-		{name: "output failure", outputs: map[string]any{}, failOutput: true, wantError: "reading terraform recipe inputs for deletion"},
+		}, wantError: "expected a JSON object", noDestroy: true},
+		{name: "output failure", outputs: map[string]any{}, failCommand: "output", wantError: "reading terraform recipe inputs for deletion", noDestroy: true},
+		{name: "destroy failure preserves saved inputs", outputs: savedOutputs, failCommand: "destroy", wantError: "terraform destroy failure", restored: true, wantRefresh: true},
+		{name: "destroy failure with legacy state", outputs: map[string]any{}, failCommand: "destroy", wantError: "terraform destroy failure"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			workingDir := t.TempDir()
@@ -320,8 +328,8 @@ func TestInitAndDestroyRestoresRecipeInputs(t *testing.T) {
 				terraformBackendSnapshots:      snapshotsPath,
 				"RADIUS_TERRAFORM_TEST_OUTPUT": string(outputs),
 			}
-			if tt.failOutput {
-				env["RADIUS_TERRAFORM_FAIL_COMMAND"] = "output"
+			if tt.failCommand != "" {
+				env["RADIUS_TERRAFORM_FAIL_COMMAND"] = tt.failCommand
 			}
 			require.NoError(t, tf.SetEnv(env))
 
@@ -337,8 +345,18 @@ func TestInitAndDestroyRestoresRecipeInputs(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			var destroyed bool
+			var destroyed, refreshed bool
 			for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
+				if snapshot.Command == "apply" {
+					require.Contains(t, snapshot.Args, "-refresh-only")
+					require.Contains(t, snapshot.Args, "-lock-timeout=37s")
+					var actual config.TerraformConfig
+					require.NoError(t, json.Unmarshal(snapshot.Config, &actual))
+					output := actual.Output[config.RecipeInputsOutputName].(map[string]any)
+					require.Equal(t, encoded, output["value"])
+					refreshed = true
+					continue
+				}
 				if snapshot.Command != "destroy" {
 					continue
 				}
@@ -353,7 +371,8 @@ func TestInitAndDestroyRestoresRecipeInputs(t *testing.T) {
 				}
 				require.Contains(t, snapshot.Args, "-lock-timeout=37s")
 			}
-			require.Equal(t, tt.wantError == "", destroyed)
+			require.Equal(t, !tt.noDestroy, destroyed)
+			require.Equal(t, tt.wantRefresh, refreshed)
 		})
 	}
 }
@@ -361,12 +380,26 @@ func TestInitAndDestroyRestoresRecipeInputs(t *testing.T) {
 func TestRecipeInputsTerraformLifecycle(t *testing.T) {
 	terraformPath, err := exec.LookPath("terraform")
 	if err != nil {
+		if os.Getenv("RADIUS_REQUIRE_TERRAFORM_TESTS") == "true" {
+			t.Fatal("Terraform is required but not installed")
+		}
 		t.Skip("Terraform is not installed")
 	}
 	workingDir := t.TempDir()
 	moduleDir := filepath.Join(workingDir, "module")
 	require.NoError(t, os.Mkdir(moduleDir, 0700))
-	require.NoError(t, os.WriteFile(filepath.Join(moduleDir, "main.tf"), []byte(`
+
+	// The destroy provisioner fails once, so the test can retry after a partial destroy failure.
+	marker := filepath.Join(t.TempDir(), "destroy-attempted")
+	interpreter := `["/bin/sh", "-c"]`
+	failOnce := fmt.Sprintf(`if [ -f %[1]q ]; then exit 0; fi; touch %[1]q; exit 1`, marker)
+	if goruntime.GOOS == "windows" {
+		interpreter = `["powershell", "-NoProfile", "-NonInteractive", "-Command"]`
+		failOnce = fmt.Sprintf(`if (Test-Path -LiteralPath '%[1]s') { exit 0 }; New-Item -ItemType File -Path '%[1]s' | Out-Null; exit 1`, marker)
+	}
+	writeModule := func(inputName string) {
+		t.Helper()
+		require.NoError(t, os.WriteFile(filepath.Join(moduleDir, "main.tf"), fmt.Appendf(nil, `
 variable "context" {
   type = any
   validation {
@@ -374,16 +407,25 @@ variable "context" {
     error_message = "A secret value is required."
   }
 }
+variable %q {
+  type = string
+}
 resource "terraform_data" "secret" {
   input = var.context.resource.properties.data.password.value
+  provisioner "local-exec" {
+    when        = destroy
+    interpreter = %s
+    command     = %s
+  }
 }
 output "result" {
   value = {}
 }
-`), 0600))
+`, inputName, interpreter, strconv.Quote(failOnce)), 0600))
+	}
 	tf, err := tfexec.NewTerraform(workingDir, terraformPath)
 	require.NoError(t, err)
-	newConfig := func(value any) *config.TerraformConfig {
+	newConfig := func(value any, inputName string) *config.TerraformConfig {
 		t.Helper()
 		cfg := &config.TerraformConfig{Module: map[string]config.TFModuleConfig{
 			"recipe": {
@@ -395,6 +437,7 @@ output "result" {
 						},
 					},
 				},
+				inputName: inputName + "-value",
 			},
 		}}
 		require.NoError(t, cfg.AddRecipeInputs("recipe"))
@@ -402,11 +445,12 @@ output "result" {
 		return cfg
 	}
 
-	newConfig(nil)
+	writeModule("removed_input")
+	newConfig(nil, "removed_input")
 	_, err = initAndApply(t.Context(), tf, "37s")
 	require.ErrorContains(t, err, "A secret value is required")
 
-	newConfig("previous-secret")
+	newConfig("previous-secret", "removed_input")
 	state, err := initAndApply(t.Context(), tf, "37s")
 	require.NoError(t, err)
 	require.NotContains(t, state.Values.Outputs, config.RecipeInputsOutputName)
@@ -414,12 +458,20 @@ output "result" {
 	require.NoError(t, err)
 	require.True(t, outputs[config.RecipeInputsOutputName].Sensitive)
 
-	redacted := newConfig(nil)
-	_, err = initAndApply(t.Context(), tf, "37s")
-	require.ErrorContains(t, err, "A secret value is required")
+	// A new module version removes one input and adds a required input. Deletion must use the
+	// current arguments and only fill the redacted secret from the saved inputs.
+	writeModule("added_input")
+	newConfig(nil, "added_input")
 	require.ErrorContains(t, tf.Destroy(t.Context()), "A secret value is required")
 
-	require.NoError(t, initAndDestroy(t.Context(), tf, "37s", redacted, "recipe"))
+	err = initAndDestroy(t.Context(), tf, "37s", newConfig(nil, "added_input"), "recipe")
+	require.ErrorContains(t, err, "terraform destroy failure")
+	require.FileExists(t, marker)
+	outputs, err = tf.Output(t.Context())
+	require.NoError(t, err)
+	require.Contains(t, outputs, config.RecipeInputsOutputName, "a failed destroy must keep the saved inputs for a retry")
+
+	require.NoError(t, initAndDestroy(t.Context(), tf, "37s", newConfig(nil, "added_input"), "recipe"))
 	state, err = tf.Show(t.Context())
 	require.NoError(t, err)
 	require.Nil(t, state.Values)
