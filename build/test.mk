@@ -61,6 +61,12 @@ test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-insta
 test-azure-oidc-login: ## Tests cloud CI token request retries and Azure login
 	@node --test ./.github/scripts/azure-oidc-login_test.mjs
 
+.PHONY: test-authorization-contracts
+test-authorization-contracts: ## Checks generated RBAC contracts, examples, and Applications RP separation.
+	@node --test typespec/Radius.Core/authorization/contracts.test.mjs
+
+test: test-authorization-contracts
+
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh
