@@ -64,6 +64,8 @@ data:
       podSecurityLevel: {{ $podSecurityLevel | quote }}
       controlPlaneNamespace: {{ .Release.Namespace | quote }}
       controlPlaneSecrets: {{ include "radius.authz.controlPlaneSecrets" . }}
+      certificateDirectory: {{ include "radius.authz.mtls.mountPath" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
     {{- end }}
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
