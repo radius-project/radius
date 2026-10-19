@@ -259,6 +259,12 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	for i := range opts.OutputResources {
 		outputResource := opts.OutputResources[i]
 
+		if outputResource.IsRadiusManaged() && deletingKeyVaultParent(outputResource.ID, opts.OutputResources) {
+			// ARM cannot delete secrets. The batch must still wait for the managed vault deletion to succeed.
+			logger.Info("Deleting Key Vault secret through its parent vault", "resourceID", outputResource.ID.String())
+			continue
+		}
+
 		// Create a goroutine that handles the deletion of one resource
 		g.Go(func() error {
 			id := outputResource.ID.String()
@@ -302,6 +308,24 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	}
 
 	return nil
+}
+
+func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResource) bool {
+	if !strings.EqualFold(id.Type(), "Microsoft.KeyVault/vaults/secrets") || len(id.ExtensionSegments()) != 0 {
+		return false
+	}
+	if id.IsUCPQualified() && !strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), "azure/") {
+		return false
+	}
+
+	parentID := id.Truncate().String()
+	for _, output := range outputResources {
+		if output.IsRadiusManaged() && strings.EqualFold(output.ID.String(), parentID) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (d *bicepDriver) resourceClientForDelete(ctx context.Context, opts driver.DeleteOptions) (processors.ResourceClient, error) {

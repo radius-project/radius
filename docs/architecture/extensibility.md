@@ -421,6 +421,12 @@ recipe output against the full registered schema;
 [pkg/dynamicrp/backend/processor/dynamicresource.go](../../pkg/dynamicrp/backend/processor/dynamicresource.go)
 contains a TODO noting that schema-driven output validation is bypassed.
 
+### Bicep Recipe Resource Deletion
+
+The Bicep driver deletes tracked recipe resources on resource deletion and removes obsolete resources after an update. For Azure Key Vault, ARM does not support direct deletion of `Microsoft.KeyVault/vaults/secrets`. When the same deletion batch contains both a secret and its Radius-managed parent vault, the driver deletes the vault instead of sending a separate secret DELETE. The batch waits for vault deletion to finish and reports a failure if vault deletion fails. Azure soft-delete retention still applies; this operation does not purge the vault or its secrets.
+
+This rule does not apply if the vault remains in the current recipe output, is unmanaged, or is absent from the deletion batch. It does not ignore HTTP 405 errors, change secret values, or transfer resource ownership. Removing a tracked secret while retaining its vault still uses the existing direct deletion path.
+
 ### Recipe Secret Outputs
 
 Recipe **secret** outputs (`RecipeOutput.Secrets`) are handled separately from
