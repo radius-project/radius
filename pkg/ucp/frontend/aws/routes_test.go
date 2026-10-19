@@ -42,6 +42,7 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/authorization/routetest"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
@@ -130,7 +131,9 @@ func Test_Routes(t *testing.T) {
 			return nil, err
 		}
 
-		return handler.(chi.Router), nil
+		router := handler.(chi.Router)
+		routetest.AssertMapped(t, router, pathBase)
+		return router, nil
 	})
 }
 

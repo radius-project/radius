@@ -1,0 +1,1115 @@
+{
+  "permissions": [
+    "Applications.Core/applications/connect/action",
+    "Applications.Core/applications/delete",
+    "Applications.Core/applications/getGraph/action",
+    "Applications.Core/applications/read",
+    "Applications.Core/applications/write",
+    "Applications.Core/containers/connect/action",
+    "Applications.Core/containers/delete",
+    "Applications.Core/containers/read",
+    "Applications.Core/containers/write",
+    "Applications.Core/environments/connect/action",
+    "Applications.Core/environments/delete",
+    "Applications.Core/environments/getMetadata/action",
+    "Applications.Core/environments/read",
+    "Applications.Core/environments/use/action",
+    "Applications.Core/environments/write",
+    "Applications.Core/extenders/connect/action",
+    "Applications.Core/extenders/delete",
+    "Applications.Core/extenders/listSecrets/action",
+    "Applications.Core/extenders/read",
+    "Applications.Core/extenders/write",
+    "Applications.Core/gateways/connect/action",
+    "Applications.Core/gateways/delete",
+    "Applications.Core/gateways/read",
+    "Applications.Core/gateways/write",
+    "Applications.Core/secretStores/connect/action",
+    "Applications.Core/secretStores/delete",
+    "Applications.Core/secretStores/listSecrets/action",
+    "Applications.Core/secretStores/read",
+    "Applications.Core/secretStores/write",
+    "Applications.Core/volumes/connect/action",
+    "Applications.Core/volumes/delete",
+    "Applications.Core/volumes/read",
+    "Applications.Core/volumes/write",
+    "Applications.Dapr/configurationStores/connect/action",
+    "Applications.Dapr/configurationStores/delete",
+    "Applications.Dapr/configurationStores/read",
+    "Applications.Dapr/configurationStores/write",
+    "Applications.Dapr/pubSubBrokers/connect/action",
+    "Applications.Dapr/pubSubBrokers/delete",
+    "Applications.Dapr/pubSubBrokers/read",
+    "Applications.Dapr/pubSubBrokers/write",
+    "Applications.Dapr/secretStores/connect/action",
+    "Applications.Dapr/secretStores/delete",
+    "Applications.Dapr/secretStores/read",
+    "Applications.Dapr/secretStores/write",
+    "Applications.Dapr/stateStores/connect/action",
+    "Applications.Dapr/stateStores/delete",
+    "Applications.Dapr/stateStores/read",
+    "Applications.Dapr/stateStores/write",
+    "Applications.Datastores/mongoDatabases/connect/action",
+    "Applications.Datastores/mongoDatabases/delete",
+    "Applications.Datastores/mongoDatabases/listSecrets/action",
+    "Applications.Datastores/mongoDatabases/read",
+    "Applications.Datastores/mongoDatabases/write",
+    "Applications.Datastores/redisCaches/connect/action",
+    "Applications.Datastores/redisCaches/delete",
+    "Applications.Datastores/redisCaches/listSecrets/action",
+    "Applications.Datastores/redisCaches/read",
+    "Applications.Datastores/redisCaches/write",
+    "Applications.Datastores/sqlDatabases/connect/action",
+    "Applications.Datastores/sqlDatabases/delete",
+    "Applications.Datastores/sqlDatabases/listSecrets/action",
+    "Applications.Datastores/sqlDatabases/read",
+    "Applications.Datastores/sqlDatabases/write",
+    "Applications.Messaging/rabbitMQQueues/connect/action",
+    "Applications.Messaging/rabbitMQQueues/delete",
+    "Applications.Messaging/rabbitMQQueues/listSecrets/action",
+    "Applications.Messaging/rabbitMQQueues/read",
+    "Applications.Messaging/rabbitMQQueues/write",
+    "Microsoft.Resources/deployments/delete",
+    "Microsoft.Resources/deployments/read",
+    "Microsoft.Resources/deployments/write",
+    "Radius.AI/models/connect/action",
+    "Radius.AI/models/delete",
+    "Radius.AI/models/read",
+    "Radius.AI/models/write",
+    "Radius.AI/search/connect/action",
+    "Radius.AI/search/delete",
+    "Radius.AI/search/read",
+    "Radius.AI/search/write",
+    "Radius.Compute/containerImages/connect/action",
+    "Radius.Compute/containerImages/delete",
+    "Radius.Compute/containerImages/read",
+    "Radius.Compute/containerImages/write",
+    "Radius.Compute/containers/connect/action",
+    "Radius.Compute/containers/delete",
+    "Radius.Compute/containers/read",
+    "Radius.Compute/containers/write",
+    "Radius.Compute/persistentVolumes/connect/action",
+    "Radius.Compute/persistentVolumes/delete",
+    "Radius.Compute/persistentVolumes/read",
+    "Radius.Compute/persistentVolumes/write",
+    "Radius.Compute/routes/connect/action",
+    "Radius.Compute/routes/delete",
+    "Radius.Compute/routes/read",
+    "Radius.Compute/routes/write",
+    "Radius.Core/accessChanges/read",
+    "Radius.Core/applications/connect/action",
+    "Radius.Core/applications/delete",
+    "Radius.Core/applications/getGraph/action",
+    "Radius.Core/applications/read",
+    "Radius.Core/applications/write",
+    "Radius.Core/authorizationSettings/read",
+    "Radius.Core/authorizationSettings/write",
+    "Radius.Core/bicepSettings/delete",
+    "Radius.Core/bicepSettings/read",
+    "Radius.Core/bicepSettings/write",
+    "Radius.Core/checkAccess/action",
+    "Radius.Core/effectiveAccess/read",
+    "Radius.Core/environments/delete",
+    "Radius.Core/environments/read",
+    "Radius.Core/environments/use/action",
+    "Radius.Core/environments/write",
+    "Radius.Core/explainAccess/action",
+    "Radius.Core/permissions/read",
+    "Radius.Core/recipePacks/delete",
+    "Radius.Core/recipePacks/read",
+    "Radius.Core/recipePacks/use/action",
+    "Radius.Core/recipePacks/write",
+    "Radius.Core/roleAssignments/delete",
+    "Radius.Core/roleAssignments/read",
+    "Radius.Core/roleAssignments/write",
+    "Radius.Core/roleDefinitions/delete",
+    "Radius.Core/roleDefinitions/read",
+    "Radius.Core/roleDefinitions/write",
+    "Radius.Core/terraformSettings/delete",
+    "Radius.Core/terraformSettings/read",
+    "Radius.Core/terraformSettings/write",
+    "Radius.Data/mongoDatabases/connect/action",
+    "Radius.Data/mongoDatabases/delete",
+    "Radius.Data/mongoDatabases/read",
+    "Radius.Data/mongoDatabases/write",
+    "Radius.Data/mySqlDatabases/connect/action",
+    "Radius.Data/mySqlDatabases/delete",
+    "Radius.Data/mySqlDatabases/read",
+    "Radius.Data/mySqlDatabases/write",
+    "Radius.Data/postgreSqlDatabases/connect/action",
+    "Radius.Data/postgreSqlDatabases/delete",
+    "Radius.Data/postgreSqlDatabases/read",
+    "Radius.Data/postgreSqlDatabases/write",
+    "Radius.Data/redisCaches/connect/action",
+    "Radius.Data/redisCaches/delete",
+    "Radius.Data/redisCaches/read",
+    "Radius.Data/redisCaches/write",
+    "Radius.Data/sqlServerDatabases/connect/action",
+    "Radius.Data/sqlServerDatabases/delete",
+    "Radius.Data/sqlServerDatabases/read",
+    "Radius.Data/sqlServerDatabases/write",
+    "Radius.Messaging/kafka/connect/action",
+    "Radius.Messaging/kafka/delete",
+    "Radius.Messaging/kafka/read",
+    "Radius.Messaging/kafka/write",
+    "Radius.Messaging/rabbitMQ/connect/action",
+    "Radius.Messaging/rabbitMQ/delete",
+    "Radius.Messaging/rabbitMQ/read",
+    "Radius.Messaging/rabbitMQ/write",
+    "Radius.Security/secrets/connect/action",
+    "Radius.Security/secrets/delete",
+    "Radius.Security/secrets/read",
+    "Radius.Security/secrets/write",
+    "Radius.Storage/objectStorage/connect/action",
+    "Radius.Storage/objectStorage/delete",
+    "Radius.Storage/objectStorage/read",
+    "Radius.Storage/objectStorage/write",
+    "System.AWS/credentials/delete",
+    "System.AWS/credentials/read",
+    "System.AWS/credentials/use/action",
+    "System.AWS/credentials/write",
+    "System.AWS/planes/delete",
+    "System.AWS/planes/read",
+    "System.AWS/planes/write",
+    "System.Azure/credentials/delete",
+    "System.Azure/credentials/read",
+    "System.Azure/credentials/use/action",
+    "System.Azure/credentials/write",
+    "System.Azure/planes/delete",
+    "System.Azure/planes/read",
+    "System.Azure/planes/write",
+    "System.Radius/planes/delete",
+    "System.Radius/planes/read",
+    "System.Radius/planes/write",
+    "System.Resources/planes/read",
+    "System.Resources/providers/read",
+    "System.Resources/resourceGroups/delete",
+    "System.Resources/resourceGroups/read",
+    "System.Resources/resourceGroups/write",
+    "System.Resources/resourceProviders/delete",
+    "System.Resources/resourceProviders/locations/delete",
+    "System.Resources/resourceProviders/locations/read",
+    "System.Resources/resourceProviders/locations/write",
+    "System.Resources/resourceProviders/read",
+    "System.Resources/resourceProviders/resourceTypes/apiVersions/delete",
+    "System.Resources/resourceProviders/resourceTypes/apiVersions/read",
+    "System.Resources/resourceProviders/resourceTypes/apiVersions/write",
+    "System.Resources/resourceProviders/resourceTypes/delete",
+    "System.Resources/resourceProviders/resourceTypes/joinPermissionSet/action",
+    "System.Resources/resourceProviders/resourceTypes/read",
+    "System.Resources/resourceProviders/resourceTypes/write",
+    "System.Resources/resourceProviders/write",
+    "System.Resources/resources/read"
+  ],
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/providers/Radius.Core/accessChanges",
+      "permission": "Radius.Core/accessChanges/read"
+    },
+    {
+      "method": "GET",
+      "path": "/providers/Radius.Core/accessChanges/{accessChangeName}",
+      "permission": "Radius.Core/accessChanges/read"
+    },
+    {
+      "method": "GET",
+      "path": "/providers/Radius.Core/authorizationSettings/default",
+      "permission": "Radius.Core/authorizationSettings/read"
+    },
+    {
+      "method": "PUT",
+      "path": "/providers/Radius.Core/authorizationSettings/default",
+      "permission": "Radius.Core/authorizationSettings/write"
+    },
+    {
+      "method": "POST",
+      "path": "/providers/Radius.Core/checkAccess",
+      "permission": "Radius.Core/checkAccess/action"
+    },
+    {
+      "method": "GET",
+      "path": "/providers/Radius.Core/effectiveAccess",
+      "permission": "Radius.Core/effectiveAccess/read"
+    },
+    {
+      "method": "POST",
+      "path": "/providers/Radius.Core/explainAccess",
+      "permission": "Radius.Core/explainAccess/action"
+    },
+    {
+      "method": "GET",
+      "path": "/providers/Radius.Core/permissions",
+      "permission": "Radius.Core/permissions/read"
+    },
+    {
+      "method": "GET",
+      "path": "/providers/Radius.Core/roleAssignments",
+      "permission": "Radius.Core/roleAssignments/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/providers/Radius.Core/roleAssignments/{roleAssignmentName}",
+      "permission": "Radius.Core/roleAssignments/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/providers/Radius.Core/roleAssignments/{roleAssignmentName}",
+      "permission": "Radius.Core/roleAssignments/read"
+    },
+    {
+      "method": "PUT",
+      "path": "/providers/Radius.Core/roleAssignments/{roleAssignmentName}",
+      "permission": "Radius.Core/roleAssignments/write"
+    },
+    {
+      "method": "GET",
+      "path": "/providers/Radius.Core/roleDefinitions",
+      "permission": "Radius.Core/roleDefinitions/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/providers/Radius.Core/roleDefinitions/{roleDefinitionName}",
+      "permission": "Radius.Core/roleDefinitions/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/providers/Radius.Core/roleDefinitions/{roleDefinitionName}",
+      "permission": "Radius.Core/roleDefinitions/read"
+    },
+    {
+      "method": "PUT",
+      "path": "/providers/Radius.Core/roleDefinitions/{roleDefinitionName}",
+      "permission": "Radius.Core/roleDefinitions/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/applications",
+      "permission": "Applications.Core/applications/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Core/applications/{applicationName}",
+      "permission": "Applications.Core/applications/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/applications/{applicationName}",
+      "permission": "Applications.Core/applications/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Core/applications/{applicationName}",
+      "permission": "Applications.Core/applications/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Core/applications/{applicationName}",
+      "permission": "Applications.Core/applications/write"
+    },
+    {
+      "method": "POST",
+      "path": "/{rootScope}/providers/Applications.Core/applications/{applicationName}/getGraph",
+      "permission": "Applications.Core/applications/getGraph/action"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/containers",
+      "permission": "Applications.Core/containers/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Core/containers/{containerName}",
+      "permission": "Applications.Core/containers/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/containers/{containerName}",
+      "permission": "Applications.Core/containers/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Core/containers/{containerName}",
+      "permission": "Applications.Core/containers/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Core/containers/{containerName}",
+      "permission": "Applications.Core/containers/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/environments",
+      "permission": "Applications.Core/environments/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Core/environments/{environmentName}",
+      "permission": "Applications.Core/environments/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/environments/{environmentName}",
+      "permission": "Applications.Core/environments/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Core/environments/{environmentName}",
+      "permission": "Applications.Core/environments/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Core/environments/{environmentName}",
+      "permission": "Applications.Core/environments/write"
+    },
+    {
+      "method": "POST",
+      "path": "/{rootScope}/providers/Applications.Core/environments/{environmentName}/getMetadata",
+      "permission": "Applications.Core/environments/getMetadata/action"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/extenders",
+      "permission": "Applications.Core/extenders/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Core/extenders/{extenderName}",
+      "permission": "Applications.Core/extenders/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/extenders/{extenderName}",
+      "permission": "Applications.Core/extenders/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Core/extenders/{extenderName}",
+      "permission": "Applications.Core/extenders/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Core/extenders/{extenderName}",
+      "permission": "Applications.Core/extenders/write"
+    },
+    {
+      "method": "POST",
+      "path": "/{rootScope}/providers/Applications.Core/extenders/{extenderName}/listSecrets",
+      "permission": "Applications.Core/extenders/listSecrets/action"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/gateways",
+      "permission": "Applications.Core/gateways/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}",
+      "permission": "Applications.Core/gateways/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}",
+      "permission": "Applications.Core/gateways/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}",
+      "permission": "Applications.Core/gateways/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}",
+      "permission": "Applications.Core/gateways/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/secretStores",
+      "permission": "Applications.Core/secretStores/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}",
+      "permission": "Applications.Core/secretStores/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}",
+      "permission": "Applications.Core/secretStores/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}",
+      "permission": "Applications.Core/secretStores/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}",
+      "permission": "Applications.Core/secretStores/write"
+    },
+    {
+      "method": "POST",
+      "path": "/{rootScope}/providers/Applications.Core/secretStores/{secretStoreName}/listSecrets",
+      "permission": "Applications.Core/secretStores/listSecrets/action"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/volumes",
+      "permission": "Applications.Core/volumes/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Core/volumes/{volumeName}",
+      "permission": "Applications.Core/volumes/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Core/volumes/{volumeName}",
+      "permission": "Applications.Core/volumes/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Core/volumes/{volumeName}",
+      "permission": "Applications.Core/volumes/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Core/volumes/{volumeName}",
+      "permission": "Applications.Core/volumes/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Dapr/configurationStores",
+      "permission": "Applications.Dapr/configurationStores/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Dapr/configurationStores/{configurationStoreName}",
+      "permission": "Applications.Dapr/configurationStores/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Dapr/configurationStores/{configurationStoreName}",
+      "permission": "Applications.Dapr/configurationStores/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Dapr/configurationStores/{configurationStoreName}",
+      "permission": "Applications.Dapr/configurationStores/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Dapr/configurationStores/{configurationStoreName}",
+      "permission": "Applications.Dapr/configurationStores/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Dapr/pubSubBrokers",
+      "permission": "Applications.Dapr/pubSubBrokers/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Dapr/pubSubBrokers/{pubSubBrokerName}",
+      "permission": "Applications.Dapr/pubSubBrokers/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Dapr/pubSubBrokers/{pubSubBrokerName}",
+      "permission": "Applications.Dapr/pubSubBrokers/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Dapr/pubSubBrokers/{pubSubBrokerName}",
+      "permission": "Applications.Dapr/pubSubBrokers/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Dapr/pubSubBrokers/{pubSubBrokerName}",
+      "permission": "Applications.Dapr/pubSubBrokers/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Dapr/secretStores",
+      "permission": "Applications.Dapr/secretStores/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Dapr/secretStores/{secretStoreName}",
+      "permission": "Applications.Dapr/secretStores/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Dapr/secretStores/{secretStoreName}",
+      "permission": "Applications.Dapr/secretStores/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Dapr/secretStores/{secretStoreName}",
+      "permission": "Applications.Dapr/secretStores/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Dapr/secretStores/{secretStoreName}",
+      "permission": "Applications.Dapr/secretStores/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Dapr/stateStores",
+      "permission": "Applications.Dapr/stateStores/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Dapr/stateStores/{stateStoreName}",
+      "permission": "Applications.Dapr/stateStores/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Dapr/stateStores/{stateStoreName}",
+      "permission": "Applications.Dapr/stateStores/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Dapr/stateStores/{stateStoreName}",
+      "permission": "Applications.Dapr/stateStores/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Dapr/stateStores/{stateStoreName}",
+      "permission": "Applications.Dapr/stateStores/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Datastores/mongoDatabases",
+      "permission": "Applications.Datastores/mongoDatabases/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}",
+      "permission": "Applications.Datastores/mongoDatabases/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}",
+      "permission": "Applications.Datastores/mongoDatabases/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}",
+      "permission": "Applications.Datastores/mongoDatabases/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}",
+      "permission": "Applications.Datastores/mongoDatabases/write"
+    },
+    {
+      "method": "POST",
+      "path": "/{rootScope}/providers/Applications.Datastores/mongoDatabases/{mongoDatabaseName}/listSecrets",
+      "permission": "Applications.Datastores/mongoDatabases/listSecrets/action"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Datastores/redisCaches",
+      "permission": "Applications.Datastores/redisCaches/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}",
+      "permission": "Applications.Datastores/redisCaches/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}",
+      "permission": "Applications.Datastores/redisCaches/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}",
+      "permission": "Applications.Datastores/redisCaches/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}",
+      "permission": "Applications.Datastores/redisCaches/write"
+    },
+    {
+      "method": "POST",
+      "path": "/{rootScope}/providers/Applications.Datastores/redisCaches/{redisCacheName}/listSecrets",
+      "permission": "Applications.Datastores/redisCaches/listSecrets/action"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Datastores/sqlDatabases",
+      "permission": "Applications.Datastores/sqlDatabases/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}",
+      "permission": "Applications.Datastores/sqlDatabases/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}",
+      "permission": "Applications.Datastores/sqlDatabases/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}",
+      "permission": "Applications.Datastores/sqlDatabases/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}",
+      "permission": "Applications.Datastores/sqlDatabases/write"
+    },
+    {
+      "method": "POST",
+      "path": "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}/listSecrets",
+      "permission": "Applications.Datastores/sqlDatabases/listSecrets/action"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues",
+      "permission": "Applications.Messaging/rabbitMQQueues/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}",
+      "permission": "Applications.Messaging/rabbitMQQueues/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}",
+      "permission": "Applications.Messaging/rabbitMQQueues/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}",
+      "permission": "Applications.Messaging/rabbitMQQueues/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}",
+      "permission": "Applications.Messaging/rabbitMQQueues/write"
+    },
+    {
+      "method": "POST",
+      "path": "/{rootScope}/providers/Applications.Messaging/rabbitMQQueues/{rabbitMQQueueName}/listSecrets",
+      "permission": "Applications.Messaging/rabbitMQQueues/listSecrets/action"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Radius.Core/applications",
+      "permission": "Radius.Core/applications/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Radius.Core/applications/{applicationName}",
+      "permission": "Radius.Core/applications/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Radius.Core/applications/{applicationName}",
+      "permission": "Radius.Core/applications/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Radius.Core/applications/{applicationName}",
+      "permission": "Radius.Core/applications/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Radius.Core/applications/{applicationName}",
+      "permission": "Radius.Core/applications/write"
+    },
+    {
+      "method": "POST",
+      "path": "/{rootScope}/providers/Radius.Core/applications/{applicationName}/getGraph",
+      "permission": "Radius.Core/applications/getGraph/action"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Radius.Core/bicepSettings",
+      "permission": "Radius.Core/bicepSettings/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingsName}",
+      "permission": "Radius.Core/bicepSettings/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingsName}",
+      "permission": "Radius.Core/bicepSettings/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingsName}",
+      "permission": "Radius.Core/bicepSettings/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingsName}",
+      "permission": "Radius.Core/bicepSettings/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Radius.Core/environments",
+      "permission": "Radius.Core/environments/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Radius.Core/environments/{environmentName}",
+      "permission": "Radius.Core/environments/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Radius.Core/environments/{environmentName}",
+      "permission": "Radius.Core/environments/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Radius.Core/environments/{environmentName}",
+      "permission": "Radius.Core/environments/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Radius.Core/environments/{environmentName}",
+      "permission": "Radius.Core/environments/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Radius.Core/recipePacks",
+      "permission": "Radius.Core/recipePacks/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Radius.Core/recipePacks/{recipePackName}",
+      "permission": "Radius.Core/recipePacks/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Radius.Core/recipePacks/{recipePackName}",
+      "permission": "Radius.Core/recipePacks/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Radius.Core/recipePacks/{recipePackName}",
+      "permission": "Radius.Core/recipePacks/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Radius.Core/recipePacks/{recipePackName}",
+      "permission": "Radius.Core/recipePacks/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Radius.Core/terraformSettings",
+      "permission": "Radius.Core/terraformSettings/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingsName}",
+      "permission": "Radius.Core/terraformSettings/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingsName}",
+      "permission": "Radius.Core/terraformSettings/read"
+    },
+    {
+      "method": "PATCH",
+      "path": "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingsName}",
+      "permission": "Radius.Core/terraformSettings/write"
+    },
+    {
+      "method": "PUT",
+      "path": "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingsName}",
+      "permission": "Radius.Core/terraformSettings/write"
+    },
+    {
+      "method": "POST",
+      "path": "/{scope}/providers/Radius.Core/checkAccess",
+      "permission": "Radius.Core/checkAccess/action"
+    },
+    {
+      "method": "GET",
+      "path": "/{scope}/providers/Radius.Core/effectiveAccess",
+      "permission": "Radius.Core/effectiveAccess/read"
+    },
+    {
+      "method": "POST",
+      "path": "/{scope}/providers/Radius.Core/explainAccess",
+      "permission": "Radius.Core/explainAccess/action"
+    },
+    {
+      "method": "GET",
+      "path": "/{scope}/providers/Radius.Core/roleAssignments",
+      "permission": "Radius.Core/roleAssignments/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{scope}/providers/Radius.Core/roleAssignments/{roleAssignmentName}",
+      "permission": "Radius.Core/roleAssignments/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{scope}/providers/Radius.Core/roleAssignments/{roleAssignmentName}",
+      "permission": "Radius.Core/roleAssignments/read"
+    },
+    {
+      "method": "PUT",
+      "path": "/{scope}/providers/Radius.Core/roleAssignments/{roleAssignmentName}",
+      "permission": "Radius.Core/roleAssignments/write"
+    },
+    {
+      "method": "GET",
+      "path": "/{scope}/providers/Radius.Core/roleDefinitions",
+      "permission": "Radius.Core/roleDefinitions/read"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{scope}/providers/Radius.Core/roleDefinitions/{roleDefinitionName}",
+      "permission": "Radius.Core/roleDefinitions/delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{scope}/providers/Radius.Core/roleDefinitions/{roleDefinitionName}",
+      "permission": "Radius.Core/roleDefinitions/read"
+    },
+    {
+      "method": "PUT",
+      "path": "/{scope}/providers/Radius.Core/roleDefinitions/{roleDefinitionName}",
+      "permission": "Radius.Core/roleDefinitions/write"
+    }
+  ],
+  "roles": {
+    "access-administrator": [
+      "Radius.Core/checkAccess/action",
+      "Radius.Core/effectiveAccess/read",
+      "Radius.Core/explainAccess/action",
+      "Radius.Core/permissions/read",
+      "Radius.Core/roleAssignments/delete",
+      "Radius.Core/roleAssignments/read",
+      "Radius.Core/roleAssignments/write",
+      "Radius.Core/roleDefinitions/delete",
+      "Radius.Core/roleDefinitions/read",
+      "Radius.Core/roleDefinitions/write",
+      "System.Resources/resourceGroups/read"
+    ],
+    "application-developer": [
+      "Applications.Core/applications/connect/action",
+      "Applications.Core/applications/delete",
+      "Applications.Core/applications/read",
+      "Applications.Core/applications/write",
+      "Applications.Core/containers/connect/action",
+      "Applications.Core/containers/delete",
+      "Applications.Core/containers/read",
+      "Applications.Core/containers/write",
+      "Applications.Core/extenders/connect/action",
+      "Applications.Core/extenders/delete",
+      "Applications.Core/extenders/read",
+      "Applications.Core/extenders/write",
+      "Applications.Core/gateways/connect/action",
+      "Applications.Core/gateways/delete",
+      "Applications.Core/gateways/read",
+      "Applications.Core/gateways/write",
+      "Applications.Core/secretStores/connect/action",
+      "Applications.Core/secretStores/delete",
+      "Applications.Core/secretStores/read",
+      "Applications.Core/secretStores/write",
+      "Applications.Core/volumes/connect/action",
+      "Applications.Core/volumes/delete",
+      "Applications.Core/volumes/read",
+      "Applications.Core/volumes/write",
+      "Applications.Dapr/configurationStores/connect/action",
+      "Applications.Dapr/configurationStores/delete",
+      "Applications.Dapr/configurationStores/read",
+      "Applications.Dapr/configurationStores/write",
+      "Applications.Dapr/pubSubBrokers/connect/action",
+      "Applications.Dapr/pubSubBrokers/delete",
+      "Applications.Dapr/pubSubBrokers/read",
+      "Applications.Dapr/pubSubBrokers/write",
+      "Applications.Dapr/secretStores/connect/action",
+      "Applications.Dapr/secretStores/delete",
+      "Applications.Dapr/secretStores/read",
+      "Applications.Dapr/secretStores/write",
+      "Applications.Dapr/stateStores/connect/action",
+      "Applications.Dapr/stateStores/delete",
+      "Applications.Dapr/stateStores/read",
+      "Applications.Dapr/stateStores/write",
+      "Applications.Datastores/mongoDatabases/connect/action",
+      "Applications.Datastores/mongoDatabases/delete",
+      "Applications.Datastores/mongoDatabases/read",
+      "Applications.Datastores/mongoDatabases/write",
+      "Applications.Datastores/redisCaches/connect/action",
+      "Applications.Datastores/redisCaches/delete",
+      "Applications.Datastores/redisCaches/read",
+      "Applications.Datastores/redisCaches/write",
+      "Applications.Datastores/sqlDatabases/connect/action",
+      "Applications.Datastores/sqlDatabases/delete",
+      "Applications.Datastores/sqlDatabases/read",
+      "Applications.Datastores/sqlDatabases/write",
+      "Applications.Messaging/rabbitMQQueues/connect/action",
+      "Applications.Messaging/rabbitMQQueues/delete",
+      "Applications.Messaging/rabbitMQQueues/read",
+      "Applications.Messaging/rabbitMQQueues/write",
+      "Microsoft.Resources/deployments/delete",
+      "Microsoft.Resources/deployments/read",
+      "Microsoft.Resources/deployments/write",
+      "Radius.Compute/containerImages/connect/action",
+      "Radius.Compute/containerImages/delete",
+      "Radius.Compute/containerImages/read",
+      "Radius.Compute/containerImages/write",
+      "Radius.Compute/containers/connect/action",
+      "Radius.Compute/containers/delete",
+      "Radius.Compute/containers/read",
+      "Radius.Compute/containers/write",
+      "Radius.Compute/persistentVolumes/connect/action",
+      "Radius.Compute/persistentVolumes/delete",
+      "Radius.Compute/persistentVolumes/read",
+      "Radius.Compute/persistentVolumes/write",
+      "Radius.Compute/routes/connect/action",
+      "Radius.Compute/routes/delete",
+      "Radius.Compute/routes/read",
+      "Radius.Compute/routes/write",
+      "Radius.Core/applications/connect/action",
+      "Radius.Core/applications/delete",
+      "Radius.Core/applications/read",
+      "Radius.Core/applications/write",
+      "Radius.Data/mongoDatabases/connect/action",
+      "Radius.Data/mongoDatabases/delete",
+      "Radius.Data/mongoDatabases/read",
+      "Radius.Data/mongoDatabases/write",
+      "Radius.Data/mySqlDatabases/connect/action",
+      "Radius.Data/mySqlDatabases/delete",
+      "Radius.Data/mySqlDatabases/read",
+      "Radius.Data/mySqlDatabases/write",
+      "Radius.Data/postgreSqlDatabases/connect/action",
+      "Radius.Data/postgreSqlDatabases/delete",
+      "Radius.Data/postgreSqlDatabases/read",
+      "Radius.Data/postgreSqlDatabases/write",
+      "Radius.Data/redisCaches/connect/action",
+      "Radius.Data/redisCaches/delete",
+      "Radius.Data/redisCaches/read",
+      "Radius.Data/redisCaches/write",
+      "Radius.Data/sqlServerDatabases/connect/action",
+      "Radius.Data/sqlServerDatabases/delete",
+      "Radius.Data/sqlServerDatabases/read",
+      "Radius.Data/sqlServerDatabases/write",
+      "Radius.Security/secrets/connect/action",
+      "Radius.Security/secrets/delete",
+      "Radius.Security/secrets/read",
+      "Radius.Security/secrets/write"
+    ],
+    "auditor": [
+      "Radius.Core/accessChanges/read",
+      "Radius.Core/authorizationSettings/read",
+      "Radius.Core/checkAccess/action",
+      "Radius.Core/effectiveAccess/read",
+      "Radius.Core/explainAccess/action",
+      "Radius.Core/permissions/read",
+      "Radius.Core/roleAssignments/read",
+      "Radius.Core/roleDefinitions/read"
+    ],
+    "environment-deployer": [
+      "Applications.Core/environments/read",
+      "Applications.Core/environments/use/action",
+      "Radius.Core/environments/read",
+      "Radius.Core/environments/use/action"
+    ],
+    "platform-administrator": [
+      "Applications.Core/environments/delete",
+      "Applications.Core/environments/read",
+      "Applications.Core/environments/use/action",
+      "Applications.Core/environments/write",
+      "Microsoft.Resources/deployments/delete",
+      "Microsoft.Resources/deployments/read",
+      "Microsoft.Resources/deployments/write",
+      "Radius.Core/environments/delete",
+      "Radius.Core/environments/read",
+      "Radius.Core/environments/use/action",
+      "Radius.Core/environments/write",
+      "Radius.Core/recipePacks/read",
+      "Radius.Core/recipePacks/use/action",
+      "System.AWS/credentials/use/action",
+      "System.Azure/credentials/use/action",
+      "System.Resources/resourceGroups/delete",
+      "System.Resources/resourceGroups/read",
+      "System.Resources/resourceGroups/write"
+    ],
+    "reader": [
+      "Applications.Core/applications/getGraph/action",
+      "Applications.Core/applications/read",
+      "Applications.Core/containers/read",
+      "Applications.Core/environments/getMetadata/action",
+      "Applications.Core/environments/read",
+      "Applications.Core/extenders/read",
+      "Applications.Core/gateways/read",
+      "Applications.Core/secretStores/read",
+      "Applications.Core/volumes/read",
+      "Applications.Dapr/configurationStores/read",
+      "Applications.Dapr/pubSubBrokers/read",
+      "Applications.Dapr/secretStores/read",
+      "Applications.Dapr/stateStores/read",
+      "Applications.Datastores/mongoDatabases/read",
+      "Applications.Datastores/redisCaches/read",
+      "Applications.Datastores/sqlDatabases/read",
+      "Applications.Messaging/rabbitMQQueues/read",
+      "Microsoft.Resources/deployments/read",
+      "Radius.AI/models/read",
+      "Radius.AI/search/read",
+      "Radius.Compute/containerImages/read",
+      "Radius.Compute/containers/read",
+      "Radius.Compute/persistentVolumes/read",
+      "Radius.Compute/routes/read",
+      "Radius.Core/applications/getGraph/action",
+      "Radius.Core/applications/read",
+      "Radius.Core/bicepSettings/read",
+      "Radius.Core/environments/read",
+      "Radius.Core/recipePacks/read",
+      "Radius.Core/terraformSettings/read",
+      "Radius.Data/mongoDatabases/read",
+      "Radius.Data/mySqlDatabases/read",
+      "Radius.Data/postgreSqlDatabases/read",
+      "Radius.Data/redisCaches/read",
+      "Radius.Data/sqlServerDatabases/read",
+      "Radius.Messaging/kafka/read",
+      "Radius.Messaging/rabbitMQ/read",
+      "Radius.Security/secrets/read",
+      "Radius.Storage/objectStorage/read",
+      "System.AWS/planes/read",
+      "System.Azure/planes/read",
+      "System.Radius/planes/read",
+      "System.Resources/planes/read",
+      "System.Resources/providers/read",
+      "System.Resources/resourceGroups/read",
+      "System.Resources/resourceProviders/locations/read",
+      "System.Resources/resourceProviders/read",
+      "System.Resources/resourceProviders/resourceTypes/apiVersions/read",
+      "System.Resources/resourceProviders/resourceTypes/read",
+      "System.Resources/resources/read"
+    ],
+    "recipe-pack-administrator": [
+      "Radius.Core/recipePacks/delete",
+      "Radius.Core/recipePacks/read",
+      "Radius.Core/recipePacks/use/action",
+      "Radius.Core/recipePacks/write"
+    ],
+    "resource-type-administrator": [
+      "System.Resources/resourceProviders/delete",
+      "System.Resources/resourceProviders/locations/delete",
+      "System.Resources/resourceProviders/locations/read",
+      "System.Resources/resourceProviders/locations/write",
+      "System.Resources/resourceProviders/read",
+      "System.Resources/resourceProviders/resourceTypes/apiVersions/delete",
+      "System.Resources/resourceProviders/resourceTypes/apiVersions/read",
+      "System.Resources/resourceProviders/resourceTypes/apiVersions/write",
+      "System.Resources/resourceProviders/resourceTypes/delete",
+      "System.Resources/resourceProviders/resourceTypes/joinPermissionSet/action",
+      "System.Resources/resourceProviders/resourceTypes/read",
+      "System.Resources/resourceProviders/resourceTypes/write",
+      "System.Resources/resourceProviders/write"
+    ]
+  }
+}
