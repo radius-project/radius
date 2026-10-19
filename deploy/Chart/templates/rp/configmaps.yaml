@@ -56,11 +56,7 @@ data:
       level: "info"
       json: true
 
-    {{- $authzMode := include "radius.authz.mode" . }}
-    {{- if ne $authzMode "off" }}
-    authorization:
-      mode: {{ $authzMode | quote }}
-    {{- end }}
+    {{- with include "radius.authz.serverConfig" . | trim }}{{ . | nindent 4 }}{{- end }}
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
       enabled: true
