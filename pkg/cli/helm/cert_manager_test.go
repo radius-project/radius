@@ -212,7 +212,7 @@ func Test_ensureCertManager(t *testing.T) {
 			})
 		m.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil)
 	}
-	wantValues := map[string]any{"crds": map[string]any{"enabled": true}}
+	wantValues := map[string]any{"crds": map[string]any{"enabled": true, "keep": false}}
 
 	tests := []struct {
 		name         string

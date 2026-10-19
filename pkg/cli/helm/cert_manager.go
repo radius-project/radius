@@ -272,6 +272,11 @@ func (i *Impl) isRadOwnedCertManager(options ChartOptions, kubeContext string) (
 	return true, nil
 }
 
+// CertManagerInstalledByRad reports whether the default cert-manager release exists and rad installed it.
+func (i *Impl) CertManagerInstalledByRad(kubeContext string) (bool, error) {
+	return i.isRadOwnedCertManager(NewDefaultClusterOptions().CertManager.ChartOptions, kubeContext)
+}
+
 // uninstallCertManager removes cert-manager only when rad installed it.
 func (i *Impl) uninstallCertManager(options ClusterOptions, kubeContext string) error {
 	chartOptions := options.CertManager.ChartOptions
@@ -282,6 +287,8 @@ func (i *Impl) uninstallCertManager(options ClusterOptions, kubeContext string) 
 	return i.uninstallHelmRelease("cert-manager", chartOptions.ReleaseName, chartOptions.Namespace, kubeContext)
 }
 
+// buildCertManagerValues installs the CRDs with the release and removes them on uninstall, so a later
+// install does not find CRDs without a controller.
 func buildCertManagerValues() map[string]any {
-	return map[string]any{"crds": map[string]any{"enabled": true}}
+	return map[string]any{"crds": map[string]any{"enabled": true, "keep": false}}
 }
