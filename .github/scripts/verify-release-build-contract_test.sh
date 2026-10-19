@@ -119,6 +119,9 @@ main() {
         '(.jobs."finalize-release".steps[] | select(.run == "make recheck-release-publication")).if = "false"' \
         '.jobs."finalize-release".steps |= map(select(.name != "Recheck outputs after approval"))' \
         '.jobs."finalize-release".steps |= reverse' \
+        '.jobs."finalize-release".steps |= map(select(.name != "Promote stable aliases"))' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote stable aliases")).if = "false"' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote stable aliases"))."continue-on-error" = true' \
         '.jobs."finalize-release".steps |= map(select(.name != "Promote verified Bicep aliases"))' \
         '(.jobs."finalize-release".steps[] | select(.name == "Promote verified Bicep aliases")).if = "false"' \
         '(.jobs."finalize-release".steps[] | select(.name == "Promote verified Bicep aliases"))."continue-on-error" = true' \

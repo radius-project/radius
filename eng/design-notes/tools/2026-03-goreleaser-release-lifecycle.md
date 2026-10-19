@@ -659,7 +659,7 @@ For troubleshooting, maintainers should be able to answer these questions quickl
 
 ## Development plan
 
-The work should be delivered in phases. A per-PR sequencing of these phases, including the decided Conventional Commits and version-policy details.
+The work should be delivered in phases.
 
 ### Phase 1: Capture compatibility and add snapshot validation
 

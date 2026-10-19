@@ -77,6 +77,12 @@ verify_publication_gate() {
         def required_step($name):
             [.steps[] | select(.name == $name)] as $steps |
             ($steps | length) == 1 and ($steps[0] | mandatory);
+        def promotion_step($name; check):
+            [.steps[] | select(.name == $name)] as $steps |
+            ($steps | length) == 1 and ($steps[0] |
+                (.if | normalized) == ($promotion | normalized) and
+                (."continue-on-error" == null or ."continue-on-error" == false) and
+                check);
         .jobs as $jobs |
         $jobs."verify-release" as $verify |
         $jobs."approve-publication" as $approve |
@@ -117,20 +123,17 @@ verify_publication_gate() {
             ($steps | index("Select release aliases")) and
         ($steps | index("Select release aliases")) <
             ($steps | index("Persist the verified release manifest")) and
-        ($steps | index("Promote stable aliases")) != null and
         ($steps | index("Persist the verified release manifest")) <
             ($steps | index("Promote stable aliases")) and
         ($steps | index("Promote stable aliases")) <
             ($steps | index("Promote verified Bicep aliases")) and
         ($steps | index("Promote verified Bicep aliases")) <
             ($steps | index("Publish and verify draft GitHub Release")) and
-        ([$finalize.steps[] |
-            select(.name == "Promote verified Bicep aliases")] |
-            length == 1 and all(.[];
-                (.if | normalized) == ($promotion | normalized) and
-                (."continue-on-error" == null or ."continue-on-error" == false) and
-                .env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json" and
-                (.with.script | contains("promote-bicep-types.mjs")))) and
+        ($finalize | promotion_step("Promote stable aliases";
+            .run | contains("make promote-release-aliases"))) and
+        ($finalize | promotion_step("Promote verified Bicep aliases";
+            .env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json" and
+            (.with.script | contains("promote-bicep-types.mjs")))) and
         ($finalize.steps | any(
             .name == "Recheck outputs after approval" and
             .run == "make recheck-release-publication")) and
