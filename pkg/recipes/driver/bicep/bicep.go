@@ -261,7 +261,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 
 		if outputResource.IsRadiusManaged() && deletingKeyVaultParent(outputResource.ID, opts.OutputResources) {
 			// ARM cannot delete secrets. The batch must still wait for the managed vault deletion to succeed.
-			logger.Info("Deleting Key Vault secret through its parent vault", "resourceID", outputResource.ID.String())
+			logger.Info("Skipping direct Key Vault secret deletion; the managed parent vault is in the deletion batch", "resourceID", outputResource.ID.String())
 			continue
 		}
 
@@ -318,14 +318,26 @@ func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResour
 		return false
 	}
 
-	parentID := id.Truncate().String()
+	parentID := azureResourcePath(id.Truncate())
 	for _, output := range outputResources {
-		if output.IsRadiusManaged() && strings.EqualFold(output.ID.String(), parentID) {
+		if output.IsRadiusManaged() && strings.EqualFold(azureResourcePath(output.ID), parentID) {
 			return true
 		}
 	}
 
 	return false
+}
+
+func azureResourcePath(id resources.ID) string {
+	if !id.IsUCPQualified() {
+		return id.String()
+	}
+	if !strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), "azure/") {
+		return ""
+	}
+
+	// Match the ARM path used by resourceClient.deleteAzureResource, not an unrelated plane's path.
+	return resources.MakeRelativeID(id.ScopeSegments()[1:], id.TypeSegments(), id.ExtensionSegments())
 }
 
 func (d *bicepDriver) resourceClientForDelete(ctx context.Context, opts driver.DeleteOptions) (processors.ResourceClient, error) {

@@ -50,6 +50,47 @@ func Test_Bicep_Delete_KeyVaultSecrets(t *testing.T) {
 			managedVault: new(true), cascade: true,
 		},
 		{
+			name:    "Azure qualified secret and plain ARM vault",
+			vaultID: vaultID, childID: "/planes/azure/local" + vaultID + "/secrets/password",
+			managedVault: new(true), cascade: true,
+		},
+		{
+			name:    "plain ARM secret and Azure qualified vault",
+			vaultID: "/planes/azure/local" + vaultID, childID: vaultID + "/secrets/password",
+			managedVault: new(true), cascade: true,
+		},
+		{
+			name:    "mixed qualification still requires managed vault",
+			vaultID: "/planes/azure/local" + vaultID, childID: vaultID + "/secrets/password",
+			managedVault: new(false),
+		},
+		{
+			name:    "mixed qualification keeps subscription scope",
+			vaultID: "/planes/azure/local" + strings.Replace(vaultID, "test-sub", "other-sub", 1),
+			childID: vaultID + "/secrets/password", managedVault: new(true),
+		},
+		{
+			name:         "mixed qualification keeps resource group scope",
+			vaultID:      vaultID,
+			childID:      "/planes/azure/local" + strings.Replace(vaultID, "test-rg", "other-rg", 1) + "/secrets/password",
+			managedVault: new(true),
+		},
+		{
+			name:    "plain ARM secret cannot use unrelated plane vault",
+			vaultID: "/planes/radius/local" + vaultID, childID: vaultID + "/secrets/password",
+			managedVault: new(true),
+		},
+		{
+			name:    "Azure qualified secret cannot use unrelated plane vault",
+			vaultID: "/planes/radius/local" + vaultID, childID: "/planes/azure/local" + vaultID + "/secrets/password",
+			managedVault: new(true),
+		},
+		{
+			name:    "unrelated plane secret cannot use plain ARM vault",
+			vaultID: vaultID, childID: "/planes/radius/local" + vaultID + "/secrets/password",
+			managedVault: new(true),
+		},
+		{
 			name:    "Azure ID matching is case insensitive",
 			vaultID: strings.ToUpper(vaultID), childID: vaultID + "/secrets/password",
 			managedVault: new(true), cascade: true,
