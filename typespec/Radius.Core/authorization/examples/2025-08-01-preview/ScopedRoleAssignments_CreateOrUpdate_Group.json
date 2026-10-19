@@ -3,7 +3,7 @@
   "operationId": "ScopedRoleAssignments_CreateOrUpdate",
   "parameters": {
     "api-version": "2025-08-01-preview",
-    "scope": "/planes/radius/local/resourceGroups/team-a",
+    "scope": "planes/radius/local/resourceGroups/team-a",
     "roleAssignmentName": "team-a-application-developer",
     "resource": {
       "properties": {
@@ -19,6 +19,28 @@
     }
   },
   "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/team-a/providers/Radius.Core/roleAssignments/team-a-application-developer",
+        "name": "team-a-application-developer",
+        "type": "Radius.Core/roleAssignments",
+        "properties": {
+          "roleDefinitionId": "/providers/Radius.Core/roleDefinitions/application-developer",
+          "principal": {
+            "type": "group",
+            "issuer": "kubernetes:6c1e9a8e-1c21-4774-a261-d760b21ad530",
+            "subject": "team-a-devs",
+            "displayName": "Team A developers"
+          },
+          "description": "Team A owns this resource group.",
+          "scope": "/planes/radius/local/resourceGroups/team-a",
+          "managedBy": {
+            "kind": "Imperative"
+          },
+          "createdBy": "user:kubernetes:6c1e9a8e-1c21-4774-a261-d760b21ad530:alice"
+        }
+      }
+    },
     "201": {
       "body": {
         "id": "/planes/radius/local/resourceGroups/team-a/providers/Radius.Core/roleAssignments/team-a-application-developer",

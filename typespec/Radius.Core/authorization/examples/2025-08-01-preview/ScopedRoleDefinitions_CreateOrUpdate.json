@@ -3,7 +3,7 @@
   "operationId": "ScopedRoleDefinitions_CreateOrUpdate",
   "parameters": {
     "api-version": "2025-08-01-preview",
-    "scope": "/planes/radius/local/resourceGroups/platform",
+    "scope": "planes/radius/local/resourceGroups/platform",
     "roleDefinitionName": "application-operator",
     "resource": {
       "properties": {
@@ -22,6 +22,27 @@
     }
   },
   "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/platform/providers/Radius.Core/roleDefinitions/application-operator",
+        "name": "application-operator",
+        "type": "Radius.Core/roleDefinitions",
+        "properties": {
+          "displayName": "Application Operator",
+          "description": "Operate applications and use staging without changing platform configuration.",
+          "roleType": "Custom",
+          "permissions": [
+            "Radius.Core/applications/read",
+            "Radius.Core/applications/write",
+            "Radius.Core/environments/use/action"
+          ],
+          "assignableScopes": [
+            "/planes/radius/local/resourceGroups/platform",
+            "/planes/radius/local/resourceGroups/team-a"
+          ]
+        }
+      }
+    },
     "201": {
       "body": {
         "id": "/planes/radius/local/resourceGroups/platform/providers/Radius.Core/roleDefinitions/application-operator",
