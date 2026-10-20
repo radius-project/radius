@@ -115,18 +115,59 @@ function apply(s, codes = [], opts = {}) {
     calls.push({ service, method, path });
     if (path.includes("/releases?")) return response([release]);
     if (path.includes("/pulls?")) return response([]);
+    const custom = opts.respond?.({ service, method, path });
+    if (custom) return custom;
     if (method === "DELETE") return codes.shift() ?? response("", 204);
     const v = s.packages
       .flatMap((p) => p.versions)
       .find((v) => path.endsWith(`/${v.id}`));
     return response(raw(v));
-  });
+  }, opts.budget ?? 4000);
   const report = applyPlan(c, p, opts.fresh ?? s, {
     gate: () => {},
     checkpoint: (r) => persisted.push(structuredClone(r)),
     ...opts
   });
   return { report, calls, persisted };
+}
+function diagnose404(
+  s,
+  {
+    revalidation = false,
+    initial = response({ message: "Not Found" }, 404, {
+      requestId: "ABCD:404"
+    }),
+    followup = response({ message: "Not Found" }, 404),
+    packageResponse = response({
+      id: 1,
+      name: "dev/example",
+      package_type: "container",
+      repository: { full_name: REPOSITORY, owner: { login: "radius-project" } }
+    }),
+    pages = [response([])],
+    budget = 4000
+  } = {}
+) {
+  let reads = 0;
+  return apply(s, revalidation ? [] : [initial], {
+    budget,
+    respond({ method, path }) {
+      if (method !== "GET") return;
+      if (path.endsWith("/versions/1")) {
+        reads++;
+        if (revalidation && reads === 1) return initial;
+        if (reads > 1) return followup;
+      }
+      if (path.endsWith("/container/dev%2Fexample")) return packageResponse;
+      if (path.includes("/versions?")) {
+        return pages[
+          Number(
+            new URL(`https://api.github.com${path}`).searchParams.get("page")
+          ) - 1
+        ];
+      }
+    }
+  });
 }
 test("canonical plan hash survives JSON serialization and property reordering", () => {
   assert.equal(
@@ -468,16 +509,227 @@ test("near-match download refusals, malformed JSON, authorization, conflicts and
     assert.ok(report.results.every((r) => r.status === "unfinished"));
   }
 });
-test("404 is absent, not deleted, and retains descendants", () => {
-  const { report } = apply(
-    snapshot([version(1, ["pr-1"], [d(2)]), version(2)]),
-    [response("", 404)]
-  );
-  assert.deepEqual(
-    report.results.map((r) => r.status),
-    ["already-absent", "unfinished"]
-  );
-  assert.equal(report.status, "partial");
+test("DELETE and revalidation 404 followed by GET 200 save evidence and stop all deletes", () => {
+  for (const revalidation of [false, true]) {
+    const { report, calls, persisted } = diagnose404(
+      snapshot([version(1, ["pr-1"], [d(2)]), version(2), version(3)]),
+      {
+        revalidation,
+        followup: response(raw(version(1)), 200, { requestId: "ABCD:200" })
+      }
+    );
+    assert.equal(report.status, "failed");
+    assert.match(
+      report.error,
+      /404 contradicts.*GET HTTP 200.*cause unconfirmed/
+    );
+    assert.ok(report.results.every((r) => r.status === "unfinished"));
+    assert.equal(
+      calls.filter((c) => c.method === "DELETE").length,
+      revalidation ? 0 : 1
+    );
+    assert.deepEqual(
+      report.results[0].requests.map((r) => r.status),
+      revalidation ? [404, 200] : [200, 404, 200]
+    );
+    const failure = report.results[0].requests.find((r) => r.status === 404);
+    assert.equal(failure.body, '{"message":"Not Found"}');
+    assert.equal(failure.requestId, "ABCD:404");
+    assert.equal(
+      failure.path,
+      "/orgs/radius-project/packages/container/dev%2Fexample/versions/1"
+    );
+    assert.equal(failure.method, revalidation ? "GET" : "DELETE");
+    assert.ok(
+      persisted.some((p) => p.results[0].requests?.at(-1).status === 404)
+    );
+  }
+});
+test("404 needs successful same-credential package and fully paginated version reads to establish absence", () => {
+  for (const revalidation of [false, true]) {
+    const { report, calls } = diagnose404(
+      snapshot([version(1, ["pr-1"], [d(2)]), version(2), version(3)]),
+      {
+        revalidation,
+        pages: [
+          response(
+            Array.from({ length: 100 }, (_, i) => raw(version(i + 1000)))
+          ),
+          response([])
+        ]
+      }
+    );
+    assert.deepEqual(
+      report.results.map((r) => r.status),
+      ["already-absent", "unfinished", "deleted"]
+    );
+    assert.equal(report.status, "partial");
+    assert.match(report.results[0].reasons[0], /corroborated.*same-credential/);
+    assert.equal(report.results[0].absenceCheck.versionCount, 100);
+    assert.equal(calls.filter((c) => c.path.includes("/versions?")).length, 2);
+    assert.ok(calls.every((c) => c.service === "github"));
+    assert.ok(
+      report.results[0].requests.some(
+        (r) => r.path.endsWith("page=2") && r.status === 200
+      )
+    );
+    assert.equal(
+      calls.filter((c) => c.method === "DELETE").length,
+      revalidation ? 1 : 2
+    );
+  }
+});
+test("404 with inaccessible package/list or a still-listed version fails closed without inferring permissions", () => {
+  for (const revalidation of [false, true]) {
+    for (const diagnostic of [
+      { packageResponse: response({ message: "Not Found" }, 404) },
+      { packageResponse: response({ message: "Forbidden" }, 403) },
+      { packageResponse: response({ message: "Bad credentials" }, 401) },
+      { packageResponse: response({ id: 2, name: "wrong" }) },
+      { pages: [response({ message: "Not Found" }, 404)] },
+      { pages: [response([raw(version(1))])] },
+      {
+        pages: [
+          response(
+            Array.from({ length: 100 }, (_, i) => raw(version(i + 1000)))
+          ),
+          response([raw(version(1))])
+        ]
+      },
+      { followup: response({ message: "Forbidden" }, 403) }
+    ]) {
+      const { report, calls } = diagnose404(
+        snapshot([version(1), version(2)]),
+        { revalidation, ...diagnostic }
+      );
+      assert.equal(report.status, "failed");
+      assert.equal(report.results[0].status, "unfinished");
+      assert.equal(report.counts["already-absent"], undefined);
+      assert.equal(
+        calls.filter((c) => c.method === "DELETE").length,
+        revalidation ? 0 : 1
+      );
+      assert.match(report.results[0].reasons[0], /absence unconfirmed/);
+      assert.ok(report.results[0].requests.length >= 2);
+    }
+  }
+});
+test("404 malformed diagnostic bodies and version records are saved and never prove absence", () => {
+  for (const diagnostic of [
+    { packageResponse: response("not-json") },
+    { packageResponse: response("null") },
+    { pages: [response("not-json")] },
+    { pages: [response({ message: "not a list" })] },
+    { pages: [response([{ id: 2 }])] },
+    { followup: response("not-json", 200) }
+  ]) {
+    const { report } = diagnose404(
+      snapshot([version(1), version(2)]),
+      diagnostic
+    );
+    assert.equal(report.status, "failed");
+    assert.equal(report.results[0].status, "unfinished");
+    assert.ok(
+      report.results[0].requests.some(
+        (r) =>
+          r.body === "not-json" ||
+          r.body === "null" ||
+          r.body.includes("not a list") ||
+          r.body === '[{"id":2}]'
+      )
+    );
+  }
+});
+test("404 evidence bounds/redacts bodies, captures request IDs, and excludes credential headers", () => {
+  const previous = process.env.GH_TOKEN;
+  const secret = "offline-secret-credential";
+  process.env.GH_TOKEN = secret;
+  try {
+    const { report, persisted } = diagnose404(snapshot(), {
+      initial: response(
+        `${secret} ghp_offlineFixtureToken Bearer other-fixture-token ${"x".repeat(5000)}`,
+        404,
+        {
+          requestId: "ABCD:404",
+          authorization: `Bearer ${secret}`
+        }
+      )
+    });
+    assert.equal(report.status, "complete");
+    assert.equal(report.counts.deleted, undefined);
+    const captured = report.results[0].requests.find((r) => r.status === 404);
+    assert.equal(captured.body.length, 4096);
+    assert.equal(captured.bodyTruncated, true);
+    assert.equal(captured.requestId, "ABCD:404");
+    assert.ok(Number.isFinite(Date.parse(captured.at)));
+    assert.equal(captured.headers, undefined);
+    for (const value of [
+      secret,
+      "ghp_offlineFixtureToken",
+      "other-fixture-token"
+    ]) {
+      assert.ok(!JSON.stringify(persisted).includes(value));
+    }
+    const malformed = diagnose404(snapshot(), {
+      packageResponse: response(secret, 200, {
+        requestId: `ABCD:404\r\nAuthorization: Bearer ${secret}`
+      })
+    });
+    assert.equal(malformed.report.status, "failed");
+    assert.ok(!JSON.stringify(malformed.persisted).includes(secret));
+    assert.match(malformed.report.error, /^Invalid JSON response: \/orgs\//);
+    assert.ok(!malformed.report.error.includes(secret.slice(0, 10)));
+    assert.equal(
+      malformed.report.results[0].requests.at(-1).requestId,
+      undefined
+    );
+  } finally {
+    if (previous === undefined) delete process.env.GH_TOKEN;
+    else process.env.GH_TOKEN = previous;
+  }
+});
+test("404 diagnostic rate and budget limits stay partial with saved response evidence", () => {
+  for (const revalidation of [false, true]) {
+    for (const diagnostic of [
+      {
+        followup: response({ message: "Rate limited" }, 429, {
+          requestId: "ABCD:429"
+        })
+      },
+      {
+        packageResponse: response({ message: "Rate limited" }, 403, {
+          remaining: "0"
+        })
+      },
+      {
+        pages: [
+          response({ message: "Secondary limit" }, 403, { retryAfter: "300" })
+        ]
+      },
+      { budget: revalidation ? 3 : 4 }
+    ]) {
+      const { report, calls, persisted } = diagnose404(
+        snapshot([version(1), version(2)]),
+        { revalidation, ...diagnostic }
+      );
+      assert.equal(report.status, "partial");
+      assert.equal(report.results[0].status, "unfinished");
+      assert.match(report.error, /Rate limit|API request budget/);
+      assert.equal(
+        calls.filter((c) => c.method === "DELETE").length,
+        revalidation ? 0 : 1
+      );
+      assert.ok(
+        persisted.at(-1).results[0].requests.some((r) => r.status === 404)
+      );
+      if (!diagnostic.budget)
+        assert.ok(
+          report.results[0].requests.some(
+            (r) => r.status === 429 || r.status === 403
+          )
+        );
+    }
+  }
 });
 test("caps, primary and secondary rate limits save partial results and unfinished work", () => {
   const s = snapshot([version(1), version(2)]);

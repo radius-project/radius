@@ -58,8 +58,11 @@ cleanup_request() {
             "${work}/headers" x-ratelimit-remaining)" \
         --arg retryAfter "$(retry_curl_header_value \
             "${work}/headers" retry-after)" \
+        --arg requestId "$(retry_curl_header_value \
+            "${work}/headers" x-github-request-id)" \
         '{status: $status, body: $body,
-          headers: {remaining: $remaining, retryAfter: $retryAfter}}'
+          headers: {remaining: $remaining, retryAfter: $retryAfter,
+            requestId: $requestId}}'
     rm -rf "${work}"
 }
 

@@ -50,6 +50,14 @@ for code in 200 204 400 404 403 429; do
         "${TEST_DIR}/response" > /dev/null
 done
 : > "${TEST_DIR}/calls"
+CODE=404 BODY='{"message":"Not Found"}' \
+    HEADERS=$'X-GitHub-Request-Id: ABCD:1234\r\nAuthorization: Bearer offline-fixture-token' \
+    cleanup_request github DELETE "${REQUEST_PATH}" > "${TEST_DIR}/response"
+jq -e '.status == 404 and .body == "{\"message\":\"Not Found\"}" and
+    .headers.requestId == "ABCD:1234" and
+    (.headers | keys | sort) == ["remaining", "requestId", "retryAfter"]' \
+    "${TEST_DIR}/response" > /dev/null
+: > "${TEST_DIR}/calls"
 TRANSIENT=true cleanup_request github GET "${REQUEST_PATH}" > "${TEST_DIR}/response"
 [[ "$(wc -l < "${TEST_DIR}/calls")" -eq 2 ]]
 jq -e '.status == 200' "${TEST_DIR}/response" > /dev/null

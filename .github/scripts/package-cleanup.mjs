@@ -75,8 +75,28 @@ export function counts(records, field = "decision") {
   for (const r of records) result[r[field]] = (result[r[field]] ?? 0) + 1;
   return result;
 }
+function packagePath(name) {
+  return `/orgs/radius-project/packages/container/${encodeURIComponent(packageName(name))}`;
+}
 function versionPath(name) {
-  return `/orgs/radius-project/packages/container/${encodeURIComponent(packageName(name))}/versions`;
+  return `${packagePath(name)}/versions`;
+}
+function redact(value) {
+  let text = String(value);
+  for (const name of ["GH_TOKEN", "GITHUB_TOKEN", "CLEANUP_PACKAGE_TOKEN"]) {
+    if (process.env[name])
+      text = text.split(process.env[name]).join("[REDACTED]");
+  }
+  return text
+    .replace(/\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+/g, "[REDACTED]")
+    .replace(/\bBearer[ \t]+[A-Za-z0-9._~+/=-]+/gi, "Bearer [REDACTED]");
+}
+function responseJSON(body, path) {
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw new Error(`Invalid JSON response: ${path}`);
+  }
 }
 export class Incomplete extends Error {}
 
@@ -92,7 +112,7 @@ export class Client {
     this.budget = budget;
     this.calls = 0;
   }
-  request(service, method, path) {
+  request(service, method, path, observe) {
     if (++this.calls > this.budget)
       throw new Incomplete("API request budget reached");
     const response = this.transport(service, method, path);
@@ -102,6 +122,7 @@ export class Client {
         typeof response.body === "string",
       "Invalid HTTP response"
     );
+    observe?.(response, { service, method, path });
     if (
       response.status === 429 ||
       (response.status === 403 &&
@@ -111,21 +132,23 @@ export class Client {
     }
     return response;
   }
-  get(path, service = "github") {
-    const r = this.request(service, "GET", path);
+  get(path, service = "github", observe) {
+    const r = this.request(service, "GET", path, observe);
     requireThat(
       r.status === 200,
-      `GET ${path}: HTTP ${r.status}: ${r.body.slice(0, 500)}`
+      `GET ${path}: HTTP ${r.status}: ${redact(r.body).slice(0, 500)}`
     );
-    return JSON.parse(r.body);
+    return responseJSON(r.body, path);
   }
-  pages(path) {
+  pages(path, observe) {
     const all = [],
       seen = new Set();
     for (let page = 1; page <= 1000; page++) {
       const rows = list(
         this.get(
-          `${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`
+          `${path}${path.includes("?") ? "&" : "?"}per_page=100&page=${page}`,
+          "github",
+          observe
         ),
         path
       );
@@ -331,9 +354,7 @@ export function collect(client, checkpoint = () => {}) {
     "/orgs/radius-project/packages?package_type=container"
   )) {
     packageName(summary.name);
-    const p = client.get(
-      `/orgs/radius-project/packages/container/${encodeURIComponent(summary.name)}`
-    );
+    const p = client.get(packagePath(summary.name));
     requireThat(
       p.name === summary.name &&
         p.id === summary.id &&
@@ -910,6 +931,67 @@ export function applyPlan(
   try {
     for (const r of deletionOrder(plan.records)) {
       const result = resultFor(r);
+      const capture = (response, request) => {
+        const body = redact(response.body);
+        const requestId = response.headers?.requestId;
+        result.requests ??= [];
+        result.requests.push({
+          ...request,
+          at: new Date().toISOString(),
+          status: response.status,
+          body: body.slice(0, 4096),
+          bodyTruncated: body.length > 4096,
+          requestId:
+            (
+              typeof requestId === "string" &&
+              /^[A-Za-z0-9:.-]{1,128}$/.test(requestId)
+            ) ?
+              redact(requestId)
+            : undefined
+        });
+        persist();
+      };
+      const exactPath = `${versionPath(r.package)}/${r.id}`;
+      const corroborate404 = () => {
+        result.reasons = [
+          "HTTP 404; absence unconfirmed pending same-credential checks"
+        ];
+        retainDescendants(r, plan.records, blocked);
+        persist();
+        const followup = client.request("github", "GET", exactPath, capture);
+        requireThat(
+          followup.status === 404,
+          followup.status === 200 ?
+            "404 contradicts follow-up version GET HTTP 200; absence not established. Access policy, visibility or concurrent change may be involved; cause unconfirmed"
+          : `Absence unconfirmed: follow-up version GET HTTP ${followup.status}; cause unconfirmed`
+        );
+        const p = client.get(packagePath(r.package), "github", capture);
+        requireThat(
+          p &&
+            p.id === r.packageId &&
+            p.name === r.package &&
+            p.package_type === "container" &&
+            p.repository?.full_name === REPOSITORY &&
+            p.repository?.owner?.login === "radius-project",
+          "Absence unconfirmed: package identity or repository access changed"
+        );
+        const versions = client
+          .pages(versionPath(r.package), capture)
+          .map(normalizeVersion);
+        requireThat(
+          !versions.some((v) => v.id === r.id),
+          "404 contradicts accessible version list containing the version; absence not established, cause unconfirmed"
+        );
+        result.status = "already-absent";
+        result.reasons = [
+          "HTTP 404 corroborated by same-credential package read and complete version list excluding this ID"
+        ];
+        result.absenceCheck = {
+          packageId: p.id,
+          versionCount: versions.length
+        };
+        persist();
+      };
       const key = `${r.package}@${r.digest}`;
       if (blocked.has(key)) {
         result.reasons = ["Ancestor retained after refused/changed deletion"];
@@ -955,23 +1037,16 @@ export function applyPlan(
       }
       // A whole fresh snapshot above proves reachability. Check this exact
       // version again immediately before DELETE, under the publication freeze.
-      const response = client.request(
-        "github",
-        "GET",
-        `${versionPath(r.package)}/${r.id}`
-      );
+      const response = client.request("github", "GET", exactPath, capture);
       if (response.status === 404) {
-        result.status = "already-absent";
-        result.reasons = ["Version absent on revalidation"];
-        retainDescendants(r, plan.records, blocked);
-        persist();
+        corroborate404();
         continue;
       }
       requireThat(
         response.status === 200,
         `Version revalidation HTTP ${response.status}`
       );
-      const raw = normalizeVersion(JSON.parse(response.body));
+      const raw = normalizeVersion(responseJSON(response.body, exactPath));
       const expected = {
         id: r.id,
         digest: r.digest,
@@ -986,21 +1061,15 @@ export function applyPlan(
         continue;
       }
       attempted++;
-      const deleted = client.request(
-        "github",
-        "DELETE",
-        `${versionPath(r.package)}/${r.id}`
-      );
+      const deleted = client.request("github", "DELETE", exactPath, capture);
       if (deleted.status === 204) {
         result.status = "deleted";
         result.reasons = ["DELETE returned 204"];
       } else if (deleted.status === 404) {
-        result.status = "already-absent";
-        result.reasons = ["DELETE returned 404, not counted as deleted"];
-        retainDescendants(r, plan.records, blocked);
+        corroborate404();
       } else if (
         deleted.status === 400 &&
-        JSON.parse(deleted.body)?.message === PROTECTED_MESSAGE
+        responseJSON(deleted.body, exactPath)?.message === PROTECTED_MESSAGE
       ) {
         result.status = "protected";
         result.reasons = [PROTECTED_MESSAGE];
@@ -1010,7 +1079,7 @@ export function applyPlan(
         retainDescendants(r, plan.records, blocked);
       } else {
         throw new Error(
-          `DELETE ${r.package}/${r.id}: HTTP ${deleted.status}: ${deleted.body.slice(0, 500)}`
+          `DELETE ${r.package}/${r.id}: HTTP ${deleted.status}: ${redact(deleted.body).slice(0, 500)}`
         );
       }
       persist();
@@ -1024,7 +1093,7 @@ export function applyPlan(
         "partial"
       : "complete";
   } catch (error) {
-    report.error = error.message;
+    report.error = redact(error.message).slice(0, 4096);
     report.status = error instanceof Incomplete ? "partial" : "failed";
   }
   persist();
