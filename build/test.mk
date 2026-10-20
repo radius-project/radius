@@ -54,7 +54,7 @@ GOTESTSUM_JSONFILE_DIR ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) $(if $(GOTESTSUM_JSONFILE_DIR),--jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... ./test/rogue/... $(GOTEST_OPTS)
 
 .PHONY: test-azure-oidc-login
@@ -96,6 +96,11 @@ test-install-bicep: test-retry-curl ## Tests bounded Bicep downloads without net
 	@bash ./build/scripts/install-bicep_test.sh
 
 test: test-install-bicep
+
+.PHONY: test-authz-would-deny-check
+test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned log collector
+	@bash ./.github/scripts/authz-would-deny-check_test.sh
+	@python3 ./.github/scripts/run-with-authz-logs_test.py
 
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
@@ -260,6 +265,15 @@ test-functional-ucp-noncloud: ## Runs UCP functional tests that do not require c
 .PHONY: test-functional-authz-noncloud
 test-functional-authz-noncloud: ## Runs internal component authorization functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/authz/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
+# Optional overrides for authz-would-deny-check. AUTHZ_WOULD_DENY_ARGS passes extra script arguments,
+# for example AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/authz-logs".
+AUTHZ_NAMESPACE ?= radius-system
+AUTHZ_WOULD_DENY_ARGS ?=
+
+.PHONY: authz-would-deny-check
+authz-would-deny-check: ## Fails if a Radius pod in the current kube context logged an authorization dry-run would-deny line
+	@bash ./.github/scripts/authz-would-deny-check.sh --require-dry-run --namespace "$(AUTHZ_NAMESPACE)" $(AUTHZ_WOULD_DENY_ARGS)
 
 .PHONY: test-functional-ucp-cloud
 test-functional-ucp-cloud: ## Runs UCP functional tests that require cloud resources
