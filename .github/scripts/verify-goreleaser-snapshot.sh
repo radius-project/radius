@@ -314,6 +314,7 @@ verify_build_matrix() {
         "dynamic-rp",
         "pre-upgrade",
         "rad",
+        "terraform-init",
         "ucpd"
     ]'
     actual_builds="$(

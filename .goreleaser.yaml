@@ -90,6 +90,15 @@ builds:
     goarch: *server_goarch
     goarm: *server_goarm
 
+  - id: terraform-init
+    main: ./cmd/terraform-init
+    binary: terraform-init
+    env: *build_env
+    ldflags: *release_ldflags
+    goos: *server_goos
+    goarch: *server_goarch
+    goarm: *server_goarm
+
 archives:
   - id: rad
     ids:
@@ -203,6 +212,22 @@ dockers_v2:
     labels:
       org.opencontainers.image.source: https://github.com/radius-project/radius
       org.opencontainers.image.description: pre-upgrade
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+    platforms: *image_platforms
+    sbom: true
+
+  - id: terraform-init
+    ids:
+      - terraform-init
+    dockerfile: deploy/images/terraform-init/Dockerfile.goreleaser
+    images:
+      - "{{ .Env.GORELEASER_IMAGE_REGISTRY }}/terraform-init"
+    tags:
+      - "{{ .Version }}"
+    labels:
+      org.opencontainers.image.source: https://github.com/radius-project/radius
+      org.opencontainers.image.description: terraform-init
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
     platforms: *image_platforms

@@ -99,6 +99,7 @@ jobs:
             docker-build-applications-rp \
             docker-build-dynamic-rp \
             docker-build-controller \
+            docker-build-terraform-init \
             docker-build-bicep
 
       - name: Install branch CLI

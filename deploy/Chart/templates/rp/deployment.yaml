@@ -57,127 +57,7 @@ spec:
           mountPath: /etc/radius-ssl/certs
       {{- end }}
       {{- if $terraformInit }}
-      # Init container to download Terraform to the shared volume before applications-rp starts, so the
-      # download runs outside the resource provider container and a failure blocks the pod.
-      - name: terraform-init
-      {{- if .Values.global.terraform.downloadUrl }}
-      # A custom download URL is fetched with a shell script, because the default downloader only
-      # installs official HashiCorp releases (it verifies their checksum and signature).
-        image: "{{ .Values.global.terraform.initImage }}"
-        command:
-        - /bin/sh
-        - -c
-        - |
-          set -e
-          echo "Terraform init container starting..."
-          echo "Running on architecture: $(uname -m)"
-          echo "Alpine version: $(cat /etc/alpine-release)"
-          
-          # Create terraform directory
-          mkdir -p "{{ .Values.rp.terraform.path }}"
-          echo "Created directory: {{ .Values.rp.terraform.path }}"
-          
-          # Detect architecture for terraform download
-          ARCH=$(uname -m)
-          case $ARCH in
-            x86_64) TERRAFORM_ARCH="amd64" ;;
-            aarch64|arm64) TERRAFORM_ARCH="arm64" ;;
-            *) echo "ERROR: Unsupported architecture: $ARCH"; exit 1 ;;
-          esac
-          echo "Terraform architecture: $TERRAFORM_ARCH"
-          
-          # Install wget and unzip if not available (Alpine doesn't include them by default)
-          if ! which wget >/dev/null 2>&1 || ! which unzip >/dev/null 2>&1; then
-            echo "Installing wget and unzip..."
-            apk add --no-cache wget unzip || { echo "ERROR: Failed to install wget/unzip"; exit 3; }
-          fi
-          
-          # Determine download URL
-          TERRAFORM_URL="{{ .Values.global.terraform.downloadUrl }}"
-
-          # If no custom URL provided, build the URL from the pinned version.
-          # Version MUST match terraformVersion in
-          # pkg/recipes/terraform/version.go so the pre-mounted binary
-          # and the runtime download fallback agree -- otherwise recipes
-          # behave differently between cold and warm starts.
-          if [[ -z "$TERRAFORM_URL" ]]; then
-            TERRAFORM_VERSION="{{ .Values.global.terraform.version }}"
-            if [[ -z "$TERRAFORM_VERSION" ]]; then
-              echo "ERROR: global.terraform.version is empty and no global.terraform.downloadUrl is set"
-              exit 2
-            fi
-            echo "Pinned Terraform version: $TERRAFORM_VERSION"
-            TERRAFORM_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${TERRAFORM_ARCH}.zip"
-          fi
-          
-          echo "Download URL: $TERRAFORM_URL"
-          
-          # Basic connectivity and environment info
-          echo "Environment debug info:"
-          echo "- Date: $(date)"
-          echo "- PWD: $(pwd)"
-          echo "- Available commands: $(which wget || echo 'no wget') $(which unzip || echo 'no unzip')"
-          
-          # Install wget and unzip if not available (Alpine doesn't include them by default)
-          if ! which wget >/dev/null 2>&1 || ! which unzip >/dev/null 2>&1; then
-            echo "Installing wget and unzip..."
-            apk add --no-cache wget unzip || { echo "ERROR: Failed to install wget/unzip"; exit 3; }
-          fi
-          
-          # Download and extract terraform using wget
-          cd /tmp
-          echo "Downloading terraform using wget..."
-          wget "${TERRAFORM_URL}" -O terraform.zip || { echo "ERROR: Failed to download terraform"; exit 4; }
-          
-          echo "Extracting terraform using unzip..."
-          unzip terraform.zip || { echo "ERROR: Failed to extract terraform"; exit 5; }
-          
-          echo "Installing terraform binary..."
-          # Path/marker MUST match constants in
-          # pkg/recipes/terraform/install.go (defaultGlobalTerraformBinary,
-          # defaultGlobalMarkerFile). The runtime hard-codes
-          # /terraform/.terraform-global, so this path is hard-coded too --
-          # do NOT derive it from .Values.rp.terraform.path or overrides to
-          # that value will silently reintroduce the path-mismatch bug this
-          # fix addresses.
-          GLOBAL_DIR="/terraform/.terraform-global"
-          mkdir -p "$GLOBAL_DIR" || { echo "ERROR: Failed to create global terraform directory"; exit 6; }
-          cp terraform "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
-          chmod +x "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
-          touch "$GLOBAL_DIR/.terraform-ready" || { echo "ERROR: Failed to create terraform-ready marker"; exit 8; }
-
-          # Keep a copy at the legacy path and write the legacy marker so any
-          # tooling that still references {{ .Values.rp.terraform.path }}/terraform continues to work.
-          cp terraform "{{ .Values.rp.terraform.path }}/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
-          chmod +x "{{ .Values.rp.terraform.path }}/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
-          echo "pre-mounted" > "{{ .Values.rp.terraform.path }}/.terraform-source"
-          
-          echo "Terraform binary successfully pre-downloaded and installed"
-        volumeMounts:
-        - name: terraform
-          mountPath: {{ .Values.rp.terraform.path }}
-        securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          runAsUser: 65532
-      {{- else }}
-        # Uses the small pre-upgrade image, which is pulled quickly and needs no package installs.
-        image: "{{ include "radius.controlPlaneReadiness.image" . }}"
-        args:
-        - download-terraform
-        - "--version={{ required "global.terraform.version is required when global.terraform.downloadUrl is empty" .Values.global.terraform.version }}"
-        # Must match the global path in pkg/recipes/terraform/install.go.
-        - "--dir=/terraform/.terraform-global"
-        - "--legacy-dir={{ .Values.rp.terraform.path }}"
-        terminationMessagePolicy: FallbackToLogsOnError
-        volumeMounts:
-        - name: terraform
-          mountPath: {{ .Values.rp.terraform.path }}
-        - name: terraform-init-tmp
-          mountPath: /tmp
-        securityContext:
-          {{- toYaml .Values.preupgrade.securityContext | nindent 10 }}
-      {{- end }}
+      {{- include "radius.terraform.initContainer" (dict "root" . "path" .Values.rp.terraform.path) | nindent 6 }}
       {{- end }}
       {{- end }}
       containers:
@@ -193,10 +73,7 @@ spec:
               name: database-secret
               key: POSTGRES_PASSWORD
         {{- end }}
-        {{- if and $terraformInit .Values.global.terraform.version }}
-        - name: RADIUS_TERRAFORM_VERSION
-          value: {{ .Values.global.terraform.version | quote }}
-        {{- end }}
+        {{- include "radius.terraform.env" . | nindent 8 }}
         - name: SKIP_ARM
           value: 'false'
         - name: ARM_AUTH_METHOD
@@ -276,8 +153,8 @@ spec:
         {{- end }}
         - name: terraform
           emptyDir: {}
-        {{- if and $terraformInit (not .Values.global.terraform.downloadUrl) }}
-        # Scratch space for the Terraform download, since the init container's root filesystem is read-only.
+        {{- if $terraformInit }}
+        # Scratch space for the terraform-init container, since its root filesystem is read-only.
         - name: terraform-init-tmp
           emptyDir:
             sizeLimit: 256Mi

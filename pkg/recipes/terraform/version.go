@@ -26,6 +26,11 @@ import (
 // that newer Helm charts remain compatible with older images, which reject unknown config fields.
 const VersionEnvVar = "RADIUS_TERRAFORM_VERSION"
 
+// PremountedOnlyEnvVar, when set to "true", stops Radius from downloading Terraform at runtime, so it
+// only uses the binary installed by the terraform-init init container. The Helm chart sets it when
+// global.terraform.downloadUrl is used, so recipes never fall back to a different Terraform build.
+const PremountedOnlyEnvVar = "RADIUS_TERRAFORM_PREMOUNTED_ONLY"
+
 // terraformVersion is the version of Terraform that Radius downloads and
 // uses to execute Terraform recipes.
 //
@@ -45,4 +50,9 @@ func TerraformVersion() string {
 		return v
 	}
 	return terraformVersion
+}
+
+// premountedOnly reports whether Radius must only use the pre-mounted Terraform binary.
+func premountedOnly() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv(PremountedOnlyEnvVar)), "true")
 }

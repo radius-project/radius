@@ -190,3 +190,110 @@ comma separated, that must be available before the dashboard container image is 
 {{- define "radius.dashboard.startupGate.deployments" -}}
 ucp,applications-rp,dynamic-rp,controller,bicep-de
 {{- end -}}
+
+{{/*
+radius.terraform.image renders the image for the terraform-init init container.
+global.terraform.image and global.terraform.tag override it. Otherwise it uses the
+terraform-init image from the same registry and tag as applications-rp, so custom and
+CI builds stay aligned. It deliberately ignores the preupgrade and controlPlaneReadiness
+overrides: those images may be pinned to versions that cannot download Terraform.
+*/}}
+{{- define "radius.terraform.image" -}}
+{{- $appversion := include "radius.versiontag" . }}
+{{- $image := .Values.global.terraform.image | default "" }}
+{{- $tag := .Values.global.terraform.tag | default "" }}
+{{- if not $image }}
+  {{- $rpImageName := last (splitList "/" .Values.rp.image) }}
+  {{- $rpEmbeddedTag := "" }}
+  {{- if contains ":" $rpImageName }}
+    {{- $rpEmbeddedTag = regexReplaceAll "^.*:" $rpImageName "" }}
+  {{- end }}
+  {{- if contains "/" .Values.rp.image }}
+    {{- $image = regexReplaceAll "/[^/]+$" .Values.rp.image "/terraform-init" }}
+  {{- else }}
+    {{- $image = "terraform-init" }}
+  {{- end }}
+  {{- $tag = $tag | default $rpEmbeddedTag | default .Values.rp.tag }}
+{{- end }}
+{{- $tag = $tag | default .Values.global.imageTag | default $appversion }}
+{{- include "radius.image" (dict "image" $image "tag" $tag "global" .Values.global) }}
+{{- end -}}
+
+{{/*
+radius.terraform.initContainer renders the terraform-init init container, which downloads
+Terraform to the shared terraform volume before a resource provider starts. The download runs
+outside the resource provider container, and a failed download blocks the pod.
+
+Usage:
+  {{- include "radius.terraform.initContainer" (dict "root" . "path" .Values.rp.terraform.path) | nindent 6 }}
+*/}}
+{{- define "radius.terraform.initContainer" -}}
+{{- $root := .root -}}
+{{- $tf := $root.Values.global.terraform -}}
+- name: terraform-init
+  image: "{{ include "radius.terraform.image" $root }}"
+  args:
+  {{- if $tf.downloadUrl }}
+  - "--url={{ $tf.downloadUrl }}"
+  {{- if $tf.downloadChecksum }}
+  - "--sha256={{ $tf.downloadChecksum }}"
+  {{- end }}
+  {{- else }}
+  - "--version={{ required "global.terraform.version is required when global.terraform.downloadUrl is empty" $tf.version }}"
+  {{- end }}
+  # Must match the global path in pkg/recipes/terraform/install.go.
+  - "--dir=/terraform/.terraform-global"
+  - "--legacy-dir={{ .path }}"
+  {{- if $root.Values.global.rootCA.cert }}
+  env:
+  - name: {{ $root.Values.global.rootCA.sslCertDirEnvVar }}
+    value: {{ $root.Values.global.rootCA.mountPath }}
+  {{- end }}
+  terminationMessagePolicy: FallbackToLogsOnError
+  volumeMounts:
+  - name: terraform
+    mountPath: {{ .path }}
+  # Scratch space for the download, since the root filesystem is read-only.
+  - name: terraform-init-tmp
+    mountPath: /tmp
+  {{- if $root.Values.global.rootCA.cert }}
+  - name: {{ $root.Values.global.rootCA.volumeName }}
+    mountPath: {{ $root.Values.global.rootCA.mountPath }}
+    readOnly: true
+  {{- end }}
+  {{- if $root.Values.global.appendRootCA.cert }}
+  - name: ssl-certs
+    mountPath: /etc/ssl/certs
+    readOnly: true
+  {{- end }}
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+{{- end -}}
+
+{{/*
+radius.terraform.env renders resource provider environment variables that control the runtime
+Terraform download fallback. With the default release download, the runtime is pinned to the same
+version as the init container. With global.terraform.downloadUrl, the runtime must only use the
+binary installed by the init container, so it never silently installs a different Terraform build.
+*/}}
+{{- define "radius.terraform.env" -}}
+{{- $tf := .Values.global.terraform -}}
+{{- if eq $tf.enabled true -}}
+{{- if $tf.downloadUrl -}}
+- name: RADIUS_TERRAFORM_PREMOUNTED_ONLY
+  value: "true"
+{{- else if $tf.version -}}
+- name: RADIUS_TERRAFORM_VERSION
+  value: {{ $tf.version | quote }}
+{{- end -}}
+{{- end -}}
+{{- end -}}

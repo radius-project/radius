@@ -220,14 +220,17 @@ rad install kubernetes \
 
 Pre-downloading is enabled by default (`global.terraform.enabled=true`). Before `applications-rp` and `dynamic-rp` start, a `terraform-init` init container downloads the pinned Terraform version (`global.terraform.version`) to a volume shared with the resource provider. The download runs outside the resource provider container. If it fails, the pod does not start and the init container is retried.
 
-The init container runs the small `pre-upgrade` image (the `controlPlaneReadiness` image) with its `download-terraform` command. hc-install verifies the release checksum and signature. The container uses a read-only root filesystem with a dedicated scratch volume for the download.
+The init container runs the small `terraform-init` image. By default it comes from the same registry and tag as `applications-rp`; set `global.terraform.image` and `global.terraform.tag` to override it. Official releases are verified against HashiCorp's signed checksums. The container uses a read-only root filesystem with a dedicated scratch volume for the download.
 
-For custom sources (private repositories, proxies, etc.), specify a complete download URL. The init container then uses `global.terraform.initImage` with a shell script instead:
+For custom sources (private repositories, proxies, etc.), specify a complete download URL. Also set `global.terraform.downloadChecksum` to the archive's SHA-256 checksum so the download is verified. Without it, the init container logs a warning. The archive must contain a top-level `terraform` binary for the cluster's architecture. If `global.rootCA.cert` is set, that CA is trusted for the download.
 
 ```console
 helm upgrade --wait --install radius deploy/Chart -n radius-system \
-  --set global.terraform.downloadUrl="https://my-artifactory.com/terraform_1.5.7_linux_amd64.zip"
+  --set global.terraform.downloadUrl="https://my-artifactory.com/terraform_1.5.7_linux_amd64.zip" \
+  --set global.terraform.downloadChecksum="<sha256>"
 ```
+
+With a custom URL, the resource providers only use the binary installed by the init container. They do not fall back to downloading the official release, so every recipe uses the Terraform build you chose.
 
 To disable pre-downloading so Terraform is downloaded when the first Terraform recipe runs, set `global.terraform.enabled=false`.
 

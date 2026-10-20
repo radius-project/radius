@@ -361,7 +361,7 @@ start_registry() {
 
 publish_branch_artifacts() {
     local image
-    for image in ucpd applications-rp dynamic-rp controller bicep; do
+    for image in ucpd applications-rp dynamic-rp controller terraform-init bicep; do
         docker push \
             "${LOCAL_DOCKER_REGISTRY}/${image}:${DOCKER_TAG_VERSION}"
     done

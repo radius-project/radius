@@ -263,3 +263,51 @@ func TestInstall_GlobalBinaryConcurrency(t *testing.T) {
 		require.NoError(t, err, "Terraform version check should work for instance %d", i)
 	}
 }
+
+func TestInstall_PremountedOnly(t *testing.T) {
+	const workingBinary = "#!/bin/sh\necho '{\"terraform_version\":\"1.7.0\",\"platform\":\"linux_amd64\",\"provider_selections\":{},\"terraform_outdated\":false}'\n"
+
+	tests := []struct {
+		name    string
+		binary  string
+		marker  bool
+		wantErr bool
+	}{
+		{name: "uses pre-mounted binary", binary: workingBinary, marker: true},
+		{name: "missing binary", wantErr: true},
+		{name: "missing marker", binary: workingBinary, wantErr: true},
+		{name: "broken binary", binary: "#!/bin/sh\nexit 1\n", marker: true, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			globalDir := t.TempDir()
+			t.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalDir)
+			t.Setenv(PremountedOnlyEnvVar, "true")
+			resetGlobalStateForTesting()
+			t.Cleanup(resetGlobalStateForTesting)
+
+			binary := filepath.Join(globalDir, "terraform")
+			if tt.binary != "" {
+				require.NoError(t, os.WriteFile(binary, []byte(tt.binary), 0755))
+			}
+			if tt.marker {
+				require.NoError(t, os.WriteFile(filepath.Join(globalDir, ".terraform-ready"), nil, 0644))
+			}
+
+			// A nil installer would panic if Install tried to download Terraform.
+			tf, err := Install(t.Context(), nil, InstallOptions{RootDir: t.TempDir(), LogLevel: "ERROR"})
+			if !tt.wantErr {
+				require.NoError(t, err)
+				require.Equal(t, binary, tf.ExecPath())
+				return
+			}
+
+			require.ErrorContains(t, err, PremountedOnlyEnvVar)
+			require.False(t, globalTerraformReady, "a failed check must be retried on the next call")
+			if tt.binary == "" {
+				require.NoFileExists(t, binary, "Terraform must not be downloaded")
+			}
+		})
+	}
+}

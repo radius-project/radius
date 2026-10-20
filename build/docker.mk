@@ -120,7 +120,8 @@ APPS_MAP := ucpd:./deploy/images/ucpd \
 	testrp:./test/testrp \
 	magpiego:./test/magpiego \
 	bicep:./deploy/images/bicep \
-	pre-upgrade:./deploy/images/pre-upgrade
+	pre-upgrade:./deploy/images/pre-upgrade \
+	terraform-init:./deploy/images/terraform-init
 
 # copy_manifests copies the manifests to the output directory
 .PHONY: copy-manifests

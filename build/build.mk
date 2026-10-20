@@ -128,7 +128,8 @@ BINARIES := docgen:./cmd/docgen \
 	controller:./cmd/controller \
 	testrp:./test/testrp \
 	magpiego:./test/magpiego \
-	pre-upgrade:./cmd/pre-upgrade
+	pre-upgrade:./cmd/pre-upgrade \
+	terraform-init:./cmd/terraform-init
 
 # This function parses binary name and entrypoint from an item in the BINARIES list.
 define parseBinary

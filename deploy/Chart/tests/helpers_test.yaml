@@ -563,7 +563,7 @@ tests:
         template: dynamic-rp/deployment.yaml
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: ghcr.io/radius-project/pre-upgrade:edge
+          value: ghcr.io/radius-project/terraform-init:edge
         template: dynamic-rp/deployment.yaml
 
   - it: should render append-root-ca init container on dynamic-rp when cert is set and both terraform and buildkit are disabled
@@ -629,23 +629,6 @@ tests:
           path: spec.template.spec.initContainers
           count: 3
         template: dynamic-rp/deployment.yaml
-
-  - it: should allow overriding the terraform init image
-    set:
-      dynamicrp.image: dynamic-rp
-      rp.image: applications-rp
-      global.terraform.enabled: true
-      global.terraform.downloadUrl: https://example.com/terraform.zip
-      global.terraform.initImage: alpine:3.22
-    asserts:
-      - equal:
-          path: spec.template.spec.initContainers[0].image
-          value: alpine:3.22
-        template: dynamic-rp/deployment.yaml
-      - equal:
-          path: spec.template.spec.initContainers[0].image
-          value: alpine:3.22
-        template: rp/deployment.yaml
 
   - it: should add append-root-ca init container and mounts for controller when cert provided
     set:
@@ -764,7 +747,7 @@ tests:
         template: rp/deployment.yaml
       - equal:
           path: spec.template.spec.initContainers[0].image
-          value: ghcr.io/radius-project/pre-upgrade:edge
+          value: ghcr.io/radius-project/terraform-init:edge
         template: rp/deployment.yaml
 
   - it: should add append-root-ca init container and mounts for ucp when cert provided

@@ -20,11 +20,17 @@ limitations under the License.
 package tfbinary
 
 import (
+	"archive/zip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hashicorp/go-version"
 	install "github.com/hashicorp/hc-install"
@@ -42,6 +48,11 @@ const (
 
 	// MarkerFileName is written to the global directory once the binary has been installed and verified.
 	MarkerFileName = ".terraform-ready"
+
+	// maxArchiveBytes and maxBinaryBytes bound a custom download so a bad or malicious URL
+	// cannot exhaust the scratch volume. Official Terraform archives are well under these limits.
+	maxArchiveBytes = 512 << 20
+	maxBinaryBytes  = 1 << 30
 )
 
 // Download downloads the given Terraform version and places the binary at dst with mode 0755.
@@ -68,6 +79,80 @@ func Download(ctx context.Context, installer *install.Installer, v *version.Vers
 	return nil
 }
 
+// DownloadURL downloads a Terraform release zip from url and places the terraform binary at dst
+// with mode 0755. It is used for custom mirrors, which hc-install does not support.
+//
+// When sha256Hex is set, the archive must match it. The archive is staged in os.TempDir and the
+// binary is renamed into place, so readers never observe a partially written file.
+func DownloadURL(ctx context.Context, client *http.Client, url, sha256Hex, dst string) error {
+	archive, err := os.CreateTemp("", "terraform-*.zip")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file: %w", err)
+	}
+	defer os.Remove(archive.Name())
+	defer archive.Close()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("invalid Terraform download URL: %w", err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to download Terraform: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download Terraform: unexpected status %s", resp.Status)
+	}
+
+	hash := sha256.New()
+	n, err := io.Copy(io.MultiWriter(archive, hash), io.LimitReader(resp.Body, maxArchiveBytes+1))
+	if err != nil {
+		return fmt.Errorf("failed to download Terraform: %w", err)
+	}
+	if n > maxArchiveBytes {
+		return fmt.Errorf("terraform archive exceeds %d bytes", maxArchiveBytes)
+	}
+
+	if sha256Hex != "" {
+		if got := hex.EncodeToString(hash.Sum(nil)); !strings.EqualFold(got, sha256Hex) {
+			return fmt.Errorf("terraform archive checksum mismatch: expected sha256 %s, got %s", strings.ToLower(sha256Hex), got)
+		}
+	}
+
+	return extractBinary(archive, n, dst)
+}
+
+// extractBinary copies the top-level terraform entry from the zip archive to dst.
+func extractBinary(archive io.ReaderAt, size int64, dst string) error {
+	zr, err := zip.NewReader(archive, size)
+	if err != nil {
+		return fmt.Errorf("failed to read Terraform archive: %w", err)
+	}
+
+	for _, f := range zr.File {
+		if f.Name != BinaryName {
+			continue
+		}
+		if !f.Mode().IsRegular() {
+			return fmt.Errorf("terraform entry in archive is not a regular file")
+		}
+		if f.UncompressedSize64 > maxBinaryBytes {
+			return fmt.Errorf("terraform binary in archive exceeds %d bytes", maxBinaryBytes)
+		}
+		rc, err := f.Open()
+		if err != nil {
+			return fmt.Errorf("failed to read terraform from archive: %w", err)
+		}
+		defer rc.Close()
+		if err := writeExecutable(io.LimitReader(rc, maxBinaryBytes), dst); err != nil {
+			return fmt.Errorf("failed to install terraform binary to %s: %w", dst, err)
+		}
+		return nil
+	}
+	return errors.New("terraform archive does not contain a top-level terraform binary")
+}
+
 // CopyExecutable streams src to dst with mode 0755 without buffering the whole binary in memory.
 // The copy is written to a temporary file in dst's directory and renamed into place.
 func CopyExecutable(src, dst string) error {
@@ -77,13 +162,18 @@ func CopyExecutable(src, dst string) error {
 	}
 	defer in.Close()
 
+	return writeExecutable(in, dst)
+}
+
+// writeExecutable writes r to a temporary file next to dst with mode 0755 and renames it into place.
+func writeExecutable(r io.Reader, dst string) error {
 	tmp, err := os.CreateTemp(filepath.Dir(dst), filepath.Base(dst)+".tmp-*")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(tmp.Name())
 
-	if _, err := io.Copy(tmp, in); err != nil {
+	if _, err := io.Copy(tmp, r); err != nil {
 		tmp.Close()
 		return err
 	}

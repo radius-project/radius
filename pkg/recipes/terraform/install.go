@@ -139,6 +139,10 @@ func ensureGlobalTerraformBinary(ctx context.Context, installer *install.Install
 		}
 	}
 
+	if premountedOnly() {
+		return "", fmt.Errorf("the pre-mounted Terraform binary at %s is missing or does not work, and %s=true disables downloading Terraform; check the terraform-init init container", globalBinary, PremountedOnlyEnvVar)
+	}
+
 	// Download and install Terraform
 	if err := downloadAndInstallTerraform(ctx, installer, globalDir, globalBinary, globalMarker, logger); err != nil {
 		return "", err

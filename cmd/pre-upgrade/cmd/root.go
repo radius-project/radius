@@ -65,7 +65,6 @@ func NewCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(newWaitForControlPlaneCommand())
-	cmd.AddCommand(newDownloadTerraformCommand())
 	return cmd
 }
 

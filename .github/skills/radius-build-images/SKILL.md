@@ -20,6 +20,7 @@ The following images are built from this repository:
 | `controller` | `deploy/images/controller` |
 | `bicep` | `deploy/images/bicep` |
 | `pre-upgrade` | `deploy/images/pre-upgrade` |
+| `terraform-init` | `deploy/images/terraform-init` |
 | `testrp` | `test/testrp` |
 | `magpiego` | `test/magpiego` |
 

@@ -62,23 +62,30 @@ global:
   terraform:
     # Enable terraform binary pre-downloading. A `terraform-init` init container
     # downloads Terraform to a volume shared with applications-rp and
-    # dynamic-rp before they start. By default it runs the small pre-upgrade
-    # image (see `controlPlaneReadiness`), which verifies the release checksum
-    # and signature.
+    # dynamic-rp before they start.
     enabled: true
-    # Image used for the init container only when `downloadUrl` is set.
-    initImage: "alpine:3.23.4"
+    # Image for the terraform-init init container. When empty, the chart uses
+    # the `terraform-init` image from the same registry and tag as
+    # applications-rp (`rp.image` / `rp.tag`).
+    image: ""
+    tag: ""
     # Terraform version to pre-download. MUST match terraformVersion in
     # pkg/recipes/terraform/version.go -- the runtime download fallback
     # (pkg/recipes/terraform/install.go::downloadAndInstallTerraform)
     # pins to that version, so the pre-mounted binary must match or
     # recipes will see behavior differences between cold and warm starts.
+    # Official releases are verified against HashiCorp's signed checksums.
     version: "1.16.5"
-    # URL for downloading Terraform binary. Leave empty to download the
-    # version specified by `version` from releases.hashicorp.com. Provide
-    # a complete direct download URL to override (e.g., for air-gapped or
-    # custom builds); when set, `version` is ignored.
+    # URL of a Terraform release zip to download instead of the official
+    # release for `version` (e.g., an internal mirror for air-gapped
+    # clusters). When set, `version` is ignored, and the resource providers
+    # only use the binary installed by the init container: they do not fall
+    # back to downloading Terraform themselves. The custom CA from
+    # `global.rootCA.cert` is trusted for this download.
     downloadUrl: ""
+    # Optional SHA-256 checksum (hex) of the archive at `downloadUrl`. When
+    # set, the download fails if the archive does not match. Recommended.
+    downloadChecksum: ""
     # Configure Terraform log level for terraform-exec execution
     # Valid values: TRACE, DEBUG, INFO, WARN, ERROR, OFF
     # Default: ERROR
