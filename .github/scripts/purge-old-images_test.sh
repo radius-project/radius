@@ -97,15 +97,33 @@ curl() {
                 printf ']' >> "${output}"
             elif [[ "${PACKAGE_PAGINATION:-false}" == true ]]; then
                 printf '[{"name":"dev/package-final"}]' > "${output}"
+            elif [[ "${MULTIPLE_PACKAGES:-false}" == true ]]; then
+                printf '[{"name":"dev/example"},{"name":"dev/next"}]' \
+                    > "${output}"
             else
                 cat > "${output}" <<'JSON'
 [{"name":"dev/example"},{"name":"production/example"}]
 JSON
             fi
             ;;
-        *"/dev%2Fexample/versions"*)
+        *"/dev%2Fexample/versions"* | *"/dev%2Fnext/versions"*)
             if [[ "${INVALID_JSON_PATH:-}" == versions ]]; then
                 printf 'invalid JSON' > "${output}"
+            elif [[ "${MULTIPLE_PACKAGES:-false}" == true ]]; then
+                cat > "${output}" <<'JSON'
+[
+  {
+    "id": 101,
+    "updated_at": "2020-01-01T00:00:00Z",
+    "metadata": {"container": {"tags": ["pr-101"]}}
+  },
+  {
+    "id": 104,
+    "updated_at": "2020-01-01T00:00:00Z",
+    "metadata": {"container": {"tags": ["pr-104"]}}
+  }
+]
+JSON
             elif [[ "${VERSION_PAGINATION:-false}" == true &&
                 "${url}" == *"&page=1" ]]; then
                 printf '[' > "${output}"
@@ -234,6 +252,82 @@ grep -q '/versions/1$' "${TEST_DIR}/deletes" ||
 grep -q '/versions/201$' "${TEST_DIR}/deletes" ||
     fail_test "second version page was not deleted"
 unset VERSION_PAGINATION SKIP_TRANSIENT_FAILURE
+
+readonly protected_message="Publicly visible package versions with more \
+than 5000 downloads cannot be deleted. Contact GitHub support for further \
+assistance."
+cleanup
+: > "${TEST_DIR}/gets"
+: > "${TEST_DIR}/deletes"
+MULTIPLE_PACKAGES=true
+SKIP_TRANSIENT_FAILURE=true
+DELETE_CODES="400 204"
+DELETE_MESSAGE="${protected_message}"
+export MULTIPLE_PACKAGES SKIP_TRANSIENT_FAILURE DELETE_CODES DELETE_MESSAGE
+main > "${TEST_DIR}/output" 2>&1 ||
+    fail_test "protected version failed cleanup"
+[[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 4 ]] ||
+    fail_test "cleanup did not continue after the protected version"
+grep -q '::warning::dev/example version 101 is protected' \
+    "${TEST_DIR}/output" || fail_test "protected version warning missing"
+for deleted_version in \
+    "dev/example version 104" "dev/next version 101" "dev/next version 104"; do
+    grep -q "Deleted ${deleted_version}" "${TEST_DIR}/output" ||
+        fail_test "later deletion missing: ${deleted_version}"
+done
+if grep -q 'Deleted dev/example version 101' "${TEST_DIR}/output"; then
+    fail_test "protected version was reported as deleted"
+fi
+grep -q 'Deleted 3, already deleted 0 package versions' \
+    "${TEST_DIR}/output" || fail_test "protected version counted as deleted"
+
+for delete_code in 400 401 403 409 422; do
+    for rejected_message in \
+        "${protected_message}" \
+        "${protected_message} Extra details." \
+        "${protected_message%.}" \
+        "${protected_message}"$'\n' \
+        "Publicly visible package versions cannot be deleted."; do
+        [[ "${delete_code}" != 400 ||
+            "${rejected_message}" != "${protected_message}" ]] || continue
+        cleanup
+        : > "${TEST_DIR}/gets"
+        : > "${TEST_DIR}/deletes"
+        DELETE_CODES="${delete_code} 204"
+        unset DELETE_MESSAGE
+        DELETE_BODY="$(jq -n --arg message "${rejected_message}" \
+            '{message: $message}')"
+        export DELETE_BODY
+        if main > "${TEST_DIR}/output" 2>&1; then
+            fail_test "HTTP ${delete_code} rejection was skipped"
+        fi
+        [[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 1 ]] ||
+            fail_test "cleanup continued after a different rejection"
+        grep -q "HTTP ${delete_code}:" "${TEST_DIR}/output" ||
+            fail_test "rejection diagnostic missing"
+    done
+done
+
+DELETE_CODES="400 204"
+for rejected_body in \
+    "${protected_message}" \
+    '{"message":null}' \
+    '{"message":5000}' \
+    "$(jq -n --arg message "${protected_message}" '{message: [$message]}')" \
+    "$(jq -n --arg message "${protected_message}" '{message: $message}'){" \
+    "$(jq -n --arg message "${protected_message}" \
+        '{message: $message}, {message: $message}')"; do
+    cleanup
+    : > "${TEST_DIR}/gets"
+    : > "${TEST_DIR}/deletes"
+    DELETE_BODY="${rejected_body}"
+    if main > "${TEST_DIR}/output" 2>&1; then
+        fail_test "invalid protected-version response was skipped"
+    fi
+    [[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 1 ]] ||
+        fail_test "cleanup continued after invalid response"
+done
+unset MULTIPLE_PACKAGES SKIP_TRANSIENT_FAILURE DELETE_CODES DELETE_BODY
 
 cleanup
 : > "${TEST_DIR}/gets"

@@ -13,6 +13,9 @@ readonly PACKAGE_TAG_PREFIX="${PACKAGE_TAG_PREFIX:-pr-}"
 readonly RETENTION_DAYS="${RETENTION_DAYS:-7}"
 readonly DRY_RUN="${PURGE_DRY_RUN:-false}"
 readonly RATE_LIMIT_STATUS=75
+readonly PROTECTED_VERSION_MESSAGE="Publicly visible package versions with more \
+than 5000 downloads cannot be deleted. Contact GitHub support for further \
+assistance."
 
 WORK_DIR=""
 DELETED_COUNT=0
@@ -179,6 +182,15 @@ delete_version() {
 
     if is_rate_limited "${header_file}" "${http_code}"; then
         return "${RATE_LIMIT_STATUS}"
+    fi
+    if [[ "${http_code}" == 400 ]] &&
+        jq -e -s --arg message "${PROTECTED_VERSION_MESSAGE}" '
+            length == 1 and
+            (.[0] | type == "object" and .message == $message)
+        ' "${response}" >/dev/null 2>&1; then
+        echo "::warning::${package_name} version ${version_id} is protected" \
+            "from deletion; skipping: ${PROTECTED_VERSION_MESSAGE}" >&2
+        return 0
     fi
     message="$(response_message "${response}" | tr '\n' ' ')"
     echo "Delete of ${package_name} version ${version_id} returned" \
