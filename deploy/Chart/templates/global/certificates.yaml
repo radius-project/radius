@@ -72,9 +72,8 @@ spec:
     - digital signature
     - server auth
     - client auth
+  # One SAN only: the CA is name-constrained to <namespace>.svc.
   dnsNames:
-    - {{ $component }}
-    - {{ $component }}.{{ $ns }}
     - {{ $component }}.{{ $ns }}.svc
   issuerRef:
     group: cert-manager.io

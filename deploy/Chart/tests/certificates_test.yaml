@@ -131,7 +131,7 @@ tests:
           value: ucp-mtls
       - equal:
           path: spec.dnsNames
-          value: [ucp, ucp.radius-system, ucp.radius-system.svc]
+          value: [ucp.radius-system.svc]
 
   - it: renders an applications-rp certificate
     set:
@@ -153,7 +153,7 @@ tests:
           value: applications-rp-mtls
       - equal:
           path: spec.dnsNames
-          value: [applications-rp, applications-rp.radius-system, applications-rp.radius-system.svc]
+          value: [applications-rp.radius-system.svc]
 
   - it: renders a dynamic-rp certificate
     set:
@@ -175,7 +175,7 @@ tests:
           value: dynamic-rp-mtls
       - equal:
           path: spec.dnsNames
-          value: [dynamic-rp, dynamic-rp.radius-system, dynamic-rp.radius-system.svc]
+          value: [dynamic-rp.radius-system.svc]
 
   - it: renders a controller certificate
     set:
@@ -197,7 +197,7 @@ tests:
           value: controller-mtls
       - equal:
           path: spec.dnsNames
-          value: [controller, controller.radius-system, controller.radius-system.svc]
+          value: [controller.radius-system.svc]
 
   - it: renders a bicep-de certificate
     set:
@@ -219,7 +219,7 @@ tests:
           value: bicep-de-mtls
       - equal:
           path: spec.dnsNames
-          value: [bicep-de, bicep-de.radius-system, bicep-de.radius-system.svc]
+          value: [bicep-de.radius-system.svc]
 
   - it: uses the release namespace in SANs
     release:
@@ -232,7 +232,7 @@ tests:
     asserts:
       - equal:
           path: spec.dnsNames
-          value: [ucp, ucp.custom-ns, ucp.custom-ns.svc]
+          value: [ucp.custom-ns.svc]
 
   - it: fails for caSecret mode
     set:
