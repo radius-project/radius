@@ -98,6 +98,8 @@ retry_curl() {
                 "${temporary_output}" == true && -f "${output}" ]]; then
                 cat "${output}" || status=23
             fi
+            retry_curl_write_out \
+                "${write_out}" "${http_code}" "${effective_url}"
             retry_curl_cleanup "${temporary_directory}" "${headers_output}" ||
                 return "$?"
             return "${status}"

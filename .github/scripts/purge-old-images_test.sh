@@ -157,6 +157,9 @@ JSON
 
 sleep() {
     printf '%s\n' "$1" >> "${TEST_DIR}/waits"
+    if [[ -n "${SLEEP_OVERRUN:-}" ]]; then
+        SECONDS=$((SECONDS + $1 + SLEEP_OVERRUN))
+    fi
 }
 
 : > "${TEST_DIR}/gets"
@@ -344,5 +347,45 @@ grep -q '::warning::GitHub API rate limit reached' "${TEST_DIR}/output" ||
     fail_test "secondary read rate limit above budget was not detected"
 unset GET_FAILURE_PATH GET_FAILURE_CODE GET_FAILURE_HEADERS
 unset SKIP_TRANSIENT_FAILURE
+
+unset SECONDS
+SECONDS=0
+for operation in delete read; do
+    for code in 403 429; do
+        cleanup
+        : > "${TEST_DIR}/gets"
+        : > "${TEST_DIR}/deletes"
+        : > "${TEST_DIR}/waits"
+        SKIP_TRANSIENT_FAILURE=true
+        RETRY_CURL_MAX_SECONDS=2
+        SLEEP_OVERRUN=2
+        if [[ "${operation}" == delete ]]; then
+            DELETE_CODES="${code}"
+            DELETE_HEADERS="Retry-After: 1"
+        else
+            GET_FAILURE_PATH=versions
+            GET_FAILURE_CODE="${code}"
+            GET_FAILURE_HEADERS="Retry-After: 1"
+        fi
+        main > "${TEST_DIR}/output" 2>&1 ||
+            fail_test "HTTP ${code} ${operation} deadline failed cleanup"
+        grep -q '::warning::GitHub API rate limit reached' \
+            "${TEST_DIR}/output" ||
+            fail_test "HTTP ${code} ${operation} deadline warning missing"
+        grep -q 'exceeded the 2-second budget' "${TEST_DIR}/output" ||
+            fail_test "${operation} did not reach the deadline"
+        [[ "$(< "${TEST_DIR}/waits")" == 1 ]] ||
+            fail_test "${operation} did not wait once"
+        [[ "$(wc -l < "${TEST_DIR}/gets")" -eq 2 ]] ||
+            fail_test "${operation} deadline read count"
+        expected_deletes=0
+        [[ "${operation}" != delete ]] || expected_deletes=1
+        [[ "$(wc -l < "${TEST_DIR}/deletes")" -eq "${expected_deletes}" ]] ||
+            fail_test "cleanup continued after ${operation} deadline"
+        unset DELETE_CODES DELETE_HEADERS
+        unset GET_FAILURE_PATH GET_FAILURE_CODE GET_FAILURE_HEADERS
+        unset RETRY_CURL_MAX_SECONDS SLEEP_OVERRUN SKIP_TRANSIENT_FAILURE
+    done
+done
 
 echo "purge-old-images tests passed"
