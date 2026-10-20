@@ -233,7 +233,7 @@ test("functional and explicitly reviewed old recipe profiles do not open arbitra
     classify(s, e, { ...options, profile: "functional" }).map(
       (r) => r.decision
     ),
-    ["delete-candidate", "hold"]
+    ["delete-candidate", "delete-candidate"]
   );
   assert.deepEqual(
     classify(s, e, { ...options, profile: "test-recipes" }).map(
@@ -244,6 +244,44 @@ test("functional and explicitly reviewed old recipe profiles do not open arbitra
   assert.throws(() =>
     classify(s, { ...e, testRecipePackages: ["helm-chart/radius"] }, options)
   );
+});
+test("runtime functional tags require complete evidence and retain all safety guards", () => {
+  const tag = "test-func0123456789-123-1";
+  const s = snapshot([version(1, [tag])]);
+  s.packages[0].name = "dev/ucpd";
+  for (const profile of ["functional", "reviewed-tests"]) {
+    const opts = { ...options, profile };
+    assert.equal(classify(s, evidence(), opts)[0].decision, "delete-candidate");
+    for (const flag of [
+      "historicalReviewComplete",
+      "activeReferenceReviewComplete"
+    ]) {
+      assert.equal(
+        classify(s, { ...evidence(), [flag]: false }, opts)[0].decision,
+        "hold"
+      );
+    }
+    const mixed = structuredClone(s);
+    mixed.packages[0].versions[0].tags.push("0.60.0-rc.1");
+    assert.equal(classify(mixed, evidence(), opts)[0].decision, "keep");
+    assert.equal(
+      classify(s, { ...evidence(), activeTags: [tag] }, opts)[0].decision,
+      "keep"
+    );
+    const recent = structuredClone(s);
+    recent.packages[0].versions[0].updatedAt = new Date(now).toISOString();
+    assert.equal(classify(recent, evidence(), opts)[0].decision, "keep");
+    const incomplete = structuredClone(s);
+    incomplete.packages[0].versions[0].children = [d(999)];
+    assert.equal(classify(incomplete, evidence(), opts)[0].decision, "hold");
+    const outside = structuredClone(s);
+    outside.packages[0].name = "ucpd";
+    assert.equal(classify(outside, evidence(), opts)[0].decision, "hold");
+    const recipe = structuredClone(s);
+    recipe.packages[0].versions[0].recipe = true;
+    assert.equal(classify(recipe, evidence(), opts)[0].decision, "hold");
+  }
+  assert.equal(classify(s, evidence(), options)[0].decision, "hold");
 });
 test("known Bicep recipes require reviewed paths; release aliases and unrecognized tags still win", () => {
   const body = JSON.stringify({
@@ -794,6 +832,19 @@ test("workflow safety contracts preserve plan-only schedule, independent environ
     /cleanup-plan-\$\{\{ needs.preflight.outputs.attempt \}\}/
   );
   assert.match(shared, /secrets.CLEANUP_PACKAGE_TOKEN/);
+  assert.match(
+    apply,
+    /CLEANUP_PACKAGE_TOKEN: \$\{\{ secrets\.CLEANUP_PACKAGE_TOKEN \}\}/
+  );
+  assert.match(
+    apply,
+    /CLEANUP_PUBLICATION_FREEZE: \$\{\{ secrets\.CLEANUP_PUBLICATION_FREEZE \}\}/
+  );
+  assert.match(shared, /environment:\s+name: package-cleanup/);
+  assert.match(
+    shared,
+    /CLEANUP_PUBLICATION_FREEZE: \$\{\{ secrets\.CLEANUP_PUBLICATION_FREEZE \}\}/
+  );
   assert.match(shared, /retention-days: 30/);
   assert.match(shared, /ref: \$\{\{ github.sha \}\}/);
   assert.doesNotMatch(

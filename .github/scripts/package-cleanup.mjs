@@ -463,13 +463,12 @@ function selectedTag(tag, profile, name, state) {
     /^pr-[1-9]\d*(?:-[a-f0-9]{7,40})?$/.test(tag) ||
     /^0\.42\.42-pr-[1-9]\d*$/.test(tag);
   // These forms come from functional-test-cloud.yaml and cli_test.go.
-  const functional = /^pr-func[a-f0-9]{10}$/.test(tag);
+  const functional =
+    /^pr-func[a-f0-9]{10}$/.test(tag) ||
+    /^test-func[a-f0-9]{10}-[1-9]\d*-[1-9]\d*$/.test(tag);
   const recipe =
     state.recipePackages.includes(name) &&
-    (pr ||
-      functional ||
-      /^test-func[a-f0-9]{10}-[1-9]\d*-[1-9]\d*$/.test(tag) ||
-      /^test-[1-9]\d{9}-(?:0|[1-9]\d{0,2})$/.test(tag));
+    (pr || functional || /^test-[1-9]\d{9}-(?:0|[1-9]\d{0,2})$/.test(tag));
   return (
     (["pr", "reviewed-tests"].includes(profile) && pr) ||
     (["functional", "reviewed-tests"].includes(profile) && functional) ||

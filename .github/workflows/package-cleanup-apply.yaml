@@ -47,3 +47,5 @@ jobs:
       max_deletes: ${{ inputs.max_deletes }}
     secrets:
       inventory_token: ${{ secrets.GH_RAD_CI_BOT_PAT || github.token }}
+      CLEANUP_PACKAGE_TOKEN: ${{ secrets.CLEANUP_PACKAGE_TOKEN }}
+      CLEANUP_PUBLICATION_FREEZE: ${{ secrets.CLEANUP_PUBLICATION_FREEZE }}

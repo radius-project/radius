@@ -25,7 +25,8 @@ on:
     secrets:
       inventory_token:
         required: true
-      # Supplied by the protected environment, not forwarded by the wrappers.
+      # The caller passes these names; the protected environment supplies
+      # their values and takes precedence over any caller values.
       CLEANUP_PACKAGE_TOKEN:
         required: false
       CLEANUP_PUBLICATION_FREEZE:
