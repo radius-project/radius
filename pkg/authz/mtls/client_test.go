@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -87,7 +88,9 @@ func TestUpgradeTransport_Routing(t *testing.T) {
 			plain, secure := &recordingTransport{}, &recordingTransport{}
 			rt, err := NewUpgradeTransport(componentOptions(t, ca, "ucp", mode), plain, []string{"applications-rp", "dynamic-rp"})
 			require.NoError(t, err)
-			rt.(*upgradeTransport).secure = secure
+			for host := range rt.(*upgradeTransport).secure {
+				rt.(*upgradeTransport).secure[host] = secure
+			}
 
 			for _, u := range []string{
 				"http://applications-rp:5443/a",
@@ -137,11 +140,7 @@ func TestUpgradeTransport_PresentsCertificate(t *testing.T) {
 		t.Run(tt.component, func(t *testing.T) {
 			rt, err := NewUpgradeTransport(componentOptions(t, ca, tt.component, authz.ModeEnforce), http.DefaultTransport, []string{"applications-rp"})
 			require.NoError(t, err)
-			secure := rt.(*upgradeTransport).secure.(*http.Transport)
-			secure.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
-				return (&net.Dialer{}).DialContext(ctx, network, srv.url)
-			}
-			t.Cleanup(secure.CloseIdleConnections)
+			dialTo(t, rt, appsRPServerName, srv.url)
 
 			status, err := get(&http.Client{Transport: rt}, "http://"+appsRPServerName+":5443/")
 			require.NoError(t, err)
@@ -156,15 +155,58 @@ func TestUpgradeTransport_RejectsWrongServer(t *testing.T) {
 
 	rt, err := NewUpgradeTransport(componentOptions(t, ca, "ucp", authz.ModeEnforce), http.DefaultTransport, []string{"dynamic-rp"})
 	require.NoError(t, err)
-	secure := rt.(*upgradeTransport).secure.(*http.Transport)
-	secure.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
-		return (&net.Dialer{}).DialContext(ctx, network, srv.url)
-	}
-	t.Cleanup(secure.CloseIdleConnections)
+	dialTo(t, rt, "dynamic-rp."+testNamespace+".svc", srv.url)
 
 	// The server is applications-rp, so a request for dynamic-rp must fail verification.
 	_, err = get(&http.Client{Transport: rt}, "http://dynamic-rp."+testNamespace+".svc:8082/")
 	require.ErrorContains(t, err, "not dynamic-rp."+testNamespace+".svc")
+}
+
+// TestUpgradeTransport_CanonicalServerName checks that every accepted host form sends the
+// canonical <component>.<namespace>.svc as the TLS server name.
+func TestUpgradeTransport_CanonicalServerName(t *testing.T) {
+	ca := newCA(t)
+	serverNames := make(chan string, 1)
+	ln, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			serverNames <- hello.ServerName
+			return nil, errors.New("stop after the client hello")
+		},
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = ln.Close() })
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			_ = conn.(*tls.Conn).Handshake()
+			_ = conn.Close()
+		}
+	}()
+
+	rt, err := NewUpgradeTransport(componentOptions(t, ca, "ucp", authz.ModeEnforce), &recordingTransport{}, []string{"applications-rp"})
+	require.NoError(t, err)
+	dialTo(t, rt, appsRPServerName, ln.Addr().String())
+
+	for _, host := range []string{"applications-rp", "applications-rp." + testNamespace, appsRPServerName} {
+		t.Run(host, func(t *testing.T) {
+			_, _ = get(&http.Client{Transport: rt}, "http://"+host+":5443/")
+			require.Equal(t, appsRPServerName, <-serverNames)
+		})
+	}
+}
+
+// dialTo sends every connection of the mTLS transport for host to addr.
+func dialTo(t *testing.T, rt http.RoundTripper, host, addr string) {
+	t.Helper()
+	secure := rt.(*upgradeTransport).secure[host].(*http.Transport)
+	secure.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, addr)
+	}
+	t.Cleanup(secure.CloseIdleConnections)
 }
 
 // TestClientTransport_RotationMidHandshake rotates the client's certificate and CA bundle
