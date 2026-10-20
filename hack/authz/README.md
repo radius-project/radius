@@ -71,12 +71,12 @@ Stack labels and check IDs are implementation roadmap identifiers used by this k
 
 The prefix identifies the stack and the numeric suffix identifies a check within that roadmap; for example, `A4` belongs to Stack A and `B5` to Stack B. `0.1` is a foundation check. The table describes each check's goal; these identifiers do not imply a one-to-one mapping to the design stages.
 
-`APPS_RP` below is `applications-rp.radius-system:5443`, and `OPS` is the harmless route `/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview`. Commands for checks that are not available yet show the intended flow; the pull request that adds the boundary updates them if the details change.
+`APPS_RP` below is `applications-rp.radius-system.svc:5443`, and `OPS` is the harmless route `/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview`. Commands for checks that are not available yet show the intended flow; the pull request that adds the boundary updates them if the details change.
 
 Run these assignments in the shell where you will run the checklist commands:
 
 ```bash
-APPS_RP="applications-rp.${AUTHZ_RADIUS_NAMESPACE:-radius-system}:5443"
+APPS_RP="applications-rp.${AUTHZ_RADIUS_NAMESPACE:-radius-system}.svc:5443"
 OPS='/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
 ```
 
