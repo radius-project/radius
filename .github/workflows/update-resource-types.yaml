@@ -38,7 +38,8 @@ name: Update Resource Types
 # selects a stable unit release when one exists, otherwise resolves the edge
 # candidate to an immutable commit SHA, records it in
 # deploy/manifest/defaults.yaml (`resourceTypes[]` / `recipePacks[]`), and
-# re-copies the manifests under deploy/manifest/built-in-providers/. It then
+# re-copies the manifests under deploy/manifest/built-in-providers/ and the
+# compiled kubernetes recipe pack under deploy/manifest/recipe-packs/. It then
 # runs `make generate` and commits all resulting generated artifacts. The
 # event's units advance, as do any consumed edge units whose first stable
 # release is now available; entries Radius does not register are skipped.
@@ -183,7 +184,7 @@ jobs:
         # the resulting update triggers CI checks. The default GITHUB_TOKEN
         # cannot trigger workflows on pushes it creates.
         id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ secrets.RESOURCE_TYPES_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RESOURCE_TYPES_BOT_PRIVATE_KEY }}
@@ -218,7 +219,7 @@ jobs:
         uses: ./.github/actions/go-mod-download
 
       - name: Setup NodeJS
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
@@ -228,6 +229,11 @@ jobs:
         # install-yq appends its install dir to GITHUB_PATH, so yq is only on
         # PATH from the next step onwards.
         run: make install-yq
+
+      - name: Install Bicep
+        # Required to compile the kubernetes recipe pack. The sync script
+        # requires the version pinned in build/tools.yaml.
+        run: make install-bicep
 
       - name: Prepare cumulative update branch
         # Rebuild the bot branch from the current main on every dispatch instead
@@ -372,8 +378,9 @@ jobs:
           signoff: true
           sign-commits: true
           title: "chore(resource-types-contrib): updates"
+          labels: pr:standard
           body: |
-            Automated refresh of resource type manifests under `deploy/manifest/built-in-providers/`.
+            Automated refresh of resource type manifests under `deploy/manifest/built-in-providers/` and the kubernetes recipe pack under `deploy/manifest/recipe-packs/`.
 
             Triggered by [`${{ env.CONTRIB_REPO }}`](https://github.com/${{ env.CONTRIB_REPO }}) on the `${{ steps.contrib.outputs.channel }}` channel at ref `${{ steps.contrib.outputs.ref }}`.
             Affected: ${{ steps.contrib.outputs.affected }}.

@@ -83,7 +83,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	//
 	// This check is deliberately scoped to the current resource group and to this resource type
 	// only. Applications.Core/environments is on a deprecation path, so its enforcement behavior
-	// is frozen: widening it would start failing writes (rad recipe register, rad env update) for
+	// is frozen: widening it would start failing writes (environment API updates, rad env update) for
 	// existing installs that already have duplicate namespaces across resource groups. Plane-wide
 	// uniqueness is enforced on Radius.Core/environments instead, which is where users migrate to.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace

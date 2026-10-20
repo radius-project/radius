@@ -21,58 +21,114 @@ import (
 	"sort"
 	"strings"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/prompt"
-	"github.com/radius-project/radius/pkg/cli/setup"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/to"
+	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
 const (
 	selectExistingEnvironmentPrompt         = "Select an existing environment or create a new one"
 	selectExistingEnvironmentCreateSentinel = "[create new]"
-	enterNamespacePrompt                    = "Enter a namespace name to deploy apps into"
+	enterNamespacePrompt                    = "Enter a namespace name to deploy apps into. The namespace must exist in the Kubernetes cluster."
 	enterEnvironmentNamePrompt              = "Enter an environment name"
 	defaultEnvironmentName                  = "default"
 	defaultEnvironmentNamespace             = "default"
 )
 
+// CreateEnvironment creates a Radius.Core environment with the default recipe pack.
 func (r *Runner) CreateEnvironment(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	err = setup.EnsureResourceGroup(ctx, client, "local", r.Options.Environment.Name)
+	err = client.CreateOrUpdateResourceGroup(ctx, "local", r.Options.Environment.Name, &ucp.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	})
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create a resource group.")
 	}
 
-	providerList := []any{}
-	if r.Options.CloudProviders.Azure != nil {
-		providerList = append(providerList, r.Options.CloudProviders.Azure)
-	}
-	if r.Options.CloudProviders.AWS != nil {
-		providerList = append(providerList, r.Options.CloudProviders.AWS)
-	}
+	// Build providers for the new Radius.Core/environments resource type
+	providers := &corerpv20250801.Providers{}
 
-	providers, err := cmd.CreateEnvProviders(providerList)
-	if err != nil {
-		return err
-	}
-
-	var recipes map[string]map[string]corerp.RecipePropertiesClassification
-	if r.Options.Recipes.DevRecipes {
-		// Note: To use custom registry for recipes, users need to manually configure
-		// their environment after initialization or use custom recipe definitions
-		recipes, err = r.DevRecipeClient.GetDevRecipes(ctx)
-		if err != nil {
-			return err
+	if r.Options.Environment.Namespace != "" {
+		providers.Kubernetes = &corerpv20250801.ProvidersKubernetes{
+			Namespace: to.Ptr(r.Options.Environment.Namespace),
 		}
 	}
 
-	err = setup.EnsureEnvironment(ctx, client, r.Options.Environment.Name, r.Options.Environment.Namespace, &providers, recipes)
+	if r.Options.CloudProviders.Azure != nil {
+		providers.Azure = &corerpv20250801.ProvidersAzure{
+			SubscriptionID:    to.Ptr(r.Options.CloudProviders.Azure.SubscriptionID),
+			ResourceGroupName: to.Ptr(r.Options.CloudProviders.Azure.ResourceGroup),
+		}
+	}
+
+	if r.Options.CloudProviders.AWS != nil {
+		providers.Aws = &corerpv20250801.ProvidersAws{
+			AccountID: to.Ptr(r.Options.CloudProviders.AWS.AccountID),
+			Region:    to.Ptr(r.Options.CloudProviders.AWS.Region),
+		}
+	}
+
+	envProperties := corerpv20250801.EnvironmentProperties{
+		Providers: providers,
+	}
+
+	// Initialize the Radius.Core client factory if not already set
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client.")
+		}
+		r.RadiusCoreClientFactory = clientFactory
+	}
+
+	// Ensure the default resource group exists before creating recipe packs in it.
+	if err := recipepack.EnsureDefaultResourceGroup(ctx, client.CreateOrUpdateResourceGroup); err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create default resource group for recipe packs.")
+	}
+
+	// Create the default recipe pack and link it to the environment.
+	// The default pack lives in the default resource group scope.
+	if r.DefaultScopeClientFactory == nil {
+		if r.Workspace.Scope == recipepack.DefaultResourceGroupScope {
+			r.DefaultScopeClientFactory = r.RadiusCoreClientFactory
+		} else {
+			defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+			if err != nil {
+				return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client for default scope.")
+			}
+			r.DefaultScopeClientFactory = defaultClientFactory
+		}
+	}
+
+	defaultPack, err := recipepack.NewDefaultRecipePackResource()
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to build default recipe pack.")
+	}
+	_, err = r.DefaultScopeClientFactory.NewRecipePacksClient().CreateOrUpdate(ctx, recipepack.DefaultResourceGroupScope, recipepack.DefaultRecipePackResourceName, defaultPack, nil)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create default recipe pack.")
+	}
+
+	// Link the default recipe pack to the environment.
+	envProperties.RecipePacks = []*string{to.Ptr(recipepack.DefaultRecipePackID())}
+
+	// Create the Radius.Core/environments resource
+	_, err = r.RadiusCoreClientFactory.NewEnvironmentsClient().CreateOrUpdate(ctx, r.Workspace.Scope, r.Options.Environment.Name, corerpv20250801.EnvironmentResource{
+		Location:   to.Ptr(v1.LocationGlobal),
+		Properties: &envProperties,
+	}, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create environment.")
 	}
@@ -113,15 +169,23 @@ func (r *Runner) enterEnvironmentOptions(ctx context.Context, workspace *workspa
 	options.Environment.Create = true
 	if !options.Cluster.Install {
 		// If Radius is already installed then look for an existing environment first.
-		name, err := r.selectExistingEnvironment(ctx, workspace)
+		existing, err := r.selectExistingEnvironment(ctx, workspace)
 		if err != nil {
 			return err
 		}
 
 		// For an existing environment we won't make changes, so we're done gathering options.
-		if name != nil {
-			options.Environment.Name = *name
+		if existing != nil {
+			options.Environment.Name = *existing.Name
 			options.Environment.Create = false
+
+			// Derive the resource group from the existing environment's resource ID so we
+			// don't assume the resource group name matches the environment name.
+			id, err := resources.ParseResource(*existing.ID)
+			if err != nil {
+				return err
+			}
+			options.Environment.ResourceGroup = id.FindScope(resources_radius.ScopeResourceGroups)
 			return nil
 		}
 	}
@@ -137,16 +201,19 @@ func (r *Runner) enterEnvironmentOptions(ctx context.Context, workspace *workspa
 		return err
 	}
 
+	// For a newly-created environment we put it in a resource group whose name matches the environment name.
+	options.Environment.ResourceGroup = options.Environment.Name
+
 	return nil
 }
 
-func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *workspaces.Workspace) (*string, error) {
+func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *workspaces.Workspace) (*corerpv20250801.EnvironmentResource, error) {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *workspace)
 	if err != nil {
 		return nil, err
 	}
 
-	environments, err := client.ListEnvironmentsAll(ctx)
+	environments, err := client.ListRadiusCoreEnvironmentsAll(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -157,13 +224,10 @@ func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *works
 	}
 
 	// Without any flags we take the default without asking if it's an option.
-	//
-	// The best way to accomplish that is to check if there's an environment named "default"
-	// If not, we prompt the user for an input of remaining options
 	if !r.Full {
-		for _, env := range environments {
+		for i, env := range environments {
 			if strings.EqualFold(defaultEnvironmentName, *env.Name) {
-				return env.Name, nil
+				return &environments[i], nil
 			}
 		}
 	}
@@ -175,19 +239,19 @@ func (r *Runner) selectExistingEnvironment(ctx context.Context, workspace *works
 	}
 
 	if name == selectExistingEnvironmentCreateSentinel {
-		// Returing nil tells the caller to create a new one.
 		return nil, nil
 	}
 
-	return &name, nil
+	for i, env := range environments {
+		if env.Name != nil && *env.Name == name {
+			return &environments[i], nil
+		}
+	}
+
+	return nil, nil
 }
 
-func (r *Runner) buildExistingEnvironmentList(existing []corerp.EnvironmentResource) []string {
-	// Build the list of items in the following way:
-	//
-	// - default environment (if it exists)
-	// - (all other existing environments)
-	// - [create new]
+func (r *Runner) buildExistingEnvironmentList(existing []corerpv20250801.EnvironmentResource) []string {
 	others := []string{}
 	defaultExists := false
 	for _, env := range existing {
@@ -211,7 +275,6 @@ func (r *Runner) buildExistingEnvironmentList(existing []corerp.EnvironmentResou
 }
 
 func (r *Runner) enterEnvironmentName() (string, error) {
-	// When no flags are specified we don't ask for a name, just use 'default'
 	if !r.Full {
 		return defaultEnvironmentName, nil
 	}
@@ -228,8 +291,8 @@ func (r *Runner) enterEnvironmentName() (string, error) {
 	return name, nil
 }
 
+// enterEnvironmentNamespace prompts for the Kubernetes namespace the new environment deploys into.
 func (r *Runner) enterEnvironmentNamespace() (string, error) {
-	// When no flags are specified we don't want to ask about namespaces.
 	if !r.Full {
 		return defaultEnvironmentNamespace, nil
 	}
@@ -237,7 +300,7 @@ func (r *Runner) enterEnvironmentNamespace() (string, error) {
 	namespace, err := r.Prompter.GetTextInput(enterNamespacePrompt, prompt.TextInputOptions{
 		Default:     defaultEnvironmentNamespace,
 		Placeholder: defaultEnvironmentNamespace,
-		Validate:    prompt.ValidateResourceNameOrDefault,
+		Validate:    prompt.ValidateKubernetesNamespaceOrDefault,
 	})
 	if err != nil {
 		return "", err

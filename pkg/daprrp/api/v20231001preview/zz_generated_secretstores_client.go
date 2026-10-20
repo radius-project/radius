@@ -60,7 +60,7 @@ func (client *SecretStoresClient) BeginCreateOrUpdate(ctx context.Context, rootS
 	}
 }
 
-// CreateOrUpdate - Create a DaprSecretStoreResource
+// createOrUpdate - Create a DaprSecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *SecretStoresClient) createOrUpdate(ctx context.Context, rootScope string, secretStoreName string, resource DaprSecretStoreResource, options *SecretStoresClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -78,7 +78,7 @@ func (client *SecretStoresClient) createOrUpdate(ctx context.Context, rootScope 
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *SecretStoresClient) createOrUpdateCreateRequest(ctx context.Context, rootScope string, secretStoreName string, resource DaprSecretStoreResource, _ *SecretStoresClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Dapr/secretStores/{secretStoreName}"
 	if rootScope == "" {
@@ -126,7 +126,7 @@ func (client *SecretStoresClient) BeginDelete(ctx context.Context, rootScope str
 	}
 }
 
-// Delete - Delete a DaprSecretStoreResource
+// deleteOperation - Delete a DaprSecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *SecretStoresClient) deleteOperation(ctx context.Context, rootScope string, secretStoreName string, options *SecretStoresClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
@@ -144,7 +144,7 @@ func (client *SecretStoresClient) deleteOperation(ctx context.Context, rootScope
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *SecretStoresClient) deleteCreateRequest(ctx context.Context, rootScope string, secretStoreName string, _ *SecretStoresClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Dapr/secretStores/{secretStoreName}"
 	if rootScope == "" {
@@ -162,6 +162,73 @@ func (client *SecretStoresClient) deleteCreateRequest(ctx context.Context, rootS
 	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", version20231001Preview)
 	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	return req, nil
+}
+
+// BeginUpdate - Update a DaprSecretStoreResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - secretStoreName - SecretStore name
+//   - properties - The resource properties to be updated.
+//   - options - SecretStoresClientBeginUpdateOptions contains the optional parameters for the SecretStoresClient.BeginUpdate
+//     method.
+func (client *SecretStoresClient) BeginUpdate(ctx context.Context, rootScope string, secretStoreName string, properties DaprSecretStoreResource, options *SecretStoresClientBeginUpdateOptions) (*runtime.Poller[SecretStoresClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, rootScope, secretStoreName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SecretStoresClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[SecretStoresClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// update - Update a DaprSecretStoreResource
+// If the operation fails it returns an *azcore.ResponseError type.
+func (client *SecretStoresClient) update(ctx context.Context, rootScope string, secretStoreName string, properties DaprSecretStoreResource, options *SecretStoresClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, rootScope, secretStoreName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		return nil, runtime.NewResponseError(httpResp)
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the update request.
+func (client *SecretStoresClient) updateCreateRequest(ctx context.Context, rootScope string, secretStoreName string, properties DaprSecretStoreResource, _ *SecretStoresClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Dapr/secretStores/{secretStoreName}"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if secretStoreName == "" {
+		return nil, errors.New("parameter secretStoreName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{secretStoreName}", url.PathEscape(secretStoreName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 
@@ -283,71 +350,4 @@ func (client *SecretStoresClient) listByScopeHandleResponse(resp *http.Response,
 		return SecretStoresClientListByScopeResponse{}, err
 	}
 	return result, nil
-}
-
-// BeginUpdate - Update a DaprSecretStoreResource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - secretStoreName - SecretStore name
-//   - properties - The resource properties to be updated.
-//   - options - SecretStoresClientBeginUpdateOptions contains the optional parameters for the SecretStoresClient.BeginUpdate
-//     method.
-func (client *SecretStoresClient) BeginUpdate(ctx context.Context, rootScope string, secretStoreName string, properties DaprSecretStoreResource, options *SecretStoresClientBeginUpdateOptions) (*runtime.Poller[SecretStoresClientUpdateResponse], error) {
-	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, rootScope, secretStoreName, properties, options)
-		if err != nil {
-			return nil, err
-		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SecretStoresClientUpdateResponse]{
-			FinalStateVia: runtime.FinalStateViaLocation,
-		})
-		return poller, err
-	} else {
-		return runtime.NewPollerFromResumeToken[SecretStoresClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
-	}
-}
-
-// Update - Update a DaprSecretStoreResource
-// If the operation fails it returns an *azcore.ResponseError type.
-func (client *SecretStoresClient) update(ctx context.Context, rootScope string, secretStoreName string, properties DaprSecretStoreResource, options *SecretStoresClientBeginUpdateOptions) (*http.Response, error) {
-	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, secretStoreName, properties, options)
-	if err != nil {
-		return nil, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		return nil, runtime.NewResponseError(httpResp)
-	}
-	return httpResp, nil
-}
-
-// updateCreateRequest creates the Update request.
-func (client *SecretStoresClient) updateCreateRequest(ctx context.Context, rootScope string, secretStoreName string, properties DaprSecretStoreResource, _ *SecretStoresClientBeginUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Dapr/secretStores/{secretStoreName}"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if secretStoreName == "" {
-		return nil, errors.New("parameter secretStoreName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{secretStoreName}", url.PathEscape(secretStoreName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-		return nil, err
-	}
-	return req, nil
 }

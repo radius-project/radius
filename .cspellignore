@@ -3,6 +3,7 @@ ACA
 ACIRuntimeProperties
 ADDENDUMS
 AKS
+APIM
 APIServer
 APIs
 ARM's
@@ -230,7 +231,9 @@ KubernetesResourceCheck
 KubernetesRuntimeProperties
 Kumar
 Kusto
+Kustomization
 Kustomize
+Kyverno
 LinkRP
 Linkrp
 LoadBalancer
@@ -249,12 +252,15 @@ MessagingRP
 MetadataValue
 MetadataValueFromSecret
 Mgmt
+Milvus
 MongoDatabase
 MongoDatabaseListSecretsResult
 MongoDatabaseProperties
 MongoDatabaseSecrets
 Monorepo
 Mooncake
+Mosquitto
+Mosquitto's
 MySql
 Mycompany
 NFS
@@ -272,6 +278,7 @@ OCC
 OSS
 ObserverFunc
 ObserverResult
+Ollama
 OnFailure
 OpenAI
 OpenAPI
@@ -308,6 +315,7 @@ ProvidersAzure
 ProvidersKubernetes
 PubSubBroker
 Pulumi
+Qdrant
 Qube
 RCs
 RDBMS
@@ -388,8 +396,10 @@ SemVer
 ServiceAccount
 ServicePrincipal
 Shruthi
+Sidekiq
 SignalR
 Snyk
+SPIFFE
 SplitNamespace
 SqlDatabase
 SqlDatabaseListSecretsResult
@@ -400,6 +410,7 @@ StateStore
 Stateful
 Statestores
 StaticCredential
+strenv
 Subramanian
 Swappable
 Sylvain
@@ -687,6 +698,7 @@ env
 envSecrets
 envVariables
 environmentVariables
+envsubst
 envtest
 etag
 etcd
@@ -724,7 +736,6 @@ getMeterMust
 getResourceIdentitySchemas
 getgraph
 gh
-ghaction
 ghcr
 github
 gitignore
@@ -785,6 +796,7 @@ inheritence
 init
 initContainer
 initialDelaySeconds
+inotify
 inmemory
 integrations
 integrators
@@ -891,6 +903,7 @@ mongoDatabases
 mongodatabases
 mongodb
 monorepos
+mosquitto
 mountPath
 multiapi
 multiapiscript
@@ -941,6 +954,7 @@ octo
 oidc
 oidcIssuer
 ok
+ollama
 onboarded
 onboarding
 oncall
@@ -967,6 +981,8 @@ periodSeconds
 persistentVolume
 persistentVolumes
 pfx
+pgvector
+pgvector's
 pkgs
 plaidResource
 plainHTTP
@@ -1237,6 +1253,7 @@ uncompiled
 unittest
 unmarshal
 unmarshaling
+unmigrated
 unpushed
 unregister
 unregistering
@@ -1249,6 +1266,7 @@ unvalidated
 upc
 upgradeable
 upmerge
+upmerges
 upsert
 upserts
 upvote
@@ -1346,3 +1364,5 @@ canonicality
 syft
 repoints
 korthout
+uncheckpointed
+anchore

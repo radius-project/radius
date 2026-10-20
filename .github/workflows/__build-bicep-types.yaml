@@ -37,13 +37,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version-file: .python-version
-
       - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
+        run: bash ./.github/scripts/release-version.sh >>"${GITHUB_ENV}"
 
       - name: Capture release metadata
         id: release-metadata
@@ -54,8 +49,19 @@ jobs:
             echo "release_channel=${REL_CHANNEL}"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Check current main commit
+        id: current-main
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { data } = await github.rest.repos.getBranch({ ...context.repo, branch: 'main' })
+            core.setOutput('current', data.commit.sha === context.sha)
+            if (data.commit.sha !== context.sha) core.notice('Skipping edge publication from an older main commit')
+
       - name: Get App Token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        if: github.ref != 'refs/heads/main' || steps.current-main.outputs.current == 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: get-token
         with:
           client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
@@ -69,6 +75,7 @@ jobs:
 
       - name: Dispatch or monitor correlated publisher run
         id: monitor-remote-workflow
+        if: github.ref != 'refs/heads/main' || steps.current-main.outputs.current == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ steps.get-token.outputs.token }}
@@ -102,3 +109,76 @@ jobs:
           RUN_ID: ${{ steps.monitor-remote-workflow.outputs.run_id }}
         run: |
           gh run view "${RUN_ID}" --repo azure-octo/radius-publisher --log-failed || true
+
+  build-and-push-aws-bicep-types:
+    name: Stage planned AWS Bicep types
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    environment: publish-bicep
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install plan reader
+        run: make install-yq
+
+      - name: Resolve planned AWS source
+        id: source
+        run: |
+          bash ./.github/scripts/release-version.sh >>"${GITHUB_ENV}"
+          source_sha="$(yq -er '.siblingRepositories[] |
+            select(.name == "bicep-types-aws") | .sourceCommit' \
+            ".github/release-plans/${GITHUB_REF_NAME}.yaml")"
+          [[ "${source_sha}" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "The approved plan has no valid AWS Bicep source." >&2
+            exit 1
+          }
+          echo "sha=${source_sha}" >>"${GITHUB_OUTPUT}"
+
+      - name: Get publisher token
+        id: token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          owner: azure-octo
+          repositories: radius-publisher
+          permission-actions: read
+          permission-contents: write
+
+      - name: Stage and await planned AWS types
+        id: publish
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.token.outputs.token }}
+          script: |
+            const { default: monitor } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/monitor-remote-workflow.mjs`)
+            await monitor({ github, context, core })
+        env:
+          INPUT_OWNER: azure-octo
+          INPUT_REPO: radius-publisher
+          INPUT_WORKFLOW_FILE: publish-bicep-types-aws.yml
+          INPUT_EVENT_TYPE: bicep-types-aws
+          INPUT_RELEASE_IDENTIFIER: ${{ env.REL_VERSION }}-${{ steps.source.outputs.sha }}
+          INPUT_CLIENT_PAYLOAD: |-
+            {
+              "source_repository": "radius-project/bicep-types-aws",
+              "source_ref": ${{ toJSON(github.ref) }},
+              "source_sha": ${{ toJSON(steps.source.outputs.sha) }},
+              "rel_channel": ${{ toJSON(env.REL_CHANNEL) }},
+              "registry_target": "aws"
+            }
+          INPUT_MAX_WAIT_SECONDS: "2700"
+          INPUT_POLL_INTERVAL_SECONDS: "15"
+
+      - name: Show failed publisher logs
+        if: failure() && steps.publish.outputs.run_id != ''
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          RUN_ID: ${{ steps.publish.outputs.run_id }}
+        run: gh run view "${RUN_ID}" --repo azure-octo/radius-publisher --log-failed || true

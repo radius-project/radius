@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
   copyFile,
   mkdir,
@@ -87,12 +88,18 @@ for (const error of [new Error("input unavailable"), "input unavailable"]) {
 
 // These assertions deliberately follow this workflow's small, fixed step list.
 const steps = workflow.split(/^      - name: /m).slice(1);
-const [comparison, filter, trusted, result] = steps;
+const [comparison, fetchBase, filter, trusted, result] = steps;
 
 test("comparison precedes trusted restoration and preserves the caller inputs", () => {
   assert.deepEqual(
     steps.map((step) => step.split("\n")[0].trim()),
-    ["Checkout", "Filter", "Checkout trusted changes helper", "Set result"]
+    [
+      "Checkout",
+      "Fetch comparison base",
+      "Filter",
+      "Checkout trusted changes helper",
+      "Set result"
+    ]
   );
   for (const input of [
     "fetch-depth: 0",
@@ -113,6 +120,150 @@ test("comparison precedes trusted restoration and preserves the caller inputs", 
   }
   assert.doesNotMatch(comparison + filter, /^\s+(?:path|working-directory):/m);
   assert.doesNotMatch(comparison + filter, /^\s+(?:run|script):/m);
+});
+
+test("base fetching uses upstream identity and does not execute checkout content", () => {
+  const baseExpression =
+    "inputs.base_sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha";
+  assert.ok(fetchBase.includes(`if: ${baseExpression}`));
+  assert.ok(fetchBase.includes(`BASE_SHA: \${{ ${baseExpression} }}`));
+  for (const input of [
+    "shell: bash",
+    "BASE_REPOSITORY: ${{ github.repository }}",
+    "BASE_SERVER_URL: ${{ github.server_url }}",
+    "GH_TOKEN: ${{ github.token }}"
+  ]) {
+    assert.ok(fetchBase.includes(input), input);
+  }
+  assert.doesNotMatch(
+    fetchBase,
+    /inputs\.repository|head\.repo|^\s+(?:uses|working-directory):/m
+  );
+});
+
+const fetchMatch = fetchBase.match(/        run: \|\n([\s\S]*)$/);
+assert.ok(fetchMatch, "Fetch comparison base must have an inline run command");
+const fetchBody = fetchMatch[1].replace(/^          /gm, "");
+assert.doesNotMatch(fetchBody, /\$\{\{|\.github\/|git config/);
+
+function runGit(cwd, args) {
+  const result = spawnSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null"
+    }
+  });
+  assert.equal(result.status, 0, result.error?.message || result.stderr);
+  return result.stdout.trim();
+}
+
+async function createForkCheckout(t) {
+  const { workspace } = await createWorkspace(t);
+  const upstream = path.join(workspace, "upstream.git");
+  const fork = path.join(workspace, "fork");
+  const checkout = path.join(workspace, "checkout");
+  runGit(workspace, ["init", "--quiet", upstream]);
+  runGit(upstream, ["config", "user.name", "Workflow test"]);
+  runGit(upstream, ["config", "user.email", "workflow-test@example.invalid"]);
+  await writeFile(path.join(upstream, "shared.txt"), "shared\n");
+  runGit(upstream, ["add", "."]);
+  runGit(upstream, ["commit", "--quiet", "-s", "-m", "shared base"]);
+  const sharedBase = runGit(upstream, ["rev-parse", "HEAD"]);
+  runGit(workspace, ["clone", "--quiet", "--no-local", upstream, fork]);
+  await writeFile(path.join(upstream, "upstream.txt"), "upstream only\n");
+  runGit(upstream, ["add", "."]);
+  runGit(upstream, ["commit", "--quiet", "-s", "-m", "upstream advance"]);
+  const baseSha = runGit(upstream, ["rev-parse", "HEAD"]);
+  runGit(fork, ["config", "user.name", "Workflow test"]);
+  runGit(fork, ["config", "user.email", "workflow-test@example.invalid"]);
+  await writeFile(path.join(fork, "pr.txt"), "PR only\n");
+  runGit(fork, ["add", "."]);
+  runGit(fork, ["commit", "--quiet", "-s", "-m", "PR change"]);
+  runGit(workspace, ["clone", "--quiet", "--no-local", fork, checkout]);
+  const headSha = runGit(checkout, ["rev-parse", "HEAD"]);
+  runGit(checkout, ["checkout", "--quiet", "--detach", headSha]);
+  return { workspace, checkout, sharedBase, baseSha, headSha };
+}
+
+function runFetchBase({ workspace, checkout, baseSha }) {
+  return spawnSync(
+    "bash",
+    ["--noprofile", "--norc", "-eo", "pipefail", "-c", fetchBody],
+    {
+      cwd: checkout,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        BASE_SHA: baseSha,
+        BASE_REPOSITORY: "upstream",
+        BASE_SERVER_URL: pathToFileURL(workspace).href,
+        GH_TOKEN: "test-token",
+        GIT_CONFIG_NOSYSTEM: "1",
+        GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null"
+      }
+    }
+  );
+}
+
+test("fetches a missing upstream base into a full fork checkout without changing HEAD", async (t) => {
+  const fixture = await createForkCheckout(t);
+  const { checkout, baseSha, headSha, sharedBase } = fixture;
+  assert.equal(
+    runGit(checkout, ["rev-parse", "--is-shallow-repository"]),
+    "false"
+  );
+  const before = spawnSync("git", ["merge-base", baseSha, headSha], {
+    cwd: checkout,
+    encoding: "utf8"
+  });
+  assert.notEqual(before.status, 0);
+  assert.match(before.stderr, /Not a valid commit name/);
+  const origin = runGit(checkout, ["remote", "get-url", "origin"]);
+  const fetched = runFetchBase(fixture);
+  assert.equal(fetched.status, 0, fetched.error?.message || fetched.stderr);
+  assert.equal(runGit(checkout, ["rev-parse", "HEAD"]), headSha);
+  assert.equal(runGit(checkout, ["remote", "get-url", "origin"]), origin);
+  assert.equal(runGit(checkout, ["merge-base", baseSha, headSha]), sharedBase);
+  assert.equal(
+    runGit(checkout, ["diff", "--name-only", `${baseSha}...${headSha}`]),
+    "pr.txt"
+  );
+  assert.equal(runGit(checkout, ["status", "--porcelain"]), "");
+  assert.doesNotMatch(
+    await readFile(path.join(checkout, ".git", "config"), "utf8"),
+    /test-token|extraheader/
+  );
+});
+
+test("an existing base skips fetching even when the upstream URL is unavailable", async (t) => {
+  const fixture = await createForkCheckout(t);
+  const fetched = runFetchBase({
+    ...fixture,
+    workspace: path.join(fixture.workspace, "missing"),
+    baseSha: fixture.sharedBase
+  });
+  assert.equal(fetched.status, 0, fetched.error?.message || fetched.stderr);
+  assert.equal(
+    runGit(fixture.checkout, ["rev-parse", "HEAD"]),
+    fixture.headSha
+  );
+});
+
+test("an unavailable comparison commit fails instead of allowing filtering", async (t) => {
+  const fixture = await createForkCheckout(t);
+  const fetched = runFetchBase({ ...fixture, baseSha: "f".repeat(40) });
+  assert.notEqual(fetched.status, 0);
+  assert.match(
+    fetched.stderr,
+    /not our ref|unadvertised object|couldn't find remote ref/
+  );
+  assert.equal(
+    runGit(fixture.checkout, ["rev-parse", "HEAD"]),
+    fixture.headSha
+  );
 });
 
 test("only privileged PR-derived events restore the trusted triggering revision", () => {

@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -235,6 +236,49 @@ func Test_RequireOutput(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tt.want, got)
 			}
+		})
+	}
+}
+
+func Test_RequireRadiusCoreEnvironmentNameArgs(t *testing.T) {
+	const (
+		scope        = "/planes/radius/local/resourceGroups/test-group"
+		radiusCoreID = scope + "/providers/Radius.Core/environments/prod"
+		legacyID     = scope + "/providers/Applications.Core/environments/prod"
+	)
+
+	tests := []struct {
+		name        string
+		args        []string
+		flag        string
+		defaultEnv  string
+		want        string
+		errContains string
+	}{
+		{name: "argument wins over legacy default", args: []string{"dev"}, defaultEnv: legacyID, want: "dev"},
+		{name: "flag wins over legacy default", flag: "dev", defaultEnv: legacyID, want: "dev"},
+		{name: "Radius.Core default is used", defaultEnv: radiusCoreID, want: "prod"},
+		{name: "Radius.Core default type is case-insensitive", defaultEnv: scope + "/providers/radius.core/environments/prod", want: "prod"},
+		{name: "legacy default is rejected", defaultEnv: legacyID, errContains: "is not a Radius.Core/environments resource"},
+		{name: "no name and no default", errContains: "no environment name provided"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := &cobra.Command{}
+			cmd.Flags().StringP("environment", "e", "", "")
+			if tt.flag != "" {
+				require.NoError(t, cmd.Flags().Set("environment", tt.flag))
+			}
+
+			got, err := RequireRadiusCoreEnvironmentNameArgs(cmd, tt.args, workspaces.Workspace{Environment: tt.defaultEnv})
+			if tt.errContains != "" {
+				require.ErrorContains(t, err, tt.errContains)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

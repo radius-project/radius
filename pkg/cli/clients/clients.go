@@ -200,9 +200,6 @@ type ApplicationsManagementClient interface {
 	// GetApplication retrieves an application by its name (or id).
 	GetApplication(ctx context.Context, applicationNameOrID string) (corerp.ApplicationResource, error)
 
-	// GetApplicationGraph retrieves the application graph of an application by its name (or id).
-	GetApplicationGraph(ctx context.Context, applicationNameOrID string) (corerp.ApplicationGraphResponse, error)
-
 	// CreateOrUpdateApplication creates or updates an application by its name (or id).
 	CreateOrUpdateApplication(ctx context.Context, applicationNameOrID string, resource *corerp.ApplicationResource) error
 
@@ -237,9 +234,6 @@ type ApplicationsManagementClient interface {
 	// GetEnvironment retrieves an environment by its name (in the configured scope) or resource ID.
 	GetEnvironment(ctx context.Context, environmentNameOrID string) (corerp.EnvironmentResource, error)
 
-	// GetRecipeMetadata shows recipe details including list of all parameters for a given recipe registered to an environment.
-	GetRecipeMetadata(ctx context.Context, environmentNameOrID string, recipe corerp.RecipeGetMetadata) (corerp.RecipeGetMetadataResponse, error)
-
 	// CreateOrUpdateEnvironment creates an environment by its name (or id).
 	CreateOrUpdateEnvironment(ctx context.Context, environmentNameOrID string, resource *corerp.EnvironmentResource) error
 
@@ -255,10 +249,14 @@ type ApplicationsManagementClient interface {
 	// CreateOrUpdateResourceGroup creates a resource group by its name.
 	CreateOrUpdateResourceGroup(ctx context.Context, planeName string, resourceGroupName string, resource *ucp_v20231001preview.ResourceGroupResource) error
 
-	// DeleteResourceGroup deletes a resource group by its name.
-	DeleteResourceGroup(ctx context.Context, planeName string, resourceGroupName string) (bool, error)
+	// DeleteResourceGroupRecord deletes the resource group record itself. It does not delete the
+	// resources in the group, and the server does not reject the delete when resources remain:
+	// deleting the record while its contents survive orphans them. Callers must delete the
+	// contents first, in dependency order, and must not call this if that failed.
+	DeleteResourceGroupRecord(ctx context.Context, planeName string, resourceGroupName string) (bool, error)
 
-	// ListResourcesInResourceGroup lists all resources in a specific resource group.
+	// ListResourcesInResourceGroup lists all resources in a specific resource group, including
+	// applications and environments.
 	ListResourcesInResourceGroup(ctx context.Context, planeName string, resourceGroupName string) ([]generated.GenericResource, error)
 
 	// ListResourcesInResourceGroupFiltered lists resources in a resource group, optionally filtered by environment and/or application.

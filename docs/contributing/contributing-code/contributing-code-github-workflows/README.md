@@ -44,13 +44,23 @@ Jobs that run `make build`, `make docker-build`, or `make docker-multi-arch-push
 
 Jobs that compile only the root module, including the current GoReleaser builds, can keep the default. Module downloads do not cover unrelated `go install` commands outside these modules.
 
+### Docker image pulls
+
+The `.github/actions/create-local-registry` composite action uses a cached `registry:2` image when available. Otherwise, it pulls the image with up to five attempts. Each pull has a 60-second timeout. The waits start at 5, 10, 20, and 40 seconds, with a random addition of up to the same delay to spread retries across jobs. Known permanent errors, such as authentication failures and missing manifests, stop without retry. The script preserves Docker's final exit code and output. The pull step has a 10-minute timeout.
+
+### GitHub Packages cleanup
+
+The scheduled `purge-old-images.yaml` workflow uses `.github/scripts/purge-old-images.sh` to remove old `dev/*` package versions with `pr-*` tags. Package and version list requests use the shared bounded HTTP retry policy. Deletes use the same selective retry policy; HTTP 404 is accepted because a previous attempt may have completed before its response failed. HTTP 400 is skipped only when a valid JSON response has the exact string message `Publicly visible package versions with more than 5000 downloads cannot be deleted. Contact GitHub support for further assistance.` The script warns that the version is protected, does not count it as deleted, and continues with later versions and packages. All other HTTP 400 responses, plus HTTP 409 and 422, fail the run and log the GitHub error message. HTTP 403 with `Retry-After` is retried within the existing 300-second request budget, unless `x-ratelimit-remaining` is 0. If the wait exceeds that budget, retries are exhausted, or the primary rate limit is reached, the script writes a warning and stops without failing; the next scheduled run starts cleanup again. Authentication, authorization, and other permanent errors fail at once. Error messages from the GitHub API are written to the log. Manual workflow runs default to dry-run mode so contributors can verify the selected versions before enabling deletion. Run `bash .github/scripts/purge-old-images_test.sh` to check retries, filtering, pagination, and deletes without GitHub access.
+
 ### Keep change detection separate from executable helper code
 
 [`__changes.yml`](../../../../.github/workflows/__changes.yml) first checks out the caller-selected repository and ref to inspect changes as data. Its Filter step must finish in that checkout at the workspace root. For `pull_request_target` and `workflow_run`, a second checkout then restores `.github/scripts/changes.mjs` from `github.repository` at `github.sha` before Set result imports it. Do not select this executable helper using the comparison inputs or a PR/workflow-run head SHA. A failed trusted checkout or import must fail the job without falling back to PR content.
 
+Before Filter, the workflow checks that the comparison base commit exists locally. It uses `base_sha` when supplied, otherwise the PR or merge-group base SHA. If missing, it fetches that commit and its history from `github.repository` using a command-scoped read token, without changing the checked-out head or persisting credentials. A full-history fork checkout can still lack newer upstream commits; increasing fetch depth does not fix that. A failed base fetch must fail the job rather than continue with an incomplete comparison.
+
 The comparison checkout's `allow-unsafe-pr-checkout: true` permits fetching fork content for inspection; it does not make that content safe to execute. Do not insert repository scripts, local actions, or package installation between comparison checkout and trusted restoration. Ordinary `pull_request` and `merge_group` calls retain their existing behavior. The `files`, `ref`, `repository`, `base_sha`, and string-valued `only_changed` interface is unchanged: PR and merge-group events use the filter result, other events with a base SHA use it, and events without either return `"false"` so downstream work runs.
 
-Run `make test-workflow-changes` for the helper and workflow wiring tests. They cover output/error behavior and import fixtures, not the live checkout action.
+Run `make test-workflow-changes` for the helper and workflow wiring tests. They cover output/error behavior, import fixtures, and the actual base-fetch command against local Git repositories, including a full-history fork missing its upstream base, an already-present base, and an unavailable base. They do not run the live checkout action.
 
 ## Verification
 
@@ -59,6 +69,8 @@ Run `make test-workflow-changes` for the helper and workflow wiring tests. They 
 - A fork run reaches all steps that do not require organization credentials and skips credential-dependent work with an explicit condition.
 - The [github-workflows.instructions.md](../../../../.github/instructions/github-workflows.instructions.md) checklist is satisfied — especially the fork-testability and `permissions:` items.
 - Run `bash .github/actions/go-mod-download/test.sh` for changes to the module download action. It checks retries, exponential backoff, failure propagation, directory handling, and input validation without network access. The unit-test workflow also exercises the action on Ubuntu and Windows.
+- Run `bash .github/actions/create-local-registry/test.sh` for changes to the image pull retry. It checks cached images, retry limits, random-delay bounds, timeout settings, permanent errors, and exit codes with fake commands, so it needs no network.
+- Run `bash .github/scripts/purge-old-images_test.sh` for changes to package cleanup. It checks transient read and delete retries, package and tag filtering, pagination, protected-version skips, rejected versions, primary and secondary rate limits, and permanent failure handling with fake HTTP responses.
 
 ## Troubleshooting
 

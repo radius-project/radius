@@ -17,16 +17,21 @@ limitations under the License.
 package helm
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/retry"
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli"
@@ -40,6 +45,12 @@ import (
 const (
 	helmDriverSecret = "secret"
 )
+
+// Each pull needs a fresh, stateful backoff. Tests can replace the delays.
+var helmChartPullBackoff = retry.DefaultBackoffStrategy
+
+// Helm's HTTP getter returns status failures as plain errors, not typed errors.
+var transientHelmHTTPError = regexp.MustCompile(`^failed to fetch https?://\S+ : (408|429|500|502|503|504)( .*)?$`)
 
 // ChartOptions describes the options for a Helm chart.
 type ChartOptions struct {
@@ -83,7 +94,7 @@ type ChartOptions struct {
 // HelmAction is an interface for performing actions on Helm charts.
 type HelmAction interface {
 	// HelmChartFromContainerRegistry downloads a helm chart (using helm pull) from a container registry and returns the chart object.
-	HelmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error)
+	HelmChartFromContainerRegistry(ctx context.Context, version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error)
 
 	// ApplyHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the "Reinstall" option is set.
 	// The vals map carries the user-supplied overrides to apply on top of the chart's defaults.
@@ -111,7 +122,7 @@ func NewHelmAction(helmClient HelmClient) *HelmActionImpl {
 	return &HelmActionImpl{HelmClient: helmClient}
 }
 
-func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
+func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Context, version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
 	pullopts := []helm.PullOpt{
 		helm.WithConfig(config),
 		func(p *helm.Pull) {
@@ -175,7 +186,14 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(version string,
 		})
 	}
 
-	_, err = helmAction.HelmClient.RunHelmPull(pullopts, chartRef)
+	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: helmChartPullBackoff()})
+	err = retryer.RetryFunc(ctx, func(context.Context) error {
+		_, err := helmAction.HelmClient.RunHelmPull(pullopts, chartRef)
+		if err != nil && isTransientHelmChartError(err) {
+			return retry.RetryableError(err)
+		}
+		return err
+	})
 	if err != nil {
 		// Error handling for a specific case where credentials are stale.
 		// This happens for ghcr in particular because ghcr does not use
@@ -194,6 +212,45 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(version string,
 	}
 
 	return helmAction.LoadChart(chartPath)
+}
+
+func isTransientHelmChartError(err error) bool {
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
+
+	if respErr, ok := errors.AsType[*errcode.ErrorResponse](err); ok {
+		return isTransientHelmStatus(respErr.StatusCode)
+	}
+
+	if dnsErr, ok := errors.AsType[*net.DNSError](err); ok {
+		return dnsErr.IsTimeout || dnsErr.IsTemporary
+	}
+
+	if netErr, ok := errors.AsType[net.Error](err); ok && netErr.Timeout() {
+		return true
+	}
+
+	if isTransientHelmSocketError(err) || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+
+	for cause := err; cause != nil; cause = errors.Unwrap(cause) {
+		if transientHelmHTTPError.MatchString(cause.Error()) {
+			return true
+		}
+	}
+	return false
+}
+
+func isTransientHelmStatus(status int) bool {
+	switch status {
+	case http.StatusRequestTimeout, http.StatusTooManyRequests, http.StatusInternalServerError,
+		http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
+	}
 }
 
 func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) error {

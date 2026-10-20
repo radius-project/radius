@@ -62,6 +62,9 @@ func (w *Service) Run(ctx context.Context) error {
 	if w.options.Config.Worker.MaxOperationRetryCount != nil {
 		w.Service.Options.MaxOperationRetryCount = *w.options.Config.Worker.MaxOperationRetryCount
 	}
+	if w.options.Config.Worker.DequeueInterval != nil {
+		w.Service.Options.DequeueIntervalDuration = *w.options.Config.Worker.DequeueInterval
+	}
 
 	e, err := w.options.RecipeEngine()
 	if err != nil {

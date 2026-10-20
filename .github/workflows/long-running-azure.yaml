@@ -53,6 +53,8 @@ env:
 
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY || 'ghcr.io/radius-project/dev' }}
+  # Container registry for the Magpie test image built from the release source
+  TEST_IMAGE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_CONTAINER_REGISTRY || 'ghcr.io/radius-project/dev' }}
   # bicep-types ACR url for pulling latest Radius Bicep types (AWS)
   BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
   # bicep-types ACR url for uploading test Radius Bicep types
@@ -98,19 +100,22 @@ jobs:
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for actions/checkout
-      packages: write # Required for publishing Bicep recipes to ghcr.io
+      packages: write # Required for publishing Bicep recipes and the Magpie test image to ghcr.io
     steps:
       - name: Generate unique ID for test run
         id: gen-id
         run: |
           BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}|${GITHUB_RUN_NUMBER}"
           UNIQUE_ID=longr$(echo "${BASE_STR}" | sha1sum | head -c 10)
-          echo "UNIQUE_ID=${UNIQUE_ID}" >> "${GITHUB_OUTPUT}"
-          echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}" >> "${GITHUB_OUTPUT}"
+          {
+            echo "UNIQUE_ID=${UNIQUE_ID}"
+            echo "AZURE_TEST_RESOURCE_GROUP=radtest-${UNIQUE_ID}"
+            echo "TEST_IMAGE_TAG=test-${UNIQUE_ID}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: get_installation_token
         with:
           client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
@@ -144,7 +149,8 @@ jobs:
           # Install the latest Radius CLI, including release candidates if available.
           # INSTALL_DIR places rad directly into the workspace bin directory — no copy needed.
           mkdir -p "$GITHUB_WORKSPACE/bin"
-          wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | INSTALL_DIR="$GITHUB_WORKSPACE/bin" INCLUDE_RC=true /bin/bash
+          INSTALL_DIR="$GITHUB_WORKSPACE/bin" INCLUDE_RC=true \
+            bash ./deploy/install.sh
 
       - name: Verify CLI installation
         run: |
@@ -171,6 +177,9 @@ jobs:
         uses: ./.github/actions/go-mod-download
         with:
           working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+          module-directories: |
+            .
+            test/magpiego
 
       - name: Login to Azure
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
@@ -269,6 +278,15 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
+      - name: Build and push Magpie test image
+        # Releases do not publish test images, so build Magpie from the release
+        # source under test and push it with a run-specific tag.
+        run: make docker-build-magpiego docker-push-magpiego
+        env:
+          DOCKER_REGISTRY: ${{ env.TEST_IMAGE_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ steps.gen-id.outputs.TEST_IMAGE_TAG }}
+        working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+
       - name: Manage Radius control plane installation
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -279,6 +297,10 @@ jobs:
         with:
           path: skip-delete-resources-list.txt
           key: skip-delete-resources-list-${{ steps.gen-id.outputs.UNIQUE_ID || github.run_id }}
+
+      - name: Install yq
+        # Required to select the test environment in the workspace config.
+        run: make install-yq
 
       - name: Configure Radius test workspace
         env:
@@ -300,18 +322,34 @@ jobs:
           rad group switch "${RADIUS_TEST_ENVIRONMENT_NAME}"
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create "${RADIUS_TEST_ENVIRONMENT_NAME}" --namespace default
-          rad env switch "${RADIUS_TEST_ENVIRONMENT_NAME}"
+          #
+          # The environment is deployed declaratively rather than with `rad env create` so that it is
+          # pinned to Applications.Core regardless of which provider the `rad env create` default
+          # targets.
+          #
+          # This path intentionally resolves against the workflow checkout rather than the
+          # "current_release" clone: the fixture is workflow infrastructure, and the released tag
+          # under test predates it.
+          #
+          # Set cloud scopes in Bicep, not `rad env update`, so this works whichever type `rad env` targets.
+          rad deploy ./test/infra/radius/legacy-test-environment.bicep \
+            --parameters name="${RADIUS_TEST_ENVIRONMENT_NAME}" \
+            --parameters namespace=default \
+            --parameters azureScope="/subscriptions/${AZURE_SUBSCRIPTIONID_TESTS}/resourceGroups/${AZURE_TEST_RESOURCE_GROUP}" \
+            --parameters awsScope="/planes/aws/aws/accounts/${FUNCTEST_AWS_ACCOUNT_ID}/regions/${AWS_REGION}"
+
+          # Select the env with yq, not `rad env switch`, so this works whichever type `rad env` targets.
+          scope="$(yq -e '.workspaces.items[.workspaces.default].scope' ~/.rad/config.yaml)"
+          ENVIRONMENT_ID="${scope}/providers/Applications.Core/environments/${RADIUS_TEST_ENVIRONMENT_NAME}" \
+            yq -i '.workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID)' ~/.rad/config.yaml
+          rad workspace show
 
           echo "*** Configuring Azure provider ***"
-          rad env update "${RADIUS_TEST_ENVIRONMENT_NAME}" --azure-subscription-id "${AZURE_SUBSCRIPTIONID_TESTS}" \
-            --azure-resource-group "${AZURE_TEST_RESOURCE_GROUP}"
           rad credential register azure wi \
             --client-id "${AZURE_SP_TESTS_APPID}" \
             --tenant-id "${AZURE_SP_TESTS_TENANTID}"
 
           echo "*** Configuring AWS provider ***"
-          rad env update "${RADIUS_TEST_ENVIRONMENT_NAME}" --aws-region "${AWS_REGION}" --aws-account-id "${FUNCTEST_AWS_ACCOUNT_ID}"
           # Register AWS credentials using IRSA (IAM Roles for Service Accounts).
           # The Radius pods on the AKS cluster assume this role via their
           # projected service account tokens (workload identity), so no static
@@ -413,21 +451,21 @@ jobs:
           FUNC_TEST_OIDC_ISSUER: ${{ steps.get-oidc-issuer.outputs.FUNCTEST_OIDC_ISSUER }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
+          DOCKER_REGISTRY: ${{ env.TEST_IMAGE_REGISTRY }}
+          REL_VERSION: ${{ steps.gen-id.outputs.TEST_IMAGE_TAG }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
           # The released test code predates fixes and compatibility updates on main:
           #   - Test_ACI: tracked in #12044 (cleanup timeout flake).
-          #   - Test_RecipePack, Test_RadiusCoreEnv: the v0.59 recipe-pack fixture
-          #     uses the old recipeKind/recipeLocation properties that were renamed
-          #     to kind/source in PR #12104 (merged 2026-06-22), four days after the
-          #     v0.59.0 release (2026-06-18). The old names produce a BCP037 compile
-          #     error against the mutable latest Bicep extension.
           #   - Test_RadiusCore_AzureMySql_PortalLink: v0.60 deletes the environment
           #     before its application, so recipe cleanup fails. Tracked in #12701.
+          #   - Test_RabbitMQ, Test_RedisCache, Test_Container_ManagedSecretConnection:
+          #     the v0.61.1 CLI deletes a managed secret in parallel with the resource
+          #     that owns it, so cleanup fails with 409 Conflict. Fixed in #13193.
           # Skip these exact tests until a release that includes the fixes is cut.
-          # See #12044, #12104, #12163, #12247, #12392, and #12701.
-          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RecipePack|Test_RadiusCoreEnv|Test_RadiusCore_AzureMySql_PortalLink)$$'"
+          # See #12044, #12163, #12247, #12701, #13143, and #13193.
+          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RadiusCore_AzureMySql_PortalLink|Test_RabbitMQ|Test_RedisCache|Test_Container_ManagedSecretConnection)$$'"
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
           set -euo pipefail
@@ -476,7 +514,7 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: all_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}

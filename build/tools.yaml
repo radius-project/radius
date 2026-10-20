@@ -10,7 +10,7 @@ platforms:
 tools:
   - name: yq
     makePrefix: YQ
-    version: v4.53.6
+    version: v4.54.1
     source:
       type: github-release
       repository: mikefarah/yq
@@ -19,16 +19,16 @@ tools:
     platforms:
       linux_amd64:
         asset: yq_linux_amd64
-        checksum: c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385
+        checksum: 8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f
       linux_arm64:
         asset: yq_linux_arm64
-        checksum: 88a1016bc1d657375a35864e4f44b6f333df8ff97b559f51bba0adcb2169df09
+        checksum: 189088da0c6429ec5178dfaab1a114805f6cab0b61b165ab236efedf1d57a71b
       darwin_amd64:
         asset: yq_darwin_amd64
-        checksum: caa513cb04f3804b34d4752f0e0d7904fecb9e7cf1d34081289f83259319a7f6
+        checksum: 3a812fce205a4d67014fb71b7fa297092210e580df3d8f52dddc2cf3a599c22b
       darwin_arm64:
         asset: yq_darwin_arm64
-        checksum: cceb0b8d71ea5294334121f8429f33f92b920e7217d904a2f9f35443968ac424
+        checksum: fee511a181bd8b3e6b7da98842b41973bfac8cd3bcd341ed29a584620b5b2844
     checksumSource:
       type: github-release-file
       fileTemplate: checksums
@@ -224,7 +224,7 @@ tools:
 
   - name: goreleaser
     makePrefix: GORELEASER
-    version: v2.18.2
+    version: v2.18.3
     source:
       type: github-release
       repository: goreleaser/goreleaser
@@ -233,19 +233,45 @@ tools:
     platforms:
       linux_amd64:
         asset: goreleaser_Linux_x86_64.tar.gz
-        checksum: 0a96edc9d9bc594e4a41cc4d59467c182062910ab24d9d1f6dd7b667d32606d3
+        checksum: b8dee4728bca1aba0d71a832a17cd0a3799f75372878e7ffa36aef2343bce0bc
       linux_arm64:
         asset: goreleaser_Linux_arm64.tar.gz
-        checksum: a71681b29194f08f057a68cfcaa5c6b15d907a83a2622c51900c4faff828f322
+        checksum: fa7011a7f8de3b504326b8552cf21c708ed3089519b01d372da32ef4e8d298d7
       darwin_amd64:
         asset: goreleaser_Darwin_x86_64.tar.gz
-        checksum: 5e97d6517f73a0b6f71675a2911b15d3136c03c8907650c2b18e114b1c0f5205
+        checksum: dbc39347d9ca25a2da9bcc03633f39130bb3a67c9f2a0da86ba15b8b00bf86ce
       darwin_arm64:
         asset: goreleaser_Darwin_arm64.tar.gz
-        checksum: a811ff154fe136a0cfb55d00126c151fc39ec370a663d805a9ca5547445aa70c
+        checksum: 821c58ab8c31d57bb331cab9f1a703eb3673bff4fce0db9cc3c4a038af14f76f
     checksumSource:
       type: github-release-file
       fileTemplate: checksums.txt
+      format: standard
+
+  - name: syft
+    makePrefix: SYFT
+    version: v1.54.1
+    source:
+      type: github-release
+      repository: anchore/syft
+      latestURL: https://api.github.com/repos/anchore/syft/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: syft_{version_no_v}_linux_amd64.tar.gz
+        checksum: c069905b391cc4c20a5ba65ad5c10be2a7ba074f8ea6ad203e24d14e303dad47
+      linux_arm64:
+        asset: syft_{version_no_v}_linux_arm64.tar.gz
+        checksum: dfdf0537610113edbefe1f1fc6548bc957b2d77439636ec824fcf0e10d46d054
+      darwin_amd64:
+        asset: syft_{version_no_v}_darwin_amd64.tar.gz
+        checksum: 2956322838b2f64e470eea474495f0cd96be4f222b1ac037258cdc47d965064e
+      darwin_arm64:
+        asset: syft_{version_no_v}_darwin_arm64.tar.gz
+        checksum: b4319c3abaa87a0170ab76ee83ea2260ca34b53aecfa3ab0dd5428d2319d744f
+    checksumSource:
+      type: github-release-file
+      fileTemplate: syft_{version_no_v}_checksums.txt
       format: standard
 
   - name: git-cliff
@@ -274,7 +300,7 @@ tools:
 
   - name: terraform
     makePrefix: TERRAFORM
-    version: 1.15.8
+    version: 1.16.5
     source:
       type: hashicorp-checkpoint
       repository: hashicorp/terraform
@@ -283,16 +309,16 @@ tools:
     platforms:
       linux_amd64:
         asset: terraform_{version}_linux_amd64.zip
-        checksum: d25ce7b6902013ad905db3d2eab0be4cd905887fe88b81a6171b8d5503c31f3d
+        checksum: 2bc2fcfff033265c9e02ca0351f01794eb122f62a9b2a49a3294b9e49eaab5e4
       linux_arm64:
         asset: terraform_{version}_linux_arm64.zip
-        checksum: 8891e9dcedc9e3b8950bc6af9d4d8af1f4cfade3062f53b9dc403a89f6ce8c9c
+        checksum: 61a50b00485ee4810cf20581ef080fc54d34d666e175c58d9a10501c65c1ccde
       darwin_amd64:
         asset: terraform_{version}_darwin_amd64.zip
-        checksum: e2e812e783771159bf758fd4e55d6dc9bb08f63e2af2c63d212721807a02c5dc
+        checksum: 9809158e481cf2d3a8433e59179f397b8edb5172397711bd98f6bb32edcaf53b
       darwin_arm64:
         asset: terraform_{version}_darwin_arm64.zip
-        checksum: f210110c5698b94d803a7a63cdb0251b5455c150841478808e2bbb343f95ed68
+        checksum: ecdef65e24193d627f27c39baeda31295f08c938d8a3d4764f442fb916d4b7dc
     checksumSource:
       type: url-file
       urlTemplate: https://releases.hashicorp.com/terraform/{version}/terraform_{version}_SHA256SUMS

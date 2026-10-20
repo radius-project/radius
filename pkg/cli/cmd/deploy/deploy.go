@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"strings"
 
@@ -139,7 +138,6 @@ rad deploy myapp.bicep --parameters @myfile.json --parameters version=latest
 	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddParameterFlag(cmd)
-	cmd.Flags().Bool("preview", false, "Deploy the application using the Radius.Core/applications resource type instead of Applications.Core/applications (can also be set via RADIUS_PREVIEW=true)")
 
 	return cmd, runner
 }
@@ -161,13 +159,11 @@ type Runner struct {
 	FilePath                 string
 	Parameters               map[string]map[string]any
 	Template                 map[string]any
+	RadiusExtensionPin       bicep.RadiusExtensionPin
 	TemplateInspectionResult bicep.TemplateInspectionResult
 	Workspace                *workspaces.Workspace
 	Providers                *clients.Providers
 	EnvResult                *EnvironmentCheckResult
-	// Preview indicates that the application should be deployed using the
-	// Radius.Core/applications resource type instead of Applications.Core/applications.
-	Preview bool
 }
 
 // NewRunner creates a new instance of the `rad deploy` runner.
@@ -211,7 +207,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// Prepare the template early to check if it contains an environment resource.
 	// This allows us to skip environment validation if the template will create one.
-	r.Template, err = r.Bicep.PrepareTemplate(cmd.Context(), r.FilePath)
+	r.Template, r.RadiusExtensionPin, err = r.Bicep.PrepareTemplate(cmd.Context(), r.FilePath)
 	if err != nil {
 		return err
 	}
@@ -244,20 +240,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.ApplicationName, err = cli.ReadApplicationName(cmd, *workspace)
 	if err != nil {
 		return err
-	}
-
-	// Resolve whether to use the Radius.Core preview behavior for the application resource.
-	r.Preview, err = resolvePreview(cmd)
-	if err != nil {
-		return err
-	}
-
-	// The --preview flag only affects the application resource, so it requires an application.
-	// Reject only when the flag was set explicitly on the command line; env-var activation
-	// (RADIUS_PREVIEW=true) is intentionally tolerated as a no-op so it can be set globally
-	// without breaking application-less deployments.
-	if cmd.Flags().Changed("preview") && r.Preview && r.ApplicationName == "" {
-		return clierrors.Message("The --preview flag requires an application. Use --application to specify the application name, or set a default application in your workspace.")
 	}
 
 	if r.EnvironmentNameOrID != "" {
@@ -306,6 +288,14 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Use the template that was prepared during validation
 	template := r.Template
 
+	warning, err := deploy.CheckCompatibility(ctx, r.ConnectionFactory, *r.Workspace, template, r.RadiusExtensionPin)
+	if err != nil {
+		return err
+	}
+	if warning != "" {
+		r.Output.LogInfo("%s", warning)
+	}
+
 	// Warn about legacy Applications.* resource types before deploying, so the message is visible
 	// above the deployment progress output.
 	if warning := bicep.FormatDeprecationWarning(r.TemplateInspectionResult.DeprecatedResources); warning != "" {
@@ -315,7 +305,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// This is the earliest point where we can inject parameters, we have
 	// to wait until the template is prepared.
-	err := r.injectAutomaticParameters(template)
+	err = r.injectAutomaticParameters(template)
 	if err != nil {
 		return err
 	}
@@ -336,7 +326,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.ApplicationName != "" {
 		// Environment validation has already happened, so only create application if we have an environment
 		if r.Providers.Radius.EnvironmentID != "" {
-			if r.Preview {
+			if r.useRadiusCoreApplication() {
 				if err := r.createRadiusCoreApplicationIfNotFound(ctx); err != nil {
 					return err
 				}
@@ -466,26 +456,10 @@ func (r *Runner) reportMissingParameters(template map[string]any) error {
 	return clierrors.Message("The template %q could not be deployed because of the following errors:\n\n%v", bicep.RedactTemplatePath(r.FilePath), strings.Join(details, "\n"))
 }
 
-// resolvePreview reports whether the deploy command should use the Radius.Core preview
-// behavior for the application resource. It returns true when the --preview flag is explicitly
-// set, or when the flag is unset and the RADIUS_PREVIEW environment variable is "true"
-// (case-insensitive). The --preview flag takes precedence over the environment variable.
-//
-// The --preview flag is only registered on the `rad deploy` command. Other commands (e.g.
-// `rad run`) embed this runner without registering the flag; for those, preview is not
-// supported and this function returns false without error.
-func resolvePreview(cmd *cobra.Command) (bool, error) {
-	if cmd.Flags().Lookup("preview") == nil {
-		return false, nil
-	}
-	preview, err := cmd.Flags().GetBool("preview")
-	if err != nil {
-		return false, err
-	}
-	if !cmd.Flags().Changed("preview") {
-		preview = strings.EqualFold(os.Getenv("RADIUS_PREVIEW"), "true")
-	}
-	return preview, nil
+// useRadiusCoreApplication reports whether to create a Radius.Core application. It must match the
+// application ID derived in configureProviders.
+func (r *Runner) useRadiusCoreApplication() bool {
+	return r.EnvResult != nil && !r.EnvResult.UseApplicationsCore
 }
 
 // createRadiusCoreApplicationIfNotFound creates the application as a Radius.Core/applications
@@ -863,10 +837,6 @@ func (r *Runner) configureProviders() error {
 			providerNamespace := appCoreProviderName
 			if parsedID, err := resources.Parse(r.Providers.Radius.EnvironmentID); err == nil {
 				providerNamespace = parsedID.ProviderNamespace()
-			}
-			// When preview is enabled, the application is deployed as a Radius.Core/applications resource.
-			if r.Preview {
-				providerNamespace = radiusCoreProviderName
 			}
 			r.Providers.Radius.ApplicationID = r.Workspace.Scope + "/providers/" + providerNamespace + "/applications/" + r.ApplicationName
 

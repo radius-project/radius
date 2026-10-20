@@ -18,19 +18,25 @@ package publish
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry"
@@ -68,7 +74,8 @@ func TestRunner_extractDestination(t *testing.T) {
 			want: &destination{
 				host: "index.docker.io",
 				repo: "repo",
-				tag:  "tag"},
+				tag:  "tag",
+				name: "docker.io/repo"},
 			wantErr: false,
 		},
 		{
@@ -77,7 +84,18 @@ func TestRunner_extractDestination(t *testing.T) {
 			want: &destination{
 				host: "index.docker.io",
 				repo: "repo",
-				tag:  "tag"},
+				tag:  "tag",
+				name: "docker.io/repo"},
+			wantErr: false,
+		},
+		{
+			name:   "registry port",
+			target: "localhost:5000/repo:tag",
+			want: &destination{
+				host: "localhost:5000",
+				repo: "repo",
+				tag:  "tag",
+				name: "localhost:5000/repo"},
 			wantErr: false,
 		},
 	}
@@ -395,6 +413,28 @@ func TestRunner_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, tests)
 }
 
+func TestRunner_Run_PrepareTemplateError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(gomock.Any(), "redis.recipe.bicep").
+		Return(nil, bicep.RadiusExtensionPin{}, errors.New("failed to build template")).
+		Times(1)
+
+	runner := &Runner{
+		Bicep:  bicepMock,
+		Output: &output.MockOutput{},
+		File:   "redis.recipe.bicep",
+		Target: "ghcr.io/test-registry/test/repo:tag",
+	}
+
+	err := runner.Run(t.Context())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `Failed to prepare Bicep file "redis.recipe.bicep"`)
+}
+
 func getError(registerUrl string, statusCode int) *errcode.ErrorResponse {
 
 	err := &errcode.ErrorResponse{
@@ -438,4 +478,45 @@ func TestHandleErrorResponse(t *testing.T) {
 			require.Equal(t, expected, result.Error())
 		})
 	}
+}
+
+func TestRunner_Run_PrintsPinnedRecipeURL(t *testing.T) {
+	// The fake registry accepts every push: HEAD reports that nothing exists yet,
+	// POST starts a blob upload, and PUT completes a blob upload or stores a manifest.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			w.Header().Set("Location", r.URL.Path+"upload")
+			w.WriteHeader(http.StatusAccepted)
+		case http.MethodPut:
+			w.WriteHeader(http.StatusCreated)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	bicepMock := bicep.NewMockInterface(gomock.NewController(t))
+	bicepMock.EXPECT().PrepareTemplate(gomock.Any(), "recipe.bicep").Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil)
+	outputSink := &output.MockOutput{}
+	repository := strings.TrimPrefix(server.URL, "http://") + "/test/recipe"
+	runner := &Runner{
+		Bicep:     bicepMock,
+		Output:    outputSink,
+		File:      "recipe.bicep",
+		Target:    repository + ":v1",
+		PlainHTTP: true,
+	}
+
+	require.NoError(t, runner.Run(t.Context()))
+
+	var lines []string
+	for _, write := range outputSink.Writes {
+		logOutput := write.(output.LogOutput)
+		lines = append(lines, fmt.Sprintf(logOutput.Format, logOutput.Params...))
+	}
+	printed := strings.Join(lines, "\n")
+	pinned := regexp.QuoteMeta(repository) + "@sha256:[0-9a-f]{64}$"
+	require.Regexp(t, "(?m)^Pushed to "+pinned, printed)
+	require.Regexp(t, "(?m)Recipe url: "+pinned, printed)
 }

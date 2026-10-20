@@ -16,22 +16,32 @@ on:
 permissions: {}
 
 jobs:
+  merge-holds:
+    if: github.event_name != 'merge_group'
+    # Reads only the event's labels; it never checks out PR code.
+    uses: radius-project/.github/.github/workflows/__pr-holds.yml@main
+    permissions: {}
+    with:
+      labels: ${{ vars.PR_STATUS_LABELS }}
+
   pr-required-labels:
     # Run for all PRs so holds also apply to Dependabot. Merge groups have no
     # individual PR context; the required check still has to report.
+    needs: merge-holds
+    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       issues: write
       pull-requests: write
     steps:
-      - name: Reject merge holds and pending author responses
+      # Never check out or execute PR code in this write-enabled job.
+      - name: Require successful merge-hold validation
         if: >-
           github.event_name != 'merge_group' &&
-          (contains(github.event.pull_request.labels.*.name, 'pr:do-not-merge') ||
-           contains(github.event.pull_request.labels.*.name, 'pr:needs-author-response'))
+          needs.merge-holds.result != 'success'
         run: |
-          echo "::error::Remove pr:do-not-merge or pr:needs-author-response before merging."
+          echo "::error::Merge-hold validation must pass before merging. See the merge-holds job."
           exit 1
 
       - name: Run PR Required Labels

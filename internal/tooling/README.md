@@ -45,7 +45,7 @@ Use `bin/tool-updater` instead of `bin/tool-updater.exe` on non-Windows systems.
 bin/tool-updater.exe generate-make --manifest build/tools.yaml --output build/tools.generated.mk
 ```
 
-There is no separate Make target for regeneration only. The `generate-make` subcommand is the binary-level equivalent, and Make runs it automatically when the committed generated include is stale.
+There is no separate Make target for regeneration only. The `generate-make` subcommand is the binary-level equivalent. Make does not regenerate the include automatically, so `make install-<tool>` works without Go. After you edit the manifest by hand, run `make update-tools` or `generate-make`. The `internal/tooling` tests fail when the committed include is stale.
 
 ## Manifest reference
 

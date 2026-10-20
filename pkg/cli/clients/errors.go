@@ -19,6 +19,7 @@ package clients
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -41,6 +42,50 @@ type errorDetail struct {
 	Message *string `json:"message,omitempty"`
 }
 
+// ResourceEnumerationError reports that the contents of a scope could not be listed. The scope
+// itself exists; only its contents are unknown.
+//
+// This type exists so an enumeration failure can never be classified as a missing scope. Callers
+// such as `rad group delete` treat a 404 as "the scope does not exist" and then report success
+// without deleting anything, so a per-resource-type failure mistaken for a 404 would delete
+// nothing, report success, and leave the scope and its contents in place.
+//
+// Formatting the underlying error with %v is not sufficient on its own, because Is404Error also
+// matches on message text and a fake server's 404 message survives that formatting. Is404Error
+// therefore rejects this type explicitly, which keeps the guarantee independent of the order in
+// which a caller happens to run its checks.
+type ResourceEnumerationError struct {
+	// ResourceType is the resource type whose listing failed.
+	ResourceType string
+
+	// Message describes the failure. The underlying error is deliberately rendered into this
+	// string rather than wrapped, so that errors.As cannot reach a 404 response through it.
+	Message string
+}
+
+// Error returns the description of the enumeration failure.
+func (e *ResourceEnumerationError) Error() string {
+	return e.Message
+}
+
+// NewResourceEnumerationError returns an error reporting that resourceType could not be listed.
+// The cause is rendered into the message rather than wrapped, so that it cannot be misread as a
+// 404 for the scope itself.
+func NewResourceEnumerationError(resourceType string, format string, args ...any) *ResourceEnumerationError {
+	return &ResourceEnumerationError{
+		ResourceType: resourceType,
+		Message:      fmt.Sprintf(format, args...),
+	}
+}
+
+// IsResourceEnumerationError reports whether err indicates that a scope's contents could not be
+// listed. Callers that must not act on an incompletely enumerated scope should test for this.
+func IsResourceEnumerationError(err error) bool {
+	target := &ResourceEnumerationError{}
+
+	return errors.As(err, &target)
+}
+
 // Is404Error returns true if the error is a 404 payload from an autorest operation.
 //
 
@@ -50,6 +95,14 @@ type errorDetail struct {
 // an ErrorResponse with an Error Code of "NotFound".
 func Is404Error(err error) bool {
 	if err == nil {
+		return false
+	}
+
+	// A failure to enumerate a scope's contents is never a statement about whether the scope
+	// exists, so it is rejected before any message-based matching below. The message may quote an
+	// underlying 404 verbatim, and reporting that as a missing scope would let a caller delete a
+	// scope whose contents it never managed to read.
+	if IsResourceEnumerationError(err) {
 		return false
 	}
 

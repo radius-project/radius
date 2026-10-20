@@ -18,6 +18,8 @@ package resource_test
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -36,8 +38,8 @@ import (
 // full-resource-ID and by-name reference tests. It creates the application namespace,
 // registers the userTypeAlpha resource type, deploys the given template, and verifies that
 // the recipe-configured container port is present. The template, application name, namespace,
-// and the recipe pack and environment resource names vary between callers.
-func runRecipePacksDeploymentTest(t *testing.T, template, appName, appNamespace, recipePackResourceName, environmentResourceName, rrtResourceName string) {
+// the recipe pack and environment resource names, and extra template parameters vary between callers.
+func runRecipePacksDeploymentTest(t *testing.T, template, appName, appNamespace, recipePackResourceName, environmentResourceName, rrtResourceName string, extraParams ...string) {
 	parentResourceTypeName := "Test.Resources/userTypeAlpha"
 	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
@@ -80,7 +82,7 @@ func runRecipePacksDeploymentTest(t *testing.T, template, appName, appNamespace,
 		},
 		{
 			// The third step deploys the bicep template whose environment references the recipe pack.
-			Executor:                               step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			Executor:                               step.NewDeployExecutor(template, append([]string{testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()}, extraParams...)...),
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   false,
 			SkipKubernetesOutputResourceValidation: true,
@@ -155,6 +157,7 @@ func runRecipePacksDeploymentTest(t *testing.T, template, appName, appNamespace,
 //
 // 3. Resource Deployment:
 //   - Deploys a Bicep template that creates a recipe pack with userTypeAlpha recipe
+//   - The recipe source is the digest-pinned URL printed by `rad bicep publish`
 //   - Creates a Radius.Core/environments resource that references the recipe pack
 //   - Deploys RRT resources that use the recipe from the pack
 //
@@ -169,7 +172,30 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 		"test-recipe-pack",
 		"recipepacks-test-env",
 		"rrtresource-deployment",
+		"userTypeAlphaRecipeSource="+publishDigestPinnedRecipe(t),
 	)
+}
+
+// publishDigestPinnedRecipe publishes the userTypeAlpha recipe with `rad bicep publish` and
+// returns the digest-pinned recipe URL that the command prints. It pushes to BICEP_RECIPE_REGISTRY,
+// so a local run needs push access to that registry, the same as publishing the test recipes.
+// The recipe is published to the existing test recipe repository, which test registries already
+// make readable. The tag is derived from the fixture tag version, so the shared fixture tag is not
+// changed and reruns reuse one tag.
+func publishDigestPinnedRecipe(t *testing.T) string {
+	t.Helper()
+	cli := radcli.NewCLI(t, rp.NewRPTestOptions(t).ConfigFilePath)
+	_, registry, _ := strings.Cut(testutil.GetBicepRecipeRegistry(), "=")
+	_, version, _ := strings.Cut(testutil.GetBicepRecipeVersion(), "=")
+	repository := fmt.Sprintf("%s/test/testrecipes/test-bicep-recipes/dynamicrp_recipe", registry)
+	target := fmt.Sprintf("br:%s:%s-digest-pinned", repository, version)
+
+	output, err := cli.BicepPublish(t.Context(), "../../../../testrecipes/test-bicep-recipes/dynamicrp_recipe.bicep", target)
+	require.NoError(t, err)
+	match := regexp.MustCompile(`Recipe url: (` + regexp.QuoteMeta(repository) + `@sha256:[0-9a-f]{64})\b`).FindStringSubmatch(output)
+	require.NotNil(t, match, "rad bicep publish did not print the digest-pinned recipe url: %s", output)
+
+	return match[1]
 }
 
 // Test_RecipePacks_ByName_Deployment tests that an environment can reference a recipe pack
@@ -264,52 +290,22 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 
 // Test_RecipePacks_MissingNamespace_Failure tests that deployment fails when the namespace specified
 // in the Radius.Core/environments providers.kubernetes.namespace does not exist in the cluster.
-// This test validates that the system properly checks for namespace existence before deployment.
-//
-// The test consists of the following steps:
-// 1. Resource Type Registration (no namespace creation):
-//   - Registers user-defined resource type "Test.Resources/userTypeAlpha"
-//
-// 2. Resource Deployment Failure:
-//   - Attempts to deploy a Bicep template that references a non-existent namespace
-//   - Validates that the deployment fails with "Namespace 'recipepacks-ns' does not exist" error
+// The template uses an environment and namespace that no other test uses. Test_RecipePacks_Deployment
+// creates and deletes its namespace, and a namespace that is still terminating passes the existence check.
+// The environment has no recipe pack because the namespace check does not depend on recipe packs.
 func Test_RecipePacks_MissingNamespace_Failure(t *testing.T) {
-	template := "testdata/recipepacks-test.bicep"
-	appName := "recipepacks-test-app"
-	parentResourceTypeName := "Test.Resources/userTypeAlpha"
-	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
-	filepath := "testdata/testresourcetypes.yaml"
-	options := rp.NewRPTestOptions(t)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	template := "testdata/recipepacks-test-missing-namespace.bicep"
 
 	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
 		Code:            "BadRequest",
-		MessageContains: "Namespace 'recipepacks-ns' does not exist in the Kubernetes cluster. Please create it before proceeding.",
+		MessageContains: "Namespace 'recipepacks-missing-ns' does not exist in the Kubernetes cluster. Please create it before proceeding.",
 	})
 
-	test := rp.NewRPTest(t, appName, []rp.TestStep{
+	test := rp.NewRPTest(t, "recipepacks-test-app-missing-namespace", []rp.TestStep{
 		{
-			// The first step in this test is to create/register the parent user-defined resource type using the CLI.
-			// NOTE: We deliberately skip namespace creation to test the failure case
-			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				_, err := cli.ResourceTypeCreate(ctx, parentResourceTypeParam, filepath)
-				require.NoError(t, err)
-			}),
+			Executor:                               step.NewDeployErrorExecutor(template, validate),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
-				require.NoError(t, err)
-				require.Contains(t, output, parentResourceTypeName)
-			},
-		},
-		{
-			// The second step is to deploy a bicep file with a non-existent namespace - this should fail
-			Executor:                               step.NewDeployErrorExecutor(template, validate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
-			SkipResourceDeletion:                   false,
 		},
 	})
 

@@ -73,34 +73,31 @@ func RequireEnvironmentNameArgs(cmd *cobra.Command, args []string, workspace wor
 	return environmentName, err
 }
 
-// RequireEnvironmentName checks if an environment name is provided as a flag or as a default environment in the workspace,
-// and returns an error if neither is present. It also handles any errors that occur while parsing the resource.
-func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
-	environmentName, err := cmd.Flags().GetString("environment")
+// RequireRadiusCoreEnvironmentNameArgs is RequireEnvironmentNameArgs for commands that only manage
+// Radius.Core environments. When no name is supplied and the workspace default is another
+// environment type, it returns an error rather than reusing that environment's name, which could
+// select a different environment of the same name.
+func RequireRadiusCoreEnvironmentNameArgs(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
+	environmentName, err := ReadEnvironmentNameArgs(cmd, args)
 	if err != nil {
 		return "", err
 	}
 
-	// We store the environment id in config, but most commands work with the environment name.
 	if environmentName == "" && workspace.Environment != "" {
 		id, err := resources.ParseResource(workspace.Environment)
 		if err != nil {
 			return "", err
 		}
 
-		environmentName = id.Name()
+		if !strings.EqualFold(id.Type(), radiusCoreEnvironmentType) {
+			return "", clierrors.Message("The default environment %q is not a %s resource. Pass an environment name, or select a %s environment using `rad env switch`.", workspace.Environment, radiusCoreEnvironmentType, radiusCoreEnvironmentType)
+		}
 	}
 
-	if environmentName == "" && workspace.IsEditableWorkspace() {
-		// Setting a default environment only applies to editable workspaces
-		return "", fmt.Errorf("no environment name provided and no default environment set, " +
-			"either pass in an environment name or set a default environment by using `rad env switch`")
-	} else if environmentName == "" {
-		return "", fmt.Errorf("no environment name provided, pass in an environment name")
-	}
-
-	return environmentName, err
+	return RequireEnvironmentNameArgs(cmd, args, workspace)
 }
+
+const radiusCoreEnvironmentType = "Radius.Core/environments"
 
 // RequireEnvironmentNameOrID checks if an environment name or ID is provided as a flag or as a default environment in the workspace,
 // and returns an error if neither is present. It also handles any errors that occur while parsing the resource.

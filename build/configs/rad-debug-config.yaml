@@ -7,5 +7,5 @@ workspaces:
         kind: kubernetes
         overrides:
           ucp: http://localhost:9000
-      environment: /planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default
+      environment: /planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default
       scope: /planes/radius/local/resourceGroups/default

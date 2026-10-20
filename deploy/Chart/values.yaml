@@ -69,7 +69,7 @@ global:
     # (pkg/recipes/terraform/install.go::downloadAndInstallTerraform)
     # pins to that version, so the pre-mounted binary must match or
     # recipes will see behavior differences between cold and warm starts.
-    version: "1.15.8"
+    version: "1.16.5"
     # URL for downloading Terraform binary. Leave empty to download the
     # version specified by `version` from releases.hashicorp.com. Provide
     # a complete direct download URL to override (e.g., for air-gapped or
@@ -100,6 +100,22 @@ global:
     secretKey: "kubeconfig"
     mountPath: "/etc/radius/target-kubeconfig"
 
+  # Configure internal component authorization. Both settings are disabled by default.
+  # The settings map to the authorization mode every Radius service reads:
+  #   enabled=false, dryRun=false -> off (default)
+  #   dryRun=true                 -> dryRun (denials will be logged, not rejected)
+  #   enabled=true                -> enforce (denials will be rejected)
+  # Setting both enabled=true and dryRun=true fails installation: the dry run is a
+  # preflight check for an installation that is not yet enforcing.
+  # NOTE: these settings are reserved. Services read and log the mode, but no
+  # authorization checks are implemented yet, so no mode changes runtime behavior.
+  # Example: rad install kubernetes --set global.rbac.dryRun=true
+  rbac:
+    # Enforce internal component authorization (reserved; no checks yet).
+    enabled: false
+    # Log what authorization checks would deny without rejecting requests (reserved; no checks yet).
+    dryRun: false
+
 controller:
   image: controller
   # Default tag uses Chart AppVersion.
@@ -125,6 +141,10 @@ ucp:
   image: ucpd
   # Default tag uses Chart AppVersion.
   # tag: latest
+  workerServer:
+    # How long the async worker waits before polling again after finding its queue empty,
+    # such as "2s". Empty keeps the 200ms default. See the chart README.
+    dequeueInterval: ""
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
@@ -136,6 +156,10 @@ dynamicrp:
   image: dynamic-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
+  workerServer:
+    # How long the async worker waits before polling again after finding its queue empty,
+    # such as "2s". Empty keeps the 200ms default. See the chart README.
+    dequeueInterval: ""
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
@@ -160,7 +184,7 @@ dynamicrp:
     # Default install (this disabled) is PSA-baseline-compatible.
     enabled: false
     # Pinned rootless BuildKit image.
-    image: moby/buildkit:v0.33.0-rootless
+    image: moby/buildkit:v0.34.0-rootless
     # Limit concurrent OCI worker steps across all builds sharing the
     # BuildKit sidecar. Increase only after profiling representative cold
     # builds and sizing the resources below with sufficient headroom.
@@ -184,6 +208,10 @@ rp:
   image: applications-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
+  workerServer:
+    # How long the async worker waits before polling again after finding its queue empty,
+    # such as "2s". Empty keeps the 200ms default. See the chart README.
+    dequeueInterval: ""
   publicEndpointOverride: ""
   resources:
     requests:

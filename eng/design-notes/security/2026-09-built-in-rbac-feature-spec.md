@@ -176,6 +176,8 @@ The API is the common management surface for RBAC. Custom role definitions and r
 | `rad auth access` | List effective access, check whether an identity can perform an action at a scope, and explain which role or assignment allowed or denied a decision without exposing hidden data. |
 | `rad auth enforcement` | Inspect enforcement status, preview would-be denials, enable enforcement after reviewing access impact, and perform any supported migration-period rollback. |
 
+> Where applicable, each `rad auth` command family should support standard create, read, update, delete, and list (CRUDL) operations. The examples below are illustrative rather than comprehensive; the complete command set will be finalized during detailed technical design.
+
 A platform administrator can create a custom role and grant it imperatively for bootstrap, investigation, or an immediate operational need:
 
 ```console
@@ -325,8 +327,8 @@ Define authorization for operations that read or mutate more than one resource:
 - Referencing a platform capability requires appropriate access to both the resource being changed and the referenced capability.
 - Deploying to an environment allows Radius to use its platform-managed dependencies but does not grant the caller direct access to them.
 - Sensitive Radius-provided views and operations, such as graphs and secret-related actions, may require permissions beyond ordinary resource read access.
-- Radius checks all required access before accepting a multi-resource operation. The accepted operation continues with that authorization decision if role assignments later change; policy changes neither interrupt the operation nor expand what it can do.
-- Each new operation, including a retry submitted as a new deployment, is authorized against the current policy. Administrators can explicitly cancel an in-progress operation when immediate termination is required.
+- Radius checks all required access before accepting a multi-resource operation. The accepted operation remains limited to that authorization decision, but if a required permission is later revoked, Radius stops the operation at its next step. Permission changes never expand what an accepted operation can do.
+- Each newly submitted operation, including a retry submitted as a new deployment, is authorized against the current policy.
 
 ### Feature 5: Consistent enforcement and client behavior
 

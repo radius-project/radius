@@ -57,6 +57,7 @@ jobs:
 
       - name: Test CLI download
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           MATRIX_OS: ${{ matrix.os }}
           MATRIX_ARCH: ${{ matrix.arch }}
           MATRIX_FILE: ${{ matrix.file }}
