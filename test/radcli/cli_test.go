@@ -18,6 +18,9 @@ package radcli
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -26,6 +29,48 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_ResourceRegistration_serializesWrites(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the local functional runner requires Linux or macOS")
+	}
+	directory := t.TempDir()
+	t.Setenv("RAD_PATH", directory)
+	t.Setenv("REGISTRATION_TEST_STATE", directory)
+	require.NoError(t, os.WriteFile(filepath.Join(directory, "rad"), []byte(`#!/bin/sh
+set -eu
+mkdir "${REGISTRATION_TEST_STATE}/active"
+trap 'rmdir "${REGISTRATION_TEST_STATE}/active"' EXIT
+sleep 0.05
+printf '%s\n' "$*"
+`), 0700))
+
+	var workers sync.WaitGroup
+	type result struct {
+		output string
+		err    error
+		want   string
+	}
+	results := make(chan result, 6)
+	for index := range 6 {
+		workers.Go(func() {
+			cli := NewCLI(t, "test-config.yaml")
+			if index%2 == 0 {
+				output, err := cli.ResourceTypeCreate(t.Context(), "testType", "manifest.yaml")
+				results <- result{output: output, err: err, want: "resource-type create --from-file manifest.yaml testType --config test-config.yaml"}
+			} else {
+				output, err := cli.ResourceProviderCreate(t.Context(), "manifest.yaml")
+				results <- result{output: output, err: err, want: "resource-provider create --from-file manifest.yaml --config test-config.yaml"}
+			}
+		})
+	}
+	workers.Wait()
+	close(results)
+	for result := range results {
+		require.NoError(t, result.err)
+		require.Contains(t, result.output, result.want)
+	}
+}
 
 func Test_tailLines(t *testing.T) {
 	t.Run("returns input unchanged when within limit", func(t *testing.T) {

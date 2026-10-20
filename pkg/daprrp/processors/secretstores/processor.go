@@ -91,18 +91,9 @@ func (p *Processor) Process(ctx context.Context, resource *datamodel.DaprSecretS
 		return &processors.ResourceError{Inner: err}
 	}
 
-	err = handlers.CheckDaprResourceNameUniqueness(ctx, p.Client, resource.Properties.ComponentName, options.RuntimeConfiguration.Kubernetes.Namespace, resource.Name, dapr_ctrl.DaprSecretStoresResourceType)
+	err = handlers.ApplyDaprComponent(ctx, p.Client, &component, resource.Name, dapr_ctrl.DaprSecretStoresResourceType)
 	if err != nil {
-		return &processors.ValidationError{Message: err.Error()}
-	}
-
-	// Using runtime_client.Apply patch type for server-side apply with Dapr components.
-	// The new client.Client.Apply() API requires ApplyConfiguration types which are
-	// not straightforward to generate for dynamic/unstructured resources.
-	//nolint:staticcheck // SA1019: runtime_client.Apply will be replaced when ApplyConfiguration support is available
-	err = p.Client.Patch(ctx, &component, runtime_client.Apply, &runtime_client.PatchOptions{FieldManager: kubernetes.FieldManager})
-	if err != nil {
-		return &processors.ResourceError{Inner: err}
+		return err
 	}
 
 	deployed := rpv1.NewKubernetesOutputResource("Component", &component, metav1.ObjectMeta{Name: component.GetName(), Namespace: component.GetNamespace()})

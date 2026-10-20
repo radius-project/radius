@@ -180,6 +180,7 @@ func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
 }
 
 func Test_Run_Logger(t *testing.T) {
+	// rad run tests share the dashboard's local port 7007.
 	// Will be used to cancel `rad run`
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
@@ -443,6 +444,7 @@ func Test_CLI_JSON(t *testing.T) {
 }
 
 func Test_CLI_Delete(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
@@ -601,6 +603,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 }
 
 func Test_CLI_version(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
@@ -622,6 +625,7 @@ func Test_CLI_version(t *testing.T) {
 }
 
 func Test_CLI_Only_version(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
@@ -734,6 +738,7 @@ func generateUniqueTag() string {
 // `rad recipe` commands. `rad bicep publish` is unaffected by that removal, so the coverage is kept
 // here as a standalone test.
 func Test_BicepPublish(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
@@ -750,6 +755,7 @@ func Test_BicepPublish(t *testing.T) {
 }
 
 func Test_RecipePack(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
@@ -794,6 +800,7 @@ func Test_RecipePack(t *testing.T) {
 }
 
 func Test_RadiusCoreEnv(t *testing.T) {
+	// Finish before Test_RecipePack starts: both use computeRecipePack.
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
