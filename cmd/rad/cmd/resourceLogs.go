@@ -92,7 +92,7 @@ func logsResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	client, err := connections.DefaultFactory.CreateDiagnosticsClientPreview(cmd.Context(), *workspace)
+	client, err := connections.DefaultFactory.CreateDiagnosticsClient(cmd.Context(), *workspace)
 	if err != nil {
 		return err
 	}

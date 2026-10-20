@@ -214,8 +214,8 @@ func Test_ValidateRecipePackParsing(t *testing.T) {
 			cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "")
 			cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "")
 			cmd.Flags().Bool(commonflags.ClearEnvKubernetesFlag, false, "")
-			cmd.Flags().StringSliceP("recipe-packs", "", []string{}, "Specify recipe packs to be added to the environment (--preview)")
-			cmd.Flags().StringP("recipe-pack-group", "", "", "Specify the resource group containing the recipe packs (--preview)")
+			cmd.Flags().StringSliceP("recipe-packs", "", []string{}, "Specify recipe packs to be added to the environment")
+			cmd.Flags().StringP("recipe-pack-group", "", "", "Specify the resource group containing the recipe packs")
 
 			// Parse flags
 			err := cmd.Flags().Parse(tc.input)

@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/statearchive/factory"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -106,159 +105,6 @@ func Test_prettyPrintJSON(t *testing.T) {
 	})
 }
 
-func Test_wirePreviewSubcommand(t *testing.T) {
-	t.Run("routes to legacy runner when --preview is not set", func(t *testing.T) {
-		legacyCalled := false
-		previewCalled := false
-
-		legacyCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { legacyCalled = true; return nil },
-		}
-		previewCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { previewCalled = true; return nil },
-		}
-
-		wirePreviewSubcommand(legacyCmd, previewCmd)
-
-		legacyCmd.SetArgs([]string{})
-		err := legacyCmd.Execute()
-		require.NoError(t, err)
-		require.True(t, legacyCalled, "legacy runner should have been called")
-		require.False(t, previewCalled, "preview runner should not have been called")
-	})
-
-	t.Run("routes to preview runner when --preview is set", func(t *testing.T) {
-		legacyCalled := false
-		previewCalled := false
-
-		legacyCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { legacyCalled = true; return nil },
-		}
-		previewCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { previewCalled = true; return nil },
-		}
-
-		wirePreviewSubcommand(legacyCmd, previewCmd)
-
-		legacyCmd.SetArgs([]string{"--preview"})
-		err := legacyCmd.Execute()
-		require.NoError(t, err)
-		require.False(t, legacyCalled, "legacy runner should not have been called")
-		require.True(t, previewCalled, "preview runner should have been called")
-	})
-
-	t.Run("routes to preview runner when RADIUS_PREVIEW=true", func(t *testing.T) {
-		legacyCalled := false
-		previewCalled := false
-
-		legacyCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { legacyCalled = true; return nil },
-		}
-		previewCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { previewCalled = true; return nil },
-		}
-
-		wirePreviewSubcommand(legacyCmd, previewCmd)
-
-		t.Setenv("RADIUS_PREVIEW", "true")
-		legacyCmd.SetArgs([]string{})
-		err := legacyCmd.Execute()
-		require.NoError(t, err)
-		require.False(t, legacyCalled, "legacy runner should not have been called")
-		require.True(t, previewCalled, "preview runner should have been called")
-	})
-
-	t.Run("routes to preview runner when RADIUS_PREVIEW=True (case-insensitive)", func(t *testing.T) {
-		legacyCalled := false
-		previewCalled := false
-
-		legacyCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { legacyCalled = true; return nil },
-		}
-		previewCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { previewCalled = true; return nil },
-		}
-
-		wirePreviewSubcommand(legacyCmd, previewCmd)
-
-		t.Setenv("RADIUS_PREVIEW", "True")
-		legacyCmd.SetArgs([]string{})
-		err := legacyCmd.Execute()
-		require.NoError(t, err)
-		require.False(t, legacyCalled, "legacy runner should not have been called")
-		require.True(t, previewCalled, "preview runner should have been called")
-	})
-
-	t.Run("uses --preview=false to override RADIUS_PREVIEW=true", func(t *testing.T) {
-		legacyCalled := false
-		previewCalled := false
-
-		legacyCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { legacyCalled = true; return nil },
-		}
-		previewCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { previewCalled = true; return nil },
-		}
-
-		wirePreviewSubcommand(legacyCmd, previewCmd)
-
-		t.Setenv("RADIUS_PREVIEW", "true")
-		legacyCmd.SetArgs([]string{"--preview=false"})
-		err := legacyCmd.Execute()
-		require.NoError(t, err)
-		require.True(t, legacyCalled, "legacy runner should have been called")
-		require.False(t, previewCalled, "preview runner should not have been called")
-	})
-
-	t.Run("routes to legacy runner when RADIUS_PREVIEW is not true", func(t *testing.T) {
-		legacyCalled := false
-		previewCalled := false
-
-		legacyCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { legacyCalled = true; return nil },
-		}
-		previewCmd := &cobra.Command{
-			Use:  "test",
-			RunE: func(cmd *cobra.Command, args []string) error { previewCalled = true; return nil },
-		}
-
-		wirePreviewSubcommand(legacyCmd, previewCmd)
-
-		t.Setenv("RADIUS_PREVIEW", "false")
-		legacyCmd.SetArgs([]string{})
-		err := legacyCmd.Execute()
-		require.NoError(t, err)
-		require.True(t, legacyCalled, "legacy runner should have been called")
-		require.False(t, previewCalled, "preview runner should not have been called")
-	})
-}
-
-func Test_withPreviewEnvVarNote(t *testing.T) {
-	t.Run("appends the RADIUS_PREVIEW note when absent", func(t *testing.T) {
-		got := withPreviewEnvVarNote("Use the Radius.Core preview implementation for environment update")
-		require.Equal(t, "Use the Radius.Core preview implementation for environment update (can also be set via RADIUS_PREVIEW=true)", got)
-	})
-
-	t.Run("does not double-append when the note is already present", func(t *testing.T) {
-		usage := "Use the Radius.Core preview implementation (can also be set via RADIUS_PREVIEW=true)"
-		require.Equal(t, usage, withPreviewEnvVarNote(usage))
-	})
-
-}
-
-// Test_EnvCommands_RegisteredWithoutPreview checks that each `rad env` subcommand has no --preview
-// flag and defines every flag its runner reads.
 func Test_AppCommands_RegisteredWithoutPreview(t *testing.T) {
 	testcases := []struct {
 		command string
@@ -370,5 +216,17 @@ func Test_ResourceExposeAndLogs_RegisteredWithoutPreview(t *testing.T) {
 				require.NotNilf(t, cmd.Flag(flag), "rad resource %s must expose --%s", tc.command, flag)
 			}
 		})
+	}
+}
+
+// Test_Deploy_RegisteredWithoutPreview checks that `rad deploy` has no --preview flag and defines
+// every flag its runner reads.
+func Test_Deploy_RegisteredWithoutPreview(t *testing.T) {
+	deployCmd, _, err := RootCmd.Find([]string{"deploy"})
+	require.NoError(t, err)
+	require.Equal(t, "deploy", deployCmd.Name())
+	require.Nil(t, deployCmd.Flags().Lookup("preview"), "rad deploy must not expose --preview")
+	for _, flag := range []string{"workspace", "group", "environment", "application", "parameters"} {
+		require.NotNilf(t, deployCmd.Flags().Lookup(flag), "rad deploy must expose --%s", flag)
 	}
 }

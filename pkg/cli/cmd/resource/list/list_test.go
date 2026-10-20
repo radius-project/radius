@@ -194,7 +194,7 @@ func Test_ValidateResolvesRadiusCoreIDs(t *testing.T) {
 		previewEnvID   = scope + "/providers/Radius.Core/environments/test-environment"
 		previewAppID   = scope + "/providers/Radius.Core/applications/test-app"
 		legacyEnvID    = scope + "/providers/Applications.Core/environments/test-environment"
-		otherPreviewID = scope + "/providers/Radius.Core/environments/other-env"
+		otherEnvironmentID = scope + "/providers/Radius.Core/environments/other-env"
 	)
 
 	config := radcli.LoadConfig(t, `
@@ -233,7 +233,7 @@ workspaces:
 
 		err := runner.Validate(command, []string{})
 		require.NoError(t, err)
-		require.Equal(t, otherPreviewID, runner.EnvironmentNameOrID)
+		require.Equal(t, otherEnvironmentID, runner.EnvironmentNameOrID)
 	})
 
 	t.Run("rejects legacy environment ID", func(t *testing.T) {
