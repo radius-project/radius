@@ -9,4 +9,4 @@ Follow [docs/contributing/extending-agent-ex.md](../../docs/contributing/extendi
 
 AI capability to add: ${input:capability:Describe the new AI capability or workflow}
 
-Decide where the AI capability lives (decision tree + two-of-four rule), author or extend its primary contributing doc, scaffold only the justified wrappers, and update the live files. Do not edit the planning docs `agent-ex-features.md` or `agent-ex-plan.md`. Validate against the Verification section and run `make spellcheck`.
+Decide where the AI capability lives (decision tree + two-of-four rule), author or extend its primary contributing doc, scaffold only the justified wrappers, and update the live files. Validate against the Verification section and run `make spellcheck`.

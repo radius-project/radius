@@ -1,6 +1,6 @@
 # Contributing documentation
 
-This folder holds the how-to knowledge for contributing to Radius. The documents below are the conventions and authoring guides for the **Agent Ex** system — the shared knowledge base that humans read directly and every supported AI agent (GitHub Copilot in VS Code, Copilot CLI, Copilot Cloud Agent, and Claude Code) reads through a single entry point. See [specs/002-agent-ex/agent-ex-plan.md](../../specs/002-agent-ex/agent-ex-plan.md) for the full plan.
+This folder holds the how-to knowledge for contributing to Radius. The documents below are the conventions and authoring guides for the **Agent Ex** system — the shared knowledge base that humans read directly and every supported AI agent (GitHub Copilot in VS Code, Copilot CLI, Copilot Cloud Agent, and Claude Code) reads through a single entry point.
 
 ## Agent Ex conventions and authoring guides
 
@@ -78,7 +78,7 @@ Every contributing doc, grouped by topic. This is the single index that [AGENTS.
 
 ## Capability index
 
-Maps each capability in [agent-ex-features.md](../../specs/002-agent-ex/agent-ex-features.md#capabilities) that this repository owns to its single primary backing doc. Capabilities added after the original Agent Ex plan use `n/a`. Capabilities owned by satellite repos (1.9 resource types, 1.10 dashboard, 1.13 AWS Bicep types) are out of scope here. Parent rows link to the [documentation index](#documentation-index) above rather than a single doc.
+Maps each capability that this repository owns to its single primary backing doc. Capabilities without an original capability number use `n/a`. Capabilities owned by satellite repos (1.9 resource types, 1.10 dashboard, 1.13 AWS Bicep types) are out of scope here. Parent rows link to the [documentation index](#documentation-index) above rather than a single doc.
 
 | Capability                                | Primary backing doc                                                                                              |
 |-------------------------------------------|------------------------------------------------------------------------------------------------------------------|

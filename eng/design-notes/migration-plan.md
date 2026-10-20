@@ -25,31 +25,6 @@ The migrated documents should be organized by topic area within `eng/design-note
 Migrated files use a `YYYY-MM-description.md` naming convention (year and month only). Source files that include a day component (e.g., `2025-08-29-container-resource-type.md`) are renamed to drop the day (e.g., `2025-08-container-resource-type.md`). Living documents such as `api-design-guidelines.md` omit the date prefix entirely.
 
 ```text
-.specify/                                      # Spec Kit configuration, scripts, and templates
-├── init-options.json
-├── memory/
-│   └── constitution.md
-├── scripts/
-│   ├── bash/
-│   │   ├── check-prerequisites.sh
-│   │   ├── common.sh
-│   │   ├── create-new-feature.sh
-│   │   ├── setup-plan.sh
-│   │   └── update-agent-context.sh
-│   └── powershell/
-│       ├── check-prerequisites.ps1
-│       ├── common.ps1
-│       ├── create-new-feature.ps1
-│       ├── setup-plan.ps1
-│       └── update-agent-context.ps1
-└── templates/
-    ├── agent-file-template.md
-    ├── checklist-template.md
-    ├── constitution-template.md
-    ├── plan-template.md
-    ├── spec-template.md
-    └── tasks-template.md
-
 eng/
 ├── design-notes/
 │   ├── README.md                          # Instructions for adding documents
@@ -105,10 +80,6 @@ eng/
 │   │   └── 2025-03-workflow-changes.md
 │   └── ucp/                               # Universal Control Plane designs
 │       └── 2024-03-planes-apis.md
-
-specs/                                         # Spec Kit specifications
-├── 001-lrt-current-release/
-└── 001-remove-bicep-types-submodule/
 ```
 
 ### Rationale for Structure Changes
@@ -217,65 +188,6 @@ specs/                                         # Spec Kit specifications
 | [`template/YYYY-MM-design-template.md`](https://github.com/radius-project/design-notes/blob/main/template/YYYY-MM-design-template.md) | Template for writing design documents. Migrated as `design-template.md`. |
 | [`template/YYYY-MM-feature-spec-template.md`](https://github.com/radius-project/design-notes/blob/main/template/YYYY-MM-feature-spec-template.md) | Template for writing feature specifications. Migrated as `feature-spec-template.md`. |
 | [`template/YYYY-MM-threat-model-template.md`](https://github.com/radius-project/design-notes/blob/main/template/YYYY-MM-threat-model-template.md) | Template for writing threat models. Migrated as `threat-model-template.md`. |
-
-### Spec Kit Specifications (2 directories)
-
-Spec Kit specifications are structured project artifacts (plans, research, tasks, checklists) that differ from point-in-time design notes. They will be migrated to `specs/` at the repository root.
-
-| Source | Destination | Summary |
-|--------|-------------|-------|
-| [`specs/001-lrt-current-release/`](https://github.com/radius-project/design-notes/tree/main/specs/001-lrt-current-release) | `specs/001-lrt-current-release/` | Design spec for long-running tests using the current release, including plan, research, tasks, checklists, and quickstart. |
-| [`specs/001-remove-bicep-types-submodule/`](https://github.com/radius-project/design-notes/tree/main/specs/001-remove-bicep-types-submodule) | `specs/001-remove-bicep-types-submodule/` | Specification for removing the bicep-types submodule and migrating to pnpm, including plans, research, and tasks. |
-
-### Spec Kit Configuration (1 directory)
-
-The [`.specify/`](https://github.com/radius-project/design-notes/tree/main/.specify) directory contains Spec Kit configuration, scripts, templates, and the project constitution. It is migrated to `.specify/` at the repository root (alongside `.github/`) to keep the Spec Kit workflow functional across the repository.
-
-| Source | Destination | Summary |
-|--------|-------------|--------|
-| [`.specify/init-options.json`](https://github.com/radius-project/design-notes/blob/main/.specify/init-options.json) | `.specify/init-options.json` | Spec Kit initialization options (AI provider, script type, version). |
-| [`.specify/memory/constitution.md`](https://github.com/radius-project/design-notes/blob/main/.specify/memory/constitution.md) | `.specify/memory/constitution.md` | Project constitution defining core principles, technology stack, development workflow, and governance for the Radius design notes repository. |
-| [`.specify/scripts/bash/`](https://github.com/radius-project/design-notes/tree/main/.specify/scripts/bash) | `.specify/scripts/bash/` | Bash scripts for Spec Kit workflows: `check-prerequisites.sh`, `common.sh`, `create-new-feature.sh`, `setup-plan.sh`, `update-agent-context.sh`. |
-| [`.specify/scripts/powershell/`](https://github.com/radius-project/design-notes/tree/main/.specify/scripts/powershell) | `.specify/scripts/powershell/` | PowerShell scripts mirroring the Bash scripts: `check-prerequisites.ps1`, `common.ps1`, `create-new-feature.ps1`, `setup-plan.ps1`, `update-agent-context.ps1`. |
-| [`.specify/templates/`](https://github.com/radius-project/design-notes/tree/main/.specify/templates) | `.specify/templates/` | Spec Kit templates: `agent-file-template.md`, `checklist-template.md`, `constitution-template.md`, `plan-template.md`, `spec-template.md`, `tasks-template.md`. |
-
-**Total: 42 documents/directories recommended for migration (41 + `.specify/`).**
-
-### Agents and Prompts (20 files)
-
-Custom agents and Copilot prompts from the design-notes repository are migrated to the `.github/agents` and `.github/prompts` directories to support Spec Kit workflows and development in the Radius repository.
-
-**Agents (10 files)**
-
-| Source | Destination | Summary |
-|--------|-------------|---------|
-| [`.github/agents/radius.speckit.prompt.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/radius.speckit.prompt.agent.md) | `.github/agents/radius.speckit.prompt.agent.md` | Agent for creating Radius-specific Spec Kit prompts. |
-| [`.github/agents/speckit.analyze.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.analyze.agent.md) | `.github/agents/speckit.analyze.agent.md` | Spec Kit agent for analyzing and understanding design documents. |
-| [`.github/agents/speckit.checklist.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.checklist.agent.md) | `.github/agents/speckit.checklist.agent.md` | Spec Kit agent for creating and managing project checklists. |
-| [`.github/agents/speckit.clarify.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.clarify.agent.md) | `.github/agents/speckit.clarify.agent.md` | Spec Kit agent for clarifying and refining project requirements. |
-| [`.github/agents/speckit.constitution.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.constitution.agent.md) | `.github/agents/speckit.constitution.agent.md` | Spec Kit agent for defining and maintaining project constitution. |
-| [`.github/agents/speckit.implement.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.implement.agent.md) | `.github/agents/speckit.implement.agent.md` | Spec Kit agent for implementing features and tracking implementation progress. |
-| [`.github/agents/speckit.plan.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.plan.agent.md) | `.github/agents/speckit.plan.agent.md` | Spec Kit agent for creating and managing project plans. |
-| [`.github/agents/speckit.specify.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.specify.agent.md) | `.github/agents/speckit.specify.agent.md` | Spec Kit agent for specifying features and design decisions. |
-| [`.github/agents/speckit.tasks.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.tasks.agent.md) | `.github/agents/speckit.tasks.agent.md` | Spec Kit agent for creating and managing project tasks. |
-| [`.github/agents/speckit.taskstoissues.agent.md`](https://github.com/radius-project/design-notes/blob/main/.github/agents/speckit.taskstoissues.agent.md) | `.github/agents/speckit.taskstoissues.agent.md` | Spec Kit agent for converting tasks to GitHub issues. |
-
-**Prompts (10 files)**
-
-| Source | Destination | Summary |
-|--------|-------------|---------|
-| [`.github/prompts/radius.speckit.prompt.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/radius.speckit.prompt.prompt.md) | `.github/prompts/radius.speckit.prompt.prompt.md` | Prompt for creating Radius-specific Spec Kit prompts and agents. |
-| [`.github/prompts/speckit.analyze.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.analyze.prompt.md) | `.github/prompts/speckit.analyze.prompt.md` | Spec Kit prompt for analyzing design documents and project documents. |
-| [`.github/prompts/speckit.checklist.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.checklist.prompt.md) | `.github/prompts/speckit.checklist.prompt.md` | Spec Kit prompt for creating and managing project checklists. |
-| [`.github/prompts/speckit.clarify.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.clarify.prompt.md) | `.github/prompts/speckit.clarify.prompt.md` | Spec Kit prompt for clarifying and refining project requirements and specifications. |
-| [`.github/prompts/speckit.constitution.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.constitution.prompt.md) | `.github/prompts/speckit.constitution.prompt.md` | Spec Kit prompt for defining and maintaining project constitution and governance. |
-| [`.github/prompts/speckit.implement.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.implement.prompt.md) | `.github/prompts/speckit.implement.prompt.md` | Spec Kit prompt for implementing features and tracking implementation progress. |
-| [`.github/prompts/speckit.plan.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.plan.prompt.md) | `.github/prompts/speckit.plan.prompt.md` | Spec Kit prompt for creating and managing project plans and roadmaps. |
-| [`.github/prompts/speckit.specify.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.specify.prompt.md) | `.github/prompts/speckit.specify.prompt.md` | Spec Kit prompt for specifying features, design decisions, and requirements. |
-| [`.github/prompts/speckit.tasks.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.tasks.prompt.md) | `.github/prompts/speckit.tasks.prompt.md` | Spec Kit prompt for creating, organizing, and managing project tasks. |
-| [`.github/prompts/speckit.taskstoissues.prompt.md`](https://github.com/radius-project/design-notes/blob/main/.github/prompts/speckit.taskstoissues.prompt.md) | `.github/prompts/speckit.taskstoissues.prompt.md` | Spec Kit prompt for converting tasks to GitHub issues for tracking and collaboration. |
-
-**Total: 65 documents/directories recommended for migration (45 + 20 agents/prompts).**
 
 ## Documents NOT Recommended for Migration
 

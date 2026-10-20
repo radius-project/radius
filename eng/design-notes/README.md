@@ -19,12 +19,6 @@ Design notes are organized by topic area:
 | `tools/` | Engineering tools and workflows |
 | `ucp/` | Universal Control Plane designs |
 
-### Related Directories
-
-| Directory | Description |
-|-----------|-------------|
-| `../specs/` | Spec Kit specifications (structured project artifacts: plans, research, tasks, checklists) |
-
 ## Adding a New Design Note
 
 1. Place the document in the appropriate topic directory
