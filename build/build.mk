@@ -128,6 +128,7 @@ BINARIES := docgen:./cmd/docgen \
 	controller:./cmd/controller \
 	testrp:./test/testrp \
 	magpiego:./test/magpiego \
+	rogue-client:./test/rogue/cmd/rogue-client \
 	pre-upgrade:./cmd/pre-upgrade
 
 # This function parses binary name and entrypoint from an item in the BINARIES list.

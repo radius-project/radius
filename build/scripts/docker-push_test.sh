@@ -162,6 +162,7 @@ assert_calls \
     "push ghcr.io/radius-project/dev/controller:test" \
     "push ghcr.io/radius-project/dev/testrp:test" \
     "push ${IMAGE}" \
+    "push ghcr.io/radius-project/dev/rogue-client:test" \
     "push ghcr.io/radius-project/dev/bicep:test" \
     "push ghcr.io/radius-project/dev/pre-upgrade:test"
 
