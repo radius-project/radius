@@ -21,8 +21,8 @@ importers:
         specifier: ^0.73.0
         version: 0.73.0(dcbc4e44d0d90f223c1aaf0eba32398d)
       '@azure-tools/typespec-go':
-        specifier: ^0.17.5
-        version: 0.17.5(6944ecdbdb0b7ed6f2f41bdc233e4d44)
+        specifier: ^0.17.6
+        version: 0.17.6(6944ecdbdb0b7ed6f2f41bdc233e4d44)
       '@typespec/compiler':
         specifier: ^1.17.0
         version: 1.17.0(@types/node@25.9.3)
@@ -132,8 +132,8 @@ packages:
       '@typespec/versioning': ^0.87.0
       '@typespec/xml': ^0.87.0
 
-  '@azure-tools/typespec-go@0.17.5':
-    resolution: {integrity: sha512-tbUwBzXHPirhVDw46fqK7dojus2zVOkoxgPz8/l37AhX7bl6IkDsbY6NCIMyjRYSdMGTvB2WiEZzYI3f5g9Ekw==}
+  '@azure-tools/typespec-go@0.17.6':
+    resolution: {integrity: sha512-dbxzGgOD+UtAjnJ0sHyjPeZZ5ud3ZjEipngG64f4Z5fDcXuDN0fqtUqcNuG//kzfvAiFRt397M+y1B445r2MEg==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
       '@azure-tools/typespec-autorest': ^0.73.0
@@ -809,8 +809,8 @@ packages:
     resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
     engines: {node: '>=4'}
 
-  prettier@3.9.9:
-    resolution: {integrity: sha512-Z/CJHIkdujO/OtN7nXUii0Rf3VT5SRuhjBA82Xvu2XhBUgX3nhP67T0LHceBdQLex7OOFGTox+Q5Yg8Jk2Qivg==}
+  prettier@3.9.10:
+    resolution: {integrity: sha512-skGHTH1Yb9QvaTC4hWnRTzEYtCpApF0UMBPz+t/0ZPzP8ihefo/btKd+QA7pUE0fEwA1SbS/NmhyEcstdXOIdA==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -1104,7 +1104,7 @@ snapshots:
       pluralize: 8.0.0
       yaml: 2.9.0
 
-  '@azure-tools/typespec-go@0.17.5(6944ecdbdb0b7ed6f2f41bdc233e4d44)':
+  '@azure-tools/typespec-go@0.17.6(6944ecdbdb0b7ed6f2f41bdc233e4d44)':
     dependencies:
       '@azure-tools/typespec-autorest': 0.73.0(b5a3d050e3bdd3d61146e97f566270e0)
       '@azure-tools/typespec-azure-core': 0.73.0(@typespec/compiler@1.17.0(@types/node@25.9.3))(@typespec/http@1.17.0(@typespec/compiler@1.17.0(@types/node@25.9.3))(@typespec/streams@0.87.0(@typespec/compiler@1.17.0(@types/node@25.9.3))))(@typespec/rest@0.87.0(@typespec/compiler@1.17.0(@types/node@25.9.3))(@typespec/http@1.17.0(@typespec/compiler@1.17.0(@types/node@25.9.3))(@typespec/streams@0.87.0(@typespec/compiler@1.17.0(@types/node@25.9.3)))))
@@ -1323,7 +1323,7 @@ snapshots:
       is-unicode-supported: 2.1.0
       mustache: 4.2.0
       picocolors: 1.1.1
-      prettier: 3.9.9
+      prettier: 3.9.10
       semver: 7.8.5
       tar: 7.5.22
       temporal-polyfill: 1.0.4
@@ -1779,7 +1779,7 @@ snapshots:
 
   pluralize@8.0.0: {}
 
-  prettier@3.9.9: {}
+  prettier@3.9.10: {}
 
   punycode@2.3.1: {}
 
