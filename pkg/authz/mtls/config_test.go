@@ -119,6 +119,21 @@ func TestHandshake_Success(t *testing.T) {
 	require.Equal(t, "controller.radius-system.svc", id.String())
 }
 
+func TestHandshake_NameConstrainedCA(t *testing.T) {
+	t.Parallel()
+	ca := newConstrainedCA(t, []string{testNamespace + ".svc"})
+	server := newTestSource(t, ca, "ucp")
+	client := newTestSource(t, ca, "bicep-de")
+
+	result := handshake(t, server.ServerConfig(testNamespace), clientConfig(client, ucpServerName))
+	require.NoError(t, result.serverErr)
+	require.NoError(t, result.clientErr)
+
+	id, err := identityFromChains(result.serverState.VerifiedChains, testNamespace)
+	require.NoError(t, err)
+	require.Equal(t, "bicep-de.radius-system.svc", id.String())
+}
+
 func TestServerConfig_RejectsClient(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
@@ -143,10 +158,16 @@ func TestServerConfig_RejectsClient(t *testing.T) {
 			return staticClient(t, ca.issue(t, certOptions{dnsNames: []string{"other-app.default.svc"}}), ca)
 		}},
 		{name: "RSA-1024", wantErr: "RSA key size 1024", client: func() *tls.Config {
-			return staticClient(t, ca.issue(t, certOptions{dnsNames: []string{"controller"}, key: rsaKey(t, 1024)}), ca)
+			return staticClient(t, ca.issue(t, certOptions{dnsNames: componentSANs("controller"), key: rsaKey(t, 1024)}), ca)
+		}},
+		{name: "short name SAN", wantErr: "is not a Radius component", client: func() *tls.Config {
+			return staticClient(t, ca.issue(t, certOptions{dnsNames: []string{"controller"}}), ca)
+		}},
+		{name: "more than one SAN", wantErr: "more than one DNS SAN", client: func() *tls.Config {
+			return staticClient(t, ca.issue(t, certOptions{dnsNames: []string{canonical("controller"), "controller"}}), ca)
 		}},
 		{name: "no client certificate", wantErr: "didn't provide a certificate", client: func() *tls.Config {
-			cfg := staticClient(t, ca.issue(t, certOptions{dnsNames: []string{"controller"}}), ca)
+			cfg := staticClient(t, ca.issue(t, certOptions{dnsNames: componentSANs("controller")}), ca)
 			cfg.Certificates = nil
 			return cfg
 		}},
@@ -174,7 +195,7 @@ func TestClientConfig_RejectsServer(t *testing.T) {
 		{name: "wrong CA", serverName: ucpServerName, server: func() *tls.Config {
 			return staticServer(t, newCA(t).issue(t, certOptions{dnsNames: componentSANs("ucp")}))
 		}},
-		{name: "hostname mismatch", serverName: "dynamic-rp.radius-system.svc", server: func() *tls.Config {
+		{name: "hostname mismatch", serverName: canonical("dynamic-rp"), server: func() *tls.Config {
 			return staticServer(t, ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}))
 		}},
 		{name: "expired", serverName: ucpServerName, server: func() *tls.Config {
@@ -185,7 +206,10 @@ func TestClientConfig_RejectsServer(t *testing.T) {
 			}))
 		}},
 		{name: "two components", serverName: ucpServerName, server: func() *tls.Config {
-			return staticServer(t, ca.issue(t, certOptions{dnsNames: []string{ucpServerName, "dynamic-rp"}}))
+			return staticServer(t, ca.issue(t, certOptions{dnsNames: []string{ucpServerName, canonical("dynamic-rp")}}))
+		}},
+		{name: "short server name", serverName: "ucp", server: func() *tls.Config {
+			return staticServer(t, ca.issue(t, certOptions{dnsNames: []string{"ucp"}}))
 		}},
 		{name: "no server name", serverName: "", server: func() *tls.Config {
 			return staticServer(t, ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}))
