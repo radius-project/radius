@@ -1,0 +1,156 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __package-cleanup
+on:
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        default: plan
+      profile:
+        type: string
+        default: pr
+      retention_days:
+        type: number
+        default: 7
+      plan_run_id:
+        type: string
+        default: ''
+      plan_sha256:
+        type: string
+        default: ''
+      max_deletes:
+        type: number
+        default: 25
+    secrets:
+      inventory_token:
+        required: true
+      # Supplied by the protected environment, not forwarded by the wrappers.
+      CLEANUP_PACKAGE_TOKEN:
+        required: false
+      CLEANUP_PUBLICATION_FREEZE:
+        required: false
+permissions: {}
+# This serializes cleanup only. Publication exclusion is a separate checked gate.
+concurrency:
+  group: package-cleanup
+  cancel-in-progress: false
+env:
+  CLEANUP_PROFILE: ${{ inputs.profile }}
+  RETENTION_DAYS: ${{ inputs.retention_days }}
+  PLAN_RUN_ID: ${{ inputs.plan_run_id }}
+  PLAN_SHA256: ${{ inputs.plan_sha256 }}
+jobs:
+  plan:
+    if: >-
+      inputs.mode == 'plan' &&
+      github.repository == 'radius-project/radius' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Inventory and plan only
+        env:
+          GH_TOKEN: ${{ secrets.inventory_token }}
+          CLEANUP_MODE: plan
+        run: bash .github/scripts/purge-old-images.sh
+      - name: Save inventory, protection, plan and report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cleanup-plan-${{ github.run_attempt }}
+          path: cleanup-output/
+          retention-days: 30
+          if-no-files-found: error
+  preflight:
+    if: >-
+      inputs.mode == 'apply' &&
+      vars.PACKAGE_CLEANUP_ENABLE_APPLY == 'true' &&
+      github.repository == 'radius-project/radius' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      attempt: ${{ steps.verify.outputs.attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Verify existing approval rules and trusted plan run
+        id: verify
+        env:
+          GH_TOKEN: ${{ secrets.inventory_token }}
+          CLEANUP_MODE: preflight
+        run: bash .github/scripts/purge-old-images.sh
+      - name: Save preflight failure evidence
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cleanup-preflight-${{ github.run_attempt }}
+          path: cleanup-output/
+          retention-days: 30
+          if-no-files-found: error
+  apply:
+    needs: preflight
+    if: inputs.mode == 'apply' && vars.PACKAGE_CLEANUP_ENABLE_APPLY == 'true'
+    environment:
+      name: package-cleanup
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ inputs.plan_run_id }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Download only the checked plan run and attempt
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          github-token: ${{ github.token }}
+          repository: radius-project/radius
+          run-id: ${{ inputs.plan_run_id }}
+          name: cleanup-plan-${{ needs.preflight.outputs.attempt }}
+          path: approved-plan
+      - name: Recheck plan, protection and publication freeze, then apply
+        env:
+          GH_TOKEN: ${{ secrets.CLEANUP_PACKAGE_TOKEN }}
+          CLEANUP_MODE: apply
+          CLEANUP_ENABLE_APPLY: ${{ vars.PACKAGE_CLEANUP_ENABLE_APPLY }}
+          CLEANUP_PUBLICATION_FREEZE: ${{ secrets.CLEANUP_PUBLICATION_FREEZE }}
+          CLEANUP_MAX_DELETES: ${{ inputs.max_deletes }}
+        run: bash .github/scripts/purge-old-images.sh
+      - name: Save durable apply and unfinished results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cleanup-apply-${{ github.run_attempt }}
+          path: cleanup-output/
+          retention-days: 30
+          if-no-files-found: error

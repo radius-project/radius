@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "repository": "radius-project/radius",
+  "historicalReviewComplete": false,
+  "activeReferenceReviewComplete": false,
+  "expiresAt": "1970-01-01T00:00:00Z",
+  "review": "",
+  "releases": [],
+  "protectedDigests": [],
+  "activeTags": [],
+  "testRecipePackages": []
+}

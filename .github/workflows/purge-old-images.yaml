@@ -1,73 +1,69 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: Purge test container images
-
+name: purge-old-images
 on:
-  # Enable manual trigger
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: Report matching versions without deleting them
-        required: true
-        default: true
-        type: boolean
+      profile:
+        description: Reviewed test profile (protection cannot be disabled)
+        type: choice
+        options: [pr, functional, test-recipes, reviewed-tests]
+        default: pr
+      retention_days:
+        description: Minimum age in days (at least 7)
+        type: number
+        default: 7
   schedule:
-    # Run twice a day
     - cron: 30 0,12 * * *
-
-env:
-  ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
 permissions: {}
-
 jobs:
-  purge_ghcr_dev:
-    name: Delete old unused test container images
-    if: github.repository == 'radius-project/radius'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
+  plan:
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/__package-cleanup.yaml
     permissions:
       contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      # GitHub Container Registry package APIs are only accessible to classic
-      # personal access tokens (and the built-in GITHUB_TOKEN). GitHub App
-      # installation tokens cannot list or delete org packages — the list
-      # endpoint returns "400 Invalid argument" and deletes are rejected. See
-      # https://github.com/snok/container-retention-policy/issues/94 (GitHub
-      # Support confirmation). The wildcard image-names below also requires the
-      # list-packages endpoint, so a classic PAT is required here.
-      #
-      # secrets.GH_RAD_CI_BOT_PAT must be a classic PAT with the following scopes:
-      #   - read:packages   (list package versions)
-      #   - delete:packages (delete old package versions)
-      - name: Delete 'dev' containers older than a week
-        env:
-          GH_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          PACKAGE_OWNER: ${{ github.repository_owner }}
-          PURGE_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
-        run: bash ./.github/scripts/purge-old-images.sh
-
+      actions: read
+      packages: read
+      pull-requests: read
+    with:
+      mode: plan
+      profile: ${{ inputs.profile }}
+      retention_days: ${{ inputs.retention_days }}
+    secrets:
+      inventory_token: ${{ secrets.GH_RAD_CI_BOT_PAT || github.token }}
+  scheduled_plan:
+    if: github.repository == 'radius-project/radius' && github.event_name == 'schedule'
+    uses: ./.github/workflows/__package-cleanup.yaml
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+      pull-requests: read
+    with:
+      mode: plan
+    secrets:
+      inventory_token: ${{ secrets.GH_RAD_CI_BOT_PAT || github.token }}
   create_issue_on_failure:
-    name: Create issue for failing purge old images resources run
-    if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
-    needs: [purge_ghcr_dev]
+    name: Report scheduled cleanup plan failure
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    needs: [plan, scheduled_plan]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
-      issues: write # Required to create an issue when the scheduled run fails
+      issues: write
     steps:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           github-token: ${{ github.token }}
           script: |
-            github.rest.issues.create({
+            await github.rest.issues.create({
               ...context.repo,
-              title: `Purge old images failed - Run ID: ${context.runId}`,
+              title: `Package cleanup plan failed - Run ID: ${context.runId}`,
               labels: ['test-failure'],
-              body: `## Bug information \n\nThis bug is generated automatically if the purge old images workflow fails. For further investigation, please visit [here](${process.env.ACTION_LINK}).`
-            })
+              body: `The scheduled package inventory or plan failed. No deletion was requested. Review the artifacts and diagnostics: ${process.env.ACTION_LINK}`
+            });

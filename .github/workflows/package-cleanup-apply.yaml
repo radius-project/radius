@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: package-cleanup-apply
+on:
+  workflow_dispatch:
+    inputs:
+      plan_run_id:
+        description: Successful main purge-old-images plan run ID
+        required: true
+        type: string
+      plan_sha256:
+        description: Reviewed canonical plan SHA256 from plan.sha256
+        required: true
+        type: string
+      profile:
+        description: Must match the approved plan
+        type: choice
+        options: [pr, functional, test-recipes, reviewed-tests]
+        default: pr
+      retention_days:
+        description: Must match the approved plan (at least 7)
+        type: number
+        default: 7
+      max_deletes:
+        description: Maximum version delete operations (1..100, bounded retries)
+        type: number
+        default: 25
+permissions: {}
+jobs:
+  apply:
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      github.ref == 'refs/heads/main' &&
+      vars.PACKAGE_CLEANUP_ENABLE_APPLY == 'true'
+    uses: ./.github/workflows/__package-cleanup.yaml
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+      pull-requests: read
+    with:
+      mode: apply
+      plan_run_id: ${{ inputs.plan_run_id }}
+      plan_sha256: ${{ inputs.plan_sha256 }}
+      profile: ${{ inputs.profile }}
+      retention_days: ${{ inputs.retention_days }}
+      max_deletes: ${{ inputs.max_deletes }}
+    secrets:
+      inventory_token: ${{ secrets.GH_RAD_CI_BOT_PAT || github.token }}
