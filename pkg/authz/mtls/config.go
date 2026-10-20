@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net/http"
 	"slices"
 )
@@ -58,9 +59,10 @@ func (s *Source) ServerConfig(namespace string) *tls.Config {
 }
 
 // ClientConfig returns a TLS config for a client that presents the current certificate
-// and accepts only a server whose certificate is from the current CA bundle, matches
-// the dialed server name, and names a Radius component in namespace. The server name
-// must be set, either in the returned config or by the caller, such as http.Transport.
+// and accepts only a server whose certificate is from the current CA bundle and whose
+// only DNS SAN is the server name. The server name must be the canonical
+// "<component>.<namespace>.svc" name of a Radius component, set either in the returned
+// config or by the caller, such as http.Transport from the request URL.
 func (s *Source) ClientConfig(namespace string) *tls.Config {
 	return &tls.Config{
 		MinVersion: tls.VersionTLS12,
@@ -83,8 +85,8 @@ func (s *Source) verifyServer(certs []*x509.Certificate, serverName, namespace s
 	if len(certs) == 0 {
 		return Identity{}, peerError("no peer certificate", nil)
 	}
-	if serverName == "" {
-		return Identity{}, peerError("no server name to verify", nil)
+	if _, err := identityFromSAN(serverName, namespace); err != nil {
+		return Identity{}, peerError(fmt.Sprintf("server name %q is not a canonical Radius component name", serverName), nil)
 	}
 
 	intermediates := x509.NewCertPool()

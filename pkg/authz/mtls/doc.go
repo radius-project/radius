@@ -16,8 +16,8 @@ limitations under the License.
 
 // Package mtls loads a Radius component's mTLS certificate, key, and CA bundle from
 // mounted files, reloads them when they change, and builds server and client TLS
-// configs. A verified peer is mapped to a canonical component identity,
-// "<component>.<namespace>.svc", from its DNS SANs; the subject common name is
-// ignored. Certificate failures are *Error values carrying an authz error code,
+// configs. A verified peer must have exactly one DNS SAN, the canonical
+// "<component>.<namespace>.svc" name of a Radius component, which becomes its
+// identity; the subject common name is ignored. Certificate failures are *Error values carrying an authz error code,
 // such as PeerCertificateInvalid, for logging.
 package mtls

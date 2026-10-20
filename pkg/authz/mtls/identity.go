@@ -81,8 +81,9 @@ func peerError(reason string, err error) *Error {
 
 // PeerIdentity maps a verified peer chain to a Radius component identity. chain[0]
 // must be the peer's leaf certificate. Every certificate in the chain must use an
-// allowed key, and every DNS SAN on the leaf must name the same component in namespace.
-// The subject common name is ignored.
+// allowed key, and the leaf must have exactly one DNS SAN, the canonical
+// "<component>.<namespace>.svc" name of a known component. The subject common name
+// is ignored.
 func PeerIdentity(chain []*x509.Certificate, namespace string) (Identity, error) {
 	if len(chain) == 0 {
 		return Identity{}, peerError("no peer certificate", nil)
@@ -92,48 +93,26 @@ func PeerIdentity(chain []*x509.Certificate, namespace string) (Identity, error)
 			return Identity{}, err
 		}
 	}
-	return identityFromSANs(chain[0].DNSNames, namespace)
-}
 
-func identityFromSANs(sans []string, namespace string) (Identity, error) {
-	if len(sans) == 0 {
+	sans := chain[0].DNSNames
+	switch len(sans) {
+	case 0:
 		return Identity{}, peerError("certificate has no DNS SAN", nil)
+	case 1:
+		return identityFromSAN(sans[0], namespace)
+	default:
+		return Identity{}, peerError("certificate has more than one DNS SAN", nil)
 	}
-
-	component := ""
-	for _, san := range sans {
-		c, err := componentForSAN(san, namespace)
-		if err != nil {
-			return Identity{}, err
-		}
-		if component != "" && c != component {
-			return Identity{}, peerError("DNS SANs name more than one component", nil)
-		}
-		component = c
-	}
-
-	return Identity{Component: component, Namespace: namespace}, nil
 }
 
-// componentForSAN returns the component named by san, which must be "<c>",
-// "<c>.<namespace>", or "<c>.<namespace>.svc" for a known component c.
-func componentForSAN(san, namespace string) (string, error) {
-	parts := strings.Split(strings.ToLower(san), ".")
-	if !slices.Contains(Components, parts[0]) {
-		return "", peerError(fmt.Sprintf("DNS SAN %q is not a Radius component", san), nil)
+// identityFromSAN returns the identity named by san, which must be
+// "<component>.<namespace>.svc" for a known component.
+func identityFromSAN(san, namespace string) (Identity, error) {
+	component, ok := strings.CutSuffix(strings.ToLower(san), "."+namespace+".svc")
+	if !ok || !slices.Contains(Components, component) {
+		return Identity{}, peerError(fmt.Sprintf("DNS SAN %q is not a Radius component in namespace %q", san, namespace), nil)
 	}
-
-	switch {
-	case len(parts) == 1:
-		return parts[0], nil
-	case len(parts) == 2 || (len(parts) == 3 && parts[2] == "svc"):
-		if parts[1] != namespace {
-			return "", peerError(fmt.Sprintf("DNS SAN %q is not in namespace %q", san, namespace), nil)
-		}
-		return parts[0], nil
-	default:
-		return "", peerError(fmt.Sprintf("DNS SAN %q is not a Radius component", san), nil)
-	}
+	return Identity{Component: component, Namespace: namespace}, nil
 }
 
 // checkKey allows only ECDSA P-256 or P-384 and RSA keys of at least 2048 bits.
