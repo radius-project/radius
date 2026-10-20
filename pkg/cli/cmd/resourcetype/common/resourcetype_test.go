@@ -17,7 +17,6 @@ limitations under the License.
 package common
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/manifest"
@@ -33,10 +32,19 @@ func Test_GetResourceTypeDetails(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
 		require.NoError(t, err)
 
-		res, err := GetResourceTypeDetails(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
+		res, err := GetResourceTypeDetails(t.Context(), "MyCompany.Resources", "testResources", clientFactory)
 		require.NoError(t, err)
 		require.Equal(t, "MyCompany.Resources/testResources", res.Name)
 
+	})
+
+	t.Run("Get Resource Details Success - Case Insensitive", func(t *testing.T) {
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+		require.NoError(t, err)
+
+		res, err := GetResourceTypeDetails(t.Context(), "MyCompany.Resources", "TESTRESOURCES", clientFactory)
+		require.NoError(t, err)
+		require.Equal(t, "MyCompany.Resources/testResources", res.Name)
 	})
 
 	t.Run("Get Resource Details Failure - Resource Provider Not found", func(t *testing.T) {
@@ -46,7 +54,7 @@ func Test_GetResourceTypeDetails(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNotFoundError)
 		require.NoError(t, err)
 
-		_, err = GetResourceTypeDetails(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
+		_, err = GetResourceTypeDetails(t.Context(), "MyCompany.Resources", "testResources", clientFactory)
 		require.Error(t, err)
 		require.Equal(t, "The resource type \"MyCompany.Resources/testResources\" does not exist.", err.Error())
 	})
@@ -58,7 +66,7 @@ func Test_GetResourceTypeDetails(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
 		require.NoError(t, err)
 
-		_, err = GetResourceTypeDetails(context.Background(), "MyCompany.Resources", "missingResources", clientFactory)
+		_, err = GetResourceTypeDetails(t.Context(), "MyCompany.Resources", "missingResources", clientFactory)
 		require.Error(t, err)
 		require.Equal(t, "The resource type \"MyCompany.Resources/missingResources\" does not exist.", err.Error())
 	})
@@ -70,7 +78,7 @@ func Test_GetResourceTypeDetails(t *testing.T) {
 		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerInternalError)
 		require.NoError(t, err)
 
-		_, err = GetResourceTypeDetails(context.Background(), "MyCompany.Resources", "testResources", clientFactory)
+		_, err = GetResourceTypeDetails(t.Context(), "MyCompany.Resources", "testResources", clientFactory)
 		require.Error(t, err)
 	})
 }

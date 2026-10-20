@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
+---
+name: PR Status Labels
+
+# Only trusted code from radius-project/.github runs with write permissions.
+# The review and inline-comment workflow is read-only; workflow_run relays its
+# signal. Docs: https://github.com/radius-project/.github/tree/main/.github/actions/pr-status-labels
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - converted_to_draft
+      - review_requested
+      - review_request_removed
+      - edited
+      - labeled
+      - unlabeled
+      - closed
+      - enqueued
+      - dequeued
+  workflow_run:
+    workflows: [PR Review Signal]
+    types: [completed]
+  # GitHub Actions has no trigger for resolving or reopening review threads.
+  schedule:
+    - cron: 7,22,37,52 * * * *
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to reconcile (leave blank for all open PRs)
+        required: false
+        type: string
+
+permissions: {}
+
+concurrency:
+  # Any all-PR run can update a PR-specific run's labels, so serialize every run.
+  group: pr-status-labels-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  label:
+    uses: radius-project/.github/.github/workflows/__pr-status-labels.yml@main
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    with:
+      pr-number: ${{ inputs.pr_number }}
+      labels: ${{ vars.PR_STATUS_LABELS }}

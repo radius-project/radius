@@ -17,7 +17,6 @@ limitations under the License.
 package workspaceswitch // switch is a reserved word in go, so we can't use it as a package name.
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli"
@@ -104,7 +103,7 @@ func Test_Run(t *testing.T) {
 			WorkspaceName:       "current-workspace",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -145,7 +144,7 @@ func Test_Run(t *testing.T) {
 			WorkspaceName:       "new-workspace",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -190,7 +189,7 @@ func Test_Run(t *testing.T) {
 			WorkspaceName:       "new-workspace",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{

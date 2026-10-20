@@ -1,16 +1,11 @@
-{{/* Parse version and extract major and manor version from Appversion for image tag. */}}
-{{- define "radius.versiontag" }}
-{{- $version := .Chart.AppVersion }}
-{{- /* Set latest if version is edge */}}
-{{- if eq $version "edge" }}
-  {{- $version = "latest" }}
+{{- define "radius.versiontag" -}}
+{{- .Chart.AppVersion -}}
 {{- end -}}
-{{- /* Tag version will be 'major.minor' unless version is latest or rc release */}}
-{{- if and (ne $version "latest") (not (contains "rc" $version)) }}
-  {{- $ver := split "." $version }}
-  {{- $version = printf "%s.%s" $ver._0 $ver._1 }}
-{{- end -}}
-{{- print $version }}
+
+{{/* External images retain their independently published latest tag for edge charts. */}}
+{{- define "radius.externalversiontag" -}}
+{{- $version := . | toString -}}
+{{- if eq $version "edge" -}}latest{{- else -}}{{ $version }}{{- end -}}
 {{- end -}}
 
 {{/*
@@ -101,5 +96,65 @@ Priority for tag (handled by caller):
 {{- else -}}
   {{- /* Not a full path, no global registry, use default ghcr.io/radius-project */ -}}
   ghcr.io/radius-project/{{ .image }}:{{ .tag }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Render the external target-cluster kubeconfig volume for recipe-executing pods.
+
+When global.targetCluster.enabled is true, recipe execution (the Terraform
+kubernetes provider in dynamic-rp and the Bicep extension via the Deployment
+Engine) targets the external cluster described by a mounted kubeconfig instead of
+the control-plane cluster. The Secret holding the kubeconfig is owned outside the
+chart (for example a CI workflow that mints and refreshes it). When disabled,
+nothing is rendered and behavior is unchanged.
+
+Usage (pass the root context):
+  {{- include "radius.targetCluster.volume" . | nindent 8 }}
+  {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
+  {{- include "radius.targetCluster.env" . | nindent 8 }}
+*/}}
+{{- define "radius.targetCluster.volume" -}}
+{{- if .Values.global.targetCluster.enabled -}}
+- name: target-kubeconfig
+  secret:
+    secretName: {{ .Values.global.targetCluster.secretName }}
+    # World-readable (0444) so the non-root RP/DE containers can read the mounted
+    # kubeconfig. Secret files are owned by root, so 0400 (root-only) would be
+    # unreadable to a non-root process; the secret is already isolated to the pod,
+    # so 0444 does not widen the real security boundary.
+    defaultMode: 0444
+{{- end -}}
+{{- end -}}
+
+{{- define "radius.targetCluster.volumeMount" -}}
+{{- if .Values.global.targetCluster.enabled -}}
+- name: target-kubeconfig
+  mountPath: {{ .Values.global.targetCluster.mountPath }}
+  readOnly: true
+{{- end -}}
+{{- end -}}
+
+{{- define "radius.targetCluster.env" -}}
+{{- if .Values.global.targetCluster.enabled -}}
+- name: RADIUS_TARGET_KUBECONFIG
+  value: "{{ .Values.global.targetCluster.mountPath }}/{{ .Values.global.targetCluster.secretKey }}"
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns the authorization mode (off, dryRun, or enforce) derived from global.rbac.
+Fails rendering when dry run is combined with enforcement.
+*/}}
+{{- define "radius.authz.mode" -}}
+{{- $rbac := .Values.global.rbac | default dict -}}
+{{- if and $rbac.enabled $rbac.dryRun -}}
+{{- fail "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run." -}}
+{{- else if $rbac.dryRun -}}
+dryRun
+{{- else if $rbac.enabled -}}
+enforce
+{{- else -}}
+off
 {{- end -}}
 {{- end -}}

@@ -240,20 +240,20 @@ var radiusCoreHandlerTests = []rpctest.HandlerTestSpec{
 		Path:          "/resourcegroups/testrg/providers/radius.core/applications/app0/getgraph",
 		Method:        http.MethodPost,
 	}, {
-		OperationType: v1.OperationType{Type: "Radius.Core/terraformConfigs", Method: v1.OperationPut},
-		Path:          "/resourcegroups/testrg/providers/radius.core/terraformconfigs/tfconfig0",
+		OperationType: v1.OperationType{Type: "Radius.Core/terraformSettings", Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/radius.core/terraformsettings/tfconfig0",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: "Radius.Core/terraformConfigs", Method: v1.OperationPatch},
-		Path:          "/resourcegroups/testrg/providers/radius.core/terraformconfigs/tfconfig0",
+		OperationType: v1.OperationType{Type: "Radius.Core/terraformSettings", Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/radius.core/terraformsettings/tfconfig0",
 		Method:        http.MethodPatch,
 	}, {
-		OperationType: v1.OperationType{Type: "Radius.Core/bicepConfigs", Method: v1.OperationPut},
-		Path:          "/resourcegroups/testrg/providers/radius.core/bicepconfigs/bicepconfig0",
+		OperationType: v1.OperationType{Type: "Radius.Core/bicepSettings", Method: v1.OperationPut},
+		Path:          "/resourcegroups/testrg/providers/radius.core/bicepsettings/bicepconfig0",
 		Method:        http.MethodPut,
 	}, {
-		OperationType: v1.OperationType{Type: "Radius.Core/bicepConfigs", Method: v1.OperationPatch},
-		Path:          "/resourcegroups/testrg/providers/radius.core/bicepconfigs/bicepconfig0",
+		OperationType: v1.OperationType{Type: "Radius.Core/bicepSettings", Method: v1.OperationPatch},
+		Path:          "/resourcegroups/testrg/providers/radius.core/bicepsettings/bicepconfig0",
 		Method:        http.MethodPatch,
 	},
 }

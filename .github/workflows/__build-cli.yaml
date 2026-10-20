@@ -1,0 +1,149 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __build-cli
+
+on:
+  workflow_call:
+
+permissions: {}
+
+env:
+  CONTAINER_REGISTRY: ghcr.io/radius-project
+  RELEASE_PATH: ./release
+  IMAGE_SRC: https://github.com/radius-project/radius
+
+jobs:
+  build-and-push-cli:
+    name: Export ${{ matrix.target_os }}_${{ matrix.target_arch }} CLI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read # Required for actions/checkout
+    env:
+      GOOS: ${{ matrix.target_os }}
+      GOARCH: ${{ matrix.target_arch }}
+    strategy:
+      fail-fast: false
+      matrix: &cli_platforms
+        include:
+          - target_os: linux
+            target_arch: amd64
+          - target_os: linux
+            target_arch: arm64
+          - target_os: linux
+            target_arch: arm
+          - target_os: windows
+            target_arch: amd64
+          - target_os: windows
+            target_arch: arm64
+          - target_os: darwin
+            target_arch: amd64
+          - target_os: darwin
+            target_arch: arm64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download snapshot outputs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: core-snapshot-${{ github.sha }}
+          path: dist/goreleaser
+
+      - name: Select native CLI artifact
+        run: |
+          name="rad_${GOOS}_${GOARCH}"
+          [[ "${GOOS}" != windows ]] || name="${name}.exe"
+          artifact="$(jq -er --arg name "${name}" '
+            [.[] | select(.type == "Binary" and .extra.ID == "rad" and .name == $name)] |
+            if length == 1 then .[0].path else error("missing or ambiguous CLI artifact") end
+          ' dist/goreleaser/artifacts.json)"
+          mkdir -p "${RELEASE_PATH}"
+          cp "${artifact}" "${RELEASE_PATH}/${name}"
+
+      - name: Upload CLI binary
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
+          path: ${{ env.RELEASE_PATH }}
+          if-no-files-found: error
+          overwrite: true
+
+  publish-edge:
+    name: Publish edge ${{ matrix.target_os }}_${{ matrix.target_arch }} CLI
+    if: github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main'
+    needs: build-and-push-cli
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: *cli_platforms
+    env:
+      GOOS: ${{ matrix.target_os }}
+      GOARCH: ${{ matrix.target_arch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check current main commit
+        id: current-main
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { data } = await github.rest.repos.getBranch({ ...context.repo, branch: 'main' })
+            core.setOutput('current', data.commit.sha === context.sha)
+            if (data.commit.sha !== context.sha) core.notice('Skipping edge publication from an older main commit')
+
+      - name: Download CLI artifact
+        if: steps.current-main.outputs.current == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: rad_cli_${{ matrix.target_os }}_${{ matrix.target_arch }}
+          path: ${{ env.RELEASE_PATH }}
+
+      - name: Login to GitHub Container Registry
+        if: steps.current-main.outputs.current == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Install oras
+        if: steps.current-main.outputs.current == 'true'
+        run: make install-oras
+
+      - name: Push edge rad cli binary to GHCR (unix-like)
+        if: steps.current-main.outputs.current == 'true' && matrix.target_os != 'windows'
+        run: |
+          cp "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}" ./rad
+          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:edge" ./rad --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
+
+      - name: Push edge rad cli binary to GHCR (windows)
+        if: steps.current-main.outputs.current == 'true' && matrix.target_os == 'windows'
+        run: |
+          cp "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}.exe" ./rad.exe
+          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:edge" ./rad.exe --annotation "org.opencontainers.image.source=${IMAGE_SRC}"

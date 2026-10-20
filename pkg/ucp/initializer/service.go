@@ -18,15 +18,20 @@ package initializer
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/hosting"
+	"github.com/radius-project/radius/pkg/defaults"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -88,11 +93,26 @@ func (w *Service) Run(ctx context.Context) error {
 		}
 
 		filePath := filepath.Join(manifestDir, fileInfo.Name())
+
+		if strings.EqualFold(filepath.Ext(fileInfo.Name()), ".svg") {
+			continue
+		}
+
 		logger.Info("Loading manifest", "file", filePath)
 
 		rp, err := manifest.ValidateManifest(ctx, filePath)
 		if err != nil {
 			return fmt.Errorf("failed to validate manifest %s: %w", filePath, err)
+		}
+
+		for typeName, resourceType := range rp.Types {
+			icon, err := loadTypeIcon(manifestDir, typeName)
+			if err != nil {
+				return fmt.Errorf("failed to load icon for %s/%s: %w", rp.Namespace, typeName, err)
+			}
+			if icon != nil {
+				resourceType.Icon = icon
+			}
 		}
 
 		existing, ok := merged[rp.Namespace]
@@ -133,6 +153,25 @@ func (w *Service) Run(ctx context.Context) error {
 	return nil
 }
 
+// loadTypeIcon looks for <manifestDir>/<typeName>.svg and, when present,
+// returns its UTF-8 bytes as a string pointer after validating them
+// with datamodel.ValidateIcon. When no such file exists, it returns
+// (nil, nil) so the caller treats the type as icon-less.
+func loadTypeIcon(manifestDir, typeName string) (*string, error) {
+	iconPath := filepath.Join(manifestDir, typeName+".svg")
+	bytes, err := os.ReadFile(iconPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to read icon file %s: %w", iconPath, err)
+	}
+	if err := datamodel.ValidateIcon(bytes); err != nil {
+		return nil, fmt.Errorf("invalid icon file %s: %w", iconPath, err)
+	}
+	return to.Ptr(string(bytes)), nil
+}
+
 // registerResourceProviderDirect writes resource provider metadata directly to the database,
 // bypassing the HTTP API and async operation queue. This is used during server initialization
 // where the resources are known to not exist yet.
@@ -152,17 +191,11 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 
 	// 1. Save ResourceProvider
 	rpModel := &datamodel.ResourceProvider{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       rpID,
-				Name:     rp.Namespace,
-				Type:     datamodel.ResourceProviderResourceType,
-				Location: locationName,
-			},
-			InternalMetadata: v1.InternalMetadata{
-				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-			},
-		},
+		ID:                     rpID,
+		Name:                   rp.Namespace,
+		Type:                   datamodel.ResourceProviderResourceType,
+		Location:               locationName,
+		AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 	}
 
 	if err := saveResource(ctx, dbClient, rpID, rpModel); err != nil {
@@ -176,21 +209,29 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	for typeName, resourceType := range rp.Types {
 		typeID := rpID + "/resourceTypes/" + typeName
 
+		var iconHash *string
+		if resourceType.Icon != nil {
+			sum := sha256.Sum256([]byte(*resourceType.Icon))
+			iconHash = to.Ptr(hex.EncodeToString(sum[:]))
+		} else {
+			// Substitute the product default icon's hash so every type in the
+			// registry has a non-nil iconHash.  DefaultIconHash returns nil
+			// when the embedded default failed to load — Icons are cosmetic,
+			// so we leave iconHash unset rather than fail registration.
+			iconHash = defaults.DefaultIconHash()
+		}
+
 		typeModel := &datamodel.ResourceType{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   typeID,
-					Name: typeName,
-					Type: datamodel.ResourceTypeResourceType,
-				},
-				InternalMetadata: v1.InternalMetadata{
-					AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-				},
-			},
+			ID:                     typeID,
+			Name:                   typeName,
+			Type:                   datamodel.ResourceTypeResourceType,
+			AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 			Properties: datamodel.ResourceTypeProperties{
 				Capabilities:      resourceType.Capabilities,
 				DefaultAPIVersion: resourceType.DefaultAPIVersion,
 				Description:       resourceType.Description,
+				Icon:              resourceType.Icon,
+				IconHash:          iconHash,
 			},
 		}
 
@@ -205,16 +246,10 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 
 			schema, _ := apiVersion.Schema.(map[string]any)
 			avModel := &datamodel.APIVersion{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   avID,
-						Name: apiVersionName,
-						Type: datamodel.APIVersionResourceType,
-					},
-					InternalMetadata: v1.InternalMetadata{
-						AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-					},
-				},
+				ID:                     avID,
+				Name:                   apiVersionName,
+				Type:                   datamodel.APIVersionResourceType,
+				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 				Properties: datamodel.APIVersionProperties{
 					Schema: schema,
 				},
@@ -234,6 +269,8 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 			Capabilities:      resourceType.Capabilities,
 			Description:       resourceType.Description,
 			APIVersions:       summaryAPIVersions,
+			Icon:              resourceType.Icon,
+			IconHash:          iconHash,
 		}
 	}
 
@@ -251,16 +288,10 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	}
 
 	locationModel := &datamodel.Location{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   locationID,
-				Name: locationName,
-				Type: datamodel.LocationResourceType,
-			},
-			InternalMetadata: v1.InternalMetadata{
-				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-			},
-		},
+		ID:                     locationID,
+		Name:                   locationName,
+		Type:                   datamodel.LocationResourceType,
+		AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 		Properties: datamodel.LocationProperties{
 			ResourceTypes: locationResourceTypes,
 		},
@@ -276,13 +307,9 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	// 4. Save ResourceProviderSummary
 	summaryID := rootScope + "/providers/System.Resources/resourceProviderSummaries/" + rp.Namespace
 	summaryModel := &datamodel.ResourceProviderSummary{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   summaryID,
-				Name: rp.Namespace,
-				Type: datamodel.ResourceProviderSummaryResourceType,
-			},
-		},
+		ID:   summaryID,
+		Name: rp.Namespace,
+		Type: datamodel.ResourceProviderSummaryResourceType,
 		Properties: datamodel.ResourceProviderSummaryProperties{
 			Locations: map[string]datamodel.ResourceProviderSummaryPropertiesLocation{
 				locationName: {},
@@ -300,7 +327,7 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 
 func saveResource(ctx context.Context, dbClient database.Client, id string, data any) error {
 	return dbClient.Save(ctx, &database.Object{
-		Metadata: database.Metadata{ID: id},
-		Data:     data,
+		ID:   id,
+		Data: data,
 	})
 }

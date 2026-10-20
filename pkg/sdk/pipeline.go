@@ -28,33 +28,31 @@ import (
 // removes the authorization header policy.
 func NewClientOptions(connection Connection) *arm.ClientOptions {
 	return &arm.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Cloud: cloud.Configuration{
-				Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
-					cloud.ResourceManager: {
-						Endpoint: connection.Endpoint(),
-						Audience: "https://management.core.windows.net",
-					},
+		Cloud: cloud.Configuration{
+			Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
+				cloud.ResourceManager: {
+					Endpoint: connection.Endpoint(),
+					Audience: "https://management.core.windows.net",
 				},
 			},
-			PerRetryPolicies: []policy.Policy{
-				// Autorest will inject an empty bearer token, which conflicts with bearer auth
-				// when its used by Kubernetes. We don't *ever* need Autorest to handle auth for us
-				// so we just remove it.
-				//
-				// We'll solve this problem permanently by writing our own client.
-				&removeAuthorizationHeaderPolicy{},
-			},
-			Transport: connection.Client(),
-			// When updating azcore to 1.11.1 from 1.7.0, we saw that HTTPS check for Authentication was added.
-			// Link to the check: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/azcore/runtime/policy_bearer_token.go#L118
-			//
-			// This check was failing for some unit tests because the ARM requests are made over HTTP and the bearer token is being sent in the header.
-			// This is a temporary fix to allow sending the bearer token over HTTP.
-			// We don't have any use cases where we send the bearer token over HTTP in production.
-			InsecureAllowCredentialWithHTTP: true,
 		},
-		DisableRPRegistration: true,
+		PerRetryPolicies: []policy.Policy{
+			// Autorest will inject an empty bearer token, which conflicts with bearer auth
+			// when its used by Kubernetes. We don't *ever* need Autorest to handle auth for us
+			// so we just remove it.
+			//
+			// We'll solve this problem permanently by writing our own client.
+			&removeAuthorizationHeaderPolicy{},
+		},
+		Transport: connection.Client(),
+		// When updating azcore to 1.11.1 from 1.7.0, we saw that HTTPS check for Authentication was added.
+		// Link to the check: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/azcore/runtime/policy_bearer_token.go#L118
+		//
+		// This check was failing for some unit tests because the ARM requests are made over HTTP and the bearer token is being sent in the header.
+		// This is a temporary fix to allow sending the bearer token over HTTP.
+		// We don't have any use cases where we send the bearer token over HTTP in production.
+		InsecureAllowCredentialWithHTTP: true,
+		DisableRPRegistration:           true,
 	}
 }
 

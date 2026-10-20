@@ -58,8 +58,8 @@ func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.Rec
 	recipeOutput, definition, err := e.executeCore(ctx, opts.Recipe, opts.PreviousState)
 	if err != nil {
 		result = metrics.FailedOperationState
-		if recipes.GetErrorDetails(err) != nil {
-			result = recipes.GetErrorDetails(err).Code
+		if errorDetails := recipes.GetErrorDetails(err); errorDetails != nil {
+			result = errorDetails.Code
 		}
 	}
 
@@ -97,13 +97,11 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 	}
 
 	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
-		BaseOptions: recipedriver.BaseOptions{
-			Configuration: *configuration,
-			Recipe:        recipe,
-			Definition:    *definition,
-			Secrets:       secrets,
-		},
-		PrevState: prevState,
+		Configuration: *configuration,
+		Recipe:        recipe,
+		Definition:    *definition,
+		Secrets:       secrets,
+		PrevState:     prevState,
 	})
 	if err != nil {
 		return nil, definition, err
@@ -120,8 +118,8 @@ func (e *engine) Delete(ctx context.Context, opts DeleteOptions) error {
 	definition, err := e.deleteCore(ctx, opts.Recipe, opts.OutputResources)
 	if err != nil {
 		result = metrics.FailedOperationState
-		if recipes.GetErrorDetails(err) != nil {
-			result = recipes.GetErrorDetails(err).Code
+		if errorDetails := recipes.GetErrorDetails(err); errorDetails != nil {
+			result = errorDetails.Code
 		}
 	}
 
@@ -156,12 +154,10 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 		return nil, err
 	}
 	err = driver.Delete(ctx, recipedriver.DeleteOptions{
-		BaseOptions: recipedriver.BaseOptions{
-			Configuration: *configuration,
-			Recipe:        recipe,
-			Definition:    *definition,
-			Secrets:       secrets,
-		},
+		Configuration:   *configuration,
+		Recipe:          recipe,
+		Definition:      *definition,
+		Secrets:         secrets,
 		OutputResources: outputResources,
 	})
 	if err != nil {

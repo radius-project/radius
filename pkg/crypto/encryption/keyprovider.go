@@ -77,7 +77,7 @@ var (
 // KeyProvider defines the interface for retrieving encryption keys.
 // It supports versioned keys to enable key rotation without data loss.
 //
-//go:generate mockgen -typed -destination=./mock_keyprovider.go -package=encryption -self_package github.com/radius-project/radius/pkg/crypto/encryption github.com/radius-project/radius/pkg/crypto/encryption KeyProvider
+//go:generate go tool mockgen -typed -destination=./mock_keyprovider.go -package=encryption -self_package github.com/radius-project/radius/pkg/crypto/encryption github.com/radius-project/radius/pkg/crypto/encryption KeyProvider
 type KeyProvider interface {
 	// GetCurrentKey retrieves the current (latest) encryption key for encrypting new data.
 	// Returns the key bytes, the version number, and any error.

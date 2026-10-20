@@ -21,6 +21,7 @@ import (
 type MockInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockInterfaceMockRecorder
+	isgomock struct{}
 }
 
 // MockInterfaceMockRecorder is the mock recorder for MockInterface.
@@ -41,17 +42,17 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // ValidateNamespace mocks base method.
-func (m *MockInterface) ValidateNamespace(arg0 context.Context, arg1 string, arg2 workspaces.Workspace) error {
+func (m *MockInterface) ValidateNamespace(ctx context.Context, namespace string, workspace workspaces.Workspace) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateNamespace", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "ValidateNamespace", ctx, namespace, workspace)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ValidateNamespace indicates an expected call of ValidateNamespace.
-func (mr *MockInterfaceMockRecorder) ValidateNamespace(arg0, arg1, arg2 any) *MockInterfaceValidateNamespaceCall {
+func (mr *MockInterfaceMockRecorder) ValidateNamespace(ctx, namespace, workspace any) *MockInterfaceValidateNamespaceCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateNamespace", reflect.TypeOf((*MockInterface)(nil).ValidateNamespace), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateNamespace", reflect.TypeOf((*MockInterface)(nil).ValidateNamespace), ctx, namespace, workspace)
 	return &MockInterfaceValidateNamespaceCall{Call: call}
 }
 

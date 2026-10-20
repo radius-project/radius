@@ -9,10 +9,10 @@ import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
 import "../radius/v1/trackedresource.tsp";
 import "./applications.tsp";
-import "./bicepConfigs.tsp";
+import "./bicepSettings.tsp";
 import "./environments.tsp";
 import "./recipePacks.tsp";
-import "./terraformConfigs.tsp";
+import "./terraformSettings.tsp";
 
 using Azure.ResourceManager;
 using TypeSpec.Versioning;

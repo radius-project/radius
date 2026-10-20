@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"testing"
 
@@ -31,7 +32,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/test/radcli"
-	"github.com/radius-project/radius/test/testcontext"
 )
 
 const (
@@ -45,9 +45,22 @@ const (
 	// Radius.Core resource types (new provider).
 	CoreEnvironmentsResource = "radius.core/environments"
 	CoreApplicationsResource = "radius.core/applications"
+	CoreRecipePacksResource  = "radius.core/recipePacks"
 
 	// Radius.Compute resource types (new provider).
 	ComputeContainersResource = "radius.compute/containers"
+	ComputeRoutesResource     = "radius.compute/routes"
+
+	// Radius.Security resource types (new provider).
+	SecuritySecretsResource = "radius.security/secrets"
+
+	// Radius.Data resource types (new provider).
+	DataMySQLDatabasesResource      = "radius.data/mySqlDatabases"
+	DataPostgreSQLDatabasesResource = "radius.data/postgreSqlDatabases"
+	DataRedisCachesResource         = "radius.data/redisCaches"
+
+	// Radius.Messaging resource types (new provider).
+	MessagingRabbitMQResource = "radius.messaging/rabbitMQ"
 
 	RabbitMQQueuesResource          = "applications.messaging/rabbitMQQueues"
 	DaprPubSubBrokersResource       = "applications.dapr/pubSubBrokers"
@@ -77,6 +90,63 @@ type RPResourceSet struct {
 	Resources []RPResource
 }
 
+// Deletion ranks order teardown so a resource is never removed before the
+// resources that depend on it. Lower ranks are deleted first.
+const (
+	// Applications are deleted first because deleting an application cascades
+	// into the resources it owns, and those resources still need their
+	// environment and recipe pack to run their recipe's delete.
+	deletionRankApplication = iota
+
+	// Application-scoped resources (containers, databases, extenders, ...) are
+	// deleted next. Most are already gone via the application cascade above.
+	deletionRankResource
+
+	// Environments are deleted after everything scoped to them, because a
+	// recipe-backed resource's delete loads its environment configuration.
+	deletionRankEnvironment
+
+	// Recipe packs are deleted last because environments reference them.
+	deletionRankRecipePack
+)
+
+// deletionRank returns the teardown rank for a resource type.
+func deletionRank(resourceType string) int {
+	switch {
+	case strings.EqualFold(resourceType, ApplicationsResource),
+		strings.EqualFold(resourceType, CoreApplicationsResource):
+		return deletionRankApplication
+	case strings.EqualFold(resourceType, EnvironmentsResource),
+		strings.EqualFold(resourceType, CoreEnvironmentsResource):
+		return deletionRankEnvironment
+	case strings.EqualFold(resourceType, CoreRecipePacksResource):
+		return deletionRankRecipePack
+	default:
+		return deletionRankResource
+	}
+}
+
+// ResourcesInDeletionOrder returns the resources of the set ordered so that teardown removes
+// applications first, then application-scoped resources, then environments, and finally recipe
+// packs. Declaration order is preserved within each group, and a nil set yields no resources.
+//
+// Ordering is applied here rather than left to each test's declaration order because deleting an
+// environment or recipe pack before the application that uses it makes the application's delete
+// fail: a recipe-backed resource loads its environment configuration to run the recipe's delete.
+func ResourcesInDeletionOrder(set *RPResourceSet) []RPResource {
+	if set == nil || len(set.Resources) == 0 {
+		return nil
+	}
+
+	ordered := make([]RPResource, len(set.Resources))
+	copy(ordered, set.Resources)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return deletionRank(ordered[i].Type) < deletionRank(ordered[j].Type)
+	})
+
+	return ordered
+}
+
 // DeleteRPResource deletes an environment or application resource depending on the type of the resource passed in, and
 // returns an error if one occurs.
 func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
@@ -103,16 +173,28 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 		// return cli.EnvDelete(ctx, resource.Name)
 	} else if resource.Type == ApplicationsResource {
 		t.Logf("deleting application: %s", resource.Name)
-		return cli.ApplicationDelete(ctx, resource.Name)
+
+		// Tolerate 404 to keep teardown idempotent: the CLI path this replaced
+		// reported success when the application was already gone.
+		_, err := client.DeleteApplication(ctx, resource.Name, false)
+		if err != nil && !clients.Is404Error(err) {
+			return err
+		}
+
+		return nil
 	} else if resource.Type == CoreApplicationsResource {
-		// Radius.Core applications require cascade delete via the CLI --preview flag,
-		// which deletes owned resources before deleting the application itself.
+		// Radius.Core applications require cascade delete via the CLI, which
+		// deletes owned resources before deleting the application itself.
 		t.Logf("deleting Radius.Core application: %s", resource.Name)
-		_, err := cli.ApplicationDeletePreview(ctx, resource.Name, "")
+		_, err := cli.ApplicationDelete(ctx, resource.Name, "")
 		return err
 	} else if resource.Type == CoreEnvironmentsResource {
 		t.Logf("deleting Radius.Core environment: %s", resource.Name)
 		_, err := cli.EnvironmentDeletePreview(ctx, resource.Name, "")
+		return err
+	} else if resource.Type == CoreRecipePacksResource {
+		t.Logf("deleting Radius.Core recipe pack: %s", resource.Name)
+		_, err := client.DeleteResource(ctx, resource.Type, resource.Name, true)
 		return err
 	}
 
@@ -123,7 +205,12 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 
 // DeleteRPResourceSilent deletes an environment or application resource without logging to the test.
 // This is useful for background cleanup operations to avoid "Log in goroutine after test has completed" panics.
+//
+// The Radius.Core branches still shell out to the CLI for cascade delete, so they run it via
+// CLI.Silent to keep that contract.
 func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
+	silentCLI := cli.Silent()
+
 	if resource.Type == EnvironmentsResource {
 		var respFromCtx *http.Response
 		ctxWithResp := policy.WithCaptureResponse(ctx, &respFromCtx)
@@ -135,13 +222,19 @@ func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients
 
 		return nil
 	} else if resource.Type == ApplicationsResource {
-		return cli.ApplicationDelete(ctx, resource.Name)
+		// Tolerate 404 for the same reason as DeleteRPResource.
+		_, err := client.DeleteApplication(ctx, resource.Name, false)
+		if err != nil && !clients.Is404Error(err) {
+			return err
+		}
+
+		return nil
 	} else if resource.Type == CoreApplicationsResource {
-		// Radius.Core applications require cascade delete via the CLI --preview flag.
-		_, err := cli.ApplicationDeletePreview(ctx, resource.Name, "")
+		// Radius.Core applications require cascade delete via the CLI.
+		_, err := silentCLI.ApplicationDelete(ctx, resource.Name, "")
 		return err
 	} else if resource.Type == CoreEnvironmentsResource {
-		_, err := cli.EnvironmentDeletePreview(ctx, resource.Name, "")
+		_, err := silentCLI.EnvironmentDeletePreview(ctx, resource.Name, "")
 		return err
 	} else {
 		// Handle other resource types (like ExtendersResource, ContainersResource, etc.)
@@ -183,6 +276,13 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 			}
 
 			require.True(t, found, fmt.Sprintf("application %s was not found", expectedResource.Name))
+		} else if expectedResource.Type == CoreEnvironmentsResource || expectedResource.Type == CoreApplicationsResource {
+			// New Radius.Core environments/applications are retrieved directly by
+			// type + name. They carry no "application" property, so the app-scoping
+			// assertion below is intentionally skipped for them.
+			res, err := client.GetResource(ctx, expectedResource.Type, expectedResource.Name)
+			require.NoError(t, err)
+			require.NotNil(t, res, "resource %s with type %s does not exist", expectedResource.Name, expectedResource.Type)
 		} else {
 			res, err := client.GetResource(ctx, expectedResource.Type, expectedResource.Name)
 			require.NoError(t, err)
@@ -225,7 +325,7 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 
 // AssertCredentialExists checks if the credential is registered in the workspace and returns a boolean value.
 func AssertCredentialExists(t *testing.T, credential string) bool {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")

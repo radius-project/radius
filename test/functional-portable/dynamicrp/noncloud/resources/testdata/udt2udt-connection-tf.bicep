@@ -1,9 +1,5 @@
 extension radius
 extension testresources
-extension kubernetes with {
-  kubeConfig: ''
-  namespace: 'udttoudtapp'
-} as kubernetes
 
 @description('The URL of the server hosting test Terraform modules.')
 param moduleServer string
@@ -11,62 +7,64 @@ param moduleServer string
 @description('Specifies the port the container listens on.')
 param port int = 8080
 
-resource udttoudtenv 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'udttoudtenv'
+resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
+  name: 'udt2udt-tf-recipe-pack'
   location: 'global'
   properties: {
-    compute: {
-      kind: 'kubernetes'
-      resourceId: 'self'
-      namespace: 'udttoudtenv'
-    }
     recipes: {
       'Test.Resources/userTypeAlpha': {
-        default: {
-          templateKind: 'terraform'
-          templatePath: '${moduleServer}/parent-udt.zip'
-          parameters: {
-            port: port
-          }
+        kind: 'terraform'
+        source: '${moduleServer}/parent-udt.zip'
+        parameters: {
+          port: port
         }
       }
     }
   }
 }
 
-resource udttoudtapp 'Applications.Core/applications@2023-10-01-preview' = {
-  name: 'udttoudtapp'
+resource udttoudtenvtf 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'udttoudtenvtf'
   location: 'global'
   properties: {
-    environment: udttoudtenv.id
-    extensions: [
-      {
-        kind: 'kubernetesNamespace'
-        namespace: 'udttoudtapp'
-      }
+    recipePacks: [
+      recipepack.id
     ]
+    providers: {
+      kubernetes: {
+        namespace: 'dynamicrp-udt2udt-tf'
+      }
+    }
   }
 }
 
-resource udttoudtparent 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
-  name: 'udttoudtparent'
-  properties: {
-    environment: udttoudtenv.id
-    application: udttoudtapp.id
-    connections: {
-      externalresource: {
-        source: udttoudtchild.id
-      }
-    }
-  }     
-}
-
-resource udttoudtchild 'Test.Resources/externalResource@2023-10-01-preview' = {
-  name: 'udttoudtchild'
+resource udttoudtapptf 'Radius.Core/applications@2025-08-01-preview' = {
+  name: 'udttoudtapptf'
   location: 'global'
   properties: {
-    environment: udttoudtenv.id
-    application: udttoudtapp.id
+    environment: udttoudtenvtf.id
+  }
+}
+
+resource udttoudtparenttf 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
+  name: 'udttoudtparenttf'
+  properties: {
+    environment: udttoudtenvtf.id
+    application: udttoudtapptf.id
+    connections: {
+      externalresource: {
+        source: udttoudtchildtf.id
+      }
+    }
+  }
+}
+
+resource udttoudtchildtf 'Test.Resources/externalResource@2023-10-01-preview' = {
+  name: 'udttoudtchildtf'
+  location: 'global'
+  properties: {
+    environment: udttoudtenvtf.id
+    application: udttoudtapptf.id
     configMap: '{"app1.sample.properties":"property1=value1\\nproperty2=value2","app2.sample.properties":"property3=value3\\nproperty4=value4"}'
   }
 }

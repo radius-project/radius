@@ -17,7 +17,6 @@ limitations under the License.
 package inmemory
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,9 +29,9 @@ func TestNamedQueue(t *testing.T) {
 	cli1 := NewNamedQueue("queue1")
 	cli2 := NewNamedQueue("queue2")
 
-	err := cli1.Enqueue(context.Background(), &queue.Message{Data: []byte("test1")})
+	err := cli1.Enqueue(t.Context(), &queue.Message{Data: []byte("test1")})
 	require.NoError(t, err)
-	err = cli2.Enqueue(context.Background(), &queue.Message{Data: []byte("test2")})
+	err = cli2.Enqueue(t.Context(), &queue.Message{Data: []byte("test2")})
 	require.NoError(t, err)
 
 	require.Equal(t, 1, cli1.queue.Len())

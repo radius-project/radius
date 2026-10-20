@@ -19,7 +19,6 @@ package publishextension
 import (
 	"context"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/radius-project/radius/bicep-tools/generator"
@@ -29,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/process"
 	"github.com/spf13/cobra"
 )
 
@@ -152,7 +152,7 @@ func publishExtension(ctx context.Context, inputDirectoryPath string, target str
 		args = append(args, "--force")
 	}
 
-	cmd := exec.CommandContext(ctx, bicepFilePath, args...)
+	cmd := process.CommandContext(ctx, bicepFilePath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

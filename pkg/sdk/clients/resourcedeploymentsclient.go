@@ -26,7 +26,8 @@ import (
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -44,21 +45,21 @@ type DeploymentProperties struct {
 	// Template - The template content. You use this element when you want to pass the template syntax directly in the request rather than link to an existing template. It can be a JObject or well-formed JSON string. Use either the templateLink property or the template property, but not both.
 	Template any `json:"template,omitempty"`
 	// TemplateLink - The URI of the template. Use either the templateLink property or the template property, but not both.
-	TemplateLink *armresources.TemplateLink `json:"templateLink,omitempty"`
+	TemplateLink *armdeployments.TemplateLink `json:"templateLink,omitempty"`
 	// ProviderConfig specifies the scope for resources
 	ProviderConfig any `json:"providerconfig,omitempty"`
 	// Parameters - Name and value pairs that define the deployment parameters for the template. You use this element when you want to provide the parameter values directly in the request rather than link to an existing parameter file. Use either the parametersLink property or the parameters property, but not both. It can be a JObject or a well formed JSON string.
 	Parameters any `json:"parameters,omitempty"`
 	// ParametersLink - The URI of parameters file. You use this element to link to an existing parameters file. Use either the parametersLink property or the parameters property, but not both.
-	ParametersLink *armresources.ParametersLink `json:"parametersLink,omitempty"`
+	ParametersLink *armdeployments.ParametersLink `json:"parametersLink,omitempty"`
 	// Mode - The mode that is used to deploy resources. This value can be either Incremental or Complete. In Incremental mode, resources are deployed without deleting existing resources that are not included in the template. In Complete mode, resources are deployed and existing resources in the resource group that are not included in the template are deleted. Be careful when using Complete mode as you may unintentionally delete resources. Possible values include: 'DeploymentModeIncremental', 'DeploymentModeComplete'
-	Mode armresources.DeploymentMode `json:"mode,omitempty"`
+	Mode armdeployments.DeploymentMode `json:"mode,omitempty"`
 	// DebugSetting - The debug setting of the deployment.
-	DebugSetting *armresources.DebugSetting `json:"debugSetting,omitempty"`
+	DebugSetting *armdeployments.DebugSetting `json:"debugSetting,omitempty"`
 	// OnErrorDeployment - The deployment on error behavior.
-	OnErrorDeployment *armresources.OnErrorDeployment `json:"onErrorDeployment,omitempty"`
+	OnErrorDeployment *armdeployments.OnErrorDeployment `json:"onErrorDeployment,omitempty"`
 	// ExpressionEvaluationOptions - Specifies whether template expressions are evaluated within the scope of the parent template or nested template. Only applicable to nested templates. If not specified, default value is outer.
-	ExpressionEvaluationOptions *armresources.ExpressionEvaluationOptions `json:"expressionEvaluationOptions,omitempty"`
+	ExpressionEvaluationOptions *armdeployments.ExpressionEvaluationOptions `json:"expressionEvaluationOptions,omitempty"`
 }
 
 type Value struct {
@@ -136,12 +137,12 @@ func NewResourceDeploymentsClient(options *Options) (ResourceDeploymentsClient, 
 
 // ClientCreateOrUpdateResponse contains the response from method Client.CreateOrUpdate.
 type ClientCreateOrUpdateResponse struct {
-	armresources.DeploymentExtended
+	armdeployments.DeploymentExtended
 }
 
 // ClientDeleteResponse contains the response from method Client.Delete.
 type ClientDeleteResponse struct {
-	armresources.DeploymentExtended
+	armdeployments.DeploymentExtended
 }
 
 // CreateOrUpdate creates a request to create or update a deployment and returns a poller to

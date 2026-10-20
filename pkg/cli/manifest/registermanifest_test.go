@@ -21,6 +21,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -28,7 +30,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucpfake "github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -84,7 +85,7 @@ func TestRegisterDirectory(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			clientFactory := createTestClientFactory(t)
 
-			err := RegisterDirectory(context.Background(), clientFactory, tt.planeName, tt.directoryPath, nil)
+			err := RegisterDirectory(t.Context(), clientFactory, tt.planeName, tt.directoryPath, nil)
 			if tt.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErrorMessage)
@@ -139,7 +140,7 @@ func TestRegisterFile(t *testing.T) {
 			clientFactory := createTestClientFactory(t)
 			logger, logBuffer := createTestLogger()
 
-			err := RegisterFile(context.Background(), clientFactory, tt.planeName, tt.filePath, logger)
+			err := RegisterFile(t.Context(), clientFactory, tt.planeName, tt.filePath, logger)
 			if tt.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErrorMessage)
@@ -214,7 +215,7 @@ func TestRegisterType(t *testing.T) {
 			clientFactory := createTestClientFactory(t)
 			logger, logBuffer := createTestLogger()
 
-			err := RegisterType(context.Background(), clientFactory, tt.planeName, tt.filePath, tt.resourceTypeName, logger)
+			err := RegisterType(t.Context(), clientFactory, tt.planeName, tt.filePath, tt.resourceTypeName, "", logger)
 			if tt.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErrorMessage)
@@ -268,7 +269,7 @@ func TestRegisterResourceProvider(t *testing.T) {
 			resourceProvider, err := ReadFile(tt.filePath)
 			require.NoError(t, err)
 
-			err = RegisterResourceProvider(context.Background(), clientFactory, tt.planeName, *resourceProvider, logger)
+			err = RegisterResourceProvider(t.Context(), clientFactory, tt.planeName, *resourceProvider, logger)
 			if tt.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErrorMessage)
@@ -379,7 +380,7 @@ func TestRetryOperationWithContext(t *testing.T) {
 				return &azcore.ResponseError{StatusCode: 409}
 			},
 			setupCtx: func() context.Context {
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(t.Context())
 				cancel() // Cancel immediately
 				return ctx
 			},
@@ -392,7 +393,7 @@ func TestRetryOperationWithContext(t *testing.T) {
 				return &azcore.ResponseError{StatusCode: 409}
 			},
 			setupCtx: func() context.Context {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+				ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 				// Ensure cancel is called after context is done
 				go func() {
 					<-ctx.Done()
@@ -542,7 +543,7 @@ func TestEnsureResourceProviderExists(t *testing.T) {
 
 			logger, _ := createTestLogger()
 
-			err = EnsureResourceProviderExists(context.Background(), clientFactory, tt.planeName, tt.resourceProvider, logger)
+			err = EnsureResourceProviderExists(t.Context(), clientFactory, tt.planeName, tt.resourceProvider, logger)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -614,7 +615,7 @@ func TestCreateEmptyResourceProvider(t *testing.T) {
 			clientFactory := createTestClientFactory(t)
 			logger, _ := createTestLogger()
 
-			err := CreateEmptyResourceProvider(context.Background(), clientFactory, tt.planeName, tt.resourceProvider, logger)
+			err := CreateEmptyResourceProvider(t.Context(), clientFactory, tt.planeName, tt.resourceProvider, logger)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -678,7 +679,7 @@ func TestValidateManifest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resourceProvider, err := ValidateManifest(context.Background(), tt.filePath)
+			resourceProvider, err := ValidateManifest(t.Context(), tt.filePath)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -691,6 +692,26 @@ func TestValidateManifest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidateManifest_MergesBaseResourceManifest(t *testing.T) {
+	t.Parallel()
+
+	resourceProvider, err := ValidateManifest(t.Context(), "testdata/merge-base-manifest.yaml")
+	require.NoError(t, err)
+	require.NotNil(t, resourceProvider)
+
+	schemaMap := resourceProvider.Types["testResources"].APIVersions["2025-01-01-preview"].Schema.(map[string]any)
+	props := schemaMap["properties"].(map[string]any)
+
+	// Author-declared property preserved.
+	require.Contains(t, props, "size")
+	// Base properties merged into the schema that registration ships to UCP.
+	require.Contains(t, props, "application")
+	require.Contains(t, props, "environment")
+	require.Contains(t, props, "connections")
+	require.Contains(t, props, "codeReference")
+	require.Contains(t, schemaMap["required"], "environment")
 }
 
 func TestExtractLocationInfo(t *testing.T) {
@@ -859,7 +880,7 @@ func TestRegisterResourceProvider_ErrorScenarios(t *testing.T) {
 			logger, _ := createTestLogger()
 
 			testErrorScenario(t, func() error {
-				return RegisterResourceProvider(context.Background(), clientFactory, tt.planeName, tt.resourceProvider, logger)
+				return RegisterResourceProvider(t.Context(), clientFactory, tt.planeName, tt.resourceProvider, logger)
 			}, tt.expectError, tt.expectedErrorMessage)
 		})
 	}
@@ -904,10 +925,43 @@ func TestRegisterType_ErrorScenarios(t *testing.T) {
 			logger, _ := createTestLogger()
 
 			testErrorScenario(t, func() error {
-				return RegisterType(context.Background(), clientFactory, "local", tt.filePath, tt.typeName, logger)
+				return RegisterType(t.Context(), clientFactory, "local", tt.filePath, tt.typeName, "", logger)
 			}, tt.expectError, tt.expectedErrorMessage)
 		})
 	}
+}
+
+func TestRegisterType_IconFileNotFound(t *testing.T) {
+	t.Parallel()
+
+	clientFactory := createTestClientFactory(t)
+	logger, _ := createTestLogger()
+
+	err := RegisterType(t.Context(), clientFactory, "local",
+		"testdata/registerdirectory/resourceprovider-valid2.yaml", "testResource3",
+		"testdata/nonexistent-icon.svg", logger)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to read icon file testdata/nonexistent-icon.svg")
+}
+
+func TestRegisterType_IconValidationRejectsBadSVG(t *testing.T) {
+	t.Parallel()
+
+	clientFactory := createTestClientFactory(t)
+	logger, _ := createTestLogger()
+
+	dir := t.TempDir()
+	badIcon := filepath.Join(dir, "bad.svg")
+	require.NoError(t, os.WriteFile(badIcon, []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`), 0o600))
+
+	err := RegisterType(t.Context(), clientFactory, "local",
+		"testdata/registerdirectory/resourceprovider-valid2.yaml", "testResource3",
+		badIcon, logger)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid icon file")
+	require.Contains(t, err.Error(), "<script>")
 }
 
 func TestRegisterFile_ErrorScenarios(t *testing.T) {
@@ -938,7 +992,7 @@ func TestRegisterFile_ErrorScenarios(t *testing.T) {
 			clientFactory := createTestClientFactory(t)
 
 			testErrorScenario(t, func() error {
-				return RegisterFile(context.Background(), clientFactory, "local", tt.filePath, nil)
+				return RegisterFile(t.Context(), clientFactory, "local", tt.filePath, nil)
 			}, tt.expectError, tt.expectedErrorMessage)
 		})
 	}
@@ -1022,7 +1076,7 @@ func TestCreateResourceProviderResource(t *testing.T) {
 				}
 			}
 
-			err = createResourceProviderResource(context.Background(), clientFactory, tt.planeName, tt.resourceProvider, tt.locationName, logger)
+			err = createResourceProviderResource(t.Context(), clientFactory, tt.planeName, tt.resourceProvider, tt.locationName, logger)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -1035,7 +1089,7 @@ func TestCreateResourceProviderResource(t *testing.T) {
 				// For successful operations, verify the resource provider was created by attempting to get it
 				if tt.name != "Success_WithNilLogger" {
 					// Verify the resource provider exists by checking the logs or calling the Get method
-					rp, getErr := clientFactory.NewResourceProvidersClient().Get(context.Background(), tt.planeName, tt.resourceProvider.Namespace, nil)
+					rp, getErr := clientFactory.NewResourceProvidersClient().Get(t.Context(), tt.planeName, tt.resourceProvider.Namespace, nil)
 					require.NoError(t, getErr)
 					require.Equal(t, new(tt.resourceProvider.Namespace), rp.Name)
 				}
@@ -1090,12 +1144,12 @@ func TestCreateLocationResource(t *testing.T) {
 			address:      "",
 			resourceTypes: map[string]*v20231001preview.LocationResourceType{
 				"testResource": {
-					APIVersions: map[string]map[string]any{
+					APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
 						"2023-01-01": {},
 					},
 				},
 				"anotherResource": {
-					APIVersions: map[string]map[string]any{
+					APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
 						"2023-01-01": {},
 						"2023-06-01": {},
 					},
@@ -1148,7 +1202,7 @@ func TestCreateLocationResource(t *testing.T) {
 				}
 			}
 
-			err = createLocationResource(context.Background(), clientFactory, tt.planeName, tt.namespace, tt.locationName, tt.address, tt.resourceTypes, logger)
+			err = createLocationResource(t.Context(), clientFactory, tt.planeName, tt.namespace, tt.locationName, tt.address, tt.resourceTypes, logger)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -1160,7 +1214,7 @@ func TestCreateLocationResource(t *testing.T) {
 
 				// For successful operations, verify the location was created by attempting to get it
 				if tt.name != "Success_WithNilLogger" {
-					location, getErr := clientFactory.NewLocationsClient().Get(context.Background(), tt.planeName, tt.namespace, tt.locationName, nil)
+					location, getErr := clientFactory.NewLocationsClient().Get(t.Context(), tt.planeName, tt.namespace, tt.locationName, nil)
 					require.NoError(t, getErr)
 					require.Equal(t, new(tt.locationName), location.Name)
 
@@ -1211,9 +1265,7 @@ func createErrorResourceProviderClientFactory() (*v20231001preview.ClientFactory
 	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
 
 	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
-		},
+		Transport: serverFactoryTransport,
 	}
 
 	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
@@ -1245,9 +1297,7 @@ func createErrorLocationClientFactory() (*v20231001preview.ClientFactory, error)
 	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
 
 	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
-		},
+		Transport: serverFactoryTransport,
 	}
 
 	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
@@ -1264,13 +1314,11 @@ func createLocationClientFactoryWithAddress() (*v20231001preview.ClientFactory, 
 			options *v20231001preview.LocationsClientGetOptions,
 		) (resp azfake.Responder[v20231001preview.LocationsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.LocationsClientGetResponse{
-				LocationResource: v20231001preview.LocationResource{
-					Name: new(locationName),
-					ID:   new("id"),
-					Properties: &v20231001preview.LocationProperties{
-						Address:       new("http://localhost:8080"),
-						ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
-					},
+				Name: new(locationName),
+				ID:   new("id"),
+				Properties: &v20231001preview.LocationProperties{
+					Address:       new("http://localhost:8080"),
+					ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
 				},
 			}
 			resp.SetResponse(http.StatusOK, response, nil)
@@ -1288,9 +1336,7 @@ func createLocationClientFactoryWithAddress() (*v20231001preview.ClientFactory, 
 	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
 
 	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
-		},
+		Transport: serverFactoryTransport,
 	}
 
 	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
@@ -1307,21 +1353,19 @@ func createLocationClientFactoryWithResourceTypes() (*v20231001preview.ClientFac
 			options *v20231001preview.LocationsClientGetOptions,
 		) (resp azfake.Responder[v20231001preview.LocationsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.LocationsClientGetResponse{
-				LocationResource: v20231001preview.LocationResource{
-					Name: new(locationName),
-					ID:   new("id"),
-					Properties: &v20231001preview.LocationProperties{
-						ResourceTypes: map[string]*v20231001preview.LocationResourceType{
-							"testResource": {
-								APIVersions: map[string]map[string]any{
-									"2023-01-01": {},
-								},
+				Name: new(locationName),
+				ID:   new("id"),
+				Properties: &v20231001preview.LocationProperties{
+					ResourceTypes: map[string]*v20231001preview.LocationResourceType{
+						"testResource": {
+							APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
+								"2023-01-01": {},
 							},
-							"anotherResource": {
-								APIVersions: map[string]map[string]any{
-									"2023-01-01": {},
-									"2023-06-01": {},
-								},
+						},
+						"anotherResource": {
+							APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
+								"2023-01-01": {},
+								"2023-06-01": {},
 							},
 						},
 					},
@@ -1342,9 +1386,7 @@ func createLocationClientFactoryWithResourceTypes() (*v20231001preview.ClientFac
 	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
 
 	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
-		},
+		Transport: serverFactoryTransport,
 	}
 
 	return v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
@@ -1368,7 +1410,7 @@ func createTestLogger() (func(format string, args ...any), *bytes.Buffer) {
 
 // verifyResourceProviderExists verifies that a resource provider exists with the expected name
 func verifyResourceProviderExists(t *testing.T, clientFactory *v20231001preview.ClientFactory, planeName, expectedResourceProvider string) {
-	rp, err := clientFactory.NewResourceProvidersClient().Get(context.Background(), planeName, expectedResourceProvider, nil)
+	rp, err := clientFactory.NewResourceProvidersClient().Get(t.Context(), planeName, expectedResourceProvider, nil)
 	require.NoError(t, err, "Failed to retrieve the expected resource provider")
 	require.Equal(t, new(expectedResourceProvider), rp.Name)
 }
@@ -1415,7 +1457,7 @@ func verifyRetryBehavior(t *testing.T, operation func() error, expectedAttempts 
 		return operation()
 	}
 
-	err := retryOperation(context.Background(), wrappedOp, logger)
+	err := retryOperation(t.Context(), wrappedOp, logger)
 
 	if expectedError != "" {
 		require.Error(t, err)

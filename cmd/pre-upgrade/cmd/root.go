@@ -42,36 +42,36 @@ type Config struct {
 	RetryDelay    time.Duration
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "pre-upgrade",
-	Short: "Pre-upgrade service",
-	Long:  `Pre-upgrade service for Radius, which performs checks before an upgrade.`,
-}
-
 // ExecuteWithContext executes the root command with the given context
 func ExecuteWithContext(ctx context.Context) error {
-	rootCmd.SetContext(ctx)
-	return Execute()
+	return NewCommand().ExecuteContext(ctx)
 }
 
 // Execute runs the root command and is the main entry point for the pre-upgrade CLI
 func Execute() error {
-	ctx := rootCmd.Context()
-	if ctx == nil {
-		ctx = context.Background()
+	return ExecuteWithContext(context.Background())
+}
+
+// NewCommand creates the pre-upgrade command.
+func NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "pre-upgrade",
+		Short: "Pre-upgrade service",
+		Long:  `Pre-upgrade service for Radius, which performs checks before an upgrade.`,
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runPreflightChecks(cmd.Context())
+		},
 	}
 
-	// Parse configuration from environment
+	cmd.AddCommand(newWaitForControlPlaneCommand())
+	return cmd
+}
+
+func runPreflightChecks(ctx context.Context) error {
 	cfg := parseConfig()
 
-	// Set up logging using ucplog for consistency with other Radius containers
-	loggingOptions := &ucplog.LoggingOptions{
-		// These will be overridden by RADIUS_LOGGING_LEVEL and RADIUS_LOGGING_JSON env vars
-		Level: "info",
-		Json:  true,
-	}
-
-	logger, flush, err := ucplog.NewLogger("pre-upgrade", loggingOptions)
+	logger, flush, err := newLogger()
 	if err != nil {
 		return fmt.Errorf("failed to initialize logger: %w", err)
 	}
@@ -122,6 +122,14 @@ func Execute() error {
 
 	logger.Info("Preflight checks completed successfully")
 	return nil
+}
+
+func newLogger() (logr.Logger, func(), error) {
+	return ucplog.NewLogger("pre-upgrade", &ucplog.LoggingOptions{
+		// These will be overridden by RADIUS_LOGGING_LEVEL and RADIUS_LOGGING_JSON env vars.
+		Level: "info",
+		Json:  true,
+	})
 }
 
 // parseConfig parses configuration from environment variables

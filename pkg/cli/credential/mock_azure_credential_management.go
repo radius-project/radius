@@ -21,6 +21,7 @@ import (
 type MockAzureCredentialManagementClientInterface struct {
 	ctrl     *gomock.Controller
 	recorder *MockAzureCredentialManagementClientInterfaceMockRecorder
+	isgomock struct{}
 }
 
 // MockAzureCredentialManagementClientInterfaceMockRecorder is the mock recorder for MockAzureCredentialManagementClientInterface.
@@ -41,18 +42,18 @@ func (m *MockAzureCredentialManagementClientInterface) EXPECT() *MockAzureCreden
 }
 
 // Delete mocks base method.
-func (m *MockAzureCredentialManagementClientInterface) Delete(arg0 context.Context, arg1 string) (bool, error) {
+func (m *MockAzureCredentialManagementClientInterface) Delete(ctx context.Context, name string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
+	ret := m.ctrl.Call(m, "Delete", ctx, name)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) Delete(arg0, arg1 any) *MockAzureCredentialManagementClientInterfaceDeleteCall {
+func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) Delete(ctx, name any) *MockAzureCredentialManagementClientInterfaceDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).Delete), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).Delete), ctx, name)
 	return &MockAzureCredentialManagementClientInterfaceDeleteCall{Call: call}
 }
 
@@ -80,18 +81,18 @@ func (c *MockAzureCredentialManagementClientInterfaceDeleteCall) DoAndReturn(f f
 }
 
 // Get mocks base method.
-func (m *MockAzureCredentialManagementClientInterface) Get(arg0 context.Context, arg1 string) (ProviderCredentialConfiguration, error) {
+func (m *MockAzureCredentialManagementClientInterface) Get(ctx context.Context, name string) (ProviderCredentialConfiguration, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1)
+	ret := m.ctrl.Call(m, "Get", ctx, name)
 	ret0, _ := ret[0].(ProviderCredentialConfiguration)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) Get(arg0, arg1 any) *MockAzureCredentialManagementClientInterfaceGetCall {
+func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) Get(ctx, name any) *MockAzureCredentialManagementClientInterfaceGetCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).Get), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).Get), ctx, name)
 	return &MockAzureCredentialManagementClientInterfaceGetCall{Call: call}
 }
 
@@ -119,18 +120,18 @@ func (c *MockAzureCredentialManagementClientInterfaceGetCall) DoAndReturn(f func
 }
 
 // List mocks base method.
-func (m *MockAzureCredentialManagementClientInterface) List(arg0 context.Context) ([]CloudProviderStatus, error) {
+func (m *MockAzureCredentialManagementClientInterface) List(ctx context.Context) ([]CloudProviderStatus, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", arg0)
+	ret := m.ctrl.Call(m, "List", ctx)
 	ret0, _ := ret[0].([]CloudProviderStatus)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // List indicates an expected call of List.
-func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) List(arg0 any) *MockAzureCredentialManagementClientInterfaceListCall {
+func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) List(ctx any) *MockAzureCredentialManagementClientInterfaceListCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).List), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).List), ctx)
 	return &MockAzureCredentialManagementClientInterfaceListCall{Call: call}
 }
 
@@ -158,17 +159,17 @@ func (c *MockAzureCredentialManagementClientInterfaceListCall) DoAndReturn(f fun
 }
 
 // Put mocks base method.
-func (m *MockAzureCredentialManagementClientInterface) Put(arg0 context.Context, arg1 v20231001preview.AzureCredentialResource) error {
+func (m *MockAzureCredentialManagementClientInterface) Put(ctx context.Context, credential_config v20231001preview.AzureCredentialResource) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Put", arg0, arg1)
+	ret := m.ctrl.Call(m, "Put", ctx, credential_config)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Put indicates an expected call of Put.
-func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) Put(arg0, arg1 any) *MockAzureCredentialManagementClientInterfacePutCall {
+func (mr *MockAzureCredentialManagementClientInterfaceMockRecorder) Put(ctx, credential_config any) *MockAzureCredentialManagementClientInterfacePutCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).Put), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockAzureCredentialManagementClientInterface)(nil).Put), ctx, credential_config)
 	return &MockAzureCredentialManagementClientInterfacePutCall{Call: call}
 }
 

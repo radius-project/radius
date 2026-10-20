@@ -17,9 +17,14 @@ limitations under the License.
 package terraform
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
+	"github.com/hashicorp/terraform-exec/tfexec"
+	dm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/stretchr/testify/require"
@@ -27,13 +32,13 @@ import (
 
 func Test_InspectTFModuleConfig(t *testing.T) {
 	tests := []struct {
-		name         string
-		recipe       *recipes.EnvironmentDefinition
-		workingDir   string
-		moduleName   string
-		templatePath string
-		result       *moduleInspectResult
-		err          string
+		name       string
+		recipe     *recipes.EnvironmentDefinition
+		workingDir string
+		result     *moduleInspectResult
+		err        string
+		errExact   bool
+		setup      func(t *testing.T) string
 	}{
 		{
 			name: "aws provider only",
@@ -52,6 +57,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 					},
 				},
 				ResultOutputExists: false,
+				OutputSensitivity:  map[string]bool{},
 				Parameters:         map[string]any{},
 			},
 		},
@@ -70,6 +76,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 					},
 				},
 				ResultOutputExists: false,
+				OutputSensitivity:  map[string]bool{},
 				Parameters:         map[string]any{},
 			},
 		},
@@ -89,6 +96,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 					},
 				},
 				ResultOutputExists: true,
+				OutputSensitivity:  map[string]bool{"result": false},
 				Parameters: map[string]any{
 					"context": map[string]any{
 						"name":         "context",
@@ -112,7 +120,8 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				Name:         "invalid-module",
 				TemplatePath: "invalid-module",
 			},
-			err: "error loading the module",
+			err:      "The Terraform configuration in location invalid-module is not found.",
+			errExact: true,
 		},
 		{
 			name:       "submodule path",
@@ -130,21 +139,205 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 					},
 				},
 				ResultOutputExists: false,
+				OutputSensitivity:  map[string]bool{},
 				Parameters:         map[string]any{},
+			},
+		},
+		{
+			name:       "missing submodule path",
+			workingDir: "testdata",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-submodule",
+				TemplatePath: "test-submodule//missing-submodule",
+			},
+			err:      "The Terraform configuration in location test-submodule//missing-submodule is not found.",
+			errExact: true,
+		},
+		{
+			name:       "module name outside module root",
+			workingDir: "testdata",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "../test-submodule",
+				TemplatePath: "test-submodule",
+			},
+			err: "module path \"../test-submodule\" must be local",
+		},
+		{
+			name:       "submodule path outside module root",
+			workingDir: "testdata",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-submodule",
+				TemplatePath: "test-submodule//../missing-submodule",
+			},
+			err: "module path \"../missing-submodule\" must be local",
+		},
+		{
+			name: "module directory without Terraform configuration",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-module-no-config",
+				TemplatePath: "test-module-no-config",
+			},
+			err:      "The Terraform configuration in location test-module-no-config is not found.",
+			errExact: true,
+			setup: func(t *testing.T) string {
+				t.Helper()
+				workingDir := t.TempDir()
+				moduleDir := filepath.Join(workingDir, moduleRootDir, "test-module-no-config")
+				require.NoError(t, os.MkdirAll(moduleDir, 0755))
+				require.NoError(t, os.WriteFile(filepath.Join(moduleDir, "README.md"), []byte("no terraform configuration"), 0644))
+				return workingDir
+			},
+		},
+		{
+			name: "module directory with Terraform-named subdirectory",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-module-dir-config-like-name",
+				TemplatePath: "test-module-dir-config-like-name",
+			},
+			err:      "The Terraform configuration in location test-module-dir-config-like-name is not found.",
+			errExact: true,
+			setup: func(t *testing.T) string {
+				t.Helper()
+				workingDir := t.TempDir()
+				moduleDir := filepath.Join(workingDir, moduleRootDir, "test-module-dir-config-like-name")
+				require.NoError(t, os.MkdirAll(filepath.Join(moduleDir, "main.tf"), 0755))
+				require.NoError(t, os.WriteFile(filepath.Join(moduleDir, "README.md"), []byte("no terraform configuration"), 0644))
+				return workingDir
+			},
+		},
+		{
+			name: "invalid Terraform configuration returns load module error",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-module-invalid-config",
+				TemplatePath: "test-module-invalid-config",
+			},
+			err: "error loading the module",
+			setup: func(t *testing.T) string {
+				t.Helper()
+				workingDir := t.TempDir()
+				moduleDir := filepath.Join(workingDir, moduleRootDir, "test-module-invalid-config")
+				require.NoError(t, os.MkdirAll(moduleDir, 0755))
+				require.NoError(t, os.WriteFile(filepath.Join(moduleDir, "main.tf"), []byte("terraform {"), 0644))
+				return workingDir
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := inspectModule(tc.workingDir, tc.recipe)
+			workingDir := tc.workingDir
+			if tc.setup != nil {
+				workingDir = tc.setup(t)
+			}
+
+			result, err := inspectModule(workingDir, tc.recipe)
 			if tc.err != "" {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.err)
+				if tc.errExact {
+					require.EqualError(t, err, tc.err)
+				} else {
+					require.Contains(t, err.Error(), tc.err)
+				}
 				return
 			}
 			require.NoError(t, err)
 			require.Equal(t, tc.result, result)
 		})
 	}
+}
+
+func Test_RetryGetWithProviderAliases(t *testing.T) {
+	getErr := errors.New("terraform get failed")
+	recipe := &recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: "http://example.com/module.zip"}
+	envConfig := &recipes.Configuration{
+		RecipeConfig: dm.RecipeConfigProperties{
+			Terraform: dm.TerraformConfigProperties{
+				Providers: map[string][]dm.ProviderConfigProperties{
+					"azurerm": {{AdditionalProperties: map[string]any{"alias": "custom"}}},
+				},
+			},
+		},
+	}
+	aliasModule := `terraform {
+  required_providers {
+    azurerm = {
+      source                = "hashicorp/azurerm"
+      configuration_aliases = [azurerm.custom]
+    }
+  }
+}
+`
+	defaultModule := `terraform {
+  required_providers {
+    azurerm = {
+      source = "hashicorp/azurerm"
+    }
+  }
+}
+`
+
+	tests := []struct {
+		name        string
+		tfConfig    *config.TerraformConfig
+		envConfig   *recipes.Configuration
+		setup       func(t *testing.T, workingDir string)
+		expectedErr string
+	}{
+		{
+			name:        "no configuration",
+			envConfig:   envConfig,
+			expectedErr: getErr.Error(),
+		},
+		{
+			name:        "no environment configuration",
+			tfConfig:    &config.TerraformConfig{},
+			expectedErr: getErr.Error(),
+		},
+		{
+			name:        "module not downloaded",
+			tfConfig:    &config.TerraformConfig{},
+			envConfig:   envConfig,
+			expectedErr: getErr.Error(),
+		},
+		{
+			name:      "module does not declare configuration_aliases",
+			tfConfig:  &config.TerraformConfig{},
+			envConfig: envConfig,
+			setup: func(t *testing.T, workingDir string) {
+				writeModule(t, workingDir, defaultModule)
+			},
+			expectedErr: getErr.Error(),
+		},
+		{
+			name:      "configuration cannot be saved",
+			tfConfig:  &config.TerraformConfig{},
+			envConfig: envConfig,
+			setup: func(t *testing.T, workingDir string) {
+				writeModule(t, workingDir, aliasModule)
+				require.NoError(t, os.Mkdir(filepath.Join(workingDir, "main.tf.json"), 0o755))
+			},
+			expectedErr: "error creating file",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			workingDir := t.TempDir()
+			if tc.setup != nil {
+				tc.setup(t, workingDir)
+			}
+			tf, err := tfexec.NewTerraform(workingDir, os.Args[0])
+			require.NoError(t, err)
+
+			err = retryGetWithProviderAliases(t.Context(), tf, tc.tfConfig, Options{EnvRecipe: recipe, EnvConfig: tc.envConfig}, getErr)
+			require.ErrorContains(t, err, tc.expectedErr)
+		})
+	}
+}
+
+// writeModule writes main.tf with the given content to the download directory of the "test-recipe" module.
+func writeModule(t *testing.T, workingDir string, content string) {
+	moduleDir := filepath.Join(workingDir, moduleRootDir, "test-recipe")
+	require.NoError(t, os.MkdirAll(moduleDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(moduleDir, "main.tf"), []byte(content), 0o600))
 }

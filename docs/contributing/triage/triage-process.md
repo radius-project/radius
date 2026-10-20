@@ -1,16 +1,20 @@
 # Triage Process
 
+## Purpose
+
+This document describes how the Radius maintainers and triage team process incoming issues: the goals of triage, who does it, when it happens, and the labels and decisions an issue can receive. It is process and reference material for triage team members and for contributors who want to understand what happens to an issue after it is opened. To file an issue in the first place, see the [contributing issues guide](../contributing-issues/README.md).
+
 ## About the triage process
 
-The interaction between users and maintainers is at the heart of open source software. That interaction plays out through issue tracking. See the [documentation on contributing issues](https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-issues/README.md).  These issues offer a lot of value to the project but not every issues is actionable or useful. That's where triage comes in. Triage is a multi-step process that is performed by the issue tracker and the sub-project/feature owners. The goal of triage is to provide a clear understanding of what will happen to issues that are opened. For example, after a feature request is triaged, it will be clear whether the issue will be picked up or closed. After an issue is received and triaged, it will either be assigned to the backlog, a specific milestone or closed.
+The interaction between users and maintainers is at the heart of open source software. That interaction plays out through issue tracking. See the [documentation on contributing issues](../contributing-issues/README.md). These issues offer a lot of value to the project but not every issue is actionable or useful. That's where triage comes in. Triage is a multi-step process that is performed by the issue tracker and the sub-project/feature owners. The goal of triage is to provide a clear understanding of what will happen to issues that are opened. For example, after a feature request is triaged, it will be clear whether the issue will be picked up or closed. After an issue is received and triaged, it will either be assigned to the backlog, a specific milestone or closed.
 
 ## Goals
 
 The goals for triage are:
 
-* Make triage decisions easier by defining rules and processes
-* Easily prioritize work for each milestone
-* Set expectations with the community regarding how issues are handled
+- Make triage decisions easier by defining rules and processes
+- Easily prioritize work for each milestone
+- Set expectations with the community regarding how issues are handled
 
 ## About the triage team
 
@@ -26,24 +30,24 @@ The purpose of the triage team is to review issues as they come in. The team is 
 
 As a member of the triage team you are responsible for keeping the issue repository up to date with only actionable items. This includes:
 
-* **Issue Triage**: categorizing and prioritizing issues based on their severity, impact and relevance to the project.  
-  
+- **Issue Triage**: categorizing and prioritizing issues based on their severity, impact and relevance to the project.
+
   At least once a month, a deep triage session will occur where you will review all issues older than 6 months to determine if they are still relevant, have the needed information to make progress and/or should be reprioritized based on new information. You will review existing labels and update them where appropriate. Any issue without a clear justification for being kept in the queue will be closed with notes in the issue as to why the decision was made. During a normal triage session, you will review all issues that are not assigned to a feature team and/or in the backlog.
 
-* **Issue Verification**: reproducing reported bugs to determine if the issue is valid and how soon it must be fixed  
+- **Issue Verification**: reproducing reported bugs to determine if the issue is valid and how soon it must be fixed
 
-   If a bug cannot be reproduced, we will either close it with an explanation of the steps attempted to reproduce or tag it with `needs more info` to get more detail on repro steps and kept in the triage queue. If a bug can be reproduced but we decide the fix is too risky, we will update the description to include details that impacted the decision and the issue will be closed.
+   If a bug cannot be reproduced, we will either close it with an explanation of the steps attempted to reproduce or tag it with `needs-more-information` to get more detail on repro steps and keep it in the triage queue. If a bug can be reproduced but we decide the fix is too risky, we will update the description to include details that impacted the decision and close it with `wont-fix`.
 
-* **Issue Management**: assigning labels and tags to issues, verifying issue priority, determining feature team assignment and appropriate target milestone or backlog  
-  
-  Each new issue will be categorized and tagged. If the issue has the level of detail required to make a triage decision, we will either deny and close or approve and assign to the appropriate feature team and move it to the backlog. If more information is needed, we will tag it with `needs more info` and keep it in the triage queue.
-* **Communication and collaboration**: engaging with users, contributors, and maintainers, you act as a bridge between them and the development team to resolve issues.  
-  
+- **Issue Management**: assigning labels and tags to issues, verifying issue priority, determining feature team assignment and appropriate target milestone or backlog
+
+  Each new issue will be categorized and tagged. If the issue has the level of detail required to make a triage decision, we will either close it or apply `triaged` and move it to the backlog. If more information is needed, we will apply `needs-more-information` and keep it in the triage queue.
+- **Communication and collaboration**: engaging with users, contributors, and maintainers, you act as a bridge between them and the development team to resolve issues.
+
   You respond to the user with comments on their issue, asking clarifying questions to understand the issue. You collaborate with other members and users of Radius to find solutions. You gather feedback from users, identify common challenges and discuss potential improvements with the development team. Doing this effectively bridges the gap between users and developers leading to a better experience for all users.
 
 ### Responsibilities of user
 
-As an issue creator, you are responsible for creating an issue using the [appropriate template](https://github.com/radius-project/radius/issues/new/choose) and completing all sections with appropriate level of detail. For bug reports, clear steps to reproduce the issue should be included so we can verify the product behavior. You will also respond to requests for more information within 7 days. If you do not respond within that timeline, the issue will be closed. You are free to reopen the issue when the additional information has been added and we will triage it again.
+As an issue creator, you are responsible for creating an issue using the [appropriate template](https://github.com/radius-project/radius/issues/new/choose) and completing all sections with appropriate level of detail. For bug reports, clear steps to reproduce the issue should be included so we can verify the product behavior. Respond to requests for more information; a maintainer may close an issue that cannot move forward without it. You are free to reopen the issue when the additional information has been added and we will triage it again.
 
 ## When Do We Triage?
 
@@ -59,56 +63,51 @@ Below is the basic flow that an issue goes through. At any step in the flow the 
 
 Issues are closed for the following reasons:
 
-| **Reason** | **Label**|
-----------------|----------
-| Issue is obsolete or fixed | |
-| Needed information not received within 7 days| `needs more info` |
-| It's a duplicate of another issue| `duplicate` |
-| Behavior is as designed| `by-design` |
-| Issue is a question &#185; | `question` |
-| Issue is not related to the goals of the project so is unactionable | `off-topic` |
-| Issue cannot be reproduced based on information given | `not-reproducible` |
-| Feature request is out of scope | `out-of-scope` |
+| **Reason**                                     | **Label**                 |
+|------------------------------------------------|---------------------------|
+| Issue is obsolete or fixed                     | No closing label required |
+| Needed information was not received            | `needs-more-information`  |
+| Issue is a duplicate of another issue          | `duplicate`               |
+| The project does not plan to address the issue | `wont-fix`                |
 
-&#185; All questions will be redirected to our [Discord server](https://discord.gg/SRG3ePMKNy)
+Questions that do not need a tracked code or documentation change are redirected to our [Discord server](https://discord.gg/SRG3ePMKNy).
 
 ## Requesting Information
 
-If an issue is missing information that we need to understand the issue, a `needs more info` label will be assigned. If the information is not received in 7 days the issue will be closed.
+If an issue is missing information that we need to understand it, the `needs-more-information` label is assigned. A maintainer may close the issue if the requested information is not provided.
 
 ## Categorizing Issues
 
 Each issue will be assigned a **type** label.
 
-|**Type**| **Description**|
-:-| :--------
-| `needs more info` | issue is missing information so type label cannot be assigned |
-| `bug` | the implementation of a feature is not correct |
-| `feature-request` | request for a new feature |
-| `under-discussion` | not decided whether issue is bug or feature |
-| `tech-debt` | improve the implementation/architecture |
-| `engineering` | issues related to engineering system or processes |
+| **Type**                 | **Description**                                                    |
+|--------------------------|--------------------------------------------------------------------|
+| `bug`                    | The implementation of a feature is not correct                     |
+| `feature`                | A request for new or changed user-visible behavior                 |
+| `maintenance`            | Engineering-system, build, CI/CD, process, or maintenance work     |
+| `user-story`             | A prioritized user capability with acceptance criteria             |
+| `needs-more-information` | The issue cannot be categorized until more information is provided |
 
 ## Assigning Feature Areas
 
-Each issue will be assigned to a specific **feature area** during the triage process.
+Use the repository's current [label list](https://github.com/radius-project/radius/labels) to add the narrowest applicable area label, such as `cli`, `dapr`, `recipes`, `github_actions`, or `compute-extensibility`. The available areas evolve with the project, so the live label list is authoritative. For a `user-story` issue, the issue form's **Category** field records its broader feature area.
 
-## Assigning a Milestone
+## Assigning a Project Iteration
 
-We plan and execute milestones in 2 week sprints which are incremented numerically. Any item not in the current sprint will be put in the **backlog** milestone. Sprint planning is completed on the first day of the sprint and pulls all items from the backlog. During backlog grooming we review new issues that have been put in the backlog by the triage process to determine when the issue can be worked on.
+Radius plans work with iteration and backlog fields in the project board, not GitHub milestones. After an issue is accepted with `triaged`, add it to the appropriate project backlog. During planning, maintainers assign an iteration when the team commits to the work.
 
 ## Important Issues
 
 We assign the `important` label to issues that:
 
-* result in data loss
-* break basic functionality
-* are critical security/performance issues
-* are UI issue that makes feature unusable
+- result in data loss
+- break basic functionality
+- are critical security/performance issues
+- are UI issue that makes feature unusable
 
 ## Managing Feature Requests
 
-Feature requests are used as a means of communication between the members of the community. Thus, in principle, they could be kept open no matter what will happen to the feature they describe. Unfortunately, this makes it hard to understand what has realistic chances to ever make it into the repository. Therefore, feature requests that cannot be addressed are closed with the `out-of-scope` label. If the feature request meets the goals of the project and could be implemented by the community, the `community` label is assigned.
+Feature requests are used as a means of communication between community members. Keeping requests open when the project does not plan to implement them makes the backlog difficult to understand, so maintainers close those requests with `wont-fix` and explain the decision. Requests suitable for community contribution receive `help wanted` or, when appropriately scoped for a new contributor, `good first issue`.
 
 If you are the author of a feature request you might not like that we close or don't plan to address your request. It might even feel like a slap in your face. We understand that. All of us have been there—in this project or others we have contributed to. So, be assured, we love all of your input. Don't take personal offense when we close it. If you feel your feature request deserves to stay open, improve your use case and ping us or gather more support within the community.
 
@@ -124,10 +123,10 @@ Bugs will be closed as `wont-fix` if there is a negative cost-benefit to the fix
 
 If you want to grow in your open source journey, you might find that a good milestone is becoming a part of a triage team for an open source project. Here are some tips to follow that path:
 
-* Ensure you are willing to commit to it for an extended period.
+- Ensure you are willing to commit to it for an extended period.
 
-* Check out the Radius Project's [documentation](https://github.com/radius-project/docs/), [repositories](https://github.com/radius-project/), and [issue tracker](https://github.com/radius-project/radius/issues) to understand its goals and contribution processes.
+- Check out the Radius Project's [documentation](https://github.com/radius-project/docs/), [repositories](https://github.com/radius-project/), and [issue tracker](https://github.com/radius-project/radius/issues) to understand its goals and contribution processes.
 
-* Join the [communication channels](https://discord.gg/SRG3ePMKNy), introduce yourself, and let us know that you’re interested in becoming part of the triage team. Ask for help from experienced members.
+- Join the [communication channels](https://discord.gg/SRG3ePMKNy), introduce yourself, and let us know that you’re interested in becoming part of the triage team. Ask for help from experienced members.
 
 Even if you’re not a part of the team, that doesn’t mean that you can’t help. You can still offer contributors suggestions or direct them to answers if you’re able to. The key is to only do so if you know the answer. For example, maybe someone raised an issue that was already responded to. You can direct them to the previous answer.

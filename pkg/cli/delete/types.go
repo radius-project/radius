@@ -22,7 +22,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 )
 
-//go:generate mockgen -typed -destination=./mock_delete.go -package=delete -self_package github.com/radius-project/radius/pkg/cli/delete github.com/radius-project/radius/pkg/cli/delete Interface
+//go:generate go tool mockgen -typed -destination=./mock_delete.go -package=delete -self_package github.com/radius-project/radius/pkg/cli/delete github.com/radius-project/radius/pkg/cli/delete Interface
 
 // Interface is the interface for executing delete operations in the CLI.
 type Interface interface {

@@ -17,7 +17,6 @@ limitations under the License.
 package delete
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -50,7 +49,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			ProgressText:        "Deleting application...",
 		}
 
-		deleted, err := DeleteApplicationWithProgress(context.Background(), appManagementClient, options)
+		deleted, err := DeleteApplicationWithProgress(t.Context(), appManagementClient, options)
 		require.Error(t, err)
 		require.False(t, deleted)
 		require.Contains(t, err.Error(), "not a valid resource id")
@@ -83,7 +82,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			ProgressText:        "Deleting application...",
 		}
 
-		deleted, err := DeleteApplicationWithProgress(context.Background(), appManagementClient, options)
+		deleted, err := DeleteApplicationWithProgress(t.Context(), appManagementClient, options)
 		require.Error(t, err)
 		require.False(t, deleted)
 		require.Contains(t, err.Error(), "not a valid resource id")
@@ -120,7 +119,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			ProgressText:        "Deleting application...",
 		}
 
-		deleted, err := DeleteApplicationWithProgress(context.Background(), appManagementClient, options)
+		deleted, err := DeleteApplicationWithProgress(t.Context(), appManagementClient, options)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -141,7 +140,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			ProgressText:        "Deleting application...",
 		}
 
-		deleted, err := DeleteApplicationWithProgress(context.Background(), appManagementClient, options)
+		deleted, err := DeleteApplicationWithProgress(t.Context(), appManagementClient, options)
 		require.Error(t, err)
 		require.False(t, deleted)
 		require.Contains(t, err.Error(), "failed to list resources")
@@ -178,7 +177,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			ProgressText:        "Deleting application...",
 		}
 
-		deleted, err := DeleteApplicationWithProgress(context.Background(), appManagementClient, options)
+		deleted, err := DeleteApplicationWithProgress(t.Context(), appManagementClient, options)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -214,7 +213,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			ProgressText:        "Deleting application...",
 		}
 
-		deleted, err := DeleteApplicationWithProgress(context.Background(), appManagementClient, options)
+		deleted, err := DeleteApplicationWithProgress(t.Context(), appManagementClient, options)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -247,7 +246,7 @@ func Test_DeleteApplicationWithProgress_ErrorScenarios(t *testing.T) {
 			Force:               true,
 		}
 
-		deleted, err := DeleteApplicationWithProgress(context.Background(), appManagementClient, options)
+		deleted, err := DeleteApplicationWithProgress(t.Context(), appManagementClient, options)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})

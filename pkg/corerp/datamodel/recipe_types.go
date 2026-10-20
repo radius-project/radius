@@ -67,9 +67,16 @@ type BicepConfigProperties struct {
 
 // RegistrySecretConfig - Registry Secret Configuration used to authenticate to private bicep registries.
 type RegistrySecretConfig struct {
-	// Secret is the ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private
-	// container registry. The keys in the secretstore depends on the type.
+	// Secret is the ID of a secret resource containing credential information used to authenticate to a private
+	// container registry. Supported types: Radius.Security/secrets or Applications.Core/secretStores. The keys in
+	// the secret depend on the authentication type.
 	Secret string
+
+	// AuthenticationMethod selects how the registry is authenticated (BasicAuth, AzureWI, AwsIrsa). When set, it
+	// is the source of truth for choosing the registry auth client, allowing the referenced secret to carry only
+	// the credential data without a matching kind. Empty for the legacy Applications.Core/secretStores path, where
+	// the secret store's own type is used instead.
+	AuthenticationMethod string
 }
 
 // AuthConfig - Authentication information used to access private Terraform module sources. Supported module sources: Git.

@@ -4,21 +4,49 @@ name: PR Required Labels
 
 on:
   pull_request:
-    types: [opened, labeled, unlabeled, synchronize]
+    types: [opened, reopened, labeled, unlabeled, synchronize]
+  # Required so this check reports in the merge queue. There is no PR to
+  # validate on a merge_group event, so the label check step is skipped and the
+  # job reports success. Scoped to main only so the release branch flow is
+  # never affected.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
 jobs:
+  merge-holds:
+    if: github.event_name != 'merge_group'
+    # Reads only the event's labels; it never checks out PR code.
+    uses: radius-project/.github/.github/workflows/__pr-holds.yml@main
+    permissions: {}
+    with:
+      labels: ${{ vars.PR_STATUS_LABELS }}
+
   pr-required-labels:
-    if: github.event.pull_request.user.login != 'dependabot[bot]' # skip for Dependabot PRs
+    # Run for all PRs so holds also apply to Dependabot. Merge groups have no
+    # individual PR context; the required check still has to report.
+    needs: merge-holds
+    if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       issues: write
       pull-requests: write
     steps:
+      # Never check out or execute PR code in this write-enabled job.
+      - name: Require successful merge-hold validation
+        if: >-
+          github.event_name != 'merge_group' &&
+          needs.merge-holds.result != 'success'
+        run: |
+          echo "::error::Merge-hold validation must pass before merging. See the merge-holds job."
+          exit 1
+
       - name: Run PR Required Labels
-        uses: mheap/github-action-required-labels@0ac283b4e65c1fb28ce6079dea5546ceca98ccbe # v5.5.2
+        if: github.event_name != 'merge_group' && github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: mheap/github-action-required-labels@23e10fde7e062233401931a0eece796cd9bf3177 # v5.6.0
         with:
           mode: exactly
           count: 1
@@ -31,7 +59,7 @@ jobs:
             Currently applied labels: {{ applied }}.
 
             **Label descriptions:**
-            - `pr:important` - Major features, breaking changes, deprecations, or other high-impact changes that need special attention during release.
+            - `pr:important` - Major features, breaking changes, deprecations, or other high-impact changes that need special attention during release and in release notes.
             - `pr:standard` - Ongoing maintenance, minor improvements, documentation updates, and routine development work.
 
             @${{ github.event.pull_request.user.login }}, please add the appropriate label to this PR before merging.

@@ -32,6 +32,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
+	k8sclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -47,7 +49,6 @@ import (
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/step"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
@@ -59,6 +60,12 @@ const (
 	APIVersion             = "2023-10-01-preview"
 	TestNamespace          = "kind-radius"
 	AWSDeletionRetryLimit  = 5
+
+	// externalKubeconfigEnvVar points at the kubeconfig of the external (workload)
+	// cluster in multi-cluster runs. It mirrors the RADIUS_TARGET_KUBECONFIG
+	// contract Radius honors, but is consumed by the test harness to provision the
+	// application namespace on, and assert resources land on, the external cluster.
+	externalKubeconfigEnvVar = "RADIUS_TEST_EXTERNAL_KUBECONFIG"
 
 	// Used to check required features
 	daprComponentCRD         = "components.dapr.io"
@@ -147,6 +154,11 @@ type RPTest struct {
 	// Useful when unique resource names are used and cluster cleanup handles orphaned resources.
 	// This dramatically reduces test execution time by avoiding deletion timeouts.
 	FastCleanup bool
+
+	// RunSerial prevents the test from being marked parallel.
+	// Use this only when the test relies on shared external state that cannot
+	// safely handle concurrent operations, such as Terraform state locking.
+	RunSerial bool
 }
 
 type TestOptions struct {
@@ -170,7 +182,7 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 	_, terraformRecipeModuleServerURL, _ := strings.Cut(testutil.GetTerraformRecipeModuleServerURL(), "=")
 	t.Logf("Using terraform recipe module server URL: %s - set TF_RECIPE_MODULE_SERVER_URL to override", terraformRecipeModuleServerURL)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
@@ -232,16 +244,15 @@ func NewRPTest(t *testing.T, name string, steps []TestStep, initialResources ...
 // and configures its Kubernetes namespace for recipe-driven resource deployment.
 // It returns the PreSetup function and the environment resource ID.
 //
-// The preview environment is created via `rad env create <name> --preview`, which automatically
-// registers a default recipe pack (including container recipes). The environment is then updated
-// to set the Kubernetes namespace where recipes will deploy resources.
+// The preview environment is created via `rad env create <name> --kubernetes-namespace <ns>`,
+// which automatically registers a default recipe pack (including container recipes) and sets the
+// Kubernetes namespace where recipes will deploy resources.
 //
 // The environment name is derived from the test name with "-env" suffix to avoid collisions.
 // The kubernetesNamespace parameter specifies where recipes should deploy K8s resources —
 // this typically matches the test's expected pod namespace (often the test name).
 //
-// t.Cleanup is registered immediately after env creation (before update) to prevent
-// resource leaks if the update step fails.
+// t.Cleanup is registered immediately after env creation to prevent resource leaks.
 func NewPreviewEnvPreSetup(testName string, workspaceScope string, kubernetesNamespace string) (preSetup func(ctx context.Context, t *testing.T, test RPTest), envID string) {
 	envName := testName + "-env"
 	envID = fmt.Sprintf("%s/providers/Radius.Core/environments/%s", workspaceScope, envName)
@@ -249,22 +260,29 @@ func NewPreviewEnvPreSetup(testName string, workspaceScope string, kubernetesNam
 	preSetup = func(ctx context.Context, t *testing.T, test RPTest) {
 		cli := radcli.NewCLI(t, test.Options.ConfigFilePath)
 
-		// Create the preview environment. The --preview flag also creates a default recipe pack
-		// with container and other resource recipes registered.
-		_, err := cli.EnvironmentCreatePreview(ctx, envName, "")
+		// Radius.Core environments require their Kubernetes namespace to already exist. Only the
+		// namespace named after the test (ct.Name) is auto-created by CreateInitialResources, so when
+		// the preview environment uses a different namespace we must create it here before the CLI
+		// call, otherwise env creation fails with "Namespace '<ns>' does not exist".
+		nsClient, err := DeploymentTargetK8sClient(test.Options)
+		require.NoError(t, err, "failed to build deployment-target Kubernetes client")
+		require.NoError(t, kubernetes.EnsureNamespace(ctx, nsClient, kubernetesNamespace), "failed to ensure preview environment namespace exists")
+
+		// Create the preview environment with the test-specific Kubernetes namespace so recipes
+		// know where to deploy resources. Passing the namespace at create time (rather than via a
+		// later update) avoids colliding on the default namespace, which the RP rejects when two
+		// environments in the same scope share a namespace. Env create also registers the default
+		// recipe pack.
+		_, err = cli.EnvironmentCreatePreview(ctx, envName, "", kubernetesNamespace)
 		require.NoError(t, err, "failed to create preview environment")
 
-		// Register cleanup immediately after create, before update, to prevent leaks on update failure.
+		// Register cleanup immediately after create to prevent leaks.
 		t.Cleanup(func() {
 			_, err := cli.EnvironmentDeletePreview(ctx, envName, "")
 			if err != nil {
 				t.Logf("failed to delete preview environment %s: %v", envName, err)
 			}
 		})
-
-		// Set the Kubernetes namespace so recipes know where to deploy resources.
-		_, err = cli.EnvironmentUpdatePreview(ctx, envName, "", "", kubernetesNamespace)
-		require.NoError(t, err, "failed to set kubernetes namespace on preview environment")
 	}
 
 	return preSetup, envID
@@ -313,13 +331,18 @@ func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructur
 // CreateInitialResources creates a namespace and creates initial resources from the InitialResources field of the
 // RPTest struct. It returns an error if either of these operations fail.
 func (ct RPTest) CreateInitialResources(ctx context.Context) error {
-	if err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name); err != nil {
+	nsClient, err := DeploymentTargetK8sClient(ct.Options)
+	if err != nil {
+		return fmt.Errorf("failed to build deployment-target Kubernetes client: %w", err)
+	}
+
+	if err := kubernetes.EnsureNamespace(ctx, nsClient, ct.Name); err != nil {
 		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
 	}
 
 	for _, r := range ct.InitialResources {
-		if err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, r.GetNamespace()); err != nil {
-			return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
+		if err := kubernetes.EnsureNamespace(ctx, nsClient, r.GetNamespace()); err != nil {
+			return fmt.Errorf("failed to create namespace %s: %w", r.GetNamespace(), err)
 		}
 		if err := ct.Options.Client.Create(ctx, &r); err != nil {
 			return fmt.Errorf("failed to create resource %#v:  %w", r, err)
@@ -329,10 +352,32 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	return nil
 }
 
+// DeploymentTargetK8sClient returns the Kubernetes client for the cluster that an
+// application's resources deploy to. In multi-cluster runs the test sets
+// RADIUS_TEST_EXTERNAL_KUBECONFIG to the external (workload) cluster's kubeconfig;
+// this mirrors the RADIUS_TARGET_KUBECONFIG contract Radius itself honors, so the
+// harness provisions the application namespace on the same cluster Radius deploys
+// to and the control-plane cluster is not populated with per-application
+// namespaces. When the variable is unset (single-cluster runs) the control-plane
+// client is returned unchanged.
+func DeploymentTargetK8sClient(options RPTestOptions) (k8sclient.Interface, error) {
+	kubeconfigPath := os.Getenv(externalKubeconfigEnvVar)
+	if kubeconfigPath == "" {
+		return options.K8sClient, nil
+	}
+
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load external kubeconfig from %s=%q: %w", externalKubeconfigEnvVar, kubeconfigPath, err)
+	}
+
+	return k8sclient.NewForConfig(config)
+}
+
 // Method CleanUpExtensionResources deletes all resources in the given slice of unstructured objects.
-func (ct RPTest) CleanUpExtensionResources(resources []unstructured.Unstructured) {
+func (ct RPTest) CleanUpExtensionResources(ctx context.Context, resources []unstructured.Unstructured) {
 	for i := len(resources) - 1; i >= 0; i-- {
-		_ = ct.Options.Client.Delete(context.TODO(), &resources[i])
+		_ = ct.Options.Client.Delete(ctx, &resources[i])
 	}
 }
 
@@ -383,7 +428,7 @@ func (ct RPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 }
 
 func (ct RPTest) Test(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	ct.CheckRequiredFeatures(ctx, t)
@@ -394,8 +439,12 @@ func (ct RPTest) Test(t *testing.T) {
 	// This runs each application deployment step as a nested test, with the cleanup as part of the surrounding test.
 	// This way we can catch deletion failures and report them as test failures.
 
-	// Each of our tests are isolated, so they can run in parallel.
-	t.Parallel()
+	// Each of our tests should be isolated and can run in parallel by default.
+	// Some external systems, such as Terraform backends, use shared locks and
+	// need opt-in serialization to avoid cross-test contention.
+	if !ct.RunSerial {
+		t.Parallel()
+	}
 
 	logPrefix := os.Getenv(ContainerLogPathEnvVar)
 	if logPrefix == "" {
@@ -432,7 +481,7 @@ func (ct RPTest) Test(t *testing.T) {
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 	require.GreaterOrEqual(t, len(ct.Steps), 1, "at least one step is required")
-	defer ct.CleanUpExtensionResources(ct.InitialResources)
+	defer ct.CleanUpExtensionResources(ctx, ct.InitialResources)
 	err := ct.CreateInitialResources(ctx)
 	require.NoError(t, err, "failed to create initial resources")
 
@@ -443,7 +492,7 @@ func (ct RPTest) Test(t *testing.T) {
 	success := true
 	for i, step := range ct.Steps {
 		success = t.Run(step.Executor.GetDescription(), func(t *testing.T) {
-			defer ct.CleanUpExtensionResources(step.K8sOutputResources)
+			defer ct.CleanUpExtensionResources(ctx, step.K8sOutputResources)
 			if !success {
 				t.Skip("skipping due to previous step failure")
 				return
@@ -526,28 +575,36 @@ func (ct RPTest) Test(t *testing.T) {
 					// Ensure that the resource is deleted with retries
 					notFound := false
 					baseWaitTime := 15 * time.Second
+					var lastErr error
 
 					for attempt := 1; attempt <= AWSDeletionRetryLimit; attempt++ {
 						t.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
 
 						// Use AWS CloudControl.Get method to validate that the resource is deleted
-						notFound, err = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
+						notFound, lastErr = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
 
 						if notFound {
 							t.Logf("AWS resource %s to be deleted was not found", resource.Identifier)
 							break
-						} else if err != nil {
-							t.Logf("checking existence of resource %s failed with err: %s", resource.Name, err)
-							break
-						} else {
-							// Wait with exponential backoff
-							waitTime := baseWaitTime * time.Duration(attempt)
-							t.Logf("waiting for %s before next attempt", waitTime)
-							time.Sleep(waitTime)
 						}
+
+						if lastErr != nil {
+							// A delete that is still in flight can surface as a transient error rather than
+							// ResourceNotFoundException, so keep retrying instead of failing immediately.
+							t.Logf("checking existence of resource %s failed with err: %s", resource.Name, lastErr)
+						}
+
+						if attempt == AWSDeletionRetryLimit {
+							break
+						}
+
+						// Wait with linear backoff
+						waitTime := baseWaitTime * time.Duration(attempt)
+						t.Logf("waiting for %s before next attempt", waitTime)
+						time.Sleep(waitTime)
 					}
 
-					require.Truef(t, notFound, "AWS resource %s was present, should be not found", resource.Identifier)
+					require.Truef(t, notFound, "AWS resource %s was present, should be not found (last error: %v)", resource.Identifier, lastErr)
 					t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
 				} else {
 					t.Logf("skipping deletion of %s", resource.Name)
@@ -559,7 +616,7 @@ func (ct RPTest) Test(t *testing.T) {
 			continue
 		}
 
-		for _, resource := range step.RPResources.Resources {
+		for _, resource := range validation.ResourcesInDeletionOrder(step.RPResources) {
 			t.Logf("deleting %s", resource.Name)
 
 			if ct.FastCleanup {
@@ -570,7 +627,7 @@ func (ct RPTest) Test(t *testing.T) {
 				go func(r validation.RPResource) {
 					// Use a background context that won't be canceled when the test finishes
 					// Use silent deletion to avoid "Log in goroutine after test has completed" panics
-					bgCtx := context.Background()
+					bgCtx := context.Background() //nolint:usetesting
 					_ = validation.DeleteRPResourceSilent(bgCtx, cli, ct.Options.ManagementClient, r)
 					// Errors are ignored in fast cleanup mode since it's best-effort
 				}(resource)

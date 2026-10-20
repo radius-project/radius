@@ -17,7 +17,6 @@ limitations under the License.
 package terraform
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -52,7 +51,7 @@ func TestInstall_SuccessfulDownload(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	installer := install.NewInstaller()
 
 	// Call Install function - should download to global location
@@ -94,7 +93,7 @@ func TestInstall_GlobalBinaryReuse(t *testing.T) {
 	// Reset global state for this test
 	resetGlobalStateForTesting()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	installer := install.NewInstaller()
 
 	// First Install call - should download
@@ -152,7 +151,7 @@ func TestInstall_MultipleConcurrentCallsUseSameBinary(t *testing.T) {
 	// Reset global state for this test
 	resetGlobalStateForTesting()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	installer := install.NewInstaller()
 
 	// Create temporary execution directories
@@ -220,7 +219,7 @@ func TestInstall_GlobalBinaryConcurrency(t *testing.T) {
 	resetGlobalStateForTesting()
 
 	// Test that multiple concurrent Install calls use the same binary without race conditions
-	ctx := context.Background()
+	ctx := t.Context()
 	installer := install.NewInstaller()
 
 	// Create multiple execution directories (as would happen in production)

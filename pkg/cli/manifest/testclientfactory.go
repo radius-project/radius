@@ -23,7 +23,6 @@ import (
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucpfake "github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 )
@@ -40,9 +39,7 @@ func NewTestClientFactory(resourceProvidersServer func() ucpfake.ResourceProvide
 	serverFactoryTransport := ucpfake.NewServerFactoryTransport(&serverFactory)
 
 	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
-		},
+		Transport: serverFactoryTransport,
 	}
 
 	clientFactory, err := v20231001preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
@@ -78,9 +75,7 @@ func WithResourceProviderServerNoError() ucpfake.ResourceProvidersServer {
 			options *v20231001preview.ResourceProvidersClientGetOptions, // Add this parameter
 		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.ResourceProvidersClientGetResponse{
-				ResourceProviderResource: v20231001preview.ResourceProviderResource{
-					Name: new(resourceProviderName),
-				},
+				Name: new(resourceProviderName),
 			}
 			resp.SetResponse(http.StatusOK, response, nil)
 			return
@@ -92,32 +87,30 @@ func WithResourceProviderServerNoError() ucpfake.ResourceProvidersServer {
 			options *v20231001preview.ResourceProvidersClientGetProviderSummaryOptions,
 		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetProviderSummaryResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.ResourceProvidersClientGetProviderSummaryResponse{
-				ResourceProviderSummary: v20231001preview.ResourceProviderSummary{
-					Name: new(resourceProviderName),
-					ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
-						"testResources": {
-							Description: new("Resource type description"),
-							APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
-								"2023-10-01-preview": {
-									Schema: map[string]any{
-										"properties": map[string]any{
-											"application": map[string]any{
-												"type":        "string",
-												"description": "The name of the application.",
-											},
-											"environment": map[string]any{
-												"type":        "string",
-												"description": "The name of the environment.",
-											},
-											"database": map[string]any{
-												"type":        "string",
-												"description": "The name of the database.",
-												"readOnly":    true,
-											},
+				Name: new(resourceProviderName),
+				ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{
+					"testResources": {
+						Description: new("Resource type description"),
+						APIVersions: map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{
+							"2023-10-01-preview": {
+								Schema: map[string]any{
+									"properties": map[string]any{
+										"application": map[string]any{
+											"type":        "string",
+											"description": "The name of the application.",
 										},
-										"required": []any{
-											"environment",
+										"environment": map[string]any{
+											"type":        "string",
+											"description": "The name of the environment.",
 										},
+										"database": map[string]any{
+											"type":        "string",
+											"description": "The name of the database.",
+											"readOnly":    true,
+										},
+									},
+									"required": []any{
+										"environment",
 									},
 								},
 							},
@@ -159,9 +152,7 @@ func WithResourceTypeServerNoError() ucpfake.ResourceTypesServer {
 			options *v20231001preview.ResourceTypesClientGetOptions,
 		) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.ResourceTypesClientGetResponse{
-				ResourceTypeResource: v20231001preview.ResourceTypeResource{
-					Name: new(resourceTypeName),
-				},
+				Name: new(resourceTypeName),
 			}
 			resp.SetResponse(http.StatusOK, response, nil)
 			return
@@ -220,12 +211,10 @@ func WithLocationServerNoError() ucpfake.LocationsServer {
 			options *v20231001preview.LocationsClientGetOptions,
 		) (resp azfake.Responder[v20231001preview.LocationsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.LocationsClientGetResponse{
-				LocationResource: v20231001preview.LocationResource{
-					Name: new(locationName),
-					ID:   new("id"),
-					Properties: &v20231001preview.LocationProperties{
-						ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
-					},
+				Name: new(locationName),
+				ID:   new("id"),
+				Properties: &v20231001preview.LocationProperties{
+					ResourceTypes: map[string]*v20231001preview.LocationResourceType{},
 				},
 			}
 			resp.SetResponse(http.StatusOK, response, nil)
@@ -260,9 +249,7 @@ func WithResourceProviderServerNotFoundError() ucpfake.ResourceProvidersServer {
 			options *v20231001preview.ResourceProvidersClientGetOptions, // Add this parameter
 		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.ResourceProvidersClientGetResponse{
-				ResourceProviderResource: v20231001preview.ResourceProviderResource{
-					Name: new(resourceProviderName),
-				},
+				Name: new(resourceProviderName),
 			}
 			resp.SetResponse(http.StatusNotFound, response, nil)
 			return
@@ -305,9 +292,7 @@ func WithResourceProviderServerInternalError() ucpfake.ResourceProvidersServer {
 			options *v20231001preview.ResourceProvidersClientGetOptions, // Add this parameter
 		) (resp azfake.Responder[v20231001preview.ResourceProvidersClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.ResourceProvidersClientGetResponse{
-				ResourceProviderResource: v20231001preview.ResourceProviderResource{
-					Name: new(resourceProviderName),
-				},
+				Name: new(resourceProviderName),
 			}
 			resp.SetResponse(http.StatusInternalServerError, response, nil)
 			return

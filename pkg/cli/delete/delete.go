@@ -23,6 +23,7 @@ import (
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/output/progress"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -33,7 +34,7 @@ func DeleteApplicationWithProgress(ctx context.Context, amc clients.Applications
 	output.LogInfo("")
 
 	progressChan := make(chan clients.ResourceProgress, 1)
-	listener := NewProgressListener(progressChan)
+	listener := progress.NewListener(progressChan)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {

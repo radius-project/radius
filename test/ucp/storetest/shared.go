@@ -18,13 +18,13 @@ limitations under the License.
 package storetest
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/util/etag"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -145,9 +145,7 @@ func parseOrPanic(id string) resources.ID {
 
 func createObject(id resources.ID, data any) database.Object {
 	return database.Object{
-		Metadata: database.Metadata{
-			ID: id.String(),
-		},
+		ID:   id.String(),
 		Data: data,
 	}
 }
@@ -191,7 +189,7 @@ func CompareObjectLists(t *testing.T, expected []database.Object, actual []datab
 // different IDs and scopes, and checks the results of various query scenarios with different filters and scopes. It also
 // checks that the expected objects are returned.
 func RunTest(t *testing.T, client database.Client, clear func(t *testing.T)) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	t.Run("get_not_found", func(t *testing.T) {
@@ -281,6 +279,36 @@ func RunTest(t *testing.T, client database.Client, clear func(t *testing.T)) {
 		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
+
+		// The stored ETag must reflect the updated data so that subsequent
+		// reads and optimistic-concurrency writes agree on the current value.
+		require.Equal(t, obj1.ETag, obj1Get.ETag)
+	})
+
+	t.Run("save_can_update_repeatedly_with_matching_etag", func(t *testing.T) {
+		clear(t)
+
+		// Regression test: an update must refresh the stored ETag so that a
+		// caller can chain optimistic-concurrency updates using the ETag
+		// returned by the previous Save. Otherwise the second update fails
+		// with a spurious concurrency conflict.
+		obj1 := createObject(Resource1ID, Data1)
+		err := client.Save(ctx, &obj1)
+		require.NoError(t, err)
+		require.NotEmpty(t, obj1.ETag)
+
+		obj1.Data = Data2
+		err = client.Save(ctx, &obj1, database.WithETag(obj1.ETag))
+		require.NoError(t, err)
+
+		obj1.Data = Data1
+		err = client.Save(ctx, &obj1, database.WithETag(obj1.ETag))
+		require.NoError(t, err)
+
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
+		require.NoError(t, err)
+		compareObjects(t, &obj1, obj1Get)
+		require.Equal(t, obj1.ETag, obj1Get.ETag)
 	})
 
 	t.Run("save_cannot_update_not_matching_etag", func(t *testing.T) {

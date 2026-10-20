@@ -106,8 +106,7 @@ func ValidateResourceGroup(ctx context.Context, client database.Client, id resou
 // ValidateResourceType performs semantic validation of a proxy request against registered
 // resource types.
 //
-// Returns NotFoundError if the resource type does not exist.
-// Returns InvalidError if the request cannot be routed due to an invalid configuration.
+// Returns InvalidError if the resource type does not exist or if the request cannot be routed due to an invalid configuration.
 func ValidateResourceType(ctx context.Context, client database.Client, id resources.ID, locationName string, apiVersion string) (*url.URL, error) {
 	// The strategy is to:
 	// - Look up the resource type and validate that it exists .. then
@@ -123,7 +122,7 @@ func ValidateResourceType(ctx context.Context, client database.Client, id resour
 
 		_, err = database.GetResource[datamodel.ResourceType](ctx, client, resourceTypeID.String())
 		if errors.Is(err, &database.ErrNotFound{}) {
-			return nil, &InvalidError{Message: fmt.Sprintf("resource type %q not found", id.Type())}
+			return nil, resourceTypeNotRegisteredError(id.Type())
 		} else if err != nil {
 			return nil, fmt.Errorf("failed to fetch resource type %q: %w", id.Type(), err)
 		}
@@ -170,7 +169,7 @@ func ValidateResourceType(ctx context.Context, client database.Client, id resour
 
 	// Now check if the location supports the resource type and API version. If it does, we can return the downstream URL.
 	if locationResourceType == nil {
-		return nil, &InvalidError{Message: fmt.Sprintf("resource type %q not supported by location %q", id.Type(), locationName)}
+		return nil, resourceTypeNotRegisteredError(id.Type())
 	}
 
 	_, ok := locationResourceType.APIVersions[apiVersion]
@@ -192,6 +191,10 @@ func ValidateResourceType(ctx context.Context, client database.Client, id resour
 	}
 
 	return u, nil
+}
+
+func resourceTypeNotRegisteredError(resourceType string) *InvalidError {
+	return &InvalidError{Message: fmt.Sprintf("resource type %q is not registered. register the resource type before deploying resources of this type", resourceType)}
 }
 
 // isOperationResourceType returns true if the resource type is an operation resource type (operationResults/operationStatuses).

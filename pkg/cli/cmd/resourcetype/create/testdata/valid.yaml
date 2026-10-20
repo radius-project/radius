@@ -7,12 +7,6 @@ types:
       2023-10-01-preview:
         schema:
           properties:
-            application:
-              type: string
-              description: The name of the application.
-            environment:
-              type: string
-              description: The name of the environment.
             database:
               type: string
               description: The name of the database.
@@ -26,12 +20,6 @@ types:
       2023-10-01-preview:
         schema:
           properties:
-            application:
-              type: string
-              description: The name of the application.
-            environment:
-              type: string
-              description: The name of the environment.
             database:
               type: string
               description: The name of the database.

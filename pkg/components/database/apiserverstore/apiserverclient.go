@@ -42,15 +42,16 @@ package apiserverstore
 
 import (
 	"context"
-	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/radius-project/radius/pkg/components/database"
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/radius-project/radius/pkg/components/database/databaseutil"
+	"github.com/radius-project/radius/pkg/hashutil"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/ucp/util/etag"
@@ -59,6 +60,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/util/wait"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -116,7 +118,7 @@ func (c *APIServerClient) Query(ctx context.Context, query database.Query, optio
 	}
 
 	rs := ucpv1alpha1.ResourceList{}
-	err = c.client.List(ctx, &rs, runtimeclient.InNamespace(c.namespace), runtimeclient.MatchingLabelsSelector{Selector: selector})
+	err = c.list(ctx, &rs, runtimeclient.InNamespace(c.namespace), runtimeclient.MatchingLabelsSelector{Selector: selector})
 	if err != nil {
 		return nil, err
 	}
@@ -170,10 +172,8 @@ func (c *APIServerClient) Get(ctx context.Context, id string, options ...databas
 		return nil, &database.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 
-	resourceName := resourceName(parsed)
-
 	resource := ucpv1alpha1.Resource{}
-	err = c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
+	err = c.getResourceWithFallback(ctx, parsed, &resource)
 	if err != nil && apierrors.IsNotFound(err) {
 		return nil, &database.ErrNotFound{ID: id}
 	} else if err != nil {
@@ -206,13 +206,11 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...data
 		return &database.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 
-	resourceName := resourceName(parsed)
-
 	config := database.NewDeleteConfig(options...)
 
 	err = c.doWithRetry(func() (bool, error) {
 		resource := ucpv1alpha1.Resource{}
-		err := c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
+		err := c.getResourceWithFallback(ctx, parsed, &resource)
 		if err != nil && apierrors.IsNotFound(err) && config.ETag != "" {
 			return false, &database.ErrConcurrency{}
 		} else if err != nil && apierrors.IsNotFound(err) {
@@ -284,22 +282,16 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 		return err
 	}
 
-	resourceName := resourceName(id)
-
 	config := database.NewSaveConfig(options...)
 
 	err = c.doWithRetry(func() (bool, error) {
-		found := true
-		resource := ucpv1alpha1.Resource{}
-		err = c.client.Get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName}, &resource)
-		if err != nil && apierrors.IsNotFound(err) {
-			found = false
-		} else if err != nil {
+		name, resource, found, err := c.getResourceForSave(ctx, id)
+		if err != nil {
 			return false, err
 		}
 
 		// These need to be initialized if we're creating the object.
-		resource.Name = resourceName
+		resource.Name = name
 		resource.Namespace = c.namespace
 
 		converted, err := convert(obj)
@@ -353,6 +345,51 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 	return err
 }
 
+// transientBackoff is the backoff used to retry reads that fail with a transient API server error.
+var transientBackoff = wait.Backoff{Duration: 200 * time.Millisecond, Factor: 2, Steps: 5}
+
+// isTransient reports whether err is a temporary API server failure (for example a 503 while the
+// API server or an aggregated API is briefly unavailable) that is safe to retry.
+func isTransient(err error) bool {
+	return apierrors.IsServiceUnavailable(err) || apierrors.IsServerTimeout(err) || apierrors.IsTimeout(err) || apierrors.IsTooManyRequests(err)
+}
+
+// get reads an object and retries when the API server returns a transient error.
+func (c *APIServerClient) get(ctx context.Context, key runtimeclient.ObjectKey, obj runtimeclient.Object) error {
+	return retryRead(ctx, "get", key.Name, func() error {
+		return c.client.Get(ctx, key, obj)
+	})
+}
+
+// list lists objects and retries when the API server returns a transient error.
+func (c *APIServerClient) list(ctx context.Context, list runtimeclient.ObjectList, opts ...runtimeclient.ListOption) error {
+	return retryRead(ctx, "list", "", func() error {
+		return c.client.List(ctx, list, opts...)
+	})
+}
+
+// retryRead runs a read-only API server call, retrying transient errors with transientBackoff. It
+// stops waiting as soon as ctx is cancelled and returns the last API error.
+func retryRead(ctx context.Context, op string, name string, read func() error) error {
+	backoff := transientBackoff
+	for {
+		err := read()
+		if err == nil || !isTransient(err) || backoff.Steps <= 1 {
+			return err
+		}
+
+		delay := backoff.Step()
+		ucplog.FromContextOrDiscard(ctx).Info("Retrying Kubernetes read after transient error", "operation", op, "name", name, "delay", delay.String(), "error", err.Error())
+
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return err
+		case <-timer.C:
+		}
+	}
+}
 func (c *APIServerClient) doWithRetry(action func() (bool, error)) error {
 	for range RetryCount {
 		retryable, err := action()
@@ -398,28 +435,89 @@ func normalizeName(name string) string {
 }
 
 func resourceName(id resources.ID) string {
-	// The kubernetes resource names we use are built according to the following format
-	//
-	// resource.<resource name>.<id hash> (for a resource)
-	// scope.<resource name>.<id hash> (for a scope)
-	hasher := sha1.New()
-	_, _ = hasher.Write([]byte(strings.ToLower(id.String())))
-	hash := hasher.Sum(nil)
+	return makeResourceName(id, hashutil.Hex([]byte(strings.ToLower(id.String()))))
+}
+
+// legacyResourceName computes the Kubernetes object name using the legacy SHA-1 hash.
+//
+// SHA-1 is retained only to locate resources written by older versions of Radius during the
+// migration to SHA-256. Use resourceName for new values. See
+// https://github.com/radius-project/radius/issues/8084.
+func legacyResourceName(id resources.ID) string {
+	return makeResourceName(id, hashutil.LegacyHex([]byte(strings.ToLower(id.String()))))
+}
+
+// makeResourceName builds the Kubernetes object name from the resource ID and a hex hash of the ID.
+//
+// The kubernetes resource names we use are built according to the following format:
+//
+//	resource.<resource name>.<id hash> (for a resource)
+//	scope.<resource name>.<id hash> (for a scope)
+func makeResourceName(id resources.ID, hash string) string {
+	// The hash is truncated to 40 hex characters (the width of the legacy SHA-1 hash) so the name
+	// continues to fit within the 253-character Kubernetes object name limit.
+	const hashLength = 40
+	if len(hash) > hashLength {
+		hash = hash[:hashLength]
+	}
 
 	prefix := database.UCPResourcePrefix
 	if id.IsScope() {
 		prefix = database.UCPScopePrefix
 	}
 
-	noramlizedName := normalizeName(id.Name())
+	normalizedName := normalizeName(id.Name())
 	// 211 = 253 (max length of Kubernetes Object name) - 40 (hex hash length) - 2 (dot separators)
 	maxResourceNameLen := 211 - len(prefix)
-	if len(noramlizedName) >= maxResourceNameLen {
-		noramlizedName = noramlizedName[:maxResourceNameLen]
+	if len(normalizedName) >= maxResourceNameLen {
+		normalizedName = normalizedName[:maxResourceNameLen]
 	}
 
 	// example: resource.resource1.ec291e26078b7ea8a74abfac82530005a0ecbf15
-	return fmt.Sprintf("%s.%s.%x", prefix, noramlizedName, hash)
+	return fmt.Sprintf("%s.%s.%s", prefix, normalizedName, hash)
+}
+
+// getResourceWithFallback reads the Kubernetes Resource object that stores id, preferring the
+// current (SHA-256) object name and falling back to the legacy (SHA-1) name written by older
+// versions of Radius. The returned error is NotFound only if neither object exists. See
+// https://github.com/radius-project/radius/issues/8084.
+func (c *APIServerClient) getResourceWithFallback(ctx context.Context, id resources.ID, resource *ucpv1alpha1.Resource) error {
+	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}, resource)
+	if apierrors.IsNotFound(err) {
+		return c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacyResourceName(id)}, resource)
+	}
+
+	return err
+}
+
+// getResourceForSave reads the Kubernetes Resource object that should store id for a write. It
+// prefers the current (SHA-256) name, but falls back to the legacy (SHA-1) name when id's entry
+// already exists there so existing data is updated in place rather than duplicated. New resources
+// are created under the current name. It returns the name to operate under, the object (empty if it
+// does not exist), and whether the object already exists. See
+// https://github.com/radius-project/radius/issues/8084.
+func (c *APIServerClient) getResourceForSave(ctx context.Context, id resources.ID) (string, ucpv1alpha1.Resource, bool, error) {
+	current := resourceName(id)
+	resource := ucpv1alpha1.Resource{}
+	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: current}, &resource)
+	if err == nil {
+		return current, resource, true, nil
+	} else if !apierrors.IsNotFound(err) {
+		return "", ucpv1alpha1.Resource{}, false, err
+	}
+
+	// The current-named object does not exist. Fall back to the legacy name if this resource's entry
+	// was written by an older version of Radius, so we update it in place.
+	legacy := legacyResourceName(id)
+	legacyResource := ucpv1alpha1.Resource{}
+	err = c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacy}, &legacyResource)
+	if err == nil && findIndex(&legacyResource, id) != nil {
+		return legacy, legacyResource, true, nil
+	} else if err != nil && !apierrors.IsNotFound(err) {
+		return "", ucpv1alpha1.Resource{}, false, err
+	}
+
+	return current, ucpv1alpha1.Resource{}, false, nil
 }
 
 func assignLabels(resource *ucpv1alpha1.Resource) labels.Set {
@@ -532,10 +630,8 @@ func readEntry(entry *ucpv1alpha1.ResourceEntry) (*database.Object, error) {
 	}
 
 	obj := database.Object{
-		Metadata: database.Metadata{
-			ID:   entry.ID,
-			ETag: entry.ETag,
-		},
+		ID:   entry.ID,
+		ETag: entry.ETag,
 		Data: data,
 	}
 

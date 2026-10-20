@@ -128,7 +128,7 @@ func Test_AWS_Credential(t *testing.T) {
 			err = json.Unmarshal(credentialInput, credentialVersionedInput)
 			require.NoError(t, err)
 
-			request, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPut, tt.headerfile, credentialVersionedInput)
+			request, err := rpctest.NewHTTPRequestFromJSON(t.Context(), http.MethodPut, tt.headerfile, credentialVersionedInput)
 			require.NoError(t, err)
 
 			ctx := rpctest.NewARMRequestContext(request)

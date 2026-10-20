@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/main/schema/markdownlint-cli2-config-schema.json
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
+---
+config:
+  extends: ./.markdownlint.yml
+gitignore: true
+# `gitignore: true` already skips anything in .gitignore, so most build output is
+# covered. The entries below target committed/vendored content that still should
+# not be linted. Kept in sync with the ignorePaths in .cspell.yml.
+ignores:
+  - .git
+  # Dependencies, infra and build output (belt-and-suspenders with gitignore).
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/.terraform/**"
+  - "**/venv/**"
+  - "**/.venv/**"
+  # Hugo vendored themes/modules and generated output (docs, website, blog).
+  - "**/themes/**"
+  - "**/_vendor/**"
+  - "**/public/**"
+  - "**/resources/_gen/**"
+  # Auto-generated or staged content that shouldn't be spell/lint checked.
+  - "**/CHANGELOG.md"
+  - "**/holding-pen/**"
+  - "**/redirect/**"
+  - .copilot-tracking/**

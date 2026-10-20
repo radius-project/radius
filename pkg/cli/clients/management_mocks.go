@@ -35,7 +35,7 @@ import (
 // Because these interfaces are non-exported, they MUST be defined in their own file
 // and we MUST use -source on mockgen to generate mocks for them.
 
-//go:generate mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient,resourceProviderClient,resourceTypeClient,apiVersonClient,locationClient,recipePackResourceClient,radiusCoreEnvironmentResourceClient
+//go:generate go tool mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient,resourceProviderClient,resourceTypeClient,apiVersonClient,locationClient,recipePackResourceClient,radiusCoreEnvironmentResourceClient
 
 // genericResourceClient is an interface for mocking the generated SDK client for any resource.
 type genericResourceClient interface {
@@ -51,8 +51,6 @@ type applicationResourceClient interface {
 	Delete(ctx context.Context, applicationName string, options *corerpv20231001.ApplicationsClientDeleteOptions) (corerpv20231001.ApplicationsClientDeleteResponse, error)
 	Get(ctx context.Context, applicationName string, options *corerpv20231001.ApplicationsClientGetOptions) (corerpv20231001.ApplicationsClientGetResponse, error)
 	NewListByScopePager(options *corerpv20231001.ApplicationsClientListByScopeOptions) *runtime.Pager[corerpv20231001.ApplicationsClientListByScopeResponse]
-
-	GetGraph(ctx context.Context, applicationName string, body map[string]any, options *corerpv20231001.ApplicationsClientGetGraphOptions) (corerpv20231001.ApplicationsClientGetGraphResponse, error)
 }
 
 // environmentResourceClient is an interface for mocking the generated SDK client for environment resources.
@@ -61,8 +59,6 @@ type environmentResourceClient interface {
 	Delete(ctx context.Context, environmentName string, options *corerpv20231001.EnvironmentsClientDeleteOptions) (corerpv20231001.EnvironmentsClientDeleteResponse, error)
 	Get(ctx context.Context, environmentName string, options *corerpv20231001.EnvironmentsClientGetOptions) (corerpv20231001.EnvironmentsClientGetResponse, error)
 	NewListByScopePager(options *corerpv20231001.EnvironmentsClientListByScopeOptions) *runtime.Pager[corerpv20231001.EnvironmentsClientListByScopeResponse]
-
-	GetMetadata(ctx context.Context, environmentName string, body corerpv20231001.RecipeGetMetadata, options *corerpv20231001.EnvironmentsClientGetMetadataOptions) (corerpv20231001.EnvironmentsClientGetMetadataResponse, error)
 }
 
 // resourceGroupClient is an interface for mocking the generated SDK client for resource groups.

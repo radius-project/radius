@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
+	"github.com/radius-project/radius/pkg/version"
 )
 
 // DefaultFactory provides easy access to the default implementation of the factory. DO NOT modify this in your code. Even if it's for tests. DO NOT DO IT.
@@ -39,6 +40,7 @@ var DefaultFactory = &impl{}
 
 // ConnectionFactory is a mockable abstraction for our client-server interactions.
 type Factory interface {
+	GetControlPlaneVersion(ctx context.Context, workspace workspaces.Workspace) (version.VersionInfo, error)
 	CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error)
 	CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
 	CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error)
@@ -48,6 +50,19 @@ type Factory interface {
 var _ Factory = (*impl)(nil)
 
 type impl struct {
+}
+
+// GetControlPlaneVersion reads version information from the selected workspace, not Helm.
+func (*impl) GetControlPlaneVersion(ctx context.Context, workspace workspaces.Workspace) (version.VersionInfo, error) {
+	config, err := workspace.ConnectionConfig()
+	if err != nil {
+		return version.VersionInfo{}, err
+	}
+	connection, err := config.Connect()
+	if err != nil {
+		return version.VersionInfo{}, err
+	}
+	return sdk.GetVersion(ctx, connection)
 }
 
 // CreateDeploymentClient connects to a workspace, tests the connection, creates a deployment client and an operations
@@ -90,8 +105,9 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 	}, nil
 }
 
-// CreateDiagnosticsClient creates a DiagnosticsClient by connecting to a workspace, testing the connection, and creating
-// clients for applications, containers, environments, and gateways. If an error occurs, it is returned.
+// CreateDiagnosticsClient creates a DiagnosticsClient for a Kubernetes workspace. Logs and Expose resolve
+// Radius.Compute/containers through the management client, which discovers the API version registered
+// for each resource type. GetPublicEndpoint reads Applications.Core/gateways through the gateway client.
 func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error) {
 	connection, err := workspace.Connect(ctx)
 	if err != nil {
@@ -114,38 +130,25 @@ func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces
 			return nil, err
 		}
 
-		clientOpts := sdk.NewClientOptions(connection)
-		appClient, err := generated.NewGenericResourcesClient("Applications.Core/applications", workspace.Scope, &aztoken.AnonymousCredential{}, clientOpts)
+		gwClient, err := generated.NewGenericResourcesClient("Applications.Core/gateways", workspace.Scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(connection))
 		if err != nil {
 			return nil, err
 		}
 
-		cntrClient, err := generated.NewGenericResourcesClient("Applications.Core/containers", workspace.Scope, &aztoken.AnonymousCredential{}, clientOpts)
-		if err != nil {
-			return nil, err
-		}
-
-		envClient, err := generated.NewGenericResourcesClient("Applications.Core/environments", workspace.Scope, &aztoken.AnonymousCredential{}, clientOpts)
-		if err != nil {
-			return nil, err
-		}
-
-		gwClient, err := generated.NewGenericResourcesClient("Applications.Core/gateways", workspace.Scope, &aztoken.AnonymousCredential{}, clientOpts)
+		managementClient, err := i.CreateApplicationsManagementClient(ctx, workspace)
 		if err != nil {
 			return nil, err
 		}
 
 		return &deployment.ARMDiagnosticsClient{
-			K8sTypedClient:    k8sClient,
-			RestConfig:        config,
-			K8sRuntimeClient:  client,
-			ApplicationClient: *appClient,
-			ContainerClient:   *cntrClient,
-			EnvironmentClient: *envClient,
-			GatewayClient:     *gwClient,
+			K8sTypedClient:   k8sClient,
+			RestConfig:       config,
+			K8sRuntimeClient: client,
+			GatewayClient:    *gwClient,
+			ManagementClient: managementClient,
 		}, nil
 	default:
-		return nil, fmt.Errorf("unsupported connection type: %+v", connection)
+		return nil, fmt.Errorf("unsupported connection type: %+v", connectionConfig)
 	}
 }
 

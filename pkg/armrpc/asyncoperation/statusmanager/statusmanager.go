@@ -31,7 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/trace"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // statusManager includes the necessary functions to manage asynchronous operations.
@@ -49,7 +49,7 @@ type QueueOperationOptions struct {
 	RetryAfter time.Duration
 }
 
-//go:generate mockgen -typed -destination=./mock_statusmanager.go -package=statusmanager -self_package github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager StatusManager
+//go:generate go tool mockgen -typed -destination=./mock_statusmanager.go -package=statusmanager -self_package github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager StatusManager
 
 // StatusManager is an interface to manage async operation status.
 type StatusManager interface {
@@ -93,12 +93,10 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 
 	opID := aom.operationStatusResourceID(sCtx.ResourceID, sCtx.OperationID)
 	aos := &Status{
-		AsyncOperationStatus: v1.AsyncOperationStatus{
-			ID:        opID,
-			Name:      sCtx.OperationID.String(),
-			Status:    v1.ProvisioningStateAccepted,
-			StartTime: time.Now().UTC(),
-		},
+		ID:               opID,
+		Name:             sCtx.OperationID.String(),
+		Status:           v1.ProvisioningStateAccepted,
+		StartTime:        time.Now().UTC(),
 		LinkedResourceID: sCtx.ResourceID.String(),
 		Location:         aom.location,
 		RetryAfter:       options.RetryAfter,
@@ -107,8 +105,8 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 	}
 
 	err := aom.databaseClient.Save(ctx, &database.Object{
-		Metadata: database.Metadata{ID: opID},
-		Data:     aos,
+		ID:   opID,
+		Data: aos,
 	})
 
 	if err != nil {

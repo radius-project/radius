@@ -1,57 +1,33 @@
-# Contributing Pull Requests
+# Contributing pull requests
 
-## What to work on
+## Purpose
 
-We welcome small pull request contributions from anyone (docs improvements, bug fixes, minor features.) as long as they follow a few guidelines:
+This guide explains how to open a pull request against [`radius-project/radius`](https://github.com/radius-project/radius): what to work on, how to prepare and submit your change, and what to expect during review. It is for anyone — first-time or returning contributors, human or agent — who wants a change merged into Radius. For a guided, end-to-end walkthrough of your first change, start with the [first commit guide](../contributing-code/contributing-code-first-commit/); this page is the authoritative reference for the pull-request process itself.
 
-- For very minor changes like correcting a typo feel free to just send a pull request without any ceremony. Otherwise ...
-- Please start by [choosing an existing issue](https://github.com/radius-project/radius/issues), or [opening an issue](https://github.com/radius-project/radius/issues/new/choose) to work on.
-- The maintainers will respond to your issue, please work with the maintainers to ensure that what you're doing is in scope for the project before writing any code.
-- If you have any doubt whether a contribution would be valuable, feel free to ask.
+## Prerequisites
 
-We the maintainers have discretion over what features and pull requests we accept. Please understand that we are responsible for the long-term support and maintenance of Radius, and so we sometimes need to make hard decisions to limit the scope. For another perspective on this, we really like this [article](https://www.igvita.com/2011/12/19/dont-push-your-pull-requests/).
+Before opening a pull request, make sure you have:
 
-## Sending a pull request
+- **Agreement on scope.** For anything beyond a trivial fix (like a typo), [choose an existing issue](https://github.com/radius-project/radius/issues) or [open a new one](https://github.com/radius-project/radius/issues/new/choose) and work with the maintainers to confirm the change is in scope *before* writing code. The maintainers have discretion over what they accept — see [this article](https://www.igvita.com/2011/12/19/dont-push-your-pull-requests/) for why. If you have any doubt whether a contribution is valuable, ask first.
+- **Eligibility for external automated contributions.** External contributors using an AI agent, coding bot, or other automation may only implement an open issue that has the `triaged` label and either the `help wanted` or `good first issue` label. The issue must not be assigned to someone else or already have an open pull request. Re-check these conditions immediately before opening your pull request. If any condition is not satisfied, do not implement the issue or open a pull request; automated contributions do not receive the trivial-fix exception above.
+- **A fork of the repository.** Submit pull requests from a forked repo against the `main` branch (the default) unless otherwise instructed.
+- **A working local build.** Run the basic validations (`make build test lint format-check`) successfully before you submit. See [building the repo](../contributing-code/contributing-code-building/) for setup.
 
-> 💡 If you're new to Go or new to open source, our [first commit guide](./../contributing-code/contributing-code-first-commit/) can walk you through the process of making code changes and submitting a pull request.
+## Steps
 
-Please submit pull requests using a forked repo and open pull requests against the `main` branch (the default) unless otherwise instructed.
+### 1. Make your change and validate it locally
 
-When opening a pull request, the form will be pre-populated with our template. Please fill out the template to provide structure to your PR message. If you've already written a good commit message (see below) it will be easy to use with our template.
+Work on your fork and run the basic validations before submitting:
 
-A pull request will need to pass the following checkpoints to be accepted:
+```bash
+make build test lint format-check
+```
 
-- Initial review: a maintainer will review your summary and make sure an appropriate issue is linked
-- Testing: automated tests will run against your changes
-- Contributor PR checklist: the PR meets the [checklist requirements](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md#contributor-checklist).
-- Code review: you will get feedback from a maintainer or other contributors in the form of comments
+This builds the repo, runs the unit tests, and runs the linters. If you get stuck, you can open the pull request anyway and ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814).
 
-We expect that contributors have run basic validations (`make build test lint`) before sending a pull request. See [building the repo](../contributing-code/contributing-code-building/) for more information. If you get stuck during this step feel free to open the pull request anyway and ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814).
+### 2. Write a good commit message
 
-## Filling out the pull request template
-
-Our pull request template will ask you to choose one of three options from a list when submitting the pull request. Telling us what type of change the pull request contains will help us author the release notes and informs reviewers about what to look for in your pull request.
-
-The following tips should help you decide which option to choose:
-
-- Does this change fix a bug in Radius? We define a bug as a case where Radius does not work as advertised, or where a crash or some other kind of internal failure occurs. If you said Yes, then choose the first option (Bugfix).
-- Does this change introduce new features or behaviors? Does this change modify an existing feature of Radius in a way that's visible to users? If you said Yes, choose the second option (Feature).
-- If neither of the two previous options sounds right, and there's no user-visible change in your pull request then choose the third option (Task).
-
-We use Task as a catch-all for changes that have no direct user-visible impact. In practice many changes are Tasks, and we don't include them in the release notes. This includes minor refactors, code/style cleanup, test improvements, correcting misspellings in comments, changes to build processes, etc.
-
-## Tips
-
-Keep reading for some tips about how to get your pull requests accepted!
-
-## How to get help with a pull request
-
-- Notify the Radius Core team by commenting with `@radius-project/radius-core-team` on your pull-request.
-- Post on Discord in the [#Forum channel](https://discord.gg/GJHN7kQrMh) to start a conversation.
-
-## Writing a good commit message
-
-We value good commit messages that are descriptive and meaningful at a glance. A good format to follow is like the following:
+We value commit messages that are descriptive and meaningful at a glance. A good format to follow is:
 
 ```txt
 <short description>
@@ -66,82 +42,131 @@ Fixes: #<issue>
 - (optional) additional follow up work that should be done (with links)
 ```
 
-We **squash** pull-requests as part of the merge process, which means that intermediate commits will have their messages appended. We prefer to have a single commit in the git history for each PR.
+We **squash** pull requests as part of the merge process, so intermediate commit messages are appended. We prefer a single commit in the git history for each PR.
 
-## Signing your commits
+### 3. Use a Conventional Commit pull request title
 
-See [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide.
+Radius uses the pull request title as the squash commit subject. Format the title as `<type>[optional scope][!]: <description>`, using one of these types:
 
-## Automated tests
+| Type       | Use for                                               | Changelog group  |
+|------------|-------------------------------------------------------|------------------|
+| `feat`     | New user-facing functionality                         | Added            |
+| `fix`      | Bug fixes                                             | Fixed            |
+| `perf`     | Performance improvements                              | Changed          |
+| `refactor` | Internal changes that affect behavior or maintenance  | Changed          |
+| `style`    | Format and lint changes                               | Excluded         |
+| `revert`   | Reverted changes                                      | Reverted changes |
+| `docs`     | Documentation-only changes                            | Excluded         |
+| `test`     | Test-only changes                                     | Excluded         |
+| `build`    | Build-system changes                                  | Excluded         |
+| `ci`       | Continuous-integration changes                        | Excluded         |
+| `chore`    | Routine maintenance that fits no user-facing category | Excluded         |
 
-Our GitHub Actions workflows will run against your pull request to validate the changes. This will run the unit tests, integration tests, and functional tests.
+Automated dependency updates keep the prefixes Dependabot is configured with, `ci(deps):` and `chore(deps):`, and are grouped under Dependencies rather than excluded.
 
-Ideally everything works the first time, but you may not be so lucky! Our automation will add comments to your pull request that helps explain what's happening. This will include links to logs where you can diagnose what's happening.
+Scopes are optional. Add `!` before the colon for a breaking change. For example:
 
-The functional tests workflow requires an approval to run by one of our approvers who will be automatically notified when the PR is submitted. Our approvers will scan the PR and will approve the test run if everything in the PR looks acceptable to run tests. Once the test run is approved, you should see the functional tests start running for your PR.
-
-If you get stuck with a failure you can't understand, feel free to ask the maintainers for help.
-
-### CodeQL security analysis
-
-We run [CodeQL](https://codeql.github.com/) as part of the pull-request process for security analysis. If the CodeQL analysis finds a security issue it will be reported as part of the PR checks. CodeQL is not currently required to pass for a PR to be merged, as it may be triggered by other alerts within the repo.
-
-If CodeQL fails due to your changes, please work with the maintainers to resolve the issue.
-
-### Spell checking
-
-The PR check workflow runs a spell checker ([cspell](https://cspell.org/)) using a [custom dictionary](https://github.com/radius-project/radius/blob/main/.cspellignore) file. If the spell check fails look at the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for which words are misspelled. Add words to the dictionary file if they are spelled correctly but cspell doesn't know them.
-
-If you install cspell locally you can run the spell check on your machine with this command (from the root folder of the repo):
-
-```bash
-make spellcheck
+```text
+feat(cli): add recipe validation
+fix(controller): preserve resource status
+refactor(api)!: remove the legacy response field
 ```
 
-Note: cspell requires [Node.js](https://nodejs.org/). Install it globally with `npm install -g cspell`.
+These signals determine changelog grouping only. They never select the Radius version: scheduled full releases bump the minor version while Radius is `0.x`, and patch releases bump the patch version of their release channel.
 
-## Code review
+The `action-semantic-pull-request` status enforces this format and must pass before a pull request can merge. If it fails, edit the pull request title — the status re-runs automatically on every title edit, and no new commit is needed. While a pull request is still in progress you can prefix the title with `[WIP]`, which leaves the status pending rather than failing, so the pull request stays unmergeable without being reported as broken.
 
-The maintainers or other contributors will add comments to your pull request giving feedback, asking questions, and making suggestions. Please respond to these comments to either continue the discussion or explain whether or not you plan to address the feedback. Ultimately, accepting a pull request is at the maintainer's discretion.
+See the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification for more details.
 
-### Being proactive
+### 4. Sign your commits
 
-It can be helpful for you to comment on your own PR to point out relevant locations, decisions, opportunities for feedback, and tricky parts. This will help reviewers focus their attention as well as save them time.
+The Developer Certificate of Origin (DCO) check requires every commit to include a `Signed-off-by` line. Every commit must also be cryptographically signed so that GitHub displays a **Verified** badge. These are separate requirements; see [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide for setup and remediation guidance.
 
-### Optional: self-review with the `radius-code-review` skill
+The commit-signature verification workflow posts a non-blocking reminder when any commit does not show a **Verified** signature. It updates that reminder while commits remain unverified and leaves it on the pull request after all commits are verified.
+
+### 5. Open the pull request and fill out the template
+
+Open the pull request from your fork against `main`. The form is pre-populated with our [template](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md). Complete its summary, reason for change, test instructions, and per-file change summary so reviewers can understand both the intent and the verification.
+
+Remove the template's HTML comments from the PR description after filling out the sections.
+
+The **How to test** section must give reproducible instructions a reviewer can follow: prerequisites, commands or actions, and expected outcomes. This section should not contain a list of validations performed by the PR author when creating the PR.
+
+Every non-Dependabot pull request must have exactly one release-impact label:
+
+- **`pr:standard`** — ongoing maintenance, minor improvements, documentation updates, and routine development work.
+- **`pr:important`** — major features, breaking changes, deprecations, or other high-impact changes that need special attention during release and in release notes.
+
+The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
+
+The shared [PR Status Labels automation](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md) from `radius-project/.github` keeps one **handoff label** on each open, non-draft pull request so contributors and maintainers can see who owns the next action: `pr:needs-reviewer`, `pr:waiting-for-review`, `pr:waiting-for-author`, or `pr:review-approved`. It also adds `pr:needs-rebase` when the PR has merge conflicts, and `pr:ready-for-queue` when review is approved, the PR is mergeable, required checks pass, and it is not already queued. These labels are signals, not substitutes for GitHub's merge rules or the merge queue. The shared documentation describes the [handoff rules](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#handoff-labels), how to [rename the labels](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#configuration), and the [trust model](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#trust-model). Radius runs the automation through the synced [PR Status Labels](../../../.github/workflows/pr-status-labels.yml) and [PR Review Signal](../../../.github/workflows/pr-review-signal.yml) workflows.
+
+The synced [labels workflow](../../../.github/workflows/labels.yml) applies the [label catalog](../../../.github/labels.yml), which defines the shared lifecycle and hold labels plus the Radius release-impact labels `pr:standard` and `pr:important`. It never deletes other repository labels. The catalog is synced from `radius-project/.github`: shared labels come from `sync-templates/.github/labels.yml.njk` and Radius labels from the `repo_labels` variable in `.github/sync.yml`. Don't edit `.github/labels.yml` here, because the next sync overwrites it; change the definitions in `radius-project/.github` as described in the shared [label catalog](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#label-catalog) documentation.
+
+Draft PRs have no handoff label. Maintainers can apply the **`pr:do-not-merge`** label to pause a PR; it removes the handoff and queue-ready labels. Use **`pr:needs-author-response`** for an explicit author-response request, including actionable general discussion outside inline review threads, then remove it after the author responds. The automation never applies or removes these manual labels. Both manual labels fail the `PR Required Labels` check, through the shared [hold check](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#hold-check), and remove a PR from the merge queue if it was already queued. Holds also apply to Dependabot PRs, which do not need a release-impact label.
+
+### 6. (Optional) Self-review with the `radius-code-review` skill
 
 If you use GitHub Copilot, you can run the [`radius-code-review`](../../../.github/skills/radius-code-review/SKILL.md) skill against your own pull request to generate an initial AI-assisted review *before* asking maintainers to look at it. This can help you catch obvious issues, missing tests, or unclear comments while you still own the change.
 
-**Prerequisites**
+Prerequisites for the skill:
 
-- Authenticated [`gh` CLI](https://cli.github.com/) and [`jq`](https://jqlang.org/) installed locally.
+- Authenticated [`gh` CLI](https://cli.github.com/) installed locally.
 - One of: the [GitHub Copilot app](https://github.com/features/copilot), [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-cli), or VS Code with the [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat) extension (with prompt files enabled — see VS Code's [prompt files docs](https://code.visualstudio.com/docs/copilot/copilot-customization#_prompt-files-experimental)).
 
-**Suggested workflow**
+Suggested workflow:
 
 1. Push your branch and open the pull request.
 2. Run the skill against your PR using one of:
    - **GitHub Copilot app**: open Copilot for this repository and ask `Use the radius-code-review skill to review PR #<your-pr-number>.` (or `/radius-code-review Review PR #<your-pr-number>`).
    - **Copilot CLI** (from the repo root): `/radius-code-review Review PR #<your-pr-number>`
    - **VS Code Copilot Chat**: type `/radius.code-review` in the chat input; VS Code will pick up `.github/prompts/radius.code-review.prompt.md` and prompt you for the PR number.
-3. Read the generated `pr-analysis-<n>.md` and `pr-review-<n>.md` under `.copilot-tracking/`. Treat the output as a draft, not a verdict.
+3. Read the findings the skill returns in chat, or stages in the active PR review surface when that capability is available. Treat the output as a draft, not a verdict.
 4. Apply the fixes you agree with, push the updates, and discard or push back on the suggestions you disagree with.
-5. Do **not** post the AI-generated review to your own PR as-is. The script under `.copilot-tracking/pr-review-<n>.sh` is a starting point if you want to surface specific findings, but a human reviewer's review is still required for merge.
+5. Do **not** post AI-generated review text to your own PR as-is. A human reviewer's review is still required for merge.
 
 See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md#optional-ai-assisted-review-with-the-radius-code-review-skill) for the reviewer perspective on this skill.
 
-### Resolving Feedback
+### 7. Respond to review feedback
 
-You can "resolve" comments on your pull request when you've addressed the feedback: either through discussion or through making a code change. As the contributor of the pull-request feel free to mark comments as resolved when you feel like you've done a reasonable job addressing the feedback.
+The maintainers or other contributors will add comments giving feedback, asking questions, and making suggestions. Respond to each comment to continue the discussion or explain whether you plan to address it. Accepting a pull request is ultimately at the maintainer's discretion.
 
-If you are the code reviewer, it's your responsibility to follow up (politely) if you feel your feedback has not been addressed adequately.
+- **Be proactive.** Comment on your own PR to point out relevant locations, decisions, opportunities for feedback, and tricky parts. This focuses reviewers' attention and saves them time.
+- **Resolve feedback.** Mark comments as resolved once you've addressed them through discussion or a code change. If you are the reviewer, follow up (politely) if you feel your feedback hasn't been addressed adequately.
+- **Hand review back.** After addressing human feedback, push your changes or reply. A push or comment after the latest outstanding feedback transfers the handoff to reviewers without resolving threads or approving the PR; re-requesting review from each reviewer with outstanding feedback also works. Resolve each review thread from a blocking bot reviewer, such as Copilot, once you have addressed it or decided not to act on it, because those unresolved threads keep the PR waiting for you. Resolve addressed human threads when appropriate. When responding to a manually flagged comment, clear `pr:needs-author-response` if you can manage labels, or ask a maintainer to clear it; neither a response nor a re-request clears this manual hold.
+- **Anyone can participate.** We welcome any contributor or community member to engage with any pull request. Make suggestions and ask relevant questions; if a question is for your own learning, make it clear that it is "non-blocking." See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md) for full guidance.
 
-### Participating in code review
+## Verification
 
-We welcome **any contributor or community member** to engage with **any pull request** on our repository. Feel free to make suggestions for improvements and ask questions that are relevant. If you're asking questions for your learning, please make it clear that your questions are "non-blocking" for the pull request.
+A pull request must pass these checkpoints to be accepted:
 
-See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md) for guidance on code reviewing.
+- **Initial review** — a maintainer reviews your summary and confirms an appropriate issue is linked.
+- **External automation eligibility** — a pull request opened through external automation links to an eligible issue with the required labels.
+- **Automated tests** — GitHub Actions workflows run unit, integration, and functional tests against your changes. Automation adds comments with links to logs so you can diagnose failures.
+- **Conventional Commit title** — the `action-semantic-pull-request` status passes after validating the title format in [Use a Conventional Commit pull request title](#3-use-a-conventional-commit-pull-request-title).
+- **Required label** — exactly one of `pr:standard` or `pr:important` is applied.
+- **No merge hold** — neither `pr:do-not-merge` nor `pr:needs-author-response` is present.
+- **Code review** — you receive and address feedback from a maintainer or other contributors.
 
-## Inactive Pull Requests
+The functional-tests workflow requires approval to run. One of our approvers is automatically notified when you submit the PR; once they approve the run, the functional tests start.
 
-Pull requests that have been inactive for 90 days will be marked with a stale label. They will automatically be closed after a subsequent 7 days of inactivity. This timeframe may be adjusted in the future based on project needs.
+### How to get help with a pull request
+
+- Notify the Radius Core team by commenting `@radius-project/radius-core-team` on your pull request.
+- Post on Discord in the [#Forum channel](https://discord.gg/GJHN7kQrMh) to start a conversation.
+
+## Troubleshooting
+
+- **A functional-test run hasn't started.** The functional-tests workflow requires an approver to approve the run. Approvers are notified automatically when you submit; if a run hasn't started, wait for approval or ask the maintainers.
+- **The `action-semantic-pull-request` status fails.** The title is not a valid Conventional Commit. The workflow output names the problem, most often an unknown or missing type. Rename the title to `<type>[optional scope][!]: <description>` using a type from the table in [Use a Conventional Commit pull request title](#3-use-a-conventional-commit-pull-request-title); the status re-runs on the edit.
+- **CodeQL reports a security issue.** We run [CodeQL](https://codeql.github.com/) for security analysis on every PR. It is not currently required to pass for a PR to be merged, as it may be triggered by other alerts in the repo. If CodeQL fails due to your changes, work with the maintainers to resolve it.
+- **The spell check fails.** The PR check workflow runs [cspell](https://cspell.org/) with a [custom dictionary](https://github.com/radius-project/radius/blob/main/.cspellignore). Check the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for the flagged words and add correctly spelled words to `.cspellignore`. Run it locally from the repo root with:
+
+  ```bash
+  make spellcheck
+  ```
+
+  cspell requires [Node.js](https://nodejs.org/); install it globally with `npm install -g cspell`.
+- **A CI failure you can't understand.** Our automation adds comments with links to logs. If you're still stuck, ask the maintainers for help.
+- **A handoff label is missing or outdated.** CI, base-branch, PR conversation comment, and thread resolution changes are picked up by a nominal 15-minute scheduled reconciliation, and the Actions approval policy can hold `PR Review Signal` runs for Copilot or fork review activity; see the shared [limitations](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#limitations). Maintainers can rerun `PR Status Labels` from the Actions tab with a PR number, or leave it blank to reconcile all open PRs. If fork PR labeling does not start, check whether the repository's Actions policy allows `pull_request_target`.
+- **Your PR was marked stale.** Pull requests inactive for 28 days are marked with the `stale` label and closed after one further day of inactivity. Comment or push an update to keep your PR active.

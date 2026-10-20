@@ -17,12 +17,12 @@ limitations under the License.
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
@@ -54,7 +54,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 			OperationID:      uuid.New(),
 			OperationType:    "APPLICATIONS.DATASTORES/MONGODATABASES|DELETE",
 			ResourceID:       resourceID,
-			CorrelationID:    uuid.NewString(),
+			CorrelationID:    uuid.New().String(),
 			OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 		}
 
@@ -136,9 +136,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 			if tt.getErr == nil {
 				eng.EXPECT().
 					Delete(gomock.Any(), engine.DeleteOptions{
-						BaseOptions: engine.BaseOptions{
-							Recipe: recipeData,
-						},
+						Recipe:          recipeData,
 						OutputResources: status.OutputResources,
 					}).
 					Return(tt.engDelErr).
@@ -172,7 +170,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 			ctrl, err := NewDeleteResource(opts, successProcessorReference, eng, configLoader)
 			require.NoError(t, err)
 
-			_, err = ctrl.Run(context.Background(), req)
+			_, err = ctrl.Run(t.Context(), req)
 
 			if tt.getErr != nil || tt.engDelErr != nil || tt.scDelErr != nil {
 				require.Error(t, err)

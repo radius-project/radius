@@ -17,17 +17,19 @@ limitations under the License.
 package ucp
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/defaults"
+	"github.com/radius-project/radius/pkg/schema/baseresource"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_ResourceProviderRegistration(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	options := rp.NewTestOptions(t)
@@ -41,6 +43,15 @@ func Test_ResourceProviderRegistration(t *testing.T) {
 		expectedApiVersion       = "2023-10-01-preview"
 	)
 
+	// The manifest declares an empty schema ("schema: {}"). Registration merges
+	// the canonical base resource properties (application, environment,
+	// connections, codeReference) into it, so the registered schema is exactly
+	// what baseresource.Apply produces from an empty starting point. Building
+	// the expectation from baseresource keeps this test in sync with base.yaml
+	// instead of duplicating the merged property definitions inline.
+	expectedSchema := map[string]any{}
+	require.NoError(t, baseresource.MustLoad().Apply(expectedSchema))
+
 	expectedData := map[string]any{
 		"name": resourceProviderName,
 		"locations": map[string]any{
@@ -49,9 +60,14 @@ func Test_ResourceProviderRegistration(t *testing.T) {
 		"resourceTypes": map[string]any{
 			expectedResourceTypeName: map[string]any{
 				"apiVersions": map[string]any{
-					expectedApiVersion: map[string]any{},
+					expectedApiVersion: map[string]any{
+						"schema": expectedSchema,
+					},
 				},
 				"capabilities": []any{"ManualResourceProvisioning"},
+				// Types registered without an icon get the product default
+				// icon's hash stamped on the record at registration time.
+				"iconHash": defaults.DefaultIcon().Hash,
 			},
 		},
 	}

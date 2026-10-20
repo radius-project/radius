@@ -40,7 +40,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 	defer mctrl.Finish()
 
 	databaseClient := database.NewMockClient(mctrl)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, redisDataModel, _ := getTestModels20231001preview()
 
@@ -86,8 +86,8 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id},
-					Data:     redisDataModel,
+					ID:   id,
+					Data: redisDataModel,
 				}, nil
 			})
 
@@ -125,8 +125,8 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id},
-					Data:     redisDataModel,
+					ID:   id,
+					Data: redisDataModel,
 				}, nil
 			})
 
@@ -186,8 +186,8 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id},
-					Data:     redisDataModel,
+					ID:   id,
+					Data: redisDataModel,
 				}, nil
 			})
 

@@ -38,7 +38,7 @@ func Test_ResourceProviderSummary_DataModelToVersioned(t *testing.T) {
 			filename: "resourceprovidersummary_datamodel.json",
 			expected: &ResourceProviderSummary{
 				Name: new("Applications.Test"),
-				Locations: map[string]map[string]any{
+				Locations: map[string]*ResourceProviderSummaryLocation{
 					"east": {},
 				},
 				ResourceTypes: map[string]*ResourceProviderSummaryResourceType{
@@ -84,4 +84,29 @@ func Test_ResourceProviderSummary_DataModelToVersioned(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ResourceProviderSummary_Icon_DataModelToVersioned(t *testing.T) {
+	dm := &datamodel.ResourceProviderSummary{
+		Properties: datamodel.ResourceProviderSummaryProperties{
+			ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
+				"testResources": {
+					Icon:     new(`<svg/>`),
+					IconHash: new("deadbeef"),
+				},
+			},
+		},
+	}
+	dm.Name = "Applications.Test"
+
+	versioned := &ResourceProviderSummary{}
+	err := versioned.ConvertFrom(dm)
+	require.NoError(t, err)
+
+	rt := versioned.ResourceTypes["testResources"]
+	require.NotNil(t, rt)
+	require.NotNil(t, rt.Icon)
+	require.Equal(t, `<svg/>`, *rt.Icon)
+	require.NotNil(t, rt.IconHash)
+	require.Equal(t, "deadbeef", *rt.IconHash)
 }

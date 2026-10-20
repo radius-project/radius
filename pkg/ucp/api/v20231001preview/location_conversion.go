@@ -25,18 +25,14 @@ import (
 // ConvertTo converts from the versioned LocationResource resource to version-agnostic datamodel.
 func (src *LocationResource) ConvertTo() (v1.DataModelInterface, error) {
 	dst := &datamodel.Location{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   to.String(src.ID),
-				Name: to.String(src.Name),
-				Type: datamodel.LocationResourceType,
+		TrackedResource: v1.TrackedResource{
+			ID:   to.String(src.ID),
+			Name: to.String(src.Name),
+			Type: datamodel.LocationResourceType,
 
-				// NOTE: this is a child resource. It does not have a location, systemData, or tags.
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
+			// NOTE: this is a child resource. It does not have a location, systemData, or tags.
 		},
+		UpdatedAPIVersion: Version,
 	}
 
 	dst.Properties = datamodel.LocationProperties{
@@ -89,7 +85,7 @@ func toLocationResourceTypeDatamodel(src *LocationResourceType) datamodel.Locati
 	return dst
 }
 
-func toLocationAPIVersionDatamodel(_ map[string]any) datamodel.LocationAPIVersionConfiguration {
+func toLocationAPIVersionDatamodel(_ *LocationResourceTypeAPIVersion) datamodel.LocationAPIVersionConfiguration {
 	dst := datamodel.LocationAPIVersionConfiguration{
 		// Empty for now.
 	}
@@ -98,7 +94,7 @@ func toLocationAPIVersionDatamodel(_ map[string]any) datamodel.LocationAPIVersio
 
 func fromLocationResourceTypeDatamodel(src datamodel.LocationResourceTypeConfiguration) *LocationResourceType {
 	dst := &LocationResourceType{
-		APIVersions: map[string]map[string]any{},
+		APIVersions: map[string]*LocationResourceTypeAPIVersion{},
 	}
 
 	for name, value := range src.APIVersions {
@@ -108,8 +104,8 @@ func fromLocationResourceTypeDatamodel(src datamodel.LocationResourceTypeConfigu
 	return dst
 }
 
-func fromLocationAPIVersionDatamodel(src datamodel.LocationAPIVersionConfiguration) map[string]any {
-	dst := map[string]any{
+func fromLocationAPIVersionDatamodel(_ datamodel.LocationAPIVersionConfiguration) *LocationResourceTypeAPIVersion {
+	dst := &LocationResourceTypeAPIVersion{
 		// Empty for now.
 	}
 	return dst

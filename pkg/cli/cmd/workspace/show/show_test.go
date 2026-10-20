@@ -17,7 +17,6 @@ limitations under the License.
 package show
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/cmd/workspace/common"
@@ -93,11 +92,12 @@ func Test_Run(t *testing.T) {
 				Source:      workspaces.SourceUserConfig,
 				Name:        "test-workspace",
 				Environment: "test-environment",
+				Scope:       "/planes/radius/local/resourceGroups/test-group",
 				Connection:  map[string]any{},
 			},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -107,6 +107,7 @@ func Test_Run(t *testing.T) {
 					Source:      workspaces.SourceUserConfig,
 					Name:        "test-workspace",
 					Environment: "test-environment",
+					Scope:       "/planes/radius/local/resourceGroups/test-group",
 					Connection:  map[string]any{},
 				},
 				Options: common.WorkspaceFormat(),
@@ -125,7 +126,7 @@ func Test_Run(t *testing.T) {
 			Workspace:    workspaces.MakeFallbackWorkspace(),
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{

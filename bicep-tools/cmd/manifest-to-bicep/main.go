@@ -8,7 +8,7 @@ import (
 	"github.com/radius-project/radius/bicep-tools/pkg/cli"
 	"github.com/radius-project/radius/bicep-tools/pkg/manifest"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 var (

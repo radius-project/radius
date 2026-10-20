@@ -4,19 +4,19 @@ extension radius
 @description('Specifies the location for resources.')
 param location string = 'global'
 
-resource env 'Applications.Core/environments@2023-10-01-preview' = {
+resource env 'Radius.Core/environments@2025-08-01-preview' = {
   name: 'udt-schemavalidation-env'
   location: location
   properties: {
-    compute: {
-      kind: 'kubernetes'
-      resourceId: 'self'
-      namespace: 'udt-schemavalidation-env'
+    providers: {
+      kubernetes: {
+        namespace: 'udt-schemavalidation-app'
+      }
     }
   }
 }
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'udt-schemavalidation-app'
   location: location
   properties: {
@@ -25,12 +25,12 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 // This resource should fail schema validation due to type mismatches
-resource testResourceSchema 'Test.Resources/testResourceSchema@2023-10-01-preview'  = {
+resource testResourceSchema 'Test.Resources/testResourceSchema@2023-10-01-preview' = {
   name: 'udt-schemavalidation'
   location: location
   properties: {
     application: app.id
     environment: env.id
     validationData: 123
-    }
+  }
 }

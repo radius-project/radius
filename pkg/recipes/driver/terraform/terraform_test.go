@@ -24,7 +24,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	tfjson "github.com/hashicorp/terraform-json"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -34,7 +35,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
-	"github.com/radius-project/radius/test/testcontext"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,6 +53,9 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 		Providers: datamodel.Providers{
 			Azure: datamodel.ProvidersAzure{
 				Scope: "scope",
+			},
+			AWS: datamodel.ProvidersAWS{
+				Scope: "/planes/aws/aws/accounts/179022619019/regions/us-east-2",
 			},
 		},
 	}
@@ -88,7 +92,7 @@ func verifyDirectoryCleanup(t *testing.T, tfRootDirPath string, armOperationID s
 }
 
 func Test_Terraform_Execute_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -129,11 +133,9 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
 	recipeOutput, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
@@ -141,7 +143,7 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 }
 
 func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -159,19 +161,79 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))
 
 	_, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
 	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
+func Test_Terraform_Execute_InvalidOutputMapping(t *testing.T) {
+	invalidMappingErr := recipes_util.ValidateOutputsMapping(
+		"redis-azure",
+		"Applications.Datastores/redisCaches",
+		[]string{"endpoint"},
+		map[string]string{"host": "missing"},
+		nil)
+	require.Error(t, invalidMappingErr)
+
+	tests := []struct {
+		name           string
+		executionError error
+		expectedCode   string
+		expectedStatus recipes_util.RecipeDeploymentStatus
+	}{
+		{
+			name:           "classifies OutputMappingError as setup error",
+			executionError: invalidMappingErr,
+			expectedCode:   recipes.InvalidRecipeOutputs,
+			expectedStatus: recipes_util.RecipeSetupError,
+		},
+		{
+			name:           "does not classify plain error with same message as setup error",
+			executionError: errors.New(invalidMappingErr.Error()),
+			expectedCode:   recipes.RecipeDeploymentFailed,
+			expectedStatus: recipes_util.ExecutionError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			armCtx := &v1.ARMRequestContext{
+				OperationID: uuid.New(),
+			}
+			ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+			tfExecutor, tfDriver := setup(t)
+			envConfig, recipeMetadata, envRecipe := buildTestInputs()
+			envRecipe.Outputs = map[string]string{"host": "missing"}
+
+			tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, tt.executionError)
+
+			output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+				Configuration: envConfig,
+				Recipe:        recipeMetadata,
+				Definition:    envRecipe,
+			})
+
+			require.Nil(t, output)
+			require.Equal(t, &recipes.RecipeError{
+				ErrorDetails: v1.ErrorDetails{
+					Code:    tt.expectedCode,
+					Message: invalidMappingErr.Error(),
+				},
+				DeploymentStatus: tt.expectedStatus,
+			}, err)
+			verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
+		})
+	}
+}
+
 func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -205,11 +267,9 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
 	_, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
@@ -228,19 +288,17 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 		DeploymentStatus: "setupError",
 	}
 
-	_, err := tfDriver.Execute(testcontext.New(t), driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+	_, err := tfDriver.Execute(t.Context(), driver.ExecuteOptions{
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &expErr)
 }
 
 func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
 
 	tfExecutor, tfDriver := setup(t)
@@ -280,18 +338,16 @@ func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 		Return(expectedTFState, nil)
 
 	recipeOutput, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
 }
 
 func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	// Do not add ARMRequestContext to the context
 
 	_, tfDriver := setup(t)
@@ -299,35 +355,41 @@ func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 
 	require.Panics(t, func() {
 		_, _ = tfDriver.Execute(ctx, driver.ExecuteOptions{
-			BaseOptions: driver.BaseOptions{
-				Configuration: envConfig,
-				Recipe:        recipeMetadata,
-				Definition:    envRecipe,
-			},
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
 		})
 	})
 }
 
 func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
 	tfExecutor, tfDriver := setup(t)
-	_, _, envRecipe := buildTestInputs()
+	envConfig, _, envRecipe := buildTestInputs()
 
 	expectedOutput := map[string]any{
 		"parameters": map[string]any{
 			"redis_cache_name": "redis-test",
 		},
 	}
-	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).DoAndReturn(
+		func(_ context.Context, options terraform.Options) (map[string]any, error) {
+			// The environment configuration is required to add provider alias placeholders before the module download.
+			require.NotNil(t, options.EnvConfig)
+			require.Equal(t, envConfig, *options.EnvConfig)
+			require.Equal(t, envRecipe, *options.EnvRecipe)
+			return expectedOutput, nil
+		})
 
 	recipeData, err := tfDriver.GetRecipeMetadata(ctx, driver.BaseOptions{
-		Recipe:     recipes.ResourceMetadata{},
-		Definition: envRecipe,
+		Recipe:        recipes.ResourceMetadata{},
+		Definition:    envRecipe,
+		Configuration: envConfig,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeData)
@@ -346,7 +408,7 @@ func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
 		},
 	}
 
-	_, err := tfDriver.GetRecipeMetadata(testcontext.New(t), driver.BaseOptions{
+	_, err := tfDriver.GetRecipeMetadata(t.Context(), driver.BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
 		Definition: envRecipe,
 	})
@@ -355,7 +417,7 @@ func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
 }
 
 func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -382,7 +444,7 @@ func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
 }
 
 func Test_Terraform_Delete_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -390,15 +452,32 @@ func Test_Terraform_Delete_Success(t *testing.T) {
 
 	tfExecutor, tfDriver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+	envConfig.RecipeConfig.Terraform.Providers = map[string][]datamodel.ProviderConfigProperties{
+		"azurerm": {{
+			AdditionalProperties: map[string]any{"alias": "custom"},
+			Secrets:              map[string]datamodel.SecretReference{"tenant_id": {Source: "settings", Key: "tenant"}},
+		}},
+	}
+	envConfig.RecipeConfig.EnvSecrets = map[string]datamodel.SecretReference{
+		"ARM_CLIENT_ID": {Source: "settings", Key: "client"},
+	}
+	secrets := map[string]recipes.SecretData{
+		"settings": {Data: map[string]string{"tenant": "test-tenant", "client": "test-client"}},
+	}
 
-	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).Times(1).Return(nil)
+	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, opts terraform.Options) error {
+		require.Equal(t, &envConfig, opts.EnvConfig)
+		require.Equal(t, secrets, opts.Secrets, "destroy needs provider and environment secrets")
+		require.Equal(t, &recipeMetadata, opts.ResourceRecipe)
+		require.Equal(t, &envRecipe, opts.EnvRecipe)
+		return nil
+	})
 
 	err := tfDriver.Delete(ctx, driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration:   envConfig,
+		Recipe:          recipeMetadata,
+		Definition:      envRecipe,
+		Secrets:         secrets,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.NoError(t, err)
@@ -417,12 +496,10 @@ func Test_Terraform_Delete_EmptyPath(t *testing.T) {
 		},
 	}
 
-	err := tfDriver.Delete(testcontext.New(t), driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+	err := tfDriver.Delete(t.Context(), driver.DeleteOptions{
+		Configuration:   envConfig,
+		Recipe:          recipeMetadata,
+		Definition:      envRecipe,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.Error(t, err)
@@ -430,7 +507,7 @@ func Test_Terraform_Delete_EmptyPath(t *testing.T) {
 }
 
 func Test_Terraform_Delete_Failure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -450,15 +527,51 @@ func Test_Terraform_Delete_Failure(t *testing.T) {
 	}
 
 	err := tfDriver.Delete(ctx, driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration:   envConfig,
+		Recipe:          recipeMetadata,
+		Definition:      envRecipe,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.Error(t, err)
 	require.Equal(t, &expErr, err)
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
+}
+
+func Test_Terraform_Execute_MissingSecretOutput(t *testing.T) {
+	ctx := t.Context()
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, tfDriver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+	envRecipe.SecretOutputs = map[string]string{"connectionString": "primaryConnectionString"}
+
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(&tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				"name":                    {Value: "myhub"},
+				"primaryConnectionString": {Value: nil},
+			},
+			RootModule: &tfjson.StateModule{},
+		},
+	}, nil)
+
+	output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
+	})
+
+	require.Nil(t, output)
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.InvalidRecipeOutputs,
+			Message: `recipe "redis-azure" for resource type "Applications.Datastores/redisCaches": invalid outputs mapping: missing deployment output values for secrets["connectionString"] -> "primaryConnectionString"; available deployment outputs: "name"`,
+		},
+		DeploymentStatus: recipes_util.ExecutionError,
+	}, err)
 	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
@@ -493,12 +606,14 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 							{
 								Resources: []*tfjson.StateResource{
 									{
+										Type:         "aws_subnet",
 										ProviderName: "registry.terraform.io/hashicorp/aws",
 										AttributeValues: map[string]any{
 											"arn": "arn:aws:ec2:us-east-2:179022619019:subnet/subnet-0ddfaa93733f98002",
 										},
 									},
 									{
+										Type:         "aws_subnet",
 										ProviderName: "registry.terraform.io/hashicorp/aws",
 										AttributeValues: map[string]any{
 											"arn": "arn:aws:ec2:us-east-2:179022619019:Subnet/Subnet-0ddfaa93733f98002",
@@ -571,6 +686,8 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 				},
 				Resources: []string{"outputResourceId1",
 					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002",
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_subnet/subnet-0ddfaa93733f98002",
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_subnet/Subnet-0ddfaa93733f98002",
 					"/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
 					"/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/test-redis",
 					"/planes/kubernetes/local/namespaces/default/providers/core/ServiceAccount/test-service-account",
@@ -612,6 +729,105 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 			expectedResponse: &recipes.RecipeOutput{},
 			expectedErr:      errors.New("\"arn:aws:ec2:us-east-2:179022619019\" is not a valid ARN"),
+		},
+		{
+			desc: "AWS S3 bucket ARN uses Terraform AWS output resource identity",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_s3_bucket",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "my-bucket",
+									"arn": "arn:aws:s3:::my-bucket",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS resource name prefers Terraform ID",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_ecs_task_definition",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "orders:42",
+									"arn": "arn:aws:ecs:us-east-2:179022619019:task-definition/orders:42",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS resource name preserves colon in ARN path fallback",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_ecs_task_definition",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"arn": "arn:aws:ecs:us-east-2:179022619019:task-definition/orders:42",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS resource missing Terraform type returns actionable error",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"arn": "arn:aws:s3:::my-bucket",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("terraform AWS resource type is empty for ARN \"arn:aws:s3:::my-bucket\""),
 		},
 		{
 			desc: "kubernetes manifest type with no apiVersion information",
@@ -762,29 +978,238 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 	}
 
 	opts := driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Definition: recipes.EnvironmentDefinition{
-				Name:            "mongo-azure",
-				Driver:          recipes.TemplateKindTerraform,
-				TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
-				ResourceType:    "Applications.Datastores/mongoDatabases",
-				TemplateVersion: "1.0",
+		Configuration: recipes.Configuration{
+			Providers: datamodel.Providers{
+				AWS: datamodel.ProvidersAWS{
+					Scope: "/planes/aws/aws/accounts/179022619019/regions/us-east-2",
+				},
 			},
+		},
+		Definition: recipes.EnvironmentDefinition{
+			Name:            "mongo-azure",
+			Driver:          recipes.TemplateKindTerraform,
+			TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+			ResourceType:    "Applications.Datastores/mongoDatabases",
+			TemplateVersion: "1.0",
 		},
 		PrevState: []string{},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.BaseOptions.Definition, tt.state)
+			recipeResponse, err := d.prepareRecipeResponse(t.Context(), opts.BaseOptions.Definition, opts.Configuration, tt.state)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})
 	}
 }
 
+func Test_Terraform_PrepareRecipeResponse_DirectModule(t *testing.T) {
+	d := &terraformDriver{}
+	tests := []struct {
+		desc             string
+		definition       recipes.EnvironmentDefinition
+		state            *tfjson.State
+		expectedResponse *recipes.RecipeOutput
+		expectedErr      error
+	}{
+		{
+			desc: "direct module with outputs mapping",
+			definition: recipes.EnvironmentDefinition{
+				Name:            "postgres",
+				Driver:          recipes.TemplateKindTerraform,
+				TemplatePath:    "ballj/postgresql/kubernetes",
+				ResourceType:    "Applications.Datastores/sqlDatabases",
+				TemplateVersion: "1.0",
+				Outputs:         map[string]string{"host": "hostname", "port": "port_number"},
+			},
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						"hostname":    {Value: "pg.example.com"},
+						"port_number": {Value: json.Number("5432")},
+						"extra":       {Value: "ignored"},
+					},
+					RootModule: &tfjson.StateModule{},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": "pg.example.com", "port": json.Number("5432")},
+				Secrets: map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "ballj/postgresql/kubernetes",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "direct module with secretOutputs mapping - plain output forced to secret (AVM)",
+			definition: recipes.EnvironmentDefinition{
+				Name:            "eventhub",
+				Driver:          recipes.TemplateKindTerraform,
+				TemplatePath:    "Azure/eventhub/azurerm",
+				ResourceType:    "Demo.Messaging/kafka",
+				TemplateVersion: "1.0",
+				Outputs:         map[string]string{"host": "name"},
+				SecretOutputs:   map[string]string{"connectionString": "primary_connection_string"},
+			},
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						// The module declares primary_connection_string as a plain (non-sensitive) output.
+						"name":                      {Value: "myhub"},
+						"primary_connection_string": {Value: "Endpoint=sb://myhub/;SharedAccessKey=abc"},
+					},
+					RootModule: &tfjson.StateModule{},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": "myhub"},
+				Secrets: map[string]any{"connectionString": "Endpoint=sb://myhub/;SharedAccessKey=abc"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "Azure/eventhub/azurerm",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "direct module without outputs mapping - pass through all",
+			definition: recipes.EnvironmentDefinition{
+				Name:            "postgres",
+				Driver:          recipes.TemplateKindTerraform,
+				TemplatePath:    "ballj/postgresql/kubernetes",
+				ResourceType:    "Applications.Datastores/sqlDatabases",
+				TemplateVersion: "1.0",
+			},
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						"hostname": {Value: "pg.example.com"},
+						"password": {Value: "secret123", Sensitive: true},
+					},
+					RootModule: &tfjson.StateModule{},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values:  map[string]any{"hostname": "pg.example.com"},
+				Secrets: map[string]any{"password": "secret123"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "ballj/postgresql/kubernetes",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "module with result output and no outputs mapping - wrapped behavior",
+			definition: recipes.EnvironmentDefinition{
+				Name:            "mongo-azure",
+				Driver:          recipes.TemplateKindTerraform,
+				TemplatePath:    "radiusdev.azurecr.io/recipes/mongo:1.0",
+				ResourceType:    "Applications.Datastores/mongoDatabases",
+				TemplateVersion: "1.0",
+			},
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"values": map[string]any{
+									"host": "mongohost",
+								},
+								"secrets": map[string]any{
+									"connectionString": "mongodb://...",
+								},
+								"resources": []any{"resource1"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values:    map[string]any{"host": "mongohost"},
+				Secrets:   map[string]any{"connectionString": "mongodb://..."},
+				Resources: []string{"resource1"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/mongo:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "module with both result and outputs mapping - outputs wins",
+			definition: recipes.EnvironmentDefinition{
+				Name:            "postgres",
+				Driver:          recipes.TemplateKindTerraform,
+				TemplatePath:    "mymodule/postgres:1.0",
+				ResourceType:    "Applications.Datastores/sqlDatabases",
+				TemplateVersion: "1.0",
+				Outputs:         map[string]string{"host": "hostname"},
+			},
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"values": map[string]any{"host": "from-result"},
+							},
+						},
+						"hostname": {Value: "from-flat-output"},
+					},
+					RootModule: &tfjson.StateModule{},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": "from-flat-output"},
+				Secrets: map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "mymodule/postgres:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			recipeResponse, err := d.prepareRecipeResponse(t.Context(), tt.definition, recipes.Configuration{}, tt.state)
+			require.Equal(t, tt.expectedErr, err)
+			require.Equal(t, tt.expectedResponse, recipeResponse)
+		})
+	}
+}
+
+func Test_Terraform_PrepareRecipeResponse_MissingSecretOutput(t *testing.T) {
+	d := &terraformDriver{}
+	definition := recipes.EnvironmentDefinition{
+		Name:          "eventhub",
+		ResourceType:  "Demo.Messaging/kafka",
+		SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
+	}
+	state := &tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				"name":                    {Value: "myhub"},
+				"primaryConnectionString": {Value: nil},
+			},
+		},
+	}
+
+	response, err := d.prepareRecipeResponse(t.Context(), definition, recipes.Configuration{}, state)
+	require.Equal(t, &recipes.RecipeOutput{}, response)
+	require.EqualError(t, err, `recipe "eventhub" for resource type "Demo.Messaging/kafka": invalid outputs mapping: missing deployment output values for secrets["connectionString"] -> "primaryConnectionString"; available deployment outputs: "name"`)
+
+	var missingOutputErr *recipes_util.MissingOutputValuesError
+	require.ErrorAs(t, err, &missingOutputErr)
+}
+
 func Test_FindSecretIDs(t *testing.T) {
-	ctx := context.TODO()
+	ctx := t.Context()
 	definition := recipes.EnvironmentDefinition{TemplatePath: "git::https://dev.azure.com/project/module"}
 	_, driver := setup(t)
 

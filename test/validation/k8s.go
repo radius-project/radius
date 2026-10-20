@@ -79,6 +79,20 @@ func NewK8sPodForResource(application string, name string) K8sObject {
 	}
 }
 
+// NewK8sDeploymentForResource creates a new K8sObject for a deployment with the selector labels for the
+// application and resource.
+func NewK8sDeploymentForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "apps",
+			Version:  "v1",
+			Resource: "deployments",
+		},
+		Kind:   "Deployment",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
 // ValidateLabels creates a copy of the K8sObject and sets the SkipLabelValidation field based on the validate parameter.
 func (k K8sObject) ValidateLabels(validate bool) K8sObject {
 	copy := k
@@ -95,6 +109,36 @@ func NewK8sHTTPProxyForResource(application string, name string) K8sObject {
 			Resource: "httpproxies",
 		},
 		Kind:   "HTTPProxy",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
+// NewK8sHTTPRouteForResource creates a K8sObject for a Gateway API HTTPRoute with the Labels set to the
+// application and name provided. This is the Gateway API replacement for Contour HTTPProxy objects used by
+// the legacy Applications.Core/gateways type; the Radius.Compute/routes recipe renders HTTPRoute objects.
+func NewK8sHTTPRouteForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "gateway.networking.k8s.io",
+			Version:  "v1",
+			Resource: "httproutes",
+		},
+		Kind:   "HTTPRoute",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
+// NewK8sTLSRouteForResource creates a K8sObject for a Gateway API TLSRoute with the Labels set to the
+// application and name provided. The Radius.Compute/routes recipe renders a TLSRoute when the route kind is
+// TLS (SNI-based passthrough), which is the replacement for legacy gateway TLS passthrough.
+func NewK8sTLSRouteForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "gateway.networking.k8s.io",
+			Version:  "v1alpha2",
+			Resource: "tlsroutes",
+		},
+		Kind:   "TLSRoute",
 		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
 	}
 }
@@ -340,7 +384,7 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, namespace string, application string) {
 	labelset := kuberneteskeys.MakeSelectorLabels(application, "")
 
-	actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+	actualPods, err := k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labelset).String(),
 	})
 	assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
@@ -362,7 +406,7 @@ func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kuberne
 		case <-time.After(IntervalForPodShutdown):
 			t.Logf("at %s waiting for pods in namespace %s for application %s to shut down.. ", time.Now().Format("2006-01-02 15:04:05"), namespace, application)
 
-			actualPods, err := listPodsWithRetries(t, k8s, labelset, namespace, application)
+			actualPods, err := listPodsWithRetries(ctx, t, k8s, labelset, namespace, application)
 			assert.NoError(t, err)
 
 			logPods(t, actualPods.Items)
@@ -374,11 +418,11 @@ func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kuberne
 	}
 }
 
-func listPodsWithRetries(t *testing.T, k8s *kubernetes.Clientset, labelset map[string]string, namespace, application string) (*corev1.PodList, error) {
+func listPodsWithRetries(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, labelset map[string]string, namespace, application string) (*corev1.PodList, error) {
 	// Need to retry because of AKS error: https://github.com/radius-project/radius/issues/2484
 	retries := 3
 	for i := 1; i <= retries; i++ {
-		actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+		actualPods, err := k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labelset).String(),
 		})
 		if err == nil {
@@ -509,8 +553,6 @@ func matchesActualLabels(t *testing.T, expectedResources []K8sObject, actualReso
 					resourceExists = true
 					actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
 					break
-				} else {
-					t.Logf("Resource: %s Expected labels %v, got %v", actualResource.GetName(), expectedResource.Labels, actualResource.GetLabels())
 				}
 			}
 		}

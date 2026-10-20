@@ -35,7 +35,7 @@ on:
     # Expected client_payload:
     #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
-    #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
+    #   tag: Tag for the image (e.g. latest, 0.1, 0.61.0-rc.1, pr-123)
   # pull_request_target runs in the context of the base branch, providing access to secrets.
   # For external contributors, the approval-gate job requires manual approval before tests run.
   # SECURITY: We use pull_request_target but do NOT run any code from the PR until after approval.
@@ -44,22 +44,22 @@ on:
       - main
       - features/*
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected. In the
+  # merge queue the code already lives in the base repo (trusted context), so
+  # the check-trust / approval-gate jobs are skipped and setup proceeds.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
+concurrency:
+  group: ${{ format('{0}-{1}', github.workflow, (github.event_name == 'pull_request_target' && github.event.pull_request.number) || github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
 env:
   GOPROXY: https://proxy.golang.org
-  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.13.0
-  # yq version
-  YQ_VERSION: v4.44.3
-  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
-  # Helm version
-  HELM_VER: v3.19.4
-  # KinD cluster version
-  KIND_VER: v0.29.0
-  # Kubectl version
-  KUBECTL_VER: v1.25.0
   # Azure Keyvault CSI driver chart version
   AZURE_KEYVAULT_CSI_DRIVER_VER: 1.4.2
   # Azure workload identity webhook chart version
@@ -68,8 +68,16 @@ env:
   CONTAINER_REGISTRY: ${{ vars.FUNCTIONAL_TEST_CONTAINER_REGISTRY }}
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY }}
-  # The radius functional test timeout
-  FUNCTIONALTEST_TIMEOUT: 60m
+  # The radius functional test timeout. This bounds `go test` and must stay
+  # comfortably below the job's timeout-minutes: the job also pays for ~10
+  # minutes of setup (KinD cluster, Radius install, Helm charts, cloud logins)
+  # before the tests start, and must still have time afterwards to collect
+  # cluster diagnostics and upload artifacts. If `go test` is allowed to run to
+  # the job timeout, GitHub cancels the job mid-test and the post-test steps -
+  # including diagnostics collection - never run, which is exactly the evidence
+  # needed to debug a hang. The cloud legs normally spend about 5 minutes in
+  # `go test`, so this leaves a wide margin.
+  FUNCTIONALTEST_TIMEOUT: 30m
   # The Azure Location to store test resources
   AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
   # The base directory for storing test logs
@@ -120,6 +128,7 @@ jobs:
           client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: radius
           permission-members: read
 
       - name: Determine trust level
@@ -133,7 +142,7 @@ jobs:
         run: |
           # Same-repo PRs are always trusted (requires write access to push branches)
           if [ "${HEAD_REPO}" = "${BASE_REPO}" ]; then
-            echo "Same-repo PR from ${PR_AUTHOR} — trusted"
+            echo "Same-repo PR from ${PR_AUTHOR} - trusted"
             echo "is-external=false" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
@@ -142,10 +151,10 @@ jobs:
           # Uses app token which can read org membership regardless of visibility settings.
           # gh api returns exit code 0 for 204 (member) and non-zero for 404/302 (not a member).
           if gh api "orgs/${ORG}/members/${PR_AUTHOR}" --silent 2>/dev/null; then
-            echo "Fork PR from org member ${PR_AUTHOR} — trusted"
+            echo "Fork PR from org member ${PR_AUTHOR} - trusted"
             echo "is-external=false" >> "${GITHUB_OUTPUT}"
           else
-            echo "Fork PR from ${PR_AUTHOR} — external"
+            echo "Fork PR from ${PR_AUTHOR} - external"
             echo "is-external=true" >> "${GITHUB_OUTPUT}"
           fi
 
@@ -164,20 +173,48 @@ jobs:
       - name: Approved
         run: echo "Tests approved to run"
 
+  # Single authorization decision for the whole run. Centralizes the trust +
+  # approval gate so every downstream job keys off one result
+  # (needs.authorize.result == 'success') instead of repeating the boolean.
+  #
+  # Runs unless the whole run was cancelled, then fails - blocking the run - when:
+  #   - check-trust did not pass (fail-safe if the trust check itself errored), or
+  #   - approval-gate did not pass (an external contributor's approval was
+  #     rejected/'cancelled' or failed).
+  # 'skipped' is allowed: check-trust and approval-gate are skipped for trusted
+  # authors and for non-PR events (schedule, repository_dispatch, merge_group).
+  authorize:
+    name: Authorize
+    needs: [check-trust, approval-gate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Evaluate trust and approval
+        env:
+          CHECK_TRUST_RESULT: ${{ needs.check-trust.result }}
+          APPROVAL_GATE_RESULT: ${{ needs.approval-gate.result }}
+        run: |
+          if [ "${CHECK_TRUST_RESULT}" != "success" ] && [ "${CHECK_TRUST_RESULT}" != "skipped" ]; then
+            echo "::error::Blocked - trust check did not pass (result=${CHECK_TRUST_RESULT})."
+            exit 1
+          fi
+          if [ "${APPROVAL_GATE_RESULT}" != "success" ] && [ "${APPROVAL_GATE_RESULT}" != "skipped" ]; then
+            echo "::error::Blocked - approval was not granted (result=${APPROVAL_GATE_RESULT})."
+            exit 1
+          fi
+          echo "Authorized to proceed."
+
   setup:
     name: Setup
-    needs: [check-trust, approval-gate]
-    # Run for all events. For PRs:
-    #   - check-trust determines if the author is external
-    #   - approval-gate runs only for external contributors and requires manual approval
-    #   - If check-trust or approval-gate are skipped (non-PR events), setup proceeds
-    # For pull_request_target, require approval-gate to be 'success' or 'skipped' — block
-    # on 'cancelled' (rejected approval) to prevent running PR code with secrets.
-    if: |
-      !cancelled() &&
-      (needs.check-trust.result == 'success' || needs.check-trust.result == 'skipped') &&
-      (needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
-      (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
+    needs: [authorize]
+    # Gate on the single authorize decision; the schedule guard keeps scheduled
+    # runs limited to the canonical repository. always() is required so the skip
+    # that propagates from the intentionally-skipped approval-gate on trusted
+    # (same-repo) PRs does not also skip setup; the explicit authorize check still
+    # enforces the gate.
+    if: always() && needs.authorize.result == 'success' && (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -248,10 +285,22 @@ jobs:
             echo "CHECKOUT_REF=refs/heads/${INPUT_BRANCH}"
           } >> "${GITHUB_ENV}"
 
+      - name: Set up checkout target (merge_group)
+        if: github.event_name == 'merge_group'
+        run: |
+          # GITHUB_SHA is the merge queue's combined commit (base + queued PRs).
+          # Using it as the checkout ref and the status-check sha ensures the
+          # required check is reported on the commit the merge queue validates.
+          {
+            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
+            echo "CHECKOUT_REF=${GITHUB_SHA}"
+          } >> "${GITHUB_ENV}"
+
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          allow-unsafe-pr-checkout: true
 
       - name: Set DE image and tag (repository_dispatch from deployment-engine.run-functional-tests)
         if: github.event_name == 'repository_dispatch'
@@ -305,8 +354,9 @@ jobs:
   build:
     name: Build Radius for test
     needs: [setup, changes]
-    # Skip if only docs/markdown changed
-    if: always() && needs.changes.outputs.only_changed != 'true'
+    # Require setup to have produced REL_VERSION/CHECKOUT_REF (otherwise the image
+    # tag would be empty); also skip if only docs/markdown changed.
+    if: always() && needs.setup.result == 'success' && needs.changes.outputs.only_changed != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -314,8 +364,10 @@ jobs:
       packages: write # Required for uploading the package
       pull-requests: write # Required for updating pull requests
       id-token: write # Required for azure/login
+    outputs:
+      REL_VERSION: ${{ steps.test-image-version.outputs.REL_VERSION }}
     env:
-      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      REL_VERSION: test-${{ needs.setup.outputs.UNIQUE_ID }}-${{ github.run_id }}-${{ github.run_attempt }}
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
@@ -326,6 +378,10 @@ jobs:
       DAPR_VER: 1.14.4
       ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
+      - name: Record immutable test image version
+        id: test-image-version
+        run: echo "REL_VERSION=${REL_VERSION}" >>"${GITHUB_OUTPUT}"
+
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -336,20 +392,30 @@ jobs:
           permission-pull-requests: write
 
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           persist-credentials: false
+          allow-unsafe-pr-checkout: true
 
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-          cache: true
+          # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
+          cache: false
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+        with:
+          module-directories: |
+            .
+            test/magpiego
+            test/testrp
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -372,8 +438,6 @@ jobs:
             |**Unique ID** | ${{ env.UNIQUE_ID }} |
             |**Image tag** | ${{ env.REL_VERSION }} |
 
-            * gotestsum ${{ env.GOTESTSUM_VER }}
-            * KinD: ${{ env.KIND_VER }}
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
@@ -390,13 +454,13 @@ jobs:
             ## Test Status
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -415,13 +479,14 @@ jobs:
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
 
       - name: Upload CLI binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: |
             ./dist/linux_amd64/release/rad
+          overwrite: true
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -432,7 +497,7 @@ jobs:
           message: |
             :white_check_mark: Container images build succeeded
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -443,7 +508,7 @@ jobs:
           message: |
             :x: Container images build failed
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -455,18 +520,13 @@ jobs:
             :hourglass: Publishing Bicep Recipes for functional tests...
 
       - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
       - name: Install yq
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.
-        run: |
-          mkdir -p "${RUNNER_TEMP}/bin"
-          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
-          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
-          chmod +x "${RUNNER_TEMP}/bin/yq"
-          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+        run: make install-yq
 
       - name: Generate Bicep extensibility types from OpenAPI specs
         env:
@@ -474,19 +534,28 @@ jobs:
         run: |
           make generate-bicep-types VERSION="${BICEP_TYPES_VERSION}"
 
-      - name: Setup and verify bicep CLI
-        run: |
-          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
-          chmod +x ./bicep
-          sudo mv ./bicep /usr/local/bin/bicep
-          bicep --version
+      - name: Install bicep CLI
+        # Pinned version + checksum live in build/tools.yaml (previously installed
+        # the unpinned 'latest', which could pull v0.43+).
+        run: make install-bicep
+
+      - name: Checkout workflow Azure login script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          path: .workflow-azure-login
+          sparse-checkout: .github/scripts/azure-oidc-login.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
 
       - name: Login to Azure (for private test bicep-types ACR)
-        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
-        with:
-          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
-          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+        run: node "${AZURE_LOGIN_SCRIPT}"
+        env:
+          AZURE_LOGIN_SCRIPT: ${{ github.workspace }}/.workflow-azure-login/.github/scripts/azure-oidc-login.mjs
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Publish Radius test bicep types
         env:
@@ -512,7 +581,7 @@ jobs:
 
       - name: Publish Bicep Test Recipes
         run: |
-          mkdir ./bin
+          mkdir -p ./bin
           cp ./dist/linux_amd64/release/rad ./bin/rad
           chmod +x ./bin/rad
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -524,7 +593,7 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -535,7 +604,7 @@ jobs:
           message: |
             :white_check_mark: Recipe publishing succeeded
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -545,6 +614,10 @@ jobs:
           append: true
           message: |
             :x: Test recipe publishing failed
+
+      - name: Clear Azure session
+        if: always()
+        run: az account clear
 
   skip-tests:
     name: Skip Functional Tests
@@ -597,9 +670,10 @@ jobs:
       contents: read # Required for listing the commits
       checks: write # Required for publishing test results
       packages: read # Required for pulling images from ghcr.io inside KinD
+      pull-requests: write # Required for posting a PR comment
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
-      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
       PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
@@ -613,7 +687,7 @@ jobs:
       # purge workflow still cleans up any orphaned groups.
       AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.setup.outputs.UNIQUE_ID }}-${{ matrix.name }}-${{ github.run_attempt }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
-      BICEP_RECIPE_TAG_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
@@ -643,30 +717,36 @@ jobs:
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Checkout Radius repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           persist-credentials: false
+          allow-unsafe-pr-checkout: true
 
       - name: Checkout Samples repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: matrix.name == 'samples'
         with:
           repository: radius-project/samples
           ref: refs/heads/edge
           path: samples
           persist-credentials: false
+          allow-unsafe-pr-checkout: true
 
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-          cache: true
+          # Publishes recipes/types — don't restore a cache a prior run could have poisoned.
+          cache: false
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
       - name: Download rad CLI
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: ${{ runner.temp }}/rad-cli-artifact
@@ -681,14 +761,25 @@ jobs:
            # Verify it is the expected rad CLI binary by running a harmless command
           ./bin/rad version >/dev/null 2>&1 || { echo "Downloaded rad binary is not a working rad CLI executable"; exit 1; }
 
-      - name: Login to Azure
-        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+      - name: Checkout workflow Azure login script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
-          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          path: .workflow-azure-login
+          sparse-checkout: .github/scripts/azure-oidc-login.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - name: Login to Azure
+        run: node "${AZURE_LOGIN_SCRIPT}"
+        env:
+          AZURE_LOGIN_SCRIPT: ${{ github.workspace }}/.workflow-azure-login/.github/scripts/azure-oidc-login.mjs
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
@@ -711,18 +802,23 @@ jobs:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-        with:
-          version: ${{ env.HELM_VER }}
+      - name: Install helm
+        # Version pinned in build/tools.yaml (HELM_VERSION).
+        run: make install-helm
 
       # The role-to-assume is the role that the github action will assume to execute aws commands and
       # construct cloud control client in test code.
       - name: configure aws credentials using assumed role
-        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
-          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          role-session-name: ${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install KinD
+        # Installs the version pinned in build/tools.yaml (KIND_VERSION) and adds
+        # the install dir to the job PATH for the cluster-create step below.
+        run: make install-kind
 
       # create kind cluster with OIDC provider.
       - name: Create KinD cluster
@@ -731,9 +827,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-
-          curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VER}/kind-linux-amd64"
-          chmod +x ./kind
 
           # Parse and validate Azure workload identity values from secret JSON.
           OIDC_JSON="${FUNCTEST_AZURE_OIDC_JSON}"
@@ -756,7 +849,7 @@ jobs:
           openssl pkey -pubin -in sa.pub -noout >/dev/null
           openssl pkey -in sa.key -check -noout >/dev/null
 
-          cat <<EOF | ./kind create cluster --name radius --config=-
+          kind create cluster --name radius --config=- <<EOF
           kind: Cluster
           apiVersion: kind.x-k8s.io/v1alpha4
           nodes:
@@ -794,7 +887,7 @@ jobs:
           helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version "${AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER}" --set "azureTenantID=${AZURE_SP_TESTS_TENANTID}"
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -807,11 +900,7 @@ jobs:
           rad bicep download
           rad version
 
-      - name: Install gotestsum (test reporting tool)
-        run: |
-          go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
-
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -821,6 +910,39 @@ jobs:
           append: true
           message: |
             :x: Test tool installation for ${{ matrix.name }} failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+      - name: Wait for Deployment Engine image to be available
+        # When this run was triggered by deployment-engine's publish dispatch, DE_TAG
+        # names an image that repo just pushed to GHCR. The dispatch that starts this
+        # workflow can race the GHCR push itself (the image isn't necessarily visible
+        # yet when the dispatch lands), and "Install Radius" below waits on every
+        # Deployment becoming ready, so a not-yet-pullable DE image leaves the bicep-de
+        # pod in ImagePullBackOff for the whole install timeout and can fail the job
+        # with a bare "context deadline exceeded" (related to issue #12576). Poll the
+        # GHCR manifest instead of guessing a fixed delay, so we proceed the moment the
+        # image lands and fail fast with a clear reason if it never does.
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          set -euo pipefail
+
+          MAX_ATTEMPTS=10
+          SLEEP_SECONDS=15
+          for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
+            if manifest_error=$(docker manifest inspect "${DE_IMAGE}:${DE_TAG}" 2>&1 >/dev/null); then
+              echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} is available (attempt ${attempt}/${MAX_ATTEMPTS})."
+              exit 0
+            fi
+            echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} not yet available (attempt ${attempt}/${MAX_ATTEMPTS}): ${manifest_error}"
+            echo "Retrying in ${SLEEP_SECONDS}s..."
+            sleep "${SLEEP_SECONDS}"
+          done
+
+          echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} did not become available after $((MAX_ATTEMPTS * SLEEP_SECONDS))s. Last error: ${manifest_error}"
+          exit 1
+
+      - name: Install yq
+        # Required to select the test environment in the workspace config.
+        run: make install-yq
+
       - name: Install Radius
         env:
           AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
@@ -861,7 +983,7 @@ jobs:
             exit 1
           fi
 
-          # Poll logs for up to  iterations, 30 seconds each (upto 3 minutes total)
+          # Poll logs for up to  iterations, 30 seconds each (up to 3 minutes total)
           for i in {1..6}; do
             kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
 
@@ -894,23 +1016,34 @@ jobs:
           rad group switch kind-radius
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create kind-radius --namespace default
-          rad env switch kind-radius
+          #
+          # The environment is deployed declaratively rather than with `rad env create` so that it is
+          # pinned to Applications.Core regardless of which provider the `rad env create` default
+          # targets.
+          #
+          # Set cloud scopes in Bicep, not `rad env update`, so this works whichever type `rad env` targets.
+          rad deploy ./test/infra/radius/legacy-test-environment.bicep \
+            --parameters name=kind-radius \
+            --parameters namespace=default \
+            --parameters azureScope="/subscriptions/${AZURE_SUBSCRIPTIONID_TESTS}/resourceGroups/${AZURE_TEST_RESOURCE_GROUP}" \
+            --parameters awsScope="/planes/aws/aws/accounts/${FUNCTEST_AWS_ACCOUNT_ID}/regions/${AWS_REGION}"
+
+          # Select the env with yq, not `rad env switch`, so this works whichever type `rad env` targets.
+          scope="$(yq -e '.workspaces.items[.workspaces.default].scope' ~/.rad/config.yaml)"
+          ENVIRONMENT_ID="${scope}/providers/Applications.Core/environments/kind-radius" \
+            yq -i '.workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID)' ~/.rad/config.yaml
+          rad workspace show
 
           echo "*** Configuring Azure provider ***"
-          rad env update kind-radius --azure-subscription-id "${AZURE_SUBSCRIPTIONID_TESTS}" \
-            --azure-resource-group "${AZURE_TEST_RESOURCE_GROUP}"
           rad credential register azure wi \
             --client-id "${AZURE_SP_TESTS_APPID}" \
             --tenant-id "${AZURE_SP_TESTS_TENANTID}"
 
           echo "*** Configuring AWS provider ***"
-          rad env update kind-radius --aws-region "${AWS_REGION}" --aws-account-id "${FUNCTEST_AWS_ACCOUNT_ID}"
-
           rad credential register aws irsa \
             --iam-role "${FUNC_TEST_RAD_IRSA_ROLE}"
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -950,6 +1083,12 @@ jobs:
           # Restore AWS Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-logs-loggroup.bicep --force
       - name: Run functional tests
+        # A step-level timeout, unlike the job-level one, still lets the
+        # `if: always()` steps below run - so a hung suite is followed by
+        # diagnostics collection rather than a cancelled job. Kept above
+        # FUNCTIONALTEST_TIMEOUT so `go test` times out first and prints its
+        # goroutine dump. Mirrors the pattern in long-running-azure.yaml.
+        timeout-minutes: 35
         run: |
           set -euo pipefail
 
@@ -994,35 +1133,56 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
+          # Initiate resource deletion without blocking on completion (matches the
+          # non-cloud suite). Test assertions for deploy/create still run in full;
+          # only the synchronous teardown wait is skipped, and the per-run resource
+          # group is force-deleted afterward. This removes the slow Test_ACI teardown
+          # (~9 min) from the critical path without reducing validation scope.
+          RADIUS_TEST_FAST_CLEANUP: true
           MATRIX_NAME: ${{ matrix.name }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
+          # Let tests mint a fresh federated assertion per token acquisition. The assertion cached
+          # by `azure/login` expires within minutes, so a scope that was not cached at login - the
+          # Blob data plane, for example - otherwise fails with AADSTS700024 later in the job.
+          # ACTIONS_ID_TOKEN_REQUEST_URL/_TOKEN are supplied by the runner via `id-token: write`.
+          AZURE_SP_TESTS_APPID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_SP_TESTS_TENANTID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
-        # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
-        if: failure() && github.repository == vars.RADIUS_REPOSITORY
+        # Run on success and failure so a passing "Re-run failed jobs" refreshes the
+        # "Functional Tests - <name>" check published by EnricoMi. Gating this on
+        # failure() left that check stuck red after a green re-run, because the step
+        # was skipped and the previous attempt's failed check was never updated.
+        # comment_mode: failures keeps PR comments limited to actual failures, and
+        # the failure artifacts are still uploaded for post-mortem.
+        if: always() && github.repository == vars.RADIUS_REPOSITORY
         with:
           test_group_name: Functional Tests - ${{ matrix.name }}
           artifact_name: functional_test_results_${{ matrix.name }}
           result_directory: dist/functional_test/
+          comment_mode: failures
 
-      - name: Collect Pod details
+      - name: Collect cluster diagnostics
         if: always()
+        timeout-minutes: 5
+        # Diagnostic-only post-mortem snapshot. The script records each command's
+        # failure inline and keeps going, because the failures worth debugging are
+        # usually the ones where the control plane is unreachable and every
+        # kubectl call fails. Never let it fail the job.
+        continue-on-error: true
         env:
-          MATRIX_NAME: ${{ matrix.name }}
-        run: |
-          POD_STATE_LOG_FILENAME="${RADIUS_CONTAINER_LOG_BASE}/${MATRIX_NAME}-tests-pod-states.log"
-          mkdir -p "$(dirname "${POD_STATE_LOG_FILENAME}")"
-          {
-            echo "kubectl get pods -A"
-            kubectl get pods -A
-            echo "kubectl describe pods -A"
-            kubectl describe pods -A
-          } >> "${POD_STATE_LOG_FILENAME}"
+          RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          DIAGNOSTICS_NAME: ${{ matrix.name }}
+          # kube-apiserver/etcd/kubelet logs are only worth the artifact size when
+          # something went wrong. An empty name skips the export.
+          KIND_CLUSTER_NAME: ${{ job.status != 'success' && 'radius' || '' }}
+          DIAGNOSTICS_TERRAFORM: ${{ matrix.name == 'corerp-cloud' && job.status != 'success' && 'true' || 'false' }}
+        run: ./.github/scripts/collect-cluster-diagnostics.sh
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.name }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
@@ -1044,14 +1204,14 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: ${{ matrix.name }}_recipes-pod-logs
           path: recipes/pod-logs
           if-no-files-found: error
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: success() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -1062,7 +1222,7 @@ jobs:
           message: |
             :white_check_mark: ${{ matrix.name }} functional tests succeeded
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -1073,7 +1233,7 @@ jobs:
           message: |
             :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
 
-      - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: cancelled() && env.PR_NUMBER != ''
         continue-on-error: true
         with:
@@ -1083,6 +1243,15 @@ jobs:
           append: true
           message: |
             :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
+
+      - name: Release ACI quota before async resource group delete
+        if: always()
+        env:
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+        run: |
+          ./.github/scripts/release-aci-quota.sh \
+            "${AZURE_SUBSCRIPTIONID_TESTS}" \
+            "${AZURE_TEST_RESOURCE_GROUP}"
 
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
@@ -1097,6 +1266,10 @@ jobs:
             --verbose \
             --no-wait
 
+      - name: Clear Azure session
+        if: always()
+        run: az account clear
+
   report-test-results:
     # Report final test status. Runs after all tests complete (or are skipped).
     if: always() && github.repository == vars.RADIUS_REPOSITORY
@@ -1106,7 +1279,6 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      checks: read
     env:
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
     steps:
@@ -1118,28 +1290,30 @@ jobs:
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           permission-checks: write
 
-      - name: Get tests job status
+      - name: Aggregate functional test status
         id: get_test_status
-        env:
-          GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
         run: |
-          # from: https://github.com/orgs/community/discussions/26526#discussioncomment-3252209
-          ALL_JOBS_STATUS=$(curl -X GET -s -u "admin:${GH_TOKEN}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" | jq ".jobs[] | {job_status: .conclusion}")
-          echo "All jobs status: $ALL_JOBS_STATUS"
+          # Derive the overall status from the needs context instead of querying the
+          # Actions API. `tests` is a matrix job, so needs.tests.result already collapses
+          # all legs (success only if every leg passed). A docs-only run skips build+tests
+          # with setup successful, which yields success and matches the skip-tests job.
+          # failure takes precedence over cancelled.
+          echo "setup=${SETUP_RESULT} build=${BUILD_RESULT} tests=${TESTS_RESULT}"
           TEST_STATUS="success"
-          for job_status in $(echo "$ALL_JOBS_STATUS" | jq -r '.[]'); do
-            echo "Job Status: $job_status"
-            if [[ "$job_status" == "failure" ]]; then
-              echo "Found failed test. Setting test status to failure"
+          for result in "${SETUP_RESULT}" "${BUILD_RESULT}" "${TESTS_RESULT}"; do
+            if [[ "${result}" == "failure" ]]; then
               TEST_STATUS="failure"
               break
-            elif [[ "$job_status" == "cancelled" ]]; then
-              echo "Found cancelled test. Setting test status to cancelled"
+            elif [[ "${result}" == "cancelled" ]]; then
               TEST_STATUS="cancelled"
             fi
           done
-          echo "Test Status: $TEST_STATUS"
-          echo "test_status=$TEST_STATUS" >> $GITHUB_OUTPUT
+          echo "Functional Test Run status: ${TEST_STATUS}"
+          echo "test_status=${TEST_STATUS}" >> "${GITHUB_OUTPUT}"
+        env:
+          SETUP_RESULT: ${{ needs.setup.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          TESTS_RESULT: ${{ needs.tests.result }}
 
       - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: always()

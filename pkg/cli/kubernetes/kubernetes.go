@@ -196,7 +196,7 @@ func GetContextFromConfigFileIfExists(configFilePath, context string) (string, e
 	return contextName, nil
 }
 
-//go:generate mockgen -typed -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/radius-project/radius/pkg/cli/kubernetes github.com/radius-project/radius/pkg/cli/kubernetes Interface
+//go:generate go tool mockgen -typed -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/radius-project/radius/pkg/cli/kubernetes github.com/radius-project/radius/pkg/cli/kubernetes Interface
 type CleanupPlan struct {
 	Namespaces  []string
 	APIServices []string

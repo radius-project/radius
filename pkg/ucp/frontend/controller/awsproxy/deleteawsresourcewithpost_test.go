@@ -23,11 +23,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"uuid"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/google/uuid"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"go.uber.org/mock/gomock"
 
@@ -37,7 +38,7 @@ import (
 )
 
 func Test_DeleteAWSResourceWithPost(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -91,7 +92,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 }
 
 func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -154,7 +155,7 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
+	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.New().String())
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:delete", bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 

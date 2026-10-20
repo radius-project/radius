@@ -17,13 +17,18 @@ limitations under the License.
 package trackedresource
 
 import (
-	"crypto/sha1"
 	"fmt"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/hashutil"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
+
+// hashLength is the number of hexadecimal characters of the resource-ID hash appended to a
+// tracked resource name. It matches the width of the legacy SHA-1 hash (40) so that names
+// continue to fit within the 63-character ARM/UCP name limit (22 prefix + 1 separator + 40 hash).
+const hashLength = 40
 
 // NameFor computes the resource name of a tracked resource from its ID.
 //
@@ -36,12 +41,32 @@ func NameFor(id resources.ID) string {
 		return ""
 	}
 
-	// We need to generate a valid ARM/UCP name. The original resource name is used as a prefix for readability
-	// followed by the hash of the resource ID.
+	return nameWithHash(id, hashutil.Hex([]byte(strings.ToLower(id.String()))))
+}
+
+// LegacyNameFor computes the tracked resource name using the legacy SHA-1 hash.
+//
+// SHA-1 is retained only to locate tracked resource entries written by older versions of Radius
+// during the migration to SHA-256. Use NameFor for new values. See
+// https://github.com/radius-project/radius/issues/8084.
+func LegacyNameFor(id resources.ID) string {
+	if id.IsEmpty() {
+		return ""
+	}
+
+	return nameWithHash(id, hashutil.LegacyHex([]byte(strings.ToLower(id.String()))))
+}
+
+// nameWithHash builds a tracked resource name from the tracked resource's name (used as a
+// human-readable prefix) and a hex hash of its ID.
+func nameWithHash(id resources.ID, hash string) string {
+	// We need to generate a valid ARM/UCP name. The original resource name is used as a prefix for
+	// readability followed by the hash of the resource ID.
 	//
 	// example:  my-resource-ec291e26078b7ea8a74abfac82530005a0ecbf15
 	//
-	// We want this to fit in 63 characters so we allow a prefix of 22 characters a separator and a hash of 40 characters.
+	// We want this to fit in 63 characters so we allow a prefix of 22 characters, a separator, and a
+	// hash of 40 characters.
 	const prefixLength = 22
 
 	prefix := strings.ToLower(id.Name())
@@ -49,18 +74,11 @@ func NameFor(id resources.ID) string {
 		prefix = prefix[:prefixLength]
 	}
 
-	hasher := sha1.New()
-
-	// It's OK to ignore the error here, it's part of the API because io.Writer is being used, but the implementation
-	// does not return errors.
-	_, err := hasher.Write([]byte(strings.ToLower(id.String())))
-	if err != nil {
-		panic("unexpected error writing to hash: " + err.Error())
+	if len(hash) > hashLength {
+		hash = hash[:hashLength]
 	}
 
-	hash := hasher.Sum(nil)
-
-	return fmt.Sprintf("%s-%x", prefix, hash)
+	return fmt.Sprintf("%s-%s", prefix, hash)
 }
 
 // IDFor computes the resource ID of a tracked resource entry from the original resource ID.
@@ -69,6 +87,23 @@ func IDFor(id resources.ID) resources.ID {
 		return resources.ID{}
 	}
 
+	return idWithName(id, NameFor(id))
+}
+
+// LegacyIDFor computes the resource ID of a tracked resource entry using the legacy SHA-1 name.
+//
+// Used only to locate tracked resource entries written by older versions of Radius during the
+// migration to SHA-256. See https://github.com/radius-project/radius/issues/8084.
+func LegacyIDFor(id resources.ID) resources.ID {
+	if id.IsEmpty() {
+		return resources.ID{}
+	}
+
+	return idWithName(id, LegacyNameFor(id))
+}
+
+// idWithName builds the tracking entry ID for the given resource ID and computed name.
+func idWithName(id resources.ID, name string) resources.ID {
 	// Tracking ID is the ID of the entry that will store the data.
 	//
 	// Example:
@@ -79,7 +114,7 @@ func IDFor(id resources.ID) resources.ID {
 		[]resources.TypeSegment{
 			{
 				Type: v20231001preview.ResourceType,
-				Name: NameFor(id),
+				Name: name,
 			},
 		}, nil))
 }

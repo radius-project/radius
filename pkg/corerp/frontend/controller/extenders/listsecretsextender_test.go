@@ -43,7 +43,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			mctrl.Finish()
 		}, mds, msm
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, extenderDataModel, _ := getTestModels20231001preview()
 	expectedSecrets := map[string]any{
@@ -93,8 +93,8 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id},
-					Data:     extenderDataModel,
+					ID:   id,
+					Data: extenderDataModel,
 				}, nil
 			})
 

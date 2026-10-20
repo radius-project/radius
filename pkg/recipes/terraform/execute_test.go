@@ -17,18 +17,231 @@ limitations under the License.
 package terraform
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	reflect "reflect"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	dm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
-	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
+	"github.com/radius-project/radius/pkg/retry"
+	goretry "github.com/sethvargo/go-retry"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 )
+
+const (
+	terraformGetTestHelper = "RADIUS_TERRAFORM_GET_TEST_HELPER"
+	terraformCommandLog    = "RADIUS_TERRAFORM_COMMAND_LOG"
+)
+
+func TestMain(m *testing.M) {
+	exitCode := 0
+	if os.Getenv(terraformGetTestHelper) == "1" {
+		if err := runTerraformTestHelper(); err != nil {
+			fmt.Fprintf(os.Stderr, "terraform test helper failed: %v\n", err)
+			exitCode = 1
+		}
+	} else {
+		exitCode = m.Run()
+	}
+
+	os.Exit(exitCode) //nolint:forbidigo // This is OK inside the TestMain function.
+}
+
+func runTerraformTestHelper() error {
+	if os.Getenv(terraformBackendSnapshots) != "" {
+		if err := recordBackendTestExecution(); err != nil {
+			return err
+		}
+	}
+	if commandLog := os.Getenv(terraformCommandLog); commandLog != "" && len(os.Args) > 1 {
+		file, err := os.OpenFile(commandLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("opening command log: %w", err)
+		}
+		if _, err := file.WriteString(os.Args[1] + "\n"); err != nil {
+			_ = file.Close()
+			return fmt.Errorf("writing command log: %w", err)
+		}
+		if err := file.Close(); err != nil {
+			return fmt.Errorf("closing command log: %w", err)
+		}
+	}
+
+	moduleDir := filepath.Join(".terraform", "modules", "test-recipe")
+	if err := os.MkdirAll(moduleDir, 0755); err != nil {
+		return fmt.Errorf("creating test module directory: %w", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(moduleDir, "outputs.tf"),
+		[]byte(`output "endpoint" { value = "declared" }`),
+		0644); err != nil {
+		return fmt.Errorf("writing test module outputs: %w", err)
+	}
+	if provider := os.Getenv("RADIUS_TERRAFORM_REQUIRED_PROVIDER"); provider != "" {
+		content := fmt.Sprintf("terraform {\n required_providers {\n %s = {\n source = \"hashicorp/%s\"\n", provider, provider)
+		if alias := os.Getenv("RADIUS_TERRAFORM_PROVIDER_ALIAS"); alias != "" {
+			content += fmt.Sprintf(" configuration_aliases = [%s.%s]\n", provider, alias)
+		}
+		content += " }\n }\n}\n"
+		if err := os.WriteFile(filepath.Join(moduleDir, "providers.tf"), []byte(content), 0600); err != nil {
+			return err
+		}
+	}
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "version":
+			fmt.Fprint(os.Stdout, `{"terraform_version":"1.15.8","platform":"test","provider_selections":{}}`)
+		case "show":
+			fmt.Fprint(os.Stdout, `{"format_version":"1.0","terraform_version":"1.15.8","values":{"outputs":{"endpoint":{"value":"declared","type":"string","sensitive":false}}}}`)
+		}
+	}
+	return nil
+}
+
+func TestRetryTerraformInitRetriesTransientProviderDiscoveryFailure(t *testing.T) {
+	retryer := retry.NewRetryer(&retry.RetryConfig{
+		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
+	})
+
+	attempts := 0
+	err := retryTerraformInit(t.Context(), retryer, func(context.Context) error {
+		attempts++
+		if attempts < 3 {
+			return errors.New("failed to\nrequest discovery document: Client.Timeout\nexceeded while awaiting headers")
+		}
+
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 3, attempts)
+}
+
+func TestRetryTerraformInitDoesNotRetryPermanentFailure(t *testing.T) {
+	retryer := retry.NewRetryer(&retry.RetryConfig{
+		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
+	})
+
+	attempts := 0
+	expectedErr := fmt.Errorf("failed to query available provider packages: provider does not exist")
+	err := retryTerraformInit(t.Context(), retryer, func(context.Context) error {
+		attempts++
+		return expectedErr
+	})
+
+	require.ErrorIs(t, err, expectedErr)
+	require.Equal(t, 1, attempts)
+}
+
+func TestRetryTerraformInitDoesNotRetryCancellation(t *testing.T) {
+	retryer := retry.NewRetryer(&retry.RetryConfig{
+		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
+	})
+
+	attempts := 0
+	expectedErr := fmt.Errorf("failed to request discovery document: %w", context.Canceled)
+	err := retryTerraformInit(t.Context(), retryer, func(context.Context) error {
+		attempts++
+		return expectedErr
+	})
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, 1, attempts)
+}
+
+func TestIsTransientTerraformInitError(t *testing.T) {
+	tests := []struct {
+		name      string
+		signature string
+	}{
+		{name: "client timeout", signature: "Client.Timeout exceeded"},
+		{name: "context deadline", signature: "context deadline exceeded"},
+		{name: "connection refused", signature: "connection refused"},
+		{name: "connection reset", signature: "connection reset"},
+		{name: "DNS failure", signature: "no such host"},
+		{name: "temporary DNS failure", signature: "temporary failure in name resolution"},
+		{name: "TLS timeout", signature: "TLS handshake timeout"},
+		{name: "truncated response", signature: "unexpected EOF"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := errors.New("failed to request discovery document: " + tc.signature)
+			require.True(t, isTransientTerraformInitError(err))
+		})
+	}
+}
+
+func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
+	globalDir := t.TempDir()
+	t.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalDir)
+	t.Setenv(terraformGetTestHelper, "1")
+	commandLog := filepath.Join(t.TempDir(), "terraform-commands.log")
+	t.Setenv(terraformCommandLog, commandLog)
+
+	require.NoError(t, os.Symlink(os.Args[0], filepath.Join(globalDir, "terraform")))
+	require.NoError(t, os.WriteFile(filepath.Join(globalDir, ".terraform-ready"), nil, 0644))
+
+	globalTerraformMutex.Lock()
+	previousGlobalTerraformReady := globalTerraformReady
+	globalTerraformReady = true
+	globalTerraformMutex.Unlock()
+	t.Cleanup(func() {
+		globalTerraformMutex.Lock()
+		globalTerraformReady = previousGlobalTerraformReady
+		globalTerraformMutex.Unlock()
+	})
+
+	resourceRecipe := &recipes.ResourceMetadata{
+		Name:          "widget",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/widgets/widget",
+		EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/test-env",
+	}
+	kubernetesClient := fake.NewSimpleClientset()
+	kubernetesClient.Fake.PrependReactor("get", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		getAction := action.(k8stesting.GetAction)
+		return true, &corev1.Secret{
+			Name:      getAction.GetName(),
+			Namespace: backends.RadiusNamespace,
+		}, nil
+	})
+	kubernetesClient.Fake.PrependReactor("delete", "secrets", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, nil
+	})
+	kubernetesClients := kubernetesclientprovider.KubernetesClientProvider{}
+	kubernetesClients.SetClientGoClient(kubernetesClient)
+
+	e := executor{kubernetesClients: kubernetesClients}
+	err := e.Delete(t.Context(), Options{
+		RootDir:   t.TempDir(),
+		EnvConfig: &recipes.Configuration{},
+		EnvRecipe: &recipes.EnvironmentDefinition{
+			Name:         "test-recipe",
+			TemplatePath: "test/module/source",
+			ResourceType: "Test.Resources/widgets",
+			Outputs:      map[string]string{"host": "missing"},
+		},
+		ResourceRecipe: resourceRecipe,
+	})
+	require.NoError(t, err)
+
+	commands, err := os.ReadFile(commandLog)
+	require.NoError(t, err)
+	require.Contains(t, string(commands), "destroy\n")
+}
 
 func TestGenerateConfig(t *testing.T) {
 	configTests := []struct {
@@ -62,7 +275,7 @@ func TestGenerateConfig(t *testing.T) {
 
 	for _, tc := range configTests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := testcontext.New(t)
+			ctx := t.Context()
 			if tc.workingDir == "" {
 				tc.workingDir = t.TempDir()
 			}
@@ -70,9 +283,88 @@ func TestGenerateConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			_, err = e.generateConfig(ctx, tf, tc.opts)
+			_, err = e.generateConfig(ctx, tf, tc.opts, backends.CloudBackendAuth{}, requireValidOutputMappings)
 			require.Error(t, err)
 			require.ErrorContains(t, err, tc.err)
+		})
+	}
+}
+
+func TestGenerateConfigRejectsInvalidOutputMappingBeforeProviderSetup(t *testing.T) {
+	workingDir := t.TempDir()
+	tf, err := tfexec.NewTerraform(workingDir, os.Args[0])
+	require.NoError(t, err)
+	require.NoError(t, tf.SetEnv(map[string]string{terraformGetTestHelper: "1"}))
+
+	options := Options{
+		EnvRecipe: &recipes.EnvironmentDefinition{
+			Name:         "test-recipe",
+			TemplatePath: "test/module/source",
+			ResourceType: "Test.Resources/widgets",
+			Outputs:      map[string]string{"host": "missing"},
+		},
+		ResourceRecipe: &recipes.ResourceMetadata{},
+	}
+
+	e := executor{}
+	_, err = e.generateConfig(t.Context(), tf, options, backends.CloudBackendAuth{}, requireValidOutputMappings)
+	require.EqualError(t, err, `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches outputs["host"] -> "missing"; available module outputs: "endpoint"`)
+}
+
+func TestValidateOutputMappings(t *testing.T) {
+	definition := &recipes.EnvironmentDefinition{
+		Name:          "service-bus",
+		ResourceType:  "Applications.Messaging/rabbitMQQueues",
+		Outputs:       map[string]string{"host": "endpoint"},
+		SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
+	}
+	module := &moduleInspectResult{
+		OutputSensitivity: map[string]bool{
+			"endpoint": false,
+		},
+	}
+
+	err := validateOutputMappings(definition, module, requireValidOutputMappings)
+	require.EqualError(t, err, `recipe "service-bus" for resource type "Applications.Messaging/rabbitMQQueues": invalid outputs mapping: no declared module output matches secrets["connectionString"] -> "primaryConnectionString"; available module outputs: "endpoint"`)
+
+	err = validateOutputMappings(definition, module, skipOutputMappingValidation)
+	require.NoError(t, err)
+}
+
+func TestUsesOutputMappings(t *testing.T) {
+	definition := &recipes.EnvironmentDefinition{
+		Outputs: map[string]string{"host": "endpoint"},
+	}
+
+	tests := []struct {
+		name           string
+		hasResult      bool
+		validationMode outputMappingValidationMode
+		expected       bool
+	}{
+		{
+			name:           "deploy uses mappings instead of result",
+			hasResult:      true,
+			validationMode: requireValidOutputMappings,
+			expected:       true,
+		},
+		{
+			name:           "delete preserves result behavior",
+			hasResult:      true,
+			validationMode: skipOutputMappingValidation,
+			expected:       false,
+		},
+		{
+			name:           "direct module deletion keeps mapped outputs",
+			validationMode: skipOutputMappingValidation,
+			expected:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			module := &moduleInspectResult{ResultOutputExists: tt.hasResult}
+			require.Equal(t, tt.expected, usesOutputMappings(definition, module, tt.validationMode))
 		})
 	}
 }
@@ -93,9 +385,51 @@ func Test_GetTerraformConfig(t *testing.T) {
 		Module: map[string]config.TFModuleConfig{
 			"test-recipe": {"source": "test/module/source"}},
 	}
-	tfConfig, err := getTerraformConfig(testcontext.New(t), testDir, options)
+	tfConfig, err := getTerraformConfig(t.Context(), testDir, options)
 	require.NoError(t, err)
 	require.Equal(t, &expectedConfig, tfConfig)
+}
+
+func Test_GetTerraformConfig_NoProviderAliasPlaceholders(t *testing.T) {
+	testDir := t.TempDir()
+
+	options := Options{
+		EnvConfig: &recipes.Configuration{
+			RecipeConfig: dm.RecipeConfigProperties{
+				Terraform: dm.TerraformConfigProperties{
+					Providers: map[string][]dm.ProviderConfigProperties{
+						"azurerm": {
+							{AdditionalProperties: map[string]any{"subscription_id": "sub"}},
+							{AdditionalProperties: map[string]any{"alias": "custom", "subscription_id": "sub"}},
+						},
+					},
+				},
+			},
+		},
+		EnvRecipe: &recipes.EnvironmentDefinition{
+			Name:         "test-recipe",
+			TemplatePath: "test/module/source",
+		},
+		ResourceRecipe: &recipes.ResourceMetadata{},
+	}
+
+	// Placeholders are added only to retry a failed module download, so the first download
+	// uses the module configuration only.
+	expectedConfig := config.TerraformConfig{
+		Module: map[string]config.TFModuleConfig{
+			"test-recipe": {"source": "test/module/source"},
+		},
+	}
+	tfConfig, err := getTerraformConfig(t.Context(), testDir, options)
+	require.NoError(t, err)
+	require.Equal(t, &expectedConfig, tfConfig)
+
+	content, err := os.ReadFile(filepath.Join(testDir, "main.tf.json"))
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"terraform": null,
+		"module": {"test-recipe": {"source": "test/module/source"}}
+	}`, string(content))
 }
 
 func Test_GetTerraformConfig_EmptyRecipeName(t *testing.T) {
@@ -110,7 +444,7 @@ func Test_GetTerraformConfig_EmptyRecipeName(t *testing.T) {
 		ResourceRecipe: &recipes.ResourceMetadata{},
 	}
 
-	_, err := getTerraformConfig(testcontext.New(t), testDir, options)
+	_, err := getTerraformConfig(t.Context(), testDir, options)
 	require.Error(t, err)
 	require.Equal(t, err, ErrRecipeNameEmpty)
 }
@@ -125,7 +459,7 @@ func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
 		ResourceRecipe: &recipes.ResourceMetadata{},
 	}
 
-	_, err := getTerraformConfig(testcontext.New(t), workingDir, options)
+	_, err := getTerraformConfig(t.Context(), workingDir, options)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error creating file: open invalid-directory/main.tf.json: no such file or directory")
 }
@@ -274,7 +608,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			err = e.setEnvironmentVariables(tf, tc.opts)
+			_, err = e.prepareExecution(t.Context(), tf, tc.opts)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -292,7 +626,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 	}
 }
 
-func TestApplyTerraformCLIConfig(t *testing.T) {
+func TestPrepareExecutionCLIConfig(t *testing.T) {
 	tests := []struct {
 		name      string
 		opts      Options
@@ -337,7 +671,7 @@ func TestApplyTerraformCLIConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			err = e.applyTerraformCLIConfig(tf, tc.opts)
+			_, err = e.prepareExecution(t.Context(), tf, tc.opts)
 			if tc.wantError {
 				require.Error(t, err)
 				return

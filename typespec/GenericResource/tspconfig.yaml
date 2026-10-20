@@ -1,0 +1,12 @@
+emit:
+  - "@azure-tools/typespec-go"
+options:
+  "@azure-tools/typespec-go":
+    emitter-output-dir: "{project-root}/.tsp-go-tmp"
+    module: "github.com/radius-project/radius/pkg/cli/clients_new/generated"
+    file-prefix: "zz_generated_"
+    generate-fakes: true
+    azcore-version: "1.22.0"
+    license:
+      name: "Apache License 2.0"
+      header: "Licensed under the Apache License, Version 2.0 . See LICENSE in the repository root for license information."

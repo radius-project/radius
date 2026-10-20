@@ -17,7 +17,6 @@ limitations under the License.
 package show
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -121,7 +120,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeSuffix:        "testResources",
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -206,11 +205,36 @@ func Test_Run(t *testing.T) {
 			ResourceTypeSuffix:        "exampleResources",
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("The resource type \"Applications.AnotherTest/exampleResources\" does not exist."), err)
 
 		require.Empty(t, outputSink.Writes)
+	})
+
+	t.Run("Success: Mis-cased Resource Type Found", func(t *testing.T) {
+		clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+		require.NoError(t, err)
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			UCPClientFactory:          clientFactory,
+			Workspace:                 &workspaces.Workspace{Name: "kind-kind", Scope: "/planes/radius/local/resourceGroups/test-group"},
+			Format:                    "table",
+			Output:                    outputSink,
+			ResourceTypeName:          "MyCompany.Resources/TESTRESOURCES",
+			ResourceProviderNamespace: "MyCompany.Resources",
+			ResourceTypeSuffix:        "TESTRESOURCES",
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.NotEmpty(t, outputSink.Writes)
+
+		formatted, ok := outputSink.Writes[0].(output.FormattedOutput)
+		require.True(t, ok)
+		resourceType, ok := formatted.Obj.(common.ResourceType)
+		require.True(t, ok)
+		require.Equal(t, "MyCompany.Resources/testResources", resourceType.Name)
 	})
 
 	t.Run("Error: Resource Type Not Found", func(t *testing.T) {
@@ -238,7 +262,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeSuffix:        "anotherResources",
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("The resource type \"Applications.Test/anotherResources\" does not exist."), err)
 

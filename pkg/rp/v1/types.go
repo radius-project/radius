@@ -261,3 +261,11 @@ type SecretValueReference struct {
 	// Value is the secret value itself
 	Value string
 }
+
+// ManagedSecretReference identifies a key in a managed Radius secret without containing its value.
+type ManagedSecretReference struct {
+	// Source is the fully qualified resource ID of the Radius.Security/secrets resource.
+	Source string `json:"source"`
+	// Key is the key in the managed secret.
+	Key string `json:"key"`
+}

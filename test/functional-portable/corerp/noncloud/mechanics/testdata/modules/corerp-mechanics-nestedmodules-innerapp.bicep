@@ -3,7 +3,7 @@ extension radius
 param location string
 param environment string
 
-resource innerApp 'Applications.Core/applications@2023-10-01-preview' = {
+resource innerApp 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'corerp-mechanics-nestedmodules-innerapp-app'
   location: location
   properties: {

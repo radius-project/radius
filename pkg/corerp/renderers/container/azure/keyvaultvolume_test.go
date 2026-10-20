@@ -17,10 +17,8 @@ limitations under the License.
 package azure
 
 import (
-	"context"
 	"testing"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/handlers"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
@@ -38,13 +36,11 @@ func TestMakeKeyVaultVolumeSpec(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, corev1.Volume{
 		Name: "kvvol",
-		VolumeSource: corev1.VolumeSource{
-			CSI: &corev1.CSIVolumeSource{
-				Driver:   "secrets-store.csi.k8s.io",
-				ReadOnly: new(true),
-				VolumeAttributes: map[string]string{
-					"secretProviderClass": "azkv",
-				},
+		CSI: &corev1.CSIVolumeSource{
+			Driver:   "secrets-store.csi.k8s.io",
+			ReadOnly: new(true),
+			VolumeAttributes: map[string]string{
+				"secretProviderClass": "azkv",
 			},
 		},
 	}, v)
@@ -98,12 +94,8 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 	}
 
 	vol := &datamodel.VolumeResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "test-cntr",
-				Type: "applications.core/volumes",
-			},
-		},
+		Name: "test-cntr",
+		Type: "applications.core/volumes",
 		Properties: datamodel.VolumeResourceProperties{
 			Kind: datamodel.AzureKeyVaultVolume,
 			AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
@@ -134,7 +126,7 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 						},
 					},
 				}
-				err := TransformSecretProviderClass(context.Background(), putOptions)
+				err := TransformSecretProviderClass(t.Context(), putOptions)
 				require.NoError(t, err)
 				require.Equal(t, tc.afterParams, r.Spec.Parameters)
 			}

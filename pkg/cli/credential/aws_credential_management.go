@@ -26,7 +26,7 @@ import (
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
-//go:generate mockgen -typed -destination=./mock_aws_credential_management.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential AWSCredentialManagementClientInterface
+//go:generate go tool mockgen -typed -destination=./mock_aws_credential_management.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential AWSCredentialManagementClientInterface
 
 // AWSCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AWSCredentialManagementClient struct {
@@ -113,10 +113,8 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialNam
 		}
 
 		providerCredentialConfiguration := ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    AWSCredential,
-				Enabled: true,
-			},
+			Name:    AWSCredential,
+			Enabled: true,
 			AWSCredentials: &AWSCredentialProperties{
 				Kind: (*string)(awsAccessKeyCredentials.Kind),
 				AccessKey: &AWSAccessKeyCredentialProperties{
@@ -132,10 +130,8 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialNam
 		}
 
 		providerCredentialConfiguration := ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    AWSCredential,
-				Enabled: true,
-			},
+			Name:    AWSCredential,
+			Enabled: true,
 			AWSCredentials: &AWSCredentialProperties{
 				Kind: (*string)(awsIRSACredentials.Kind),
 				IRSA: &AWSIRSACredentialProperties{

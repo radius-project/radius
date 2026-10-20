@@ -25,13 +25,16 @@ package resource_test
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
+	"time"
+	"uuid"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -44,54 +47,100 @@ var (
 	secretPrefix    = "tfstate-default-"
 )
 
-// Test_TerraformRecipe_AzureResourceGroup creates an Extender resource consuming a Terraform recipe that deploys an Azure resource group instance.
+// Test_TerraformRecipe_AzureResourceGroup checks default and custom provider configuration through deployment and destruction.
 func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
-	template := "testdata/corerp-resources-terraform-azurerg.bicep"
-	name := "corerp-resources-terraform-azrg"
-	appName := "corerp-resources-terraform-azrg-app"
-	envName := "corerp-resources-terraform-azrg-env"
+	for _, custom := range []bool{false, true} {
+		label := "default"
+		if custom {
+			label = "custom"
+		}
+		t.Run(label, func(t *testing.T) {
+			ctx := t.Context()
+			name := "corerp-resources-terraform-azrg-" + label
+			appName, envName := name+"-app", name+"-env"
+			groupName := "tfrg-" + uuid.New().String()
+			subscription := requiredCloudEnv(t, "AZURE_SUBSCRIPTION_ID")
+			groups, err := armresources.NewResourceGroupsClient(subscription, azureTestCredential(ctx, t), nil)
+			require.NoError(t, err)
 
-	test := rp.NewRPTest(t, name, []rp.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName, "uniqueSeed="+os.Getenv("UNIQUE_ID")),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: envName,
-						Type: validation.EnvironmentsResource,
-					},
-					{
-						Name: appName,
-						Type: validation.ApplicationsResource,
-					},
-					{
-						Name: name,
-						Type: validation.ExtendersResource,
-						App:  appName,
-					},
+			// Fallback cleanup runs after lifecycle assertions, so it cannot hide a failed destroy.
+			t.Cleanup(func() {
+				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Minute)
+				defer cancel()
+				poller, err := groups.BeginDelete(cleanupCtx, groupName, nil)
+				if isNotFoundResponse(err) {
+					return
+				}
+				if err == nil {
+					_, err = poller.PollUntilDone(cleanupCtx, nil)
+				}
+				if err != nil {
+					t.Errorf("delete test Azure resource group %s: %v", groupName, err)
+				}
+			})
+
+			parameters := []string{
+				testutil.GetTerraformRecipeModuleServerURL(), "appName=" + appName, "envName=" + envName,
+				"resourceName=" + name, "azureResourceGroupName=" + groupName,
+			}
+			template := "testdata/corerp-resources-terraform-azurerg.bicep"
+			if custom {
+				tenant, client := azureFederatedIdentity(ctx, t)
+				require.NotEmpty(t, tenant, "custom provider test requires the workload identity tenant")
+				require.NotEmpty(t, client, "custom provider test requires the workload identity client")
+				template = "testdata/corerp-resources-terraform-azurerg-custom-provider.bicep"
+				parameters = append(parameters, "tenantId="+tenant, "clientId="+client,
+					"oidcTokenFilePath="+providers.AzureOIDCTokenFilePath)
+			}
+
+			// The driver omits Azure scope IDs such as resource groups from output resources,
+			// so the Azure SDK checks below verify the recipe lifecycle instead.
+			ct := rp.NewRPTest(t, name, []rp.TestStep{{
+				Executor: step.NewDeployExecutor(template, parameters...),
+				RPResources: &validation.RPResourceSet{Resources: []validation.RPResource{
+					{Name: envName, Type: validation.EnvironmentsResource},
+					{Name: appName, Type: validation.ApplicationsResource},
+					{Name: name, Type: validation.ExtendersResource, App: appName},
+				}},
+				SkipObjectValidation: true, // This recipe creates no Kubernetes workload.
+				PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+					resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
+					suffix, err := corerp.GetSecretSuffix(resourceID, envName, appName)
+					require.NoError(t, err)
+					secret, err := ct.Options.K8sClient.CoreV1().Secrets(secretNamespace).Get(ctx, secretPrefix+suffix, metav1.GetOptions{})
+					require.NoError(t, err)
+					require.NotEmpty(t, secret.Data, "Terraform state must remain available for destroy")
+
+					group, err := groups.Get(ctx, groupName, nil)
+					require.NoError(t, err)
+					require.NotNil(t, group.ID)
+					require.Equal(t, "/subscriptions/"+subscription+"/resourceGroups/"+groupName, *group.ID)
 				},
-			},
-			SkipObjectValidation: true,
-			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+			}})
+			if custom {
+				secretStoreName := name + "-provider-settings"
+				ct.Steps[0].RPResources.Resources = append(ct.Steps[0].RPResources.Resources,
+					validation.RPResource{Name: secretStoreName, Type: validation.SecretStoresResource})
+				t.Cleanup(func() {
+					cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+					defer cancel()
+					_, err := ct.Options.ManagementClient.DeleteResource(cleanupCtx, validation.SecretStoresResource, secretStoreName, false)
+					if err != nil && !isNotFoundResponse(err) {
+						t.Errorf("delete provider settings secret store: %v", err)
+					}
+				})
+			}
+			ct.PostDeleteVerify = func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
-				secretSuffix, err := corerp.GetSecretSuffix(resourceID, envName, appName)
-				require.NoError(t, err)
-
-				secret, err := test.Options.K8sClient.CoreV1().Secrets(secretNamespace).
-					Get(ctx, secretPrefix+secretSuffix, metav1.GetOptions{})
-				require.NoError(t, err)
-				require.Equal(t, secretNamespace, secret.Namespace)
-				require.Equal(t, secretPrefix+secretSuffix, secret.Name)
-			},
-		},
-	})
-
-	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
-		resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + name
-		corerp.TestSecretDeletion(t, ctx, test, appName, envName, resourceID, secretNamespace, secretPrefix)
+				corerp.TestSecretDeletion(t, ctx, ct, appName, envName, resourceID, secretNamespace, secretPrefix)
+				_, err := groups.Get(ctx, groupName, nil)
+				require.True(t, isNotFoundResponse(err), "Terraform destroy must remove the Azure resource group: %v", err)
+			}
+			ct.FastCleanup = false
+			ct.RunSerial = true
+			ct.Test(t)
+		})
 	}
-
-	test.Test(t)
 }
 
 // Test_TerraformPrivateGitModule_KubernetesRedis covers the following terraform recipe scenario:

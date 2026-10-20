@@ -20,6 +20,7 @@ import (
 type MockResourceHandler struct {
 	ctrl     *gomock.Controller
 	recorder *MockResourceHandlerMockRecorder
+	isgomock struct{}
 }
 
 // MockResourceHandlerMockRecorder is the mock recorder for MockResourceHandler.
@@ -40,17 +41,17 @@ func (m *MockResourceHandler) EXPECT() *MockResourceHandlerMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockResourceHandler) Delete(arg0 context.Context, arg1 *DeleteOptions) error {
+func (m *MockResourceHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
+	ret := m.ctrl.Call(m, "Delete", ctx, options)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockResourceHandlerMockRecorder) Delete(arg0, arg1 any) *MockResourceHandlerDeleteCall {
+func (mr *MockResourceHandlerMockRecorder) Delete(ctx, options any) *MockResourceHandlerDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockResourceHandler)(nil).Delete), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockResourceHandler)(nil).Delete), ctx, options)
 	return &MockResourceHandlerDeleteCall{Call: call}
 }
 
@@ -78,18 +79,18 @@ func (c *MockResourceHandlerDeleteCall) DoAndReturn(f func(context.Context, *Del
 }
 
 // Put mocks base method.
-func (m *MockResourceHandler) Put(arg0 context.Context, arg1 *PutOptions) (map[string]string, error) {
+func (m *MockResourceHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Put", arg0, arg1)
+	ret := m.ctrl.Call(m, "Put", ctx, options)
 	ret0, _ := ret[0].(map[string]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Put indicates an expected call of Put.
-func (mr *MockResourceHandlerMockRecorder) Put(arg0, arg1 any) *MockResourceHandlerPutCall {
+func (mr *MockResourceHandlerMockRecorder) Put(ctx, options any) *MockResourceHandlerPutCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockResourceHandler)(nil).Put), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockResourceHandler)(nil).Put), ctx, options)
 	return &MockResourceHandlerPutCall{Call: call}
 }
 

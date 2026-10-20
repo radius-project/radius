@@ -25,12 +25,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
 	v20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	test "github.com/radius-project/radius/test/ucp"
+	"github.com/sanity-io/litter"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,7 +43,7 @@ func Test_Plane_Operations(t *testing.T) {
 			planes := listPlanes(t, roundTripper, fmt.Sprintf("%s/planes?api-version=%s", url, apiVersion))
 
 			for _, plane := range planes.Value {
-				t.Logf("Found plane: %s", spew.Sdump(plane))
+				t.Logf("Found plane: %s", litter.Sdump(plane))
 			}
 
 			// Due to an order dependency with other tests, we can't guarantee the number or exact set of planes.

@@ -1,0 +1,84 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: release-branch-commits
+
+# This workflow runs the default branch's trusted validator and reads pull
+# request commit messages through the API. It never checks out pull request code.
+on:
+  pull_request_target:
+    branches:
+      - release/*
+    types:
+      - opened
+      - edited
+      - ready_for_review
+      - reopened
+      - synchronize
+
+permissions: {}
+
+concurrency:
+  group: release-branch-commits-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate release branch commits
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout trusted validator
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Read pull request commits
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          COMMITS_FILE: ${{ runner.temp }}/release-branch-commits.json
+          BODY_FILE: ${{ runner.temp }}/release-branch-body.md
+        with:
+          script: |
+            const fs = require('node:fs')
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            })
+            fs.writeFileSync(process.env.COMMITS_FILE, JSON.stringify(commits))
+            fs.writeFileSync(
+              process.env.BODY_FILE,
+              context.payload.pull_request.body ?? '',
+            )
+
+      - name: Validate Conventional Commit messages
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          node ./.github/scripts/validate-conventional-commits.mjs \
+            "${RUNNER_TEMP}/release-branch-commits.json" \
+            "${RUNNER_TEMP}/release-branch-body.md" \
+            "${BASE_SHA}" \
+            "${HEAD_REF}"

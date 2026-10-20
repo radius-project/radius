@@ -16,9 +16,30 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-set -e
+set -euo pipefail
 
 SKIP_RESOURCE_FILE="${1:-}"
+readonly RESOURCE_DELETE_BATCH_SIZE=100
+declare -a resource_delete_batch=()
+
+delete_resource_batch() {
+    if (( ${#resource_delete_batch[@]} == 0 )); then
+        return
+    fi
+
+    echo "deleting ${#resource_delete_batch[@]} resources.ucp.dev entries"
+    kubectl delete resources.ucp.dev "${resource_delete_batch[@]}" \
+        -n radius-system --ignore-not-found=true --wait=false
+    resource_delete_batch=()
+}
+
+queue_resource_deletion() {
+    resource_delete_batch+=("$1")
+    if (( ${#resource_delete_batch[@]} >= RESOURCE_DELETE_BATCH_SIZE )); then
+        delete_resource_batch
+    fi
+}
+
 echo "cleaning up long-running cluster on Azure"
 echo "Using skip-resource-list from: $SKIP_RESOURCE_FILE"
 
@@ -54,8 +75,7 @@ if kubectl get crd resources.ucp.dev >/dev/null 2>&1; then
             if grep -F -x -q -- "$r" "$SKIP_RESOURCE_FILE"; then
                 echo "skip deletion: $r (found in skip-resource-list $SKIP_RESOURCE_FILE)"
             else
-                echo "deleting resource: $r"
-                kubectl delete resources.ucp.dev "$r" -n radius-system --ignore-not-found=true --wait=false
+                queue_resource_deletion "$r"
             fi
             continue
         fi
@@ -64,12 +84,12 @@ if kubectl get crd resources.ucp.dev >/dev/null 2>&1; then
         # Non-scope resources (resource.*) may include system-critical entries
         # that must not be deleted without a valid skip list.
         if [[ $r == scope.* ]]; then
-            echo "deleting resource: $r (no skip list, scope entry)"
-            kubectl delete resources.ucp.dev "$r" -n radius-system --ignore-not-found=true --wait=false
+            queue_resource_deletion "$r"
         else
             echo "skip deletion: $r (no skip list available, preserving non-scope resource)"
         fi
     done
+    delete_resource_batch
 fi
 
 # Delete all test namespaces.

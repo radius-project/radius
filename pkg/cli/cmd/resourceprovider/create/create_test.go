@@ -17,7 +17,6 @@ limitations under the License.
 package create
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -85,7 +84,7 @@ func Test_Run(t *testing.T) {
 			ResourceProviderManifestFilePath: "testdata/valid.yaml",
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.Equal(t, []any{
@@ -113,7 +112,7 @@ func Test_Run(t *testing.T) {
 			ResourceProviderManifestFilePath: "testdata/valid.yaml",
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Empty(t, outputSink.Writes)
 	})

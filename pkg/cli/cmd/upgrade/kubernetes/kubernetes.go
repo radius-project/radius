@@ -41,6 +41,14 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 This command upgrades the Radius control plane in the cluster associated with the active workspace.
 To upgrade Radius in a different cluster, switch to the appropriate workspace first using 'rad workspace switch'.
 
+By default, the upgrade preserves any values that were previously set on the existing Helm release.
+This means non-default settings configured during install or earlier upgrades (for example
+'global.azureWorkloadIdentity.enabled=true' or 'database.enabled=true') are carried forward
+automatically — the upgrade starts from the new chart's defaults, re-applies the previously
+stored user-supplied values, and then overlays any --set / --set-file values provided in the
+current invocation. Pass --reset-values to opt out and use only the current --set flags plus
+the new chart's defaults (this mirrors 'helm upgrade --reset-values').
+
 The upgrade process includes preflight checks to ensure the cluster is ready for upgrade.
 Preflight checks include:
 - Kubernetes connectivity and permissions
@@ -100,6 +108,10 @@ rad upgrade kubernetes --preflight-only
 
 # Upgrade Radius using a Helm chart from specified file path
 rad upgrade kubernetes --chart /root/radius/deploy/Chart
+
+# Discard previously-stored Helm values and upgrade using only the current --set flags
+# plus the new chart's defaults (mirrors 'helm upgrade --reset-values').
+rad upgrade kubernetes --reset-values
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -112,6 +124,7 @@ rad upgrade kubernetes --chart /root/radius/deploy/Chart
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 	cmd.Flags().BoolVar(&runner.SkipPreflight, "skip-preflight", false, "Skip preflight checks before upgrade (not recommended)")
 	cmd.Flags().BoolVar(&runner.PreflightOnly, "preflight-only", false, "Run only preflight checks without performing the upgrade")
+	cmd.Flags().BoolVar(&runner.ResetValues, "reset-values", false, "Discard values previously stored on the Helm release and use only the current --set / --set-file flags plus the new chart's defaults")
 
 	return cmd, runner
 }
@@ -128,6 +141,7 @@ type Runner struct {
 	SetFile       []string
 	SkipPreflight bool
 	PreflightOnly bool
+	ResetValues   bool
 }
 
 // NewRunner creates an instance of the runner for the `rad upgrade kubernetes` command.
@@ -195,6 +209,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			SetArgs:      r.Set,
 			SetFileArgs:  r.SetFile,
 		},
+		ResetValues: r.ResetValues,
 	}
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)

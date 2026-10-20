@@ -21,6 +21,7 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend/processor"
+	"github.com/radius-project/radius/pkg/dynamicrp/backend/secret"
 	recipecontroller "github.com/radius-project/radius/pkg/portableresources/backend/controller"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
@@ -32,22 +33,24 @@ type RecipePutController struct {
 	opts                ctrl.Options
 	engine              engine.Engine
 	configurationLoader configloader.ConfigurationLoader
+	secretMaterializer  secret.Materializer
 }
 
 // NewRecipePutController creates a new RecipePutController.
-func NewRecipePutController(opts ctrl.Options, engine engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
+func NewRecipePutController(opts ctrl.Options, engine engine.Engine, configurationLoader configloader.ConfigurationLoader, secretMaterializer secret.Materializer) (ctrl.Controller, error) {
 	return &RecipePutController{
 		BaseController:      ctrl.NewBaseAsyncController(opts),
 		opts:                opts,
 		engine:              engine,
 		configurationLoader: configurationLoader,
+		secretMaterializer:  secretMaterializer,
 	}, nil
 }
 
 // Run processes PUT operations for dynamic resources deployed using recipes.
 // It creates and delegates the request to CreateOrUpdateResource controller to handle the operation.
 func (c *RecipePutController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	putController, err := recipecontroller.NewCreateOrUpdateResource(c.opts, &processor.DynamicProcessor{}, c.engine, c.configurationLoader)
+	putController, err := recipecontroller.NewCreateOrUpdateResource(c.opts, &processor.DynamicProcessor{SecretMaterializer: c.secretMaterializer}, c.engine, c.configurationLoader)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

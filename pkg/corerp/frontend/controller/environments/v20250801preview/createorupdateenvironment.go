@@ -18,6 +18,7 @@ package v20250801preview
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -25,9 +26,11 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/corerp/frontend/controller/util"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -72,46 +75,63 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
 	if newResource.Properties.Providers != nil && newResource.Properties.Providers.Kubernetes != nil {
 		namespace := newResource.Properties.Providers.Kubernetes.Namespace
-		result, err := util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.providers.kubernetes.namespace", namespace, e.DatabaseClient())
+
+		// Default to the deployment-target cluster's namespace when the environment
+		// does not specify one. In multi-cluster mode this is the namespace pinned by
+		// the injected target kubeconfig (falling back to "default"); in single-cluster
+		// mode it is "default". Persisting it here ensures recipes deploy into a real
+		// namespace rather than the empty string.
+		if namespace == "" {
+			namespace = kubeutil.TargetClusterDefaultNamespace()
+			newResource.Properties.Providers.Kubernetes.Namespace = namespace
+		}
+
+		if resp, err := e.validateNamespace(ctx, serviceCtx, namespace, old); resp != nil || err != nil {
+			return resp, err
+		}
+
+		// Validate the namespace exists on the cluster the application's resources
+		// will deploy to. In multi-cluster mode that is the external cluster named by
+		// RADIUS_TARGET_KUBECONFIG, not the control-plane cluster Radius runs on, so
+		// the check must run against the deployment-target cluster.
+		namespaceClient, err := kubeutil.DeploymentTargetRuntimeClient(e.Options().KubeClient)
 		if err != nil {
 			return nil, err
 		}
 
-		if len(result.Items) > 0 {
-			env := &datamodel.Environment_v20250801preview{}
-			if err := result.Items[0].As(env); err != nil {
-				return nil, err
-			}
-
-			// If a different resource has the same namespace, return a conflict
-			// Otherwise, continue and update the resource
-			if old == nil || env.ID != old.ID {
-				return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", env.ID, namespace)), nil
-			}
-		}
-
 		ns := &corev1.Namespace{}
-		err = e.Options().KubeClient.Get(ctx, client.ObjectKey{Name: namespace}, ns)
+		err = namespaceClient.Get(ctx, client.ObjectKey{Name: namespace}, ns)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return rest.NewBadRequestResponse(fmt.Sprintf("Namespace '%s' does not exist in the Kubernetes cluster. Please create it before proceeding.", namespace)), nil
 			}
 			return nil, err
 		}
+	} else if old != nil {
+		// The environment is dropping its Kubernetes provider entirely. That releases a namespace
+		// claim, which is not permitted once one has been established -- see validateNamespace.
+		if existing := existingNamespace(old); existing != "" {
+			return rest.NewBadRequestResponseWithCode(v1.CodeNamespaceImmutable, util.NamespaceImmutableMessage(existing, "")), nil
+		}
 	}
 
-	if resp, err := e.validateRecipePacks(ctx, newResource.Properties.RecipePacks); resp != nil || err != nil {
+	// Resolve recipe pack references (names or full IDs) to canonical resource IDs and
+	// validate them, then persist the normalized IDs so downstream readers always see
+	// fully-qualified references.
+	normalizedRecipePacks, resp, err := e.resolveAndValidateRecipePacks(ctx, serviceCtx.ResourceID, newResource.Properties.RecipePacks)
+	if resp != nil || err != nil {
 		return resp, err
 	}
+	newResource.Properties.RecipePacks = normalizedRecipePacks
 
 	// Validate referenced config resources exist and are of the correct type.
-	if newResource.Properties.TerraformConfig != "" {
-		if resp := validateConfigRef(ctx, e, newResource.Properties.TerraformConfig, datamodel.TerraformConfigResourceType, "terraformConfig"); resp != nil {
+	if newResource.Properties.TerraformSettings != "" {
+		if resp := validateConfigRef(ctx, e, newResource.Properties.TerraformSettings, datamodel.TerraformSettingsResourceType, "terraformSettings"); resp != nil {
 			return resp, nil
 		}
 	}
-	if newResource.Properties.BicepConfig != "" {
-		if resp := validateConfigRef(ctx, e, newResource.Properties.BicepConfig, datamodel.BicepConfigResourceType, "bicepConfig"); resp != nil {
+	if newResource.Properties.BicepSettings != "" {
+		if resp := validateConfigRef(ctx, e, newResource.Properties.BicepSettings, datamodel.BicepSettingsResourceType, "bicepSettings"); resp != nil {
 			return resp, nil
 		}
 	}
@@ -125,48 +145,98 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }
 
-// Validate recipe packs ensures that no two recipe packs define recipe for the same resource type.
-func (e *CreateOrUpdateEnvironmentv20250801preview) validateRecipePacks(ctx context.Context, recipePacks []string) (rest.Response, error) {
-	if len(recipePacks) <= 1 {
-		return nil, nil
+// resolveAndValidateRecipePacks resolves each recipe pack reference to a canonical
+// Radius.Core/recipePacks resource ID, verifies the referenced pack exists, and ensures
+// that no two packs define a recipe for the same resource type.
+//
+// A reference may be either a full resource ID or a bare name (e.g. "postgresPack"). A
+// bare name is resolved against the environment's own plane and resource group, so
+// authors can link a previously deployed pack without repeating the full path. The
+// returned slice contains the canonical full resource IDs to persist.
+func (e *CreateOrUpdateEnvironmentv20250801preview) resolveAndValidateRecipePacks(ctx context.Context, envID resources.ID, recipePacks []string) ([]string, rest.Response, error) {
+	if len(recipePacks) == 0 {
+		return recipePacks, nil, nil
 	}
 
-	// map to store map[resourceType]recipePackID
+	resolved := make([]string, 0, len(recipePacks))
+	// resourceTypeMap stores map[lowercaseResourceType]recipePackID to detect conflicts
+	// where two packs register a recipe for the same resource type.
 	resourceTypeMap := make(map[string]string)
 
-	for _, recipePackID := range recipePacks {
-		id, err := resources.ParseResource(recipePackID)
-		if err != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Invalid recipe pack resource ID: %s", recipePackID)), nil
+	for _, ref := range recipePacks {
+		packID, resp := resolveRecipePackRef(envID, ref)
+		if resp != nil {
+			return nil, resp, nil
 		}
 
-		// Get the recipe pack resource
-		obj, err := e.DatabaseClient().Get(ctx, id.String())
+		// Fail fast if the referenced recipe pack does not exist in the resolved scope.
+		obj, err := e.DatabaseClient().Get(ctx, packID)
 		if err != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Failed to retrieve recipe pack %s: %v", recipePackID, err)), nil
+			if !errors.Is(err, &database.ErrNotFound{}) {
+				return nil, nil, err
+			}
+			return nil, rest.NewBadRequestResponse(fmt.Sprintf("Referenced recipe pack %q could not be found (resolved to %q): %v", ref, packID, err)), nil
 		}
 
 		recipePack := &datamodel.RecipePack{}
 		if err := obj.As(recipePack); err != nil {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Failed to parse recipe pack %s: %v", recipePackID, err)), nil
+			return nil, rest.NewBadRequestResponse(fmt.Sprintf("Failed to parse recipe pack %q: %v", packID, err)), nil
 		}
 
-		// Check for conflicting resource types across recipe packs
+		// Check for conflicting resource types across recipe packs.
 		for resourceType := range recipePack.Properties.Recipes {
-			if existingPackID, exists := resourceTypeMap[resourceType]; exists {
-				return rest.NewConflictResponse(fmt.Sprintf("Resource type '%s' is defined in multiple recipe packs: %s and %s", resourceType, existingPackID, recipePackID)), nil
+			resourceTypeKey := strings.ToLower(resourceType)
+			if existingPackID, exists := resourceTypeMap[resourceTypeKey]; exists {
+				if !strings.EqualFold(existingPackID, packID) {
+					return nil, rest.NewConflictResponse(fmt.Sprintf("Resource type '%s' is defined in multiple recipe packs: %s and %s", resourceType, existingPackID, packID)), nil
+				}
+				continue
 			}
-			resourceTypeMap[resourceType] = recipePackID
+			resourceTypeMap[resourceTypeKey] = packID
 		}
+
+		resolved = append(resolved, packID)
 	}
 
-	return nil, nil
+	return resolved, nil, nil
+}
+
+// resolveRecipePackRef converts a single recipe pack reference into a canonical
+// Radius.Core/recipePacks resource ID. A full resource ID is validated to be of the
+// recipe pack type; a bare name is resolved against the environment's plane and resource
+// group (envID.RootScope()). It returns a populated rest.Response on validation failure.
+func resolveRecipePackRef(envID resources.ID, ref string) (string, rest.Response) {
+	// A full resource ID parses successfully; validate it points at a recipe pack.
+	if id, err := resources.ParseResource(ref); err == nil {
+		if !strings.EqualFold(id.Type(), datamodel.RecipePackResourceType) {
+			return "", rest.NewBadRequestResponse(fmt.Sprintf("Referenced recipe pack %q has type %q; expected %q.", ref, id.Type(), datamodel.RecipePackResourceType))
+		}
+		return id.String(), nil
+	}
+
+	// Otherwise treat the reference as a bare name scoped to the environment.
+	if ref == "" || strings.Contains(ref, resources.SegmentSeparator) {
+		return "", rest.NewBadRequestResponse(fmt.Sprintf("Invalid recipe pack reference %q: provide a recipe pack name or a %s resource ID.", ref, datamodel.RecipePackResourceType))
+	}
+
+	scopeID, err := resources.ParseScope(envID.RootScope())
+	if err != nil {
+		return "", rest.NewBadRequestResponse(fmt.Sprintf("Could not resolve recipe pack %q within scope %q.", ref, envID.RootScope()))
+	}
+
+	packID := scopeID.Append(resources.TypeSegment{Type: datamodel.RecipePackResourceType, Name: ref})
+	// Re-parse to reject structurally invalid names (e.g. empty or containing '/').
+	if _, err := resources.ParseResource(packID.String()); err != nil {
+		return "", rest.NewBadRequestResponse(fmt.Sprintf("Invalid recipe pack reference %q: provide a recipe pack name or a %s resource ID.", ref, datamodel.RecipePackResourceType))
+	}
+
+	return packID.String(), nil
 }
 
 // validateConfigRef checks that the referenced resource ID parses, has the
 // expected resource type, and exists. It returns a populated rest.Response on
 // validation failure or nil on success. propertyName is the user-facing field
-// label used in error messages (e.g. "terraformConfig").
+// label used in error messages (e.g. "terraformSettings").
 //
 // Without the type check, any existing resource ID (a recipe pack, an
 // application, etc.) would silently pass and the loader would fail at recipe
@@ -201,4 +271,59 @@ func validateConfigRef(
 		return rest.NewBadRequestResponse(fmt.Sprintf("Referenced %s resource %q does not exist.", propertyName, resourceID))
 	}
 	return nil
+}
+
+// existingNamespace returns the Kubernetes namespace recorded on a stored environment, or the
+// empty string when the environment has no Kubernetes provider.
+func existingNamespace(old *datamodel.Environment_v20250801preview) string {
+	if old == nil || old.Properties.Providers == nil || old.Properties.Providers.Kubernetes == nil {
+		return ""
+	}
+
+	return old.Properties.Providers.Kubernetes.Namespace
+}
+
+// validateNamespace enforces the namespace rules for Radius.Core/environments. It returns a
+// non-nil response when the request must be rejected.
+//
+// The rules differ between create and update, which is what keeps the constraint from disrupting
+// unrelated writes:
+//
+//   - Create, or an update that claims a namespace for the first time: the namespace must not
+//     already be claimed by another environment anywhere in the plane.
+//   - Update where a namespace is already established: the namespace is immutable. Changing it
+//     would orphan everything already deployed into the old namespace, and clearing it would
+//     release a claim that other environments were validated against.
+//
+// Because the namespace cannot change once set, an update that leaves it alone cannot introduce a
+// conflict and therefore skips the uniqueness query entirely. That is deliberate: writes that
+// merely touch other properties -- registering a recipe, syncing recipe pack references -- must not
+// fail because of a namespace the caller never intended to modify.
+func (e *CreateOrUpdateEnvironmentv20250801preview) validateNamespace(
+	ctx context.Context,
+	serviceCtx *v1.ARMRequestContext,
+	namespace string,
+	old *datamodel.Environment_v20250801preview,
+) (rest.Response, error) {
+	if existing := existingNamespace(old); existing != "" {
+		if !strings.EqualFold(existing, namespace) {
+			return rest.NewBadRequestResponseWithCode(v1.CodeNamespaceImmutable, util.NamespaceImmutableMessage(existing, namespace)), nil
+		}
+
+		return nil, nil
+	}
+
+	// A namespace is cluster-scoped, so two environments sharing one would deploy into the same
+	// place and their recipe-created resources could collide. The search spans every resource
+	// group in the plane and both environment resource types.
+	conflictingID, err := util.FindEnvironmentNamespaceConflict(ctx, e.DatabaseClient(), serviceCtx.ResourceID.PlaneScope(), namespace, serviceCtx.ResourceID.String())
+	if err != nil {
+		return nil, err
+	}
+
+	if conflictingID != "" {
+		return rest.NewConflictResponseWithCode(v1.CodeNamespaceAlreadyInUse, util.NamespaceConflictMessage(namespace, conflictingID)), nil
+	}
+
+	return nil, nil
 }

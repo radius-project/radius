@@ -1,0 +1,204 @@
+suite: test database (postgresql) provider configuration
+templates:
+  - database/configmaps.yaml
+  - database/configmap-initdb.yaml
+  - database/statefulset.yaml
+  - ucp/configmaps.yaml
+  - ucp/deployment.yaml
+  - rp/configmaps.yaml
+  - rp/deployment.yaml
+  - dynamic-rp/configmaps.yaml
+  - dynamic-rp/deployment.yaml
+tests:
+  # --- database.enabled=false (default) ---
+  - it: should not render the database secret when database is disabled
+    set:
+      database.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: database/configmaps.yaml
+
+  - it: should not render the initdb configmap when database is disabled
+    set:
+      database.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: database/configmap-initdb.yaml
+
+  - it: should use the apiserver provider for UCP when database is disabled
+    set:
+      database.enabled: false
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'provider: "apiserver"'
+        template: ucp/configmaps.yaml
+
+  - it: should use the apiserver provider for applications-rp when database is disabled
+    set:
+      database.enabled: false
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'provider: "apiserver"'
+        template: rp/configmaps.yaml
+
+  - it: should use the apiserver provider for dynamic-rp when database is disabled
+    set:
+      database.enabled: false
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'provider: "apiserver"'
+        template: dynamic-rp/configmaps.yaml
+
+  # --- database.enabled=true ---
+  - it: should render the database secret with a literal radius database name
+    set:
+      database.enabled: true
+    asserts:
+      - isKind:
+          of: Secret
+        template: database/configmaps.yaml
+      - equal:
+          path: stringData.POSTGRES_DB
+          value: "radius"
+        template: database/configmaps.yaml
+
+  - it: should render the initdb configmap when database is enabled
+    set:
+      database.enabled: true
+    asserts:
+      - isKind:
+          of: ConfigMap
+        template: database/configmap-initdb.yaml
+      - equal:
+          path: metadata.name
+          value: database-initdb
+        template: database/configmap-initdb.yaml
+
+  - it: should grant the per-RP users privileges on the resources table
+    set:
+      database.enabled: true
+    asserts:
+      # Guards against the "permission denied for table resources" startup crash: the table is
+      # created by the superuser, so the per-RP user must be granted access.
+      - matchRegex:
+          path: data["init-db.sh"]
+          pattern: 'GRANT ALL PRIVILEGES ON TABLE resources TO "\$RESOURCE_PROVIDER"'
+        template: database/configmap-initdb.yaml
+      - matchRegex:
+          path: data["init-db.sh"]
+          pattern: 'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "\$RESOURCE_PROVIDER"'
+        template: database/configmap-initdb.yaml
+
+  - it: should use a pullable postgres image reference
+    set:
+      database.enabled: true
+    asserts:
+      # Guards against pointing at a registry-mirror tag that does not exist (ImagePullBackOff).
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/library/postgres:16-alpine"
+        template: database/statefulset.yaml
+
+  - it: should mount the initdb scripts into the database statefulset
+    set:
+      database.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: initdb-scripts
+            configMap:
+              name: database-initdb
+        template: database/statefulset.yaml
+
+  - it: should use the postgresql provider for UCP when database is enabled
+    set:
+      database.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'provider: "postgresql"'
+        template: ucp/configmaps.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'postgresql://ucp:\$\{POSTGRES_PASSWORD\}@database\.'
+        template: ucp/configmaps.yaml
+
+  - it: should use the postgresql provider for applications-rp when database is enabled
+    set:
+      database.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'postgresql://applications_rp:\$\{POSTGRES_PASSWORD\}@database\.'
+        template: rp/configmaps.yaml
+
+  - it: should use the postgresql provider for dynamic-rp when database is enabled
+    set:
+      database.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'postgresql://dynamic_rp:\$\{POSTGRES_PASSWORD\}@database\.'
+        template: dynamic-rp/configmaps.yaml
+
+  - it: should inject POSTGRES_PASSWORD into UCP when database is enabled
+    set:
+      database.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: database-secret
+                key: POSTGRES_PASSWORD
+        template: ucp/deployment.yaml
+
+  - it: should inject POSTGRES_PASSWORD into applications-rp when database is enabled
+    set:
+      database.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: database-secret
+                key: POSTGRES_PASSWORD
+        template: rp/deployment.yaml
+
+  - it: should inject POSTGRES_PASSWORD into dynamic-rp when database is enabled
+    set:
+      database.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: database-secret
+                key: POSTGRES_PASSWORD
+        template: dynamic-rp/deployment.yaml
+
+  - it: should not inject POSTGRES_PASSWORD into dynamic-rp when database is disabled
+    set:
+      database.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: database-secret
+                key: POSTGRES_PASSWORD
+        template: dynamic-rp/deployment.yaml

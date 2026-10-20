@@ -32,7 +32,7 @@ func Test_FromOptions(t *testing.T) {
 	require.NotNil(t, provider)
 	require.Equal(t, options, provider.options)
 
-	client, err := provider.GetClient(context.Background())
+	client, err := provider.GetClient(t.Context())
 	require.NoError(t, err)
 	require.NotNil(t, client)
 }
@@ -43,7 +43,7 @@ func Test_FromMemory(t *testing.T) {
 	require.NotNil(t, provider)
 	require.Equal(t, TypeInMemory, provider.options.Provider)
 
-	client, err := provider.GetClient(context.Background())
+	client, err := provider.GetClient(t.Context())
 	require.NoError(t, err)
 	require.NotNil(t, client)
 }
@@ -55,7 +55,7 @@ func Test_FromClient(t *testing.T) {
 	require.NotNil(t, provider)
 	require.Same(t, mockClient, provider.result.client)
 
-	client, err := provider.GetClient(context.Background())
+	client, err := provider.GetClient(t.Context())
 	require.NoError(t, err)
 	require.Same(t, client, mockClient)
 }
@@ -70,12 +70,12 @@ func Test_GetClient_CachedClient(t *testing.T) {
 		return mockClient, nil
 	})
 
-	client, err := provider.GetClient(context.Background())
+	client, err := provider.GetClient(t.Context())
 	require.NoError(t, err)
 	require.Same(t, mockClient, client)
 
 	// Do it twice to ensure the client is cached.
-	client, err = provider.GetClient(context.Background())
+	client, err = provider.GetClient(t.Context())
 	require.NoError(t, err)
 	require.Same(t, mockClient, client)
 
@@ -93,13 +93,13 @@ func Test_GetClient_CachedError(t *testing.T) {
 		return nil, expectedErr
 	})
 
-	client, err := provider.GetClient(context.Background())
+	client, err := provider.GetClient(t.Context())
 	require.Error(t, err)
 	require.Equal(t, "failed to initialize database client: oh noes!", err.Error())
 	require.Nil(t, client)
 
 	// Do it twice to ensure the client is cached.
-	client, err = provider.GetClient(context.Background())
+	client, err = provider.GetClient(t.Context())
 	require.Error(t, err)
 	require.Equal(t, "failed to initialize database client: oh noes!", err.Error())
 	require.Nil(t, client)
@@ -111,18 +111,75 @@ func TestGetClient_UnsupportedProvider(t *testing.T) {
 	options := Options{Provider: "unsupported"}
 	provider := FromOptions(options)
 
-	client, err := provider.GetClient(context.Background())
+	client, err := provider.GetClient(t.Context())
 
 	require.Error(t, err)
 	require.Nil(t, client)
 	require.Equal(t, "unsupported database provider: unsupported", err.Error())
 }
 
+func Test_expandEnvURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		url       string
+		env       map[string]string
+		expected  string
+		expectErr bool
+	}{
+		{
+			name:     "no substitution",
+			url:      "postgresql://user:pass@host:5432/db",
+			expected: "postgresql://user:pass@host:5432/db",
+		},
+		{
+			name:     "single variable is expanded in place",
+			url:      "postgresql://ucp:${POSTGRES_PASSWORD}@database:5432/ucp",
+			env:      map[string]string{"POSTGRES_PASSWORD": "s3cret"},
+			expected: "postgresql://ucp:s3cret@database:5432/ucp",
+		},
+		{
+			name: "multiple variables are all expanded",
+			url:  "postgresql://${PGUSER}:${PGPASS}@host:5432/db",
+			env: map[string]string{
+				"PGUSER": "ucp",
+				"PGPASS": "p@ss",
+			},
+			expected: "postgresql://ucp:p@ss@host:5432/db",
+		},
+		{
+			name:     "empty-but-set variable expands to empty string",
+			url:      "postgresql://ucp:${EMPTY_VAR}@host:5432/db",
+			env:      map[string]string{"EMPTY_VAR": ""},
+			expected: "postgresql://ucp:@host:5432/db",
+		},
+		{
+			name:      "unset variable fails fast",
+			url:       "postgresql://ucp:${DEFINITELY_NOT_SET_VAR}@host:5432/db",
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.env {
+				t.Setenv(k, v)
+			}
+			got, err := expandEnvURL(tt.url)
+			if tt.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, got)
+		})
+	}
+}
+
 func TestInitialize(t *testing.T) {
 	options := Options{Provider: TypeInMemory}
 	provider := FromOptions(options)
 
-	result := provider.initialize(context.Background())
+	result := provider.initialize(t.Context())
 
 	require.NoError(t, result.err)
 	require.NotNil(t, result.client)

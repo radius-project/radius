@@ -41,7 +41,7 @@ var (
 	ErrEmptyMessage = errors.New("message must not be nil or message is empty")
 )
 
-//go:generate mockgen -typed -destination=./mock_client.go -package=queue -self_package github.com/radius-project/radius/pkg/components/queue github.com/radius-project/radius/pkg/components/queue Client
+//go:generate go tool mockgen -typed -destination=./mock_client.go -package=queue -self_package github.com/radius-project/radius/pkg/components/queue github.com/radius-project/radius/pkg/components/queue Client
 
 // Client is an interface to implement queue operations.
 type Client interface {
@@ -64,6 +64,7 @@ func StartDequeuer(ctx context.Context, cli Client, opts ...DequeueOptions) (<-c
 	out := make(chan *Message, 1)
 
 	go func() {
+		defer close(out)
 		for {
 			var queueconfig QueueClientConfig
 			if opts != nil {
@@ -71,14 +72,21 @@ func StartDequeuer(ctx context.Context, cli Client, opts ...DequeueOptions) (<-c
 			}
 			msg, err := cli.Dequeue(ctx, queueconfig)
 			if err == nil {
-				out <- msg
+				// The consumer stops reading once the context is done, so the send must not block.
+				select {
+				case out <- msg:
+				case <-ctx.Done():
+					return
+				}
+				// More messages may be waiting, so only an empty queue or a failure waits for the
+				// interval.
+				continue
 			} else if !errors.Is(err, ErrMessageNotFound) {
 				log.Error(err, "fails to dequeue the message")
 			}
 
 			select {
 			case <-ctx.Done():
-				close(out)
 				return
 			case <-time.After(queueconfig.DequeueIntervalDuration):
 			}

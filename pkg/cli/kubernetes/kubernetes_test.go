@@ -17,7 +17,6 @@ limitations under the License.
 package kubernetes
 
 import (
-	"context"
 	"errors"
 	"os"
 	"testing"
@@ -33,17 +32,15 @@ import (
 )
 
 func TestEnsureNamespace(t *testing.T) {
-	f := k8sfake.NewClientset(&v1.Namespace{ObjectMeta: meta_v1.ObjectMeta{Name: "radius-test"}})
+	f := k8sfake.NewClientset(&v1.Namespace{Name: "radius-test"})
 
 	k8sutil.PrependPatchReactor(f, "namespaces", func(pa clienttesting.PatchAction) runtime.Object {
 		return &v1.Namespace{
-			ObjectMeta: meta_v1.ObjectMeta{
-				Name: pa.GetName(),
-			},
+			Name: pa.GetName(),
 		}
 	})
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	err := EnsureNamespace(ctx, f, "radius-test")
 	require.NoError(t, err)
 	_, err = f.CoreV1().Namespaces().Get(ctx, "radius-test", meta_v1.GetOptions{})
@@ -52,9 +49,9 @@ func TestEnsureNamespace(t *testing.T) {
 
 func TestDeleteNamespace(t *testing.T) {
 	namespace := "radius-test"
-	f := k8sfake.NewClientset(&v1.Namespace{ObjectMeta: meta_v1.ObjectMeta{Name: namespace}})
+	f := k8sfake.NewClientset(&v1.Namespace{Name: namespace})
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := f.CoreV1().Namespaces().Get(ctx, namespace, meta_v1.GetOptions{})
 	require.NoError(t, err)
 	err = deleteNamespace(ctx, f, namespace)

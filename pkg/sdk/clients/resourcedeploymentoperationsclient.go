@@ -25,7 +25,8 @@ import (
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 )
 
 // ResourceDeploymentOperationsClient is an operations client which takes in a resourceID as the destination to query.
@@ -65,13 +66,13 @@ func NewResourceDeploymentOperationsClient(options *Options) (*ResourceDeploymen
 // Parameters:
 // resourceId - the resourceId to deploy to. NOTE, must start with a '/'. Ex: "/resourcegroups/{resourceGroupName}/deployments/{deploymentName}/operations
 // top - the number of results to return.
-func (client *ResourceDeploymentOperationsClient) List(ctx context.Context, resourceGroupName string, deploymentName string, resourceID string, apiVersion string, top *int32) (*armresources.DeploymentOperationsListResult, error) {
-	result := &armresources.DeploymentOperationsListResult{
-		Value:    make([]*armresources.DeploymentOperation, 0),
+func (client *ResourceDeploymentOperationsClient) List(ctx context.Context, resourceGroupName string, deploymentName string, resourceID string, apiVersion string, top *int32) (*armdeployments.DeploymentOperationsListResult, error) {
+	result := &armdeployments.DeploymentOperationsListResult{
+		Value:    make([]*armdeployments.DeploymentOperation, 0),
 		NextLink: new(""),
 	}
 
-	pager := client.NewListPager(resourceID, apiVersion, &armresources.DeploymentOperationsClientListOptions{
+	pager := client.NewListPager(resourceID, apiVersion, &armdeployments.DeploymentOperationsClientListOptions{
 		Top: top,
 	})
 
@@ -88,12 +89,12 @@ func (client *ResourceDeploymentOperationsClient) List(ctx context.Context, reso
 }
 
 // NewListPager creates a pager to iterate over the list of deployment operations for a given resource.
-func (client *ResourceDeploymentOperationsClient) NewListPager(resourceID string, apiVersion string, options *armresources.DeploymentOperationsClientListOptions) *runtime.Pager[armresources.DeploymentOperationsClientListResponse] {
-	return runtime.NewPager(runtime.PagingHandler[armresources.DeploymentOperationsClientListResponse]{
-		More: func(page armresources.DeploymentOperationsClientListResponse) bool {
+func (client *ResourceDeploymentOperationsClient) NewListPager(resourceID string, apiVersion string, options *armdeployments.DeploymentOperationsClientListOptions) *runtime.Pager[armdeployments.DeploymentOperationsClientListResponse] {
+	return runtime.NewPager(runtime.PagingHandler[armdeployments.DeploymentOperationsClientListResponse]{
+		More: func(page armdeployments.DeploymentOperationsClientListResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *armresources.DeploymentOperationsClientListResponse) (armresources.DeploymentOperationsClientListResponse, error) {
+		Fetcher: func(ctx context.Context, page *armdeployments.DeploymentOperationsClientListResponse) (armdeployments.DeploymentOperationsClientListResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
@@ -102,14 +103,14 @@ func (client *ResourceDeploymentOperationsClient) NewListPager(resourceID string
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return armresources.DeploymentOperationsClientListResponse{}, err
+				return armdeployments.DeploymentOperationsClientListResponse{}, err
 			}
 			resp, err := client.pipeline.Do(req)
 			if err != nil {
-				return armresources.DeploymentOperationsClientListResponse{}, err
+				return armdeployments.DeploymentOperationsClientListResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return armresources.DeploymentOperationsClientListResponse{}, runtime.NewResponseError(resp)
+				return armdeployments.DeploymentOperationsClientListResponse{}, runtime.NewResponseError(resp)
 			}
 			return client.listHandleResponse(resp)
 		},
@@ -117,7 +118,7 @@ func (client *ResourceDeploymentOperationsClient) NewListPager(resourceID string
 }
 
 // listCreateRequest creates the List request.
-func (client *ResourceDeploymentOperationsClient) listCreateRequest(ctx context.Context, resourceID string, apiVersion string, options *armresources.DeploymentOperationsClientListOptions) (*policy.Request, error) {
+func (client *ResourceDeploymentOperationsClient) listCreateRequest(ctx context.Context, resourceID string, apiVersion string, options *armdeployments.DeploymentOperationsClientListOptions) (*policy.Request, error) {
 	if resourceID == "" {
 		return nil, errors.New("resourceID cannot be empty")
 	}
@@ -138,10 +139,10 @@ func (client *ResourceDeploymentOperationsClient) listCreateRequest(ctx context.
 }
 
 // listHandleResponse handles the List response.
-func (client *ResourceDeploymentOperationsClient) listHandleResponse(resp *http.Response) (armresources.DeploymentOperationsClientListResponse, error) {
-	result := armresources.DeploymentOperationsClientListResponse{}
+func (client *ResourceDeploymentOperationsClient) listHandleResponse(resp *http.Response) (armdeployments.DeploymentOperationsClientListResponse, error) {
+	result := armdeployments.DeploymentOperationsClientListResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DeploymentOperationsListResult); err != nil {
-		return armresources.DeploymentOperationsClientListResponse{}, err
+		return armdeployments.DeploymentOperationsClientListResponse{}, err
 	}
 	return result, nil
 }

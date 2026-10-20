@@ -24,15 +24,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/sanity-io/litter"
 	"github.com/stretchr/testify/require"
 
-	"github.com/davecgh/go-spew/spew"
-	"github.com/radius-project/radius/test/testcontext"
 	shared "github.com/radius-project/radius/test/ucp/storetest"
 )
 
 func Test_PostgresClient(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	// You can get the right value for this by running the command: make db-init
@@ -68,20 +67,20 @@ type postgresLogger struct {
 // Exec implements PostgresAPI.
 func (l *postgresLogger) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	l.t.Logf("Executing: %s", sql)
-	l.t.Logf("Args:\n%s", spew.Sdump(args...))
+	l.t.Logf("Args:\n%s", litter.Sdump(args...))
 	return l.pool.Exec(ctx, sql, args...)
 }
 
 // Query implements PostgresAPI.
 func (l *postgresLogger) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	l.t.Logf("Executing: %s", sql)
-	l.t.Logf("Args:\n%s", spew.Sdump(args...))
+	l.t.Logf("Args:\n%s", litter.Sdump(args...))
 	return l.pool.Query(ctx, sql, args...)
 }
 
 // QueryRow implements PostgresAPI.
 func (l *postgresLogger) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
 	l.t.Logf("Executing: %s", sql)
-	l.t.Logf("Args:\n%s", spew.Sdump(args...))
+	l.t.Logf("Args:\n%s", litter.Sdump(args...))
 	return l.pool.QueryRow(ctx, sql, args...)
 }

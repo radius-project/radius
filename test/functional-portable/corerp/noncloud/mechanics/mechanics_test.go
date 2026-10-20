@@ -38,16 +38,15 @@ func Test_NestedModules(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: "corerp-mechanics-nestedmodules-outerapp-app",
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "corerp-mechanics-nestedmodules-innerapp-app",
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 				},
 			},
@@ -55,26 +54,29 @@ func Test_NestedModules(t *testing.T) {
 		},
 	})
 
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, name)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, fmt.Sprintf("environment=%s", previewEnvID))
+
 	test.Test(t)
 }
 
 func Test_RedeployWithAnotherResource(t *testing.T) {
 	name := "corerp-mechanics-redeploy-with-another-resource"
-	appNamespace := "default-corerp-mechanics-redeploy-with-another-resource"
+	appNamespace := name
 	templateFmt := "testdata/corerp-mechanics-redeploy-withanotherresource.step%d.bicep"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "mechanicsa",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -88,21 +90,20 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "mechanicsb",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 					{
 						Name: "mechanicsc",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -118,26 +119,30 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 		},
 	})
 
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+	test.Steps[1].Executor = step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+
 	test.Test(t)
 }
 
 func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 	name := "corerp-mechanics-redeploy-withupdatedresource"
-	appNamespace := "default-corerp-mechanics-redeploy-withupdatedresource"
+	appNamespace := name
 	templateFmt := "testdata/corerp-mechanics-redeploy-withupdatedresource.step%d.bicep"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "mechanicsd",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -151,16 +156,15 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "mechanicsd",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -175,39 +179,51 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				labelset := kubernetes.MakeSelectorLabels(name, "mechanicsd")
 
-				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(context.Background(), metav1.ListOptions{
+				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
 				})
 
 				require.NoError(t, err, "failed to list deployments")
 				require.Len(t, deployments.Items, 1, "expected 1 deployment")
 				deployment := deployments.Items[0]
-				envVar := deployment.Spec.Template.Spec.Containers[0].Env[0]
-				require.Equal(t, "TEST", envVar.Name, "expected env var to be updated")
-				require.Equal(t, "updated", envVar.Value, "expected env var to be updated")
+
+				var found bool
+				for _, envVar := range deployment.Spec.Template.Spec.Containers[0].Env {
+					if envVar.Name == "TEST" {
+						found = true
+						require.Equal(t, "updated", envVar.Value, "expected env var TEST to be updated")
+						break
+					}
+				}
+				require.True(t, found, "expected env var TEST to be present on the redeployed container")
 			},
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+	test.Steps[1].Executor = step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+
 	test.Test(t)
 }
 
 func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 	name := "corerp-mechanics-redeploy-withtwoseparateresource"
-	appNamespace := "default-corerp-mechanics-redeploy-withtwoseparateresource"
+	appNamespace := name
 	templateFmt := "testdata/corerp-mechanics-redeploy-withtwoseparateresource.step%d.bicep"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "mechanicse",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -221,21 +237,20 @@ func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "mechanicse",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 					{
 						Name: "mechanicsf",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -250,6 +265,11 @@ func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 			},
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(fmt.Sprintf(templateFmt, 1), testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+	test.Steps[1].Executor = step.NewDeployExecutor(fmt.Sprintf(templateFmt, 2), testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }
@@ -298,33 +318,18 @@ func Test_InvalidResourceIDs(t *testing.T) {
 	name := "corerp-mechanics-invalid-resourceids"
 	template := "testdata/corerp-mechanics-invalid-resourceids.bicep"
 
-	// We've avoiding including resource IDs here because they can change depending on how the run is
-	// configured.
+	// The container references an invalid application resource ID ("not_an_id"). The deployment is
+	// expected to fail because the application ID cannot be parsed as a valid resource id. As with
+	// the original Applications.Core version of this test, the failed container resource is left
+	// behind (it cannot be cascade-deleted because it has no valid owning application), so resource
+	// and object validation are skipped.
 	validate := step.ValidateAllDetails("DeploymentFailed", []step.DeploymentErrorDetail{
 		{
 			Code: "ResourceDeploymentFailure",
 			Details: []step.DeploymentErrorDetail{
 				{
-					Code:            "BadRequest",
-					MessageContains: "has invalid Applications.Core/applications resource type.",
-				},
-			},
-		},
-		{
-			Code: "ResourceDeploymentFailure",
-			Details: []step.DeploymentErrorDetail{
-				{
-					Code:            "BadRequest",
-					MessageContains: "application ID \"not_an_id\" for the resource",
-				},
-			},
-		},
-		{
-			Code: "ResourceDeploymentFailure",
-			Details: []step.DeploymentErrorDetail{
-				{
-					Code:            "Internal",
-					MessageContains: "'global' is not a valid resource id",
+					Code:            "RecipeDeploymentFailed",
+					MessageContains: "is not a valid resource id",
 				},
 			},
 		},
@@ -332,18 +337,14 @@ func Test_InvalidResourceIDs(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template, validate, testutil.GetMagpieImage(), testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{
-					{
-						Name: name,
-						Type: validation.ApplicationsResource,
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{},
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, name)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployErrorExecutor(template, validate, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }

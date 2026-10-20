@@ -57,8 +57,8 @@ func (c *APIVersionDeleteController) updateSummary(id resources.ID) func(summary
 			return nil
 		}
 
-		resourceTypeName := id.Truncate().Name()
-		resourceTypeEntry, ok := summary.Properties.ResourceTypes[id.Truncate().Name()]
+		resourceTypeName := resolveResourceTypeKey(summary.Properties.ResourceTypes, id.Truncate().Name())
+		resourceTypeEntry, ok := summary.Properties.ResourceTypes[resourceTypeName]
 		if !ok {
 			// If we get here, the resource type entry doesn't exist! This is fine.
 			return nil

@@ -18,11 +18,8 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/radius-project/radius/pkg/azure/tokencredentials"
-	"github.com/radius-project/radius/pkg/cli/aws"
-	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
@@ -32,46 +29,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
-
-// CreateEnvProviders forms the provider scope from the given
-//
-
-// CreateEnvProviders iterates through a list of providers and creates a corerp.Providers object with the appropriate
-// scopes for each provider type (Azure or AWS). If more than one provider of the same type is found, an error is returned.
-//
-// If an invalid type is found, an error is returned.
-func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
-	var res corerp.Providers
-	for _, provider := range providersList {
-		switch p := provider.(type) {
-		case *azure.Provider:
-			if res.Azure != nil {
-				return corerp.Providers{}, clierrors.Message("Only one azure provider can be configured to a scope.")
-			}
-			if p == nil {
-				break
-			}
-			res.Azure = &corerp.ProvidersAzure{
-				Scope: new("/subscriptions/" + p.SubscriptionID + "/resourceGroups/" + p.ResourceGroup),
-			}
-		case *aws.Provider:
-			if res.Aws != nil {
-				return corerp.Providers{}, clierrors.Message("Only one aws provider can be configured to a scope.")
-			}
-			if p == nil {
-				break
-			}
-			res.Aws = &corerp.ProvidersAws{
-				Scope: new("/planes/aws/aws/accounts/" + p.AccountID + "/regions/" + p.Region),
-			}
-		case nil:
-			// skip nil provider
-		default:
-			return corerp.Providers{}, fmt.Errorf("internal error: cannot create environment with invalid type '%T'", provider)
-		}
-	}
-	return res, nil
-}
 
 // GetNamespace takes in an EnvironmentResource object and returns a string representing the namespace associated with the
 // KubernetesCompute object, or an empty string if the Compute property is not a KubernetesCompute object.
@@ -121,14 +78,14 @@ func InitializeClientFactory(ctx context.Context, workspace *workspaces.Workspac
 // InitializeRadiusCoreClientFactory initializes a new v20250801preview.ClientFactory using the provided workspace context.
 // It connects to the workspace and creates a new client factory with anonymous credentials.
 // If the connection fails, it returns an error.
-func InitializeRadiusCoreClientFactory(ctx context.Context, workspace *workspaces.Workspace, rootScope string) (*v20250801preview.ClientFactory, error) {
+func InitializeRadiusCoreClientFactory(ctx context.Context, workspace *workspaces.Workspace) (*v20250801preview.ClientFactory, error) {
 	connection, err := workspace.Connect(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	clientOptions := sdk.NewClientOptions(connection)
-	clientFactory, err := v20250801preview.NewClientFactory(rootScope, &tokencredentials.AnonymousCredential{}, clientOptions)
+	clientFactory, err := v20250801preview.NewClientFactory(&tokencredentials.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +110,7 @@ func PopulateRecipePackClients(
 		if _, exists := clientsByScope[scope]; exists {
 			continue
 		}
-		factory, err := InitializeRadiusCoreClientFactory(ctx, workspace, scope)
+		factory, err := InitializeRadiusCoreClientFactory(ctx, workspace)
 		if err != nil {
 			return err
 		}

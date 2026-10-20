@@ -670,10 +670,8 @@ func convertEnvVar(key string, env datamodel.EnvironmentVariable, options render
 				Name: key,
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: name,
-						},
-						Key: env.ValueFrom.SecretRef.Key,
+						Name: name,
+						Key:  env.ValueFrom.SecretRef.Key,
 					},
 				},
 			}, nil
@@ -683,10 +681,8 @@ func convertEnvVar(key string, env datamodel.EnvironmentVariable, options render
 				Name: key,
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: env.ValueFrom.SecretRef.Source,
-						},
-						Key: env.ValueFrom.SecretRef.Key,
+						Name: env.ValueFrom.SecretRef.Source,
+						Key:  env.ValueFrom.SecretRef.Key,
 					},
 				},
 			}, nil
@@ -759,10 +755,8 @@ func updateEnvAndSecretData(connName string, resourceName string, environmentVar
 		}
 		source := corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: kubernetes.NormalizeResourceName(resourceName),
-				},
-				Key: name,
+				Name: kubernetes.NormalizeResourceName(resourceName),
+				Key:  name,
 			},
 		}
 
@@ -895,17 +889,13 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 
 func (r Renderer) makeSecret(resource datamodel.ContainerResource, applicationName string, secrets map[string][]byte, options renderers.RenderOptions) rpv1.OutputResource {
 	secret := corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: corev1.SchemeGroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(resource.Name),
-			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
-		},
-		Type: corev1.SecretTypeOpaque,
-		Data: secrets,
+		Kind:       "Secret",
+		APIVersion: corev1.SchemeGroupVersion.String(),
+		Name:       kubernetes.NormalizeResourceName(resource.Name),
+		Namespace:  options.Environment.Namespace,
+		Labels:     kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
+		Type:       corev1.SecretTypeOpaque,
+		Data:       secrets,
 	}
 
 	output := rpv1.NewKubernetesOutputResource(rpv1.LocalIDSecret, &secret, secret.ObjectMeta)

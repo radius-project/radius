@@ -17,9 +17,12 @@ limitations under the License.
 package v20231001preview
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
@@ -27,18 +30,14 @@ import (
 // ConvertTo converts from the versioned ResourceTypeResource resource to version-agnostic datamodel.
 func (src *ResourceTypeResource) ConvertTo() (v1.DataModelInterface, error) {
 	dst := &datamodel.ResourceType{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   to.String(src.ID),
-				Name: to.String(src.Name),
-				Type: datamodel.ResourceTypeResourceType,
+		TrackedResource: v1.TrackedResource{
+			ID:   to.String(src.ID),
+			Name: to.String(src.Name),
+			Type: datamodel.ResourceTypeResourceType,
 
-				// NOTE: this is a child resource. It does not have a location, systemData, or tags.
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
+			// NOTE: this is a child resource. It does not have a location, systemData, or tags.
 		},
+		UpdatedAPIVersion: Version,
 	}
 
 	capabilities := []string{}
@@ -57,6 +56,28 @@ func (src *ResourceTypeResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 
 	dst.Properties.Description = src.Properties.Description
+
+	// The icon is written by the client as verbatim SVG bytes. The hash is
+	// server-computed (read-only on the wire) so it content-addresses exactly
+	// the bytes that were stored.
+	dst.Properties.Icon = src.Properties.Icon
+	if src.Properties.Icon != nil {
+		iconBytes := []byte(*src.Properties.Icon)
+		if err := datamodel.ValidateIcon(iconBytes); err != nil {
+			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid icon: %s", err.Error()))
+		}
+		sum := sha256.Sum256(iconBytes)
+		dst.Properties.IconHash = to.Ptr(hex.EncodeToString(sum[:]))
+	} else {
+		// No icon supplied — substitute the product default icon's hash so
+		// every registered type has a non-nil IconHash. The bytes stay unset
+		// on the record; consumers fetch them from the embedded product
+		// default in-binary (pkg/defaults package). If the embedded default
+		// failed to load, DefaultIconHash returns nil and IconHash stays
+		// unset — icons are cosmetic, we degrade gracefully rather than
+		// fail registration.
+		dst.Properties.IconHash = defaults.DefaultIconHash()
+	}
 
 	return dst, nil
 }
@@ -79,6 +100,8 @@ func (dst *ResourceTypeResource) ConvertFrom(src v1.DataModelInterface) error {
 		Capabilities:      to.SliceOfPtrs(dm.Properties.Capabilities...),
 		DefaultAPIVersion: dm.Properties.DefaultAPIVersion,
 		Description:       dm.Properties.Description,
+		Icon:              dm.Properties.Icon,
+		IconHash:          dm.Properties.IconHash,
 	}
 
 	return nil

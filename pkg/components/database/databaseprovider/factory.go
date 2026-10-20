@@ -20,7 +20,9 @@ import (
 	context "context"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	store "github.com/radius-project/radius/pkg/components/database"
@@ -84,18 +86,38 @@ func initInMemoryClient(ctx context.Context, opt Options) (store.Client, error) 
 	return inmemory.NewClient(), nil
 }
 
+// envVarPattern matches ${VAR_NAME} references for expansion against environment variables.
+var envVarPattern = regexp.MustCompile(`\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}`)
+
+// expandEnvURL replaces ${VAR} references in the connection URL with the values of the
+// corresponding environment variables. It returns an error if any referenced variable is unset,
+// so a missing or mistyped variable fails fast with a clear message instead of silently producing
+// a malformed connection string.
+func expandEnvURL(url string) (string, error) {
+	var missing []string
+	expanded := envVarPattern.ReplaceAllStringFunc(url, func(match string) string {
+		varName := envVarPattern.FindStringSubmatch(match)[1]
+		val, ok := os.LookupEnv(varName)
+		if !ok {
+			missing = append(missing, varName)
+		}
+		return val
+	})
+	if len(missing) > 0 {
+		return "", fmt.Errorf("required environment variable(s) not set: %s", strings.Join(missing, ", "))
+	}
+	return expanded, nil
+}
+
 // initPostgreSQLClient creates a new PostgreSQL store client.
 func initPostgreSQLClient(ctx context.Context, opt Options) (store.Client, error) {
 	if opt.PostgreSQL.URL == "" {
 		return nil, errors.New("failed to initialize PostgreSQL client: URL is required")
 	}
 
-	url := opt.PostgreSQL.URL
-	regex := regexp.MustCompile(`$\{([a-zA-Z_]+)\}`)
-	matches := regex.FindSubmatch([]byte(opt.PostgreSQL.URL))
-	if len(matches) > 1 {
-		// Extract the captured expression.
-		url = string(matches[1])
+	url, err := expandEnvURL(opt.PostgreSQL.URL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize PostgreSQL client: %w", err)
 	}
 
 	pool, err := pgxpool.New(ctx, url)

@@ -20,8 +20,8 @@
               ],
               "recipes": {
                 "Applications.Core/containers": {
-                  "recipeKind": "bicep",
-                  "recipeLocation": "ghcr.io/radius-project/recipes/azure-container-apps:latest"
+                  "kind": "bicep",
+                  "source": "ghcr.io/radius-project/recipes/azure-container-apps:latest"
                 }
               }
             }
@@ -36,8 +36,8 @@
               "referencedBy": [],
               "recipes": {
                 "Applications.Core/containers": {
-                  "recipeKind": "bicep",
-                  "recipeLocation": "ghcr.io/myregistry/bicep/recipes/myrecipe:v1.0"
+                  "kind": "bicep",
+                  "source": "ghcr.io/myregistry/bicep/recipes/myrecipe:v1.0"
                 }
               }
             }

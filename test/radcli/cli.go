@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -35,10 +36,74 @@ const (
 	HeartbeatInterval = 10 * time.Second
 )
 
+// Provider and type registration both rewrite a shared location map without an ETag.
+var resourceRegistrationLock sync.Mutex
+
 type CLI struct {
 	T                *testing.T
 	ConfigFilePath   string
 	WorkingDirectory string
+
+	// suppressLogs disables all test logging from this CLI. It is set when commands may
+	// still be running after the test function returns, because logging to a completed test
+	// panics with "Log in goroutine after <test> has completed". It is unexported so the
+	// only way to obtain a suppressed CLI is Silent, which copies rather than mutating a
+	// CLI that concurrent goroutines may share.
+	suppressLogs bool
+
+	// logDestination overrides T as the log destination. It exists so tests can observe
+	// suppression; production callers leave it nil and logging goes to T.
+	logDestination logger
+
+	// heartbeatInterval overrides HeartbeatInterval so tests need not wait on the real one.
+	heartbeatInterval time.Duration
+}
+
+// logger is the destination for CLI test logging. *testing.T satisfies it.
+type logger interface {
+	Logf(format string, args ...any)
+}
+
+// Silent returns a copy of the CLI that performs no test logging. Use it for commands run
+// from background goroutines that are not joined before the test completes.
+//
+// It returns a copy rather than mutating the receiver because teardown runs these commands
+// concurrently from goroutines that share one CLI.
+func (cli *CLI) Silent() *CLI {
+	if cli == nil {
+		return nil
+	}
+
+	copied := *cli
+	copied.suppressLogs = true
+	return &copied
+}
+
+// logf writes to the test log unless logging is suppressed.
+func (cli *CLI) logf(format string, args ...any) {
+	if cli.suppressLogs {
+		return
+	}
+
+	if cli.logDestination != nil {
+		cli.logDestination.Logf(format, args...)
+		return
+	}
+
+	if cli.T == nil {
+		return
+	}
+
+	cli.T.Logf(format, args...)
+}
+
+// heartbeatPeriod returns the interval between heartbeat log lines.
+func (cli *CLI) heartbeatPeriod() time.Duration {
+	if cli.heartbeatInterval > 0 {
+		return cli.heartbeatInterval
+	}
+
+	return HeartbeatInterval
 }
 
 // NewCLI creates a new CLI instance with the given testing.T and config file path.
@@ -140,7 +205,37 @@ func (cli *CLI) deployInternal(ctx context.Context, templateFilePath string, env
 		return &CLIError{ErrorResponse: errResponse}
 	}
 
-	return cliErr
+	if cliErr != nil {
+		// The failure is not a structured ARM error (for example a transport-level
+		// failure such as a UCP connection reset or EOF when the port-forward tunnel
+		// drops). rad prints that cause to its output and exits non-zero, but the
+		// wrapped exec error only carries "exit status 1". Fold the tail of the
+		// output into the returned error so retry predicates (see
+		// step.IsTransientConnectionError) can inspect the underlying cause. Only
+		// the tail is kept: ReportCommandResult already streams the full output to
+		// the test log, and the transport markers rad prints appear at the end, so
+		// keeping the tail avoids duplicating large logs across retries.
+		return fmt.Errorf("%w\n%s", cliErr, tailLines(out, maxDeployErrorOutputLines))
+	}
+
+	return nil
+}
+
+// maxDeployErrorOutputLines bounds how many trailing lines of rad CLI output are
+// folded into a non-structured deploy error (see deployInternal).
+const maxDeployErrorOutputLines = 20
+
+// tailLines returns the last maxLines lines of s, prefixed with a truncation
+// marker when earlier lines were dropped. It preserves the trailing transport
+// error markers needed to classify retryable failures without carrying the
+// entire (already-logged) CLI output.
+func tailLines(s string, maxLines int) string {
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	if len(lines) <= maxLines {
+		return s
+	}
+	tail := lines[len(lines)-maxLines:]
+	return "...(output truncated; see test log for full output)...\n" + strings.Join(tail, "\n")
 }
 
 // ShowOptions provides flexible configuration for show commands
@@ -164,7 +259,7 @@ type CreateOptions struct {
 	Group       string // Resource group name (--group)
 	Workspace   string // Workspace name (--workspace)
 	Environment string // Environment name (--environment)
-	Namespace   string // Kubernetes namespace (--namespace, for env create)
+	Namespace   string // Kubernetes namespace (--kubernetes-namespace, for env create)
 	Context     string // Kubernetes context (--context, for workspace create)
 	Force       bool   // Overwrite if exists (--force, for workspace create)
 	Output      string // Output format (--output)
@@ -229,18 +324,6 @@ func (cli *CLI) EnvShow(ctx context.Context, environmentName string, opts ...Sho
 }
 
 // ApplicationDelete deletes the specified application deployed by Radius and returns an error if one occurs.
-func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName string) error {
-	command := "application"
-
-	args := []string{
-		command,
-		"delete",
-		"--yes",
-		"-a", applicationName,
-	}
-	_, err := cli.RunCommand(ctx, args)
-	return err
-}
 
 // EnvCreate runs the command to create an environment with the given name.
 // The options parameter is optional and allows specifying namespace, group, workspace, and output format.
@@ -255,7 +338,7 @@ func (cli *CLI) EnvCreate(ctx context.Context, environmentName string, opts ...C
 	if len(opts) > 0 {
 		opt := opts[0]
 		if opt.Namespace != "" {
-			args = append(args, "--namespace", opt.Namespace)
+			args = append(args, "--kubernetes-namespace", opt.Namespace)
 		}
 		if opt.Group != "" {
 			args = append(args, "--group", opt.Group)
@@ -335,25 +418,17 @@ func (cli *CLI) ResourceShow(ctx context.Context, resourceType string, resourceN
 	return cli.RunCommand(ctx, args)
 }
 
-// ResourceList runs the "resource list containers" command with the given application name and returns the output as a
-// string, returning an error if the command fails.
-func (cli *CLI) ResourceList(ctx context.Context, applicationName string) (string, error) {
+// ResourceList runs the "resource list <resourceType>" command and returns the output as a string,
+// returning an error if the command fails. When applicationName is non-empty the results are scoped
+// to that application via the "-a" flag.
+func (cli *CLI) ResourceList(ctx context.Context, resourceType string, applicationName string) (string, error) {
 	args := []string{
 		"resource",
 		"list",
-		"Applications.Core/containers",
-		"-a", applicationName,
+		resourceType,
 	}
-	return cli.RunCommand(ctx, args)
-}
-
-// ResourceListInResourceGroup runs the "resource list --group" command to list all resources in a specific resource group
-// and returns the output as a string, returning an error if the command fails.
-func (cli *CLI) ResourceListInResourceGroup(ctx context.Context, groupName string) (string, error) {
-	args := []string{
-		"resource",
-		"list",
-		"--group", groupName,
+	if applicationName != "" {
+		args = append(args, "-a", applicationName)
 	}
 	return cli.RunCommand(ctx, args)
 }
@@ -430,38 +505,27 @@ func (cli *CLI) GroupShow(ctx context.Context, groupName string) (string, error)
 }
 
 // ResourceLogs runs the CLI command to get the logs of a resource in an application.
-func (cli *CLI) ResourceLogs(ctx context.Context, applicationName string, resourceName string) (string, error) {
+func (cli *CLI) ResourceLogs(ctx context.Context, resourceType string, applicationName string, resourceName string) (string, error) {
 	args := []string{
 		"resource",
 		"logs",
 		"-a", applicationName,
-		"Applications.Core/containers",
+		resourceType,
 		resourceName,
 	}
 	return cli.RunCommand(ctx, args)
 }
 
 // ResourceExpose runs a command to expose a resource from an application on a given port.
-func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, resourceName string, localPort int, remotePort int) (string, error) {
+func (cli *CLI) ResourceExpose(ctx context.Context, resourceType string, applicationName string, resourceName string, localPort int, remotePort int) (string, error) {
 	args := []string{
 		"resource",
 		"expose",
 		"-a", applicationName,
-		"Applications.Core/containers",
+		resourceType,
 		resourceName,
 		"--port", fmt.Sprintf("%d", localPort),
 		"--remote-port", fmt.Sprintf("%d", remotePort),
-	}
-	return cli.RunCommand(ctx, args)
-}
-
-// RecipeList runs the "recipe list" command with the given environment name and returns the output as a string, returning
-// an error if the command fails.
-func (cli *CLI) RecipeList(ctx context.Context, envName string) (string, error) {
-	args := []string{
-		"recipe",
-		"list",
-		"--environment", envName,
 	}
 	return cli.RunCommand(ctx, args)
 }
@@ -493,14 +557,17 @@ func (cli *CLI) RecipePackShow(ctx context.Context, recipepackName, groupName st
 	return cli.RunCommand(ctx, args)
 }
 
-// EnvironmentCreatePreview runs the "env create" command for the specified environment name and returns the output as a string, returning
+// EnvironmentCreatePreview runs "env create" for a Radius.Core environment and returns the output as a string, returning
 // an error if the command fails.
-func (cli *CLI) EnvironmentCreatePreview(ctx context.Context, environmentName, groupName string) (string, error) {
+func (cli *CLI) EnvironmentCreatePreview(ctx context.Context, environmentName, groupName, kubernetesNamespace string) (string, error) {
 	args := []string{
 		"env",
 		"create",
 		environmentName,
-		"--preview",
+	}
+
+	if kubernetesNamespace != "" {
+		args = append(args, "--kubernetes-namespace", kubernetesNamespace)
 	}
 
 	if groupName != "" {
@@ -516,7 +583,6 @@ func (cli *CLI) EnvironmentListPreview(ctx context.Context, groupName string) (s
 	args := []string{
 		"env",
 		"list",
-		"--preview",
 	}
 
 	if groupName != "" {
@@ -526,7 +592,7 @@ func (cli *CLI) EnvironmentListPreview(ctx context.Context, groupName string) (s
 	return cli.RunCommand(ctx, args)
 }
 
-// EnvironmentUpdatePreview runs the "env update --preview" command for the specified environment name
+// EnvironmentUpdatePreview runs the "env update" command for the specified environment name
 // and returns the output as a string, returning an error if the command fails.
 // Optional parameters groupName, recipePack, and kubernetesNamespace are applied when non-empty.
 func (cli *CLI) EnvironmentUpdatePreview(ctx context.Context, environmentName, groupName, recipePack, kubernetesNamespace string) (string, error) {
@@ -534,7 +600,6 @@ func (cli *CLI) EnvironmentUpdatePreview(ctx context.Context, environmentName, g
 		"env",
 		"update",
 		environmentName,
-		"--preview",
 	}
 
 	if recipePack != "" {
@@ -559,7 +624,6 @@ func (cli *CLI) EnvironmentShowPreview(ctx context.Context, environmentName, gro
 		"env",
 		"show",
 		environmentName,
-		"--preview",
 	}
 
 	if groupName != "" {
@@ -569,14 +633,13 @@ func (cli *CLI) EnvironmentShowPreview(ctx context.Context, environmentName, gro
 	return cli.RunCommand(ctx, args)
 }
 
-// EnvironmentDeletePreview runs the "env delete" command with the --preview flag for the specified environment name
+// EnvironmentDeletePreview runs the "env delete" command for the specified Radius.Core environment name
 // and returns the output as a string, returning an error if the command fails.
 func (cli *CLI) EnvironmentDeletePreview(ctx context.Context, environmentName, groupName string) (string, error) {
 	args := []string{
 		"env",
 		"delete",
 		environmentName,
-		"--preview",
 		"--yes",
 	}
 
@@ -587,14 +650,13 @@ func (cli *CLI) EnvironmentDeletePreview(ctx context.Context, environmentName, g
 	return cli.RunCommand(ctx, args)
 }
 
-// ApplicationDeletePreview runs the "application delete" command with the --preview flag for the specified application name
+// ApplicationDelete runs the "application delete" command for the specified Radius.Core application name
 // and returns the output as a string, returning an error if the command fails.
-func (cli *CLI) ApplicationDeletePreview(ctx context.Context, applicationName, groupName string) (string, error) {
+func (cli *CLI) ApplicationDelete(ctx context.Context, applicationName, groupName string) (string, error) {
 	args := []string{
 		"application",
 		"delete",
 		"-a", applicationName,
-		"--preview",
 		"--yes",
 	}
 
@@ -636,50 +698,6 @@ func (cli *CLI) RecipePackDelete(ctx context.Context, recipepackName string, opt
 	return err
 }
 
-// RecipeRegister runs a command to register a recipe with the given environment, template kind, template path and
-// resource type, and returns the output string or an error.
-func (cli *CLI) RecipeRegister(ctx context.Context, envName, recipeName, templateKind, templatePath, resourceType string, plainHTTP bool) (string, error) {
-	args := []string{
-		"recipe",
-		"register",
-		recipeName,
-		"--environment", envName,
-		"--template-kind", templateKind,
-		"--template-path", templatePath,
-		"--resource-type", resourceType,
-	}
-	if plainHTTP {
-		args = append(args, "--plain-http")
-	}
-	return cli.RunCommand(ctx, args)
-}
-
-// RecipeUnregister runs a command to unregister a recipe from an environment, given the recipe name and resource type.
-// It returns a string and an error if the command fails.
-func (cli *CLI) RecipeUnregister(ctx context.Context, envName, recipeName, resourceType string) (string, error) {
-	args := []string{
-		"recipe",
-		"unregister",
-		recipeName,
-		"--resource-type", resourceType,
-		"--environment", envName,
-	}
-	return cli.RunCommand(ctx, args)
-}
-
-// RecipeShow runs a command to show a recipe with the given environment name, recipe name and resource type, and returns the
-// output string or an error.
-func (cli *CLI) RecipeShow(ctx context.Context, envName, recipeName string, resourceType string) (string, error) {
-	args := []string{
-		"recipe",
-		"show",
-		recipeName,
-		"--resource-type", resourceType,
-		"--environment", envName,
-	}
-	return cli.RunCommand(ctx, args)
-}
-
 // BicepPublish runs the bicep publish command with the given file and target, and returns the output string or an error if
 // the command fails.
 func (cli *CLI) BicepPublish(ctx context.Context, file, target string) (string, error) {
@@ -697,6 +715,9 @@ func (cli *CLI) BicepPublish(ctx context.Context, file, target string) (string, 
 // ResourceProviderCreate runs a command to create or update a resource provider and it's associated resource types from a manifest file.
 // It returns the output string or an error if the command fails.
 func (cli *CLI) ResourceProviderCreate(ctx context.Context, manifestFilePath string) (string, error) {
+	resourceRegistrationLock.Lock()
+	defer resourceRegistrationLock.Unlock()
+
 	args := []string{
 		"resource-provider",
 		"create",
@@ -709,6 +730,9 @@ func (cli *CLI) ResourceProviderCreate(ctx context.Context, manifestFilePath str
 // ResourceTypeCreate runs a command to create or update a resource type.
 // It returns the output string or an error if the command fails.
 func (cli *CLI) ResourceTypeCreate(ctx context.Context, resourceTypeName string, manifestFilePath string) (string, error) {
+	resourceRegistrationLock.Lock()
+	defer resourceRegistrationLock.Unlock()
+
 	args := []string{
 		"resource-type",
 		"create",
@@ -774,7 +798,7 @@ func (cli *CLI) CreateCommand(ctx context.Context, args []string) (*exec.Cmd, fu
 func (cli *CLI) ReportCommandResult(ctx context.Context, out string, description string, err error) error {
 	// If there's no context error, we know the command completed (or errored).
 	for line := range strings.SplitSeq(out, "\n") {
-		cli.T.Logf("[rad] %s", line)
+		cli.logf("[rad] %s", line)
 	}
 
 	if ctx.Err() == context.DeadlineExceeded {
@@ -826,8 +850,8 @@ func (cli *CLI) heartbeat(description string, done <-chan struct{}) {
 	start := time.Now()
 	for {
 		select {
-		case <-time.After(HeartbeatInterval):
-			cli.T.Logf("[heartbeat] command %s is still running after %s", description, time.Since(start))
+		case <-time.After(cli.heartbeatPeriod()):
+			cli.logf("[heartbeat] command %s is still running after %s", description, time.Since(start))
 		case <-done:
 			return
 		}

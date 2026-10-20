@@ -19,27 +19,35 @@ param connectionConfigUrl string
 @secure()
 param connectionConfigToken string
 
-resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'udt-sensitive-env'
+resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
+  name: 'udt-sensitive-recipe-pack'
   location: location
   properties: {
-    compute: {
-      kind: 'kubernetes'
-      resourceId: 'self'
-      namespace: 'udt-sensitive-env'
-    }
     recipes: {
       'Test.Resources/sensitiveResource': {
-        default: {
-          templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_sensitive_recipe:${version}'
-        }
+        kind: 'bicep'
+        source: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_sensitive_recipe:${version}'
       }
     }
   }
 }
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource env 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'udt-sensitive-env'
+  location: location
+  properties: {
+    recipePacks: [
+      recipepack.id
+    ]
+    providers: {
+      kubernetes: {
+        namespace: 'udt-sensitive-app'
+      }
+    }
+  }
+}
+
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'udt-sensitive-app'
   location: location
   properties: {

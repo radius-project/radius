@@ -34,10 +34,14 @@ type ConnectedResource struct {
 	Type string `json:"type"`
 	// Properties represents the resource properties
 	Properties map[string]any `json:"properties,omitempty"`
+	// Secrets represents non-sensitive references to managed secret keys.
+	Secrets map[string]rpv1.ManagedSecretReference `json:"secrets,omitempty"`
 }
 
 // Configuration represents runtime and cloud provider configuration, which is used by the driver while deploying recipes.
 type Configuration struct {
+	// TerraformBackend selects remote state storage; nil uses Kubernetes.
+	TerraformBackend *datamodel.TerraformBackend
 	// Kubernetes Runtime configuration for the environment.
 	Runtime RuntimeConfiguration
 	// Cloud providers configuration for the environment
@@ -83,6 +87,13 @@ type EnvironmentDefinition struct {
 	TemplateVersion string
 	// Allows insecure connections to registry without SSL check.
 	PlainHTTP bool
+	// Outputs maps resource property names to module output names for direct module support.
+	// When nil or empty, all module outputs pass through with their original names.
+	Outputs map[string]string
+	// SecretOutputs maps secret resource property names to module output names for direct module
+	// support. Unlike Outputs, a SecretOutputs entry always routes its module output to the recipe's
+	// secret outputs regardless of how the module itself classified it.
+	SecretOutputs map[string]string
 }
 
 // ResourceMetadata represents recipe details provided while deploying a portable or a user-defined resource.
@@ -152,13 +163,19 @@ type RecipePackResource struct {
 
 // RecipeDefinition represents a recipe definition for a specific resource type in a recipe pack.
 type RecipeDefinition struct {
-	// RecipeKind represents the type of recipe (e.g., terraform, bicep)
-	RecipeKind string
-	// RecipeLocation represents URL or path to the recipe source
-	RecipeLocation string
+	// Kind represents the type of recipe (e.g., terraform, bicep)
+	Kind string
+	// Source represents URL or path to the recipe source
+	Source string
 	// Parameters represents parameters to pass to the recipe
 	Parameters map[string]any
-	// PlainHTTP connects to the location using HTTP (not-HTTPS)
+	// Outputs maps resource property names to module output names for direct module support.
+	// When nil or empty, all module outputs pass through with their original names.
+	Outputs map[string]string
+	// SecretOutputs maps secret resource property names to module output names for direct module
+	// support. A SecretOutputs entry always routes its module output to the recipe's secret outputs.
+	SecretOutputs map[string]string
+	// PlainHTTP connects to the source using HTTP (not-HTTPS)
 	PlainHTTP bool
 }
 

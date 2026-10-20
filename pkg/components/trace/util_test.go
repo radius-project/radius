@@ -17,7 +17,6 @@ limitations under the License.
 package trace
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -35,7 +34,7 @@ func TestExtractTraceparent(t *testing.T) {
 
 	for _, traceparent := range traceparentTests {
 		t.Run(traceparent, func(t *testing.T) {
-			ctx := WithTraceparent(context.TODO(), traceparent)
+			ctx := WithTraceparent(t.Context(), traceparent)
 
 			tp := ExtractTraceparent(ctx)
 			require.Equal(t, traceparent, tp)

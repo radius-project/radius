@@ -1,0 +1,422 @@
+/*
+Copyright 2026 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package resource_test
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"slices"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+	"uuid"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/test"
+	"github.com/radius-project/radius/test/radcli"
+	"github.com/radius-project/radius/test/rp"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
+	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+)
+
+const (
+	cloudBackendTimeout    = 5 * time.Minute
+	radiusOperationTimeout = 15 * time.Minute
+
+	// cloudBackendResourceType is the recipe-backed resource type these tests deploy through.
+	// Applications.Core/extenders is being deprecated, so these tests use a user-defined type.
+	// Its own namespace keeps it independent of the dynamic-RP suite's Test.Resources types, and
+	// its schema is empty because the backend recipes declare no outputs.
+	cloudBackendResourceType     = "Test.CloudBackend/stateResource"
+	cloudBackendResourceTypeName = "stateResource"
+	cloudBackendResourceTypeFile = "testdata/cloudbackend-resourcetypes.yaml"
+)
+
+// Guards the one-time registration of cloudBackendResourceType shared by the parallel tests.
+var (
+	registerCloudBackendTypeOnce sync.Once
+	registerCloudBackendTypeErr  error
+)
+
+// registerCloudBackendResourceType registers the user-defined type the cloud backend tests deploy
+// through. Registration is idempotent and resource types are shared, so it needs no cleanup.
+//
+// It runs once per package. The tests run in parallel against one cluster, and `rad resource-type
+// create` retries 409 conflicts only on the resource type write, not on the API version and
+// location writes that follow it. Concurrent registration of the same type can therefore fail
+// during setup. Registering once keeps the tests parallel without racing each other.
+func registerCloudBackendResourceType(ctx context.Context, t *testing.T, configFilePath string) {
+	t.Helper()
+	registerCloudBackendTypeOnce.Do(func() {
+		cli := radcli.NewCLI(t, configFilePath)
+		_, registerCloudBackendTypeErr = cli.ResourceTypeCreate(ctx, cloudBackendResourceTypeName, cloudBackendResourceTypeFile)
+	})
+	// Every test fails when the single registration failed, rather than only the one that ran it.
+	require.NoError(t, registerCloudBackendTypeErr, "register %s", cloudBackendResourceType)
+}
+
+type cloudBackendFixture struct {
+	settings      map[string]any
+	providers     map[string]any
+	parameters    map[string]any
+	prefix        string
+	resourceType  string
+	resourceID    func(string) string
+	read          func(context.Context, string) ([]byte, error)
+	write         func(context.Context, string, []byte) error
+	keys          func(context.Context) ([]string, error)
+	verifyObject  func(context.Context, string, string) (bool, error)
+	cleanupObject func(context.Context, string) error
+}
+
+// These tests deliberately fail, rather than skip, when cloud prerequisites are
+// missing. Both credentials are installed in the corerp-cloud CI lane.
+func Test_TerraformCloudBackend_S3(t *testing.T) {
+	testTerraformCloudBackend(t, "s3", newS3BackendFixture)
+}
+
+func Test_TerraformCloudBackend_AzureRM(t *testing.T) {
+	testTerraformCloudBackend(t, "azurerm", newAzureBackendFixture)
+}
+
+func testTerraformCloudBackend(t *testing.T, backend string, setup func(context.Context, *testing.T, string) cloudBackendFixture) {
+	t.Helper()
+	name := "tfbackend-" + strings.ReplaceAll(uuid.New().String(), "-", "")
+	ct := rp.NewRPTest(t, name, nil)
+	ct.FastCleanup = false
+	ct.Steps = []rp.TestStep{{
+		Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, _ test.TestOptions) {
+			credential := "aws"
+			if backend == "azurerm" {
+				credential = "azure"
+			}
+			require.True(t, validation.AssertCredentialExists(t, credential), "cloud suite requires a registered default credential")
+			moduleServer := requiredCloudEnv(t, "TF_RECIPE_MODULE_SERVER_URL")
+			registerCloudBackendResourceType(ctx, t, ct.Options.ConfigFilePath)
+			fixture := setup(ctx, t, name)
+
+			// Every attempted Radius allocation gets a cleanup, including failed PUTs.
+			// LIFO ordering keeps settings and backing storage alive through destroy.
+			put := func(resourceType, resourceName string, properties map[string]any, allocate bool) generated.GenericResource {
+				return putCloudBackendResource(ctx, t, &ct, resourceType, resourceName, properties, allocate)
+			}
+			destroy := func(resourceName string) {
+				opCtx, cancel := context.WithTimeout(ctx, radiusOperationTimeout)
+				defer cancel()
+				_, err := ct.Options.ManagementClient.DeleteResource(opCtx, cloudBackendResourceType, resourceName, false)
+				require.NoError(t, err)
+				_, err = ct.Options.ManagementClient.GetResource(opCtx, cloudBackendResourceType, resourceName)
+				require.True(t, isNotFoundResponse(err), "Radius resource must be absent after synchronous destroy")
+			}
+
+			names := []string{name + "-a", name + "-b"}
+			// A decoy under the same prefix that Radius never owns. Post-destroy cleanup must
+			// delete only the state key belonging to the destroyed resource, so a key-construction
+			// bug that widened the delete would show up here. It also keeps the final listing
+			// assertion non-vacuous: without it, a broken keys() helper that always returned
+			// nothing would satisfy an "empty storage" check.
+			decoyKey := fixture.prefix + "/unrelated-tenant.tfstate"
+			decoyBody := []byte(`{"version":4,"lineage":"decoy","serial":1,"resources":[]}`)
+			func() {
+				seedCtx, cancel := context.WithTimeout(ctx, time.Minute)
+				defer cancel()
+				require.NoError(t, fixture.write(seedCtx, decoyKey, decoyBody), "seed decoy state object")
+			}()
+			requireDecoyIntact := func(stage string) {
+				readCtx, cancel := context.WithTimeout(ctx, time.Minute)
+				defer cancel()
+				body, err := fixture.read(readCtx, decoyKey)
+				require.NoError(t, err, "decoy object must survive %s", stage)
+				require.Equal(t, decoyBody, body, "decoy content must be unchanged after %s", stage)
+			}
+			// SDK fallback cleanup is separate from assertions: it cannot make a failed
+			// Terraform destroy look successful and runs before backend storage cleanup.
+			for _, objectName := range names {
+				t.Cleanup(func() {
+					cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), cloudBackendTimeout)
+					defer cancel()
+					if err := fixture.cleanupObject(cleanupCtx, objectName); err != nil {
+						t.Errorf("cleanup recipe object %s: %v", objectName, err)
+					}
+				})
+			}
+			config := put("Radius.Core/terraformSettings", name, map[string]any{"backend": fixture.settings}, true)
+			pack := put("Radius.Core/recipePacks", name, map[string]any{
+				"recipes": map[string]any{cloudBackendResourceType: map[string]any{
+					"kind": "terraform", "source": strings.TrimRight(moduleServer, "/") + "/backend-" + backend + ".zip",
+				}},
+			}, true)
+			fixture.providers["kubernetes"] = map[string]any{"namespace": name}
+			env := put("Radius.Core/environments", name, map[string]any{
+				"terraformSettings": *config.ID, "recipePacks": []string{*pack.ID}, "providers": fixture.providers,
+			}, true)
+			app := put("Applications.Core/applications", name, map[string]any{"environment": *env.ID}, true)
+
+			deploy := func(objectName, revision string, allocate bool) string {
+				parameters := map[string]any{"name": objectName, "revision": revision}
+				for key, value := range fixture.parameters {
+					parameters[key] = value
+				}
+				resource := put(cloudBackendResourceType, objectName, map[string]any{
+					"environment": *env.ID, "application": *app.ID,
+					"recipe": map[string]any{"name": "default", "parameters": parameters},
+				}, allocate)
+				return expectedCloudStateKey(fixture.prefix, name, name, *resource.ID)
+			}
+			read := func(key string) cloudTerraformState {
+				opCtx, cancel := context.WithTimeout(ctx, time.Minute)
+				defer cancel()
+				body, err := fixture.read(opCtx, key)
+				require.NoError(t, err, "read expected backing-state key %s", key)
+				state, err := decodeCloudState(body)
+				require.NoError(t, err) // The decoder never includes state content in errors.
+				require.Equal(t, 4, state.Version)
+				require.NotEmpty(t, state.Lineage)
+				require.Positive(t, state.Serial)
+				return state
+			}
+			verifyObject := func(objectName, revision string) {
+				pollCloud(t, ctx, "recipe object "+objectName, func(ctx context.Context) (bool, error) {
+					return fixture.verifyObject(ctx, objectName, revision)
+				})
+			}
+			verifyManaged := func(state cloudTerraformState, objectName, revision string) {
+				require.Equal(t, 1, len(state.Resources))
+				resource := state.Resources[0]
+				require.Equal(t, "managed", resource.Mode)
+				require.Equal(t, fixture.resourceType, resource.Type)
+				require.Equal(t, 1, len(resource.Instances))
+				require.Equal(t, fixture.resourceID(objectName), resource.Instances[0].Attributes.ID)
+				require.Equal(t, revision, resource.Instances[0].Attributes.Tags["revision"])
+				verifyObject(objectName, revision)
+			}
+			// Radius deletes the empty state object Terraform leaves behind, so after destroy the
+			// key must be gone rather than holding a zero-resource state. Listing keys avoids
+			// needing a per-cloud not-found predicate.
+			requireStateAbsent := func(key string) {
+				pollCloud(t, ctx, "state object "+key+" removed after destroy", func(ctx context.Context) (bool, error) {
+					keys, err := fixture.keys(ctx)
+					if err != nil {
+						return false, err
+					}
+					return !slices.Contains(keys, key), nil
+				})
+			}
+
+			keyA := deploy(names[0], "one", true)
+			first := read(keyA)
+			verifyManaged(first, names[0], "one")
+			keyB := deploy(names[1], "one", true)
+			second := read(keyB)
+			verifyManaged(second, names[1], "one")
+			require.NotEqual(t, keyA, keyB)
+			require.NotEqual(t, first.Lineage, second.Lineage)
+			require.Equal(t, first.digest, read(keyA).digest, "creating B must not change A")
+
+			require.Equal(t, keyA, deploy(names[0], "two", false))
+			updated := read(keyA)
+			require.Equal(t, first.Lineage, updated.Lineage)
+			require.Greater(t, updated.Serial, first.Serial)
+			verifyManaged(updated, names[0], "two")
+			require.Equal(t, second.digest, read(keyB).digest, "updating A must not change B")
+			verifyObject(names[1], "one")
+
+			destroy(names[0])
+			// The infrastructure must be gone and its state object removed with it, while B is
+			// untouched: cleanup must be scoped to the destroyed resource's own key.
+			requireStateAbsent(keyA)
+			verifyObject(names[0], "")
+			require.Equal(t, second.digest, read(keyB).digest, "destroying A must not change B")
+			verifyObject(names[1], "one")
+			requireDecoyIntact("destroying A")
+
+			destroy(names[1])
+			requireStateAbsent(keyB)
+			verifyObject(names[1], "")
+			requireDecoyIntact("destroying B")
+			opCtx, cancel := context.WithTimeout(ctx, time.Minute)
+			defer cancel()
+			keys, err := fixture.keys(opCtx)
+			require.NoError(t, err, "backing storage must still exist after both destroys")
+			require.Equal(t, []string{decoyKey}, keys, "cleanup removes both state objects, leaves no lock objects, and never touches unrelated keys")
+		}),
+		SkipKubernetesOutputResourceValidation: true,
+		SkipObjectValidation:                   true,
+	}}
+	cleanupCloudBackendNamespace(t, &ct, name)
+	ct.Test(t)
+}
+
+// putCloudBackendResource creates or updates a Radius resource and, when allocate is set,
+// registers the cleanup that deletes it.
+//
+// The cleanup is registered before the PUT is issued, so a PUT that allocated server-side and then
+// failed or timed out is still cleaned up. LIFO ordering keeps settings and backing storage alive
+// through destroy.
+func putCloudBackendResource(ctx context.Context, t *testing.T, ct *rp.RPTest, resourceType, resourceName string, properties map[string]any, allocate bool) generated.GenericResource {
+	t.Helper()
+	if allocate {
+		t.Cleanup(func() {
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), cloudBackendTimeout)
+			defer cancel()
+			err := deleteRadiusAfterUpdate(cleanupCtx, func(ctx context.Context) error {
+				_, err := ct.Options.ManagementClient.DeleteResource(ctx, resourceType, resourceName, false)
+				return err
+			})
+			if err != nil {
+				t.Errorf("cleanup Radius %s/%s: %v", resourceType, resourceName, err)
+			}
+		})
+	}
+	opCtx, cancel := context.WithTimeout(ctx, radiusOperationTimeout)
+	defer cancel()
+	resource, err := ct.Options.ManagementClient.CreateOrUpdateResource(opCtx, resourceType, resourceName, &generated.GenericResource{
+		Location: new("global"), Properties: properties,
+	})
+	require.NoError(t, err, "PUT %s/%s", resourceType, resourceName)
+	require.NotNil(t, resource.ID)
+	return resource
+}
+
+// cleanupCloudBackendNamespace registers removal of the application namespace the test deployed
+// into. Namespace deletion can block on finalizers, so it gets the full cleanup budget.
+func cleanupCloudBackendNamespace(t *testing.T, ct *rp.RPTest, namespace string) {
+	t.Helper()
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), cloudBackendTimeout)
+		defer cancel()
+		err := ct.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Errorf("delete test namespace: %v", err)
+		}
+	})
+}
+
+func requiredCloudEnv(t *testing.T, key string) string {
+	t.Helper()
+	value := os.Getenv(key)
+	require.NotEmpty(t, value, "%s is required by the cloud suite", key)
+	return value
+}
+
+// isNotFoundResponse reports whether err is a 404 from an azcore-based client. Both the Azure
+// management SDKs and the Radius control-plane client are built on azcore, so this is used for
+// Radius resources too and is not specific to Azure.
+func isNotFoundResponse(err error) bool {
+	var response *azcore.ResponseError
+	return errors.As(err, &response) && response.StatusCode == 404
+}
+
+// A timed-out PUT can still be Updating server-side. Unlike fast cleanup, do
+// not force-delete its metadata while Terraform may still be running.
+func deleteRadiusAfterUpdate(ctx context.Context, deleteResource func(context.Context) error) error {
+	err := wait.PollUntilContextCancel(ctx, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+		if err := ctx.Err(); err != nil {
+			return false, err
+		}
+		err := deleteResource(ctx)
+		if err == nil || isNotFoundResponse(err) {
+			return true, nil
+		}
+		var response *azcore.ResponseError
+		if errors.As(err, &response) && response.StatusCode == 409 {
+			return false, nil
+		}
+		return false, err
+	})
+	if err != nil {
+		return fmt.Errorf("Radius cleanup failed (409 conflicts retried without force): %w", err)
+	}
+	return nil
+}
+
+func pollCloud(t *testing.T, ctx context.Context, description string, check func(context.Context) (bool, error)) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	for {
+		ready, err := check(ctx)
+		require.NoError(t, err, description)
+		if ready {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("timed out waiting for %s", description)
+		case <-ticker.C:
+		}
+	}
+}
+
+// Keep the oracle independent of production backend rendering.
+func expectedCloudStateKey(prefix, environment, application, resourceID string) string {
+	hash := sha256.Sum256([]byte(strings.ToLower(environment + "-" + application + "-" + resourceID)))
+	return prefix + "/" + hex.EncodeToString(hash[:])[:40] + ".tfstate"
+}
+
+type cloudTerraformState struct {
+	Version   int    `json:"version"`
+	Lineage   string `json:"lineage"`
+	Serial    uint64 `json:"serial"`
+	Resources []struct {
+		Mode      string `json:"mode"`
+		Type      string `json:"type"`
+		Instances []struct {
+			Attributes struct {
+				ID   string            `json:"id"`
+				Tags map[string]string `json:"tags"`
+			} `json:"attributes"`
+		} `json:"instances"`
+	} `json:"resources"`
+	digest [sha256.Size]byte
+}
+
+func decodeCloudState(body []byte) (cloudTerraformState, error) {
+	var state cloudTerraformState
+	if err := json.Unmarshal(body, &state); err != nil {
+		return state, errors.New("invalid Terraform state JSON (content redacted)")
+	}
+	state.digest = sha256.Sum256(body)
+	return state, nil
+}
+
+func readCloudStateBody(body io.ReadCloser) ([]byte, error) {
+	defer body.Close()
+	const limit = 1024 * 1024
+	data, err := io.ReadAll(io.LimitReader(body, limit+1))
+	if err != nil {
+		return nil, errors.New("reading Terraform state failed (content redacted)")
+	}
+	if len(data) > limit {
+		return nil, fmt.Errorf("Terraform test state exceeds %d bytes", limit)
+	}
+	return data, nil
+}

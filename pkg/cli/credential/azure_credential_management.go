@@ -26,7 +26,7 @@ import (
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 )
 
-//go:generate mockgen -typed -destination=./mock_azure_credential_management.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential AzureCredentialManagementClientInterface
+//go:generate go tool mockgen -typed -destination=./mock_azure_credential_management.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential AzureCredentialManagementClientInterface
 
 // AzureCredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type AzureCredentialManagementClient struct {
@@ -133,10 +133,8 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 		}
 
 		providerCredentialConfiguration := ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    AzureCredential,
-				Enabled: true,
-			},
+			Name:    AzureCredential,
+			Enabled: true,
 			AzureCredentials: &AzureCredentialProperties{
 				Kind: (*string)(azureServicePrincipal.Kind),
 				ServicePrincipal: &AzureServicePrincipalCredentialProperties{
@@ -155,10 +153,8 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 		}
 
 		providerCredentialConfiguration := ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    AzureCredential,
-				Enabled: true,
-			},
+			Name:    AzureCredential,
+			Enabled: true,
 			AzureCredentials: &AzureCredentialProperties{
 				Kind: (*string)(azureWorkloadIdentity.Kind),
 				WorkloadIdentity: &AzureWorkloadIdentityCredentialProperties{

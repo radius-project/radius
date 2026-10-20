@@ -17,12 +17,117 @@ limitations under the License.
 package helm
 
 import (
+	"bytes"
+	"io"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	helm "helm.sh/helm/v3/pkg/action"
+	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/kube"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
+
+func TestHelmClientImpl_UpgradeImmutableImageDefaults(t *testing.T) {
+	t.Parallel()
+	testCases := []struct {
+		name        string
+		storedTag   string
+		clearTag    bool
+		expectedTag string
+	}{
+		{name: "chart defaults move from channel to patch", expectedTag: "0.61.1"},
+		{name: "explicit channel override survives", storedTag: "0.61", expectedTag: "0.61"},
+		{name: "cleared channel override adopts patch", storedTag: "0.61", clearTag: true, expectedTag: "0.61.1"},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			previousChart, err := loader.Load("../../../deploy/Chart")
+			require.NoError(t, err)
+			previousChart.Metadata.Version = "0.61.0"
+			previousChart.Metadata.AppVersion = "0.61.0"
+			previousChart.Files = slices.DeleteFunc(previousChart.Files, func(file *common.File) bool {
+				return strings.HasPrefix(file.Name, "crds/")
+			})
+			for _, template := range previousChart.Templates {
+				if template.Name == "templates/_helpers.tpl" {
+					require.Contains(t, string(template.Data), "{{- .Chart.AppVersion -}}")
+					template.Data = bytes.Replace(template.Data, []byte("{{- .Chart.AppVersion -}}"), []byte(`{{- $parts := splitList "." .Chart.AppVersion -}}{{- printf "%s.%s" (index $parts 0) (index $parts 1) -}}`), 1)
+				}
+			}
+			configuration := &helm.Configuration{
+				Releases:     storage.Init(driver.NewMemory()),
+				KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
+				Capabilities: common.DefaultCapabilities,
+			}
+			client := NewHelmClient()
+			values := map[string]any{
+				"rp":         map[string]any{"publicEndpointOverride": "retained.example.test"},
+				"preupgrade": map[string]any{"enabled": true},
+			}
+			if testCase.storedTag != "" {
+				values["global"] = map[string]any{"imageTag": testCase.storedTag}
+			}
+			installed, err := client.RunHelmInstall(configuration, previousChart, values, "radius", "radius-system", false, DefaultInstallTimeout)
+			require.NoError(t, err)
+			require.Contains(t, helmWorkloadImages(t, installed.Manifest), "ghcr.io/radius-project/controller:0.61")
+
+			nextChart, err := loader.Load("../../../deploy/Chart")
+			require.NoError(t, err)
+			nextChart.Metadata.Version = "0.61.1"
+			nextChart.Metadata.AppVersion = "0.61.1"
+			nextChart.Files = slices.DeleteFunc(nextChart.Files, func(file *common.File) bool {
+				return strings.HasPrefix(file.Name, "crds/")
+			})
+			overrides := map[string]any{}
+			if testCase.clearTag {
+				overrides["global"] = map[string]any{"imageTag": ""}
+			}
+			upgraded, err := client.RunHelmUpgrade(configuration, nextChart, overrides, "radius", "radius-system", false, true, DefaultInstallTimeout)
+			require.NoError(t, err)
+			require.Equal(t, 2, upgraded.Version)
+			manifest := upgraded.Manifest
+			for _, hook := range upgraded.Hooks {
+				manifest += "\n---\n" + hook.Manifest
+			}
+			images := helmWorkloadImages(t, manifest)
+			for _, image := range []string{"applications-rp", "controller", "dynamic-rp", "ucpd", "pre-upgrade", "bicep", "dashboard", "deployment-engine"} {
+				require.Contains(t, images, "ghcr.io/radius-project/"+image+":"+testCase.expectedTag)
+			}
+			require.Equal(t, "retained.example.test", upgraded.Config["rp"].(map[string]any)["publicEndpointOverride"])
+		})
+	}
+}
+
+func helmWorkloadImages(t *testing.T, manifest string) []string {
+	t.Helper()
+	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
+	var images []string
+	for {
+		var workload struct {
+			Spec struct {
+				Template corev1.PodTemplateSpec `json:"template"`
+			} `json:"spec"`
+		}
+		err := decoder.Decode(&workload)
+		if err == io.EOF {
+			return images
+		}
+		require.NoError(t, err)
+		for _, container := range append(workload.Spec.Template.Spec.Containers, workload.Spec.Template.Spec.InitContainers...) {
+			images = append(images, container.Image)
+		}
+	}
+}
 
 func TestHelmClientImpl_RunHelmHistory(t *testing.T) {
 	client := &HelmClientImpl{}
@@ -71,11 +176,79 @@ func TestHelmClientImpl_RunHelmRollback(t *testing.T) {
 }
 
 func TestHelmClient_Constants(t *testing.T) {
-	// Test that our new timeout constant is defined
+	// Test that our timeout constants are defined
 	require.Equal(t, time.Duration(5)*time.Minute, rollbackTimeout)
-	require.Equal(t, time.Duration(5)*time.Minute, installTimeout)
 	require.Equal(t, time.Duration(5)*time.Minute, uninstallTimeout)
-	require.Equal(t, time.Duration(5)*time.Minute, upgradeTimeout)
+
+	// Install and upgrade wait for the whole control plane to come up, including image
+	// pulls on a cold cluster, so they get a longer budget than the other operations.
+	// See https://github.com/radius-project/radius/issues/10236.
+	require.Equal(t, time.Duration(10)*time.Minute, DefaultInstallTimeout)
+}
+
+// Test_waitStrategy verifies that we wait using Helm's legacy poller rather than the v4
+// default kstatus watcher, which can hang until timeout on resources that are already ready.
+// See https://github.com/helm/helm/issues/31526.
+func Test_waitStrategy(t *testing.T) {
+	tests := []struct {
+		name     string
+		wait     bool
+		expected kube.WaitStrategy
+	}{
+		{
+			name:     "wait uses the legacy poller, not the kstatus watcher",
+			wait:     true,
+			expected: kube.LegacyStrategy,
+		},
+		{
+			name:     "no wait only waits for hooks",
+			wait:     false,
+			expected: kube.HookOnlyStrategy,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.expected, waitStrategy(tt.wait))
+		})
+	}
+}
+
+func Test_effectiveTimeout(t *testing.T) {
+	tests := []struct {
+		name     string
+		timeout  time.Duration
+		expected time.Duration
+	}{
+		{
+			name:     "caller-supplied timeout is honored",
+			timeout:  30 * time.Minute,
+			expected: 30 * time.Minute,
+		},
+		{
+			name:     "shorter caller-supplied timeout is honored",
+			timeout:  90 * time.Second,
+			expected: 90 * time.Second,
+		},
+		{
+			name:     "zero falls back to the default",
+			timeout:  0,
+			expected: DefaultInstallTimeout,
+		},
+		{
+			name:     "negative falls back to the default rather than expiring immediately",
+			timeout:  -1 * time.Minute,
+			expected: DefaultInstallTimeout,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.expected, effectiveTimeout(tt.timeout))
+		})
+	}
 }
 
 func TestHelmClient_Interface(t *testing.T) {
@@ -104,4 +277,105 @@ func TestHelmClient_MockCompatibility(t *testing.T) {
 	// Test RunHelmRollback method signature
 	var rollbackFunc func(*helm.Configuration, string, int, bool) error = client.RunHelmRollback
 	require.NotNil(t, rollbackFunc)
+}
+
+// Test_newInstallClient_Configuration asserts that the install action is actually configured with
+// the legacy wait strategy and an effective timeout. Test_waitStrategy and Test_effectiveTimeout
+// only cover the helpers in isolation, so this guards against the assignments being dropped.
+func Test_newInstallClient_Configuration(t *testing.T) {
+	tests := []struct {
+		name            string
+		wait            bool
+		timeout         time.Duration
+		expectedWait    kube.WaitStrategy
+		expectedTimeout time.Duration
+	}{
+		{
+			name:            "wait uses the legacy poller and the caller timeout",
+			wait:            true,
+			timeout:         30 * time.Minute,
+			expectedWait:    kube.LegacyStrategy,
+			expectedTimeout: 30 * time.Minute,
+		},
+		{
+			name:            "unset timeout falls back to the default",
+			wait:            true,
+			timeout:         0,
+			expectedWait:    kube.LegacyStrategy,
+			expectedTimeout: DefaultInstallTimeout,
+		},
+		{
+			name:            "no wait only waits for hooks",
+			wait:            false,
+			timeout:         5 * time.Minute,
+			expectedWait:    kube.HookOnlyStrategy,
+			expectedTimeout: 5 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			installClient := newInstallClient(&helm.Configuration{}, "test-release", "test-namespace", tt.wait, tt.timeout)
+
+			require.Equal(t, tt.expectedWait, installClient.WaitStrategy)
+			require.Equal(t, tt.expectedTimeout, installClient.Timeout)
+			require.Equal(t, "test-release", installClient.ReleaseName)
+			require.Equal(t, "test-namespace", installClient.Namespace)
+			require.True(t, installClient.CreateNamespace)
+		})
+	}
+}
+
+// Test_newUpgradeClient_Configuration asserts that the upgrade action is actually configured with
+// the legacy wait strategy, an effective timeout, and the expected value-reuse semantics.
+func Test_newUpgradeClient_Configuration(t *testing.T) {
+	tests := []struct {
+		name            string
+		wait            bool
+		reuseValues     bool
+		timeout         time.Duration
+		expectedWait    kube.WaitStrategy
+		expectedTimeout time.Duration
+	}{
+		{
+			name:            "wait uses the legacy poller and reuses values",
+			wait:            true,
+			reuseValues:     true,
+			timeout:         20 * time.Minute,
+			expectedWait:    kube.LegacyStrategy,
+			expectedTimeout: 20 * time.Minute,
+		},
+		{
+			name:            "unset timeout falls back to the default and resets values",
+			wait:            true,
+			reuseValues:     false,
+			timeout:         0,
+			expectedWait:    kube.LegacyStrategy,
+			expectedTimeout: DefaultInstallTimeout,
+		},
+		{
+			name:            "no wait only waits for hooks",
+			wait:            false,
+			reuseValues:     true,
+			timeout:         90 * time.Second,
+			expectedWait:    kube.HookOnlyStrategy,
+			expectedTimeout: 90 * time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			upgradeClient := newUpgradeClient(&helm.Configuration{}, "test-namespace", tt.wait, tt.reuseValues, tt.timeout)
+
+			require.Equal(t, tt.expectedWait, upgradeClient.WaitStrategy)
+			require.Equal(t, tt.expectedTimeout, upgradeClient.Timeout)
+			require.Equal(t, "test-namespace", upgradeClient.Namespace)
+			require.Equal(t, tt.reuseValues, upgradeClient.ResetThenReuseValues)
+			require.Equal(t, !tt.reuseValues, upgradeClient.ResetValues)
+		})
+	}
 }

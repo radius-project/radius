@@ -27,21 +27,15 @@ import (
 func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	converted := &datamodel.Environment_v20250801preview{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				CreatedAPIVersion:      Version,
-				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			},
-		},
-		Properties: datamodel.EnvironmentProperties_v20250801preview{},
+		ID:                     to.String(src.ID),
+		Name:                   to.String(src.Name),
+		Type:                   to.String(src.Type),
+		Location:               to.String(src.Location),
+		Tags:                   to.StringMap(src.Tags),
+		CreatedAPIVersion:      Version,
+		UpdatedAPIVersion:      Version,
+		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+		Properties:             datamodel.EnvironmentProperties_v20250801preview{},
 	}
 
 	// Convert RecipePacks
@@ -51,7 +45,12 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 
 	// Convert RecipeParameters
 	if src.Properties.RecipeParameters != nil {
-		converted.Properties.RecipeParameters = src.Properties.RecipeParameters
+		converted.Properties.RecipeParameters = map[string]map[string]any{}
+		for k, v := range src.Properties.RecipeParameters {
+			if v != nil {
+				converted.Properties.RecipeParameters[k] = v.AdditionalProperties
+			}
+		}
 	}
 
 	// Convert Providers
@@ -64,14 +63,14 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Simulated = true
 	}
 
-	// Convert TerraformConfig
-	if src.Properties.TerraformConfig != nil {
-		converted.Properties.TerraformConfig = to.String(src.Properties.TerraformConfig)
+	// Convert TerraformSettings
+	if src.Properties.TerraformSettings != nil {
+		converted.Properties.TerraformSettings = to.String(src.Properties.TerraformSettings)
 	}
 
-	// Convert BicepConfig
-	if src.Properties.BicepConfig != nil {
-		converted.Properties.BicepConfig = to.String(src.Properties.BicepConfig)
+	// Convert BicepSettings
+	if src.Properties.BicepSettings != nil {
+		converted.Properties.BicepSettings = to.String(src.Properties.BicepSettings)
 	}
 
 	return converted, nil
@@ -101,7 +100,10 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 
 	// Convert RecipeParameters
 	if len(env.Properties.RecipeParameters) > 0 {
-		dst.Properties.RecipeParameters = env.Properties.RecipeParameters
+		dst.Properties.RecipeParameters = map[string]*RecipeParameterValue{}
+		for k, v := range env.Properties.RecipeParameters {
+			dst.Properties.RecipeParameters[k] = &RecipeParameterValue{AdditionalProperties: v}
+		}
 	}
 
 	// Convert Providers
@@ -114,14 +116,14 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		dst.Properties.Simulated = new(env.Properties.Simulated)
 	}
 
-	// Convert TerraformConfig
-	if env.Properties.TerraformConfig != "" {
-		dst.Properties.TerraformConfig = &env.Properties.TerraformConfig
+	// Convert TerraformSettings
+	if env.Properties.TerraformSettings != "" {
+		dst.Properties.TerraformSettings = &env.Properties.TerraformSettings
 	}
 
-	// Convert BicepConfig
-	if env.Properties.BicepConfig != "" {
-		dst.Properties.BicepConfig = &env.Properties.BicepConfig
+	// Convert BicepSettings
+	if env.Properties.BicepSettings != "" {
+		dst.Properties.BicepSettings = &env.Properties.BicepSettings
 	}
 
 	return nil

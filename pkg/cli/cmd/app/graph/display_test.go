@@ -19,13 +19,14 @@ package graph
 import (
 	"testing"
 
-	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_display(t *testing.T) {
 	t.Run("empty graph", func(t *testing.T) {
-		graph := []*corerpv20231001preview.ApplicationGraphResource{}
+		graph := []*corerpv20250801.ApplicationGraphResource{}
 		expected := `Displaying application: cool-app
 
 (empty)
@@ -55,19 +56,20 @@ func Test_display(t *testing.T) {
 		azureRedisID := "/planes/azure/local/resourcegroups/default/providers/Applications.Datastores/Microsoft.Cache/Azure"
 		azureRedisName := "redis"
 		azureRedisType := "Applications.Datastores/redis"
+		azureRedisPortalURL := "https://portal.azure.com/#@test-tenant/resource" + azureRedisID
 
 		provisioningStateSuccess := "Succeeded"
-		dirInbound := corerpv20231001preview.DirectionInbound
-		dirOutbound := corerpv20231001preview.DirectionOutbound
+		dirInbound := corerpv20250801.DirectionInbound
+		dirOutbound := corerpv20250801.DirectionOutbound
 
-		graph := []*corerpv20231001preview.ApplicationGraphResource{
+		graph := []*corerpv20250801.ApplicationGraphResource{
 			{
 				ID:                &backendID,
 				Name:              &backendName,
 				Type:              &backendType,
 				ProvisioningState: &provisioningStateSuccess,
-				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
-				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+				OutputResources:   []*corerpv20250801.ApplicationGraphOutputResource{},
+				Connections: []*corerpv20250801.ApplicationGraphConnection{
 					{
 						Direction: &dirInbound,
 						ID:        &sqlCntrID,
@@ -79,8 +81,8 @@ func Test_display(t *testing.T) {
 				Name:              &sqlCntrName,
 				Type:              &sqlCntrType,
 				ProvisioningState: &provisioningStateSuccess,
-				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
-				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+				OutputResources:   []*corerpv20250801.ApplicationGraphOutputResource{},
+				Connections: []*corerpv20250801.ApplicationGraphConnection{
 					{
 						ID:        &backendID,
 						Direction: &dirOutbound,
@@ -92,15 +94,15 @@ func Test_display(t *testing.T) {
 				Name:              &sqlDbName,
 				Type:              &sqlDbType,
 				ProvisioningState: &provisioningStateSuccess,
-				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
+				OutputResources:   []*corerpv20250801.ApplicationGraphOutputResource{},
 			},
 			{
 				ID:                &sqlAppCntrID,
 				Name:              &sqlAppCntrName,
 				Type:              &sqlAppCntrType,
 				ProvisioningState: &provisioningStateSuccess,
-				OutputResources:   []*corerpv20231001preview.ApplicationGraphOutputResource{},
-				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+				OutputResources:   []*corerpv20250801.ApplicationGraphOutputResource{},
+				Connections: []*corerpv20250801.ApplicationGraphConnection{
 					{
 						Direction: &dirInbound,
 						ID:        &sqlDbID,
@@ -112,14 +114,15 @@ func Test_display(t *testing.T) {
 				Name:              &azureRedisName,
 				Type:              &azureRedisType,
 				ProvisioningState: &provisioningStateSuccess,
-				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
+				OutputResources: []*corerpv20250801.ApplicationGraphOutputResource{
 					{
-						ID:   &azureRedisID,
-						Name: &azureRedisName,
-						Type: &azureRedisType,
+						ID:        &azureRedisID,
+						Name:      &azureRedisName,
+						Type:      &azureRedisType,
+						PortalURL: &azureRedisPortalURL,
 					},
 				},
-				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
+				Connections: []*corerpv20250801.ApplicationGraphConnection{
 					{
 						Direction: &dirInbound,
 						ID:        &sqlDbID,
@@ -149,7 +152,7 @@ Name: redis (Applications.Datastores/redis)
 Connections:
   sql-db (Applications.Datastores/sqlDatabases) -> redis
 Resources:
-  ` + "\x1b]8;;" + `https://portal.azure.com/#@72f988bf-86f1-41af-91ab-2d7cd011db47/resource/planes/azure/local/resourcegroups/default/providers/Applications.Datastores/Microsoft.Cache/Azure` + "\aredis\x1b]8;;\a" + ` (Applications.Datastores/redis)
+  ` + "\x1b]8;;" + `https://portal.azure.com/#@test-tenant/resource/planes/azure/local/resourcegroups/default/providers/Applications.Datastores/Microsoft.Cache/Azure` + "\aredis\x1b]8;;\a" + ` (Applications.Datastores/redis)
 
 Name: sql-db (Applications.Datastores/sqlDatabases)
 Connections: (none)
@@ -161,4 +164,38 @@ Resources: (none)
 		require.Equal(t, expected, actual)
 	})
 
+}
+
+func Test_MakeResourceHyperlink(t *testing.T) {
+	tests := []struct {
+		name         string
+		portalURL    *string
+		resourceName string
+		want         string
+	}{
+		{
+			name:         "nil portal URL returns empty string",
+			portalURL:    nil,
+			resourceName: "myresource",
+			want:         "",
+		},
+		{
+			name:         "empty portal URL returns empty string",
+			portalURL:    to.Ptr(""),
+			resourceName: "myresource",
+			want:         "",
+		},
+		{
+			name:         "populated portal URL is wrapped in terminal hyperlink escape sequence",
+			portalURL:    to.Ptr("https://portal.azure.com/#@tenant/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"),
+			resourceName: "mystorage",
+			want:         "\x1b]8;;https://portal.azure.com/#@tenant/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage\x07mystorage\x1b]8;;\x07",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, MakeResourceHyperlink(tt.portalURL, tt.resourceName))
+		})
+	}
 }

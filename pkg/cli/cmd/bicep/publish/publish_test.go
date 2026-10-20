@@ -17,8 +17,8 @@ limitations under the License.
 package publish
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -29,9 +29,12 @@ import (
 	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/registry"
@@ -212,7 +215,7 @@ func Test_pushBlob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDesc, err := pushBlob(context.Background(), tt.mediaType, tt.blob, tt.target)
+			gotDesc, err := pushBlob(t.Context(), tt.mediaType, tt.blob, tt.target)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("pushBlob() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -394,6 +397,28 @@ func TestRunner_Validate(t *testing.T) {
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, tests)
+}
+
+func TestRunner_Run_PrepareTemplateError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	bicepMock := bicep.NewMockInterface(ctrl)
+	bicepMock.EXPECT().
+		PrepareTemplate(gomock.Any(), "redis.recipe.bicep").
+		Return(nil, bicep.RadiusExtensionPin{}, errors.New("failed to build template")).
+		Times(1)
+
+	runner := &Runner{
+		Bicep:  bicepMock,
+		Output: &output.MockOutput{},
+		File:   "redis.recipe.bicep",
+		Target: "ghcr.io/test-registry/test/repo:tag",
+	}
+
+	err := runner.Run(t.Context())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `Failed to prepare Bicep file "redis.recipe.bicep"`)
 }
 
 func getError(registerUrl string, statusCode int) *errcode.ErrorResponse {

@@ -1,6 +1,10 @@
 # Contributing Issues
 
-You can open an issue using the form [here](https://github.com/radius-project/radius/issues/new/choose). This form will ask you to fill out a template based on the kind of issue you choose. Please fill out the form as this will help us respond to your issue. 
+## Purpose
+
+This page explains how to file a good issue against [`radius-project/radius`](https://github.com/radius-project/radius) — which template to choose and what details to include so the maintainers can respond quickly. It is for anyone reporting a bug, requesting a feature, or suggesting an engineering improvement. After an issue is opened it goes through the [triage process](../triage/triage-process.md), which decides what happens to it next.
+
+You can open an issue using the [new issue form](https://github.com/radius-project/radius/issues/new/choose). This form will ask you to fill out a template based on the kind of issue you choose. Please fill out the form as this will help us respond to your issue.
 
 ## Tips for creating good issues
 
@@ -10,12 +14,13 @@ You will save us (the maintainers) time if you want to use the right template.
 
 - Choose 'Bug Report' if some functionality in Radius is broken, crashing, or not working as advertised.
 - Choose 'Feature Request' if you have new ideas for us, or think some existing functionality should work differently.
-- Choose 'Engineering' if you have suggestions for improving the engineering system, build, ci/cd pipelines or processes.
+- Choose 'Engineering Improvement' if you have suggestions for improving the engineering system, build, CI/CD pipelines, or processes.
+- Choose 'User Story' to describe a user capability with acceptance criteria, priority, and an optional related design note.
 - Choose 'Open a blank issue' (at the bottom) if neither of those is a good fit.
 
 ### Focus on the repro steps
 
-Providing clear repro steps with code samples is the best way to get a good response to your issue. [here](https://github.com/radius-project/radius/issues?q=is%3Aissue+is%3Aclosed)'s an example.
+Providing clear repro steps with code samples is the best way to get a good response to your issue. Here's [an example of a well-formed issue](https://github.com/radius-project/radius/issues?q=is%3Aissue+is%3Aclosed).
 
 Remember that another human will need to read your instructions and try to reproduce your steps to understand the issue.
 

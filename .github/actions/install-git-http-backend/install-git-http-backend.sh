@@ -49,6 +49,7 @@ apply_configmap() {
 
 apply_workload() {
   export NAMESPACE IMAGE SERVER_TEMP_DIR
+  # shellcheck disable=SC2016 # envsubst needs the literal ${VAR} names, so single quotes are intentional.
   envsubst '${NAMESPACE} ${IMAGE} ${SERVER_TEMP_DIR}' <"$1" | kubectl apply -f -
 }
 

@@ -54,7 +54,7 @@ func TestDefaultSyncDelete(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodDelete, resourceTestHeaderFile, nil)
+			req, err := rpctest.NewHTTPRequestFromJSON(t.Context(), http.MethodDelete, resourceTestHeaderFile, nil)
 			require.NoError(t, err)
 			req.Header.Set("If-Match", tt.etag)
 
@@ -64,8 +64,8 @@ func TestDefaultSyncDelete(t *testing.T) {
 			mds.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				Return(&database.Object{
-					Metadata: database.Metadata{ID: appDataModel.ID},
-					Data:     appDataModel,
+					ID:   appDataModel.ID,
+					Data: appDataModel,
 				}, tt.getErr).
 				Times(1)
 

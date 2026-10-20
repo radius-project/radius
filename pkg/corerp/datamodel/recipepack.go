@@ -49,15 +49,23 @@ type RecipePackProperties struct {
 
 // RecipeDefinition represents a recipe definition in the datamodel.
 type RecipeDefinition struct {
-	// RecipeKind is the type of recipe (e.g., terraform, bicep).
-	RecipeKind string `json:"recipeKind"`
+	// Kind is the type of recipe (e.g., terraform, bicep).
+	Kind string `json:"kind"`
 
-	// RecipeLocation is the URL or path to the recipe source.
-	RecipeLocation string `json:"recipeLocation"`
+	// Source is the URL or path to the recipe source.
+	Source string `json:"source"`
 
 	// Parameters to pass to the recipe.
 	Parameters map[string]any `json:"parameters,omitempty"`
 
-	// PlainHTTP connects to the location using HTTP (not-HTTPS).
+	// Outputs maps resource-type property names to module output names. Used for recipes that point
+	// directly at a Bicep or Terraform module to map the module's outputs onto resource properties.
+	Outputs map[string]string `json:"outputs,omitempty"`
+
+	// SecretOutputs maps secret resource-type property names to module output names. Unlike Outputs, a
+	// SecretOutputs entry always routes its module output to the resource's secret outputs.
+	SecretOutputs map[string]string `json:"secretOutputs,omitempty"`
+
+	// PlainHTTP connects to the source using HTTP (not-HTTPS).
 	PlainHTTP bool `json:"plainHTTP,omitempty"`
 }

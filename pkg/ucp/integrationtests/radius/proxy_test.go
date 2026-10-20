@@ -449,7 +449,7 @@ func createLocation(server *testhost.TestHost, address *string) {
 			Address: address,
 			ResourceTypes: map[string]*v20231001preview.LocationResourceType{
 				"testResources": {
-					APIVersions: map[string]map[string]any{
+					APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
 						"2023-10-01-preview": {},
 					},
 				},

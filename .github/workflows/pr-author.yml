@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
+---
+name: PR Author
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+
+permissions: {}
+
+jobs:
+  pr-author:
+    uses: radius-project/.github/.github/workflows/__pr-author.yml@main
+    permissions:
+      pull-requests: write

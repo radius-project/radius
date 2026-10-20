@@ -20,11 +20,12 @@ import (
 	context "context"
 	"errors"
 	"fmt"
+	"slices"
 
-	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/version"
 )
@@ -32,11 +33,21 @@ import (
 type CLIClusterOptions struct {
 	Radius  ChartOptions
 	Contour ChartOptions
+
+	// ResetValues, when true, instructs `UpgradeRadius` to discard the user-supplied
+	// values stored on the previous Helm release and use only the current invocation's
+	// `--set` / `--set-file` overrides (merged over the new chart defaults). When false
+	// (the default), upgrade uses Helm's ResetThenReuseValues semantics so previously
+	// stored user overrides are preserved across upgrades.
+	ResetValues bool
 }
 
 type ClusterOptions struct {
 	Radius  RadiusChartOptions
 	Contour ContourChartOptions
+
+	// ResetValues mirrors CLIClusterOptions.ResetValues. See its documentation.
+	ResetValues bool
 }
 
 // NewDefaultClusterOptions sets the default values for the ClusterOptions struct, using the chart version that matches
@@ -63,6 +74,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 				ReleaseName:  radiusReleaseName,
 				ChartRepo:    radiusHelmRepo,
 				Wait:         true,
+				Timeout:      DefaultInstallTimeout,
 			},
 		},
 		Contour: ContourChartOptions{
@@ -108,6 +120,11 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 		options.Radius.ChartVersion = cliOptions.Radius.ChartVersion
 	}
 
+	// A non-positive timeout means the user did not supply --timeout, so keep the default.
+	if cliOptions.Radius.Timeout > 0 {
+		options.Radius.Timeout = cliOptions.Radius.Timeout
+	}
+
 	if cliOptions.Radius.ChartRepo != "" {
 		options.Radius.ChartRepo = cliOptions.Radius.ChartRepo
 	}
@@ -136,6 +153,8 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	if len(cliOptions.Contour.SetFileArgs) > 0 {
 		options.Contour.SetFileArgs = cliOptions.Contour.SetFileArgs
 	}
+
+	options.ResetValues = cliOptions.ResetValues
 
 	return options
 }
@@ -173,7 +192,7 @@ type RevisionInfo struct {
 	Description string
 }
 
-//go:generate mockgen -typed -destination=./mock_cluster.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm Interface
+//go:generate go tool mockgen -typed -destination=./mock_cluster.go -package=helm -self_package github.com/radius-project/radius/pkg/cli/helm github.com/radius-project/radius/pkg/cli/helm Interface
 
 // Interface provides an abstraction over Helm operations for installing Radius.
 type Interface interface {
@@ -205,9 +224,28 @@ type Interface interface {
 type Impl struct {
 	// HelmClient is the Helm client used to interact with the Kubernetes cluster.
 	Helm HelmClient
+
+	configureDefaultContourGateway func(ctx context.Context, kubeContext string) error
+	removeDefaultContourGateway    func(ctx context.Context, kubeContext string) error
 }
 
 var _ Interface = &Impl{}
+
+func (i *Impl) configureContourGateway(ctx context.Context, kubeContext string) error {
+	configure := i.configureDefaultContourGateway
+	if configure == nil {
+		configure = ensureDefaultContourGateway
+	}
+	return configure(ctx, kubeContext)
+}
+
+func (i *Impl) removeContourGateway(ctx context.Context, kubeContext string) error {
+	remove := i.removeDefaultContourGateway
+	if remove == nil {
+		remove = deleteDefaultContourGateway
+	}
+	return remove(ctx, kubeContext)
+}
 
 // InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
@@ -220,11 +258,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	helmAction := NewHelmAction(i.Helm)
 
 	// Install Radius
-	radiusHelmChart, radiusHelmConf, err := prepareRadiusChart(helmAction, clusterOptions.Radius, kubeContext)
+	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(ctx, helmAction, clusterOptions.Radius, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
-	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions)
+	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
 	}
@@ -236,14 +274,19 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 
 	// Install Contour
 	output.LogInfo("Installing Contour...")
-	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
+	contourHelmChart, contourHelmConf, contourValues, err := prepareContourChart(ctx, helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
 
-	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions)
+	err = helmAction.ApplyHelmChart(kubeContext, contourHelmChart, contourHelmConf, clusterOptions.Contour.ChartOptions, contourValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
+	}
+
+	output.LogInfo("Configuring Radius Contour Gateway...")
+	if err := i.configureContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to configure Radius Contour Gateway, err: %w", err)
 	}
 
 	return nil
@@ -256,8 +299,13 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 		return err
 	}
 
+	output.LogInfo("Deleting Radius Contour Gateway...")
+	if err := i.removeContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
+	}
+
 	// Uninstall Contour
-	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
+	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Contour.Namespace, kubeContext); err != nil {
 		return err
 	}
 
@@ -335,16 +383,28 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 }
 
 // UpgradeRadius upgrades the Radius installation on the cluster, based on the specified Kubernetes context.
+// By default it preserves the user-supplied values stored on the previous Helm release (ResetThenReuseValues
+// semantics): the upgrade starts from the new chart defaults, re-applies the previously stored user overrides,
+// and then overlays the current invocation's --set / --set-file values. Set ClusterOptions.ResetValues to true
+// to opt out and use only the current invocation's overrides.
+//
+// See the Helm upgrade documentation for details on ResetThenReuseValues behavior:
+// https://helm.sh/docs/helm/helm_upgrade/#options
 func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	helmAction := NewHelmAction(i.Helm)
 
+	// reuseValues is the inverse of the user-facing --reset-values flag: by default we
+	// reuse previously stored user overrides so settings like
+	// `global.azureWorkloadIdentity.enabled=true` don't silently revert on upgrade.
+	reuseValues := !clusterOptions.ResetValues
+
 	output.LogInfo("Upgrading Radius...")
-	radiusHelmChart, radiusHelmConf, err := prepareRadiusChart(helmAction, clusterOptions.Radius, kubeContext)
+	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(ctx, helmAction, clusterOptions.Radius, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
-	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true)
+	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
 	}
@@ -362,15 +422,20 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	output.LogInfo("Upgrading Contour...")
-	contourHelmChart, contourHelmConf, err := prepareContourChart(helmAction, clusterOptions.Contour, kubeContext)
+	contourHelmChart, contourHelmConf, contourValues, err := prepareContourChart(ctx, helmAction, clusterOptions.Contour, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
-	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, false)
+	_, err = i.Helm.RunHelmUpgrade(contourHelmConf, contourHelmChart, contourValues, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, false, reuseValues, clusterOptions.Contour.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Contour, err: %w", err)
 	}
 	output.LogInfo("Contour upgrade complete")
+
+	output.LogInfo("Configuring Radius Contour Gateway...")
+	if err := i.configureContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to configure Radius Contour Gateway, err: %w", err)
+	}
 
 	return nil
 }
@@ -395,7 +460,7 @@ func (i *Impl) GetLatestRadiusVersion(ctx context.Context) (string, error) {
 
 	// Use the existing HelmChartFromContainerRegistry method with empty version
 	// to fetch the latest chart and extract its version
-	chart, err := helmAction.HelmChartFromContainerRegistry("", helmConf, chartRepo, chartName)
+	chart, err := helmAction.HelmChartFromContainerRegistry(ctx, "", helmConf, chartRepo, chartName)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch latest version from repository: %w", err)
 	}
@@ -439,11 +504,11 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	var currentChartVersion string
 
 	// Find the current deployed revision
-	for i := len(history) - 1; i >= 0; i-- {
-		if history[i].Info.Status == "deployed" {
-			currentRevision = history[i].Version
-			if history[i].Chart != nil && history[i].Chart.Metadata != nil {
-				currentChartVersion = history[i].Chart.Metadata.Version
+	for _, h := range slices.Backward(history) {
+		if h.Info.Status == "deployed" {
+			currentRevision = h.Version
+			if h.Chart != nil && h.Chart.Metadata != nil {
+				currentChartVersion = h.Chart.Metadata.Version
 			}
 			break
 		}
@@ -485,7 +550,7 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 					}
 
 					// Only rollback to a semantically older version
-					if candidateSemver.LessThan(currentSemver) {
+					if version.Compare(candidateSemver, currentSemver) < 0 {
 						targetRevision = history[i].Version
 						break
 					}

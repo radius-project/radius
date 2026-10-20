@@ -49,4 +49,10 @@ type ResourceTypeProperties struct {
 
 	// Description of the resource type.
 	Description *string `json:"description,omitempty"`
+
+	// Icon is the verbatim SVG file content associated with the resource type, carried as a UTF-8 string.
+	Icon *string `json:"icon,omitempty"`
+
+	// IconHash is the SHA-256 hash of the icon's SVG bytes, computed by the control plane.
+	IconHash *string `json:"iconHash,omitempty"`
 }

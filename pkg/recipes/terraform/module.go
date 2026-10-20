@@ -19,11 +19,12 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	getter "github.com/hashicorp/go-getter"
+	getter "github.com/hashicorp/go-getter/v2"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/components/metrics"
@@ -35,7 +36,8 @@ import (
 )
 
 const (
-	moduleRootDir = ".terraform/modules"
+	moduleRootDir                         = ".terraform/modules"
+	missingTerraformConfigurationTemplate = "The Terraform configuration in location %s is not found."
 )
 
 // moduleInspectResult contains the result of inspecting a Terraform module config.
@@ -50,21 +52,32 @@ type moduleInspectResult struct {
 	// ResultOutputExists is true if the module contains an output named "result".
 	ResultOutputExists bool
 
+	// OutputSensitivity maps each module output name to whether it is declared sensitive.
+	// It is used to emit correct "sensitive" flags when generating output blocks for direct
+	// modules so that sensitive outputs are routed to the Secrets map.
+	OutputSensitivity map[string]bool
+
 	// The parameter variables defined by the recipe
 	Parameters map[string]any
 
 	// Any other module information required in the future can be added here.
 }
 
-// downloadAndInspect handles downloading the TF module and retrieving the necessary information
-func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Options) (*moduleInspectResult, error) {
+// downloadAndInspect handles downloading the TF module and retrieving the necessary information.
+// tfConfig is the configuration that is saved in the working directory. It can be updated and saved again
+// to retry the download.
+func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, tfConfig *config.TerraformConfig, options Options) (*moduleInspectResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Run Terraform Get command to download the module from the source specified in the config.
 	// The downloaded module is stored in the working directory.
 	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
 	downloadStartTime := time.Now()
-	if err := tf.Get(ctx); err != nil {
+	err := tf.Get(ctx)
+	if err != nil {
+		err = retryGetWithProviderAliases(ctx, tf, tfConfig, options, err)
+	}
+	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
 				options.EnvRecipe, recipes.RecipeDownloadFailed))
@@ -88,13 +101,44 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 	return loadedModule, nil
 }
 
+// retryGetWithProviderAliases runs terraform get again after it adds placeholders for the aliased providers that
+// the module declares in configuration_aliases. It returns getErr if a retry cannot fix the failure.
+//
+// Terraform validates the configuration_aliases of a module when it downloads the module, so the first
+// terraform get fails for a module that declares configuration_aliases. Terraform downloads the module
+// before it validates the configuration, so Radius can inspect the downloaded module to get the declared
+// aliases and the provider sources. Modules that do not need the aliases are downloaded on the first try
+// with no change to the configuration.
+func retryGetWithProviderAliases(ctx context.Context, tf *tfexec.Terraform, tfConfig *config.TerraformConfig, options Options, getErr error) error {
+	if tfConfig == nil || options.EnvConfig == nil {
+		return getErr
+	}
+
+	module, err := inspectModule(tf.WorkingDir(), options.EnvRecipe)
+	if err != nil {
+		return getErr
+	}
+
+	if !tfConfig.AddProviderAliasPlaceholders(options.EnvConfig, module.RequiredProviders) {
+		return getErr
+	}
+
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info(fmt.Sprintf("Retrying download of Terraform module %s with the provider aliases that the module declares. First error: %s", options.EnvRecipe.TemplatePath, getErr.Error()))
+	if err := tfConfig.Save(ctx, tf.WorkingDir()); err != nil {
+		return err
+	}
+
+	return tf.Get(ctx)
+}
+
 // inspectModule inspects the module present at workingDir/.terraform/modules/<localModuleName> directory
 // and returns the inspection result which includes the list of required provider names, existence of recipe context variable and result output.
 // localModuleName is the name of the module specified in the configuration used to download the module.
 // It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
 // could not be loaded.
 func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*moduleInspectResult, error) {
-	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: map[string]*config.RequiredProviderInfo{}, ResultOutputExists: false, Parameters: map[string]any{}}
+	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: map[string]*config.RequiredProviderInfo{}, ResultOutputExists: false, OutputSensitivity: map[string]bool{}, Parameters: map[string]any{}}
 
 	// Modules are downloaded in a subdirectory in the working directory.
 	// Name of the module specified in the configuration is used as subdirectory name.
@@ -102,9 +146,33 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 	//
 	// If the template path is for a submodule, we'll add the submodule path to the module directory.
 	_, subModule := getter.SourceDirSubdir(recipe.TemplatePath)
-	mod, diags := tfconfig.LoadModule(filepath.Join(workingDir, moduleRootDir, recipe.Name, subModule))
+	moduleName := filepath.Clean(recipe.Name)
+	if moduleName == "." || !filepath.IsLocal(moduleName) {
+		return nil, fmt.Errorf("error loading the module: module path %q must be local", recipe.Name)
+	}
+
+	subModule = filepath.Clean(subModule)
+	if subModule == "." {
+		subModule = ""
+	} else if !filepath.IsLocal(subModule) {
+		return nil, fmt.Errorf("error loading the module: module path %q must be local", subModule)
+	}
+
+	moduleDir := filepath.Join(workingDir, moduleRootDir, moduleName, subModule)
+	hasConfig, err := hasTerraformConfigFiles(moduleDir)
+	if err != nil {
+		return nil, fmt.Errorf("error loading the module: %w", err)
+	}
+	if !hasConfig {
+		return nil, fmt.Errorf(missingTerraformConfigurationTemplate, recipe.TemplatePath)
+	}
+
+	mod, diags := tfconfig.LoadModule(moduleDir)
 	if diags.HasErrors() {
 		return nil, fmt.Errorf("error loading the module: %w", diags.Err())
+	}
+	if mod == nil {
+		return nil, fmt.Errorf("error loading the module: module inspection returned no module")
 	}
 
 	// Check that the module has a recipe context variable.
@@ -138,9 +206,16 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 		result.RequiredProviders[k] = requiredprovider
 	}
 
-	// Check if an output named "result" is defined in the module.
+	// Check if an output named "result" is defined in the module, and capture the
+	// sensitivity of every output for direct module output mapping.
 	if _, ok := mod.Outputs[recipes.ResultPropertyName]; ok {
 		result.ResultOutputExists = true
+	}
+	for name, output := range mod.Outputs {
+		result.OutputSensitivity[name] = false
+		if output != nil {
+			result.OutputSensitivity[name] = output.Sensitive
+		}
 	}
 
 	// Extract the list of parameters.
@@ -158,4 +233,35 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 	}
 
 	return result, nil
+}
+
+// hasTerraformConfigFiles reports whether moduleDir contains any regular Terraform configuration files.
+func hasTerraformConfigFiles(moduleDir string) (bool, error) {
+	info, err := os.Stat(moduleDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	if !info.IsDir() {
+		return false, nil
+	}
+
+	entries, err := os.ReadDir(moduleDir)
+	if err != nil {
+		return false, err
+	}
+	for _, entry := range entries {
+		if !entry.Type().IsRegular() {
+			continue
+		}
+
+		name := entry.Name()
+		if strings.HasSuffix(name, ".tf") || strings.HasSuffix(name, ".tf.json") {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

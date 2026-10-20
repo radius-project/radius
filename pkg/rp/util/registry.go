@@ -19,15 +19,23 @@ package util
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"net/url"
+	"strings"
+	"syscall"
 
-	dockerParser "github.com/novln/docker-parser"
+	"github.com/distribution/reference"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/recipes"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
+	"github.com/radius-project/radius/pkg/retry"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
 // ReadFromRegistry reads data from an OCI compliant registry and stores it in a map. It returns an error if the path is invalid,
@@ -50,12 +58,7 @@ func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinit
 		repo.PlainHTTP = true
 	}
 
-	digest, err := getDigestFromManifest(ctx, repo, tag)
-	if err != nil {
-		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", definition.TemplatePath, err.Error()), recipes_util.RecipeSetupError, nil)
-	}
-
-	bytes, err := getBytes(ctx, repo, digest)
+	bytes, err := fetchRecipeWithRetry(ctx, repo, tag)
 	if err != nil {
 		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", definition.TemplatePath, err.Error()), recipes_util.RecipeSetupError, nil)
 	}
@@ -66,6 +69,70 @@ func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinit
 	}
 
 	return nil
+}
+
+// registryFetchBackoff returns the backoff used to retry transient registry
+// failures. A new backoff is created per fetch because backoffs are stateful.
+// It is a variable so tests can shorten the delays.
+var registryFetchBackoff = retry.DefaultBackoffStrategy
+
+// fetchRecipeWithRetry downloads the recipe layer, retrying the whole manifest and
+// blob exchange when it fails with a transient network or registry error.
+//
+// The ORAS client already retries individual round trips, but it does not cover
+// failures while reading a response body (for example a connection reset partway
+// through a blob download from a CDN) and its retry window is only a few seconds,
+// which is shorter than typical DNS or network blips.
+func fetchRecipeWithRetry(ctx context.Context, repo *remote.Repository, tag string) ([]byte, error) {
+	var result []byte
+	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: registryFetchBackoff()})
+	err := retryer.RetryFunc(ctx, func(ctx context.Context) error {
+		digest, err := getDigestFromManifest(ctx, repo, tag)
+		if err == nil {
+			result, err = getBytes(ctx, repo, digest)
+		}
+
+		if err != nil && isTransientRegistryError(err) {
+			return retry.RetryableError(err)
+		}
+
+		return err
+	})
+
+	return result, err
+}
+
+// isTransientRegistryError reports whether err is a network or server-side
+// failure that is likely to succeed on retry. Client errors such as a missing
+// tag or an authentication failure are not retried.
+//
+// context.DeadlineExceeded is intentionally not rejected here: an http.Client
+// timeout wraps it while also being a net.Error timeout that is worth retrying.
+// When the caller's own deadline has expired, RetryFunc stops on the context
+// before making another attempt.
+func isTransientRegistryError(err error) bool {
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
+
+	if errResp, ok := errors.AsType[*errcode.ErrorResponse](err); ok {
+		return errResp.StatusCode >= http.StatusInternalServerError ||
+			errResp.StatusCode == http.StatusTooManyRequests ||
+			errResp.StatusCode == http.StatusRequestTimeout
+	}
+
+	if dnsErr, ok := errors.AsType[*net.DNSError](err); ok {
+		return dnsErr.IsTimeout || dnsErr.IsTemporary
+	}
+
+	if netErr, ok := errors.AsType[net.Error](err); ok && netErr.Timeout() {
+		return true
+	}
+
+	return errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.ECONNREFUSED) ||
+		errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, io.ErrUnexpectedEOF)
 }
 
 // getDigestFromManifest gets the layers digest from the manifest
@@ -124,16 +191,30 @@ func getBytes(ctx context.Context, repo *remote.Repository, layerDigest string) 
 	return pulledBlob, nil
 }
 
-// parsePath parses a path in the form of registry/repository:tag
+// parsePath parses a path in the form of registry/repository:tag. Recipe template
+// paths may include an http(s):// scheme even though OCI references do not, so a
+// leading scheme is stripped before normalizing (matching the previous parser).
+// A tag is required: TagNameOnly defaults a name-only reference to ":latest", but
+// a digest reference such as repo@sha256:... carries no tag, which the registry is
+// resolved by, so it is rejected here with a descriptive error rather than failing
+// later at resolution time.
 func parsePath(path string) (repository string, tag string, err error) {
-	reference, err := dockerParser.Parse(path)
+	path = strings.TrimPrefix(path, "https://")
+	path = strings.TrimPrefix(path, "http://")
+
+	named, err := reference.ParseNormalizedNamed(path)
 	if err != nil {
 		return "", "", err
 	}
 
-	repository = reference.Repository()
-	tag = reference.Tag()
-	return
+	named = reference.TagNameOnly(named)
+	tagged, ok := named.(reference.Tagged)
+	if !ok {
+		return "", "", fmt.Errorf("%q does not include a tag; a tagged reference such as repository:tag is required (digest references are not supported)", path)
+	}
+	repository = named.Name()
+	tag = tagged.Tag()
+	return repository, tag, nil
 }
 
 // GetRegistrySecrets retrieves secret data based on the recipe configuration and template path.
@@ -144,5 +225,33 @@ func GetRegistrySecrets(definition recipes.Configuration, templatePath string, s
 		return recipes.SecretData{}, err
 	}
 
-	return secrets[definition.RecipeConfig.Bicep.Authentication[parsedURL.Host].Secret], nil
+	authConfig := definition.RecipeConfig.Bicep.Authentication[parsedURL.Host]
+	secretData := secrets[authConfig.Secret]
+
+	// When the environment's bicepSettings specify an explicit authentication method, it is the
+	// source of truth for selecting the registry auth client (see authclient.GetNewRegistryAuthClient).
+	// This lets a Radius.Security/secrets resource carry only the credential data without a kind that
+	// matches the auth scheme. The legacy Applications.Core/secretStores path leaves the method empty,
+	// so the secret store's own type is used unchanged.
+	if t := secretTypeForAuthMethod(authConfig.AuthenticationMethod); t != "" {
+		secretData.Type = t
+	}
+
+	return secretData, nil
+}
+
+// secretTypeForAuthMethod maps a bicepSettings authenticationMethod to the SecretData.Type expected
+// by authclient.GetNewRegistryAuthClient. It returns "" when the method is unset or unrecognized, in
+// which case the secret's own type is used.
+func secretTypeForAuthMethod(method string) string {
+	switch method {
+	case "BasicAuth":
+		return "basicAuthentication"
+	case "AzureWI":
+		return "azureWorkloadIdentity"
+	case "AwsIrsa":
+		return "awsIRSA"
+	default:
+		return ""
+	}
 }

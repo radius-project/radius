@@ -1,2 +1,13 @@
-allowBuilds:
-  autorest: true
+# This file marks typespec/ as the pnpm workspace root so that the per-service
+# `cd typespec/<service> && pnpm exec tsp compile .` calls in build/generate.mk
+# resolve the TypeSpec compiler from typespec/node_modules.
+#
+# Do NOT add a `packages:` field here. Declaring workspace members turns the
+# per-service subdirectories (typespec/UCP, typespec/Applications.Core, ...) into
+# a recursive workspace context, which makes `pnpm exec tsp` fail with
+# ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL ("tsp not found"). A settings-only file is
+# all that is needed to mark the root.
+#
+# No dependency needs a build/install script (the former `autorest` entry is gone
+# with the AutoRest Bicep extension), so the build allow-list is empty.
+onlyBuiltDependencies: []

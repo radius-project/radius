@@ -1,41 +1,37 @@
-# Radius tests logging
+# Radius test contexts and logging
 
-The Radius tests redirect the Resource Provider logger output to the testing error log. This can be done as below:-
+Use `t.Context()` when code under test needs a context scoped to the test lifetime. The context is canceled before test cleanup functions run. Use `t.Log` or `t.Logf` for test diagnostics.
 
 ```go
 import (
-    ...
-    "github.com/radius-project/radius/test/testcontext"
-    ...
+    "context"
+    "testing"
+    "time"
 )
 
-// Test_Render_Simple uses the default logger context.
+// Test_Render_Simple uses a context scoped to the test.
 func Test_Render_Simple(t *testing.T) {
-    ctx := testcontext.New(t)
+    ctx := t.Context()
 
-    ...
     resources, err := renderer.Render(ctx, nil)
-    ...
+    // ...
 }
 
-// Test_Render_WithCancel uses the default logger context with context cancel function.
+// Test_Render_WithCancel can cancel the work before the test completes.
 func Test_Render_WithCancel(t *testing.T) {
-    ctx, cancel := testcontext.NewWithCancel(t)
-    t.Cleanup(cancel)
+    ctx, cancel := context.WithCancel(t.Context())
+    defer cancel()
 
-    ...
     resources, err := renderer.Render(ctx, nil)
-    ...
+    // ...
 }
 
-// Test_Render_WithDeadline uses the default logger context with deadline.
-func Test_Render_WithDeadline(t *testing.T) {
-    ctx, cancel := testcontext.NewWithDeadline(t, time.Second * time.Duration(5))
-    t.Cleanup(cancel)
+// Test_Render_WithTimeout limits how long the work can run.
+func Test_Render_WithTimeout(t *testing.T) {
+    ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+    defer cancel()
 
-    ...
     resources, err := renderer.Render(ctx, nil)
-    ...
+    // ...
 }
-
 ```

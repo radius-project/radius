@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 )
 
 // DecodeMap decodes map[string]interface{} structure to the type of out.

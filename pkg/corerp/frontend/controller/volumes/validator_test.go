@@ -31,7 +31,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -56,13 +55,9 @@ func TestValidateRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	crdFakeClient := k8sutil.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "apiextensions.k8s.io/v1",
-			Kind:       "CustomResourceDefinition",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: secretProviderClassesCRD,
-		},
+		APIVersion: "apiextensions.k8s.io/v1",
+		Kind:       "CustomResourceDefinition",
+		Name:       secretProviderClassesCRD,
 	})
 
 	// Create default Kubernetes fake client.
@@ -85,7 +80,7 @@ func TestValidateRequest(t *testing.T) {
 			name: "invalid-kind",
 			args: args{
 				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
+					t.Context(), &v1.ARMRequestContext{
 						ResourceID: mustParseResourceID(resourceID),
 						HTTPMethod: http.MethodPut,
 					}),
@@ -107,7 +102,7 @@ func TestValidateRequest(t *testing.T) {
 			name: "csi-driver-not-installed",
 			args: args{
 				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
+					t.Context(), &v1.ARMRequestContext{
 						ResourceID: mustParseResourceID(resourceID),
 						HTTPMethod: http.MethodPut,
 					}),
@@ -131,7 +126,7 @@ func TestValidateRequest(t *testing.T) {
 			name: "csi-driver-installed",
 			args: args{
 				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
+					t.Context(), &v1.ARMRequestContext{
 						ResourceID: mustParseResourceID(resourceID),
 						HTTPMethod: http.MethodPut,
 					}),

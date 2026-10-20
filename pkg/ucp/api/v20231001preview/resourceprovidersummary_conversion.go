@@ -40,9 +40,9 @@ func (dst *ResourceProviderSummary) ConvertFrom(src v1.DataModelInterface) error
 
 	dst.Name = new(dm.Name)
 
-	dst.Locations = map[string]map[string]any{}
+	dst.Locations = map[string]*ResourceProviderSummaryLocation{}
 	for locationName := range dm.Properties.Locations {
-		dst.Locations[locationName] = map[string]any{}
+		dst.Locations[locationName] = &ResourceProviderSummaryLocation{}
 	}
 
 	dst.ResourceTypes = map[string]*ResourceProviderSummaryResourceType{}
@@ -60,6 +60,8 @@ func (dst *ResourceProviderSummary) ConvertFrom(src v1.DataModelInterface) error
 			DefaultAPIVersion: resourceType.DefaultAPIVersion,
 			APIVersions:       apiVersions,
 			Description:       resourceType.Description,
+			Icon:              resourceType.Icon,
+			IconHash:          resourceType.IconHash,
 		}
 	}
 

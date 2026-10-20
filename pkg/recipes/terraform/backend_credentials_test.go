@@ -1,0 +1,304 @@
+/*
+Copyright 2026 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package terraform
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"maps"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
+	"github.com/radius-project/radius/pkg/ucp/credentials"
+	"github.com/stretchr/testify/require"
+)
+
+var awsBackendTestEndpointVariables = []string{
+	"AWS_ENDPOINT_URL", "AWS_ENDPOINT_URL_S3", "AWS_S3_ENDPOINT",
+	"AWS_ENDPOINT_URL_STS", "AWS_STS_ENDPOINT",
+}
+
+type backendCredentialStub[T any] struct {
+	value  *T
+	err    error
+	planes []string
+	names  []string
+}
+
+func (s *backendCredentialStub[T]) Fetch(ctx context.Context, plane, name string) (*T, error) {
+	s.planes = append(s.planes, plane)
+	s.names = append(s.names, name)
+	return s.value, s.err
+}
+
+func backendTestAWSCredential(irsa bool) *credentials.AWSCredential {
+	if irsa {
+		return &credentials.AWSCredential{Kind: credentials.AWSIRSACredentialKind,
+			IRSACredential: &credentials.AWSIRSACredential{RoleARN: "arn:aws:iam::123456789012:role/radius-state"}}
+	}
+	return &credentials.AWSCredential{Kind: credentials.AWSAccessKeyCredentialKind,
+		AccessKeyCredential: &credentials.AWSAccessKeyCredential{AccessKeyID: "registered-access", SecretAccessKey: "registered-secret"}}
+}
+
+func backendTestAzureCredential(wi bool) *credentials.AzureCredential {
+	if wi {
+		return &credentials.AzureCredential{Kind: credentials.AzureWorkloadIdentityCredentialKind,
+			WorkloadIdentity: &credentials.AzureWorkloadIdentityCredential{ClientID: "registered-client", TenantID: "registered-tenant"}}
+	}
+	return &credentials.AzureCredential{Kind: credentials.AzureServicePrincipalCredentialKind,
+		ServicePrincipal: &credentials.AzureServicePrincipalCredential{ClientID: "registered-client", TenantID: "registered-tenant", ClientSecret: "registered-secret"}}
+}
+
+func TestBackendCredentialFetchAndEnvironment(t *testing.T) {
+	for _, federated := range []bool{false, true} {
+		for _, cloud := range []string{"s3", "azurerm"} {
+			t.Run(cloud+map[bool]string{false: " static", true: " federated"}[federated], func(t *testing.T) {
+				aws := &backendCredentialStub[credentials.AWSCredential]{value: backendTestAWSCredential(federated)}
+				azure := &backendCredentialStub[credentials.AzureCredential]{value: backendTestAzureCredential(federated)}
+				e := executor{awsCredentials: aws, azureCredentials: azure}
+				backend := &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"}
+				if cloud == "azurerm" {
+					backend = &datamodel.TerraformBackend{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius", KeyPrefix: "radius"}
+				}
+				env := map[string]string{
+					"KEEP": "user-value", envTFCLIConfigFile: "private-registry",
+					"AWS_ACCESS_KEY_ID": "stale", "AWS_SECRET_ACCESS_KEY": "stale", "AWS_SESSION_TOKEN": "stale",
+					"AWS_ROLE_ARN": "stale", "AWS_WEB_IDENTITY_TOKEN_FILE": "stale", "AWS_PROFILE": "stale",
+					"ARM_CLIENT_SECRET": "stale", "ARM_OIDC_TOKEN": "stale", "ARM_OIDC_TOKEN_FILE_PATH": "stale",
+					"ARM_ACCESS_KEY": "stale", "ARM_SAS_TOKEN": "stale", "ARM_USE_MSI": "true", "ARM_USE_CLI": "true",
+					"ARM_CLIENT_CERTIFICATE_PATH": "stale", "ARM_CLIENT_SECRET_FILE_PATH": "stale",
+					"ARM_CLIENT_ID_FILE_PATH": "stale", "ARM_ENVIRONMENT": "usgovernment",
+				}
+				if cloud == "azurerm" && federated {
+					// Terraform resolves these ahead of a rendered workload identity, so they are
+					// rejected outright rather than carried through. See
+					// TestAzureBackendRejectsConflictingAuthentication.
+					for _, key := range azureBackendConflictingAuthVariables {
+						delete(env, key)
+					}
+				}
+				// Identity modes write nothing, so the provider environment must survive untouched.
+				unchanged := maps.Clone(env)
+				workingDir := t.TempDir()
+
+				var auth backends.CloudBackendAuth
+				for range 2 {
+					var err error
+					auth, err = e.resolveBackendAuth(t.Context(), backend, workingDir, env)
+					require.NoError(t, err)
+				}
+				require.Equal(t, "user-value", env["KEEP"])
+				require.Equal(t, "private-registry", env[envTFCLIConfigFile])
+				// ARM_ENVIRONMENT selects the Azure cloud rather than an authentication mode, so
+				// clearing it would silently redirect the backend and providers to public Azure.
+				require.Equal(t, "usgovernment", env["ARM_ENVIRONMENT"])
+
+				if federated {
+					require.Equal(t, unchanged, env, "identity credentials must not touch the shared provider environment")
+					if cloud == "s3" {
+						// AWS_PROFILE survives in the environment for the recipe's providers; the
+						// backend block names its own generated profile instead of clearing it.
+						require.Equal(t, backends.CloudBackendAuth{
+							AWSRoleARN:          aws.value.IRSACredential.RoleARN,
+							AWSProfile:          awsBackendProfile,
+							AWSSharedConfigFile: filepath.Join(workingDir, awsBackendConfigFileName),
+						}, auth)
+						body, err := os.ReadFile(auth.AWSSharedConfigFile)
+						require.NoError(t, err)
+						// The profile repeats the backend block's web identity so that naming it
+						// cannot push credential resolution onto container credentials or IMDS.
+						require.Equal(t, "[profile "+awsBackendProfile+"]\n"+
+							"role_arn = "+aws.value.IRSACredential.RoleARN+"\n"+
+							"web_identity_token_file = "+providers.AWSIRSATokenFilePath+"\n", string(body))
+					} else {
+						require.Equal(t, backends.CloudBackendAuth{AzureClientID: "registered-client", AzureTenantID: "registered-tenant", AzureEnvironment: "usgovernment"}, auth)
+					}
+					return
+				}
+
+				// The environment carries the secret, but the resolved cloud still has to reach
+				// state cleanup so it deletes from the endpoint Terraform wrote to.
+				expected := backends.CloudBackendAuth{}
+				if cloud == "azurerm" {
+					expected.AzureEnvironment = "usgovernment"
+				}
+				require.Equal(t, expected, auth, "secret-bearing credentials are delivered through the environment")
+				if cloud == "s3" {
+					require.Equal(t, []string{credentials.AWSPublic, credentials.AWSPublic}, aws.planes)
+					require.Equal(t, []string{"default", "default"}, aws.names)
+					require.Empty(t, azure.names)
+					require.Equal(t, "stale", env["ARM_CLIENT_SECRET"], "other cloud must be unchanged")
+					require.NotContains(t, env, "AWS_SESSION_TOKEN")
+					require.NotContains(t, env, "AWS_PROFILE")
+					require.NotContains(t, env, "AWS_WEB_IDENTITY_TOKEN_FILE")
+					require.NotContains(t, env, "AWS_ROLE_ARN")
+					require.Equal(t, os.DevNull, env["AWS_CONFIG_FILE"])
+					require.Equal(t, os.DevNull, env["AWS_SHARED_CONFIG_FILE"])
+					require.Equal(t, os.DevNull, env["AWS_SHARED_CREDENTIALS_FILE"])
+					require.Equal(t, "registered-access", env["AWS_ACCESS_KEY_ID"])
+					require.Equal(t, "registered-secret", env["AWS_SECRET_ACCESS_KEY"])
+				} else {
+					require.Equal(t, []string{credentials.AzureCloud, credentials.AzureCloud}, azure.planes)
+					require.Equal(t, []string{"default", "default"}, azure.names)
+					require.Empty(t, aws.names)
+					require.Equal(t, "stale", env["AWS_SESSION_TOKEN"], "other cloud must be unchanged")
+					require.Equal(t, "registered-client", env["ARM_CLIENT_ID"])
+					require.Equal(t, "registered-tenant", env["ARM_TENANT_ID"])
+					require.Equal(t, "registered-secret", env["ARM_CLIENT_SECRET"])
+					require.Equal(t, "true", env["ARM_USE_AZUREAD"])
+					require.Equal(t, "false", env["ARM_USE_MSI"])
+					require.Equal(t, "false", env["ARM_USE_CLI"])
+					require.Equal(t, "false", env["ARM_USE_OIDC"])
+					for _, key := range []string{"ARM_ACCESS_KEY", "ARM_SAS_TOKEN", "ARM_OIDC_TOKEN", "ARM_OIDC_TOKEN_FILE_PATH", "ARM_CLIENT_CERTIFICATE_PATH", "ARM_CLIENT_SECRET_FILE_PATH", "ARM_CLIENT_ID_FILE_PATH"} {
+						require.NotContains(t, env, key)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestBackendCredentialErrors(t *testing.T) {
+	for _, c := range []*credentials.AWSCredential{
+		nil, {}, {Kind: credentials.AWSAccessKeyCredentialKind},
+		{Kind: credentials.AWSAccessKeyCredentialKind, AccessKeyCredential: &credentials.AWSAccessKeyCredential{AccessKeyID: "secret-marker"}},
+		{Kind: credentials.AWSAccessKeyCredentialKind, AccessKeyCredential: &credentials.AWSAccessKeyCredential{AccessKeyID: " ", SecretAccessKey: " "}},
+		{Kind: credentials.AWSIRSACredentialKind}, {Kind: credentials.AWSIRSACredentialKind, IRSACredential: &credentials.AWSIRSACredential{}},
+	} {
+		env := map[string]string{"UNCHANGED": "value"}
+		before := maps.Clone(env)
+		_, err := setAWSBackendAuth(c, t.TempDir(), env)
+		require.Error(t, err)
+		require.NotContains(t, err.Error(), "secret-marker")
+		require.Equal(t, before, env)
+	}
+
+	for _, c := range []*credentials.AzureCredential{
+		nil, {}, {Kind: credentials.AzureServicePrincipalCredentialKind},
+		{Kind: credentials.AzureServicePrincipalCredentialKind, ServicePrincipal: &credentials.AzureServicePrincipalCredential{ClientSecret: "secret-marker"}},
+		{Kind: credentials.AzureServicePrincipalCredentialKind, ServicePrincipal: &credentials.AzureServicePrincipalCredential{ClientID: " ", TenantID: " ", ClientSecret: " "}},
+		{Kind: credentials.AzureWorkloadIdentityCredentialKind}, {Kind: credentials.AzureWorkloadIdentityCredentialKind, WorkloadIdentity: &credentials.AzureWorkloadIdentityCredential{}},
+	} {
+		env := map[string]string{"UNCHANGED": "value"}
+		before := maps.Clone(env)
+		_, err := setAzureBackendAuth(c, env)
+		require.Error(t, err)
+		require.NotContains(t, err.Error(), "secret-marker")
+		require.Equal(t, before, env)
+	}
+	fetchErr := errors.New("registered credential missing")
+	e := executor{
+		awsCredentials:   &backendCredentialStub[credentials.AWSCredential]{err: fetchErr},
+		azureCredentials: &backendCredentialStub[credentials.AzureCredential]{err: fetchErr},
+	}
+	for _, backend := range []*datamodel.TerraformBackend{
+		{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"},
+		{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius", KeyPrefix: "radius"},
+	} {
+		_, err := e.resolveBackendAuth(t.Context(), backend, t.TempDir(), map[string]string{})
+		require.ErrorIs(t, err, fetchErr)
+		require.Contains(t, err.Error(), backend.Type+" backend")
+	}
+}
+
+func TestAWSBackendRejectsEndpointOverrides(t *testing.T) {
+	for _, federated := range []bool{false, true} {
+		for _, key := range awsBackendTestEndpointVariables {
+			for _, value := range []string{"https://endpoint.example.com/private-value", " "} {
+				t.Run(fmt.Sprintf("%s/federated=%v/value=%q", key, federated, value), func(t *testing.T) {
+					env := map[string]string{
+						key: value, "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS": "true",
+						"AWS_ACCESS_KEY_ID": "existing-access", "ARM_CLIENT_SECRET": "other-cloud",
+					}
+					before := maps.Clone(env)
+					workingDir := t.TempDir()
+					_, err := setAWSBackendAuth(backendTestAWSCredential(federated), workingDir, env)
+					require.ErrorContains(t, err, key)
+					require.Contains(t, err.Error(), "s3 backend does not support endpoint override")
+					require.NotContains(t, err.Error(), "private-value")
+					require.Equal(t, before, env, "rejection must not partially replace credentials")
+					require.NoFileExists(t, filepath.Join(workingDir, awsBackendConfigFileName),
+						"rejection must happen before any backend configuration is written")
+				})
+			}
+		}
+	}
+}
+
+func TestAWSBackendIRSAProfileCarriesWebIdentity(t *testing.T) {
+	// Naming a profile makes the AWS SDK resolve credentials from that profile ahead of the
+	// environment. A profile carrying no credentials would fall back to the container credentials
+	// endpoint, which fails configuration loading for hosts that are not loopback, ECS or EKS. The
+	// generated profile therefore repeats the web identity the backend block renders.
+	credential := backendTestAWSCredential(true)
+	env := map[string]string{
+		"AWS_CONTAINER_CREDENTIALS_FULL_URI":     "http://provider.example.com/creds",
+		"AWS_CONTAINER_CREDENTIALS_RELATIVE_URI": "/v2/credentials/provider",
+		"AWS_PROFILE":                            "provider-profile",
+	}
+	before := maps.Clone(env)
+	workingDir := t.TempDir()
+
+	auth, err := setAWSBackendAuth(credential, workingDir, env)
+	require.NoError(t, err)
+	require.Equal(t, before, env, "identity credentials must not touch the shared provider environment")
+	require.Equal(t, awsBackendProfile, auth.AWSProfile)
+
+	body, err := os.ReadFile(auth.AWSSharedConfigFile)
+	require.NoError(t, err)
+	require.Equal(t, "[profile "+awsBackendProfile+"]\n"+
+		"role_arn = "+credential.IRSACredential.RoleARN+"\n"+
+		"web_identity_token_file = "+providers.AWSIRSATokenFilePath+"\n", string(body))
+}
+
+func TestAWSBackendAllowsEmptyEndpointOverrides(t *testing.T) {
+	for _, federated := range []bool{false, true} {
+		t.Run(fmt.Sprintf("federated=%v", federated), func(t *testing.T) {
+			env := map[string]string{"AWS_ENDPOINT_URL_DYNAMODB": "https://provider.example.com", "KEEP": "value"}
+			for _, key := range awsBackendTestEndpointVariables {
+				env[key] = ""
+			}
+			auth, err := setAWSBackendAuth(backendTestAWSCredential(federated), t.TempDir(), env)
+			require.NoError(t, err)
+			for _, key := range awsBackendTestEndpointVariables {
+				require.Contains(t, env, key)
+				require.Empty(t, env[key])
+			}
+			require.Equal(t, "https://provider.example.com", env["AWS_ENDPOINT_URL_DYNAMODB"])
+			require.Equal(t, "value", env["KEEP"])
+			if federated {
+				require.NotEmpty(t, auth.AWSRoleARN)
+				require.NotEmpty(t, auth.AWSSharedConfigFile)
+				require.Equal(t, awsBackendProfile, auth.AWSProfile)
+				require.NotContains(t, env, "AWS_ACCESS_KEY_ID")
+			} else {
+				require.Equal(t, "registered-access", env["AWS_ACCESS_KEY_ID"])
+			}
+		})
+	}
+}
+
+func TestBackendAuthRejectsUnsupportedBackend(t *testing.T) {
+	e := executor{}
+	_, err := e.resolveBackendAuth(t.Context(), &datamodel.TerraformBackend{Type: "local", KeyPrefix: "radius"}, t.TempDir(), map[string]string{})
+	require.Error(t, err)
+}

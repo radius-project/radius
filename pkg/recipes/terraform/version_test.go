@@ -27,9 +27,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestTerraformVersionMatchesFile guarantees that the hard-coded
-// terraformVersion default in version.go stays in sync with the
-// .terraform-version file at the repository root.
+// TestTerraformVersionMatchesFile guarantees that the hard-coded fallback in
+// version.go stays in sync with the .terraform-version compatibility file that
+// the tool manifest updater maintains.
 func TestTerraformVersionMatchesFile(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	require.True(t, ok, "unable to determine test file location")

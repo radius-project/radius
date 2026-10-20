@@ -17,7 +17,6 @@ limitations under the License.
 package preflight
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -129,7 +128,7 @@ func TestHelmConnectivityCheck_Run(t *testing.T) {
 			tt.setupMock(mockHelm)
 
 			check := NewHelmConnectivityCheck(mockHelm, "test-context")
-			pass, message, err := check.Run(context.Background())
+			pass, message, err := check.Run(t.Context())
 
 			assert.Equal(t, tt.expectPass, pass)
 			assert.Contains(t, message, tt.expectMessage)

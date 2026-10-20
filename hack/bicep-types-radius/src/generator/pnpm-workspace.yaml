@@ -1,4 +1,0 @@
-allowBuilds:
-  autorest: true
-  unrs-resolver: true
-sideEffectsCache: false

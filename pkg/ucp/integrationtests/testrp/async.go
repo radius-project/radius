@@ -34,7 +34,6 @@ import (
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/ucp/testhost"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -53,7 +52,7 @@ func (b *BackendFuncController) Run(ctx context.Context, request *backend_ctrl.R
 func AsyncResource(t *testing.T, ts *testhost.TestHost, rootScope string, put BackendFunc, delete BackendFunc) func(w http.ResponseWriter, r *http.Request) {
 	rootScope = strings.ToLower(rootScope)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	r := chi.NewRouter()
 	r.Use(servicecontext.ARMRequestCtx("", v1.LocationGlobal), middleware.LowercaseURLPath)
 
@@ -90,7 +89,7 @@ func AsyncResource(t *testing.T, ts *testhost.TestHost, rootScope string, put Ba
 	}, backendOpts)
 	require.NoError(t, err)
 
-	workerContext, cancel := testcontext.NewWithCancel(t)
+	workerContext, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	w := worker.New(worker.Options{}, statusManager, queueClient, registry)

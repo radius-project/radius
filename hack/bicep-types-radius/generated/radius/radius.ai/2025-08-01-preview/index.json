@@ -1,0 +1,15 @@
+{
+  "resources": {
+    "Radius.AI/models@2025-08-01-preview": {
+      "$ref": "types.json#/19"
+    },
+    "Radius.AI/search@2025-08-01-preview": {
+      "$ref": "types.json#/37"
+    }
+  },
+  "resourceFunctions": {},
+  "settings": {
+    "name": "radiusradiusai",
+    "version": "0.0.1"
+  }
+}

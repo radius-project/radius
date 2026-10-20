@@ -34,7 +34,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestListSecrets_20231001Preview(t *testing.T) {
@@ -43,7 +42,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 
 	databaseClient := database.NewMockClient(mctrl)
 	req, err := rpctest.NewHTTPRequestWithContent(
-		context.Background(),
+		t.Context(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/secret0/listsecrets?api-version=2023-10-01-preview", nil)
 	require.NoError(t, err)
@@ -76,16 +75,14 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id, ETag: "etag"},
-					Data:     secretdm,
+					ID: id, ETag: "etag",
+					Data: secretdm,
 				}, nil
 			})
 		ctx := rpctest.NewARMRequestContext(req)
 		ksecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letsencrypt-prod",
-				Namespace: "default",
-			},
+			Name:      "letsencrypt-prod",
+			Namespace: "default",
 			Data: map[string][]byte{
 				"tls.crt": []byte("cert"),
 				"tls.key": []byte("key"),
@@ -117,7 +114,7 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 
 	databaseClient := database.NewMockClient(mctrl)
 	req, err := rpctest.NewHTTPRequestWithContent(
-		context.Background(),
+		t.Context(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/secret0/listsecrets?api-version=2023-10-01-preview", nil)
 	require.NoError(t, err)
@@ -133,21 +130,17 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 		{
 			name: "backing kubernetes secret not found",
 			in: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "notfound",
-					Namespace: "default",
-				},
-				Data: map[string][]byte{},
+				Name:      "notfound",
+				Namespace: "default",
+				Data:      map[string][]byte{},
 			},
 			err: errors.New("referenced secret is not found"),
 		},
 		{
 			name: "secret is not found",
 			in: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "letsencrypt-prod",
-					Namespace: "default",
-				},
+				Name:      "letsencrypt-prod",
+				Namespace: "default",
 				Data: map[string][]byte{
 					"tls.crt": []byte("dGxzLmtleS1wcmlrZXkK"),
 				},
@@ -157,10 +150,8 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 		{
 			name: "invalid base64 encoded secret",
 			in: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "letsencrypt-prod",
-					Namespace: "default",
-				},
+				Name:      "letsencrypt-prod",
+				Namespace: "default",
 				Data: map[string][]byte{
 					"tls.crt": []byte("dGxzLmtleS1wcmlrZXkK"),
 					"tls.key": []byte("_"),
@@ -177,8 +168,8 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 					return &database.Object{
-						Metadata: database.Metadata{ID: id, ETag: "etag"},
-						Data:     secretdm,
+						ID: id, ETag: "etag",
+						Data: secretdm,
 					}, nil
 				})
 			ctx := rpctest.NewARMRequestContext(req)

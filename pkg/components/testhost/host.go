@@ -32,7 +32,6 @@ import (
 	"time"
 
 	"github.com/radius-project/radius/pkg/components/hosting"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,7 +39,7 @@ import (
 // The TestHost will have its lifecycle managed by the test context, and will be shut down when the test
 // completes.
 func StartHost(t *testing.T, host *hosting.Host, baseURL string) *TestHost {
-	ctx, cancel := context.WithCancel(testcontext.New(t))
+	ctx, cancel := context.WithCancel(t.Context())
 	errs, messages := host.RunAsync(ctx)
 
 	go func() {
@@ -59,14 +58,20 @@ func StartHost(t *testing.T, host *hosting.Host, baseURL string) *TestHost {
 	}
 	t.Cleanup(th.Close)
 
+	// Resolve the address to dial before polling. The polling condition runs in a goroutine that
+	// testify does not recover panics from, so any failure must be reported on the test goroutine
+	// instead. url.Parse accepts URLs that cannot be dialed, so the host and port are validated too;
+	// otherwise the poll would spin until its timeout and report a misleading failure.
+	u, err := url.Parse(baseURL)
+	require.NoErrorf(t, err, "invalid URL: %q", baseURL)
+	require.NotEmptyf(t, u.Hostname(), "URL is missing a host: %q", baseURL)
+	require.NotEmptyf(t, u.Port(), "URL is missing a port: %q", baseURL)
+
+	address := net.JoinHostPort(u.Hostname(), u.Port())
+
 	// Wait for the server to start listening on the port.
 	require.Eventuallyf(t, func() bool {
-		u, err := url.Parse(baseURL)
-		if err != nil {
-			panic("Invalid URL: " + baseURL)
-		}
-
-		conn, err := net.Dial("tcp", net.JoinHostPort(u.Hostname(), u.Port()))
+		conn, err := net.Dial("tcp", address)
 		if err != nil {
 			t.Logf("Waiting for server to start listening on port: %v", err)
 			return false

@@ -21,104 +21,93 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // display builds the formatted output for the application graph as text.
-func display(applicationResources []*v20231001preview.ApplicationGraphResource, applicationName string) string {
-	// Sort by type (containers first), and then by other types, name and then by id.
+func display(applicationResources []*corerpv20250801.ApplicationGraphResource, applicationName string) string {
 	containerType := "Applications.Core/containers"
 	sort.Slice(applicationResources, func(i, j int) bool {
 		if strings.EqualFold(*applicationResources[i].Type, containerType) !=
 			strings.EqualFold(*applicationResources[j].Type, containerType) {
-
 			return strings.EqualFold(*applicationResources[i].Type, containerType)
 		}
-
 		if *applicationResources[i].Type != *applicationResources[j].Type {
 			return *applicationResources[i].Type < *applicationResources[j].Type
 		}
-
 		if *applicationResources[i].Name != *applicationResources[j].Name {
 			return *applicationResources[i].Name < *applicationResources[j].Name
 		}
 		return *applicationResources[i].ID < *applicationResources[j].ID
-
 	})
 
-	output := &strings.Builder{}
-	output.WriteString(fmt.Sprintf("Displaying application: %s\n\n", applicationName))
+	out := &strings.Builder{}
+	out.WriteString(fmt.Sprintf("Displaying application: %s\n\n", applicationName))
 
 	if len(applicationResources) == 0 {
-		output.WriteString("(empty)")
-		output.WriteString("\n\n")
-		return output.String()
+		out.WriteString("(empty)")
+		out.WriteString("\n\n")
+		return out.String()
 	}
 
 	for _, resource := range applicationResources {
-		output.WriteString(fmt.Sprintf("Name: %s (%s)\n", *resource.Name, *resource.Type))
+		out.WriteString(fmt.Sprintf("Name: %s (%s)\n", *resource.Name, *resource.Type))
 
 		if len(resource.Connections) == 0 {
-			output.WriteString("Connections: (none)\n")
+			out.WriteString("Connections: (none)\n")
 		} else {
-			output.WriteString("Connections:\n")
+			out.WriteString("Connections:\n")
 			for _, connection := range resource.Connections {
 				connectionID, err := resources.Parse(*connection.ID)
 				if err != nil {
-					output.WriteString(fmt.Sprintf("Error: %s\n", err.Error()))
+					out.WriteString(fmt.Sprintf("Error: %s\n", err.Error()))
 					continue
 				}
-
 				connectionName := connectionID.Name()
 				connectionType := connectionID.Type()
 
-				if *connection.Direction == v20231001preview.DirectionOutbound {
-					// Outbound
-					output.WriteString(fmt.Sprintf("  %s -> %s (%s)\n", *resource.Name, connectionName, connectionType))
+				if *connection.Direction == corerpv20250801.DirectionOutbound {
+					out.WriteString(fmt.Sprintf("  %s -> %s (%s)\n", *resource.Name, connectionName, connectionType))
 				} else {
-					// Inbound
-					output.WriteString(fmt.Sprintf("  %s (%s) -> %s\n", connectionName, connectionType, *resource.Name))
+					out.WriteString(fmt.Sprintf("  %s (%s) -> %s\n", connectionName, connectionType, *resource.Name))
 				}
 			}
 		}
 
 		if len(resource.OutputResources) == 0 {
-			output.WriteString("Resources: (none)\n")
+			out.WriteString("Resources: (none)\n")
 		} else {
-			output.WriteString("Resources:\n")
-			for _, resource := range resource.OutputResources {
-				link := makeHyperlink(resource)
+			out.WriteString("Resources:\n")
+			for _, outputResource := range resource.OutputResources {
+				link := makeHyperlink(outputResource)
 				if link == "" {
-					output.WriteString(fmt.Sprintf("  %s (%s)\n", *resource.Name, *resource.Type))
+					out.WriteString(fmt.Sprintf("  %s (%s)\n", *outputResource.Name, *outputResource.Type))
 				} else {
-					output.WriteString(fmt.Sprintf("  %s (%s)\n", link, *resource.Type))
+					out.WriteString(fmt.Sprintf("  %s (%s)\n", link, *outputResource.Type))
 				}
 			}
 		}
 
-		output.WriteString("\n")
-
+		out.WriteString("\n")
 	}
-	return output.String()
+
+	return out.String()
 }
 
-func makeHyperlink(resource *v20231001preview.ApplicationGraphOutputResource) string {
-	// Just azure for now.
-	return MakeResourceHyperlink(*resource.ID, *resource.Name)
+func makeHyperlink(resource *corerpv20250801.ApplicationGraphOutputResource) string {
+	return MakeResourceHyperlink(resource.PortalURL, *resource.Name)
 }
 
-// MakeResourceHyperlink builds a terminal hyperlink for an Azure resource.
-// Returns an empty string for non-Azure resources.
-func MakeResourceHyperlink(resourceID, resourceName string) string {
-	provider := ProviderFromID(resourceID)
-	if provider != "azure" {
+// MakeResourceHyperlink wraps the given portal URL in a terminal hyperlink escape sequence using
+// resourceName as the link text. It returns an empty string when no portal URL is available (for
+// example, for non-Azure resources or when no Azure credential is registered).
+func MakeResourceHyperlink(portalURL *string, resourceName string) string {
+	if portalURL == nil || *portalURL == "" {
 		return ""
 	}
 
-	url := fmt.Sprintf("https://portal.azure.com/#@%s/resource%s", "72f988bf-86f1-41af-91ab-2d7cd011db47", resourceID)
-
 	// Terminal hyperlink escape sequence.
 	// \x1b]8;;{URL}\x07{link text}\x1b]8;;\x07
-	return fmt.Sprintf("\x1b]8;;%s\x07%s\x1b]8;;\x07", url, resourceName)
+	return fmt.Sprintf("\x1b]8;;%s\x07%s\x1b]8;;\x07", *portalURL, resourceName)
 }

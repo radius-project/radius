@@ -17,16 +17,337 @@ limitations under the License.
 package helm
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"path/filepath"
+	"sync/atomic"
+	"syscall"
 	"testing"
+	"testing/synctest"
+	"time"
 
-	containerderrors "github.com/containerd/containerd/remotes/errors"
+	goretry "github.com/sethvargo/go-retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"helm.sh/helm/v3/pkg/chart"
+	"go.uber.org/mock/gomock"
+	helm "helm.sh/helm/v4/pkg/action"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/getter"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 )
+
+func Test_isTransientHelmChartError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		err       error
+		retryable bool
+	}{
+		{"nil", nil, false},
+		{"HTTP 500", errors.New("failed to fetch https://example.com/contour.tgz : 500 Internal Server Error"), true},
+		{"wrapped HTTP 503", fmt.Errorf("index: %w", errors.New("failed to fetch https://example.com/index.yaml : 503 Service Unavailable")), true},
+		{"HTTP 408", errors.New("failed to fetch http://example.com/chart.tgz : 408 Request Timeout"), true},
+		{"HTTP 429", errors.New("failed to fetch https://example.com/chart.tgz : 429 Too Many Requests"), true},
+		{"HTTP 502", errors.New("failed to fetch https://example.com/chart.tgz : 502 Bad Gateway"), true},
+		{"HTTP 504", errors.New("failed to fetch https://example.com/chart.tgz : 504 Gateway Timeout"), true},
+		{"HTTP 401", errors.New("failed to fetch https://example.com/chart.tgz : 401 Unauthorized"), false},
+		{"HTTP 403", errors.New("failed to fetch https://example.com/chart.tgz : 403 Forbidden"), false},
+		{"HTTP 404", errors.New("failed to fetch https://example.com/chart.tgz : 404 Not Found"), false},
+		{"HTTP 501", errors.New("failed to fetch https://example.com/chart.tgz : 501 Not Implemented"), false},
+		{"status in URL", errors.New("failed to fetch https://example.com/500 : 404 Not Found"), false},
+		{"unrelated error", errors.New("chart version 500 not found"), false},
+		{"canceled", fmt.Errorf("pull: %w", context.Canceled), false},
+		{"permanent DNS", &net.DNSError{IsNotFound: true}, false},
+		{"temporary DNS", &net.DNSError{IsTemporary: true}, true},
+		{"timeout", &url.Error{Op: "Get", URL: "https://example.com", Err: context.DeadlineExceeded}, true},
+		{"reset", fmt.Errorf("read: %w", syscall.ECONNRESET), true},
+		{"refused", fmt.Errorf("dial: %w", syscall.ECONNREFUSED), true},
+		{"broken pipe", fmt.Errorf("read: %w", syscall.EPIPE), true},
+		{"short response", fmt.Errorf("read: %w", io.ErrUnexpectedEOF), true},
+		{"closed connection", &url.Error{Op: "Get", URL: "https://example.com", Err: io.EOF}, true},
+		{"local file", os.ErrPermission, false},
+	}
+	for _, status := range []int{408, 429, 500, 502, 503, 504, 401, 403, 404, 501} {
+		tests = append(tests, struct {
+			name      string
+			err       error
+			retryable bool
+		}{
+			fmt.Sprintf("OCI %d", status),
+			fmt.Errorf("pull: %w", &errcode.ErrorResponse{StatusCode: status}),
+			status == 408 || status == 429 || status == 500 || status == 502 || status == 503 || status == 504,
+		})
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.retryable, isTransientHelmChartError(tt.err))
+		})
+	}
+}
+
+func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
+	originalBackoff := helmChartPullBackoff
+	helmChartPullBackoff = func() goretry.Backoff {
+		return goretry.WithMaxRetries(2, goretry.NewConstant(time.Millisecond))
+	}
+	t.Cleanup(func() { helmChartPullBackoff = originalBackoff })
+	t.Setenv("HELM_CACHE_HOME", t.TempDir())
+	t.Setenv("HELM_CONFIG_HOME", t.TempDir())
+	t.Setenv("HELM_DATA_HOME", t.TempDir())
+
+	archive, err := chartutil.Save(&chart.Chart{Metadata: &chart.Metadata{
+		APIVersion: "v2",
+		Name:       "contour",
+		Version:    "0.1.0",
+	}}, t.TempDir())
+	require.NoError(t, err)
+	chartBytes, err := os.ReadFile(archive)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		failPath     string
+		status       int
+		failures     int
+		wantRequests int
+		wantError    bool
+	}{
+		{"first attempt succeeds", "", 0, 0, 0, false},
+		{"chart recovers from 500", "/contour-0.1.0.tgz", 500, 1, 2, false},
+		{"index recovers from 503", "/index.yaml", 503, 1, 2, false},
+		{"rate limit recovers", "/contour-0.1.0.tgz", 429, 2, 3, false},
+		{"chart recovers from EOF", "/contour-0.1.0.tgz", 0, 1, 2, false},
+		{"chart recovers from reset", "/contour-0.1.0.tgz", -1, 1, 2, false},
+		{"chart retry limit", "/contour-0.1.0.tgz", 500, 10, 3, true},
+		{"index retry limit", "/index.yaml", 503, 10, 3, true},
+		{"missing chart", "/contour-0.1.0.tgz", 404, 10, 1, true},
+		{"index unauthorized", "/index.yaml", 401, 10, 1, true},
+		{"chart forbidden", "/contour-0.1.0.tgz", 403, 10, 1, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var requests atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == tt.failPath {
+					if requests.Add(1) <= int32(tt.failures) {
+						if tt.status <= 0 {
+							conn, _, err := http.NewResponseController(w).Hijack()
+							if err != nil {
+								t.Errorf("hijack connection: %v", err)
+								return
+							}
+							if tt.status == -1 {
+								tcpConn, ok := conn.(*net.TCPConn)
+								if !ok {
+									t.Errorf("expected TCP connection, got %T", conn)
+								} else if err := tcpConn.SetLinger(0); err != nil {
+									t.Errorf("set reset on close: %v", err)
+								}
+							}
+							if err := conn.Close(); err != nil {
+								t.Errorf("close connection: %v", err)
+							}
+							return
+						}
+						http.Error(w, http.StatusText(tt.status), tt.status)
+						return
+					}
+				}
+				switch r.URL.Path {
+				case "/index.yaml":
+					_, _ = fmt.Fprint(w, "apiVersion: v1\nentries:\n  contour:\n  - name: contour\n    version: 0.1.0\n    apiVersion: v2\n    urls:\n    - contour-0.1.0.tgz\n")
+				case "/contour-0.1.0.tgz":
+					_, _ = w.Write(chartBytes)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer server.Close()
+
+			action := NewHelmAction(NewHelmClient())
+			got, err := action.HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, server.URL, "contour")
+			if tt.wantError {
+				require.Error(t, err)
+				assert.Nil(t, got)
+				assert.Contains(t, err.Error(), fmt.Sprintf("%d %s", tt.status, http.StatusText(tt.status)))
+				assert.Contains(t, err.Error(), "version: 0.1.0, release name: contour")
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				assert.Equal(t, "contour", got.Metadata.Name)
+			}
+			assert.EqualValues(t, tt.wantRequests, requests.Load())
+		})
+	}
+}
+
+func Test_HelmChartFromContainerRegistry_RefusedConnection(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	chartURL := "http://" + listener.Addr().String() + "/chart.tgz"
+	require.NoError(t, listener.Close())
+
+	httpGetter, err := getter.NewHTTPGetter(getter.WithTimeout(time.Second))
+	require.NoError(t, err)
+	_, fetchErr := httpGetter.Get(chartURL)
+	require.Error(t, fetchErr)
+	require.True(t, isTransientHelmSocketError(fetchErr), "real refused connection must be retryable: %v", fetchErr)
+	require.True(t, isTransientHelmChartError(fetchErr))
+
+	originalBackoff := helmChartPullBackoff
+	helmChartPullBackoff = func() goretry.Backoff {
+		return goretry.WithMaxRetries(1, goretry.NewConstant(time.Millisecond))
+	}
+	t.Cleanup(func() { helmChartPullBackoff = originalBackoff })
+
+	client := NewMockHelmClient(gomock.NewController(t))
+	gomock.InOrder(
+		client.EXPECT().RunHelmPull(gomock.Any(), "contour").Return("", fetchErr),
+		client.EXPECT().RunHelmPull(gomock.Any(), "contour").
+			DoAndReturn(func(opts []helm.PullOpt, ref string) (string, error) {
+				pull := helm.NewPull(opts...)
+				require.NoError(t, os.WriteFile(filepath.Join(pull.DestDir, "chart.tgz"), []byte("chart"), 0600))
+				return "", nil
+			}),
+	)
+	want := &chart.Chart{}
+	client.EXPECT().LoadChart(gomock.Any()).Return(want, nil).Times(1)
+	got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, "https://example.com", "contour")
+	require.NoError(t, err)
+	assert.Same(t, want, got)
+}
+
+func Test_isTransientHelmSocketError_RealReset(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, _, err := http.NewResponseController(w).Hijack()
+		if err != nil {
+			t.Errorf("hijack connection: %v", err)
+			return
+		}
+		tcpConn, ok := conn.(*net.TCPConn)
+		if !ok {
+			t.Errorf("expected TCP connection, got %T", conn)
+		} else if err := tcpConn.SetLinger(0); err != nil {
+			t.Errorf("set reset on close: %v", err)
+		}
+		if err := conn.Close(); err != nil {
+			t.Errorf("close connection: %v", err)
+		}
+	}))
+	defer server.Close()
+	httpGetter, err := getter.NewHTTPGetter(getter.WithTimeout(time.Second))
+	require.NoError(t, err)
+	_, fetchErr := httpGetter.Get(server.URL + "/chart.tgz")
+	require.Error(t, fetchErr)
+	require.True(t, isTransientHelmSocketError(fetchErr), "real reset connection must be retryable: %v", fetchErr)
+	require.True(t, isTransientHelmChartError(fetchErr))
+}
+
+func Test_HelmChartPull_Cancellation(t *testing.T) {
+	originalBackoff := helmChartPullBackoff
+	helmChartPullBackoff = func() goretry.Backoff {
+		return goretry.WithMaxRetries(2, goretry.NewConstant(time.Hour))
+	}
+	t.Cleanup(func() { helmChartPullBackoff = originalBackoff })
+
+	tests := []struct {
+		name string
+		pull func(context.Context, HelmClient) error
+	}{
+		{"direct pull", func(ctx context.Context, client HelmClient) error {
+			_, err := NewHelmAction(client).HelmChartFromContainerRegistry(ctx, "0.1.0", &helm.Configuration{}, "https://example.com", "contour")
+			return err
+		}},
+		{"Contour preparation", func(ctx context.Context, client HelmClient) error {
+			_, _, _, err := prepareContourChart(ctx, NewHelmAction(client), NewDefaultClusterOptions().Contour, "")
+			return err
+		}},
+		{"install", func(ctx context.Context, client HelmClient) error {
+			return (&Impl{Helm: client}).InstallRadius(ctx, NewDefaultClusterOptions(), "")
+		}},
+		{"upgrade", func(ctx context.Context, client HelmClient) error {
+			return (&Impl{Helm: client}).UpgradeRadius(ctx, NewDefaultClusterOptions(), "")
+		}},
+		{"latest version", func(ctx context.Context, client HelmClient) error {
+			_, err := (&Impl{Helm: client}).GetLatestRadiusVersion(ctx)
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for _, alreadyCanceled := range []bool{true, false} {
+				t.Run(fmt.Sprintf("already canceled=%t", alreadyCanceled), func(t *testing.T) {
+					synctest.Test(t, func(t *testing.T) {
+						ctx, cancel := context.WithCancel(t.Context())
+						defer cancel()
+						client := NewMockHelmClient(gomock.NewController(t))
+						if alreadyCanceled {
+							cancel()
+						} else {
+							client.EXPECT().RunHelmPull(gomock.Any(), gomock.Any()).
+								DoAndReturn(func([]helm.PullOpt, string) (string, error) {
+									go func() {
+										time.Sleep(time.Second)
+										cancel()
+									}()
+									return "", &url.Error{Op: "Get", URL: "https://example.com", Err: io.EOF}
+								}).Times(1)
+						}
+
+						start := time.Now()
+						err := tt.pull(ctx, client)
+						require.ErrorIs(t, err, context.Canceled)
+						if alreadyCanceled {
+							assert.Zero(t, time.Since(start))
+						} else {
+							assert.Equal(t, time.Second, time.Since(start), "cancellation must stop the one-hour retry wait")
+						}
+					})
+				})
+			}
+		})
+	}
+}
+
+func Test_HelmChartFromContainerRegistry_LoadFailure(t *testing.T) {
+	client := NewMockHelmClient(gomock.NewController(t))
+	client.EXPECT().RunHelmPull(gomock.Any(), "contour").
+		DoAndReturn(func(opts []helm.PullOpt, ref string) (string, error) {
+			pull := helm.NewPull(opts...)
+			require.NoError(t, os.WriteFile(filepath.Join(pull.DestDir, "chart.tgz"), []byte("invalid chart"), 0600))
+			return "", nil
+		}).Times(1)
+	loadErr := io.ErrUnexpectedEOF
+	client.EXPECT().LoadChart(gomock.Any()).Return(nil, loadErr).Times(1)
+	got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, "https://example.com", "contour")
+	assert.Nil(t, got)
+	assert.ErrorIs(t, err, loadErr)
+}
+
+func Test_HelmChartFromContainerRegistry_GHCRForbidden(t *testing.T) {
+	client := NewMockHelmClient(gomock.NewController(t))
+	client.EXPECT().RunHelmPull(gomock.Any(), "oci://ghcr.io/radius-project/helm-chart/radius").
+		Return("", &errcode.ErrorResponse{StatusCode: http.StatusForbidden, URL: &url.URL{Host: "ghcr.io"}}).
+		Times(1)
+	got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, "oci://ghcr.io/radius-project/helm-chart", "radius")
+	assert.Nil(t, got)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "docker logout ghcr.io")
+}
 
 func Test_isHelmGHCR403Error(t *testing.T) {
 	var err error
@@ -40,37 +361,31 @@ func Test_isHelmGHCR403Error(t *testing.T) {
 	result = isHelmGHCR403Error(err)
 	assert.False(t, result)
 
-	err = fmt.Errorf("%w: wrapped error", containerderrors.ErrUnexpectedStatus{})
+	err = fmt.Errorf("%w: wrapped error", &errcode.ErrorResponse{})
 	result = isHelmGHCR403Error(err)
 	assert.False(t, result)
 
-	err = fmt.Errorf("%w: wrapped error", containerderrors.ErrUnexpectedStatus{StatusCode: http.StatusForbidden, RequestURL: "ghcr.io/myregistry"})
+	err = fmt.Errorf("%w: wrapped error", &errcode.ErrorResponse{StatusCode: http.StatusForbidden, URL: &url.URL{Host: "ghcr.io", Path: "/myregistry"}})
 	result = isHelmGHCR403Error(err)
 	assert.True(t, result)
 
-	err = containerderrors.ErrUnexpectedStatus{StatusCode: http.StatusForbidden, RequestURL: "ghcr.io/myregistry"}
+	err = &errcode.ErrorResponse{StatusCode: http.StatusForbidden, URL: &url.URL{Host: "ghcr.io", Path: "/myregistry"}}
 	result = isHelmGHCR403Error(err)
 	assert.True(t, result)
 
-	err = containerderrors.ErrUnexpectedStatus{StatusCode: http.StatusUnauthorized, RequestURL: "ghcr.io/myregistry"}
+	err = &errcode.ErrorResponse{StatusCode: http.StatusUnauthorized, URL: &url.URL{Host: "ghcr.io", Path: "/myregistry"}}
 	result = isHelmGHCR403Error(err)
 	assert.False(t, result)
 }
 
-func Test_addArgsFromCLI(t *testing.T) {
-	var helmChart chart.Chart
-	helmChart.Values = map[string]any{}
+func Test_parseUserValuesFromCLI(t *testing.T) {
 	options := &RadiusChartOptions{
-		ChartOptions: ChartOptions{
-			SetArgs:     []string{"global.zipkin.url=url,global.prometheus.path=path"},
-			SetFileArgs: []string{"global.rootCA.cert=./testdata/fake-ca-cert.crt"},
-		},
+		SetArgs:     []string{"global.zipkin.url=url,global.prometheus.path=path"},
+		SetFileArgs: []string{"global.rootCA.cert=./testdata/fake-ca-cert.crt"},
 	}
 
-	err := addArgsFromCLI(&helmChart, options)
+	values, err := parseUserValuesFromCLI(options)
 	require.NoError(t, err)
-
-	values := helmChart.Values
 
 	_, ok := values["global"]
 	assert.True(t, ok)
@@ -94,19 +409,115 @@ func Test_addArgsFromCLI(t *testing.T) {
 	assert.Equal(t, prometheus["path"], "path")
 }
 
-func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
-	var helmChart chart.Chart
-	helmChart.Values = map[string]any{}
-	options := &RadiusChartOptions{
-		ChartOptions: ChartOptions{
-			SetArgs: []string{"rp.image=ghcr.io/radius-project/applications-rp,rp.tag=latest", "global.zipkin.url=url,global.prometheus.path=path"},
+func Test_prepareRadiusChart_DoesNotMutateChartValues(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	helmChart := &chart.Chart{
+		Values: map[string]any{
+			"global": map[string]any{
+				"existing": "untouched",
+			},
 		},
 	}
+	mockHelmClient := NewMockHelmClient(ctrl)
+	mockHelmClient.EXPECT().LoadChart("test-chart").Return(helmChart, nil).Times(1)
+	helmAction := NewHelmAction(mockHelmClient)
 
-	err := addArgsFromCLI(&helmChart, options)
+	options := &RadiusChartOptions{
+		Namespace: "radius-system",
+		ChartPath: "test-chart",
+		SetArgs:   []string{"global.zipkin.url=url"},
+	}
+
+	_, _, values, err := prepareRadiusChart(t.Context(), helmAction, *options, "")
 	require.NoError(t, err)
 
-	values := helmChart.Values
+	global, ok := values["global"].(map[string]any)
+	require.True(t, ok)
+	zipkin, ok := global["zipkin"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "url", zipkin["url"])
+
+	chartGlobal, ok := helmChart.Values["global"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "untouched", chartGlobal["existing"])
+	_, hasZipkin := chartGlobal["zipkin"]
+	assert.False(t, hasZipkin, "prepareRadiusChart must not mutate helmChart.Values")
+}
+
+func Test_parseUserValuesFromCLI_InvalidSetArg(t *testing.T) {
+	options := &RadiusChartOptions{
+		SetArgs: []string{"invalid_no_equals"},
+	}
+
+	_, err := parseUserValuesFromCLI(options)
+	require.Error(t, err)
+}
+
+func Test_parseUserValuesFromCLI_InvalidSetFileArg(t *testing.T) {
+	options := &RadiusChartOptions{
+		SetFileArgs: []string{"key=./testdata/nonexistent-file.txt"},
+	}
+
+	_, err := parseUserValuesFromCLI(options)
+	require.Error(t, err)
+}
+
+func Test_parseUserValuesFromCLI_EmptyArgs(t *testing.T) {
+	options := &RadiusChartOptions{
+		ChartOptions: ChartOptions{},
+	}
+
+	values, err := parseUserValuesFromCLI(options)
+	require.NoError(t, err)
+	assert.Empty(t, values)
+}
+
+func Test_prepareRadiusChart_LoadChartError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	mockHelmClient.EXPECT().LoadChart("bad-chart").Return(nil, errors.New("chart not found")).Times(1)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	options := &RadiusChartOptions{
+		Namespace: "radius-system",
+		ChartPath: "bad-chart",
+	}
+
+	_, _, _, err := prepareRadiusChart(t.Context(), helmAction, *options, "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to load Helm chart")
+}
+
+func Test_prepareRadiusChart_ParseValuesError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	mockHelmClient.EXPECT().LoadChart("test-chart").Return(&chart.Chart{}, nil).Times(1)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	options := &RadiusChartOptions{
+		Namespace: "radius-system",
+		ChartPath: "test-chart",
+		SetArgs:   []string{"invalid_no_equals"},
+	}
+
+	_, _, _, err := prepareRadiusChart(t.Context(), helmAction, *options, "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse Radius values")
+}
+
+func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
+	options := &RadiusChartOptions{
+		SetArgs: []string{"rp.image=ghcr.io/radius-project/applications-rp,rp.tag=latest", "global.zipkin.url=url,global.prometheus.path=path"},
+	}
+
+	values, err := parseUserValuesFromCLI(options)
+	require.NoError(t, err)
 
 	// validate image, tag for rp should have been overridden with latest
 	o := values["rp"].(map[string]any)
@@ -133,4 +544,239 @@ func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 	_, ok = prometheus["path"]
 	assert.True(t, ok)
 	assert.Equal(t, prometheus["path"], "path")
+}
+
+// Test_ApplyHelmChart_TimeoutPropagation verifies the caller-configured readiness timeout
+// (`rad install kubernetes --timeout`) reaches the Helm client for both the install and the
+// reinstall/upgrade path. See https://github.com/radius-project/radius/issues/10236.
+func Test_ApplyHelmChart_TimeoutPropagation(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		reinstall bool
+		timeout   time.Duration
+	}{
+		{
+			name:      "install propagates an explicit timeout",
+			reinstall: false,
+			timeout:   42 * time.Minute,
+		},
+		{
+			name:      "install propagates the unset timeout unchanged",
+			reinstall: false,
+			timeout:   0,
+		},
+		{
+			name:      "reinstall propagates an explicit timeout",
+			reinstall: true,
+			timeout:   42 * time.Minute,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockHelmClient := NewMockHelmClient(ctrl)
+			helmAction := NewHelmAction(mockHelmClient)
+
+			helmConf := &helm.Configuration{}
+			helmChart := &chart.Chart{}
+			vals := map[string]any{"key": "value"}
+
+			existingRelease := &releasev1.Release{
+				Name:  "myrelease",
+				Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+				Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
+			}
+
+			if tt.reinstall {
+				mockHelmClient.EXPECT().
+					RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+					Return(existingRelease, nil).Times(1)
+				mockHelmClient.EXPECT().
+					RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true, tt.timeout).
+					Return(existingRelease, nil).Times(1)
+			} else {
+				mockHelmClient.EXPECT().
+					RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+					Return(nil, driver.ErrReleaseNotFound).Times(1)
+				mockHelmClient.EXPECT().
+					RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, tt.timeout).
+					Return(existingRelease, nil).Times(1)
+			}
+
+			err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+				ReleaseName: "myrelease",
+				Namespace:   "myns",
+				Wait:        true,
+				Reinstall:   tt.reinstall,
+				Timeout:     tt.timeout,
+			}, vals)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func Test_ApplyHelmChart_InstallError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
+
+	// QueryRelease: not installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(nil, driver.ErrReleaseNotFound).Times(1)
+
+	// Install returns an error
+	mockHelmClient.EXPECT().
+		RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, gomock.Any()).
+		Return(nil, errors.New("install failed")).Times(1)
+
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+	}, vals)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to run Helm install")
+}
+
+func Test_ApplyHelmChart_ReinstallPath(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
+
+	existingRelease := &releasev1.Release{
+		Name:  "myrelease",
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+		Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
+	}
+
+	// QueryRelease: already installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(existingRelease, nil).Times(1)
+
+	// Reinstall triggers upgrade with reuseValues=true
+	mockHelmClient.EXPECT().
+		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true, gomock.Any()).
+		Return(existingRelease, nil).Times(1)
+
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+		Reinstall:   true,
+	}, vals)
+	require.NoError(t, err)
+}
+
+func Test_ApplyHelmChart_ReinstallError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
+
+	existingRelease := &releasev1.Release{
+		Name:  "myrelease",
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+		Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
+	}
+
+	// QueryRelease: already installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(existingRelease, nil).Times(1)
+
+	// Reinstall triggers upgrade but fails
+	mockHelmClient.EXPECT().
+		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true, gomock.Any()).
+		Return(nil, errors.New("upgrade failed")).Times(1)
+
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+		Reinstall:   true,
+	}, vals)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to run Helm upgrade")
+}
+
+func Test_ApplyHelmChart_AlreadyInstalled_NoReinstall(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
+
+	existingRelease := &releasev1.Release{
+		Name:  "myrelease",
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+		Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
+	}
+
+	// QueryRelease: already installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(existingRelease, nil).Times(1)
+
+	// No install or upgrade should be called
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+		Reinstall:   false,
+	}, vals)
+	require.NoError(t, err)
+}
+
+func Test_ApplyHelmChart_QueryReleaseError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{}
+
+	// QueryRelease returns an error (not ErrReleaseNotFound)
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(nil, errors.New("connection refused")).Times(1)
+
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+	}, vals)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to query Helm release")
 }

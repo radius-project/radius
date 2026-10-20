@@ -16,7 +16,7 @@
 
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: Check code is up-to-date
+name: Lint
 
 on:
   workflow_dispatch:
@@ -24,15 +24,16 @@ on:
     branches:
       - main
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected.
+  merge_group:
+    branches:
+      - main
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
   group: lint-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
-
-env:
-  YQ_VERSION: v4.44.3
-  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
 
 permissions: {}
 
@@ -44,12 +45,16 @@ jobs:
       contents: read
       pull-requests: read
 
-  linter_check:
+  # A single "Lint" job runs every linter and reports one aggregated status
+  # check. The independent, read-only linters run concurrently as parallel steps
+  # (see the `parallel:` group below), so a failure in any one of them still lets
+  # the others run and surface their findings in the same job.
+  lint:
     name: Lint
     runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.only_changed != 'true'
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       GOPROXY: https://proxy.golang.org
       HELM_CHARTS_DIR: deploy/Chart
@@ -57,62 +62,66 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: true
 
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
       - name: Setup NodeJS
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
-      - name: Install mockgen
-        run: go install go.uber.org/mock/mockgen@v0.4.0
-
-      - name: Install controller-gen
-        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
-
       - name: Install yq
-        # Required by make generate-bicep-types-contrib to parse defaults.yaml.
-        run: |
-          mkdir -p "${RUNNER_TEMP}/bin"
-          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
-          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
-          chmod +x "${RUNNER_TEMP}/bin/yq"
-          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+        # Required by make generate to parse defaults.yaml.
+        run: make install-yq
 
       - name: Install helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-        with:
-          version: v3.19.4
+        # Version pinned in build/tools.yaml (HELM_VERSION).
+        run: make install-helm
 
-      - name: Run Helm linter
-        run: |
-          helm lint "${HELM_CHARTS_DIR}"
+      - name: Install golangci-lint
+        # Pinned version + checksums live in build/tools.yaml (GOLANGCI_LINT_VERSION).
+        run: make install-golangci-lint
 
-      - name: Run Helm unit tests
-        run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2 || true
-          cd "${HELM_CHARTS_DIR}" && helm unittest .
+      - name: Install shellcheck
+        # Pinned version + checksums live in build/tools.yaml (SHELLCHECK_VERSION).
+        run: make install-shellcheck
 
-      - name: Run TypeSpec format check
-        run: make tsp-format-check
+      # Run the independent, read-only linters concurrently. Each parallel step is
+      # self-contained; the TypeSpec, Prettier, and deploy progress uploader
+      # checks share a pnpm/corepack toolchain, so they are grouped into one step
+      # to avoid racing on that shared install. The group has an implicit wait
+      # that aggregates results: every linter runs and any failure fails this job
+      # (a single status check).
+      - parallel:
+          - name: Go lint
+            run: make lint-go
 
-      - name: Run linter
-        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
-        with:
-          version-file: .golangci-lint-version
-          args: --timeout=10m
-          skip-cache: true
-          install-mode: binary
+          - name: Helm lint and unit tests
+            run: |
+              helm lint "${HELM_CHARTS_DIR}"
+              make test-helm
 
+          - name: pnpm-based checks
+            run: |
+              make tsp-format-check
+              make format-check || { echo "Format check failed. Run 'make format-write' to fix the formatting issues."; exit 1; }
+
+          - name: Shell lint
+            run: make lint-shell
+
+      # The generated-code check mutates the working tree, so it runs
+      # sequentially after the parallel linters rather than inside the group.
       - name: Run make generate
         run: make generate
 
@@ -126,35 +135,4 @@ jobs:
         if: steps.gitdiff.outcome != 'success'
         run: |
           echo "Generated code is not up to date, run 'make generate' to update generated code."
-          exit 1
-
-  format-check:
-    name: Format check with Prettier
-    runs-on: ubuntu-24.04
-    needs: changes
-    if: needs.changes.outputs.only_changed != 'true'
-    timeout-minutes: 30
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-        with:
-          persist-credentials: false
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version-file: .node-version
-
-      - name: Run `make format-check`
-        id: format-check
-        continue-on-error: true
-        run: |
-          make format-check
-
-      - name: Check for formatting failures
-        if: steps.format-check.outcome == 'failure'
-        run: |
-          echo "Format check failed. Please fix the formatting issues. You can run 'make format-write' to update the code."
           exit 1

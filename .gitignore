@@ -59,11 +59,15 @@ pkg/handlers/gomock_*
 # node modules
 node_modules
 
+# TypeSpec Go emitter temp output
+typespec/**/.tsp-go-tmp/
+
 # terraform state
 .terraform/
 
 # temporary test files starting with tmp-
 tmp-*
+_tmp_*
 
 # Auto-generated Bicep markdown files
 hack/bicep-types-radius/generated/**/*.md

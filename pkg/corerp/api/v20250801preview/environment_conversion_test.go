@@ -38,9 +38,11 @@ func TestEnvironmentConvertVersionedToDataModel(t *testing.T) {
 			RecipePacks: []*string{
 				new("/planes/radius/local/providers/Radius.Core/recipePacks/azure-aci-pack"),
 			},
-			RecipeParameters: map[string]map[string]any{
+			RecipeParameters: map[string]*RecipeParameterValue{
 				"Radius.Compute/containers": {
-					"allowPlatformOptions": false,
+					AdditionalProperties: map[string]any{
+						"allowPlatformOptions": false,
+					},
 				},
 			},
 			Providers: &Providers{
@@ -83,22 +85,16 @@ func TestEnvironmentConvertVersionedToDataModel(t *testing.T) {
 
 func TestEnvironmentConvertDataModelToVersioned(t *testing.T) {
 	dataModelResource := &datamodel.Environment_v20250801preview{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/test-env",
-				Name:     "test-env",
-				Type:     "Radius.Core/environments",
-				Location: "West US",
-				Tags: map[string]string{
-					"env": "test",
-				},
-			},
-			InternalMetadata: v1.InternalMetadata{
-				CreatedAPIVersion:      Version,
-				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-			},
+		ID:       "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/test-env",
+		Name:     "test-env",
+		Type:     "Radius.Core/environments",
+		Location: "West US",
+		Tags: map[string]string{
+			"env": "test",
 		},
+		CreatedAPIVersion:      Version,
+		UpdatedAPIVersion:      Version,
+		AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 		Properties: datamodel.EnvironmentProperties_v20250801preview{
 			RecipePacks: []string{"/planes/radius/local/providers/Radius.Core/recipePacks/test-pack"},
 			RecipeParameters: map[string]map[string]any{
@@ -131,5 +127,5 @@ func TestEnvironmentConvertDataModelToVersioned(t *testing.T) {
 	require.Len(t, versionedResource.Properties.RecipeParameters, 1)
 	containerParams, ok := versionedResource.Properties.RecipeParameters["Radius.Compute/containers"]
 	require.True(t, ok)
-	require.Equal(t, true, containerParams["allowPlatformOptions"])
+	require.Equal(t, true, containerParams.AdditionalProperties["allowPlatformOptions"])
 }

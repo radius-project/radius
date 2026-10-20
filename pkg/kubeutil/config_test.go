@@ -18,6 +18,7 @@ package kubeutil
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -229,5 +230,54 @@ users:
 				require.Equal(t, tc.out.Burst, cfg.Burst)
 			})
 		}
+	})
+}
+
+func TestTargetClusterDefaultNamespace(t *testing.T) {
+	writeKubeconfig := func(t *testing.T, contextNamespace string) string {
+		t.Helper()
+		namespaceLine := ""
+		if contextNamespace != "" {
+			namespaceLine = "    namespace: " + contextNamespace + "\n"
+		}
+		contents := `
+kind: Config
+apiVersion: v1
+clusters:
+- cluster:
+    server: https://kubernetes.default.svc:443
+  name: target-cluster
+contexts:
+- context:
+    cluster: target-cluster
+` + namespaceLine + `    user: target-user
+  name: target-context
+current-context: target-context
+users:
+- name: target-user
+`
+		path := filepath.Join(t.TempDir(), "target.kubeconfig")
+		require.NoError(t, os.WriteFile(path, []byte(contents), 0600))
+		return path
+	}
+
+	t.Run("env var unset returns default", func(t *testing.T) {
+		t.Setenv(TargetKubeconfigEnvVar, "")
+		require.Equal(t, "default", TargetClusterDefaultNamespace())
+	})
+
+	t.Run("kubeconfig context pins namespace", func(t *testing.T) {
+		t.Setenv(TargetKubeconfigEnvVar, writeKubeconfig(t, "workloads"))
+		require.Equal(t, "workloads", TargetClusterDefaultNamespace())
+	})
+
+	t.Run("kubeconfig context pins no namespace falls back to default", func(t *testing.T) {
+		t.Setenv(TargetKubeconfigEnvVar, writeKubeconfig(t, ""))
+		require.Equal(t, "default", TargetClusterDefaultNamespace())
+	})
+
+	t.Run("unreadable kubeconfig falls back to default", func(t *testing.T) {
+		t.Setenv(TargetKubeconfigEnvVar, filepath.Join(t.TempDir(), "does-not-exist.kubeconfig"))
+		require.Equal(t, "default", TargetClusterDefaultNamespace())
 	})
 }

@@ -47,8 +47,7 @@ graph TD
   portable resource providers (Dapr, Datastores, Messaging) in the same process.
 - **`dynamic-rp`** is the main authoring surface for Radius resource types and
   generic resource lifecycle behavior.
-- **`controller`** runs Kubernetes reconcilers and webhooks for Radius custom
-  resources and related workflows.
+- **`controller`** runs Kubernetes reconcilers for Radius deployment templates, deployment resources, and Flux GitOps workflows.
 - **Deployment Engine** is not implemented in this repository, but several
   flows cross that boundary. UCP proxies deployment requests to the deployment
   engine, and the deployment engine calls back to UCP for each resource it
@@ -143,7 +142,7 @@ sequenceDiagram
   start in UCP.
 - If the change is about **authoring or handling Radius resource types**,
   start in `dynamic-rp`.
-- If the change is about **Kubernetes watch/reconcile/webhook behavior**,
+- If the change is about **Kubernetes watch/reconcile behavior**,
   start in `controller`.
 - If the change is about **user experience, config, or command orchestration**,
   start in `rad`.

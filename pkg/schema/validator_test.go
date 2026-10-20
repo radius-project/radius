@@ -17,7 +17,6 @@ limitations under the License.
 package schema
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -33,7 +32,7 @@ func TestNewValidator(t *testing.T) {
 
 func TestValidator_ValidateSchema(t *testing.T) {
 	validator := NewValidator()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("nil schema", func(t *testing.T) {
 		err := validator.ValidateSchema(ctx, nil)
@@ -76,7 +75,7 @@ func TestValidator_ValidateSchema(t *testing.T) {
 
 func TestValidator_ValidateSchema_PlatformOptionsTypeAny(t *testing.T) {
 	validator := NewValidator()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("platformOptions additionalProperties type any succeeds", func(t *testing.T) {
 		schema := &openapi3.Schema{
@@ -1447,7 +1446,7 @@ func TestValidator_validateSchemaWithOpenAPI(t *testing.T) {
 
 func TestValidator_ValidateSchema_EdgeCases(t *testing.T) {
 	validator := NewValidator()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("schema with empty object", func(t *testing.T) {
 		schema := &openapi3.Schema{
@@ -1637,6 +1636,31 @@ func TestValidator_checkReservedProperties(t *testing.T) {
 		require.Len(t, validationErrors.Errors, 1)
 		require.Equal(t, "environment", validationErrors.Errors[0].Field)
 		require.Contains(t, validationErrors.Errors[0].Message, "property 'environment' must be a string")
+	})
+
+	t.Run("codeReference property must be string", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"codeReference": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"integer"},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "codeReference", validationErrors.Errors[0].Field)
+		require.Contains(t, validationErrors.Errors[0].Message, "property 'codeReference' must be a string")
 	})
 
 	t.Run("valid environment property as string", func(t *testing.T) {
@@ -1913,7 +1937,7 @@ func TestValidator_checkReservedProperties(t *testing.T) {
 
 func TestValidator_ValidateSchema_MultipleErrors(t *testing.T) {
 	validator := NewValidator()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("always collects all errors", func(t *testing.T) {
 		schema := &openapi3.Schema{
@@ -1976,7 +2000,7 @@ func TestValidator_ValidateSchema_MultipleErrors(t *testing.T) {
 }
 
 func TestValidateResourceAgainstSchema(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("nil schema returns nil", func(t *testing.T) {
 		resourceData := map[string]any{
@@ -2342,7 +2366,7 @@ func TestValidator_checkSensitiveAnnotation(t *testing.T) {
 
 func TestValidator_ValidateSchema_WithSensitiveAnnotation(t *testing.T) {
 	validator := NewValidator()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("valid string with x-radius-sensitive", func(t *testing.T) {
 		schema := &openapi3.Schema{
@@ -3018,7 +3042,7 @@ func TestNormalizeSensitiveFieldTypes(t *testing.T) {
 }
 
 func TestValidateResourceAgainstSchema_EncryptedSensitiveFields(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("encrypted sensitive string field passes validation", func(t *testing.T) {
 		schema := map[string]any{

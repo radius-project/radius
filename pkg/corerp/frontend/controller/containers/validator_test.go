@@ -17,7 +17,6 @@ limitations under the License.
 package containers
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -95,11 +94,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 		{
 			desc: "valid runtime.kubernetes.base",
 			newResource: &datamodel.ContainerResource{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						Name: "magpie",
-					},
-				},
+				Name: "magpie",
 				Properties: datamodel.ContainerProperties{
 					Runtimes: &datamodel.RuntimeProperties{
 						Kubernetes: &datamodel.KubernetesRuntime{
@@ -109,11 +104,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 				},
 			},
 			mutatedResource: &datamodel.ContainerResource{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						Name: "magpie",
-					},
-				},
+				Name: "magpie",
 				Properties: datamodel.ContainerProperties{
 					Runtimes: &datamodel.RuntimeProperties{
 						Kubernetes: &datamodel.KubernetesRuntime{
@@ -178,7 +169,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 
 	for _, tc := range requestTests {
 		t.Run(tc.desc, func(t *testing.T) {
-			r, err := ValidateAndMutateRequest(context.Background(), tc.newResource, tc.oldResource, nil)
+			r, err := ValidateAndMutateRequest(t.Context(), tc.newResource, tc.oldResource, nil)
 
 			require.NoError(t, err)
 			if tc.resp != nil {
@@ -200,11 +191,7 @@ func TestValidateManifest(t *testing.T) {
 	fakeServiceWithNamespace := fmt.Sprintf(k8sutil.FakeServiceTemplate, "magpie", "namespace: app-scoped")
 
 	validResource := &datamodel.ContainerResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "magpie",
-			},
-		},
+		Name:       "magpie",
 		Properties: datamodel.ContainerProperties{},
 	}
 

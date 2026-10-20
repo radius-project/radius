@@ -37,20 +37,14 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "credentialresource-aws-accesskey.json",
 			expected: &datamodel.AWSCredential{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/aws/aws/providers/System.AWS/credentials/default",
-						Name:     "default",
-						Type:     "System.AWS/credentials",
-						Location: "west-us-2",
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
+				ID:       "/planes/aws/aws/providers/System.AWS/credentials/default",
+				Name:     "default",
+				Type:     "System.AWS/credentials",
+				Location: "west-us-2",
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				UpdatedAPIVersion: Version,
 				Properties: &datamodel.AWSCredentialResourceProperties{
 					Kind: "AccessKey",
 					AWSCredential: &datamodel.AWSCredentialProperties{
@@ -70,20 +64,14 @@ func TestAWSCredentialConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "credentialresource-aws-irsa.json",
 			expected: &datamodel.AWSCredential{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/aws/aws/providers/System.AWS/credentials/default",
-						Name:     "default",
-						Type:     "System.AWS/credentials",
-						Location: "west-us-2",
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
+				ID:       "/planes/aws/aws/providers/System.AWS/credentials/default",
+				Name:     "default",
+				Type:     "System.AWS/credentials",
+				Location: "west-us-2",
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				UpdatedAPIVersion: Version,
 				Properties: &datamodel.AWSCredentialResourceProperties{
 					Kind: "IRSA",
 					AWSCredential: &datamodel.AWSCredentialProperties{

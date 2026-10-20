@@ -17,19 +17,20 @@ limitations under the License.
 package list
 
 import (
-	"context"
+	"net/http"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/connections"
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	"github.com/stretchr/testify/require"
+
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/test/radcli"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -38,92 +39,153 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
+
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "List Command with incorrect args",
+			Name:          "List command with incorrect args",
 			Input:         []string{"group"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
+				Config: configWithWorkspace,
 			},
 		},
 		{
-			Name:          "List Command with correct options but bad workspace",
+			Name:          "List command with bad workspace",
 			Input:         []string{"-w", "doesnotexist"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
+				Config: configWithWorkspace,
 			},
 		},
 		{
-			Name:          "List Command with valid workspace specified",
+			Name:          "List command with valid workspace",
 			Input:         []string{"-w", radcli.TestWorkspaceName},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
+				Config: configWithWorkspace,
 			},
 		},
 		{
-			Name:          "List Command with fallback workspace",
+			Name:          "List command with fallback workspace",
 			Input:         []string{"--group", "test-group"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadEmptyConfig(t),
+				Config: radcli.LoadEmptyConfig(t),
 			},
 		},
 	}
+
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
 func Test_Run(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	applications := []v20231001preview.ApplicationResource{
-		{
-			Name: new("A"),
-		},
-		{
-			Name: new("B"),
-		},
-	}
-
-	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-	appManagementClient.EXPECT().
-		ListApplications(gomock.Any()).
-		Return(applications, nil).
-		Times(1)
-
 	workspace := &workspaces.Workspace{
-		Connection: map[string]any{
-			"kind":    "kubernetes",
-			"context": "kind-kind",
-		},
-		Name:  "kind-kind",
+		Name:  "test-workspace",
 		Scope: "/planes/radius/local/resourceGroups/test-group",
 	}
-	outputSink := &output.MockOutput{}
-	runner := &Runner{
-		ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-		Workspace:         workspace,
-		Format:            "table",
-		Output:            outputSink,
-	}
 
-	err := runner.Run(context.Background())
-	require.NoError(t, err)
-
-	expected := []any{
-		output.FormattedOutput{
-			Format:  "table",
-			Obj:     applications,
-			Options: objectformats.GetResourceTableFormat(),
+	testcases := []struct {
+		name           string
+		serverFactory  func() fake.ApplicationsServer
+		expectedOutput []any
+		expectError    bool
+	}{
+		{
+			name:          "applications returned",
+			serverFactory: test_client_factory.WithApplicationsServerNoError,
+			expectedOutput: []any{
+				output.FormattedOutput{
+					Format: "table",
+					Obj: []*corerpv20250801.ApplicationResource{
+						{Name: new("test-app-1")},
+						{Name: new("test-app-2")},
+					},
+					Options: objectformats.GetResourceTableFormat(),
+				},
+			},
+		},
+		{
+			name: "empty list",
+			serverFactory: func() fake.ApplicationsServer {
+				return fake.ApplicationsServer{
+					NewListByScopePager: func(rootScope string, _ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
+						resp.AddPage(http.StatusOK, corerpv20250801.ApplicationsClientListByScopeResponse{
+							Value: []*corerpv20250801.ApplicationResource{},
+						}, nil)
+						return
+					},
+				}
+			},
+			expectedOutput: []any{
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     []*corerpv20250801.ApplicationResource(nil),
+					Options: objectformats.GetResourceTableFormat(),
+				},
+			},
+		},
+		{
+			name: "multi-page list",
+			serverFactory: func() fake.ApplicationsServer {
+				return fake.ApplicationsServer{
+					NewListByScopePager: func(rootScope string, _ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
+						resp.AddPage(http.StatusOK, corerpv20250801.ApplicationsClientListByScopeResponse{
+							Value: []*corerpv20250801.ApplicationResource{{Name: new("page1-a")}, {Name: new("page1-b")}},
+						}, nil)
+						resp.AddPage(http.StatusOK, corerpv20250801.ApplicationsClientListByScopeResponse{
+							Value: []*corerpv20250801.ApplicationResource{{Name: new("page2-a")}},
+						}, nil)
+						return
+					},
+				}
+			},
+			expectedOutput: []any{
+				output.FormattedOutput{
+					Format: "table",
+					Obj: []*corerpv20250801.ApplicationResource{
+						{Name: new("page1-a")},
+						{Name: new("page1-b")},
+						{Name: new("page2-a")},
+					},
+					Options: objectformats.GetResourceTableFormat(),
+				},
+			},
+		},
+		{
+			name: "pager error surfaces",
+			serverFactory: func() fake.ApplicationsServer {
+				return fake.ApplicationsServer{
+					NewListByScopePager: func(rootScope string, _ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
+						resp.AddResponseError(http.StatusInternalServerError, "InternalServerError")
+						return
+					},
+				}
+			},
+			expectError: true,
 		},
 	}
 
-	require.Equal(t, expected, outputSink.Writes)
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, tc.serverFactory)
+			require.NoError(t, err)
+
+			outputSink := &output.MockOutput{}
+			runner := &Runner{
+				RadiusCoreClientFactory: factory,
+				Workspace:               workspace,
+				Format:                  "table",
+				Output:                  outputSink,
+			}
+
+			err = runner.Run(t.Context())
+			if tc.expectError {
+				require.Error(t, err)
+				require.Empty(t, outputSink.Writes)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedOutput, outputSink.Writes)
+		})
+	}
 }

@@ -47,13 +47,16 @@ const (
 	azureUseOIDCParam           = "use_oidc"
 	azureUseCLIParam            = "use_cli"
 	azureOIDCTokenFilePathParam = "oidc_token_file_path"
-
-	// The Azure AD Workload Identity Mutating Admission Webhook projects a signed service account token to
-	// this well known path.
-	// https://azure.github.io/azure-workload-identity/docs/installation/mutating-admission-webhook.html
-	// https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs#argument-reference
-	azureOIDCTokenFilePath = "/var/run/secrets/azure/tokens/azure-identity-token"
 )
+
+// AzureOIDCTokenFilePath is the well known path where the Azure AD Workload Identity Mutating Admission
+// Webhook projects a signed service account token.
+//
+// Exported so that Terraform backend authentication uses the same projected token as provider
+// authentication; the two must not drift.
+// https://azure.github.io/azure-workload-identity/docs/installation/mutating-admission-webhook.html
+// https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs#argument-reference
+const AzureOIDCTokenFilePath = "/var/run/secrets/azure/tokens/azure-identity-token"
 
 var _ Provider = (*azureProvider)(nil)
 
@@ -189,7 +192,7 @@ func (p *azureProvider) generateProviderConfigMap(configMap map[string]any, cred
 			configMap[azureTenantIDParam] = credentials.WorkloadIdentity.TenantID
 			configMap[azureUseCLIParam] = false
 			configMap[azureUseOIDCParam] = true
-			configMap[azureOIDCTokenFilePathParam] = azureOIDCTokenFilePath
+			configMap[azureOIDCTokenFilePathParam] = AzureOIDCTokenFilePath
 		}
 	}
 

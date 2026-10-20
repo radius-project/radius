@@ -18,7 +18,6 @@ package radcli
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -146,7 +145,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 
 			cmd, runner := factory(framework)
 			cmd.SetArgs(testcase.Input)
-			cmd.SetContext(context.Background())
+			cmd.SetContext(t.Context())
 
 			err := cmd.ParseFlags(testcase.Input)
 			require.NoError(t, err, "flag parsing failed")
@@ -230,6 +229,23 @@ workspaces:
         context: test-context
         kind: kubernetes
       environment: /planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment
+      scope: /planes/radius/local/resourceGroups/test-resource-group
+`
+
+	return LoadConfig(t, yamlData)
+}
+
+// LoadConfigWithRadiusCoreWorkspace loads a config whose workspace default environment is a Radius.Core environment.
+func LoadConfigWithRadiusCoreWorkspace(t *testing.T) *viper.Viper {
+	yamlData := `
+workspaces:
+  default: test-workspace
+  items:
+    test-workspace:
+      connection:
+        context: test-context
+        kind: kubernetes
+      environment: /planes/radius/local/resourceGroups/test-resource-group/providers/Radius.Core/environments/test-environment
       scope: /planes/radius/local/resourceGroups/test-resource-group
 `
 

@@ -26,21 +26,15 @@ import (
 func (src *RecipePackResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	converted := &datamodel.RecipePack{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				CreatedAPIVersion:      Version,
-				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			},
-		},
-		Properties: datamodel.RecipePackProperties{},
+		ID:                     to.String(src.ID),
+		Name:                   to.String(src.Name),
+		Type:                   to.String(src.Type),
+		Location:               to.String(src.Location),
+		Tags:                   to.StringMap(src.Tags),
+		CreatedAPIVersion:      Version,
+		UpdatedAPIVersion:      Version,
+		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+		Properties:             datamodel.RecipePackProperties{},
 	}
 
 	// Convert Recipes
@@ -94,12 +88,16 @@ func toRecipesDataModel(recipes map[string]*RecipeDefinition) map[string]*datamo
 	result := make(map[string]*datamodel.RecipeDefinition)
 	for key, recipe := range recipes {
 		if recipe != nil {
-			result[key] = &datamodel.RecipeDefinition{
-				RecipeKind:     toRecipeKindDataModel(recipe.RecipeKind),
-				RecipeLocation: to.String(recipe.RecipeLocation),
-				Parameters:     recipe.Parameters,
-				PlainHTTP:      to.Bool(recipe.PlainHTTP),
+			definition := &datamodel.RecipeDefinition{
+				Kind:       toRecipeKindDataModel(recipe.Kind),
+				Source:     to.String(recipe.Source),
+				Parameters: recipe.Parameters,
+				PlainHTTP:  to.Bool(recipe.PlainHTTP),
 			}
+			if recipe.Outputs != nil {
+				definition.Outputs, definition.SecretOutputs = SplitRecipeOutputs(recipe.Outputs)
+			}
+			result[key] = definition
 		}
 	}
 	return result
@@ -113,15 +111,83 @@ func fromRecipesDataModel(recipes map[string]*datamodel.RecipeDefinition) map[st
 	result := make(map[string]*RecipeDefinition)
 	for key, recipe := range recipes {
 		if recipe != nil {
-			result[key] = &RecipeDefinition{
-				RecipeKind:     fromRecipeKindDataModel(recipe.RecipeKind),
-				RecipeLocation: new(recipe.RecipeLocation),
-				Parameters:     recipe.Parameters,
-				PlainHTTP:      new(recipe.PlainHTTP),
+			definition := &RecipeDefinition{
+				Kind:       fromRecipeKindDataModel(recipe.Kind),
+				Source:     new(recipe.Source),
+				Parameters: recipe.Parameters,
+				PlainHTTP:  new(recipe.PlainHTTP),
 			}
+			if outputs := mergeRecipeOutputs(recipe.Outputs, recipe.SecretOutputs); outputs != nil {
+				definition.Outputs = outputs
+			}
+			result[key] = definition
 		}
 	}
 	return result
+}
+
+// recipeOutputsSecretsKey is the reserved key inside a recipe definition's `outputs` map whose value is
+// a nested object mapping secret property names to module output names. Every other `outputs` entry maps
+// a non-secret property name to a module output name (a string value). `secrets` is safe to reserve
+// because it is the framework-owned secrets block name, so no resource type maps a real property named
+// `secrets` through `outputs`.
+const recipeOutputsSecretsKey = "secrets"
+
+// SplitRecipeOutputs separates the API `outputs` map (property->output strings, plus a nested `secrets`
+// object) into flat outputs and secret-outputs maps. It is exported so the recipe config loader, which
+// reads the versioned model directly, can interpret `outputs` the same way as the datamodel converter.
+func SplitRecipeOutputs(apiOutputs map[string]any) (map[string]string, map[string]string) {
+	var outputs map[string]string
+	var secretOutputs map[string]string
+	for k, v := range apiOutputs {
+		if k == recipeOutputsSecretsKey {
+			nested, ok := v.(map[string]any)
+			if !ok {
+				continue
+			}
+			for sk, sv := range nested {
+				s, ok := sv.(string)
+				if !ok {
+					continue
+				}
+				if secretOutputs == nil {
+					secretOutputs = map[string]string{}
+				}
+				secretOutputs[sk] = s
+			}
+			continue
+		}
+		s, ok := v.(string)
+		if !ok {
+			continue
+		}
+		if outputs == nil {
+			outputs = map[string]string{}
+		}
+		outputs[k] = s
+	}
+	return outputs, secretOutputs
+}
+
+// mergeRecipeOutputs combines the datamodel's flat Outputs and SecretOutputs maps back into the API
+// `outputs` map, nesting the secret mappings under the reserved `secrets` key. It returns nil when both
+// maps are empty.
+func mergeRecipeOutputs(outputs map[string]string, secretOutputs map[string]string) map[string]any {
+	if len(outputs) == 0 && len(secretOutputs) == 0 {
+		return nil
+	}
+	apiOutputs := map[string]any{}
+	for k, v := range outputs {
+		apiOutputs[k] = v
+	}
+	if len(secretOutputs) > 0 {
+		secrets := map[string]any{}
+		for k, v := range secretOutputs {
+			secrets[k] = v
+		}
+		apiOutputs[recipeOutputsSecretsKey] = secrets
+	}
+	return apiOutputs
 }
 
 func toRecipeKindDataModel(kind *RecipeKind) string {

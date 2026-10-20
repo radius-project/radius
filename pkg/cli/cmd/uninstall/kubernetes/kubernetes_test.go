@@ -78,7 +78,7 @@ func Test_Run(t *testing.T) {
 		outputMock := &output.MockOutput{}
 		promptMock := prompt.NewMockInterface(ctrl)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:        helmMock,
 			Output:      outputMock,
@@ -124,7 +124,7 @@ func Test_Run(t *testing.T) {
 		outputMock := &output.MockOutput{}
 		promptMock := prompt.NewMockInterface(ctrl)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:        helmMock,
 			Output:      outputMock,
@@ -157,7 +157,7 @@ func Test_Run(t *testing.T) {
 		promptMock := prompt.NewMockInterface(ctrl)
 		connFactory := &connections.MockFactory{ApplicationsManagementClient: appManagementClient}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:        helmMock,
 			Output:      outputMock,
@@ -276,7 +276,7 @@ func Test_Run(t *testing.T) {
 		promptMock := prompt.NewMockInterface(ctrl)
 		connFactory := &connections.MockFactory{ApplicationsManagementClient: appManagementClient}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:        helmMock,
 			Output:      outputMock,
@@ -396,7 +396,7 @@ func Test_Run(t *testing.T) {
 		outputMock := &output.MockOutput{}
 		promptMock := prompt.NewMockInterface(ctrl)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:        helmMock,
 			Output:      outputMock,
@@ -437,7 +437,7 @@ func Test_Run(t *testing.T) {
 		helmMock := helm.NewMockInterface(ctrl)
 		outputMock := &output.MockOutput{}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:       helmMock,
 			Output:     outputMock,
@@ -484,7 +484,7 @@ func Test_Run(t *testing.T) {
 		envErr := errors.New("failed to connect")
 		factory := &errorApplicationsFactory{MockFactory: &connections.MockFactory{}, err: envErr}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:        helmMock,
 			Output:      outputMock,

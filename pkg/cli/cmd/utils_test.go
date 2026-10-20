@@ -17,131 +17,12 @@ limitations under the License.
 package cmd
 
 import (
-	"context"
-	"errors"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/aws"
-	"github.com/radius-project/radius/pkg/cli/azure"
-	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	v20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/stretchr/testify/require"
 )
-
-func TestCreateEnvProviders(t *testing.T) {
-	var nilAzureProvider *azure.Provider = nil
-	var nilAWSProvider *aws.Provider = nil
-
-	providersTests := []struct {
-		name      string
-		providers []any
-		out       corerp.Providers
-		err       error
-	}{
-		{
-			name:      "empty providers",
-			providers: []any{},
-			out:       corerp.Providers{},
-			err:       nil,
-		},
-		{
-			name:      "invalid provider types",
-			providers: []any{azure.Provider{}},
-			out:       corerp.Providers{},
-			err:       errors.New("internal error: cannot create environment with invalid type 'azure.Provider'"),
-		},
-		{
-			name: "skip nil provider",
-			providers: []any{
-				nil,
-				&azure.Provider{SubscriptionID: "testSubs", ResourceGroup: "testRG"},
-			},
-			out: corerp.Providers{
-				Azure: &corerp.ProvidersAzure{
-					Scope: new("/subscriptions/testSubs/resourceGroups/testRG"),
-				},
-			},
-			err: nil,
-		},
-		{
-			name: "only azure provider",
-			providers: []any{
-				&azure.Provider{SubscriptionID: "testSubs", ResourceGroup: "testRG"},
-			},
-			out: corerp.Providers{
-				Azure: &corerp.ProvidersAzure{
-					Scope: new("/subscriptions/testSubs/resourceGroups/testRG"),
-				},
-			},
-			err: nil,
-		},
-		{
-			name: "multiple azure providers",
-			providers: []any{
-				&azure.Provider{SubscriptionID: "testSubs", ResourceGroup: "testRG"},
-				&azure.Provider{SubscriptionID: "testSub2", ResourceGroup: "testRG2"},
-			},
-			out: corerp.Providers{},
-			err: clierrors.Message("Only one azure provider can be configured to a scope."),
-		},
-		{
-			name: "only aws provider",
-			providers: []any{
-				&aws.Provider{AccountID: "0", Region: "westus"},
-			},
-			out: corerp.Providers{
-				Aws: &corerp.ProvidersAws{
-					Scope: new("/planes/aws/aws/accounts/0/regions/westus"),
-				},
-			},
-			err: nil,
-		},
-		{
-			name: "multiple aws providers",
-			providers: []any{
-				&aws.Provider{AccountID: "0", Region: "westus"},
-				&aws.Provider{AccountID: "1", Region: "eastus"},
-			},
-			out: corerp.Providers{},
-			err: clierrors.Message("Only one aws provider can be configured to a scope."),
-		},
-		{
-			name: "azure and aws providers",
-			providers: []any{
-				&azure.Provider{SubscriptionID: "testSubs", ResourceGroup: "testRG"},
-				&aws.Provider{AccountID: "0", Region: "westus"},
-			},
-			out: corerp.Providers{
-				Azure: &corerp.ProvidersAzure{
-					Scope: new("/subscriptions/testSubs/resourceGroups/testRG"),
-				},
-				Aws: &corerp.ProvidersAws{
-					Scope: new("/planes/aws/aws/accounts/0/regions/westus"),
-				},
-			},
-			err: nil,
-		},
-		{
-			name: "skip typed nil value",
-			providers: []any{
-				nilAzureProvider,
-				nilAWSProvider,
-			},
-			out: corerp.Providers{},
-			err: nil,
-		},
-	}
-
-	for _, tc := range providersTests {
-		t.Run(tc.name, func(t *testing.T) {
-			provider, err := CreateEnvProviders(tc.providers)
-			require.Equal(t, tc.out, provider)
-			require.Equal(t, tc.err, err)
-		})
-	}
-}
 
 func TestPopulateRecipePackClients(t *testing.T) {
 	scope := "/planes/radius/local/resourceGroups/test-group"
@@ -151,7 +32,7 @@ func TestPopulateRecipePackClients(t *testing.T) {
 			scope: {}, // placeholder client
 		}
 
-		err := PopulateRecipePackClients(context.Background(), &workspaces.Workspace{Scope: scope}, clientsByScope, nil)
+		err := PopulateRecipePackClients(t.Context(), &workspaces.Workspace{Scope: scope}, clientsByScope, nil)
 		require.NoError(t, err)
 		require.Len(t, clientsByScope, 1)
 	})
@@ -165,7 +46,7 @@ func TestPopulateRecipePackClients(t *testing.T) {
 			scope + "/providers/Radius.Core/recipePacks/pack2",
 		}
 
-		err := PopulateRecipePackClients(context.Background(), &workspaces.Workspace{Scope: scope}, clientsByScope, packIDs)
+		err := PopulateRecipePackClients(t.Context(), &workspaces.Workspace{Scope: scope}, clientsByScope, packIDs)
 		require.NoError(t, err)
 		require.Len(t, clientsByScope, 1, "no new scopes should be added")
 	})

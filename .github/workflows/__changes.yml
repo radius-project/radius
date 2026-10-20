@@ -5,6 +5,9 @@ name: Changes
 on:
   workflow_call:
     inputs:
+      # PRs and merge groups share this skip policy. Matching-only changes skip
+      # the heavy jobs that consume this workflow. Review changes to this list
+      # against every consumer, including cloud functional tests.
       files:
         description: File patterns to detect changes
         required: false
@@ -14,30 +17,42 @@ on:
           .github/*.md
           docs/**/*.md
           docs/*.md
+          docs/**/*.png
+          docs/**/*.svg
           eng/design-notes/**/*.md
           eng/design-notes/**/*.png
+          eng/design-notes/**/*.svg
           specs/**/*.md
           test/**/*.md
           test/*.md
           *.md
+          LICENSE
+          .gitignore
+          .cspellignore
           versions.yaml
           !docs/release-notes/v*.md
           .codecov.yml
           .devcontainer/**
+          grafana/**
+          .github/CODEOWNERS
           .github/configs/**
+          .github/linters/**
           .github/dependabot.yml
           .github/ISSUE_TEMPLATE/**
           .github/release.yml
           .github/runners/**
           .github/triage-bot/**
           .github/workflows/close-stale-prs.yml
+          .github/workflows/update-resource-types.yaml
+          .github/workflows/dependabot-manager.yml
           .github/workflows/devcontainer-feature-release.yaml
           .github/workflows/devcontainer-feature-test.yaml
+          .github/workflows/issue-metrics.yml
+          .github/workflows/long-running-azure.yaml
+          .github/workflows/nightly-rad-CLI-tests.yaml
           .github/workflows/publish-*.yaml
           .github/workflows/purge-*.yaml
           .github/workflows/radius-bot.yaml
-          .github/workflows/release.yaml
-          .github/workflows/release-verification.yaml
           .github/workflows/require-pr-checklist.yaml
           .github/workflows/scorecard.yaml
           .github/workflows/triage-bot.yaml
@@ -76,12 +91,32 @@ jobs:
       only_changed: ${{ steps.set-result.outputs.only_changed }}
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ inputs.ref }}
           repository: ${{ inputs.repository }}
+          allow-unsafe-pr-checkout: true
+
+      # Full fork history may still lack the upstream comparison commit.
+      - name: Fetch comparison base
+        if: inputs.base_sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha
+        shell: bash
+        env:
+          BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          BASE_REPOSITORY: ${{ github.repository }}
+          BASE_SERVER_URL: ${{ github.server_url }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! git cat-file -e "${BASE_SHA}^{commit}"; then
+            AUTHORIZATION="$(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w 0)"
+            echo "::add-mask::${AUTHORIZATION}"
+            git -c "http.${BASE_SERVER_URL}/.extraheader=AUTHORIZATION: basic ${AUTHORIZATION}" \
+              fetch --no-tags --no-recurse-submodules -- \
+              "${BASE_SERVER_URL}/${BASE_REPOSITORY}.git" "${BASE_SHA}"
+            git cat-file -e "${BASE_SHA}^{commit}"
+          fi
 
       - name: Filter
         id: filter
@@ -91,13 +126,34 @@ jobs:
           files: ${{ inputs.files }}
           base_sha: ${{ inputs.base_sha }}
 
+      # The first checkout includes the caller's changes.mjs, possibly from a PR.
+      # The "Filter" workflow step above detects changed files in that checkout
+      # without executing .github/scripts/changes.mjs.
+      # On pull_request_target and workflow_run events, the checkout below
+      # replaces .github/scripts/changes.mjs in the same workspace with the
+      # version from github.repository at github.sha before the "Set result"
+      # step below imports that file. The "Set result" step reads the "Filter"
+      # step's saved GitHub Actions output, which is unaffected by replacing files.
+      # If this checkout fails, the "Set result" step is skipped rather than executing
+      # the PR's version of .github/scripts/changes.mjs from the first checkout.
+      - name: Checkout trusted changes helper
+        if: github.event_name == 'pull_request_target' || github.event_name == 'workflow_run'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          sparse-checkout: |
+            .github/scripts/changes.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
       - name: Set result
         id: set-result
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             // Change detection filtering only applies when:
-            // 1. Event is pull_request/pull_request_target, OR
+            // 1. Event is pull_request/pull_request_target/merge_group, OR
             // 2. A base_sha is provided (indicates PR-like context, e.g., workflow_run for PRs)
             //
             // For other events (schedule, repository_dispatch, workflow_dispatch without base_sha),

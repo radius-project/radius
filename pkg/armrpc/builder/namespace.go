@@ -33,11 +33,9 @@ type Namespace struct {
 // NewNamespace creates a new namespace.
 func NewNamespace(namespace string) *Namespace {
 	return &Namespace{
-		ResourceNode: ResourceNode{
-			Kind:     NamespaceResourceKind,
-			Name:     namespace,
-			children: make(map[string]*ResourceNode),
-		},
+		Kind:     NamespaceResourceKind,
+		Name:     namespace,
+		children: make(map[string]*ResourceNode),
 	}
 }
 

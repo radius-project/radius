@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: radius-api-readiness
+  labels:
+    control-plane: radius-api-readiness
+    app.kubernetes.io/name: radius-api-readiness
+    app.kubernetes.io/part-of: radius
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+  - nonResourceURLs:
+      - /apis/api.ucp.dev/v1alpha3
+    verbs:
+      - get

@@ -17,7 +17,6 @@ limitations under the License.
 package preflight
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -103,7 +102,7 @@ func TestCustomConfigValidationCheck_BasicValidation(t *testing.T) {
 			// Override the default chart path to skip chart validation for basic tests
 			check.chartPath = ""
 
-			pass, msg, err := check.Run(context.Background())
+			pass, msg, err := check.Run(t.Context())
 
 			require.NoError(t, err)
 			assert.Equal(t, !tt.shouldFail, pass)
@@ -208,7 +207,7 @@ func TestCustomConfigValidationCheck_ChartValidation(t *testing.T) {
 			// Use the real chart path and OS filesystem for chart loading
 			check := NewCustomConfigValidationCheck(tt.setParams, setFileParams, realChartPath, nil)
 
-			pass, msg, err := check.Run(context.Background())
+			pass, msg, err := check.Run(t.Context())
 
 			require.NoError(t, err)
 			assert.Equal(t, !tt.shouldFail, pass)
@@ -296,7 +295,7 @@ func TestCustomConfigValidationCheck_ErrorHandling(t *testing.T) {
 				check.fs = mockFS
 			}
 
-			pass, msg, err := check.Run(context.Background())
+			pass, msg, err := check.Run(t.Context())
 			require.NoError(t, err)
 			assert.Equal(t, !tt.shouldFail, pass)
 			if tt.expectError != "" {

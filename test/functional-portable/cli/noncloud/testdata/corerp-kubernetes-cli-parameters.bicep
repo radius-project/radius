@@ -4,15 +4,15 @@ extension radius
 param location string = 'global'
 
 @description('Specifies the environment for resources.')
-param environment string = 'test'
+param environment string
 
 @description('Specifies the tag of the image to be deployed.')
-param magpietag string = 'latest'
+param magpietag string
 
 @description('Specifies the registry of the image to be deployed.')
 param registry string
 
-resource parametersApp 'Applications.Core/applications@2023-10-01-preview' = {
+resource parametersApp 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'kubernetes-cli-params'
   location: location
   properties: {
@@ -20,24 +20,30 @@ resource parametersApp 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource containerc 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'containerC'
+resource containerc 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'containerc'
   location: location
   properties: {
     application: parametersApp.id
-    container: {
-      image: '${registry}/magpiego:${magpietag}'
+    environment: environment
+    containers: {
+      main: {
+        image: '${registry}/magpiego:${magpietag}'
+      }
     }
   }
 }
 
-resource containerd 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'containerD'
+resource containerd 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'containerd'
   location: location
   properties: {
     application: parametersApp.id
-    container: {
-      image: '${registry}/magpiego:${magpietag}'
+    environment: environment
+    containers: {
+      main: {
+        image: '${registry}/magpiego:${magpietag}'
+      }
     }
   }
 }

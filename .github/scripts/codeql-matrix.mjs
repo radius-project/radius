@@ -10,9 +10,9 @@ const FULL_MATRIX = [
   {
     language: "javascript",
     "build-mode": "none",
-    "working-directory": "typespec",
+    "working-directory": "typespec"
   },
-  { language: "custom-gosec", "build-mode": "none", "working-directory": "." },
+  { language: "custom-gosec", "build-mode": "none", "working-directory": "." }
 ];
 
 /**
@@ -23,7 +23,7 @@ const LANGUAGE_TO_KEYS = {
   actions: ["actions"],
   go: ["go"],
   javascript: ["javascript"],
-  "custom-gosec": ["go"], // GoSec analysis runs when Go files change
+  "custom-gosec": ["go"] // GoSec analysis runs when Go files change
 };
 
 const FULL_MATRIX_TRIGGER = "/codeql full";
@@ -56,13 +56,13 @@ async function shouldRunFullMatrix(context, github, core) {
       const { data: comments } = await github.rest.issues.listComments({
         owner: context.repo.owner,
         repo: context.repo.repo,
-        issue_number: prNumber,
+        issue_number: prNumber
       });
 
       for (const comment of comments) {
         if (comment.body?.includes(FULL_MATRIX_TRIGGER)) {
           core.info(
-            `Found "${FULL_MATRIX_TRIGGER}" in PR comment by ${comment.user?.login}`,
+            `Found "${FULL_MATRIX_TRIGGER}" in PR comment by ${comment.user?.login}`
           );
           return true;
         }
@@ -99,20 +99,24 @@ export default async ({ context, github, core }) => {
 
     core.info(`Modified keys: ${JSON.stringify(modifiedKeys)}`);
 
-    // For non-PR events (push, schedule), run all languages
-    // For PR events, filter based on changed files unless "/codeql full" is found
-    const isPrEvent =
-      eventName === "pull_request" || eventName === "pull_request_target";
+    // For push, scheduled, and manual runs, analyze all languages.
+    // For PRs and merge groups, filter unless a PR requests "/codeql full".
+    const isFilteredEvent =
+      eventName === "pull_request" ||
+      eventName === "pull_request_target" ||
+      eventName === "merge_group";
 
     let filteredMatrix;
-    if (!isPrEvent) {
-      core.info("Non-PR event detected - running full matrix");
+    if (!isFilteredEvent) {
+      core.info("Non-PR/merge-group event detected - running full matrix");
       filteredMatrix = FULL_MATRIX;
     } else if (await shouldRunFullMatrix(context, github, core)) {
       core.info(`"${FULL_MATRIX_TRIGGER}" trigger found - running full matrix`);
       filteredMatrix = FULL_MATRIX;
     } else {
-      core.info("PR event detected - filtering matrix based on changed files");
+      core.info(
+        "PR or merge group detected - filtering matrix based on changed files"
+      );
       filteredMatrix = FULL_MATRIX.filter((item) => {
         const requiredKeys = LANGUAGE_TO_KEYS[item.language] || [];
         return requiredKeys.some((key) => modifiedKeys.includes(key));
@@ -123,17 +127,17 @@ export default async ({ context, github, core }) => {
 
     // Output the matrix
     const matrixOutput =
-      filteredMatrix.length > 0
-        ? JSON.stringify({ include: filteredMatrix })
-        : '{"include":[]}';
+      filteredMatrix.length > 0 ?
+        JSON.stringify({ include: filteredMatrix })
+      : '{"include":[]}';
 
     core.info(`Matrix output: ${matrixOutput}`);
     core.setOutput("matrix", matrixOutput);
   } catch (error) {
     const message =
-      error instanceof Error
-        ? error.message
-        : `Unexpected error: ${String(error)}`;
+      error instanceof Error ?
+        error.message
+      : `Unexpected error: ${String(error)}`;
     core.setFailed(message);
   }
 };

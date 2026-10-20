@@ -3,10 +3,11 @@
 ---
 version: "2"
 linters:
-  # Only enable forbidigo explicitly. The v2 defaults (errcheck, gosimple, govet,
-  # ineffassign, staticcheck, unused) are implicitly enabled to match v1 behavior.
+  # Only enable forbidigo and usetesting explicitly. The v2 defaults (errcheck, gosimple,
+  # govet, ineffassign, staticcheck, unused) are implicitly enabled to match v1 behavior.
   enable:
     - forbidigo
+    - usetesting
   settings:
     # Configure default linters to match v1 behavior (less strict)
     errcheck:
@@ -103,3 +104,17 @@ linters:
           msg: "# Do not use except for inside main(). Suppress this message with //nolint:forbidigo at the end of the line if it is correct."
         - pattern: 'log\.Fatal(f|ln)?'
           msg: "# Do not use except for inside main(). Suppress this message with //nolint:forbidigo at the end of the line if it is correct."
+
+    usetesting:
+      # Tests must use the test-scoped context so work started by a test is cancelled with it.
+      # Suppress with '//nolint:usetesting' when a context must outlive the test, for example
+      # inside t.Cleanup (t.Context() is cancelled before cleanup runs) or in a detached goroutine.
+      context-background: true
+      context-todo: true
+      # The os.* checks below are unrelated to context handling; leave them off to keep this
+      # linter focused.
+      os-chdir: false
+      os-create-temp: false
+      os-mkdir-temp: false
+      os-setenv: false
+      os-temp-dir: false

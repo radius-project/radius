@@ -38,19 +38,20 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
+      id-token: write # Required for requesting the OIDC JWT to assume the AWS role
       contents: read
       issues: write # Required to create an issue when the scheduled run fails
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
-          aws-access-key-id: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
+          role-session-name: ${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Delete old AWS resources

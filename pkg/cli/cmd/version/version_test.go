@@ -1,7 +1,6 @@
 package version
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -360,7 +359,7 @@ func TestRun(t *testing.T) {
 				mockOutput.EXPECT().WriteFormatted(tc.format, gomock.Any(), gomock.Any()).Return(nil)
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 		})
 	}

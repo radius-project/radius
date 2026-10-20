@@ -1,0 +1,168 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package resourceproviders
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/defaults"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+)
+
+var _ controller.Controller = (*GetIcon)(nil)
+
+// GetIcon is the controller implementation to get a resource type's icon by hash.
+type GetIcon struct {
+	controller.Operation[*datamodel.ResourceType, datamodel.ResourceType]
+}
+
+// NewGetIcon creates a new GetIcon controller.
+func NewGetIcon(opts controller.Options) (controller.Controller, error) {
+	return &GetIcon{
+		Operation: controller.NewOperation(opts, controller.ResourceOptions[datamodel.ResourceType]{}),
+	}, nil
+}
+
+// Run executes the GetIcon operation.
+func (r *GetIcon) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	// Extract path parameters from chi. The route is:
+	// /planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}/icons/{hash}
+	planeName := chi.URLParam(req, "planeName")
+	rpName := chi.URLParam(req, "resourceProviderName")
+	rtName := chi.URLParam(req, "resourceTypeName")
+	hash := chi.URLParam(req, "hash")
+
+	if planeName == "" || rpName == "" || rtName == "" || hash == "" {
+		return armrpc_rest.NewBadRequestResponse("invalid icon path"), nil
+	}
+
+	rtPath := fmt.Sprintf("/planes/radius/%s/providers/System.Resources/resourceProviders/%s/resourceTypes/%s", planeName, rpName, rtName)
+	id, err := resources.Parse(rtPath)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := r.DatabaseClient().Get(ctx, id.String())
+	if err != nil {
+		if _, ok := errors.AsType[*database.ErrNotFound](err); ok {
+			return armrpc_rest.NewNotFoundResponse(id), nil
+		}
+		return nil, err
+	}
+
+	rt := &datamodel.ResourceType{}
+	if err := result.As(rt); err != nil {
+		return nil, err
+	}
+
+	// The stored IconHash must exist and match the requested hash. After
+	// registration-time hash substitution, IconHash is normally non-nil for
+	// a registered type, but the defensive check stays for older records or
+	// malformed writes.
+	if rt.Properties.IconHash == nil {
+		return armrpc_rest.NewNotFoundResponseWithCause(id, "resource type has no icon"), nil
+	}
+	if *rt.Properties.IconHash != hash {
+		return armrpc_rest.NewNotFoundResponseWithCause(id, fmt.Sprintf("icon with hash %q was not found", hash)), nil
+	}
+
+	// Hash matched. Prefer bytes stored on the record; otherwise serve the
+	// embedded product default. Registration-time substitution stores the
+	// default hash on types authored without an icon and does NOT store
+	// bytes on the record (they live in the deploy/manifest binary asset), so
+	// this fallback is what makes the icon endpoint resolvable for defaulted
+	// types.
+	//
+	// Before serving, the bytes are hashed a second time and compared to
+	// the URL-path hash. This is content-addressed integrity: the endpoint
+	// is a promise that /icons/<h> returns bytes whose SHA-256 equals h.
+	// If storage ever diverged the hash and the bytes (data-tier
+	// corruption, a bug in a bulk-copy path), the check catches it and we
+	// return 404 rather than serving unverified bytes labeled as
+	// authoritative. The cost is one SHA-256 per icon fetch — negligible
+	// against typical <32 KiB payloads and the request's HTTPS overhead.
+	if rt.Properties.Icon != nil {
+		if !hashesToPathHash(*rt.Properties.Icon, hash) {
+			return armrpc_rest.NewNotFoundResponseWithCause(id, "icon integrity check failed"), nil
+		}
+		return &iconResponse{content: *rt.Properties.Icon}, nil
+	}
+	if defaults.IsDefaultIcon(hash) {
+		def := defaults.DefaultIcon()
+		if !hashesToPathHash(string(def.Bytes), hash) {
+			return armrpc_rest.NewNotFoundResponseWithCause(id, "icon integrity check failed"), nil
+		}
+		return &iconResponse{content: string(def.Bytes)}, nil
+	}
+	return armrpc_rest.NewNotFoundResponseWithCause(id, "resource type has no icon"), nil
+}
+
+// hashesToPathHash reports whether SHA-256(body) hex-encoded equals the
+// URL-path hash. The comparison is deliberately case-insensitive on the
+// hex encoding to tolerate uppercase producers. An empty pathHash never
+// matches — the endpoint route guards against that at request-parse time,
+// but the defensive check here keeps the invariant "a match implies a
+// verified body" true regardless of caller.
+func hashesToPathHash(body, pathHash string) bool {
+	if pathHash == "" {
+		return false
+	}
+	sum := sha256.Sum256([]byte(body))
+	encoded := hex.EncodeToString(sum[:])
+	if encoded == pathHash {
+		return true
+	}
+	// Fold pathHash to lowercase and compare once more.
+	buf := make([]byte, len(pathHash))
+	for i := 0; i < len(pathHash); i++ {
+		c := pathHash[i]
+		if c >= 'A' && c <= 'F' {
+			c += 'a' - 'A'
+		}
+		buf[i] = c
+	}
+	return encoded == string(buf)
+}
+
+type iconResponse struct {
+	content string
+}
+
+func (r *iconResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	// Defense in depth: ValidateIcon already rejects <script>, on* handlers,
+	// <foreignObject>, and external href references before storage. These
+	// headers harden the response against MIME-sniffing and neutralize any
+	// residual active content if a client (e.g. a browser) navigates to the
+	// icon URL top-level rather than embedding it via <img>.
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+	w.WriteHeader(http.StatusOK)
+	_, err := w.Write([]byte(r.content))
+	return err
+}

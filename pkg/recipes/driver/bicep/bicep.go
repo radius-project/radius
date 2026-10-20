@@ -18,14 +18,16 @@ package bicep
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	reflect "reflect"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
 	"github.com/go-logr/logr"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2/registry/remote"
@@ -36,8 +38,11 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/kubernetes/clusteraccess"
+	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
+	"github.com/radius-project/radius/pkg/resourcemodel"
 	"github.com/radius-project/radius/pkg/rp/util"
 	"github.com/radius-project/radius/pkg/rp/util/authclient"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -45,23 +50,26 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"k8s.io/client-go/rest"
 )
 
 const (
 	deploymentPrefix = "recipe"
 	pollFrequency    = time.Second * 5
 	recipeParameters = "parameters"
+	recipeOutputs    = "outputs"
 )
 
 var _ driver.Driver = (*bicepDriver)(nil)
 
-// NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client, resource client, and options.
-func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient clients.ResourceDeploymentsClient, client processors.ResourceClient, options BicepOptions) driver.Driver {
+// NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client, resource client factory, and options.
+func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient clients.ResourceDeploymentsClient, resourceClientFactory processors.ResourceClientFactory, options BicepOptions) driver.Driver {
 	return &bicepDriver{
-		ArmClientOptions: armOptions,
-		DeploymentClient: deploymentClient,
-		ResourceClient:   client,
-		options:          options,
+		ArmClientOptions:      armOptions,
+		DeploymentClient:      deploymentClient,
+		resourceClientFactory: resourceClientFactory,
+		options:               options,
+		clusterAccessResolver: clusteraccess.NewResolver(),
 	}
 }
 
@@ -71,10 +79,11 @@ type BicepOptions struct {
 }
 
 type bicepDriver struct {
-	ArmClientOptions *arm.ClientOptions
-	DeploymentClient clients.ResourceDeploymentsClient
-	ResourceClient   processors.ResourceClient
-	options          BicepOptions
+	ArmClientOptions      *arm.ClientOptions
+	DeploymentClient      clients.ResourceDeploymentsClient
+	options               BicepOptions
+	clusterAccessResolver clusteraccess.ClusterAccessResolver
+	resourceClientFactory processors.ResourceClientFactory
 
 	// RegistryClient is the optional client used to interact with the container registry.
 	RegistryClient remote.Client
@@ -114,6 +123,10 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, metrics.SuccessfulOperationState))
 
+	if err := validateOutputMappings(opts.Definition, recipeData); err != nil {
+		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+	}
+
 	// create the context object to be passed to the recipe deployment
 	recipeContext, err := recipecontext.New(&opts.Recipe, &opts.Configuration)
 	if err != nil {
@@ -126,7 +139,18 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
 	isContextParameterDefined := hasContextParameter(recipeData)
-	parameters := createRecipeParameters(opts.Recipe.Parameters, opts.Definition.Parameters, isContextParameterDefined, recipeContext)
+
+	var parameters map[string]any
+	if isContextParameterDefined {
+		// Wrapped recipe — use the existing context injection flow.
+		parameters = createRecipeParameters(opts.Recipe.Parameters, opts.Definition.Parameters, true, recipeContext)
+	} else {
+		// Direct module — resolve {{context.*}} expressions, merge parameters, and wrap as ARM parameters.
+		// Resource (developer) parameters take precedence over environment (operator) parameters.
+		mergedParams := recipes_util.ShallowMergeParameters(opts.Definition.Parameters, opts.Recipe.Parameters)
+		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipeContext)
+		parameters = wrapARMParameters(resolvedParams)
+	}
 
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
 	deploymentID, err := createDeploymentID(recipeContext.Resource.ID, deploymentName)
@@ -149,7 +173,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		ctx,
 		clients.Deployment{
 			Properties: &clients.DeploymentProperties{
-				Mode:           armresources.DeploymentModeIncremental,
+				Mode:           armdeployments.DeploymentModeIncremental,
 				ProviderConfig: &providerConfig,
 				Parameters:     parameters,
 				Template:       recipeData,
@@ -168,9 +192,24 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition.TemplatePath, resp.Properties.Outputs, resp.Properties.OutputResources)
+	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
+		if _, ok := errors.AsType[*recipes_util.MissingOutputValuesError](err); ok {
+			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+		}
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+	}
+
+	// containerImages recipes may declare an imageBuild output. Check for it first, then run the
+	// embedded build script and merge the resulting image reference into the recipe output.
+	shouldExecuteImageBuildHook, err := d.hasImageBuildProperty(opts.BaseOptions.Definition.ResourceType, resp.Properties.Outputs)
+	if err != nil {
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+	}
+	if shouldExecuteImageBuildHook {
+		if err := d.executeImageBuildHook(ctx, recipeData, resp.Properties.Outputs, recipeResponse, opts); err != nil {
+			return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+		}
 	}
 
 	// When a Radius portable resource consuming a recipe is redeployed, Garbage collection of the recipe resources that aren't included
@@ -185,6 +224,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 
 	// Deleting obsolete output resources.
 	err = d.Delete(ctx, driver.DeleteOptions{
+		BaseOptions:     opts.BaseOptions,
 		OutputResources: diff,
 	})
 	if err != nil {
@@ -205,11 +245,25 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
+	resourceClient, err := d.resourceClientForDelete(ctx, opts)
+	if err != nil {
+		return err
+	}
+	if resourceClient == nil {
+		return nil
+	}
+
 	// Create a waitgroup to track the deletion of each output resource
 	g, groupCtx := errgroup.WithContext(ctx)
 
 	for i := range opts.OutputResources {
 		outputResource := opts.OutputResources[i]
+
+		if outputResource.IsRadiusManaged() && deletingKeyVaultParent(outputResource.ID, opts.OutputResources) {
+			// ARM cannot delete secrets. The batch must still wait for the managed vault deletion to succeed.
+			logger.Info("Skipping direct Key Vault secret deletion; the managed parent vault is in the deletion batch", "resourceID", outputResource.ID.String())
+			continue
+		}
 
 		// Create a goroutine that handles the deletion of one resource
 		g.Go(func() error {
@@ -228,7 +282,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 				ctx := logr.NewContext(groupCtx, logger)
 				logger.V(ucplog.LevelDebug).Info("beginning attempt")
 
-				err = d.ResourceClient.Delete(ctx, id)
+				err = resourceClient.Delete(ctx, id)
 				if err != nil {
 					if attempt <= d.options.DeleteRetryCount {
 						logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
@@ -254,6 +308,89 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	}
 
 	return nil
+}
+
+func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResource) bool {
+	if !strings.EqualFold(id.Type(), "Microsoft.KeyVault/vaults/secrets") || len(id.ExtensionSegments()) != 0 {
+		return false
+	}
+	if id.IsUCPQualified() && !strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), "azure/") {
+		return false
+	}
+
+	parentID := azureResourcePath(id.Truncate())
+	for _, output := range outputResources {
+		if output.IsRadiusManaged() && strings.EqualFold(azureResourcePath(output.ID), parentID) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func azureResourcePath(id resources.ID) string {
+	if !id.IsUCPQualified() {
+		return id.String()
+	}
+	if !strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), "azure/") {
+		return ""
+	}
+
+	// Match the ARM path used by resourceClient.deleteAzureResource, not an unrelated plane's path.
+	return resources.MakeRelativeID(id.ScopeSegments()[1:], id.TypeSegments(), id.ExtensionSegments())
+}
+
+func (d *bicepDriver) resourceClientForDelete(ctx context.Context, opts driver.DeleteOptions) (processors.ResourceClient, error) {
+	hasManagedOutput := false
+	hasManagedKubernetesOutput := false
+	for _, outputResource := range opts.OutputResources {
+		if !outputResource.IsRadiusManaged() {
+			continue
+		}
+
+		hasManagedOutput = true
+		if strings.EqualFold(outputResource.GetResourceType().Provider, resourcemodel.ProviderKubernetes) {
+			hasManagedKubernetesOutput = true
+		}
+	}
+
+	if !hasManagedOutput {
+		return nil, nil
+	}
+
+	if d.resourceClientFactory == nil {
+		err := errors.New("bicep driver has no resource client factory configured")
+		return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+	}
+
+	var kubernetesConfig *rest.Config
+	if hasManagedKubernetesOutput {
+		if d.clusterAccessResolver == nil {
+			err := errors.New("bicep driver has no cluster access resolver configured")
+			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+		}
+
+		var err error
+		kubernetesConfig, err = d.clusterAccessResolver.Resolve(ctx, &opts.Configuration)
+		if err != nil {
+			err = fmt.Errorf("failed to resolve target cluster for recipe output deletion: %w", err)
+			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+		}
+		if kubernetesConfig == nil {
+			err = errors.New("cluster access resolver returned a nil Kubernetes configuration")
+			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+		}
+
+		ucplog.FromContextOrDiscard(ctx).Info("Resolved Kubernetes target for recipe output deletion", "host", kubernetesConfig.Host)
+	}
+
+	resourceClient := d.resourceClientFactory(kubernetesConfig)
+	if resourceClient == nil {
+		err := errors.New("bicep resource client factory returned nil")
+		return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+	}
+
+	return resourceClient, nil
 }
 
 // GetRecipeMetadata gets the Bicep recipe parameters information from the container registry
@@ -298,6 +435,36 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOpt
 	}
 
 	return recipeData, nil
+}
+
+func validateOutputMappings(definition recipes.EnvironmentDefinition, recipeData map[string]any) error {
+	if len(definition.Outputs) == 0 && len(definition.SecretOutputs) == 0 {
+		return nil
+	}
+
+	var declaredOutputs []string
+	rawOutputs, ok := recipeData[recipeOutputs]
+	if ok && rawOutputs != nil {
+		outputs, ok := rawOutputs.(map[string]any)
+		if !ok {
+			return fmt.Errorf(
+				"recipe %q for resource type %q: recipe outputs must be an object",
+				definition.Name,
+				definition.ResourceType)
+		}
+
+		declaredOutputs = make([]string, 0, len(outputs))
+		for outputName := range outputs {
+			declaredOutputs = append(declaredOutputs, outputName)
+		}
+	}
+
+	return recipes_util.ValidateOutputsMapping(
+		definition.Name,
+		definition.ResourceType,
+		declaredOutputs,
+		definition.Outputs,
+		definition.SecretOutputs)
 }
 
 func hasContextParameter(recipeData map[string]any) bool {
@@ -371,21 +538,41 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 	return config
 }
 
-// prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
+// prepareRecipeResponse populates the recipe response from the deployment outputs and the
 // resources created by the template.
-func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, resources []*armresources.ResourceReference) (*recipes.RecipeOutput, error) {
-	// We populate the recipe response from the 'result' output (if set)
-	// and the resources created by the template.
-	//
-	// Note that there are two ways a resource can be returned:
-	// - Implicitly when it is created in the template (it will be in 'resources').
-	// - Explicitly as part of the 'result' output.
-	//
-	// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
-	// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
+//
+// Output resolution precedence (direct module support):
+//   - If an `outputs` mapping is configured on the definition, it takes precedence: all ARM
+//     deployment outputs are collected flat and then renamed via the mapping.
+//   - Otherwise, if the deployment produced a `result` output, the module is treated as a
+//     wrapped recipe (existing behavior).
+//   - Otherwise, all ARM deployment outputs pass through unchanged.
+//
+// Note that there are two ways a resource can be returned:
+//   - Implicitly when it is created in the template (it will be in 'resources').
+//   - Explicitly as part of the 'result' output.
+//
+// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
+// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
+func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefinition, outputs any, resources []*armdeployments.ResourceReference) (*recipes.RecipeOutput, error) {
 	recipeResponse := &recipes.RecipeOutput{}
-	out, ok := outputs.(map[string]any)
-	if ok {
+	out, _ := outputs.(map[string]any)
+	hasOutputsMapping := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
+	_, hasResultOutput := out[recipes.ResultPropertyName]
+
+	switch {
+	case hasOutputsMapping:
+		// Direct module with an outputs mapping — collect all ARM outputs flat (splitting
+		// secure-typed outputs into secrets), then apply the mapping.
+		values, secrets := collectARMOutputs(out)
+		mappedValues, mappedSecrets, err := recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs, definition.SecretOutputs)
+		if err != nil {
+			return &recipes.RecipeOutput{}, fmt.Errorf("recipe %q for resource type %q: %w", definition.Name, definition.ResourceType, err)
+		}
+		recipeResponse.Values = mappedValues
+		recipeResponse.Secrets = mappedSecrets
+	case len(out) > 0 && hasResultOutput:
+		// Wrapped recipe — use the existing 'result' output parsing.
 		if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
 			if resultValue, ok := result["value"].(map[string]any); ok {
 				err := recipeResponse.PrepareRecipeResponse(resultValue)
@@ -394,11 +581,15 @@ func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, re
 				}
 			}
 		}
+	case len(out) > 0:
+		// Direct module without a mapping — pass through all ARM outputs unchanged, routing
+		// secure-typed outputs to Secrets so they are not exposed as plain values.
+		recipeResponse.Values, recipeResponse.Secrets = collectARMOutputs(out)
 	}
 
 	recipeResponse.Status = &rpv1.RecipeStatus{
 		TemplateKind: recipes.TemplateKindBicep,
-		TemplatePath: templatePath,
+		TemplatePath: definition.TemplatePath,
 	}
 
 	// process the 'resources' created by the template
@@ -407,6 +598,65 @@ func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, re
 	}
 
 	return recipeResponse, nil
+}
+
+// collectARMOutputs splits ARM deployment outputs into non-sensitive values and sensitive secrets
+// based on each output's declared ARM type. Outputs typed securestring/secureobject are routed to
+// secrets so that secure Bicep module outputs are not exposed as plain values, mirroring the
+// Terraform driver which preserves per-output sensitivity.
+// ARM outputs have the shape: {"outputName": {"type": "...", "value": ...}, ...}.
+func collectARMOutputs(outputs map[string]any) (map[string]any, map[string]any) {
+	values := make(map[string]any)
+	secrets := make(map[string]any)
+	for name, raw := range outputs {
+		outputMap, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		val, ok := outputMap["value"]
+		if !ok {
+			continue
+		}
+		if isSecureARMOutputType(outputMap["type"]) {
+			secrets[name] = val
+		} else {
+			values[name] = val
+		}
+	}
+	return values, secrets
+}
+
+// isSecureARMOutputType reports whether an ARM output's declared type marks it as sensitive
+// (securestring or secureobject). The comparison is case-insensitive because ARM may return the
+// type with different casing than the compiled template.
+func isSecureARMOutputType(outputType any) bool {
+	typeStr, ok := outputType.(string)
+	if !ok {
+		return false
+	}
+	switch strings.ToLower(typeStr) {
+	case "securestring", "secureobject":
+		return true
+	default:
+		return false
+	}
+}
+
+// wrapARMParameters wraps raw parameter values into the ARM parameter format: {"key": {"value": val}}.
+func wrapARMParameters(params map[string]any) map[string]any {
+	wrapped := make(map[string]any, len(params))
+	for k, v := range params {
+		// Skip nil values so we don't emit an explicit ARM "value": null, which can
+		// override a module parameter's default or fail ARM type validation. This
+		// mirrors the Terraform driver's SetParams behavior.
+		if v == nil {
+			continue
+		}
+		wrapped[k] = map[string]any{
+			"value": v,
+		}
+	}
+	return wrapped
 }
 
 // getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and

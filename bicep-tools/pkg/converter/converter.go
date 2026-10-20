@@ -30,6 +30,15 @@ type ConversionResult struct {
 func Convert(provider *manifest.ResourceProvider) (*ConversionResult, error) {
 	typeFactory := factory.NewTypeFactory()
 
+	// Load the common base resource properties once; they are merged into every
+	// API version's schema below so the generated Bicep types expose
+	// application, environment, connections, and codeReference even when the
+	// author omits them.
+	base, err := loadBaseResource()
+	if err != nil {
+		return nil, err
+	}
+
 	// Iterate resource types in sorted order
 	resourceTypeNames := sortedResourceTypeNames(provider.Types)
 	for _, resourceTypeName := range resourceTypeNames {
@@ -45,6 +54,7 @@ func Convert(provider *manifest.ResourceProvider) (*ConversionResult, error) {
 				apiVersionName,
 				&apiVersion,
 				typeFactory,
+				base,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to add resource type %s@%s: %w",
@@ -115,7 +125,9 @@ func Convert(provider *manifest.ResourceProvider) (*ConversionResult, error) {
 
 	markdownWriter := writers.NewMarkdownWriter()
 	var docBuffer bytes.Buffer
-	err = markdownWriter.WriteTypeIndex(&docBuffer, typeIndex)
+	// The typeFiles argument is only used to resolve namespace function names; this
+	// converter only populates Resources, so nil is sufficient (matches upstream usage).
+	err = markdownWriter.WriteTypeIndex(&docBuffer, typeIndex, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write markdown documentation: %w", err)
 	}
@@ -137,9 +149,16 @@ func addResourceTypeForAPIVersion(
 	apiVersionName string,
 	apiVersion *manifest.APIVersion,
 	typeFactory *factory.TypeFactory,
+	base *baseResource,
 ) (types.ITypeReference, error) {
 
 	qualifiedName := fmt.Sprintf("%s/%s@%s", provider.Namespace, resourceTypeName, apiVersionName)
+
+	// Merge the common base properties into the schema before building the Bicep
+	// properties type, mirroring the server-side merge in pkg/cli/manifest so the
+	// published Bicep types expose application, environment, connections, and
+	// codeReference even when the author omits them.
+	base.apply(&apiVersion.Schema)
 
 	// Create the properties type from the schema
 	propertyTypeRef, err := addSchemaType(&apiVersion.Schema, resourceTypeName+"Properties", typeFactory)
@@ -182,6 +201,21 @@ func addResourceTypeForAPIVersion(
 		},
 	}
 
+	// Hoist the children of `properties` onto the resource body as ReadOnly flat
+	// aliases. This mirrors the x-ms-client-flatten behavior of the TypeScript
+	// generator so Bicep authors can read flat references (e.g. myResource.image)
+	// in addition to the nested form (myResource.properties.container.image). The
+	// original `properties` envelope is preserved for authoring.
+	//
+	// The already-built properties ObjectType is resolved via the factory and its
+	// existing child type references are reused, so no new types are registered
+	// and no type indices shift. Children whose name collides with an envelope
+	// property (name, location, properties, apiVersion, type, id) are skipped so
+	// the envelope always wins.
+	if err := hoistPropertiesAliases(propertyTypeRef, bodyType, typeFactory); err != nil {
+		return nil, fmt.Errorf("failed to hoist properties aliases for %q: %w", qualifiedName, err)
+	}
+
 	// Create the resource type
 	resourceTypeRef := typeFactory.CreateResourceType(
 		qualifiedName,
@@ -192,6 +226,52 @@ func addResourceTypeForAPIVersion(
 	)
 
 	return typeFactory.GetReference(resourceTypeRef), nil
+}
+
+// hoistPropertiesAliases copies the children of the `properties` object onto the
+// resource body as ReadOnly flat aliases, mirroring the x-ms-client-flatten
+// behavior of the TypeScript generator.
+//
+// propertyTypeRef must reference the already-registered `properties` ObjectType.
+// Its existing child type references are reused verbatim, so this registers no
+// new types and does not shift any type indices. A child is skipped when a body
+// property with the same name already exists, so the envelope properties always
+// win. When the properties type resolves to a non-object (e.g. an empty schema)
+// there is nothing to hoist and the body is left unchanged.
+//
+// A propertyTypeRef that is not a same-file type reference, or that cannot be
+// resolved, is returned as an error rather than ignored: the type was just
+// registered via addSchemaType, so either condition signals an internal
+// generator inconsistency that would otherwise silently produce
+// partially-flattened output.
+func hoistPropertiesAliases(propertyTypeRef types.ITypeReference, bodyType *types.ObjectType, typeFactory *factory.TypeFactory) error {
+	ref, ok := propertyTypeRef.(types.TypeReference)
+	if !ok {
+		return fmt.Errorf("expected properties reference of type types.TypeReference, got %T", propertyTypeRef)
+	}
+
+	propsType, err := typeFactory.GetTypeByIndex(ref.Ref)
+	if err != nil {
+		return fmt.Errorf("failed to resolve properties type (ref %d) for flattening: %w", ref.Ref, err)
+	}
+
+	propsObject, ok := propsType.(*types.ObjectType)
+	if !ok {
+		return nil
+	}
+
+	for childName, childProp := range propsObject.Properties {
+		if _, exists := bodyType.Properties[childName]; exists {
+			continue
+		}
+		bodyType.Properties[childName] = types.ObjectTypeProperty{
+			Type:        childProp.Type,
+			Flags:       types.TypePropertyFlagsReadOnly,
+			Description: childProp.Description,
+		}
+	}
+
+	return nil
 }
 
 // addSchemaType converts a manifest schema to a Bicep type

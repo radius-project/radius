@@ -17,7 +17,7 @@ types:
               description: "A string property"
             connections:
               type: object
-              addtionalProperties: 
+              additionalProperties:
                 type: object
                 properties:
                   source:

@@ -117,7 +117,7 @@ func createValidator() yaml.StructValidator {
 
 	// Use the `yaml` tag for field names
 	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
-		name := strings.SplitN(fld.Tag.Get("yaml"), ",", 2)[0]
+		name, _, _ := strings.Cut(fld.Tag.Get("yaml"), ",")
 		if name == "-" {
 			return fld.Name
 		}

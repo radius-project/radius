@@ -78,14 +78,14 @@ func TestRetrieve(t *testing.T) {
 		cp := NewUCPCredentialProvider(p, DefaultExpireDuration)
 		p.fakeCredential.AccessKeyCredential.AccessKeyID = ""
 
-		_, err := cp.Retrieve(context.TODO())
+		_, err := cp.Retrieve(t.Context())
 		require.Error(t, err)
 
 		p = newMockProviderIRSA()
 		cp = NewUCPCredentialProvider(p, DefaultExpireDuration)
 		p.fakeCredential.IRSACredential.RoleARN = ""
 
-		_, err = cp.Retrieve(context.TODO())
+		_, err = cp.Retrieve(t.Context())
 		require.Error(t, err)
 	})
 
@@ -94,7 +94,7 @@ func TestRetrieve(t *testing.T) {
 		cp := NewUCPCredentialProvider(p, DefaultExpireDuration)
 
 		expectedExpiry := time.Now().UTC().Add(DefaultExpireDuration)
-		cred, err := cp.Retrieve(context.TODO())
+		cred, err := cp.Retrieve(t.Context())
 		require.NoError(t, err)
 
 		require.Equal(t, "fakeid", cred.AccessKeyID)

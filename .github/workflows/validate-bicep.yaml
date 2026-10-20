@@ -25,6 +25,11 @@ on:
     branches:
       - main
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected.
+  merge_group:
+    branches:
+      - main
 
 env:
   # Local Docker registry name
@@ -33,9 +38,6 @@ env:
   LOCAL_REGISTRY_SERVER: localhost
   # Local Docker registry port
   LOCAL_REGISTRY_PORT: "5000"
-  # Bicep CLI pinned: v0.43+ rejects br:localhost:5000/... (ThrowIfRegistryNotTrusted).
-  # Bump only after verifying localhost support or adding allowedUntrustedRegistries to bicepconfig.json.
-  BICEP_VER: v0.42.1
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
@@ -62,65 +64,77 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
 
-      - name: Setup and verify bicep CLI
-        run: |
-          # Download bicep CLI
-          curl -Lo bicep "https://github.com/Azure/bicep/releases/download/${BICEP_VER}/bicep-linux-x64"
-          chmod +x ./bicep
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
 
-          # Install in both locations for maximum compatibility
-          sudo mv ./bicep /usr/local/bin/bicep
-
-          # Verify bicep works
-          bicep --version
-
-          # Also ensure rad CLI can find bicep by creating the expected directory structure
-          mkdir -p ~/.rad/bin
-          cp /usr/local/bin/bicep ~/.rad/bin/bicep
-
-          # Verify bicep also works
-          ~/.rad/bin/bicep --version
+      - name: Install bicep CLI
+        # Install into ~/.rad/bin so the rad CLI finds it; the script also adds
+        # the dir to PATH for subsequent steps. Pinned version + checksum live in
+        # build/tools.yaml.
+        run: make install-bicep BICEP_INSTALL_DIR="$HOME/.rad/bin"
 
       - name: Create a temporary file system
         run: |
-          mkdir tmp-radius-bicep-extension
-          mkdir tmp-testresources-bicep-extension
+          mkdir -p tmp-radius-bicep-extension
+          mkdir -p tmp-testresources-bicep-extension
 
-      - name: Publish bicep types
-        run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
+      # The two publish-extension commands are independent: they write to separate
+      # output files (tmp-radius-bicep-extension/radius.tgz and
+      # tmp-testresources-bicep-extension/testresources.tgz, both created above).
+      # Running them as a parallel group overlaps the slow `go run` compile of the
+      # testresources publisher with the Bicep publish. The implicit wait at the
+      # end of the group ensures both finish before bicepconfig.json is modified.
+      - parallel:
+          - name: Publish bicep types
+            run: |
+              bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
 
-      - name: Publish testresources extension
-        run: |
-          go run ./cmd/rad/main.go bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target ./tmp-testresources-bicep-extension/testresources.tgz --force
+          - name: Publish testresources extension
+            run: |
+              go run ./cmd/rad/main.go bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target ./tmp-testresources-bicep-extension/testresources.tgz --force
 
       - name: Install jq
-        run: sudo apt-get install -y jq
+        # Pinned version + checksums live in build/tools.yaml (JQ_VERSION).
+        run: make install-jq
 
-      - name: Modify bicepconfig.json
+      - name: Modify bicepconfig.json files
+        # Repoint every bicepconfig.json in the repo at the extensions built above so
+        # the .bicep sources are validated against the types generated in this PR
+        # instead of the published ones. Only entries that already exist are rewritten,
+        # so unrelated extensions (for example aws) and configs that declare no
+        # extensions at all are left untouched. This covers every config, including
+        # ones outside test/ such as .radius/bicepconfig.json; build/validate-bicep.sh
+        # compiles with --no-restore, so a config left pointing at a remote artifact
+        # fails with BCP190.
         run: |
-          # Update bicepconfig.json with paths for extensions
-          jq \
-            --arg rad "$GITHUB_WORKSPACE/tmp-radius-bicep-extension/radius.tgz" \
-            --arg test "$GITHUB_WORKSPACE/tmp-testresources-bicep-extension/testresources.tgz" \
-            '.extensions.radius = $rad | .extensions.testresources = $test' \
-            bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
+          set -euo pipefail
 
-           # Copy to the dynamicrp resources test directory so the .bicep files there can find it
-           cp -f bicepconfig.json ./test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json
+          while IFS= read -r config; do
+            jq \
+              --arg rad "$GITHUB_WORKSPACE/tmp-radius-bicep-extension/radius.tgz" \
+              --arg test "$GITHUB_WORKSPACE/tmp-testresources-bicep-extension/testresources.tgz" \
+              'if has("extensions") then
+                 .extensions |= (
+                   (if has("radius") then .radius = $rad else . end)
+                   | (if has("testresources") then .testresources = $test else . end)
+                 )
+               else . end' \
+              "$config" > "$config.tmp"
+            mv "$config.tmp" "$config"
 
-      - name: Print updated bicepconfig.json
-        run: cat bicepconfig.json
+            echo "== $config"
+            cat "$config"
+          done < <(find . -type f -name bicepconfig.json -not -path '*/node_modules/*')
 
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh

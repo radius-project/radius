@@ -32,7 +32,7 @@ const (
 	defaultSecretName = "default"
 )
 
-//go:generate mockgen -typed -destination=./mock_credentialmanagementclient.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential CredentialManagementClient
+//go:generate go tool mockgen -typed -destination=./mock_credentialmanagementclient.go -package=credential -self_package github.com/radius-project/radius/pkg/cli/credential github.com/radius-project/radius/pkg/cli/credential CredentialManagementClient
 
 // CredentialManagementClient is used to interface with cloud provider configuration and credentials.
 type CredentialManagementClient interface {
@@ -119,10 +119,8 @@ func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, providerName 
 	// We get 404 when credential for the provider plane is not registered.
 	if clients.Is404Error(err) {
 		return ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    providerName,
-				Enabled: false,
-			},
+			Name:    providerName,
+			Enabled: false,
 		}, nil
 	} else if err != nil {
 		return ProviderCredentialConfiguration{}, err

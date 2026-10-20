@@ -1,7 +1,9 @@
 {
   "private": true,
-  "packageManager": "pnpm@11.1.1",
+  "packageManager": "pnpm@11.24.0",
   "devDependencies": {
-    "prettier": "3.8.3"
+    "markdown-table-formatter": "1.7.0",
+    "markdownlint-cli2": "0.23.3",
+    "prettier": "3.9.9"
   }
 }

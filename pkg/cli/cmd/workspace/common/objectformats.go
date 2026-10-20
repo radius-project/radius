@@ -22,7 +22,7 @@ import (
 )
 
 // WorkspaceFormat returns a FormatterOptions object which contains a list of columns to be used for displaying
-// workspace information such as name, kind, kubecontext and environment."
+// workspace information such as name, kind, kubecontext, group, and environment.
 func WorkspaceFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -37,6 +37,11 @@ func WorkspaceFormat() output.FormatterOptions {
 			{
 				Heading:  "KUBECONTEXT",
 				JSONPath: "{ .Connection.context }",
+			},
+			{
+				Heading:     "GROUP",
+				JSONPath:    "{ .Scope }",
+				Transformer: &objectformats.ResourceScopeToResourceGroupNameTransformer{},
 			},
 			{
 				Heading:     "ENVIRONMENT",

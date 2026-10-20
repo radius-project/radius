@@ -26,7 +26,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -180,20 +181,40 @@ type ARMRequestContext struct {
 // FromARMRequest extracts proxy request headers from http.Request.
 func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestContext, error) {
 	log := ucplog.FromContextOrDiscard(r.Context())
-	refererUri := r.Header.Get(RefererHeader)
-	refererURL, err := url.Parse(refererUri)
-	if refererUri == "" || err != nil {
-		refererURL = r.URL
+	requestPathBase := pathBase
+	if requestPathBase == "" {
+		requestPathBase = ParsePathBase(r.URL.Path)
+	}
+	requestPath := strings.TrimPrefix(r.URL.Path, requestPathBase)
+	rID, resourceIDErr := resources.ParseByMethod(requestPath, r.Method)
+	if resourceIDErr != nil {
+		log.V(ucplog.LevelDebug).Info(fmt.Sprintf("URL was not a valid resource id: %v", r.URL.Path))
+		// do not stop extracting headers. handler needs to care invalid resource id.
 	}
 
-	if pathBase == "" {
-		pathBase = ParsePathBase(refererURL.Path)
-	}
-	path := strings.TrimPrefix(refererURL.Path, pathBase)
-	rID, err := resources.ParseByMethod(path, r.Method)
-	if err != nil {
-		log.V(ucplog.LevelDebug).Info(fmt.Sprintf("URL was not a valid resource id: %v", refererURL.Path))
-		// do not stop extracting headers. handler needs to care invalid resource id.
+	// Radius (like ARM) uses the Referer header to recover original resource ID casing after a
+	// request has been proxied or its URL path was case-normalized. The request URL remains the
+	// authoritative source of identity: only use the Referer ID when both IDs identify the same
+	// resource.
+	refererURI := r.Header.Get(RefererHeader)
+	if refererURI != "" && resourceIDErr == nil {
+		refererURL, refererURLErr := url.Parse(refererURI)
+		if refererURLErr == nil {
+			refererPathBase := pathBase
+			if refererPathBase == "" {
+				refererPathBase = ParsePathBase(refererURL.Path)
+			}
+			refererPath := strings.TrimPrefix(refererURL.Path, refererPathBase)
+			refererID, refererIDErr := resources.ParseByMethod(refererPath, r.Method)
+			if refererIDErr == nil {
+				if resources.IDEquals(rID, refererID) {
+					rID = refererID
+				} else {
+					log.Info("Referer header refers to a different resource than the request URL; using the request URL.",
+						"refererResourceID", refererID.String(), "urlResourceID", rID.String())
+				}
+			}
+		}
 	}
 
 	queryItemCount, err := getQueryItemCount(r.URL.Query().Get(TopParameterName))

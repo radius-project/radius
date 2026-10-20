@@ -17,8 +17,8 @@ limitations under the License.
 package backends
 
 import (
-	"context"
 	"crypto/sha1"
+	"crypto/sha256"
 	"fmt"
 	"strings"
 	"testing"
@@ -93,11 +93,24 @@ func Test_GenerateKubernetesBackendConfig(t *testing.T) {
 
 func Test_GenerateSecretSuffix(t *testing.T) {
 	_, resourceRecipe := getTestInputs()
+	hasher := sha256.New()
+	_, err := hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", envName, appName, resourceRecipe.ResourceID))))
+	require.NoError(t, err)
+	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))[:secretSuffixLength]
+	secret, err := generateSecretSuffix(&resourceRecipe)
+	require.NoError(t, err)
+	require.Equal(t, expSecret, secret)
+	// The Terraform Kubernetes backend stores secret_suffix as a label value (max 63 chars).
+	require.LessOrEqual(t, len(secret), 63)
+}
+
+func Test_GenerateLegacySecretSuffix(t *testing.T) {
+	_, resourceRecipe := getTestInputs()
 	hasher := sha1.New()
 	_, err := hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", envName, appName, resourceRecipe.ResourceID))))
 	require.NoError(t, err)
 	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))
-	secret, err := generateSecretSuffix(&resourceRecipe)
+	secret, err := generateLegacySecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
 	require.Equal(t, expSecret, secret)
 }
@@ -126,36 +139,76 @@ func Test_GenerateSecretSuffix_invalid_appid(t *testing.T) {
 func Test_GenerateSecretSuffix_empty_appid(t *testing.T) {
 	_, resourceRecipe := getTestInputs()
 	resourceRecipe.ApplicationID = ""
-	hasher := sha1.New()
+	hasher := sha256.New()
 	_, err := hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s", envName, resourceRecipe.ResourceID))))
 	require.NoError(t, err)
-	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))
+	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))[:secretSuffixLength]
 	secret, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
 	require.Equal(t, expSecret, secret)
 }
 
+func Test_BuildBackend_NewDeploymentUsesCurrentSuffix(t *testing.T) {
+	t.Setenv("KUBERNETES_SERVICE_HOST", "")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "")
+	_, resourceRecipe := getTestInputs()
+
+	currentSuffix, err := generateSecretSuffix(&resourceRecipe)
+	require.NoError(t, err)
+
+	// No existing Terraform state secret: a new deployment uses the current (SHA-256) suffix.
+	b := NewKubernetesBackend(fake.NewClientset())
+	config, err := b.BuildBackend(&resourceRecipe)
+	require.NoError(t, err)
+
+	backend := config["kubernetes"].(map[string]any)
+	require.Equal(t, currentSuffix, backend["secret_suffix"])
+}
+
+func Test_BuildBackend_ExistingLegacyStateUsesLegacySuffix(t *testing.T) {
+	t.Setenv("KUBERNETES_SERVICE_HOST", "")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "")
+	_, resourceRecipe := getTestInputs()
+
+	legacySuffix, err := generateLegacySecretSuffix(&resourceRecipe)
+	require.NoError(t, err)
+
+	// Simulate a Terraform state secret created by an older version of Radius (legacy SHA-1 suffix).
+	clientset := fake.NewClientset()
+	_, err = clientset.CoreV1().Secrets(RadiusNamespace).Create(t.Context(), &v1.Secret{
+		Name:      KubernetesBackendNamePrefix + legacySuffix,
+		Namespace: RadiusNamespace,
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// The existing legacy state secret must be reused so Terraform state is not lost.
+	b := NewKubernetesBackend(clientset)
+	config, err := b.BuildBackend(&resourceRecipe)
+	require.NoError(t, err)
+
+	backend := config["kubernetes"].(map[string]any)
+	require.Equal(t, legacySuffix, backend["secret_suffix"])
+}
+
 func Test_ValidateBackendExists(t *testing.T) {
 	clientset := fake.NewClientset()
 	secret := &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-secret",
-			Namespace: RadiusNamespace,
-		},
+		Name:      "test-secret",
+		Namespace: RadiusNamespace,
 		Data: map[string][]byte{
 			"key": []byte("value"),
 		},
 	}
-	_, err := clientset.CoreV1().Secrets(RadiusNamespace).Create(context.Background(), secret, metav1.CreateOptions{})
+	_, err := clientset.CoreV1().Secrets(RadiusNamespace).Create(t.Context(), secret, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	b := NewKubernetesBackend(clientset)
-	exists, err := b.ValidateBackendExists(context.Background(), "test-secret")
+	exists, err := b.ValidateBackendExists(t.Context(), "test-secret")
 	require.NoError(t, err)
 	require.True(t, exists)
 
 	// Validate that the function returns false for a non-existent secret.
-	exists, err = b.ValidateBackendExists(context.Background(), "invalid-secret")
+	exists, err = b.ValidateBackendExists(t.Context(), "invalid-secret")
 	require.NoError(t, err)
 	require.False(t, exists)
 
@@ -163,7 +216,7 @@ func Test_ValidateBackendExists(t *testing.T) {
 	clientset.Fake.PrependReactor("get", "secrets", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 		return true, nil, k8s_errors.NewServerTimeout(schema.GroupResource{Resource: "test-secret"}, "get", 1)
 	})
-	exists, err = b.ValidateBackendExists(context.Background(), "test-secret")
+	exists, err = b.ValidateBackendExists(t.Context(), "test-secret")
 	require.Error(t, err)
 	require.True(t, k8s_errors.IsServerTimeout(err))
 	require.False(t, exists)

@@ -5,6 +5,12 @@ name: Purge test container images
 on:
   # Enable manual trigger
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report matching versions without deleting them
+        required: true
+        default: true
+        type: boolean
   schedule:
     # Run twice a day
     - cron: 30 0,12 * * *
@@ -20,16 +26,31 @@ jobs:
     if: github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    permissions: {}
+    permissions:
+      contents: read
     steps:
-      - name: Delete 'dev' containers older than a week
-        uses: snok/container-retention-policy@d3bdcf5ce9b05f685154e4a16c39233b245e3d53 # v3.1.0
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          account: radius-project
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          image-names: dev/*
-          image-tags: pr-*
-          cut-off: 1w
+          persist-credentials: false
+
+      # GitHub Container Registry package APIs are only accessible to classic
+      # personal access tokens (and the built-in GITHUB_TOKEN). GitHub App
+      # installation tokens cannot list or delete org packages — the list
+      # endpoint returns "400 Invalid argument" and deletes are rejected. See
+      # https://github.com/snok/container-retention-policy/issues/94 (GitHub
+      # Support confirmation). The wildcard image-names below also requires the
+      # list-packages endpoint, so a classic PAT is required here.
+      #
+      # secrets.GH_RAD_CI_BOT_PAT must be a classic PAT with the following scopes:
+      #   - read:packages   (list package versions)
+      #   - delete:packages (delete old package versions)
+      - name: Delete 'dev' containers older than a week
+        env:
+          GH_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          PACKAGE_OWNER: ${{ github.repository_owner }}
+          PURGE_DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+        run: bash ./.github/scripts/purge-old-images.sh
 
   create_issue_on_failure:
     name: Create issue for failing purge old images resources run

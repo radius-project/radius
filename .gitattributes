@@ -1,3 +1,9 @@
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
+
 # Force the following filetypes to have unix eols, so Windows does not break them
 * text eol=lf
 
@@ -23,9 +29,34 @@
 *.dotx binary
 *.vsdx binary
 
-# Lock files are generated and should ignore line endings
-devcontainer-lock.json -text linguist-generated=true
-pnpm-lock.yaml -text linguist-generated=true
+# Lock files are generated and should ignore line endings.
+
+# Node.js
 package-lock.json -text linguist-generated=true
+npm-shrinkwrap.json -text linguist-generated=true
+pnpm-lock.yaml -text linguist-generated=true
 yarn.lock -text linguist-generated=true
+bun.lock -text linguist-generated=true
+bun.lockb binary linguist-generated=true
+
+# Go
 go.sum -text linguist-generated=true
+go.work.sum -text linguist-generated=true
+
+# .NET
+packages.lock.json -text linguist-generated=true
+
+# Python
+uv.lock -text linguist-generated=true
+poetry.lock -text linguist-generated=true
+pdm.lock -text linguist-generated=true
+Pipfile.lock -text linguist-generated=true
+
+# Rust
+Cargo.lock -text linguist-generated=true
+
+# Terraform / OpenTofu
+.terraform.lock.hcl -text linguist-generated=true
+
+# Dev containers
+devcontainer-lock.json -text linguist-generated=true

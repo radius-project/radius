@@ -2,6 +2,7 @@
 set -e
 
 # Optional: Import test library bundled with the devcontainer CLI
+# shellcheck source=/dev/null # provided at runtime by the devcontainer test harness.
 source dev-container-features-test-lib
 
 # Feature-specific tests

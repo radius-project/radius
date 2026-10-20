@@ -17,183 +17,69 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/test/testcontext"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 const (
-	recipeTestWaitDuration            = time.Second * 10
-	recipeTestWaitInterval            = time.Millisecond * 200
-	recipeTestControllerDelayInterval = time.Millisecond * 100
+	// managerShutdownTimeout bounds how long test cleanup waits for a controller-runtime manager to
+	// exit after its context is cancelled. It is comfortably above controller-runtime's default 30s
+	// graceful shutdown timeout, so a clean shutdown always finishes first. If it is exceeded, cleanup
+	// reports a failure instead of hanging until the global `go test` timeout, which would obscure the
+	// root cause.
+	managerShutdownTimeout = time.Second * 60
 )
 
-func createEnvironment(radius *mockRadiusClient, resourceGroup, name string) {
-	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", resourceGroup, name)
-	radius.Update(func() {
-		radius.environments[id] = v20231001preview.EnvironmentResource{
-			ID:       new(id),
-			Name:     new(name),
-			Location: to.Ptr(v1.LocationGlobal),
+// startManager starts the controller-runtime manager in a background goroutine and registers a
+// t.Cleanup that cancels the manager's context and then blocks until the manager goroutine has
+// fully exited (or managerShutdownTimeout elapses).
+//
+// Awaiting shutdown matters: cancelling the context only signals the manager to stop, it does not
+// wait for mgr.Start to return. Without this wait, manager goroutines outlive the test that owns
+// them and race with subsequent tests and package teardown (env.Stop in TestMain), which made this
+// suite intermittently fail at the package level with no named failing test.
+func startManager(t *testing.T, mgr manager.Manager, ctx context.Context, cancel context.CancelFunc) {
+	t.Helper()
+
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		// Don't use require/assert here: they can call t.FailNow/t.Fail, which must run on the test
+		// goroutine, not this background one.
+		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			panic(fmt.Sprintf("manager exited with error: %v", err))
 		}
+	}()
+
+	t.Cleanup(func() {
+		cancel()
+		waitForManagerShutdown(t, stopped)
 	})
 }
 
-func makeRecipe(name types.NamespacedName, resourceType string) *radappiov1alpha3.Recipe {
-	return &radappiov1alpha3.Recipe{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace: name.Namespace,
-			Name:      name.Name,
-		},
-		Spec: radappiov1alpha3.RecipeSpec{
-			Type: resourceType,
-		},
-	}
-}
+// waitForManagerShutdown blocks until the manager goroutine signals it has exited by closing
+// stopped, or fails the test if that does not happen within managerShutdownTimeout.
+func waitForManagerShutdown(t *testing.T, stopped <-chan struct{}) {
+	t.Helper()
 
-func waitForRecipeStateUpdating(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
-
-	logger := t
-	status := &radappiov1alpha3.RecipeStatus{}
-	require.EventuallyWithT(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Recipe: %+v", name)
-		current := &radappiov1alpha3.Recipe{}
-		err := client.Get(ctx, name, current)
-		require.NoError(t, err)
-
-		status = &current.Status
-		logger.Logf("Recipe.Status: %+v", current.Status)
-		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
-		if assert.Equal(t, radappiov1alpha3.PhraseUpdating, current.Status.Phrase) {
-			assert.NotEmpty(t, current.Status.Operation)
-			assert.NotEqual(t, oldOperation, current.Status.Operation)
-		}
-
-	}, recipeTestWaitDuration, recipeTestWaitInterval, "failed to enter updating state")
-
-	return status
-}
-
-func waitForRecipeStateReady(t *testing.T, client client.Client, name types.NamespacedName) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
-
-	logger := t
-	status := &radappiov1alpha3.RecipeStatus{}
-	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Recipe: %+v", name)
-		current := &radappiov1alpha3.Recipe{}
-		err := client.Get(ctx, name, current)
-		require.NoError(t, err)
-
-		status = &current.Status
-		logger.Logf("Recipe.Status: %+v", current.Status)
-		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
-		if assert.Equal(t, radappiov1alpha3.PhraseReady, current.Status.Phrase) {
-			assert.Empty(t, current.Status.Operation)
-		}
-	}, recipeTestWaitDuration, recipeTestWaitInterval, "failed to enter updating state")
-
-	return status
-}
-
-func waitForRecipeStateDeleting(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
-
-	logger := t
-	status := &radappiov1alpha3.RecipeStatus{}
-	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching Recipe: %+v", name)
-		current := &radappiov1alpha3.Recipe{}
-		err := client.Get(ctx, name, current)
-		assert.NoError(t, err)
-
-		status = &current.Status
-		logger.Logf("Recipe.Status: %+v", current.Status)
-		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
-		if assert.Equal(t, radappiov1alpha3.PhraseDeleting, current.Status.Phrase) {
-			assert.NotEmpty(t, current.Status.Operation)
-			assert.NotEqual(t, oldOperation, current.Status.Operation)
-		}
-	}, recipeTestWaitDuration, recipeTestWaitInterval, "failed to enter deleting state")
-
-	return status
-}
-
-func waitForRecipeDeleted(t *testing.T, client client.Client, name types.NamespacedName) {
-	ctx := testcontext.New(t)
-
-	logger := t
-	require.Eventuallyf(t, func() bool {
-		logger.Logf("Fetching Recipe: %+v", name)
-		current := &radappiov1alpha3.Recipe{}
-		err := client.Get(ctx, name, current)
-		if apierrors.IsNotFound(err) {
-			return true
-		}
-
-		logger.Logf("Recipe.Status: %+v", current.Status)
-		return false
-
-	}, recipeTestWaitDuration, recipeTestWaitInterval, "recipe still exists")
-}
-
-func makeDeployment(name types.NamespacedName) *appsv1.Deployment {
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        name.Name,
-			Namespace:   name.Namespace,
-			Annotations: map[string]string{},
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": name.Name,
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": name.Name,
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  name.Name,
-							Image: "nginx:latest",
-						},
-					},
-				},
-			},
-		},
+	select {
+	case <-stopped:
+	case <-time.After(managerShutdownTimeout):
+		t.Errorf("timed out after %s waiting for the controller-runtime manager to shut down", managerShutdownTimeout)
 	}
 }
 
 func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig string, parameters map[string]string) *radappiov1alpha3.DeploymentTemplate {
 	return &radappiov1alpha3.DeploymentTemplate{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace: name.Namespace,
-			Name:      name.Name,
-		},
+		Namespace: name.Namespace,
+		Name:      name.Name,
 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
 			Template:       template,
 			ProviderConfig: providerConfig,
@@ -204,10 +90,8 @@ func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig 
 
 func makeDeploymentResource(name types.NamespacedName, id string) *radappiov1alpha3.DeploymentResource {
 	return &radappiov1alpha3.DeploymentResource{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace: name.Namespace,
-			Name:      name.Name,
-		},
+		Namespace: name.Namespace,
+		Name:      name.Name,
 		Spec: radappiov1alpha3.DeploymentResourceSpec{
 			Id: id,
 		},

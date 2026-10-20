@@ -1,7 +1,3 @@
-extension kubernetes with {
-  kubeConfig: ''
-  namespace: 'default'
-} as kubernetes
 extension radius
 
 @description('Specifies the location for resources.')
@@ -22,7 +18,7 @@ param tlscrt string
 @secure()
 param tlskey string
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'corerp-resources-gateway-sslpassthrough'
   location: location
   properties: {
@@ -30,49 +26,62 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
+// A TLS route renders a Gateway API TLSRoute attached to the managed Gateway's Passthrough :443 listener,
+// matching on SNI (hostnames). The container continues to terminate its own TLS, preserving the original
+// passthrough intent.
+resource gateway 'Radius.Compute/routes@2025-08-01-preview' = {
   name: 'ssl-gtwy-gtwy'
   location: location
   properties: {
     application: app.id
-    tls: { 
-      sslPassthrough: true 
-    } 
-    routes: [
+    environment: environment
+    kind: 'TLS'
+    hostnames: [
+      'ssl-gtwy.example.com'
+    ]
+    rules: [
       {
-        destination: 'https://${frontendContainer.name}:${frontendContainer.properties.container.ports.web.port}'
+       matches: [
+          {}
+        ]
+        destinationContainer: {
+          resourceId: frontendContainer.id
+          containerName: 'ssl-gtwy-front-ctnr'
+          containerPort: port
+        }
       }
     ]
   }
 }
 
-resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
+resource frontendContainer 'Radius.Compute/containers@2025-08-01-preview' = {
   name: 'ssl-gtwy-front-ctnr'
   location: location
   properties: {
     application: app.id
-    container: {
-      image: magpieimage
-      env: {
-        TLS_KEY: {
-          value: tlskey
+    environment: environment
+    containers: {
+      'ssl-gtwy-front-ctnr': {
+        image: magpieimage
+        env: {
+          TLS_KEY: {
+            value: tlskey
+          }
+          TLS_CERT: {
+            value: tlscrt
+          }
         }
-        TLS_CERT: {
-          value: tlscrt
+        ports: {
+          web: {
+            containerPort: port
+          }
         }
-      }
-      ports: {
-        web: {
-          containerPort: port
-          port: 443
+        readinessProbe: {
+          tcpSocket: {
+            port: port
+          }
         }
-      }
-      readinessProbe: {
-        kind: 'tcp'
-        containerPort: port
       }
     }
   }
 }
-
-

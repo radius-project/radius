@@ -1,0 +1,238 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package shutdown
+
+import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/pgbackup"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/statearchive"
+	archivefactory "github.com/radius-project/radius/pkg/statearchive/factory"
+	"github.com/radius-project/radius/test/radcli"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+)
+
+// nonEmptyUCPDump is a minimal pg_dump-shaped dump of the "resources" table with one data row,
+// standing in for a healthy control-plane backup.
+const nonEmptyUCPDump = `COPY public.resources (id, original_id, resource_type, root_scope, routing_scope, etag, resource_data) FROM stdin;
+/planes/radius/local/resourcegroups/default/	/planes/radius/local/resourceGroups/default	/system.resources/resourcegroups/	/planes/radius/local	resourcegroups/default	abc123	{}
+\.
+`
+
+func Test_CommandValidation(t *testing.T) {
+	radcli.SharedCommandValidation(t, NewCommand)
+}
+
+func Test_Validate(t *testing.T) {
+	nonKubernetesConfig := radcli.LoadConfig(t, `
+workspaces:
+  default: github-workspace
+  items:
+    github-workspace:
+      connection:
+        kind: notkubernetes
+      environment: /planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/test
+      scope: /planes/radius/local/resourceGroups/test
+`)
+
+	testcases := []radcli.ValidateInput{
+		{
+			Name:          "shutdown with a kubernetes workspace is valid",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder:  framework.ConfigHolder{ConfigFilePath: "/weird/path", Config: radcli.LoadConfigWithWorkspace(t)},
+		},
+		{
+			Name:          "shutdown with a non-kubernetes workspace is invalid",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{ConfigFilePath: "/weird/path", Config: nonKubernetesConfig},
+		},
+		{
+			Name:          "shutdown does not accept positional args",
+			Input:         []string{"unexpected"},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{ConfigFilePath: "/weird/path", Config: radcli.LoadConfigWithWorkspace(t)},
+		},
+	}
+
+	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
+
+// fakeStateBackupClient records calls, returns canned errors, and simulates BackupDatabases by
+// writing ucpDump (defaulting to a non-empty dump) to stateDir/ucp.sql.
+type fakeStateBackupClient struct {
+	backupDBErr  error
+	backupTFErr  error
+	dbCalled     bool
+	tfCalled     bool
+	stateDirSeen string
+	ucpDump      string
+}
+
+func newFakeStateBackupClient() *fakeStateBackupClient {
+	return &fakeStateBackupClient{ucpDump: nonEmptyUCPDump}
+}
+
+func (f *fakeStateBackupClient) BackupDatabases(ctx context.Context, kubeContext, namespace, stateDir string) error {
+	f.dbCalled = true
+	f.stateDirSeen = stateDir
+	if f.backupDBErr != nil {
+		return f.backupDBErr
+	}
+	return os.WriteFile(filepath.Join(stateDir, "ucp.sql"), []byte(f.ucpDump), 0o644)
+}
+
+func (f *fakeStateBackupClient) BackupTerraform(ctx context.Context, kubeContext, namespace, stateDir string) error {
+	f.tfCalled = true
+	return f.backupTFErr
+}
+
+func kubernetesWorkspace() *workspaces.Workspace {
+	return &workspaces.Workspace{
+		Name: "test",
+		Connection: map[string]any{
+			"kind":    workspaces.KindKubernetes,
+			"context": "k3d-test",
+		},
+	}
+}
+
+func newTestRunner(t *testing.T, ctrl *gomock.Controller, client *fakeStateBackupClient) (*Runner, *statearchive.MockSession, string) {
+	t.Helper()
+	stateDir := t.TempDir()
+
+	session := statearchive.NewMockSession(ctrl)
+	session.EXPECT().Path().Return(stateDir).AnyTimes()
+	session.EXPECT().Close(gomock.Any()).Times(1)
+
+	archive := statearchive.NewMockArchive(ctrl)
+	archive.EXPECT().Open(gomock.Any(), pgbackup.StateBranchName()).Return(session, nil).Times(1)
+
+	r := &Runner{
+		Output:      &output.MockOutput{},
+		Workspace:   kubernetesWorkspace(),
+		StateClient: client,
+		Archive:     archive,
+	}
+	return r, session, stateDir
+}
+
+func Test_Run_BacksUpBothStoresAndCommits(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := newFakeStateBackupClient()
+	r, session, stateDir := newTestRunner(t, ctrl, client)
+	session.EXPECT().Commit(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+
+	err := r.Run(t.Context())
+	require.NoError(t, err)
+
+	require.True(t, client.dbCalled, "databases should be backed up")
+	require.True(t, client.tfCalled, "terraform state should be backed up")
+	require.Equal(t, stateDir, client.stateDirSeen, "backup must target the archive path")
+}
+
+// Test_Run_EmptyControlPlaneStopsBeforeCommit verifies that a degenerate backup (no rows in the
+// "resources" table, e.g. from a postgres pod crash-loop after a successful "rad startup") is
+// rejected before it is committed, so the durable archive is never overwritten with it.
+func Test_Run_EmptyControlPlaneStopsBeforeCommit(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := newFakeStateBackupClient()
+	client.ucpDump = "COPY public.resources (id) FROM stdin;\n\\.\n"
+	// Commit is intentionally not expected: an empty backup must stop before committing. The
+	// deferred session.Close is still expected (verified by the mock at ctrl.Finish).
+	r, _, _ := newTestRunner(t, ctrl, client)
+
+	err := r.Run(t.Context())
+	require.ErrorContains(t, err, "Refusing to persist state")
+	require.False(t, client.tfCalled, "terraform backup should not run after an empty control-plane backup")
+}
+
+func Test_Run_DatabaseBackupFailureStopsBeforeCommit(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := &fakeStateBackupClient{backupDBErr: errors.New("pg_dump boom")}
+	// Commit is intentionally not expected: a backup failure must stop before committing. The
+	// deferred session.Close is still expected (verified by the mock at ctrl.Finish).
+	r, _, _ := newTestRunner(t, ctrl, client)
+
+	err := r.Run(t.Context())
+	require.ErrorContains(t, err, "pg_dump boom")
+	require.False(t, client.tfCalled, "terraform backup should not run after database failure")
+}
+
+func Test_Run_CommitFailureIsReturned(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := newFakeStateBackupClient()
+	r, session, _ := newTestRunner(t, ctrl, client)
+	session.EXPECT().Commit(gomock.Any(), gomock.Any()).Return(errors.New("push rejected")).Times(1)
+
+	err := r.Run(t.Context())
+	require.ErrorContains(t, err, "push rejected")
+}
+
+// Test_Run_ArchiveOpenFailureIsReturned verifies that when the archive cannot be opened (for
+// example, an unavailable registry) Run returns the wrapped error and performs no backup.
+func Test_Run_ArchiveOpenFailureIsReturned(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	archive := statearchive.NewMockArchive(ctrl)
+	archive.EXPECT().Open(gomock.Any(), pgbackup.StateArchiveName()).Return(nil, errors.New("registry unavailable")).Times(1)
+
+	client := newFakeStateBackupClient()
+	r := &Runner{
+		Output:      &output.MockOutput{},
+		Workspace:   kubernetesWorkspace(),
+		StateClient: client,
+		Archive:     archive,
+	}
+
+	err := r.Run(t.Context())
+	require.ErrorContains(t, err, "failed to open state archive")
+	require.ErrorContains(t, err, "registry unavailable")
+	require.False(t, client.dbCalled, "no backup should run when the archive cannot be opened")
+}
+
+func Test_Run_MissingRegistryStopsBeforeBackup(t *testing.T) {
+	t.Setenv(archivefactory.BackendEnvVar, "")
+	t.Setenv(archivefactory.StateRegistryEnvVar, "")
+	r := NewRunner(&framework.Impl{})
+	client := &fakeStateBackupClient{}
+	r.Workspace = kubernetesWorkspace()
+	r.StateClient = client
+
+	err := r.Run(t.Context())
+	require.ErrorContains(t, err, archivefactory.StateRegistryEnvVar)
+	require.False(t, client.dbCalled)
+	require.False(t, client.tfCalled)
+}

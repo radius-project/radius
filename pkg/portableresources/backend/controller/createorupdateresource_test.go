@@ -25,15 +25,14 @@ import (
 	"net/http"
 	"testing"
 
+	"uuid"
+
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/google/uuid"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -132,6 +131,94 @@ var successProcessorReference = processors.ResourceProcessor[*TestResource, Test
 type ErrorProcessor struct {
 }
 
+func TestBuildConnectedResource_ManagedSecretReferences(t *testing.T) {
+	databaseClient := database.NewMockClient(gomock.NewController(t))
+	resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/resources/resource-name"
+	secretID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Security/secrets/resource-name-secrets"
+	data := map[string]any{
+		"id":   resourceID,
+		"name": "resource-name",
+		"type": "Applications.Test/resources",
+		"properties": map[string]any{
+			"host":    "example.com",
+			"secrets": map[string]any{"name": "resource-name-secrets"},
+		},
+	}
+	databaseClient.EXPECT().Get(gomock.Any(), secretID).Return(&database.Object{Data: map[string]any{
+		"properties": map[string]any{
+			"data": map[string]any{
+				"url":      map[string]any{"value": map[string]any{"encrypted": "ciphertext"}},
+				"password": map[string]any{"value": map[string]any{"encrypted": "ciphertext"}},
+			},
+		},
+	}}, nil)
+
+	connected, err := buildConnectedResource(t.Context(), databaseClient, data)
+	require.NoError(t, err)
+	require.Equal(t, data["properties"], connected.Properties)
+	require.Equal(t, map[string]rpv1.ManagedSecretReference{
+		"url":      {Source: secretID, Key: "url"},
+		"password": {Source: secretID, Key: "password"},
+	}, connected.Secrets)
+}
+
+func TestBuildConnectedResource_NoManagedSecret(t *testing.T) {
+	data := map[string]any{
+		"id":   "resource-id",
+		"name": "resource-name",
+		"type": "Applications.Test/resources",
+		"properties": map[string]any{
+			"host":    "example.com",
+			"secrets": map[string]any{"input": "user-authored-value"},
+		},
+	}
+
+	connected, err := buildConnectedResource(t.Context(), nil, data)
+	require.NoError(t, err)
+	require.Empty(t, connected.Secrets)
+}
+
+func TestBuildConnectedResource_ManagedSecretErrors(t *testing.T) {
+	resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/resources/resource-name"
+	secretID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Security/secrets/resource-name-secrets"
+
+	t.Run("invalid secret name", func(t *testing.T) {
+		data := map[string]any{
+			"id":         resourceID,
+			"properties": map[string]any{"secrets": map[string]any{"name": 123}},
+		}
+
+		_, err := buildConnectedResource(t.Context(), nil, data)
+		require.ErrorContains(t, err, "invalid secrets.name reference")
+	})
+
+	t.Run("missing managed secret", func(t *testing.T) {
+		databaseClient := database.NewMockClient(gomock.NewController(t))
+		databaseClient.EXPECT().Get(gomock.Any(), secretID).Return(nil, &database.ErrNotFound{ID: secretID})
+		data := map[string]any{
+			"id":         resourceID,
+			"properties": map[string]any{"secrets": map[string]any{"name": "resource-name-secrets"}},
+		}
+
+		_, err := buildConnectedResource(t.Context(), databaseClient, data)
+		require.ErrorContains(t, err, "failed to get managed secret")
+	})
+
+	t.Run("invalid managed secret data", func(t *testing.T) {
+		databaseClient := database.NewMockClient(gomock.NewController(t))
+		databaseClient.EXPECT().Get(gomock.Any(), secretID).Return(&database.Object{Data: map[string]any{
+			"properties": map[string]any{"data": "invalid"},
+		}}, nil)
+		data := map[string]any{
+			"id":         resourceID,
+			"properties": map[string]any{"secrets": map[string]any{"name": "resource-name-secrets"}},
+		}
+
+		_, err := buildConnectedResource(t.Context(), databaseClient, data)
+		require.ErrorContains(t, err, "has invalid data")
+	})
+}
+
 // Process always returns a processorErr.
 func (p *ErrorProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
 	return errProcessor
@@ -213,7 +300,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			nil,
 			nil,
 			nil,
-			&mapstructure.Error{Errors: []string{"'type' expected type 'string', got unconvertible type 'int', value: '3'"}},
+			nil,
 		},
 		{
 			"recipe-err",
@@ -295,7 +382,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				OperationID:      uuid.New(),
 				OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT", // Operation does not affect the behavior of the controller.
 				ResourceID:       TestResourceID,
-				CorrelationID:    uuid.NewString(),
+				CorrelationID:    uuid.New().String(),
 				OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 			}
 
@@ -424,9 +511,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				stillPassing = false
 				eng.EXPECT().
 					Execute(gomock.Any(), engine.ExecuteOptions{
-						BaseOptions: engine.BaseOptions{
-							Recipe: recipeMetadata,
-						},
+						Recipe:        recipeMetadata,
 						PreviousState: prevState,
 					}).
 					Return(&recipes.RecipeOutput{}, tt.recipeErr).
@@ -434,9 +519,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			} else if stillPassing {
 				eng.EXPECT().
 					Execute(gomock.Any(), engine.ExecuteOptions{
-						BaseOptions: engine.BaseOptions{
-							Recipe: recipeMetadata,
-						},
+						Recipe:        recipeMetadata,
 						PreviousState: prevState,
 					}).
 					Return(&recipes.RecipeOutput{}, nil).
@@ -473,18 +556,111 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			genCtrl, err := tt.factory(recipeCfg, opts)
 			require.NoError(t, err)
 
-			res, err := genCtrl.Run(context.Background(), req)
-			if tt.expectedErr != nil {
+			res, err := genCtrl.Run(t.Context(), req)
+			switch {
+			case tt.conversionFailure:
+				require.False(t, stillPassing)
+				// go-viper/mapstructure/v2 reports decode failures as typed errors
+				// wrapped via errors.Join, so assert on the typed error with errors.As
+				// rather than a brittle message string: the "type" field received the
+				// int 3, which is not convertible to a string.
+				var unconvertibleErr *mapstructure.UnconvertibleTypeError
+				require.ErrorAs(t, err, &unconvertibleErr)
+				require.Equal(t, 3, unconvertibleErr.Value)
+			case tt.expectedErr != nil:
 				require.False(t, stillPassing)
 				require.Error(t, err)
 				require.Equal(t, tt.expectedErr, err)
-			} else {
+			default:
 				require.True(t, stillPassing)
 				require.NoError(t, err)
 				require.Equal(t, ctrl.Result{}, res)
 			}
 		})
 	}
+}
+
+func TestCreateOrUpdateResource_Run_RecipeErrorSurfacedWhenStatusSaveFails(t *testing.T) {
+	// Regression test: when a recipe fails with a RecipeError and the best-effort
+	// persistence of the failure status then also fails, the controller must surface
+	// the real recipe error to the caller, not the save error. Previously the save
+	// error (e.g. a spurious ErrConcurrency from the Postgres backend) masked the
+	// actionable recipe failure, so users saw "the operation failed due to a
+	// concurrency conflict" instead of the underlying recipe error.
+	mctrl := gomock.NewController(t)
+	msc := database.NewMockClient(mctrl)
+	eng := engine.NewMockEngine(mctrl)
+	cfg := configloader.NewMockConfigurationLoader(mctrl)
+
+	// No updatedApiVersion => the sensitive-field detection path is skipped and no
+	// UCP client/schema is required.
+	data := map[string]any{
+		"name":     "tr",
+		"type":     TestResourceType,
+		"id":       TestResourceID,
+		"location": v1.LocationGlobal,
+		"properties": map[string]any{
+			"application":       TestApplicationID,
+			"environment":       TestEnvironmentID,
+			"provisioningState": "Accepted",
+			"status": map[string]any{
+				"outputResources": []map[string]any{},
+			},
+			"recipe": map[string]any{
+				"name": "test-recipe",
+			},
+		},
+	}
+
+	msc.EXPECT().
+		Get(gomock.Any(), TestResourceID).
+		Return(&database.Object{ID: TestResourceID, ETag: "etag-1", Data: data}, nil).
+		Times(1)
+
+	configuration := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace:            "test-namespace",
+				EnvironmentNamespace: "test-env-namespace",
+			},
+		},
+	}
+	cfg.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(configuration, nil).Times(1)
+
+	recipeErr := &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    "RecipeDeploymentFailed",
+			Message: `terraform apply failure: secrets "dbsecret" already exists`,
+		},
+	}
+	eng.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&recipes.RecipeOutput{}, recipeErr).Times(1)
+
+	// The best-effort status-persistence save fails with a conflict; this must NOT
+	// mask the recipe error.
+	msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(&database.ErrConcurrency{}).Times(1)
+
+	opts := ctrl.Options{DatabaseClient: msc}
+	recipeCfg := &controllerconfig.RecipeControllerConfig{Engine: eng, ConfigLoader: cfg}
+
+	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
+	require.NoError(t, err)
+
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
+		OperationID:      uuid.New(),
+		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
+		ResourceID:       TestResourceID,
+		CorrelationID:    uuid.New().String(),
+		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
+	})
+
+	// The operation is terminal (no returned error to trigger a requeue), and the
+	// surfaced error must be the recipe error, not the save conflict.
+	require.NoError(t, err)
+	require.Equal(t, v1.ProvisioningStateFailed, res.ProvisioningState())
+	require.False(t, res.Requeue)
+	require.NotNil(t, res.Error)
+	require.Equal(t, recipeErr.ErrorDetails.Code, res.Error.Code)
+	require.Equal(t, recipeErr.ErrorDetails.Message, res.Error.Message)
 }
 
 func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
@@ -499,7 +675,7 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 	provider, err := encryption.NewInMemoryKeyProvider(key)
 	require.NoError(t, err)
 
-	handler, err := encryption.NewSensitiveDataHandlerFromProvider(context.Background(), provider)
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(t.Context(), provider)
 	require.NoError(t, err)
 
 	secretValue := "top-secret"
@@ -533,7 +709,7 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 
 	msc.EXPECT().
 		Get(gomock.Any(), TestResourceID).
-		Return(&database.Object{Metadata: database.Metadata{ID: TestResourceID, ETag: "etag-1"}, Data: data}, nil).
+		Return(&database.Object{ID: TestResourceID, ETag: "etag-1", Data: data}, nil).
 		Times(1)
 
 	ucpClient, err := testUCPClientFactory(map[string]any{
@@ -547,10 +723,8 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 	require.NoError(t, err)
 
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      encryption.DefaultEncryptionKeySecretName,
-			Namespace: encryption.RadiusNamespace,
-		},
+		Name:      encryption.DefaultEncryptionKeySecretName,
+		Namespace: encryption.RadiusNamespace,
 		Data: map[string][]byte{
 			encryption.DefaultEncryptionKeySecretKey: mustKeyStoreJSON(t, key),
 		},
@@ -616,11 +790,11 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 	require.NoError(t, err)
 
-	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
-		CorrelationID:    uuid.NewString(),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 	})
 	require.NoError(t, err)
@@ -655,7 +829,7 @@ func TestCreateOrUpdateResource_Run_SensitiveMissingKey(t *testing.T) {
 
 	msc.EXPECT().
 		Get(gomock.Any(), TestResourceID).
-		Return(&database.Object{Metadata: database.Metadata{ID: TestResourceID, ETag: "etag-1"}, Data: data}, nil).
+		Return(&database.Object{ID: TestResourceID, ETag: "etag-1", Data: data}, nil).
 		Times(1)
 
 	ucpClient, err := testUCPClientFactory(map[string]any{
@@ -690,11 +864,11 @@ func TestCreateOrUpdateResource_Run_SensitiveMissingKey(t *testing.T) {
 	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 	require.NoError(t, err)
 
-	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
-		CorrelationID:    uuid.NewString(),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 	})
 	require.Error(t, err)
@@ -706,10 +880,8 @@ func testUCPClientFactory(schema map[string]any) (*v20231001preview.ClientFactor
 	apiVersionsServer := fake.APIVersionsServer{
 		Get: func(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.APIVersionsClientGetResponse{
-				APIVersionResource: v20231001preview.APIVersionResource{
-					Properties: &v20231001preview.APIVersionProperties{
-						Schema: schema,
-					},
+				Properties: &v20231001preview.APIVersionProperties{
+					Schema: schema,
 				},
 			}
 			resp.SetResponse(http.StatusOK, response, nil)
@@ -718,9 +890,7 @@ func testUCPClientFactory(schema map[string]any) (*v20231001preview.ClientFactor
 	}
 
 	return v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: fake.NewAPIVersionsServerTransport(&apiVersionsServer),
-		},
+		Transport: fake.NewAPIVersionsServerTransport(&apiVersionsServer),
 	})
 }
 
@@ -770,7 +940,7 @@ func TestCreateOrUpdateResource_Run_SensitiveNilKubeClient(t *testing.T) {
 
 	msc.EXPECT().
 		Get(gomock.Any(), TestResourceID).
-		Return(&database.Object{Metadata: database.Metadata{ID: TestResourceID, ETag: "etag-1"}, Data: data}, nil).
+		Return(&database.Object{ID: TestResourceID, ETag: "etag-1", Data: data}, nil).
 		Times(1)
 
 	ucpClient, err := testUCPClientFactory(map[string]any{
@@ -802,11 +972,11 @@ func TestCreateOrUpdateResource_Run_SensitiveNilKubeClient(t *testing.T) {
 	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 	require.NoError(t, err)
 
-	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
-		CorrelationID:    uuid.NewString(),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 	})
 	require.Error(t, err)
@@ -830,7 +1000,7 @@ func TestCreateOrUpdateResource_Run_SensitiveRedactionSaveFails(t *testing.T) {
 	provider, err := encryption.NewInMemoryKeyProvider(key)
 	require.NoError(t, err)
 
-	handler, err := encryption.NewSensitiveDataHandlerFromProvider(context.Background(), provider)
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(t.Context(), provider)
 	require.NoError(t, err)
 
 	properties := map[string]any{
@@ -860,7 +1030,7 @@ func TestCreateOrUpdateResource_Run_SensitiveRedactionSaveFails(t *testing.T) {
 
 	msc.EXPECT().
 		Get(gomock.Any(), TestResourceID).
-		Return(&database.Object{Metadata: database.Metadata{ID: TestResourceID, ETag: "etag-1"}, Data: data}, nil).
+		Return(&database.Object{ID: TestResourceID, ETag: "etag-1", Data: data}, nil).
 		Times(1)
 
 	ucpClient, err := testUCPClientFactory(map[string]any{
@@ -874,10 +1044,8 @@ func TestCreateOrUpdateResource_Run_SensitiveRedactionSaveFails(t *testing.T) {
 	require.NoError(t, err)
 
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      encryption.DefaultEncryptionKeySecretName,
-			Namespace: encryption.RadiusNamespace,
-		},
+		Name:      encryption.DefaultEncryptionKeySecretName,
+		Namespace: encryption.RadiusNamespace,
 		Data: map[string][]byte{
 			encryption.DefaultEncryptionKeySecretKey: mustKeyStoreJSON(t, key),
 		},
@@ -917,11 +1085,11 @@ func TestCreateOrUpdateResource_Run_SensitiveRedactionSaveFails(t *testing.T) {
 	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 	require.NoError(t, err)
 
-	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
-		CorrelationID:    uuid.NewString(),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 	})
 	require.Error(t, err)
@@ -945,7 +1113,7 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 	provider, err := encryption.NewInMemoryKeyProvider(key)
 	require.NoError(t, err)
 
-	handler, err := encryption.NewSensitiveDataHandlerFromProvider(context.Background(), provider)
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(t.Context(), provider)
 	require.NoError(t, err)
 
 	properties := map[string]any{
@@ -981,7 +1149,7 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 
 	msc.EXPECT().
 		Get(gomock.Any(), TestResourceID).
-		Return(&database.Object{Metadata: database.Metadata{ID: TestResourceID, ETag: "etag-1"}, Data: data}, nil).
+		Return(&database.Object{ID: TestResourceID, ETag: "etag-1", Data: data}, nil).
 		Times(1)
 
 	ucpClient, err := testUCPClientFactory(map[string]any{
@@ -1004,10 +1172,8 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 	require.NoError(t, err)
 
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      encryption.DefaultEncryptionKeySecretName,
-			Namespace: encryption.RadiusNamespace,
-		},
+		Name:      encryption.DefaultEncryptionKeySecretName,
+		Namespace: encryption.RadiusNamespace,
 		Data: map[string][]byte{
 			encryption.DefaultEncryptionKeySecretKey: mustKeyStoreJSON(t, key),
 		},
@@ -1082,11 +1248,11 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 	require.NoError(t, err)
 
-	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
-		CorrelationID:    uuid.NewString(),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 	})
 	require.NoError(t, err)

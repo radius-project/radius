@@ -79,6 +79,47 @@ func TestResourceProviderSummaryIDFromRequest(t *testing.T) {
 	}
 }
 
+func Test_ResolveResourceTypeKey(t *testing.T) {
+	tests := []struct {
+		name           string
+		resourceTypes  map[string]datamodel.ResourceProviderSummaryPropertiesResourceType
+		lookup         string
+		expectedResult string
+	}{
+		{
+			name:           "exact match",
+			resourceTypes:  map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{"testResources": {}},
+			lookup:         "testResources",
+			expectedResult: "testResources",
+		},
+		{
+			name:           "case-insensitive match reuses existing key",
+			resourceTypes:  map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{"testResources": {}},
+			lookup:         "TESTRESOURCES",
+			expectedResult: "testResources",
+		},
+		{
+			name:           "no match returns the lookup name",
+			resourceTypes:  map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{"otherResources": {}},
+			lookup:         "testResources",
+			expectedResult: "testResources",
+		},
+		{
+			name:           "nil map returns the lookup name",
+			resourceTypes:  nil,
+			lookup:         "testResources",
+			expectedResult: "testResources",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := resolveResourceTypeKey(tt.resourceTypes, tt.lookup)
+			require.Equal(t, tt.expectedResult, result)
+		})
+	}
+}
+
 func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 	summaryID := resources.MustParse("/planes/radius/local/providers/System.Resources/resourceProviderSummaries/Applications.Test")
 	tests := []struct {
@@ -166,10 +207,8 @@ func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 
 				expectedETag = etag.New(bs)
 				obj := database.Object{
-					Metadata: database.Metadata{
-						ID:   tt.summaryID.String(),
-						ETag: expectedETag,
-					},
+					ID:   tt.summaryID.String(),
+					ETag: expectedETag,
 					Data: converted,
 				}
 				client.EXPECT().Get(gomock.Any(), tt.summaryID.String()).Return(&obj, nil)
@@ -192,7 +231,7 @@ func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 				})
 			}
 
-			err := updateResourceProviderSummaryWithETag(context.Background(), client, tt.summaryID, tt.policy, tt.updateFunc)
+			err := updateResourceProviderSummaryWithETag(t.Context(), client, tt.summaryID, tt.policy, tt.updateFunc)
 			if tt.expectedErr {
 				assert.Error(t, err)
 			} else {

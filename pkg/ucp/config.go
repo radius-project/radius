@@ -20,6 +20,7 @@ import (
 	"bytes"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
@@ -28,13 +29,16 @@ import (
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Config defines the configuration for the UCP server.
 //
 // For testability, all fields on this struct MUST be parsable from YAML without any further initialization required.
 type Config struct {
+	// Authorization is the configuration for internal component authorization.
+	Authorization authz.Options `yaml:"authorization"`
+
 	// Database is the configuration for the database used for resource data.
 	Database databaseprovider.Options `yaml:"databaseProvider"`
 

@@ -17,7 +17,6 @@ limitations under the License.
 package azure
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -193,7 +192,7 @@ func TestGetKeyVaultObjectsSpec(t *testing.T) {
 
 func TestKeyVaultRenderer_Render(t *testing.T) {
 	r := KeyVaultRenderer{}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	vol := &datamodel.VolumeResource{}
 	err := json.Unmarshal(testutil.ReadFixture("volume-az-kv-systemassigned.json"), vol)

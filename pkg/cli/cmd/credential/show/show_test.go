@@ -17,7 +17,6 @@ limitations under the License.
 package show
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -107,10 +106,8 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			provider := cli_credential.ProviderCredentialConfiguration{
-				CloudProviderStatus: cli_credential.CloudProviderStatus{
-					Name:    "azure",
-					Enabled: true,
-				},
+				Name:    "azure",
+				Enabled: true,
 				AzureCredentials: &cli_credential.AzureCredentialProperties{
 					Kind: new("ServicePrincipal"),
 				},
@@ -132,7 +129,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			credentialFormatOutput := credentialFormatAzureServicePrincipal()
@@ -155,10 +152,8 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			provider := cli_credential.ProviderCredentialConfiguration{
-				CloudProviderStatus: cli_credential.CloudProviderStatus{
-					Name:    "azure",
-					Enabled: true,
-				},
+				Name:    "azure",
+				Enabled: true,
 				AzureCredentials: &cli_credential.AzureCredentialProperties{
 					Kind: new("WorkloadIdentity"),
 				},
@@ -180,7 +175,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			credentialFormatOutput := credentialFormatAzureWorkloadIdentity()
@@ -218,7 +213,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			expected := clierrors.Message("The credentials for cloud provider %q could not be found.", runner.Kind)
 			require.Equal(t, expected, err)
 		})
@@ -228,10 +223,8 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			provider := cli_credential.ProviderCredentialConfiguration{
-				CloudProviderStatus: cli_credential.CloudProviderStatus{
-					Name:    "aws",
-					Enabled: true,
-				},
+				Name:    "aws",
+				Enabled: true,
 				AWSCredentials: &cli_credential.AWSCredentialProperties{
 					Kind: new("AccessKey"),
 				},
@@ -253,7 +246,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			credentialFormatOutput := credentialFormatAWSAccessKey()
@@ -274,10 +267,8 @@ func Test_Run(t *testing.T) {
 		t.Run("Not Found", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			provider := cli_credential.ProviderCredentialConfiguration{
-				CloudProviderStatus: cli_credential.CloudProviderStatus{
-					Name:    "aws",
-					Enabled: false,
-				},
+				Name:    "aws",
+				Enabled: false,
 			}
 			client := cli_credential.NewMockCredentialManagementClient(ctrl)
 			client.EXPECT().
@@ -295,7 +286,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			expected := clierrors.Message("The credentials for cloud provider %q could not be found.", runner.Kind)
 			require.Equal(t, expected, err)
 		})

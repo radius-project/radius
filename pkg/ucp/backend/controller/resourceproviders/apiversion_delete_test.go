@@ -107,6 +107,30 @@ func TestAPIVersionDeleteController_updateSummary(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Delete existing API version with differently-cased resource type entry",
+			id:   resources.MustParse("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources/apiVersions/2025-01-01"),
+			summary: &datamodel.ResourceProviderSummary{
+				Properties: datamodel.ResourceProviderSummaryProperties{
+					ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
+						"testresources": {
+							APIVersions: map[string]datamodel.ResourceProviderSummaryPropertiesAPIVersion{
+								"2025-01-01": {},
+							},
+						},
+					},
+				},
+			},
+			expected: &datamodel.ResourceProviderSummary{
+				Properties: datamodel.ResourceProviderSummaryProperties{
+					ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
+						"testresources": {
+							APIVersions: map[string]datamodel.ResourceProviderSummaryPropertiesAPIVersion{},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

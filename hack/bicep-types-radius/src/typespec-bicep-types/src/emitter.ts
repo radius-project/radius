@@ -1,0 +1,114 @@
+// ------------------------------------------------------------
+// Copyright 2023 The Radius Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------.
+
+import { EmitContext, emitFile, getDoc, resolvePath } from "@typespec/compiler";
+import { TypeFactory, writeMarkdown, writeTypesJson } from "./bicep.js";
+import { discoverResources, DiscoveredResource } from "./resource-discovery.js";
+import { buildResourceType, newTranslationCache } from "./type-translator.js";
+import {
+  buildResourceDocs,
+  filterResourceTypes
+} from "./writers/resource-docs.js";
+import type { BicepEmitterOptions } from "./lib.js";
+
+/**
+ * Emitter entry point invoked by `tsp compile --emit=@radius-project/typespec-bicep-types`.
+ *
+ * Discovers the program's ARM resources, builds Bicep extensibility types with
+ * the upstream `bicep-types` factory, and writes one `types.json` + `types.md`
+ * plus per-resource `docs/*.md` per `namespace/apiVersion` - matching the output
+ * layout of the AutoRest path it replaces, with no AutoRest, OpenAPI, or
+ * modelerfour in between.
+ *
+ * The translation (envelope, properties, flatten, `@visibility` flags, `list*`
+ * functions, discriminated types) is validated against the real
+ * `Applications.Messaging` spec. See
+ * `eng/design-notes/tools/2026-06-autorest-bicep-to-typespec-emitter.md`.
+ */
+export async function $onEmit(
+  context: EmitContext<BicepEmitterOptions>
+): Promise<void> {
+  if (context.program.compilerOptions.noEmit) {
+    return;
+  }
+
+  const resources = discoverResources(context.program);
+  if (resources.length === 0) {
+    return;
+  }
+
+  // Group by provider namespace; each namespace/apiVersion is emitted as its own
+  // types.json + types.md, mirroring the AutoRest output tree.
+  const byNamespace = new Map<string, DiscoveredResource[]>();
+  for (const resource of resources) {
+    const group = byNamespace.get(resource.namespace) ?? [];
+    group.push(resource);
+    byNamespace.set(resource.namespace, group);
+  }
+
+  for (const [namespace, group] of byNamespace) {
+    const factory = new TypeFactory();
+    // One cache per namespace so shared types are emitted once and referenced by
+    // every resource that uses them (matching the AutoRest output).
+    const cache = newTranslationCache();
+    for (const resource of group) {
+      buildResourceType(context.program, factory, resource, cache);
+    }
+
+    // Capture the resource-level `@doc` for each resource so the reference docs
+    // can render a description block. The description is authored on the body
+    // model and is not serialized into types.json, so it is read here from the
+    // TypeSpec program and keyed by the resource type name.
+    const descriptions = new Map<string, string | undefined>();
+    for (const resource of group) {
+      descriptions.set(
+        resource.resourceTypeName,
+        getDoc(context.program, resource.bodyModel)
+      );
+    }
+
+    const apiVersion = group[0].apiVersion;
+    const outFolder = `${namespace}/${apiVersion}`.toLowerCase();
+
+    await emitFile(context.program, {
+      path: resolvePath(context.emitterOutputDir, outFolder, "types.json"),
+      content: writeTypesJson(factory.types)
+    });
+
+    await emitFile(context.program, {
+      path: resolvePath(context.emitterOutputDir, outFolder, "types.md"),
+      content: writeMarkdown(factory.types, `${namespace} @ ${apiVersion}`)
+    });
+
+    // One reference doc per resource type under docs/<resource>.md.
+    const docs = buildResourceDocs(
+      filterResourceTypes(factory.types),
+      factory.types,
+      (resourceType) => descriptions.get(resourceType.name)
+    );
+    for (const doc of docs) {
+      await emitFile(context.program, {
+        path: resolvePath(
+          context.emitterOutputDir,
+          outFolder,
+          "docs",
+          doc.filename
+        ),
+        content: doc.content
+      });
+    }
+  }
+}

@@ -17,14 +17,12 @@ limitations under the License.
 package radinit
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2_types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/radius-project/radius/pkg/cli/aws"
-	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/stretchr/testify/require"
@@ -52,7 +50,7 @@ func Test_enterAWSCloudProvider_AccessKey(t *testing.T) {
 	setAWSRegionPrompt(prompter, regions, "region")
 
 	options := &initOptions{}
-	provider, err := runner.enterAWSCloudProvider(context.Background(), options)
+	provider, err := runner.enterAWSCloudProvider(t.Context(), options)
 	require.NoError(t, err)
 
 	expected := &aws.Provider{
@@ -65,7 +63,8 @@ func Test_enterAWSCloudProvider_AccessKey(t *testing.T) {
 		AccountID:      "account-id",
 	}
 	require.Equal(t, expected, provider)
-	require.Equal(t, []any{output.LogOutput{Format: common.AWSAccessKeysCreateInstructionFmt}}, outputSink.Writes)
+	require.Equal(t, []any{output.LogOutput{Format: awsAccessKeysCreateInstructionFmt}}, outputSink.Writes)
+	require.Empty(t, options.SetValues)
 }
 
 func Test_enterAWSCloudProvider_IRSA(t *testing.T) {
@@ -88,7 +87,7 @@ func Test_enterAWSCloudProvider_IRSA(t *testing.T) {
 	setAWSRegionPrompt(prompter, regions, "region")
 
 	options := &initOptions{}
-	provider, err := runner.enterAWSCloudProvider(context.Background(), options)
+	provider, err := runner.enterAWSCloudProvider(t.Context(), options)
 	require.NoError(t, err)
 
 	expected := &aws.Provider{
@@ -100,5 +99,6 @@ func Test_enterAWSCloudProvider_IRSA(t *testing.T) {
 		AccountID:      "account-id",
 	}
 	require.Equal(t, expected, provider)
-	require.Equal(t, []any{output.LogOutput{Format: common.AWSAccessKeysCreateInstructionFmt}}, outputSink.Writes)
+	require.Equal(t, []any{output.LogOutput{Format: awsAccessKeysCreateInstructionFmt}}, outputSink.Writes)
+	require.Equal(t, []string{"global.aws.irsa.enabled=true"}, options.SetValues)
 }

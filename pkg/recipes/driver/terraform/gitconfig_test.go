@@ -48,6 +48,11 @@ func TestAddConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			tmpdir := t.TempDir()
+			// Redirect the global git config to a temp file so "git config --global" (invoked via
+			// setGitConfigForDir) never mutates the developer's/CI's real ~/.gitconfig. Writing the
+			// shared global config also races with other test processes that read it, causing
+			// intermittent "unknown error occurred while reading the configuration files" failures.
+			withGlobalGitConfigFile(t, tmpdir, ``)
 			_, recipeMetadata, _ := buildTestInputs()
 			if tt.desc == "invalid resource id" {
 				recipeMetadata.EnvironmentID = "//planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env"
@@ -82,10 +87,8 @@ func TestSetGitConfigForDir(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			tmpdir := t.TempDir()
-			config, err := withGlobalGitConfigFile(tmpdir, ``)
-			require.NoError(t, err)
-			defer config()
-			err = setGitConfigForDir(tt.workingDirectory)
+			withGlobalGitConfigFile(t, tmpdir, ``)
+			err := setGitConfigForDir(tt.workingDirectory)
 			require.NoError(t, err)
 			fileContent, err := os.ReadFile(filepath.Join(tmpdir, ".gitconfig"))
 			require.NoError(t, err)
@@ -115,10 +118,8 @@ func TestUnsetGitConfigForDir(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			tmpdir := t.TempDir()
-			config, err := withGlobalGitConfigFile(tmpdir, tt.fileContent)
-			require.NoError(t, err)
-			defer config()
-			err = unsetGitConfigForDir(tt.workingDirectory, getSecretList(), tt.templatePath)
+			withGlobalGitConfigFile(t, tmpdir, tt.fileContent)
+			err := unsetGitConfigForDir(tt.workingDirectory, getSecretList(), tt.templatePath)
 			require.NoError(t, err)
 			contents, err := os.ReadFile(filepath.Join(tmpdir, ".gitconfig"))
 			require.NoError(t, err)
@@ -136,25 +137,21 @@ func getSecretList() map[string]string {
 	return secrets
 }
 
-func withGlobalGitConfigFile(tmpdir string, content string) (func(), error) {
+// withGlobalGitConfigFile isolates git's global and system configuration for the duration of the
+// test. It writes content to a temp .gitconfig and points GIT_CONFIG_GLOBAL at it, while disabling
+// the real system and global config, so "git config --global" and git config reads never touch the
+// developer's/CI's real files. Using t.Setenv restores the environment automatically when the test
+// ends.
+func withGlobalGitConfigFile(t *testing.T, tmpdir string, content string) {
+	t.Helper()
 
 	tmpGitConfigFile := filepath.Join(tmpdir, ".gitconfig")
+	require.NoError(t, os.WriteFile(tmpGitConfigFile, []byte(content), 0600))
 
-	err := os.WriteFile(
-		tmpGitConfigFile,
-		[]byte(content),
-		0777,
-	)
-
-	if err != nil {
-		return func() {}, err
-	}
-	prevGitConfigEnv := os.Getenv("HOME")
-	os.Setenv("HOME", tmpdir)
-
-	return func() {
-		os.Setenv("HOME", prevGitConfigEnv)
-	}, nil
+	t.Setenv("HOME", tmpdir)
+	t.Setenv("GIT_CONFIG_GLOBAL", tmpGitConfigFile)
+	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 }
 
 func Test_GetGitURL(t *testing.T) {
@@ -294,11 +291,9 @@ func Test_unsetGitConfigForDirIfApplicable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config, err := withGlobalGitConfigFile(tmpdir, fileContent)
-			require.NoError(t, err)
-			defer config()
+			withGlobalGitConfigFile(t, tmpdir, fileContent)
 
-			err = unsetGitConfigForDirIfApplicable(tt.secretStoreID, tt.secretData, workingDirectory, templatePath)
+			err := unsetGitConfigForDirIfApplicable(tt.secretStoreID, tt.secretData, workingDirectory, templatePath)
 			if tt.expectError {
 				require.EqualError(t, err, tt.expectErrMsg)
 			} else {

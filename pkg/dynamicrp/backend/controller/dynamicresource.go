@@ -25,6 +25,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend/processor"
+	"github.com/radius-project/radius/pkg/dynamicrp/backend/secret"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/schema"
@@ -43,15 +44,17 @@ type DynamicResourceController struct {
 	ucp                 *v20231001preview.ClientFactory
 	engine              engine.Engine
 	configurationLoader configloader.ConfigurationLoader
+	secretMaterializer  secret.Materializer
 }
 
 // NewDynamicResourceController creates a new DynamicResourcePutController.
-func NewDynamicResourceController(opts ctrl.Options, ucp *v20231001preview.ClientFactory, engine engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
+func NewDynamicResourceController(opts ctrl.Options, ucp *v20231001preview.ClientFactory, secretMaterializer secret.Materializer, engine engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
 	return &DynamicResourceController{
 		BaseController:      ctrl.NewBaseAsyncController(opts),
 		ucp:                 ucp,
 		engine:              engine,
 		configurationLoader: configurationLoader,
+		secretMaterializer:  secretMaterializer,
 	}, nil
 }
 
@@ -100,13 +103,13 @@ func (c *DynamicResourceController) selectController(ctx context.Context, reques
 		if hasCapability(resourceTypeDetails, datamodel.CapabilityManualResourceProvisioning) {
 			return NewInertDeleteController(options)
 		}
-		return NewRecipeDeleteController(options, c.engine, c.configurationLoader)
+		return NewRecipeDeleteController(options, c.engine, c.configurationLoader, c.secretMaterializer)
 
 	case v1.OperationPut:
 		if hasCapability(resourceTypeDetails, datamodel.CapabilityManualResourceProvisioning) {
 			return NewInertPutController(options)
 		}
-		return NewRecipePutController(options, c.engine, c.configurationLoader)
+		return NewRecipePutController(options, c.engine, c.configurationLoader, c.secretMaterializer)
 
 	default:
 		return nil, fmt.Errorf("unsupported operation type: %q", request.OperationType)

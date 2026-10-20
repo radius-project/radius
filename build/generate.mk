@@ -17,7 +17,6 @@
 ##@ Generate (Code and Schema Generation)
 
 GOOS ?= $(shell go env GOOS)
-CONTROLLER_TOOLS_VERSION ?= v0.12.0
 
 ifeq ($(GOOS),windows)
    CMD_EXT = .cmd
@@ -25,7 +24,7 @@ endif
 
 # generate-rad-corerp-client-2025-08-01-preview is a new target, which will replace generate-rad-corerp-client in future, once all resources of Radius.Core are ready and Applications.Core is deprecated.
 .PHONY: generate
-generate: generate-cleanup generate-genericcliclient generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
+generate: generate-cleanup generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-genericcliclient generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
 
 .PHONY: generate-tsp-installed
 generate-tsp-installed: generate-pnpm-installed
@@ -52,12 +51,12 @@ tsp-format-check: generate-tsp-installed ## Checks TypeSpec format
 .PHONY: generate-openapi-spec
 generate-openapi-spec: # Generates all Radius OpenAPI specs from TypeSpec.
 	@echo  "Generating openapi specs from typespec models."
-	cd typespec/UCP && npx$(CMD_EXT) tsp compile .
-	cd typespec/Applications.Core && npx$(CMD_EXT) tsp compile .
-	cd typespec/Applications.Dapr && npx$(CMD_EXT) tsp compile .
-	cd typespec/Applications.Messaging && npx$(CMD_EXT) tsp compile .
-	cd typespec/Applications.Datastores && npx$(CMD_EXT) tsp compile .
-	cd typespec/Radius.Core && npx$(CMD_EXT) tsp compile .
+	cd typespec/UCP && pnpm exec tsp compile .
+	cd typespec/Applications.Core && pnpm exec tsp compile .
+	cd typespec/Applications.Dapr && pnpm exec tsp compile .
+	cd typespec/Applications.Messaging && pnpm exec tsp compile .
+	cd typespec/Applications.Datastores && pnpm exec tsp compile .
+	cd typespec/Radius.Core && pnpm exec tsp compile .
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -65,23 +64,17 @@ generate-node-installed:
 	@which node > /dev/null || { echo "node is a required dependency"; exit 1; }
 	@echo "$(ARROW) OK"
 
-.PHONY: generate-controller-gen-installed
-generate-controller-gen-installed:
-	@echo "$(ARROW) Detecting controller-gen..."
-	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0'"; exit 1; }
-	@echo "$(ARROW) OK"
-
 .PHONY: generate-ucp-crd
-generate-ucp-crd: generate-controller-gen-installed ## Generates the CRDs for UCP APIServer store.
+generate-ucp-crd: ## Generates the CRDs for UCP APIServer store.
 	@echo "$(ARROW) Generating CRDs for ucp.dev..."
-	controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/...
-	controller-gen crd paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
+	go tool controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/...
+	go tool controller-gen crd paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
 
 .PHONY: generate-controller
-generate-controller: generate-controller-gen-installed ## Generates the CRDs for the Radius controller.
+generate-controller: ## Generates the CRDs for the Radius controller.
 	@echo "$(ARROW) Generating CRDs for radapp.io..."
-	controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/controller/api/...
-	controller-gen crd paths=./pkg/controller/api/... output:crd:dir=./deploy/Chart/crds/radius
+	go tool controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/controller/api/...
+	go tool controller-gen crd paths=./pkg/controller/api/... output:crd:dir=./deploy/Chart/crds/radius
 
 .PHONY: generate-cleanup
 generate-cleanup: ## Deletes all generated code.
@@ -89,54 +82,67 @@ generate-cleanup: ## Deletes all generated code.
 	find . -type f -name 'zz_*.go' ! -name 'zz_*.deepcopy.go' -delete
 	@echo "$(ARROW) Done."
 
-.PHONY: generate-genericcliclient
-generate-genericcliclient: generate-tsp-installed
-	@echo "$(ARROW) Generating 'pkg/cli/clients_new/generated'"
-	pnpm -C typespec exec autorest ../pkg/cli/clients_new/README.md --tag=2023-10-01-preview && rm pkg/cli/clients_new/generated/go.mod && go fmt ./pkg/cli/clients_new/generated/...
-	@echo "$(ARROW) Done."
+# typespec-go 0.16 infers the Go module from a parent go.mod when the emitter
+# output is inside the repository. Generate outside the repository so each
+# TypeSpec project's configured module and package name remain authoritative.
+define generate-typespec-go-client
+@set -e; \
+	output_dir=$$(mktemp -d "$${TMPDIR:-/tmp}/radius-typespec-go.XXXXXX"); \
+	trap 'rm -rf "$$output_dir"' EXIT; \
+	(cd "$(1)" && pnpm exec tsp compile . --emit=@azure-tools/typespec-go --option="@azure-tools/typespec-go.emitter-output-dir=$$output_dir"); \
+	rm -f "$(2)"/zz_generated_*.go; \
+	cp "$$output_dir"/zz_generated_*.go "$(2)/"; \
+	if [ "$(3)" = "true" ]; then \
+		rm -f "$(2)"/fake/zz_generated_*.go; \
+		cp "$$output_dir"/fake/zz_generated_*.go "$(2)/fake/"; \
+	fi; \
+	go fmt "./$(2)/..."
+endef
 
 .PHONY: generate-rad-corerp-client
-generate-rad-corerp-client: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (Autorest).
+generate-rad-corerp-client: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/corerp/api/v20231001preview'"
-	pnpm -C typespec exec autorest ../pkg/corerp/api/README.md --tag=core-2023-10-01-preview && rm pkg/corerp/api/v20231001preview/go.mod && go fmt ./pkg/corerp/api/v20231001preview/...
+	$(call generate-typespec-go-client,typespec/Applications.Core,pkg/corerp/api/v20231001preview,false)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-corerp-client-2025-08-01-preview
-generate-rad-corerp-client-2025-08-01-preview: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK for 2025-08-01-preview (Autorest).
+generate-rad-corerp-client-2025-08-01-preview: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK for 2025-08-01-preview (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/corerp/api/v20250801preview'"
-	pnpm -C typespec exec autorest ../pkg/corerp/api/README.md --tag=core-2025-08-01-preview && rm pkg/corerp/api/v20250801preview/go.mod && go fmt ./pkg/corerp/api/v20250801preview/...
+	$(call generate-typespec-go-client,typespec/Radius.Core,pkg/corerp/api/v20250801preview,true)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-datastoresrp-client
-generate-rad-datastoresrp-client: generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (Autorest).
+generate-rad-datastoresrp-client: generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/datastoresrp/api/v20231001preview'"
-	pnpm -C typespec exec autorest ../pkg/datastoresrp/api/README.md --tag=datastores-2023-10-01-preview && rm pkg/datastoresrp/api/v20231001preview/go.mod && go fmt ./pkg/datastoresrp/api/v20231001preview/...
+	$(call generate-typespec-go-client,typespec/Applications.Datastores,pkg/datastoresrp/api/v20231001preview,false)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-messagingrp-client
-generate-rad-messagingrp-client: generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
+generate-rad-messagingrp-client: generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/messagingrp/api/v20231001preview'"
-	pnpm -C typespec exec autorest ../pkg/messagingrp/api/README.md --tag=messaging-2023-10-01-preview && rm pkg/messagingrp/api/v20231001preview/go.mod && go fmt ./pkg/messagingrp/api/v20231001preview/...
+	$(call generate-typespec-go-client,typespec/Applications.Messaging,pkg/messagingrp/api/v20231001preview,false)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-daprrp-client
-generate-rad-daprrp-client: generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (Autorest).
+generate-rad-daprrp-client: generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/daprrp/api/v20231001preview'"
-	pnpm -C typespec exec autorest ../pkg/daprrp/api/README.md --tag=dapr-2023-10-01-preview && rm pkg/daprrp/api/v20231001preview/go.mod && go fmt ./pkg/daprrp/api/v20231001preview/...
+	$(call generate-typespec-go-client,typespec/Applications.Dapr,pkg/daprrp/api/v20231001preview,false)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-ucp-client
-generate-rad-ucp-client: generate-tsp-installed test-ucp-spec-examples ## Generates the UCP client SDK (Autorest).
-	pnpm -C typespec exec autorest ../pkg/ucp/api/README.md --tag=ucp-2023-10-01-preview && rm pkg/ucp/api/v20231001preview/go.mod && go fmt ./pkg/ucp/api/v20231001preview/...
+generate-rad-ucp-client: generate-tsp-installed test-ucp-spec-examples ## Generates the UCP client SDK (TypeSpec Go emitter).
+	@echo "$(ARROW) Generating 'pkg/ucp/api/v20231001preview'"
+	$(call generate-typespec-go-client,typespec/UCP,pkg/ucp/api/v20231001preview,true)
+	@echo "$(ARROW) Done."
 
-.PHONY: generate-mockgen-installed
-generate-mockgen-installed:
-	@echo "$(ARROW) Detecting mockgen..."
-	@which mockgen > /dev/null || { echo "run 'go install go.uber.org/mock/mockgen@v0.4.0' to install mockgen"; exit 1; }
-	@echo "$(ARROW) OK"
+.PHONY: generate-genericcliclient
+generate-genericcliclient: generate-tsp-installed ## Generates the generic CLI client SDK (TypeSpec Go emitter).
+	@echo "$(ARROW) Generating 'pkg/cli/clients_new/generated'"
+	$(call generate-typespec-go-client,typespec/GenericResource,pkg/cli/clients_new/generated,true)
+	@echo "$(ARROW) Done."
 
 .PHONY: generate-go
-generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mocks).
+generate-go: ## Generates go with 'go generate' (Mocks).
 	@echo "$(ARROW) Running go generate..."
 	go generate -v ./...
 
@@ -152,11 +158,12 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 #
 # Per-type manifest files live under deploy/manifest/built-in-providers/self-hosted/
 # as individual YAML files (e.g. containers.yaml, routes.yaml).
-YQ_VERSION ?= v4.44.3
-
 DEFAULTS_YAML := deploy/manifest/defaults.yaml
 BICEP_TYPES_CONTRIB_API_VERSION ?= 2025-08-01-preview
-BICEP_TYPES_OUTPUT_BASE := hack/bicep-types-radius/generated/radius
+# Shared locations for the TypeSpec Bicep emitter package and its generated output.
+BICEP_TYPES_EMITTER_DIR := hack/bicep-types-radius/src/typespec-bicep-types
+BICEP_TYPES_GENERATED_DIR := hack/bicep-types-radius/generated
+BICEP_TYPES_OUTPUT_BASE := $(BICEP_TYPES_GENERATED_DIR)/radius
 BICEP_TYPES_CONTRIB_MANIFEST_DIR := deploy/manifest/built-in-providers/self-hosted
 
 .PHONY: generate-bicep-types
@@ -165,33 +172,46 @@ generate-bicep-types: ## Generate Bicep extensibility types
 	@$(MAKE) generate-bicep-types-contrib
 	@$(MAKE) rebuild-bicep-types-index
 
+# Install dependencies and compile the TypeSpec Bicep emitter. Factored into its own
+# target so the aggregate `generate-bicep-types` path builds it once (via
+# generate-bicep-types-core) instead of building it a second time in
+# rebuild-bicep-types-index.
+.PHONY: generate-bicep-types-emitter
+generate-bicep-types-emitter: generate-pnpm-installed
+	@echo "$(ARROW) Build the TypeSpec Bicep emitter..."
+	CI=true pnpm -C $(BICEP_TYPES_EMITTER_DIR) install && pnpm -C $(BICEP_TYPES_EMITTER_DIR) run build
+
 .PHONY: generate-bicep-types-core
-generate-bicep-types-core: generate-node-installed generate-pnpm-installed ## Generate Bicep extensibility types from OpenAPI specs.
-	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
-	@echo "$(ARROW) Build autorest.bicep..."
-	CI=true pnpm -C hack/bicep-types-radius/src/autorest.bicep install && pnpm -C hack/bicep-types-radius/src/autorest.bicep run build; \
-	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
-	CI=true pnpm -C hack/bicep-types-radius/src/generator install && pnpm -C hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
+generate-bicep-types-core: generate-tsp-installed generate-bicep-types-emitter ## Generate Bicep extensibility types from TypeSpec.
+	@echo "$(ARROW) Generating Bicep extensibility types from TypeSpec..."
+	node $(BICEP_TYPES_EMITTER_DIR)/dist/src/cmd/compile-projects.js --typespec-dir typespec --out-dir $(BICEP_TYPES_GENERATED_DIR)
 
 .PHONY: generate-yq-installed
 generate-yq-installed:
 	@echo "$(ARROW) Detecting yq..."
-	@which yq > /dev/null || { echo "run 'go install github.com/mikefarah/yq/v4@$(YQ_VERSION)' to install yq, then ensure ~/go/bin is on your PATH"; exit 1; }
+	@which yq > /dev/null || { echo "yq not found. Run 'make install-yq' to install the pinned version into a user-owned bin dir."; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-bicep-types-contrib
 generate-bicep-types-contrib: generate-yq-installed ## Generates Bicep types.json files for default contrib namespaces from defaults.yaml.
 	@echo "$(ARROW) Generating Bicep types for default contrib resource type namespaces..."
+	@test -f $(BICEP_TYPES_EMITTER_DIR)/dist/src/cmd/generate-contrib-docs.js || $(MAKE) generate-bicep-types-emitter
 	build/scripts/generate-bicep-types-contrib.sh \
 		"$(DEFAULTS_YAML)" \
 		"$(BICEP_TYPES_CONTRIB_MANIFEST_DIR)" \
 		"$(BICEP_TYPES_OUTPUT_BASE)" \
-		"$(BICEP_TYPES_CONTRIB_API_VERSION)"
+		"$(BICEP_TYPES_CONTRIB_API_VERSION)" \
+		"$(BICEP_TYPES_EMITTER_DIR)"
 
+# rebuild-bicep-types-index rebuilds the unified index from the per-namespace
+# types.json files. It builds the emitter only when it is not already built (e.g.
+# when run standalone); the aggregate generate-bicep-types path builds it once in
+# generate-bicep-types-core.
 .PHONY: rebuild-bicep-types-index
 rebuild-bicep-types-index:
 	@echo "$(ARROW) Rebuilding unified Bicep types index..."
-	CI=true pnpm -C hack/bicep-types-radius/src/generator run rebuild-index --release-version ${VERSION}
+	@test -f $(BICEP_TYPES_EMITTER_DIR)/dist/src/cmd/rebuild-index.js || $(MAKE) generate-bicep-types-emitter
+	node $(BICEP_TYPES_EMITTER_DIR)/dist/src/cmd/rebuild-index.js --out-dir $(BICEP_TYPES_GENERATED_DIR) --release-version ${VERSION}
 
 # Publishing the unified `radius` Bicep extension. Runnable locally against any
 # OCI registry (e.g. a local Zot/CRane-backed registry, or biceptypes.azurecr.io
@@ -218,16 +238,14 @@ publish-bicep-extension: ## Publish the unified `radius` Bicep extension to BICE
 	@echo "$(ARROW) Publishing Bicep extension index $(BICEP_PUBLISH_INDEX) -> $(BICEP_PUBLISH_TARGET)"
 	bicep publish-extension "$(BICEP_PUBLISH_INDEX)" --target "$(BICEP_PUBLISH_TARGET)" --force
 
-
-.PHONY: generate-containerinstance-client
-generate-containerinstance-client: generate-tsp-installed  ## Generates the Container Instances SDK (Autorest).
-	pnpm -C typespec exec autorest \
-		../pkg/sdk/aci-specification/containerinstance/resource-manager/readme.md \
-		--go \
-		--tag=package-preview-2024-11
+# NOTE: The Azure Container Instances SDK in pkg/sdk/v20241101preview is now
+# maintained by hand. It targets the 2024-11-01-preview NGroups/CGProfile APIs
+# which are not published in github.com/Azure/azure-sdk-for-go and have no
+# TypeSpec source, so there is no code-generation step for it anymore. Apply any
+# API changes directly to the Go sources under pkg/sdk/v20241101preview.
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))/..
+PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))..
 define go-get-tool
 @[ -f $(1) ] || { \
 set -e ;\

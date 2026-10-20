@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/validator"
+	"github.com/radius-project/radius/pkg/version"
 )
 
 const (
@@ -81,6 +82,7 @@ func Register(ctx context.Context, router chi.Router, planeModules []modules.Ini
 
 	router.NotFound(validator.APINotFoundHandler())
 	router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
+	router.Get(options.Config.Server.PathBase+"/version", version.ReportVersionHandler)
 
 	logger.Info("Initializing module handlers for planes.")
 	moduleHandlers, registeredPlaneTypes, err := initModules(ctx, planeModules)

@@ -79,30 +79,30 @@ func NewRadiusClient(connection sdk.Connection) *RadiusClientImpl {
 var _ RadiusClient = (*RadiusClientImpl)(nil)
 
 func (c *RadiusClientImpl) Applications(scope string) ApplicationClient {
-	ac, err := corerpv20231001preview.NewApplicationsClient(scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
+	ac, err := corerpv20231001preview.NewApplicationsClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
 	}
 
-	return &ApplicationClientImpl{inner: ac}
+	return &ApplicationClientImpl{inner: ac, scope: scope}
 }
 
 func (c *RadiusClientImpl) Containers(scope string) ContainerClient {
-	cc, err := corerpv20231001preview.NewContainersClient(scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
+	cc, err := corerpv20231001preview.NewContainersClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
 	}
 
-	return &ContainerClientImpl{inner: cc}
+	return &ContainerClientImpl{inner: cc, scope: scope}
 }
 
 func (c *RadiusClientImpl) Environments(scope string) EnvironmentClient {
-	ec, err := corerpv20231001preview.NewEnvironmentsClient(scope, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
+	ec, err := corerpv20231001preview.NewEnvironmentsClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		panic("failed to create client: " + err.Error())
 	}
 
-	return &EnvironmentClientImpl{inner: ec}
+	return &EnvironmentClientImpl{inner: ec, scope: scope}
 }
 
 func (c *RadiusClientImpl) Groups(scope string) ResourceGroupClient {
@@ -127,55 +127,58 @@ var _ ApplicationClient = (*ApplicationClientImpl)(nil)
 
 type ApplicationClientImpl struct {
 	inner *corerpv20231001preview.ApplicationsClient
+	scope string
 }
 
 func (ac *ApplicationClientImpl) CreateOrUpdate(ctx context.Context, applicationName string, resource corerpv20231001preview.ApplicationResource, options *corerpv20231001preview.ApplicationsClientCreateOrUpdateOptions) (corerpv20231001preview.ApplicationsClientCreateOrUpdateResponse, error) {
-	return ac.inner.CreateOrUpdate(ctx, applicationName, resource, options)
+	return ac.inner.CreateOrUpdate(ctx, ac.scope, applicationName, resource, options)
 }
 
 func (ac *ApplicationClientImpl) Delete(ctx context.Context, applicationName string, options *corerpv20231001preview.ApplicationsClientDeleteOptions) (corerpv20231001preview.ApplicationsClientDeleteResponse, error) {
-	return ac.inner.Delete(ctx, applicationName, options)
+	return ac.inner.Delete(ctx, ac.scope, applicationName, options)
 }
 
 func (ac *ApplicationClientImpl) Get(ctx context.Context, applicationName string, options *corerpv20231001preview.ApplicationsClientGetOptions) (corerpv20231001preview.ApplicationsClientGetResponse, error) {
-	return ac.inner.Get(ctx, applicationName, options)
+	return ac.inner.Get(ctx, ac.scope, applicationName, options)
 }
 
 var _ ContainerClient = (*ContainerClientImpl)(nil)
 
 type ContainerClientImpl struct {
 	inner *corerpv20231001preview.ContainersClient
+	scope string
 }
 
 func (cc *ContainerClientImpl) BeginCreateOrUpdate(ctx context.Context, containerName string, resource corerpv20231001preview.ContainerResource, options *corerpv20231001preview.ContainersClientBeginCreateOrUpdateOptions) (sdkclients.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
-	return cc.inner.BeginCreateOrUpdate(ctx, containerName, resource, options)
+	return cc.inner.BeginCreateOrUpdate(ctx, cc.scope, containerName, resource, options)
 }
 
 func (cc *ContainerClientImpl) BeginDelete(ctx context.Context, containerName string, options *corerpv20231001preview.ContainersClientBeginDeleteOptions) (sdkclients.Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
-	return cc.inner.BeginDelete(ctx, containerName, options)
+	return cc.inner.BeginDelete(ctx, cc.scope, containerName, options)
 }
 
 func (cc *ContainerClientImpl) ContinueCreateOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[corerpv20231001preview.ContainersClientCreateOrUpdateResponse], error) {
-	return cc.inner.BeginCreateOrUpdate(ctx, "", corerpv20231001preview.ContainerResource{}, &corerpv20231001preview.ContainersClientBeginCreateOrUpdateOptions{ResumeToken: resumeToken})
+	return cc.inner.BeginCreateOrUpdate(ctx, cc.scope, "", corerpv20231001preview.ContainerResource{}, &corerpv20231001preview.ContainersClientBeginCreateOrUpdateOptions{ResumeToken: resumeToken})
 }
 
 func (cc *ContainerClientImpl) ContinueDeleteOperation(ctx context.Context, resumeToken string) (sdkclients.Poller[corerpv20231001preview.ContainersClientDeleteResponse], error) {
-	return cc.inner.BeginDelete(ctx, "", &corerpv20231001preview.ContainersClientBeginDeleteOptions{ResumeToken: resumeToken})
+	return cc.inner.BeginDelete(ctx, cc.scope, "", &corerpv20231001preview.ContainersClientBeginDeleteOptions{ResumeToken: resumeToken})
 }
 
 func (cc *ContainerClientImpl) Get(ctx context.Context, containerName string, options *corerpv20231001preview.ContainersClientGetOptions) (corerpv20231001preview.ContainersClientGetResponse, error) {
-	return cc.inner.Get(ctx, containerName, options)
+	return cc.inner.Get(ctx, cc.scope, containerName, options)
 }
 
 var _ EnvironmentClient = (*EnvironmentClientImpl)(nil)
 
 type EnvironmentClientImpl struct {
 	inner *corerpv20231001preview.EnvironmentsClient
+	scope string
 }
 
 func (ec *EnvironmentClientImpl) List(ctx context.Context, options *corerpv20231001preview.EnvironmentsClientListByScopeOptions) (corerpv20231001preview.EnvironmentsClientListByScopeResponse, error) {
 	result := corerpv20231001preview.EnvironmentsClientListByScopeResponse{}
-	pager := ec.inner.NewListByScopePager(options)
+	pager := ec.inner.NewListByScopePager(ec.scope, options)
 	for pager.More() {
 		response, err := pager.NextPage(ctx)
 		if err != nil {

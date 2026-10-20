@@ -23,7 +23,6 @@ import (
 
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/pkg/to"
@@ -54,12 +53,10 @@ func NewRadiusCoreTestClientFactory(rootScope string, envServer func() corerpfak
 	serverFactoryTransport := corerpfake.NewServerFactoryTransport(&serverFactory)
 
 	clientOptions := &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: serverFactoryTransport,
-		},
+		Transport: serverFactoryTransport,
 	}
 
-	clientFactory, err := v20250801preview.NewClientFactory(rootScope, &azfake.TokenCredential{}, clientOptions)
+	clientFactory, err := v20250801preview.NewClientFactory(&azfake.TokenCredential{}, clientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -69,20 +66,18 @@ func NewRadiusCoreTestClientFactory(rootScope string, envServer func() corerpfak
 
 func WithRecipePackServerNoError() corerpfake.RecipePacksServer {
 	return corerpfake.RecipePacksServer{
-		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 			result := v20250801preview.RecipePacksClientGetResponse{
-				RecipePackResource: v20250801preview.RecipePackResource{
-					Name: new(recipePackName),
-					Properties: &v20250801preview.RecipePackProperties{
-						Recipes: map[string]*v20250801preview.RecipeDefinition{
-							"test-recipe1": {
-								RecipeLocation: new("https://example.com/recipe1?ref=v0.1"),
-								RecipeKind:     to.Ptr(v20250801preview.RecipeKindTerraform),
-							},
-							"test-recipe2": {
-								RecipeLocation: new("https://example.com/recipe2?ref=v0.1"),
-								RecipeKind:     to.Ptr(v20250801preview.RecipeKindTerraform),
-							},
+				Name: new(recipePackName),
+				Properties: &v20250801preview.RecipePackProperties{
+					Recipes: map[string]*v20250801preview.RecipeDefinition{
+						"test-recipe1": {
+							Source: new("https://example.com/recipe1?ref=v0.1"),
+							Kind:   to.Ptr(v20250801preview.RecipeKindTerraform),
+						},
+						"test-recipe2": {
+							Source: new("https://example.com/recipe2?ref=v0.1"),
+							Kind:   to.Ptr(v20250801preview.RecipeKindTerraform),
 						},
 					},
 				},
@@ -90,12 +85,10 @@ func WithRecipePackServerNoError() corerpfake.RecipePacksServer {
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
 		},
-		CreateOrUpdate: func(ctx context.Context, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+		CreateOrUpdate: func(ctx context.Context, rootScope string, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
 			result := v20250801preview.RecipePacksClientCreateOrUpdateResponse{
-				RecipePackResource: v20250801preview.RecipePackResource{
-					Name:       to.Ptr(recipePackName),
-					Properties: resource.Properties,
-				},
+				Name:       to.Ptr(recipePackName),
+				Properties: resource.Properties,
 			}
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
@@ -107,6 +100,7 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 	return corerpfake.EnvironmentsServer{
 		CreateOrUpdate: func(
 			ctx context.Context,
+			rootScope string,
 			environmentName string,
 			resource v20250801preview.EnvironmentResource,
 			options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
@@ -119,47 +113,44 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 		},
 		Get: func(
 			ctx context.Context,
+			rootScope string,
 			environmentName string,
 			options *v20250801preview.EnvironmentsClientGetOptions,
 		) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 			result := v20250801preview.EnvironmentsClientGetResponse{
-				EnvironmentResource: v20250801preview.EnvironmentResource{
-					Name: new(environmentName),
-					Properties: &v20250801preview.EnvironmentProperties{
-						Providers: &v20250801preview.Providers{
-							Azure: &v20250801preview.ProvidersAzure{
-								SubscriptionID:    new("test-subscription-id"),
-								ResourceGroupName: new("test-resource-group"),
-							},
-							Aws: &v20250801preview.ProvidersAws{
-								AccountID: new("test-account-id"),
-								Region:    new("test-region"),
-							},
-							Kubernetes: &v20250801preview.ProvidersKubernetes{
-								Namespace: new("test-namespace"),
-							},
+				Name: new(environmentName),
+				Properties: &v20250801preview.EnvironmentProperties{
+					Providers: &v20250801preview.Providers{
+						Azure: &v20250801preview.ProvidersAzure{
+							SubscriptionID:    new("test-subscription-id"),
+							ResourceGroupName: new("test-resource-group"),
 						},
-						RecipePacks: []*string{
-							new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/test-recipe-pack"),
+						Aws: &v20250801preview.ProvidersAws{
+							AccountID: new("test-account-id"),
+							Region:    new("test-region"),
 						},
+						Kubernetes: &v20250801preview.ProvidersKubernetes{
+							Namespace: new("test-namespace"),
+						},
+					},
+					RecipePacks: []*string{
+						new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/test-recipe-pack"),
 					},
 				},
 			}
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
 		},
-		NewListByScopePager: func(options *v20250801preview.EnvironmentsClientListByScopeOptions) (resp azfake.PagerResponder[v20250801preview.EnvironmentsClientListByScopeResponse]) {
+		NewListByScopePager: func(rootScope string, options *v20250801preview.EnvironmentsClientListByScopeOptions) (resp azfake.PagerResponder[v20250801preview.EnvironmentsClientListByScopeResponse]) {
 			resp.AddPage(
 				http.StatusOK,
 				v20250801preview.EnvironmentsClientListByScopeResponse{
-					EnvironmentResourceListResult: v20250801preview.EnvironmentResourceListResult{
-						Value: []*v20250801preview.EnvironmentResource{
-							{
-								Name: new("test-env-1"),
-							},
-							{
-								Name: new("test-env-2"),
-							},
+					Value: []*v20250801preview.EnvironmentResource{
+						{
+							Name: new("test-env-1"),
+						},
+						{
+							Name: new("test-env-2"),
 						},
 					},
 				},
@@ -169,6 +160,7 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 		},
 		Delete: func(
 			ctx context.Context,
+			rootScope string,
 			environmentName string,
 			options *v20250801preview.EnvironmentsClientDeleteOptions,
 		) (resp azfake.Responder[v20250801preview.EnvironmentsClientDeleteResponse], errResp azfake.ErrorResponder) {
@@ -181,39 +173,52 @@ func WithEnvironmentServerNoError() corerpfake.EnvironmentsServer {
 // WithApplicationsServerNoError returns an ApplicationsServer with default success behavior.
 func WithApplicationsServerNoError() corerpfake.ApplicationsServer {
 	return corerpfake.ApplicationsServer{
+		CreateOrUpdate: func(
+			ctx context.Context,
+			rootScope string,
+			applicationName string,
+			resource v20250801preview.ApplicationResource,
+			options *v20250801preview.ApplicationsClientCreateOrUpdateOptions,
+		) (resp azfake.Responder[v20250801preview.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+			result := v20250801preview.ApplicationsClientCreateOrUpdateResponse{
+				Name:       to.Ptr(applicationName),
+				Location:   resource.Location,
+				Properties: resource.Properties,
+			}
+			resp.SetResponse(http.StatusOK, result, nil)
+			return
+		},
 		Get: func(
 			ctx context.Context,
+			rootScope string,
 			applicationName string,
 			options *v20250801preview.ApplicationsClientGetOptions,
 		) (resp azfake.Responder[v20250801preview.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
 			result := v20250801preview.ApplicationsClientGetResponse{
-				ApplicationResource: v20250801preview.ApplicationResource{
-					Name: new(applicationName),
-				},
+				Name: new(applicationName),
 			}
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
 		},
 		Delete: func(
 			ctx context.Context,
+			rootScope string,
 			applicationName string,
 			options *v20250801preview.ApplicationsClientDeleteOptions,
 		) (resp azfake.Responder[v20250801preview.ApplicationsClientDeleteResponse], errResp azfake.ErrorResponder) {
 			resp.SetResponse(http.StatusNoContent, v20250801preview.ApplicationsClientDeleteResponse{}, nil)
 			return
 		},
-		NewListByScopePager: func(options *v20250801preview.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[v20250801preview.ApplicationsClientListByScopeResponse]) {
+		NewListByScopePager: func(rootScope string, options *v20250801preview.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[v20250801preview.ApplicationsClientListByScopeResponse]) {
 			resp.AddPage(
 				http.StatusOK,
 				v20250801preview.ApplicationsClientListByScopeResponse{
-					ApplicationResourceListResult: v20250801preview.ApplicationResourceListResult{
-						Value: []*v20250801preview.ApplicationResource{
-							{
-								Name: new("test-app-1"),
-							},
-							{
-								Name: new("test-app-2"),
-							},
+					Value: []*v20250801preview.ApplicationResource{
+						{
+							Name: new("test-app-1"),
+						},
+						{
+							Name: new("test-app-2"),
 						},
 					},
 				},
@@ -223,14 +228,13 @@ func WithApplicationsServerNoError() corerpfake.ApplicationsServer {
 		},
 		GetGraph: func(
 			ctx context.Context,
+			rootScope string,
 			applicationName string,
-			body any,
+			body v20250801preview.GetGraphRequest,
 			options *v20250801preview.ApplicationsClientGetGraphOptions,
 		) (resp azfake.Responder[v20250801preview.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
 			resp.SetResponse(http.StatusOK, v20250801preview.ApplicationsClientGetGraphResponse{
-				ApplicationGraphResponse: v20250801preview.ApplicationGraphResponse{
-					Resources: []*v20250801preview.ApplicationGraphResource{},
-				},
+				Resources: []*v20250801preview.ApplicationGraphResource{},
 			}, nil)
 			return
 		},
@@ -243,6 +247,7 @@ func WithEnvironmentServer404OnGet() corerpfake.EnvironmentsServer {
 	return corerpfake.EnvironmentsServer{
 		Get: func(
 			ctx context.Context,
+			rootScope string,
 			environmentName string,
 			options *v20250801preview.EnvironmentsClientGetOptions,
 		) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -252,6 +257,7 @@ func WithEnvironmentServer404OnGet() corerpfake.EnvironmentsServer {
 		},
 		CreateOrUpdate: func(
 			ctx context.Context,
+			rootScope string,
 			environmentName string,
 			resource v20250801preview.EnvironmentResource,
 			options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
@@ -271,6 +277,7 @@ func WithEnvironmentServer500OnGet() corerpfake.EnvironmentsServer {
 	return corerpfake.EnvironmentsServer{
 		Get: func(
 			ctx context.Context,
+			rootScope string,
 			environmentName string,
 			options *v20250801preview.EnvironmentsClientGetOptions,
 		) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -287,16 +294,15 @@ func WithEnvironmentServerNoRecipePacks() corerpfake.EnvironmentsServer {
 	return corerpfake.EnvironmentsServer{
 		Get: func(
 			ctx context.Context,
+			rootScope string,
 			environmentName string,
 			options *v20250801preview.EnvironmentsClientGetOptions,
 		) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 			result := v20250801preview.EnvironmentsClientGetResponse{
-				EnvironmentResource: v20250801preview.EnvironmentResource{
-					Name:     to.Ptr(environmentName),
-					Location: to.Ptr("global"),
-					Properties: &v20250801preview.EnvironmentProperties{
-						RecipePacks: []*string{},
-					},
+				Name:     to.Ptr(environmentName),
+				Location: to.Ptr("global"),
+				Properties: &v20250801preview.EnvironmentProperties{
+					RecipePacks: []*string{},
 				},
 			}
 			resp.SetResponse(http.StatusOK, result, nil)
@@ -304,6 +310,7 @@ func WithEnvironmentServerNoRecipePacks() corerpfake.EnvironmentsServer {
 		},
 		CreateOrUpdate: func(
 			ctx context.Context,
+			rootScope string,
 			environmentName string,
 			resource v20250801preview.EnvironmentResource,
 			options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
@@ -324,16 +331,15 @@ func WithEnvironmentServerCustomRecipePacks(recipePacks []*string) func() corerp
 		return corerpfake.EnvironmentsServer{
 			Get: func(
 				ctx context.Context,
+				rootScope string,
 				environmentName string,
 				options *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				result := v20250801preview.EnvironmentsClientGetResponse{
-					EnvironmentResource: v20250801preview.EnvironmentResource{
-						Name:     to.Ptr(environmentName),
-						Location: to.Ptr("global"),
-						Properties: &v20250801preview.EnvironmentProperties{
-							RecipePacks: recipePacks,
-						},
+					Name:     to.Ptr(environmentName),
+					Location: to.Ptr("global"),
+					Properties: &v20250801preview.EnvironmentProperties{
+						RecipePacks: recipePacks,
 					},
 				}
 				resp.SetResponse(http.StatusOK, result, nil)
@@ -341,6 +347,7 @@ func WithEnvironmentServerCustomRecipePacks(recipePacks []*string) func() corerp
 			},
 			CreateOrUpdate: func(
 				ctx context.Context,
+				rootScope string,
 				environmentName string,
 				resource v20250801preview.EnvironmentResource,
 				options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
@@ -370,21 +377,19 @@ func WithRecipePackServerCoreTypes() corerpfake.RecipePacksServer {
 	}
 
 	return corerpfake.RecipePacksServer{
-		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 			resourceType, ok := coreTypes[recipePackName]
 			if !ok {
 				resourceType = "Test.Resource/" + recipePackName
 			}
 			bicepKind := v20250801preview.RecipeKindBicep
 			result := v20250801preview.RecipePacksClientGetResponse{
-				RecipePackResource: v20250801preview.RecipePackResource{
-					Name: to.Ptr(recipePackName),
-					Properties: &v20250801preview.RecipePackProperties{
-						Recipes: map[string]*v20250801preview.RecipeDefinition{
-							resourceType: {
-								RecipeLocation: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
-								RecipeKind:     &bicepKind,
-							},
+				Name: to.Ptr(recipePackName),
+				Properties: &v20250801preview.RecipePackProperties{
+					Recipes: map[string]*v20250801preview.RecipeDefinition{
+						resourceType: {
+							Source: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
+							Kind:   &bicepKind,
 						},
 					},
 				},
@@ -392,12 +397,10 @@ func WithRecipePackServerCoreTypes() corerpfake.RecipePacksServer {
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
 		},
-		CreateOrUpdate: func(ctx context.Context, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+		CreateOrUpdate: func(ctx context.Context, rootScope string, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
 			result := v20250801preview.RecipePacksClientCreateOrUpdateResponse{
-				RecipePackResource: v20250801preview.RecipePackResource{
-					Name:       to.Ptr(recipePackName),
-					Properties: resource.Properties,
-				},
+				Name:       to.Ptr(recipePackName),
+				Properties: resource.Properties,
 			}
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
@@ -409,17 +412,15 @@ func WithRecipePackServerCoreTypes() corerpfake.RecipePacksServer {
 // maps to a unique resource type based on the pack name.
 func WithRecipePackServerUniqueTypes() corerpfake.RecipePacksServer {
 	return corerpfake.RecipePacksServer{
-		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 			bicepKind := v20250801preview.RecipeKindBicep
 			result := v20250801preview.RecipePacksClientGetResponse{
-				RecipePackResource: v20250801preview.RecipePackResource{
-					Name: to.Ptr(recipePackName),
-					Properties: &v20250801preview.RecipePackProperties{
-						Recipes: map[string]*v20250801preview.RecipeDefinition{
-							"Test.Resource/" + recipePackName: {
-								RecipeLocation: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
-								RecipeKind:     &bicepKind,
-							},
+				Name: to.Ptr(recipePackName),
+				Properties: &v20250801preview.RecipePackProperties{
+					Recipes: map[string]*v20250801preview.RecipeDefinition{
+						"Test.Resource/" + recipePackName: {
+							Source: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
+							Kind:   &bicepKind,
 						},
 					},
 				},
@@ -427,12 +428,10 @@ func WithRecipePackServerUniqueTypes() corerpfake.RecipePacksServer {
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
 		},
-		CreateOrUpdate: func(ctx context.Context, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+		CreateOrUpdate: func(ctx context.Context, rootScope string, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
 			result := v20250801preview.RecipePacksClientCreateOrUpdateResponse{
-				RecipePackResource: v20250801preview.RecipePackResource{
-					Name:       to.Ptr(recipePackName),
-					Properties: resource.Properties,
-				},
+				Name:       to.Ptr(recipePackName),
+				Properties: resource.Properties,
 			}
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
@@ -445,17 +444,15 @@ func WithRecipePackServerUniqueTypes() corerpfake.RecipePacksServer {
 // yet and need to be created.
 func WithRecipePackServer404OnGet() corerpfake.RecipePacksServer {
 	return corerpfake.RecipePacksServer{
-		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 			errResp.SetError(fmt.Errorf("recipe pack not found"))
 			errResp.SetResponseError(404, "Not Found")
 			return
 		},
-		CreateOrUpdate: func(ctx context.Context, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+		CreateOrUpdate: func(ctx context.Context, rootScope string, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
 			result := v20250801preview.RecipePacksClientCreateOrUpdateResponse{
-				RecipePackResource: v20250801preview.RecipePackResource{
-					Name:       to.Ptr(recipePackName),
-					Properties: resource.Properties,
-				},
+				Name:       to.Ptr(recipePackName),
+				Properties: resource.Properties,
 			}
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
@@ -467,17 +464,15 @@ func WithRecipePackServer404OnGet() corerpfake.RecipePacksServer {
 // returns the same resource type, simulating a conflict scenario.
 func WithRecipePackServerConflictingTypes() corerpfake.RecipePacksServer {
 	return corerpfake.RecipePacksServer{
-		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 			bicepKind := v20250801preview.RecipeKindBicep
 			result := v20250801preview.RecipePacksClientGetResponse{
-				RecipePackResource: v20250801preview.RecipePackResource{
-					Name: to.Ptr(recipePackName),
-					Properties: &v20250801preview.RecipePackProperties{
-						Recipes: map[string]*v20250801preview.RecipeDefinition{
-							"Radius.Compute/containers": {
-								RecipeLocation: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
-								RecipeKind:     &bicepKind,
-							},
+				Name: to.Ptr(recipePackName),
+				Properties: &v20250801preview.RecipePackProperties{
+					Recipes: map[string]*v20250801preview.RecipeDefinition{
+						"Radius.Compute/containers": {
+							Source: to.Ptr("ghcr.io/test/" + recipePackName + ":latest"),
+							Kind:   &bicepKind,
 						},
 					},
 				},
@@ -485,12 +480,10 @@ func WithRecipePackServerConflictingTypes() corerpfake.RecipePacksServer {
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
 		},
-		CreateOrUpdate: func(ctx context.Context, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+		CreateOrUpdate: func(ctx context.Context, rootScope string, recipePackName string, resource v20250801preview.RecipePackResource, options *v20250801preview.RecipePacksClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
 			result := v20250801preview.RecipePacksClientCreateOrUpdateResponse{
-				RecipePackResource: v20250801preview.RecipePackResource{
-					Name:       to.Ptr(recipePackName),
-					Properties: resource.Properties,
-				},
+				Name:       to.Ptr(recipePackName),
+				Properties: resource.Properties,
 			}
 			resp.SetResponse(http.StatusOK, result, nil)
 			return
@@ -502,7 +495,7 @@ func WithRecipePackServerConflictingTypes() corerpfake.RecipePacksServer {
 // internal server error on Get, simulating a transient or unexpected failure.
 func WithRecipePackServerInternalError() corerpfake.RecipePacksServer {
 	return corerpfake.RecipePacksServer{
-		Get: func(ctx context.Context, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, recipePackName string, options *v20250801preview.RecipePacksClientGetOptions) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 			errResp.SetError(fmt.Errorf("internal server error"))
 			errResp.SetResponseError(500, "InternalServerError")
 			return

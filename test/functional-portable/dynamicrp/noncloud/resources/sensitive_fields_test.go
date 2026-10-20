@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/radius-project/radius/test"
@@ -55,7 +56,7 @@ import (
 func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 	template := "testdata/sensitive-resource.bicep"
 	appName := "udt-sensitive-app"
-	appNamespace := "udt-sensitive-env-udt-sensitive-app"
+	appNamespace := "udt-sensitive-app"
 	resourceTypeName := "Test.Resources/sensitiveResource"
 	resourceName := "udt-sensitive-instance"
 	filepath := "testdata/testresourcetypes.yaml"
@@ -102,16 +103,16 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "udt-sensitive-env",
-						Type: validation.EnvironmentsResource,
-					},
-					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: resourceName,
 						Type: resourceTypeName,
+					},
+					{
+						Name: "udt-sensitive-env",
+						Type: validation.CoreEnvironmentsResource,
 					},
 				},
 			},
@@ -132,16 +133,20 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "udt-sensitive-env",
-						Type: validation.EnvironmentsResource,
-					},
-					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: resourceName,
 						Type: resourceTypeName,
+					},
+					{
+						Name: "udt-sensitive-env",
+						Type: validation.CoreEnvironmentsResource,
+					},
+					{
+						Name: "udt-sensitive-recipe-pack",
+						Type: validation.CoreRecipePacksResource,
 					},
 				},
 			},
@@ -245,4 +250,32 @@ func verifySensitiveFieldRedaction(
 		"K8s Secret should contain the decrypted connectionConfig url")
 	require.Equal(t, expectedConnectionConfigToken, string(k8sSecret.Data["connectionConfigToken"]),
 		"K8s Secret should contain the decrypted connectionConfig token")
+
+	// --- No-leak verification: secret values must not surface through `rad resource show` ---
+	verifySecretsNotExposed(ctx, t, ct, resourceTypeName, resourceName,
+		[]string{expectedPassword, expectedAPIKey, expectedCredentialSecret, expectedConnectionConfigURL, expectedConnectionConfigToken})
+}
+
+// verifySecretsNotExposed asserts that none of the provided secret values are exposed through the
+// developer-facing resource read path: the resource GET response (what `rad resource show` renders).
+// The response is serialized to JSON and checked for the raw secret values, which is a strong,
+// path-agnostic guarantee that secrets do not leak regardless of nesting.
+func verifySecretsNotExposed(
+	ctx context.Context,
+	t *testing.T,
+	ct rp.RPTest,
+	resourceTypeName, resourceName string,
+	secretValues []string,
+) {
+	t.Helper()
+
+	// rad resource show: the serialized GET response must not contain any secret value.
+	resource, err := ct.Options.ManagementClient.GetResource(ctx, resourceTypeName, resourceName)
+	require.NoError(t, err)
+	resourceJSON, err := json.Marshal(resource)
+	require.NoError(t, err)
+	for _, secret := range secretValues {
+		require.NotContains(t, string(resourceJSON), secret,
+			"secret value must not appear in the resource GET response (rad resource show)")
+	}
 }

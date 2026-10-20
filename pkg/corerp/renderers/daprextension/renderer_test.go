@@ -66,9 +66,7 @@ func Test_Render_Success(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	ctnrProperties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
-		},
+		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 		},
@@ -86,7 +84,7 @@ func Test_Render_Success(t *testing.T) {
 	resource := makeResource(ctnrProperties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(t.Context(), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 	require.Empty(t, output.SecretValues)
@@ -106,13 +104,9 @@ func Test_Render_Success(t *testing.T) {
 
 func makeResource(properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
-		BaseResource: apiv1.BaseResource{
-			TrackedResource: apiv1.TrackedResource{
-				ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
-				Name: "test-container",
-				Type: "Applications.Core/containers",
-			},
-		},
+		ID:         "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
+		Name:       "test-container",
+		Type:       "Applications.Core/containers",
 		Properties: properties,
 	}
 	return &resource

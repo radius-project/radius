@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
-    
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,9 +35,58 @@ using OpenAPI;
 
 namespace Radius.Core;
 
-@doc("Radius Application resource")
-model ApplicationResource
-  is TrackedResourceRequired<ApplicationProperties, "applications"> {
+@doc("""
+  The `Radius.Core/applications` Resource Type represents a Radius Application: a logical grouping of the resources that make up a single Application, such as containers, databases, and message queues, along with the connections between them. Radius uses the Application to build the application graph, apply shared configuration, and manage its resources together throughout their lifecycle.
+  
+  ## Defining an Application
+  
+  An Application is always deployed to a Radius Environment, which is supplied through the `environment` property. To define an Application, add a `Radius.Core/applications` resource to your application definition Bicep file.
+  
+  ```bicep
+  extension radius
+  
+  @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+  param environment string
+  
+  resource myApp 'Radius.Core/applications@2025-08-01-preview' = {
+    name: 'my-app'
+    properties: {
+      environment: environment
+    }
+  }
+  ```
+  
+  ## Deploying an Application
+  
+  An Application is deployed with the `rad deploy` command, which deploys the Application together with the resources that belong to it:
+  
+  ```bash
+  rad deploy ./app.bicep
+  ```
+  
+  ## Adding resources to an Application
+  
+  Resources are composed into an Application by setting their `application` property to the Application's ID. For example, to add a Container to this Application, add the following to the application definition Bicep file and set `application: myApp.id`:
+  
+  ```bicep
+  resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
+    name: 'frontend'
+    properties: {
+      environment: environment
+      application: myApp.id
+      containers: {
+        frontend: {
+          image: 'ghcr.io/my-org/frontend:latest'
+        }
+      }
+    }
+  }
+  ```
+  """)
+model ApplicationResource is TrackedResourceRequired<
+  ApplicationProperties,
+  "applications"
+> {
   @doc("The application name")
   @path
   @key("applicationName")
@@ -48,14 +97,14 @@ model ApplicationResource
 
 @doc("Application properties")
 model ApplicationProperties {
-  @doc("The status of the asynchronous operation.")
+  @doc("(Read Only) The status of the Application resource within the Radius control plane. Does not include the other resources that compose the Application.")
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
-  @doc("Fully qualified resource ID for the environment that the application is linked to")
+  @doc("(Required) Fully qualified resource ID of the environment the application is deployed to")
   environment: string;
 
-  @doc("Status of a resource.")
+  @doc("(Read Only) Deployment details for the Application, including any output resources Radius created for it.")
   @visibility(Lifecycle.Read)
   status?: ResourceStatus;
 }
@@ -65,6 +114,18 @@ model ApplicationGraphResponse {
   @doc("The resources in the application graph.")
   @extension("x-ms-identifiers", #["id"])
   resources: Array<ApplicationGraphResource>;
+
+  @doc("Map from iconHash to the verbatim SVG UTF-8 bytes for every icon referenced by any resource in this response. Populated only when the request specifies `includeIcons: true`.")
+  icons?: Record<string>;
+}
+
+@doc("Request body for the getGraph action.")
+model GetGraphRequest {
+  @doc("When true, `ApplicationGraphResponse.icons` is populated with the SVG bytes for every distinct `iconHash` referenced by the response's resources. When false or omitted, only per-resource `iconHash` values are returned.")
+  includeIcons?: boolean;
+
+  @doc("Optional caller-supplied dependency edges, grouped by source resource ID. Each entry maps a source Radius resource ID to the list of outbound Kind: Dependency edges leaving that source. Every entry MUST have direction: Outbound and kind: Dependency; entries that don't are ignored. The server merges these onto the connection-only graph it computes from stored resources: excluded types are dropped, unknown endpoints are dropped, and any pair already present as Kind: Connection wins over the caller-supplied Dependency. Typically populated by `rad app graph -a <name> <app.bicep>` after compiling the Bicep template locally.")
+  dependsOnEdges?: Record<Array<ApplicationGraphConnection>>;
 }
 
 @doc("Describes the connection between two resources.")
@@ -74,6 +135,9 @@ model ApplicationGraphConnection {
 
   @doc("The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and 'Inbound' indicates indicates this connection specifies the ID of the source.")
   direction: Direction;
+
+  @doc("Discriminator identifying the origin of this edge. 'Connection' edges are author-declared entries under properties.connections. 'Dependency' edges are implicit dependencies derived from Bicep's dependsOn list (static graph only in Phase 1). Every emitted edge carries a kind.")
+  kind: ConnectionKind;
 }
 
 @doc("The direction of a connection.")
@@ -83,6 +147,15 @@ enum Direction {
 
   @doc("The resource defining this connection accepts inbound connections from the resource specified by this id.")
   Inbound,
+}
+
+@doc("The origin of a connection: 'Connection' for author-declared entries in properties.connections, 'Dependency' for implicit entries derived from Bicep's dependsOn list.")
+enum ConnectionKind {
+  @doc("The edge was declared by the author in properties.connections.")
+  Connection,
+
+  @doc("The edge was inferred from a Bicep dependsOn entry (implicit dependency). Not emitted by the runtime graph in Phase 1 — runtime dependency extraction is Phase 2.")
+  Dependency,
 }
 
 @doc("Describes a resource in the application graph.")
@@ -106,6 +179,15 @@ model ApplicationGraphResource {
 
   @doc("provisioningState of this resource.")
   provisioningState: string;
+
+  @doc("Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'.")
+  diffHash?: string;
+
+  @doc("SHA-256 hex of the resource type's icon SVG, matching `iconHash` on the resource-type registry. Null when the type has no icon registered. The bytes themselves are delivered inline via `ApplicationGraphResponse.icons` when the request specifies `includeIcons: true`; otherwise clients fetch bytes by hash from the resource-type icon endpoint.")
+  iconHash?: string;
+
+  @doc("Resource-type-specific properties of the resource as returned by its resource provider. The shape of this map varies by `type` (e.g. a `Radius.Compute/containers` resource exposes different keys than `Radius.Datastores/redisCaches` or any user-defined resource type) and matches the `properties` returned by that resource's GET response. Top-level keys already surfaced as first-class fields on this model (`provisioningState`, `connections`) are omitted. The whole `status` object is also omitted because it may contain computed values that include sensitive data (for example, connection strings); the redundant `status.outputResources` list is surfaced via the dedicated `outputResources` field instead. Use `diffHash` rather than a byte-wise compare of this map to detect change.")
+  properties?: Record<unknown>;
 }
 
 @doc("Describes an output resource that comprises an application graph resource.")
@@ -118,6 +200,9 @@ model ApplicationGraphOutputResource {
 
   @doc("The resource name.")
   name: string;
+
+  @doc("A deep link to the underlying resource in its cloud provider's portal (for example, the Azure portal). Empty when no link is available for the resource.")
+  portalUrl?: string;
 }
 
 #suppress "@azure-tools/typespec-azure-core/casing-style"
@@ -155,7 +240,7 @@ interface Applications {
   @action("getGraph")
   getGraph is ArmResourceActionSync<
     ApplicationResource,
-    {},
+    GetGraphRequest,
     ApplicationGraphResponse,
     UCPBaseParameters<ApplicationResource>
   >;

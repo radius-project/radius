@@ -22,6 +22,7 @@ git config --system --add safe.directory "${GIT_SERVER_TEMP_DIR}"
 git config --system --add safe.directory "${GIT_SERVER_TEMP_DIR}/*"
 
 # Render the nginx configuration using the environment exported above.
+# shellcheck disable=SC2016 # envsubst needs the literal ${VAR} names, so single quotes are intentional.
 envsubst '${GIT_SERVER_TEMP_DIR} ${SOCKET_DIR}' </config/nginx.conf.template >/etc/nginx/http.d/git.conf
 
 # Start fcgiwrap (serves /usr/libexec/git-core/git-http-backend) and foreground nginx.

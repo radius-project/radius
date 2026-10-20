@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
-    
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -35,8 +35,10 @@ using OpenAPI;
 namespace Applications.Dapr;
 
 @doc("Dapr StateStore portable resource")
-model DaprStateStoreResource
-  is TrackedResourceRequired<DaprStateStoreProperties, "daprStateStores"> {
+model DaprStateStoreResource is TrackedResourceRequired<
+  DaprStateStoreProperties,
+  "daprStateStores"
+> {
   @doc("StateStore name")
   @key("stateStoreName")
   @path
@@ -62,17 +64,23 @@ interface StateStores {
     UCPBaseParameters<DaprStateStoreResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is ArmResourceCreateOrReplaceAsync<
     DaprStateStoreResource,
     UCPBaseParameters<DaprStateStoreResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   update is ArmResourcePatchAsync<
     DaprStateStoreResource,
     DaprStateStoreProperties,
     UCPBaseParameters<DaprStateStoreResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
+  @Azure.Core.useFinalStateVia("location")
   delete is ArmResourceDeleteWithoutOkAsync<
     DaprStateStoreResource,
     UCPBaseParameters<DaprStateStoreResource>

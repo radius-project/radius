@@ -25,6 +25,7 @@ import (
 type MockgenericResourceClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockgenericResourceClientMockRecorder
+	isgomock struct{}
 }
 
 // MockgenericResourceClientMockRecorder is the mock recorder for MockgenericResourceClient.
@@ -203,6 +204,7 @@ func (c *MockgenericResourceClientNewListByRootScopePagerCall) DoAndReturn(f fun
 type MockapplicationResourceClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockapplicationResourceClientMockRecorder
+	isgomock struct{}
 }
 
 // MockapplicationResourceClientMockRecorder is the mock recorder for MockapplicationResourceClient.
@@ -339,45 +341,6 @@ func (c *MockapplicationResourceClientGetCall) DoAndReturn(f func(context.Contex
 	return c
 }
 
-// GetGraph mocks base method.
-func (m *MockapplicationResourceClient) GetGraph(ctx context.Context, applicationName string, body map[string]any, options *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetGraph", ctx, applicationName, body, options)
-	ret0, _ := ret[0].(v20231001preview.ApplicationsClientGetGraphResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetGraph indicates an expected call of GetGraph.
-func (mr *MockapplicationResourceClientMockRecorder) GetGraph(ctx, applicationName, body, options any) *MockapplicationResourceClientGetGraphCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGraph", reflect.TypeOf((*MockapplicationResourceClient)(nil).GetGraph), ctx, applicationName, body, options)
-	return &MockapplicationResourceClientGetGraphCall{Call: call}
-}
-
-// MockapplicationResourceClientGetGraphCall wrap *gomock.Call
-type MockapplicationResourceClientGetGraphCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockapplicationResourceClientGetGraphCall) Return(arg0 v20231001preview.ApplicationsClientGetGraphResponse, arg1 error) *MockapplicationResourceClientGetGraphCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockapplicationResourceClientGetGraphCall) Do(f func(context.Context, string, map[string]any, *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error)) *MockapplicationResourceClientGetGraphCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockapplicationResourceClientGetGraphCall) DoAndReturn(f func(context.Context, string, map[string]any, *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error)) *MockapplicationResourceClientGetGraphCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // NewListByScopePager mocks base method.
 func (m *MockapplicationResourceClient) NewListByScopePager(options *v20231001preview.ApplicationsClientListByScopeOptions) *runtime.Pager[v20231001preview.ApplicationsClientListByScopeResponse] {
 	m.ctrl.T.Helper()
@@ -420,6 +383,7 @@ func (c *MockapplicationResourceClientNewListByScopePagerCall) DoAndReturn(f fun
 type MockenvironmentResourceClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockenvironmentResourceClientMockRecorder
+	isgomock struct{}
 }
 
 // MockenvironmentResourceClientMockRecorder is the mock recorder for MockenvironmentResourceClient.
@@ -556,45 +520,6 @@ func (c *MockenvironmentResourceClientGetCall) DoAndReturn(f func(context.Contex
 	return c
 }
 
-// GetMetadata mocks base method.
-func (m *MockenvironmentResourceClient) GetMetadata(ctx context.Context, environmentName string, body v20231001preview.RecipeGetMetadata, options *v20231001preview.EnvironmentsClientGetMetadataOptions) (v20231001preview.EnvironmentsClientGetMetadataResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetadata", ctx, environmentName, body, options)
-	ret0, _ := ret[0].(v20231001preview.EnvironmentsClientGetMetadataResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetMetadata indicates an expected call of GetMetadata.
-func (mr *MockenvironmentResourceClientMockRecorder) GetMetadata(ctx, environmentName, body, options any) *MockenvironmentResourceClientGetMetadataCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetadata", reflect.TypeOf((*MockenvironmentResourceClient)(nil).GetMetadata), ctx, environmentName, body, options)
-	return &MockenvironmentResourceClientGetMetadataCall{Call: call}
-}
-
-// MockenvironmentResourceClientGetMetadataCall wrap *gomock.Call
-type MockenvironmentResourceClientGetMetadataCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockenvironmentResourceClientGetMetadataCall) Return(arg0 v20231001preview.EnvironmentsClientGetMetadataResponse, arg1 error) *MockenvironmentResourceClientGetMetadataCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockenvironmentResourceClientGetMetadataCall) Do(f func(context.Context, string, v20231001preview.RecipeGetMetadata, *v20231001preview.EnvironmentsClientGetMetadataOptions) (v20231001preview.EnvironmentsClientGetMetadataResponse, error)) *MockenvironmentResourceClientGetMetadataCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockenvironmentResourceClientGetMetadataCall) DoAndReturn(f func(context.Context, string, v20231001preview.RecipeGetMetadata, *v20231001preview.EnvironmentsClientGetMetadataOptions) (v20231001preview.EnvironmentsClientGetMetadataResponse, error)) *MockenvironmentResourceClientGetMetadataCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // NewListByScopePager mocks base method.
 func (m *MockenvironmentResourceClient) NewListByScopePager(options *v20231001preview.EnvironmentsClientListByScopeOptions) *runtime.Pager[v20231001preview.EnvironmentsClientListByScopeResponse] {
 	m.ctrl.T.Helper()
@@ -637,6 +562,7 @@ func (c *MockenvironmentResourceClientNewListByScopePagerCall) DoAndReturn(f fun
 type MockresourceGroupClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockresourceGroupClientMockRecorder
+	isgomock struct{}
 }
 
 // MockresourceGroupClientMockRecorder is the mock recorder for MockresourceGroupClient.
@@ -815,6 +741,7 @@ func (c *MockresourceGroupClientNewListPagerCall) DoAndReturn(f func(string, *v2
 type MockresourceProviderClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockresourceProviderClientMockRecorder
+	isgomock struct{}
 }
 
 // MockresourceProviderClientMockRecorder is the mock recorder for MockresourceProviderClient.
@@ -1070,6 +997,7 @@ func (c *MockresourceProviderClientNewListProviderSummariesPagerCall) DoAndRetur
 type MockresourceTypeClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockresourceTypeClientMockRecorder
+	isgomock struct{}
 }
 
 // MockresourceTypeClientMockRecorder is the mock recorder for MockresourceTypeClient.
@@ -1171,6 +1099,7 @@ func (c *MockresourceTypeClientBeginDeleteCall) DoAndReturn(f func(context.Conte
 type MockapiVersionClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockapiVersionClientMockRecorder
+	isgomock struct{}
 }
 
 // MockapiVersionClientMockRecorder is the mock recorder for MockapiVersionClient.
@@ -1233,6 +1162,7 @@ func (c *MockapiVersionClientBeginCreateOrUpdateCall) DoAndReturn(f func(context
 type MocklocationClient struct {
 	ctrl     *gomock.Controller
 	recorder *MocklocationClientMockRecorder
+	isgomock struct{}
 }
 
 // MocklocationClientMockRecorder is the mock recorder for MocklocationClient.
@@ -1295,6 +1225,7 @@ func (c *MocklocationClientBeginCreateOrUpdateCall) DoAndReturn(f func(context.C
 type MockrecipePackResourceClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockrecipePackResourceClientMockRecorder
+	isgomock struct{}
 }
 
 // MockrecipePackResourceClientMockRecorder is the mock recorder for MockrecipePackResourceClient.
@@ -1473,6 +1404,7 @@ func (c *MockrecipePackResourceClientNewListByScopePagerCall) DoAndReturn(f func
 type MockradiusCoreEnvironmentResourceClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockradiusCoreEnvironmentResourceClientMockRecorder
+	isgomock struct{}
 }
 
 // MockradiusCoreEnvironmentResourceClientMockRecorder is the mock recorder for MockradiusCoreEnvironmentResourceClient.

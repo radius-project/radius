@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
-    
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +20,7 @@ import "@typespec/openapi";
 import "@azure-tools/typespec-autorest";
 import "@azure-tools/typespec-azure-core";
 import "@azure-tools/typespec-azure-resource-manager";
+import "@azure-tools/typespec-client-generator-core";
 
 import "../radius/v1/ucprootscope.tsp";
 import "../radius/v1/resources.tsp";
@@ -104,6 +105,13 @@ model ResourceTypeProperties {
 
   @doc("Description of the resource type.")
   description?: string;
+
+  @doc("The verbatim SVG file content of the icon associated with the resource type, carried as a UTF-8 string. Set by 'rad resource-type create --icon <path>'.")
+  icon?: string;
+
+  @doc("The SHA-256 hash of the icon's SVG bytes. Computed by the control plane and used to content-address the icon.")
+  @visibility(Lifecycle.Read)
+  iconHash?: string;
 }
 
 @doc("The resource type for defining an API version of a resource type supported by the containing resource provider.")
@@ -188,6 +196,12 @@ model ResourceProviderSummaryResourceType {
 
   @doc("Description of the resource type.")
   description?: string;
+
+  @doc("The verbatim SVG icon content associated with the resource type, carried as a UTF-8 string.")
+  icon?: string;
+
+  @doc("The SHA-256 hash of the icon's SVG bytes, computed by the control plane.")
+  iconHash?: string;
 }
 
 @doc("The configuration of a resource type API version.")
@@ -195,6 +209,33 @@ model ResourceTypeSummaryResultApiVersion {
   @doc("Schema holds the resource type definitions for this API version.")
   schema?: Record<unknown>;
 }
+
+// TCGC (used by the typespec-go emitter) treats any model property or path
+// parameter whose name contains "apiVersion" as the client's API-version
+// parameter and stamps it with a client default value. These are plain data
+// fields and the API-version resource's own name/key (not the operation's
+// api-version query parameter), so opt them out. This is a client-generator
+// hint only and does not affect the OpenAPI (Swagger) output emitted by
+// typespec-autorest. Without the opt-out on ApiVersionResource.name, the
+// emitter would hard-code the {apiVersionName} path segment to the spec's
+// api-version value and drop it from the generated method signature.
+@@Azure.ClientGenerator.Core.apiVersion(
+  ResourceTypeProperties.defaultApiVersion,
+  false
+);
+@@Azure.ClientGenerator.Core.apiVersion(
+  LocationResourceType.apiVersions,
+  false
+);
+@@Azure.ClientGenerator.Core.apiVersion(
+  ResourceProviderSummaryResourceType.apiVersions,
+  false
+);
+@@Azure.ClientGenerator.Core.apiVersion(
+  ResourceProviderSummaryResourceType.defaultApiVersion,
+  false
+);
+@@Azure.ClientGenerator.Core.apiVersion(ApiVersionResource.name, false);
 
 model ResourceProviderBaseParameters<TResource> {
   ...PlaneBaseParameters<RadiusPlaneResource>;
@@ -235,13 +276,17 @@ interface ResourceProviders {
     ResourceProviderBaseParameters<ResourceProviderResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
   @doc("Create or update a resource provider")
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ResourceProviderResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
   @doc("Delete a resource provider")
+  @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     ResourceProviderResource,
     ResourceProviderBaseParameters<ResourceProviderResource>
@@ -262,7 +307,30 @@ interface ResourceProviders {
     @path
     @segment("providers")
     resourceProviderName: ResourceProviderNamespaceString,
+
+    @doc("When true, resource type icon bytes are included in the response. When false or omitted, only the icon hash is returned.")
+    @query
+    includeIcons?: boolean,
   ): ArmResponse<ResourceProviderSummary> | ErrorResponse;
+}
+
+@doc("The response body for fetching a resource type's icon bytes.")
+model ResourceTypeIconResponse {
+  @doc("HTTP status code.")
+  @statusCode
+  statusCode: 200;
+
+  @doc("MIME type of the icon bytes.")
+  @header
+  contentType: "image/svg+xml";
+
+  @doc("Caching hint. Icon bytes are content-addressed by SHA-256 and safe to cache immutably.")
+  @header("cache-control")
+  cacheControl: "public, max-age=31536000, immutable";
+
+  @doc("The verbatim SVG file content stored for the resource type.")
+  @body
+  body: bytes;
 }
 
 @route("/planes")
@@ -280,17 +348,32 @@ interface ResourceTypes {
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
   @doc("Create or update a resource type")
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
   @doc("Delete a resource type")
+  @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
+
+  @doc("Get the icon bytes stored for the specified resource type, addressed by the SHA-256 hash of those bytes. Returns the verbatim SVG file content with Content-Type: image/svg+xml and an immutable Cache-Control. If the hash does not match the stored icon, or the resource type has no icon, returns 404.")
+  @get
+  getIcon(
+    ...ResourceTypeBaseParameters<ResourceTypeResource>,
+
+    @doc("The SHA-256 hash of the icon's SVG bytes, as a lowercase hex string.")
+    @path
+    @segment("icons")
+    hash: string,
+  ): ResourceTypeIconResponse | ErrorResponse;
 }
 
 @route("/planes")
@@ -308,13 +391,17 @@ interface ApiVersions {
     ApiVersionBaseParameters<ApiVersionResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
   @doc("Create or update an API version.")
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     ApiVersionResource,
     ApiVersionBaseParameters<ApiVersionResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
   @doc("Delete an API version.")
+  @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     ApiVersionResource,
     ApiVersionBaseParameters<ApiVersionResource>
@@ -336,13 +423,17 @@ interface Locations {
     LocationBaseParameters<LocationResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
   @doc("Create or update a location. The location resource represents a logical location where the resource provider operates.")
+  @Azure.Core.useFinalStateVia("azure-async-operation")
   createOrUpdate is UcpResourceCreateOrUpdateAsync<
     LocationResource,
     LocationBaseParameters<LocationResource>
   >;
 
+  #suppress "@azure-tools/typespec-azure-core/invalid-final-state" "Preserve the AutoRest final-state-via so the TypeSpec Go emitter restores poller options (radius-project/radius#11425)."
   @doc("Delete a location. The location resource represents a logical location where the resource provider operates.")
+  @Azure.Core.useFinalStateVia("location")
   delete is UcpResourceDeleteAsync<
     LocationResource,
     LocationBaseParameters<LocationResource>

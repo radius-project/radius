@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -17,8 +17,15 @@
 BASE_PACKAGE_NAME := github.com/radius-project/radius
 OUT_DIR := ./dist
 
-GOOS ?= $(shell go env GOOS)
-GOARCH ?= $(shell go env GOARCH)
+ifneq ($(filter undefined,$(origin GOOS) $(origin GOARCH)),)
+GO_PLATFORM := $(shell go env GOOS GOARCH)
+endif
+ifeq ($(origin GOOS),undefined)
+GOOS := $(word 1,$(GO_PLATFORM))
+endif
+ifeq ($(origin GOARCH),undefined)
+GOARCH := $(word 2,$(GO_PLATFORM))
+endif
 GOPATH := $(shell go env GOPATH)
 
 # Set GOBIN environment variable.
@@ -29,13 +36,9 @@ else
 	GOBIN=$(shell go env GOBIN)
 endif
 
-# Check Operating System and set binary extension,
-# and golangci-lint binary name.
+# Check Operating System and set binary extension.
 ifeq ($(GOOS),windows)
    BINARY_EXT = .exe
-   GOLANGCI_LINT:=golangci-lint.exe
-else
-   GOLANGCI_LINT:=golangci-lint
 endif
 
 # Check if DEBUG is set to 1 or not.
@@ -53,7 +56,8 @@ else
 endif
 
 # Linker flags: https://cmake.org/cmake/help/latest/envvar/LDFLAGS.html.
-TERRAFORM_VERSION := $(shell cat .terraform-version)
+# TERRAFORM_VERSION is loaded from the generated tool metadata include before this
+# file is parsed. It can still be overridden, e.g. `make build TERRAFORM_VERSION=1.15.0`.
 LDFLAGS := "-s -w -X $(BASE_PACKAGE_NAME)/pkg/version.channel=$(REL_CHANNEL) -X $(BASE_PACKAGE_NAME)/pkg/version.release=$(REL_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.commit=$(GIT_COMMIT) -X $(BASE_PACKAGE_NAME)/pkg/version.version=$(GIT_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.chartVersion=$(CHART_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/recipes/terraform.terraformVersion=$(TERRAFORM_VERSION)"
 
 # Combination of flags into GOARGS.
@@ -92,7 +96,7 @@ endef
 # $(2): the ARCH
 # $(3): the binary name for the target
 # $(4): the binary main directory
-# 
+#
 # Note: testrp and magpiego have their own modules.
 # That is why we need to change the directory to the binary main directory as we do on line 101.
 # Otherwise we get the following error:
@@ -128,8 +132,8 @@ BINARIES := docgen:./cmd/docgen \
 
 # This function parses binary name and entrypoint from an item in the BINARIES list.
 define parseBinary
-$(eval NAME := $(shell echo $(1) | cut -d: -f1))
-$(eval ENTRYPOINT := $(shell echo $(1) | cut -d: -f2))
+$(eval NAME := $(word 1,$(subst :, ,$(1))))
+$(eval ENTRYPOINT := $(word 2,$(subst :, ,$(1))))
 endef
 
 # Generate build targets for each binary.
@@ -150,13 +154,10 @@ clean: ## Cleans output directory.
 	@echo "$(ARROW) Cleaning all $(OUT_DIR)"
 	rm -rf $(OUT_DIR)
 
-# Due to https://github.com/golangci/golangci-lint/issues/580, we need to add --fix for windows
-.PHONY: lint
-lint: ## Runs golangci-lint
-	$(GOLANGCI_LINT) run --fix --timeout 5m
-
 .PHONY: build-bicep
 build-bicep: build-bicep-$(GOOS)-$(GOARCH)
+
+BICEP_EXTENSION_TAG ?= $(REL_CHANNEL)
 
 # Generate a target for the bicep container
 # Params:
@@ -167,7 +168,8 @@ define generateBicepBuildTarget
 build-bicep-$(1)-$(2):
 	$(eval BINS_OUT_DIR_$(1)_$(2) := $(OUT_DIR)/$(1)_$(2)/$(BUILDTYPE_DIR))
 	@echo "$(ARROW) Building bicep container on $(1)/$(2) to $(BINS_OUT_DIR_$(1)_$(2))/bicep"
-	./build/install-bicep.sh $(REL_CHANNEL) $(BINS_OUT_DIR_$(1)_$(2))/bicep $(2)
+	BICEP_VERSION="$$(BICEP_VERSION)" BICEP_CHECKSUM_LINUX_AMD64="$$(BICEP_CHECKSUM_LINUX_AMD64)" BICEP_CHECKSUM_LINUX_ARM64="$$(BICEP_CHECKSUM_LINUX_ARM64)" BICEP_OS=linux BICEP_ARCH=$(2) bash build/scripts/install-bicep.sh $(BINS_OUT_DIR_$(1)_$(2))/bicep
+	./build/scripts/generate-bicepconfig.sh $(BICEP_EXTENSION_TAG) $(BINS_OUT_DIR_$(1)_$(2))/bicep
 endef
 
 # Generate bicep build targets for each combination of OS and ARCH

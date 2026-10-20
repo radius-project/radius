@@ -5,6 +5,7 @@ templates:
   - ucp/deployment.yaml
   - rp/deployment.yaml
   - dynamic-rp/deployment.yaml
+  - dynamic-rp/buildkit-config.yaml
   - dynamic-rp/secret.yaml
   - dynamic-rp/serviceaccount.yaml
   - de/deployment.yaml
@@ -243,9 +244,53 @@ tests:
     set:
       controller.image: controller
     asserts:
-      - matchRegex:
+      - equal:
           path: spec.template.spec.containers[0].image
-          pattern: ^ghcr\.io/radius-project/controller:.*$
+          value: ghcr.io/radius-project/controller:edge
+        template: controller/deployment.yaml
+
+  - it: should pin final images to the full chart appVersion
+    chart:
+      appVersion: 0.61.0
+      version: 0.61.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/controller:0.61.0
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/applications-rp:0.61.0
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:0.61.0
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:0.61.0
+        template: dashboard/deployment.yaml
+
+  - it: should pin patch images to the full chart appVersion
+    chart:
+      appVersion: 0.61.2
+      version: 0.61.2
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/controller:0.61.2
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/ucpd:0.61.2
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dynamic-rp:0.61.2
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: ghcr.io/radius-project/bicep:0.61.2
         template: controller/deployment.yaml
 
   - it: should work with custom registry and default tag
@@ -253,10 +298,48 @@ tests:
       global.imageRegistry: custom.registry.io
       controller.image: controller
     asserts:
-      - matchRegex:
+      - equal:
           path: spec.template.spec.containers[0].image
-          pattern: ^custom\.registry\.io/controller:.*$
+          value: custom.registry.io/controller:edge
         template: controller/deployment.yaml
+
+  - it: should retain latest for externally published images on edge charts
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:latest
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:latest
+        template: dashboard/deployment.yaml
+
+  - it: should honor explicit edge tags for externally published images
+    set:
+      de.tag: edge
+      dashboard.tag: edge
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:edge
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:edge
+        template: dashboard/deployment.yaml
+
+  - it: should honor a global edge tag for externally published images
+    set:
+      global.imageTag: edge
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:edge
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:edge
+        template: dashboard/deployment.yaml
 
   - it: should apply to all deployments with custom registry
     set:
@@ -455,13 +538,13 @@ tests:
       global.imageRegistry: myregistry.io
       global.imageTag: 0.48
       controller.image: controller
-      controller.tag: 0.49-rc1
+      controller.tag: 0.61.0-rc.1
       ucp.image: ucpd
     asserts:
       # Controller with override should use its specific tag
       - equal:
           path: spec.template.spec.containers[0].image
-          value: myregistry.io/controller:0.49-rc1
+          value: myregistry.io/controller:0.61.0-rc.1
         template: controller/deployment.yaml
       # UCP should use global tag
       - equal:
@@ -481,7 +564,7 @@ tests:
           path: spec.template.spec.initContainers
           content:
             name: append-root-ca
-            image: applications-rp:latest
+            image: applications-rp:edge
             command:
               - sh
               - -c
@@ -525,6 +608,70 @@ tests:
       - equal:
           path: spec.template.spec.initContainers[0].image
           value: alpine:3.23.4
+        template: dynamic-rp/deployment.yaml
+
+  - it: should render append-root-ca init container on dynamic-rp when cert is set and both terraform and buildkit are disabled
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+      global.terraform.enabled: false
+      dynamicrp.buildkit.enabled: false
+      global.appendRootCA.cert: |
+        -----BEGIN CERT-----
+        FAKECERTDATA
+        -----END CERT-----
+    asserts:
+      # initContainers MUST be emitted even though terraform and buildkit
+      # are both off, because the dynamic-rp container mounts ssl-certs
+      # whenever appendRootCA.cert is set. Without this init container,
+      # the runtime mounts an empty emptyDir over /etc/ssl/certs and TLS
+      # breaks. Regression test for the latent bug where append-root-ca
+      # was gated on global.terraform.enabled.
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: append-root-ca
+        template: dynamic-rp/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.initContainers
+          count: 1
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: true
+        template: dynamic-rp/deployment.yaml
+
+  - it: should render append-root-ca before buildkit init containers when both are enabled and terraform is disabled
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+      global.terraform.enabled: false
+      dynamicrp.buildkit.enabled: true
+      global.appendRootCA.cert: |
+        -----BEGIN CERT-----
+        FAKECERTDATA
+        -----END CERT-----
+    asserts:
+      # append-root-ca must run before the BuildKit init containers so the
+      # ssl-certs emptyDir is populated before any container that consumes
+      # the trust store (including buildctl, which talks to registries).
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: append-root-ca
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: buildkit-volumes-init
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[2].name
+          value: buildctl-init
+        template: dynamic-rp/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.initContainers
+          count: 3
         template: dynamic-rp/deployment.yaml
 
   - it: should allow overriding the terraform init image
@@ -676,7 +823,7 @@ tests:
           path: spec.template.spec.initContainers
           content:
             name: append-root-ca
-            image: applications-rp:latest
+            image: applications-rp:edge
             command:
               - sh
               - -c
@@ -729,7 +876,7 @@ tests:
           path: spec.template.spec.initContainers
           content:
             name: append-root-ca
-            image: applications-rp:latest
+            image: applications-rp:edge
             command:
               - sh
               - -c
@@ -848,7 +995,7 @@ tests:
       # Verify valid base64 format (base64-encoded JSON)
       - matchRegex:
           path: data["keys.json"]
-          pattern: '^[A-Za-z0-9+/]+=*$'
+          pattern: "^[A-Za-z0-9+/]+=*$"
         documentIndex: 0
       # Ensure no typos or old field names
       - isNull:
@@ -979,7 +1126,7 @@ tests:
             name: encryption-secret
             secret:
               secretName: radius-encryption-key
-              defaultMode: 256  # 0400 in octal = 256 in decimal (read-only for owner)
+              defaultMode: 256 # 0400 in octal = 256 in decimal (read-only for owner)
 
   - it: should reference exact secret name radius-encryption-key in deployment volume
     set:
@@ -1415,7 +1562,7 @@ tests:
       # Verify it's a valid base64 value (base64-encoded JSON)
       - matchRegex:
           path: data["keys.json"]
-          pattern: '^[A-Za-z0-9+/]+=*$'
+          pattern: "^[A-Za-z0-9+/]+=*$"
         documentIndex: 0
       # The secrets.lookup helper in the template ensures that:
       # - On fresh install: generates new versioned key store with version 1
@@ -1436,10 +1583,76 @@ tests:
       # The key store must be properly encoded (base64-encoded JSON)
       - matchRegex:
           path: data["keys.json"]
-          pattern: '^[A-Za-z0-9+/]+=*$'
+          pattern: "^[A-Za-z0-9+/]+=*$"
         documentIndex: 0
       # BEHAVIOR: secrets.lookup helper checks for existing secret first
       # - If secret exists in cluster: returns existing value (preserves all keys)
       # - If secret missing: generates new versioned key store (version 1)
       # This ensures upgrades never accidentally replace the key store
       # CronJob handles automatic rotation, not Helm upgrades
+
+  # ─────────────────────────────────────────────────────────────────
+  # BuildKit sidecar shape: when opted in via dynamicrp.buildkit.enabled,
+  # the dynamic-rp Pod gains a buildctl-init init container, a buildkitd
+  # container, and the dynamic-rp container has BUILDKIT_HOST wired to
+  # loopback TCP. By default (opt-out) the sidecar is absent.
+  - it: should provision buildkit sidecar when opted in
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+      dynamicrp.buildkit.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: buildctl-init
+          any: true
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers
+          content:
+            name: buildkitd
+          any: true
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: BUILDKIT_HOST
+            value: tcp://127.0.0.1:1234
+        template: dynamic-rp/deployment.yaml
+
+  - it: should omit buildkit sidecar by default
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers
+          content:
+            name: buildkitd
+          any: true
+        template: dynamic-rp/deployment.yaml
+
+  # Regression: buildctl-init must still be rendered when global
+  # terraform pre-download is disabled but buildkit is enabled.
+  # Otherwise the dynamic-rp container has BUILDKIT_HOST wired but
+  # no buildctl on PATH, and recipes silently fail.
+  - it: should render buildctl-init when terraform is disabled but buildkit is enabled
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+      global.terraform.enabled: false
+      dynamicrp.buildkit.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: buildctl-init
+          any: true
+        template: dynamic-rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.initContainers
+          content:
+            name: terraform-init
+          any: true
+        template: dynamic-rp/deployment.yaml

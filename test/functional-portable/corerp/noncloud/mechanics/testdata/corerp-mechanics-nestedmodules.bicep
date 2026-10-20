@@ -4,7 +4,7 @@ extension radius
 param location string = 'global'
 
 @description('Specifies the environment for the resource.')
-param environment string = 'test'
+param environment string
 
 module outerApp 'modules/corerp-mechanics-nestedmodules-outerapp.bicep' = {
   name: 'corerp-mechanics-nestedmodules-outerapp'

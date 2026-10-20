@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/DavidAnson/markdownlint/refs/heads/main/schema/markdownlint-config-schema-strict.json
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
+---
+# Markdownlint YAML configuration
+# Default source: https://github.com/DavidAnson/markdownlint/blob/main/schema/.markdownlint.yaml
+
+# Default state for all rules
+default: true
+
+# Path to configuration file to extend
+# extends: null
+
+# MD004/ul-style - Unordered list style - https://github.com/DavidAnson/markdownlint/blob/main/doc/md004.md
+MD004:
+  style: dash
+
+# MD013/line-length - Line length - https://github.com/DavidAnson/markdownlint/blob/main/doc/md013.md
+MD013: false
+
+# MD024/no-duplicate-heading - Multiple headings with the same content - https://github.com/DavidAnson/markdownlint/blob/main/doc/md024.md
+MD024: false
+
+# MD025/single-title - Single title - https://github.com/DavidAnson/markdownlint/blob/main/doc/md025.md
+MD025:
+  front_matter_title: ""
+
+# MD029/ol-prefix - Ordered list item prefix - https://github.com/DavidAnson/markdownlint/blob/main/doc/md029.md
+MD029:
+  style: one_or_ordered
+
+# MD033/no-inline-html - Inline HTML - https://github.com/DavidAnson/markdownlint/blob/main/doc/md033.md
+MD033:
+  # Allowed elements
+  allowed_elements: [br, pre]
+
+# MD036/no-emphasis-as-heading - Emphasis used instead of a heading -  https://github.com/DavidAnson/markdownlint/blob/main/doc/md036.md
+MD036: false
+
+# MD041/first-line-heading/first-line-h1 - First line in file should be a top level heading - https://github.com/DavidAnson/markdownlint/blob/main/doc/md041.md
+MD041: false
+
+# MD046/code-block-style - Code block style - https://github.com/DavidAnson/markdownlint/blob/main/doc/md046.md
+MD046:
+  # Block style
+  style: fenced

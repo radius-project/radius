@@ -32,6 +32,7 @@ func Test_WorkspaceFormat(t *testing.T) {
 			"kind":    workspaces.KindKubernetes,
 			"context": "test-context",
 		},
+		Scope:       "/planes/radius/local/resourceGroups/test-group",
 		Environment: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/test",
 	}
 
@@ -39,6 +40,6 @@ func Test_WorkspaceFormat(t *testing.T) {
 	err := output.Write(output.FormatTable, obj, buffer, WorkspaceFormat())
 	require.NoError(t, err)
 
-	expected := "WORKSPACE  KIND        KUBECONTEXT   ENVIRONMENT\ntest       kubernetes  test-context  test\n"
+	expected := "WORKSPACE  KIND        KUBECONTEXT   GROUP       ENVIRONMENT\ntest       kubernetes  test-context  test-group  test\n"
 	require.Equal(t, expected, buffer.String())
 }

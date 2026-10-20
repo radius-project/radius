@@ -23,6 +23,40 @@ OS=${1:-"linux"}
 ARCH=${2:-"amd64"}
 FILE=${3:-"rad"}
 EXT=${4:-""}
+MINIMUM_VERSION=${5:-""}
+
+version_is_at_least() {
+    local -r actual="${1#v}"
+    local -r minimum="${2#v}"
+    local -r version_pattern='^[0-9]+\.[0-9]+\.[0-9]+$'
+    local -a actual_parts
+    local -a minimum_parts
+    local index
+
+    if [[ ! "${actual}" =~ ${version_pattern} ]]; then
+        echo "Invalid release version: ${1}" >&2
+        return 2
+    fi
+
+    if [[ ! "${minimum}" =~ ${version_pattern} ]]; then
+        echo "Invalid minimum version: ${2}" >&2
+        return 2
+    fi
+
+    IFS=. read -r -a actual_parts <<< "${actual}"
+    IFS=. read -r -a minimum_parts <<< "${minimum}"
+
+    for index in 0 1 2; do
+        if ((10#${actual_parts[$index]} > 10#${minimum_parts[$index]})); then
+            return 0
+        fi
+        if ((10#${actual_parts[$index]} < 10#${minimum_parts[$index]})); then
+            return 1
+        fi
+    done
+
+    return 0
+}
 
 echo "Starting CLI download test for $OS/$ARCH"
 
@@ -31,25 +65,57 @@ echo "Fetching latest release version from GitHub API..."
 radReleaseUrl="https://api.github.com/repos/radius-project/radius/releases"
 
 # Make API call
-api_response=$(curl -s "$radReleaseUrl")
-curl_exit_code=$?
+# `|| { ... }` rather than a following `$?` check: the script runs under `set -e`, so
+# a failing curl inside the assignment exits immediately and a separate check below it
+# is never reached. -sS keeps curl quiet on success but lets its own error through.
+# -w appends the HTTP status on its own line so the status check below can
+# report API errors before attempting to parse the release version.
+curl_args=(-sS -w '\n%{http_code}')
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    curl_args+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+fi
+api_response=$(curl "${curl_args[@]}" "$radReleaseUrl") || {
+    printf 'GitHub API call to %s failed (curl exit %d)\n' "$radReleaseUrl" "$?" >&2
+    exit 1
+}
+http_status=${api_response##*$'\n'}
+api_response=${api_response%$'\n'*}
 
-if [ $curl_exit_code -ne 0 ]; then
-    echo "GitHub API call failed with exit code: $curl_exit_code"
+if [[ "${http_status}" != "200" ]]; then
+    printf 'GitHub API call to %s failed (HTTP %s):\n%s\n' \
+        "$radReleaseUrl" "$http_status" "$api_response" >&2
     exit 1
 fi
 
 echo "GitHub API call successful"
 
-# Extract version from API response using grep, awk, and sed
-RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p')
+# Extract version from API response using grep, awk, and sed.
+# `|| true` stops a non-matching grep (e.g. an API error response with no
+# "tag_name") from tripping `set -e` here, before the empty-value check below
+# can report a useful error.
+RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p') || true
 
 if [ -z "$RAD_VERSION" ]; then
-    echo "Failed to extract RAD_VERSION from API response"
+    printf 'Failed to extract RAD_VERSION from API response (HTTP %s):\n%s\n' "$http_status" "$api_response" >&2
     exit 1
 fi
 
 echo "Successfully retrieved RAD_VERSION: $RAD_VERSION"
+
+if [[ -n "${MINIMUM_VERSION}" ]]; then
+    if version_is_at_least "${RAD_VERSION}" "${MINIMUM_VERSION}"; then
+        :
+    else
+        compare_status=$?
+        if ((compare_status == 2)); then
+            exit 1
+        fi
+
+        echo "Skipping CLI download test for ${OS}/${ARCH}: latest stable" \
+            "release ${RAD_VERSION} predates ${MINIMUM_VERSION}"
+        exit 0
+    fi
+fi
 
 # Download the CLI binary from GitHub releases
 filename="${FILE}_${OS}_${ARCH}${EXT}"

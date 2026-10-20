@@ -5,6 +5,9 @@ param environment string
 param namespace string = 'default'
 param baseName string = 'dcs-manual'
 
+@description('Deploy the consumer after the test has verified Redis readiness.')
+param deployContainer bool = true
+
 resource app 'Applications.Core/applications@2023-10-01-preview' = {
   name: baseName
   properties: {
@@ -12,7 +15,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource myapp 'Applications.Core/containers@2023-10-01-preview' = {
+resource myapp 'Applications.Core/containers@2023-10-01-preview' = if (deployContainer) {
   name: '${baseName}-ctnr'
   properties: {
     application: app.id

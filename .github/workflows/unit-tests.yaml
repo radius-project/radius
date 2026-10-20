@@ -12,6 +12,11 @@ on:
       - main
       - features/*
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected.
+  merge_group:
+    branches:
+      - main
   # This workflow can run on forks for testing.
   # Uncomment the line below and push to your fork's main branch: (git push <remote fork> HEAD:main)
   # workflow_dispatch:
@@ -19,13 +24,55 @@ on:
 permissions: {}
 
 concurrency:
-  group: ${{ format('{0}-{1}-{2}-{3}-{4}', github.workflow, github.event_name, github.event.pull_request.number || github.event.pull_request_target.number || github.ref, github.base_ref || null, github.head_ref || null) }}
+  group: ${{ format('{0}-{1}-{2}-{3}-{4}', github.workflow, github.event_name, github.event.pull_request.number || github.ref, github.base_ref || null, github.head_ref || null) }}
   cancel-in-progress: true
 
-env:
-  GOTESTSUMVERSION: 1.13.0
-
 jobs:
+  go-mod-download-tests:
+    name: Test Go module download (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    steps:
+      - name: Checkout Radius repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test Go module download retries
+        shell: bash
+        run: bash .github/actions/go-mod-download/test.sh
+
+      - name: Test local registry image pull retries
+        shell: bash
+        run: bash .github/actions/create-local-registry/test.sh
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Create module download fixture
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/go download fixture/nested"
+          printf 'module example.com/root\n\ngo 1.16\n' > "${RUNNER_TEMP}/go download fixture/go.mod"
+          printf 'module example.com/nested\n\ngo 1.16\n' > "${RUNNER_TEMP}/go download fixture/nested/go.mod"
+
+      - name: Exercise Go module download action
+        uses: ./.github/actions/go-mod-download
+        with:
+          working-directory: ${{ runner.temp }}/go download fixture
+          module-directories: |
+            .
+            nested
+
   changes:
     name: Changes
     uses: ./.github/workflows/__changes.yml
@@ -45,22 +92,39 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout Radius repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-          cache: true
+          # Compiles and executes Go code — don't restore a cache a prior run could have poisoned.
+          cache: false
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
+      - name: Test tool metadata and installers
+        run: go test ./internal/tooling ./cmd/tool-updater
 
       - name: Setup Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: .python-version
+
+      # Helm is required because `make test` depends on the `test-helm` target,
+      # which installs the helm-unittest plugin and runs the chart unit tests.
+      - name: Install helm
+        # Version pinned in build/tools.yaml (HELM_VERSION).
+        run: make install-helm
+
+      - name: Run cluster diagnostics tests
+        # Ubuntu provides jq and GNU timeout; keep these optional for make test.
+        run: make test-cluster-diagnostics
 
       - name: Run make test (unit tests)
         env:
@@ -68,7 +132,6 @@ jobs:
           GOTEST_OPTS: -race -coverprofile ./dist/unit_test/ut_coverage.out
         run: |
           mkdir -p ./dist/unit_test
-          go install "gotest.tools/gotestsum@v${GOTESTSUMVERSION}"
           make test
 
       - name: Run make test-validate-cli (CLI integration tests)
@@ -79,7 +142,7 @@ jobs:
           make test-validate-cli
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           # This secret is unavailable for fork PRs; Codecov falls back to tokenless upload.
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -97,3 +160,48 @@ jobs:
           test_group_name: Unit Tests
           artifact_name: unit_test_results
           result_directory: dist/unit_test/
+
+  windows-cli-tests:
+    name: Windows CLI Tests (${{ matrix.arch }})
+    needs: [changes]
+    if: needs.changes.outputs.only_changed != 'true'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: windows-2025
+          - arch: arm64
+            runner: windows-11-arm
+    steps:
+      - name: Checkout Radius repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: false
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
+      - name: Build rad for Windows process tests
+        env:
+          CGO_ENABLED: 0
+          RADIUS_TEST_RAD_BINARY: ${{ runner.temp }}\rad-windowless-test.exe
+        run: go build -o $env:RADIUS_TEST_RAD_BINARY ./cmd/rad
+
+      - name: Run Windows CLI process tests
+        env:
+          CGO_ENABLED: 0
+          RADIUS_TEST_RAD_BINARY: ${{ runner.temp }}\rad-windowless-test.exe
+        run: go test ./pkg/process ./pkg/cli/style ./test/windowless -count=1 -timeout=2m

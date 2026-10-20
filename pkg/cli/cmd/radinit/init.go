@@ -23,12 +23,10 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
-
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -38,19 +36,13 @@ import (
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/spf13/cobra"
 )
 
-// NOTE: this command is very super big so it's broken up amongst a few files.
-
 // NewCommand creates an instance of the command and runner for the `rad init` command.
-//
-
-// This function "NewCommand" creates a new Cobra command with flags and a runner, which can be used to initialize the
-// Radius control-plane.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -59,16 +51,18 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Aliases: []string{"init"},
 		Short:   "Initialize Radius",
 		Long: `
-Interactively install the Radius control-plane and setup an environment.
+Interactively install the Radius control-plane and setup a Radius.Core environment.
 
 If an environment already exists, 'rad init' will prompt the user to use the existing environment or create a new one.
 
-By default, 'rad init' will optimize for a developer-focused environment with an environment named "default" and Recipes that support prototyping, development and testing using lightweight containers. These environments are great for building and testing your application.
+'rad init' writes a bicepconfig.json file to the current directory so that Radius Bicep files can be authored and deployed. An existing bicepconfig.json is never overwritten.
 
-Specifying the '--full' flag will cause 'rad init' to prompt the user for all available configuration options such as Kubernetes context, environment name, and cloud providers. This is useful for fully customizing your environment.
+By default, 'rad init' will optimize for a developer-focused environment with an environment named "default" and a default recipe pack that includes recipes to support prototyping, development and testing in Kubernetes. These environments are great for building and testing your application.
+
+Specifying the '--full' flag will cause 'rad init --full' to prompt the user for all available configuration options such as Kubernetes context, environment name, and cloud providers. This is useful for fully customizing your environment.
 `,
 		Example: `
-## Create a new development environment named "default"
+## Create a new Radius.Core environment named "default" which includes a default recipe pack for prototyping, development, and testing Kubernetes resources.
 rad init
 
 ## Prompt the user for all available options to create a new environment
@@ -100,7 +94,6 @@ rad init --set-file global.rootCA.cert=/path/to/rootCA.crt
 		RunE: framework.RunCommand(runner),
 	}
 
-	// Define your flags here
 	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().Bool("full", false, "Prompt user for all available configuration options")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
@@ -134,8 +127,13 @@ type Runner struct {
 	// Prompter is the interface for the prompter.
 	Prompter prompt.Interface
 
-	// DevRecipeClient is the interface for the dev recipe client.
-	DevRecipeClient DevRecipeClient
+	// RadiusCoreClientFactory is the client factory for Radius.Core resources.
+	// If nil, it will be initialized during Run.
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
+
+	// DefaultScopeClientFactory is the client factory scoped to the default resource group.
+	// The default recipe pack is always created/queried in the default scope.
+	DefaultScopeClientFactory *corerpv20250801.ClientFactory
 
 	// Format is the output format.
 	Format string
@@ -157,10 +155,6 @@ type Runner struct {
 }
 
 // NewRunner creates a new instance of the `rad init` runner.
-//
-
-// NewRunner creates a new Runner struct with the given factory's ConfigHolder, Output, ConnectionFactory, Prompter,
-// ConfigFileInterface, KubernetesInterface, HelmInterface, DevRecipeClient, AWSClient, and AzureClient.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:        factory.GetConfigHolder(),
@@ -170,19 +164,12 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		KubernetesInterface: factory.GetKubernetesInterface(),
 		HelmInterface:       factory.GetHelmInterface(),
-		DevRecipeClient:     NewDevRecipeClient(),
 		awsClient:           factory.GetAWSClient(),
 		azureClient:         factory.GetAzureClient(),
 	}
 }
 
 // Validate runs validation for the `rad init` command.
-// Validates the user prompts, values provided and builds the picture for the backend to execute
-//
-
-// Validate gathers input from the user, creates a workspace and options, and confirms the options with the user before
-// returning the options and workspace. If the user does not confirm the options, the function will loop and gather input again.
-// If an error occurs, the function will return an error.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -221,22 +208,24 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run runs the `rad init` command.
-// Creates Radius resources, azure resources if required based on the user input, command flags
-//
-
-// Run creates a progress channel, installs the radius control plane, creates an environment, configures cloud
-// providers, scaffolds an application, and updates the config file, all while displaying progress updates to the UI.
 func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
 
 	// Use this channel to send progress updates to the UI.
-	progressChan := make(chan common.ProgressMsg)
+	progressChan := make(chan progressMsg)
+	defer close(progressChan)
 	progressCompleteChan := make(chan error)
-	progress := common.ProgressMsg{}
+	progress := progressMsg{}
+
+	// Redirect stdout to the null device while the progress UI owns the terminal so that
+	// stray writes from the installation steps (for example Helm's install logs) cannot
+	// corrupt the rendered output. The UI is given the real stdout explicitly.
+	progressOut, restoreStdout := redirectStdout()
+	defer restoreStdout()
 
 	go func() {
 		// Show dynamic UI.
-		err := r.showProgress(ctx, r.Options, progressChan)
+		err := r.showProgress(ctx, r.Options, progressChan, progressOut)
 		if err != nil {
 			progressCompleteChan <- err
 		}
@@ -270,41 +259,25 @@ func (r *Runner) Run(ctx context.Context) error {
 	progress.EnvironmentComplete = true
 	progressChan <- progress
 
-	if r.Options.Application.Scaffold {
-		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-		if err != nil {
-			return err
-		}
-
-		// Initialize the application resource if it's not found. This supports the scenario where the application
-		// resource is not defined in bicep.
-		err = client.CreateApplicationIfNotFound(ctx, r.Options.Application.Name, &corerp.ApplicationResource{
-			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &corerp.ApplicationProperties{
-				Environment: &r.Workspace.Environment,
-			},
-		})
-		if err != nil {
-			return err
-		}
-
-		// Scaffold application files in the current directory
-		wd, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-
-		err = setup.ScaffoldApplication(wd)
-		if err != nil {
-			return err
-		}
-	}
-	progress.ApplicationComplete = true
-	progressChan <- progress
-
 	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace)
 	if err != nil {
 		return err
+	}
+
+	// Always write bicepconfig.json to the current directory so that Bicep files can be authored and
+	// deployed with Radius. An existing file is never overwritten. This runs after the workspace is
+	// saved so that an unwritable working directory does not prevent the workspace from being configured.
+	bicepConfigDirectory := r.Options.BicepConfigDirectory
+	if bicepConfigDirectory == "" {
+		bicepConfigDirectory, err = os.Getwd()
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to get the current directory.")
+		}
+	}
+
+	err = setup.WriteBicepConfig(bicepConfigDirectory)
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to write bicepconfig.json.")
 	}
 	progress.ConfigComplete = true
 	progressChan <- progress

@@ -17,7 +17,6 @@ limitations under the License.
 package volume
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -33,7 +32,7 @@ func TestRender_NotSupported(t *testing.T) {
 		},
 	}
 
-	_, err := r.Render(context.Background(), vol, renderers.RenderOptions{
+	_, err := r.Render(t.Context(), vol, renderers.RenderOptions{
 		Environment: renderers.EnvironmentOptions{
 			Namespace: "default",
 		},

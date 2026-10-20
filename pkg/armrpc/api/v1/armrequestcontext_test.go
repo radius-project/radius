@@ -17,9 +17,9 @@ limitations under the License.
 package v1
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -53,7 +53,7 @@ func TestFromARMRequest(t *testing.T) {
 
 	for _, tt := range headerTests {
 		t.Run(tt.desc, func(t *testing.T) {
-			req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+			req, err := getTestHTTPRequest(t, "./testdata/armrpcheaders.json")
 			require.NoError(t, err)
 
 			if tt.refererUrl == "" {
@@ -80,8 +80,88 @@ func TestFromARMRequest(t *testing.T) {
 	}
 }
 
+func TestFromARMRequest_PrefersURLWhenRefererResourceDiffers(t *testing.T) {
+	// The Referer header lets Radius recover the original resource path when a request has been
+	// proxied or its URL path was case-normalized, so a well-formed Referer normally points at the
+	// same resource as the request URL (differing only by casing or path base). These cases cover
+	// that reconciliation: a matching Referer keeps the original casing, while a Referer that points
+	// at a different resource is ignored in favor of the request URL.
+	cases := []struct {
+		desc       string
+		method     string
+		urlPath    string
+		referer    string
+		expectedID string
+	}{
+		{
+			desc:       "referer omitted uses url",
+			urlPath:    "/planes/radius/local/resourcegroups/group-a/providers/Applications.Core/environments/env0",
+			referer:    "",
+			expectedID: "/planes/radius/local/resourcegroups/group-a/providers/Applications.Core/environments/env0",
+		},
+		{
+			desc:       "referer for same resource preserves original casing",
+			urlPath:    "/planes/radius/local/resourcegroups/group-a/providers/applications.core/environments/env0",
+			referer:    "http://localhost/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/Env0",
+			expectedID: "/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/Env0",
+		},
+		{
+			desc:       "delete with referer for a different resource uses url",
+			method:     http.MethodDelete,
+			urlPath:    "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+			referer:    "http://localhost/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
+			expectedID: "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+		},
+		{
+			desc:       "malformed referer uses url",
+			urlPath:    "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+			referer:    "://invalid",
+			expectedID: "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+		},
+		{
+			desc:       "referer without resource id uses url",
+			urlPath:    "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+			referer:    "http://localhost",
+			expectedID: "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+		},
+		{
+			desc:       "invalid url does not use referer resource id",
+			urlPath:    "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core//environments/env0",
+			referer:    "http://localhost/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
+			expectedID: "",
+		},
+		{
+			// A proxied request can carry a routing prefix on the URL (e.g. a downstream id) that the
+			// Referer does not. That prefix is a path base, not a different resource, so the Referer is
+			// kept.
+			desc:       "url routing prefix is not treated as a different resource",
+			urlPath:    "/b6b3f382-f600-4bd1-8f4f-ec50c5460b6c/planes/radius/local/resourcegroups/group-a/providers/Applications.Core/environments/env0",
+			referer:    "http://localhost/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
+			expectedID: "/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.desc, func(t *testing.T) {
+			method := tt.method
+			if method == "" {
+				method = http.MethodGet
+			}
+
+			req := httptest.NewRequest(method, tt.urlPath, nil)
+			if tt.referer != "" {
+				req.Header.Set(RefererHeader, tt.referer)
+			}
+
+			serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedID, serviceCtx.ResourceID.String())
+		})
+	}
+}
+
 func TestSystemData(t *testing.T) {
-	req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+	req, err := getTestHTTPRequest(t, "./testdata/armrpcheaders.json")
 	require.NoError(t, err)
 	serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
 	require.NoError(t, err)
@@ -98,11 +178,11 @@ func TestSystemData(t *testing.T) {
 
 func TestFromContext(t *testing.T) {
 	t.Run("ARMRequestContext is injected", func(t *testing.T) {
-		req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+		req, err := getTestHTTPRequest(t, "./testdata/armrpcheaders.json")
 		require.NoError(t, err)
 		serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
 		require.NoError(t, err)
-		ctx := context.Background()
+		ctx := t.Context()
 		newCtx := WithARMRequestContext(ctx, serviceCtx)
 
 		sCtx := ARMRequestContextFromContext(newCtx)
@@ -112,7 +192,7 @@ func TestFromContext(t *testing.T) {
 
 	t.Run("ARMRequestContext is not injected", func(t *testing.T) {
 		require.Panics(t, func() {
-			ARMRequestContextFromContext(context.Background())
+			ARMRequestContextFromContext(t.Context())
 		})
 	})
 }
@@ -133,7 +213,7 @@ func TestTopQueryParam(t *testing.T) {
 
 	for _, tt := range topQueryParamCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+			req, err := getTestHTTPRequest(t, "./testdata/armrpcheaders.json")
 
 			q := req.URL.Query()
 			q.Add(tt.qpKey, tt.qpValue)
@@ -154,7 +234,7 @@ func TestTopQueryParam(t *testing.T) {
 	}
 }
 
-func getTestHTTPRequest(headerFile string) (*http.Request, error) {
+func getTestHTTPRequest(t *testing.T, headerFile string) (*http.Request, error) {
 	jsonData, err := os.ReadFile(headerFile)
 	if err != nil {
 		return nil, err
@@ -165,7 +245,7 @@ func getTestHTTPRequest(headerFile string) (*http.Request, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
 	if err != nil {
 		return nil, err
 	}

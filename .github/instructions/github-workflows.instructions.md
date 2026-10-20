@@ -39,7 +39,7 @@ These principles are specific to the Radius project and must be applied when cre
   ```yaml
   - name: Publish UDT types
     run: |
-      mkdir ./bin
+      mkdir -p ./bin
       cp ./dist/linux_amd64/release/rad ./bin/rad
       chmod +x ./bin/rad
       export PATH=$GITHUB_WORKSPACE/bin:$PATH

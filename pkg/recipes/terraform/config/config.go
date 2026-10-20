@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"slices"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
@@ -114,7 +115,10 @@ func (cfg *TerraformConfig) AddProviders(ctx context.Context, requiredProviders 
 		return err
 	}
 
-	// Add generated provider configs for required providers to the existing terraform json config file
+	// Add generated provider configs for required providers to the existing terraform json config file.
+	// Always replace the existing value so that the placeholders from AddProviderAliasPlaceholders
+	// do not stay in the configuration that Terraform applies.
+	cfg.Provider = nil
 	if len(providerConfigs) > 0 {
 		cfg.Provider = providerConfigs
 	}
@@ -173,14 +177,80 @@ func (cfg *TerraformConfig) updateModuleWithProviderAliases(requiredProviders ma
 	}
 
 	// Update the module provider configuration in the Terraform config.
-	if len(moduleAliasConfig) > 0 {
-		moduleConfig := cfg.Module
-		for _, module := range moduleConfig {
-			module["providers"] = moduleAliasConfig
+	// Remove a providers map from an earlier step (for example, a placeholder) when no alias matches.
+	for _, module := range cfg.Module {
+		if len(moduleAliasConfig) > 0 {
+			module[moduleProvidersKey] = moduleAliasConfig
+		} else {
+			delete(module, moduleProvidersKey)
 		}
 	}
 
 	return nil
+}
+
+// AddProviderAliasPlaceholders adds a placeholder provider block and a module providers map entry for each
+// aliased provider in the environment recipe configuration that the module declares in configuration_aliases.
+// A placeholder contains only the alias. It returns true if at least one placeholder is added.
+//
+// Terraform validates the configuration_aliases of a module when it downloads the module (terraform get).
+// Radius cannot generate the full provider configuration in AddProviders until it inspects the downloaded module.
+// So when the first download fails, Radius inspects the module and uses these placeholders to download it again.
+// requiredProviders comes from that inspection. Aliases that the module does not declare are not added, so that
+// provider configurations inside the module are not overridden.
+//
+// A placeholder without a source uses the "hashicorp" namespace. The required_providers entry with the source
+// from the module prevents a provider type mismatch for providers from other namespaces.
+// AddProviders replaces the placeholders. Save() must be called to persist the config.
+func (cfg *TerraformConfig) AddProviderAliasPlaceholders(envConfig *recipes.Configuration, requiredProviders map[string]*RequiredProviderInfo) bool {
+	if envConfig == nil {
+		return false
+	}
+
+	placeholders := map[string][]map[string]any{}
+	moduleAliasConfig := map[string]string{}
+	requiredProviderSources := map[string]*RequiredProviderInfo{}
+	for providerName, providerConfigs := range envConfig.RecipeConfig.Terraform.Providers {
+		requiredProvider := requiredProviders[providerName]
+		if requiredProvider == nil {
+			continue
+		}
+
+		for _, providerConfig := range providerConfigs {
+			alias, ok := providerConfig.AdditionalProperties["alias"]
+			if !ok {
+				continue
+			}
+
+			aliasProviderConfig := providerName + "." + fmt.Sprintf("%v", alias)
+			if _, exists := moduleAliasConfig[aliasProviderConfig]; exists || !slices.Contains(requiredProvider.ConfigurationAliases, aliasProviderConfig) {
+				continue
+			}
+
+			moduleAliasConfig[aliasProviderConfig] = aliasProviderConfig
+			placeholders[providerName] = append(placeholders[providerName], map[string]any{"alias": fmt.Sprintf("%v", alias)})
+			if requiredProvider.Source != "" {
+				requiredProviderSources[providerName] = &RequiredProviderInfo{Source: requiredProvider.Source}
+			}
+		}
+	}
+
+	if len(moduleAliasConfig) == 0 {
+		return false
+	}
+
+	cfg.Provider = placeholders
+	if len(requiredProviderSources) > 0 {
+		if cfg.Terraform == nil {
+			cfg.Terraform = &TerraformDefinition{}
+		}
+		cfg.Terraform.RequiredProviders = requiredProviderSources
+	}
+	for _, module := range cfg.Module {
+		module[moduleProvidersKey] = moduleAliasConfig
+	}
+
+	return true
 }
 
 // AddRecipeContext adds RecipeContext to TerraformConfig module parameters if recipeCtx is not nil.
@@ -263,8 +333,7 @@ func getProviderConfigs(ctx context.Context, requiredProviders map[string]*Requi
 
 // AddTerraformBackend adds backend configurations to store Terraform state file for the deployment.
 // Save() must be called to save the generated backend config.
-// Currently, the supported backend for Terraform Recipes is Kubernetes secret. https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
-func (cfg *TerraformConfig) AddTerraformBackend(resourceRecipe *recipes.ResourceMetadata, backend backends.Backend) (map[string]any, error) {
+func (cfg *TerraformConfig) AddTerraformBackend(resourceRecipe *recipes.ResourceMetadata, backend backends.Builder) (map[string]any, error) {
 	backendConfig, err := backend.BuildBackend(resourceRecipe)
 	if err != nil {
 		return nil, err
@@ -292,6 +361,80 @@ func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
 			"value":     "${module." + localModuleName + "." + recipes.ResultPropertyName + "}",
 			"sensitive": true, // since secret and non-secret values are combined in the result, mark the entire output sensitive
 		},
+	}
+
+	return nil
+}
+
+// AddMappedOutputs generates an output block for each module output referenced by the outputs
+// mapping. Explicit mappings take precedence when a module also produces a wrapped "result" output.
+//
+// Each generated output is marked sensitive according to the module's own output declaration
+// (sensitivity), because Terraform requires a re-exported sensitive value to be marked sensitive.
+// Preserving the per-output sensitivity keeps the Values/Secrets split intact when the state is read back.
+// When forceSensitive is true, every generated output is marked sensitive regardless of the module's own
+// declaration; this is used for secret-output mappings so a module output that the module did not itself
+// mark sensitive (for example an AVM `primaryConnectionString`) is still redacted in Terraform's
+// stdout/stderr (which Radius streams into logs).
+// This function only updates config in memory, Save() must be called to persist the updated config.
+func (cfg *TerraformConfig) AddMappedOutputs(localModuleName string, outputsMap map[string]string, sensitivity map[string]bool, forceSensitive bool) error {
+	if localModuleName == "" {
+		return errors.New("module name cannot be empty")
+	}
+	if len(outputsMap) == 0 {
+		return nil
+	}
+
+	// Validate before mutating cfg.Output so a bad mapping does not leave behind partial output
+	// blocks. An empty module output name would otherwise generate an invalid Terraform output keyed
+	// by "" with a malformed "${module.<name>.}" reference.
+	for propertyName, moduleOutputName := range outputsMap {
+		if moduleOutputName == "" {
+			return fmt.Errorf("invalid outputs mapping: module output name for property %q cannot be empty", propertyName)
+		}
+	}
+
+	if cfg.Output == nil {
+		cfg.Output = make(map[string]any, len(outputsMap))
+	}
+	// Multiple resource properties may map to the same module output; keying the generated
+	// output block by the module output name naturally de-duplicates those references.
+	for _, moduleOutputName := range outputsMap {
+		cfg.Output[moduleOutputName] = map[string]any{
+			"value":     "${module." + localModuleName + "." + moduleOutputName + "}",
+			"sensitive": forceSensitive || sensitivity[moduleOutputName],
+		}
+	}
+
+	return nil
+}
+
+// AddAllOutputs generates an output block for every module output. This is used for direct
+// modules that neither produce a wrapped "result" output nor declare an outputs mapping, so
+// that all module outputs are re-exported as root outputs and pass through unchanged. Terraform
+// does not expose child module outputs as root outputs unless they are explicitly re-declared,
+// so without this the passthrough behavior in prepareRecipeResponse would have no outputs to read.
+//
+// Each generated output is marked sensitive according to the module's own output declaration,
+// because Terraform requires a re-exported sensitive value to be marked sensitive. The sensitivity
+// map is keyed by module output name and contains every output the module declares.
+// This function only updates config in memory, Save() must be called to persist the updated config.
+func (cfg *TerraformConfig) AddAllOutputs(localModuleName string, sensitivity map[string]bool) error {
+	if localModuleName == "" {
+		return errors.New("module name cannot be empty")
+	}
+	if len(sensitivity) == 0 {
+		return nil
+	}
+
+	if cfg.Output == nil {
+		cfg.Output = make(map[string]any, len(sensitivity))
+	}
+	for outputName, sensitive := range sensitivity {
+		cfg.Output[outputName] = map[string]any{
+			"value":     "${module." + localModuleName + "." + outputName + "}",
+			"sensitive": sensitive,
+		}
 	}
 
 	return nil

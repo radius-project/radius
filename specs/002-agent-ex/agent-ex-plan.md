@@ -13,7 +13,7 @@ The plan, in order:
 
 1. [**Phase 0 — Meta-tooling**](#phase-0--meta-tooling-foundation). Build the factory first: templates, naming conventions, authoring skills, an "add a capability" agent mode, docs-drift code-review instructions.
 2. [**Phase 1 — `AGENTS.md`**](#phase-1--single-entry-point-for-every-agent). One entry point per repo. `.github/copilot-instructions.md` is a symlink to it.
-3. [**Phase 2 — Cloud Agent bootstrap**](#phase-2--cloud-agent-bootstrap). `copilot-setup-steps.yml` + shared dev-container post-create script.
+3. [**Phase 2 — Cloud Agent bootstrap**](#phase-2--cloud-agent-bootstrap). `copilot-setup-steps.yml`, following the existing GitHub workflows pattern.
 4. [**Phase 3 — Contributing docs**](#phase-3--contributing-docs) · [**Phase 4 — Architecture docs**](#phase-4--architecture-docs-grounded-in-code) · [**Phase 5 — Coding instructions**](#phase-5--coding-instructions-project-specific-only). Run in parallel. Audit, fill gaps, trim to project-specific only.
 5. [**Phase 6 — Per-workflow conveniences**](#phase-6--per-workflow-copilot-conveniences). Skills, prompts, custom agents — only where justified.
 6. [**Phase 7 — Continuous improvement**](#phase-7--continuous-improvement-loop). Weekly log-signal analysis + weekly docs-drift review.
@@ -77,7 +77,7 @@ Concretely:
 - **`.github/skills/*/SKILL.md`** wrap multi-step Radius-specific workflows (≤ 500 lines each). Every skill MUST link to a contributing doc that contains the same steps in prose.
 - **`.github/prompts/*.prompt.md`** are slash-command shortcuts (VS Code only). Every prompt MUST be reproducible by a non-VS-Code agent that reads the same backing doc.
 - **`.github/agents/*.agent.md`** are custom agents — read by the Copilot agent surfaces (VS Code, Cloud Agent, CLI) per [GitHub's Custom Agents docs](https://docs.github.com/en/copilot/concepts/agents/cloud-agent/about-custom-agents). Claude Code reads its own equivalents at `.claude/agents/`. Body is backed by a doc per the same rule as skills.
-- **`copilot-setup-steps.yml`** mirrors the dev container post-create script so the Cloud Agent gets the same environment.
+- **`copilot-setup-steps.yml`** provisions the Cloud Agent's environment following the existing GitHub workflows pattern (not the dev container). See the [Phase 2 note on environment-setup duplication](#phase-2--cloud-agent-bootstrap).
 
 ---
 
@@ -102,16 +102,16 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
   - `authoring-contributing-docs.md` — standard format for contributing docs (Purpose → Prerequisites → Steps → Verification → Troubleshooting) and architecture docs (Entry points → Packages → Flow → Change-safety), with one annotated example of each.
   - `extending-agent-ex.md` — the "add a new capability" decision tree (doc only? instruction? skill? prompt? custom agent?), the live files to update (the primary contributing doc, the capability index in `docs/contributing/README.md`, `AGENTS.md` if a new top-level link is needed, and any optional wrappers), validation steps, and a repo-onboarding checklist. The planning docs `agent-ex-features.md` and `agent-ex-plan.md` are not in this list — they describe the original buildout and are not edited by ongoing capability work.
 - **Skills and a custom agent** that automate the above (Copilot agent surfaces — VS Code, Cloud Agent, CLI; the docs above let any other tool do the same thing manually):
-  - `radius-author-doc` skill — given a topic and a starting code reference, drafts a contributing or architecture doc using the template.
+  - `radius-author-doc` skill — given a topic and a starting code reference, drafts a contributing doc using the template (for architecture docs, use `radius-architecture-documenter`).
   - `radius-update-doc` skill — given a PR diff and an affected doc, proposes a targeted patch. Invoked manually by contributors and by the code-review instructions below.
-  - `radius-add-capability` agent mode — walks a contributor through `docs/contributing/extending-agent-ex.md`: choosing the right asset type, authoring or extending the primary contributing doc, scaffolding any optional wrappers, and updating the capability index and `AGENTS.md`.
-  - `/radius-author-doc` and `/radius-add-capability` prompts as VS Code shortcuts.
+  - `radius-add-ai-capability` agent mode — walks a contributor through `docs/contributing/extending-agent-ex.md`: choosing the right asset type for an Agent Ex AI capability, authoring or extending the primary contributing doc, scaffolding any optional wrappers, and updating the capability index and `AGENTS.md`.
+  - `/radius.author-doc` and `/radius.add-ai-capability` prompts as VS Code shortcuts.
 - **Docs-drift code-review instructions**: extend `.github/instructions/code-review.instructions.md` (and replicate to satellites in Phase 5) with a doc-impact assessment step. The reviewer (Copilot Code Review on GitHub.com, plus any agent surface running a review) inspects the PR diff and, when changes touch code paths whose behavior is documented in `CONTRIBUTING.md`, `docs/contributing/`, or `docs/architecture/`, suggests the specific doc(s) that likely need updating and what to change. Backed by a per-repo path map (`<code-glob>` ↔ `<doc-path>`) checked into `docs/contributing/contributing-agent-assets.md` so the suggestion is concrete rather than vague. Land the map empty; it grows as Phase 3 fills out the docs. This is advisory, not a blocking gate — drift detection at scale is handled by the Phase 7 lifecycle workflow.
 
 **Verification**:
 
 - Deterministic: every template and convention doc exists and renders. The code-review instructions reference the path map and the `radius-update-doc` skill.
-- Prompt: invoke `/radius-author-doc` with a known topic; the produced draft matches the template (correct headings, links to a real code reference, no hallucinated paths). Invoke `@radius-add-capability` with a fake new capability; the agent produces a coherent set of edits that pass the [Section 6 CI gates](#6-ci-gates-deterministic-run-on-every-pr) without manual cleanup. Open a synthetic PR that changes a mapped code path without touching the mapped doc; Copilot Code Review (or an agent following the same instructions) flags the missing doc update and proposes a concrete patch.
+- Prompt: invoke `/radius.author-doc` with a known topic; the produced draft matches the template (correct headings, links to a real code reference, no hallucinated paths). Invoke `@radius-add-ai-capability` with a fake new AI capability; the agent produces a coherent set of edits that pass the [Section 6 CI gates](#6-ci-gates-deterministic-run-on-every-pr) without manual cleanup. Open a synthetic PR that changes a mapped code path without touching the mapped doc; Copilot Code Review (or an agent following the same instructions) flags the missing doc update and proposes a concrete patch.
 
 ---
 
@@ -144,16 +144,15 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
 
 **Unlocks**: Assigning an issue to Copilot Cloud Agent results in a working environment without trial-and-error tool installation. Independent of Phase 1; can run in parallel.
 
+**Note on environment-setup duplication**: Development-environment setup logic is duplicated and overlapping across three places today — the dev container, the GitHub workflows, and the Makefiles. Reconciling these into a single source of truth is needed work, but it is **out of scope** for this plan. To avoid coupling Cloud Agent bootstrap to that larger cleanup, Phase 2 follows the existing pattern established in the GitHub workflows rather than integrating with the dev container.
+
 **Deliverables (per repo)**:
 
-- Pin tool versions in version files (`.node-version`, `.python-version`, `go.mod` already has Go). These become the single source of truth for both the dev container and the Cloud Agent.
-- Make `.devcontainer/post-create.sh` (or equivalent) idempotent and safe to run on a GHA runner.
-- Add `.github/copilot-setup-steps.yml` per repo. Each one uses the same `setup-go`/`setup-node`/`setup-python` actions that read the version files, then calls the shared post-create script.
-- Cross-reference comments between `devcontainer.json` and `copilot-setup-steps.yml` so a change in one prompts a check of the other.
+- Add `.github/workflows/copilot-setup-steps.yml` per repo, following the existing GitHub workflows pattern. Each one uses the same `setup-go`/`setup-node`/`setup-python` actions and version pinning the workflows already use to provision tools.
 
 **Verification**:
 
-- Deterministic: `copilot-setup-steps.yml` validates against `actionlint`. CI runs the post-create script in an Ubuntu container and succeeds.
+- Deterministic: `copilot-setup-steps.yml` validates against `actionlint`. CI runs the setup steps in an Ubuntu container and succeeds.
 - Prompt: assign a "build and run unit tests" test issue to Cloud Agent in each repo. Agent succeeds without manual intervention.
 
 ---
@@ -196,7 +195,7 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
   - Key packages and their responsibilities
   - One representative end-to-end flow (sequence diagram in Mermaid)
   - Change-safety notes (what tests to run, what other components are affected)
-- `docs/architecture/README.md` is a current index used by both humans and the `architecture-documenter` skill.
+- `docs/architecture/README.md` is a current index used by both humans and the `radius-architecture-documenter` skill.
 - Add a CI check that the index lists every `*.md` file in the directory.
 
 **Verification**:
@@ -238,7 +237,7 @@ All five repos in scope (`radius/`, `dashboard/`, `docs/`, `resource-types-contr
 **Deliverables**:
 
 - `radius/`:
-  - Update `radius-build-cli`, `radius-build-images`, `radius-install-custom`, `architecture-documenter`, `contributing-docs-updater` for accuracy and doc links.
+  - Update `radius-build-cli`, `radius-build-images`, `radius-install-custom`, `radius-architecture-documenter`, `radius-contributing-docs-updater` for accuracy and doc links.
   - Add `radius-schema-changes` (TypeSpec → Swagger → Go).
   - Add `radius-run-controlplane` and `radius-debug-components` if the Phase 3 audit confirms the docs alone aren't sufficient.
 - `resource-types-contrib/`:
@@ -314,7 +313,7 @@ Skills and agents use a `radius-` prefix; prompts use a `radius.` prefix (matchi
 | Prompt | `radius.<action>.prompt.md` (add `<repo>` segment when ambiguous across repos) | `radius.create-pr.prompt.md`, `radius.contrib.add-recipe.prompt.md` | `/radius.create-pr`, `/radius.contrib.add-recipe` |
 | Lifecycle workflow | `skill-lifecycle-review.yml` | `.github/workflows/skill-lifecycle-review.yml` | scheduled |
 
-The `<repo>` segment is optional. Add it only when a skill or prompt is repo-specific and would otherwise collide with a similarly named asset in another repo (e.g., `radius-contrib-add-resource-type` lives in `resource-types-contrib/` and disambiguates from any future `radius-add-resource-type` work in `radius/`). Existing skills (`radius-build-cli`, `radius-build-images`, `radius-install-custom`, `architecture-documenter`, `contributing-docs-updater`) and prompts (`radius.create-pr`, `radius.code-review`) keep their current names; no rename migration is planned.
+The `<repo>` segment is optional. Add it only when a skill or prompt is repo-specific and would otherwise collide with a similarly named asset in another repo (e.g., `radius-contrib-add-resource-type` lives in `resource-types-contrib/` and disambiguates from any future `radius-add-resource-type` work in `radius/`). Existing skills (`radius-build-cli`, `radius-build-images`, `radius-install-custom`) and prompts (`radius.create-pr`, `radius.code-review`) keep their current names; no rename migration is planned.
 
 Repo short names (used when the `<repo>` segment is needed): `core` (radius/), `dash` (dashboard/), `contrib` (resource-types-contrib/), `docs` (docs/), `bicep-aws` (bicep-types-aws/).
 
@@ -347,7 +346,7 @@ These docs are the home of all meta-tooling. They are created in **Phase 0** so 
   - Naming conventions from [Section 5](#5-naming-conventions).
   - Templates for `AGENTS.md`, instructions, skills, prompts, and agents.
 - **`docs/contributing/authoring-contributing-docs.md`** — how to write a new contributing or architecture doc, the standard formats, and how to invoke the `radius-author-doc` skill or follow the same steps manually.
-- **`docs/contributing/extending-agent-ex.md`** — the "add a new capability" walkthrough. Lists the decision tree (doc only? instruction? skill? prompt? custom agent?), the live files to update (the primary contributing doc, the capability index in `docs/contributing/README.md`, `AGENTS.md` if a new top-level link is needed, and any optional wrappers), and the validation steps. Read by both humans and the `radius-add-capability` agent mode. The planning docs `agent-ex-features.md` and `agent-ex-plan.md` are not in this list — they describe the original buildout and are not edited by ongoing capability work.
+- **`docs/contributing/extending-agent-ex.md`** — the "add a new capability" walkthrough. Lists the decision tree (doc only? instruction? skill? prompt? custom agent?), the live files to update (the primary contributing doc, the capability index in `docs/contributing/README.md`, `AGENTS.md` if a new top-level link is needed, and any optional wrappers), and the validation steps. Read by both humans and the `radius-add-ai-capability` agent mode. The planning docs `agent-ex-features.md` and `agent-ex-plan.md` are not in this list — they describe the original buildout and are not edited by ongoing capability work.
 - **Repo-onboarding checklist** appended to `extending-agent-ex.md` — the minimum set of artifacts a new repo needs (an `AGENTS.md` from the template, `copilot-setup-steps.yml`, dev-container post-create script, `docs/contributing/README.md` with a docs index and a capability index for the capabilities the repo owns, and the docs-drift addition to `code-review.instructions.md`) to be in scope of the agent-ex system.
 
 These docs together are the single source of truth for extending the system. They replace tribal knowledge and they let any contributor (human or AI) add a capability without reverse-engineering existing files.

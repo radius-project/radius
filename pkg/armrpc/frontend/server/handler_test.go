@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -32,9 +33,9 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -90,7 +91,7 @@ func Test_RegisterHandler_DeplicatedRoutes(t *testing.T) {
 		Middlewares:       chi.Middlewares{middleware.NormalizePath},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	err := RegisterHandler(ctx, opts, ctrlOpts)
 	require.NoError(t, err)
@@ -176,7 +177,7 @@ func Test_RegisterHandler(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := testcontext.New(t)
+			ctx := t.Context()
 
 			err := RegisterHandler(ctx, tc.opts, ctrlOpts)
 			if tc.err != nil {
@@ -209,7 +210,7 @@ func Test_HandlerErrModelConversion(t *testing.T) {
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
 	err := &v1.ErrModelConversion{PropertyName: "namespace", ValidValue: "63 characters or less"}
-	HandleError(context.Background(), responseWriter, req, err)
+	HandleError(t.Context(), responseWriter, req, err)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
@@ -231,7 +232,7 @@ func Test_HandlerErrInvalidModelConversion(t *testing.T) {
 
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
-	HandleError(context.Background(), responseWriter, req, v1.ErrInvalidModelConversion)
+	HandleError(t.Context(), responseWriter, req, v1.ErrInvalidModelConversion)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
@@ -254,7 +255,7 @@ func Test_HandlerErrInternal(t *testing.T) {
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
 	err := errors.New("Internal error")
-	HandleError(context.Background(), responseWriter, req, err)
+	HandleError(t.Context(), responseWriter, req, err)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
@@ -283,9 +284,101 @@ func Test_HandlerForController_OperationType(t *testing.T) {
 	require.NoError(t, err)
 
 	rCtx := &v1.ARMRequestContext{}
-	req = req.WithContext(v1.WithARMRequestContext(context.Background(), rCtx))
+	req = req.WithContext(v1.WithARMRequestContext(t.Context(), rCtx))
 
 	handler.ServeHTTP(w, req)
 
 	require.Equal(t, expectedType.String(), rCtx.OperationType.String())
+}
+
+type deniedController struct {
+	ctrl.Operation[*rpctest.TestResourceDataModel, rpctest.TestResourceDataModel]
+	err error
+}
+
+func (c *deniedController) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	return nil, c.err
+}
+
+func Test_HandlerForController_DeniedError(t *testing.T) {
+	const identity = "alice@example.com"
+	const target = "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/containers/c"
+
+	tests := []struct {
+		name           string
+		denied         *authz.DeniedError
+		wantStatus     int
+		wantCode       string
+		wantMessage    string
+		wantTargetBody string
+	}{
+		{
+			name: "converts to authorization response",
+			denied: &authz.DeniedError{
+				Code:   v1.CodeOperationNotAssigned,
+				Action: "Applications.Core/containers/write",
+				Target: target,
+			},
+			wantStatus:     http.StatusForbidden,
+			wantCode:       v1.CodeOperationNotAssigned,
+			wantMessage:    "Authorization denied for action 'Applications.Core/containers/write' on target '" + target + "'",
+			wantTargetBody: target,
+		},
+		{
+			name: "uses status for code",
+			denied: &authz.DeniedError{
+				Code:   v1.CodeAuthorizationUnavailable,
+				Action: "read",
+				Target: target,
+			},
+			wantStatus:     http.StatusServiceUnavailable,
+			wantCode:       v1.CodeAuthorizationUnavailable,
+			wantMessage:    "Authorization could not be checked for action 'read' on target '" + target + "'. Try again later.",
+			wantTargetBody: target,
+		},
+		{
+			name:        "missing request context falls back to generic denial",
+			denied:      &authz.DeniedError{Code: v1.CodeGrantScopeExceeded},
+			wantStatus:  http.StatusForbidden,
+			wantCode:    v1.CodeGrantScopeExceeded,
+			wantMessage: "Authorization denied",
+		},
+		{
+			name:        "unavailable without request context falls back to retry message",
+			denied:      &authz.DeniedError{Code: v1.CodeAuthorizationUnavailable},
+			wantStatus:  http.StatusServiceUnavailable,
+			wantCode:    v1.CodeAuthorizationUnavailable,
+			wantMessage: "Authorization could not be checked. Try again later.",
+		},
+		{
+			name:        "empty code defaults to AuthorizationFailed",
+			denied:      &authz.DeniedError{},
+			wantStatus:  http.StatusForbidden,
+			wantCode:    v1.CodeAuthorizationFailed,
+			wantMessage: "Authorization denied",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			controller := &deniedController{err: fmt.Errorf("checking access for %s: %w", identity, tt.denied)}
+			handler := HandlerForController(controller, v1.OperationType{Type: "Applications.Core/containers", Method: http.MethodPut})
+
+			req := httptest.NewRequest(http.MethodPut, "/", nil)
+			req = req.WithContext(v1.WithARMRequestContext(t.Context(), &v1.ARMRequestContext{}))
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+
+			require.Equal(t, tt.wantStatus, w.Code)
+			require.NotContains(t, w.Body.String(), identity)
+			require.NotContains(t, w.Body.String(), "checking access")
+
+			armerr := v1.ErrorResponse{}
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &armerr))
+			require.Equal(t, tt.wantCode, armerr.Error.Code)
+			require.Equal(t, tt.wantMessage, armerr.Error.Message)
+			require.Equal(t, tt.wantTargetBody, armerr.Error.Target)
+		})
+	}
 }

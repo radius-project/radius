@@ -23,8 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"uuid"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -32,7 +33,6 @@ import (
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	corerptest "github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +44,7 @@ func Test_TrackedResources(t *testing.T) {
 		t.Logf("%s:\n\n%+v", message, string(j))
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	options := corerptest.NewRPTestOptions(t)
 	resourceGroupID := resources.MustParse("/planes/radius/local/resourcegroups/test-" + uuid.New().String())
 
@@ -52,9 +52,9 @@ func Test_TrackedResources(t *testing.T) {
 	require.NoError(t, err)
 	rc, err := ucp.NewResourcesClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(options.Connection))
 	require.NoError(t, err)
-	ac, err := corerp.NewApplicationsClient(resourceGroupID.String(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(options.Connection))
+	ac, err := corerp.NewApplicationsClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(options.Connection))
 	require.NoError(t, err)
-	exc, err := corerp.NewExtendersClient(resourceGroupID.String(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(options.Connection))
+	exc, err := corerp.NewExtendersClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(options.Connection))
 	require.NoError(t, err)
 
 	rg, err := rgc.CreateOrUpdate(ctx, "local", resourceGroupID.Name(), ucp.ResourceGroupResource{Location: to.Ptr(v1.LocationGlobal)}, nil)
@@ -75,7 +75,7 @@ func Test_TrackedResources(t *testing.T) {
 
 	t.Run("Create resources", func(t *testing.T) {
 		for i := range 3 {
-			a, err := ac.CreateOrUpdate(ctx, fmt.Sprintf("app-%d", i), corerp.ApplicationResource{
+			a, err := ac.CreateOrUpdate(ctx, resourceGroupID.String(), fmt.Sprintf("app-%d", i), corerp.ApplicationResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &corerp.ApplicationProperties{
 					Environment: new(options.Workspace.Environment),
@@ -85,7 +85,7 @@ func Test_TrackedResources(t *testing.T) {
 			log("Got application", a)
 
 			// We're using extender here because its operations are asynchronous.
-			poller, err := exc.BeginCreateOrUpdate(ctx, fmt.Sprintf("ex-%d", i), corerp.ExtenderResource{
+			poller, err := exc.BeginCreateOrUpdate(ctx, resourceGroupID.String(), fmt.Sprintf("ex-%d", i), corerp.ExtenderResource{
 				Location: to.Ptr(v1.LocationGlobal),
 				Properties: &corerp.ExtenderProperties{
 					Environment:          new(options.Workspace.Environment),
@@ -142,13 +142,13 @@ func Test_TrackedResources(t *testing.T) {
 		for i := range 3 {
 			// Delete in reverse order to make sure the extender is deleted before the application it
 			// belongs to.
-			poller, err := exc.BeginDelete(ctx, fmt.Sprintf("ex-%d", i), nil)
+			poller, err := exc.BeginDelete(ctx, resourceGroupID.String(), fmt.Sprintf("ex-%d", i), nil)
 			require.NoError(t, err)
 
 			_, err = poller.PollUntilDone(ctx, nil)
 			require.NoError(t, err)
 
-			_, err = ac.Delete(ctx, fmt.Sprintf("app-%d", i), nil)
+			_, err = ac.Delete(ctx, resourceGroupID.String(), fmt.Sprintf("app-%d", i), nil)
 			require.NoError(t, err)
 		}
 	})

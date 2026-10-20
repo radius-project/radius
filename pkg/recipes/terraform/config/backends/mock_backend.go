@@ -21,6 +21,7 @@ import (
 type MockBackend struct {
 	ctrl     *gomock.Controller
 	recorder *MockBackendMockRecorder
+	isgomock struct{}
 }
 
 // MockBackendMockRecorder is the mock recorder for MockBackend.
@@ -41,18 +42,18 @@ func (m *MockBackend) EXPECT() *MockBackendMockRecorder {
 }
 
 // BuildBackend mocks base method.
-func (m *MockBackend) BuildBackend(arg0 *recipes.ResourceMetadata) (map[string]any, error) {
+func (m *MockBackend) BuildBackend(resourceRecipe *recipes.ResourceMetadata) (map[string]any, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BuildBackend", arg0)
+	ret := m.ctrl.Call(m, "BuildBackend", resourceRecipe)
 	ret0, _ := ret[0].(map[string]any)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // BuildBackend indicates an expected call of BuildBackend.
-func (mr *MockBackendMockRecorder) BuildBackend(arg0 any) *MockBackendBuildBackendCall {
+func (mr *MockBackendMockRecorder) BuildBackend(resourceRecipe any) *MockBackendBuildBackendCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildBackend", reflect.TypeOf((*MockBackend)(nil).BuildBackend), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildBackend", reflect.TypeOf((*MockBackend)(nil).BuildBackend), resourceRecipe)
 	return &MockBackendBuildBackendCall{Call: call}
 }
 
@@ -80,18 +81,18 @@ func (c *MockBackendBuildBackendCall) DoAndReturn(f func(*recipes.ResourceMetada
 }
 
 // ValidateBackendExists mocks base method.
-func (m *MockBackend) ValidateBackendExists(arg0 context.Context, arg1 string) (bool, error) {
+func (m *MockBackend) ValidateBackendExists(ctx context.Context, name string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateBackendExists", arg0, arg1)
+	ret := m.ctrl.Call(m, "ValidateBackendExists", ctx, name)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ValidateBackendExists indicates an expected call of ValidateBackendExists.
-func (mr *MockBackendMockRecorder) ValidateBackendExists(arg0, arg1 any) *MockBackendValidateBackendExistsCall {
+func (mr *MockBackendMockRecorder) ValidateBackendExists(ctx, name any) *MockBackendValidateBackendExistsCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateBackendExists", reflect.TypeOf((*MockBackend)(nil).ValidateBackendExists), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateBackendExists", reflect.TypeOf((*MockBackend)(nil).ValidateBackendExists), ctx, name)
 	return &MockBackendValidateBackendExistsCall{Call: call}
 }
 

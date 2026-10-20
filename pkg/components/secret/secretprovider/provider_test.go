@@ -17,7 +17,6 @@ limitations under the License.
 package secretprovider
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,7 +26,7 @@ func TestGetClient_InvalidType(t *testing.T) {
 	secretProvider := NewSecretProvider(SecretProviderOptions{
 		Provider: "invalid_client_type",
 	})
-	client, err := secretProvider.GetClient(context.TODO())
+	client, err := secretProvider.GetClient(t.Context())
 	require.Equal(t, err, ErrUnsupportedSecretProvider)
 	require.Nil(t, client)
 }

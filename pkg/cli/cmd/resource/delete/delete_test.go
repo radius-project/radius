@@ -17,7 +17,6 @@ limitations under the License.
 package delete
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -132,7 +131,7 @@ func Test_Run(t *testing.T) {
 				Format:                         "table",
 				Confirm:                        true,
 			}
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.Error(t, err)
 			require.Equal(t, responseError, err)
 		})
@@ -168,7 +167,7 @@ func Test_Run(t *testing.T) {
 				Confirm:                        true,
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -210,7 +209,7 @@ func Test_Run(t *testing.T) {
 				Confirm:                        true,
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -266,7 +265,7 @@ func Test_Run(t *testing.T) {
 				InputPrompter:                  promptMock,
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -323,7 +322,7 @@ func Test_Run(t *testing.T) {
 				InputPrompter:                  promptMock,
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -390,7 +389,7 @@ func Test_Run(t *testing.T) {
 				InputPrompter:                  promptMock,
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -445,7 +444,7 @@ func Test_Run(t *testing.T) {
 				InputPrompter:                  promptMock,
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -499,7 +498,7 @@ func Test_Run(t *testing.T) {
 				ResourceName:                   "test-container",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			require.Empty(t, outputSink.Writes)
@@ -536,7 +535,7 @@ func Test_Run(t *testing.T) {
 				Force:                          true,
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{

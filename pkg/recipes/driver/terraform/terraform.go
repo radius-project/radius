@@ -20,12 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
@@ -117,11 +119,18 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 	}
 
 	if err != nil {
+		// OutputMappingError is raised before apply and must be reported as a setup failure.
+		if _, ok := errors.AsType[*recipes_util.OutputMappingError](err); ok {
+			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+		}
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeOutputs, err := d.prepareRecipeResponse(ctx, opts.BaseOptions.Definition, tfState)
+	recipeOutputs, err := d.prepareRecipeResponse(ctx, opts.BaseOptions.Definition, opts.Configuration, tfState)
 	if err != nil {
+		if _, ok := errors.AsType[*recipes_util.MissingOutputValuesError](err); ok {
+			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+		}
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
@@ -179,7 +188,14 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 
 // prepareRecipeResponse populates the recipe response from the module output named "result" and the
 // resources deployed by the Terraform module. The outputs and resources are retrieved from the input Terraform JSON state.
-func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition recipes.EnvironmentDefinition, tfState *tfjson.State) (*recipes.RecipeOutput, error) {
+//
+// Output resolution precedence (direct module support):
+//   - If an `outputs` mapping is configured on the definition, it takes precedence: all module outputs
+//     are collected flat and then renamed via the mapping.
+//   - If no `outputs` mapping exists and the module has a `result` output, the module is treated as a
+//     wrapped recipe (existing behavior).
+//   - If neither is present, all module outputs pass through unchanged.
+func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition recipes.EnvironmentDefinition, configuration recipes.Configuration, tfState *tfjson.State) (*recipes.RecipeOutput, error) {
 	// We need to use reflect.DeepEqual to compare the struct that has a slice with an empty struct.
 	// The reason is that Go does not allow comparison of structs that contain slices.
 	// Please see: https://go.dev/ref/spec#Comparison_operators.
@@ -188,14 +204,37 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 	}
 
 	recipeResponse := &recipes.RecipeOutput{}
-	if tfState.Values != nil && tfState.Values.Outputs != nil {
-		// We populate the recipe response from the 'result' output (if set).
-		moduleOutputs := tfState.Values.Outputs
-		if result, ok := moduleOutputs[recipes.ResultPropertyName].Value.(map[string]any); ok {
-			err := recipeResponse.PrepareRecipeResponse(result)
-			if err != nil {
-				return &recipes.RecipeOutput{}, err
+	var moduleOutputs map[string]*tfjson.StateOutput
+	if tfState.Values != nil {
+		moduleOutputs = tfState.Values.Outputs
+	}
+
+	hasOutputsMapping := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
+	_, hasResultOutput := moduleOutputs[recipes.ResultPropertyName]
+
+	if hasOutputsMapping {
+		// Direct module with outputs mapping — collect all outputs flat, then apply mapping.
+		values, secrets := collectFlatOutputs(moduleOutputs)
+		mappedValues, mappedSecrets, err := recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs, definition.SecretOutputs)
+		if err != nil {
+			return &recipes.RecipeOutput{}, fmt.Errorf("recipe %q for resource type %q: %w", definition.Name, definition.ResourceType, err)
+		}
+		recipeResponse.Values = mappedValues
+		recipeResponse.Secrets = mappedSecrets
+	} else if moduleOutputs != nil {
+		if hasResultOutput {
+			// Wrapped recipe — use existing result output parsing.
+			if result, ok := moduleOutputs[recipes.ResultPropertyName].Value.(map[string]any); ok {
+				err := recipeResponse.PrepareRecipeResponse(result)
+				if err != nil {
+					return &recipes.RecipeOutput{}, err
+				}
 			}
+		} else {
+			// Direct module without mapping — pass through all outputs unchanged.
+			values, secrets := collectFlatOutputs(moduleOutputs)
+			recipeResponse.Values = values
+			recipeResponse.Secrets = secrets
 		}
 	}
 
@@ -208,7 +247,7 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 	var deployedResources []string
 	if tfState.Values != nil && tfState.Values.RootModule != nil {
 		var err error
-		deployedResources, err = d.getDeployedOutputResources(ctx, tfState.Values.RootModule)
+		deployedResources, err = d.getDeployedOutputResources(ctx, tfState.Values.RootModule, configuration)
 		if err != nil {
 			return &recipes.RecipeOutput{}, err
 		}
@@ -240,13 +279,13 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 	// but we can also trace them to the resource we were working on through operationID. UUID is added to the path to prevent overwrite across retries for same ARM request.
 	dirID := ""
 	armCtx := v1.ARMRequestContextFromContext(ctx)
-	if armCtx.OperationID != uuid.Nil {
-		dirID = armCtx.OperationID.String() + "-" + uuid.NewString()
+	if armCtx.OperationID != uuid.Nil() {
+		dirID = armCtx.OperationID.String() + "-" + uuid.New().String()
 	} else {
 		// If the operationID is nil, we generate a new UUID for unique directory name combined with resource id so that we can trace it to the resource.
 		// Ideally operationID should not be nil.
 		logger.Info("Empty operation ID provided in the request context, using uuid to generate a unique directory name")
-		dirID = util.NormalizeStringToLower(recipe.ResourceID) + "-" + uuid.NewString()
+		dirID = util.NormalizeStringToLower(recipe.ResourceID) + "-" + uuid.New().String()
 	}
 	requestDirPath := filepath.Join(d.options.Path, dirID)
 
@@ -288,6 +327,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 		RootDir:        requestDirPath,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
+		EnvConfig:      &opts.Configuration,
 		LogLevel:       d.options.LogLevel,
 	})
 
@@ -349,7 +389,7 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.
 // Currently only Azure, AWS and Kubernetes providers are supported by output resources.
-func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule) ([]string, error) {
+func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule, configuration recipes.Configuration) ([]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	recipeResources := []string{}
 	if module == nil {
@@ -428,7 +468,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 		case TerraformAWSProvider:
 			if resource.AttributeValues != nil {
 				if arn, ok := resource.AttributeValues["arn"].(string); ok {
-					awsResourceID, err := awsresources.ToUCPResourceID(arn)
+					awsResourceID, err := terraformAWSResourceID(configuration.Providers.AWS.Scope, resource, arn)
 					if err != nil {
 						return []string{}, err
 					}
@@ -441,7 +481,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 	}
 
 	for _, childModule := range module.ChildModules {
-		modResources, err := d.getDeployedOutputResources(ctx, childModule)
+		modResources, err := d.getDeployedOutputResources(ctx, childModule, configuration)
 		if err != nil {
 			return []string{}, err
 		}
@@ -449,4 +489,96 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 	}
 
 	return recipeResources, nil
+}
+
+// collectFlatOutputs collects all Terraform state outputs into flat value and secret maps.
+// Sensitive outputs go into secrets, non-sensitive into values.
+func collectFlatOutputs(outputs map[string]*tfjson.StateOutput) (map[string]any, map[string]any) {
+	values := make(map[string]any)
+	secrets := make(map[string]any)
+
+	for name, output := range outputs {
+		if output == nil {
+			continue
+		}
+		if output.Sensitive {
+			secrets[name] = output.Value
+		} else {
+			values[name] = output.Value
+		}
+	}
+
+	return values, secrets
+}
+
+func terraformAWSResourceID(scope string, resource *tfjson.StateResource, arn string) (string, error) {
+	arnSegments := strings.Split(arn, ":")
+	if len(arnSegments) < 6 {
+		return "", fmt.Errorf("\"%s\" is not a valid ARN", arn)
+	}
+
+	// Terraform state does not guarantee that the ARN contains an account. S3
+	// bucket ARNs, for example, are globally unique and leave the account and
+	// region segments empty. Use the configured AWS provider scope as the source
+	// of truth for the account that owns this Terraform deployment.
+	scopeID, err := resources.ParseScope(scope)
+	if err != nil {
+		return "", fmt.Errorf("invalid AWS provider scope %q is configured on the Environment: %w", scope, err)
+	}
+
+	account := scopeID.FindScope(awsresources.ScopeAccounts)
+	if account == "" {
+		return "", fmt.Errorf("invalid AWS provider scope %q is configured on the Environment, account is required in the scope", scope)
+	}
+
+	partition := arnSegments[1]
+	region := arnSegments[3]
+	if region == "" {
+		// Radius AWS-plane resource IDs always include a region segment. AWS
+		// resources with no ARN region, such as S3 buckets, are represented under
+		// the synthetic "global" region.
+		region = "global"
+	}
+
+	// Keep Terraform-discovered resources in a Terraform-specific namespace
+	// instead of trying to infer a CloudControl type from the ARN. AWS ARN
+	// formats are service-specific and often omit the type token needed to build
+	// an AWS.<Service>/<Type> ID.
+	resourceName := terraformAWSResourceName(resource, arnSegments)
+	if resource.Type == "" {
+		return "", fmt.Errorf("terraform AWS resource type is empty for ARN %q", arn)
+	}
+	if resourceName == "" {
+		return "", fmt.Errorf("terraform AWS resource name is empty for ARN %q and Terraform resource type %q", arn, resource.Type)
+	}
+
+	ucpID := fmt.Sprintf(
+		"/planes/aws/%s/accounts/%s/regions/%s/providers/Terraform.AWS/%s/%s",
+		partition,
+		account,
+		region,
+		resource.Type,
+		url.PathEscape(resourceName),
+	)
+
+	if _, err := resources.ParseResource(ucpID); err != nil {
+		return "", err
+	}
+
+	return ucpID, nil
+}
+
+func terraformAWSResourceName(resource *tfjson.StateResource, arnSegments []string) string {
+	if id, ok := resource.AttributeValues["id"].(string); ok && id != "" {
+		return id
+	}
+
+	resourcePath := strings.Join(arnSegments[5:], ":")
+	resourcePath = strings.TrimRight(resourcePath, "/")
+	if resourcePath != "" {
+		parts := strings.Split(resourcePath, "/")
+		return parts[len(parts)-1]
+	}
+
+	return ""
 }

@@ -39,7 +39,7 @@ const (
 	DefaultStateLockTimeout = "10m"
 )
 
-//go:generate mockgen -typed -destination=./mock_executor.go -package=terraform -self_package github.com/radius-project/radius/pkg/recipes/terraform github.com/radius-project/radius/pkg/recipes/terraform TerraformExecutor
+//go:generate go tool mockgen -typed -destination=./mock_executor.go -package=terraform -self_package github.com/radius-project/radius/pkg/recipes/terraform github.com/radius-project/radius/pkg/recipes/terraform TerraformExecutor
 type TerraformExecutor interface {
 	// Deploy installs terraform and runs terraform init and apply on the terraform module referenced by the recipe using terraform-exec.
 	Deploy(ctx context.Context, options Options) (*tfjson.State, error)

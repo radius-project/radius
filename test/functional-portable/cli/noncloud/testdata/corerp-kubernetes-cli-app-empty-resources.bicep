@@ -4,9 +4,9 @@ extension radius
 param location string = 'global'
 
 @description('Specifies the environment for resources.')
-param environment string = 'test'
+param environment string
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'kubernetes-cli-empty-resources'
   location: location
   properties: {

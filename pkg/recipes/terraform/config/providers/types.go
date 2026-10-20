@@ -24,10 +24,11 @@ import (
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/kubernetes/clusteraccess"
 	"github.com/radius-project/radius/pkg/sdk"
 )
 
-//go:generate mockgen -typed -destination=./mock_provider.go -package=providers -self_package github.com/radius-project/radius/pkg/recipes/terraform/config/providers github.com/radius-project/radius/pkg/recipes/terraform/config/providers Provider
+//go:generate go tool mockgen -typed -destination=./mock_provider.go -package=providers -self_package github.com/radius-project/radius/pkg/recipes/terraform/config/providers github.com/radius-project/radius/pkg/recipes/terraform/config/providers Provider
 
 // Provider is an interface for generating Terraform provider configurations.
 type Provider interface {
@@ -44,7 +45,7 @@ func GetUCPConfiguredTerraformProviders(ucpConn sdk.Connection, secretProvider *
 	return map[string]Provider{
 		AWSProviderName:        NewAWSProvider(ucpConn, secretProvider),
 		AzureProviderName:      NewAzureProvider(ucpConn, secretProvider),
-		KubernetesProviderName: &kubernetesProvider{},
+		KubernetesProviderName: newKubernetesProvider(clusteraccess.NewResolver()),
 	}
 }
 
@@ -66,7 +67,7 @@ func GetRecipeProviderConfigs(ctx context.Context, envConfig *recipes.Configurat
 
 					// Retrieve configuration details from 'AdditionalProperties' property and add to currentConfig.
 					if len(configDetails.AdditionalProperties) > 0 {
-						currentProviderConfig = configDetails.AdditionalProperties
+						currentProviderConfig = maps.Clone(configDetails.AdditionalProperties)
 					}
 
 					// Extract secrets from provider configuration if they are present.

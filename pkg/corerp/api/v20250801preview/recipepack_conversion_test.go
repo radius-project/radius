@@ -53,6 +53,27 @@ func TestRecipePackConvertVersionedToDataModel(t *testing.T) {
 	// Validate API version metadata
 	require.Equal(t, Version, recipePack.InternalMetadata.CreatedAPIVersion)
 	require.Equal(t, Version, recipePack.InternalMetadata.UpdatedAPIVersion)
+
+	// Validate recipe definitions, including the renamed kind/source fields and the outputs mapping.
+	require.Len(t, recipePack.Properties.Recipes, 2)
+
+	container := recipePack.Properties.Recipes["Applications.Core/containers"]
+	require.NotNil(t, container)
+	require.Equal(t, "bicep", container.Kind)
+	require.Equal(t, "br:ghcr.io/radius-project/recipes/kubernetes-container:latest", container.Source)
+	// A recipe without an outputs mapping should leave Outputs unset.
+	require.Nil(t, container.Outputs)
+
+	stateStore := recipePack.Properties.Recipes["Applications.Dapr/stateStores"]
+	require.NotNil(t, stateStore)
+	require.Equal(t, "terraform", stateStore.Kind)
+	require.Equal(t, "oci://ghcr.io/radius-project/recipes/terraform/redis:latest", stateStore.Source)
+	// The outputs mapping is converted onto the datamodel recipe definition.
+	require.Equal(t, map[string]string{"host": "redis_host", "port": "redis_port"}, stateStore.Outputs)
+	// The secretOutputs mapping is converted onto the datamodel recipe definition.
+	require.Equal(t, map[string]string{"connectionString": "redis_connection_string"}, stateStore.SecretOutputs)
+	// A recipe without a secretOutputs mapping should leave SecretOutputs unset.
+	require.Nil(t, container.SecretOutputs)
 }
 
 func TestRecipePackConvertDataModelToVersioned(t *testing.T) {
@@ -75,6 +96,29 @@ func TestRecipePackConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, dataModel.Type, *versionedResource.Type)
 	require.Equal(t, dataModel.Location, *versionedResource.Location)
 	require.NotNil(t, versionedResource.Properties)
+
+	// Validate recipe definitions round-trip, including the renamed kind/source fields and the outputs mapping.
+	require.Len(t, versionedResource.Properties.Recipes, 2)
+
+	stateStore := versionedResource.Properties.Recipes["Applications.Dapr/stateStores"]
+	require.NotNil(t, stateStore)
+	require.NotNil(t, stateStore.Kind)
+	require.Equal(t, RecipeKind("terraform"), *stateStore.Kind)
+	require.Equal(t, "oci://ghcr.io/radius-project/recipes/terraform/redis:latest", *stateStore.Source)
+	// The outputs mapping round-trips onto the versioned recipe definition, with the datamodel's
+	// SecretOutputs nested back under the reserved `secrets` key.
+	require.Equal(t, map[string]any{
+		"host": "redis_host",
+		"port": "redis_port",
+		"secrets": map[string]any{
+			"connectionString": "redis_connection_string",
+		},
+	}, stateStore.Outputs)
+
+	container := versionedResource.Properties.Recipes["Applications.Core/containers"]
+	require.NotNil(t, container)
+	// A recipe without an outputs mapping should leave Outputs unset.
+	require.Nil(t, container.Outputs)
 }
 
 func TestRecipePackConvertInvalidModel(t *testing.T) {

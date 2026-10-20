@@ -101,6 +101,31 @@ func TestUnfoldResponseError(t *testing.T) {
 	}
 }
 
+// TestTryUnfoldResponseError_Idempotent verifies that calling TryUnfoldResponseError
+// multiple times on the same error returns the same details each time. Previously the
+// first call consumed the response body, so a second call returned nil and any caller
+// dereferencing the result (e.g. recipes.GetErrorDetails(err).Code) panicked.
+func TestTryUnfoldResponseError_Idempotent(t *testing.T) {
+	resp := &http.Response{
+		Status:     "200 OK",
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader(`{ "id": null, "error": { "code": "DeploymentFailed", "target": null, "message": "At least one resource deployment operation failed." } }`)),
+		Request: &http.Request{
+			Method: http.MethodGet,
+			URL:    parseURL(t, baseURI+resourceID+operationsEndpoint+"?api-version="+apiVersion),
+		},
+	}
+	respErr := runtime.NewResponseError(resp)
+
+	first := TryUnfoldResponseError(respErr)
+	require.NotNil(t, first)
+	require.Equal(t, "DeploymentFailed", first.Code)
+
+	second := TryUnfoldResponseError(respErr)
+	require.NotNil(t, second, "repeated call must not return nil after the body was read once")
+	require.Equal(t, first.Code, second.Code)
+}
+
 func Test_readResponseBody(t *testing.T) {
 	type args struct {
 		resp *http.Response

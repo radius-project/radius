@@ -72,7 +72,9 @@ func (c *ResourceTypePutController) updateSummary(id resources.ID, resourceType 
 			summary.Properties.ResourceTypes = map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{}
 		}
 
-		resourceTypeName := id.Name()
+		// Resource type names are case-insensitive. Reuse the existing entry's key (if any) so we
+		// never end up with two entries that differ only by case.
+		resourceTypeName := resolveResourceTypeKey(summary.Properties.ResourceTypes, id.Name())
 		resourceTypeEntry, ok := summary.Properties.ResourceTypes[resourceTypeName]
 		if !ok {
 			resourceTypeEntry = datamodel.ResourceProviderSummaryPropertiesResourceType{}
@@ -81,6 +83,8 @@ func (c *ResourceTypePutController) updateSummary(id resources.ID, resourceType 
 		resourceTypeEntry.Capabilities = resourceType.Properties.Capabilities
 		resourceTypeEntry.DefaultAPIVersion = resourceType.Properties.DefaultAPIVersion
 		resourceTypeEntry.Description = resourceType.Properties.Description
+		resourceTypeEntry.Icon = resourceType.Properties.Icon
+		resourceTypeEntry.IconHash = resourceType.Properties.IconHash
 		summary.Properties.ResourceTypes[resourceTypeName] = resourceTypeEntry
 		return nil
 	}

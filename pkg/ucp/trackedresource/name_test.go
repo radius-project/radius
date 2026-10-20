@@ -29,10 +29,23 @@ var (
 
 func Test_NameFor(t *testing.T) {
 	name := NameFor(testID)
-	require.Equal(t, "test-app-303153687ee5adbcf353bc6c2caa4373f31e04c6", name)
+	require.Equal(t, "test-app-578debcee1fa4c9d11de5dd86eb2945e08b4b12f", name)
 }
 
 func Test_IDFor(t *testing.T) {
 	id := IDFor(testID)
+	require.Equal(t, resources.MustParse("/planes/radius/local/resourceGroups/test-group/providers/System.Resources/resources/test-app-578debcee1fa4c9d11de5dd86eb2945e08b4b12f"), id)
+}
+
+// Test_LegacyNameFor and Test_LegacyIDFor lock the legacy SHA-1 values so that Radius can
+// continue to locate tracked resource entries written by older versions during the migration
+// to SHA-256. See https://github.com/radius-project/radius/issues/8084.
+func Test_LegacyNameFor(t *testing.T) {
+	name := LegacyNameFor(testID)
+	require.Equal(t, "test-app-303153687ee5adbcf353bc6c2caa4373f31e04c6", name)
+}
+
+func Test_LegacyIDFor(t *testing.T) {
+	id := LegacyIDFor(testID)
 	require.Equal(t, resources.MustParse("/planes/radius/local/resourceGroups/test-group/providers/System.Resources/resources/test-app-303153687ee5adbcf353bc6c2caa4373f31e04c6"), id)
 }

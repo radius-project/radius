@@ -32,7 +32,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -82,30 +81,18 @@ func Test_Run(t *testing.T) {
 		},
 	}
 	resourceGroup := &datamodel.ResourceGroup{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: id.RootScope(),
-			},
-		},
+		ID: id.RootScope(),
 	}
 
 	resourceTypeResource := &datamodel.ResourceType{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "testResources",
-				ID:   resourceTypeID.String(),
-			},
-		},
+		Name:       "testResources",
+		ID:         resourceTypeID.String(),
 		Properties: datamodel.ResourceTypeProperties{},
 	}
 
 	locationResource := &datamodel.Location{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "global",
-				ID:   locationID.String(),
-			},
-		},
+		Name: "global",
+		ID:   locationID.String(),
 		Properties: datamodel.LocationProperties{
 			Address: new("https://localhost:1234"),
 			ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
@@ -118,6 +105,30 @@ func Test_Run(t *testing.T) {
 		},
 	}
 
+	t.Run("failure (invalid resource ID)", func(t *testing.T) {
+		p, _, _, _, _ := createController(t)
+
+		svcContext := &v1.ARMRequestContext{
+			APIVersion: apiVersion,
+		}
+		ctx := t.Context()
+		ctx = v1.WithARMRequestContext(ctx, svcContext)
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Test//my-resource?api-version="+apiVersion, nil)
+
+		expected := rest.NewBadRequestARMResponse(v1.ErrorResponse{
+			Error: &v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
+				Message: "the request URL does not contain a valid resource ID",
+			},
+		})
+
+		response, err := p.Run(ctx, w, req.WithContext(ctx))
+		require.NoError(t, err)
+		require.Equal(t, expected, response)
+	})
+
 	t.Run("success (non-tracked)", func(t *testing.T) {
 		p, databaseClient, _, roundTripper, _ := createController(t)
 
@@ -125,7 +136,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -165,7 +176,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -208,7 +219,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -232,10 +243,11 @@ func Test_Run(t *testing.T) {
 			Get(gomock.Any(), locationResource.ID).
 			Return(&database.Object{Data: locationResource}, nil).Times(1)
 
-		// Tracking entry created
+		// Tracking entry created. The entry is read three times for a new resource: the current and
+		// legacy IDs during ResolveTrackingEntry, then once more in the enqueue retry loop.
 		databaseClient.EXPECT().
 			Get(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil, &database.ErrNotFound{}).Times(1)
+			Return(nil, &database.ErrNotFound{}).Times(3)
 		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil).Times(1)
@@ -263,7 +275,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -290,16 +302,12 @@ func Test_Run(t *testing.T) {
 		// Tracking entry created
 		existingEntry := &database.Object{
 			Data: &datamodel.GenericResource{
-				BaseResource: v1.BaseResource{
-					InternalMetadata: v1.InternalMetadata{
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 			},
 		}
 		databaseClient.EXPECT().
 			Get(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(existingEntry, nil).Times(1)
+			Return(existingEntry, nil).Times(2)
 		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil).Times(1)
@@ -325,7 +333,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -356,7 +364,7 @@ func Test_ProxyController_PrepareProxyRequest(t *testing.T) {
 			URL:    originalURL}
 
 		p, _, _, _, _ := createController(t)
-		proxyReq, err := p.PrepareProxyRequest(testcontext.New(t), originalReq, downstream, relativePath)
+		proxyReq, err := p.PrepareProxyRequest(t.Context(), originalReq, downstream, relativePath)
 		require.NoError(t, err)
 		require.NotNil(t, proxyReq)
 
@@ -376,7 +384,7 @@ func Test_ProxyController_PrepareProxyRequest(t *testing.T) {
 			URL:    originalURL}
 
 		p, _, _, _, _ := createController(t)
-		proxyReq, err := p.PrepareProxyRequest(testcontext.New(t), originalReq, downstream, relativePath)
+		proxyReq, err := p.PrepareProxyRequest(t.Context(), originalReq, downstream, relativePath)
 		require.NoError(t, err)
 		require.NotNil(t, proxyReq)
 
@@ -390,7 +398,7 @@ func Test_ProxyController_PrepareProxyRequest(t *testing.T) {
 		originalReq := &http.Request{Header: http.Header{}, URL: &url.URL{}}
 
 		p, _, _, _, _ := createController(t)
-		proxyReq, err := p.PrepareProxyRequest(testcontext.New(t), originalReq, "\ninvalid", relativePath)
+		proxyReq, err := p.PrepareProxyRequest(t.Context(), originalReq, "\ninvalid", relativePath)
 		require.Error(t, err)
 		require.Equal(t, "failed to parse downstream URL: parse \"\\ninvalid\": net/url: invalid control character in URL", err.Error())
 		require.Nil(t, proxyReq)

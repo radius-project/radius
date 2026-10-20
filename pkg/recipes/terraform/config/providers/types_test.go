@@ -1,7 +1,6 @@
 package providers
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -296,7 +295,7 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			result, err := GetRecipeProviderConfigs(context.Background(), tc.envConfig, tc.secrets)
+			result, err := GetRecipeProviderConfigs(t.Context(), tc.envConfig, tc.secrets)
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, result)
 		})
@@ -403,6 +402,59 @@ func Test_extractSecretsFromRecipeConfig(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedConfig, secretsConfig)
 			}
+		})
+	}
+}
+
+func Test_GetRecipeProviderConfigs_PreservesConfiguration(t *testing.T) {
+	t.Parallel()
+	fields := map[string]any{"alias": "custom", "tenant_id": "overridden", "use_cli": false}
+	env := &recipes.Configuration{RecipeConfig: datamodel.RecipeConfigProperties{
+		Terraform: datamodel.TerraformConfigProperties{Providers: map[string][]datamodel.ProviderConfigProperties{
+			"azurerm": {{
+				AdditionalProperties: fields,
+				Secrets: map[string]datamodel.SecretReference{
+					"tenant_id": {Source: "settings", Key: "tenant"},
+				},
+			}},
+		}},
+	}}
+
+	for _, tenant := range []string{"first-tenant", "rotated-tenant"} {
+		configs, err := GetRecipeProviderConfigs(t.Context(), env, map[string]recipes.SecretData{
+			"settings": {Data: map[string]string{"tenant": tenant}},
+		})
+		require.NoError(t, err)
+		require.Equal(t, map[string]any{"alias": "custom", "tenant_id": tenant, "use_cli": false}, configs["azurerm"][0])
+		require.Equal(t, map[string]any{"alias": "custom", "tenant_id": "overridden", "use_cli": false}, fields,
+			"resolved credentials must not be written into the environment configuration")
+
+		configs["azurerm"][0]["alias"] = "changed"
+		require.Equal(t, "custom", fields["alias"], "returned provider maps must not alias the input")
+	}
+}
+
+func Test_GetRecipeProviderConfigs_MissingSecret(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name    string
+		secrets map[string]recipes.SecretData
+		err     string
+	}{
+		{"missing source", nil, "missing secret store id: settings"},
+		{"missing key", map[string]recipes.SecretData{"settings": {Data: map[string]string{}}}, "missing secret key in secret store id: settings"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env := &recipes.Configuration{RecipeConfig: datamodel.RecipeConfigProperties{
+				Terraform: datamodel.TerraformConfigProperties{Providers: map[string][]datamodel.ProviderConfigProperties{
+					"azurerm": {{Secrets: map[string]datamodel.SecretReference{
+						"tenant_id": {Source: "settings", Key: "tenant"},
+					}}},
+				}},
+			}}
+			configs, err := GetRecipeProviderConfigs(t.Context(), env, tc.secrets)
+			require.EqualError(t, err, tc.err)
+			require.Nil(t, configs)
 		})
 	}
 }

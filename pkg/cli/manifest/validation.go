@@ -23,7 +23,14 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/radius-project/radius/pkg/schema"
+	"github.com/radius-project/radius/pkg/schema/baseresource"
 )
+
+// baseManifest is the embedded base resource manifest, parsed once at package
+// initialization and reused for the lifetime of the process. The manifest layer
+// owns this single immutable instance; every registration path merges it into
+// per-type schemas through ValidateManifest. It never changes after load.
+var baseManifest = baseresource.MustLoad()
 
 var (
 	resourceProviderNamespaceRegex = regexp.MustCompile(`^[A-Z][A-Za-z0-9]+\.[A-Z][A-Za-z0-9]+$`)
@@ -55,6 +62,48 @@ func validateAPIVersion(fl validator.FieldLevel) bool {
 func validateCapability(fl validator.FieldLevel) bool {
 	str := fl.Field().String()
 	return capabilityRegex.Match([]byte(str))
+}
+
+// applyBaseResourceManifest merges the common base resource properties into every
+// schema in the provider, in place, so that schema validation and registration
+// both operate on the effective (merged) schema. The same schema maps mutated
+// here are what RegisterType ships to UCP, so authors omit the base properties
+// and the control plane still receives them.
+//
+// Apply uses per-type-wins precedence: if an author redeclares a base property,
+// their declaration is preserved and the base value is not copied over it. This
+// keeps existing resource-types-contrib manifests (which currently redeclare
+// environment/application/connections explicitly) compatible without a
+// coordinated cross-repo release. New manifests can simply omit the base
+// properties and they will be injected.
+func applyBaseResourceManifest(provider *ResourceProvider) error {
+	if provider == nil {
+		return nil
+	}
+
+	for resourceTypeName, resourceType := range provider.Types {
+		if resourceType == nil {
+			continue
+		}
+
+		for apiVersion, versionInfo := range resourceType.APIVersions {
+			if versionInfo == nil || versionInfo.Schema == nil {
+				continue
+			}
+
+			schemaMap, ok := versionInfo.Schema.(map[string]any)
+			if !ok {
+				// Leave non-object schemas untouched; schema validation reports them.
+				continue
+			}
+
+			if err := baseManifest.Apply(schemaMap); err != nil {
+				return fmt.Errorf("%s/%s@%s: %w", provider.Namespace, resourceTypeName, apiVersion, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // validateManifestSchemas validates schemas in a ResourceProvider

@@ -26,6 +26,12 @@ import (
 //
 // This can be used as a Kubernetes annotation to force a Deployment to redeploy pods
 // when the secret changes.
+//
+// NOTE: This intentionally still uses SHA-1. The resulting value is embedded in the
+// Pod template annotation (radapp.io/secret-hash) by a stateless renderer, so changing
+// the algorithm would change the annotation for otherwise-unchanged secrets and force a
+// rollout of every workload on upgrade. Migrating this to SHA-256 requires preserving the
+// existing annotation when the secret is unchanged. See issue #8084.
 func HashSecretData(secretData map[string][]byte) string {
 	// Sort keys so we can hash deterministically
 	keys := []string{}

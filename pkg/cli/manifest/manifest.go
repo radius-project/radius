@@ -41,6 +41,9 @@ type ResourceType struct {
 
 	// Description of the resource type.
 	Description *string `yaml:"description,omitempty"`
+
+	// Icon carries the verbatim SVG bytes of the resource type's icon.
+	Icon *string `yaml:"-"`
 }
 
 type ResourceTypeAPIVersion struct {

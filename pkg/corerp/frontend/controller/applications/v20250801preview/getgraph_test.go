@@ -17,7 +17,6 @@ limitations under the License.
 package v20250801preview
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -41,7 +40,7 @@ func TestGetGraphRun_20250801Preview(t *testing.T) {
 
 	databaseClient := database.NewMockClient(mctrl)
 	req, err := rpctest.NewHTTPRequestWithContent(
-		context.Background(),
+		t.Context(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080/planes/radius/local/resourcegroups/default/providers/Radius.Core/applications/myapp/getGraph?api-version=2025-08-01-preview", nil)
 
@@ -80,7 +79,7 @@ func TestGetGraphRun_20250801Preview_DatabaseError(t *testing.T) {
 
 	databaseClient := database.NewMockClient(mctrl)
 	req, err := rpctest.NewHTTPRequestWithContent(
-		context.Background(),
+		t.Context(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080/planes/radius/local/resourcegroups/default/providers/Radius.Core/applications/myapp/getGraph?api-version=2025-08-01-preview", nil)
 	require.NoError(t, err)
@@ -127,16 +126,14 @@ func TestGetGraphRun_20250801Preview_ComputeGraphSuccess(t *testing.T) {
 		EXPECT().
 		Get(gomock.Any(), gomock.Any()).
 		Return(rpctest.FakeStoreObject(&datamodel.Application_v20250801preview{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{ID: appIDStr},
-			},
+			ID: appIDStr,
 			Properties: datamodel.ApplicationProperties_v20250801preview{
 				BasicResourceProperties: rpv1.BasicResourceProperties{Environment: envIDStr},
 			},
 		}), nil)
 
 	req, err := rpctest.NewHTTPRequestWithContent(
-		context.Background(),
+		t.Context(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080"+appIDStr+"/getGraph?api-version=2025-08-01-preview", nil)
 	require.NoError(t, err)

@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
-    
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -50,8 +50,10 @@ model AzurePlaneNameParameter {
 
 #suppress "@azure-tools/typespec-azure-resource-manager/arm-resource-path-segment-invalid-chars"
 @doc("Represents Azure Credential Resource")
-model AzureCredentialResource
-  is TrackedResourceRequired<AzureCredentialProperties, "azureCredentials"> {
+model AzureCredentialResource is TrackedResourceRequired<
+  AzureCredentialProperties,
+  "azureCredentials"
+> {
   @doc("The Azure credential name.")
   @path
   @key("credentialName")

@@ -14,10 +14,16 @@ data:
       name: self-hosted
       roleLocation: "global"
     databaseProvider:
+    {{- if .Values.database.enabled }}
+      provider: "postgresql"
+      postgresql:
+        url: "postgresql://applications_rp:${POSTGRES_PASSWORD}@database.{{ .Release.Namespace }}:5432/applications_rp?sslmode=disable"
+    {{- else }}
       provider: "apiserver"
       apiserver:
         context: ""
         namespace: "radius-system"
+    {{- end }}
     queueProvider:
       provider: "apiserver"
       name: "radius"
@@ -41,11 +47,20 @@ data:
     workerServer:
       maxOperationConcurrency: 10
       maxOperationRetryCount: 2
+      {{- with dig "workerServer" "dequeueInterval" "" .Values.rp }}
+      dequeueInterval: {{ . | quote }}
+      {{- end }}
     ucp:
       kind: kubernetes
     logging:
       level: "info"
       json: true
+
+    {{- $authzMode := include "radius.authz.mode" . }}
+    {{- if ne $authzMode "off" }}
+    authorization:
+      mode: {{ $authzMode | quote }}
+    {{- end }}
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
       enabled: true

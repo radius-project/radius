@@ -40,21 +40,15 @@ const (
 func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	converted := &datamodel.Environment{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				CreatedAPIVersion:      Version,
-				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			},
-		},
-		Properties: datamodel.EnvironmentProperties{},
+		ID:                     to.String(src.ID),
+		Name:                   to.String(src.Name),
+		Type:                   to.String(src.Type),
+		Location:               to.String(src.Location),
+		Tags:                   to.StringMap(src.Tags),
+		CreatedAPIVersion:      Version,
+		UpdatedAPIVersion:      Version,
+		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+		Properties:             datamodel.EnvironmentProperties{},
 	}
 
 	envCompute, err := toEnvironmentComputeDataModel(src.Properties.Compute)
@@ -561,7 +555,7 @@ func toRecipeConfigEnvDatamodel(config *RecipeConfigProperties) datamodel.Enviro
 	}
 
 	additionalProperties := map[string]string{}
-	for k, v := range config.Env {
+	for k, v := range config.Env.AdditionalProperties {
 		additionalProperties[k] = to.String(v)
 	}
 
@@ -570,11 +564,13 @@ func toRecipeConfigEnvDatamodel(config *RecipeConfigProperties) datamodel.Enviro
 	}
 }
 
-func fromRecipeConfigEnvDatamodel(config datamodel.RecipeConfigProperties) map[string]*string {
+func fromRecipeConfigEnvDatamodel(config datamodel.RecipeConfigProperties) *EnvironmentVariables {
 	env := map[string]*string{}
 	for k, v := range config.Env.AdditionalProperties {
 		env[k] = new(v)
 	}
 
-	return env
+	return &EnvironmentVariables{
+		AdditionalProperties: env,
+	}
 }

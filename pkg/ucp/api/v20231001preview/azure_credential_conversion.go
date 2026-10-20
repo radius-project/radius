@@ -37,19 +37,13 @@ func (cr *AzureCredentialResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 
 	converted := &datamodel.AzureCredential{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(cr.ID),
-				Name:     to.String(cr.Name),
-				Type:     to.String(cr.Type),
-				Location: to.String(cr.Location),
-				Tags:     to.StringMap(cr.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
-		},
-		Properties: prop,
+		ID:                to.String(cr.ID),
+		Name:              to.String(cr.Name),
+		Type:              to.String(cr.Type),
+		Location:          to.String(cr.Location),
+		Tags:              to.StringMap(cr.Tags),
+		UpdatedAPIVersion: Version,
+		Properties:        prop,
 	}
 
 	return converted, nil

@@ -22,12 +22,13 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
+        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
-      {{- end }}
+        {{- end }}
     spec:
       serviceAccountName: ucp
       {{- if .Values.global.appendRootCA.cert }}
@@ -61,6 +62,13 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
+        {{- if .Values.database.enabled }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_PASSWORD
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
@@ -74,6 +82,27 @@ spec:
           name: metrics
           protocol: TCP
         {{- end }}
+        # The kube-apiserver aggregation layer forwards api.ucp.dev requests to this
+        # pod through the ucp Service. Without a readiness gate the pod is added to
+        # the Service endpoints as soon as the container starts, so the aggregator can
+        # route to a backend that is not listening yet and return 503 to callers.
+        #
+        # The probe targets the Kubernetes discovery document, which is the same
+        # endpoint the aggregator polls to decide APIService availability and is
+        # served without authentication. UCP only begins listening after its modules
+        # and default planes are configured, so a successful response here means the
+        # Radius API is genuinely serving. This also makes `helm --wait` and
+        # `rad install kubernetes` return only once the API answers, rather than as
+        # soon as the process starts.
+        readinessProbe:
+          httpGet:
+            path: /apis/api.ucp.dev/v1alpha3
+            port: ucp
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
         securityContext:
           allowPrivilegeEscalation: false
         {{- if .Values.ucp.resources }}

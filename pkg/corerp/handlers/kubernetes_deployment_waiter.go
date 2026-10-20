@@ -22,6 +22,8 @@ const (
 	// MaxDeploymentTimeout is the max timeout for waiting for a deployment to be ready.
 	// Deployment duration should not reach to this timeout since async operation worker will time out context before MaxDeploymentTimeout.
 	MaxDeploymentTimeout = time.Minute * time.Duration(10)
+
+	deploymentStatusFetchTimeout = 10 * time.Second
 )
 
 type deploymentWaiter struct {
@@ -66,20 +68,23 @@ func (handler *deploymentWaiter) waitUntilReady(ctx context.Context, item client
 	// In case of an error, the error will be sent
 	doneCh := make(chan error, 1)
 
-	ctx, cancel := context.WithTimeout(ctx, handler.deploymentTimeOut)
+	waitCtx, cancel := context.WithTimeout(ctx, handler.deploymentTimeOut)
 	// This ensures that the informer is stopped when this function is returned.
 	defer cancel()
 
-	err := handler.startInformers(ctx, item, doneCh)
+	err := handler.startInformers(waitCtx, item, doneCh)
 	if err != nil {
 		logger.Error(err, "failed to start deployment informer")
 		return err
 	}
 
 	select {
-	case <-ctx.Done():
+	case <-waitCtx.Done():
 		// Get the final deployment status
-		dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(ctx, item.GetName(), metav1.GetOptions{})
+		statusCtx, statusCancel := context.WithTimeout(context.WithoutCancel(ctx), deploymentStatusFetchTimeout)
+		defer statusCancel()
+
+		dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(statusCtx, item.GetName(), metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("deployment timed out, name: %s, namespace %s, error occurred while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
 		}

@@ -177,9 +177,7 @@ func (c *BaseController) GetResource(ctx context.Context, id string, out any) (e
 // SaveResource saves a resource to the data store with an ETag and returns a store object or an error if the save fails.
 func (c *BaseController) SaveResource(ctx context.Context, id string, in any, etag string) (*database.Object, error) {
 	nr := &database.Object{
-		Metadata: database.Metadata{
-			ID: id,
-		},
+		ID:   id,
 		Data: in,
 	}
 	err := c.DatabaseClient().Save(ctx, nr, database.WithETag(etag))

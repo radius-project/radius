@@ -27,7 +27,7 @@ import (
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )

@@ -49,7 +49,7 @@ async function handleIssueCommentCreate({ github, context }) {
       break;
     default:
       console.log(
-        `[handleIssueCommentCreate] command ${command} not found, exiting.`,
+        `[handleIssueCommentCreate] command ${command} not found, exiting.`
       );
       break;
   }
@@ -65,12 +65,12 @@ async function handleIssueCommentCreate({ github, context }) {
 async function cmdAssign(github, issue, isFromPulls, username) {
   if (isFromPulls) {
     console.log(
-      "[cmdAssign] pull requests not supported, skipping command execution.",
+      "[cmdAssign] pull requests not supported, skipping command execution."
     );
     return;
   } else if (issue.assignees && issue.assignees.length !== 0) {
     console.log(
-      "[cmdAssign] issue already has assignees, skipping command execution.",
+      "[cmdAssign] issue already has assignees, skipping command execution."
     );
     return;
   }
@@ -79,6 +79,6 @@ async function cmdAssign(github, issue, isFromPulls, username) {
     owner: issue.owner,
     repo: issue.repo,
     issue_number: issue.number,
-    assignees: [username],
+    assignees: [username]
   });
 }

@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/portableresources/processors"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -30,6 +31,37 @@ import (
 )
 
 const daprConflictFmt = "the Dapr component name '%q' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (e.g., StateStores, PubSubBrokers, SecretStores, ConfigurationStores, etc.). Please select a new name and try again."
+
+// ApplyDaprComponent creates a component atomically, or updates it when the same Radius resource owns it.
+func ApplyDaprComponent(ctx context.Context, k8s client.Client, component *unstructured.Unstructured, resourceName string, resourceType string) error {
+	// A read followed by server-side apply lets concurrent resources both claim an unused name.
+	err := k8s.Create(ctx, component, client.FieldOwner(kubernetes.FieldManager))
+	if err == nil {
+		return nil
+	}
+	if !k8serrors.IsAlreadyExists(err) {
+		return &processors.ResourceError{Inner: err}
+	}
+
+	existing := component.DeepCopy()
+	err = k8s.Get(ctx, client.ObjectKeyFromObject(component), existing)
+	if err != nil {
+		return &processors.ResourceError{Inner: err}
+	}
+	err = checkDaprComponentOwner(existing, resourceName, resourceType)
+	if err != nil {
+		return &processors.ValidationError{Message: err.Error()}
+	}
+
+	// Fence the ownership check against deletion or replacement before the apply.
+	component.SetResourceVersion(existing.GetResourceVersion())
+	//nolint:staticcheck // Unstructured Dapr components do not have generated ApplyConfiguration types.
+	err = k8s.Patch(ctx, component, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
+	if err != nil {
+		return &processors.ResourceError{Inner: err}
+	}
+	return nil
+}
 
 // CheckDaprResourceNameUniqueness checks if the resource name is unique in the namespace. If the resource name is not unique, it returns an error.
 //
@@ -56,6 +88,10 @@ func CheckDaprResourceNameUniqueness(ctx context.Context, k8s client.Client, com
 		return err
 	}
 
+	return checkDaprComponentOwner(u, resourceName, resourceType)
+}
+
+func checkDaprComponentOwner(u *unstructured.Unstructured, resourceName string, resourceType string) error {
 	// Object with the same name exists, checking the labels to see if they are 'owned' by the same Radius
 	// resource.
 	//
@@ -67,5 +103,5 @@ func CheckDaprResourceNameUniqueness(ctx context.Context, k8s client.Client, com
 		return nil
 	}
 
-	return fmt.Errorf(daprConflictFmt, componentName)
+	return fmt.Errorf(daprConflictFmt, u.GetName())
 }

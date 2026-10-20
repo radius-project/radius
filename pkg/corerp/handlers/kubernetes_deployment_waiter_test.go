@@ -32,18 +32,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 )
 
 var testDeployment = &v1.Deployment{
-	TypeMeta: metav1.TypeMeta{
-		Kind:       "Deployment",
-		APIVersion: "apps/v1",
-	},
-	ObjectMeta: metav1.ObjectMeta{
-		Name:        "test-deployment",
-		Namespace:   "test-namespace",
-		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
-	},
+	Kind:        "Deployment",
+	APIVersion:  "apps/v1",
+	Name:        "test-deployment",
+	Namespace:   "test-namespace",
+	Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 	Spec: v1.DeploymentSpec{
 		Replicas: new(int32(1)),
 		Selector: &metav1.LabelSelector{
@@ -64,19 +61,57 @@ var testDeployment = &v1.Deployment{
 	},
 }
 
+type contextCheckingClientset struct {
+	*fake.Clientset
+	appsV1 appsv1client.AppsV1Interface
+}
+
+func newContextCheckingClientset(clientset *fake.Clientset) *contextCheckingClientset {
+	return &contextCheckingClientset{
+		Clientset: clientset,
+		appsV1: &contextCheckingAppsV1{
+			AppsV1Interface: clientset.AppsV1(),
+		},
+	}
+}
+
+func (clientset *contextCheckingClientset) AppsV1() appsv1client.AppsV1Interface {
+	return clientset.appsV1
+}
+
+type contextCheckingAppsV1 struct {
+	appsv1client.AppsV1Interface
+}
+
+func (client *contextCheckingAppsV1) Deployments(namespace string) appsv1client.DeploymentInterface {
+	return &contextCheckingDeployments{
+		DeploymentInterface: client.AppsV1Interface.Deployments(namespace),
+	}
+}
+
+type contextCheckingDeployments struct {
+	appsv1client.DeploymentInterface
+}
+
+func (client *contextCheckingDeployments) Get(ctx context.Context, name string, options metav1.GetOptions) (*v1.Deployment, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return client.DeploymentInterface.Get(ctx, name, options)
+}
+
 func addReplicaSetToDeployment(t *testing.T, ctx context.Context, clientset *fake.Clientset, deployment *v1.Deployment) *v1.ReplicaSet {
 	replicaSet := &v1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-replicaset-1",
-			Namespace:   deployment.Namespace,
-			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(deployment, schema.GroupVersionKind{
-					Group:   v1.SchemeGroupVersion.Group,
-					Version: v1.SchemeGroupVersion.Version,
-					Kind:    "Deployment",
-				}),
-			},
+		Name:        "test-replicaset-1",
+		Namespace:   deployment.Namespace,
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
+		OwnerReferences: []metav1.OwnerReference{
+			*metav1.NewControllerRef(deployment, schema.GroupVersionKind{
+				Group:   v1.SchemeGroupVersion.Group,
+				Version: v1.SchemeGroupVersion.Version,
+				Kind:    "Deployment",
+			}),
 		},
 	}
 
@@ -99,24 +134,22 @@ func startInformers(ctx context.Context, clientSet *fake.Clientset) informers.Sh
 	informerFactory.Apps().V1().ReplicaSets().Informer()
 	informerFactory.Core().V1().Pods().Informer()
 
-	informerFactory.Start(context.Background().Done())
+	informerFactory.Start(ctx.Done())
 	informerFactory.WaitForCacheSync(ctx.Done())
 	return informerFactory
 }
 
 func TestWaitUntilReady_NewResource(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deployment",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-			},
-			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
+		Name:      "test-deployment",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
 		},
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 		Spec: v1.DeploymentSpec{
 			Replicas: new(int32(1)),
 			Selector: &metav1.LabelSelector{
@@ -156,14 +189,12 @@ func TestWaitUntilReady_NewResource(t *testing.T) {
 }
 
 func TestWaitUntilReady_Timeout(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-deployment",
-			Namespace:   "test-namespace",
-			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
-		},
+		Name:        "test-deployment",
+		Namespace:   "test-namespace",
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 		Status: v1.DeploymentStatus{
 			Conditions: []v1.DeploymentCondition{
 				{
@@ -176,7 +207,7 @@ func TestWaitUntilReady_Timeout(t *testing.T) {
 		},
 	}
 
-	deploymentClient := fake.NewClientset(deployment)
+	deploymentClient := newContextCheckingClientset(fake.NewClientset(deployment))
 
 	handler := kubernetesHandler{
 		client: k8sutil.NewFakeKubeClient(nil),
@@ -193,14 +224,12 @@ func TestWaitUntilReady_Timeout(t *testing.T) {
 }
 
 func TestWaitUntilReady_DifferentResourceName(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-deployment",
-			Namespace:   "test-namespace",
-			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
-		},
+		Name:        "test-deployment",
+		Namespace:   "test-namespace",
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 		Status: v1.DeploymentStatus{
 			Conditions: []v1.DeploymentCondition{
 				{
@@ -224,10 +253,8 @@ func TestWaitUntilReady_DifferentResourceName(t *testing.T) {
 	}
 
 	err := handler.deploymentWaiter.waitUntilReady(ctx, &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "not-matched-deployment",
-			Namespace: "test-namespace",
-		},
+		Name:      "not-matched-deployment",
+		Namespace: "test-namespace",
 	})
 
 	// It must be timed out because the name of the deployment does not match.
@@ -241,11 +268,9 @@ func TestGetPodsInDeployment(t *testing.T) {
 
 	// Create a Deployment object
 	deployment := &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-deployment",
-			Namespace:   "test-namespace",
-			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
-		},
+		Name:        "test-deployment",
+		Namespace:   "test-namespace",
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 		Spec: v1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -257,60 +282,54 @@ func TestGetPodsInDeployment(t *testing.T) {
 
 	// Create a ReplicaSet object
 	replicaset := &v1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-replicaset",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				"app": "test-app",
-			},
-			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
-			UID:         "1234",
+		Name:      "test-replicaset",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			"app": "test-app",
 		},
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
+		UID:         "1234",
 	}
 
 	// Create a Pod object
 	pod1 := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod1",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				"app": "test-app",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Kind:       "ReplicaSet",
-					Name:       replicaset.Name,
-					Controller: new(true),
-					UID:        "1234",
-				},
+		Name:      "test-pod1",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			"app": "test-app",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				Kind:       "ReplicaSet",
+				Name:       replicaset.Name,
+				Controller: new(true),
+				UID:        "1234",
 			},
 		},
 	}
 
 	// Create a Pod object
 	pod2 := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod2",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				"app": "doesnotmatch",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Kind:       "ReplicaSet",
-					Name:       "xyz",
-					Controller: new(true),
-					UID:        "1234",
-				},
+		Name:      "test-pod2",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			"app": "doesnotmatch",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				Kind:       "ReplicaSet",
+				Name:       "xyz",
+				Controller: new(true),
+				UID:        "1234",
 			},
 		},
 	}
 
 	// Add the Pod object to the fake Kubernetes clientset
-	_, err := fakeClient.CoreV1().Pods(pod1.Namespace).Create(context.Background(), pod1, metav1.CreateOptions{})
+	_, err := fakeClient.CoreV1().Pods(pod1.Namespace).Create(t.Context(), pod1, metav1.CreateOptions{})
 	require.NoError(t, err, "Failed to create Pod: %v", err)
 
-	_, err = fakeClient.CoreV1().Pods(pod2.Namespace).Create(context.Background(), pod2, metav1.CreateOptions{})
+	_, err = fakeClient.CoreV1().Pods(pod2.Namespace).Create(t.Context(), pod2, metav1.CreateOptions{})
 	require.NoError(t, err, "Failed to create Pod: %v", err)
 
 	// Create a KubernetesHandler object with the fake clientset
@@ -318,7 +337,7 @@ func TestGetPodsInDeployment(t *testing.T) {
 		clientSet: fakeClient,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	informerFactory := startInformers(ctx, fakeClient)
 
 	// Call the getPodsInDeployment function
@@ -334,70 +353,62 @@ func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 
 	// Create a Deployment object
 	deployment := &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-deployment",
-			Namespace:   "test-namespace",
-			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
-		},
+		Name:        "test-deployment",
+		Namespace:   "test-namespace",
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
 	}
 
 	// Create a ReplicaSet object with a higher revision than the other ReplicaSet
 	replicaSet1 := &v1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-replicaset-1",
-			Namespace:   "test-namespace",
-			Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(deployment, schema.GroupVersionKind{
-					Group:   v1.SchemeGroupVersion.Group,
-					Version: v1.SchemeGroupVersion.Version,
-					Kind:    "Deployment",
-				}),
-			},
+		Name:        "test-replicaset-1",
+		Namespace:   "test-namespace",
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "1"},
+		OwnerReferences: []metav1.OwnerReference{
+			*metav1.NewControllerRef(deployment, schema.GroupVersionKind{
+				Group:   v1.SchemeGroupVersion.Group,
+				Version: v1.SchemeGroupVersion.Version,
+				Kind:    "Deployment",
+			}),
 		},
 	}
 	// Create another ReplicaSet object with a lower revision than the other ReplicaSet
 	replicaSet2 := &v1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-replicaset-2",
-			Namespace:   "test-namespace",
-			Annotations: map[string]string{"deployment.kubernetes.io/revision": "0"},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(deployment, schema.GroupVersionKind{
-					Group:   v1.SchemeGroupVersion.Group,
-					Version: v1.SchemeGroupVersion.Version,
-					Kind:    "Deployment",
-				}),
-			},
+		Name:        "test-replicaset-2",
+		Namespace:   "test-namespace",
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "0"},
+		OwnerReferences: []metav1.OwnerReference{
+			*metav1.NewControllerRef(deployment, schema.GroupVersionKind{
+				Group:   v1.SchemeGroupVersion.Group,
+				Version: v1.SchemeGroupVersion.Version,
+				Kind:    "Deployment",
+			}),
 		},
 	}
 
 	// Create another ReplicaSet object with a higher revision than the other ReplicaSet
 	replicaSet3 := &v1.ReplicaSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-replicaset-3",
-			Namespace:   "test-namespace",
-			Annotations: map[string]string{"deployment.kubernetes.io/revision": "3"},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(deployment, schema.GroupVersionKind{
-					Group:   v1.SchemeGroupVersion.Group,
-					Version: v1.SchemeGroupVersion.Version,
-					Kind:    "Deployment",
-				}),
-			},
+		Name:        "test-replicaset-3",
+		Namespace:   "test-namespace",
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "3"},
+		OwnerReferences: []metav1.OwnerReference{
+			*metav1.NewControllerRef(deployment, schema.GroupVersionKind{
+				Group:   v1.SchemeGroupVersion.Group,
+				Version: v1.SchemeGroupVersion.Version,
+				Kind:    "Deployment",
+			}),
 		},
 	}
 
 	// Add the ReplicaSet objects to the fake Kubernetes clientset
-	_, err := fakeClient.AppsV1().ReplicaSets(replicaSet1.Namespace).Create(context.Background(), replicaSet1, metav1.CreateOptions{})
+	_, err := fakeClient.AppsV1().ReplicaSets(replicaSet1.Namespace).Create(t.Context(), replicaSet1, metav1.CreateOptions{})
 	require.NoError(t, err)
-	_, err = fakeClient.AppsV1().ReplicaSets(replicaSet2.Namespace).Create(context.Background(), replicaSet2, metav1.CreateOptions{})
+	_, err = fakeClient.AppsV1().ReplicaSets(replicaSet2.Namespace).Create(t.Context(), replicaSet2, metav1.CreateOptions{})
 	require.NoError(t, err)
-	_, err = fakeClient.AppsV1().ReplicaSets(replicaSet2.Namespace).Create(context.Background(), replicaSet3, metav1.CreateOptions{})
+	_, err = fakeClient.AppsV1().ReplicaSets(replicaSet2.Namespace).Create(t.Context(), replicaSet3, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	// Add the Deployment object to the fake Kubernetes clientset
-	_, err = fakeClient.AppsV1().Deployments(deployment.Namespace).Create(context.Background(), deployment, metav1.CreateOptions{})
+	_, err = fakeClient.AppsV1().Deployments(deployment.Namespace).Create(t.Context(), deployment, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	// Create a KubernetesHandler object with the fake clientset
@@ -405,7 +416,7 @@ func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 		clientSet: fakeClient,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	informerFactory := startInformers(ctx, fakeClient)
 
 	// Call the getNewestReplicaSetForDeployment function
@@ -415,11 +426,9 @@ func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 
 func TestCheckPodStatus(t *testing.T) {
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
-			Namespace: "test-namespace",
-		},
-		Status: corev1.PodStatus{},
+		Name:      "test-pod",
+		Namespace: "test-namespace",
+		Status:    corev1.PodStatus{},
 	}
 
 	podTests := []struct {
@@ -558,7 +567,7 @@ func TestCheckPodStatus(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	deploymentWaiter := NewDeploymentWaiter(fake.NewClientset())
 	for _, tc := range podTests {
 		pod.Status.Conditions = tc.podCondition
@@ -578,7 +587,7 @@ func TestCheckAllPodsReady_Success(t *testing.T) {
 	// Create a fake Kubernetes clientset
 	clientset := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := clientset.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -587,12 +596,10 @@ func TestCheckAllPodsReady_Success(t *testing.T) {
 
 	// Create a pod
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				"app": "test",
-			},
+		Name:      "test-pod",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			"app": "test",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
@@ -612,7 +619,7 @@ func TestCheckAllPodsReady_Success(t *testing.T) {
 			},
 		},
 	}
-	_, err = clientset.CoreV1().Pods("test-namespace").Create(context.Background(), pod, metav1.CreateOptions{})
+	_, err = clientset.CoreV1().Pods("test-namespace").Create(t.Context(), pod, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
 	// Create an informer factory and add the deployment and replica set to the cache
@@ -638,7 +645,7 @@ func TestCheckAllPodsReady_Fail(t *testing.T) {
 	// Create a fake Kubernetes clientset
 	clientset := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := clientset.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -647,18 +654,16 @@ func TestCheckAllPodsReady_Fail(t *testing.T) {
 
 	// Create a pod
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod1",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				"app": "test",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Kind:       "ReplicaSet",
-					Name:       replicaSet.Name,
-					Controller: new(true),
-				},
+		Name:      "test-pod1",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			"app": "test",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				Kind:       "ReplicaSet",
+				Name:       replicaSet.Name,
+				Controller: new(true),
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -679,7 +684,7 @@ func TestCheckAllPodsReady_Fail(t *testing.T) {
 			},
 		},
 	}
-	_, err = clientset.CoreV1().Pods(pod.Namespace).Create(context.Background(), pod, metav1.CreateOptions{})
+	_, err = clientset.CoreV1().Pods(pod.Namespace).Create(t.Context(), pod, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	// Create an informer factory and add the deployment and replica set to the cache
@@ -705,25 +710,23 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
 	fakeClient := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
 	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, testDeployment)
 
 	// Create a Pod object
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod1",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				"app": "test",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Kind:       "ReplicaSet",
-					Name:       replicaSet.Name,
-					Controller: new(true),
-				},
+		Name:      "test-pod1",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			"app": "test",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				Kind:       "ReplicaSet",
+				Name:       replicaSet.Name,
+				Controller: new(true),
 			},
 		},
 		Status: corev1.PodStatus{
@@ -783,18 +786,16 @@ func TestCheckDeploymentStatus_NoReplicaSetsFound(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
 	fakeClient := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	// Create a Pod object
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod1",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				"app": "test",
-			},
+		Name:      "test-pod1",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			"app": "test",
 		},
 		Status: corev1.PodStatus{
 			Conditions: []corev1.PodCondition{
@@ -855,25 +856,23 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
 	fakeClient := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
 	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, testDeployment)
 
 	// Create a Pod object
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod1",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				"app": "test",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Kind:       "ReplicaSet",
-					Name:       replicaSet.Name,
-					Controller: new(true),
-				},
+		Name:      "test-pod1",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			"app": "test",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				Kind:       "ReplicaSet",
+				Name:       replicaSet.Name,
+				Controller: new(true),
 			},
 		},
 		Status: corev1.PodStatus{
@@ -940,25 +939,23 @@ func TestCheckDeploymentStatus_ObservedGenerationMismatch(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
 	fakeClient := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, generationMismatchDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
 	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, generationMismatchDeployment)
 
 	// Create a Pod object
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod1",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				"app": "test",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Kind:       "ReplicaSet",
-					Name:       replicaSet.Name,
-					Controller: new(true),
-				},
+		Name:      "test-pod1",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			"app": "test",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				Kind:       "ReplicaSet",
+				Name:       replicaSet.Name,
+				Controller: new(true),
 			},
 		},
 		Status: corev1.PodStatus{
@@ -1018,25 +1015,23 @@ func TestCheckDeploymentStatus_DeploymentNotProgressing(t *testing.T) {
 
 	deploymentNotProgressing := testDeployment.DeepCopy()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, deploymentNotProgressing, metav1.CreateOptions{})
 	require.NoError(t, err)
 	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, deploymentNotProgressing)
 
 	// Create a Pod object
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod1",
-			Namespace: "test-namespace",
-			Labels: map[string]string{
-				"app": "test",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Kind:       "ReplicaSet",
-					Name:       replicaSet.Name,
-					Controller: new(true),
-				},
+		Name:      "test-pod1",
+		Namespace: "test-namespace",
+		Labels: map[string]string{
+			"app": "test",
+		},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				Kind:       "ReplicaSet",
+				Name:       replicaSet.Name,
+				Controller: new(true),
 			},
 		},
 		Status: corev1.PodStatus{

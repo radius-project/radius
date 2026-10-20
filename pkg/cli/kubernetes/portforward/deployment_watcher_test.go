@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,7 +38,7 @@ func Test_DeploymentWatcher_Run_CanShutDown(t *testing.T) {
 	out := &bytes.Buffer{}
 	client, _ := createPodWatchFakes()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(
@@ -61,7 +60,7 @@ func Test_DeploymentWatcher_Updated_HandleNewDeployment(t *testing.T) {
 	out := &bytes.Buffer{}
 	client, _ := createPodWatchFakes()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(
@@ -84,7 +83,7 @@ func Test_DeploymentWatcher_Updated_HandleMultipleReplicas(t *testing.T) {
 	out := &bytes.Buffer{}
 	client, _ := createPodWatchFakes()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(
@@ -115,7 +114,7 @@ func Test_DeploymentWatcher_Updated_HandleStalePod(t *testing.T) {
 	out := &bytes.Buffer{}
 	client, _ := createPodWatchFakes()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	stale := map[string]bool{
@@ -154,7 +153,7 @@ func Test_DeploymentWatcher_Updated_HandleMultipleStalePod(t *testing.T) {
 	out := &bytes.Buffer{}
 	client, _ := createPodWatchFakes()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	stale := map[string]bool{
@@ -200,7 +199,7 @@ func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_NoOtherRepli
 	out := &bytes.Buffer{}
 	client, _ := createPodWatchFakes()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(
@@ -232,7 +231,7 @@ func Test_DeploymentWatcher_Updated_HandleDeletingStateOfWatchedPod_HasOtherRepl
 	out := &bytes.Buffer{}
 	client, _ := createPodWatchFakes()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(
@@ -274,7 +273,7 @@ func Test_DeploymentWatcher_Deleted_NoOtherReplicas(t *testing.T) {
 	out := &bytes.Buffer{}
 	client, _ := createPodWatchFakes()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(
@@ -289,7 +288,7 @@ func Test_DeploymentWatcher_Deleted_NoOtherReplicas(t *testing.T) {
 	defer stopPodWatchers(dw)
 
 	// Step 1: Add a pod
-	dw.updated(context.Background(), createPod("p1", "rs1"), map[string]bool{})
+	dw.updated(t.Context(), createPod("p1", "rs1"), map[string]bool{})
 	require.NotNil(t, dw.podWatcher)
 	require.Equal(t, dw.podWatcher.Pod.Name, "p1")
 	existing := dw.podWatcher
@@ -307,7 +306,7 @@ func Test_DeploymentWatcher_Deleted_HasOtherReplicas(t *testing.T) {
 	out := &bytes.Buffer{}
 	client, _ := createPodWatchFakes()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	dw := NewDeploymentWatcher(
@@ -391,14 +390,12 @@ func stopPodWatchers(dw *deploymentWatcher) {
 
 func createPod(name string, replicaSetName string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Name: name,
-			OwnerReferences: []v1.OwnerReference{
-				{
-					APIVersion: "v1",
-					Kind:       "ReplicaSet",
-					Name:       replicaSetName,
-				},
+		Name: name,
+		OwnerReferences: []v1.OwnerReference{
+			{
+				APIVersion: "v1",
+				Kind:       "ReplicaSet",
+				Name:       replicaSetName,
 			},
 		},
 	}

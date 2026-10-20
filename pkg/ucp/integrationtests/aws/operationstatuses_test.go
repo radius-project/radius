@@ -47,7 +47,7 @@ func Test_GetOperationStatuses(t *testing.T) {
 		return &output, nil
 	})
 
-	operationResultsRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL()+testProxyRequestAWSAsyncPath+"/operationStatuses/"+strings.ToLower(testAWSRequestToken), nil)
+	operationResultsRequest, err := rpctest.NewHTTPRequestWithContent(t.Context(), http.MethodGet, ucp.BaseURL()+testProxyRequestAWSAsyncPath+"/operationStatuses/"+strings.ToLower(testAWSRequestToken), nil)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := rpctest.NewARMRequestContext(operationResultsRequest)

@@ -1,4 +1,3 @@
-
 extension radius
 
 @description('Specifies the location for resources.')
@@ -13,48 +12,45 @@ param port int = 5000
 @description('Specifies the environment for resources.')
 param environment string
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'corerp-resources-container-bad-healthprobe'
   location: location
   properties: {
     environment: environment
-    extensions: [
-      {
-          kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-bad-healthprobe-app'
-      }
-    ]
   }
 }
 
-resource container 'Applications.Core/containers@2023-10-01-preview' = {
+resource container 'Radius.Compute/containers@2025-08-01-preview' = {
   name: 'ctnr-bad-healthprobe'
   location: location
   properties: {
-      application: app.id
-      container: {
+    application: app.id
+    environment: environment
+    containers: {
+      ctnrbadhealthprobe: {
         image: magpieimage
-        readinessProbe:{
-          kind: 'httpGet'
-          containerPort: 5000
-          path: '/bad'
-          failureThreshold:1
-          periodSeconds:1
+        readinessProbe: {
+          httpGet: {
+            path: '/bad'
+            port: 5000
+          }
+          failureThreshold: 1
+          periodSeconds: 1
         }
-        livenessProbe:{
-          kind: 'httpGet'
-          containerPort: 5000
-          path: '/bad'
-          failureThreshold:1
-          periodSeconds:1
+        livenessProbe: {
+          httpGet: {
+            path: '/bad'
+            port: 5000
+          }
+          failureThreshold: 1
+          periodSeconds: 1
         }
-        
         ports: {
           web: {
             containerPort: port
           }
         }
       }
-      connections: {}
     }
   }
+}

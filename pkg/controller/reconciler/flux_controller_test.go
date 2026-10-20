@@ -29,7 +29,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
@@ -125,15 +124,8 @@ type runFluxControllerTestOptions struct {
 func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, steps []Step) runFluxControllerTestOptions {
 	SkipWithoutEnvironment(t)
 
-	// For debugging, you can set uncomment this to see logs from the controller. This will cause tests to fail
-	// because the logging will continue after the test completes.
-	//
-	// Add runtimelog "sigs.k8s.io/controller-runtime/pkg/log" to imports.
-	//
-	// runtimelog.SetLogger(ucplog.FromContextOrDiscard(testcontext.New(t)))
-
 	// Shut down the manager when the test exits.
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	fs := filesystem.NewMemMapFileSystem()
@@ -162,10 +154,11 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 	require.NoError(t, err)
 
 	mgrCtx, mgrCancel := context.WithCancel(ctx)
-	t.Cleanup(mgrCancel)
 
 	managerErr := make(chan error, 1)
+	managerStopped := make(chan struct{})
 	go func() {
+		defer close(managerStopped)
 		t.Log("Starting manager...")
 		if err := mgr.Start(mgrCtx); err != nil {
 			if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
@@ -174,6 +167,15 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 		}
 		t.Log("Manager stopped.")
 	}()
+
+	// Cancel the manager context and wait for the manager goroutine to fully exit before the test
+	// completes, so it does not leak into subsequent tests or into package teardown. The wait is
+	// bounded so a manager that fails to stop fails the test instead of hanging until the global
+	// `go test` timeout.
+	t.Cleanup(func() {
+		mgrCancel()
+		waitForManagerShutdown(t, managerStopped)
+	})
 
 	t.Log("Waiting for cache to be ready")
 	waitCtx, waitCancel := context.WithTimeout(ctx, 30*time.Second)
@@ -291,21 +293,19 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 }
 
 func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, steps []Step) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	// Track namespaces created during the test for cleanup
 	namespacesToCleanup := make(map[string]bool)
 	defer func() {
 		// Clean up namespaces at the end of the test using fresh context
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second) //nolint:usetesting
 		defer cancel()
 
 		for ns := range namespacesToCleanup {
 			t.Logf("Cleaning up namespace: %s", ns)
 			namespace := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: ns,
-				},
+				Name: ns,
 			}
 			err := opts.client.Delete(cleanupCtx, namespace)
 			if err != nil && k8sclient.IgnoreNotFound(err) != nil {
@@ -337,9 +337,7 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 					require.NoError(t, err)
 				}
 				namespace := &corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: namespaceName,
-					},
+					Name: namespaceName,
 				}
 				err := opts.client.Create(ctx, namespace)
 				require.NoError(t, err)
@@ -414,14 +412,10 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 
 func makeGitRepository(namespacedName types.NamespacedName, url string) sourcev1.GitRepository {
 	return sourcev1.GitRepository{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "GitRepository",
-			APIVersion: "source.toolkit.fluxcd.io/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      namespacedName.Name,
-			Namespace: namespacedName.Namespace,
-		},
+		Kind:       "GitRepository",
+		APIVersion: "source.toolkit.fluxcd.io/v1",
+		Name:       namespacedName.Name,
+		Namespace:  namespacedName.Namespace,
 		Spec: sourcev1.GitRepositorySpec{
 			URL: url,
 		},

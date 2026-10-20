@@ -28,13 +28,13 @@ import (
 	cdm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/frontend/controller/util"
 	"github.com/radius-project/radius/pkg/kubernetes"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	rp_kube "github.com/radius-project/radius/pkg/rp/kube"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -139,8 +139,18 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		KubernetesCompute: rpv1.KubernetesComputeProperties{Namespace: kubeNamespace},
 	}
 
+	// Create the application namespace on the cluster the application's resources
+	// deploy to. By default this is the control-plane cluster, but when
+	// RADIUS_TARGET_KUBECONFIG is set (multi-cluster mode) it is the external
+	// target cluster — so the namespace exists where recipe/output resources land,
+	// and the control-plane cluster is not populated with per-application namespaces.
 	// TODO: Move it to backend controller - https://github.com/radius-project/radius/issues/4742
-	err = opt.KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}})
+	namespaceClient, err := kubeutil.DeploymentTargetRuntimeClient(opt.KubeClient)
+	if err != nil {
+		return nil, err
+	}
+
+	err = namespaceClient.Create(ctx, &corev1.Namespace{Name: kubeNamespace})
 	if apierrors.IsAlreadyExists(err) {
 		logger.Info("Using existing namespace", "namespace", kubeNamespace)
 	} else if err != nil {

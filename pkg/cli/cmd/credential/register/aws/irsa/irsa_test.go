@@ -17,7 +17,6 @@ limitations under the License.
 package irsa
 
 import (
-	"context"
 	"testing"
 
 	"go.uber.org/mock/gomock"
@@ -119,7 +118,7 @@ func Test_Run(t *testing.T) {
 				IAMRole:     roleARN,
 				KubeContext: "my-context",
 			}
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{

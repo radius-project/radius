@@ -29,6 +29,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
+type encryptionUpdateFilter controller.UpdateFilter[datamodel.DynamicResource]
+
 // makeEncryptionFilter creates an UpdateFilter that encrypts sensitive fields in the resource's
 // Properties map before saving to the database.
 //
@@ -41,7 +43,7 @@ import (
 func makeEncryptionFilter(
 	ucpClient *v20231001preview.ClientFactory,
 	handler *encryption.SensitiveDataHandler,
-) controller.UpdateFilter[datamodel.DynamicResource] {
+) encryptionUpdateFilter {
 	return func(
 		ctx context.Context,
 		newResource *datamodel.DynamicResource,

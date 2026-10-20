@@ -1,0 +1,164 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __build-images
+
+on:
+  workflow_call:
+    outputs:
+      edge-current:
+        description: Whether edge images were published from the current main commit
+        value: ${{ jobs.publish-edge.outputs.current }}
+
+permissions: {}
+
+env:
+  DOCKER_REGISTRY: ${{ github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main' && 'ghcr.io/radius-project' || 'ghcr.io/radius-project/dev' }}
+
+jobs:
+  build-and-push-images:
+    name: Export snapshot images
+    if: github.repository != 'radius-project/radius' || github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read # Required for actions/checkout
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Parse release version and set environment variables
+        id: release-metadata
+        run: bash ./.github/scripts/release-version.sh | tee -a "${GITHUB_ENV}" >>"${GITHUB_OUTPUT}"
+
+      - name: Download snapshot metadata
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: core-snapshot-${{ github.sha }}
+          path: dist/goreleaser
+
+      - name: Download snapshot images
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: core-snapshot-images-${{ github.sha }}
+          path: dist/images
+
+      - name: Load snapshot images
+        run: make docker-load-images
+
+      - name: Build and save Bicep image for validation
+        run: |
+          make docker-build-bicep
+          docker save --output dist/images/bicep.tar "${DOCKER_REGISTRY}/bicep:${DOCKER_TAG_VERSION}"
+        env:
+          DOCKER_TAG_VERSION: ${{ steps.release-metadata.outputs.REL_VERSION }}
+
+      - name: Upload Bicep image artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bicep-image-${{ steps.release-metadata.outputs.REL_VERSION }}
+          path: ./dist/images/bicep.tar
+          retention-days: 1
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Collect build metrics
+        if: always()
+        run: |
+          make build-metrics
+          cat dist/metrics/metrics.txt >> "$GITHUB_STEP_SUMMARY"
+        env:
+          DOCKER_TAG_VERSION: ${{ steps.release-metadata.outputs.REL_VERSION }}
+
+      - name: Upload build metrics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-metrics-${{ github.job }}
+          path: dist/metrics/
+
+  publish-edge:
+    name: Publish edge snapshot images
+    if: github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      current: ${{ steps.current-main.outputs.current }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check current main commit
+        id: current-main
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { data } = await github.rest.repos.getBranch({ ...context.repo, branch: 'main' })
+            core.setOutput('current', data.commit.sha === context.sha)
+            if (data.commit.sha !== context.sha) core.notice('Skipping edge publication from an older main commit')
+
+      - name: Download snapshot metadata
+        if: steps.current-main.outputs.current == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: core-snapshot-${{ github.sha }}
+          path: dist/goreleaser
+
+      - name: Download snapshot images
+        if: steps.current-main.outputs.current == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: core-snapshot-images-${{ github.sha }}
+          path: dist/images
+
+      - name: Load snapshot images
+        if: steps.current-main.outputs.current == 'true'
+        run: make docker-load-images
+
+      - name: Install image tools
+        if: steps.current-main.outputs.current == 'true'
+        run: make install-jq install-oras
+
+      - name: Login to GitHub Container Registry
+        if: steps.current-main.outputs.current == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Setup QEMU
+        if: steps.current-main.outputs.current == 'true'
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Setup Docker Buildx
+        if: steps.current-main.outputs.current == 'true'
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Push container images (edge)
+        if: steps.current-main.outputs.current == 'true'
+        run: make goreleaser-push-edge docker-publish-bicep
+        env:
+          DOCKER_TAG_VERSION: edge

@@ -99,12 +99,12 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 	cfg.ConfigLoader = configloader.NewEnvironmentLoader(clientOptions)
 	cfg.Engine = engine.NewEngine(engine.Options{
 		ConfigurationLoader: cfg.ConfigLoader,
-		SecretsLoader:       configloader.NewSecretStoreLoader(clientOptions),
+		SecretsLoader:       configloader.NewSecretStoreLoader(clientOptions, cfg.Kubernetes),
 		Drivers: map[string]driver.Driver{
 			recipes.TemplateKindBicep: bicep.NewBicepDriver(
 				clientOptions,
 				cfg.DeploymentEngineClient,
-				processors.NewResourceClient(options.Arm, options.UCPConnection, cfg.Kubernetes),
+				processors.NewResourceClientFactory(options.Arm, options.UCPConnection, cfg.Kubernetes),
 				bicep.BicepOptions{
 					DeleteRetryCount:        bicepDeleteRetryCount,
 					DeleteRetryDelaySeconds: bicepDeleteRetryDeleteSeconds,

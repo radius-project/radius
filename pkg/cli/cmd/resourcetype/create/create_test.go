@@ -17,7 +17,6 @@ limitations under the License.
 package create
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -55,6 +54,12 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
+		{
+			Name:          "Invalid: multiple types with icon and no type name",
+			Input:         []string{"--from-file", "testdata/valid.yaml", "--icon", "icon.svg"},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{Config: config},
+		},
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
@@ -82,7 +87,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeName:                 "testResources",
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.Contains(t, outputSink.Writes, output.LogOutput{
@@ -112,7 +117,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeName:                 "", // Empty resource type name
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// Verify the concise success log lines for both resource types are emitted
@@ -149,7 +154,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeName:                 expectedResourceType,
 		}
 
-		_ = runner.Run(context.Background())
+		_ = runner.Run(t.Context())
 
 		// Verify only the specified resource type produced a success line.
 		require.Contains(t, outputSink.Writes, output.LogOutput{
@@ -183,7 +188,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeName:                 expectedResourceType,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "unexpected status code 500.")
 	})

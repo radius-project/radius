@@ -17,7 +17,6 @@ limitations under the License.
 package validator
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/swagger"
@@ -73,7 +72,7 @@ func Test_ParseSpecFilePath(t *testing.T) {
 }
 
 func Test_Loader(t *testing.T) {
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, []string{"{rootScope:.*}"}, "rootScope")
+	l, err := LoadSpec(t.Context(), "applications.core", swagger.SpecFiles, []string{"{rootScope:.*}"}, "rootScope")
 	require.NoError(t, err)
 	v, ok := l.GetValidator("applications.core/environments", "2023-10-01-preview")
 	require.True(t, ok)

@@ -25,7 +25,7 @@ import (
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
-	"github.com/radius-project/radius/test/testcontext"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -56,16 +56,8 @@ var (
 func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.MockResourceDeploymentsClient, k8sClient.Client) {
 	SkipWithoutEnvironment(t)
 
-	// For debugging, you can set uncomment this to see logs from the controller. This will cause tests to fail
-	// because the logging will continue after the test completes.
-	//
-	// Add runtimelog "sigs.k8s.io/controller-runtime/pkg/log" to imports.
-	//
-	// runtimelog.SetLogger(ucplog.FromContextOrDiscard(testcontext.New(t)))
-
 	// Shut down the manager when the test exits.
-	ctx, cancel := testcontext.NewWithCancel(t)
-	t.Cleanup(cancel)
+	ctx, cancel := context.WithCancel(t.Context())
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
@@ -95,22 +87,17 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
 
-	go func() {
-		// Cannot use require/assert here - accessing testing.T from a non-test goroutine causes a data race.
-		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			panic(fmt.Sprintf("manager exited with error: %v", err))
-		}
-	}()
+	startManager(t, mgr, ctx, cancel)
 
 	return mockRadiusClient, mockResourceDeploymentsClient, mgr.GetClient()
 }
 
 func Test_DeploymentResourceReconciler_Basic(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, _, k8sClient := SetupDeploymentTemplateTest(t)
 
 	name := types.NamespacedName{Namespace: TestDeploymentResourceNamespace, Name: TestDeploymentResourceName}
-	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := k8sClient.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	deployment := makeDeploymentResource(name, TestDeploymentResourceID)
@@ -134,28 +121,36 @@ func Test_DeploymentResourceReconciler_DeleteRetryBackoff(t *testing.T) {
 	// rather than controller-runtime's exponential rate-limiter (which
 	// climbs to ~16 minutes).
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, mockDeploymentClient, k8sClient := SetupDeploymentResourceTest(t)
 
 	name := types.NamespacedName{Namespace: "deploymentresource-deleteretry", Name: TestDeploymentResourceName}
-	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := k8sClient.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
-	// A finalizer keeps the DR alive past Delete; an OwnerReference is
-	// required because reconcileDelete indexes OwnerReferences[0].
+	// A finalizer keeps the DR alive past Delete. The DeploymentResource must be controlled by a
+	// DeploymentTemplate whose deployment scope covers Spec.Id, otherwise reconcileDelete skips the
+	// delete.
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(name.Namespace).String()
+	require.NoError(t, err)
+
+	owner := makeDeploymentTemplate(types.NamespacedName{Namespace: name.Namespace, Name: "owner-template"}, "{}", providerConfig, nil)
+	err = k8sClient.Create(ctx, owner)
+	require.NoError(t, err)
+
 	resourceID := fmt.Sprintf("/planes/radius/local/resourcegroups/%s/providers/Applications.Core/containers/%s", name.Namespace, name.Name)
 	deployment := &radappiov1alpha3.DeploymentResource{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace:  name.Namespace,
-			Name:       name.Name,
-			Finalizers: []string{DeploymentResourceFinalizer},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion: "radapp.io/v1alpha3",
-					Kind:       "DeploymentTemplate",
-					Name:       "synthetic-owner",
-					UID:        types.UID("synthetic-owner-uid-deleteretry"),
-				},
+		Namespace:  name.Namespace,
+		Name:       name.Name,
+		Finalizers: []string{DeploymentResourceFinalizer},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         radappiov1alpha3.GroupVersion.String(),
+				Kind:               deploymentTemplateKind,
+				Name:               owner.Name,
+				UID:                owner.UID,
+				Controller:         to.Ptr(true),
+				BlockOwnerDeletion: to.Ptr(true),
 			},
 		},
 		Spec: radappiov1alpha3.DeploymentResourceSpec{Id: resourceID},
@@ -189,8 +184,111 @@ func Test_DeploymentResourceReconciler_DeleteRetryBackoff(t *testing.T) {
 	waitForDeploymentResourceDeleted(t, k8sClient, name)
 }
 
+func Test_DeploymentResourceReconciler_SkipsDeleteOutsideTemplateScope(t *testing.T) {
+	// A DeploymentResource whose Spec.Id points outside its owning DeploymentTemplate's deployment
+	// scope must NOT trigger a UCP delete: the controller only deletes resources it provisioned
+	// within the owning template's scope.
+
+	ctx := t.Context()
+	_, mockDeploymentClient, k8sClient := SetupDeploymentResourceTest(t)
+
+	name := types.NamespacedName{Namespace: "deploymentresource-outofscope", Name: "out-of-scope"}
+	err := k8sClient.Create(ctx, &corev1.Namespace{Name: name.Namespace})
+	require.NoError(t, err)
+
+	// An owning DeploymentTemplate scoped to its own resource group.
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(name.Namespace).String()
+	require.NoError(t, err)
+
+	owner := makeDeploymentTemplate(types.NamespacedName{Namespace: name.Namespace, Name: "owner-template"}, "{}", providerConfig, nil)
+	err = k8sClient.Create(ctx, owner)
+	require.NoError(t, err)
+
+	// Spec.Id points at a resource in a DIFFERENT resource group than the owning template's scope.
+	outOfScopeID := "/planes/radius/local/resourcegroups/other-group/providers/Applications.Core/environments/default"
+	deployment := &radappiov1alpha3.DeploymentResource{
+		Namespace:  name.Namespace,
+		Name:       name.Name,
+		Finalizers: []string{DeploymentResourceFinalizer},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         radappiov1alpha3.GroupVersion.String(),
+				Kind:               deploymentTemplateKind,
+				Name:               owner.Name,
+				UID:                owner.UID,
+				Controller:         to.Ptr(true),
+				BlockOwnerDeletion: to.Ptr(true),
+			},
+		},
+		Spec: radappiov1alpha3.DeploymentResourceSpec{Id: outOfScopeID},
+	}
+	err = k8sClient.Create(ctx, deployment)
+	require.NoError(t, err)
+
+	_ = waitForDeploymentResourceStateReady(t, k8sClient, name)
+
+	err = k8sClient.Delete(ctx, deployment)
+	require.NoError(t, err)
+
+	// The object is removed (finalizer dropped) without any UCP delete being issued.
+	waitForDeploymentResourceDeleted(t, k8sClient, name)
+	require.Empty(t, mockDeploymentClient.DeletedResourceIDs(), "controller must not issue a UCP delete for a resource outside the owning template's scope")
+}
+
+func Test_resourceWithinScope(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		resourceID string
+		scope      string
+		want       bool
+		wantErr    bool
+	}{
+		{
+			name:       "resource in scope",
+			resourceID: "/planes/radius/local/resourceGroups/my-group/providers/Applications.Core/environments/default",
+			scope:      "/planes/radius/local/resourceGroups/my-group",
+			want:       true,
+		},
+		{
+			name:       "resource in scope with different casing",
+			resourceID: "/planes/radius/local/resourcegroups/my-group/providers/Applications.Core/containers/web",
+			scope:      "/planes/radius/local/resourceGroups/my-group",
+			want:       true,
+		},
+		{
+			name:       "resource in a different resource group",
+			resourceID: "/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/default",
+			scope:      "/planes/radius/local/resourceGroups/group-b",
+			want:       false,
+		},
+		{
+			name:       "invalid resource id",
+			resourceID: "not-a-valid-id",
+			scope:      "/planes/radius/local/resourceGroups/my-group",
+			wantErr:    true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := resourceWithinScope(tc.resourceID, tc.scope)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func waitForDeploymentResourceStateReady(t *testing.T, client k8sClient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentResourceStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.DeploymentResourceStatus{}
@@ -211,7 +309,7 @@ func waitForDeploymentResourceStateReady(t *testing.T, client k8sClient.Client, 
 }
 
 func waitForDeploymentResourceStateDeleting(t *testing.T, client k8sClient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentResourceStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.DeploymentResourceStatus{}
@@ -235,7 +333,7 @@ func waitForDeploymentResourceStateDeleting(t *testing.T, client k8sClient.Clien
 }
 
 func waitForDeploymentResourceDeleted(t *testing.T, client k8sClient.Client, name types.NamespacedName) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	require.Eventuallyf(t, func() bool {

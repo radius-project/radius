@@ -25,12 +25,13 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
+        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
-      {{- end }}
+        {{- end }}
     spec:
       serviceAccountName: applications-rp
       {{- if .Values.global.imagePullSecrets }}
@@ -162,6 +163,13 @@ spec:
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
+        {{- if .Values.database.enabled }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_PASSWORD
+        {{- end }}
         - name: SKIP_ARM
           value: 'false'
         - name: ARM_AUTH_METHOD
@@ -178,6 +186,7 @@ spec:
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
         {{- end}}
+        {{- include "radius.targetCluster.env" . | nindent 8 }}
         ports:
         - containerPort: 5443
           name: applications-rp
@@ -211,6 +220,7 @@ spec:
           mountPath: /etc/ssl/certs
           readOnly: true
         {{- end }}
+        {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
         {{- if .Values.rp.resources }}
         resources:{{ toYaml .Values.rp.resources | nindent 10 }}
         {{- end }}
@@ -238,3 +248,4 @@ spec:
         - name: ssl-certs
           emptyDir: {}
         {{- end }}
+        {{- include "radius.targetCluster.volume" . | nindent 8 }}

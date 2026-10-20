@@ -53,3 +53,37 @@ func TestResourceTypePutController_updateSummary(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expected, summary)
 }
+
+func TestResourceTypePutController_updateSummary_existingDifferentCasing(t *testing.T) {
+	// A PUT for "testResources" should reuse an existing entry stored under a different casing
+	// (e.g. "testresources") instead of creating a second, duplicate entry.
+	id := resources.MustParse("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources")
+	resourceType := &datamodel.ResourceType{
+		Properties: datamodel.ResourceTypeProperties{
+			DefaultAPIVersion: new("2025-01-01"),
+		},
+	}
+
+	summary := &datamodel.ResourceProviderSummary{
+		Properties: datamodel.ResourceProviderSummaryProperties{
+			ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
+				"testresources": {},
+			},
+		},
+	}
+
+	expected := &datamodel.ResourceProviderSummary{
+		Properties: datamodel.ResourceProviderSummaryProperties{
+			ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
+				"testresources": {
+					DefaultAPIVersion: new("2025-01-01"),
+				},
+			},
+		},
+	}
+
+	controller := &ResourceTypePutController{}
+	err := controller.updateSummary(id, resourceType)(summary)
+	require.NoError(t, err)
+	require.Equal(t, expected, summary)
+}

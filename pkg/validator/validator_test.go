@@ -30,7 +30,7 @@ import (
 )
 
 func Test_FindParam(t *testing.T) {
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, []string{"/subscriptions/{subscriptionID}/resourceGroups/{rgName}"}, "rootScope")
+	l, err := LoadSpec(t.Context(), "applications.core", swagger.SpecFiles, []string{"/subscriptions/{subscriptionID}/resourceGroups/{rgName}"}, "rootScope")
 	require.NoError(t, err)
 	v, ok := l.GetValidator("applications.core/environments", "2023-10-01-preview")
 	require.True(t, ok)

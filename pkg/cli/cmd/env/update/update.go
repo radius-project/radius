@@ -19,37 +19,42 @@ package update
 import (
 	"context"
 	"fmt"
+	"strings"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/spf13/cobra"
+
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/cmd/group/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/spf13/cobra"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-const envNotFoundErrMessageFmt = "The environment %q does not exist. Please select a new environment and try again."
+const (
+	envNotFoundErrMessageFmt = "The environment %q does not exist. Please select a new environment and try again."
+
+	// defaultKubernetesNamespace is used when neither the user nor the existing
+	// environment specifies one. Recipes that deploy Kubernetes resources
+	// require a namespace to target.
+	defaultKubernetesNamespace = "default"
+)
 
 // NewCommand creates an instance of the command and runner for the `rad env update` command.
-//
-
-// NewCommand creates a new Cobra command for updating an environment's configuration, such as adding or removing cloud
-// providers, and returns a Runner to execute the command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
-	runner.providers = &corerp.Providers{
-		Azure: &corerp.ProvidersAzure{},
-		Aws:   &corerp.ProvidersAws{},
+	runner.providers = &corerpv20250801.Providers{
+		Azure:      &corerpv20250801.ProvidersAzure{},
+		Aws:        &corerpv20250801.ProvidersAws{},
+		Kubernetes: &corerpv20250801.ProvidersKubernetes{},
 	}
-
 	cmd := &cobra.Command{
 		Use:   "update [environment]",
 		Short: "Update environment configuration",
@@ -59,17 +64,16 @@ This command updates the configuration of an environment for properties that are
 
 Properties that can be updated include:
 - providers (Azure, AWS)
-- namespace
 
 All other properties require the environment to be deleted and recreated.
 `,
 		Args: cobra.ExactArgs(1),
 		Example: `
 ## Add Azure cloud provider for deploying Azure resources
-rad env update myenv --azure-subscription-id <subscription-id> --azure-resource-group <resource-group>
+rad env update myenv --azure-subscription-id **** --azure-resource-group myrg
 
 ## Add AWS cloud provider for deploying AWS resources
-rad env update myenv --aws-region <region> --aws-account-id <account-id>
+rad env update myenv --aws-region us-west-2 --aws-account-id *****
 
 ## Remove Azure cloud provider
 rad env update myenv --clear-azure
@@ -77,22 +81,42 @@ rad env update myenv --clear-azure
 ## Remove AWS cloud provider
 rad env update myenv --clear-aws
 
-## Update the Kubernetes namespace
+## Add Kubernetes cloud provider
+## The namespace can only be set on an environment that does not already have one; it is
+## immutable afterwards.
 rad env update myenv --kubernetes-namespace mynamespace
+
+## Set recipe packs to environment
+rad env update myenv --recipe-packs pack1,pack2
+
+## Set recipe packs from a different resource group to environment
+rad env update myenv --recipe-packs pack1 --recipe-pack-group other-group
 `,
 		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
-	commonflags.AddKubernetesNamespaceFlag(cmd)
+	cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "Specify if azure provider needs to be cleared on env")
+	cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "Specify if aws provider needs to be cleared on env")
+	cmd.Flags().Bool(commonflags.ClearEnvKubernetesFlag, false, "Specify if kubernetes provider needs to be cleared on env")
+
+	// The Kubernetes namespace is immutable once set, so this flag can no longer do anything: it is
+	// rejected on any environment that has a namespace and is a no-op on one that does not. It is
+	// kept so that users who scripted it get an explanation rather than a bare "unknown flag" from
+	// Cobra. MarkDeprecated also sets Hidden, so it no longer appears in help output. Remove it
+	// once Radius.Core leaves preview.
+	_ = cmd.Flags().MarkDeprecated(commonflags.ClearEnvKubernetesFlag, "the Kubernetes namespace of an environment cannot be removed; create a new environment instead")
+
+	cmd.Flags().StringSliceP("recipe-packs", "", []string{}, "Specify recipe packs to replace the environment's recipe pack list. Accepts comma-separated values.")
+	cmd.Flags().StringP("recipe-pack-group", "", "", "Specify the resource group containing the recipe packs named in --recipe-packs, if different from the environment's resource group.")
+	commonflags.AddAzureScopeFlags(cmd)
+	commonflags.AddAWSScopeFlags(cmd)
+	commonflags.AddKubernetesScopeFlags(cmd)
 	commonflags.AddNamespaceFlag(cmd)
 	commonflags.MarkNamespaceFlagDeprecated(cmd)
 	cmd.MarkFlagsMutuallyExclusive(commonflags.KubernetesNamespaceFlag, commonflags.NamespaceFlag)
-	cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "Specify if azure provider needs to be cleared on env")
-	cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "Specify if aws provider needs to be cleared on env")
-	commonflags.AddAzureScopeFlags(cmd)
-	commonflags.AddAWSScopeFlags(cmd)
+	cmd.MarkFlagsMutuallyExclusive(commonflags.NamespaceFlag, commonflags.ClearEnvKubernetesFlag)
 	//TODO: https://github.com/radius-project/radius/issues/5247
 	commonflags.AddEnvironmentNameFlag(cmd)
 
@@ -101,34 +125,30 @@ rad env update myenv --kubernetes-namespace mynamespace
 
 // Runner is the runner implementation for the `rad env update` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Workspace         *workspaces.Workspace
-	Output            output.Interface
+	ConfigHolder            *framework.ConfigHolder
+	Output                  output.Interface
+	Workspace               *workspaces.Workspace
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 
-	EnvName       string
-	Namespace     string
-	clearEnvAzure bool
-	clearEnvAws   bool
-	providers     *corerp.Providers
-	noFlagsSet    bool
+	EnvironmentName    string
+	clearEnvAzure      bool
+	clearEnvAws        bool
+	clearEnvKubernetes bool
+	providers          *corerpv20250801.Providers
+	noFlagsSet         bool
+	recipePacks        []string
+	recipePackGroup    string
 }
 
 // NewRunner creates a new instance of the `rad env update` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 	}
 }
 
 // Validate runs validation for the `rad env update` command.
-//
-
-// Validate checks the command flags and arguments for the required workspace, scope, environment name, Azure
-// subscription ID, Azure resource group, AWS region, and AWS account ID, and sets the corresponding values in the Runner
-// struct. If any of these values are not provided, an error is returned.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if cmd.Flags().NFlag() == 0 {
 		r.noFlagsSet = true
@@ -145,7 +165,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.EnvName, err = cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
+	r.EnvironmentName, err = cli.RequireRadiusCoreEnvironmentNameArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
@@ -162,7 +182,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Azure.Scope = new(fmt.Sprintf(commonflags.AzureScopeTemplate, azureSubId, azureRgId))
+		r.providers.Azure.SubscriptionID = new(azureSubId)
+		r.providers.Azure.ResourceGroupName = new(azureRgId)
 	}
 
 	r.clearEnvAzure, err = cmd.Flags().GetBool(commonflags.ClearEnvAzureFlag)
@@ -183,7 +204,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		r.providers.Aws.Scope = new(fmt.Sprintf(commonflags.AwsScopeTemplate, awsAccountId, awsRegion))
+		r.providers.Aws.Region = new(awsRegion)
+		r.providers.Aws.AccountID = new(awsAccountId)
 	}
 
 	r.clearEnvAws, err = cmd.Flags().GetBool(commonflags.ClearEnvAWSFlag)
@@ -191,85 +213,401 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	namespace, set, err := commonflags.ResolveKubernetesNamespaceFlag(cmd)
+	k8sNamespace, k8sNamespaceSet, err := commonflags.ResolveKubernetesNamespaceFlag(cmd)
 	if err != nil {
 		return err
 	}
-	if set {
-		if err := prompt.ValidateKubernetesNamespace(namespace); err != nil {
-			return clierrors.Message("Invalid Kubernetes namespace %q: %s", namespace, err.Error())
+	if k8sNamespaceSet {
+		r.providers.Kubernetes.Namespace = new(k8sNamespace)
+	}
+
+	r.clearEnvKubernetes, err = cmd.Flags().GetBool(commonflags.ClearEnvKubernetesFlag)
+	if err != nil {
+		return err
+	}
+
+	recipePacks, err := cmd.Flags().GetStringSlice("recipe-packs")
+	if err != nil {
+		return err
+	}
+
+	r.recipePacks = recipepack.NormalizeRecipePacks(recipePacks)
+
+	// Reject an explicitly provided but effectively empty --recipe-packs value
+	// (e.g. "," or "  ") rather than silently skipping the recipe-pack update.
+	if cmd.Flags().Changed("recipe-packs") && len(r.recipePacks) == 0 {
+		return clierrors.Message("No valid recipe packs were provided. Specify one or more recipe pack names or IDs with --recipe-packs.")
+	}
+
+	r.recipePackGroup, err = cmd.Flags().GetString("recipe-pack-group")
+	if err != nil {
+		return err
+	}
+
+	if r.recipePackGroup != "" && !cmd.Flags().Changed("recipe-packs") {
+		return clierrors.Message("--recipe-pack-group can only be used together with --recipe-packs.")
+	}
+
+	if r.recipePackGroup != "" {
+		if err := common.ValidateResourceGroupName(r.recipePackGroup); err != nil {
+			return err
 		}
-		r.Namespace = namespace
 	}
 
 	return nil
 }
 
 // Run runs the `rad env update` command.
-//
-
-// Run updates the environment with the given name with the given cloud provider scope. It returns an error
-// if the environment does not exist or if the update fails.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.noFlagsSet {
 		return nil
 	}
 
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
+		}
+		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	env, err := client.GetEnvironment(ctx, r.EnvName)
+	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
+
+	// Get the current environment so we can update it.
+	getResp, err := envClient.Get(ctx, r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientGetOptions{})
 	if clients.Is404Error(err) {
-		return clierrors.Message(envNotFoundErrMessageFmt, r.EnvName)
+		return clierrors.Message(envNotFoundErrMessageFmt, r.EnvironmentName)
 	} else if err != nil {
 		return err
 	}
+
+	// For now we just re-send the existing resource (placeholder for real updates).
+	env := getResp.EnvironmentResource
+
+	// SystemData is owned by the service; do not send it back on update.
+	env.SystemData = nil
+
+	// The Kubernetes namespace is immutable once an environment has one: changing it would leave
+	// everything already deployed into the old namespace orphaned, and clearing it would release a
+	// claim that other environments were validated against. The server enforces this too, but
+	// failing here gives a better message and avoids a pointless round trip.
+	currentNamespace := ""
+	if env.Properties != nil && env.Properties.Providers != nil && env.Properties.Providers.Kubernetes != nil && env.Properties.Providers.Kubernetes.Namespace != nil {
+		currentNamespace = *env.Properties.Providers.Kubernetes.Namespace
+	}
+
+	if currentNamespace != "" {
+		if r.clearEnvKubernetes {
+			return clierrors.Message("Cannot clear the Kubernetes provider on environment %q: its namespace (%s) cannot be removed because resources already deployed into it would be orphaned. Create a new environment instead.", r.EnvironmentName, currentNamespace)
+		}
+
+		if r.providers.Kubernetes != nil && r.providers.Kubernetes.Namespace != nil && !strings.EqualFold(*r.providers.Kubernetes.Namespace, currentNamespace) {
+			return clierrors.Message("Cannot change the Kubernetes namespace of environment %q from %q to %q: resources already deployed into %s would be orphaned. Create a new environment instead.", r.EnvironmentName, currentNamespace, *r.providers.Kubernetes.Namespace, currentNamespace)
+		}
+	}
+
 	// only update azure provider info if user requires it.
 	if r.clearEnvAzure && env.Properties.Providers != nil {
 		env.Properties.Providers.Azure = nil
-	} else if r.providers.Azure != nil && r.providers.Azure.Scope != nil {
+	} else if r.providers.Azure != nil && (r.providers.Azure.SubscriptionID != nil || r.providers.Azure.ResourceGroupName != nil) {
 		if env.Properties.Providers == nil {
-			env.Properties.Providers = &corerp.Providers{}
+			env.Properties.Providers = &corerpv20250801.Providers{}
 		}
 		env.Properties.Providers.Azure = r.providers.Azure
 	}
 	// only update aws provider info if user requires it.
 	if r.clearEnvAws && env.Properties.Providers != nil {
 		env.Properties.Providers.Aws = nil
-	} else if r.providers.Aws != nil && r.providers.Aws.Scope != nil {
+	} else if r.providers.Aws != nil && (r.providers.Aws.AccountID != nil && r.providers.Aws.Region != nil) {
 		if env.Properties.Providers == nil {
-			env.Properties.Providers = &corerp.Providers{}
+			env.Properties.Providers = &corerpv20250801.Providers{}
 		}
+
 		env.Properties.Providers.Aws = r.providers.Aws
 	}
 
-	// Update namespace if user provided one. Preserve the existing compute Kind
-	// and other fields by updating the namespace in place when possible.
-	if r.Namespace != "" {
-		switch compute := env.Properties.Compute.(type) {
-		case *corerp.KubernetesCompute:
-			compute.Namespace = new(r.Namespace)
-		case nil:
-			env.Properties.Compute = &corerp.KubernetesCompute{
-				Kind:      to.Ptr(string(rpv1.KubernetesComputeKind)),
-				Namespace: new(r.Namespace),
+	// only update kubernetes provider info if user requires it.
+	if r.clearEnvKubernetes && env.Properties.Providers != nil {
+		env.Properties.Providers.Kubernetes = nil
+	} else if r.providers.Kubernetes != nil && r.providers.Kubernetes.Namespace != nil {
+		if env.Properties.Providers == nil {
+			env.Properties.Providers = &corerpv20250801.Providers{}
+		}
+		env.Properties.Providers.Kubernetes = r.providers.Kubernetes
+	}
+
+	// Default the Kubernetes namespace only when the env has no other providers
+	// configured (after applying user flags). For envs that target Azure or AWS,
+	// the user may intend to deploy containers as ACI or to other compute, and
+	// silently adding a Kubernetes namespace would be incorrect.
+	if !r.clearEnvKubernetes {
+		hasOtherProviders := env.Properties.Providers != nil &&
+			(env.Properties.Providers.Azure != nil || env.Properties.Providers.Aws != nil)
+		if !hasOtherProviders {
+			if env.Properties.Providers == nil {
+				env.Properties.Providers = &corerpv20250801.Providers{}
 			}
-		default:
-			return clierrors.Message("Cannot update namespace on environment %q: existing compute kind is not Kubernetes", r.EnvName)
+			if env.Properties.Providers.Kubernetes == nil || env.Properties.Providers.Kubernetes.Namespace == nil {
+				env.Properties.Providers.Kubernetes = &corerpv20250801.ProvidersKubernetes{
+					Namespace: to.Ptr(defaultKubernetesNamespace),
+				}
+			}
 		}
 	}
 
-	err = client.CreateOrUpdateEnvironment(ctx, r.EnvName, &corerp.EnvironmentResource{
-		Location:   to.Ptr(v1.LocationGlobal),
-		Properties: env.Properties,
-	})
-	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to apply cloud provider scope to the environment %q.", r.EnvName)
+	// Update recipe packs if specified: replace the environment's recipe pack list,
+	// keeping referencedBy on each recipe pack in sync.
+	if len(r.recipePacks) > 0 {
+		envID := *env.ID
+
+		// Resolve and validate all recipe packs before mutating anything or warning the
+		// user. Validating first keeps a failure from being printed underneath the
+		// replacement warning, where it reads as part of the warning instead of an error.
+		newRecipePacks, err := r.resolveRecipePacks(ctx)
+		if err != nil {
+			return err
+		}
+
+		if len(env.Properties.RecipePacks) > 0 {
+			r.Output.LogInfo("WARNING: The existing recipe pack list will be replaced with the specified packs.")
+		}
+
+		err = syncRecipePackReferences(ctx, envID, env.Properties.RecipePacks, newRecipePacks, r.Workspace, r.RadiusCoreClientFactory)
+		if err != nil {
+			return err
+		}
+
+		// Replace the entire recipe packs list
+		env.Properties.RecipePacks = newRecipePacks
 	}
 
-	r.Output.LogInfo("Applications.Core/environments/%s updated", r.EnvName)
+	_, err = envClient.CreateOrUpdate(ctx, r.Workspace.Scope, r.EnvironmentName, env, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to update environment %q.", r.EnvironmentName)
+	}
+
+	r.Output.LogInfo("Radius.Core/environments/%s updated", r.EnvironmentName)
 
 	return nil
+}
+
+// resolveRecipePacks resolves each value passed to --recipe-packs to a full recipe
+// pack resource ID and verifies that the recipe pack exists. A bare name is scoped
+// to the workspace's resource group; a full resource ID is used as-is, which allows
+// referencing a recipe pack in another resource group.
+func (r *Runner) resolveRecipePacks(ctx context.Context) ([]*string, error) {
+	recipePackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
+	recipePackIDs := make([]*string, 0, len(r.recipePacks))
+
+	recipePackScope := r.Workspace.Scope
+	if r.recipePackGroup != "" {
+		workspaceScopeID, err := resources.ParseScope(r.Workspace.Scope)
+		if err != nil {
+			return nil, err
+		}
+		recipePackScope = fmt.Sprintf("%s/resourceGroups/%s", workspaceScopeID.PlaneScope(), r.recipePackGroup)
+	}
+
+	for _, recipePack := range r.recipePacks {
+		recipePackID, isFullID, err := recipepack.ResolveID(recipePack, recipePackScope)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = recipePackClient.Get(ctx, recipePackID.RootScope(), recipePackID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+		if clients.Is404Error(err) {
+			return nil, recipepack.NotFoundError(recipePack, recipePackID, isFullID)
+		} else if err != nil {
+			return nil, clierrors.MessageWithCause(err, "Failed to look up recipe pack %q.", recipePack)
+		}
+
+		recipePackIDs = append(recipePackIDs, to.Ptr(recipePackID.String()))
+	}
+
+	return recipePackIDs, nil
+}
+
+// syncRecipePackReferences updates the referencedBy field on recipe packs to reflect
+// a new environment-to-pack assignment. When an environment is updated with a new list of recipe packs,
+//
+//	this function removes the environment from the referencedBy list of recipe packs being removed,
+//
+// and adds the environment to the referencedBy list of newly added recipe packs.
+func syncRecipePackReferences(ctx context.Context, envID string, oldPackIDs []*string, newPackIDs []*string, workspace *workspaces.Workspace, defaultFactory *corerpv20250801.ClientFactory) error {
+	oldPackIDSet := makePackIDSet(oldPackIDs)
+	newPackIDSet := makePackIDSet(newPackIDs)
+	packIDsToAdd := packIDsOnlyInFirst(newPackIDs, oldPackIDSet)
+	packIDsToRemove := packIDsOnlyInFirst(oldPackIDs, newPackIDSet)
+	clientsByScope := map[string]*corerpv20250801.RecipePacksClient{}
+
+	// Remove this environment from referencedBy for packs being dropped.
+	for _, oldPackIDStr := range packIDsToRemove {
+		err := removeEnvReferenceFromRecipePack(ctx, envID, oldPackIDStr, workspace, defaultFactory, clientsByScope)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Add this environment to referencedBy for newly added packs.
+	for _, newPackIDStr := range packIDsToAdd {
+		err := addEnvReferenceToRecipePack(ctx, envID, newPackIDStr, workspace, defaultFactory, clientsByScope)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func makePackIDSet(packIDs []*string) map[string]struct{} {
+	result := map[string]struct{}{}
+	for _, packID := range packIDs {
+		if packID == nil {
+			continue
+		}
+
+		result[*packID] = struct{}{}
+	}
+
+	return result
+}
+
+func packIDsOnlyInFirst(first []*string, secondSet map[string]struct{}) []string {
+	result := []string{}
+	for _, packID := range first {
+		if packID == nil {
+			continue
+		}
+
+		if _, exists := secondSet[*packID]; exists {
+			continue
+		}
+
+		result = append(result, *packID)
+	}
+
+	return result
+}
+
+func getRecipePacksClientForScope(
+	ctx context.Context,
+	rootScope string,
+	workspace *workspaces.Workspace,
+	defaultFactory *corerpv20250801.ClientFactory,
+	clientsByScope map[string]*corerpv20250801.RecipePacksClient,
+) (*corerpv20250801.RecipePacksClient, error) {
+	if client, ok := clientsByScope[rootScope]; ok {
+		return client, nil
+	}
+
+	factory := defaultFactory
+	if rootScope != workspace.Scope {
+		var err error
+		factory, err = cmd.InitializeRadiusCoreClientFactory(ctx, workspace)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	client := factory.NewRecipePacksClient()
+	clientsByScope[rootScope] = client
+
+	return client, nil
+}
+
+func removeEnvReferenceFromRecipePack(
+	ctx context.Context,
+	envID string,
+	packID string,
+	workspace *workspaces.Workspace,
+	defaultFactory *corerpv20250801.ClientFactory,
+	clientsByScope map[string]*corerpv20250801.RecipePacksClient,
+) error {
+	resourceID, err := resources.Parse(packID)
+	if err != nil {
+		return err
+	}
+
+	packClient, err := getRecipePacksClientForScope(ctx, resourceID.RootScope(), workspace, defaultFactory, clientsByScope)
+	if err != nil {
+		return err
+	}
+
+	packResp, err := packClient.Get(ctx, resourceID.RootScope(), resourceID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+	if clients.Is404Error(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	pack := packResp.RecipePackResource
+	pack.SystemData = nil
+	if pack.Properties == nil {
+		pack.Properties = &corerpv20250801.RecipePackProperties{}
+	}
+
+	pack.Properties.ReferencedBy = removeReference(pack.Properties.ReferencedBy, envID)
+
+	_, err = packClient.CreateOrUpdate(ctx, resourceID.RootScope(), resourceID.Name(), pack, &corerpv20250801.RecipePacksClientCreateOrUpdateOptions{})
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to update recipe pack %q.", resourceID.Name())
+	}
+
+	return nil
+}
+
+func addEnvReferenceToRecipePack(
+	ctx context.Context,
+	envID string,
+	packID string,
+	workspace *workspaces.Workspace,
+	defaultFactory *corerpv20250801.ClientFactory,
+	clientsByScope map[string]*corerpv20250801.RecipePacksClient,
+) error {
+	resourceID, err := resources.Parse(packID)
+	if err != nil {
+		return err
+	}
+
+	packClient, err := getRecipePacksClientForScope(ctx, resourceID.RootScope(), workspace, defaultFactory, clientsByScope)
+	if err != nil {
+		return err
+	}
+
+	packResp, err := packClient.Get(ctx, resourceID.RootScope(), resourceID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+	if clients.Is404Error(err) {
+		return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to add to the environment.", resourceID.String())
+	}
+	if err != nil {
+		return err
+	}
+
+	pack := packResp.RecipePackResource
+	pack.SystemData = nil
+	if pack.Properties == nil {
+		pack.Properties = &corerpv20250801.RecipePackProperties{}
+	}
+
+	if !recipepack.RefExists(pack.Properties.ReferencedBy, envID) {
+		pack.Properties.ReferencedBy = append(pack.Properties.ReferencedBy, &envID)
+	}
+
+	_, err = packClient.CreateOrUpdate(ctx, resourceID.RootScope(), resourceID.Name(), pack, &corerpv20250801.RecipePacksClientCreateOrUpdateOptions{})
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to update recipe pack %q.", resourceID.Name())
+	}
+
+	return nil
+}
+
+func removeReference(environmentRefs []*string, id string) []*string {
+	result := []*string{}
+	for _, ref := range environmentRefs {
+		if ref != nil && *ref != id {
+			result = append(result, ref)
+		}
+	}
+
+	return result
 }

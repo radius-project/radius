@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
+---
+name: Dependabot Manager
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions: {}
+
+jobs:
+  dependabot-manager:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    uses: radius-project/.github/.github/workflows/__dependabot-manager.yml@main
+    permissions:
+      contents: read
+      pull-requests: read
+    secrets:
+      DEPENDABOT_MANAGER_BOT_CLIENT_ID: ${{ secrets.DEPENDABOT_MANAGER_BOT_CLIENT_ID }}
+      DEPENDABOT_MANAGER_BOT_PRIVATE_KEY: ${{ secrets.DEPENDABOT_MANAGER_BOT_PRIVATE_KEY }}

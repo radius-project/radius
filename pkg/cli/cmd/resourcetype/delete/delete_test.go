@@ -17,7 +17,6 @@ limitations under the License.
 package delete
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -98,7 +97,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                   true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -141,7 +140,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                   true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -190,7 +189,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeSuffix:        "testResources",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{

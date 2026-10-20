@@ -17,7 +17,6 @@ limitations under the License.
 package kubeutil
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/test/k8sutil"
@@ -30,14 +29,14 @@ import (
 func Test_PatchNamespace(t *testing.T) {
 	client := k8sutil.NewFakeKubeClient(scheme.Scheme)
 
-	err := PatchNamespace(context.Background(), client, "test")
+	err := PatchNamespace(t.Context(), client, "test")
 	require.NoError(t, err)
 
 	ns := &unstructured.Unstructured{}
 	ns.SetAPIVersion("v1")
 	ns.SetKind("Namespace")
 
-	err = client.Get(context.Background(), runtime_client.ObjectKey{Name: "test"}, ns)
+	err = client.Get(t.Context(), runtime_client.ObjectKey{Name: "test"}, ns)
 	require.NoError(t, err)
 
 	expected := &unstructured.Unstructured{

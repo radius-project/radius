@@ -14,23 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package list
+package show
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/cli/clients"
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	"github.com/stretchr/testify/require"
+
 	"github.com/radius-project/radius/pkg/cli/clierrors"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/test/radcli"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -38,6 +40,8 @@ func Test_CommandValidation(t *testing.T) {
 }
 
 func Test_Validate(t *testing.T) {
+	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
+
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Show Command with flag",
@@ -45,7 +49,7 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
+				Config:         configWithWorkspace,
 			},
 		},
 		{
@@ -54,7 +58,7 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
+				Config:         configWithWorkspace,
 			},
 		},
 		{
@@ -67,104 +71,155 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Show Command with no application - invalid",
-			Input:         []string{},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
-			},
-		},
-		{
 			Name:          "Show Command with incorrect args",
 			Input:         []string{"foo", "bar"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithWorkspace(t),
+				Config:         configWithWorkspace,
 			},
 		},
 	}
+
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("Success: Application Found", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
 
-		application := v20231001preview.ApplicationResource{
-			Name: new("test-app"),
-		}
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetApplication(gomock.Any(), "test-app").
-			Return(application, nil).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
+	testcases := []struct {
+		name            string
+		appFactory      func() fake.ApplicationsServer
+		applicationName string
+		expectedOutput  []any
+	}{
+		{
+			name:            "application found",
+			appFactory:      test_client_factory.WithApplicationsServerNoError,
+			applicationName: "test-app",
+			expectedOutput: []any{
+				output.FormattedOutput{
+					Format: "table",
+					Obj: corerpv20250801.ApplicationResource{
+						Name: new("test-app"),
+					},
+					Options: objectformats.GetResourceTableFormat(),
+				},
 			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
-		}
-		outputSink := &output.MockOutput{}
-		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Format:            "table",
-			Output:            outputSink,
-			ApplicationName:   "test-app",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, tc.appFactory)
+			require.NoError(t, err)
+
+			outputSink := &output.MockOutput{}
+			runner := &Runner{
+				RadiusCoreClientFactory: factory,
+				Workspace:               workspace,
+				ApplicationName:         tc.applicationName,
+				Format:                  "table",
+				Output:                  outputSink,
+			}
+
+			err = runner.Run(t.Context())
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedOutput, outputSink.Writes)
+		})
+	}
+
+	t.Run("Error: application not found (404)", func(t *testing.T) {
+		notFoundServer := func() fake.ApplicationsServer {
+			return fake.ApplicationsServer{
+				Get: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					options *corerpv20250801.ApplicationsClientGetOptions,
+				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
+					errResp.SetResponseError(http.StatusNotFound, "NotFound")
+					return
+				},
+			}
 		}
 
-		err := runner.Run(context.Background())
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, notFoundServer)
 		require.NoError(t, err)
 
-		expected := []any{
-			output.FormattedOutput{
-				Format:  "table",
-				Obj:     application,
-				Options: objectformats.GetResourceTableFormat(),
-			},
-		}
-
-		require.Equal(t, expected, outputSink.Writes)
-	})
-
-	t.Run("Error: Application Not Found", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetApplication(gomock.Any(), "test-app").
-			Return(v20231001preview.ApplicationResource{}, radcli.Create404Error()).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
-		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Format:            "table",
-			Output:            outputSink,
-			ApplicationName:   "test-app",
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "table",
+			Output:                  outputSink,
 		}
 
-		err := runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
-		require.Equal(t, clierrors.Message("The application \"test-app\" was not found or has been deleted."), err)
-
+		require.Equal(t, clierrors.Message("The application %q was not found or has been deleted.", "test-app"), err)
 		require.Empty(t, outputSink.Writes)
+	})
+
+	t.Run("Error: non-404 error is propagated", func(t *testing.T) {
+		serverError := func() fake.ApplicationsServer {
+			return fake.ApplicationsServer{
+				Get: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					options *corerpv20250801.ApplicationsClientGetOptions,
+				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
+					errResp.SetResponseError(http.StatusInternalServerError, "InternalServerError")
+					return
+				},
+			}
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, serverError)
+		require.NoError(t, err)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "table",
+			Output:                  outputSink,
+		}
+
+		err = runner.Run(t.Context())
+		require.Error(t, err)
+		// Should NOT be the 404 user-facing message.
+		require.NotEqual(t, clierrors.Message("The application %q was not found or has been deleted.", "test-app"), err)
+		require.Empty(t, outputSink.Writes)
+	})
+
+	t.Run("Success: json output format", func(t *testing.T) {
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+		require.NoError(t, err)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "json",
+			Output:                  outputSink,
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, []any{
+			output.FormattedOutput{
+				Format:  "json",
+				Obj:     corerpv20250801.ApplicationResource{Name: new("test-app")},
+				Options: objectformats.GetResourceTableFormat(),
+			},
+		}, outputSink.Writes)
 	})
 }

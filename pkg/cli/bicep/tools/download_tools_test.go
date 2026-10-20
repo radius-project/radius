@@ -18,10 +18,47 @@ package tools
 
 import (
 	"errors"
+	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/radius-project/radius/internal/tooling"
 	"github.com/stretchr/testify/require"
 )
+
+func TestBicepToolManifest(t *testing.T) {
+	t.Parallel()
+
+	manifest, err := tooling.LoadManifest(filepath.Join("..", "..", "..", "..", "build", "tools.yaml"))
+	require.NoError(t, err)
+
+	for _, tool := range manifest.Tools {
+		if tool.Name != "bicep" {
+			continue
+		}
+
+		require.Equal(t, tool.Version, bicepVersion, "the build and distributed CLI must pin the same Bicep version")
+		for platform, entry := range tool.Platforms {
+			t.Run(platform, func(t *testing.T) {
+				t.Parallel()
+
+				currentOS, currentArch, ok := strings.Cut(platform, "_")
+				require.True(t, ok)
+				asset, err := GetValidPlatform(currentOS, currentArch)
+				require.NoError(t, err)
+				require.Equal(t, entry.Asset, asset, "the installer and distributed CLI must download the same asset")
+				values, err := tool.TemplateValues(platform, tool.Version)
+				require.NoError(t, err)
+				downloadURL, err := tooling.ExpandTemplate(tool.DownloadTemplate, values)
+				require.NoError(t, err)
+				require.Equal(t, downloadURL, binaryRepo+asset)
+			})
+		}
+		return
+	}
+
+	t.Fatal("Bicep is missing from build/tools.yaml")
+}
 
 func TestGetValidPlatform(t *testing.T) {
 	osArchTests := []struct {

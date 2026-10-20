@@ -17,7 +17,6 @@ limitations under the License.
 package extenders
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -53,7 +52,7 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.NoError(t, err)
 
 		require.Equal(t, "myBucket", resource.Properties.AdditionalProperties["bucketName"])
@@ -91,7 +90,7 @@ func Test_Process(t *testing.T) {
 				},
 			},
 		}
-		err := processor.Process(context.Background(), resource, processors.Options{})
+		err := processor.Process(t.Context(), resource, processors.Options{})
 		require.NoError(t, err)
 
 		require.Equal(t, "myBucket", resource.Properties.AdditionalProperties["bucketName"])
@@ -138,7 +137,7 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.NoError(t, err)
 
 		require.Equal(t, "myBucket2", resource.Properties.AdditionalProperties["bucketName"])
@@ -174,7 +173,7 @@ func Test_Process(t *testing.T) {
 		}
 		options := processors.Options{RecipeOutput: &recipes.RecipeOutput{}}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.Error(t, err)
 		require.IsType(t, &processors.ValidationError{}, err)
 		require.Equal(t, `secret 'databaseSecret' must be of type string`, err.Error())

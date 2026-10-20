@@ -17,7 +17,6 @@ limitations under the License.
 package azure
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -30,7 +29,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -105,15 +103,11 @@ func TestMakeRoleAssignments(t *testing.T) {
 
 func TestSetWorkloadIdentityServiceAccount(t *testing.T) {
 	base := &corev1.ServiceAccount{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ServiceAccount",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-cntr",
-			Labels:      map[string]string{},
-			Annotations: map[string]string{},
-		},
+		Kind:        "ServiceAccount",
+		APIVersion:  "v1",
+		Name:        "test-cntr",
+		Labels:      map[string]string{},
+		Annotations: map[string]string{},
 	}
 
 	fi := SetWorkloadIdentityServiceAccount(base)
@@ -130,7 +124,7 @@ func TestSetWorkloadIdentityServiceAccount(t *testing.T) {
 	}
 
 	// Transform outputresource
-	err := TransformFederatedIdentitySA(context.Background(), putOptions)
+	err := TransformFederatedIdentitySA(t.Context(), putOptions)
 	require.NoError(t, err)
 	sa := fi.CreateResource.Data.(*corev1.ServiceAccount)
 
@@ -180,7 +174,7 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			err := TransformFederatedIdentitySA(context.Background(), &handlers.PutOptions{
+			err := TransformFederatedIdentitySA(t.Context(), &handlers.PutOptions{
 				Resource:             &rpv1.OutputResource{CreateResource: &rpv1.Resource{Data: tc.resource}},
 				DependencyProperties: tc.dep,
 			})

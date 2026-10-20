@@ -17,15 +17,19 @@ limitations under the License.
 package initializer
 
 import (
-	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
+	"github.com/radius-project/radius/pkg/defaults"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/assert"
@@ -40,11 +44,11 @@ func Test_registerResourceProviderDirect(t *testing.T) {
 		dbClient := inmemory.NewClient()
 
 		rp := createTestResourceProvider()
-		err := registerResourceProviderDirect(context.Background(), dbClient, "local", rp)
+		err := registerResourceProviderDirect(t.Context(), dbClient, "local", rp)
 		require.NoError(t, err)
 
 		// Verify resource provider was saved
-		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources")
+		obj, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources")
 		require.NoError(t, err)
 
 		rpModel := &datamodel.ResourceProvider{}
@@ -55,7 +59,7 @@ func Test_registerResourceProviderDirect(t *testing.T) {
 		assert.Equal(t, "global", rpModel.Location)
 
 		// Verify resource type was saved
-		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/resourceTypes/widgets")
+		obj, err = dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/resourceTypes/widgets")
 		require.NoError(t, err)
 
 		rtModel := &datamodel.ResourceType{}
@@ -65,7 +69,7 @@ func Test_registerResourceProviderDirect(t *testing.T) {
 		assert.Equal(t, v1.ProvisioningStateSucceeded, rtModel.InternalMetadata.AsyncProvisioningState)
 
 		// Verify API version was saved
-		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/resourceTypes/widgets/apiVersions/2023-10-01-preview")
+		obj, err = dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/resourceTypes/widgets/apiVersions/2023-10-01-preview")
 		require.NoError(t, err)
 
 		avModel := &datamodel.APIVersion{}
@@ -74,7 +78,7 @@ func Test_registerResourceProviderDirect(t *testing.T) {
 		assert.Equal(t, datamodel.APIVersionResourceType, avModel.Type)
 
 		// Verify location was saved
-		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/locations/global")
+		obj, err = dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/locations/global")
 		require.NoError(t, err)
 
 		locModel := &datamodel.Location{}
@@ -85,7 +89,7 @@ func Test_registerResourceProviderDirect(t *testing.T) {
 		assert.Contains(t, locModel.Properties.ResourceTypes["widgets"].APIVersions, "2023-10-01-preview")
 
 		// Verify summary was saved
-		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/MyCompany.Resources")
+		obj, err = dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/MyCompany.Resources")
 		require.NoError(t, err)
 
 		summaryModel := &datamodel.ResourceProviderSummary{}
@@ -100,23 +104,23 @@ func Test_registerResourceProviderDirect(t *testing.T) {
 		dbClient := inmemory.NewClient()
 
 		rp := createTestResourceProviderMultiType()
-		err := registerResourceProviderDirect(context.Background(), dbClient, "local", rp)
+		err := registerResourceProviderDirect(t.Context(), dbClient, "local", rp)
 		require.NoError(t, err)
 
 		// Verify both resource types exist
 		for _, typeName := range []string{"typeA", "typeB"} {
-			_, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Multi.Provider/resourceTypes/"+typeName)
+			_, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/Multi.Provider/resourceTypes/"+typeName)
 			require.NoError(t, err, "expected resource type %s to exist", typeName)
 		}
 
 		// Verify typeA has two API versions
 		for _, version := range []string{"2023-01-01", "2024-01-01"} {
-			_, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Multi.Provider/resourceTypes/typeA/apiVersions/"+version)
+			_, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/Multi.Provider/resourceTypes/typeA/apiVersions/"+version)
 			require.NoError(t, err, "expected API version %s to exist for typeA", version)
 		}
 
 		// Verify summary has both types
-		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/Multi.Provider")
+		obj, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/Multi.Provider")
 		require.NoError(t, err)
 
 		summaryModel := &datamodel.ResourceProviderSummary{}
@@ -132,11 +136,11 @@ func Test_registerResourceProviderDirect(t *testing.T) {
 
 		rp := createTestResourceProvider()
 		rp.Location = nil
-		err := registerResourceProviderDirect(context.Background(), dbClient, "local", rp)
+		err := registerResourceProviderDirect(t.Context(), dbClient, "local", rp)
 		require.NoError(t, err)
 
 		// Location should default to "global"
-		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/locations/global")
+		obj, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/locations/global")
 		require.NoError(t, err)
 
 		locModel := &datamodel.Location{}
@@ -152,14 +156,14 @@ func Test_registerResourceProviderDirect(t *testing.T) {
 		rp := createTestResourceProvider()
 
 		// Register twice
-		err := registerResourceProviderDirect(context.Background(), dbClient, "local", rp)
+		err := registerResourceProviderDirect(t.Context(), dbClient, "local", rp)
 		require.NoError(t, err)
 
-		err = registerResourceProviderDirect(context.Background(), dbClient, "local", rp)
+		err = registerResourceProviderDirect(t.Context(), dbClient, "local", rp)
 		require.NoError(t, err)
 
 		// Should still be readable
-		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources")
+		obj, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources")
 		require.NoError(t, err)
 		require.NotNil(t, obj)
 	})
@@ -172,14 +176,14 @@ func Test_Run(t *testing.T) {
 	t.Run("no manifest directory skips initialization", func(t *testing.T) {
 		t.Parallel()
 		svc := newTestService("")
-		err := svc.Run(context.Background())
+		err := svc.Run(t.Context())
 		require.NoError(t, err)
 	})
 
 	t.Run("missing manifest directory returns error", func(t *testing.T) {
 		t.Parallel()
 		svc := newTestService("/nonexistent/path")
-		err := svc.Run(context.Background())
+		err := svc.Run(t.Context())
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "manifest directory does not exist")
 	})
@@ -203,14 +207,14 @@ types:
 		require.NoError(t, err)
 
 		svc := newTestService(tempDir)
-		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		dbClient, err := svc.options.DatabaseProvider.GetClient(t.Context())
 		require.NoError(t, err)
 
-		err = svc.Run(context.Background())
+		err = svc.Run(t.Context())
 		require.NoError(t, err)
 
 		// Verify the resource provider was registered
-		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider")
+		obj, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider")
 		require.NoError(t, err)
 		require.NotNil(t, obj)
 	})
@@ -243,7 +247,7 @@ types:
 		require.NoError(t, err)
 
 		svc := newTestService(tempDir)
-		err = svc.Run(context.Background())
+		err = svc.Run(t.Context())
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "duplicate resource type Radius.Compute/containers")
 	})
@@ -275,20 +279,20 @@ types:
 		require.NoError(t, err)
 
 		svc := newTestService(tempDir)
-		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		dbClient, err := svc.options.DatabaseProvider.GetClient(t.Context())
 		require.NoError(t, err)
 
-		err = svc.Run(context.Background())
+		err = svc.Run(t.Context())
 		require.NoError(t, err)
 
 		// Verify both types are registered under the same namespace.
-		_, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/resourceTypes/containers")
+		_, err = dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/resourceTypes/containers")
 		require.NoError(t, err)
-		_, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/resourceTypes/routes")
+		_, err = dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/resourceTypes/routes")
 		require.NoError(t, err)
 
 		// Verify the location contains both types.
-		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/locations/global")
+		obj, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Compute/locations/global")
 		require.NoError(t, err)
 		location := &datamodel.Location{}
 		require.NoError(t, obj.As(location))
@@ -307,32 +311,33 @@ types:
 		require.NoError(t, err)
 
 		svc := newTestService(tempDir)
-		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		dbClient, err := svc.options.DatabaseProvider.GetClient(t.Context())
 		require.NoError(t, err)
 
-		err = svc.Run(context.Background())
+		err = svc.Run(t.Context())
 		require.NoError(t, err)
 
-		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/Radius.Core")
+		obj, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/Radius.Core")
 		require.NoError(t, err)
 
 		summaryModel := &datamodel.ResourceProviderSummary{}
 		require.NoError(t, obj.As(summaryModel))
 		require.Len(t, summaryModel.Properties.ResourceTypes, len(radiusCoreTypeOpenAPIDefinitions))
 
-		expectedDescriptions := map[string]string{
-			"applications":     "Radius Application resource",
-			"bicepConfigs":     "The Bicep configuration resource, providing reusable Bicep recipe settings for environments.",
-			"environments":     "The environment resource",
-			"recipePacks":      "The recipe pack resource",
-			"terraformConfigs": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
+		expectedDescriptionPrefixes := map[string]string{
+			"applications":      "The `Radius.Core/applications` Resource Type represents a Radius Application",
+			"bicepSettings":     "The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine settings",
+			"environments":      "The `Radius.Core/environments` Resource Type represents a Radius Environment",
+			"recipePacks":       "The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack",
+			"terraformSettings": "The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI settings",
 		}
-		require.Len(t, expectedDescriptions, len(radiusCoreTypeOpenAPIDefinitions))
-		for typeName, expectedDescription := range expectedDescriptions {
+		require.Len(t, expectedDescriptionPrefixes, len(radiusCoreTypeOpenAPIDefinitions))
+		for typeName, expectedDescriptionPrefix := range expectedDescriptionPrefixes {
 			resourceType := summaryModel.Properties.ResourceTypes[typeName]
 			require.NotNil(t, resourceType, "resource type %q should be registered", typeName)
 			require.NotNil(t, resourceType.Description, "resource type %q should have a description", typeName)
-			assert.Equal(t, expectedDescription, *resourceType.Description)
+			assert.True(t, strings.HasPrefix(*resourceType.Description, expectedDescriptionPrefix),
+				"resource type %q description should start with %q, got %q", typeName, expectedDescriptionPrefix, *resourceType.Description)
 
 			apiVersion := resourceType.APIVersions["2025-08-01-preview"]
 			require.NotNil(t, apiVersion, "resource type %q should have API version 2025-08-01-preview", typeName)
@@ -365,25 +370,29 @@ types:
 		additionalProperties, ok := recipesProperty["additionalProperties"].(map[string]any)
 		require.True(t, ok)
 		recipeDefinitionProperties := requireSchemaProperties(t, additionalProperties)
-		recipeKindProperty := requireSchemaProperty(t, recipeDefinitionProperties, "recipeKind")
-		assert.NotContains(t, recipeKindProperty, "$ref")
-		assert.Equal(t, "string", recipeKindProperty["type"])
+		kindProperty := requireSchemaProperty(t, recipeDefinitionProperties, "kind")
+		assert.NotContains(t, kindProperty, "$ref")
+		assert.Equal(t, "string", kindProperty["type"])
 
-		terraformConfigs := summaryModel.Properties.ResourceTypes["terraformConfigs"]
-		terraformConfigSchema := terraformConfigs.APIVersions["2025-08-01-preview"].Schema
-		terraformConfigProperties := requireSchemaProperties(t, terraformConfigSchema)
-		terraformrcProperty := requireSchemaProperty(t, terraformConfigProperties, "terraformrc")
+		sourceProperty := requireSchemaProperty(t, recipeDefinitionProperties, "source")
+		assert.NotContains(t, sourceProperty, "$ref")
+		assert.Equal(t, "string", sourceProperty["type"])
+
+		terraformSettings := summaryModel.Properties.ResourceTypes["terraformSettings"]
+		terraformSettingsSchema := terraformSettings.APIVersions["2025-08-01-preview"].Schema
+		terraformSettingsProperties := requireSchemaProperties(t, terraformSettingsSchema)
+		terraformrcProperty := requireSchemaProperty(t, terraformSettingsProperties, "terraformrc")
 		assert.NotContains(t, terraformrcProperty, "$ref")
 		assert.Equal(t, "object", terraformrcProperty["type"])
 
-		bicepConfigs := summaryModel.Properties.ResourceTypes["bicepConfigs"]
-		bicepConfigSchema := bicepConfigs.APIVersions["2025-08-01-preview"].Schema
-		bicepConfigProperties := requireSchemaProperties(t, bicepConfigSchema)
-		registryAuthenticationsProperty := requireSchemaProperty(t, bicepConfigProperties, "registryAuthentications")
+		bicepSettings := summaryModel.Properties.ResourceTypes["bicepSettings"]
+		bicepSettingsSchema := bicepSettings.APIVersions["2025-08-01-preview"].Schema
+		bicepSettingsProperties := requireSchemaProperties(t, bicepSettingsSchema)
+		registryAuthenticationsProperty := requireSchemaProperty(t, bicepSettingsProperties, "registryAuthentications")
 		assert.NotContains(t, registryAuthenticationsProperty, "$ref")
 		assert.Equal(t, "object", registryAuthenticationsProperty["type"])
 
-		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Core/resourceTypes/applications/apiVersions/2025-08-01-preview")
+		obj, err = dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/Radius.Core/resourceTypes/applications/apiVersions/2025-08-01-preview")
 		require.NoError(t, err)
 
 		apiVersionModel := &datamodel.APIVersion{}
@@ -455,19 +464,15 @@ func Test_saveResource(t *testing.T) {
 
 	dbClient := inmemory.NewClient()
 	data := &datamodel.ResourceProvider{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Test",
-				Name: "Test",
-				Type: datamodel.ResourceProviderResourceType,
-			},
-		},
+		ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Test",
+		Name: "Test",
+		Type: datamodel.ResourceProviderResourceType,
 	}
 
-	err := saveResource(context.Background(), dbClient, data.ID, data)
+	err := saveResource(t.Context(), dbClient, data.ID, data)
 	require.NoError(t, err)
 
-	obj, err := dbClient.Get(context.Background(), data.ID)
+	obj, err := dbClient.Get(t.Context(), data.ID)
 	require.NoError(t, err)
 
 	result := &datamodel.ResourceProvider{}
@@ -591,4 +596,258 @@ func requireRenderableNestedObjectSchema(t *testing.T, path string, schema map[s
 			requireRenderableNestedObjectSchema(t, propertyPath, propertySchema)
 		}
 	}
+}
+
+// validIconSVG is a minimal SVG that passes datamodel.ValidateIcon; used across
+// the icon-related tests below.
+var validIconSVG = []byte(`<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>`)
+
+// invalidIconSVG contains a <script> element, which datamodel.ValidateIcon
+// rejects.
+var invalidIconSVG = []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>`)
+
+// iconManifestYAML is a single-type manifest used by the icon tests. Kept
+// separate from the test bodies so the tests are easy to read.
+const iconManifestYAML = `
+namespace: Test.Provider
+location:
+  global: "http://localhost:9090"
+types:
+  widgets:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`
+
+const iconMultiTypeManifestYAML = `
+namespace: Test.Provider
+location:
+  global: "http://localhost:9090"
+types:
+  widgets:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+  gadgets:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`
+
+func Test_loadTypeIcon(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns nil when no <typeName>.svg exists", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+
+		icon, err := loadTypeIcon(dir, "widgets")
+		require.NoError(t, err)
+		assert.Nil(t, icon)
+	})
+
+	t.Run("returns bytes when <typeName>.svg exists and is valid", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "widgets.svg"), validIconSVG, 0600))
+
+		icon, err := loadTypeIcon(dir, "widgets")
+		require.NoError(t, err)
+		require.NotNil(t, icon)
+		assert.Equal(t, string(validIconSVG), *icon)
+	})
+
+	t.Run("returns error when <typeName>.svg fails validation", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "widgets.svg"), invalidIconSVG, 0600))
+
+		icon, err := loadTypeIcon(dir, "widgets")
+		require.Error(t, err)
+		assert.Nil(t, icon)
+		assert.Contains(t, err.Error(), "invalid icon file")
+	})
+
+	t.Run("only <typeName>.svg is considered, not the manifest basename", func(t *testing.T) {
+		t.Parallel()
+
+		// A file named after the manifest (types.svg) must NOT be applied to
+		// individual types — the loader keys strictly on the type name.
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "types.svg"), validIconSVG, 0600))
+
+		icon, err := loadTypeIcon(dir, "widgets")
+		require.NoError(t, err)
+		assert.Nil(t, icon)
+	})
+}
+
+func Test_Run_Icons(t *testing.T) {
+	t.Parallel()
+
+	sum := sha256.Sum256(validIconSVG)
+	expectedHashHex := hex.EncodeToString(sum[:])
+
+	t.Run("applies <typeName>.svg to the matching type and stores server-computed hash", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.yaml"), []byte(iconManifestYAML), 0600))
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.svg"), validIconSVG, 0600))
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(t.Context())
+		require.NoError(t, err)
+
+		require.NoError(t, svc.Run(t.Context()))
+
+		// Verify the resource type record carries the icon and hash.
+		obj, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider/resourceTypes/widgets")
+		require.NoError(t, err)
+
+		rt := &datamodel.ResourceType{}
+		require.NoError(t, obj.As(rt))
+		require.NotNil(t, rt.Properties.Icon)
+		assert.Equal(t, string(validIconSVG), *rt.Properties.Icon)
+		require.NotNil(t, rt.Properties.IconHash)
+		assert.Equal(t, expectedHashHex, *rt.Properties.IconHash)
+
+		// Verify the summary mirrors the same icon and hash.
+		obj, err = dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/Test.Provider")
+		require.NoError(t, err)
+
+		summary := &datamodel.ResourceProviderSummary{}
+		require.NoError(t, obj.As(summary))
+		require.Contains(t, summary.Properties.ResourceTypes, "widgets")
+		summaryType := summary.Properties.ResourceTypes["widgets"]
+		require.NotNil(t, summaryType.Icon)
+		assert.Equal(t, string(validIconSVG), *summaryType.Icon)
+		require.NotNil(t, summaryType.IconHash)
+		assert.Equal(t, expectedHashHex, *summaryType.IconHash)
+	})
+
+	t.Run("in a multi-type manifest, <typeName>.svg applies only to the matching type", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "types.yaml"), []byte(iconMultiTypeManifestYAML), 0600))
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.svg"), validIconSVG, 0600))
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(t.Context())
+		require.NoError(t, err)
+
+		require.NoError(t, svc.Run(t.Context()))
+
+		// widgets got the icon.
+		obj, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider/resourceTypes/widgets")
+		require.NoError(t, err)
+		widgets := &datamodel.ResourceType{}
+		require.NoError(t, obj.As(widgets))
+		require.NotNil(t, widgets.Properties.Icon)
+		assert.Equal(t, string(validIconSVG), *widgets.Properties.Icon)
+		require.NotNil(t, widgets.Properties.IconHash)
+		assert.Equal(t, expectedHashHex, *widgets.Properties.IconHash)
+
+		// gadgets did NOT get the sibling icon bytes, but registration-time
+		// hash substitution fills in the product default icon's hash so every
+		// registered type has a non-nil IconHash.
+		obj, err = dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider/resourceTypes/gadgets")
+		require.NoError(t, err)
+		gadgets := &datamodel.ResourceType{}
+		require.NoError(t, obj.As(gadgets))
+		assert.Nil(t, gadgets.Properties.Icon)
+		require.NotNil(t, gadgets.Properties.IconHash)
+		assert.Equal(t, defaults.DefaultIcon().Hash, *gadgets.Properties.IconHash)
+	})
+
+	t.Run("manifest without <typeName>.svg substitutes the default icon hash", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.yaml"), []byte(iconManifestYAML), 0600))
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(t.Context())
+		require.NoError(t, err)
+
+		require.NoError(t, svc.Run(t.Context()))
+
+		obj, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider/resourceTypes/widgets")
+		require.NoError(t, err)
+
+		// Icon bytes are not stored on the record (kept in the binary via
+		// deploy/manifest) but the hash is the product default, so consumers
+		// can render the default without a null check.
+		rt := &datamodel.ResourceType{}
+		require.NoError(t, obj.As(rt))
+		assert.Nil(t, rt.Properties.Icon)
+		require.NotNil(t, rt.Properties.IconHash)
+		assert.Equal(t, defaults.DefaultIcon().Hash, *rt.Properties.IconHash)
+	})
+
+	t.Run("skips stray svg files during directory scan", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		// An .svg with no matching .yaml — Run must ignore it rather than try to parse it as a manifest.
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "orphan.svg"), validIconSVG, 0600))
+
+		svc := newTestService(tempDir)
+		require.NoError(t, svc.Run(t.Context()))
+	})
+
+	t.Run("invalid <typeName>.svg fails startup", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.yaml"), []byte(iconManifestYAML), 0600))
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.svg"), invalidIconSVG, 0600))
+
+		svc := newTestService(tempDir)
+		err := svc.Run(t.Context())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid icon file")
+	})
+}
+
+func Test_registerResourceProviderDirect_Icon(t *testing.T) {
+	t.Parallel()
+
+	svg := "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect/></svg>"
+	sum := sha256.Sum256([]byte(svg))
+	expectedHashHex := hex.EncodeToString(sum[:])
+
+	dbClient := inmemory.NewClient()
+	rp := createTestResourceProvider()
+	rp.Types["widgets"].Icon = to.Ptr(svg)
+
+	require.NoError(t, registerResourceProviderDirect(t.Context(), dbClient, "local", rp))
+
+	// The resource type record carries the icon and its server-computed SHA-256 hash.
+	obj, err := dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/resourceTypes/widgets")
+	require.NoError(t, err)
+
+	rt := &datamodel.ResourceType{}
+	require.NoError(t, obj.As(rt))
+	require.NotNil(t, rt.Properties.Icon)
+	assert.Equal(t, svg, *rt.Properties.Icon)
+	require.NotNil(t, rt.Properties.IconHash)
+	assert.Equal(t, expectedHashHex, *rt.Properties.IconHash)
+
+	// The summary mirror carries the same icon and hash.
+	obj, err = dbClient.Get(t.Context(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/MyCompany.Resources")
+	require.NoError(t, err)
+
+	summary := &datamodel.ResourceProviderSummary{}
+	require.NoError(t, obj.As(summary))
+	require.Contains(t, summary.Properties.ResourceTypes, "widgets")
+	summaryType := summary.Properties.ResourceTypes["widgets"]
+	require.NotNil(t, summaryType.Icon)
+	assert.Equal(t, svg, *summaryType.Icon)
+	require.NotNil(t, summaryType.IconHash)
+	assert.Equal(t, expectedHashHex, *summaryType.IconHash)
 }

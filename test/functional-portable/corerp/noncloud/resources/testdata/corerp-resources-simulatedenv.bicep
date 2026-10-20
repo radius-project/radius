@@ -9,20 +9,23 @@ param port int = 3000
 @description('Specifies the image for the container resource.')
 param magpieimage string
 
-resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'default'
+// Simulated environment: resources are recorded but never deployed to Kubernetes.
+// A gateway resource is intentionally omitted as incidental scaffolding: this test only asserts
+// that a simulated environment creates zero real pods.
+resource env 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'corerp-resources-simulatedenv-env'
   location: 'global'
   properties: {
-    compute: {
-      kind: 'kubernetes'
-      resourceId: 'self'
-      namespace: 'corerp-resources-simulatedenv-env'
-    }
     simulated: true
+    providers: {
+      kubernetes: {
+        namespace: 'corerp-resources-simulatedenv'
+      }
+    }
   }
 }
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'corerp-resources-simulatedenv'
   location: location
   properties: {
@@ -30,80 +33,39 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource gateway 'Applications.Core/gateways@2023-10-01-preview' = {
-  name: 'http-gtwy-gtwy-simulatedenv'
-  location: location
-  properties: {
-    application: app.id
-    routes: [
-      {
-        path: '/'
-        destination: 'http://http-gtwy-front-ctnr-simulatedenv:${port}'
-      }
-      {
-        path: '/backend1'
-        destination: 'http://http-gtwy-back-ctnr-simulatedenv:${port}'
-      }
-      {
-        // Route /backend2 requests to the backend, and
-        // transform the request to /
-        path: '/backend2'
-        destination: 'http://http-gtwy-back-ctnr-simulatedenv:${port}'
-        replacePrefix: '/'
-      }
-    ]
-  }
-}
-
-
-resource frontendContainer 'Applications.Core/containers@2023-10-01-preview' = {
+resource frontendContainer 'Radius.Compute/containers@2025-08-01-preview' = {
   name: 'http-gtwy-front-ctnr-simulatedenv'
   location: location
   properties: {
     application: app.id
-    container: {
-      image: magpieimage
-      ports: {
-        web: {
-          containerPort: port
+    environment: env.id
+    containers: {
+      'http-gtwy-front-ctnr-simulatedenv': {
+        image: magpieimage
+        ports: {
+          web: {
+            containerPort: port
+          }
         }
-      }
-      readinessProbe: {
-        kind: 'httpGet'
-        containerPort: port
-        path: '/healthz'
-      }
-    }
-    connections: {
-      backend: {
-        source: 'http://http-gtwy-back-ctnr-simulatedenv:${port}'
       }
     }
   }
 }
 
-
-resource backendContainer 'Applications.Core/containers@2023-10-01-preview' = {
+resource backendContainer 'Radius.Compute/containers@2025-08-01-preview' = {
   name: 'http-gtwy-back-ctnr-simulatedenv'
   location: location
   properties: {
     application: app.id
-    container: {
-      image: magpieimage
-      env: {
-        gatewayUrl: {
-          value: gateway.properties.url
+    environment: env.id
+    containers: {
+      'http-gtwy-back-ctnr-simulatedenv': {
+        image: magpieimage
+        ports: {
+          web: {
+            containerPort: port
+          }
         }
-      }
-      ports: {
-        web: {
-          containerPort: port
-        }
-      }
-      readinessProbe: {
-        kind: 'httpGet'
-        containerPort: port
-        path: '/healthz'
       }
     }
   }

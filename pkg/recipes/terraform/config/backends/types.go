@@ -22,17 +22,20 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 )
 
-//go:generate mockgen -typed -destination=./mock_backend.go -package=backends -self_package github.com/radius-project/radius/pkg/recipes/terraform/config/backends github.com/radius-project/radius/pkg/recipes/terraform/config/backends Backend
+//go:generate go tool mockgen -typed -destination=./mock_backend.go -package=backends -self_package github.com/radius-project/radius/pkg/recipes/terraform/config/backends github.com/radius-project/radius/pkg/recipes/terraform/config/backends Backend
 
 // Backend is an interface for generating Terraform backend configurations.
 type Backend interface {
+	Builder
+
+	// ValidateBackendExists checks whether the Kubernetes state secret exists.
+	ValidateBackendExists(ctx context.Context, name string) (bool, error)
+}
+
+// Builder renders Terraform configuration without probing remote storage.
+type Builder interface {
 	// BuildBackend generates the Terraform backend configuration for the backend.
 	// Returns a map of Terraform backend name to values representing the backend configuration.
 	// Returns an error if the backend configuration cannot be generated.
 	BuildBackend(resourceRecipe *recipes.ResourceMetadata) (map[string]any, error)
-
-	// ValidateBackendExists checks if the Terraform state file backend source exists.
-	// For example, for Kubernetes backend, it checks if the Kubernetes secret for Terraform state file exists.
-	// returns true if backend is found, false otherwise.
-	ValidateBackendExists(ctx context.Context, name string) (bool, error)
 }

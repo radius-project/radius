@@ -3,6 +3,12 @@ applyTo: "**/*.sh"
 description: Instructions for shell script implementation using Bash conventions
 ---
 
+<!--
+  This file is synced from the radius-project/.github repository.
+  DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+  Source: https://github.com/radius-project/.github
+-->
+
 # Shell Scripting Instructions
 
 Instructions for writing clean, safe, and maintainable shell scripts for bash, sh, zsh, and other shells.

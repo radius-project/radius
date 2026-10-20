@@ -27,10 +27,8 @@ import (
 
 func Test_credentialFormatAzureServicePrincipal(t *testing.T) {
 	obj := credential.ProviderCredentialConfiguration{
-		CloudProviderStatus: credential.CloudProviderStatus{
-			Name:    "test",
-			Enabled: true,
-		},
+		Name:    "test",
+		Enabled: true,
 		AzureCredentials: &credential.AzureCredentialProperties{
 			Kind: new("ServicePrincipal"),
 			ServicePrincipal: &credential.AzureServicePrincipalCredentialProperties{
@@ -52,10 +50,8 @@ func Test_credentialFormatAzureServicePrincipal(t *testing.T) {
 
 func Test_credentialFormat_Azure_WorkloadIdentity(t *testing.T) {
 	obj := credential.ProviderCredentialConfiguration{
-		CloudProviderStatus: credential.CloudProviderStatus{
-			Name:    "test",
-			Enabled: true,
-		},
+		Name:    "test",
+		Enabled: true,
 		AzureCredentials: &credential.AzureCredentialProperties{
 			Kind: new("WorkloadIdentity"),
 			WorkloadIdentity: &credential.AzureWorkloadIdentityCredentialProperties{
@@ -77,10 +73,8 @@ func Test_credentialFormat_Azure_WorkloadIdentity(t *testing.T) {
 
 func Test_credentialFormatAWSAccessKey(t *testing.T) {
 	obj := credential.ProviderCredentialConfiguration{
-		CloudProviderStatus: credential.CloudProviderStatus{
-			Name:    "test",
-			Enabled: true,
-		},
+		Name:    "test",
+		Enabled: true,
 		AWSCredentials: &credential.AWSCredentialProperties{
 			Kind: new("AccessKey"),
 			AccessKey: &credential.AWSAccessKeyCredentialProperties{
@@ -102,10 +96,8 @@ func Test_credentialFormatAWSAccessKey(t *testing.T) {
 
 func Test_credentialFormatAWSIRSA(t *testing.T) {
 	obj := credential.ProviderCredentialConfiguration{
-		CloudProviderStatus: credential.CloudProviderStatus{
-			Name:    "test",
-			Enabled: true,
-		},
+		Name:    "test",
+		Enabled: true,
 		AWSCredentials: &credential.AWSCredentialProperties{
 			Kind: new("IRSA"),
 			IRSA: &credential.AWSIRSACredentialProperties{

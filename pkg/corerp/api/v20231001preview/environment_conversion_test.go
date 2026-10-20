@@ -41,19 +41,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource-with-workload-identity.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
@@ -98,19 +92,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
@@ -219,19 +207,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresourceemptyext.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
@@ -261,19 +243,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresourceemptyext2.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
@@ -303,19 +279,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource-with-simulated-enabled.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
@@ -332,19 +302,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource-with-acicompute.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "aci",
@@ -484,8 +448,8 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 					require.Equal(t, providerSecretIDs["secret1"], new(SecretReference{Source: new(baseSecretStorePath + "secretstore1"), Key: new("key1")}))
 					require.Equal(t, providerSecretIDs["secret2"], new(SecretReference{Source: new(baseSecretStorePath + "secretstore2"), Key: new("key2")}))
 
-					require.Equal(t, 1, len(versioned.Properties.RecipeConfig.Env))
-					require.Equal(t, new("myEnvValue"), versioned.Properties.RecipeConfig.Env["myEnvVar"])
+					require.Equal(t, 1, len(versioned.Properties.RecipeConfig.Env.AdditionalProperties))
+					require.Equal(t, new("myEnvValue"), versioned.Properties.RecipeConfig.Env.AdditionalProperties["myEnvVar"])
 
 					envSecretIDs := versioned.Properties.RecipeConfig.EnvSecrets
 					envSecretRef, ok := envSecretIDs["myEnvSecretVar"]
@@ -558,7 +522,7 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.Resource))
 	require.Equal(t, "https://oidcurl/guid", string(*versioned.Properties.Compute.GetEnvironmentCompute().Identity.OidcIssuer))
 	require.Equal(t, map[string][]*ProviderConfigProperties{}, versioned.Properties.RecipeConfig.Terraform.Providers)
-	require.Equal(t, map[string]*string{}, versioned.Properties.RecipeConfig.Env)
+	require.Equal(t, map[string]*string{}, versioned.Properties.RecipeConfig.Env.AdditionalProperties)
 }
 
 func TestConvertDataModelWithACIToVersioned(t *testing.T) {
@@ -1006,9 +970,11 @@ func Test_toRecipeConfigEnvDatamodel(t *testing.T) {
 		{
 			name: "With Multiple Environment Variables",
 			config: &RecipeConfigProperties{
-				Env: map[string]*string{
-					"key1": new("value1"),
-					"key2": new("value2"),
+				Env: &EnvironmentVariables{
+					AdditionalProperties: map[string]*string{
+						"key1": new("value1"),
+						"key2": new("value2"),
+					},
 				},
 			},
 			want: datamodel.EnvironmentVariables{
@@ -1031,12 +997,12 @@ func Test_fromRecipeConfigEnvDatamodel(t *testing.T) {
 	tests := []struct {
 		name   string
 		config datamodel.RecipeConfigProperties
-		want   map[string]*string
+		want   *EnvironmentVariables
 	}{
 		{
 			name:   "Empty Recipe Configuration",
 			config: datamodel.RecipeConfigProperties{},
-			want:   map[string]*string{},
+			want:   &EnvironmentVariables{AdditionalProperties: map[string]*string{}},
 		},
 		{
 			name: "With Multiple Environment Variables",
@@ -1048,9 +1014,11 @@ func Test_fromRecipeConfigEnvDatamodel(t *testing.T) {
 					},
 				},
 			},
-			want: map[string]*string{
-				"key1": new("value1"),
-				"key2": new("value2"),
+			want: &EnvironmentVariables{
+				AdditionalProperties: map[string]*string{
+					"key1": new("value1"),
+					"key2": new("value2"),
+				},
 			},
 		},
 	}

@@ -240,7 +240,7 @@ All contributors MUST be able to develop using appropriate tooling for their rep
 - **VS Code with Dev Containers** (recommended): Pre-configured environment with all tools in `.devcontainer/devcontainer.json`
 - **Local installation**: Following prerequisites documented in `docs/contributing/contributing-code/contributing-code-prerequisites/`
 
-The radius dev container includes: Git, GitHub CLI, Go, Node.js, Python, gotestsum, kubectl, Helm, Docker, jq, k3d, kind, stern, Dapr CLI, and VS Code extensions (Go, Python, Bicep, Kubernetes, TypeSpec, YAML, shellcheck, Makefile Tools).
+The radius dev container includes: Git, GitHub CLI, Go, Node.js, Python, kubectl, Helm, Docker, jq, k3d, kind, stern, Dapr CLI, and VS Code extensions (Go, Python, Bicep, Kubernetes, TypeSpec, YAML, shellcheck, Makefile Tools).
 
 For local Kubernetes testing in radius repo, prefer **k3d** as the primary tool. Secondarily consider **kind** for compatibility testing.
 
@@ -268,7 +268,7 @@ For local Kubernetes testing in radius repo, prefer **k3d** as the primary tool.
 **For Go code (radius repo)**:
 
 - **Formatting**: All Go code MUST be formatted with `gofmt` (enforced by `make format-check`)
-- **Linting**: All code MUST pass `golangci-lint` checks (run via `make lint`)
+- **Linting**: All code MUST pass `golangci-lint` checks (run via `make lint-go`)
 - **Documentation**: All exported Go packages, types, variables, constants, and functions MUST have godoc comments
 
 **For TypeScript code (dashboard repo)**:

@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	k8slabels "github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resourceskubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 
 	"io"
 	"net/http"
@@ -42,14 +43,18 @@ import (
 )
 
 type ARMDiagnosticsClient struct {
-	K8sTypedClient    *k8s.Clientset
-	RestConfig        *rest.Config
-	K8sRuntimeClient  client.Client
-	ApplicationClient generated.GenericResourcesClient
-	ContainerClient   generated.GenericResourcesClient
-	EnvironmentClient generated.GenericResourcesClient
-	GatewayClient     generated.GenericResourcesClient
+	K8sTypedClient   *k8s.Clientset
+	RestConfig       *rest.Config
+	K8sRuntimeClient client.Client
+	GatewayClient    generated.GenericResourcesClient
+
+	// ManagementClient resolves a Radius.Compute/containers resource using the API version
+	// registered for its resource type.
+	ManagementClient clients.ApplicationsManagementClient
 }
+
+// containerResourceType is the container resource type that Logs and Expose operate on.
+const containerResourceType = "Radius.Compute/containers"
 
 var _ clients.DiagnosticsClient = (*ARMDiagnosticsClient)(nil)
 
@@ -118,7 +123,7 @@ func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.Expo
 func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) ([]clients.LogStream, error) {
 	namespace, err := dc.findNamespaceOfContainer(ctx, options.Resource)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	var replicas []corev1.Pod
@@ -149,76 +154,60 @@ func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOp
 	return streams, err
 }
 
+// findNamespaceOfContainer resolves the Kubernetes namespace for a Radius.Compute/containers
+// resource. Radius.Core/applications does not expose status.compute.namespace, so the
+// namespace is derived from the container's output resources (the backing Deployment's
+// Kubernetes resource ID encodes the namespace).
 func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, resourceName string) (string, error) {
-	containerResponse, err := dc.ContainerClient.Get(ctx, resourceName, nil)
+	container, err := dc.ManagementClient.GetResource(ctx, containerResourceType, resourceName)
 	if err != nil {
-		return "", fmt.Errorf("could not find container %q:%w", resourceName, err)
+		return "", fmt.Errorf("could not find container %q: %w", resourceName, err)
 	}
 
-	obj, ok := containerResponse.Properties["application"]
+	status, ok := container.Properties["status"].(map[string]any)
 	if !ok {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	application, ok := obj.(string)
+	outputResources, ok := status["outputResources"].([]any)
 	if !ok {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	id, err := resources.ParseResource(application)
-	if err != nil {
-		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
-	}
+	for _, raw := range outputResources {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
 
-	applicationResponse, err := dc.ApplicationClient.Get(ctx, id.Name(), nil)
-	if err != nil {
-		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
-	}
+		idValue, ok := entry["id"].(string)
+		if !ok {
+			continue
+		}
 
-	obj, ok = applicationResponse.Properties["status"]
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
+		id, err := resources.Parse(idValue)
+		if err != nil {
+			continue
+		}
 
-	status, ok := obj.(map[string]any)
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	obj, ok = status["compute"]
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	compute, ok := obj.(map[string]any)
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	kind, ok := compute["kind"].(string)
-	if !ok || !strings.EqualFold(kind, "kubernetes") {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	namespace, ok := compute["namespace"].(string)
-	if ok {
-		return namespace, nil
+		if namespace := id.FindScope(resourceskubernetes.ScopeNamespaces); namespace != "" {
+			return namespace, nil
+		}
 	}
 
 	return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 }
 
-// Note: If an error is returned, any streams that were created before the error will also be returned.
 // Caller is responsible for closing streams even when there is an error.
 func createLogStreams(ctx context.Context, options clients.LogsOptions, dc *ARMDiagnosticsClient, replicas []corev1.Pod) ([]clients.LogStream, error) {
-	container := options.Container
 	follow := options.Follow
 
 	var streams []clients.LogStream
 	for _, replica := range replicas {
+		container := options.Container
 		if container == "" {
 			// We don't really expect this to fail, but let's do something reasonable if it does...
-			container = getAppContainerName(&replica)
+			container = defaultContainerName(&replica)
 			if container == "" {
 				return streams, fmt.Errorf("failed to find the default container for resource '%s'. use '--container <name>' to specify the name", options.Resource)
 			}
@@ -321,10 +310,15 @@ func runPortforward(restconfig *rest.Config, client *k8s.Clientset, replica *cor
 	return fw.ForwardPorts()
 }
 
-func getAppContainerName(replica *corev1.Pod) string {
-	// The container name will be the resource name
-	resource := replica.Labels[k8slabels.LabelRadiusResource]
-	return resource
+// defaultContainerName resolves the container to read logs from when none is specified.
+// A Radius.Compute/containers pod's container is named after its container map key rather than
+// the resource, so the pod's only container is used. When the pod has more than one container
+// the caller must pass --container.
+func defaultContainerName(replica *corev1.Pod) string {
+	if len(replica.Spec.Containers) == 1 {
+		return replica.Spec.Containers[0].Name
+	}
+	return ""
 }
 
 func streamLogs(ctx context.Context, client *k8s.Clientset, replica *corev1.Pod, container string, follow bool) (io.ReadCloser, error) {

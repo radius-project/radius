@@ -38,3 +38,20 @@ func TestSetParams(t *testing.T) {
 	require.Equal(t, c["foo"].(map[string]any), map[string]any{"bar": "baz"})
 	require.Equal(t, c["bar"].(map[string]any), map[string]any{"baz": "foo"})
 }
+
+func TestSetParams_SkipsNilValues(t *testing.T) {
+	c := TFModuleConfig{
+		"existing": "value",
+	}
+
+	c.SetParams(RecipeParams{
+		"valid_param": "hello",
+		"nil_param":   nil,
+	})
+
+	require.Equal(t, 2, len(c))
+	require.Equal(t, "value", c["existing"])
+	require.Equal(t, "hello", c["valid_param"])
+	_, exists := c["nil_param"]
+	require.False(t, exists, "nil params should not be added to module config")
+}

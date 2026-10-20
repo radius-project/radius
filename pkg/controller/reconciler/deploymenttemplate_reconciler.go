@@ -18,25 +18,24 @@ package reconciler
 
 import (
 	"context"
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"uuid"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
 	"github.com/go-logr/logr"
-	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/hashutil"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
@@ -140,7 +139,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		}
 
 		if !poller.Done() {
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		// If we get here, the operation is complete.
@@ -222,10 +221,8 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				}
 
 				deploymentResource := &radappiov1alpha3.DeploymentResource{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: deploymentTemplate.Namespace,
-					},
+					Name:      resourceName,
+					Namespace: deploymentTemplate.Namespace,
 					Spec: radappiov1alpha3.DeploymentResourceSpec{
 						Id: outputResourceId,
 					},
@@ -257,10 +254,8 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				}
 
 				err = r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: deploymentTemplate.Namespace,
-					},
+					Name:      resourceName,
+					Namespace: deploymentTemplate.Namespace,
 				})
 				if client.IgnoreNotFound(err) != nil {
 					return ctrl.Result{}, err
@@ -366,7 +361,7 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	}
 
 	// If we get here then it means we can process the result of the operation.
@@ -515,7 +510,7 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 				Template:       template,
 				Parameters:     specParameters,
 				ProviderConfig: providerConfig,
-				Mode:           armresources.DeploymentModeIncremental,
+				Mode:           armdeployments.DeploymentModeIncremental,
 			},
 		},
 		resourceID,
@@ -606,20 +601,23 @@ func computeHash(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (strin
 		return "", err
 	}
 
-	sum := sha1.Sum(b)
-	hash := hex.EncodeToString(sum[:])
-	return hash, nil
+	return hashutil.Hex(b), nil
 }
 
 // isUpToDate returns true if the desired state of the DeploymentTemplate
 // matches the observed state.
+//
+// It accepts both the current SHA-256 hash and the legacy SHA-1 hash so that
+// upgrading Radius (which changes the hash algorithm) does not flag an otherwise
+// unchanged DeploymentTemplate as out-of-date and trigger an unnecessary deployment.
 func isUpToDate(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) bool {
-	hash, err := computeHash(deploymentTemplate)
+	b, err := json.Marshal(deploymentTemplate.Spec)
 	if err != nil {
 		return false
 	}
 
-	return deploymentTemplate.Status.StatusHash == hash
+	stored := deploymentTemplate.Status.StatusHash
+	return stored == hashutil.Hex(b) || stored == hashutil.LegacyHex(b)
 }
 
 // updateFailedStatus updates the deployment template status to failed state and clears the operation.

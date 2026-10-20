@@ -105,6 +105,11 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	requestCtx := v1.ARMRequestContextFromContext(ctx)
 	id := requestCtx.ResourceID
 	relativePath := middleware.GetRelativePath(p.Options().PathBase, requestCtx.OriginalURL.Path)
+	if id.IsEmpty() {
+		message := "the request URL does not contain a valid resource ID"
+		response := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInvalid, Message: message}}
+		return armrpc_rest.NewBadRequestARMResponse(response), nil
+	}
 
 	apiVersion := requestCtx.APIVersion
 	if apiVersion == "" {
@@ -253,7 +258,13 @@ func (p *ProxyController) UpdateTrackedResource(ctx context.Context, downstreamU
 func (p *ProxyController) EnqueueTrackedResourceUpdate(ctx context.Context, id resources.ID, apiVersion string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	trackingID := trackedresource.IDFor(id)
+	// Resolve the tracking ID, preferring an existing entry under the current (SHA-256) tracking
+	// ID and falling back to a legacy (SHA-1) entry written by older versions of Radius. This keeps
+	// the SHA-1 -> SHA-256 migration from orphaning existing tracked resources. See issue #8084.
+	trackingID, _, err := trackedresource.ResolveTrackingEntry(ctx, p.DatabaseClient(), id)
+	if err != nil {
+		return err
+	}
 
 	// Create a serviceCtx for the operation that we're going to process on the resource.
 	serviceCtx := *v1.ARMRequestContextFromContext(ctx)
@@ -302,7 +313,7 @@ retry:
 		}
 
 		logger.V(ucplog.LevelDebug).Info("enqueuing tracked resource update")
-		err = p.DatabaseClient().Save(ctx, &database.Object{Metadata: database.Metadata{ID: trackingID.String()}, Data: entry}, database.WithETag(etag))
+		err = p.DatabaseClient().Save(ctx, &database.Object{ID: trackingID.String(), Data: entry}, database.WithETag(etag))
 		if errors.Is(err, &database.ErrConcurrency{}) {
 			// This means we hit a concurrency error saving the tracked resource entry. This means that the resource
 			// was updated in the background. We should retry.
@@ -320,7 +331,7 @@ retry:
 		return nil
 	}
 
-	err := p.StatusManager().QueueAsyncOperation(ctx, &serviceCtx, statusmanager.QueueOperationOptions{OperationTimeout: ProcessOperationTimeout, RetryAfter: ProcessOperationRetryAfter})
+	err = p.StatusManager().QueueAsyncOperation(ctx, &serviceCtx, statusmanager.QueueOperationOptions{OperationTimeout: ProcessOperationTimeout, RetryAfter: ProcessOperationRetryAfter})
 	if err != nil {
 		return err
 	}
