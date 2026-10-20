@@ -202,7 +202,7 @@ The deployment engine and the controller act for another principal. See [Clients
 
 A scope is where a role assignment applies. Access at a scope also covers everything under it in the resource ID path: installation, then plane, then resource group, then resource. This design adds three rules:
 
-- **The installation scope (`/`) is limited.** Only admin-type roles, `reader`, and `auditor` can be assigned there. The enforcement setting also lives there.
+- **Installation-wide assignments (`/`).** The built-in roles allowed here are `radius-administrator`, `access-administrator`, `platform-administrator`, `recipe-pack-administrator`, `resource-type-administrator`, `reader`, and `auditor`. Custom roles can also be assigned here when their `assignableScopes` allows it; the same assignment safety rules apply. The enforcement setting also lives here.
 - **Only some resource types can be scopes.** These are `Radius.Core/environments`, `Radius.Core/recipePacks`, `Radius.Core/applications`, `Applications.Core/environments`, and `Applications.Core/applications`. Other types fail with `ScopeNotAssignable`.
 - **A reference does not grant access.** Access follows the resource ID path, not references between resources. Access on an environment does not cover the Recipe Packs that the environment uses.
 
@@ -395,13 +395,15 @@ Every 5 seconds, a UCP instance compares its generation number with the database
 
 **How fast changes apply.** A role or assignment change reaches each UCP instance within **30 seconds**. This includes retries when the database is briefly unavailable. If an instance cannot refresh within 30 seconds, it marks itself not ready and refuses requests with `AuthorizationUnavailable`. It never decides with old data.
 
-**Writing changes safely.** Safety rules examine many assignments together, but `database.Client` checks ETags one object at a time. If two UCP instances each remove a different one of two admins, both could pass. UCP therefore serializes access changes (roles, assignments, mode) through one shared **access version record** that holds the generation number:
+**Writing changes safely.** Safety rules examine many assignments together, but `database.Client` checks ETags one object at a time. If two UCP instances each remove a different one of two admins, both could pass. UCP therefore serializes access changes (roles, assignments, mode) through one shared **access version record**. It holds the applied generation and a pointer to an immutable policy index, plus any pending change:
 
-1. UCP reads the record. It runs the safety rules against the current access configuration and the new change.
-2. UCP saves the record with the next generation number and a note about the change. It uses the current ETag check. Only one request can save a generation. The other request gets a version conflict, reads again, and reruns the safety rules. In the example, it now sees one admin left and fails with `LastAdministratorProtected`.
-3. UCP saves the role or assignment and the access change record for this generation. Then it clears the note.
+1. UCP reads the current policy through that pointer and runs the safety rules. It prepares immutable changed objects, a new index, and an audit event envelope under a unique change ID. These objects do not affect access until published.
+2. UCP uses the record's ETag to claim the next generation with a pending pointer and the event envelope ID. Only one request can claim it. A competing request reads again and reruns the safety rules; in the example, it sees one admin left and fails with `LastAdministratorProtected`.
+3. UCP verifies the prepared objects, writes the generation's access change history, then uses another ETag check to publish the new pointer and generation and clear the pending change.
 
-If UCP stops between steps 2 and 3, the next instance that reads the record sees the note and finishes the change first, including the access change record. UCP never saves a change without a new generation. UCP retries conflicts up to 5 times, then fails with 409 `Conflict`. This works on both backends without new database features.
+Before serving a policy read or starting another change, UCP finishes any pending change. Recovery reuses frozen object and event contents. A delayed worker can write only that change's immutable objects; it cannot recreate a deleted assignment in the current policy. Readers use only the published index, not mutable objects at public role or assignment IDs.
+
+The version record stays small; its index uses bounded immutable pages rather than embedding all policy. Initialization requires an atomic create-if-absent operation on both database backends, so concurrent initializers cannot overwrite the anchor. Ordinary unconditional saves are not sufficient. UCP retries version conflicts up to 5 times, then fails with 409 `Conflict`. Old and abandoned immutable objects are retained initially; safe cleanup is separate work.
 
 #### Piece 4: Authorizer
 
@@ -413,7 +415,8 @@ The authorizer runs in the UCP HTTP handler chain built in `Service.Initialize` 
 requiredChecks(request):
   checks = [ (permissionFor(request), request.resourceID) ]
   if request is a PUT or PATCH:
-    for each reference in the request body:
+    resource = completeEffectiveResource(request)
+    for each reference in resource:
       checks += (reference.permission, reference.targetID)
   return checks
 ```
@@ -429,7 +432,9 @@ requiredChecks(request):
 | `properties.connections.*.source`                                                         | `<sourceType>/connect/action`                                                              |
 | A property in a user-defined type marked with a new `x-radius-reference` schema extension | `<referencedType>/read`                                                                    |
 
-UCP checks **every** reference in the request body, not only new ones. If you lose permission to deploy to an environment, you cannot update resources already in it. Reads and deletes do not check references.
+UCP checks **every** reference in the complete effective resource, not only fields submitted by the caller. For `PATCH`, UCP first checks the target write permission, then loads the existing resource and applies the patch using that resource type's update semantics before extracting references. A patch that omits an existing environment or connection still checks that reference. If UCP cannot resolve the effective resource or its required references, it returns `AuthorizationIndeterminate` in `Enforce` instead of approving the update; workload checks remain log-only in `DryRun`.
+
+If you lose permission to deploy to an environment, you cannot update resources already in it. Reads and deletes do not check references.
 
 **Using an environment does not mean seeing what is inside it.** Deploying to staging uses its Recipe Packs, configuration, and cloud credentials, but gives you no read or write access to them. The [internal design](./2026-09-internal-component-authorization.md) limits that use to approved work.
 
@@ -523,10 +528,10 @@ If not, UCP ignores the Secret and logs an alert.
 
 UCP records two kinds of audit events:
 
-| Event                                        | When                             | Where it is kept                                                                                    |
-|----------------------------------------------|----------------------------------|-----------------------------------------------------------------------------------------------------|
-| **Access change** (roles, assignments, mode) | Every mode, including `Disabled` | The UCP database, as a new read-only `Radius.Core/accessChanges` resource. Also written to the log. |
-| **Access decision** (allow, deny, wouldDeny) | `DryRun` and `Enforce`           | Only the log. Radius does not store them.                                                           |
+| Event                                        | When                                                                          | Where it is kept                                                                                    |
+|----------------------------------------------|-------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| **Access change** (roles, assignments, mode) | Every mode, including `Disabled`                                              | The UCP database, as a new read-only `Radius.Core/accessChanges` resource. Also written to the log. |
+| **Access decision** (allow, deny, wouldDeny) | Workload checks in `DryRun` and `Enforce`; access-policy writes in every mode | Only the log. Radius does not store them.                                                           |
 
 **Access changes.** UCP writes one `accessChanges` record for each applied change, keyed by the generation number from [Writing changes safely](#piece-3-policy-store). UCP writes it in the same serialized step as the change and never deletes it. The `auditor` and `radius-administrator` roles can read them with `rad auth history list`.
 
@@ -557,11 +562,17 @@ Events never include request bodies, secrets, or credentials.
 
 The mode is stored in `authorizationSettings` at `/providers/Radius.Core/authorizationSettings/default`.
 
-| Mode       | Checks run? | Blocks requests?      | When to use it                                       |
-|------------|-------------|-----------------------|------------------------------------------------------|
-| `Disabled` | No          | No                    | Current behavior. Upgraded installations start here. |
-| `DryRun`   | Yes         | No, all requests pass | Test RBAC. UCP logs requests that RBAC would block.  |
-| `Enforce`  | Yes         | Yes                   | Normal use.                                          |
+The modes below control ordinary workload operations, such as deploying an application. They do not turn off authorization for access-policy writes.
+
+| Mode       | Workload checks run? | Blocks workload requests? | When to use it                                                |
+|------------|----------------------|---------------------------|---------------------------------------------------------------|
+| `Disabled` | No                   | No                        | Current workload behavior. Upgraded installations start here. |
+| `DryRun`   | Yes                  | No; log would-be denials  | Test access rules without blocking workload operations.       |
+| `Enforce`  | Yes                  | Yes                       | Normal use.                                                   |
+
+**Access-policy writes are always protected.** Creating, updating, or deleting roles and assignments requires the matching Radius permission in every mode, including `Disabled` and `DryRun`. Assignments are not frozen: authorized administrators can change them while testing access. The safety rules also apply. Without an assignment granting the required permission, the request fails with 403 instead of recording only `wouldDeny`.
+
+This applies to the API, CLI, GitOps, and templates. Preflight must enforce checks on role and assignment mutations even when workload checks are log-only; a denied policy mutation fails the deployment before any resource is changed. Writes to `authorizationSettings` keep the Kubernetes bootstrap check in `Disabled` and `DryRun` described below; in `Enforce`, they require the Radius setting permission.
 
 The [internal design](./2026-09-internal-component-authorization.md)'s service-to-service security is set separately with Helm values (`global.rbac.enabled`, `global.rbac.dryRun`). User RBAC can be `Enforce` only when service-to-service security is also `Enforce`. Otherwise UCP rejects the change with `ComponentProtocolNotEnforced`.
 
@@ -584,7 +595,7 @@ Helm sets the mode only on first install. `helm upgrade` does not overwrite `aut
 
 ###### Existing installations
 
-An upgrade keeps the mode `Disabled` and creates no assignments. Nothing changes until an admin opts in:
+An upgrade keeps the mode `Disabled` and creates no assignments. Existing workload operations are unchanged. Role and assignment writes are denied until an admin bootstraps access:
 
 1. **Dry run.** `rad auth enforcement dry-run` changes the mode to `DryRun` and makes the caller a bootstrap admin. Only Kubernetes cluster admins can run this. Kubernetes reads the request path as resource `providers`, which `radius-api-user` already permits, so UCP makes an explicit `SubjectAccessReview` for the caller: `update` on `authorizationsettings`, name `default`, in `api.ucp.dev`. Only the new `radius-rbac-bootstrap` ClusterRole grants it, and Helm binds it to nobody. If the review fails, UCP returns 403. The same check protects each write to `authorizationSettings` while the mode is `Disabled` or `DryRun`.
 2. **Observe.** In `DryRun`, UCP records who uses Radius and what they do.
@@ -723,11 +734,11 @@ Changes to `rad deploy`:
 
 #### Piece 1: Identity
 
-| Where                               | Change                                                                                               |
-|-------------------------------------|------------------------------------------------------------------------------------------------------|
-| `pkg/ucp/frontend/api/server.go`    | Add identity resolution middleware. In `Disabled`, it logs identity only.                            |
-| `pkg/ucp/proxy/kubernetes.go`       | Read identity headers on verified connections, then keep them out of requests to resource providers. |
-| New package `pkg/ucp/authorization` | Add principals and issuers as plain Go with no network calls.                                        |
+| Where                               | Change                                                                                                                      |
+|-------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| `pkg/ucp/frontend/api/server.go`    | Add identity resolution middleware. Resolve verified identity for access-policy writes in every mode, including `Disabled`. |
+| `pkg/ucp/proxy/kubernetes.go`       | Read identity headers on verified connections, then keep them out of requests to resource providers.                        |
+| New package `pkg/ucp/authorization` | Add principals and issuers as plain Go with no network calls.                                                               |
 
 #### Piece 2: Access model
 
@@ -757,7 +768,7 @@ Changes to `rad deploy`:
 
 | Where                                         | Change                                                                                                                                                              |
 |-----------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `pkg/ucp/frontend/api/server.go`              | Add authorizer middleware. In `Disabled`, it does not block requests.                                                                                               |
+| `pkg/ucp/frontend/api/server.go`              | Add authorizer middleware. Always authorize access-policy writes; apply the selected mode to ordinary workload operations.                                          |
 | New package `pkg/ucp/authorization`           | Add reference checks, evaluator, and safety rules.                                                                                                                  |
 | `pkg/ucp/frontend/controller/radius/proxy.go` | Check execution records against the preflight approved list and the user's current permissions. Revoke active records after permission loss. Filter list responses. |
 | Core RP and Recipes RP                        | No change. UCP hides graph nodes.                                                                                                                                   |
@@ -836,7 +847,7 @@ Add under `deploy/Chart/templates`:
 | `ScopeNotAssignable`           | 400         | The scope is not allowed for this role, or that resource type cannot be a scope.                                                                                     | Choose another scope.                                               |
 | `AuthorizationUnavailable`     | 503         | UCP's access data is too old, or the database is down.                                                                                                               | Retry later.                                                        |
 
-**Fail closed.** In `Enforce`, any access-check error makes UCP deny the request with `AuthorizationUnavailable`. UCP never permits the request. In `DryRun`, UCP logs errors and continues.
+**Fail closed.** An access-check error makes UCP deny access-policy writes in every mode with `AuthorizationUnavailable`. For ordinary workload operations, UCP denies on access-check errors in `Enforce`; in `DryRun`, it logs errors and continues.
 
 **Codes from the internal design.** Users can also see the internal design [error codes](./2026-09-internal-component-authorization.md#error-codes), such as `ExecutionRecordNotActive` (rerun `rad deploy`). `rad` says a role assignment will not fix them.
 
@@ -848,7 +859,9 @@ Add under `deploy/Chart/templates`:
 - Access based on groups.
 - `assignableScopes`.
 - Reference checks for each built-in type and for `x-radius-reference`.
+- A `PATCH` omits an existing environment or connection whose use permission was revoked. Checks still include that reference from the effective resource and deny the update in `Enforce`; an unresolved effective resource returns `AuthorizationIndeterminate`.
 - Each safety rule, with `PrivilegeEscalationDenied`, `LastAdministratorProtected`, and `highImpact` audit events when an Access Administrator assigns `radius-administrator`.
+- In each mode, a caller without the required permission cannot create, update, or delete roles or assignments, even when the proposed change passes the safety rules.
 - A user without access gets the same 403 for an existing resource and a missing resource.
 - A new registered resource type gives no access until `permissionSets` is set.
 - `application-developer` cannot write or delete environments, Recipe Packs, or Bicep or Terraform settings.
@@ -865,20 +878,22 @@ Add under `deploy/Chart/templates`:
 
 **Functional tests** cover cross-component behavior or real Kubernetes API server behavior. They run in `test/functional-portable` on a cluster configured to verify Kubernetes's client certificate, using several test users and service accounts.
 
-| Scenario                                                                                                                     | Expected result                                                                                                                              |
-|------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
-| Developer deploys to an environment they can use, then to a different one, then a template with allowed and denied resources | The first succeeds. The others fail in preflight with `AuthorizationFailed`, list each denied resource, and create nothing.                  |
-| A UCP instance restarts during the dry run, then `enable` is run                                                             | `DryRunHistoryIncomplete` until 24 complete hours exist. The report shows the gap.                                                           |
-| A role is removed during a long deployment                                                                                   | The record is revoked. The next step fails with `ExecutionRecordNotActive`. `rad deploy` and the audit log list the resources left in place. |
-| Remove the last admin using the CLI                                                                                          | `LastAdministratorProtected`.                                                                                                                |
-| While `Disabled`, a user with only `radius-api-user` runs `rad auth enforcement dry-run`                                     | UCP's `SubjectAccessReview` returns 403. Mode stays `Disabled`. No bootstrap admin is created.                                               |
-| While `DryRun`, a user with only `radius-api-user` changes the mode                                                          | UCP's `SubjectAccessReview` returns 403. Mode stays `DryRun`.                                                                                |
-| Upgrade an existing install, then dry run, report, enable                                                                    | Nothing is blocked before enable. The report suggests assignments. Enable succeeds.                                                          |
-| Enable `Enforce` while service-to-service security is `Off`                                                                  | `ComponentProtocolNotEnforced`. Mode stays the same.                                                                                         |
-| Recovery Secret is created, then expires                                                                                     | Admin access works only during that time, and UCP logs it.                                                                                   |
-| A Git repository targets a namespace that does not list it in `radapp.io/gitops-sources`                                     | In `Enforce`, nothing is created and the `GitRepository` gets an event.                                                                      |
-| A namespace admin or Radius service account creates `radius-rbac-recovery`                                                   | The admission policy rejects it. No recovery grant exists.                                                                                   |
-| The recovery admission policy is deleted, then the Secret is created                                                         | UCP ignores the Secret and logs a warning.                                                                                                   |
+| Scenario                                                                                                                                            | Expected result                                                                                                                              |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| Developer deploys to an environment they can use, then to a different one, then a template with allowed and denied resources                        | The first succeeds. The others fail in preflight with `AuthorizationFailed`, list each denied resource, and create nothing.                  |
+| A UCP instance restarts during the dry run, then `enable` is run                                                                                    | `DryRunHistoryIncomplete` until 24 complete hours exist. The report shows the gap.                                                           |
+| A role is removed during a long deployment                                                                                                          | The record is revoked. The next step fails with `ExecutionRecordNotActive`. `rad deploy` and the audit log list the resources left in place. |
+| Remove the last admin using the CLI                                                                                                                 | `LastAdministratorProtected`.                                                                                                                |
+| While `Disabled`, a user with only `radius-api-user` runs `rad auth enforcement dry-run`                                                            | UCP's `SubjectAccessReview` returns 403. Mode stays `Disabled`. No bootstrap admin is created.                                               |
+| While `DryRun`, a user with only `radius-api-user` changes the mode                                                                                 | UCP's `SubjectAccessReview` returns 403. Mode stays `DryRun`.                                                                                |
+| In each of `Disabled`, `DryRun`, and `Enforce`, an unauthorized user deletes another user's non-admin assignment or reduces a custom role           | Returns 403; policy and generation are unchanged.                                                                                            |
+| In `DryRun`, a user without workload permission deploys an ordinary application, then tries a template containing an unauthorized assignment change | The ordinary deployment proceeds and logs `wouldDeny`. The policy-changing template fails in preflight and changes nothing.                  |
+| Upgrade an existing install, then dry run, report, enable                                                                                           | Nothing is blocked before enable. The report suggests assignments. Enable succeeds.                                                          |
+| Enable `Enforce` while service-to-service security is `Off`                                                                                         | `ComponentProtocolNotEnforced`. Mode stays the same.                                                                                         |
+| Recovery Secret is created, then expires                                                                                                            | Admin access works only during that time, and UCP logs it.                                                                                   |
+| A Git repository targets a namespace that does not list it in `radapp.io/gitops-sources`                                                            | In `Enforce`, nothing is created and the `GitRepository` gets an event.                                                                      |
+| A namespace admin or Radius service account creates `radius-rbac-recovery`                                                                          | The admission policy rejects it. No recovery grant exists.                                                                                   |
+| The recovery admission policy is deleted, then the Secret is created                                                                                | UCP ignores the Secret and logs a warning.                                                                                                   |
 
 **Cloud functional tests** run in `test/functional-portable/corerp/cloud` because they need AWS and Azure credentials:
 
