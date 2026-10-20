@@ -94,9 +94,10 @@ func Test_lookupARMAPIVersions(t *testing.T) {
 
 func Test_Delete_ARM_VersionFallback(t *testing.T) {
 	const (
-		current = "2026-10-01"
-		older   = "2025-08-01"
-		childID = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/server/firewallRules/allow-all"
+		current          = "2026-10-01"
+		older            = "2025-08-01"
+		childID          = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/server/firewallRules/allow-all"
+		roleAssignmentID = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.Authorization/roleAssignments/test-assignment"
 	)
 	type failure struct {
 		status int
@@ -161,6 +162,21 @@ func Test_Delete_ARM_VersionFallback(t *testing.T) {
 		{
 			name: "resource already absent", readFailure: failure{404, "ResourceNotFound"},
 			want: []string{"GET " + current},
+		},
+		{
+			name: "role assignment already absent", id: roleAssignmentID,
+			readFailure: failure{404, "RoleAssignmentNotFound"},
+			want:        []string{"GET " + current},
+		},
+		{
+			name: "role assignment bad request remains an error", id: roleAssignmentID,
+			readFailure: failure{400, "RoleAssignmentNotFound"},
+			want:        []string{"GET " + current}, wantError: "RoleAssignmentNotFound",
+		},
+		{
+			name: "role assignment forbidden remains an error", id: roleAssignmentID,
+			readFailure: failure{403, "RoleAssignmentNotFound"},
+			want:        []string{"GET " + current}, wantError: "RoleAssignmentNotFound",
 		},
 		{
 			name: "parent already absent", id: childID, readFailure: failure{404, "ParentResourceNotFound"},

@@ -150,7 +150,7 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 			var responseError *azcore.ResponseError
 			if errors.As(err, &responseError) && responseError.StatusCode == http.StatusNotFound {
 				switch responseError.ErrorCode {
-				case "ResourceNotFound", "ResourceGroupNotFound", "ParentResourceNotFound":
+				case "ResourceNotFound", "ResourceGroupNotFound", "ParentResourceNotFound", "RoleAssignmentNotFound":
 					return nil
 				}
 			}
