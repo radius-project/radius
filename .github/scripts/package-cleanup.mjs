@@ -134,10 +134,7 @@ export class Client {
   }
   get(path, service = "github", observe) {
     const r = this.request(service, "GET", path, observe);
-    requireThat(
-      r.status === 200,
-      `GET ${path}: HTTP ${r.status}: ${redact(r.body).slice(0, 500)}`
-    );
+    requireThat(r.status === 200, `GET ${path}: HTTP ${r.status}`);
     return responseJSON(r.body, path);
   }
   pages(path, observe) {
@@ -285,6 +282,31 @@ export function manifestEdges(body, digest) {
   return { children: [...new Set(children)].sort(), artifact, recipe };
 }
 
+function releases(rows) {
+  return rows.map((r) => {
+    requireThat(
+      positive(r.id) && typeof r.tag_name === "string" && r.tag_name.length > 0,
+      "Invalid release identity/tag"
+    );
+    date(r.updated_at);
+    return { id: r.id, tag_name: r.tag_name, updated_at: r.updated_at };
+  });
+}
+function openPRs(rows) {
+  return rows.map((pr) => {
+    requireThat(positive(pr.number), "Invalid pull request number");
+    return { number: pr.number };
+  });
+}
+function activeRuns(rows) {
+  return rows.map((r) => {
+    requireThat(
+      positive(r.id) && typeof r.path === "string" && r.path.length > 0,
+      "Invalid active workflow identity/path"
+    );
+    return { id: r.id, path: r.path };
+  });
+}
 export function collect(client, checkpoint = () => {}) {
   const snapshot = {
     repository: REPOSITORY,
@@ -292,6 +314,7 @@ export function collect(client, checkpoint = () => {}) {
     releases: [],
     openPRs: [],
     activeRuns: [],
+    withheldPackages: 0,
     complete: false
   };
   checkpoint(snapshot);
@@ -303,25 +326,19 @@ export function collect(client, checkpoint = () => {}) {
   );
   // All release entries, including drafts and prereleases, are evidence. Never
   // infer history completeness from a supported-version list or an asset name.
-  snapshot.releases = client.pages(`/repos/${REPOSITORY}/releases`);
-  snapshot.openPRs = client.pages(`/repos/${REPOSITORY}/pulls?state=open`);
-  requireThat(
-    snapshot.releases.every(
-      (r) =>
-        typeof r.tag_name === "string" &&
-        r.tag_name.length > 0 &&
-        typeof r.updated_at === "string" &&
-        Number.isFinite(Date.parse(r.updated_at))
-    ) && snapshot.openPRs.every((pr) => positive(pr.number)),
-    "Invalid release or pull request metadata"
+  snapshot.releases = releases(client.pages(`/repos/${REPOSITORY}/releases`));
+  snapshot.openPRs = openPRs(
+    client.pages(`/repos/${REPOSITORY}/pulls?state=open`)
   );
   const runs = client.get(`/repos/${REPOSITORY}/actions/runs?per_page=100`);
   requireThat(
     positive(runs.total_count) || runs.total_count === 0,
     "Invalid workflow run count"
   );
-  snapshot.activeRuns = list(runs.workflow_runs, "workflow runs").filter(
-    (r) => r.status !== "completed"
+  snapshot.activeRuns = activeRuns(
+    list(runs.workflow_runs, "workflow runs").filter(
+      (r) => r.status !== "completed"
+    )
   );
   // Old queued runs can be outside the first page. Query each active status
   // separately and hold if GitHub's 1000-result search limit is reached.
@@ -341,7 +358,7 @@ export function collect(client, checkpoint = () => {}) {
         "Incomplete active workflow search"
       );
       const rows = list(r.workflow_runs, "active workflows");
-      snapshot.activeRuns.push(...rows);
+      snapshot.activeRuns.push(...activeRuns(rows));
       if (rows.length < 100) break;
       requireThat(page < 10, "Incomplete active workflow search");
     }
@@ -350,11 +367,35 @@ export function collect(client, checkpoint = () => {}) {
     ...new Map(snapshot.activeRuns.map((r) => [r.id, r])).values()
   ];
   checkpoint(snapshot);
-  for (const summary of client.pages(
+  const summaries = client.pages(
     "/orgs/radius-project/packages?package_type=container"
-  )) {
+  );
+  snapshot.withheldPackages = summaries.filter(
+    (p) => p.visibility !== "public"
+  ).length;
+  checkpoint(snapshot);
+  if (snapshot.withheldPackages)
+    throw new Incomplete(
+      "Non-public or unknown-visibility packages withheld; inventory needs an approved restricted evidence path"
+    );
+  for (const summary of summaries) {
     packageName(summary.name);
-    const p = client.get(packagePath(summary.name));
+    let p;
+    try {
+      p = client.get(packagePath(summary.name));
+    } catch (error) {
+      const message =
+        "Package metadata unavailable; details withheld from public evidence";
+      if (error instanceof Incomplete) throw new Incomplete(message);
+      throw new Error(message);
+    }
+    if (p?.visibility !== "public") {
+      snapshot.withheldPackages++;
+      checkpoint(snapshot);
+      throw new Incomplete(
+        "Package visibility not public; inventory needs an approved restricted evidence path"
+      );
+    }
     requireThat(
       p.name === summary.name &&
         p.id === summary.id &&
@@ -555,6 +596,10 @@ export function classify(
   const globalProtected = new Set(state.roots);
   for (const p of snapshot.packages)
     for (const v of p.versions) {
+      for (const tag of v.tags) {
+        const subject = /^sha256-([a-f0-9]{64})\.(?:sig|att|sbom)$/.exec(tag);
+        if (subject) globalProtected.add(`sha256:${subject[1]}`);
+      }
       if (
         v.artifact ||
         v.tags.some(
@@ -738,6 +783,10 @@ export function makePlan(snapshot, evidence, identity, options) {
     records
   };
 }
+function planTimeValid(plan, now) {
+  const created = date(plan.createdAt);
+  return now >= created && now - created <= MAX_AGE;
+}
 export function validatePlan(
   plan,
   approvedHash,
@@ -758,10 +807,7 @@ export function validatePlan(
     canonical(plan.source) === canonical(identity),
     "Plan source/policy/run changed"
   );
-  requireThat(
-    now >= date(plan.createdAt) && now - date(plan.createdAt) <= MAX_AGE,
-    "Plan expired or from the future"
-  );
+  requireThat(planTimeValid(plan, now), "Plan expired or from the future");
   requireThat(
     plan.evidenceHash === hash(evidence) &&
       canonical(plan.evidence) === canonical(evidence),
@@ -823,7 +869,7 @@ export function checkEnvironment(environment, branchPolicies) {
     "Cleanup environment must allow only main"
   );
 }
-export function verifyGate(client, identity, freeze, now) {
+export function verifyGate(client, identity, freeze, clock = Date.now) {
   checkEnvironment(
     client.get(`/repos/${REPOSITORY}/environments/package-cleanup`),
     client.get(
@@ -849,14 +895,6 @@ export function verifyGate(client, identity, freeze, now) {
     branch.commit?.sha === identity.sha,
     "Main moved; generate a new plan"
   );
-  requireThat(
-    freeze?.repository === REPOSITORY &&
-      freeze.sha === identity.sha &&
-      freeze.externalPublishersStopped === true &&
-      date(freeze.expiresAt) > now &&
-      date(freeze.expiresAt) <= now + MAX_AGE,
-    "Missing or invalid publication-freeze lease"
-  );
   for (const status of [
     "queued",
     "in_progress",
@@ -878,6 +916,17 @@ export function verifyGate(client, identity, freeze, now) {
       "Other workflow runs must finish or be cancelled before apply"
     );
   }
+  const now = clock();
+  requireThat(
+    freeze?.repository === REPOSITORY &&
+      freeze.sha === identity.sha &&
+      freeze.externalPublishersStopped === true &&
+      date(freeze.expiresAt) <= now + MAX_AGE,
+    "Missing or invalid publication-freeze lease"
+  );
+  const deadline = date(freeze.expiresAt);
+  if (deadline <= now) throw new Incomplete("Publication-freeze lease expired");
+  return deadline;
 }
 export function verifyPlanRun(client, runId, sha) {
   requireThat(positive(runId) && SHA.test(sha), "Invalid approved run/source");
@@ -901,13 +950,14 @@ export function applyPlan(
   client,
   plan,
   fresh,
-  { maxDeletes = 25, gate, checkpoint = () => {} } = {}
+  { maxDeletes = 25, gate, checkpoint = () => {}, clock = Date.now } = {}
 ) {
   requireThat(
     positive(maxDeletes) && maxDeletes <= 100,
     "Delete cap must be 1..100"
   );
   requireThat(typeof gate === "function", "Apply requires a publication gate");
+  requireThat(typeof clock === "function", "Apply requires a live clock");
   const report = {
     status: "partial",
     planHash: hash(plan),
@@ -930,6 +980,10 @@ export function applyPlan(
   persist();
   try {
     for (const r of deletionOrder(plan.records)) {
+      if (!planTimeValid(plan, clock()))
+        throw new Incomplete(
+          "Plan expired or from the future; no further DELETE"
+        );
       const result = resultFor(r);
       const capture = (response, request) => {
         const body = redact(response.body);
@@ -999,13 +1053,14 @@ export function applyPlan(
         continue;
       }
       if (attempted >= maxDeletes) throw new Incomplete("Delete cap reached");
-      gate();
-      fresh.releases = client.pages(`/repos/${REPOSITORY}/releases`);
-      fresh.openPRs = client.pages(`/repos/${REPOSITORY}/pulls?state=open`);
+      fresh.releases = releases(client.pages(`/repos/${REPOSITORY}/releases`));
+      fresh.openPRs = openPRs(
+        client.pages(`/repos/${REPOSITORY}/pulls?state=open`)
+      );
       const current = classify(fresh, plan.evidence, {
         profile: plan.profile,
         retentionDays: plan.retentionDays,
-        now: Date.now()
+        now: clock()
       });
       const live = current.find(
         (v) => v.package === r.package && v.id === r.id
@@ -1060,6 +1115,18 @@ export function applyPlan(
         persist();
         continue;
       }
+      const freezeDeadline = gate();
+      const deletionTime = clock();
+      requireThat(
+        Number.isFinite(freezeDeadline),
+        "Publication gate must return its verified lease expiry"
+      );
+      if (deletionTime >= freezeDeadline)
+        throw new Incomplete("Publication-freeze lease expired before DELETE");
+      if (!planTimeValid(plan, deletionTime))
+        throw new Incomplete(
+          "Plan expired or from the future; no further DELETE"
+        );
       attempted++;
       const deleted = client.request("github", "DELETE", exactPath, capture);
       if (deleted.status === 204) {
@@ -1243,7 +1310,7 @@ export function main(env = process.env) {
       client,
       identity,
       JSON.parse(env.CLEANUP_PUBLICATION_FREEZE ?? "null"),
-      Date.now()
+      Date.now
     );
   }
   const snapshot = collect(client, (s) =>
@@ -1267,7 +1334,7 @@ export function main(env = process.env) {
           client,
           identity,
           JSON.parse(env.CLEANUP_PUBLICATION_FREEZE ?? "null"),
-          Date.now()
+          Date.now
         ),
       checkpoint: (r) => save(resolve(out, "report.json"), r)
     });

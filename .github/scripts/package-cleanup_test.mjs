@@ -113,10 +113,10 @@ function apply(s, codes = [], opts = {}) {
   const p = planFor(s);
   const c = new Client((service, method, path) => {
     calls.push({ service, method, path });
-    if (path.includes("/releases?")) return response([release]);
-    if (path.includes("/pulls?")) return response([]);
     const custom = opts.respond?.({ service, method, path });
     if (custom) return custom;
+    if (path.includes("/releases?")) return response([release]);
+    if (path.includes("/pulls?")) return response([]);
     if (method === "DELETE") return codes.shift() ?? response("", 204);
     const v = s.packages
       .flatMap((p) => p.versions)
@@ -124,7 +124,7 @@ function apply(s, codes = [], opts = {}) {
     return response(raw(v));
   }, opts.budget ?? 4000);
   const report = applyPlan(c, p, opts.fresh ?? s, {
-    gate: () => {},
+    gate: () => Date.parse(expires),
     checkpoint: (r) => persisted.push(structuredClone(r)),
     ...opts
   });
@@ -217,6 +217,41 @@ test("protection wins over mixed tags, historical versions, both RC spellings, a
   );
   assert.ok(rows.slice(0, -1).every((r) => r.decision === "keep"));
   assert.equal(rows.at(-1).decision, "hold");
+});
+test("legacy Cosign tags protect their subjects, copies and platform descendants with exact digest parsing", () => {
+  for (const suffix of ["sig", "att", "sbom"]) {
+    const s = snapshot([
+      version(1, ["pr-1"], [d(2)]),
+      version(2),
+      version(3, [`sha256-${d(1).slice(7)}.${suffix}`])
+    ]);
+    s.packages.push({
+      ...s.packages[0],
+      id: 2,
+      name: "dev/copy",
+      versions: [
+        { ...version(10, ["pr-10"], [d(2)]), digest: d(1) },
+        { ...version(11), digest: d(2) }
+      ]
+    });
+    const rows = classify(s, evidence(), options);
+    assert.ok(rows.every((r) => r.decision === "keep"));
+  }
+  for (const tag of [
+    `sha256-${d(1).slice(7)}.sig.extra`,
+    `sha256-${"a".repeat(63)}.sig`,
+    `prefix-sha256-${d(1).slice(7)}.att`,
+    `sha256-${d(1).slice(7)}.SIG`,
+    `sha256-${"G".repeat(64)}.sbom`
+  ]) {
+    const rows = classify(
+      snapshot([version(1), version(2, [tag])]),
+      evidence(),
+      options
+    );
+    assert.equal(rows[0].decision, "delete-candidate");
+    assert.notEqual(rows[1].decision, "delete-candidate");
+  }
 });
 test("every official release, including non-SemVer development entries, needs evidence", () => {
   const s = snapshot();
@@ -757,6 +792,67 @@ test("caps, primary and secondary rate limits save partial results and unfinishe
   }
   assert.equal(new Client(() => response([]), 20000).budget, 20000);
 });
+test("a freeze expiring during revalidation stops before DELETE and preserves unfinished evidence", () => {
+  for (const advanceAt of ["/releases?", "/pulls?", "/versions/1"]) {
+    let time = now;
+    const deadline = now + 100;
+    const { report, calls, persisted } = apply(snapshot(), [], {
+      clock: () => time,
+      gate: () => deadline,
+      respond({ path }) {
+        if (path.includes(advanceAt)) time = deadline;
+      }
+    });
+    assert.equal(report.status, "partial");
+    assert.match(report.error, /freeze lease expired/);
+    assert.equal(calls.filter((c) => c.method === "DELETE").length, 0);
+    assert.equal(persisted.at(-1).results[0].status, "unfinished");
+  }
+});
+test("plan expiry or future time is enforced after revalidation and on later DELETE candidates", () => {
+  for (const future of [false, true]) {
+    for (const later of [false, true]) {
+      for (const stage of ["version", "gate"]) {
+        let time = now;
+        let gates = 0;
+        const s = snapshot([version(1), version(2)]),
+          p = planFor(s),
+          calls = [],
+          saved = [];
+        p.createdAt = new Date(now - 6 * 3600000 + 100).toISOString();
+        validatePlan(p, hash(p), identity, evidence(), options, now);
+        const client = new Client((service, method, path) => {
+          calls.push(method);
+          if (path.includes("/releases?")) return response([release]);
+          if (path.includes("/pulls?")) return response([]);
+          if (method === "DELETE") return response("", 204);
+          if (stage === "version" && path.endsWith(later ? "/2" : "/1")) {
+            time = future ? Date.parse(p.createdAt) - 1 : now + 101;
+          }
+          return response(
+            raw(s.packages[0].versions.find((v) => path.endsWith(`/${v.id}`)))
+          );
+        });
+        const report = applyPlan(client, p, s, {
+          clock: () => time,
+          gate: () => {
+            gates++;
+            if (stage === "gate" && gates === (later ? 2 : 1)) {
+              time = future ? Date.parse(p.createdAt) - 1 : now + 101;
+            }
+            return now + 3600000;
+          },
+          checkpoint: (r) => saved.push(structuredClone(r))
+        });
+        assert.equal(report.status, "partial");
+        assert.match(report.error, /Plan expired or from the future/);
+        assert.equal(calls.filter((m) => m === "DELETE").length, later ? 1 : 0);
+        assert.equal(report.counts.deleted ?? 0, later ? 1 : 0);
+        assert.equal(saved.at(-1).results.at(-1).status, "unfinished");
+      }
+    }
+  }
+});
 test("apply rechecks exact version, blocks changed tags/digest/timestamp and fresh protection", () => {
   for (const field of ["tags", "digest", "updatedAt"]) {
     const s = snapshot(),
@@ -775,7 +871,7 @@ test("apply rechecks exact version, blocks changed tags/digest/timestamp and fre
       if (path.includes("/pulls?")) return response([]);
       return response(raw(changed));
     });
-    const report = applyPlan(client, p, s, { gate() {} });
+    const report = applyPlan(client, p, s, { gate: () => Date.parse(expires) });
     assert.equal(report.status, "partial");
     assert.ok(!calls.includes("DELETE"));
   }
@@ -912,6 +1008,7 @@ test("inventory includes only linked packages and records unknown links without 
     id,
     name,
     package_type: "container",
+    visibility: "public",
     repository:
       repo ? { full_name: repo, owner: { login: "radius-project" } } : null
   });
@@ -922,15 +1019,30 @@ test("inventory includes only linked packages and records unknown links without 
   ];
   const methods = [],
     checkpoints = [];
+  const privateData = {
+    body: "CANARY_DRAFT_BODY",
+    name: "CANARY_TITLE",
+    assets: [{ name: "CANARY_ASSET", url: "CANARY_ASSET_URL" }],
+    author: { login: "CANARY_AUTHOR" }
+  };
+  const running = {
+    id: 77,
+    path: ".github/workflows/purge-old-images.yaml",
+    status: "in_progress",
+    head_commit: { message: "CANARY_COMMIT" },
+    actor: privateData.author
+  };
   const c = new Client((service, method, path) => {
     methods.push(method);
     if (path === `/repos/${REPOSITORY}`)
       return response({ full_name: REPOSITORY, permissions: { push: true } });
     if (service === "registry") return response(manifest);
-    if (path.includes("/releases?")) return response([release]);
-    if (path.includes("/pulls?")) return response([]);
+    if (path.includes("/releases?"))
+      return response([{ ...release, ...privateData, draft: true }]);
+    if (path.includes("/pulls?"))
+      return response([{ id: 555, number: 555, ...privateData }]);
     if (path.includes("/actions/runs?"))
-      return response({ total_count: 0, workflow_runs: [] });
+      return response({ total_count: 1, workflow_runs: [running] });
     if (path.startsWith("/orgs/radius-project/packages?"))
       return response(packages);
     if (path.includes("/versions?")) return response([raw(v)]);
@@ -949,6 +1061,11 @@ test("inventory includes only linked packages and records unknown links without 
   assert.ok(methods.every((m) => m === "GET"));
   assert.equal(checkpoints[0].complete, false);
   assert.equal(checkpoints.at(-1).complete, true);
+  assert.deepEqual(s.releases, [release]);
+  assert.deepEqual(s.openPRs, [{ number: 555 }]);
+  assert.deepEqual(s.activeRuns, [{ id: 77, path: running.path }]);
+  const plan = planFor(s);
+  assert.ok(!JSON.stringify({ checkpoints, plan }).includes("CANARY"));
   for (let attempt = 0; attempt < 2; attempt++) {
     const partial = [];
     assert.throws(
@@ -965,6 +1082,98 @@ test("inventory includes only linked packages and records unknown links without 
     );
   }
   assert.equal(collect(new Client(c.transport, 20000)).complete, true);
+  let time = now;
+  const nearlyExpired = makePlan(s, evidence(), identity, {
+    ...options,
+    now: now - 6 * 3600000 + 100
+  });
+  validatePlan(
+    nearlyExpired,
+    hash(nearlyExpired),
+    identity,
+    evidence(),
+    options,
+    time
+  );
+  const ticking = new Client((...args) => {
+    time += 100;
+    return c.transport(...args);
+  });
+  const fresh = collect(ticking);
+  const saved = [];
+  const expired = applyPlan(ticking, nearlyExpired, fresh, {
+    clock: () => time,
+    gate: () => Date.parse(expires),
+    checkpoint: (r) => saved.push(structuredClone(r))
+  });
+  assert.equal(expired.status, "partial");
+  assert.match(expired.error, /Plan expired/);
+  assert.equal(saved.at(-1).counts.unfinished, 1);
+  assert.ok(methods.every((m) => m === "GET"));
+});
+test("non-public and unknown package visibility never reach public checkpoints, plans or errors", () => {
+  for (const visibility of [
+    "private",
+    "internal",
+    undefined,
+    "changed",
+    "unavailable",
+    "catalog-error"
+  ]) {
+    const checkpoints = [],
+      calls = [];
+    const summary = {
+      id: 1,
+      name: "CANARY_PACKAGE",
+      package_type: "container",
+      visibility:
+        ["changed", "unavailable"].includes(visibility) ? "public" : visibility,
+      metadata: { tags: ["CANARY_PRIVATE_TAG"] }
+    };
+    const client = new Client((service, method, path) => {
+      calls.push(path);
+      if (path === `/repos/${REPOSITORY}`)
+        return response({ full_name: REPOSITORY, permissions: { push: true } });
+      if (path.includes("/releases?"))
+        return response([
+          {
+            ...release,
+            draft: true,
+            body: "CANARY_BODY",
+            assets: ["CANARY_ASSET"]
+          }
+        ]);
+      if (path.includes("/pulls?")) return response([]);
+      if (path.includes("/actions/runs?"))
+        return response({ total_count: 0, workflow_runs: [] });
+      if (path.startsWith("/orgs/radius-project/packages?"))
+        return visibility === "catalog-error" ?
+            response("CANARY_CATALOG_BODY", 403)
+          : response([summary]);
+      if (visibility === "unavailable")
+        return response("CANARY_RESPONSE_BODY", 403);
+      return response({ ...summary, visibility: "private" });
+    });
+    let plan, error;
+    try {
+      const s = collect(client, (s) => checkpoints.push(structuredClone(s)));
+      plan = planFor(s);
+    } catch (e) {
+      error = {
+        error: e.message,
+        status: e instanceof Incomplete ? "partial" : "failed"
+      };
+    }
+    assert.equal(plan, undefined);
+    assert.ok(error);
+    assert.equal(checkpoints.at(-1).complete, false);
+    assert.ok(!JSON.stringify({ checkpoints, plan, error }).includes("CANARY"));
+    if (!["changed", "unavailable", "catalog-error"].includes(visibility)) {
+      assert.ok(calls.every((path) => !path.includes("/container/")));
+      assert.equal(checkpoints.at(-1).withheldPackages, 1);
+    }
+    assert.throws(() => planFor(checkpoints.at(-1)), /Incomplete inventory/);
+  }
 });
 const environment = () => ({
   name: "package-cleanup",
@@ -1013,9 +1222,12 @@ test("publication gate refuses enabled publishers, active runs, moved main and m
     enabled = false,
     busy = false,
     moved = false,
-    freeze = true
+    freeze = true,
+    clock = () => now,
+    advance = () => {}
   } = {}) {
     const c = new Client((service, method, path) => {
+      advance(path);
       if (path.includes("/deployment-branch-policies"))
         return response(branchPolicies);
       if (path.includes("/environments/")) return response(environment());
@@ -1051,7 +1263,7 @@ test("publication gate refuses enabled publishers, active runs, moved main and m
           expiresAt: expires
         }
       : null,
-      now
+      clock
     );
   }
   gate();
@@ -1062,6 +1274,23 @@ test("publication gate refuses enabled publishers, active runs, moved main and m
     { freeze: false }
   ])
     assert.throws(() => gate(opts));
+  for (const stage of ["/environments/", "status=requested"]) {
+    let time = now;
+    const { report, calls, persisted } = apply(snapshot(), [], {
+      clock: () => time,
+      gate: () =>
+        gate({
+          clock: () => time,
+          advance(path) {
+            if (path.includes(stage)) time = Date.parse(expires);
+          }
+        })
+    });
+    assert.equal(report.status, "partial");
+    assert.match(report.error, /freeze lease expired/);
+    assert.equal(calls.filter((c) => c.method === "DELETE").length, 0);
+    assert.equal(persisted.at(-1).counts.unfinished, 1);
+  }
 });
 test("artifact source binds exact trusted workflow, main, event, source and successful attempt", () => {
   const run = {
