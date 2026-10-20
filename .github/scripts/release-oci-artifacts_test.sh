@@ -912,6 +912,71 @@ test_waits_for_external_image_publisher() {
     ((++PASS))
 }
 
+test_promotes_external_images_from_their_own_source_locks() {
+    local digest latest_digest external_source
+    setup_fixture
+    stage_cli
+    write_image_lock
+    digest="sha256:$(digest_for dashboard)"
+    latest_digest="sha256:$(digest_for dashboard-edge)"
+    external_source=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    jq '.images += [{name:"dashboard",radiusBuild:false,category:"downstream",
+        requiredPlatforms:["linux/amd64"]}]' "${TEST_ROOT}/targets.json" \
+        >"${TEST_ROOT}/targets.tmp"
+    mv "${TEST_ROOT}/targets.tmp" "${TEST_ROOT}/targets.json"
+    jq --arg digest "${digest}" --arg source "${external_source}" '
+        . + [{
+            name:"dashboard",reference:"example.test/radius/dashboard:0.61.0",
+            digest:$digest,sourceSha:$source,
+            immutableReference:("example.test/radius/dashboard@" + $digest),
+            platforms:["linux/amd64"]
+        }]
+    ' "${TEST_ROOT}/image-lock.json" >"${TEST_ROOT}/lock.tmp"
+    mv "${TEST_ROOT}/lock.tmp" "${TEST_ROOT}/image-lock.json"
+    jq -n --arg source "${external_source}" '{manifest:{digest:""},image:{
+        os:"linux",architecture:"amd64",config:{Labels:{
+        "org.opencontainers.image.revision":$source}}}}' \
+        >"${TEST_ROOT}/inspection.json"
+    printf '%s\t%s\n' example.test/radius/dashboard:0.61.0 "${digest}" \
+        example.test/radius/dashboard:latest "${latest_digest}" \
+        >>"${TEST_ROOT}/registry-state"
+
+    FAKE_IMAGE_INSPECTION="${TEST_ROOT}/inspection.json" \
+        run_script promote --version 0.61.0 --channel 0.61 \
+        --image-lock "${TEST_ROOT}/image-lock.json" \
+        --cli-lock "${TEST_ROOT}/cli-lock.json"
+    if ! grep -Fq "oras tag example.test/radius/dashboard@${digest} 0.61" \
+        "${TEST_ROOT}/calls" ||
+        grep -E 'imagetools create .*dashboard|oras tag .*dashboard.* latest' \
+            "${TEST_ROOT}/calls"; then
+        fail_test "external promotion rebuilt the index or moved its edge alias"
+        return
+    fi
+    [[ "$(awk -F '\t' '$1 == "example.test/radius/dashboard:latest" {
+        value=$2 } END { print value }' "${TEST_ROOT}/registry-state")" \
+        == "${latest_digest}" ]] || {
+        fail_test "external latest changed during stable publication"
+        return
+    }
+
+    : >"${TEST_ROOT}/calls"
+    jq '.image.config.Labels."org.opencontainers.image.revision" =
+        "cccccccccccccccccccccccccccccccccccccccc"' \
+        "${TEST_ROOT}/inspection.json" >"${TEST_ROOT}/wrong-source.json"
+    if FAKE_IMAGE_INSPECTION="${TEST_ROOT}/wrong-source.json" \
+        run_script promote --version 0.61.0 --channel 0.61 \
+        --image-lock "${TEST_ROOT}/image-lock.json" \
+        --cli-lock "${TEST_ROOT}/cli-lock.json" > /dev/null 2>&1; then
+        fail_test "external promotion accepted a different source"
+        return
+    fi
+    if grep -Eq 'imagetools create|^oras tag ' "${TEST_ROOT}/calls"; then
+        fail_test "an alias moved before external source verification"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
     export RELEASE_SOURCE_SHA="${SOURCE_SHA}"
     test_stages_cli_artifacts
@@ -932,6 +997,7 @@ main() {
     test_image_preflight_fails_closed_on_lookup_errors
     test_pins_external_images_without_rebuilding_or_moving_aliases
     test_waits_for_external_image_publisher
+    test_promotes_external_images_from_their_own_source_locks
 
     if ((FAIL > 0)); then
         echo "release OCI artifact tests failed: ${PASS} passed, ${FAIL} failed"

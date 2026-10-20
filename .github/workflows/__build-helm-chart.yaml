@@ -86,7 +86,7 @@ jobs:
             --expected-digest "$(jq -er '.deploymentEngine.digest' "${lock}")"
           bash ./.github/scripts/release-oci-artifacts.sh pin-image \
             --registry ghcr.io/radius-project --names dashboard \
-            --version "${REL_VERSION}" --channel "${REL_CHANNEL}" \
+            --version "${REL_VERSION}" --channel "${REL_VERSION}" \
             --source-sha "$(yq -er '.siblingRepositories[] | select(.name == "dashboard") | .sourceCommit' "${plan}")"
 
       - name: Package Helm chart

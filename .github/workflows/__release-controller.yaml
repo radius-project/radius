@@ -79,6 +79,7 @@ jobs:
       release-branch: ${{ steps.plan.outputs.release-branch }}
       release-identifier: ${{ steps.plan.outputs.release-identifier }}
       de-image-tag: ${{ steps.plan.outputs.de-image-tag }}
+      de-source-tag: ${{ steps.plan.outputs.de-source-tag }}
       de-source-commit: ${{ steps.de-tag.outputs.commit }}
       plan-artifact-id: ${{ steps.upload-plan.outputs.artifact-id }}
       recipes-commit: ${{ steps.plan.outputs.recipes-commit }}
@@ -390,8 +391,8 @@ jobs:
             const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-release-controller-lock.mjs`)
             await script({context, github, core})
 
-      # A stale tag (another build) is republished below. Registry or contract
-      # errors fail here instead of triggering a duplicate publisher dispatch.
+      # A full-version tag from another source is a conflict, not permission
+      # to dispatch a publisher that could overwrite an immutable artifact.
       - name: Inspect unlocked Deployment Engine image
         if: steps.de-lock.outputs.exists != 'true'
         id: existing-image
@@ -407,7 +408,6 @@ jobs:
             --source-commit "${DE_SOURCE_COMMIT}" \
             --output "${RUNNER_TEMP}/de-image-before.json" \
             --allow-absent \
-            --allow-stale \
             --state-output "${RUNNER_TEMP}/de-image-state.txt"
 
       - name: Get App token for radius-publisher
@@ -450,7 +450,10 @@ jobs:
               "source_sha": ${{ toJSON(inputs.source-commit) }},
               "src_image": "radiusdeploymentengine.azurecr.io/deployment-engine",
               "dest_image": "ghcr.io/radius-project/deployment-engine",
-              "tag": ${{ toJSON(needs.validate.outputs.de-image-tag) }}
+              "tag": ${{ toJSON(needs.validate.outputs.de-image-tag) }},
+              "source_tag": ${{ toJSON(needs.validate.outputs.de-source-tag) }},
+              "expected_revision": ${{ toJSON(steps.de-tag.outputs.commit) }},
+              "expected_ref": ${{ toJSON(format('refs/tags/{0}', needs.validate.outputs.version)) }}
             }
           INPUT_MAX_WAIT_SECONDS: "720"
           INPUT_POLL_INTERVAL_SECONDS: "15"

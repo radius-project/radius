@@ -38,11 +38,24 @@ while IFS= read -r name; do
 done < <(jq -r '.images[] | select(.radiusBuild and .category != "production") | .name' "${DIRECTORY}/targets.json")
 jq -s 'add | sort_by(.name)' \
     "${DIRECTORY}/assets/production-image-digests.json" "${lock_files[@]}" \
-    > "${DIRECTORY}/release-image-digests.json"
+    > "${DIRECTORY}/radius-image-digests.json"
+jq --slurpfile images "${DIRECTORY}/radius-image-digests.json" '
+    $images[0] + [
+        .images[] |
+        select(.name == "dashboard" or .name == "deployment-engine") |
+        {
+            name, reference, digest,
+            immutableReference: ((.reference | sub(":[^/:]+$"; "")) + "@" + .digest),
+            sourceSha: (.platforms[0].config.labels."org.opencontainers.image.revision"),
+            platforms: [.platforms[].platform]
+        }
+    ] | sort_by(.name)
+' "${DIRECTORY}/observed.json" > "${DIRECTORY}/release-image-digests.json"
 cp "${DIRECTORY}/assets/release-cli-oci.json" "${DIRECTORY}/release-cli-oci.json"
 GORELEASER_PARITY_TARGETS="${DIRECTORY}/targets.json" \
     bash "${ROOT}/.github/scripts/release-oci-artifacts.sh" verify \
     --version "${VERSION}" --source-sha "${SOURCE_SHA}" \
+    --categories production,non-go,downstream \
     --image-lock "${DIRECTORY}/release-image-digests.json" \
     --cli-lock "${DIRECTORY}/release-cli-oci.json" --sboms
 

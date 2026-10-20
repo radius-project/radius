@@ -709,6 +709,9 @@ collect_oci_artifacts() {
         repository="$(jq -r '.repository' <<<"${target}")"
         expected_type="$(jq -r '.artifactType' <<<"${target}")"
         reference="${repository}:${channel}"
+        if [[ "${STAGED}" == "true" ]]; then
+            reference="${repository}:${VERSION}"
+        fi
         descriptor_path="${TEMP_DIR}/${name}-descriptor.json"
         manifest_path="${TEMP_DIR}/${name}-manifest.json"
 

@@ -188,11 +188,7 @@ export function verifyReleaseManifest({
   compare(
     "images",
     "image lock set",
-    sorted(
-      targets.images
-        .filter((image) => image.radiusBuild)
-        .map((image) => image.name)
-    ),
+    sorted(targets.images.map((image) => image.name)),
     sorted(imageLocks.map((image) => image.name))
   );
   for (const target of targets.images) {
@@ -215,22 +211,32 @@ export function verifyReleaseManifest({
       `${targets.imageRegistry}/${target.name}:${version}`,
       image?.reference
     );
-    if (target.radiusBuild) {
-      const lock = imageLocks.find((entry) => entry.name === target.name);
-      compare(
-        "images",
-        `${target.name} locked digest`,
-        lock?.digest,
-        image?.digest
-      );
-      const repository = `${targets.imageRegistry}/${target.name}`;
-      compare(
-        "images",
-        `${target.name} lock repository`,
-        [`${repository}:${version}`, `${repository}@${lock?.digest}`],
-        [lock?.reference, lock?.immutableReference]
-      );
-    }
+    const lock = imageLocks.find((entry) => entry.name === target.name);
+    compare(
+      "images",
+      `${target.name} locked digest`,
+      lock?.digest,
+      image?.digest
+    );
+    const repository = `${targets.imageRegistry}/${target.name}`;
+    compare(
+      "images",
+      `${target.name} lock repository`,
+      [`${repository}:${version}`, `${repository}@${lock?.digest}`],
+      [lock?.reference, lock?.immutableReference]
+    );
+    const expectedSource =
+      target.radiusBuild ? sourceSha
+      : target.name === "deployment-engine" ?
+        controllerLock.deploymentEngine?.sourceCommit
+      : plan.siblingRepositories?.find((entry) => entry.name === target.name)
+          ?.sourceCommit;
+    compare(
+      "images",
+      `${target.name} lock source`,
+      expectedSource,
+      lock?.sourceSha
+    );
   }
   for (const asset of targets.cliAssets) {
     const artifact = cliLock?.artifacts?.find(
@@ -350,7 +356,7 @@ export function verifyReleaseManifest({
     compare(
       "external",
       `${target.name} reference`,
-      `${target.repository}:${artifactTag}`,
+      `${target.repository}:${version}`,
       artifact?.reference
     );
     compare(
@@ -365,6 +371,28 @@ export function verifyReleaseManifest({
       true,
       digestPattern.test(artifact?.descriptor?.digest)
     );
+    const sourceRepository =
+      target.name === "aws-bicep-types" ?
+        "radius-project/bicep-types-aws"
+      : targets.repository;
+    const artifactSource =
+      target.name === "aws-bicep-types" ?
+        plan.siblingRepositories?.find(
+          (entry) => entry.repository === sourceRepository
+        )?.sourceCommit
+      : sourceSha;
+    for (const [key, expected] of Object.entries({
+      source: `https://github.com/${sourceRepository}`,
+      revision: artifactSource,
+      version
+    })) {
+      compare(
+        "external",
+        `${target.name} ${key}`,
+        expected,
+        artifact?.manifest?.annotations?.[`org.opencontainers.image.${key}`]
+      );
+    }
   }
   const checks = Object.fromEntries(
     mandatoryChecks.map((name) => [

@@ -20,6 +20,13 @@ const targets = JSON.parse(
 const sourceSha = "a".repeat(40);
 const parentSha = "b".repeat(40);
 const digest = `sha256:${"c".repeat(64)}`;
+const dashboardSha = "d".repeat(40);
+const awsSha = "e".repeat(40);
+const deSha = "f".repeat(40);
+const imageSource = (image) =>
+  image === "dashboard" ? dashboardSha
+  : image === "deployment-engine" ? deSha
+  : sourceSha;
 
 function fixture(releaseType = "final") {
   const version =
@@ -38,7 +45,10 @@ function fixture(releaseType = "final") {
     siblingRepositories: targets.siblingRepositories.map((repository) => ({
       repository,
       name: repository.split("/")[1],
-      sourceCommit: sourceSha
+      sourceCommit:
+        repository.endsWith("/dashboard") ? dashboardSha
+        : repository.endsWith("/bicep-types-aws") ? awsSha
+        : sourceSha
     }))
   };
   const observed = {
@@ -83,7 +93,11 @@ function fixture(releaseType = "final") {
       digest,
       platforms: image.requiredPlatforms.map((platform) => ({
         platform,
-        config: { labels: { "org.opencontainers.image.revision": sourceSha } }
+        config: {
+          labels: {
+            "org.opencontainers.image.revision": imageSource(image.name)
+          }
+        }
       }))
     })),
     helm: {
@@ -94,15 +108,26 @@ function fixture(releaseType = "final") {
         .map((image) => `${targets.imageRegistry}/${image.name}:${version}`)
     },
     downstream: {
-      repositories: targets.siblingRepositories.map((repository) => ({
-        repository,
-        commit: sourceSha
+      repositories: plan.siblingRepositories.map((sibling) => ({
+        repository: sibling.repository,
+        commit: sibling.sourceCommit
       })),
       ociArtifacts: targets.ociArtifacts.map((artifact) => ({
         name: artifact.name,
-        reference: `${artifact.repository}:${channel}`,
+        reference: `${artifact.repository}:${version}`,
         descriptor: { digest },
-        manifest: { artifactType: artifact.artifactType }
+        manifest: {
+          artifactType: artifact.artifactType,
+          annotations: {
+            "org.opencontainers.image.source":
+              artifact.name === "aws-bicep-types" ?
+                "https://github.com/radius-project/bicep-types-aws"
+              : "https://github.com/radius-project/radius",
+            "org.opencontainers.image.revision":
+              artifact.name === "aws-bicep-types" ? awsSha : sourceSha,
+            "org.opencontainers.image.version": version
+          }
+        }
       }))
     }
   };
@@ -115,15 +140,13 @@ function fixture(releaseType = "final") {
     versions: { supported: [{ version: plan.version, channel: plan.channel }] },
     goVersion: "go1.26.5",
     terraformVersion: "1.15.8",
-    imageLocks: targets.images
-      .filter((image) => image.radiusBuild)
-      .map((image) => ({
-        name: image.name,
-        reference: `${targets.imageRegistry}/${image.name}:${version}`,
-        digest,
-        sourceSha,
-        immutableReference: `${targets.imageRegistry}/${image.name}@${digest}`
-      })),
+    imageLocks: targets.images.map((image) => ({
+      name: image.name,
+      reference: `${targets.imageRegistry}/${image.name}:${version}`,
+      digest,
+      sourceSha: imageSource(image.name),
+      immutableReference: `${targets.imageRegistry}/${image.name}@${digest}`
+    })),
     cliLock: {
       version,
       sourceSha,
@@ -140,7 +163,7 @@ function fixture(releaseType = "final") {
     },
     controllerLock: {
       releaseSourceCommit: sourceSha,
-      deploymentEngine: { signedTag: plan.version, digest }
+      deploymentEngine: { signedTag: plan.version, sourceCommit: deSha, digest }
     }
   };
 }
@@ -272,6 +295,30 @@ test("reports expected and observed mismatches without weakening other checks", 
       "images"
     ],
     [
+      "external image source lock",
+      (input) => {
+        input.imageLocks.find((image) => image.name === "dashboard").sourceSha =
+          sourceSha;
+      },
+      "images"
+    ],
+    [
+      "Bicep channel reference",
+      (input) => {
+        input.observed.downstream.ociArtifacts[0].reference = `${targets.ociArtifacts[0].repository}:0.61`;
+      },
+      "external"
+    ],
+    [
+      "Bicep source annotation",
+      (input) => {
+        input.observed.downstream.ociArtifacts[0].manifest.annotations[
+          "org.opencontainers.image.revision"
+        ] = parentSha;
+      },
+      "external"
+    ],
+    [
       "CLI OCI lock repository",
       (input) => {
         input.cliLock.artifacts[0].immutableReference = `${targets.imageRegistry}/other@${digest}`;
@@ -290,7 +337,7 @@ test("reports expected and observed mismatches without weakening other checks", 
   }
 });
 
-test("stable chart gates reject channel tags while preserving non-chart channel contracts", () => {
+test("stable gates require immutable chart references while preserving CLI channel metadata", () => {
   for (const releaseType of ["final", "patch"]) {
     const input = fixture(releaseType);
     for (const reference of input.observed.helm.renderedImages) {

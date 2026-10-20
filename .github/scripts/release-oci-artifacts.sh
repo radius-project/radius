@@ -987,6 +987,10 @@ verify_locks() {
     local immutable_reference
     local name
     local platforms
+    local image_source
+    local radius_build
+    local expected_platforms
+    local raw
 
     require_command jq
     validate_version
@@ -1023,8 +1027,7 @@ verify_locks() {
             | ($names | split(",") | map(select(length > 0))) as $names
             | .images[]
             | select(
-                .radiusBuild == true
-                and (
+                (
                     if ($names | length) > 0
                     then (.name as $name | $names | index($name))
                     else (.category as $category
@@ -1037,14 +1040,20 @@ verify_locks() {
         actual_images="$(jq -c '[.[].name] | sort' "${IMAGE_LOCK}")"
         assert_lock_members "${expected_images}" "${actual_images}" \
             "image lock members"
-        if ! jq -e --arg sourceSha "${SOURCE_SHA}" '
-            all(.[]; .sourceSha == $sourceSha)
+        if ! jq -e --arg sourceSha "${SOURCE_SHA}" \
+            --slurpfile targets "${TARGETS_FILE}" '
+            all(.[]; . as $image |
+                any($targets[0].images[];
+                    .name == $image.name and
+                    (if .radiusBuild then $image.sourceSha == $sourceSha
+                     else ($image.sourceSha | test("^[0-9a-f]{40}$"))
+                     end)))
         ' "${IMAGE_LOCK}" > /dev/null; then
             fail "image lock source does not match the release source"
         fi
 
         while IFS=$'\t' read -r name reference digest immutable_reference \
-            platforms; do
+            platforms image_source; do
             if [[ "${reference}" != *":${VERSION}" ]]; then
                 fail "image lock has wrong version: ${reference}"
             fi
@@ -1052,6 +1061,21 @@ verify_locks() {
                 fail "image lock has an invalid immutable reference"
             fi
             verify_image_alias "${reference}" "${digest}"
+            radius_build="$(jq -r --arg name "${name}" '
+                .images[] | select(.name == $name) | .radiusBuild
+            ' "${TARGETS_FILE}")"
+            if [[ "${radius_build}" == "false" ]]; then
+                expected_platforms="$(jq -c --arg name "${name}" '
+                    .images[] | select(.name == $name) |
+                    .requiredPlatforms | sort
+                ' "${TARGETS_FILE}")"
+                raw="$(retry_read "locked external image inspection" \
+                    docker buildx imagetools inspect --format '{{json .}}' \
+                    "${immutable_reference}")"
+                SOURCE_SHA="${image_source}" \
+                    external_image_matches "${raw}" "${expected_platforms}" ||
+                    fail "external image source or platforms differ from its lock: ${reference}"
+            fi
             if [[ "${VERIFY_SBOMS}" == "true" ]]; then
                 if is_production_image "${name}"; then
                     if ! jq -e 'type == "array" and length > 0' \
@@ -1064,13 +1088,14 @@ verify_locks() {
             if [[ "${VERIFY_ALIASES}" == "true" ]]; then
                 repository="${immutable_reference%@*}"
                 verify_image_alias "${repository}:${CHANNEL}" "${digest}"
-                if [[ "${PROMOTE_LATEST}" == "true" ]]; then
+                if [[ "${PROMOTE_LATEST}" == "true" &&
+                    "${radius_build}" == "true" ]]; then
                     verify_image_alias "${repository}:latest" "${digest}"
                 fi
             fi
         done < <(jq -r '.[] |
             [.name, .reference, .digest, .immutableReference,
-                (.platforms | tojson)] | @tsv
+                (.platforms | tojson), .sourceSha] | @tsv
         ' "${IMAGE_LOCK}")
     fi
 
@@ -1123,6 +1148,7 @@ promote_aliases() {
     local repository
     local reference
     local digest
+    local name
 
     require_command docker
     require_command jq
@@ -1138,10 +1164,10 @@ promote_aliases() {
     if [[ "${CHANNEL}" != "${expected_channel}" ]]; then
         fail "channel ${CHANNEL} does not match version ${VERSION}"
     fi
-    CATEGORIES="production,non-go"
+    CATEGORIES="production,non-go,downstream"
     verify_locks
 
-    while IFS=$'\t' read -r reference digest immutable_reference; do
+    while IFS=$'\t' read -r name reference digest immutable_reference; do
         if [[ "${reference}" != *":${VERSION}" ]]; then
             fail "image lock has wrong version: ${reference}"
         fi
@@ -1149,10 +1175,20 @@ promote_aliases() {
             fail "image lock has an invalid immutable reference"
         fi
         repository="${immutable_reference%@*}"
-        promote_image_aliases "${repository}" "${CHANNEL}" "${digest}" \
-            "${immutable_reference}"
+        if jq -e --arg name "${name}" '
+            any(.images[]; .name == $name and .radiusBuild)
+        ' "${TARGETS_FILE}" > /dev/null; then
+            promote_image_aliases "${repository}" "${CHANNEL}" "${digest}" \
+                "${immutable_reference}"
+        else
+            # ORAS preserves a single-manifest dashboard digest. External
+            # latest tags remain owned by those repositories' edge builds.
+            PROMOTE_LATEST=false promote_cli_aliases \
+                "${repository}" "${CHANNEL}" "${digest}" \
+                "${immutable_reference}"
+        fi
     done < <(jq -r '.[] |
-        [.reference, .digest, .immutableReference] | @tsv
+        [.name, .reference, .digest, .immutableReference] | @tsv
     ' "${IMAGE_LOCK}")
 
     while IFS=$'\t' read -r reference digest immutable_reference; do
