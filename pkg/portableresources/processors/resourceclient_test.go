@@ -124,6 +124,7 @@ func Test_Delete_ARM(t *testing.T) {
 				{
 					ResourceType:      new("virtualMachines"),
 					DefaultAPIVersion: new(ARMAPIVersion),
+					APIVersions:       []*string{new(ARMAPIVersion)},
 				},
 			},
 		}, 200))
@@ -163,7 +164,13 @@ func Test_Delete_ARM(t *testing.T) {
 
 	t.Run("success - deletion returns 404", func(t *testing.T) {
 		mux := http.NewServeMux()
-		mux.HandleFunc(ARMResourceID, handleNotFound(t))
+		mux.HandleFunc(ARMResourceID, func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				handleDeleteSuccess()(w, r)
+				return
+			}
+			handleNotFound(t)(w, r)
+		})
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: new("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
@@ -174,6 +181,7 @@ func Test_Delete_ARM(t *testing.T) {
 				{
 					ResourceType:      new("virtualMachines"),
 					DefaultAPIVersion: new(ARMAPIVersion),
+					APIVersions:       []*string{new(ARMAPIVersion)},
 				},
 			},
 		}, 200))
@@ -255,6 +263,7 @@ func Test_Delete_ARM(t *testing.T) {
 				{
 					ResourceType:      new("locks"),
 					DefaultAPIVersion: new(ARMAPIVersion),
+					APIVersions:       []*string{new(ARMAPIVersion)},
 				},
 			},
 		}, 200))
@@ -443,6 +452,11 @@ func newClientOptions(c *http.Client, url string) *arm.ClientOptions {
 func handleDeleteSuccess() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{}`))
+			return
+		}
 		w.WriteHeader(204)
 	}
 }
