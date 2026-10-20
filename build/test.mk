@@ -54,7 +54,7 @@ GOTESTSUM_JSONFILE_DIR ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) $(if $(GOTESTSUM_JSONFILE_DIR),--jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check test-authz-kit ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... ./test/rogue/... $(GOTEST_OPTS)
 
 .PHONY: test-azure-oidc-login
@@ -101,6 +101,10 @@ test: test-install-bicep
 test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned log collector
 	@bash ./.github/scripts/authz-would-deny-check_test.sh
 	@python3 ./.github/scripts/run-with-authz-logs_test.py
+
+.PHONY: test-authz-kit
+test-authz-kit: ## Tests the manual authorization test kit in hack/authz (syntax, --help, helpers, workflows)
+	@bash ./hack/authz/kit_test.sh
 
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
