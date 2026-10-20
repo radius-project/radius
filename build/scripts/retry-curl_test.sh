@@ -288,6 +288,48 @@ unset RETRY_CURL_MAX_SECONDS SLEEP_OVERRUN
 [[ ! -d "$(< "${TEST_DIR}/request-directory")" ]] ||
     fail_test "deadline stdout temporary directory retained"
 
+for code in 403 429; do
+    for format in '%{http_code}' '%{url_effective}'; do
+        for header_path in headers missing/headers; do
+            reset_case "22:${code}"
+            RETRY_AFTER=1
+            RETRY_CURL_MAX_SECONDS=2
+            SLEEP_OVERRUN=2
+            status=0
+            metadata="$(
+                retry_curl --fail-with-body -o "${TEST_DIR}/download" \
+                    --dump-header "${TEST_DIR}/${header_path}" \
+                    --write-out "${format}" https://example.test/file
+            )" || status=$?
+            unset RETRY_CURL_MAX_SECONDS SLEEP_OVERRUN
+            if [[ "${format}" == '%{http_code}' ]]; then
+                expected="${code}"
+            else
+                expected="https://example.test/final"
+            fi
+            [[ "${metadata}" == "${expected}" ]] ||
+                fail_test "deadline discarded ${format} for HTTP ${code}"
+            if [[ "${header_path}" == headers ]]; then
+                [[ "${status}" -eq 28 ]] ||
+                    fail_test "deadline lost timeout status"
+                grep -q "^HTTP/2 ${code}" "${TEST_DIR}/headers" ||
+                    fail_test "deadline discarded final status header"
+                grep -q '^Retry-After: 1' "${TEST_DIR}/headers" ||
+                    fail_test "deadline discarded Retry-After header"
+            else
+                [[ "${status}" -eq 23 ]] ||
+                    fail_test "deadline lost header copy failure status"
+            fi
+            [[ "$(< "${TEST_DIR}/download")" == partial-1 ]] ||
+                fail_test "deadline discarded final file error body"
+            [[ "$(< "${TEST_DIR}/curl-calls")" -eq 1 ]] ||
+                fail_test "deadline started another rate-limited request"
+            [[ ! -d "$(< "${TEST_DIR}/request-directory")" ]] ||
+                fail_test "deadline metadata temporary directory retained"
+        done
+    done
+done
+
 reset_case 22:400
 status=0
 payload="$(retry_curl https://example.test/file)" || status=$?

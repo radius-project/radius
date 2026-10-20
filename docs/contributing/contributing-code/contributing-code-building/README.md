@@ -61,12 +61,23 @@ Build the control-plane service images with `make docker-build`, and push them w
 
 - `DOCKER_REGISTRY` — destination registry.
 - `DOCKER_TAG_VERSION` — image tag.
+- `DOCKER_BUILD_ARCH` — architecture for single-architecture image builds (`amd64` by default). Set `arm64` to compile Linux arm64 binaries and build `linux/arm64` images. This does not change the host CLI's architecture or the multi-architecture targets.
 
 These commands assume you are already logged in to the target registry (`docker login`, `az acr login`, etc.). For example, to build and push to a specific registry:
 
 ```sh
 DOCKER_REGISTRY=ghcr.io/my-registry make docker-build docker-push
 ```
+
+For native arm64 images:
+
+```sh
+DOCKER_BUILD_ARCH=arm64 DOCKER_REGISTRY=ghcr.io/my-registry make docker-build docker-push
+```
+
+The Docker daemon must run the selected architecture natively or have suitable emulation for Dockerfile build steps. The [local functional-test runner](../contributing-code-tests/running-functional-tests.md) selects the daemon's architecture automatically; plain `make docker-build` retains its amd64 default.
+
+Run `make test-docker-build` to check architecture selection and Docker platform arguments for every service image without compiling Go or contacting Docker. This test also runs as part of `make test`.
 
 `make docker-push` and the single-image `docker-push-<name>` targets retry only when Docker exits with code 1 and its last output line is `unknown blob`. They allow three push attempts, with waits of 5 and 10 seconds. Each attempt uses the same local image and tag; it does not repeat the build. Other errors fail at once, and a repeated `unknown blob` error still fails after the third attempt. These retries do not apply to the multi-architecture Buildx targets.
 

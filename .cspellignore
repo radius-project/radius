@@ -698,6 +698,7 @@ env
 envSecrets
 envVariables
 environmentVariables
+envsubst
 envtest
 etag
 etcd
@@ -795,6 +796,7 @@ inheritence
 init
 initContainer
 initialDelaySeconds
+inotify
 inmemory
 integrations
 integrators

@@ -31,6 +31,7 @@ import (
 // Test_EnvDelete covers group-scoped env create, show, and delete. Cascade is covered by
 // Test_Environment_CascadeDelete.
 func Test_EnvDelete(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
