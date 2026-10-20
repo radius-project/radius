@@ -49,6 +49,9 @@ data:
     workerServer:
       maxOperationConcurrency: 10
       maxOperationRetryCount: 2
+      {{- with dig "workerServer" "dequeueInterval" "" .Values.dynamicrp }}
+      dequeueInterval: {{ . | quote }}
+      {{- end }}
     ucp:
       kind: kubernetes
     logging:

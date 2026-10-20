@@ -18,6 +18,7 @@ package hostoptions
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
@@ -86,6 +87,9 @@ type WorkerServerOptions struct {
 	MaxOperationConcurrency *int `yaml:"maxOperationConcurrency,omitempty"`
 	// MaxOperationRetryCount is the maximum retry count to process async request operation.
 	MaxOperationRetryCount *int `yaml:"maxOperationRetryCount,omitempty"`
+	// DequeueInterval is how long the worker waits before polling again after finding its queue
+	// empty, such as "2s". Unset or non-positive keeps the default.
+	DequeueInterval *time.Duration `yaml:"dequeueInterval,omitempty"`
 }
 
 // BicepOptions includes options required for bicep execution.
