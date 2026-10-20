@@ -395,15 +395,15 @@ Every 5 seconds, a UCP instance compares its generation number with the database
 
 **How fast changes apply.** A role or assignment change reaches each UCP instance within **30 seconds**. This includes retries when the database is briefly unavailable. If an instance cannot refresh within 30 seconds, it marks itself not ready and refuses requests with `AuthorizationUnavailable`. It never decides with old data.
 
-**Writing changes safely.** Safety rules examine many assignments together, but `database.Client` checks ETags one object at a time. If two UCP instances each remove a different one of two admins, both could pass. UCP therefore serializes access changes (roles, assignments, mode) through one shared **access version record**. It holds the applied generation and a pointer to an immutable policy index, plus any pending change:
+**Writing changes safely.** UCP serializes access changes (roles, assignments, mode) through one shared **access version record**. It holds the applied generation, a pointer to an immutable policy index, and any pending change:
 
-1. UCP reads the current policy through that pointer and runs the safety rules. It prepares immutable changed objects, a new index, and an audit event envelope under a unique change ID. These objects do not affect access until published.
-2. UCP uses the record's ETag to claim the next generation with a pending pointer and the event envelope ID. Only one request can claim it. A competing request reads again and reruns the safety rules; in the example, it sees one admin left and fails with `LastAdministratorProtected`.
-3. UCP verifies the prepared objects, writes the generation's access change history, then uses another ETag check to publish the new pointer and generation and clear the pending change.
+1. UCP checks the proposed change against current policy, then prepares immutable changed objects, an index, and an audit event under a unique change ID. These do not grant access yet.
+2. An ETag check claims the next generation with the pending index and event IDs. Competing writers reread policy and rerun safety checks. Two concurrent admin removals therefore leave one admin; the other fails with `LastAdministratorProtected`.
+3. UCP verifies the prepared objects, writes the generation's history, then uses another ETag check to publish the index and generation and clear the pending change.
 
-Before serving a policy read or starting another change, UCP finishes any pending change. Recovery reuses frozen object and event contents. A delayed worker can write only that change's immutable objects; it cannot recreate a deleted assignment in the current policy. Readers use only the published index, not mutable objects at public role or assignment IDs.
+UCP finishes pending changes before reading policy or starting another change. Recovery reuses frozen contents. Readers follow only the published index, so a delayed worker cannot restore a deleted assignment.
 
-The version record stays small; its index uses bounded immutable pages rather than embedding all policy. Initialization requires an atomic create-if-absent operation on both database backends, so concurrent initializers cannot overwrite the anchor. Ordinary unconditional saves are not sufficient. UCP retries version conflicts up to 5 times, then fails with 409 `Conflict`. Old and abandoned immutable objects are retained initially; safe cleanup is separate work.
+The index uses bounded pages to keep the version record small. Both backends need atomic create-if-absent for initialization. UCP retries version conflicts up to 5 times, then returns 409 `Conflict`. Old and abandoned objects remain until safe cleanup is implemented.
 
 #### Piece 4: Authorizer
 
@@ -432,7 +432,7 @@ requiredChecks(request):
 | `properties.connections.*.source`                                                         | `<sourceType>/connect/action`                                                              |
 | A property in a user-defined type marked with a new `x-radius-reference` schema extension | `<referencedType>/read`                                                                    |
 
-UCP checks **every** reference in the complete effective resource, not only fields submitted by the caller. For `PATCH`, UCP first checks the target write permission, then loads the existing resource and applies the patch using that resource type's update semantics before extracting references. A patch that omits an existing environment or connection still checks that reference. If UCP cannot resolve the effective resource or its required references, it returns `AuthorizationIndeterminate` in `Enforce` instead of approving the update; workload checks remain log-only in `DryRun`.
+UCP checks **every** reference in the resulting resource. For `PATCH`, it checks target write permission, loads the resource, and applies the patch using the type's update semantics before extracting references. Omitted environment and connection references are still checked. Unresolved resources or required references return `AuthorizationIndeterminate` in `Enforce`; workload checks remain log-only in `DryRun`.
 
 If you lose permission to deploy to an environment, you cannot update resources already in it. Reads and deletes do not check references.
 
@@ -562,7 +562,7 @@ Events never include request bodies, secrets, or credentials.
 
 The mode is stored in `authorizationSettings` at `/providers/Radius.Core/authorizationSettings/default`.
 
-The modes below control ordinary workload operations, such as deploying an application. They do not turn off authorization for access-policy writes.
+These modes control workload operations, such as deploying an application:
 
 | Mode       | Workload checks run? | Blocks workload requests? | When to use it                                                |
 |------------|----------------------|---------------------------|---------------------------------------------------------------|
@@ -570,9 +570,9 @@ The modes below control ordinary workload operations, such as deploying an appli
 | `DryRun`   | Yes                  | No; log would-be denials  | Test access rules without blocking workload operations.       |
 | `Enforce`  | Yes                  | Yes                       | Normal use.                                                   |
 
-**Access-policy writes are always protected.** Creating, updating, or deleting roles and assignments requires the matching Radius permission in every mode, including `Disabled` and `DryRun`. Assignments are not frozen: authorized administrators can change them while testing access. The safety rules also apply. Without an assignment granting the required permission, the request fails with 403 instead of recording only `wouldDeny`.
+**Access-policy writes are always protected.** Role and assignment changes require the matching Radius permission and safety checks in every mode. Unauthorized writes return 403, not `wouldDeny`; authorized admins can still configure access during `DryRun`.
 
-This applies to the API, CLI, GitOps, and templates. Preflight must enforce checks on role and assignment mutations even when workload checks are log-only; a denied policy mutation fails the deployment before any resource is changed. Writes to `authorizationSettings` keep the Kubernetes bootstrap check in `Disabled` and `DryRun` described below; in `Enforce`, they require the Radius setting permission.
+This applies to the API, CLI, GitOps, and templates. Preflight rejects unauthorized policy changes before any deployment resources change. Settings writes require the Kubernetes bootstrap check below in `Disabled` and `DryRun`, or the Radius setting permission in `Enforce`.
 
 The [internal design](./2026-09-internal-component-authorization.md)'s service-to-service security is set separately with Helm values (`global.rbac.enabled`, `global.rbac.dryRun`). User RBAC can be `Enforce` only when service-to-service security is also `Enforce`. Otherwise UCP rejects the change with `ComponentProtocolNotEnforced`.
 
