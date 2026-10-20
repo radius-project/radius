@@ -113,7 +113,7 @@ func (client *SQLDatabasesClient) createOrUpdateCreateRequest(ctx context.Contex
 //     method.
 func (client *SQLDatabasesClient) BeginDelete(ctx context.Context, rootScope string, sqlDatabaseName string, options *SQLDatabasesClientBeginDeleteOptions) (*runtime.Poller[SQLDatabasesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, sqlDatabaseName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, sqlDatabaseName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -126,9 +126,9 @@ func (client *SQLDatabasesClient) BeginDelete(ctx context.Context, rootScope str
 	}
 }
 
-// delete - Delete a SqlDatabaseResource
+// deleteOperation - Delete a SqlDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *SQLDatabasesClient) delete(ctx context.Context, rootScope string, sqlDatabaseName string, options *SQLDatabasesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *SQLDatabasesClient) deleteOperation(ctx context.Context, rootScope string, sqlDatabaseName string, options *SQLDatabasesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, sqlDatabaseName, options)
 	if err != nil {

@@ -123,7 +123,7 @@ func (client *GenericResourcesClient) createOrUpdateCreateRequest(ctx context.Co
 //     method.
 func (client *GenericResourcesClient) BeginDelete(ctx context.Context, resourceName string, options *GenericResourcesClientBeginDeleteOptions) (*runtime.Poller[GenericResourcesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, resourceName, options)
+		resp, err := client.deleteOperation(ctx, resourceName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -134,9 +134,9 @@ func (client *GenericResourcesClient) BeginDelete(ctx context.Context, resourceN
 	}
 }
 
-// delete - Deletes an existing Generic resource
+// deleteOperation - Deletes an existing Generic resource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *GenericResourcesClient) delete(ctx context.Context, resourceName string, options *GenericResourcesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *GenericResourcesClient) deleteOperation(ctx context.Context, resourceName string, options *GenericResourcesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "GenericResourcesClient.BeginDelete")
 	req, err := client.deleteCreateRequest(ctx, resourceName, options)

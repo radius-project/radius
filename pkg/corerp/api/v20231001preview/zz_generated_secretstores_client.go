@@ -113,7 +113,7 @@ func (client *SecretStoresClient) createOrUpdateCreateRequest(ctx context.Contex
 //     method.
 func (client *SecretStoresClient) BeginDelete(ctx context.Context, rootScope string, secretStoreName string, options *SecretStoresClientBeginDeleteOptions) (*runtime.Poller[SecretStoresClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, secretStoreName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, secretStoreName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -126,9 +126,9 @@ func (client *SecretStoresClient) BeginDelete(ctx context.Context, rootScope str
 	}
 }
 
-// delete - Delete a SecretStoreResource
+// deleteOperation - Delete a SecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *SecretStoresClient) delete(ctx context.Context, rootScope string, secretStoreName string, options *SecretStoresClientBeginDeleteOptions) (*http.Response, error) {
+func (client *SecretStoresClient) deleteOperation(ctx context.Context, rootScope string, secretStoreName string, options *SecretStoresClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, secretStoreName, options)
 	if err != nil {

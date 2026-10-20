@@ -112,7 +112,7 @@ func (client *VolumesClient) createOrUpdateCreateRequest(ctx context.Context, ro
 //   - options - VolumesClientBeginDeleteOptions contains the optional parameters for the VolumesClient.BeginDelete method.
 func (client *VolumesClient) BeginDelete(ctx context.Context, rootScope string, volumeName string, options *VolumesClientBeginDeleteOptions) (*runtime.Poller[VolumesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, volumeName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, volumeName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -125,9 +125,9 @@ func (client *VolumesClient) BeginDelete(ctx context.Context, rootScope string, 
 	}
 }
 
-// delete - Delete a VolumeResource
+// deleteOperation - Delete a VolumeResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *VolumesClient) delete(ctx context.Context, rootScope string, volumeName string, options *VolumesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *VolumesClient) deleteOperation(ctx context.Context, rootScope string, volumeName string, options *VolumesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, volumeName, options)
 	if err != nil {

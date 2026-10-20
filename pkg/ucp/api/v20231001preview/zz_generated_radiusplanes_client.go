@@ -106,7 +106,7 @@ func (client *RadiusPlanesClient) createOrUpdateCreateRequest(ctx context.Contex
 //     method.
 func (client *RadiusPlanesClient) BeginDelete(ctx context.Context, planeName string, options *RadiusPlanesClientBeginDeleteOptions) (*runtime.Poller[RadiusPlanesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, planeName, options)
+		resp, err := client.deleteOperation(ctx, planeName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -119,9 +119,9 @@ func (client *RadiusPlanesClient) BeginDelete(ctx context.Context, planeName str
 	}
 }
 
-// delete - Delete a plane
+// deleteOperation - Delete a plane
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *RadiusPlanesClient) delete(ctx context.Context, planeName string, options *RadiusPlanesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *RadiusPlanesClient) deleteOperation(ctx context.Context, planeName string, options *RadiusPlanesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "RadiusPlanesClient.BeginDelete")
 	req, err := client.deleteCreateRequest(ctx, planeName, options)
