@@ -45,7 +45,7 @@ import (
 )
 
 const (
-	applicationsRPOperationsURL = "https://applications-rp.radius-system:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview"
+	applicationsRPOperationsURL = "https://applications-rp.radius-system.svc:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview"
 	logTimeout                  = time.Minute
 )
 
@@ -164,7 +164,7 @@ func issueRSA1024(t *testing.T, caCertPEM, caKeyPEM []byte) ([]byte, []byte) {
 	template := &x509.Certificate{
 		SerialNumber: serial,
 		Subject:      pkix.Name{CommonName: "ucp"},
-		DNSNames:     []string{"ucp", "ucp." + radiusNamespace, "ucp." + radiusNamespace + ".svc"},
+		DNSNames:     []string{"ucp." + radiusNamespace + ".svc"},
 		NotBefore:    time.Now().Add(-time.Minute),
 		NotAfter:     time.Now().Add(time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
