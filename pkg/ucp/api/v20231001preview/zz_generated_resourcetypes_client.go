@@ -118,7 +118,7 @@ func (client *ResourceTypesClient) createOrUpdateCreateRequest(ctx context.Conte
 //     method.
 func (client *ResourceTypesClient) BeginDelete(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *ResourceTypesClientBeginDeleteOptions) (*runtime.Poller[ResourceTypesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, planeName, resourceProviderName, resourceTypeName, options)
+		resp, err := client.deleteOperation(ctx, planeName, resourceProviderName, resourceTypeName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -131,9 +131,9 @@ func (client *ResourceTypesClient) BeginDelete(ctx context.Context, planeName st
 	}
 }
 
-// delete - Delete a resource type
+// deleteOperation - Delete a resource type
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *ResourceTypesClient) delete(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *ResourceTypesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *ResourceTypesClient) deleteOperation(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *ResourceTypesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceTypesClient.BeginDelete")
 	req, err := client.deleteCreateRequest(ctx, planeName, resourceProviderName, resourceTypeName, options)

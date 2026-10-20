@@ -113,7 +113,7 @@ func (client *MongoDatabasesClient) createOrUpdateCreateRequest(ctx context.Cont
 //     method.
 func (client *MongoDatabasesClient) BeginDelete(ctx context.Context, rootScope string, mongoDatabaseName string, options *MongoDatabasesClientBeginDeleteOptions) (*runtime.Poller[MongoDatabasesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, mongoDatabaseName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, mongoDatabaseName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -126,9 +126,9 @@ func (client *MongoDatabasesClient) BeginDelete(ctx context.Context, rootScope s
 	}
 }
 
-// delete - Delete a MongoDatabaseResource
+// deleteOperation - Delete a MongoDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *MongoDatabasesClient) delete(ctx context.Context, rootScope string, mongoDatabaseName string, options *MongoDatabasesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *MongoDatabasesClient) deleteOperation(ctx context.Context, rootScope string, mongoDatabaseName string, options *MongoDatabasesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, mongoDatabaseName, options)
 	if err != nil {
