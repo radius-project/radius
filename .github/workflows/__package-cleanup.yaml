@@ -22,6 +22,9 @@ on:
       max_deletes:
         type: number
         default: 25
+      api_budget:
+        type: number
+        default: 4000
     secrets:
       inventory_token:
         required: true
@@ -41,6 +44,7 @@ env:
   RETENTION_DAYS: ${{ inputs.retention_days }}
   PLAN_RUN_ID: ${{ inputs.plan_run_id }}
   PLAN_SHA256: ${{ inputs.plan_sha256 }}
+  CLEANUP_API_BUDGET: ${{ inputs.api_budget }}
 jobs:
   plan:
     if: >-

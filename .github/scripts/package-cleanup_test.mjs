@@ -44,6 +44,7 @@ function evidence() {
     repository: REPOSITORY,
     historicalReviewComplete: true,
     activeReferenceReviewComplete: true,
+    protectedClosureComplete: true,
     expiresAt: expires,
     review: `https://github.com/${REPOSITORY}/pull/1`,
     releases: [
@@ -51,6 +52,7 @@ function evidence() {
         id: 1,
         tag: release.tag_name,
         updatedAt: old,
+        closureComplete: true,
         source: `https://github.com/${REPOSITORY}/releases/tag/v0.1.0-rc1`,
         digests: [d(99)]
       }
@@ -210,6 +212,38 @@ test("unknown history, expired evidence, new releases and active-reference gaps 
   assert.throws(() =>
     classify(snapshot(), { ...evidence(), protectedDigests: ["bad"] }, options)
   );
+});
+test("external release closure needs explicit review and protects copied platform manifests", () => {
+  const s = snapshot([version(2), version(3)]);
+  const e = evidence();
+  e.releases[0].digests = [d(90)];
+  delete e.releases[0].closureComplete;
+  assert.ok(classify(s, e, options).every((r) => r.decision === "hold"));
+  // The external index cannot be traversed by the linked-only collector.
+  // Its reviewer must supply its complete closure, including child d(2).
+  e.releases[0].closureComplete = true;
+  e.releases[0].digests.push(d(2));
+  assert.deepEqual(
+    classify(s, e, options).map((r) => r.decision),
+    ["keep", "delete-candidate"]
+  );
+  e.protectedClosureComplete = false;
+  assert.equal(classify(s, e, options)[1].decision, "hold");
+});
+test("known release edges and referrers mechanically check the reviewed closure", () => {
+  const s = snapshot([
+    version(1),
+    version(90, ["0.1.0"], [d(2)]),
+    version(2),
+    { ...version(4, []), artifact: true, subject: d(90), children: [d(90)] }
+  ]);
+  const e = evidence();
+  e.releases[0].digests = [d(90)];
+  assert.equal(classify(s, e, options)[0].decision, "hold");
+  e.releases[0].digests.push(d(2));
+  assert.equal(classify(s, e, options)[0].decision, "hold");
+  e.releases[0].digests.push(d(4));
+  assert.equal(classify(s, e, options)[0].decision, "delete-candidate");
 });
 test("active PR, active test tags, active runs and retention win", () => {
   const s = snapshot([version(12), version(13), version(14)]);
@@ -466,6 +500,10 @@ test("caps, primary and secondary rate limits save partial results and unfinishe
     () => client.get("/repos/radius-project/radius/releases"),
     Incomplete
   );
+  for (const budget of [0, -1, 1.5, 20001]) {
+    assert.throws(() => new Client(() => response([]), budget), /API budget/);
+  }
+  assert.equal(new Client(() => response([]), 20000).budget, 20000);
 });
 test("apply rechecks exact version, blocks changed tags/digest/timestamp and fresh protection", () => {
   for (const field of ["tags", "digest", "updatedAt"]) {
@@ -659,6 +697,22 @@ test("inventory includes only linked packages and records unknown links without 
   assert.ok(methods.every((m) => m === "GET"));
   assert.equal(checkpoints[0].complete, false);
   assert.equal(checkpoints.at(-1).complete, true);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const partial = [];
+    assert.throws(
+      () =>
+        collect(new Client(c.transport, 1), (s) =>
+          partial.push(structuredClone(s))
+        ),
+      Incomplete
+    );
+    assert.equal(partial.at(-1).complete, false);
+    assert.throws(
+      () => classify(partial.at(-1), evidence(), options),
+      /Incomplete inventory/
+    );
+  }
+  assert.equal(collect(new Client(c.transport, 20000)).complete, true);
 });
 const environment = () => ({
   name: "package-cleanup",
@@ -823,6 +877,15 @@ test("workflow safety contracts preserve plan-only schedule, independent environ
   assert.match(wrapper, /mode: plan/);
   assert.doesNotMatch(wrapper, /mode: apply|PURGE_DRY_RUN/);
   assert.match(apply, /PACKAGE_CLEANUP_ENABLE_APPLY == 'true'/);
+  for (const caller of [wrapper, apply]) {
+    assert.match(caller, /api_budget: \$\{\{ inputs.api_budget \}\}/);
+    assert.match(
+      caller,
+      /api_budget:\s+description: [^\r\n]+\s+type: number\s+default: 4000/
+    );
+  }
+  assert.match(shared, /api_budget:\s+type: number\s+default: 4000/);
+  assert.match(shared, /CLEANUP_API_BUDGET: \$\{\{ inputs.api_budget \}\}/);
   assert.match(shared, /name: package-cleanup/);
   assert.match(shared, /CLEANUP_MODE: preflight/);
   assert.match(shared, /needs: preflight/);

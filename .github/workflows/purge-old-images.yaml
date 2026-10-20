@@ -13,6 +13,10 @@ on:
         description: Minimum age in days (at least 7)
         type: number
         default: 7
+      api_budget:
+        description: Logical API request budget (1..20000; new inventory on retry)
+        type: number
+        default: 4000
   schedule:
     - cron: 30 0,12 * * *
 permissions: {}
@@ -32,6 +36,7 @@ jobs:
       mode: plan
       profile: ${{ inputs.profile }}
       retention_days: ${{ inputs.retention_days }}
+      api_budget: ${{ inputs.api_budget }}
     secrets:
       inventory_token: ${{ secrets.GH_RAD_CI_BOT_PAT || github.token }}
   scheduled_plan:

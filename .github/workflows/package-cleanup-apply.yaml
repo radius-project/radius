@@ -25,6 +25,10 @@ on:
         description: Maximum version delete operations (1..100, bounded retries)
         type: number
         default: 25
+      api_budget:
+        description: Logical API request budget including revalidation (1..20000)
+        type: number
+        default: 4000
 permissions: {}
 jobs:
   apply:
@@ -45,6 +49,7 @@ jobs:
       profile: ${{ inputs.profile }}
       retention_days: ${{ inputs.retention_days }}
       max_deletes: ${{ inputs.max_deletes }}
+      api_budget: ${{ inputs.api_budget }}
     secrets:
       inventory_token: ${{ secrets.GH_RAD_CI_BOT_PAT || github.token }}
       CLEANUP_PACKAGE_TOKEN: ${{ secrets.CLEANUP_PACKAGE_TOKEN }}

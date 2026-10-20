@@ -22,7 +22,7 @@ After merge, run the plan workflow on `main`:
 
 ```sh
 gh workflow run purge-old-images.yaml --ref main \
-  -f profile=pr -f retention_days=7
+  -f profile=pr -f retention_days=7 -f api_budget=4000
 ```
 
 Open that run and download `cleanup-plan-<run_attempt>`. The artifact lasts **30 days**, subject to repository retention limits. It contains `inventory.json`, `plan.json`, `plan.sha256`, and `report.json`. On error, inspect `error.json` and the partial inventory. No plan can be approved from an incomplete or failed run. Export evidence to an approved long-term store if it must outlive the artifact.
@@ -35,7 +35,9 @@ The collector paginates packages, versions, releases, and open PRs. It reads eve
 
 The engine seeds protection from checked-in [release baselines](../../.github/release-parity/baselines/) and binds the [release targets](../../.github/release-parity/targets.json), [version policy](../../.github/scripts/release-version.sh), and [OCI publisher](../../.github/scripts/release-oci-artifacts.sh) into the policy hash. Published version tags and dependency graphs reconstruct additional protection. These sources are useful evidence, not proof that historical coverage is complete.
 
-For every entry in `inventory.json.releases`, add a ledger record with its exact `id`, `tag`, and `updatedAt`, a repository `source` URL for the reviewed evidence, and a nonempty `digests` array of verified OCI roots. Use `tag_name` and `updated_at` from the inventory for `tag` and `updatedAt`. Include image indexes, CLI OCI binaries, charts, recipes, and release artifacts across historical namespaces. Use published manifests, verified locks, baselines, and release build records where available. Historical releases do **not** all have a `release-manifest.json` asset. Missing records, moved tags, missing build records, or unknown artifact history remain holds. Do not guess a digest or assume that all prereleases are disposable.
+For every entry in `inventory.json.releases`, add a ledger record with its exact `id`, `tag`, and `updatedAt`, a repository `source` URL for the reviewed evidence, and a nonempty `digests` array of verified OCI manifest digests. Use `tag_name` and `updated_at` from the inventory for `tag` and `updatedAt`. The array must contain the **complete manifest closure**, not just top-level roots: all indexes, platform manifests, nested children, artifact subjects, and referrers such as signatures, SBOMs, and attestations. Include CLI OCI binaries, charts, recipes, and release artifacts across historical namespaces. Set each record's `closureComplete` to `true` only after this complete set has been reviewed. Use published manifests, verified locks, baselines, and release build records where available. Historical releases do **not** all have a `release-manifest.json` asset. Missing records, moved tags, missing build records, or unknown artifact history remain holds. Do not guess a digest or assume that all prereleases are disposable.
+
+**HOLD RESOLUTION:** The collector traverses linked inventory only. A release root outside that inventory is **not** considered traversed. Its reviewer must obtain a complete manifest inventory from independent published metadata and include every manifest digest in that release's `digests` array. The engine checks supplied closure against known linked children, subjects, and referrers, but it cannot prove that an external inventory has no undiscovered manifests. The per-release attestation and its source must cover that gap. If the external graph or its completeness cannot be proved, leave `closureComplete` false or absent; candidates remain held. A supplied platform digest protects a test-tagged copy even when its external parent is not linked here.
 
 For example, a release record has this shape (the digest below is a placeholder, not evidence):
 
@@ -44,12 +46,13 @@ For example, a release record has this shape (the digest below is a placeholder,
   "id": 123,
   "tag": "v0.60.0-rc3",
   "updatedAt": "2026-08-01T00:00:00Z",
+  "closureComplete": true,
   "source": "https://github.com/radius-project/radius/releases/tag/v0.60.0-rc3",
   "digests": ["sha256:0000000000000000000000000000000000000000000000000000000000000000"]
 }
 ```
 
-Add any other known release or active artifact roots to `protectedDigests`. Add active test tags to `activeTags`, including tests outside the repository and temporary test environments. Open PR tags are also protected automatically. For the old recipe profile, list only reviewed `dev/`, `radius/dev/`, or `test/testrecipes/test-bicep-recipes/` package paths in `testRecipePackages`. Set `review` to the evidence-review PR URL, set `expiresAt` to a reviewed expiry no more than seven days ahead, and set both review flags to `true` only after the review is complete. New or changed release entries, an expired review, or missing active-reference proof stop candidate selection.
+Add the full manifest closure of any other known release or active artifact to `protectedDigests`, not just its root. Review the automatically seeded baseline digests too, add any missing manifest closure members to the ledger, and set `protectedClosureComplete` to `true` only when this combined protected set is complete. Add active test tags to `activeTags`, including tests outside the repository and temporary test environments. Open PR tags are also protected automatically. For the old recipe profile, list only reviewed `dev/`, `radius/dev/`, or `test/testrecipes/test-bicep-recipes/` package paths in `testRecipePackages`. Set `review` to the evidence-review PR URL, set `expiresAt` to a reviewed expiry no more than seven days ahead, and set `historicalReviewComplete` and `activeReferenceReviewComplete` to `true` only after their reviews are complete. New or changed release entries, an expired review, or missing active-reference/closure proof stop candidate selection.
 
 Protection always wins over a test tag. Release/channel aliases protect their digests, copies of those digests, and platform descendants across linked namespaces. Signatures, SBOMs, attestations, CLI packages, charts, and known artifact subjects are retained. A retained parent retains shared children. An untagged version is **held**, not treated as unused. Missing manifests, unknown tags, mixed release/test tags, or incomplete dependency graphs never produce deletion candidates.
 
@@ -91,7 +94,7 @@ Only after setup and review, an administrator may set the repository variable `P
 gh workflow run package-cleanup-apply.yaml --ref main \
   -f plan_run_id=<reviewed-plan-run-id> \
   -f plan_sha256=<value-from-plan.sha256> \
-  -f profile=pr -f retention_days=7 -f max_deletes=25
+  -f profile=pr -f retention_days=7 -f max_deletes=25 -f api_budget=4000
 ```
 
 The plan must come from a successful `purge-old-images.yaml` run on this repository's `main`, with the same commit as apply. Preflight checks the existing environment rules and source run. The environment reviewer checks the exact run ID, hash, inputs, and freeze before approving. **Only one listed reviewer must approve**; preventing self-review requires another person when the dispatcher is a reviewer. A plan older than six hours, changed source/policy, or a changed hash is rejected. Artifact data cannot supply an API origin or a script.
@@ -100,7 +103,9 @@ Apply downloads only that run's checked attempt. It re-inventories and rechecks 
 
 ### 5. Review results, resume safely, and end the freeze
 
-The default cap is 25 version delete operations; the maximum is 100 per apply. The engine allows 4,000 logical API requests by default, with a hard limit of 20,000. Each transport request has at most three HTTP attempts and a 60-second retry budget, so 25 version delete operations can send at most 75 DELETE requests. A registry read also needs a bounded anonymous token request. The cap is not a storage estimate.
+The default cap is 25 version delete operations; the maximum is 100 per apply. Both manual wrappers accept `api_budget`, a positive integer from 1 to 20,000; the reusable workflow forwards it as `CLEANUP_API_BUDGET`. Scheduled plans use the 4,000-request default. Apply uses this budget for its new inventory and its approval/protection rechecks, so it may need a larger budget than planning. Each transport request has at most three HTTP attempts and a 60-second retry budget, so 25 version delete operations can send at most 75 DELETE requests. A registry read also needs a bounded anonymous token request. The cap is not a storage estimate.
+
+**HOLD RESOLUTION:** An inventory that reaches its API budget saves partial evidence but cannot produce an approved plan. Restart a **new full inventory** with a larger `api_budget`, for example `gh workflow run purge-old-images.yaml --ref main -f profile=pr -f retention_days=7 -f api_budget=20000`. Inventory checkpoints are evidence, not resumable cursors. Replaying an inventory at the same insufficient budget does not make progress. If the full inventory exceeds the 20,000-request hard cap, apply remains blocked; a separately reviewed bounded partition/checkpoint design is needed. Do not raise the hard cap or claim that replay resumes the inventory.
 
 Download `cleanup-apply-<run_attempt>`. `report.json` records kept, held, deleted, already absent, protected, and unfinished versions with reasons and counts. A protected download refusal warns and continues with independent candidates, but retains descendants. HTTP 404 is "already absent," never "deleted." A rate limit, cap, skipped candidate, or protected version produces a **partial** result and a failing job. Unknown errors are fatal. An interrupted run leaves durable checkpoints, but an in-flight request may have completed; check the registry on the next inventory.
 

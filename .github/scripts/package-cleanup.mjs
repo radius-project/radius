@@ -395,6 +395,26 @@ function evidenceState(snapshot, evidence, now) {
     "Invalid evidence digest"
   );
   const releases = list(evidence.releases, "release evidence");
+  const known = snapshot.packages
+    .filter((p) => p.linked)
+    .flatMap((p) => p.versions);
+  const reviewedClosure = (digests, complete) => {
+    if (complete !== true) return false;
+    const closure = new Set(digests);
+    for (const v of known) {
+      if (
+        closure.has(v.digest) &&
+        (v.graphError ||
+          !Array.isArray(v.children) ||
+          v.children.some((d) => !closure.has(d)) ||
+          (v.subject && !closure.has(v.subject)))
+      )
+        return false;
+      if (v.subject && closure.has(v.subject) && !closure.has(v.digest))
+        return false;
+    }
+    return true;
+  };
   const releaseIds = new Set();
   for (const r of releases) {
     requireThat(
@@ -411,7 +431,7 @@ function evidenceState(snapshot, evidence, now) {
       Array.isArray(r.digests) &&
         r.digests.length > 0 &&
         r.digests.every((d) => DIGEST.test(d)),
-      "Release evidence needs verified roots"
+      "Release evidence needs verified manifest digests"
     );
     r.digests.forEach((d) => roots.add(d));
   }
@@ -422,7 +442,9 @@ function evidenceState(snapshot, evidence, now) {
         (e) =>
           e.id === r.id && e.tag === r.tag_name && e.updatedAt === r.updated_at
       )
-    );
+    ) &&
+    releases.every((r) => reviewedClosure(r.digests, r.closureComplete)) &&
+    reviewedClosure([...roots], evidence.protectedClosureComplete);
   const fresh =
     date(evidence.expiresAt) > now &&
     date(evidence.expiresAt) <= now + 7 * 86400000;
@@ -586,7 +608,7 @@ export function classify(
         );
       } else if (!state.complete) {
         r.reasons.push(
-          "Historical release or active-reference evidence incomplete/expired"
+          "Historical release, active-reference, or manifest-closure evidence incomplete/expired"
         );
       } else if (!graphComplete || !allGraphsComplete) {
         r.reasons.push(
