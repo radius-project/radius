@@ -54,10 +54,16 @@ func sharedSource(dir string) (*Source, error) {
 // NewClientTransport returns an HTTP transport that presents this component's certificate
 // and verifies that the server is the Radius component named by the request URL's host.
 // It requires options.CertificateDirectory and options.Namespace.
+func NewClientTransport(options authz.Options) (*http.Transport, error) {
+	return newClientTransport(options, "")
+}
+
+// newClientTransport is NewClientTransport with an optional TLS server name that replaces
+// the request URL's host.
 //
 // Each connection reads the certificate and CA bundle once, so the certificate it presents
 // and the CA bundle it verifies the server against always come from the same version.
-func NewClientTransport(options authz.Options) (*http.Transport, error) {
+func newClientTransport(options authz.Options, serverName string) (*http.Transport, error) {
 	if options.CertificateDirectory == "" || options.Namespace == "" {
 		return nil, fmt.Errorf("authorization mode %q requires certificateDirectory and namespace", options.EffectiveMode())
 	}
@@ -69,7 +75,10 @@ func NewClientTransport(options authz.Options) (*http.Transport, error) {
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		name := hostname(addr)
+		name := serverName
+		if name == "" {
+			name = hostname(addr)
+		}
 
 		config, err := source.ClientConfig(options.Namespace)
 		if err != nil {
@@ -98,35 +107,38 @@ func NewClientTransport(options authz.Options) (*http.Transport, error) {
 // NewUpgradeTransport returns plain when the authorization mode is off. Otherwise it returns
 // a transport that sends requests for the given components over mTLS, changing an http URL
 // to https, and sends all other requests through plain. A component matches by any of its
-// DNS names: <component>, <component>.<namespace>, or <component>.<namespace>.svc.
+// DNS names: <component>, <component>.<namespace>, or <component>.<namespace>.svc. The TLS
+// server name is always the canonical <component>.<namespace>.svc, the only name that
+// component certificates carry.
 func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, components []string) (http.RoundTripper, error) {
 	if options.EffectiveMode() == authz.ModeOff {
 		return plain, nil
 	}
 
-	secure, err := NewClientTransport(options)
-	if err != nil {
-		return nil, err
-	}
-
-	hosts := map[string]bool{}
+	secure := map[string]http.RoundTripper{}
 	for _, c := range components {
-		hosts[c] = true
-		hosts[c+"."+options.Namespace] = true
-		hosts[c+"."+options.Namespace+".svc"] = true
+		transport, err := newClientTransport(options, c+"."+options.Namespace+".svc")
+		if err != nil {
+			return nil, err
+		}
+
+		secure[c] = transport
+		secure[c+"."+options.Namespace] = transport
+		secure[c+"."+options.Namespace+".svc"] = transport
 	}
-	return &upgradeTransport{plain: plain, secure: secure, hosts: hosts}, nil
+	return &upgradeTransport{plain: plain, secure: secure}, nil
 }
 
 type upgradeTransport struct {
-	plain  http.RoundTripper
-	secure http.RoundTripper
-	hosts  map[string]bool
+	plain http.RoundTripper
+	// secure maps each accepted host name to the mTLS transport for its component.
+	secure map[string]http.RoundTripper
 }
 
 // RoundTrip implements http.RoundTripper.
 func (t *upgradeTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if !t.hosts[hostname(req.URL.Host)] {
+	secure, ok := t.secure[hostname(req.URL.Host)]
+	if !ok {
 		return t.plain.RoundTrip(req)
 	}
 
@@ -134,7 +146,7 @@ func (t *upgradeTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		req = req.Clone(req.Context())
 		req.URL.Scheme = "https"
 	}
-	return t.secure.RoundTrip(req)
+	return secure.RoundTrip(req)
 }
 
 func hostname(hostport string) string {
