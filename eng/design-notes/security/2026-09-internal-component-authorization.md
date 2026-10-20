@@ -59,7 +59,7 @@ As a platform engineer, I want a deployment's follow-on work — child resources
 
 ## User Experience (if applicable)
 
-These changes are invisible to a developer using Radius: the same `rad deploy` and application templates continue to work when the caller is authorized. The exception is a template that creates cluster-wide Kubernetes objects directly; those objects must move into a recipe registered to the environment (see [Components that run recipes](#components-that-run-recipes)). The difference is internal — each service now proves its identity and every follow-on request carries the approval it was issued. Operators see new configuration for service certificates, role assignments for controller namespaces, and the recipe identity's Kubernetes permissions, covered under Implementation Details.
+Application templates must move cluster-wide Kubernetes objects into a recipe registered to the environment (see [Components that run recipes](#components-that-run-recipes)). Operators configure service certificates, controller namespace role assignments, and the recipe identity's Kubernetes permissions (see [Implementation Details](#implementation-details)).
 
 ## Design
 
@@ -244,7 +244,7 @@ Most deployments touch only a single namespace, but some need cluster-wide Kuber
 
 #### Controllers and asynchronous work
 
-The Radius controller acts on Kubernetes object changes, not the user's authenticated request, so without a restriction a user could create an object that tells the controller to change another team's resources. The controller now handles `DeploymentTemplate` objects, the `DeploymentResource` objects that track each template's output resources, and Flux `GitRepository` objects that it turns into `DeploymentTemplate` objects; the `Recipe` and annotation-based `Deployment` controllers were removed in #12952. Today a `DeploymentTemplate` names its target scope in `spec.providerConfig`, and the controller creates that resource group if it does not exist (`pkg/controller/reconciler/deploymenttemplate_reconciler.go`), so any namespace can deploy to any resource group. Under this design, each namespace is a Radius RBAC principal with role assignments on the resource groups and environments it may target (see the [built-in RBAC design](./2026-10-built-in-rbac-design.md#controllers-and-gitops)). UCP checks those assignments, and the controller checks the source object's ID and ownership before acting — for example, a development namespace cannot deploy to the production resource group. Existing installations need these role assignments before enforcement.
+Today, the controller can deploy to any resource group named in a `DeploymentTemplate`'s `spec.providerConfig`. This design gives each namespace a Radius principal with role assignments on its allowed resource groups and environments. UCP checks those assignments before approving work; the controller checks the source object's ID and ownership. Existing installations must add these assignments before enforcement (see [Controllers and GitOps](./2026-10-built-in-rbac-design.md#controllers-and-gitops)).
 
 ##### Controller authority
 
@@ -538,7 +538,11 @@ These protections depend on restricting direct infrastructure access too. An enc
 
 ## Compatibility (optional)
 
-The changes are internal, so a developer's workflow is unchanged, except that templates creating cluster-wide Kubernetes objects directly must move them into a recipe. However, older providers and deployment engines must be upgraded before they can participate in the new authenticated request flow; enabling checks before they are upgraded would break them, so enforcement is gated on every component's support, as described below. The operator must also complete the configuration this design requires, such as installing cert-manager, adding role assignments for controller namespaces, and moving cluster-wide objects into recipes, before turning on enforcement.
+Before enabling enforcement:
+
+- Developers must move cluster-wide Kubernetes objects from application templates into registered recipes.
+- Operators must upgrade every provider and deployment engine to a version that supports the protocol. UCP blocks enforcement until all components report support.
+- Operators must configure cert-manager, controller namespace role assignments, and recipe-identity permissions.
 
 Enforcement must not be bypassable by talking to an older component or an older endpoint. Rollout follows a one-way sequence per installation:
 
