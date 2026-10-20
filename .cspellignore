@@ -736,7 +736,6 @@ getMeterMust
 getResourceIdentitySchemas
 getgraph
 gh
-ghaction
 ghcr
 github
 gitignore
