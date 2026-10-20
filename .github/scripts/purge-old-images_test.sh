@@ -50,8 +50,13 @@ curl() {
             code_index=$((${#delete_codes[@]} - 1))
         fi
         local delete_code="${delete_codes[code_index]}"
-        printf 'HTTP/2 %s\r\n\r\n' "${delete_code}" > "${header_file}"
-        printf '%s' "${DELETE_BODY:-}" > "${output}"
+        printf 'HTTP/2 %s\r\n%s\r\n' "${delete_code}" \
+            "${DELETE_HEADERS:-}" > "${header_file}"
+        if [[ -n "${DELETE_MESSAGE:-}" ]]; then
+            printf '{"message":"%s"}' "${DELETE_MESSAGE}" > "${output}"
+        else
+            printf '%s' "${DELETE_BODY:-}" > "${output}"
+        fi
         printf '%s %s' "${delete_code}" "${url}"
         [[ "${delete_code}" =~ ^2 ]] && return 0
         return 22
@@ -60,9 +65,11 @@ curl() {
     printf '%s\n' "${url}" >> "${TEST_DIR}/gets"
     if [[ "${GET_FAILURE_PATH:-}" == packages && "${url}" == *"/packages?"* ]] ||
         [[ "${GET_FAILURE_PATH:-}" == versions && "${url}" == *"/versions?"* ]]; then
-        printf 'HTTP/2 400\r\n\r\n' > "${header_file}"
-        printf 'request failed' > "${output}"
-        printf '400 %s' "${url}"
+        local failure_code="${GET_FAILURE_CODE:-400}"
+        printf 'HTTP/2 %s\r\n%s\r\n' "${failure_code}" \
+            "${GET_FAILURE_HEADERS:-}" > "${header_file}"
+        printf '{"message":"request failed"}' > "${output}"
+        printf '%s %s' "${failure_code}" "${url}"
         return 22
     fi
     local get_count
@@ -149,7 +156,7 @@ JSON
 }
 
 sleep() {
-    :
+    printf '%s\n' "$1" >> "${TEST_DIR}/waits"
 }
 
 : > "${TEST_DIR}/gets"
@@ -224,5 +231,118 @@ grep -q '/versions/1$' "${TEST_DIR}/deletes" ||
 grep -q '/versions/201$' "${TEST_DIR}/deletes" ||
     fail_test "second version page was not deleted"
 unset VERSION_PAGINATION SKIP_TRANSIENT_FAILURE
+
+cleanup
+: > "${TEST_DIR}/gets"
+: > "${TEST_DIR}/deletes"
+VERSION_PAGINATION=true
+SKIP_TRANSIENT_FAILURE=true
+DELETE_CODES="400 204"
+DELETE_MESSAGE="You cannot delete the last tagged version"
+export VERSION_PAGINATION SKIP_TRANSIENT_FAILURE DELETE_CODES DELETE_MESSAGE
+for delete_code in 400 409 422; do
+    cleanup
+    : > "${TEST_DIR}/gets"
+    : > "${TEST_DIR}/deletes"
+    DELETE_CODES="${delete_code} 204"
+    if main > "${TEST_DIR}/output" 2>&1; then
+        fail_test "HTTP ${delete_code} delete failure was accepted"
+    fi
+    [[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 1 ]] ||
+        fail_test "cleanup continued after HTTP ${delete_code}"
+    grep -q "HTTP ${delete_code}: ${DELETE_MESSAGE}" \
+        "${TEST_DIR}/output" || fail_test "delete rejection was not shown"
+    grep -q 'Deleted 0, already deleted 0 package versions' \
+        "${TEST_DIR}/output" || fail_test "failed cleanup summary"
+done
+unset VERSION_PAGINATION
+
+cleanup
+: > "${TEST_DIR}/gets"
+: > "${TEST_DIR}/deletes"
+DELETE_CODES="403"
+DELETE_MESSAGE="Must have admin rights"
+export DELETE_CODES DELETE_MESSAGE
+if main > "${TEST_DIR}/output" 2>&1; then
+    fail_test "authorization failure was accepted"
+fi
+[[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 1 ]] ||
+    fail_test "cleanup continued after an authorization failure"
+grep -q 'HTTP 403: Must have admin rights' "${TEST_DIR}/output" ||
+    fail_test "delete error body was not shown"
+
+cleanup
+: > "${TEST_DIR}/gets"
+: > "${TEST_DIR}/deletes"
+: > "${TEST_DIR}/waits"
+DELETE_CODES="403 204"
+DELETE_HEADERS="Retry-After: 1"
+export DELETE_HEADERS
+main > "${TEST_DIR}/output" 2>&1 ||
+    fail_test "secondary rate-limit retry failed"
+[[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 2 ]] ||
+    fail_test "secondary rate-limit delete was not retried"
+[[ "$(< "${TEST_DIR}/waits")" == 1 ]] ||
+    fail_test "secondary rate-limit retry did not wait"
+grep -q 'Deleted 1, already deleted 0 package versions' \
+    "${TEST_DIR}/output" || fail_test "retried cleanup summary"
+
+cleanup
+: > "${TEST_DIR}/gets"
+: > "${TEST_DIR}/deletes"
+: > "${TEST_DIR}/waits"
+DELETE_CODES=403
+DELETE_HEADERS="Retry-After: 300"
+main > "${TEST_DIR}/output" 2>&1 ||
+    fail_test "secondary rate limit above budget failed cleanup"
+[[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 1 &&
+    ! -s "${TEST_DIR}/waits" ]] ||
+    fail_test "secondary rate limit above budget was retried"
+grep -q '::warning::GitHub API rate limit reached' "${TEST_DIR}/output" ||
+    fail_test "secondary rate limit above budget was not detected"
+
+cleanup
+: > "${TEST_DIR}/gets"
+: > "${TEST_DIR}/deletes"
+: > "${TEST_DIR}/waits"
+VERSION_PAGINATION=true
+DELETE_CODES="204 403"
+DELETE_HEADERS=$'x-ratelimit-remaining: 0\r\nRetry-After: 1'
+DELETE_MESSAGE="API rate limit exceeded"
+export VERSION_PAGINATION DELETE_CODES DELETE_HEADERS DELETE_MESSAGE
+main > "${TEST_DIR}/output" 2>&1 ||
+    fail_test "delete rate limit failed the cleanup"
+[[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 2 ]] ||
+    fail_test "cleanup continued after the rate limit"
+[[ ! -s "${TEST_DIR}/waits" ]] ||
+    fail_test "primary rate limit with Retry-After was retried"
+grep -q '::warning::GitHub API rate limit reached' "${TEST_DIR}/output" ||
+    fail_test "rate limit warning"
+unset VERSION_PAGINATION DELETE_CODES DELETE_HEADERS DELETE_MESSAGE
+
+cleanup
+: > "${TEST_DIR}/gets"
+: > "${TEST_DIR}/deletes"
+GET_FAILURE_PATH=versions
+GET_FAILURE_CODE=403
+GET_FAILURE_HEADERS="x-ratelimit-remaining: 0"
+export GET_FAILURE_PATH GET_FAILURE_CODE GET_FAILURE_HEADERS
+main > "${TEST_DIR}/output" 2>&1 ||
+    fail_test "read rate limit failed the cleanup"
+[[ ! -s "${TEST_DIR}/deletes" ]] ||
+    fail_test "versions were deleted after a read rate limit"
+GET_FAILURE_HEADERS=""
+if main > "${TEST_DIR}/output" 2>&1; then
+    fail_test "read authorization failure was accepted"
+fi
+grep -q 'returned HTTP 403: request failed' "${TEST_DIR}/output" ||
+    fail_test "read error body was not shown"
+GET_FAILURE_HEADERS="Retry-After: 300"
+main > "${TEST_DIR}/output" 2>&1 ||
+    fail_test "secondary read rate limit above budget failed cleanup"
+grep -q '::warning::GitHub API rate limit reached' "${TEST_DIR}/output" ||
+    fail_test "secondary read rate limit above budget was not detected"
+unset GET_FAILURE_PATH GET_FAILURE_CODE GET_FAILURE_HEADERS
+unset SKIP_TRANSIENT_FAILURE
 
 echo "purge-old-images tests passed"
