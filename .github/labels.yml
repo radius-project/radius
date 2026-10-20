@@ -1,10 +1,42 @@
-# Radius-specific labels. The shared PR lifecycle and hold labels come from
-# labels/pr-status.yml in radius-project/.github; .github/workflows/labels.yml
-# merges both catalogs. Other repository labels are preserved.
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
+# Labels applied by .github/workflows/labels.yml. Labels not listed here are
+# kept. Shared labels are defined in sync-templates/.github/labels.yml.njk and
+# repository-specific labels in the repo_labels variable in .github/sync.yml.
+# yamllint disable rule:quoted-strings
 ---
-- name: pr:standard
-  color: 86a16a
-  description: Ongoing maintenance, minor improvements, documentation updates, and routine development work
-- name: pr:important
-  color: 86a16a
-  description: High-impact changes needing special attention during release and in release notes
+# Shared labels.
+- name: "pr:needs-reviewer"
+  color: "1D76DB"
+  description: "No pending review request or active submitted human review"
+- name: "pr:waiting-for-review"
+  color: "1D76DB"
+  description: "A reviewer owns the next action; required approval is pending or unverifiable"
+- name: "pr:waiting-for-author"
+  color: "1D76DB"
+  description: "The author needs to address human review feedback or human-endorsed inline feedback"
+- name: "pr:review-approved"
+  color: "1D76DB"
+  description: "Required reviews are approved; checks may still be pending"
+- name: "pr:needs-rebase"
+  color: "1D76DB"
+  description: "The pull request has merge conflicts"
+- name: "pr:ready-for-queue"
+  color: "1D76DB"
+  description: "Review, checks and mergeability permit adding this PR to the queue"
+- name: "pr:needs-author-response"
+  color: "1D76DB"
+  description: "A reviewer manually requested an author response"
+- name: "pr:do-not-merge"
+  color: "1D76DB"
+  description: "Don't merge this PR until open discussion items or issues are complete"
+# Repository-specific labels.
+- name: "pr:standard"
+  color: "86a16a"
+  description: "Ongoing maintenance, minor improvements, documentation updates, and routine development work"
+- name: "pr:important"
+  color: "86a16a"
+  description: "High-impact changes needing special attention during release and in release notes"
