@@ -8,7 +8,7 @@
 			]
 		},
 		"gopls": {
-			"type": "local",
+			"type": "stdio",
 			"command": "gopls",
 			"args": [
 				"mcp"
