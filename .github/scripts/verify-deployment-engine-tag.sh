@@ -21,11 +21,20 @@ set -euo pipefail
 GH="${GH:-gh}"
 readonly REPOSITORY="azure-octo/deployment-engine"
 TAG=""
-# Optional commit recorded by an earlier verification of the same release run.
+# Optional commit that the tag, or an absent tag's base ref, must resolve to:
+# the approved commit, or for a final release the commit its RC locked.
 EXPECTED_COMMIT=""
 # Ref whose commit the release controller tags after approval when the tag
 # is absent.
 ABSENT_BASE=""
+LOOKUP_ERROR=""
+
+cleanup() {
+    if [[ -n "${LOOKUP_ERROR}" ]]; then
+        rm -f "${LOOKUP_ERROR}"
+    fi
+}
+trap cleanup EXIT
 
 fail() {
     echo "Error: $*" >&2
@@ -40,15 +49,17 @@ Usage: verify-deployment-engine-tag.sh [--allow-absent <base-ref>] <tag> \
 Writes the tag commit and its state (signed, unsigned, or absent) to
 GITHUB_OUTPUT. A signed tag needs a signature that GitHub verifies. An
 unsigned tag, such as one the release controller created, must reference a
-commit on main. With --allow-absent, a missing tag reports the commit of
-<base-ref> (main or a release tag) that the controller will tag after
-approval instead of failing.
+GitHub-verified commit on main. With --allow-absent, a tag that GitHub
+reports missing (HTTP 404) reports the commit of <base-ref> (main or a
+release tag) that the controller will tag after approval instead of failing.
+With expected-commit, the tag, or <base-ref> for an absent tag, must resolve
+to that commit.
 EOF
 }
 
-# An unsigned tag has no maintainer attestation, so it may only name a commit
-# that is already on the protected main branch.
-require_on_main() {
+# An unsigned tag has no maintainer attestation, so it may only name a
+# GitHub-verified commit that is already on the protected main branch.
+require_trusted_main_commit() {
     local commit="$1"
     local comparison status
 
@@ -62,6 +73,10 @@ require_on_main() {
             fail "Deployment Engine commit ${commit} is not on main (${status}); push a signed tag to release another commit"
             ;;
     esac
+    if [[ "$(jq -r '.base_commit.commit.verification.verified' \
+        <<<"${comparison}")" != "true" ]]; then
+        fail "Deployment Engine commit ${commit} does not have a GitHub-verified signature; push a signed tag to release it"
+    fi
 }
 
 write_outputs() {
@@ -88,10 +103,10 @@ plan_absent_tag() {
     base_commit="$(jq -r '.sha' <<<"${base}")"
     [[ "${base_commit}" =~ ^[0-9a-f]{40}$ ]] ||
         fail "Deployment Engine ${ABSENT_BASE} does not resolve to a commit"
-    require_on_main "${base_commit}"
     if [[ -n "${EXPECTED_COMMIT}" && "${base_commit}" != "${EXPECTED_COMMIT}" ]]; then
-        fail "Deployment Engine ${ABSENT_BASE} moved from approved commit ${EXPECTED_COMMIT} to ${base_commit}"
+        fail "Deployment Engine ${ABSENT_BASE} resolves to ${base_commit}, not the expected ${EXPECTED_COMMIT}; restore ${ABSENT_BASE} or push a signed ${TAG} tag at ${EXPECTED_COMMIT}"
     fi
+    require_trusted_main_commit "${base_commit}"
 
     write_outputs "${base_commit}" absent
     echo "Deployment Engine tag ${TAG} is absent; the release controller will create it at ${base_commit} (${ABSENT_BASE}) after approval."
@@ -155,11 +170,20 @@ main() {
 
     recovery="git tag -s ${TAG} -m 'release tag ${TAG}'"
     recovery+=" && git push origin ${TAG}"
+    # Only GitHub's 404 for a readable repository proves the tag is missing.
+    # Any other failure, such as 403, 429, 5xx, or a transport error, must not
+    # become a plan to create the tag.
+    LOOKUP_ERROR="$(mktemp)"
     if ! reference="$(
-        "${GH}" api "repos/${REPOSITORY}/git/ref/tags/${TAG}"
+        "${GH}" api "repos/${REPOSITORY}/git/ref/tags/${TAG}" \
+            2>"${LOOKUP_ERROR}"
     )"; then
-        plan_absent_tag "${recovery}"
-        return
+        if grep -Fq '(HTTP 404)' "${LOOKUP_ERROR}"; then
+            plan_absent_tag "${recovery}"
+            return
+        fi
+        cat "${LOOKUP_ERROR}" >&2
+        fail "could not look up Deployment Engine tag ${TAG}; rerun once the GitHub API error above clears"
     fi
     object_type="$(jq -r '.object.type' <<<"${reference}")"
     object_sha="$(jq -r '.object.sha' <<<"${reference}")"
@@ -200,10 +224,10 @@ main() {
         fail "Deployment Engine tag ${TAG} does not target a commit"
     fi
     if [[ "${state}" == "unsigned" ]]; then
-        require_on_main "${target_sha}"
+        require_trusted_main_commit "${target_sha}"
     fi
     if [[ -n "${EXPECTED_COMMIT}" && "${target_sha}" != "${EXPECTED_COMMIT}" ]]; then
-        fail "Deployment Engine tag ${TAG} moved from approved commit ${EXPECTED_COMMIT} to ${target_sha}"
+        fail "Deployment Engine tag ${TAG} is at ${target_sha}, not the expected ${EXPECTED_COMMIT}"
     fi
 
     write_outputs "${target_sha}" "${state}"

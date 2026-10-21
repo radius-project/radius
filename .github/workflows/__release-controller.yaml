@@ -251,10 +251,28 @@ jobs:
           permission-metadata: read
           permission-contents: read
 
+      # A final ships the Deployment Engine commit that its last RC locked. The
+      # RC tag in the Deployment Engine repository can move; the GitHub-verified
+      # lock on the RC's Radius tag cannot.
+      - name: Read release candidate Deployment Engine lock
+        if: >-
+          steps.plan.outputs.ready == 'true' &&
+          steps.plan.outputs.release-type == 'final'
+        id: rc-lock
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: release-candidate
+          INPUT_VERSION: ${{ steps.plan.outputs.version }}
+          INPUT_RELEASE_CANDIDATE: ${{ steps.plan.outputs.previous-version }}
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-release-controller-lock.mjs`)
+            await script({context, github, core})
+
       # An existing tag is verified. An absent tag is planned at main for an
-      # RC or patch, and at the last validated RC's commit for a final, so a
-      # final never ships Deployment Engine changes that no RC tested. The
-      # publication job creates it at this exact commit after approval.
+      # RC or patch, and for a final at the commit its last RC locked, which
+      # the RC tag must still name. The publication job creates it at this
+      # exact commit after approval.
       - name: Verify or plan Deployment Engine tag
         if: steps.plan.outputs.ready == 'true'
         id: de-tag
@@ -262,14 +280,15 @@ jobs:
           GH_TOKEN: ${{ steps.de-read-token.outputs.token }}
           VERSION: ${{ steps.plan.outputs.version }}
           RELEASE_TYPE: ${{ steps.plan.outputs.release-type }}
+          RELEASE_CANDIDATE: ${{ steps.plan.outputs.previous-version }}
+          RC_DE_COMMIT: ${{ steps.rc-lock.outputs.de-source-commit }}
         run: |
-          base=main
+          args=(--allow-absent main "${VERSION}")
           if [[ "${RELEASE_TYPE}" == "final" ]]; then
-            base="$(yq -r '.previousVersion' \
-              "${RUNNER_TEMP}/release-controller/release-plan.yaml")"
+            args=(--allow-absent "${RELEASE_CANDIDATE}" "${VERSION}"
+              "${RC_DE_COMMIT:?the release candidate lock has no commit}")
           fi
-          bash ./.github/scripts/verify-deployment-engine-tag.sh \
-            --allow-absent "${base}" "${VERSION}"
+          bash ./.github/scripts/verify-deployment-engine-tag.sh "${args[@]}"
 
       # Approvers review these values before the approve job; later stages fail
       # instead of releasing a different source, sibling, or Deployment Engine
@@ -383,7 +402,8 @@ jobs:
 
       # Validation planned this commit for an absent tag, and the approval
       # above covers it. The pushed tag starts the Deployment Engine tag build,
-      # which stages the image that this job adopts and locks.
+      # which stages the image that this job adopts and locks. Only the
+      # Radius Publisher App writes to the Deployment Engine repository.
       - name: Create Deployment Engine tag token
         if: needs.validate.outputs.de-tag-state == 'absent'
         id: de-write-token
@@ -413,14 +433,21 @@ jobs:
           GH_TOKEN: ${{ steps.de-write-token.outputs.token }}
         run: gh auth setup-git
 
+      # The tag points at an existing, GitHub-verified main commit; the
+      # controller never creates commits in the Deployment Engine repository.
       - name: Create approved Deployment Engine tag
         if: needs.validate.outputs.de-tag-state == 'absent'
         env:
           GH_TOKEN: ${{ steps.de-write-token.outputs.token }}
+          APP_SLUG: ${{ steps.de-write-token.outputs.app-slug }}
           VERSION: ${{ needs.validate.outputs.version }}
           APPROVED_DE_COMMIT: ${{ needs.validate.outputs.de-source-commit }}
           RELEASE_RECONCILE_TAG_ONLY: "true"
         run: |
+          [[ "${APP_SLUG}" == "radius-publisher" ]] || {
+            echo "The Deployment Engine token belongs to ${APP_SLUG}, not radius-publisher." >&2
+            exit 1
+          }
           ./.github/scripts/release-create-tag-and-branch.sh \
             deployment-engine "${VERSION}" "${APPROVED_DE_COMMIT}"
 

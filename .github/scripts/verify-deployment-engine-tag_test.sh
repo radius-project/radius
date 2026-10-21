@@ -45,24 +45,32 @@ fail_test() {
 }
 
 # Each test describes the repository through FAKE_* variables: the tag ref
-# (empty when absent), the tag object, how a commit compares with main, and
-# the commit an absent tag's base ref resolves to.
+# (empty when absent), the error GitHub returns for a tag it cannot read, the
+# tag object, how a commit compares with main and whether GitHub verified it,
+# and the commit an absent tag's base ref resolves to.
 write_fake_gh() {
     cat >"${TEST_ROOT}/gh" <<'EOF'
 #!/bin/bash
 set -euo pipefail
 case "$*" in
     *"/git/ref/tags/"*)
-        [[ -n "${FAKE_REF:-}" ]] || exit 1
+        if [[ -z "${FAKE_REF:-}" ]]; then
+            printf 'gh: %s\n' "${FAKE_REF_ERROR:-Not Found (HTTP 404)}" >&2
+            exit 1
+        fi
         printf '%s\n' "${FAKE_REF}"
         ;;
     *"/git/tags/"*) printf '%s\n' "${FAKE_TAG_OBJECT}" ;;
     *"/compare/"*)
         printf '%s\n' "$2" >>"${FAKE_COMPARISONS}"
-        printf '{"status":"%s"}\n' "${FAKE_COMPARE:-ahead}"
+        printf '{"status":"%s","base_commit":{"commit":{"verification":{"verified":%s}}}}\n' \
+            "${FAKE_COMPARE:-ahead}" "${FAKE_VERIFIED:-true}"
         ;;
     *"/commits/"*)
-        [[ -n "${FAKE_BASE_COMMIT:-}" ]] || exit 1
+        if [[ -z "${FAKE_BASE_COMMIT:-}" ]]; then
+            echo "gh: Not Found (HTTP 404)" >&2
+            exit 1
+        fi
         printf '{"sha":"%s"}\n' "${FAKE_BASE_COMMIT}"
         ;;
     *) printf '%s\n' 'azure-octo/deployment-engine' ;;
@@ -97,6 +105,7 @@ repository() {
     export FAKE_COMPARE="${3:-ahead}"
     export FAKE_BASE_COMMIT="${4:-}"
     export FAKE_COMPARISONS="${TEST_ROOT}/comparisons"
+    unset FAKE_REF_ERROR FAKE_VERIFIED
     : >"${FAKE_COMPARISONS}"
     : >"${TEST_ROOT}/outputs"
 }
@@ -230,7 +239,7 @@ test_accepts_tag_at_approved_commit() {
 test_rejects_tag_moved_after_approval() {
     repository "${ANNOTATED_REF}" "$(tag_object true valid)"
     run_script v0.61.0-rc.1 "${COMMIT_B}"
-    expect_failure "moved from approved commit" \
+    expect_failure "is at ${COMMIT_A}, not the expected ${COMMIT_B}" \
         "a tag that moved after approval must fail" || return
     ((++PASS))
 }
@@ -289,6 +298,64 @@ test_absent_plan_requires_resolvable_base() {
     ((++PASS))
 }
 
+test_only_a_confirmed_missing_tag_is_planned() {
+    local error
+
+    for error in "Forbidden (HTTP 403)" "API rate limit exceeded (HTTP 429)" \
+        "Service Unavailable (HTTP 503)" "connection reset by peer"; do
+        repository "" "" ahead "${COMMIT_B}"
+        export FAKE_REF_ERROR="${error}"
+        run_script --allow-absent main v0.61.0-rc.1
+        expect_failure "could not look up Deployment Engine tag v0.61.0-rc.1" \
+            "a failed tag lookup (${error}) must not plan the tag" || return
+        if [[ -s "${TEST_ROOT}/outputs" || "${OUTPUT}" == *"will create it"* ]]; then
+            fail_test "a failed tag lookup (${error}) planned the tag"
+            return
+        fi
+    done
+    ((++PASS))
+}
+
+test_unsigned_or_planned_tag_requires_verified_commit() {
+    repository "${LIGHTWEIGHT_REF}"
+    export FAKE_VERIFIED=false
+    run_script v0.61.0-rc.1
+    expect_failure "does not have a GitHub-verified signature" \
+        "an unsigned tag must name a GitHub-verified commit" || return
+
+    repository "" "" ahead "${COMMIT_B}"
+    export FAKE_VERIFIED=false
+    run_script --allow-absent main v0.61.0-rc.1
+    expect_failure "does not have a GitHub-verified signature" \
+        "an absent tag must not be planned at an unverified commit" || return
+    if [[ -s "${TEST_ROOT}/outputs" ]]; then
+        fail_test "an unverified commit was planned"
+        return
+    fi
+    ((++PASS))
+}
+
+test_final_plan_uses_release_candidate_lock() {
+    repository "" "" ahead "${COMMIT_A}"
+    run_script --allow-absent v0.61.0-rc.2 v0.61.0 "${COMMIT_A}"
+    expect_outputs "${COMMIT_A}" absent \
+        "a final must plan the commit its release candidate locked" || return
+    ((++PASS))
+}
+
+test_final_plan_rejects_moved_release_candidate_tag() {
+    repository "" "" ahead "${COMMIT_B}"
+    run_script --allow-absent v0.61.0-rc.2 v0.61.0 "${COMMIT_A}"
+    expect_failure \
+        "v0.61.0-rc.2 resolves to ${COMMIT_B}, not the expected ${COMMIT_A}" \
+        "a release candidate tag moved after its lock must fail" || return
+    if [[ -s "${TEST_ROOT}/outputs" ]]; then
+        fail_test "a moved release candidate tag was planned"
+        return
+    fi
+    ((++PASS))
+}
+
 test_rejects_invalid_base_ref() {
     local base
 
@@ -341,6 +408,10 @@ main() {
     test_absent_tag_plans_base_commit
     test_absent_plan_must_be_on_main
     test_absent_plan_requires_resolvable_base
+    test_only_a_confirmed_missing_tag_is_planned
+    test_unsigned_or_planned_tag_requires_verified_commit
+    test_final_plan_uses_release_candidate_lock
+    test_final_plan_rejects_moved_release_candidate_tag
     test_rejects_invalid_base_ref
     test_existing_tag_is_verified_even_when_absence_is_allowed
     test_unreadable_repository_is_not_reported_as_missing_tag

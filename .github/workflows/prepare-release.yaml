@@ -109,7 +109,6 @@ jobs:
         id: preflight
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
-          DE_TOKEN: ${{ steps.de-token.outputs.token || github.token }}
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
         run: |
@@ -129,18 +128,13 @@ jobs:
           bash ./.github/scripts/verify-release-build-contract.sh \
             "${release_ref}"
 
-          # The controller creates an absent Deployment Engine tag after
-          # approval: at main for an RC or patch, and at the last RC's commit
-          # for a final. Check that plan, or an existing tag, before the PR.
-          de_base=main
+          # A final promotes the channel's last release candidate.
+          release_candidate=""
           if [[ "${RELEASE_TYPE}" == "final" ]]; then
-            de_base="$(CHANNEL="${CHANNEL}" yq -r \
+            release_candidate="$(CHANNEL="${CHANNEL}" yq -r \
               '.supported[] | select(.channel == strenv(CHANNEL)) | .version' \
               versions.yaml)"
           fi
-          GH_TOKEN="${DE_TOKEN}" \
-            bash ./.github/scripts/verify-deployment-engine-tag.sh \
-            --allow-absent "${de_base}" "${version}"
 
           existing="$(
             gh pr list --repo "${GITHUB_REPOSITORY}" --state open \
@@ -182,7 +176,42 @@ jobs:
             echo "existing-head=${existing_head}"
             echo "version=${version}"
             echo "branch=${branch}"
+            echo "release-candidate=${release_candidate}"
           } >> "${GITHUB_OUTPUT}"
+
+      # A final ships the Deployment Engine commit that its last RC locked. The
+      # RC tag in the Deployment Engine repository can move; the GitHub-verified
+      # lock on the RC's Radius tag cannot.
+      - name: Read release candidate Deployment Engine lock
+        if: inputs.release-type == 'final'
+        id: rc-lock
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: release-candidate
+          INPUT_VERSION: ${{ steps.preflight.outputs.version }}
+          INPUT_RELEASE_CANDIDATE: ${{ steps.preflight.outputs.release-candidate }}
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-release-controller-lock.mjs`)
+            await script({context, github, core})
+
+      # The controller creates an absent Deployment Engine tag after approval:
+      # at main for an RC or patch, and for a final at the commit its last RC
+      # locked. Check that plan, or an existing tag, before the pull request.
+      - name: Verify or plan Deployment Engine tag
+        env:
+          GH_TOKEN: ${{ steps.de-token.outputs.token || github.token }}
+          VERSION: ${{ steps.preflight.outputs.version }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          RELEASE_CANDIDATE: ${{ steps.preflight.outputs.release-candidate }}
+          RC_DE_COMMIT: ${{ steps.rc-lock.outputs.de-source-commit }}
+        run: |
+          args=(--allow-absent main "${VERSION}")
+          if [[ "${RELEASE_TYPE}" == "final" ]]; then
+            args=(--allow-absent "${RELEASE_CANDIDATE}" "${VERSION}"
+              "${RC_DE_COMMIT:?the release candidate lock has no commit}")
+          fi
+          bash ./.github/scripts/verify-deployment-engine-tag.sh "${args[@]}"
 
       - name: Read curated notes from existing release pull request
         if: >-

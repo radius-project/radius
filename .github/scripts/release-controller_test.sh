@@ -357,7 +357,7 @@ publish_step_index() {
 }
 
 test_deployment_engine_tag_automation() {
-    local create verify wait inspect
+    local create verify wait inspect workflow
 
     # yq binds "and" more loosely than "|", so each combined condition after a
     # pipe is parenthesized to evaluate against the selected step.
@@ -368,9 +368,39 @@ test_deployment_engine_tag_automation() {
     assert_yq "${CONTROLLER}" \
         ".jobs.validate.steps[] | select(.id == \"de-tag\") |
         ((.run | contains(\"--allow-absent\")) and
-        (.run | contains(\"previousVersion\")) and
-        .env.RELEASE_TYPE == \"\${{ steps.plan.outputs.release-type }}\")" \
-        "validation must plan an absent tag at main or the last validated RC"
+        (.run | contains(\"\${RC_DE_COMMIT:?\")) and
+        .env.RELEASE_TYPE == \"\${{ steps.plan.outputs.release-type }}\" and
+        .env.RELEASE_CANDIDATE ==
+            \"\${{ steps.plan.outputs.previous-version }}\" and
+        .env.RC_DE_COMMIT ==
+            \"\${{ steps.rc-lock.outputs.de-source-commit }}\")" \
+        "validation must plan an absent tag at main or the commit the last RC locked"
+    for workflow in "${CONTROLLER}" "${WORKFLOWS}/prepare-release.yaml"; do
+        assert_yq "${workflow}" \
+            '[.jobs[].steps[] | select(.id == "rc-lock")] |
+            ((length == 1) and (.[0].if | contains("final")) and
+            .[0].env.INPUT_MODE == "release-candidate" and
+            (.[0].with.script |
+                contains("reconcile-release-controller-lock.mjs")))' \
+            "$(basename "${workflow}") must bind a final to its RC's trusted lock"
+        assert_yq "${workflow}" \
+            "[.jobs[].steps[] |
+                select(.with.repositories == \"deployment-engine\") |
+                .with.\"client-id\"] |
+            ((length > 0) and
+            ((map(select(. !=
+                \"\${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}\")) |
+                length) == 0))" \
+            "$(basename "${workflow}") must reach Deployment Engine only as the publisher App"
+    done
+    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
+        ".jobs.prepare.steps[] |
+        select(.name == \"Verify or plan Deployment Engine tag\") |
+        ((.run | contains(\"--allow-absent\")) and
+        (.run | contains(\"\${RC_DE_COMMIT:?\")) and
+        .env.RC_DE_COMMIT ==
+            \"\${{ steps.rc-lock.outputs.de-source-commit }}\")" \
+        "Prepare Release must check the controller's tag plan before the pull request"
     assert_yq "${CONTROLLER}" \
         '[.jobs[].steps[] | select(.with."permission-contents" == "write" and
             .with.repositories == "deployment-engine")] |
@@ -383,8 +413,10 @@ test_deployment_engine_tag_automation() {
         .env.RELEASE_RECONCILE_TAG_ONLY == \"true\" and
         .env.APPROVED_DE_COMMIT ==
             \"\${{ needs.validate.outputs.de-source-commit }}\" and
+        .env.APP_SLUG == \"\${{ steps.de-write-token.outputs.app-slug }}\" and
+        (.run | contains(\"== \\\"radius-publisher\\\"\")) and
         (.run | contains(\"release-create-tag-and-branch.sh\")))" \
-        "the controller must create only the approved Deployment Engine tag"
+        "only the Radius Publisher App may create the approved Deployment Engine tag"
     assert_yq "${CONTROLLER}" \
         '.jobs."publish-deployment-engine".steps[] | select(.id == "de-tag") |
         (.run | contains("--allow-absent") | not)' \
@@ -408,9 +440,6 @@ test_deployment_engine_tag_automation() {
     else
         ((++PASS))
     fi
-    assert_contains "${WORKFLOWS}/prepare-release.yaml" \
-        "--allow-absent \"\${de_base}\"" \
-        "Prepare Release must leave an absent tag for the controller"
 }
 
 test_de_bridge_uses_immutable_destinations() {
