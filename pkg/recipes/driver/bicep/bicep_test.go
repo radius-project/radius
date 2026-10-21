@@ -18,6 +18,7 @@ package bicep
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -46,6 +47,7 @@ import (
 type deploymentClientSpy struct {
 	clients.ResourceDeploymentsClient
 	createOrUpdateCalls int
+	deployment          clients.Deployment
 }
 
 type clusterAccessResolverStub struct {
@@ -65,8 +67,9 @@ func (s *clusterAccessResolverStub) ResolveKubeconfigSource(context.Context, *re
 	return clusteraccess.KubeconfigSource{}, errors.New("unexpected ResolveKubeconfigSource call")
 }
 
-func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, _ clients.Deployment, _, _ string) (clients.Poller[clients.ClientCreateOrUpdateResponse], error) {
+func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, deployment clients.Deployment, _, _ string) (clients.Poller[clients.ClientCreateOrUpdateResponse], error) {
 	s.createOrUpdateCalls++
+	s.deployment = deployment
 	return nil, errors.New("unexpected deployment")
 }
 
@@ -692,6 +695,55 @@ func Test_Bicep_Execute_InvalidOutputMappingDoesNotDeploy(t *testing.T) {
 		DeploymentStatus: recipes_util.RecipeSetupError,
 	}, err)
 	require.Zero(t, deploymentClient.createOrUpdateCalls)
+}
+
+func Test_Bicep_Execute_DirectModuleParameters(t *testing.T) {
+	t.Parallel()
+
+	for _, kind := range []string{"None", "CanNotDelete"} {
+		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
+
+			ts := registrytest.NewFakeRegistryServer(t)
+			t.Cleanup(ts.CloseServer)
+
+			deploymentClient := &deploymentClientSpy{}
+			driverBicep := &bicepDriver{
+				DeploymentClient: deploymentClient,
+				RegistryClient:   ts.TestServer.Client(),
+			}
+
+			_, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+				Recipe: recipes.ResourceMetadata{
+					Name:          "direct-module",
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/direct-module",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+				},
+				Definition: recipes.EnvironmentDefinition{
+					Name:         "direct-module",
+					Driver:       recipes.TemplateKindBicep,
+					TemplatePath: ts.TestImageURL,
+					ResourceType: "Test.Resources/resources",
+					Parameters: map[string]any{
+						"name":  "{{context.resource.name}}",
+						"lock":  map[string]any{"kind": kind},
+						"kinds": []any{"None", "CanNotDelete"},
+					},
+				},
+			})
+
+			// Stop at the deployment boundary and inspect the serialized ARM payload.
+			require.Error(t, err)
+			require.Equal(t, 1, deploymentClient.createOrUpdateCalls)
+			payload, err := json.Marshal(deploymentClient.deployment.Properties.Parameters)
+			require.NoError(t, err)
+			require.JSONEq(t, fmt.Sprintf(`{
+				"name": {"value": "direct-module"},
+				"lock": {"value": {"kind": %q}},
+				"kinds": {"value": ["None", "CanNotDelete"]}
+			}`, kind), string(payload))
+		})
+	}
 }
 
 func Test_ValidateOutputMappings(t *testing.T) {

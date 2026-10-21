@@ -28,6 +28,9 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
           name: '{{context.resource.name}}'
           namespace: '{{context.runtime.kubernetes.namespace}}'
           containerPort: 6379
+          lock: {
+            kind: 'None'
+          }
         }
         outputs: {
           host: 'host'
@@ -66,5 +69,20 @@ resource directmoduleresource 'Test.Resources/userTypeAlpha@2023-10-01-preview' 
   properties: {
     environment: env.id
     application: app.id
+  }
+}
+
+resource lockedResource 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
+  name: 'directmodule-bicep-locked-resource'
+  properties: {
+    environment: env.id
+    application: app.id
+    recipe: {
+      parameters: {
+        lock: {
+          kind: 'CanNotDelete'
+        }
+      }
+    }
   }
 }

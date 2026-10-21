@@ -169,6 +169,7 @@ func Test_DirectModule_Terraform(t *testing.T) {
 //     through the Bicep driver and ARM parameter wrapping
 //   - outputs mapping from module output names to resource property names
 //   - Bicep module download from an OCI registry and deployment via the ARM deployment engine
+//   - Object enum parameters control conditional resources for both None and CanNotDelete
 //
 // Steps:
 //  1. Create the Kubernetes namespace (expected to be created by Ops).
@@ -246,6 +247,11 @@ func Test_DirectModule_Bicep(t *testing.T) {
 						Type: "test.resources/usertypealpha",
 						App:  appName,
 					},
+					{
+						Name: "directmodule-bicep-locked-resource",
+						Type: "test.resources/usertypealpha",
+						App:  appName,
+					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
@@ -265,6 +271,13 @@ func Test_DirectModule_Bicep(t *testing.T) {
 				// Verify the module's plain outputs (host, port) were mapped onto the
 				// resource's properties via the recipe `outputs` field.
 				verifyDirectModuleMappedOutputs(ctx, t, test, "directmodule-bicep-resource")
+				verifyDirectModuleMappedOutputs(ctx, t, test, "directmodule-bicep-locked-resource")
+
+				_, err = test.Options.K8sClient.CoreV1().ConfigMaps(appNamespace).Get(ctx, "directmodule-bicep-resource-lock", metav1.GetOptions{})
+				require.True(t, apierrors.IsNotFound(err), "kind None must skip the conditional resource, got: %v", err)
+				marker, err := test.Options.K8sClient.CoreV1().ConfigMaps(appNamespace).Get(ctx, "directmodule-bicep-locked-resource-lock", metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, "CanNotDelete", marker.Data["kind"])
 			},
 		},
 	})
