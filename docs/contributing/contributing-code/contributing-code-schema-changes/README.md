@@ -95,7 +95,7 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
 
    Once Bicep restores the new extension, your schema changes are available in Bicep templates.
 
-   Generated CLI and Bicep image configs use these public GHCR packages with OCI enabled. Development builds use `edge`; release channels and full version/RC tags keep their existing meaning. Existing user configs are not overwritten by `rad init`; when migrating one manually, retain other settings and preserve any version or digest pin (verify the same digest is available in GHCR). The ACR compatibility mirror remains for released clients and historical release verification.
+   Generated CLI and general Bicep image configs use these public GHCR packages with OCI enabled. Development builds use `edge`; release channels and full version/RC tags keep their existing meaning. Tagged image builds follow their approved release plan instead: `ghcr-v1` selects GHCR full versions with OCI enabled, while legacy plans retain ACR full versions. Existing user configs are not overwritten by `rad init`; when migrating one manually, retain other settings and preserve any version or digest pin (verify the same digest is available in GHCR). The ACR compatibility mirror remains for released clients and historical release verification.
 
    With OCI enabled, Bicep's native publisher uses HTTP for loopback registry names. The secure local CI registry already provides the `radius-registry` TLS name and certificate; use `br:radius-registry:5000/...` for Bicep extension and recipe targets, not `br:localhost:5000/...`. Docker and ORAS capture can keep their existing `localhost` address.
 
