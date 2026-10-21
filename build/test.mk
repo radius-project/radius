@@ -80,6 +80,7 @@ test: test-publish-recipes
 .PHONY: test-purge-old-images
 test-purge-old-images: ## Tests package cleanup retries without GitHub access
 	@bash ./.github/scripts/purge-old-images_test.sh
+	@node --test ./.github/scripts/package-cleanup_test.mjs
 
 .PHONY: test-retry-curl
 test-retry-curl: ## Tests bounded curl downloads without network access

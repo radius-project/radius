@@ -62,6 +62,7 @@ Every contributing doc, grouped by topic. This is the single index that [AGENTS.
 - [Bicep files](./contributing-code/contributing-code-bicep/README.md)
 - [Shell scripts & Makefiles](./contributing-code/contributing-code-shell-and-make/README.md)
 - [Setting up a Radius deploy environment](./contributing-deploy-environments.md)
+- [Release-safe package cleanup](./package-cleanup.md) — plan, approval, publication freeze, and safe resume.
 
 ### Pull requests & code review
 
