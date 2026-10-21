@@ -17,6 +17,7 @@ limitations under the License.
 package processors
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -25,9 +26,102 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_Delete_ARM_LockExistenceDiagnostics(t *testing.T) {
+	tests := []struct {
+		name       string
+		status     int
+		code       string
+		existence  string
+		qualified  bool
+		wantError  bool
+		wantDelete bool
+	}{
+		{name: "present", status: 200, existence: "present", wantDelete: true},
+		{name: "Azure qualified", status: 200, existence: "present", qualified: true, wantDelete: true},
+		{name: "absent", status: 404, code: "ResourceNotFound", existence: "absent"},
+		{name: "parent absent", status: 404, code: "ParentResourceNotFound", existence: "absent"},
+		{name: "resource group absent", status: 404, code: "ResourceGroupNotFound", existence: "absent"},
+		{name: "forbidden does not prove absence", status: 403, code: "AuthorizationFailed", existence: "unknown", wantError: true},
+		{name: "unknown route does not prove absence", status: 404, code: "UnknownRoute", existence: "unknown", wantError: true},
+		{name: "invalid API version", status: 400, code: "InvalidApiVersionParameter", existence: "unknown", wantError: true},
+		{name: "service failure", status: 500, code: "InternalServerError", existence: "unknown", wantError: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var calls []string
+			var mu sync.Mutex
+			mux := http.NewServeMux()
+			mux.HandleFunc(ARMExtensionProviderPath, handleJSONResponse(t, armresources.Provider{
+				ResourceTypes: []*armresources.ProviderResourceType{{
+					ResourceType: new("locks"), APIVersions: []*string{new(ARMAPIVersion)},
+				}},
+			}, http.StatusOK))
+			mux.HandleFunc(ARMExtensionResourceID, func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				defer mu.Unlock()
+				calls = append(calls, r.Method)
+				if r.Method == http.MethodGet {
+					if tt.code != "" {
+						handleJSONResponse(t, map[string]any{
+							"error": map[string]string{"code": tt.code, "message": "sensitive-response-body"},
+						}, tt.status)(w, r)
+					} else {
+						handleJSONResponse(t, map[string]any{
+							"id": ARMExtensionResourceID, "properties": map[string]string{"notes": "sensitive-response-body"},
+						}, tt.status)(w, r)
+					}
+					return
+				}
+				require.Equal(t, http.MethodDelete, r.Method)
+				w.WriteHeader(http.StatusNoContent)
+			})
+			server := httptest.NewServer(mux)
+			defer server.Close()
+			c := NewResourceClient(newArmOptions(server.URL), nil, nil)
+			c.armClientOptions = newClientOptions(server.Client(), server.URL)
+			c.armClientOptions.Retry.MaxRetries = -1
+			var logs []string
+			ctx := logr.NewContext(t.Context(), funcr.NewJSON(func(line string) {
+				logs = append(logs, line)
+			}, funcr.Options{}))
+			id := ARMExtensionResourceID
+			if tt.qualified {
+				id = "/planes/azure/azurecloud" + id
+			}
+
+			err := c.Delete(ctx, id)
+			if tt.wantError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Len(t, logs, 1)
+			require.NotContains(t, logs[0], "sensitive-response-body")
+			var diagnostic map[string]any
+			require.NoError(t, json.Unmarshal([]byte(logs[0]), &diagnostic))
+			require.Equal(t, "Azure lock existence check before deletion", diagnostic["msg"])
+			require.Equal(t, ARMExtensionResourceID, diagnostic["resourceID"])
+			require.Equal(t, ARMAPIVersion, diagnostic["apiVersion"])
+			require.Equal(t, tt.existence, diagnostic["existence"])
+			require.Equal(t, float64(tt.status), diagnostic["statusCode"])
+			require.Equal(t, tt.code, diagnostic["errorCode"])
+			expectedCalls := []string{http.MethodGet}
+			if tt.wantDelete {
+				expectedCalls = append(expectedCalls, http.MethodDelete)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			require.Equal(t, expectedCalls, calls)
+		})
+	}
+}
 
 func Test_lookupARMAPIVersions(t *testing.T) {
 	tests := []struct {
