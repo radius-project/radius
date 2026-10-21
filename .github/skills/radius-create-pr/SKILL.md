@@ -47,7 +47,7 @@ Analyze the changes using `git diff` and `git log` against the default branch.
 
 - Maximum 80 characters
 - Use `<type>[optional scope][!]: <description>` with a lowercase type
-- Read the [PR title guide](../../docs/contributing/contributing-pull-requests/README.md#3-use-a-conventional-commit-pull-request-title) and use its allowed types
+- Read the [PR title guide](../../../docs/contributing/contributing-pull-requests/README.md#3-use-a-conventional-commit-pull-request-title) and use its allowed types
 - Use noun phrases in the description, for example `feat(api): authentication improvements`
 
 **PR Description:**
@@ -67,7 +67,7 @@ Create the PR using the GitHub MCP tool, falling back to `gh pr create` if unava
 
 Display the PR URL:
 
-```
+```text
 ✅ Pull request created successfully!
 🔗 URL: [PR_URL]
 ```

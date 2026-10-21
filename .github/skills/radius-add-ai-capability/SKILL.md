@@ -5,7 +5,7 @@ disable-model-invocation: true
 ---
 # Add an AI capability
 
-Follow [docs/contributing/extending-agent-ex.md](../../docs/contributing/extending-agent-ex.md) end-to-end, using the [radius-add-ai-capability](../agents/radius-add-ai-capability.agent.md) agent's workflow. The conventions, budgets, and templates are in [docs/contributing/contributing-agent-assets.md](../../docs/contributing/contributing-agent-assets.md).
+Follow [docs/contributing/extending-agent-ex.md](../../../docs/contributing/extending-agent-ex.md) end-to-end, using the [radius-add-ai-capability](../../agents/radius-add-ai-capability.agent.md) agent's workflow. The conventions, budgets, and templates are in [docs/contributing/contributing-agent-assets.md](../../../docs/contributing/contributing-agent-assets.md).
 
 AI capability to add: ${input:capability:Describe the new AI capability or workflow}
 
