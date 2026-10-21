@@ -69,8 +69,11 @@ wait_for_terminating_pods() {
   fi
 }
 
+# Assign separately so `set -e` stops on lookup errors. --ignore-not-found
+# already returns empty output when the Deployment is absent.
+existing_deployment=$(kubectl -n "$NAMESPACE" get deployment git-http-backend --ignore-not-found -o name)
 deployment_existed=false
-if [[ -n "$(kubectl -n "$NAMESPACE" get deployment git-http-backend --ignore-not-found -o name)" ]]; then
+if [[ -n "$existing_deployment" ]]; then
   deployment_existed=true
 fi
 
