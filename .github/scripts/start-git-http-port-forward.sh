@@ -52,16 +52,23 @@ log() {
     echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $*"
 }
 
+# Run each child in the background and `wait` for it, so a TERM from the parent
+# runs the trap right away and stops the active child instead of orphaning it.
 forward_forever() {
-    local status
+    local child="" status
+    trap 'if [[ -n "${child}" ]]; then kill "${child}" 2>/dev/null || true; fi; exit 0' TERM
     while true; do
         log "starting port-forward svc/${SERVICE}" \
             "${LOCAL_PORT}:${REMOTE_PORT} in ${NAMESPACE}"
         status=0
         kubectl port-forward -n "${NAMESPACE}" "svc/${SERVICE}" \
-            "${LOCAL_PORT}:${REMOTE_PORT}" || status=$?
+            "${LOCAL_PORT}:${REMOTE_PORT}" &
+        child=$!
+        wait "${child}" || status=$?
         log "port-forward exited with status ${status}, restarting"
-        sleep 1
+        sleep 1 &
+        child=$!
+        wait "${child}" || true
     done
 }
 
@@ -79,5 +86,10 @@ wait_until_ready() {
 
 mkdir -p "$(dirname "${LOG_FILE}")"
 forward_forever </dev/null >>"${LOG_FILE}" 2>&1 &
-wait_until_ready
+forward_pid=$!
+if ! wait_until_ready; then
+    kill "${forward_pid}" 2>/dev/null || true
+    wait "${forward_pid}" || true
+    exit 1
+fi
 echo "Port forwarding established on localhost:${LOCAL_PORT} (log: ${LOG_FILE})"
