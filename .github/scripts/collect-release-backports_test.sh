@@ -65,6 +65,20 @@ if [[ "$1" == api ]]; then
     exit 0
 fi
 
+if [[ "$1 $2" == "pr view" && " $* " == *" --json commits "* ]]; then
+    if [[ -n "${COMMIT_LOOKUPS:-}" ]]; then
+        printf '%s\n' "$3" >> "${COMMIT_LOOKUPS}"
+    fi
+    case "$3" in
+        201) printf '%s\n' '[{"messageBody":"(cherry picked from commit source-101)"}]' ;;
+        202) printf '[]\n' ;;
+        204) printf '%s\n' '[{"messageBody":"conflict handoff only"}]' ;;
+        205) printf '%s\n' '[{"messageBody":"(cherry picked from commit source-105)"}]' ;;
+        *) echo "Unexpected commit lookup: $3" >&2; exit 1 ;;
+    esac
+    exit 0
+fi
+
 if [[ "$1 $2" == "pr view" ]]; then
     case "$3" in
         102)
@@ -92,38 +106,46 @@ if [[ "$1 $2" == "pr view" ]]; then
 fi
 
 base=""
+fields=""
 while [[ $# -gt 0 ]]; do
-    if [[ "$1" == "--base" ]]; then
-        base="$2"
-        break
-    fi
-    shift
+    case "$1" in
+        --base) base="$2"; shift 2 ;;
+        --json) fields="$2"; shift 2 ;;
+        *) shift ;;
+    esac
 done
 
 if [[ "${base}" == "main" ]]; then
+    if [[ "${NO_LABELED:-false}" == true ]]; then
+        printf '[]\n'
+        exit 0
+    fi
     printf '%s\n' '[{"number":101,"title":"fix: labeled",'\
 '"url":"https://example.test/101","mergeCommit":{"oid":"source-101"},'\
 '"mergedAt":"2026-08-19T00:00:00Z","baseRefName":"main"}]'
 else
+    # GitHub rejects commits on a page of pull requests: 100 pull requests x
+    # 100 commits x 100 authors exceeds its GraphQL node limit.
+    if [[ ",${fields}," == *",commits,"* ]]; then
+        echo 'GraphQL: requesting up to 1,000,000 possible nodes which exceeds the maximum limit of 500,000.' >&2
+        exit 1
+    fi
     printf '%s\n' '[{"number":201,"url":"https://example.test/201",'\
 '"body":"<!-- radius-backport-source: #101 -->",'\
 '"state":"MERGED","mergedAt":"2026-08-21T00:00:00Z",'\
-'"mergeCommit":{"oid":"backport-101"},'\
-'"commits":[{"messageBody":"(cherry picked from commit source-101)"}]},'\
+'"mergeCommit":{"oid":"backport-101"}},'\
 '{"number":202,"url":"https://example.test/202",'\
 '"body":"<!-- radius-backport-source: #102 -->",'\
-'"state":"OPEN","mergedAt":null,"mergeCommit":null,"commits":[]},'\
+'"state":"OPEN","mergedAt":null,"mergeCommit":null},'\
 '{"number":204,"url":"https://example.test/204",'\
 '"body":"<!-- radius-backport-source: #104 -->",'\
 '"state":"MERGED","mergedAt":"2026-08-21T00:00:00Z",'\
-'"mergeCommit":{"oid":"placeholder-104"},'\
-'"commits":[{"messageBody":"conflict handoff only"}]},'\
+'"mergeCommit":{"oid":"placeholder-104"}},'\
 '{"number":205,"url":"https://example.test/205",'\
 '"body":"<!-- radius-backport-source: #105 -->\n'\
 '<!-- radius-backport-source: #999 -->",'\
 '"state":"MERGED","mergedAt":"2026-08-21T00:00:00Z",'\
-'"mergeCommit":{"oid":"backport-105"},'\
-'"commits":[{"messageBody":"(cherry picked from commit source-105)"}]}]'
+'"mergeCommit":{"oid":"backport-105"}}]'
 fi
 EOF
     chmod +x "${TEST_ROOT}/gh"
@@ -248,6 +270,35 @@ test_ambiguous_backport_body_is_not_trusted() {
     ((++PASS))
 }
 
+test_reads_commits_only_for_backport_candidates() {
+    local lookups="${TEST_ROOT}/commit-lookups.txt"
+
+    : > "${lookups}"
+    COMMIT_LOOKUPS="${lookups}" GH="${TEST_ROOT}/gh" bash "${SCRIPT}" \
+        --repository radius-project/radius --channel 0.60 \
+        --explicit-prs '102,104,105' --output "${TEST_ROOT}/candidates.json"
+    if [[ "$(sort -n "${lookups}" | paste -sd, -)" != "201,202,204" ]]; then
+        fail_test "commits must be read only for single-source backport candidates"
+        return
+    fi
+    ((++PASS))
+}
+
+test_release_without_selected_fixes_reads_no_commits() {
+    local lookups="${TEST_ROOT}/first-rc-lookups.txt"
+    local output="${TEST_ROOT}/first-rc.json"
+
+    : > "${lookups}"
+    NO_LABELED=true COMMIT_LOOKUPS="${lookups}" GH="${TEST_ROOT}/gh" \
+        bash "${SCRIPT}" --repository radius-project/radius --channel 0.60 \
+        --output "${output}"
+    if [[ -s "${lookups}" ]] || ! jq -e '. == []' "${output}" > /dev/null; then
+        fail_test "a release without selected fixes must not read pull request commits"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/collect-backports-test-XXXXXX")"
     setup_fake_gh
@@ -262,6 +313,8 @@ main() {
     test_ancestry_lookup_failure_stops_collection
     test_rejects_unmerged_explicit_pr
     test_ambiguous_backport_body_is_not_trusted
+    test_reads_commits_only_for_backport_candidates
+    test_release_without_selected_fixes_reads_no_commits
 
     if ((FAIL > 0)); then
         echo "collect release backports tests failed: ${PASS} passed, ${FAIL} failed"
