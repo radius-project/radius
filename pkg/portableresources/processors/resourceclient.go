@@ -206,36 +206,68 @@ func (c *resourceClient) lookupARMAPIVersions(ctx context.Context, id resources.
 		return nil, err
 	}
 
-	// Type includes all child segments and selects the extension type when present.
-	shortType := strings.TrimPrefix(id.Type(), id.ProviderNamespace()+"/")
-	for _, rt := range resp.ResourceTypes {
-		if rt == nil || rt.ResourceType == nil || !strings.EqualFold(shortType, *rt.ResourceType) {
-			continue
-		}
-
-		versions := []string{}
-		for _, version := range rt.APIVersions {
-			if version != nil && strings.TrimSpace(*version) != "" && !slices.Contains(versions, *version) {
-				versions = append(versions, *version)
+	// Provider metadata omits many nested child types, such as
+	// storageAccounts/fileServices/shares. Try the exact type first, then each parent type.
+	for _, shortType := range armTypeCandidates(id) {
+		for _, rt := range resp.ResourceTypes {
+			if rt == nil || rt.ResourceType == nil || !strings.EqualFold(shortType, *rt.ResourceType) {
+				continue
 			}
-		}
 
-		if len(versions) == 0 {
-			return nil, fmt.Errorf("could not find API version for type %q, no supported API versions", id.Type())
-		}
-
-		if rt.DefaultAPIVersion != nil {
-			if index := slices.Index(versions, *rt.DefaultAPIVersion); index > 0 {
-				version := versions[index]
-				copy(versions[1:index+1], versions[:index])
-				versions[0] = version
+			versions, err := orderedAPIVersions(rt)
+			if err != nil {
+				return nil, fmt.Errorf("could not find API version for type %q, %w", id.Type(), err)
 			}
-		}
 
-		return versions, nil
+			return versions, nil
+		}
 	}
 
 	return nil, fmt.Errorf("could not find API version for type %q, type was not found", id.Type())
+}
+
+// armTypeCandidates returns provider-relative type paths for id, from the exact type to the
+// top-level parent type. It uses the extension segments when the ID has them.
+func armTypeCandidates(id resources.ID) []string {
+	segments := id.TypeSegments()
+	if len(id.ExtensionSegments()) > 0 {
+		segments = id.ExtensionSegments()
+	}
+	if len(segments) == 0 {
+		return nil
+	}
+
+	types := []string{strings.TrimPrefix(segments[0].Type, id.ProviderNamespace()+"/")}
+	for _, segment := range segments[1:] {
+		types = append(types, types[len(types)-1]+"/"+segment.Type)
+	}
+	slices.Reverse(types)
+	return types
+}
+
+// orderedAPIVersions returns the unique, non-empty API versions of rt. A supported default
+// version is first.
+func orderedAPIVersions(rt *armresources.ProviderResourceType) ([]string, error) {
+	versions := []string{}
+	for _, version := range rt.APIVersions {
+		if version != nil && strings.TrimSpace(*version) != "" && !slices.Contains(versions, *version) {
+			versions = append(versions, *version)
+		}
+	}
+
+	if len(versions) == 0 {
+		return nil, errors.New("no supported API versions")
+	}
+
+	if rt.DefaultAPIVersion != nil {
+		if index := slices.Index(versions, *rt.DefaultAPIVersion); index > 0 {
+			version := versions[index]
+			copy(versions[1:index+1], versions[:index])
+			versions[0] = version
+		}
+	}
+
+	return versions, nil
 }
 
 func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID) error {
