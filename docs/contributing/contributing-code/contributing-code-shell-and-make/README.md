@@ -48,7 +48,7 @@ make install-shellcheck
 make lint-shell
 ```
 
-`make lint-shell` applies the shared configuration in [`.shellcheckrc`](../../../../.github/linters/.shellcheckrc) and skips the third-party Spec Kit tooling under `.specify/`. The version and per-platform checksums that `make install-shellcheck` pins live in [`build/tools.yaml`](../../../../build/tools.yaml) (`SHELLCHECK_VERSION`).
+`make lint-shell` applies the shared configuration in [`.shellcheckrc`](../../../../.github/linters/.shellcheckrc) to all tracked shell scripts. The version and per-platform checksums that `make install-shellcheck` pins live in [`build/tools.yaml`](../../../../build/tools.yaml) (`SHELLCHECK_VERSION`).
 
 The easy path is the [dev container](../../../../.devcontainer/), which installs the ShellCheck CLI on the `PATH` and the ShellCheck VS Code extension for you, so you can run `make lint-shell` (and see findings inline as you edit) without installing anything.
 

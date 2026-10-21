@@ -18,15 +18,9 @@ The [radius-project/design-notes](https://github.com/radius-project/design-notes
 
 See the [design-notes README](https://github.com/radius-project/design-notes#readme) for the full review process and instructions for creating design documents.
 
-## Spec Kit for Spec-Driven Development
-
-The Radius team optionally uses [Spec Kit](https://github.com/github/spec-kit) to help manage and organize specifications. Spec Kit is an open-source toolkit from GitHub that enables structured, AI-assisted specification development.
-
-For full details on what Spec Kit is and how to use it, see the [Spec Kit documentation](https://github.com/github/spec-kit).
-
 ## Multi-Repo Workspace Setup
 
-Spec Kit is designed to work within a single repository. Since Radius is a multi-repo project where specifications are kept in the design-notes repository while implementation code lives across multiple repositories, we use a VS Code workspace configuration to bridge this gap.
+Since Radius is a multi-repo project where specifications are kept in the design-notes repository while implementation code lives across multiple repositories, we use a VS Code workspace configuration to bridge this gap.
 
 ### Setting Up the Workspace
 
@@ -51,11 +45,10 @@ The multi-repo workspace enables two key workflows:
 
 - **Authoring specifications**: Open the workspace to author specifications in context with the rest of the Radius repositories, providing visibility into related code and documentation across the project.
 
-- **Implementing specifications**: When spec authors are ready to implement code, they can run Spec Kit's implementation prompts from the VS Code workspace. This gives them the entire context of both specifications and code together, making it easier to translate designs into working implementations.
+- **Implementing specifications**: When spec authors are ready to implement code, the VS Code workspace provides the context of both specifications and code together, making it easier to translate designs into working implementations.
 
 ## Related Resources
 
 - [design-notes Repository](https://github.com/radius-project/design-notes)
-- [Spec Kit Documentation](https://github.com/github/spec-kit)
 - [Design Note Template](https://github.com/radius-project/design-notes/blob/main/template/YYYY-MM-design-template.md)
 - [Feature Spec Template](https://github.com/radius-project/design-notes/blob/main/template/YYYY-MM-feature-spec-template.md)
