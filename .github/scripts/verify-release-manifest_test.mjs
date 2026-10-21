@@ -70,9 +70,10 @@ test("tagged Bicep image consumes full-version ACR for both publication contract
   assert.deepEqual(
     JSON.parse(await readFile(path.join(edge, "bicepconfig.json"))),
     {
+      experimentalFeaturesEnabled: { ociEnabled: true },
       extensions: {
-        radius: "br:biceptypes.azurecr.io/radius:latest",
-        aws: "br:biceptypes.azurecr.io/aws:latest"
+        radius: "br:ghcr.io/radius-project/bicep-types-radius:edge",
+        aws: "br:ghcr.io/radius-project/bicep-types-aws:edge"
       }
     }
   );
