@@ -216,8 +216,7 @@ func (m *clientMaterializer) Delete(ctx context.Context, ownerResourceID string)
 			return nil
 		}
 
-		var respErr *azcore.ResponseError
-		if errors.As(err, &respErr) {
+		if respErr, ok := errors.AsType[*azcore.ResponseError](err); ok {
 			if respErr.StatusCode == http.StatusNotFound {
 				return nil
 			}

@@ -298,8 +298,7 @@ func azureBlobReadinessError(err error) azureReadinessClassification {
 		}
 		return azureReadinessClassification{retry: true, credential: true, observation: observation}
 	}
-	var response *azcore.ResponseError
-	if errors.As(err, &response) {
+	if response, ok := errors.AsType[*azcore.ResponseError](err); ok {
 		description := fmt.Sprintf("HTTP %d", response.StatusCode)
 		switch response.StatusCode {
 		case 403:
@@ -310,8 +309,7 @@ func azureBlobReadinessError(err error) azureReadinessClassification {
 			return classify(false, description)
 		}
 	}
-	var dnsError *net.DNSError
-	if errors.As(err, &dnsError) {
+	if dnsError, ok := errors.AsType[*net.DNSError](err); ok {
 		return classify(dnsError.IsNotFound || dnsError.IsTimeout || dnsError.IsTemporary, "DNS resolution failed")
 	}
 	var networkError net.Error
@@ -459,8 +457,7 @@ var azureCredentialUnavailableType = reflect.TypeOf(azidentity.NewCredentialUnav
 // Entra status code when the message carries one. The code is empty when it does not.
 func azureCredentialFailure(err error) (string, bool) {
 	credential := false
-	var authenticationFailed *azidentity.AuthenticationFailedError
-	if errors.As(err, &authenticationFailed) {
+	if _, ok := errors.AsType[*azidentity.AuthenticationFailedError](err); ok {
 		credential = true
 	}
 	for unwrapped := err; unwrapped != nil && !credential; unwrapped = errors.Unwrap(unwrapped) {

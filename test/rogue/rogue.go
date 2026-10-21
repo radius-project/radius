@@ -250,11 +250,9 @@ func newPod(options Options) *corev1.Pod {
 	}
 
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: podNamePrefix,
-			Namespace:    options.Namespace,
-			Labels:       map[string]string{labelKey: labelValue},
-		},
+		GenerateName: podNamePrefix,
+		Namespace:    options.Namespace,
+		Labels:       map[string]string{labelKey: labelValue},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
 			AutomountServiceAccountToken:  to.Ptr(false),
@@ -264,10 +262,8 @@ func newPod(options Options) *corev1.Pod {
 
 	if options.TLSSecretName != "" {
 		pod.Spec.Volumes = []corev1.Volume{{
-			Name: tlsVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: options.TLSSecretName},
-			},
+			Name:   tlsVolumeName,
+			Secret: &corev1.SecretVolumeSource{SecretName: options.TLSSecretName},
 		}}
 		container.VolumeMounts = []corev1.VolumeMount{{Name: tlsVolumeName, MountPath: TLSMountPath, ReadOnly: true}}
 	}

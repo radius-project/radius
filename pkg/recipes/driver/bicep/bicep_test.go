@@ -489,9 +489,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 	}
 
 	err := driverBicep.Delete(ctx, driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: configuration,
-		},
+		Configuration:   configuration,
 		OutputResources: outputResources,
 	})
 	require.NoError(t, err)
