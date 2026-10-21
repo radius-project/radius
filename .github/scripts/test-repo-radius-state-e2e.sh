@@ -387,6 +387,7 @@ create_workload_cluster() {
     k3d cluster create "${WORKLOAD_CLUSTER}" \
         --network "${NETWORK_NAME}" \
         --no-lb \
+        --no-rollback \
         --registry-config "${REGISTRY_CONFIG}" \
         --k3s-arg "--disable=traefik@server:*" \
         --wait
@@ -447,6 +448,7 @@ install_control_plane() {
     k3d cluster create "${cluster}" \
         --network "${NETWORK_NAME}" \
         --no-lb \
+        --no-rollback \
         --registry-config "${REGISTRY_CONFIG}" \
         --k3s-arg "--disable=traefik@server:*" \
         --wait
