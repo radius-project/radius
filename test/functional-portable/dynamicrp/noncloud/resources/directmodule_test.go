@@ -238,6 +238,14 @@ func Test_DirectModule_Bicep(t *testing.T) {
 						Type: "radius.core/environments",
 					},
 					{
+						Name: "directmodule-bicep-locked-recipe-pack",
+						Type: "radius.core/recipepacks",
+					},
+					{
+						Name: "directmodule-bicep-locked-env",
+						Type: "radius.core/environments",
+					},
+					{
 						Name: appName,
 						Type: validation.ApplicationsResource,
 						App:  appName,
