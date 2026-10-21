@@ -635,6 +635,24 @@ test("reusable workflow stays preparatory, separates generation credentials, and
     /secrets:|id-token:|--force|azure\/login|ACR|create-github-app-token/
   );
   assert.doesNotMatch(bundle, /packages:\s*write|secrets\.|environment:/);
+  assert.match(
+    bundle,
+    /name: Download Go modules for generation\s+if: steps.select.outputs.reuse == 'false'\s+uses: \.\/\.github\/actions\/go-mod-download/
+  );
+  assert.ok(
+    bundle.indexOf("Download Go modules") > bundle.indexOf("Setup Go") &&
+      bundle.indexOf("Download Go modules") <
+        bundle.indexOf("Generate types once")
+  );
+  const mainPublisher = await readFile(
+    new URL("../workflows/__publish-bicep-types.yaml", import.meta.url),
+    "utf8"
+  );
+  for (const action of ["setup-node", "upload-artifact", "download-artifact"]) {
+    const pattern = new RegExp(`uses: actions/${action}@[a-f0-9]{40}`, "g");
+    const current = mainPublisher.match(pattern)[0];
+    assert.ok(yaml.match(pattern).every((pin) => pin === current));
+  }
   assert.match(publisher, /packages:\s*write/);
   assert.match(
     publisher,
