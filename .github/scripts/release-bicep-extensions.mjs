@@ -82,6 +82,41 @@ export function plannedBicepExtensions(plan, sourceSha) {
   }));
 }
 
+export function releaseBicepConfig(plan, sourceSha, version) {
+  assert.equal(plan.schemaVersion, 2, "Unsupported release plan schema");
+  assert.match(sourceSha, commitPattern, "Invalid Radius release source");
+  assert.equal(
+    plan.version,
+    `v${version}`,
+    "Bicep image tag differs from approved plan"
+  );
+  assert.match(plan.version, versionPattern);
+  assert.equal(plan.expectedOutputs.repository, "radius-project/radius");
+  assert.ok(["rc", "final", "patch"].includes(plan.releaseType));
+  assert.equal(plan.releaseType === "rc", version.includes("-rc."));
+  if (!usesGhcrBicepExtensions(plan.expectedOutputs)) {
+    assert.deepEqual(
+      plan.expectedOutputs.ociArtifacts,
+      bicepExtensionTargets.map((target) => ({
+        ...target,
+        repository: `biceptypes.azurecr.io/${target.name === "aws-bicep-types" ? "aws" : "radius"}`
+      })),
+      "Invalid legacy Bicep target pair"
+    );
+    return {
+      extensions: {
+        radius: `br:biceptypes.azurecr.io/radius:${version}`,
+        aws: `br:biceptypes.azurecr.io/aws:${version}`
+      }
+    };
+  }
+  const [aws, radius] = plannedBicepExtensions(plan, sourceSha);
+  return {
+    experimentalFeaturesEnabled: { ociEnabled: true },
+    extensions: { radius: `br:${radius.reference}`, aws: `br:${aws.reference}` }
+  };
+}
+
 export function validateBicepExtensionLock(plan, sourceSha, lock) {
   const expected = plannedBicepExtensions(plan, sourceSha);
   assert.equal(
@@ -192,17 +227,25 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  const [mode, planFile, sourceSha, lockFile, observedFile] =
+  const [mode, planFile, sourceSha, lockOrVersion, observedFile] =
     process.argv.slice(2);
   const load = async (file) => JSON.parse(await readFile(file, "utf8"));
   const plan = await load(planFile);
   if (mode === "targets") {
     console.log(JSON.stringify(plannedBicepExtensions(plan, sourceSha)));
+  } else if (mode === "config") {
+    console.log(
+      JSON.stringify(
+        releaseBicepConfig(plan, sourceSha, lockOrVersion),
+        null,
+        2
+      )
+    );
   } else if (mode === "verify") {
     verifyBicepExtensionOutputs(
       plan,
       sourceSha,
-      await load(lockFile),
+      await load(lockOrVersion),
       await load(observedFile)
     );
   } else {
