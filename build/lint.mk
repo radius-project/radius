@@ -19,11 +19,6 @@
 # explicitly with --rcfile.
 SHELLCHECK_RCFILE := ./.github/linters/.shellcheckrc
 
-# Paths excluded from shell linting, as an extended-regex matched against the
-# repo-relative script path. .specify/ holds third-party Spec Kit tooling that is
-# generated and not maintained in this repository.
-SHELLCHECK_EXCLUDE_RE := ^\.specify/
-
 .PHONY: lint
 lint: lint-go lint-shell spellcheck format-check ## Runs all linters (Go, shell, spelling, and formatting).
 
@@ -46,7 +41,7 @@ lint-shell: ## Runs shellcheck static analysis on all tracked shell scripts.
 		exit 1; \
 	}
 	@echo "$(ARROW) Running shellcheck..."
-	@files=$$(git ls-files '*.sh' | grep -vE '$(SHELLCHECK_EXCLUDE_RE)'); \
+	@files=$$(git ls-files '*.sh'); \
 	if [ -z "$$files" ]; then \
 		echo "No shell scripts to lint."; \
 	else \
