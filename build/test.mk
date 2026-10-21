@@ -216,6 +216,16 @@ test-workflow-changes: ## Tests reusable workflow change detection
 
 test: test-workflow-changes
 
+.PHONY: test-workflow-functional-matrix
+test-workflow-functional-matrix: ## Tests functional test selection without infrastructure
+	@node --test ./.github/scripts/functional-test-matrix_test.mjs
+
+test: test-workflow-functional-matrix
+
+.PHONY: test-dapr-helpers
+test-dapr-helpers: ## Runs Dapr test helper unit tests without a cluster
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/daprrp/noncloud/resources -run '^TestWaitForRedis' -timeout ${TEST_TIMEOUT} $(GOTEST_OPTS)
+
 .PHONY: test-docker-push
 test-docker-push: ## Tests image push recovery without Docker or a registry
 	@bash ./build/scripts/docker-push_test.sh

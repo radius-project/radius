@@ -26,6 +26,11 @@ on:
         description: Branch to run the workflow on
         required: true
         default: main
+      test-profile:
+        description: Full coverage or the reduced PR matrix
+        type: choice
+        options: [full, pr]
+        default: full
   schedule:
     # Run three times a day at 6 AM PDT (1 PM UTC), 12 PM PDT (7 PM UTC), and 6 PM PDT (1 AM UTC next day)
     - cron: 0 1,13,19 * * *
@@ -114,6 +119,7 @@ jobs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
+      TEST_MATRIX: ${{ steps.select-tests.outputs.matrix }}
     steps:
       - name: Set DE image and tag (repository_dispatch from deployment-engine.run-functional-tests)
         if: github.event_name == 'repository_dispatch'
@@ -176,6 +182,20 @@ jobs:
         with:
           node-version-file: .node-version
 
+      - name: Select functional test matrix
+        id: select-tests
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { selectNonCloudTests } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/functional-test-matrix.mjs`);
+            const { profile, matrix } = selectNonCloudTests(context);
+            core.setOutput('matrix', matrix);
+            core.info(`Functional test profile: ${profile} (${matrix.include.length} jobs)`);
+            await core.summary
+              .addHeading('Non-cloud functional test selection')
+              .addRaw(`Profile: **${profile}** (${matrix.include.length} jobs)\n`)
+              .write();
+
       - name: Install yq
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.
         run: make install-yq
@@ -233,33 +253,7 @@ jobs:
       # cancelled siblings can stay stale on the PR and the checks never fully
       # update to green even after a successful re-run.
       fail-fast: false
-      matrix:
-        os: [ubuntu-24.04]
-        # Legs with authzDryRun: true are extra runs of existing legs with the authorization dry
-        # run enabled, followed by a check that no component logged a would-deny line.
-        authzDryRun: [false]
-        name:
-          [
-            cli-noncloud,
-            corerp-noncloud,
-            daprrp-noncloud,
-            database-noncloud,
-            kubernetes-noncloud,
-            msgrp-noncloud,
-            multicluster-noncloud,
-            statestore-noncloud,
-            samples-noncloud,
-            ucp-noncloud,
-            authz-noncloud,
-            datastoresrp-noncloud,
-            dynamicrp-noncloud,
-            upgrade-noncloud
-          ]
-        include:
-          - { os: ubuntu-24.04, name: corerp-noncloud, authzDryRun: true }
-          - { os: ubuntu-24.04, name: dynamicrp-noncloud, authzDryRun: true }
-          - { os: ubuntu-24.04, name: kubernetes-noncloud, authzDryRun: true }
-          - { os: ubuntu-24.04, name: ucp-noncloud, authzDryRun: true }
+      matrix: ${{ fromJSON(needs.build.outputs.TEST_MATRIX) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     env:
