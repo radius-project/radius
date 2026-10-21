@@ -279,6 +279,109 @@ func Test_Delete_ARM(t *testing.T) {
 	})
 }
 
+func Test_Delete_ARM_NestedChildTypeFallback(t *testing.T) {
+	const (
+		shareID          = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/account/fileServices/default/shares/share"
+		storagePath      = "/subscriptions/0000/providers/Microsoft.Storage"
+		mongoID          = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/account/mongodbDatabases/db"
+		documentDBPath   = "/subscriptions/0000/providers/Microsoft.DocumentDB"
+		extensionChildID = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/account/providers/Microsoft.Test/parents/parent/children/child"
+		testProviderPath = "/subscriptions/0000/providers/Microsoft.Test"
+	)
+
+	resourceType := func(name string, version string) *armresources.ProviderResourceType {
+		return &armresources.ProviderResourceType{ResourceType: new(name), APIVersions: []*string{new(version)}}
+	}
+
+	tests := []struct {
+		name         string
+		id           string
+		providerPath string
+		types        []*armresources.ProviderResourceType
+		wantVersion  string
+		wantErr      string
+	}{
+		{
+			name:         "nested child absent from metadata uses top-level type",
+			id:           shareID,
+			providerPath: storagePath,
+			types:        []*armresources.ProviderResourceType{resourceType("storageAccounts", "top-level")},
+			wantVersion:  "top-level",
+		},
+		{
+			name:         "nearest listed parent is preferred",
+			id:           shareID,
+			providerPath: storagePath,
+			types: []*armresources.ProviderResourceType{
+				resourceType("storageAccounts", "top-level"),
+				resourceType("storageAccounts/fileServices", "parent"),
+			},
+			wantVersion: "parent",
+		},
+		{
+			name:         "exact child type is preferred",
+			id:           shareID,
+			providerPath: storagePath,
+			types: []*armresources.ProviderResourceType{
+				resourceType("storageAccounts", "top-level"),
+				resourceType("storageAccounts/fileServices/shares", "exact"),
+			},
+			wantVersion: "exact",
+		},
+		{
+			name:         "single-level child absent from metadata uses parent type",
+			id:           mongoID,
+			providerPath: documentDBPath,
+			types:        []*armresources.ProviderResourceType{resourceType("databaseAccounts", "top-level")},
+			wantVersion:  "top-level",
+		},
+		{
+			name:         "extension child absent from metadata uses extension parent type",
+			id:           extensionChildID,
+			providerPath: testProviderPath,
+			types:        []*armresources.ProviderResourceType{resourceType("parents", "extension-parent")},
+			wantVersion:  "extension-parent",
+		},
+		{
+			name:         "no listed type or parent",
+			id:           shareID,
+			providerPath: storagePath,
+			types:        []*armresources.ProviderResourceType{resourceType("blobServices", "unrelated")},
+			wantErr:      `could not find API version for type "Microsoft.Storage/storageAccounts/fileServices/shares", type was not found`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var versions []string
+			mux := http.NewServeMux()
+			mux.HandleFunc(tt.providerPath, handleJSONResponse(t, armresources.Provider{ResourceTypes: tt.types}, http.StatusOK))
+			mux.HandleFunc(tt.id, func(w http.ResponseWriter, r *http.Request) {
+				versions = append(versions, r.Method+" "+r.URL.Query().Get("api-version"))
+				handleDeleteSuccess()(w, r)
+			})
+
+			server := httptest.NewServer(mux)
+			defer server.Close()
+
+			c := NewResourceClient(newArmOptions(server.URL), nil, nil)
+			c.armClientOptions = newClientOptions(server.Client(), server.URL)
+
+			err := c.Delete(t.Context(), tt.id)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Empty(t, versions)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, []string{"GET " + tt.wantVersion, "DELETE " + tt.wantVersion}, versions)
+		})
+	}
+}
+
 func Test_Delete_Kubernetes(t *testing.T) {
 	// Note: unfortunately there isn't a great way to test a deletion failure with the runtime client.
 
