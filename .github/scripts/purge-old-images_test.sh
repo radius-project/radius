@@ -281,15 +281,46 @@ fi
 grep -q 'Deleted 3, already deleted 0 package versions' \
     "${TEST_DIR}/output" || fail_test "protected version counted as deleted"
 
+readonly last_tagged_message="You cannot delete the last tagged version of a \
+package. You must delete the package instead."
+cleanup
+: > "${TEST_DIR}/gets"
+: > "${TEST_DIR}/deletes"
+DELETE_MESSAGE="${last_tagged_message}"
+main > "${TEST_DIR}/output" 2>&1 ||
+    fail_test "last tagged version failed cleanup"
+[[ "$(wc -l < "${TEST_DIR}/deletes")" -eq 4 ]] ||
+    fail_test "cleanup did not continue after the last tagged version"
+grep -Fq "::warning::dev/example version 101 is protected from deletion; \
+skipping: ${last_tagged_message}" "${TEST_DIR}/output" ||
+    fail_test "last tagged version warning missing"
+for deleted_version in \
+    "dev/example version 104" "dev/next version 101" "dev/next version 104"; do
+    grep -q "Deleted ${deleted_version}" "${TEST_DIR}/output" ||
+        fail_test "later deletion missing: ${deleted_version}"
+done
+if grep -q 'Deleted dev/example version 101' "${TEST_DIR}/output"; then
+    fail_test "last tagged version was reported as deleted"
+fi
+grep -q 'Deleted 3, already deleted 0 package versions' \
+    "${TEST_DIR}/output" || fail_test "last tagged version counted as deleted"
+
 for delete_code in 400 401 403 409 422; do
     for rejected_message in \
         "${protected_message}" \
         "${protected_message} Extra details." \
         "${protected_message%.}" \
         "${protected_message}"$'\n' \
-        "Publicly visible package versions cannot be deleted."; do
+        "Publicly visible package versions cannot be deleted." \
+        "${last_tagged_message}" \
+        "${last_tagged_message} Extra details." \
+        "${last_tagged_message%.}" \
+        "${last_tagged_message}"$'\n' \
+        "You cannot delete the last tagged version of a package."; do
         [[ "${delete_code}" != 400 ||
-            "${rejected_message}" != "${protected_message}" ]] || continue
+            ( "${rejected_message}" != "${protected_message}" &&
+                "${rejected_message}" != "${last_tagged_message}" ) ]] ||
+            continue
         cleanup
         : > "${TEST_DIR}/gets"
         : > "${TEST_DIR}/deletes"
@@ -316,7 +347,16 @@ for rejected_body in \
     "$(jq -n --arg message "${protected_message}" '{message: [$message]}')" \
     "$(jq -n --arg message "${protected_message}" '{message: $message}'){" \
     "$(jq -n --arg message "${protected_message}" \
-        '{message: $message}, {message: $message}')"; do
+        '{message: $message}, {message: $message}')" \
+    "${last_tagged_message}" \
+    "$(jq -n --arg message "${last_tagged_message}" '{message: [$message]}')" \
+    "$(jq -n --arg message "${last_tagged_message}" '[{message: $message}]')" \
+    "$(jq -n --arg message "${last_tagged_message}" '{message: $message}'){" \
+    "$(jq -n --arg message "${last_tagged_message}" \
+        '{message: $message}, {message: $message}')" \
+    "$(jq -n --arg message "${last_tagged_message}" \
+        --arg protected "${protected_message}" \
+        '{message: $message}, {message: $protected}')"; do
     cleanup
     : > "${TEST_DIR}/gets"
     : > "${TEST_DIR}/deletes"
