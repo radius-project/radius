@@ -129,8 +129,18 @@ jobs:
           bash ./.github/scripts/verify-release-build-contract.sh \
             "${release_ref}"
 
+          # The controller creates an absent Deployment Engine tag after
+          # approval: at main for an RC or patch, and at the last RC's commit
+          # for a final. Check that plan, or an existing tag, before the PR.
+          de_base=main
+          if [[ "${RELEASE_TYPE}" == "final" ]]; then
+            de_base="$(CHANNEL="${CHANNEL}" yq -r \
+              '.supported[] | select(.channel == strenv(CHANNEL)) | .version' \
+              versions.yaml)"
+          fi
           GH_TOKEN="${DE_TOKEN}" \
-            bash ./.github/scripts/verify-deployment-engine-tag.sh "${version}"
+            bash ./.github/scripts/verify-deployment-engine-tag.sh \
+            --allow-absent "${de_base}" "${version}"
 
           existing="$(
             gh pr list --repo "${GITHUB_REPOSITORY}" --state open \

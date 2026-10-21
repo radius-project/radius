@@ -21,10 +21,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly SCRIPT="${SCRIPT_DIR}/verify-deployment-engine-tag.sh"
+readonly COMMIT_A="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+readonly COMMIT_B="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+readonly ANNOTATED_REF='{"object":{"type":"tag","sha":"tag-object"}}'
+readonly LIGHTWEIGHT_REF="{\"object\":{\"type\":\"commit\",\"sha\":\"${COMMIT_A}\"}}"
 
 TEST_ROOT=""
 PASS=0
 FAIL=0
+OUTPUT=""
+STATUS=0
 
 cleanup() {
     if [[ -n "${TEST_ROOT}" && -d "${TEST_ROOT}" ]]; then
@@ -38,32 +44,29 @@ fail_test() {
     ((++FAIL))
 }
 
+# Each test describes the repository through FAKE_* variables: the tag ref
+# (empty when absent), the tag object, how a commit compares with main, and
+# the commit an absent tag's base ref resolves to.
 write_fake_gh() {
-    local type="$1"
-    local verified="$2"
-    local target_type="${3:-commit}"
-    local target_sha="${4:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}"
-    local signed_tag="${5:-v0.61.0-rc.1}"
-
-    cat >"${TEST_ROOT}/gh" <<EOF
-#!/bin/bash
-set -euo pipefail
-if [[ "\$*" == *"git/ref/tags/"* ]]; then
-    printf '%s\n' '{"object":{"type":"${type}","sha":"tag-object"}}'
-else
-    printf '%s\n' '{"tag":"${signed_tag}","verification":{"verified":${verified}},"object":{"type":"${target_type}","sha":"${target_sha}"}}'
-fi
-EOF
-    chmod +x "${TEST_ROOT}/gh"
-}
-
-write_missing_fake_gh() {
     cat >"${TEST_ROOT}/gh" <<'EOF'
 #!/bin/bash
-if [[ "$*" == *"git/ref/tags/"* ]]; then
-    exit 1
-fi
-printf '%s\n' 'azure-octo/deployment-engine'
+set -euo pipefail
+case "$*" in
+    *"/git/ref/tags/"*)
+        [[ -n "${FAKE_REF:-}" ]] || exit 1
+        printf '%s\n' "${FAKE_REF}"
+        ;;
+    *"/git/tags/"*) printf '%s\n' "${FAKE_TAG_OBJECT}" ;;
+    *"/compare/"*)
+        printf '%s\n' "$2" >>"${FAKE_COMPARISONS}"
+        printf '{"status":"%s"}\n' "${FAKE_COMPARE:-ahead}"
+        ;;
+    *"/commits/"*)
+        [[ -n "${FAKE_BASE_COMMIT:-}" ]] || exit 1
+        printf '{"sha":"%s"}\n' "${FAKE_BASE_COMMIT}"
+        ;;
+    *) printf '%s\n' 'azure-octo/deployment-engine' ;;
+esac
 EOF
     chmod +x "${TEST_ROOT}/gh"
 }
@@ -77,140 +80,243 @@ EOF
     chmod +x "${TEST_ROOT}/gh"
 }
 
+tag_object() {
+    local verified="$1"
+    local reason="$2"
+    local name="${3:-v0.61.0-rc.1}"
+    local target_type="${4:-commit}"
+
+    printf '{"tag":"%s","verification":{"verified":%s,"reason":"%s"},"object":{"type":"%s","sha":"%s"}}' \
+        "${name}" "${verified}" "${reason}" "${target_type}" "${COMMIT_A}"
+}
+
+repository() {
+    write_fake_gh
+    export FAKE_REF="$1"
+    export FAKE_TAG_OBJECT="${2:-}"
+    export FAKE_COMPARE="${3:-ahead}"
+    export FAKE_BASE_COMMIT="${4:-}"
+    export FAKE_COMPARISONS="${TEST_ROOT}/comparisons"
+    : >"${FAKE_COMPARISONS}"
+    : >"${TEST_ROOT}/outputs"
+}
+
+run_script() {
+    set +e
+    OUTPUT="$(GITHUB_OUTPUT="${TEST_ROOT}/outputs" GH="${TEST_ROOT}/gh" \
+        bash "${SCRIPT}" "$@" 2>&1)"
+    STATUS=$?
+    set -e
+}
+
+expect_outputs() {
+    local commit="$1"
+    local state="$2"
+    local message="$3"
+
+    if ((STATUS != 0)); then
+        fail_test "${message}: ${OUTPUT}"
+        return 1
+    fi
+    if [[ "$(<"${TEST_ROOT}/outputs")" != "commit=${commit}"$'\n'"state=${state}" ]]; then
+        fail_test "${message}: unexpected outputs $(<"${TEST_ROOT}/outputs")"
+        return 1
+    fi
+}
+
+expect_failure() {
+    local expected="$1"
+    local message="$2"
+
+    if ((STATUS == 0)); then
+        fail_test "${message}"
+        return 1
+    fi
+    if [[ "${OUTPUT}" != *"${expected}"* ]]; then
+        fail_test "${message}: ${OUTPUT}"
+        return 1
+    fi
+}
+
 test_accepts_verified_annotated_tag() {
-    local outputs="${TEST_ROOT}/outputs"
+    repository "${ANNOTATED_REF}" "$(tag_object true valid)"
+    run_script v0.61.0-rc.1
+    expect_outputs "${COMMIT_A}" signed "verified annotated tag" || return
+    ((++PASS))
+}
 
-    write_fake_gh tag true
-    if ! GITHUB_OUTPUT="${outputs}" GH="${TEST_ROOT}/gh" \
-        bash "${SCRIPT}" v0.61.0-rc.1 \
-        >/dev/null; then
-        fail_test "expected a verified annotated tag to pass"
-        return
-    fi
-    if [[ "$(<"${outputs}")" != "commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ]]; then
-        fail_test "verified tag target commit was not emitted"
+test_signed_tag_may_name_a_commit_off_main() {
+    repository "${ANNOTATED_REF}" "$(tag_object true valid)" diverged
+    run_script v0.61.0-rc.1
+    expect_outputs "${COMMIT_A}" signed \
+        "a maintainer-signed hotfix tag must not require main" || return
+    if [[ -s "${TEST_ROOT}/comparisons" ]]; then
+        fail_test "a signed tag must not be compared with main"
         return
     fi
     ((++PASS))
 }
 
-test_rejects_lightweight_tag() {
-    write_fake_gh commit true
-    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0 >/dev/null 2>&1; then
-        fail_test "expected a lightweight tag to fail"
+test_accepts_unsigned_annotated_tag_on_main() {
+    local status
+
+    for status in ahead identical; do
+        repository "${ANNOTATED_REF}" "$(tag_object false unsigned)" "${status}"
+        run_script v0.61.0-rc.1
+        expect_outputs "${COMMIT_A}" unsigned \
+            "unsigned annotated tag on main (${status})" || return
+    done
+    ((++PASS))
+}
+
+test_accepts_lightweight_tag_on_main() {
+    repository "${LIGHTWEIGHT_REF}"
+    run_script v0.61.0-rc.1
+    expect_outputs "${COMMIT_A}" unsigned \
+        "controller-created lightweight tag on main" || return
+    if [[ "$(<"${TEST_ROOT}/comparisons")" != *"/compare/${COMMIT_A}...main"* ]]; then
+        fail_test "unsigned tag commit was not compared with main"
         return
     fi
     ((++PASS))
 }
 
-test_rejects_unverified_tag() {
-    write_fake_gh tag false
-    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0 >/dev/null 2>&1; then
-        fail_test "expected an unverified tag to fail"
-        return
-    fi
+test_rejects_unsigned_tag_off_main() {
+    local ref status
+
+    for ref in "${ANNOTATED_REF}" "${LIGHTWEIGHT_REF}"; do
+        for status in behind diverged; do
+            repository "${ref}" "$(tag_object false unsigned)" "${status}"
+            run_script v0.61.0-rc.1
+            expect_failure "is not on main" \
+                "unsigned tag off main (${status}) must fail" || return
+        done
+    done
+    ((++PASS))
+}
+
+test_rejects_unverified_signature() {
+    repository "${ANNOTATED_REF}" "$(tag_object false unknown_key)"
+    run_script v0.61.0-rc.1
+    expect_failure "unverified signature (unknown_key)" \
+        "a signature GitHub cannot verify must fail" || return
     ((++PASS))
 }
 
 test_rejects_non_commit_tag_target() {
-    write_fake_gh tag true tree aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
-        v0.61.0
-    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0 \
-        >/dev/null 2>&1; then
-        fail_test "expected a non-commit tag target to fail"
-        return
-    fi
+    repository "${ANNOTATED_REF}" "$(tag_object true valid v0.61.0 tree)"
+    run_script v0.61.0
+    expect_failure "does not target a commit" \
+        "a non-commit tag target must fail" || return
     ((++PASS))
 }
 
 test_rejects_mismatched_signed_tag_name() {
-    write_fake_gh tag true commit \
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa v0.60.0
-    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 \
-        >/dev/null 2>&1; then
-        fail_test "expected a mismatched signed tag name to fail"
-        return
-    fi
+    repository "${ANNOTATED_REF}" "$(tag_object true valid v0.60.0)"
+    run_script v0.61.0-rc.1
+    expect_failure "names v0.60.0" \
+        "a mismatched tag object name must fail" || return
     ((++PASS))
 }
 
 test_accepts_tag_at_approved_commit() {
-    write_fake_gh tag true
-    if ! GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 \
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >/dev/null; then
-        fail_test "expected a tag at the approved commit to pass"
-        return
-    fi
+    repository "${LIGHTWEIGHT_REF}"
+    run_script v0.61.0-rc.1 "${COMMIT_A}"
+    expect_outputs "${COMMIT_A}" unsigned \
+        "a tag at the approved commit" || return
     ((++PASS))
 }
 
 test_rejects_tag_moved_after_approval() {
-    local output status
-
-    write_fake_gh tag true
-    set +e
-    output="$(GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 \
-        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb 2>&1)"
-    status=$?
-    set -e
-    if ((status == 0)); then
-        fail_test "expected a tag that moved after approval to fail"
-        return
-    fi
-    if [[ "${output}" != *"moved from approved commit"* ]]; then
-        fail_test "moved tag error did not name the approved commit"
-        return
-    fi
+    repository "${ANNOTATED_REF}" "$(tag_object true valid)"
+    run_script v0.61.0-rc.1 "${COMMIT_B}"
+    expect_failure "moved from approved commit" \
+        "a tag that moved after approval must fail" || return
     ((++PASS))
 }
 
 test_rejects_malformed_approved_commit() {
-    write_fake_gh tag true
-    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 aaaa \
-        >/dev/null 2>&1; then
-        fail_test "expected a malformed approved commit to fail"
+    repository "${ANNOTATED_REF}" "$(tag_object true valid)"
+    run_script v0.61.0-rc.1 aaaa
+    expect_failure "full commit SHA" \
+        "a malformed approved commit must fail" || return
+    ((++PASS))
+}
+
+test_missing_tag_without_plan_prints_recovery_command() {
+    repository ""
+    run_script v0.61.0-rc.1
+    expect_failure "git tag -s v0.61.0-rc.1" \
+        "a missing tag without a plan must fail with the signing command" ||
+        return
+    if [[ "${OUTPUT}" != *"git push origin v0.61.0-rc.1"* ||
+        "${OUTPUT}" != *"release controller creates it after approval"* ]]; then
+        fail_test "missing-tag error did not explain both recovery paths"
         return
     fi
     ((++PASS))
 }
 
-test_missing_tag_prints_recovery_command() {
-    local output
+test_absent_tag_plans_base_commit() {
+    local base
 
-    write_missing_fake_gh
-    set +e
-    output="$(GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 2>&1)"
-    local status=$?
-    set -e
-    if ((status == 0)); then
-        fail_test "expected a missing tag to fail"
+    for base in main v0.61.0-rc.2 v0.60.0-rc1; do
+        repository "" "" ahead "${COMMIT_B}"
+        run_script --allow-absent "${base}" v0.61.0
+        expect_outputs "${COMMIT_B}" absent \
+            "absent tag must plan the ${base} commit" || return
+        if [[ "${OUTPUT}" != *"will create it at ${COMMIT_B} (${base})"* ]]; then
+            fail_test "absent plan did not name ${base}: ${OUTPUT}"
+            return
+        fi
+    done
+    ((++PASS))
+}
+
+test_absent_plan_must_be_on_main() {
+    repository "" "" diverged "${COMMIT_B}"
+    run_script --allow-absent v0.61.0-rc.2 v0.61.0
+    expect_failure "is not on main" \
+        "an absent tag must not be planned off main" || return
+    ((++PASS))
+}
+
+test_absent_plan_requires_resolvable_base() {
+    repository ""
+    run_script --allow-absent v0.61.0-rc.2 v0.61.0
+    expect_failure "could not resolve Deployment Engine v0.61.0-rc.2" \
+        "an unresolvable base ref must fail" || return
+    ((++PASS))
+}
+
+test_rejects_invalid_base_ref() {
+    local base
+
+    for base in release/0.61 HEAD "${COMMIT_B}" v0.61; do
+        repository "" "" ahead "${COMMIT_B}"
+        run_script --allow-absent "${base}" v0.61.0
+        expect_failure "base ref must be main or a release tag" \
+            "base ref ${base} must be rejected" || return
+    done
+    ((++PASS))
+}
+
+test_existing_tag_is_verified_even_when_absence_is_allowed() {
+    repository "${ANNOTATED_REF}" "$(tag_object false unsigned)" diverged \
+        "${COMMIT_B}"
+    run_script --allow-absent main v0.61.0-rc.1
+    expect_failure "is not on main" \
+        "an existing tag must be verified instead of replaced by the plan" ||
         return
-    fi
-    if [[ "${output}" != *"git tag -s v0.61.0-rc.1"* ||
-        "${output}" != *"git push origin v0.61.0-rc.1"* ]]; then
-        fail_test "missing-tag error did not include the recovery command"
-        return
-    fi
     ((++PASS))
 }
 
 test_unreadable_repository_is_not_reported_as_missing_tag() {
-    local output
-
     write_unreadable_fake_gh
-    set +e
-    output="$(GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 2>&1)"
-    local status=$?
-    set -e
-    if ((status == 0)); then
-        fail_test "expected an unreadable repository to fail"
-        return
-    fi
-    if [[ "${output}" != *"cannot read azure-octo/deployment-engine"* ]]; then
-        fail_test "unreadable repository was not reported as an access problem"
-        return
-    fi
-    if [[ "${output}" == *"git tag -s"* ]]; then
+    run_script --allow-absent main v0.61.0-rc.1
+    expect_failure "cannot read azure-octo/deployment-engine" \
+        "an unreadable repository must fail as an access problem" || return
+    if [[ "${OUTPUT}" == *"git tag -s"* || "${OUTPUT}" == *"is absent"* ]]; then
         fail_test "unreadable repository was reported as a missing tag"
         return
     fi
@@ -221,14 +327,22 @@ main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/de-tag-test-XXXXXX")"
 
     test_accepts_verified_annotated_tag
-    test_rejects_lightweight_tag
-    test_rejects_unverified_tag
+    test_signed_tag_may_name_a_commit_off_main
+    test_accepts_unsigned_annotated_tag_on_main
+    test_accepts_lightweight_tag_on_main
+    test_rejects_unsigned_tag_off_main
+    test_rejects_unverified_signature
     test_rejects_non_commit_tag_target
     test_rejects_mismatched_signed_tag_name
     test_accepts_tag_at_approved_commit
     test_rejects_tag_moved_after_approval
     test_rejects_malformed_approved_commit
-    test_missing_tag_prints_recovery_command
+    test_missing_tag_without_plan_prints_recovery_command
+    test_absent_tag_plans_base_commit
+    test_absent_plan_must_be_on_main
+    test_absent_plan_requires_resolvable_base
+    test_rejects_invalid_base_ref
+    test_existing_tag_is_verified_even_when_absence_is_allowed
     test_unreadable_repository_is_not_reported_as_missing_tag
 
     if ((FAIL > 0)); then

@@ -81,6 +81,7 @@ jobs:
       de-image-tag: ${{ steps.plan.outputs.de-image-tag }}
       de-source-tag: ${{ steps.plan.outputs.de-source-tag }}
       de-source-commit: ${{ steps.de-tag.outputs.commit }}
+      de-tag-state: ${{ steps.de-tag.outputs.state }}
       plan-artifact-id: ${{ steps.upload-plan.outputs.artifact-id }}
       recipes-commit: ${{ steps.plan.outputs.recipes-commit }}
       dashboard-commit: ${{ steps.plan.outputs.dashboard-commit }}
@@ -237,7 +238,7 @@ jobs:
 
       # The Deployment Engine repository is private and belongs to azure-octo,
       # so neither GITHUB_TOKEN nor the release App can read its tags. The
-      # publisher App installation covers it with Contents read (token policy).
+      # publisher App installation covers it; validation only reads.
       - name: Create Deployment Engine read token
         if: steps.plan.outputs.ready == 'true'
         id: de-read-token
@@ -250,13 +251,25 @@ jobs:
           permission-metadata: read
           permission-contents: read
 
-      - name: Verify signed Deployment Engine tag
+      # An existing tag is verified. An absent tag is planned at main for an
+      # RC or patch, and at the last validated RC's commit for a final, so a
+      # final never ships Deployment Engine changes that no RC tested. The
+      # publication job creates it at this exact commit after approval.
+      - name: Verify or plan Deployment Engine tag
         if: steps.plan.outputs.ready == 'true'
         id: de-tag
         env:
           GH_TOKEN: ${{ steps.de-read-token.outputs.token }}
           VERSION: ${{ steps.plan.outputs.version }}
-        run: bash ./.github/scripts/verify-deployment-engine-tag.sh "${VERSION}"
+          RELEASE_TYPE: ${{ steps.plan.outputs.release-type }}
+        run: |
+          base=main
+          if [[ "${RELEASE_TYPE}" == "final" ]]; then
+            base="$(yq -r '.previousVersion' \
+              "${RUNNER_TEMP}/release-controller/release-plan.yaml")"
+          fi
+          bash ./.github/scripts/verify-deployment-engine-tag.sh \
+            --allow-absent "${base}" "${VERSION}"
 
       # Approvers review these values before the approve job; later stages fail
       # instead of releasing a different source, sibling, or Deployment Engine
@@ -269,6 +282,7 @@ jobs:
           SOURCE_PR: ${{ inputs.source-pr-number }}
           RELEASE_BRANCH: ${{ steps.plan.outputs.release-branch }}
           DE_COMMIT: ${{ steps.de-tag.outputs.commit }}
+          DE_STATE: ${{ steps.de-tag.outputs.state }}
           DE_IMAGE_TAG: ${{ steps.plan.outputs.de-image-tag }}
           RECIPES_COMMIT: ${{ steps.plan.outputs.recipes-commit }}
           DASHBOARD_COMMIT: ${{ steps.plan.outputs.dashboard-commit }}
@@ -284,8 +298,13 @@ jobs:
             if [[ "${READY}" == "true" ]]; then
               echo "- State: validated and ready to reconcile"
               echo "- Release branch: ${RELEASE_BRANCH}"
-              echo "- Deployment Engine: ${VERSION} at ${DE_COMMIT}," \
-                "image tag ${DE_IMAGE_TAG}"
+              if [[ "${DE_STATE}" == "absent" ]]; then
+                echo "- Deployment Engine: create ${VERSION} at ${DE_COMMIT}" \
+                  "after approval, image tag ${DE_IMAGE_TAG}"
+              else
+                echo "- Deployment Engine: ${VERSION} (${DE_STATE} tag) at" \
+                  "${DE_COMMIT}, image tag ${DE_IMAGE_TAG}"
+              fi
               echo "- recipes: ${RECIPES_COMMIT}"
               echo "- dashboard: ${DASHBOARD_COMMIT}"
               echo "- bicep-types-aws: ${BICEP_TYPES_AWS_COMMIT}"
@@ -324,7 +343,7 @@ jobs:
     name: Publish Deployment Engine
     needs: [validate, approve]
     runs-on: ubuntu-24.04
-    timeout-minutes: 18
+    timeout-minutes: 40
     permissions:
       contents: read
     outputs:
@@ -362,7 +381,50 @@ jobs:
           permission-metadata: read
           permission-contents: read
 
-      - name: Reverify signed Deployment Engine tag
+      # Validation planned this commit for an absent tag, and the approval
+      # above covers it. The pushed tag starts the Deployment Engine tag build,
+      # which stages the image that this job adopts and locks.
+      - name: Create Deployment Engine tag token
+        if: needs.validate.outputs.de-tag-state == 'absent'
+        id: de-write-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          owner: azure-octo
+          repositories: deployment-engine
+          permission-metadata: read
+          permission-contents: write
+
+      - name: Checkout approved Deployment Engine commit
+        if: needs.validate.outputs.de-tag-state == 'absent'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: azure-octo/deployment-engine
+          ref: ${{ needs.validate.outputs.de-source-commit }}
+          token: ${{ steps.de-write-token.outputs.token }}
+          path: deployment-engine
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure Deployment Engine git authentication
+        if: needs.validate.outputs.de-tag-state == 'absent'
+        env:
+          GH_TOKEN: ${{ steps.de-write-token.outputs.token }}
+        run: gh auth setup-git
+
+      - name: Create approved Deployment Engine tag
+        if: needs.validate.outputs.de-tag-state == 'absent'
+        env:
+          GH_TOKEN: ${{ steps.de-write-token.outputs.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          APPROVED_DE_COMMIT: ${{ needs.validate.outputs.de-source-commit }}
+          RELEASE_RECONCILE_TAG_ONLY: "true"
+        run: |
+          ./.github/scripts/release-create-tag-and-branch.sh \
+            deployment-engine "${VERSION}" "${APPROVED_DE_COMMIT}"
+
+      - name: Reverify approved Deployment Engine tag
         id: de-tag
         env:
           GH_TOKEN: ${{ steps.de-read-token.outputs.token }}
@@ -390,6 +452,38 @@ jobs:
           script: |
             const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-release-controller-lock.mjs`)
             await script({context, github, core})
+
+      # The tag build stages the full-version image a few minutes after the
+      # tag push. Wait for it rather than copying a source image that may not
+      # exist yet; after the wait, the correlated publisher copies it instead.
+      - name: Wait for the Deployment Engine tag build
+        if: >-
+          needs.validate.outputs.de-tag-state == 'absent' &&
+          steps.de-lock.outputs.exists != 'true'
+        env:
+          GORELEASER_PARITY_TARGETS: ${{ runner.temp }}/release-controller/release-targets.json
+          DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+          DE_SOURCE_COMMIT: ${{ steps.de-tag.outputs.commit }}
+        run: |
+          state_file="${RUNNER_TEMP}/de-image-wait-state.txt"
+          deadline=$((SECONDS + 900))
+          while :; do
+            env -u GITHUB_OUTPUT \
+              bash ./.github/scripts/verify-deployment-engine-image.sh \
+              --tag "${DE_IMAGE_TAG}" \
+              --signed-tag "${RELEASE_VERSION}" \
+              --source-commit "${DE_SOURCE_COMMIT}" \
+              --output "${RUNNER_TEMP}/de-image-wait.json" \
+              --allow-absent \
+              --state-output "${state_file}"
+            [[ "$(<"${state_file}")" == "absent" ]] || break
+            if ((SECONDS >= deadline)); then
+              echo "::notice::The tag build has not staged ${DE_IMAGE_TAG} yet; the publisher copies it from the source registry."
+              break
+            fi
+            sleep 30
+          done
 
       # A full-version tag from another source is a conflict, not permission
       # to dispatch a publisher that could overwrite an immutable artifact.

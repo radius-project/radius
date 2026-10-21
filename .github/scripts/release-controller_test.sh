@@ -187,7 +187,7 @@ test_stage_order() {
         "Radius tag creation must allow five minutes for build discovery"
     assert_contains "${CONTROLLER}" \
         'verify-deployment-engine-tag.sh' \
-        "controller must hard-block on the signed Deployment Engine tag"
+        "controller must verify the Deployment Engine tag"
     assert_contains "${CONTROLLER}" \
         'monitor-remote-workflow.mjs' \
         "controller must use correlated Deployment Engine publication"
@@ -283,7 +283,7 @@ test_frozen_output_contract() {
         [.[].steps[] | select(.run // "" |
         contains("verify-deployment-engine-image.sh")) |
         .env.GORELEASER_PARITY_TARGETS]' \
-        "[\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\"]" \
+        "[\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\"]" \
         "every image verification must use the approved output contract"
     for job in publish-deployment-engine create-radius-tag; do
         assert_json "${CONTROLLER}" \
@@ -351,6 +351,68 @@ test_release_build_contract() {
         "Prepare Release must reject an unmigrated release branch before opening a pull request"
 }
 
+publish_step_index() {
+    NAME="$1" yq -r '.jobs."publish-deployment-engine".steps | to_entries |
+        .[] | select(.value.name == strenv(NAME)) | .key' "${CONTROLLER}"
+}
+
+test_deployment_engine_tag_automation() {
+    local create verify wait inspect
+
+    # yq binds "and" more loosely than "|", so each combined condition after a
+    # pipe is parenthesized to evaluate against the selected step.
+    export ABSENT_IF="needs.validate.outputs.de-tag-state == 'absent'"
+    assert_json "${CONTROLLER}" '.jobs.validate.outputs."de-tag-state"' \
+        "\"\${{ steps.de-tag.outputs.state }}\"" \
+        "validation must expose whether the Deployment Engine tag exists"
+    assert_yq "${CONTROLLER}" \
+        ".jobs.validate.steps[] | select(.id == \"de-tag\") |
+        ((.run | contains(\"--allow-absent\")) and
+        (.run | contains(\"previousVersion\")) and
+        .env.RELEASE_TYPE == \"\${{ steps.plan.outputs.release-type }}\")" \
+        "validation must plan an absent tag at main or the last validated RC"
+    assert_yq "${CONTROLLER}" \
+        '[.jobs[].steps[] | select(.with."permission-contents" == "write" and
+            .with.repositories == "deployment-engine")] |
+        ((length == 1) and .[0].if == strenv(ABSENT_IF))' \
+        "only an approved absent tag may mint a Deployment Engine write token"
+    assert_yq "${CONTROLLER}" \
+        ".jobs.\"publish-deployment-engine\".steps[] |
+        select(.name == \"Create approved Deployment Engine tag\") |
+        (.if == strenv(ABSENT_IF) and
+        .env.RELEASE_RECONCILE_TAG_ONLY == \"true\" and
+        .env.APPROVED_DE_COMMIT ==
+            \"\${{ needs.validate.outputs.de-source-commit }}\" and
+        (.run | contains(\"release-create-tag-and-branch.sh\")))" \
+        "the controller must create only the approved Deployment Engine tag"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."publish-deployment-engine".steps[] | select(.id == "de-tag") |
+        (.run | contains("--allow-absent") | not)' \
+        "the tag must exist at the approved commit before publication"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."publish-deployment-engine".steps[] |
+        select(.name == "Wait for the Deployment Engine tag build") |
+        ((.if | contains(strenv(ABSENT_IF))) and
+        (.if | contains("steps.de-lock.outputs.exists")))' \
+        "only a newly created tag may wait for its build"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."publish-deployment-engine"."timeout-minutes" == 40' \
+        "publication must allow time for the Deployment Engine tag build"
+    create="$(publish_step_index "Create approved Deployment Engine tag")"
+    verify="$(publish_step_index "Reverify approved Deployment Engine tag")"
+    wait="$(publish_step_index "Wait for the Deployment Engine tag build")"
+    inspect="$(publish_step_index "Inspect unlocked Deployment Engine image")"
+    if [[ -z "${create}" || -z "${verify}" || -z "${wait}" || -z "${inspect}" ]] ||
+        ((create >= verify || verify >= wait || wait >= inspect)); then
+        fail_test "tag creation, verification, and build wait must precede image inspection"
+    else
+        ((++PASS))
+    fi
+    assert_contains "${WORKFLOWS}/prepare-release.yaml" \
+        "--allow-absent \"\${de_base}\"" \
+        "Prepare Release must leave an absent tag for the controller"
+}
+
 test_de_bridge_uses_immutable_destinations() {
     if ! (
         directory="$(mktemp -d "${TMPDIR:-/tmp}/de-bridge-test-XXXXXX")"
@@ -395,6 +457,7 @@ main() {
     test_unknown_dispatch_summary
     test_stage_order
     test_release_build_contract
+    test_deployment_engine_tag_automation
     test_de_bridge_uses_immutable_destinations
     test_identity_and_cleanup
 
