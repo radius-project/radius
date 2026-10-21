@@ -13,6 +13,7 @@ import {
 import {
   bicepExtensionTargets,
   plannedBicepExtensions,
+  releaseBicepConfig,
   usesGhcrBicepExtensions
 } from "./release-bicep-extensions.mjs";
 
@@ -31,6 +32,99 @@ targets.ociArtifacts = targets.ociArtifacts.map((entry) => ({
 const sourceSha = "a".repeat(40);
 const parentSha = "b".repeat(40);
 const digest = `sha256:${"c".repeat(64)}`;
+
+test("tagged Bicep image config follows the approved full-version contract", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "release-bicep-config-")
+  );
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const script = fileURLToPath(
+    new URL("../../build/scripts/generate-bicepconfig.sh", import.meta.url)
+  );
+  for (const releaseType of ["rc", "final", "patch"]) {
+    for (const ghcr of [false, true]) {
+      const input = ghcr ? ghcrFixture(releaseType) : fixture(releaseType);
+      const version = input.plan.version.slice(1);
+      const planFile = path.join(directory, "plan.json");
+      await writeFile(planFile, JSON.stringify(input.plan));
+      const output = path.join(directory, `${releaseType}-${ghcr}`);
+      const result = spawnSync("bash", [script, version, output, planFile], {
+        encoding: "utf8"
+      });
+      assert.equal(result.status, 0, result.stderr);
+      const actual = JSON.parse(
+        await readFile(path.join(output, "bicepconfig.json"))
+      );
+      assert.deepEqual(
+        actual,
+        releaseBicepConfig(input.plan, sourceSha, version)
+      );
+      assert.equal(
+        actual.experimentalFeaturesEnabled?.ociEnabled,
+        ghcr ? true : undefined
+      );
+      for (const [name, ref] of Object.entries(actual.extensions)) {
+        assert.equal(
+          ref,
+          ghcr ?
+            `br:ghcr.io/radius-project/bicep-types-${name}:${version}`
+          : `br:biceptypes.azurecr.io/${name}:${version}`
+        );
+      }
+    }
+  }
+  const edge = path.join(directory, "edge");
+  assert.equal(spawnSync("bash", [script, "edge", edge]).status, 0);
+  assert.deepEqual(
+    JSON.parse(await readFile(path.join(edge, "bicepconfig.json"))),
+    {
+      extensions: {
+        radius: "br:biceptypes.azurecr.io/radius:latest",
+        aws: "br:biceptypes.azurecr.io/aws:latest"
+      }
+    }
+  );
+  for (const marker of ["", null, "unknown"]) {
+    const plan = ghcrFixture().plan;
+    plan.expectedOutputs.bicepExtensionsContract = marker;
+    const planFile = path.join(directory, "invalid.json");
+    await writeFile(planFile, JSON.stringify(plan));
+    const output = path.join(directory, `invalid-${marker}`);
+    assert.notEqual(
+      spawnSync("bash", [script, "0.61.0", output, planFile]).status,
+      0
+    );
+    await assert.rejects(
+      readFile(path.join(output, "bicepconfig.json")),
+      /ENOENT/
+    );
+  }
+  assert.throws(
+    () => releaseBicepConfig(ghcrFixture().plan, sourceSha, "0.61"),
+    /differs from approved plan/
+  );
+  assert.throws(
+    () => releaseBicepConfig(ghcrFixture().plan, "0".repeat(40), "0.61.0"),
+    /Invalid Radius release source/
+  );
+  const invalid = ghcrFixture().plan;
+  invalid.siblingRepositories.find(
+    (entry) => entry.name === "bicep-types-aws"
+  ).sourceCommit = "invalid";
+  assert.throws(
+    () => releaseBicepConfig(invalid, sourceSha, "0.61.0"),
+    /Invalid frozen AWS source/
+  );
+  const planFile = path.join(directory, "valid.json");
+  await writeFile(planFile, JSON.stringify(ghcrFixture().plan));
+  const wrongSource = spawnSync(
+    "bash",
+    [script, "0.61.0", path.join(directory, "wrong-source"), planFile],
+    { encoding: "utf8", env: { ...process.env, GITHUB_SHA: "0".repeat(40) } }
+  );
+  assert.notEqual(wrongSource.status, 0);
+  assert.match(wrongSource.stderr, /checkout differs from the release source/);
+});
 const dashboardSha = "d".repeat(40);
 const awsSha = "e".repeat(40);
 const deSha = "f".repeat(40);
@@ -505,6 +599,9 @@ test("GHCR contract rejects incomplete, substituted or unapproved evidence", () 
     },
     "null selector": (input) => {
       input.plan.expectedOutputs.bicepExtensionsContract = null;
+    },
+    "empty selector": (input) => {
+      input.plan.expectedOutputs.bicepExtensionsContract = "";
     },
     "wrong target repository": (input) => {
       input.targets.ociArtifacts[0].repository += "-other";

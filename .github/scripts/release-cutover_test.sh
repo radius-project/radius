@@ -122,6 +122,12 @@ test_publication_gate() {
           index("Recheck outputs after approval") < index("Authenticate tagged finalizer for ACR compatibility") and
           index("Promote and mirror locked Bicep extensions") < index("Publish and verify draft GitHub Release")) and
         ."finalize-release".permissions."id-token" == "write" and
+        (."finalize-release".steps | any(
+          .name == "Authenticate tagged finalizer for ACR compatibility" and
+          .run == "node .github/scripts/azure-oidc-login.mjs" and
+          .env.AZURE_CLIENT_ID == "${{ secrets.BICEPTYPES_CLIENT_ID }}" and
+          .env.AZURE_TENANT_ID == "${{ secrets.BICEPTYPES_TENANT_ID }}" and
+          .env.AZURE_SUBSCRIPTION_ID == "${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}")) and
         ."publish-radius-bicep-extension".uses == "./.github/workflows/__publish-release-bicep.yaml" and
         (."publish-legacy-bicep-types".if | contains("ghcr-bicep == '\''false'\''")) and
         (."publish-radius-bicep-extension".if | contains("ghcr-bicep == '\''true'\''")) and
@@ -483,7 +489,8 @@ test_bicep_image_uses_staged_extension_versions() {
     if ! yq -o=json '.jobs."build-and-push-remaining-images".steps' \
         "${RELEASE_WORKFLOW}" | jq -e '
         any(.[]; .run == "make docker-publish-bicep" and
-            .env.BICEP_EXTENSION_TAG == "${{ env.REL_VERSION }}")
+            .env.BICEP_EXTENSION_TAG == "${{ env.REL_VERSION }}" and
+            .env.BICEP_RELEASE_PLAN == ".github/release-plans/${{ github.ref_name }}.yaml")
     ' >/dev/null; then
         fail_test "release Bicep image still depends on unpublished channel aliases"
         return

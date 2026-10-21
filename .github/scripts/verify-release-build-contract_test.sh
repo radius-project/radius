@@ -41,6 +41,8 @@ write_pipeline() {
     mkdir -p "${WORKFLOWS}"
     cp "${ROOT}/.goreleaser.yaml" "${REPO}/.goreleaser.yaml"
     cp "${ROOT}/.github/workflows/build-release.yaml" "${WORKFLOWS}/build-release.yaml"
+    mkdir -p "${REPO}/.github/release-parity"
+    cp "${ROOT}/.github/release-parity/targets.json" "${REPO}/.github/release-parity/targets.json"
     # Both run on tag pushes without publishing a release.
     printf '%s\n' 'on:' '  push:' '    paths: [setup.yaml]' >"${WORKFLOWS}/setup.yml"
     printf '%s\n' 'on: [push, pull_request]' >"${WORKFLOWS}/lint.yaml"
@@ -81,6 +83,41 @@ main() {
 
     write_pipeline
     expect pass "current release pipeline beside non-publishing push workflows"
+
+    for selector in '""' 'null' '"ghcr-v2"'; do
+        write_pipeline
+        SELECTOR="${selector}" yq -i -o=json \
+            '.bicepExtensionsContract = (strenv(SELECTOR) | from_json)' \
+            "${REPO}/.github/release-parity/targets.json"
+        expect "invalid Bicep release contract" "reject unknown or empty selector ${selector}"
+    done
+
+    write_pipeline
+    yq -i -o=json 'del(.bicepExtensionsContract)' "${REPO}/.github/release-parity/targets.json"
+    expect "invalid Bicep release contract" "GHCR outputs without selector"
+
+    write_pipeline
+    yq -i -o=json '
+        del(.bicepExtensionsContract) |
+        .ociArtifacts[0].repository = "biceptypes.azurecr.io/aws" |
+        .ociArtifacts[1].repository = "biceptypes.azurecr.io/radius"
+    ' "${REPO}/.github/release-parity/targets.json"
+    expect pass "dual pipeline preserves selector-free ACR plans"
+    yq -i '
+        .jobs."build-and-push-bicep-types" = .jobs."publish-legacy-bicep-types" |
+        .jobs."build-and-push-bicep-types".if =
+          "github.repository == '\''radius-project/radius'\'' && startsWith(github.ref, '\''refs/tags/v'\'') && needs.release-preflight.outputs.release-state != '\''published'\''" |
+        del(.jobs."publish-radius-bicep-extension", .jobs."publish-legacy-bicep-types") |
+        .jobs."finalize-release".steps |= map(select(
+          .name != "Authenticate tagged finalizer for ACR compatibility" and
+          .name != "Login to fixed compatibility registry" and
+          .name != "Promote and mirror locked Bicep extensions" and
+          .name != "Retain partial Bicep promotion and mirror receipt")) |
+        (.jobs."finalize-release".steps[] | select(
+          .name == "Promote verified Bicep aliases" or .name == "Get Bicep promotion token")).if =
+          "env.UPDATE_RELEASE == '\''true'\'' && steps.alias-policy.outputs.promote_channel == '\''true'\''"
+    ' "${WORKFLOWS}/build-release.yaml"
+    expect pass "legacy-only pipeline keeps original immutable ACR promotion gate"
 
     for job in verify-release approve-publication coordinate-release; do
         write_pipeline
@@ -125,6 +162,17 @@ main() {
         '.jobs."finalize-release".steps |= map(select(.name != "Promote verified Bicep aliases"))' \
         '(.jobs."finalize-release".steps[] | select(.name == "Promote verified Bicep aliases")).if = "false"' \
         '(.jobs."finalize-release".steps[] | select(.name == "Promote verified Bicep aliases"))."continue-on-error" = true' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Get Bicep promotion token")).if = "true"' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote verified Bicep aliases")).if += " || true"' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote and mirror locked Bicep extensions")).if = "false"' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote and mirror locked Bicep extensions"))."continue-on-error" = true' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Authenticate tagged finalizer for ACR compatibility")).if = "true"' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Login to fixed compatibility registry")).if = "true"' \
+        '.jobs."publish-legacy-bicep-types".if += " || true"' \
+        '.jobs."publish-radius-bicep-extension".if = "true"' \
+        '(.jobs."build-and-push-remaining-images".steps[] | select(.run == "make docker-publish-bicep")).env.BICEP_RELEASE_PLAN = ""' \
+        '(.jobs."build-and-push-remaining-images".steps[] | select(.run == "make docker-publish-bicep")).env.BICEP_EXTENSION_TAG = "latest"' \
+        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Authenticate and retain immutable extension pair")).if = "false"' \
         '(.jobs."finalize-release".steps[] | select(.name == "Recheck RC prerequisites after approval")).if = "false"' \
         '.jobs."coordinate-release".if = "false"'; do
         write_pipeline

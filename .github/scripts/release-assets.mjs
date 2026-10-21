@@ -82,6 +82,13 @@ export async function readBicepExtensionLock(github, tag) {
     await listAssets(github, owner, repo, release.id),
     bicepExtensionLockName
   );
+  if (asset?.state === "starter") {
+    if (!release.draft)
+      throw new Error("Published GHCR release has an incomplete Bicep lock");
+    // No lock bytes were accepted. The authenticated pair upload reconciles
+    // this incomplete asset using the existing starter-asset recovery.
+    return undefined;
+  }
   if (!asset) {
     if (!release.draft)
       throw new Error("Published GHCR release is missing its Bicep lock");
