@@ -27,6 +27,7 @@ readonly -a REQUIRED_JOBS=(
     verify-release approve-publication coordinate-release
 )
 COMMIT=""
+BICEP_DUAL_PIPELINE=false
 
 fail() {
     echo "Error: $*" >&2
@@ -60,12 +61,18 @@ verify_publication_gate() {
         needs.release-preflight.outputs.release-state == 'published')"
     local promotion_condition="env.UPDATE_RELEASE == 'true' &&
         steps.alias-policy.outputs.promote_channel == 'true'"
+    local bicep_promotion_condition="${promotion_condition}"
+    if [[ "${BICEP_DUAL_PIPELINE}" == true ]]; then
+        bicep_promotion_condition="needs.release-preflight.outputs.ghcr-bicep == 'false' &&
+            ${promotion_condition}"
+    fi
 
     git show "${COMMIT}:${BUILD_WORKFLOW}" | yq -o=json '.' |
         jq -e \
             --arg approval "${approval_condition}" \
             --arg finalization "${finalization_condition}" \
             --arg coordination "${coordination_condition}" \
+            --arg bicep_promotion "${bicep_promotion_condition}" \
             --arg promotion "${promotion_condition}" '
         def normalized: gsub("\\s"; "");
         def depends_on($required):
@@ -77,10 +84,10 @@ verify_publication_gate() {
         def required_step($name):
             [.steps[] | select(.name == $name)] as $steps |
             ($steps | length) == 1 and ($steps[0] | mandatory);
-        def promotion_step($name; check):
+        def promotion_step($name; $condition; check):
             [.steps[] | select(.name == $name)] as $steps |
             ($steps | length) == 1 and ($steps[0] |
-                (.if | normalized) == ($promotion | normalized) and
+                (.if | normalized) == ($condition | normalized) and
                 (."continue-on-error" == null or ."continue-on-error" == false) and
                 check);
         .jobs as $jobs |
@@ -129,9 +136,9 @@ verify_publication_gate() {
             ($steps | index("Promote verified Bicep aliases")) and
         ($steps | index("Promote verified Bicep aliases")) <
             ($steps | index("Publish and verify draft GitHub Release")) and
-        ($finalize | promotion_step("Promote stable aliases";
+        ($finalize | promotion_step("Promote stable aliases"; $promotion;
             .run | contains("make promote-release-aliases"))) and
-        ($finalize | promotion_step("Promote verified Bicep aliases";
+        ($finalize | promotion_step("Promote verified Bicep aliases"; $bicep_promotion;
             .env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json" and
             (.with.script | contains("promote-bicep-types.mjs")))) and
         ($finalize.steps | any(
@@ -142,6 +149,100 @@ verify_publication_gate() {
             .env.INPUT_MODE == "check-rc"))
     ' >/dev/null ||
         reject "does not enforce the publication gate in ${BUILD_WORKFLOW}"
+}
+
+verify_bicep_contract() {
+    local targets=".github/release-parity/targets.json"
+    local ghcr=false
+    # Older release pipelines need no GHCR selector, but an explicit selector
+    # must be known and must name the complete canonical target pair.
+    if git cat-file -e "${COMMIT}:${targets}" 2>/dev/null; then
+        git show "${COMMIT}:${targets}" | jq -e '
+            if has("bicepExtensionsContract") then
+                .bicepExtensionsContract == "ghcr-v1" and .ociArtifacts == [
+                    {name:"aws-bicep-types",repository:"ghcr.io/radius-project/bicep-types-aws",
+                     artifactType:"application/vnd.ms.bicep.provider.artifact"},
+                    {name:"radius-bicep-types",repository:"ghcr.io/radius-project/bicep-types-radius",
+                     artifactType:"application/vnd.ms.bicep.provider.artifact"}
+                ]
+            else
+                (.ociArtifacts | length) > 0 and
+                all(.ociArtifacts[]; .repository | startswith("biceptypes.azurecr.io/"))
+            end
+        ' >/dev/null || reject "has an invalid Bicep release contract"
+        ghcr="$(git show "${COMMIT}:${targets}" | jq 'has("bicepExtensionsContract")')"
+    fi
+    if yq_true "${BUILD_WORKFLOW}" '.jobs | has("publish-radius-bicep-extension")'; then
+        BICEP_DUAL_PIPELINE=true
+    elif [[ "${ghcr}" == true ]]; then
+        reject "does not enforce the publication gate for GHCR Bicep outputs"
+    else
+        return 0
+    fi
+    git show "${COMMIT}:${BUILD_WORKFLOW}" | yq -o=json '.' | jq -e '
+        def normalized: gsub("\\s"; "");
+        def exact_if($condition):
+            (.if | normalized) == ($condition | normalized) and
+            (."continue-on-error" == null or ."continue-on-error" == false);
+        def step($name; $condition):
+            [.steps[] | select(.name == $name)] |
+            length == 1 and all(.[]; exact_if($condition));
+        .jobs as $jobs |
+        $jobs."finalize-release" as $finalize |
+        ($finalize.steps | map(.name)) as $steps |
+        "needs.release-preflight.outputs.ghcr-bicep == '\''true'\''" as $ghcr |
+        "needs.release-preflight.outputs.ghcr-bicep == '\''false'\'' &&
+         env.UPDATE_RELEASE == '\''true'\'' &&
+         steps.alias-policy.outputs.promote_channel == '\''true'\''" as $legacy |
+        ($finalize | step("Get Bicep promotion token"; $legacy)) and
+        ($finalize | step("Promote verified Bicep aliases"; $legacy)) and
+        ($finalize | step("Promote and mirror locked Bicep extensions"; $ghcr)) and
+        ([$finalize.steps[] | select(.uses // "" | contains("create-github-app-token"))] |
+            length == 1 and all(.[]; .name == "Get Bicep promotion token" and exact_if($legacy))) and
+        ($finalize | step("Authenticate tagged finalizer for ACR compatibility";
+            $ghcr + " && (contains(github.ref_name, '\''-rc.'\'') ||
+            steps.alias-policy.outputs.promote_channel == '\''true'\'')")) and
+        ($finalize | step("Login to fixed compatibility registry";
+            $ghcr + " && (contains(github.ref_name, '\''-rc.'\'') ||
+            steps.alias-policy.outputs.promote_channel == '\''true'\'')")) and
+        ($steps | index("Persist the verified release manifest")) <
+            ($steps | index("Get Bicep promotion token")) and
+        ($steps | index("Promote stable aliases")) <
+            ($steps | index("Authenticate tagged finalizer for ACR compatibility")) and
+        ($steps | index("Authenticate tagged finalizer for ACR compatibility")) <
+            ($steps | index("Login to fixed compatibility registry")) and
+        ($steps | index("Login to fixed compatibility registry")) <
+            ($steps | index("Promote and mirror locked Bicep extensions")) and
+        ($steps | index("Promote and mirror locked Bicep extensions")) <
+            ($steps | index("Publish and verify draft GitHub Release")) and
+        ($finalize.steps | any(.name == "Promote and mirror locked Bicep extensions" and
+            (.run | contains("release-oci-artifacts.sh finalize-bicep")) and
+            (.run | contains("--bicep-lock dist/verification/assets/bicep-extension-lock.json")) and
+            .env.RELEASE_PROMOTE_CHANNEL == "${{ steps.alias-policy.outputs.promote_channel }}" and
+            .env.RELEASE_PROMOTE_LATEST == "${{ steps.alias-policy.outputs.promote_latest }}")) and
+        ($jobs."publish-legacy-bicep-types" | exact_if(
+            "github.repository == '\''radius-project/radius'\'' &&
+             startsWith(github.ref, '\''refs/tags/v'\'') &&
+             needs.release-preflight.outputs.release-state != '\''published'\'' &&
+             needs.release-preflight.outputs.ghcr-bicep == '\''false'\''")) and
+        $jobs."publish-legacy-bicep-types".uses == "./.github/workflows/__build-bicep-types.yaml" and
+        ($jobs."publish-radius-bicep-extension" | exact_if(
+            "github.repository == '\''radius-project/radius'\'' &&
+             startsWith(github.ref, '\''refs/tags/v'\'') &&
+             needs.release-preflight.outputs.release-state != '\''published'\'' &&
+             needs.release-preflight.outputs.ghcr-bicep == '\''true'\'' &&
+             needs.release-preflight.outputs.bicep-locked != '\''true'\''")) and
+        $jobs."publish-radius-bicep-extension".uses == "./.github/workflows/__publish-release-bicep.yaml" and
+        ($jobs."build-and-push-bicep-types".needs |
+            index("publish-legacy-bicep-types") != null and
+            index("publish-radius-bicep-extension") != null) and
+        ($jobs."build-and-push-remaining-images".steps | map(
+            select(.run == "make docker-publish-bicep")) |
+            length == 1 and all(.[]; .env.BICEP_EXTENSION_TAG == "${{ env.REL_VERSION }}" and
+                .env.BICEP_RELEASE_PLAN == ".github/release-plans/${{ github.ref_name }}.yaml")) and
+        ($jobs."build-and-push-bicep-types" | step(
+            "Authenticate and retain immutable extension pair"; $ghcr))
+    ' >/dev/null || reject "does not enforce the publication gate for both Bicep contracts"
 }
 
 main() {
@@ -167,6 +268,7 @@ main() {
     yq_true ".goreleaser.yaml" \
         '.release.draft == true and .release.make_latest == false' ||
         reject "does not stage a draft GoReleaser release"
+    verify_bicep_contract
     verify_publication_gate
 
     # Path-only push triggers also run for tags; only a tag filter marks a publisher.
