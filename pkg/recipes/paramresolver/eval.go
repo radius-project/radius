@@ -134,9 +134,14 @@ func (r *contextResolver) resolve(path string) (any, error) {
 	return nil, fmt.Errorf("unknown context path %q", path)
 }
 
-// lookupProperty resolves a dotted property key such as "config.tier" by walking nested objects.
-// A missing or null segment resolves to nil; indexing into a value that is not an object is an error.
+// lookupProperty resolves a property key. A top-level property whose name is exactly key (which may
+// itself contain dots, such as "service.name") takes precedence. Otherwise a dotted key such as
+// "config.tier" is resolved by walking nested objects. A missing or null segment resolves to nil;
+// indexing into a value that is not an object is an error.
 func lookupProperty(properties map[string]any, key string, path string) (any, error) {
+	if v, ok := properties[key]; ok {
+		return v, nil
+	}
 	var current any = properties
 	for segment := range strings.SplitSeq(key, ".") {
 		if current == nil {

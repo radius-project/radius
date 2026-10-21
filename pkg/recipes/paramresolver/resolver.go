@@ -34,9 +34,11 @@ const (
 
 // ownedExpressionPattern detects a {{...}} body that references a context path. Only such bodies are
 // evaluated by the resolver; any other {{...}} text (for example a Helm or Go template such as
-// `{{ .Values.name }}`) is passed through unchanged. The path must not be preceded by a "." so that
-// `.Values.context.x` is not mistaken for a context path.
-var ownedExpressionPattern = regexp.MustCompile(`(?:^|[\s(!=&|?:])context\.`)
+// `{{ .Values.name }}`) is passed through unchanged. A reference counts unless it is part of a longer
+// name: it must not be preceded by an identifier character, "." (as in `.Values.context.x`), or "$"
+// (as in the Go template variable `$context.x`). This means malformed expressions such as
+// `{{[context.x]}}` are reported as errors rather than passed through.
+var ownedExpressionPattern = regexp.MustCompile(`(?:^|[^A-Za-z0-9_.$])context\.`)
 
 // ResolutionError reports parameter expressions that could not be resolved.
 type ResolutionError struct {
@@ -277,8 +279,6 @@ func indexCloseOutsideQuotes(s string) int {
 	inQuote := false
 	for i := 0; i < len(s); i++ {
 		switch {
-		case inQuote && s[i] == '\\':
-			i++
 		case s[i] == '"':
 			inQuote = !inQuote
 		case !inQuote && strings.HasPrefix(s[i:], closeDelimiter):
@@ -289,30 +289,31 @@ func indexCloseOutsideQuotes(s string) int {
 }
 
 // ownsExpression reports whether an expression body references a context path outside of a
-// double-quoted string literal, so text such as `{{ printf "context.x" }}` is not claimed.
+// double-quoted or backtick-quoted string, so text such as `{{ printf "context.x" }}` is not claimed.
 func ownsExpression(inner string) bool {
 	return ownedExpressionPattern.MatchString(stripQuoted(inner))
 }
 
-// stripQuoted replaces each double-quoted string literal in s, including an unterminated one, with a
-// single space.
+// stripQuoted replaces each double-quoted or backtick-quoted (Go raw) string in s, including an
+// unterminated one, with a single space.
 func stripQuoted(s string) string {
-	if !strings.Contains(s, `"`) {
+	if !strings.ContainsAny(s, "\"`") {
 		return s
 	}
 	var b strings.Builder
-	inQuote := false
+	var quote byte
 	for i := 0; i < len(s); i++ {
+		c := s[i]
 		switch {
-		case inQuote && s[i] == '\\':
-			i++
-		case s[i] == '"':
-			if !inQuote {
-				b.WriteByte(' ')
+		case quote != 0:
+			if c == quote {
+				quote = 0
 			}
-			inQuote = !inQuote
-		case !inQuote:
-			b.WriteByte(s[i])
+		case c == '"' || c == '`':
+			quote = c
+			b.WriteByte(' ')
+		default:
+			b.WriteByte(c)
 		}
 	}
 	return b.String()

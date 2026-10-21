@@ -25,7 +25,7 @@ var fuzzSeeds = []string{
 	`context.resource.properties.size == "S" ? "a" : context.resource.properties.size == "M" ? "b" : "c"`,
 	`!(context.resource.properties.enabled && context.resource.properties.port != 5432) || null == null`,
 	`context.resource.properties.missing != null ? context.resource.properties.missing : -1.5`,
-	`"esc \" \\ }}" == context.resource.properties.host`,
+	`"C:\data }}" == context.resource.properties.host`,
 	`((((true))))`,
 	`a ? : (`,
 	`context.`,

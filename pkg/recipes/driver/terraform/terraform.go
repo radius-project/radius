@@ -36,7 +36,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
-	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
@@ -124,10 +123,8 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 		if _, ok := errors.AsType[*recipes_util.OutputMappingError](err); ok {
 			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
 		}
-		// Unresolvable parameter expressions are detected before apply and are also setup failures.
-		if _, ok := errors.AsType[*paramresolver.ResolutionError](err); ok {
-			return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
-		}
+		// Unresolvable parameter expressions are reported as execution errors, not setup errors, so a
+		// later delete still cleans up resources from an earlier successful deployment.
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 

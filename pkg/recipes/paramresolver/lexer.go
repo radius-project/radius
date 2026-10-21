@@ -140,32 +140,16 @@ func lexOperator(src string, i int) (token, error) {
 	return token{}, fmt.Errorf("unexpected character %q at position %d", src[i], i)
 }
 
-// lexString reads a double-quoted string literal starting at src[start]. The only supported escape
-// sequences are \" and \\.
+// lexString reads a double-quoted string literal starting at src[start]. The literal is the text up
+// to the next double quote, taken verbatim: there are no escape sequences, so values such as
+// "C:\data" are preserved exactly.
 func lexString(src string, start int) (token, int, error) {
-	var b strings.Builder
-	i := start + 1
-	for i < len(src) {
-		c := src[i]
-		switch c {
-		case '"':
-			return token{kind: tokString, text: src[start : i+1], value: b.String(), pos: start}, i + 1, nil
-		case '\\':
-			if i+1 >= len(src) {
-				return token{}, 0, fmt.Errorf("unterminated string literal at position %d", start)
-			}
-			next := src[i+1]
-			if next != '"' && next != '\\' {
-				return token{}, 0, fmt.Errorf("unsupported escape sequence %q at position %d", src[i:i+2], i)
-			}
-			b.WriteByte(next)
-			i += 2
-		default:
-			b.WriteByte(c)
-			i++
-		}
+	end := strings.IndexByte(src[start+1:], '"')
+	if end < 0 {
+		return token{}, 0, fmt.Errorf("unterminated string literal at position %d", start)
 	}
-	return token{}, 0, fmt.Errorf("unterminated string literal at position %d", start)
+	end += start + 1
+	return token{kind: tokString, text: src[start : end+1], value: src[start+1 : end], pos: start}, end + 1, nil
 }
 
 // lexNumber reads an integer or decimal literal with an optional leading minus sign. Integers are
@@ -212,12 +196,14 @@ func lexNumber(src string, start int) (token, int, error) {
 }
 
 // lexWord reads a keyword (true, false, null) or a dotted context path such as
-// context.resource.properties.size.
+// context.resource.properties.size. Path segments may contain any character except whitespace,
+// double quotes, backticks, brackets, ".", and operator characters, so property keys such as "data/path" can be
+// referenced.
 func lexWord(src string, start int) (token, int, error) {
 	i := start
 	for {
 		segStart := i
-		for i < len(src) && isIdentChar(src[i]) {
+		for i < len(src) && isPathChar(src[i]) {
 			i++
 		}
 		if i == segStart {
@@ -256,3 +242,11 @@ func isLetter(c byte) bool {
 func isIdentChar(c byte) bool {
 	return isLetter(c) || isDigit(c) || c == '-'
 }
+
+// isPathChar reports whether c may appear in a path segment.
+func isPathChar(c byte) bool {
+	return !strings.ContainsRune(pathDelimiters, rune(c))
+}
+
+// pathDelimiters lists the characters that end a path segment.
+const pathDelimiters = " \t\n\r.\"`(){}[]!=&|?:<>+*%,"

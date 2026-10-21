@@ -21,8 +21,11 @@ recipes (Bicep or Terraform modules that do not declare a recipe context paramet
 # Expressions
 
 An expression is the text between "{{" and "}}". Only expressions that reference a context path
-outside a string literal are evaluated; any other {{...}} text, such as a Helm or Go template, is
-passed through unchanged.
+outside a double-quoted or backtick-quoted string are evaluated; any other {{...}} text, such as a
+Helm or Go template, is passed through unchanged. A reference counts unless "context." is part of a
+longer name, that is, preceded by a letter, digit, "_", ".", or "$". So `{{ .Values.context.x }}`
+and `{{ $context.x }}` pass through, while a malformed expression such as `{{[context.x]}}` is an
+error.
 
 The expression language is closed and side-effect free: there are no function calls, arithmetic,
 indexing, or identifiers other than context paths and the keywords below. From lowest to highest
@@ -36,8 +39,10 @@ precedence:
 	unary    := "!" unary | primary
 	primary  := STRING | NUMBER | "true" | "false" | "null" | PATH | "(" expr ")"
 
-	PATH     := "context" ( "." SEGMENT )+             SEGMENT is [A-Za-z0-9_-]+
-	STRING   := double-quoted; the only escapes are \" and \\
+	PATH     := "context" ( "." SEGMENT )+             SEGMENT is one or more characters other
+	                                                    than whitespace, ".", '"', "`", brackets,
+	                                                    and !=&|?:<>+*%,
+	STRING   := text between double quotes, taken verbatim; there are no escape sequences
 	NUMBER   := optional "-", digits, optional "." digits
 	            integers must be between -2^63 and 2^64-1; decimals are 64-bit floats
 
@@ -54,7 +59,8 @@ context.azure.resourceGroup.{name,id}, context.azure.subscription.{subscriptionI
 context.azure.resourceNameHash, context.aws.{region,account},
 context.resource.properties.<path>, and
 context.resource.connections.<name>.{id,name,type,properties.<path>}, where <path> is a property
-name optionally followed by nested object keys, such as properties.config.tier.
+name optionally followed by nested object keys, such as properties.config.tier. A top-level property
+whose name is exactly <path>, such as one named "service.name", takes precedence over nested keys.
 
 Resource and connection properties that are not set, including nested keys under a missing or null
 object, evaluate to null, so optional properties can be tested with "== null", "!= null", or as a

@@ -259,7 +259,7 @@ func Test_Terraform_Execute_UnresolvedParameterExpression(t *testing.T) {
 			Code:    recipes.RecipeDeploymentFailed,
 			Message: "wrapped: " + resolutionErr.Error(),
 		},
-		DeploymentStatus: recipes_util.RecipeSetupError,
+		DeploymentStatus: recipes_util.ExecutionError,
 	}, err)
 	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }

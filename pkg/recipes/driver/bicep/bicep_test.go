@@ -864,7 +864,7 @@ func Test_Bicep_Execute_UnresolvedExpressionDoesNotDeploy(t *testing.T) {
 			Code:    recipes.RecipeDeploymentFailed,
 			Message: `failed to resolve recipe parameter expressions: parameter "documentdbName": unresolved expression {{context.resource.unknown}}: unknown context path "context.resource.unknown"`,
 		},
-		DeploymentStatus: recipes_util.RecipeSetupError,
+		DeploymentStatus: recipes_util.ExecutionError,
 	}, err)
 	require.Zero(t, deploymentClient.createOrUpdateCalls)
 }

@@ -35,7 +35,10 @@ func expressionContext() *recipecontext.Context {
 	ctx.Resource.Properties["disabled"] = false
 	ctx.Resource.Properties["tags"] = map[string]any{"team": "data"}
 	ctx.Resource.Properties["zones"] = []any{"1", "2"}
-	ctx.Resource.Properties["quote"] = `say "hi" }}`
+	ctx.Resource.Properties["quote"] = `say 'hi' }}`
+	ctx.Resource.Properties["service.name"] = "flat"
+	ctx.Resource.Properties["service"] = map[string]any{"name": "nested"}
+	ctx.Resource.Properties["data/path"] = "/mnt/data"
 	ctx.Resource.Properties["bigint"] = int64(9007199254740993)
 	ctx.Resource.Properties["config"] = map[string]any{
 		"tier":   "premium",
@@ -153,17 +156,20 @@ func Test_Expressions(t *testing.T) {
 		{name: "non-empty object is truthy", expr: `{{context.resource.properties.tags ? "a" : "b"}}`, expected: "a"},
 
 		// Literals and scanning.
-		{name: "escaped quote in string literal", expr: `{{context.resource.properties.enabled ? "say \"hi\"" : "no"}}`, expected: `say "hi"`},
-		{name: "escaped backslash in string literal", expr: `{{context.resource.properties.enabled ? "a\\b" : "no"}}`, expected: `a\b`},
-		{name: "closing braces inside string literal", expr: `{{context.resource.properties.quote == "say \"hi\" }}" ? "match" : "no"}}`, expected: "match"},
+		{name: "backslash in string literal is literal", expr: `{{context.resource.properties.enabled ? "C:\data" : "no"}}`, expected: `C:\data`},
+		{name: "double backslash in string literal is literal", expr: `{{context.resource.properties.enabled ? "C:\\data" : "no"}}`, expected: `C:\\data`},
+		{name: "closing braces inside string literal", expr: `{{context.resource.properties.quote == "say 'hi' }}" ? "match" : "no"}}`, expected: "match"},
 		{name: "single brace inside string literal", expr: `x-{{context.resource.properties.enabled ? "a}b" : "c"}}-y`, expected: "x-a}b-y"},
 		{name: "hyphenated property name", expr: `{{context.resource.properties.my-prop == null}}`, expected: true},
+		{name: "top-level key containing a dot takes precedence", expr: `{{context.resource.properties.service.name}}`, expected: "flat"},
+		{name: "property key containing a slash", expr: `{{context.resource.properties.data/path}}`, expected: "/mnt/data"},
 		{name: "whitespace inside braces", expr: "{{  context.resource.name\t}}", expected: "my-resource"},
 
 		// Ownership ignores context paths inside string literals.
 		{name: "template function with quoted context text passes through", expr: `{{ printf "use context.resource.name" }}`, expected: `{{ printf "use context.resource.name" }}`},
 		{name: "string literal with context text passes through", expr: `{{ "use context.resource.name" }}`, expected: `{{ "use context.resource.name" }}`},
-		{name: "quoted context text with escaped quote passes through", expr: `{{ printf "a \" context.resource.name" }}`, expected: `{{ printf "a \" context.resource.name" }}`},
+		{name: "raw string with context text passes through", expr: "{{ printf `use context.resource.name` }}", expected: "{{ printf `use context.resource.name` }}"},
+		{name: "go template variable named context passes through", expr: `{{ $context.name }}`, expected: `{{ $context.name }}`},
 		{name: "context path after string literal is owned", expr: `{{"x" == "x" ? context.resource.name : "y"}}`, expected: "my-resource"},
 		{name: "context text in compared literal", expr: `{{context.resource.name == "context.resource.name"}}`, expected: false},
 	}
@@ -200,7 +206,8 @@ func Test_Expressions_Errors(t *testing.T) {
 		{name: "unsupported identifier", expr: `{{context.resource.properties.enabled ? foo : "x"}}`, expectedErr: `unsupported identifier "foo"`},
 		{name: "function call", expr: `{{context.resource.name.toUpper()}}`, expectedErr: `unexpected "("`},
 		{name: "unterminated string", expr: `{{context.resource.name == "abc}}`, expectedErr: "unterminated string literal"},
-		{name: "unsupported escape", expr: `{{context.resource.name == "a\nb"}}`, expectedErr: "unsupported escape sequence"},
+		{name: "bracket before context path", expr: `{{[context.resource.name]}}`, expectedErr: `unexpected character '['`},
+		{name: "minus before context path", expr: `{{-context.resource.properties.port}}`, expectedErr: `unexpected character '-'`},
 		{name: "invalid number", expr: `{{context.resource.properties.port == 12ab}}`, expectedErr: "invalid number literal"},
 		{name: "integer above uint64 range", expr: `{{context.resource.properties.port == 18446744073709551616}}`, expectedErr: `integer literal "18446744073709551616" at position 36 is out of range`},
 		{name: "integer below int64 range", expr: `{{context.resource.properties.port == -9223372036854775809}}`, expectedErr: `integer literal "-9223372036854775809" at position 36 is out of range`},
@@ -299,7 +306,7 @@ func Test_lex(t *testing.T) {
 	require.ErrorContains(t, err, `unsupported identifier "x_y"`)
 	require.Nil(t, tokens)
 
-	tokens, err = lex(`!(context.resource.properties.size == "S\"") && 42 != -1.5 || true ? null : false`)
+	tokens, err = lex(`!(context.resource.properties.size == "S\") && 42 != -1.5 || true ? null : false`)
 	require.NoError(t, err)
 
 	kinds := make([]tokenKind, len(tokens))
@@ -311,7 +318,7 @@ func Test_lex(t *testing.T) {
 		tokOr, tokTrue, tokQuestion, tokNull, tokColon, tokFalse, tokEOF,
 	}, kinds)
 	require.Equal(t, "context.resource.properties.size", tokens[2].value)
-	require.Equal(t, `S"`, tokens[4].value)
+	require.Equal(t, `S\`, tokens[4].value)
 	require.Equal(t, int64(42), tokens[7].value)
 	require.Equal(t, -1.5, tokens[9].value)
 }

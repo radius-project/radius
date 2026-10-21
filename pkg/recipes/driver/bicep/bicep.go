@@ -150,7 +150,9 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		mergedParams := recipes_util.ShallowMergeParameters(opts.Definition.Parameters, opts.Recipe.Parameters)
 		resolvedParams, err := paramresolver.ResolveParameterExpressions(mergedParams, recipeContext)
 		if err != nil {
-			return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+			// Report an execution error rather than a setup error so a later delete still cleans up
+			// resources from an earlier successful deployment.
+			return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 		}
 		parameters = wrapARMParameters(resolvedParams)
 	}
