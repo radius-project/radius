@@ -35,7 +35,7 @@ You have comprehensive knowledge of:
 - **`docs/`**: User-facing documentation site
 - **`resource-types-contrib/`**: Community-contributed resource type definitions and recipes
 - **`design-notes/`**: Specifications, architecture decisions, and feature proposals
-- **`bicep-types-aws/`** ([github.com/radius-project/bicep-types-aws](https://github.com/radius-project/bicep-types-aws)): Bicep type definitions for AWS resource types, generated from AWS CloudFormation schemas and published to an OCI registry (`biceptypes.azurecr.io/aws`). Enables `extension aws` in Bicep files with full IntelliSense and type checking for AWS resources.
+- **`bicep-types-aws/`** ([github.com/radius-project/bicep-types-aws](https://github.com/radius-project/bicep-types-aws)): Bicep type definitions for AWS resource types, generated from AWS CloudFormation schemas and published to an OCI registry (`ghcr.io/radius-project/bicep-types-aws`). Enables `extension aws` in Bicep files with full IntelliSense and type checking for AWS resources.
 
 ### Key Architectural Concepts
 - **Recipes**: Infrastructure-as-code templates (Terraform, Bicep) registered in environments that automatically provision backing infrastructure when a resource is deployed
