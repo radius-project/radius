@@ -232,7 +232,7 @@ jobs:
             --source-sha "${SOURCE_SHA}"
             --image-lock dist/preflight/release-image-digests.json
             --cli-lock dist/preflight/release-cli-oci.json
-            --categories production,non-go,downstream
+            --categories "production,non-go,downstream"
             --sboms
           )
           bash ./.github/scripts/release-oci-artifacts.sh "${args[@]}"
@@ -801,6 +801,7 @@ jobs:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
           BICEP_EXTENSION_TAG: ${{ env.REL_VERSION }}
+          BICEP_RELEASE_PLAN: .github/release-plans/${{ github.ref_name }}.yaml
 
       - name: Verify and lock retained images
         if: >-
@@ -1307,11 +1308,11 @@ jobs:
           needs.release-preflight.outputs.ghcr-bicep == 'true' &&
           (contains(github.ref_name, '-rc.') ||
            steps.alias-policy.outputs.promote_channel == 'true')
-        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.0
-        with:
-          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
-          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
-          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
+        run: node .github/scripts/azure-oidc-login.mjs
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.BICEPTYPES_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.BICEPTYPES_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
 
       - name: Login to fixed compatibility registry
         if: >-
@@ -1334,7 +1335,7 @@ jobs:
 
       - name: Retain partial Bicep promotion and mirror receipt
         if: always() && needs.release-preflight.outputs.ghcr-bicep == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bicep-publication-${{ github.run_id }}-${{ github.run_attempt }}
           path: dist/bicep-publication-receipt.json

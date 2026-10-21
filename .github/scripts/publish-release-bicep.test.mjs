@@ -11,6 +11,7 @@ import { capture, tool } from "./bicep-types.mjs";
 import {
   bicepExtensionTargets,
   plannedBicepExtensions,
+  releaseBicepConfig,
   validateBicepExtensionLock
 } from "./release-bicep-extensions.mjs";
 import script, {
@@ -733,14 +734,24 @@ test(
       await mkdir(restore);
       await mkdir(join(restore, "docker"));
       await writeFile(join(restore, "docker/config.json"), "{}");
+      const imageConfig = releaseBicepConfig(
+        {
+          ...plan,
+          version: `v${target.version}`,
+          releaseType: target.version.includes("-rc.") ? "rc" : "final"
+        },
+        source.commit,
+        target.version
+      );
+      imageConfig.extensions.radius = imageConfig.extensions.radius.replace(
+        "ghcr.io/radius-project/bicep-types-radius",
+        `${registry}/release-radius`
+      );
       await writeFile(
         join(restore, "bicepconfig.json"),
         JSON.stringify({
-          experimentalFeaturesEnabled: { ociEnabled: true },
-          cacheRootDirectory: join(restore, "cache"),
-          extensions: {
-            radius: `br:${registry}/release-radius:${target.version}`
-          }
+          ...imageConfig,
+          cacheRootDirectory: join(restore, "cache")
         })
       );
       await writeFile(join(restore, "main.bicep"), "extension radius\n");
