@@ -141,6 +141,12 @@ jobs:
         run: |
           make test-validate-cli
 
+      - name: Run Dapr test helper unit tests
+        env:
+          GOTESTSUM_OPTS: --junitfile ./dist/unit_test/dapr_results.xml
+          GOTEST_OPTS: -race
+        run: make test-dapr-helpers
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
