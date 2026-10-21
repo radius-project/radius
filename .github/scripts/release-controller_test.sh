@@ -367,7 +367,8 @@ test_deployment_engine_tag_automation() {
         "validation must expose whether the Deployment Engine tag exists"
     assert_yq "${CONTROLLER}" \
         ".jobs.validate.steps[] | select(.id == \"de-tag\") |
-        ((.run | contains(\"--allow-absent\")) and
+        ((.run | contains(\"args=(--allow-absent main \\\"\${VERSION}\\\")\")) and
+        (.run | contains(\"--allow-absent \\\"\${RELEASE_CANDIDATE}\\\"\")) and
         (.run | contains(\"\${RC_DE_COMMIT:?\")) and
         .env.RELEASE_TYPE == \"\${{ steps.plan.outputs.release-type }}\" and
         .env.RELEASE_CANDIDATE ==
@@ -396,7 +397,8 @@ test_deployment_engine_tag_automation() {
     assert_yq "${WORKFLOWS}/prepare-release.yaml" \
         ".jobs.prepare.steps[] |
         select(.name == \"Verify or plan Deployment Engine tag\") |
-        ((.run | contains(\"--allow-absent\")) and
+        ((.run | contains(\"args=(--allow-absent main \\\"\${VERSION}\\\")\")) and
+        (.run | contains(\"--allow-absent \\\"\${RELEASE_CANDIDATE}\\\"\")) and
         (.run | contains(\"\${RC_DE_COMMIT:?\")) and
         .env.RC_DE_COMMIT ==
             \"\${{ steps.rc-lock.outputs.de-source-commit }}\")" \
