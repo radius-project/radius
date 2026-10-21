@@ -554,12 +554,12 @@ test_bicep_image_uses_staged_extension_versions() {
         trap 'rm -rf "${directory}"' EXIT
         for tag in edge 0.61.0 0.61.2 0.61.0-rc.1; do
             expected="${tag}"
-            [[ "${tag}" != edge ]] || expected=latest
             bash "${REPO_ROOT}/build/scripts/generate-bicepconfig.sh" \
                 "${tag}" "${directory}"
             jq -e --arg tag "${expected}" '
-                .extensions.radius == ("br:biceptypes.azurecr.io/radius:" + $tag) and
-                .extensions.aws == ("br:biceptypes.azurecr.io/aws:" + $tag)
+                .experimentalFeaturesEnabled.ociEnabled == true and
+                .extensions.radius == ("br:ghcr.io/radius-project/bicep-types-radius:" + $tag) and
+                .extensions.aws == ("br:ghcr.io/radius-project/bicep-types-aws:" + $tag)
             ' "${directory}/bicepconfig.json" > /dev/null || exit 1
         done
     ); then
