@@ -651,6 +651,97 @@ test_requires_arguments() {
     pass
 }
 
+run_tag_only() {
+    local name="$1"
+    local planned_commit="${2:-}"
+    local check_only="${3:-false}"
+    local mode="${4:-true}"
+
+    set +e
+    LAST_OUTPUT="$(
+        cd "${TEST_ROOT}" &&
+            RELEASE_RECONCILE_TAG_ONLY="${mode}" \
+                RELEASE_RECONCILE_CHECK_ONLY="${check_only}" \
+                bash "${SCRIPT}" "${name}" "${TAG}" ${planned_commit:+"${planned_commit}"} 2>&1
+    )"
+    LAST_STATUS=$?
+    set -e
+}
+
+test_tag_only_creates_only_the_tag() {
+    local planned_commit
+
+    setup_repo repo21
+    planned_commit="$(git -C "${TEST_ROOT}/repo21" rev-parse HEAD)"
+    commit_on repo21 unplanned
+    git -C "${TEST_ROOT}/repo21" push --quiet origin main
+
+    run_tag_only repo21 "${planned_commit}" true
+    if [[ "${LAST_STATUS}" -ne 0 || -n "$(remote_ref repo21 "refs/tags/${TAG}")" ]]; then
+        fail_test "tag-only check must succeed without creating the tag: ${LAST_OUTPUT}"
+        return
+    fi
+    run_tag_only repo21 "${planned_commit}"
+    if [[ "${LAST_STATUS}" -ne 0 ]]; then
+        fail_test "tag-only reconciliation should succeed: ${LAST_OUTPUT}"
+        return
+    fi
+    if [[ "$(remote_ref repo21 "refs/tags/${TAG}")" != "${planned_commit}" ]]; then
+        fail_test "tag-only reconciliation must tag the planned commit, not HEAD"
+        return
+    fi
+    if [[ -n "$(remote_ref repo21 "refs/heads/${BRANCH}")" ]] ||
+        git --git-dir="${TEST_ROOT}/repo21.git" for-each-ref \
+            --format='%(refname)' refs/heads/release | grep -q .; then
+        fail_test "tag-only reconciliation must not create a release branch"
+        return
+    fi
+    run_tag_only repo21 "${planned_commit}"
+    if [[ "${LAST_STATUS}" -ne 0 || "${LAST_OUTPUT}" != *"already released"* ]]; then
+        fail_test "tag-only rerun must accept the matching tag: ${LAST_OUTPUT}"
+        return
+    fi
+    pass
+}
+
+test_tag_only_never_moves_a_conflicting_tag() {
+    local planned_commit conflicting_commit
+
+    setup_repo repo22
+    planned_commit="$(git -C "${TEST_ROOT}/repo22" rev-parse HEAD)"
+    commit_on repo22 conflict
+    conflicting_commit="$(git -C "${TEST_ROOT}/repo22" rev-parse HEAD)"
+    git -C "${TEST_ROOT}/repo22" push --quiet origin \
+        "${conflicting_commit}:refs/tags/${TAG}"
+
+    run_tag_only repo22 "${planned_commit}"
+    if [[ "${LAST_STATUS}" -eq 0 || "${LAST_OUTPUT}" != *"refusing to move"* ]]; then
+        fail_test "tag-only reconciliation must reject a conflicting tag: ${LAST_OUTPUT}"
+        return
+    fi
+    if [[ "$(remote_ref repo22 "refs/tags/${TAG}")" != "${conflicting_commit}" ]]; then
+        fail_test "tag-only reconciliation moved an existing tag"
+        return
+    fi
+    pass
+}
+
+test_tag_only_requires_planned_commit() {
+    setup_repo repo23
+
+    run_tag_only repo23
+    if [[ "${LAST_STATUS}" -eq 0 || "${LAST_OUTPUT}" != *"planned commit are required"* ]]; then
+        fail_test "tag-only reconciliation must require a planned commit"
+        return
+    fi
+    run_tag_only repo23 "$(git -C "${TEST_ROOT}/repo23" rev-parse HEAD)" false yes
+    if [[ "${LAST_STATUS}" -eq 0 || "${LAST_OUTPUT}" != *"must be true or false"* ]]; then
+        fail_test "an invalid tag-only mode must fail"
+        return
+    fi
+    pass
+}
+
 main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/release-tag-branch-test-XXXXXX")"
     install_git_wrapper
@@ -678,6 +769,9 @@ main() {
     test_planned_commit_must_be_reachable_from_branch
     test_pushes_only_the_named_tag
     test_requires_arguments
+    test_tag_only_creates_only_the_tag
+    test_tag_only_never_moves_a_conflicting_tag
+    test_tag_only_requires_planned_commit
 
     if [[ "${FAILURES}" -ne 0 ]]; then
         echo "release tag and branch reconciliation tests failed (${FAILURES})" >&2

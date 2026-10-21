@@ -368,6 +368,10 @@ test_backport_resolves_release_commit() {
         fail_test "stable release selected the wrong Deployment Engine tag"
         return
     }
+    [[ "$(<"${output}/previous-version.txt")" == "v0.60.0" ]] || {
+        fail_test "validation did not expose the planned previous version"
+        return
+    }
     pass_test
 }
 

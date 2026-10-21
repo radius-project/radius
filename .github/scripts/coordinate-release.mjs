@@ -64,7 +64,7 @@ export function coordinationTasks(releaseType, version) {
   ];
 }
 
-async function tagCommit(github, context, version) {
+export async function tagCommit(github, context, version) {
   let {
     data: { object }
   } = await github.rest.git.getRef({ ...context.repo, ref: `tags/${version}` });
