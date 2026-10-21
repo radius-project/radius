@@ -97,6 +97,13 @@ test-install-bicep: test-retry-curl ## Tests bounded Bicep downloads without net
 
 test: test-install-bicep
 
+.PHONY: test-git-http-backend
+test-git-http-backend: ## Tests the Flux test Git server install and port-forward without a cluster
+	@bash ./.github/actions/install-git-http-backend/install-git-http-backend_test.sh
+	@bash ./.github/scripts/start-git-http-port-forward_test.sh
+
+test: test-git-http-backend
+
 .PHONY: test-authz-would-deny-check
 test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned log collector
 	@bash ./.github/scripts/authz-would-deny-check_test.sh
