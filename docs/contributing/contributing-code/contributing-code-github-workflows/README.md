@@ -110,11 +110,11 @@ actionlint .github/workflows/build-main.yaml .github/workflows/__publish-bicep-t
 
 ### GHCR consumer cutover
 
-Active Radius configs read `ghcr.io/radius-project/bicep-types-radius` and `ghcr.io/radius-project/bicep-types-aws` with `experimentalFeaturesEnabled.ociEnabled=true`. Development uses `edge`, not the former ACR development `latest`; release channels, full version/RC tags and digest pins retain their meaning. New CLI scaffolds and Bicep image configs use the same defaults; existing user configs are not rewritten. A new CLI release must ship these defaults; already released binaries do not change.
+Active Radius configs read `ghcr.io/radius-project/bicep-types-radius` and `ghcr.io/radius-project/bicep-types-aws` with `experimentalFeaturesEnabled.ociEnabled=true`. Development uses `edge`, not the former ACR development `latest`; release channels, full version/RC tags and digest pins retain their meaning. The shared CLI config writer and general Bicep image configs use these defaults; existing user configs are not rewritten. Tagged Bicep image builds instead pass `BICEP_RELEASE_PLAN` and the exact `BICEP_EXTENSION_TAG`: approved `ghcr-v1` plans select GHCR full-version refs with OCI enabled, selector-free legacy plans retain ACR full-version refs, and unknown selectors fail closed. A new CLI release must ship the CLI defaults; already released binaries do not change.
 
 Keep the consumer cutover draft until all gates are satisfied:
 
-1. The upstream release stack has landed and the dependent migration stack targets `main`.
+1. Keep the migration stack based on `main` and preserve its ordered dependencies; each upper PR targets the preceding layer until it lands.
 2. Radius publishers and release integration, plus the actual AWS companion publisher/release changes, are complete.
 3. Both canonical GHCR packages are public and anonymous restore/build succeeds for required `edge`, channel and full version/RC references. Backfill needed old channels and RCs with their exact historical manifest digests before changing pinned consumers; do not rebuild or invent historical provenance.
 4. Verify a newly built CLI's generated configs and arrange a CLI release containing the changes. Do not infer generated defaults or public package availability from a Bicep binary version alone.
