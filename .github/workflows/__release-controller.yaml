@@ -483,10 +483,10 @@ jobs:
       # The tag build stages the full-version image a few minutes after the
       # tag push. Wait for it rather than copying a source image that may not
       # exist yet; after the wait, the correlated publisher copies it instead.
+      # A resumed attempt waits too, because the tag that an interrupted
+      # attempt pushed may still be building.
       - name: Wait for the Deployment Engine tag build
-        if: >-
-          needs.validate.outputs.de-tag-state == 'absent' &&
-          steps.de-lock.outputs.exists != 'true'
+        if: steps.de-lock.outputs.exists != 'true'
         env:
           GORELEASER_PARITY_TARGETS: ${{ runner.temp }}/release-controller/release-targets.json
           DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}

@@ -424,11 +424,10 @@ test_deployment_engine_tag_automation() {
         (.run | contains("--allow-absent") | not)' \
         "the tag must exist at the approved commit before publication"
     assert_yq "${CONTROLLER}" \
-        '.jobs."publish-deployment-engine".steps[] |
-        select(.name == "Wait for the Deployment Engine tag build") |
-        ((.if | contains(strenv(ABSENT_IF))) and
-        (.if | contains("steps.de-lock.outputs.exists")))' \
-        "only a newly created tag may wait for its build"
+        ".jobs.\"publish-deployment-engine\".steps[] |
+        select(.name == \"Wait for the Deployment Engine tag build\") |
+        .if == \"steps.de-lock.outputs.exists != 'true'\"" \
+        "every unlocked attempt, including a resume after tag creation, must wait for the tag build"
     assert_yq "${CONTROLLER}" \
         '.jobs."publish-deployment-engine"."timeout-minutes" == 40' \
         "publication must allow time for the Deployment Engine tag build"
@@ -442,6 +441,41 @@ test_deployment_engine_tag_automation() {
     else
         ((++PASS))
     fi
+}
+
+# A resumed attempt can find the tag that an interrupted attempt pushed while
+# its build is still running. It must keep polling until the image is staged
+# instead of dispatching a publisher that cannot find the source image yet.
+test_resume_waits_for_running_tag_build() {
+    if ! (
+        root="$(mktemp -d "${TMPDIR:-/tmp}/de-wait-test-XXXXXX")"
+        trap 'rm -rf "${root}"' EXIT
+        mkdir -p "${root}/.github/scripts"
+        cat >"${root}/.github/scripts/verify-deployment-engine-image.sh" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+checks=$(($(cat "${CHECKS}" 2>/dev/null || echo 0) + 1))
+echo "${checks}" >"${CHECKS}"
+while [[ "$1" != "--state-output" ]]; do shift; done
+if ((checks < 3)); then echo absent; else echo complete; fi >"$2"
+EOF
+        script="$(yq -r '.jobs."publish-deployment-engine".steps[] |
+            select(.name == "Wait for the Deployment Engine tag build") |
+            .run' "${CONTROLLER}")"
+        # shellcheck disable=SC2329 # Invoked by the exported step script.
+        sleep() { :; }
+        export -f sleep
+        cd "${root}" || exit 1
+        CHECKS="${root}/checks" RUNNER_TEMP="${root}" \
+            DE_IMAGE_TAG=0.62.0-rc.1 RELEASE_VERSION=v0.62.0-rc.1 \
+            DE_SOURCE_COMMIT=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+            bash -euo pipefail -c "${script}" >/dev/null || exit 1
+        [[ "$(<"${root}/checks")" == "3" ]]
+    ); then
+        fail_test "a resumed attempt must poll until the tag build stages the image"
+        return
+    fi
+    ((++PASS))
 }
 
 test_de_bridge_uses_immutable_destinations() {
@@ -489,6 +523,7 @@ main() {
     test_stage_order
     test_release_build_contract
     test_deployment_engine_tag_automation
+    test_resume_waits_for_running_tag_build
     test_de_bridge_uses_immutable_destinations
     test_identity_and_cleanup
 
