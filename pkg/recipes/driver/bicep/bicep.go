@@ -192,6 +192,19 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
+	// Log only IDs, not output values, which can contain credentials.
+	outputResourceIDs := make([]string, 0, len(resp.Properties.OutputResources))
+	for _, output := range resp.Properties.OutputResources {
+		if output != nil && output.ID != nil {
+			outputResourceIDs = append(outputResourceIDs, *output.ID)
+		}
+	}
+	logger.Info("Deployment engine returned recipe output resource IDs",
+		"deploymentID", deploymentID.String(),
+		"recipeName", opts.Definition.Name,
+		"outputResourceCount", len(resp.Properties.OutputResources),
+		"outputResourceIDs", outputResourceIDs)
+
 	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		if _, ok := errors.AsType[*recipes_util.MissingOutputValuesError](err); ok {
