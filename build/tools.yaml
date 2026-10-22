@@ -146,7 +146,7 @@ tools:
 
   - name: helm
     makePrefix: HELM
-    version: v4.3.0
+    version: v4.3.1
     source:
       type: github-release
       repository: helm/helm
@@ -155,16 +155,16 @@ tools:
     platforms:
       linux_amd64:
         asset: helm-{version}-linux-amd64.tar.gz
-        checksum: 86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb
+        checksum: 0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b
       linux_arm64:
         asset: helm-{version}-linux-arm64.tar.gz
-        checksum: 31c5794dd55c66a51e6b7d2e2ac7a114ae8b1de41ff1d9ba51748ac973b06a08
+        checksum: 8cf8f66ecbc252ac8f7f06cca68aba88508ddfde3a6a34feb1678ad1694b4f88
       darwin_amd64:
         asset: helm-{version}-darwin-amd64.tar.gz
-        checksum: 347a784877e0e20eac865e8d1c36a80f6bb0861d6f29abd34defb6570ef95d92
+        checksum: 34bec4eba761ba5c16d1965ee6b8f5b0abe5993974a802274e2a4f0418893d89
       darwin_arm64:
         asset: helm-{version}-darwin-arm64.tar.gz
-        checksum: d3870437e1e95b67f8edbde964156c84a26503f560821d40c542441658934fba
+        checksum: 6b4e61c8cd27d99e5a801e63ff25dd5c70b36875c2cd659d3e9ce6b76fc23198
     checksumSource:
       type: url-file
       urlTemplate: https://get.helm.sh/{asset}.sha256sum

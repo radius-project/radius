@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -289,17 +290,22 @@ func Test_Delete_ARM_NestedChildTypeFallback(t *testing.T) {
 		testProviderPath = "/subscriptions/0000/providers/Microsoft.Test"
 	)
 
-	resourceType := func(name string, version string) *armresources.ProviderResourceType {
-		return &armresources.ProviderResourceType{ResourceType: new(name), APIVersions: []*string{new(version)}}
+	resourceType := func(name string, versions ...string) *armresources.ProviderResourceType {
+		rt := &armresources.ProviderResourceType{ResourceType: new(name)}
+		for _, version := range versions {
+			rt.APIVersions = append(rt.APIVersions, new(version))
+		}
+		return rt
 	}
 
 	tests := []struct {
-		name         string
-		id           string
-		providerPath string
-		types        []*armresources.ProviderResourceType
-		wantVersion  string
-		wantErr      string
+		name            string
+		id              string
+		providerPath    string
+		types           []*armresources.ProviderResourceType
+		rejectedVersion string
+		wantVersion     string
+		wantErr         string
 	}{
 		{
 			name:         "nested child absent from metadata uses top-level type",
@@ -307,6 +313,14 @@ func Test_Delete_ARM_NestedChildTypeFallback(t *testing.T) {
 			providerPath: storagePath,
 			types:        []*armresources.ProviderResourceType{resourceType("storageAccounts", "top-level")},
 			wantVersion:  "top-level",
+		},
+		{
+			name:            "missing child type retries next parent version after read rejection",
+			id:              shareID,
+			providerPath:    storagePath,
+			types:           []*armresources.ProviderResourceType{resourceType("storageAccounts", "2026-10-01", "2025-08-01")},
+			rejectedVersion: "2026-10-01",
+			wantVersion:     "2025-08-01",
 		},
 		{
 			name:         "nearest listed parent is preferred",
@@ -355,11 +369,25 @@ func Test_Delete_ARM_NestedChildTypeFallback(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			var versions []string
+			var calls []string
+			var mu sync.Mutex
 			mux := http.NewServeMux()
 			mux.HandleFunc(tt.providerPath, handleJSONResponse(t, armresources.Provider{ResourceTypes: tt.types}, http.StatusOK))
-			mux.HandleFunc(tt.id, func(w http.ResponseWriter, r *http.Request) {
-				versions = append(versions, r.Method+" "+r.URL.Query().Get("api-version"))
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				defer mu.Unlock()
+				version := r.URL.Query().Get("api-version")
+				calls = append(calls, r.Method+" "+r.URL.Path+" "+version)
+				if r.URL.Path != tt.id {
+					http.NotFound(w, r)
+					return
+				}
+				if r.Method == http.MethodGet && version == tt.rejectedVersion {
+					handleJSONResponse(t, v1.ErrorResponse{
+						Error: &v1.ErrorDetails{Code: "InvalidApiVersionParameter"},
+					}, http.StatusBadRequest)(w, r)
+					return
+				}
 				handleDeleteSuccess()(w, r)
 			})
 
@@ -370,14 +398,21 @@ func Test_Delete_ARM_NestedChildTypeFallback(t *testing.T) {
 			c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
 			err := c.Delete(t.Context(), tt.id)
+			mu.Lock()
+			defer mu.Unlock()
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
-				require.Empty(t, versions)
+				require.Empty(t, calls)
 				return
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, []string{"GET " + tt.wantVersion, "DELETE " + tt.wantVersion}, versions)
+			var want []string
+			if tt.rejectedVersion != "" {
+				want = append(want, "GET "+tt.id+" "+tt.rejectedVersion)
+			}
+			want = append(want, "GET "+tt.id+" "+tt.wantVersion, "DELETE "+tt.id+" "+tt.wantVersion)
+			require.Equal(t, want, calls)
 		})
 	}
 }

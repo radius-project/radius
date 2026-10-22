@@ -140,7 +140,7 @@ test-prepare-release: install-git-cliff ## Tests release version, changelog, not
 	@bash ./.github/scripts/verify-deployment-engine-tag_test.sh
 
 .PHONY: test-release-plan
-test-release-plan: ## Tests release plan schema, policy, source, and file validation
+test-release-plan: install-git-cliff ## Tests release plan schema, policy, source, and file validation
 	@bash ./.github/scripts/capture-release-sibling-commits_test.sh
 	@bash ./.github/scripts/validate-release-plan_test.sh
 	@bash ./.github/scripts/validate-release-merge-group_test.sh

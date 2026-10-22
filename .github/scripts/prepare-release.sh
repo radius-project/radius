@@ -433,12 +433,15 @@ update_changelog() {
 
 generate_release_notes() {
     local version="$1"
-    local body_file="$2"
-    local notes_file="$3"
+    local previous_version="$2"
+    local body_file="$3"
+    local notes_file="$4"
     local template="${RELEASE_NOTES_TEMPLATE}"
     local generated="${OUTPUT_DIR}/notes-changelog.md"
     local breaking="${OUTPUT_DIR}/breaking-changes.md"
     local contributors="${OUTPUT_DIR}/new-contributors.md"
+    local comparison="https://github.com/radius-project/radius/compare"
+    comparison+="/${previous_version}...${version}"
 
     if [[ "${RELEASE_TYPE}" == "patch" ]]; then
         template="${PATCH_NOTES_TEMPLATE}"
@@ -448,7 +451,18 @@ generate_release_notes() {
     sed -i '/REMINDER TO UPDATE THE VERSION ABOVE AND DELETE THIS COMMENT/d' \
         "${notes_file}"
 
-    awk 'NR == 1 { next } { lines[++count] = $0 }
+    awk -v version="${version#v}" -v comparison="${comparison}" \
+        -v date="${RELEASE_DATE}" -v release_type="${RELEASE_TYPE}" '
+        NR == 1 {
+            print "[" version "](" comparison ") - " date
+            print ""
+            next
+        }
+        /^### / {
+            skip = release_type != "patch" && $0 == "### New contributors"
+        }
+        skip { next }
+        { lines[++count] = $0 }
         END {
             start = 1
             while (start <= count && lines[start] == "") { start++ }
@@ -684,7 +698,8 @@ main() {
     update_versions "${version}" "${current}"
     update_changelog "${version}" "${changelog_base_version}" \
         "${changelog_body}"
-    generate_release_notes "${version}" "${changelog_body}" "${notes_file}"
+    generate_release_notes "${version}" "${changelog_base_version}" \
+        "${changelog_body}" "${notes_file}"
     write_release_plan "${version}" "${previous_version}" "${source_ref}" \
         "${source_commit}" "${requires_backport}"
     printf 'Prepared %s (%s) for release/%s.\n' \
