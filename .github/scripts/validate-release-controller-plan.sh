@@ -25,6 +25,9 @@ RELEASE_COMMIT=""
 TRIGGER=""
 OUTPUT_DIR=""
 TEMP_DIR=""
+FROZEN_SOURCE=false
+SOURCE_RESOLVED=true
+RELEASE_TREE=""
 
 cleanup() {
     if [[ -n "${TEMP_DIR}" && -d "${TEMP_DIR}" ]]; then
@@ -91,7 +94,7 @@ validate_changed_files() {
             fi
         fi
     } | sort >"${expected}"
-    git diff --name-only "${commit}^" "${commit}" | sort >"${actual}"
+    git diff --no-renames --name-only "${commit}^" "${commit}" | sort >"${actual}"
     if ! diff -u "${expected}" "${actual}"; then
         fail "release metadata commit changes files outside the plan contract"
     fi
@@ -167,7 +170,7 @@ write_outputs() {
     local resolved_plan="${OUTPUT_DIR}/release-plan.yaml"
 
     mkdir -p "${OUTPUT_DIR}"
-    if [[ "${ready}" == "true" ]]; then
+    if [[ "${ready}" == "true" && "${SOURCE_RESOLVED}" == "true" ]]; then
         RELEASE_COMMIT="${RELEASE_COMMIT}" yq \
             '.source.releaseCommit = strenv(RELEASE_COMMIT)' \
             "${TEMP_DIR}/release-plan.yaml" >"${resolved_plan}"
@@ -208,6 +211,10 @@ write_outputs() {
         >"${OUTPUT_DIR}/bicep-types-aws-commit.txt"
     printf '%s\n' "${previous_version}" \
         >"${OUTPUT_DIR}/previous-version.txt"
+    printf '%s\n' "${RELEASE_COMMIT}" >"${OUTPUT_DIR}/release-commit.txt"
+    printf '%s\n' "${RELEASE_TREE}" >"${OUTPUT_DIR}/release-tree.txt"
+    printf '%s\n' "${FROZEN_SOURCE}" >"${OUTPUT_DIR}/frozen-source.txt"
+    printf '%s\n' "${SOURCE_RESOLVED}" >"${OUTPUT_DIR}/source-resolved.txt"
 
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
         {
@@ -223,6 +230,11 @@ write_outputs() {
             echo "dashboard-commit=${dashboard_commit}"
             echo "bicep-types-aws-commit=${aws_commit}"
             echo "previous-version=${previous_version}"
+            echo "release-commit=${RELEASE_COMMIT}"
+            echo "release-tree=${RELEASE_TREE}"
+            echo "product-commit=$(plan_value '.source.productCommit')"
+            echo "frozen-source=${FROZEN_SOURCE}"
+            echo "source-resolved=${SOURCE_RESOLVED}"
         } >>"${GITHUB_OUTPUT}"
     fi
 }
@@ -256,7 +268,9 @@ validate_plan_fields() {
         fail "expected output contract is invalid"
     [[ "$(plan_value '.source.releaseCommit')" == "null" ]] ||
         fail "approved plan already contains a release commit"
-    if [[ "$(plan_value '.source.productRef')" == "HEAD" ]]; then
+    if [[ "$(plan_value '.source.productRef')" == "refs/heads/main" ]]; then
+        expected_resolution="frozen product commit plus approved release metadata"
+    elif [[ "$(plan_value '.source.productRef')" == "HEAD" ]]; then
         expected_resolution="release PR squash commit on main"
     else
         expected_resolution="generated release backport commit on ${release_branch}"
@@ -297,6 +311,63 @@ validate_backport_commit() {
     grep -Fq "(cherry picked from commit ${SOURCE_PR_COMMIT})" \
         <<<"${message}" ||
         fail "release commit is not the approved release PR backport"
+}
+
+validate_frozen_source() {
+    local product_commit="$1"
+    local plan_path="$2"
+    local source_parent branch refs candidate entry mode type blob path
+    local index="${TEMP_DIR}/release-index"
+    local -a files=(
+        versions.yaml CHANGELOG.md
+        "docs/release-notes/${VERSION}.md" "${plan_path}"
+    )
+
+    FROZEN_SOURCE=true
+    [[ "$(git cat-file -t "${product_commit}")" == commit ]] ||
+        fail "frozen product SHA must identify a commit"
+    source_parent="$(commit_parent "${SOURCE_PR_COMMIT}")"
+    git merge-base --is-ancestor "${product_commit}" "${source_parent}" ||
+        fail "frozen product commit is not reachable from the approved main parent"
+    git diff --quiet "${product_commit}" "${source_parent}" -- \
+        versions.yaml CHANGELOG.md ||
+        fail "release metadata on main changed since the frozen product commit"
+
+    GIT_INDEX_FILE="${index}" git read-tree "${product_commit}"
+    for path in "${files[@]}"; do
+        entry="$(git ls-tree "${SOURCE_PR_COMMIT}" -- "${path}")"
+        read -r mode type blob _ <<<"${entry}"
+        [[ "${mode}" == "100644" && "${type}" == "blob" ]] ||
+            fail "release metadata must be regular files: ${path}"
+        GIT_INDEX_FILE="${index}" git update-index --add \
+            --cacheinfo "100644,${blob},${path}"
+    done
+    RELEASE_TREE="$(GIT_INDEX_FILE="${index}" git write-tree)"
+
+    branch="automation/release-source-${VERSION#v}"
+    refs="$(git ls-remote origin "refs/heads/${branch}")" ||
+        fail "could not query frozen release source ${branch}"
+    candidate="$(cut -f1 <<<"${refs}")"
+    if [[ -z "${candidate}" || "${candidate}" == "${product_commit}" ]]; then
+        [[ "${RELEASE_COMMIT}" == "${SOURCE_PR_COMMIT}" ]] ||
+            fail "requested release commit has no matching frozen source ref"
+        SOURCE_RESOLVED=false
+        return
+    fi
+    [[ "${RELEASE_COMMIT}" == "${SOURCE_PR_COMMIT}" ||
+        "${RELEASE_COMMIT}" == "${candidate}" ]] ||
+        fail "requested release commit differs from the frozen source ref"
+    git fetch --quiet --no-tags origin "refs/heads/${branch}"
+    [[ "$(git rev-parse FETCH_HEAD)" == "${candidate}" ]] ||
+        fail "frozen source ref changed during validation"
+    RELEASE_COMMIT="${candidate}"
+    [[ "$(commit_parent "${RELEASE_COMMIT}")" == "${product_commit}" ]] ||
+        fail "frozen release commit must be rooted at the approved product commit"
+    [[ "$(git rev-parse "${RELEASE_COMMIT}^{tree}")" == "${RELEASE_TREE}" ]] ||
+        fail "frozen release tree differs from the approved four-file overlay"
+    git show -s --format=%B "${RELEASE_COMMIT}" |
+        grep -Fxq "(cherry picked from commit ${SOURCE_PR_COMMIT})" ||
+        fail "frozen release commit does not identify the approved metadata PR"
 }
 
 main() {
@@ -377,7 +448,19 @@ main() {
     validate_committed_plan "${SOURCE_PR_COMMIT}" "${plan_path}"
 
     expected_ref="refs/remotes/origin/${release_branch}"
-    if [[ "${product_ref}" == "HEAD" ]]; then
+    if [[ "${product_ref}" == "refs/heads/main" ]]; then
+        [[ "${release_type}" == "rc" && "${version}" == "v${channel}.0-rc.1" ]] ||
+            fail "frozen main sources are only valid for a first RC"
+        [[ "${TRIGGER}" != "release-backport" ]] ||
+            fail "new-channel plans do not use a release backport"
+        validate_frozen_source "${product_commit}" "${plan_path}"
+        if git show-ref --verify --quiet "${expected_ref}"; then
+            [[ "${SOURCE_RESOLVED}" == "true" ]] ||
+                fail "release branch exists without a resolved frozen release commit"
+            git merge-base --is-ancestor "${RELEASE_COMMIT}" "${expected_ref}" ||
+                fail "release branch does not contain the frozen release commit"
+        fi
+    elif [[ "${product_ref}" == "HEAD" ]]; then
         [[ "${release_type}" == "rc" && "${version}" == *-rc.1 ]] ||
             fail "a new release branch must start with rc.1"
         source_parent="$(commit_parent "${SOURCE_PR_COMMIT}")"
@@ -389,7 +472,7 @@ main() {
             fail "new-channel plans do not use a release backport"
     else
         [[ "${product_ref}" == "${expected_ref}" ]] ||
-            fail "productRef must be HEAD or ${expected_ref}"
+            fail "productRef must be refs/heads/main, HEAD, or ${expected_ref}"
         if [[ "${TRIGGER}" == "release-pr" ]]; then
             [[ "${RELEASE_COMMIT}" == "${SOURCE_PR_COMMIT}" ]] ||
                 fail "release PR trigger has an unexpected source commit"
@@ -407,15 +490,18 @@ main() {
 
     if [[ "${ready}" == "true" ]]; then
         existing_tag="$(remote_tag_commit "${version}")"
-        if [[ -n "${existing_tag}" &&
-            "${existing_tag}" != "${RELEASE_COMMIT}" ]]; then
+        if [[ -n "${existing_tag}" ]] &&
+            [[ "${SOURCE_RESOLVED}" != "true" ||
+                "${existing_tag}" != "${RELEASE_COMMIT}" ]]; then
             fail "Radius tag ${version} points at ${existing_tag}, expected ${RELEASE_COMMIT}"
         fi
     fi
 
     write_outputs "${ready}" "${channel}" "${release_type}" \
         "${release_branch}"
-    if [[ "${ready}" == "true" ]]; then
+    if [[ "${SOURCE_RESOLVED}" == "false" ]]; then
+        echo "Release plan ${version} awaits an approved frozen metadata commit."
+    elif [[ "${ready}" == "true" ]]; then
         echo "Release plan ${version} resolves to ${RELEASE_COMMIT}."
     else
         echo "Release plan ${version} is waiting for its generated backport."

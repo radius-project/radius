@@ -448,7 +448,7 @@ test_rejects_divergent_release_branch() {
 test_existing_channel_release_type() {
     local version="$1"
     local release_type="$2"
-    local source backport plan output
+    local source backport plan output product advanced wrong_parent
     local expected_source_tag="0.61"
 
     cleanup
@@ -472,6 +472,21 @@ test_existing_channel_release_type() {
         fail_test "${release_type} did not resolve its existing-channel plan"
         return
     fi
+    pass_test
+
+    product="$(git -C "${REPO}" rev-parse "${backport}^")"
+    advanced="$(git -C "${REPO}" commit-tree "${product}^{tree}" \
+        -p "${product}" -m "fix: advance before metadata backport")"
+    wrong_parent="$(git -C "${REPO}" commit-tree "${backport}^{tree}" \
+        -p "${advanced}" -m "chore(release): prepare ${version}" \
+        -m "(cherry picked from commit ${source})")"
+    git -C "${REPO}" push --quiet --force origin \
+        "${wrong_parent}:refs/heads/release/0.61"
+    git -C "${REPO}" fetch --quiet origin \
+        '+refs/heads/release/0.61:refs/remotes/origin/release/0.61'
+    run_validator "${plan}" "${version}" "${source}" "${wrong_parent}" \
+        release-backport "${TEST_ROOT}/advanced-base-output"
+    assert_failure_contains "advanced beyond approved commit" || return
     pass_test
 }
 

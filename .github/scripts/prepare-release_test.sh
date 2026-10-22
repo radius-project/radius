@@ -29,6 +29,7 @@ PASS=0
 FAIL=0
 LAST_OUTPUT=""
 LAST_STATUS=0
+PREPARATION_OPTIONS=()
 
 cleanup() {
     if [[ -n "${TEST_ROOT}" && -d "${TEST_ROOT}" ]]; then
@@ -43,12 +44,13 @@ fail_test() {
 }
 
 commit() {
-    git -C "${REPO}" commit -q --allow-empty -m "$1"
+    git -C "${REPO}" commit -q -a --allow-empty -m "$1"
 }
 
 setup_repo() {
     local version="$1"
     local previous_changelog_version="0.60.0"
+    PREPARATION_OPTIONS=()
 
     if [[ "${version}" == *-rc* ]]; then
         previous_changelog_version="0.59.0"
@@ -197,7 +199,8 @@ run_prepare() {
                 --backports-file backports.json \
                 --sibling-repositories-file siblings.json \
                 --output-dir out \
-                --release-date 2026-08-24 2>&1
+                --release-date 2026-08-24 \
+                "${PREPARATION_OPTIONS[@]}" 2>&1
     )"
     LAST_STATUS=$?
     set -e
@@ -284,6 +287,7 @@ test_first_rc() {
     setup_repo "v0.60.0"
     cp "${SCRIPT_DIR}/../../docs/release-notes/template.md" \
         "${REPO}/docs/release-notes/template.md"
+    commit "docs: update release template"
     git -C "${REPO}" tag v0.60.0
     run_prepare rc 0.61
     assert_version "v0.61.0-rc.1" || return
@@ -314,7 +318,9 @@ test_first_rc() {
         '.source.releaseCommit' 'null' || return
     assert_yq_value "${REPO}/out/release-plan.yaml" \
         '.source.releaseCommitResolution' \
-        'release PR squash commit on main' || return
+        'frozen product commit plus approved release metadata' || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.source.productRef' 'refs/heads/main' || return
     assert_note_format "${REPO}/docs/release-notes/v0.61.0-rc.1.md" \
         v0.61.0-rc.1 v0.60.0 rc || return
     assert_file_contains "${REPO}/docs/release-notes/v0.61.0-rc.1.md" \
@@ -731,6 +737,7 @@ test_publisher_uses_prepared_notes_for_every_release() {
 
 test_first_rc_rerun_preserves_curated_sections() {
     local existing="${TEST_ROOT}/existing-notes.md"
+    local existing_plan="${TEST_ROOT}/existing-plan.yaml"
     local notes="${REPO}/docs/release-notes/v0.61.0-rc.1.md"
     local first_commit second_commit
 
@@ -744,11 +751,17 @@ test_first_rc_rerun_preserves_curated_sections() {
     sed -i 's/<!-- CURATE HIGHLIGHTS -->/Curated highlight./' "${notes}"
     sed -i 's/<!-- CURATE UPGRADING -->/Curated upgrade guidance./' "${notes}"
     cp "${notes}" "${existing}"
+    cp "${REPO}/out/release-plan.yaml" "${existing_plan}"
     first_commit="$(yq -r '.source.productCommit' "${REPO}/out/release-plan.yaml")"
 
     git -C "${REPO}" checkout -- versions.yaml CHANGELOG.md
     rm -rf "${REPO}/out" "${notes}"
     git -C "${REPO}" commit -q --allow-empty -m "fix: advance main"
+    jq '.[0].sourceCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
+        "${REPO}/siblings.json" >"${REPO}/siblings-new.json"
+    mv "${REPO}/siblings-new.json" "${REPO}/siblings.json"
+    PREPARATION_OPTIONS=(--existing-plan "${existing_plan}"
+        --release-date 2026-08-25)
     run_prepare rc 0.61
     [[ "${LAST_STATUS}" == "0" ]] || {
         fail_test "second preparation failed: ${LAST_OUTPUT}"
@@ -756,13 +769,139 @@ test_first_rc_rerun_preserves_curated_sections() {
     }
     bash "${PRESERVE_SCRIPT}" "${notes}" "${existing}"
     second_commit="$(yq -r '.source.productCommit' "${REPO}/out/release-plan.yaml")"
-    if [[ "${first_commit}" == "${second_commit}" ]]; then
-        fail_test "rerun did not update the planned product commit"
+    if [[ "${first_commit}" != "${second_commit}" ]] ||
+        ! cmp -s "${existing_plan}" "${REPO}/out/release-plan.yaml"; then
+        fail_test "rerun changed the frozen product, siblings, date, or plan"
         return
     fi
     assert_file_contains "${notes}" 'Curated highlight.' || return
     assert_file_contains "${notes}" 'Curated upgrade guidance.' || return
     assert_file_contains "${notes}" 'Fix release preparation' || return
+    ((++PASS))
+}
+
+test_first_rc_explicit_cutoff() {
+    local cutoff
+
+    setup_repo "v0.60.0"
+    git -C "${REPO}" tag v0.60.0
+    cutoff="$(git -C "${REPO}" rev-parse HEAD)"
+    printf 'new configuration\n' >"${REPO}/cliff.toml"
+    commit "fix: later product and tooling change"
+    PREPARATION_OPTIONS=(--product-commit "${cutoff}")
+    run_prepare rc 0.61
+    assert_version v0.61.0-rc.1 || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.source.productCommit' "${cutoff}" || return
+    ((++PASS))
+}
+
+test_first_rc_rejects_invalid_cutoff() {
+    local variant="$1"
+    local cutoff expected old
+
+    setup_repo "v0.60.0"
+    git -C "${REPO}" tag v0.60.0
+    old="$(git -C "${REPO}" rev-parse HEAD)"
+    case "${variant}" in
+        short) cutoff="${old:0:7}"; expected="full commit SHA" ;;
+        ref) cutoff="main"; expected="full commit SHA" ;;
+        missing) cutoff="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            expected="not available" ;;
+        tree)
+            cutoff="$(git -C "${REPO}" rev-parse 'HEAD^{tree}')"
+            expected="must identify a commit"
+            ;;
+        tag)
+            git -C "${REPO}" tag -a cutoff-tag -m "Annotated cutoff"
+            cutoff="$(git -C "${REPO}" rev-parse refs/tags/cutoff-tag)"
+            expected="must identify a commit"
+            ;;
+        unreachable)
+            cutoff="$(git -C "${REPO}" commit-tree 'HEAD^{tree}' \
+                -m 'unrelated root')"
+            expected="not reachable"
+            ;;
+        metadata)
+            printf '\nNew release metadata\n' >>"${REPO}/CHANGELOG.md"
+            commit "chore(release): change release state"
+            cutoff="${old}"; expected="release metadata on main changed"
+            ;;
+    esac
+    PREPARATION_OPTIONS=(--product-commit "${cutoff}")
+    run_prepare rc 0.61
+    if [[ "${LAST_STATUS}" == 0 || "${LAST_OUTPUT}" != *"${expected}"* ]]; then
+        fail_test "${variant} cutoff must fail: ${LAST_OUTPUT}"
+        return
+    fi
+    ((++PASS))
+}
+
+test_first_rc_legacy_adoption() {
+    local existing_plan="${TEST_ROOT}/legacy-plan.yaml"
+    local cutoff
+
+    setup_repo "v0.60.0"
+    git -C "${REPO}" tag v0.60.0
+    cutoff="$(git -C "${REPO}" rev-parse HEAD)"
+    run_prepare rc 0.61
+    assert_version v0.61.0-rc.1 || return
+    yq '.source.productRef = "HEAD" | .source.releaseCommitResolution =
+        "release PR squash commit on main"' \
+        "${REPO}/out/release-plan.yaml" >"${existing_plan}"
+    git -C "${REPO}" checkout -- versions.yaml CHANGELOG.md
+    commit "fix: advance main after legacy preparation"
+    PREPARATION_OPTIONS=(--existing-plan "${existing_plan}")
+    run_prepare rc 0.61
+    assert_version v0.61.0-rc.1 || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.source.productCommit' "${cutoff}" || return
+    git -C "${REPO}" checkout -- versions.yaml CHANGELOG.md
+    PREPARATION_OPTIONS+=(--product-commit "$(git -C "${REPO}" rev-parse HEAD)")
+    run_prepare rc 0.61
+    if [[ "${LAST_STATUS}" == 0 ||
+        "${LAST_OUTPUT}" != *"cannot change an existing release cutoff"* ]]; then
+        fail_test "adoption must not silently replace the original cutoff"
+        return
+    fi
+    ((++PASS))
+}
+
+test_existing_channel_rejects_main_cutoff() {
+    local release_type="$1"
+    local current="v0.60.0-rc.1"
+
+    [[ "${release_type}" != patch ]] || current="v0.60.0"
+    setup_repo "${current}"
+    make_release_branch 0.60
+    git -C "${REPO}" tag "${current}"
+    PREPARATION_OPTIONS=(--product-commit "$(git -C "${REPO}" rev-parse HEAD)")
+    run_prepare "${release_type}" 0.60
+    if [[ "${LAST_STATUS}" == 0 ||
+        "${LAST_OUTPUT}" != *"only valid for a first RC"* ]]; then
+        fail_test "${release_type} must retain its release-branch source: ${LAST_OUTPUT}"
+        return
+    fi
+    ((++PASS))
+}
+
+test_rerun_rejects_tampered_aliased_plan() {
+    setup_repo "v0.60.0"
+    git -C "${REPO}" tag v0.60.0
+    run_prepare rc 0.61
+    assert_version v0.61.0-rc.1 || return
+    git -C "${REPO}" checkout -- versions.yaml CHANGELOG.md
+    yq -i '.expectedOutputs.cliAssets[0].name = "unapproved-output"' \
+        "${REPO}/out/release-plan.yaml"
+    PREPARATION_OPTIONS=(--existing-plan out/release-plan.yaml)
+    run_prepare rc 0.61
+    if [[ "${LAST_STATUS}" == 0 ||
+        "${LAST_OUTPUT}" != *"existing frozen plan differs"* ]]; then
+        fail_test "an input/output path alias must not bypass plan tamper checks"
+        return
+    fi
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.expectedOutputs.cliAssets[0].name' 'unapproved-output' || return
     ((++PASS))
 }
 
@@ -793,6 +932,7 @@ test_patch_rerun_needs_no_curated_sections() {
 }
 
 main() {
+    local variant
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/prepare-release-test-XXXXXX")"
 
     test_first_rc
@@ -816,6 +956,15 @@ main() {
     test_unmerged_backport_fails
     test_publisher_uses_prepared_notes_for_every_release
     test_first_rc_rerun_preserves_curated_sections
+    test_first_rc_explicit_cutoff
+    for variant in short ref missing tree tag unreachable metadata; do
+        test_first_rc_rejects_invalid_cutoff "${variant}"
+    done
+    test_first_rc_legacy_adoption
+    test_rerun_rejects_tampered_aliased_plan
+    for variant in rc final patch; do
+        test_existing_channel_rejects_main_cutoff "${variant}"
+    done
     test_patch_rerun_needs_no_curated_sections
 
     if ((FAIL > 0)); then

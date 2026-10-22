@@ -38,7 +38,7 @@ tree_entry() {
 
 main() {
     local candidate_sha candidate_number candidate_blob merge_blob file
-    local candidates_tsv changed_files candidate_files
+    local candidates_tsv changed_files candidate_files comparison_files plan_path
     local matches_paths touches_release=false
     local -a matches=()
 
@@ -108,7 +108,20 @@ main() {
             '.[] | select(.number == $number) | .files[]' \
             "${CANDIDATES_FILE}" | tr -d '\r' | sort \
             >"${candidate_files}"
-        if ! diff -q "${changed_files}" "${candidate_files}" \
+        comparison_files="${changed_files}"
+        plan_path="$(grep -E '^\.github/release-plans/[^/]+\.yaml$' \
+            "${candidate_files}" || true)"
+        if [[ -n "${plan_path}" && "${plan_path}" != *$'\n'* ]] &&
+            [[ "$(git show "${candidate_sha}:${plan_path}" |
+                yq -r '.schemaVersion == 2 and .releaseType == "rc" and
+                    .version == ("v" + .channel + ".0-rc.1") and
+                    .source.productRef == "refs/heads/main"')" == true ]]; then
+            comparison_files="${candidate_files}.metadata"
+            grep -E \
+                '^(CHANGELOG\.md|versions\.yaml|docs/release-notes/v[0-9]+\.[0-9]+\.[0-9]+[^/]*\.md|\.github/release-plans/.+\.yaml)$' \
+                "${changed_files}" >"${comparison_files}" || true
+        fi
+        if ! diff -q "${comparison_files}" "${candidate_files}" \
             >/dev/null; then
             matches_paths=false
         fi
@@ -121,6 +134,9 @@ main() {
                 break
             fi
         done <"${candidate_files}"
+        if [[ "${comparison_files}" != "${changed_files}" ]]; then
+            rm "${comparison_files}"
+        fi
         rm "${candidate_files}"
         if [[ "${matches_paths}" == "true" ]]; then
             matches+=("${candidate_number}:${candidate_sha}")
@@ -142,7 +158,7 @@ main() {
 
     candidate_number="${matches[0]%%:*}"
     printf '%s\n' "${candidate_number}" >"${OUTPUT_FILE}"
-    echo "Merge group contains only release PR #${candidate_number}."
+    echo "Merge group release metadata matches PR #${candidate_number}."
 }
 
 main "$@"

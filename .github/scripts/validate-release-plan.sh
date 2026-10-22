@@ -199,6 +199,15 @@ regenerate_release() {
     local backports_file="$4"
     local siblings_file="$5"
     local output_dir="${TEMP_DIR}/generated-output"
+    local product_ref product_commit
+    local -a source_options=()
+
+    product_ref="$(plan_value '.source.productRef')"
+    product_commit="$(plan_value '.source.productCommit')"
+    if [[ "${product_ref}" == "refs/heads/main" ||
+        "${product_ref}" == "HEAD" ]]; then
+        source_options=(--product-commit "${product_commit}")
+    fi
 
     GENERATED_WORKTREE="${TEMP_DIR}/generated-worktree"
     git worktree add --quiet --detach "${GENERATED_WORKTREE}" "${BASE_SHA}"
@@ -209,8 +218,22 @@ regenerate_release() {
         --release-date "${release_date}" \
         --backports-file "${backports_file}" \
         --sibling-repositories-file "${siblings_file}" \
+        "${source_options[@]}" \
         --output-dir "${output_dir}" >/dev/null
     popd >/dev/null
+
+    # Legacy plans retain their exact-main contract until re-preparation.
+    if [[ "${product_ref}" == "HEAD" ]]; then
+        local plan_path
+        plan_path="$(plan_value '.releasePlanPath')"
+        local generated_plan
+        for generated_plan in "${output_dir}/release-plan.yaml" \
+            "${GENERATED_WORKTREE}/${plan_path}"; do
+            yq -i '.source.productRef = "HEAD" |
+                .source.releaseCommitResolution =
+                    "release PR squash commit on main"' "${generated_plan}"
+        done
+    fi
 }
 
 validate_generated_contents() {
@@ -303,6 +326,20 @@ validate_source() {
     if [[ "$(plan_value '.source.releaseCommitResolution')" == "null" ]]; then
         fail "releaseCommitResolution is required"
     fi
+    [[ "${product_commit}" =~ ^[0-9a-f]{40}$ ]] ||
+        fail "product commit must be a full commit SHA"
+
+    if [[ "${product_ref}" == "refs/heads/main" ]]; then
+        [[ "$(plan_value '.releaseType')" == "rc" &&
+            "$(plan_value '.version')" == "v${channel}.0-rc.1" ]] ||
+            fail "frozen main sources are only valid for a first RC"
+        git merge-base --is-ancestor "${product_commit}" "${BASE_SHA}" ||
+            fail "frozen product commit is not reachable from the trusted base"
+        git diff --quiet "${product_commit}" "${BASE_SHA}" -- \
+            versions.yaml CHANGELOG.md ||
+            fail "release metadata on main changed since the frozen product commit"
+        return
+    fi
 
     if [[ "${product_ref}" == "HEAD" ]]; then
         if [[ "${product_commit}" != "${BASE_SHA}" ]]; then
@@ -313,7 +350,7 @@ validate_source() {
 
     expected_ref="refs/remotes/origin/release/${channel}"
     if [[ "${product_ref}" != "${expected_ref}" ]]; then
-        fail "productRef must be HEAD or ${expected_ref}"
+        fail "productRef must be refs/heads/main, HEAD, or ${expected_ref}"
     fi
     if ! actual_commit="$(git rev-parse "${expected_ref}^{commit}")"; then
         fail "release/${channel} is not available"
