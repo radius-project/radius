@@ -5,7 +5,6 @@ import { readFile } from "node:fs/promises";
 import {
   findRelease,
   listReleases,
-  waitForRelease,
   waitForReleaseState
 } from "./release-reconciliation.mjs";
 
@@ -78,8 +77,8 @@ export default async function publishDraftRelease({ github, core, sleep }) {
   if (mode !== "publish" && mode !== "select-aliases") {
     throw new Error("MODE must be publish or select-aliases");
   }
-  const releases = await listReleases(github, owner, repo);
-  const aliases = selectAliases(releases, tag);
+  let releases = await listReleases(github, owner, repo);
+  let aliases = selectAliases(releases, tag);
   if (mode === "select-aliases") {
     await requirePublicationManifest(core, tag);
     core.setOutput("promote_channel", String(aliases.channel));
@@ -93,11 +92,19 @@ export default async function publishDraftRelease({ github, core, sleep }) {
   if (prerelease && requestedLatest) {
     throw new Error("A prerelease cannot be marked latest");
   }
+  let release = findRelease(releases, tag);
+  if (!release) {
+    releases = await waitForReleaseState(
+      async () => {
+        const observed = await listReleases(github, owner, repo);
+        return findRelease(observed, tag) ? observed : undefined;
+      },
+      { core, sleep, description: `Release ${tag}` }
+    );
+    release = findRelease(releases, tag);
+    aliases = selectAliases(releases, tag);
+  }
   const makeLatest = requestedLatest && aliases.latest;
-
-  let release =
-    findRelease(releases, tag) ??
-    (await waitForRelease(github, owner, repo, tag, { core, sleep }));
   const releaseID = release.id;
   const expectedBody = (await readFile(notesFile, "utf8")).trimEnd();
   if (release.name !== `Radius ${tag}`) {

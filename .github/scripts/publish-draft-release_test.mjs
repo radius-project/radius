@@ -225,6 +225,39 @@ test("waits for a release missing from the initial publication lookup", async ()
   assert.equal(state.updates.length, 1);
 });
 
+for (const newerTag of ["v0.61.1", "v0.62.0"]) {
+  test(`does not replace latest ${newerTag} after recovering a missing release`, async () => {
+    const state = fixture();
+    const newer = { tag_name: newerTag, draft: false, prerelease: false };
+    const update = state.github.rest.repos.updateRelease;
+    let latest = newer;
+    let listings = 0;
+    let latestReads = 0;
+    state.github.rest.repos.listReleases = async () =>
+      ++listings < 3 ? [] : [state.release, newer];
+    state.github.rest.repos.updateRelease = async (request) => {
+      const response = await update(request);
+      if (request.make_latest === "true") latest = state.release;
+      return response;
+    };
+    state.github.rest.repos.getLatestRelease = async () => {
+      latestReads++;
+      return { data: latest };
+    };
+
+    await withNotes(state, () => publishDraftRelease(state));
+
+    assert.equal(listings, 3);
+    assert.deepEqual(state.delays, [1000]);
+    assert.equal(state.updates.length, 1);
+    assert.equal(state.updates[0].make_latest, "false");
+    assert.equal(state.release.draft, false);
+    assert.equal(latest, newer);
+    assert.equal(latestReads, 0);
+    assert.equal(state.outputs.release_url, state.release.html_url);
+  });
+}
+
 test("waits for a post-publication 404 without repeating the update", async () => {
   const state = fixture();
   const get = state.github.rest.repos.getRelease;
