@@ -51,7 +51,7 @@ Automation creates the Deployment Engine tag when missing, waits up to 15 minute
 
 ### 4. Check the build and approve stable publication
 
-Follow the controller's link to the exact [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml). Wait for **Verify release manifest and staged installation** to succeed and inspect its `release-manifest.json` evidence.
+Open the [release build workflow](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) and select the run for the approved version. Confirm its source commit matches the controller summary. Wait for **Verify release manifest and staged installation** to succeed and inspect its `release-manifest.json` evidence.
 
 - **RC:** publication continues automatically after verification.
 - **Final or patch:** approve **Approve final or patch publication** in the `release` environment only for the verified version/source pair.
