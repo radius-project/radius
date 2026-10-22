@@ -45,9 +45,10 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
+	"github.com/radius-project/radius/pkg/retry"
 	"github.com/radius-project/radius/test/step"
+	backoff "github.com/sethvargo/go-retry"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
@@ -148,22 +149,7 @@ func newAzureBackendFixture(ctx context.Context, t *testing.T, name string) clou
 	propagationCtx, cancelPropagation := context.WithTimeout(ctx, azurePropagationTimeout)
 	defer cancelPropagation()
 	err = waitForAzureBlobAccess(propagationCtx, func(ctx context.Context) error {
-		// Exercise the data plane rather than container metadata. The CI principal already holds
-		// subscription Contributor, which grants the container metadata read that GetProperties
-		// performs, so that call can succeed before the Storage Blob Data Contributor assignment
-		// above has propagated. Blob read/write are DataActions that Contributor does not grant,
-		// and the suite's first real operation is a blob write, so probe exactly that.
-		//
-		// The probe object is removed before returning: keys() lists the whole container, so a
-		// survivor would corrupt the final "only its own key was deleted" assertion.
-		if _, err := blobClient.UploadBuffer(ctx, container, azureReadinessProbeKey, []byte("ready"), nil); err != nil {
-			return err
-		}
-		if _, err := blobClient.DeleteBlob(ctx, container, azureReadinessProbeKey, nil); err != nil &&
-			!bloberror.HasCode(err, bloberror.BlobNotFound) {
-			return err
-		}
-		return nil
+		return probeAzureBlobAccess(ctx, blobClient, container)
 	})
 	require.NoError(t, err)
 
@@ -226,6 +212,24 @@ func newAzureBackendFixture(ctx context.Context, t *testing.T, name string) clou
 	}
 }
 
+func probeAzureBlobAccess(ctx context.Context, client *azblob.Client, container string) error {
+	if _, err := client.UploadBuffer(ctx, container, azureReadinessProbeKey, []byte("ready"), nil); err != nil {
+		return err
+	}
+	// Terraform reads blob properties before locking state. Blob read permission can still
+	// return 403 after writes succeed; container metadata reads do not test this DataAction.
+	probe := client.ServiceClient().NewContainerClient(container).NewBlobClient(azureReadinessProbeKey)
+	if _, err := probe.GetProperties(ctx, nil); err != nil {
+		return err
+	}
+	// A successful probe must leave no object in the container's final key listing.
+	if _, err := client.DeleteBlob(ctx, container, azureReadinessProbeKey, nil); err != nil &&
+		!bloberror.HasCode(err, bloberror.BlobNotFound) {
+		return err
+	}
+	return nil
+}
+
 // azureCredentialRetries bounds how often a credential failure is retried. A few attempts absorb a
 // transient token service or Azure CLI hiccup, while a real misconfiguration still fails in
 // seconds instead of consuming the whole propagation budget.
@@ -234,34 +238,35 @@ const azureCredentialRetries = 3
 func waitForAzureBlobAccess(ctx context.Context, probe func(context.Context) error) error {
 	lastObservation := "no completed request"
 	credentialAttempts := 0
-	err := wait.PollUntilContextCancel(ctx, 5*time.Second, true, func(ctx context.Context) (bool, error) {
+	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: backoff.NewConstant(5 * time.Second)})
+	err := retryer.RetryFunc(ctx, func(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
-			return false, err
+			return err
 		}
 		err := probe(ctx)
 		if contextErr := ctx.Err(); contextErr != nil {
-			return false, contextErr
+			return contextErr
 		}
 		if err == nil {
-			return true, nil
+			return nil
 		}
 		classification := azureBlobReadinessError(err)
 		lastObservation = classification.observation
-		retry := classification.retry
+		shouldRetry := classification.retry
 		if classification.credential {
 			credentialAttempts++
-			retry = retry && credentialAttempts <= azureCredentialRetries
+			shouldRetry = shouldRetry && credentialAttempts <= azureCredentialRetries
 		}
-		if retry {
-			return false, nil
+		if shouldRetry {
+			return retry.RetryableError(errors.New(classification.observation))
 		}
 		if errors.Is(err, context.Canceled) {
-			return false, context.Canceled
+			return context.Canceled
 		}
 		if errors.Is(err, context.DeadlineExceeded) {
-			return false, context.DeadlineExceeded
+			return context.DeadlineExceeded
 		}
-		return false, errors.New("non-retryable Blob readiness error")
+		return errors.New("non-retryable Blob readiness error")
 	})
 	if err != nil {
 		return fmt.Errorf("waiting for new Azure container access (last observation: %s): %w", lastObservation, err)
