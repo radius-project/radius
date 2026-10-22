@@ -1,0 +1,102 @@
+# Release runbook
+
+## Purpose
+
+Use this checklist to run a Radius RC, final, or patch release. The [full release guide](./README.md) covers setup and exceptional recovery. Commands below use channel `0.62` as an example; replace it with your target channel and use the version that Prepare Release generates.
+
+## Prerequisites
+
+- Have maintainer access, an authenticated GitHub CLI (`gh auth status`), and an available reviewer for the `release` environment.
+- Complete the [one-time setup](./README.md#prerequisites), including App permissions, package access, environment protection, branch rules, and the current release pipeline on the target branch. Follow the [first-production readiness checks](./README.md#confirm-readiness-before-the-first-production-cycle); green CI alone is not that evidence.
+- If resource types or recipe packs changed, [release them and merge the generated Radius update](./README.md#release-resource-type-namespaces-and-recipe-packs) first. Unchanged, already-pinned releases need no action.
+- For an existing channel, label selected changes `backport release/X.Y` and **rebase-merge** their generated backports before preparation. Every `supported` version in [`versions.yaml`](../../../versions.yaml) must already have its Radius tag; finish any pending release first.
+
+## Steps
+
+### 1. Run Prepare Release
+
+Choose the release type:
+
+| Type    | When to use it                                                                                                                                   |
+|---------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `rc`    | First or subsequent candidate for a new minor release.                                                                                           |
+| `final` | Promote the last RC after its docs upmerge, samples upmerge, and sample tests succeed. Do not add untested product or Deployment Engine changes. |
+| `patch` | Release fixes on an existing stable channel.                                                                                                     |
+
+Run [Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml) from `main`:
+
+```bash
+gh workflow run prepare-release.yaml --repo radius-project/radius --ref main -f release-type=rc -f channel=0.62
+```
+
+For a final or patch, change `release-type=rc` to `release-type=final` or `release-type=patch`. Preparation computes the full version; do not choose an RC number yourself. For an existing channel, optionally select merged main PRs with `-f backport-pr-numbers="12345,12346"`, using their actual numbers.
+
+Open the run and follow **Summary > Release pull request**. If the CLI did not return a run URL, find your invocation in that workflow's Actions page.
+
+### 2. Review and merge the release PR
+
+Review the generated draft PR: version, product commit, sibling commits, selected backports, and expected outputs in `.github/release-plans/`. For RC/final notes, edit only **Highlights** and **Upgrading**; retain the image-pinning warning. Patch notes are fully generated.
+
+Mark the PR ready, obtain approval, and **squash-merge into `main`**. If the base advanced, rerun preparation with the same inputs before merging.
+
+For an existing `release/X.Y` channel, also review and **rebase-merge the generated metadata backport**. The controller waits for this; the main PR merge alone is not enough. For a first RC, automation creates the release branch.
+
+### 3. Approve release reconciliation
+
+Open the automatically started [Release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml). Review its version, Radius source commit, Deployment Engine commit, and frozen sibling commits. Record the exact **version and source commit** from its summary for recovery.
+
+In **Review deployments**, approve **Approve release reconciliation** in the `release` environment.
+
+Automation creates the Deployment Engine tag when missing, waits up to 15 minutes for its image while unlocked, locks the image digest, reconciles sibling tags, and creates the Radius tag last. **Do not manually create tags or dispatch individual publishers on the normal path.**
+
+### 4. Check the build and approve stable publication
+
+Follow the controller's link to the exact [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml). Wait for **Verify release manifest and staged installation** to succeed and inspect its `release-manifest.json` evidence.
+
+- **RC:** publication continues automatically after verification.
+- **Final or patch:** approve **Approve final or patch publication** in the `release` environment only for the verified version/source pair.
+
+Automation rechecks artifacts, promotes eligible stable aliases for finals/patches, and publishes the GitHub Release. RCs do not move stable aliases.
+
+### 5. Finish downstream work
+
+Follow the exact downstream run and PR links in the release summary:
+
+| Type  | Maintainer action                                                                                                                                                                                                                      |
+|-------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| RC    | Review and squash-merge the docs and samples upmerge PRs into `edge`, if created. Then [resume the same release](#troubleshooting) so sample tests run. Require all three successful coordination receipts before preparing the final. |
+| Final | Confirm automated docs publication, samples publication, and sample tests succeed. Also publish the final's Bicep recipes using the command below.                                                                                     |
+| Patch | Confirm sample tests succeed; no docs/samples release-branch recut is needed.                                                                                                                                                          |
+
+**Final only:** confirm `resource-types-contrib` `main` contains the intended recipe source, then run [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml). Replace `0.62.0` with the actual final version **without `v`**:
+
+```bash
+gh workflow run publish-bicep-recipes.yaml --repo radius-project/resource-types-contrib --ref main -f release_version=0.62.0
+```
+
+Wait for success and record the run URL. This is a separate maintainer action, not dispatched by Radius; it publishes release-version recipe tags and moves recipe `latest` tags.
+
+## Verification
+
+- [ ] The release build and required downstream stages succeeded; no approval or upmerge is still pending.
+- [ ] The GitHub Release is public with the correct version, and `release-manifest.json` and staged-installation evidence match the approved source.
+- [ ] RC: all three coordination receipts succeeded. Final/patch: eligible aliases were promoted from verified digests. Final: Bicep recipe publication succeeded.
+- [ ] Save the version, source commit, PR links, workflow URLs, and verification evidence in the Teams release thread. A public GitHub Release alone does not mean downstream work is complete.
+
+## Troubleshooting
+
+**Resume a failed or interrupted release:** fix the reported cause, then use [Resume Release](https://github.com/radius-project/radius/actions/workflows/resume-release.yaml) from `main`. Prefer the exact command in the failed summary. Otherwise replace both example inputs below with that summary's version and full source SHA:
+
+```bash
+gh workflow run resume-release.yaml --repo radius-project/radius --ref main -f version=v0.62.0-rc.1 -f source-commit="<source-commit-from-summary>"
+```
+
+Use the original release PR squash commit for a first RC, or the metadata backport commit for an existing channel, **never the current branch tip**. Resume preserves matching tags and locked digests; approvals may be required again.
+
+**Dispatch outcome unknown:** inspect the correlated publisher run and destination artifacts before resuming, including after cancellation. Do not blindly redispatch; see [lost dispatch recovery](./README.md#lost-dispatch-response).
+
+**Controller never started after merge:** use [Approve Release](https://github.com/radius-project/radius/actions/workflows/approve-release.yaml) instead, with the same version/source inputs. This starts reconciliation; it does not bypass environment approval.
+
+**Preparation blocked:** merge missing backports or finish the preceding release, then rerun Prepare Release with the same inputs. Never edit the generated plan to bypass validation.
+
+Never move approved tags, delete locks, overwrite published artifacts, or disable verification. Follow [break-glass recovery](./README.md#break-glass-recovery) for conflicts or fixes needed in already-tagged build code.

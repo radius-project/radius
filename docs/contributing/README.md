@@ -73,6 +73,7 @@ Every contributing doc, grouped by topic. This is the single index that [AGENTS.
 - [Investigating issues](./contributing-issues/README.md)
 - [Triage process](./triage/triage-process.md)
 - [Releases](./contributing-releases/README.md)
+- [Release runbook](./contributing-releases/release-runbook.md) - short checklist and commands for running a release.
 - [Adding a Recipe Pack for a new platform](./contributing-recipe-packs.md)
 - [Design notes](./contributing-code/contributing-code-design/README.md)
 
