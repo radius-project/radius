@@ -121,7 +121,7 @@ export default async function publishDraftRelease({ github, core, sleep }) {
   } else {
     await requirePublicationManifest(core, tag);
     try {
-      const response = await github.rest.repos.updateRelease({
+      await github.rest.repos.updateRelease({
         owner,
         repo,
         release_id: release.id,
@@ -129,7 +129,6 @@ export default async function publishDraftRelease({ github, core, sleep }) {
         prerelease,
         make_latest: makeLatest ? "true" : "false"
       });
-      release = response.data;
     } catch (error) {
       publicationError = error;
     }
