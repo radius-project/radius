@@ -33,6 +33,7 @@ const ucpServerName = "ucp.radius-system.svc"
 
 type handshakeResult struct {
 	serverState tls.ConnectionState
+	clientState tls.ConnectionState
 	serverErr   error
 	clientErr   error
 }
@@ -69,10 +70,11 @@ func handshake(t *testing.T, server, client *tls.Config) handshakeResult {
 	require.NoError(t, err)
 	clientTLS := tls.Client(conn, client)
 	clientErr := clientTLS.HandshakeContext(ctx)
+	clientState := clientTLS.ConnectionState()
 	_ = conn.Close()
 	result := <-serverDone
 
-	return handshakeResult{serverState: result.state, serverErr: result.err, clientErr: clientErr}
+	return handshakeResult{serverState: result.state, clientState: clientState, serverErr: result.err, clientErr: clientErr}
 }
 
 func clientConfig(src *Source, serverName string) *tls.Config {
