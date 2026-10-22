@@ -8,7 +8,11 @@ import publishDraftRelease, {
   mandatoryChecks
 } from "./publish-draft-release.mjs";
 
-function fixture({ draft = true, prerelease = false } = {}) {
+function fixture({
+  draft = true,
+  prerelease = false,
+  updateFailures = []
+} = {}) {
   const updates = [];
   const delays = [];
   const messages = [];
@@ -41,10 +45,19 @@ function fixture({ draft = true, prerelease = false } = {}) {
           return { data: { ...release } };
         },
         updateRelease: async (request) => {
-          updates.push(request);
-          release.draft = request.draft;
-          release.prerelease = request.prerelease;
-          return { data: { ...release } };
+          const retries = request.request?.retries ?? 5;
+          for (let attempt = 0; ; attempt++) {
+            updates.push(request);
+            const failure = updateFailures.shift();
+            if (!failure || failure.accepted) {
+              release.draft = request.draft;
+              release.prerelease = request.prerelease;
+            }
+            if (!failure) return { data: { ...release } };
+            if (failure.error.status !== 503 || attempt >= retries) {
+              throw failure.error;
+            }
+          }
         },
         getLatestRelease: async () => ({ data: { tag_name: release.tag_name } })
       }
@@ -186,6 +199,70 @@ test("reconciles publication accepted before a network error", async () => {
   assert.equal(state.updates.length, 1);
 });
 
+for (const accepted of [false, true]) {
+  test(`retries a publication ${accepted ? "accepted" : "rejected"} before an HTTP 503 response`, async () => {
+    const failure = Object.assign(new Error("503 Service Unavailable"), {
+      status: 503
+    });
+    const state = fixture({ updateFailures: [{ error: failure, accepted }] });
+    const get = state.github.rest.repos.getRelease;
+    const draft = { ...state.release };
+    let reads = 0;
+    state.github.rest.repos.getRelease = async (request) =>
+      ++reads < 3 ? { data: draft } : get(request);
+
+    await withNotes(state, () => publishDraftRelease(state));
+
+    assert.equal(state.updates.length, 2);
+    assert.deepEqual(state.updates[1], state.updates[0]);
+    assert.equal(state.updates[0].request?.retries, undefined);
+    assert.equal(state.updates[0].release_id, state.release.id);
+    assert.equal(state.updates[0].make_latest, "true");
+    assert.equal(state.release.draft, false);
+    assert.equal(reads, 3);
+    assert.deepEqual(state.delays, [1000, 2000]);
+    assert.equal(state.outputs.release_url, state.release.html_url);
+  });
+
+  test(`bounds publication HTTP retries when the write is ${accepted ? "accepted" : "rejected"}`, async () => {
+    const failure = Object.assign(new Error("503 Service Unavailable"), {
+      status: 503
+    });
+    const state = fixture({
+      updateFailures: Array(6).fill({ error: failure, accepted })
+    });
+    const get = state.github.rest.repos.getRelease;
+    let reads = 0;
+    state.github.rest.repos.getRelease = async (request) => {
+      reads++;
+      return get(request);
+    };
+
+    if (accepted) {
+      await withNotes(state, () => publishDraftRelease(state));
+      assert.equal(state.outputs.release_url, state.release.html_url);
+    } else {
+      await assert.rejects(
+        () => withNotes(state, () => publishDraftRelease(state)),
+        (error) => {
+          assert.match(error.message, /not visible after 5 attempts/);
+          assert.equal(error.cause, failure);
+          return true;
+        }
+      );
+      assert.equal(state.outputs.release_url, undefined);
+    }
+
+    assert.equal(state.updates.length, 6);
+    for (const request of state.updates) {
+      assert.deepEqual(request, state.updates[0]);
+    }
+    assert.equal(state.release.draft, !accepted);
+    assert.equal(reads, accepted ? 1 : 5);
+    assert.deepEqual(state.delays, accepted ? [] : [1000, 2000, 4000, 8000]);
+  });
+}
+
 for (const responseLost of [false, true]) {
   test(`waits for publication by ID when the update response is ${responseLost ? "lost" : "received"}`, async () => {
     const state = fixture();
@@ -201,7 +278,7 @@ for (const responseLost of [false, true]) {
     state.github.rest.repos.getRelease = async (request) =>
       ++reads < 3 ? { data: draft } : get(request);
     state.github.rest.repos.updateRelease = async (request) => {
-      assert.equal(request.request.retries, 0);
+      assert.equal(request.request?.retries, undefined);
       const response = await update(request);
       if (responseLost) throw new Error("connection reset after publication");
       return response;

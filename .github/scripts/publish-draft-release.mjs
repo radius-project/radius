@@ -127,8 +127,7 @@ export default async function publishDraftRelease({ github, core, sleep }) {
         release_id: release.id,
         draft: false,
         prerelease,
-        make_latest: makeLatest ? "true" : "false",
-        request: { retries: 0 }
+        make_latest: makeLatest ? "true" : "false"
       });
       release = response.data;
     } catch (error) {
