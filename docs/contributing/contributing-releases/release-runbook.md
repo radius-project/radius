@@ -31,13 +31,17 @@ gh workflow run prepare-release.yaml --repo radius-project/radius --ref main -f 
 
 For a final or patch, change `release-type=rc` to `release-type=final` or `release-type=patch`. Preparation computes the full version; do not choose an RC number yourself. For an existing channel, optionally select merged main PRs with `-f backport-pr-numbers="12345,12346"`, using their actual numbers.
 
+For a first RC, preparation freezes the checked-out `main` commit. To select an earlier reachable cutoff, add `-f product-commit="<full-40-character-SHA>"`; preparation verifies that its release metadata and build tooling are compatible. Later `main` or merge-queue changes do not enter that release. This override is not available for subsequent RCs, finals, or patches.
+
 Open the run and follow **Summary > Release pull request**. If the CLI did not return a run URL, find your invocation in that workflow's Actions page.
+
+While the first-RC PR remains open, rerunning with the same type/channel retains its cutoff, sibling commits, release date, and curated Highlights/Upgrading. Normally omit `product-commit` on reruns; a different cutoff for the same open preparation is rejected.
 
 ### 2. Review and merge the release PR
 
 Review the generated draft PR: version, product commit, sibling commits, selected backports, and expected outputs in `.github/release-plans/`. For RC/final notes, edit only **Highlights** and **Upgrading**; retain the image-pinning warning. Patch notes are fully generated.
 
-Mark the PR ready, obtain approval, and **squash-merge into `main`**. If the base advanced, rerun preparation with the same inputs before merging.
+Mark the PR ready, obtain approval, and **squash-merge into `main`**. A frozen first-RC plan does not need regeneration just because `main` advanced.
 
 For an existing `release/X.Y` channel, also review and **rebase-merge the generated metadata backport**. The controller waits for this; the main PR merge alone is not enough. For a first RC, automation creates the release branch.
 
@@ -46,6 +50,8 @@ For an existing `release/X.Y` channel, also review and **rebase-merge the genera
 Open the automatically started [Release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml). Review its version, Radius source commit, Deployment Engine commit, and frozen sibling commits. Record the exact **version and source commit** from its summary for recovery.
 
 In **Review deployments**, approve **Approve release reconciliation** in the `release` environment.
+
+For a frozen first RC, the controller then creates or reuses a signed release-App commit based on the frozen product cutoff, adding only the four reviewed release metadata files, including the PM notes. The release branch, tag, builds, and artifact locks use this resolved commit, not the later `main` squash commit. Record the resolved source SHA from the summary for subsequent recovery.
 
 Automation creates the Deployment Engine tag when missing, waits up to 15 minutes for its image while unlocked, locks the image digest, reconciles sibling tags, and creates the Radius tag last. **Do not manually create tags or dispatch individual publishers on the normal path.**
 
@@ -91,7 +97,9 @@ Wait for success and record the run URL. This is a separate maintainer action, n
 gh workflow run resume-release.yaml --repo radius-project/radius --ref main -f version=v0.62.0-rc.1 -f source-commit="<source-commit-from-summary>"
 ```
 
-Use the original release PR squash commit for a first RC, or the metadata backport commit for an existing channel, **never the current branch tip**. Resume preserves matching tags and locked digests; approvals may be required again.
+For a frozen first RC, use the resolved release commit from the summary. Before resolution, use the merged metadata PR commit; replaying that same approval identity reuses the original resolved commit. Legacy first RCs and existing-channel releases retain their original release PR squash or metadata-backport commit. **Never substitute the raw product cutoff or current branch tip.** Resume preserves matching tags and locked digests; approvals may be required again.
+
+**Older open first-RC preparation:** after frozen-source support is deployed, rerun preparation once with the same type/channel to migrate an unmerged `productRef: HEAD` plan. This retains its cutoff and PM curation and returns the PR to draft for renewed review. Do not migrate or reprepare a merged or tagged release; resume its existing identity.
 
 **Dispatch outcome unknown:** inspect the correlated publisher run and destination artifacts before resuming, including after cancellation. Do not blindly redispatch; see [lost dispatch recovery](./README.md#lost-dispatch-response).
 
