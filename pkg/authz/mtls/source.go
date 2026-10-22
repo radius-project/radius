@@ -42,6 +42,9 @@ const (
 
 	// DefaultPollInterval is how often Start checks the files for changes.
 	DefaultPollInterval = 10 * time.Second
+
+	// maxReadAttempts bounds how many times Reload reads the files while they keep changing.
+	maxReadAttempts = 5
 )
 
 // material is one consistent set of certificate, key, and CA bundle.
@@ -55,8 +58,9 @@ type material struct {
 // Secret volumes by swapping a symlink, so Source polls file contents rather than
 // watching individual files.
 type Source struct {
-	dir string
-	now func() time.Time
+	dir      string
+	now      func() time.Time
+	readFile func(string) ([]byte, error)
 
 	mu      sync.Mutex
 	digest  [sha256.Size]byte
@@ -66,7 +70,7 @@ type Source struct {
 // NewSource loads the certificate, key, and CA bundle from dir. It returns an error if
 // any file is missing or invalid, or if the certificate has expired.
 func NewSource(dir string) (*Source, error) {
-	s := &Source{dir: dir, now: time.Now}
+	s := &Source{dir: dir, now: time.Now, readFile: os.ReadFile}
 	if _, err := s.Reload(); err != nil {
 		return nil, err
 	}
@@ -80,16 +84,10 @@ func (s *Source) Reload() (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var raw [3][]byte
-	for i, name := range []string{CertFile, KeyFile, CAFile} {
-		data, err := os.ReadFile(filepath.Join(s.dir, name))
-		if err != nil {
-			return false, fmt.Errorf("failed to read %s: %w", name, err)
-		}
-		raw[i] = data
+	raw, digest, err := s.readStable()
+	if err != nil {
+		return false, err
 	}
-
-	digest := sha256.Sum256(bytes.Join(raw[:], []byte{0}))
 	if s.current.Load() != nil && digest == s.digest {
 		return false, nil
 	}
@@ -104,6 +102,29 @@ func (s *Source) Reload() (bool, error) {
 	return true, nil
 }
 
+// readStable reads the files until two consecutive reads match, so a Secret update
+// between individual file reads cannot mix files from two versions.
+func (s *Source) readStable() ([3][]byte, [sha256.Size]byte, error) {
+	var prev [sha256.Size]byte
+	for attempt := range maxReadAttempts {
+		var raw [3][]byte
+		for i, name := range []string{CertFile, KeyFile, CAFile} {
+			data, err := s.readFile(filepath.Join(s.dir, name))
+			if err != nil {
+				return raw, prev, fmt.Errorf("failed to read %s: %w", name, err)
+			}
+			raw[i] = data
+		}
+
+		digest := sha256.Sum256(bytes.Join(raw[:], []byte{0}))
+		if attempt > 0 && digest == prev {
+			return raw, digest, nil
+		}
+		prev = digest
+	}
+	return [3][]byte{}, prev, errors.New("certificate files kept changing while being read")
+}
+
 func (s *Source) parse(certPEM, keyPEM, caPEM []byte) (*material, error) {
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
@@ -116,6 +137,25 @@ func (s *Source) parse(certPEM, keyPEM, caPEM []byte) (*material, error) {
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(caPEM) {
 		return nil, errors.New("failed to load CA bundle: no certificates found")
+	}
+
+	// The certificate must chain to the CA bundle it is loaded with, so peers that trust
+	// this bundle also accept this certificate.
+	intermediates := x509.NewCertPool()
+	for _, der := range cert.Certificate[1:] {
+		c, err := x509.ParseCertificate(der)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse intermediate certificate: %w", err)
+		}
+		intermediates.AddCert(c)
+	}
+	if _, err := cert.Leaf.Verify(x509.VerifyOptions{
+		Roots:         pool,
+		Intermediates: intermediates,
+		CurrentTime:   s.now(),
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	}); err != nil {
+		return nil, fmt.Errorf("certificate is not issued by the CA bundle: %w", err)
 	}
 
 	return &material{cert: &cert, pool: pool}, nil
@@ -151,17 +191,22 @@ func (s *Source) Start(ctx context.Context, interval time.Duration) {
 	}
 }
 
-// certificate returns the current certificate. It fails closed if the certificate
-// has expired, for example after a failed rotation.
-func (s *Source) certificate() (*tls.Certificate, error) {
+// load returns the current material, so callers use a certificate and CA bundle from
+// the same version. It fails closed if the certificate has expired, for example after
+// a failed rotation.
+func (s *Source) load() (*material, error) {
 	m := s.current.Load()
 	if err := s.checkExpiry(m.cert); err != nil {
 		return nil, err
 	}
-	return m.cert, nil
+	return m, nil
 }
 
-// pool returns the current CA bundle.
-func (s *Source) pool() *x509.CertPool {
-	return s.current.Load().pool
+// certificate returns the current certificate; see load.
+func (s *Source) certificate() (*tls.Certificate, error) {
+	m, err := s.load()
+	if err != nil {
+		return nil, err
+	}
+	return m.cert, nil
 }
