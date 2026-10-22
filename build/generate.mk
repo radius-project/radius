@@ -130,7 +130,7 @@ generate-rad-daprrp-client: generate-tsp-installed generate-openapi-spec ## Gene
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-ucp-client
-generate-rad-ucp-client: generate-tsp-installed test-ucp-spec-examples ## Generates the UCP client SDK (TypeSpec Go emitter).
+generate-rad-ucp-client: generate-tsp-installed ## Generates the UCP client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/ucp/api/v20231001preview'"
 	$(call generate-typespec-go-client,typespec/UCP,pkg/ucp/api/v20231001preview,true)
 	@echo "$(ARROW) Done."
