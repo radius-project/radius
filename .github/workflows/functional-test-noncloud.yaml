@@ -648,17 +648,8 @@ jobs:
 
       - name: Port-forward to Git server
         if: matrix.name == 'kubernetes-noncloud'
-        run: |
-          # Start port forwarding in the background
-          kubectl port-forward -n git-http-backend svc/git-http 30080:3000 &
-
-          # Wait for port forwarding to be established
-          sleep 5
-
-          # Test the connection to ensure port forwarding is working
-          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
-
-          echo "Port forwarding established successfully"
+        # The log lands in the container logs artifact uploaded below.
+        run: ./.github/scripts/start-git-http-port-forward.sh "${GITHUB_WORKSPACE}/${RADIUS_CONTAINER_LOG_BASE}/git-http-port-forward.log"
 
       - name: Install Dapr CLI
         if: matrix.name == 'daprrp-noncloud'
@@ -776,7 +767,7 @@ jobs:
 
       - name: Upload authorization gate logs
         if: always() && matrix.authzDryRun
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ env.LEG_NAME }}-authz-logs
           path: dist/authz-logs

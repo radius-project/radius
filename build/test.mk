@@ -97,6 +97,13 @@ test-install-bicep: test-retry-curl ## Tests bounded Bicep downloads without net
 
 test: test-install-bicep
 
+.PHONY: test-git-http-backend
+test-git-http-backend: ## Tests the Flux test Git server install and port-forward without a cluster
+	@bash ./.github/actions/install-git-http-backend/install-git-http-backend_test.sh
+	@bash ./.github/scripts/start-git-http-port-forward_test.sh
+
+test: test-git-http-backend
+
 .PHONY: test-authz-would-deny-check
 test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned log collector
 	@bash ./.github/scripts/authz-would-deny-check_test.sh
@@ -124,7 +131,7 @@ test-changelog-range: ## Tests changelog channel boundary resolution
 	@bash ./.github/scripts/changelog-range_test.sh
 
 .PHONY: test-changelog-config
-test-changelog-config: install-git-cliff ## Tests the git-cliff configuration against fixture commits
+test-changelog-config: install-git-cliff install-jq ## Tests the git-cliff configuration against fixture commits
 	@bash ./.github/scripts/changelog-config_test.sh
 
 .PHONY: test-prepare-release
@@ -133,7 +140,7 @@ test-prepare-release: install-git-cliff ## Tests release version, changelog, not
 	@bash ./.github/scripts/verify-deployment-engine-tag_test.sh
 
 .PHONY: test-release-plan
-test-release-plan: ## Tests release plan schema, policy, source, and file validation
+test-release-plan: install-git-cliff ## Tests release plan schema, policy, source, and file validation
 	@bash ./.github/scripts/capture-release-sibling-commits_test.sh
 	@bash ./.github/scripts/validate-release-plan_test.sh
 	@bash ./.github/scripts/validate-release-merge-group_test.sh

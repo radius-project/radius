@@ -1,17 +1,17 @@
 module github.com/radius-project/radius/test/magpiego
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.3
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.1
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.15.0
 	github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus v1.11.0
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azsecrets v1.5.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.2
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.10.1
 	github.com/dapr/go-sdk v1.15.0
 	github.com/denisenkom/go-mssqldb v0.12.3
-	github.com/go-chi/chi/v5 v5.4.0
+	github.com/go-chi/chi/v5 v5.5.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/rabbitmq/amqp091-go v1.15.0
 	go.mongodb.org/mongo-driver v1.17.10

@@ -273,7 +273,6 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	logger.Error(err, "unhandled error")
 
 	var response rest.Response
-	var denied *authz.DeniedError
 	// Try to use the ARM format to send back the error info
 	// if the error is due to api conversion failure return bad resquest
 	switch v := err.(type) {
@@ -292,7 +291,7 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 			},
 		})
 	default:
-		if errors.As(err, &denied) {
+		if denied, ok := errors.AsType[*authz.DeniedError](err); ok {
 			response = deniedErrorResponse(denied)
 		} else if errors.Is(err, v1.ErrInvalidModelConversion) {
 			response = rest.NewBadRequestARMResponse(v1.ErrorResponse{

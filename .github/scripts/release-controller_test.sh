@@ -187,7 +187,7 @@ test_stage_order() {
         "Radius tag creation must allow five minutes for build discovery"
     assert_contains "${CONTROLLER}" \
         'verify-deployment-engine-tag.sh' \
-        "controller must hard-block on the signed Deployment Engine tag"
+        "controller must verify the Deployment Engine tag"
     assert_contains "${CONTROLLER}" \
         'monitor-remote-workflow.mjs' \
         "controller must use correlated Deployment Engine publication"
@@ -283,7 +283,7 @@ test_frozen_output_contract() {
         [.[].steps[] | select(.run // "" |
         contains("verify-deployment-engine-image.sh")) |
         .env.GORELEASER_PARITY_TARGETS]' \
-        "[\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\"]" \
+        "[\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\"]" \
         "every image verification must use the approved output contract"
     for job in publish-deployment-engine create-radius-tag; do
         assert_json "${CONTROLLER}" \
@@ -351,6 +351,133 @@ test_release_build_contract() {
         "Prepare Release must reject an unmigrated release branch before opening a pull request"
 }
 
+publish_step_index() {
+    NAME="$1" yq -r '.jobs."publish-deployment-engine".steps | to_entries |
+        .[] | select(.value.name == strenv(NAME)) | .key' "${CONTROLLER}"
+}
+
+test_deployment_engine_tag_automation() {
+    local create verify wait inspect workflow
+
+    # yq binds "and" more loosely than "|", so each combined condition after a
+    # pipe is parenthesized to evaluate against the selected step.
+    export ABSENT_IF="needs.validate.outputs.de-tag-state == 'absent'"
+    assert_json "${CONTROLLER}" '.jobs.validate.outputs."de-tag-state"' \
+        "\"\${{ steps.de-tag.outputs.state }}\"" \
+        "validation must expose whether the Deployment Engine tag exists"
+    assert_yq "${CONTROLLER}" \
+        ".jobs.validate.steps[] | select(.id == \"de-tag\") |
+        ((.run | contains(\"args=(--allow-absent main \\\"\${VERSION}\\\")\")) and
+        (.run | contains(\"--allow-absent \\\"\${RELEASE_CANDIDATE}\\\"\")) and
+        (.run | contains(\"\${RC_DE_COMMIT:?\")) and
+        .env.RELEASE_TYPE == \"\${{ steps.plan.outputs.release-type }}\" and
+        .env.RELEASE_CANDIDATE ==
+            \"\${{ steps.plan.outputs.previous-version }}\" and
+        .env.RC_DE_COMMIT ==
+            \"\${{ steps.rc-lock.outputs.de-source-commit }}\")" \
+        "validation must plan an absent tag at main or the commit the last RC locked"
+    for workflow in "${CONTROLLER}" "${WORKFLOWS}/prepare-release.yaml"; do
+        assert_yq "${workflow}" \
+            '[.jobs[].steps[] | select(.id == "rc-lock")] |
+            ((length == 1) and (.[0].if | contains("final")) and
+            .[0].env.INPUT_MODE == "release-candidate" and
+            (.[0].with.script |
+                contains("reconcile-release-controller-lock.mjs")))' \
+            "$(basename "${workflow}") must bind a final to its RC's trusted lock"
+        assert_yq "${workflow}" \
+            "[.jobs[].steps[] |
+                select(.with.repositories == \"deployment-engine\") |
+                .with.\"client-id\"] |
+            ((length > 0) and
+            ((map(select(. !=
+                \"\${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}\")) |
+                length) == 0))" \
+            "$(basename "${workflow}") must reach Deployment Engine only as the publisher App"
+    done
+    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
+        ".jobs.prepare.steps[] |
+        select(.name == \"Verify or plan Deployment Engine tag\") |
+        ((.run | contains(\"args=(--allow-absent main \\\"\${VERSION}\\\")\")) and
+        (.run | contains(\"--allow-absent \\\"\${RELEASE_CANDIDATE}\\\"\")) and
+        (.run | contains(\"\${RC_DE_COMMIT:?\")) and
+        .env.RC_DE_COMMIT ==
+            \"\${{ steps.rc-lock.outputs.de-source-commit }}\")" \
+        "Prepare Release must check the controller's tag plan before the pull request"
+    assert_yq "${CONTROLLER}" \
+        '[.jobs[].steps[] | select(.with."permission-contents" == "write" and
+            .with.repositories == "deployment-engine")] |
+        ((length == 1) and .[0].if == strenv(ABSENT_IF))' \
+        "only an approved absent tag may mint a Deployment Engine write token"
+    assert_yq "${CONTROLLER}" \
+        ".jobs.\"publish-deployment-engine\".steps[] |
+        select(.name == \"Create approved Deployment Engine tag\") |
+        (.if == strenv(ABSENT_IF) and
+        .env.RELEASE_RECONCILE_TAG_ONLY == \"true\" and
+        .env.APPROVED_DE_COMMIT ==
+            \"\${{ needs.validate.outputs.de-source-commit }}\" and
+        .env.APP_SLUG == \"\${{ steps.de-write-token.outputs.app-slug }}\" and
+        (.run | contains(\"== \\\"radius-publisher\\\"\")) and
+        (.run | contains(\"release-create-tag-and-branch.sh\")))" \
+        "only the Radius Publisher App may create the approved Deployment Engine tag"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."publish-deployment-engine".steps[] | select(.id == "de-tag") |
+        (.run | contains("--allow-absent") | not)' \
+        "the tag must exist at the approved commit before publication"
+    assert_yq "${CONTROLLER}" \
+        ".jobs.\"publish-deployment-engine\".steps[] |
+        select(.name == \"Wait for the Deployment Engine tag build\") |
+        .if == \"steps.de-lock.outputs.exists != 'true'\"" \
+        "every unlocked attempt, including a resume after tag creation, must wait for the tag build"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."publish-deployment-engine"."timeout-minutes" == 40' \
+        "publication must allow time for the Deployment Engine tag build"
+    create="$(publish_step_index "Create approved Deployment Engine tag")"
+    verify="$(publish_step_index "Reverify approved Deployment Engine tag")"
+    wait="$(publish_step_index "Wait for the Deployment Engine tag build")"
+    inspect="$(publish_step_index "Inspect unlocked Deployment Engine image")"
+    if [[ -z "${create}" || -z "${verify}" || -z "${wait}" || -z "${inspect}" ]] ||
+        ((create >= verify || verify >= wait || wait >= inspect)); then
+        fail_test "tag creation, verification, and build wait must precede image inspection"
+    else
+        ((++PASS))
+    fi
+}
+
+# A resumed attempt can find the tag that an interrupted attempt pushed while
+# its build is still running. It must keep polling until the image is staged
+# instead of dispatching a publisher that cannot find the source image yet.
+test_resume_waits_for_running_tag_build() {
+    if ! (
+        root="$(mktemp -d "${TMPDIR:-/tmp}/de-wait-test-XXXXXX")"
+        trap 'rm -rf "${root}"' EXIT
+        mkdir -p "${root}/.github/scripts"
+        cat >"${root}/.github/scripts/verify-deployment-engine-image.sh" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+checks=$(($(cat "${CHECKS}" 2>/dev/null || echo 0) + 1))
+echo "${checks}" >"${CHECKS}"
+while [[ "$1" != "--state-output" ]]; do shift; done
+if ((checks < 3)); then echo absent; else echo complete; fi >"$2"
+EOF
+        script="$(yq -r '.jobs."publish-deployment-engine".steps[] |
+            select(.name == "Wait for the Deployment Engine tag build") |
+            .run' "${CONTROLLER}")"
+        # shellcheck disable=SC2329 # Invoked by the exported step script.
+        sleep() { :; }
+        export -f sleep
+        cd "${root}" || exit 1
+        CHECKS="${root}/checks" RUNNER_TEMP="${root}" \
+            DE_IMAGE_TAG=0.62.0-rc.1 RELEASE_VERSION=v0.62.0-rc.1 \
+            DE_SOURCE_COMMIT=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+            bash -euo pipefail -c "${script}" >/dev/null || exit 1
+        [[ "$(<"${root}/checks")" == "3" ]]
+    ); then
+        fail_test "a resumed attempt must poll until the tag build stages the image"
+        return
+    fi
+    ((++PASS))
+}
+
 test_de_bridge_uses_immutable_destinations() {
     if ! (
         directory="$(mktemp -d "${TMPDIR:-/tmp}/de-bridge-test-XXXXXX")"
@@ -395,6 +522,8 @@ main() {
     test_unknown_dispatch_summary
     test_stage_order
     test_release_build_contract
+    test_deployment_engine_tag_automation
+    test_resume_waits_for_running_tag_build
     test_de_bridge_uses_immutable_destinations
     test_identity_and_cleanup
 

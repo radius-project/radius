@@ -163,7 +163,7 @@ write_outputs() {
     local release_branch="$4"
     local de_image_tag="${VERSION#v}"
     local de_source_tag="${VERSION#v}"
-    local recipes_commit dashboard_commit aws_commit
+    local recipes_commit dashboard_commit aws_commit previous_version
     local resolved_plan="${OUTPUT_DIR}/release-plan.yaml"
 
     mkdir -p "${OUTPUT_DIR}"
@@ -197,6 +197,8 @@ write_outputs() {
         plan_value '.siblingRepositories[] |
             select(.name == "bicep-types-aws") | .sourceCommit'
     )"
+    # A final promotes this release candidate.
+    previous_version="$(plan_value '.previousVersion')"
     printf '%s\n' "${de_image_tag}" >"${OUTPUT_DIR}/de-image-tag.txt"
     printf '%s\n' "${de_source_tag}" >"${OUTPUT_DIR}/de-source-tag.txt"
     printf '%s\n' "${recipes_commit}" >"${OUTPUT_DIR}/recipes-commit.txt"
@@ -204,6 +206,8 @@ write_outputs() {
         >"${OUTPUT_DIR}/dashboard-commit.txt"
     printf '%s\n' "${aws_commit}" \
         >"${OUTPUT_DIR}/bicep-types-aws-commit.txt"
+    printf '%s\n' "${previous_version}" \
+        >"${OUTPUT_DIR}/previous-version.txt"
 
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
         {
@@ -218,6 +222,7 @@ write_outputs() {
             echo "recipes-commit=${recipes_commit}"
             echo "dashboard-commit=${dashboard_commit}"
             echo "bicep-types-aws-commit=${aws_commit}"
+            echo "previous-version=${previous_version}"
         } >>"${GITHUB_OUTPUT}"
     fi
 }

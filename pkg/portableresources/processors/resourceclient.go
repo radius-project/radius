@@ -142,6 +142,27 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 		// Provider metadata does not map versions to regions. Ask ARM about the exact
 		// resource, so child, global, and remote-region resources use their own route.
 		_, err := client.GetByID(ctx, id.String(), apiVersion, nil)
+		if strings.EqualFold(id.Type(), "Microsoft.Authorization/locks") {
+			existence, statusCode, errorCode := "unknown", 0, ""
+			if err == nil {
+				existence, statusCode = "present", http.StatusOK
+			} else {
+				var responseError *azcore.ResponseError
+				if errors.As(err, &responseError) {
+					statusCode, errorCode = responseError.StatusCode, responseError.ErrorCode
+					if statusCode == http.StatusNotFound {
+						switch errorCode {
+						case "ResourceNotFound", "ResourceGroupNotFound", "ParentResourceNotFound":
+							existence = "absent"
+						}
+					}
+				}
+			}
+			// This observes existence at cleanup time, not whether this deployment created the lock.
+			ucplog.FromContextOrDiscard(ctx).Info("Azure lock existence check before deletion",
+				"resourceID", id.String(), "apiVersion", apiVersion,
+				"existence", existence, "statusCode", statusCode, "errorCode", errorCode)
+		}
 		if isARMAPIVersionRejection(err) {
 			versionError = err
 			continue
