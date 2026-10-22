@@ -3,8 +3,8 @@ github.com/Azure/azure-sdk-for-go/sdk/azcore v0.19.0/go.mod h1:h6H6c8enJmmocHUbL
 github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.3 h1:qgnWTiWs1G7AqcKZegFvkJD1bmXJcaDU3uC0ELSgZ5U=
 github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.3/go.mod h1:XtxD48QPInqoj+GMlcRlXHEYsoOxFnP6w2JgIZ9rDS4=
 github.com/Azure/azure-sdk-for-go/sdk/azidentity v0.11.0/go.mod h1:HcM1YX14R7CJcghJGOYCgdezslRSVzqwLf/q+4Y2r/0=
-github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.1 h1:u93s+zU2JD62im61Bm5CZIc1ZrOJaIAWEg0WOrMVkEo=
-github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.1/go.mod h1:oXtinPO4OLj9d1DOTrqrL1oRwGhcqadvAmrl6wTeGlk=
+github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.15.0 h1:w3gDUJlJ0BfBsHH02DCBDwbkmMSXJqBj6nBOCo9iocY=
+github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.15.0/go.mod h1:7scl8mG/IFLVjJ9ef/ltdND2T1z0CkgVSaQoUxLvmeU=
 github.com/Azure/azure-sdk-for-go/sdk/azidentity/cache v0.4.0 h1:xFaZZ+IubdftrDHnGGwZ6QvQ3KHTtWl2MCK+GMt2vxs=
 github.com/Azure/azure-sdk-for-go/sdk/azidentity/cache v0.4.0/go.mod h1:mCBhUhlMjLLJKr5aqw2TNS/VqJOie8MzWq3DAMJeKso=
 github.com/Azure/azure-sdk-for-go/sdk/internal v0.7.0/go.mod h1:yqy467j36fJxcRV2TzfVZ1pCb5vxm4BtZPUdYWe/Xo8=
@@ -61,8 +61,8 @@ github.com/fortytw2/leaktest v1.3.0 h1:u8491cBMTQ8ft8aeV+adlcytMZylmA5nnwwkRZjI8
 github.com/fortytw2/leaktest v1.3.0/go.mod h1:jDsjWgpAGjm2CA7WthBh/CdZYEPF31XHquHwclZch5g=
 github.com/fsnotify/fsnotify v1.9.0 h1:2Ml+OJNzbYCTzsxtv8vKSFD9PbJjmhYF14k/jKC7S9k=
 github.com/fsnotify/fsnotify v1.9.0/go.mod h1:8jBTzvmWwFyi3Pb8djgCCO5IBqzKJ/Jwo8TRcHyHii0=
-github.com/go-chi/chi/v5 v5.4.0 h1:+ufzvFTGKyin26Or5DLrlIDq4ygIDBVcj7oVNeeaYFE=
-github.com/go-chi/chi/v5 v5.4.0/go.mod h1:d1IG7GtKPSjPyBP365PH8sAGVHk3qfB/IhjFNRH1wWM=
+github.com/go-chi/chi/v5 v5.5.0 h1:xdKQ1dJmVJsmgahrXSKhUx8NyVPzpwdlyrrQFpMPJgg=
+github.com/go-chi/chi/v5 v5.5.0/go.mod h1:d1IG7GtKPSjPyBP365PH8sAGVHk3qfB/IhjFNRH1wWM=
 github.com/go-jose/go-jose/v4 v4.1.4 h1:moDMcTHmvE6Groj34emNPLs/qtYXRVcd6S7NHbHz3kA=
 github.com/go-jose/go-jose/v4 v4.1.4/go.mod h1:x4oUasVrzR7071A4TnHLGSPpNOm2a21K9Kf04k1rs08=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
