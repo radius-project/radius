@@ -2,6 +2,16 @@
 // Licensed under the Apache License, Version 2.0.
 
 import assert from "node:assert/strict";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { selectNonCloudTests } from "./functional-test-matrix.mjs";
@@ -166,5 +176,92 @@ for (const { context, error } of [
 ]) {
   test(`invalid selection fails: ${JSON.stringify(context)}`, () => {
     assert.throws(() => selectNonCloudTests(context), error);
+  });
+}
+
+for (const profile of [undefined, "pr"]) {
+  test(`manual ${profile ?? "default"} profile works when the source checkout lacks the selector`, async (t) => {
+    const workflow = readFileSync(
+      new URL("../workflows/functional-test-noncloud.yaml", import.meta.url),
+      "utf8"
+    );
+    const build = workflow.match(
+      /^  build:\n[\s\S]*?(?=^  [a-z][\w-]*:)/m
+    )?.[0];
+    assert.ok(build, "build job must exist");
+    const sourceCheckout = build.match(
+      /      - name: Checkout\n[\s\S]*?(?=\n      - )/
+    )?.[0];
+    assert.ok(sourceCheckout, "source checkout must exist");
+    assert.ok(
+      sourceCheckout.includes(
+        "ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/heads/{0}', github.event.inputs.branch) || github.ref }}"
+      ),
+      "build artifacts must still come from the selected source branch"
+    );
+    const checkout = build.match(
+      /      - name: Checkout workflow test selector\n[\s\S]*?(?=\n      - )/
+    )?.[0];
+    assert.ok(checkout, "workflow selector checkout must exist");
+    assert.match(checkout, /repository: \$\{\{ github\.repository \}\}/);
+    assert.match(checkout, /ref: \$\{\{ github\.workflow_sha \}\}/);
+    assert.match(
+      checkout,
+      /sparse-checkout: \.github\/scripts\/functional-test-matrix\.mjs/
+    );
+    assert.match(checkout, /sparse-checkout-cone-mode: false/);
+    assert.match(checkout, /persist-credentials: false/);
+    const checkoutPath = checkout.match(/path: (.+)/)?.[1];
+    assert.ok(checkoutPath, "workflow selector needs a separate checkout path");
+    const selection = build.match(
+      /      - name: Select functional test matrix\n[\s\S]*?(?=\n      - )/
+    )?.[0];
+    assert.ok(selection, "matrix selection step must exist");
+    assert.ok(build.indexOf(checkout) > build.indexOf(sourceCheckout));
+    assert.ok(build.indexOf(selection) > build.indexOf(checkout));
+
+    const root = mkdtempSync(join(tmpdir(), "functional-matrix-checkout-"));
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+    const selectorPath = ".github/scripts/functional-test-matrix.mjs";
+    assert.equal(existsSync(join(root, selectorPath)), false);
+    const scriptPath = join(root, checkoutPath, selectorPath);
+    mkdirSync(dirname(scriptPath), { recursive: true });
+    copyFileSync(
+      new URL("./functional-test-matrix.mjs", import.meta.url),
+      scriptPath
+    );
+
+    const script = selection
+      .split("          script: |\n")[1]
+      .replace(/^ {12}/gm, "");
+    const AsyncFunction = Object.getPrototypeOf(
+      async function () {}
+    ).constructor;
+    const runSelector = new AsyncFunction("context", "core", "process", script);
+    const outputs = [];
+    const summary = {
+      addHeading() {
+        return this;
+      },
+      addRaw() {
+        return this;
+      },
+      async write() {}
+    };
+    await runSelector(
+      {
+        eventName: "workflow_dispatch",
+        payload: { inputs: { branch: "release/old", "test-profile": profile } }
+      },
+      {
+        setOutput: (name, value) => outputs.push([name, value]),
+        info() {},
+        summary
+      },
+      { env: { GITHUB_WORKSPACE: root } }
+    );
+    assert.deepEqual(outputs, [
+      ["matrix", { include: profile === "pr" ? pr : full }]
+    ]);
   });
 }
