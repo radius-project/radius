@@ -8,7 +8,7 @@ header = """
 
 All notable changes to Radius are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Radius follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the version policy documented in the [release process](docs/contributing/contributing-releases/README.md).\n
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), with Radius-specific change groups and contributor sections. Radius follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the version policy documented in the [release process](docs/contributing/contributing-releases/README.md).\n
 """
 body = """
 {%- macro remote_url() -%}
@@ -106,6 +106,8 @@ filter_unconventional = false
 require_conventional = false
 split_commits = false
 commit_parsers = [
+  # Classify unparsed subjects before type-based rules can skip or mislabel them.
+  { field = "conventional", pattern = "^false$", group = "<!-- 6 -->Other changes", default_scope = "other" },
   # Dependabot is configured in .github/dependabot.yml (synced from
   # radius-project/.github) with the `ci` and `chore` prefixes plus `include: scope`,
   # so dependency updates arrive as `ci(deps):` and `chore(deps):`. Match them
