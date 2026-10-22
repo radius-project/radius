@@ -112,6 +112,12 @@ func Test_resolveAuthzMode(t *testing.T) {
 		{name: "both enabled", current: rbac(map[string]any{"enabled": true, "dryRun": true}), wantErr: "cannot be combined"},
 		{name: "both enabled across stored and --set", stored: rbac(map[string]any{"dryRun": true}), current: rbac(map[string]any{"enabled": true}), wantErr: "cannot be combined"},
 		{name: "string values from --set-string", current: rbac(map[string]any{"dryRun": "true"}), want: authz.ModeDryRun},
+		{name: "numeric value is truthy like the chart", current: rbac(map[string]any{"enabled": int64(1)}), want: authz.ModeEnforce},
+		{name: "zero is falsy like the chart", stored: rbac(map[string]any{"enabled": true}), current: rbac(map[string]any{"enabled": int64(0)}), want: authz.ModeOff},
+		{name: "newline-terminated file value is truthy", current: rbac(map[string]any{"enabled": "true\n"}), want: authz.ModeEnforce},
+		{name: "null leaf clears stored value", stored: rbac(map[string]any{"dryRun": true}), current: rbac(map[string]any{"dryRun": nil}), want: authz.ModeOff},
+		{name: "null rbac clears stored values", stored: rbac(map[string]any{"dryRun": true}), current: map[string]any{"global": map[string]any{"rbac": nil}}, want: authz.ModeOff},
+		{name: "null global clears stored values", stored: rbac(map[string]any{"enabled": true}), current: map[string]any{"global": nil}, want: authz.ModeOff},
 	}
 
 	for _, tt := range tests {
@@ -123,6 +129,38 @@ func Test_resolveAuthzMode(t *testing.T) {
 				require.ErrorContains(t, err, tt.wantErr)
 				return
 			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_resolveAuthzMode_FromCLIArgs(t *testing.T) {
+	t.Parallel()
+
+	storedDryRun := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+	trueFile := filepath.Join(t.TempDir(), "enabled")
+	require.NoError(t, os.WriteFile(trueFile, []byte("true\n"), 0600))
+
+	tests := []struct {
+		name    string
+		stored  map[string]any
+		options RadiusChartOptions
+		want    authz.Mode
+	}{
+		{name: "--set global.rbac=null clears stored dry run", stored: storedDryRun, options: RadiusChartOptions{ChartOptions: ChartOptions{SetArgs: []string{"global.rbac=null"}}}, want: authz.ModeOff},
+		{name: "--set global=null clears stored dry run", stored: storedDryRun, options: RadiusChartOptions{ChartOptions: ChartOptions{SetArgs: []string{"global=null"}}}, want: authz.ModeOff},
+		{name: "--set enabled=1 enforces", options: RadiusChartOptions{ChartOptions: ChartOptions{SetArgs: []string{"global.rbac.enabled=1"}}}, want: authz.ModeEnforce},
+		{name: "--set-file with trailing newline enforces", options: RadiusChartOptions{ChartOptions: ChartOptions{SetFileArgs: []string{"global.rbac.enabled=" + trueFile}}}, want: authz.ModeEnforce},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			current, err := parseUserValuesFromCLI(&tt.options)
+			require.NoError(t, err)
+			got, err := resolveAuthzMode(tt.stored, current)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
