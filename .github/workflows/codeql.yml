@@ -113,7 +113,7 @@ jobs:
 
       - name: Initialize CodeQL
         if: ${{ !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           config-file: .github/configs/.codeql.yml
           languages: ${{ matrix.language }}
@@ -138,7 +138,7 @@ jobs:
       # results are uploaded on `push`/`pull_request` against persistent refs.
       - name: Upload GoSec result
         if: ${{ always() && github.event_name != 'merge_group' && matrix.language == 'custom-gosec' }}
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           category: /language:go/tool:gosec
           sarif_file: gosec-results.sarif
@@ -146,7 +146,7 @@ jobs:
 
       - name: Perform CodeQL Analysis
         if: ${{ !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         id: codeql-analyze
         with:
           category: /language:${{matrix.language}}
@@ -159,7 +159,7 @@ jobs:
       # results are uploaded on `push`/`pull_request` against persistent refs.
       - name: Upload CodeQL result
         if: ${{ always() && github.event_name != 'merge_group' && !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           sarif_file: ${{ format('{0}/{1}.sarif', steps.codeql-analyze.outputs.sarif-output, matrix.language) }}
           wait-for-processing: true
@@ -171,7 +171,7 @@ jobs:
           ${{ always() && github.event_name != 'merge_group' &&
           !startsWith(matrix.language, 'custom-') &&
           hashFiles(format('.codeql-results/{0}.quality.sarif', matrix.language)) != '' }}
-        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
         with:
           sarif_file: ${{ format('{0}/{1}.quality.sarif', steps.codeql-analyze.outputs.sarif-output, matrix.language) }}
           wait-for-processing: true
