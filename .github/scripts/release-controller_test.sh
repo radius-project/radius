@@ -124,7 +124,7 @@ test_shared_controller_contract() {
     assert_yq "${CONTROLLER}" \
         ".concurrency.queue == \"max\" and
         .concurrency.group ==
-        \"release-\${{ inputs.version }}-\${{ inputs.source-commit }}\"" \
+        \"release-\${{ inputs.version }}-\${{ inputs.source-pr-commit }}\"" \
         "controller concurrency must queue matching attempts"
     assert_json "${CONTROLLER}" '.permissions' '{}' \
         "controller must disable default GITHUB_TOKEN permissions"
@@ -173,14 +173,22 @@ test_approval_gate_and_bindings() {
 
 test_stage_order() {
     assert_json "${CONTROLLER}" \
-        '.jobs."publish-deployment-engine".needs' \
+        '.jobs."reconcile-source".needs' \
         '["validate","approve"]' \
-        "Deployment Engine must publish after validation and approval"
+        "source mutation must wait for validation and environment approval"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."reconcile-source".if == null and
+        .jobs."reconcile-source"."continue-on-error" == null' \
+        "failed or rejected approval must never run source reconciliation"
+    assert_json "${CONTROLLER}" \
+        '.jobs."publish-deployment-engine".needs' \
+        '["validate","reconcile-source"]' \
+        "Deployment Engine must publish only after resolving the approved source"
     assert_json "${CONTROLLER}" '.jobs."reconcile-siblings".needs' \
         '["validate","publish-deployment-engine"]' \
         "sibling reconciliation must follow Deployment Engine"
     assert_json "${CONTROLLER}" '.jobs."create-radius-tag".needs' \
-        '["validate","publish-deployment-engine","reconcile-siblings"]' \
+        '["validate","reconcile-source","publish-deployment-engine","reconcile-siblings"]' \
         "Radius tag creation must be the last mutation stage"
     assert_yq "${CONTROLLER}" \
         '.jobs."create-radius-tag"."timeout-minutes" == 12' \
@@ -233,7 +241,7 @@ test_identity_and_cleanup() {
         "\"\${{ github.workflow_sha }}\"" \
         "resolver code must be pinned to the executing workflow commit"
     assert_json "${CONTROLLER}" \
-        '[.jobs.validate, .jobs."publish-deployment-engine",
+        '[.jobs.validate, .jobs."reconcile-source", .jobs."publish-deployment-engine",
           .jobs."reconcile-siblings", .jobs."create-radius-tag"] |
           map(.steps[0].with.ref) | unique' \
         "[\"\${{ github.workflow_sha }}\"]" \
@@ -291,9 +299,70 @@ test_frozen_output_contract() {
             select(.name == \"Download approved release contract\") |
             [(.uses | test(\"^actions/download-artifact@[0-9a-fA-F]{40}\$\")),
             .with.artifact-ids, .with.path, .with.merge-multiple]" \
-            "[true,\"\${{ needs.validate.outputs.plan-artifact-id }}\",\"\${{ runner.temp }}/release-controller\",true]" \
+            "[true,\"\${{ needs.reconcile-source.outputs.plan-artifact-id }}\",\"\${{ runner.temp }}/release-controller\",true]" \
             "${job} must use SHA-pinned actions/download-artifact to download the exact validated artifact into the expected path"
     done
+}
+
+test_frozen_source_bindings() {
+    local job
+
+    assert_yq "${CONTROLLER}" \
+        '.jobs."reconcile-source".steps[] | select(.id == "frozen") |
+        (.env.INPUT_MODE == "create" and
+        (.with.script | contains("reconcile-frozen-release-source.mjs")))' \
+        "only the approved source job may create the App-signed overlay"
+    assert_yq "${CONTROLLER}" \
+        '.jobs.validate.steps[] |
+        select(.name == "Verify existing frozen source signature") |
+        .env.INPUT_MODE == "read"' \
+        "validation must verify signatures without mutating a source"
+    assert_json "${CONTROLLER}" \
+        '.jobs."publish-deployment-engine".steps[] |
+        select(.id == "monitor-de-workflow") | .env.INPUT_RELEASE_IDENTIFIER' \
+        "\"\${{ needs.reconcile-source.outputs.release-identifier }}\"" \
+        "publisher correlation must use the resolved release commit"
+    for job in publish-deployment-engine create-radius-tag; do
+        assert_yq "${CONTROLLER}" \
+            ".jobs.\"${job}\" | to_json |
+            contains(\"inputs.source-commit\") | not" \
+            "${job} must never use the main metadata SHA after source resolution"
+    done
+    assert_json "${CONTROLLER}" \
+        '[.jobs."publish-deployment-engine".steps[] |
+        select(.id == "de-lock" or .id == "lock-image") |
+        .env.INPUT_RELEASE_SOURCE_SHA] | unique' \
+        "[\"\${{ needs.reconcile-source.outputs.release-commit }}\"]" \
+        "both DE lock reads and writes must bind the actual tagged commit"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."reconcile-source".steps[] | select(.id == "upload-plan") |
+        ((.with.name | contains("steps.plan.outputs.release-commit")) and
+        (.with.name | contains("github.run_attempt")))' \
+        "resolved artifacts must bind the exact release commit and attempt"
+    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
+        '.on.workflow_dispatch.inputs."product-commit".required == false' \
+        "preparation must expose the optional explicit first-RC cutoff"
+    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
+        '.jobs.prepare.steps[] | select(.id == "prepare") |
+        ((.run | contains("--existing-plan")) and
+        (.run | contains("--product-commit")))' \
+        "preparation must pass both frozen source inputs to trusted generation"
+    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
+        '.jobs.prepare.steps[] |
+        select(.name == "Capture sibling repository commits") |
+        ((.run | contains("existing-release-plan.yaml")) and
+        (.run | contains("REUSE_FROZEN_PLAN")))' \
+        "reruns must reuse planned siblings instead of recapturing their tips"
+    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
+        '.jobs.prepare.steps[] | select(.id == "update-pr") |
+        ((.if | contains("reuse-frozen-plan")) and
+        (.env.INPUT_HEAD_SHA | contains("preflight.outputs.existing-head")) and
+        (.with.script | contains("updateFrozenPreparation")))' \
+        "existing frozen preparation updates must CAS the exact PM notes snapshot"
+    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
+        ".jobs.prepare.steps[] | select(.id == \"create-pr\") |
+        .if | contains(\"reuse-frozen-plan != 'true'\")" \
+        "branch-replacing PR creation must not update an existing frozen plan"
 }
 
 test_unknown_dispatch_summary() {
@@ -320,6 +389,7 @@ test_unknown_dispatch_summary() {
         for state in unknown found; do
             VERSION=v0.61.0 SOURCE_COMMIT=1111111111111111111111111111111111111111 \
                 READY=true VALIDATE_RESULT=success APPROVE_RESULT=success \
+                SOURCE_RESULT=success \
                 DE_RESULT=failure DE_RUN_STATE="${state}" DE_RUN_URL="" \
                 DE_LOCK_BRANCH="" SIBLINGS_RESULT=skipped RADIUS_RESULT=skipped \
                 GITHUB_STEP_SUMMARY="${summary_root}/${state}.md" \
@@ -340,12 +410,12 @@ test_unknown_dispatch_summary() {
 }
 
 test_release_build_contract() {
-    assert_json "${CONTROLLER}" \
-        '[.jobs.validate.steps[] | select((.run // "") |
+    assert_yq "${CONTROLLER}" \
+        '.jobs.validate.steps[] | select((.run // "") |
         contains("verify-release-build-contract.sh")) |
-        [.if, .env.RELEASE_COMMIT]]' \
-        "[[\"steps.plan.outputs.ready == 'true'\",\"\${{ inputs.source-commit }}\"]]" \
-        "validation must check the tag workflows of the exact release commit"
+        ((.env.RELEASE_COMMIT | contains("steps.plan.outputs.product-commit")) and
+        (.env.RELEASE_COMMIT | contains("steps.plan.outputs.release-commit")))' \
+        "validation must check frozen product tooling, never later main tooling"
     assert_contains "${WORKFLOWS}/prepare-release.yaml" \
         'verify-release-build-contract.sh' \
         "Prepare Release must reject an unmigrated release branch before opening a pull request"
@@ -519,6 +589,7 @@ main() {
     test_shared_controller_contract
     test_approval_gate_and_bindings
     test_frozen_output_contract
+    test_frozen_source_bindings
     test_unknown_dispatch_summary
     test_stage_order
     test_release_build_contract

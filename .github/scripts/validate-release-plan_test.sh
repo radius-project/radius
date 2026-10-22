@@ -338,6 +338,15 @@ EOF
         fail_test "real output must still allow Highlights and Upgrading curation"
         return
     fi
+    printf 'later product change\n' >"${REPO}/product.txt"
+    git -C "${REPO}" add product.txt
+    git -C "${REPO}" commit -q -m "feat: after the release cutoff"
+    BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+    if ! GITHUB_TOKEN="" run_validator >"${log}" 2>&1; then
+        cat "${log}"
+        fail_test "main advancement must not invalidate a frozen first RC"
+        return
+    fi
     sed -i 's/Keep a Changelog 1.1.0/Unsupported convention/' \
         "${HEAD_DIR}/${notes}"
     if GITHUB_TOKEN="" run_validator >"${log}" 2>&1 ||

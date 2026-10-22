@@ -35,7 +35,7 @@ on:
         required: true
         type: string
       source-commit:
-        description: Exact commit that the Radius tag must reference
+        description: Release commit, or metadata PR commit before frozen source resolution
         required: true
         type: string
       trigger:
@@ -59,7 +59,7 @@ permissions: {}
 # All entry workflows use this repository-wide key. queue:max allows up to 100
 # pending attempts without canceling the active reconciliation.
 concurrency:
-  group: release-${{ inputs.version }}-${{ inputs.source-commit }}
+  group: release-${{ inputs.version }}-${{ inputs.source-pr-commit }}
   queue: max
 
 jobs:
@@ -86,6 +86,11 @@ jobs:
       recipes-commit: ${{ steps.plan.outputs.recipes-commit }}
       dashboard-commit: ${{ steps.plan.outputs.dashboard-commit }}
       bicep-types-aws-commit: ${{ steps.plan.outputs.bicep-types-aws-commit }}
+      release-commit: ${{ steps.plan.outputs.release-commit }}
+      product-commit: ${{ steps.plan.outputs.product-commit }}
+      release-tree: ${{ steps.plan.outputs.release-tree }}
+      frozen-source: ${{ steps.plan.outputs.frozen-source }}
+      source-resolved: ${{ steps.plan.outputs.source-resolved }}
     steps:
       - name: Checkout trusted controller
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -162,11 +167,28 @@ jobs:
             --trigger "${TRIGGER}" \
             --output-dir "${RUNNER_TEMP}/release-controller"
 
+      - name: Verify existing frozen source signature
+        if: steps.plan.outputs.frozen-source == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: read
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_SOURCE_PR_COMMIT: ${{ inputs.source-pr-commit }}
+          INPUT_PRODUCT_COMMIT: ${{ steps.plan.outputs.product-commit }}
+          INPUT_RELEASE_TREE: ${{ steps.plan.outputs.release-tree }}
+          INPUT_RELEASE_COMMIT: ${{ steps.plan.outputs.release-commit }}
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-frozen-release-source.mjs`)
+            await script({context, github, core})
+
       # A tag runs the tagged commit's workflows, so check them before any mutation.
       - name: Verify release commit runs the release build
         if: steps.plan.outputs.ready == 'true'
         env:
-          RELEASE_COMMIT: ${{ inputs.source-commit }}
+          RELEASE_COMMIT: >-
+            ${{ steps.plan.outputs.source-resolved == 'false' &&
+            steps.plan.outputs.product-commit || steps.plan.outputs.release-commit }}
         run: |
           bash ./.github/scripts/verify-release-build-contract.sh \
             "${RELEASE_COMMIT}"
@@ -218,7 +240,9 @@ jobs:
         env:
           VERSION: ${{ steps.plan.outputs.version }}
           RELEASE_BRANCH: ${{ steps.plan.outputs.release-branch }}
-          SOURCE_COMMIT: ${{ inputs.source-commit }}
+          SOURCE_COMMIT: >-
+            ${{ steps.plan.outputs.source-resolved == 'false' &&
+            steps.plan.outputs.product-commit || steps.plan.outputs.release-commit }}
           RECIPES_COMMIT: ${{ steps.plan.outputs.recipes-commit }}
           DASHBOARD_COMMIT: ${{ steps.plan.outputs.dashboard-commit }}
           BICEP_TYPES_AWS_COMMIT: >-
@@ -297,7 +321,11 @@ jobs:
         env:
           READY: ${{ steps.plan.outputs.ready }}
           VERSION: ${{ steps.plan.outputs.version }}
-          SOURCE_COMMIT: ${{ inputs.source-commit }}
+          SOURCE_COMMIT: ${{ steps.plan.outputs.release-commit }}
+          PRODUCT_COMMIT: ${{ steps.plan.outputs.product-commit }}
+          RELEASE_TREE: ${{ steps.plan.outputs.release-tree }}
+          SOURCE_RESOLVED: ${{ steps.plan.outputs.source-resolved }}
+          METADATA_COMMIT: ${{ inputs.source-pr-commit }}
           SOURCE_PR: ${{ inputs.source-pr-number }}
           RELEASE_BRANCH: ${{ steps.plan.outputs.release-branch }}
           DE_COMMIT: ${{ steps.de-tag.outputs.commit }}
@@ -312,7 +340,14 @@ jobs:
             echo "## Release controller"
             echo
             echo "- Version: ${VERSION}"
-            echo "- Source commit: ${SOURCE_COMMIT}"
+            echo "- Product commit: ${PRODUCT_COMMIT}"
+            echo "- Approved metadata commit: ${METADATA_COMMIT}"
+            if [[ "${SOURCE_RESOLVED}" == true ]]; then
+              echo "- Release commit: ${SOURCE_COMMIT}"
+            else
+              echo "- Release commit: App-signed after approval"
+              echo "- Exact approved release tree: ${RELEASE_TREE}"
+            fi
             echo "- Release pull request: #${SOURCE_PR}"
             if [[ "${READY}" == "true" ]]; then
               echo "- State: validated and ready to reconcile"
@@ -336,7 +371,7 @@ jobs:
         id: upload-plan
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: resolved-release-plan-${{ inputs.version }}-${{ inputs.source-commit }}-${{ github.run_attempt }}
+          name: validated-release-plan-${{ inputs.version }}-${{ inputs.source-pr-commit }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/release-controller/release-plan.yaml
             ${{ runner.temp }}/release-controller/release-targets.json
@@ -355,12 +390,105 @@ jobs:
       - name: Record approval
         env:
           VERSION: ${{ needs.validate.outputs.version }}
-          SOURCE_COMMIT: ${{ inputs.source-commit }}
-        run: echo "Approved ${VERSION} from ${SOURCE_COMMIT}."
+          PRODUCT_COMMIT: ${{ needs.validate.outputs.product-commit }}
+          METADATA_COMMIT: ${{ inputs.source-pr-commit }}
+        run: echo "Approved ${VERSION}, product ${PRODUCT_COMMIT}, metadata ${METADATA_COMMIT}."
+
+  reconcile-source:
+    name: Resolve approved release commit
+    needs: [validate, approve]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    outputs:
+      release-commit: ${{ steps.plan.outputs.release-commit }}
+      release-identifier: ${{ steps.plan.outputs.release-identifier }}
+      plan-artifact-id: ${{ steps.upload-plan.outputs.artifact-id }}
+    steps:
+      - name: Checkout trusted controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install release validation tools
+        run: make install-yq install-jq
+
+      - name: Create frozen source App token
+        if: needs.validate.outputs.frozen-source == 'true'
+        id: release-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: radius
+          permission-contents: write
+
+      - name: Reconcile signed frozen release source
+        if: needs.validate.outputs.frozen-source == 'true'
+        id: frozen
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: create
+          INPUT_APP_SLUG: ${{ steps.release-token.outputs.app-slug }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_SOURCE_PR_COMMIT: ${{ inputs.source-pr-commit }}
+          INPUT_PRODUCT_COMMIT: ${{ needs.validate.outputs.product-commit }}
+          INPUT_RELEASE_TREE: ${{ needs.validate.outputs.release-tree }}
+          INPUT_RELEASE_COMMIT: ${{ needs.validate.outputs.release-commit }}
+        with:
+          github-token: ${{ steps.release-token.outputs.token }}
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-frozen-release-source.mjs`)
+            await script({context, github, core})
+
+      - name: Revalidate resolved source and immutable metadata
+        id: plan
+        env:
+          VERSION: ${{ inputs.version }}
+          SOURCE_PR_COMMIT: ${{ inputs.source-pr-commit }}
+          RELEASE_COMMIT: >-
+            ${{ steps.frozen.outputs.release-commit ||
+            needs.validate.outputs.release-commit }}
+          TRIGGER: ${{ inputs.trigger }}
+        run: |
+          git fetch --no-tags origin \
+            '+refs/heads/release/*:refs/remotes/origin/release/*'
+          for commit in "${SOURCE_PR_COMMIT}" "${RELEASE_COMMIT}"; do
+            git cat-file -e "${commit}^{commit}" 2>/dev/null || \
+              git fetch --no-tags origin "${commit}"
+          done
+          git show "${SOURCE_PR_COMMIT}:.github/release-plans/${VERSION}.yaml" \
+            > "${RUNNER_TEMP}/release-plan.yaml"
+          bash ./.github/scripts/validate-release-controller-plan.sh \
+            --plan-file "${RUNNER_TEMP}/release-plan.yaml" \
+            --version "${VERSION}" --source-pr-commit "${SOURCE_PR_COMMIT}" \
+            --release-commit "${RELEASE_COMMIT}" --trigger "${TRIGGER}" \
+            --output-dir "${RUNNER_TEMP}/release-controller"
+          [[ "$(<"${RUNNER_TEMP}/release-controller/source-resolved.txt")" == true ]] || {
+            echo "The approved release source is still unresolved." >&2
+            exit 1
+          }
+          bash ./.github/scripts/verify-release-build-contract.sh \
+            "${RELEASE_COMMIT}"
+
+      - name: Upload resolved release plan
+        id: upload-plan
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: approved-release-plan-${{ inputs.version }}-${{ steps.plan.outputs.release-commit }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/release-controller/release-plan.yaml
+            ${{ runner.temp }}/release-controller/release-targets.json
+          if-no-files-found: error
+          retention-days: 90
 
   publish-deployment-engine:
     name: Publish Deployment Engine
-    needs: [validate, approve]
+    needs: [validate, reconcile-source]
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:
@@ -382,7 +510,7 @@ jobs:
       - name: Download approved release contract
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          artifact-ids: ${{ needs.validate.outputs.plan-artifact-id }}
+          artifact-ids: ${{ needs.reconcile-source.outputs.plan-artifact-id }}
           path: ${{ runner.temp }}/release-controller
           merge-multiple: true
 
@@ -471,7 +599,7 @@ jobs:
         env:
           INPUT_MODE: read
           INPUT_VERSION: ${{ needs.validate.outputs.version }}
-          INPUT_RELEASE_SOURCE_SHA: ${{ inputs.source-commit }}
+          INPUT_RELEASE_SOURCE_SHA: ${{ needs.reconcile-source.outputs.release-commit }}
           INPUT_DE_SIGNED_TAG: ${{ needs.validate.outputs.version }}
           INPUT_DE_SOURCE_SHA: ${{ steps.de-tag.outputs.commit }}
           INPUT_DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
@@ -558,7 +686,7 @@ jobs:
           INPUT_REPO: radius-publisher
           INPUT_WORKFLOW_FILE: publish-deployment-engine.yml
           INPUT_EVENT_TYPE: deployment-engine
-          INPUT_RELEASE_IDENTIFIER: ${{ needs.validate.outputs.release-identifier }}
+          INPUT_RELEASE_IDENTIFIER: ${{ needs.reconcile-source.outputs.release-identifier }}
           INPUT_REUSE_SUCCESSFUL: >-
             ${{ steps.existing-image.outputs.state == 'complete' &&
             'true' || 'false' }}
@@ -568,7 +696,7 @@ jobs:
           INPUT_CLIENT_PAYLOAD: |-
             {
               "source_repository": ${{ toJSON(github.repository) }},
-              "source_sha": ${{ toJSON(inputs.source-commit) }},
+              "source_sha": ${{ toJSON(needs.reconcile-source.outputs.release-commit) }},
               "src_image": "radiusdeploymentengine.azurecr.io/deployment-engine",
               "dest_image": "ghcr.io/radius-project/deployment-engine",
               "tag": ${{ toJSON(needs.validate.outputs.de-image-tag) }},
@@ -615,7 +743,7 @@ jobs:
         env:
           INPUT_MODE: create
           INPUT_VERSION: ${{ needs.validate.outputs.version }}
-          INPUT_RELEASE_SOURCE_SHA: ${{ inputs.source-commit }}
+          INPUT_RELEASE_SOURCE_SHA: ${{ needs.reconcile-source.outputs.release-commit }}
           INPUT_DE_SIGNED_TAG: ${{ needs.validate.outputs.version }}
           INPUT_DE_SOURCE_SHA: ${{ steps.de-tag.outputs.commit }}
           INPUT_DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
@@ -731,7 +859,7 @@ jobs:
 
   create-radius-tag:
     name: Create Radius tag last
-    needs: [validate, publish-deployment-engine, reconcile-siblings]
+    needs: [validate, reconcile-source, publish-deployment-engine, reconcile-siblings]
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     permissions:
@@ -747,7 +875,7 @@ jobs:
       - name: Download approved release contract
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          artifact-ids: ${{ needs.validate.outputs.plan-artifact-id }}
+          artifact-ids: ${{ needs.reconcile-source.outputs.plan-artifact-id }}
           path: ${{ runner.temp }}/release-controller
           merge-multiple: true
 
@@ -783,7 +911,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: radius-project/radius
-          ref: ${{ inputs.source-commit }}
+          ref: ${{ needs.reconcile-source.outputs.release-commit }}
           token: ${{ steps.release-token.outputs.token }}
           path: radius
           fetch-depth: 0
@@ -799,7 +927,7 @@ jobs:
           GH_TOKEN: ${{ steps.release-token.outputs.token }}
           VERSION: ${{ needs.validate.outputs.version }}
           RELEASE_BRANCH: ${{ needs.validate.outputs.release-branch }}
-          SOURCE_COMMIT: ${{ inputs.source-commit }}
+          SOURCE_COMMIT: ${{ needs.reconcile-source.outputs.release-commit }}
         run: |
           ./.github/scripts/release-create-tag-and-branch.sh \
             radius "${VERSION}" "${RELEASE_BRANCH}" "${SOURCE_COMMIT}"
@@ -807,7 +935,7 @@ jobs:
       - name: Summarize Radius tag creation
         env:
           VERSION: ${{ needs.validate.outputs.version }}
-          SOURCE_COMMIT: ${{ inputs.source-commit }}
+          SOURCE_COMMIT: ${{ needs.reconcile-source.outputs.release-commit }}
         run: |
           {
             echo "## Radius tag created last"
@@ -821,7 +949,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           INPUT_VERSION: ${{ needs.validate.outputs.version }}
-          INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
+          INPUT_SOURCE_SHA: ${{ needs.reconcile-source.outputs.release-commit }}
         with:
           retries: 5
           script: |
@@ -833,6 +961,7 @@ jobs:
     needs:
       - validate
       - approve
+      - reconcile-source
       - publish-deployment-engine
       - reconcile-siblings
       - create-radius-tag
@@ -855,17 +984,18 @@ jobs:
         with:
           stage: prerequisites
           version: ${{ inputs.version }}
-          source-sha: ${{ inputs.source-commit }}
+          source-sha: ${{ needs.reconcile-source.outputs.release-commit || inputs.source-commit }}
           results: ${{ toJSON(needs) }}
           webhook: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
 
       - name: Summarize release state and recovery
         env:
           VERSION: ${{ needs.validate.outputs.version || inputs.version }}
-          SOURCE_COMMIT: ${{ inputs.source-commit }}
+          SOURCE_COMMIT: ${{ needs.reconcile-source.outputs.release-commit || inputs.source-commit }}
           READY: ${{ needs.validate.outputs.ready }}
           VALIDATE_RESULT: ${{ needs.validate.result }}
           APPROVE_RESULT: ${{ needs.approve.result }}
+          SOURCE_RESULT: ${{ needs.reconcile-source.result }}
           DE_RESULT: ${{ needs.publish-deployment-engine.result }}
           DE_RUN_URL: ${{ needs.publish-deployment-engine.outputs.run-url }}
           DE_RUN_STATE: ${{ needs.publish-deployment-engine.outputs.run-state }}
@@ -884,6 +1014,7 @@ jobs:
             echo "|---|---|"
             echo "| Validate plan and preflight | ${VALIDATE_RESULT} |"
             echo "| Release approval | ${APPROVE_RESULT} |"
+            echo "| Resolve release commit | ${SOURCE_RESULT} |"
             echo "| Deployment Engine | ${DE_RESULT} |"
             echo "| Sibling repositories | ${SIBLINGS_RESULT} |"
             echo "| Radius tag last | ${RADIUS_RESULT} |"

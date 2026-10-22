@@ -41,6 +41,16 @@ if [[ -z "${CHANGELOG_RANGE_SCRIPT}" ]]; then
 fi
 VERSION_ONLY=false
 RELEASE_DATE="${RELEASE_DATE:-$(date -u +%F)}"
+PRODUCT_COMMIT=""
+EXISTING_PLAN=""
+TEMP_DIR=""
+
+cleanup() {
+    if [[ -n "${TEMP_DIR}" && -d "${TEMP_DIR}" ]]; then
+        rm -rf "${TEMP_DIR}"
+    fi
+}
+trap cleanup EXIT
 
 fail() {
     echo "Error: $*" >&2
@@ -61,6 +71,11 @@ File options:
     --targets-file <path>
     --cliff-config <path>
     --release-date <YYYY-MM-DD>
+
+First RC source options:
+    --product-commit <full-sha>  Freeze a commit reachable from main.
+    --existing-plan <path>      Retain its cutoff, siblings, and release date.
+    Templates/config/targets must be tracked paths at the frozen commit.
 
 Modes:
     --version-only  Calculate the policy version without changing files.
@@ -298,6 +313,67 @@ validate_sibling_repositories() {
         fail "sibling repository state is invalid"
 }
 
+select_frozen_source() {
+    local version="$1"
+    local branch_ref="$2"
+    local planned_commit object_type
+
+    if [[ -n "${branch_ref}" ]]; then
+        [[ -z "${PRODUCT_COMMIT}" && -z "${EXISTING_PLAN}" ]] ||
+            fail "frozen main source options are only valid for a first RC"
+        return
+    fi
+    if [[ -n "${EXISTING_PLAN}" ]]; then
+        [[ -f "${EXISTING_PLAN}" ]] || fail "existing plan file not found"
+        VERSION="${version}" CHANNEL="${CHANNEL}" yq -e '
+            .schemaVersion == 2 and .version == strenv(VERSION) and
+            .channel == strenv(CHANNEL) and .releaseType == "rc" and
+            (.source.productRef == "refs/heads/main" or
+                .source.productRef == "HEAD") and
+            .source.releaseCommit == null
+        ' "${EXISTING_PLAN}" >/dev/null ||
+            fail "existing plan is not an unresolved first RC for ${version}"
+        planned_commit="$(yq -r '.source.productCommit' "${EXISTING_PLAN}")"
+        [[ -z "${PRODUCT_COMMIT}" || "${PRODUCT_COMMIT}" == "${planned_commit}" ]] ||
+            fail "cannot change an existing release cutoff; start a newly reviewed preparation"
+        PRODUCT_COMMIT="${planned_commit}"
+        RELEASE_DATE="$(yq -r '.releaseDate' "${EXISTING_PLAN}")"
+        [[ "${RELEASE_DATE}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] ||
+            fail "existing release date must use YYYY-MM-DD format"
+    fi
+    PRODUCT_COMMIT="${PRODUCT_COMMIT:-$(git rev-parse HEAD)}"
+    [[ "${PRODUCT_COMMIT}" =~ ^[0-9a-f]{40}$ ]] ||
+        fail "product commit must be a full commit SHA"
+    object_type="$(git cat-file -t "${PRODUCT_COMMIT}")" ||
+        fail "product commit is not available"
+    [[ "${object_type}" == commit ]] ||
+        fail "product SHA must identify a commit, not ${object_type}"
+    git merge-base --is-ancestor "${PRODUCT_COMMIT}" HEAD ||
+        fail "product commit is not reachable from the trusted main checkout"
+    git diff --quiet "${PRODUCT_COMMIT}" HEAD -- \
+        "${VERSIONS_FILE}" "${CHANGELOG_FILE}" ||
+        fail "release metadata on main changed since the frozen product commit"
+}
+
+freeze_generation_inputs() {
+    local variable path
+
+    TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/prepare-release-XXXXXX")"
+    for variable in RELEASE_NOTES_TEMPLATE PATCH_NOTES_TEMPLATE \
+        TARGETS_FILE CLIFF_CONFIG; do
+        path="${!variable}"
+        git show "${PRODUCT_COMMIT}:${path}" \
+            >"${TEMP_DIR}/${variable}-${path##*/}" ||
+            fail "frozen product commit has no generation input ${path}"
+        printf -v "${variable}" '%s' "${TEMP_DIR}/${variable}-${path##*/}"
+    done
+    if [[ -n "${EXISTING_PLAN}" ]]; then
+        yq -o=json '.siblingRepositories' "${EXISTING_PLAN}" \
+            >"${TEMP_DIR}/siblings.json"
+        SIBLING_REPOSITORIES_FILE="${TEMP_DIR}/siblings.json"
+    fi
+}
+
 replace_marker() {
     local document="$1"
     local marker="$2"
@@ -493,12 +569,13 @@ write_release_plan() {
     local source_ref="$3"
     local source_commit="$4"
     local plan_file="${OUTPUT_DIR}/release-plan.yaml"
+    local candidate_plan="${plan_file}.tmp"
     local tracked_plan_file=".github/release-plans/${version}.yaml"
     local body_file="${OUTPUT_DIR}/release-pr-body.md"
     local requires_backport="$5"
-    local release_commit_resolution="release PR squash commit on main"
+    local release_commit_resolution="frozen product commit plus approved release metadata"
 
-    if [[ "${source_ref}" != "HEAD" ]]; then
+    if [[ "${source_ref}" != "refs/heads/main" ]]; then
         release_commit_resolution="generated release backport commit"
         release_commit_resolution+=" on release/${CHANNEL}"
     fi
@@ -533,7 +610,19 @@ write_release_plan() {
                 "expectedOutputs": load(strenv(TARGETS_FILE)),
                 "includedBackports": load(strenv(BACKPORTS_FILE))
             } | ... style = ""
-        ' >"${plan_file}"
+        ' >"${candidate_plan}"
+
+    if [[ -n "${EXISTING_PLAN}" ]]; then
+        if ! diff -u \
+            <(yq -o=json '.source.productRef = "refs/heads/main" |
+                .source.releaseCommitResolution =
+                    "frozen product commit plus approved release metadata"' \
+                "${EXISTING_PLAN}" | jq -S .) \
+            <(yq -o=json '.' "${candidate_plan}" | jq -S .); then
+            fail "existing frozen plan differs from trusted preparation"
+        fi
+    fi
+    mv "${candidate_plan}" "${plan_file}"
 
     mkdir -p "$(dirname "${tracked_plan_file}")"
     cp "${plan_file}" "${tracked_plan_file}"
@@ -543,6 +632,11 @@ write_release_plan() {
         echo
         echo "This pull request was generated by the Prepare Release workflow."
         echo "The plan below is the reviewable release-controller input."
+        if [[ "${source_ref}" == "refs/heads/main" ]]; then
+            echo "Product cutoff: \`${source_commit}\` (retained on reruns)."
+            echo "Only the four reviewed release metadata files are added"
+            echo "to that cutoff after release-environment approval."
+        fi
         echo
         echo '<!-- radius-release-plan:start -->'
         echo '```yaml'
@@ -621,6 +715,18 @@ main() {
                 RELEASE_DATE="${2:-}"
                 shift 2
                 ;;
+            --product-commit)
+                PRODUCT_COMMIT="${2:-}"
+                [[ -n "${PRODUCT_COMMIT}" ]] ||
+                    fail "--product-commit requires a full commit SHA"
+                shift 2
+                ;;
+            --existing-plan)
+                EXISTING_PLAN="${2:-}"
+                [[ -n "${EXISTING_PLAN}" ]] ||
+                    fail "--existing-plan requires a path"
+                shift 2
+                ;;
             --version-only)
                 VERSION_ONLY=true
                 shift
@@ -650,8 +756,12 @@ main() {
     branch_ref="$(release_branch_ref || true)"
     version="$(calculate_version)"
     validate_completed_releases
+    select_frozen_source "${version}" "${branch_ref}"
     mkdir -p "${OUTPUT_DIR}"
     printf '%s\n' "${version}" >"${OUTPUT_DIR}/version.txt"
+    printf '%s\n' \
+        "${PRODUCT_COMMIT:-$(git rev-parse "${branch_ref}^{commit}")}" \
+        >"${OUTPUT_DIR}/product-commit.txt"
     printf 'automation/prepare-release-%s\n' "${version#v}" \
         >"${OUTPUT_DIR}/pr-branch.txt"
     if [[ "${VERSION_ONLY}" == "true" ]]; then
@@ -660,6 +770,9 @@ main() {
         return
     fi
 
+    if [[ -z "${branch_ref}" ]]; then
+        freeze_generation_inputs
+    fi
     [[ -f "${BACKPORTS_FILE}" ]] || fail "backports file not found"
     [[ -f "${SIBLING_REPOSITORIES_FILE}" ]] ||
         fail "sibling repositories file not found"
@@ -687,14 +800,14 @@ main() {
             fail "no stable Radius release tag was found"
         fi
     fi
-    source_ref="${branch_ref:-HEAD}"
-    source_commit="$(git rev-parse "${source_ref}^{commit}")"
+    source_ref="${branch_ref:-refs/heads/main}"
+    source_commit="${PRODUCT_COMMIT:-$(git rev-parse "${branch_ref}^{commit}")}"
     requires_backport="false"
     [[ -z "${branch_ref}" ]] || requires_backport="true"
     changelog_body="${OUTPUT_DIR}/changelog-section.md"
     notes_file="docs/release-notes/${version}.md"
 
-    render_changelog "${version}" "${source_ref}" "${changelog_body}"
+    render_changelog "${version}" "${source_commit}" "${changelog_body}"
     update_versions "${version}" "${current}"
     update_changelog "${version}" "${changelog_base_version}" \
         "${changelog_body}"

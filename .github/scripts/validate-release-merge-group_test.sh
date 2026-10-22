@@ -166,6 +166,37 @@ test_selects_release_pr_on_advanced_base() {
     ((++PASS))
 }
 
+test_frozen_group_with_extra_changes() {
+    local tamper="${1:-false}"
+
+    cat >>"${REPO}/.github/release-plans/v0.61.0-rc.1.yaml" <<'EOF'
+version: v0.61.0-rc.1
+channel: "0.61"
+releaseType: rc
+source:
+  productRef: refs/heads/main
+EOF
+    git -C "${REPO}" commit -q -am "chore(release): freeze first RC"
+    RELEASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+    jq --arg sha "${RELEASE_SHA}" '.[0].head_sha = $sha' \
+        "${REPO}/candidates.json" >"${REPO}/candidates-next.json"
+    mv "${REPO}/candidates-next.json" "${REPO}/candidates.json"
+    create_squash_group true true
+    if [[ "${tamper}" == true ]]; then
+        printf 'unapproved metadata\n' >>"${REPO}/CHANGELOG.md"
+        git -C "${REPO}" commit -q -am "chore: queued metadata conflict"
+        GROUP_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+        if run_validator "${GROUP_SHA}" >/dev/null 2>&1; then
+            fail_test "frozen queue must still reject conflicting release metadata"
+            return
+        fi
+    elif ! run_validator "${GROUP_SHA}" >/dev/null; then
+        fail_test "frozen queue must permit unrelated product predecessors"
+        return
+    fi
+    ((++PASS))
+}
+
 test_accepts_group_without_release_pr() {
     local file="${1:-other.txt}"
     local expects_plan="${2:-false}"
@@ -275,6 +306,10 @@ main() {
     test_rejects_group_with_extra_changes
     setup_repo
     test_selects_release_pr_on_advanced_base
+    setup_repo
+    test_frozen_group_with_extra_changes
+    setup_repo
+    test_frozen_group_with_extra_changes true
     for file in other.txt docs/release-notes/README.md \
         docs/release-notes/template.md docs/release-notes/template_patch.md; do
         setup_repo

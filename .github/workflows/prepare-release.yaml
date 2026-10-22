@@ -33,6 +33,10 @@ on:
         description: Release channel in X.Y format
         required: true
         type: string
+      product-commit:
+        description: Optional full main SHA for a first RC; existing cutoffs cannot change
+        required: false
+        type: string
       backport-pr-numbers:
         description: Optional comma-separated merged main PRs to include
         required: false
@@ -111,22 +115,21 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
+          PRODUCT_COMMIT: ${{ inputs.product-commit }}
         run: |
           output_dir="${RUNNER_TEMP}/release-preflight"
+          source_options=()
+          if [[ -n "${PRODUCT_COMMIT}" ]]; then
+            source_options+=(--product-commit "${PRODUCT_COMMIT}")
+          fi
           bash ./.github/scripts/prepare-release.sh \
             --release-type "${RELEASE_TYPE}" \
             --channel "${CHANNEL}" \
             --output-dir "${output_dir}" \
+            "${source_options[@]}" \
             --version-only
           version="$(<"${output_dir}/version.txt")"
           branch="$(<"${output_dir}/pr-branch.txt")"
-
-          # The release tag will run the release branch's workflows, not main's.
-          release_ref="refs/remotes/origin/release/${CHANNEL}"
-          git rev-parse --verify --quiet "${release_ref}^{commit}" \
-            >/dev/null || release_ref=HEAD
-          bash ./.github/scripts/verify-release-build-contract.sh \
-            "${release_ref}"
 
           # A final promotes the channel's last release candidate.
           release_candidate=""
@@ -138,8 +141,9 @@ jobs:
 
           existing="$(
             gh pr list --repo "${GITHUB_REPOSITORY}" --state open \
-              --head "${branch}" --base main --json number,url,headRefOid \
-              --jq '.[0] // empty'
+              --head "${branch}" --base main \
+              --json number,url,headRefOid,isCrossRepository \
+              --jq '[.[] | select(.isCrossRepository == false)] | .[0] // empty'
           )"
           if [[ -n "${existing}" ]]; then
             existing_state=true
@@ -169,6 +173,29 @@ jobs:
             existing_head=""
           fi
 
+          reuse_frozen_plan=false
+          migrate_frozen_plan=false
+          if [[ "${existing_state}" == true &&
+            "${version}" == "v${CHANNEL}.0-rc.1" ]]; then
+            reuse_frozen_plan=true
+            plan="${RUNNER_TEMP}/existing-release-plan.yaml"
+            gh api \
+              "repos/${GITHUB_REPOSITORY}/contents/.github/release-plans/${version}.yaml?ref=${existing_head}" \
+              --jq .content | tr -d '\n' | base64 --decode > "${plan}"
+            if [[ "$(yq -r '.source.productRef' "${plan}")" == HEAD ]]; then
+              migrate_frozen_plan=true
+            fi
+            source_options+=(--existing-plan "${plan}")
+          fi
+          bash ./.github/scripts/prepare-release.sh \
+            --release-type "${RELEASE_TYPE}" --channel "${CHANNEL}" \
+            --output-dir "${output_dir}" "${source_options[@]}" \
+            --version-only
+          # A tag runs the frozen product's build tooling, not main's tooling.
+          product_commit="$(<"${output_dir}/product-commit.txt")"
+          bash ./.github/scripts/verify-release-build-contract.sh \
+            "${product_commit}"
+
           {
             echo "existing=${existing_state}"
             echo "existing-number=${existing_number}"
@@ -177,6 +204,9 @@ jobs:
             echo "version=${version}"
             echo "branch=${branch}"
             echo "release-candidate=${release_candidate}"
+            echo "reuse-frozen-plan=${reuse_frozen_plan}"
+            echo "migrate-frozen-plan=${migrate_frozen_plan}"
+            echo "product-commit=${product_commit}"
           } >> "${GITHUB_OUTPUT}"
 
       # A final ships the Deployment Engine commit that its last RC locked. The
@@ -242,10 +272,17 @@ jobs:
       - name: Capture sibling repository commits
         env:
           CHANNEL: ${{ inputs.channel }}
+          REUSE_FROZEN_PLAN: ${{ steps.preflight.outputs.reuse-frozen-plan }}
         run: |
-          bash ./.github/scripts/capture-release-sibling-commits.sh \
-            --channel "${CHANNEL}" \
-            --output "${RUNNER_TEMP}/release-siblings.json"
+          if [[ "${REUSE_FROZEN_PLAN}" == true ]]; then
+            yq -o=json '.siblingRepositories' \
+              "${RUNNER_TEMP}/existing-release-plan.yaml" \
+              > "${RUNNER_TEMP}/release-siblings.json"
+          else
+            bash ./.github/scripts/capture-release-sibling-commits.sh \
+              --channel "${CHANNEL}" \
+              --output "${RUNNER_TEMP}/release-siblings.json"
+          fi
 
       - name: Request incomplete explicit backports
         if: >-
@@ -281,14 +318,24 @@ jobs:
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
           PREFLIGHT_VERSION: ${{ steps.preflight.outputs.version }}
+          PRODUCT_COMMIT: ${{ inputs.product-commit }}
+          REUSE_FROZEN_PLAN: ${{ steps.preflight.outputs.reuse-frozen-plan }}
         run: |
           output_dir="${RUNNER_TEMP}/release-preparation"
+          source_options=()
+          if [[ -n "${PRODUCT_COMMIT}" ]]; then
+            source_options+=(--product-commit "${PRODUCT_COMMIT}")
+          fi
+          if [[ "${REUSE_FROZEN_PLAN}" == true ]]; then
+            source_options+=(--existing-plan "${RUNNER_TEMP}/existing-release-plan.yaml")
+          fi
           bash ./.github/scripts/prepare-release.sh \
             --release-type "${RELEASE_TYPE}" \
             --channel "${CHANNEL}" \
             --backports-file "${RUNNER_TEMP}/release-backports.json" \
             --sibling-repositories-file \
               "${RUNNER_TEMP}/release-siblings.json" \
+            "${source_options[@]}" \
             --output-dir "${output_dir}"
 
           version="$(<"${output_dir}/version.txt")"
@@ -332,6 +379,20 @@ jobs:
           bash ./.github/scripts/preserve-release-note-sections.sh \
             "docs/release-notes/${VERSION}.md" \
             "${RUNNER_TEMP}/existing-release-notes.md"
+
+      - name: Reject concurrent preparation pull request edits
+        if: steps.preflight.outputs.existing == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          PR_NUMBER: ${{ steps.preflight.outputs.existing-number }}
+          EXPECTED_HEAD: ${{ steps.preflight.outputs.existing-head }}
+        run: |
+          actual="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+            --json headRefOid --jq .headRefOid)"
+          [[ "${actual}" == "${EXPECTED_HEAD}" ]] || {
+            echo "Release PR changed during preparation; rerun to retain its latest curation." >&2
+            exit 1
+          }
       - name: Ensure generated backport label exists
         if: >-
           github.repository == 'radius-project/radius' &&
@@ -345,8 +406,24 @@ jobs:
             --color 5319E7 --description "Backport to release/${CHANNEL}" \
             --force
 
+      - name: Require renewed review of migrated first RC
+        if: >-
+          github.repository == 'radius-project/radius' &&
+          steps.preflight.outputs.migrate-frozen-plan == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ steps.preflight.outputs.existing-number }}
+        run: |
+          is_draft="$(gh pr view "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" \
+            --json isDraft --jq .isDraft)"
+          if [[ "${is_draft}" == false ]]; then
+            gh pr ready "${PR_NUMBER}" --repo "${GITHUB_REPOSITORY}" --undo
+          fi
+
       - name: Create or update release pull request
-        if: github.repository == 'radius-project/radius'
+        if: >-
+          github.repository == 'radius-project/radius' &&
+          steps.preflight.outputs.reuse-frozen-plan != 'true'
         id: create-pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
@@ -367,6 +444,25 @@ jobs:
             versions.yaml
             CHANGELOG.md
             docs/release-notes/*.md
+
+      - name: Update frozen preparation without replacing PM commits
+        if: >-
+          github.repository == 'radius-project/radius' &&
+          steps.preflight.outputs.reuse-frozen-plan == 'true'
+        id: update-pr
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_VERSION: ${{ steps.prepare.outputs.version }}
+          INPUT_APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          INPUT_HEAD_SHA: ${{ steps.preflight.outputs.existing-head }}
+          INPUT_PR_NUMBER: ${{ steps.preflight.outputs.existing-number }}
+          INPUT_OUTPUT_DIR: ${{ runner.temp }}/release-preparation
+          INPUT_WORKSPACE: ${{ github.workspace }}
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const { updateFrozenPreparation } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-frozen-release-source.mjs`)
+            await updateFrozenPreparation({context, github, core})
 
       - name: Verify release pull request commit signature
         if: >-
@@ -396,11 +492,13 @@ jobs:
       - name: Summarize preparation
         env:
           VERSION: ${{ steps.prepare.outputs.version }}
-          PR_URL: ${{ steps.create-pr.outputs.pull-request-url }}
+          PR_URL: ${{ steps.update-pr.outputs.pull-request-url || steps.create-pr.outputs.pull-request-url }}
+          PRODUCT_COMMIT: ${{ steps.preflight.outputs.product-commit }}
         run: |
           {
             echo "## Prepared ${VERSION}"
             echo
+            echo "Product cutoff: ${PRODUCT_COMMIT}"
             if [[ -n "${PR_URL}" ]]; then
               echo "Release pull request: ${PR_URL}"
             else
