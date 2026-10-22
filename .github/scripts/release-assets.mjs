@@ -153,8 +153,7 @@ async function uploadAssetData(
             name.endsWith(".json") ? "application/json" : "text/plain",
           "content-length": data.length
         },
-        data,
-        request: { retries: 0 }
+        data
       });
       break;
     } catch (error) {

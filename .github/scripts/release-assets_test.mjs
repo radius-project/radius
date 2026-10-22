@@ -7,9 +7,19 @@ import test from "node:test";
 
 import releaseAssets from "./release-assets.mjs";
 
-function fixture({ draft = true, assets = [], starterFailures = 0 } = {}) {
+function fixture({
+  draft = true,
+  assets = [],
+  starterFailures = 0,
+  uploadFailures = []
+} = {}) {
   const outputs = {};
-  const calls = { deleted: [], uploaded: [] };
+  const calls = {
+    deleted: [],
+    downloaded: [],
+    uploaded: [],
+    uploadAttempts: []
+  };
   const delays = [];
   const messages = [];
   let nextID = 100;
@@ -25,6 +35,7 @@ function fixture({ draft = true, assets = [], starterFailures = 0 } = {}) {
   const github = {
     paginate: async (method) => method(),
     request: async (_route, { asset_id }) => {
+      calls.downloaded.push(asset_id);
       if (
         currentAssets.find((asset) => asset.id === asset_id)?.state ===
         "starter"
@@ -47,24 +58,45 @@ function fixture({ draft = true, assets = [], starterFailures = 0 } = {}) {
           currentAssets.splice(index, 1);
           contents.delete(asset_id);
         },
-        uploadReleaseAsset: async ({ name, data }) => {
-          const incomplete = starterFailures > 0;
-          const asset = {
-            id: nextID++,
-            name,
-            state: incomplete ? "starter" : "uploaded"
-          };
-          calls.uploaded.push(name);
-          currentAssets.push(asset);
-          contents.set(
-            asset.id,
-            incomplete ? Buffer.alloc(0) : Buffer.from(data)
-          );
-          if (incomplete) {
-            starterFailures--;
-            throw Object.assign(new Error("502 Bad Gateway"), { status: 502 });
+        uploadReleaseAsset: async (request) => {
+          const { name, data } = request;
+          const retries = request.request?.retries ?? 5;
+          for (let attempt = 0; ; attempt++) {
+            calls.uploadAttempts.push(request);
+            try {
+              if (currentAssets.some((asset) => asset.name === name)) {
+                throw Object.assign(new Error(`Asset ${name} already exists`), {
+                  status: 422
+                });
+              }
+              const failure = uploadFailures.shift();
+              if (failure && !failure.accepted) throw failure.error;
+              const incomplete = starterFailures > 0;
+              const asset = {
+                id: nextID++,
+                name,
+                state: incomplete ? "starter" : "uploaded"
+              };
+              calls.uploaded.push(name);
+              currentAssets.push(asset);
+              contents.set(
+                asset.id,
+                incomplete ? Buffer.alloc(0) : Buffer.from(data)
+              );
+              if (incomplete) {
+                starterFailures--;
+                throw Object.assign(new Error("502 Bad Gateway"), {
+                  status: 502
+                });
+              }
+              if (failure) throw failure.error;
+              return { data: asset };
+            } catch (error) {
+              if (![502, 503].includes(error.status) || attempt >= retries) {
+                throw error;
+              }
+            }
           }
-          return { data: asset };
         }
       }
     }
@@ -274,6 +306,114 @@ test("reconciles an upload accepted before a network error", async () => {
   }
 });
 
+test("retries an upload rejected with HTTP 503 before acceptance", async () => {
+  const failure = Object.assign(new Error("503 Service Unavailable"), {
+    status: 503
+  });
+  const state = fixture({ uploadFailures: [{ error: failure }] });
+
+  await withUpload(state, () => releaseAssets(state));
+
+  assert.equal(state.calls.uploadAttempts.length, 2);
+  assert.deepEqual(
+    state.calls.uploadAttempts[1],
+    state.calls.uploadAttempts[0]
+  );
+  assert.equal(state.calls.uploadAttempts[0].request?.retries, undefined);
+  assert.equal(state.calls.uploadAttempts[0].release_id, 42);
+  assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+  assert.deepEqual(state.calls.downloaded, [100]);
+  assert.deepEqual(state.calls.deleted, []);
+  assert.deepEqual(state.delays, []);
+  assert.equal(state.outputs.asset_id, "100");
+});
+
+for (const matching of [true, false]) {
+  test(`${matching ? "adopts matching" : "rejects conflicting"} bytes after an accepted upload retries into HTTP 422`, async () => {
+    const failure = Object.assign(new Error("503 Service Unavailable"), {
+      status: 503
+    });
+    const state = fixture({
+      uploadFailures: [{ error: failure, accepted: true }]
+    });
+    const list = state.github.rest.repos.listReleaseAssets;
+    const download = state.github.request;
+    let listings = 0;
+    state.github.rest.repos.listReleaseAssets = async () =>
+      ++listings < 3 ? [] : list();
+    state.github.request = async (...args) => {
+      const response = await download(...args);
+      return matching ? response : { data: Buffer.from("different") };
+    };
+
+    if (matching) {
+      await withUpload(state, () => releaseAssets(state));
+      assert.equal(state.outputs.asset_id, "100");
+      assert.equal(state.outputs.uploaded_files, "1");
+    } else {
+      await assert.rejects(
+        () => withUpload(state, () => releaseAssets(state)),
+        (error) => {
+          assert.equal(error.status, 422);
+          assert.match(error.message, /lock\.json already exists/);
+          return true;
+        }
+      );
+      assert.equal(state.outputs.asset_id, undefined);
+      assert.equal(state.outputs.uploaded_files, undefined);
+    }
+
+    assert.equal(listings, 3);
+    assert.equal(state.calls.uploadAttempts.length, 2);
+    assert.deepEqual(
+      state.calls.uploadAttempts[1],
+      state.calls.uploadAttempts[0]
+    );
+    assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+    assert.deepEqual(state.calls.downloaded, matching ? [100, 100] : [100]);
+    assert.deepEqual(state.calls.deleted, []);
+    assert.deepEqual(state.delays, [1000]);
+    assert.deepEqual(await list(), [
+      { id: 100, name: "lock.json", state: "uploaded" }
+    ]);
+  });
+}
+
+test("bounds upload HTTP retries before polling for uncertain state", async () => {
+  const failure = Object.assign(new Error("503 Service Unavailable"), {
+    status: 503
+  });
+  const state = fixture({
+    uploadFailures: Array(6).fill({ error: failure })
+  });
+  const list = state.github.rest.repos.listReleaseAssets;
+  let listings = 0;
+  state.github.rest.repos.listReleaseAssets = async () => {
+    listings++;
+    return list();
+  };
+
+  await assert.rejects(
+    () => withUpload(state, () => releaseAssets(state)),
+    (error) => {
+      assert.match(error.message, /lock\.json.*not visible after 5 attempts/);
+      assert.equal(error.cause, failure);
+      return true;
+    }
+  );
+
+  assert.equal(state.calls.uploadAttempts.length, 6);
+  for (const request of state.calls.uploadAttempts) {
+    assert.deepEqual(request, state.calls.uploadAttempts[0]);
+  }
+  assert.equal(listings, 6);
+  assert.deepEqual(state.calls.uploaded, []);
+  assert.deepEqual(state.calls.downloaded, []);
+  assert.deepEqual(state.calls.deleted, []);
+  assert.deepEqual(state.delays, [1000, 2000, 4000, 8000]);
+  assert.equal(state.outputs.asset_id, undefined);
+});
+
 test("retries an immutable draft upload after removing a starter asset", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
   try {
@@ -291,6 +431,7 @@ test("retries an immutable draft upload after removing a starter asset", async (
     await releaseAssets(state);
     assert.deepEqual(state.calls.deleted, [100]);
     assert.deepEqual(state.calls.uploaded, ["lock.json", "lock.json"]);
+    assert.equal(state.calls.uploadAttempts.length, 3);
     assert.equal(state.outputs.asset_id, "101");
     assert.equal(state.outputs.reused, "false");
     assert.deepEqual(await state.github.rest.repos.listReleaseAssets(), [
@@ -315,13 +456,22 @@ test("bounds starter upload retries and permits a later rerun", async () => {
       FILE: file,
       IMMUTABLE: "true"
     });
-    await assert.rejects(() => releaseAssets(state), /502 Bad Gateway/);
+    await assert.rejects(
+      () => releaseAssets(state),
+      (error) => {
+        assert.equal(error.status, 422);
+        assert.match(error.message, /lock\.json already exists/);
+        return true;
+      }
+    );
     assert.equal(state.calls.uploaded.length, 3);
+    assert.equal(state.calls.uploadAttempts.length, 6);
     assert.deepEqual(state.calls.deleted, [100, 101, 102]);
     assert.equal(state.outputs.uploaded_files, undefined);
 
     await releaseAssets(state);
     assert.equal(state.calls.uploaded.length, 4);
+    assert.equal(state.calls.uploadAttempts.length, 7);
     assert.equal(state.outputs.asset_id, "103");
     assert.equal(state.outputs.uploaded_files, "1");
     assert.deepEqual(await state.github.rest.repos.listReleaseAssets(), [
@@ -452,7 +602,7 @@ test("verifies an accepted upload by ID while asset listings are stale", async (
   };
   const upload = state.github.rest.repos.uploadReleaseAsset;
   state.github.rest.repos.uploadReleaseAsset = async (request) => {
-    assert.equal(request.request.retries, 0);
+    assert.equal(request.request?.retries, undefined);
     return upload(request);
   };
   await withUpload(state, () => releaseAssets(state));
