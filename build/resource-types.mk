@@ -132,5 +132,6 @@ sync-resource-types: ## Copy manifest files and compile the kubernetes recipe pa
 	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh
 
 .PHONY: test-sync-resource-types
-test-sync-resource-types: ## Test stable-first resource type and recipe pack pin selection
+test-sync-resource-types: ## Test pin selection and cumulative resource type updates
 	@bash ./build/scripts/test-sync-resource-types.sh
+	@bash ./.github/scripts/update-resource-types_test.sh

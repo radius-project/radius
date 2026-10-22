@@ -44,8 +44,9 @@ name: Update Resource Types
 # event's units advance, as do any consumed edge units whose first stable
 # release is now available; entries Radius does not register are skipped.
 #
-# The bot branch is rebuilt from the current main on every dispatch. Pins that
-# are still pending on its open PR are replayed as extra input to make, so
+# Each dispatch selects current main before setting up tools and caches, and
+# keeps that snapshot through generation. The bot branch is rebuilt from it.
+# Pins still pending on its open PR are replayed as extra input to make, so
 # updates stay cumulative without the branch ever having to be rebased.
 #
 # Merging the resulting PR triggers the existing `build-and-push-bicep-types`
@@ -202,8 +203,11 @@ jobs:
           bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
 
       - name: Checkout
+        # A queued dispatch can reference an older go.mod or tool pin. Select
+        # main once here, before setup, and do not switch source revisions later.
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: main
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
           persist-credentials: false
@@ -236,8 +240,8 @@ jobs:
         run: make install-bicep
 
       - name: Prepare cumulative update branch
-        # Rebuild the bot branch from the current main on every dispatch instead
-        # of rebasing its previous commit. make update-resource-types
+        # Rebuild the bot branch from the checked-out main snapshot instead of
+        # rebasing its previous commit. make update-resource-types
         # regenerates everything it writes, so the pin set is the only state
         # worth preserving: carrying the still-pending pins forward keeps
         # updates cumulative and can never conflict, whereas rebasing wedges the
@@ -253,7 +257,6 @@ jobs:
           set -euo pipefail
           defaults=deploy/manifest/defaults.yaml
 
-          git fetch origin main
           head_sha="$(
             git ls-remote origin "refs/heads/${PR_BRANCH}" | awk '{print $1}'
           )"
@@ -284,9 +287,8 @@ jobs:
           fi
 
           # create-pull-request owns the bot branch. Keep the generated changes
-          # on main so the action can rebuild the stable PR branch from the
-          # latest base while preserving the pending pins read above.
-          git checkout -B main origin/main
+          # on the same main snapshot used for tool setup, preserving only the
+          # pending pins read above rather than switching source revisions.
           base="$(yq -o=json -I=0 '.' "${defaults}")"
 
           # carried <section> <legacy_section> <payload_json> echoes the branch

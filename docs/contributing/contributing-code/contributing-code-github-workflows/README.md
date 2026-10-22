@@ -44,6 +44,12 @@ Jobs that run `make build`, `make docker-build`, or `make docker-multi-arch-push
 
 Jobs that compile only the root module, including the current GoReleaser builds, can keep the default. Module downloads do not cover unrelated `go install` commands outside these modules.
 
+### Resource type update snapshots
+
+[`update-resource-types.yaml`](../../../../.github/workflows/update-resource-types.yaml) checks out current `main` once, before setting up Go, downloading modules, selecting Node, or installing the pinned tools. A queued dispatch's event SHA can predate changes to `go.mod`, `.node-version`, or `build/tools.yaml`. Keep the selected checkout unchanged through the resource type update and `make generate`; fetching and resetting to newer `main` after setup can leave the installed tools and caches incompatible with the source.
+
+The workflow reads pending namespace and recipe-pack pins from `bot/update-resource-types` without checking out that branch. Only an open PR contributes pending pins, and the current dispatch takes precedence for overlapping entries. Run `make test-sync-resource-types` with Bash, Git, jq, and [yq v4](https://github.com/mikefarah/yq) installed. It covers pin selection plus the workflow's actual preparation script against local Git repositories, including an older event SHA, `main` advancing before and after setup, and pending-pin handling. The update and generation commands use a fake `make` to check their snapshot and pin inputs; these tests do not run hosted actions, contact GitHub, or generate artifacts.
+
 ### Docker image pulls
 
 The `.github/actions/create-local-registry` composite action uses a cached `registry:2` image when available. Otherwise, it pulls the image with up to five attempts. Each pull has a 60-second timeout. The waits start at 5, 10, 20, and 40 seconds, with a random addition of up to the same delay to spread retries across jobs. Known permanent errors, such as authentication failures and missing manifests, stop without retry. The script preserves Docker's final exit code and output. The pull step has a 10-minute timeout.

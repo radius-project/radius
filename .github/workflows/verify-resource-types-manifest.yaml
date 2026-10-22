@@ -59,6 +59,9 @@ on:
       - "build/resource-types.mk"
       - "build/scripts/sync-resource-types.sh"
       - "build/scripts/test-sync-resource-types.sh"
+      - ".github/scripts/update-resource-types_test.sh"
+      - ".github/workflows/update-resource-types.yaml"
+      - ".github/workflows/verify-resource-types-manifest.yaml"
   # The merge_group event does not support path filters. This check is cheap
   # (sync + git diff), so it simply runs on every queued group rather than
   # adding change-detection. Scoped to main only so the release branch flow is
@@ -91,7 +94,7 @@ jobs:
       - name: Install Bicep
         run: make install-bicep
 
-      - name: Test stable-first pin selection
+      - name: Test pin selection and cumulative updates
         run: make test-sync-resource-types
 
       # Re-run the copy step (without bumping the ref) to regenerate the
