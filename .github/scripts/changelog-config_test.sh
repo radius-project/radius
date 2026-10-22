@@ -224,6 +224,25 @@ render_context "${CONTEXT}" >"${TEST_ROOT}/rerendered.md"
 cmp "${LINKED}" "${TEST_ROOT}/rerendered.md" ||
     fail "rendering the same metadata must be deterministic"
 
+jq '
+    .[0].github.contributors |=
+        [{username: null, pr_labels: [], is_first_time: true}] + .[:2] +
+        [{pr_labels: [], is_first_time: false}] + .[2:] +
+        [{username: null, pr_labels: [], is_first_time: false}]
+' "${CONTEXT}" >"${TEST_ROOT}/missing-usernames.json"
+render_context "${TEST_ROOT}/missing-usernames.json" \
+    >"${TEST_ROOT}/missing-usernames.md"
+cmp "${LINKED}" "${TEST_ROOT}/missing-usernames.md" ||
+    fail "missing usernames must not change links, separators, or headings"
+
+jq '.[0].github.contributors |= map(select(.username == null))' \
+    "${TEST_ROOT}/missing-usernames.json" >"${TEST_ROOT}/anonymous.json"
+render_context "${TEST_ROOT}/anonymous.json" >"${TEST_ROOT}/anonymous.md"
+expect_absent '### Contributors' "${TEST_ROOT}/anonymous.md"
+expect_absent '### New contributors' "${TEST_ROOT}/anonymous.md"
+expect_under "Added" \
+    "Add recipe validation by ${profile}" "${TEST_ROOT}/anonymous.md"
+
 jq '.[0].github.contributors |= .[:1]' "${CONTEXT}" \
     >"${TEST_ROOT}/single.json"
 render_context "${TEST_ROOT}/single.json" >"${LINKED}"
