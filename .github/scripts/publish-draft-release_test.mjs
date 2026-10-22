@@ -10,6 +10,8 @@ import publishDraftRelease, {
 
 function fixture({ draft = true, prerelease = false } = {}) {
   const updates = [];
+  const delays = [];
+  const messages = [];
   const release = {
     id: 42,
     tag_name: "v0.61.0",
@@ -34,10 +36,15 @@ function fixture({ draft = true, prerelease = false } = {}) {
     rest: {
       repos: {
         listReleases: async () => [release],
+        getRelease: async ({ release_id }) => {
+          assert.equal(release_id, release.id);
+          return { data: { ...release } };
+        },
         updateRelease: async (request) => {
           updates.push(request);
           release.draft = request.draft;
           release.prerelease = request.prerelease;
+          return { data: { ...release } };
         },
         getLatestRelease: async () => ({ data: { tag_name: release.tag_name } })
       }
@@ -45,11 +52,25 @@ function fixture({ draft = true, prerelease = false } = {}) {
   };
   const core = {
     getInput: (name) => inputs[name] ?? "",
+    info: (message) => messages.push(message),
     setOutput: (name, value) => {
       outputs[name] = value;
     }
   };
-  return { core, github, inputs, outputs, release, updates };
+  const sleep = async (milliseconds) => {
+    delays.push(milliseconds);
+  };
+  return {
+    core,
+    delays,
+    github,
+    inputs,
+    messages,
+    outputs,
+    release,
+    sleep,
+    updates
+  };
 }
 
 async function withNotes(state, callback) {
@@ -163,6 +184,150 @@ test("reconciles publication accepted before a network error", async () => {
   await withNotes(state, () => publishDraftRelease(state));
   assert.equal(state.release.draft, false);
   assert.equal(state.updates.length, 1);
+});
+
+for (const responseLost of [false, true]) {
+  test(`waits for publication by ID when the update response is ${responseLost ? "lost" : "received"}`, async () => {
+    const state = fixture();
+    const draft = { ...state.release };
+    const get = state.github.rest.repos.getRelease;
+    const update = state.github.rest.repos.updateRelease;
+    let listings = 0;
+    let reads = 0;
+    state.github.rest.repos.listReleases = async () => {
+      assert.equal(++listings, 1, "must verify publication by release ID");
+      return [state.release];
+    };
+    state.github.rest.repos.getRelease = async (request) =>
+      ++reads < 3 ? { data: draft } : get(request);
+    state.github.rest.repos.updateRelease = async (request) => {
+      assert.equal(request.request.retries, 0);
+      const response = await update(request);
+      if (responseLost) throw new Error("connection reset after publication");
+      return response;
+    };
+    await withNotes(state, () => publishDraftRelease(state));
+    assert.deepEqual(state.delays, [1000, 2000]);
+    assert.equal(state.updates.length, 1);
+    assert.equal(state.outputs.release_url, state.release.html_url);
+  });
+}
+
+test("waits for a release missing from the initial publication lookup", async () => {
+  const state = fixture();
+  const list = state.github.rest.repos.listReleases;
+  let listings = 0;
+  state.github.rest.repos.listReleases = async () =>
+    ++listings < 3 ? [] : list();
+  await withNotes(state, () => publishDraftRelease(state));
+  assert.equal(listings, 3);
+  assert.deepEqual(state.delays, [1000]);
+  assert.equal(state.updates.length, 1);
+});
+
+test("waits for a post-publication 404 without repeating the update", async () => {
+  const state = fixture();
+  const get = state.github.rest.repos.getRelease;
+  let reads = 0;
+  state.github.rest.repos.getRelease = async (request) => {
+    if (++reads < 3) {
+      throw Object.assign(new Error("not visible yet"), { status: 404 });
+    }
+    return get(request);
+  };
+  await withNotes(state, () => publishDraftRelease(state));
+  assert.deepEqual(state.delays, [1000, 2000]);
+  assert.equal(state.updates.length, 1);
+});
+
+test("bounds publication readback and retains the original update error", async () => {
+  const state = fixture();
+  const failure = new Error("connection reset during publication");
+  state.github.rest.repos.updateRelease = async (request) => {
+    state.updates.push(request);
+    throw failure;
+  };
+  await assert.rejects(
+    () => withNotes(state, () => publishDraftRelease(state)),
+    (error) => {
+      assert.match(
+        error.message,
+        /Published release v0\.61\.0 \(ID 42\).*not visible after 5 attempts/
+      );
+      assert.equal(error.cause, failure);
+      return true;
+    }
+  );
+  assert.deepEqual(state.delays, [1000, 2000, 4000, 8000]);
+  assert.equal(state.updates.length, 1);
+  assert.equal(state.outputs.release_url, undefined);
+});
+
+for (const [change, expected] of [
+  [{ prerelease: true }, /wrong classification/],
+  [{ tag_name: "v0.62.0" }, /does not match tag v0\.61\.0/]
+]) {
+  test(`rejects conflicting published ${Object.keys(change)[0]} without treating it as a visibility delay`, async () => {
+    const state = fixture();
+    state.github.rest.repos.getRelease = async () => ({
+      data: { ...state.release, draft: false, ...change }
+    });
+    await assert.rejects(
+      () => withNotes(state, () => publishDraftRelease(state)),
+      expected
+    );
+    assert.deepEqual(state.delays, []);
+    assert.equal(state.updates.length, 1);
+    assert.equal(state.outputs.release_url, undefined);
+  });
+}
+
+test("does not hide forbidden publication readback", async () => {
+  const state = fixture();
+  const failure = Object.assign(new Error("forbidden"), { status: 403 });
+  state.github.rest.repos.getRelease = async () => {
+    throw failure;
+  };
+  await assert.rejects(
+    () => withNotes(state, () => publishDraftRelease(state)),
+    (error) => error === failure
+  );
+  assert.deepEqual(state.delays, []);
+  assert.equal(state.updates.length, 1);
+});
+
+for (const missing of [false, true]) {
+  test(`waits for latest-release ${missing ? "visibility" : "freshness"} after publication`, async () => {
+    const state = fixture();
+    let reads = 0;
+    state.github.rest.repos.getLatestRelease = async () => {
+      if (++reads < 3) {
+        if (missing) {
+          throw Object.assign(new Error("not visible yet"), { status: 404 });
+        }
+        return { data: { tag_name: "v0.60.0" } };
+      }
+      return { data: { ...state.release } };
+    };
+    await withNotes(state, () => publishDraftRelease(state));
+    assert.deepEqual(state.delays, [1000, 2000]);
+    assert.equal(state.updates.length, 1);
+    assert.equal(state.outputs.release_url, state.release.html_url);
+  });
+}
+
+test("fails when latest never reaches the requested release without publishing again", async () => {
+  const state = fixture();
+  state.github.rest.repos.getLatestRelease = async () => ({
+    data: { tag_name: "v0.60.0" }
+  });
+  await assert.rejects(
+    () => withNotes(state, () => publishDraftRelease(state)),
+    /Latest release v0\.61\.0.*not visible after 5 attempts/
+  );
+  assert.deepEqual(state.delays, [1000, 2000, 4000, 8000]);
+  assert.equal(state.updates.length, 1);
+  assert.equal(state.outputs.release_url, undefined);
 });
 
 test("rejects a published release with the wrong classification", async () => {

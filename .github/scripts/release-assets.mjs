@@ -4,6 +4,11 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 
+import {
+  waitForRelease,
+  waitForReleaseState
+} from "./release-reconciliation.mjs";
+
 /** @param {unknown} value */
 function asBuffer(value) {
   if (Buffer.isBuffer(value)) {
@@ -16,20 +21,6 @@ function asBuffer(value) {
     return Buffer.from(value.buffer, value.byteOffset, value.byteLength);
   }
   return Buffer.from(String(value));
-}
-
-/** @param {any} github @param {string} owner @param {string} repo @param {string} tag */
-async function getRelease(github, owner, repo, tag) {
-  const releases = await github.paginate(github.rest.repos.listReleases, {
-    owner,
-    repo,
-    per_page: 100
-  });
-  const matches = releases.filter((release) => release.tag_name === tag);
-  if (matches.length !== 1) {
-    throw new Error(`Expected one release for ${tag}; found ${matches.length}`);
-  }
-  return matches[0];
 }
 
 /** @param {any} github @param {string} owner @param {string} repo @param {number} releaseID */
@@ -63,6 +54,24 @@ function findAsset(assets, name) {
     throw new Error(`Release contains multiple assets named ${name}`);
   }
   return matches[0];
+}
+
+/** @param {any} github @param {string} owner @param {string} repo @param {any} asset @param {import("./release-reconciliation.mjs").ReleaseReadOptions} options */
+function downloadUploadedAsset(github, owner, repo, asset, options) {
+  return waitForReleaseState(
+    async () => {
+      try {
+        return await downloadAsset(github, owner, repo, asset.id);
+      } catch (error) {
+        if (error.status !== 404) throw error;
+        return undefined;
+      }
+    },
+    {
+      ...options,
+      description: `Uploaded release asset ${asset.name} (ID ${asset.id})`
+    }
+  );
 }
 
 /** @param {Buffer} data @param {string} name */
@@ -121,10 +130,17 @@ async function deleteStarterAsset(github, owner, repo, release, asset) {
   return true;
 }
 
-async function uploadAssetData(github, owner, repo, release, name, data) {
+async function uploadAssetData(
+  github,
+  owner,
+  repo,
+  release,
+  name,
+  data,
+  reconciliation
+) {
   const maxUploadAttempts = 3;
   let response;
-  let assets;
   for (let attempt = 1; attempt <= maxUploadAttempts; attempt++) {
     try {
       response = await github.rest.repos.uploadReleaseAsset({
@@ -137,22 +153,33 @@ async function uploadAssetData(github, owner, repo, release, name, data) {
             name.endsWith(".json") ? "application/json" : "text/plain",
           "content-length": data.length
         },
-        data
+        data,
+        request: { retries: 0 }
       });
       break;
     } catch (error) {
-      assets = await listAssets(github, owner, repo, release.id);
-      const uncertain = findAsset(assets, name);
-      if (!uncertain) {
-        throw error;
-      }
+      const uncertain = await waitForReleaseState(
+        async () =>
+          findAsset(await listAssets(github, owner, repo, release.id), name),
+        {
+          ...reconciliation,
+          description: `Release asset ${name} after upload to release ${release.id}`,
+          cause: error
+        }
+      );
       if (await deleteStarterAsset(github, owner, repo, release, uncertain)) {
         if (attempt === maxUploadAttempts) {
           throw error;
         }
         continue;
       }
-      const remote = await downloadAsset(github, owner, repo, uncertain.id);
+      const remote = await downloadUploadedAsset(
+        github,
+        owner,
+        repo,
+        uncertain,
+        reconciliation
+      );
       if (Buffer.compare(data, remote) !== 0) {
         throw error;
       }
@@ -160,12 +187,19 @@ async function uploadAssetData(github, owner, repo, release, name, data) {
       break;
     }
   }
-  assets = await listAssets(github, owner, repo, release.id);
-  const uploaded = findAsset(assets, name);
-  if (!uploaded) {
-    throw new Error(`Uploaded release asset ${name} cannot be found`);
+  const uploaded = response.data;
+  if (uploaded.name !== name) {
+    throw new Error(
+      `Uploaded release asset ${uploaded.id} is not named ${name}`
+    );
   }
-  const remote = await downloadAsset(github, owner, repo, uploaded.id);
+  const remote = await downloadUploadedAsset(
+    github,
+    owner,
+    repo,
+    uploaded,
+    reconciliation
+  );
   if (Buffer.compare(data, remote) !== 0) {
     throw new Error(`Uploaded release asset ${name} failed verification`);
   }
@@ -200,8 +234,16 @@ async function downloadFiles(github, core, owner, repo, release) {
   core.setOutput("all_found", "true");
 }
 
-/** @param {any} github @param {any} core @param {string} owner @param {string} repo @param {any} release */
-async function uploadFile(github, core, owner, repo, release, file) {
+/** @param {any} github @param {any} core @param {string} owner @param {string} repo @param {any} release @param {string} file @param {import("./release-reconciliation.mjs").ReleaseReadOptions} reconciliation */
+async function uploadFile(
+  github,
+  core,
+  owner,
+  repo,
+  release,
+  file,
+  reconciliation
+) {
   const name = path.basename(file);
   const data = await readFile(file);
   const immutable = core.getInput("IMMUTABLE") === "true";
@@ -243,14 +285,15 @@ async function uploadFile(github, core, owner, repo, release, file) {
     repo,
     release,
     name,
-    data
+    data,
+    reconciliation
   );
   core.setOutput("asset_id", String(uploaded.id));
   core.setOutput("reused", "false");
 }
 
-/** @param {any} github @param {any} core @param {string} owner @param {string} repo @param {any} release */
-async function uploadFiles(github, core, owner, repo, release) {
+/** @param {any} github @param {any} core @param {string} owner @param {string} repo @param {any} release @param {import("./release-reconciliation.mjs").ReleaseReadOptions} reconciliation */
+async function uploadFiles(github, core, owner, repo, release, reconciliation) {
   const filesInput = core.getInput("FILES");
   const files =
     filesInput ?
@@ -260,19 +303,20 @@ async function uploadFiles(github, core, owner, repo, release) {
     throw new Error("FILES must be a JSON array of strings");
   }
   for (const file of files) {
-    await uploadFile(github, core, owner, repo, release, file);
+    await uploadFile(github, core, owner, repo, release, file, reconciliation);
   }
   core.setOutput("uploaded_files", String(files.length));
 }
 
-/** @param {any} github @param {any} core @param {string} owner @param {string} repo @param {any} release */
+/** @param {any} github @param {any} core @param {string} owner @param {string} repo @param {any} release @param {boolean} normalize @param {import("./release-reconciliation.mjs").ReleaseReadOptions} reconciliation */
 async function reconcileCliAssets(
   github,
   core,
   owner,
   repo,
   release,
-  normalize
+  normalize,
+  reconciliation
 ) {
   const targetsFile = core.getInput("TARGETS_FILE", { required: true });
   const targets = JSON.parse(await readFile(targetsFile, "utf8"));
@@ -298,7 +342,8 @@ async function reconcileCliAssets(
         repo,
         release,
         `${name}.sha256`,
-        expected
+        expected,
+        reconciliation
       );
       continue;
     }
@@ -329,7 +374,8 @@ async function reconcileCliAssets(
         repo,
         release,
         `${name}.sha256`,
-        expected
+        expected,
+        reconciliation
       );
     } else if (!normalize && checksum !== expected.toString("utf8").trim()) {
       throw new Error(`Release checksum is not Radius-compatible: ${name}`);
@@ -362,28 +408,51 @@ async function verifySbomAssets(github, core, owner, repo, release) {
   core.setOutput("verified_sboms", String(names.length));
 }
 
-/** @param {{github: any, core: any}} options */
-export default async function releaseAssets({ github, core }) {
+/** @param {{github: any} & import("./release-reconciliation.mjs").ReleaseReadOptions} options */
+export default async function releaseAssets({ github, core, sleep }) {
   const owner = core.getInput("OWNER", { required: true });
   const repo = core.getInput("REPO", { required: true });
   const tag = core.getInput("TAG", { required: true });
   const mode = core.getInput("MODE", { required: true });
-  const release = await getRelease(github, owner, repo, tag);
+  const reconciliation = { core, sleep };
+  const release = await waitForRelease(
+    github,
+    owner,
+    repo,
+    tag,
+    reconciliation
+  );
 
   if (mode === "download") {
     await downloadFiles(github, core, owner, repo, release);
     return;
   }
   if (mode === "upload") {
-    await uploadFiles(github, core, owner, repo, release);
+    await uploadFiles(github, core, owner, repo, release, reconciliation);
     return;
   }
   if (mode === "verify-cli") {
-    await reconcileCliAssets(github, core, owner, repo, release, false);
+    await reconcileCliAssets(
+      github,
+      core,
+      owner,
+      repo,
+      release,
+      false,
+      reconciliation
+    );
     return;
   }
   if (mode === "normalize-cli") {
-    await reconcileCliAssets(github, core, owner, repo, release, true);
+    await reconcileCliAssets(
+      github,
+      core,
+      owner,
+      repo,
+      release,
+      true,
+      reconciliation
+    );
     return;
   }
   if (mode === "verify-sboms") {

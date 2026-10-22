@@ -181,9 +181,10 @@ test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
 	@bash ./.github/scripts/goreleaser-snapshot-artifacts_test.sh
 	@bash ./.github/scripts/normalize-release-checksums_test.sh
 	@bash ./.github/scripts/publish-helm-chart_test.sh
-	@node --test ./.github/scripts/ensure-draft-release_test.mjs
-	@node --test ./.github/scripts/release-assets_test.mjs
-	@node --test ./.github/scripts/publish-draft-release_test.mjs
+	@node --test ./.github/scripts/release-reconciliation_test.mjs \
+		./.github/scripts/ensure-draft-release_test.mjs \
+		./.github/scripts/release-assets_test.mjs \
+		./.github/scripts/publish-draft-release_test.mjs
 
 .PHONY: test-release-oci-artifacts
 .PHONY: test-release-publication

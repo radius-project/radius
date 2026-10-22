@@ -10,6 +10,8 @@ import releaseAssets from "./release-assets.mjs";
 function fixture({ draft = true, assets = [], starterFailures = 0 } = {}) {
   const outputs = {};
   const calls = { deleted: [], uploaded: [] };
+  const delays = [];
+  const messages = [];
   let nextID = 100;
   const release = { id: 42, tag_name: "v0.61.0", draft };
   const contents = new Map(
@@ -70,11 +72,34 @@ function fixture({ draft = true, assets = [], starterFailures = 0 } = {}) {
   const inputs = {};
   const core = {
     getInput: (name) => inputs[name] ?? "",
+    info: (message) => messages.push(message),
     setOutput: (name, value) => {
       outputs[name] = value;
     }
   };
-  return { calls, core, github, inputs, outputs };
+  const sleep = async (milliseconds) => {
+    delays.push(milliseconds);
+  };
+  return { calls, core, delays, github, inputs, messages, outputs, sleep };
+}
+
+async function withUpload(state, callback) {
+  const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
+  try {
+    const file = path.join(root, "lock.json");
+    await writeFile(file, "complete");
+    Object.assign(state.inputs, {
+      OWNER: "radius-project",
+      REPO: "radius",
+      TAG: "v0.61.0",
+      MODE: "upload",
+      FILE: file,
+      IMMUTABLE: "true"
+    });
+    return await callback();
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 }
 
 function spdxPackage(overrides = {}) {
@@ -404,6 +429,174 @@ test("uploads and verifies a batch of release assets", async () => {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("waits for a newly staged release before uploading an asset", async () => {
+  const state = fixture();
+  const list = state.github.rest.repos.listReleases;
+  let listings = 0;
+  state.github.rest.repos.listReleases = async () =>
+    ++listings < 3 ? [] : list();
+  await withUpload(state, () => releaseAssets(state));
+  assert.deepEqual(state.delays, [1000, 2000]);
+  assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+  assert.equal(state.outputs.asset_id, "100");
+});
+
+test("verifies an accepted upload by ID while asset listings are stale", async () => {
+  const state = fixture();
+  let listings = 0;
+  state.github.rest.repos.listReleaseAssets = async () => {
+    assert.equal(++listings, 1, "must not rediscover an accepted upload");
+    return [];
+  };
+  const upload = state.github.rest.repos.uploadReleaseAsset;
+  state.github.rest.repos.uploadReleaseAsset = async (request) => {
+    assert.equal(request.request.retries, 0);
+    return upload(request);
+  };
+  await withUpload(state, () => releaseAssets(state));
+  assert.deepEqual(state.delays, []);
+  assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+  assert.equal(state.outputs.asset_id, "100");
+});
+
+for (const responseLost of [false, true]) {
+  test(`waits for uploaded asset content when the response is ${responseLost ? "lost" : "received"}`, async () => {
+    const state = fixture();
+    const request = state.github.request;
+    let downloads = 0;
+    state.github.request = async (...args) => {
+      if (++downloads < 3) {
+        throw Object.assign(new Error("not visible yet"), { status: 404 });
+      }
+      return request(...args);
+    };
+    if (responseLost) {
+      const upload = state.github.rest.repos.uploadReleaseAsset;
+      state.github.rest.repos.uploadReleaseAsset = async (input) => {
+        await upload(input);
+        throw new Error("connection reset after upload");
+      };
+    }
+    await withUpload(state, () => releaseAssets(state));
+    assert.deepEqual(state.delays, [1000, 2000]);
+    assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+    assert.deepEqual(state.calls.deleted, []);
+    assert.equal(state.outputs.asset_id, "100");
+  });
+}
+
+test("waits for an upload with a lost response to appear in asset listings", async () => {
+  const state = fixture();
+  const list = state.github.rest.repos.listReleaseAssets;
+  const upload = state.github.rest.repos.uploadReleaseAsset;
+  let listings = 0;
+  state.github.rest.repos.listReleaseAssets = async () =>
+    ++listings < 4 ? [] : list();
+  state.github.rest.repos.uploadReleaseAsset = async (request) => {
+    await upload(request);
+    throw new Error("connection reset after upload");
+  };
+  await withUpload(state, () => releaseAssets(state));
+  assert.equal(listings, 4);
+  assert.deepEqual(state.delays, [1000, 2000]);
+  assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+  assert.equal(state.outputs.asset_id, "100");
+});
+
+test("preserves an uncertain upload on visibility timeout and reuses it on resume", async () => {
+  const state = fixture();
+  const list = state.github.rest.repos.listReleaseAssets;
+  const upload = state.github.rest.repos.uploadReleaseAsset;
+  const failure = new Error("connection reset after upload");
+  state.github.rest.repos.listReleaseAssets = async () => [];
+  state.github.rest.repos.uploadReleaseAsset = async (request) => {
+    await upload(request);
+    throw failure;
+  };
+  await withUpload(state, async () => {
+    await assert.rejects(
+      () => releaseAssets(state),
+      (error) => {
+        assert.match(error.message, /lock\.json.*not visible after 5 attempts/);
+        assert.equal(error.cause, failure);
+        return true;
+      }
+    );
+    assert.equal(state.outputs.asset_id, undefined);
+    assert.deepEqual(state.delays, [1000, 2000, 4000, 8000]);
+    assert.deepEqual(state.calls.deleted, []);
+    assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+
+    state.github.rest.repos.listReleaseAssets = list;
+    await releaseAssets(state);
+    assert.equal(state.outputs.asset_id, "100");
+    assert.equal(state.outputs.reused, "true");
+    assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+  });
+});
+
+test("bounds content visibility retries without deleting an accepted upload", async () => {
+  const state = fixture();
+  state.github.request = async () => {
+    throw Object.assign(new Error("not visible yet"), { status: 404 });
+  };
+  await assert.rejects(
+    () => withUpload(state, () => releaseAssets(state)),
+    /lock\.json \(ID 100\).*not visible after 5 attempts/
+  );
+  assert.deepEqual(state.delays, [1000, 2000, 4000, 8000]);
+  assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+  assert.deepEqual(state.calls.deleted, []);
+  assert.equal(state.outputs.asset_id, undefined);
+});
+
+for (const status of [403, 500]) {
+  test(`does not treat HTTP ${status} asset download errors as visibility delays`, async () => {
+    const state = fixture();
+    const failure = Object.assign(new Error("download failed"), { status });
+    state.github.request = async () => {
+      throw failure;
+    };
+    await assert.rejects(
+      () => withUpload(state, () => releaseAssets(state)),
+      (error) => error === failure
+    );
+    assert.deepEqual(state.delays, []);
+    assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+    assert.deepEqual(state.calls.deleted, []);
+  });
+}
+
+test("rejects changed uploaded bytes without retrying or replacing the asset", async () => {
+  const state = fixture();
+  state.github.request = async () => ({ data: Buffer.from("different") });
+  await assert.rejects(
+    () => withUpload(state, () => releaseAssets(state)),
+    /failed verification/
+  );
+  assert.deepEqual(state.delays, []);
+  assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+  assert.deepEqual(state.calls.deleted, []);
+  assert.equal(state.outputs.asset_id, undefined);
+});
+
+test("rejects an upload response with a different asset name", async () => {
+  const state = fixture();
+  const upload = state.github.rest.repos.uploadReleaseAsset;
+  state.github.rest.repos.uploadReleaseAsset = async (request) => {
+    const response = await upload(request);
+    return { data: { ...response.data, name: "unexpected.json" } };
+  };
+  await assert.rejects(
+    () => withUpload(state, () => releaseAssets(state)),
+    /asset 100 is not named lock\.json/
+  );
+  assert.deepEqual(state.delays, []);
+  assert.deepEqual(state.calls.uploaded, ["lock.json"]);
+  assert.deepEqual(state.calls.deleted, []);
+  assert.equal(state.outputs.asset_id, undefined);
 });
 
 test("verifies release binaries against split checksums", async () => {
