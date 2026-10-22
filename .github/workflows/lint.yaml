@@ -45,13 +45,13 @@ jobs:
       contents: read
       pull-requests: read
 
-  # Keep the required "Lint" status on filtered runs, with focused release
-  # metadata tests instead of the unrelated Go, Helm, and generated-code work.
+  # Preserve ordinary ignored-change skips. Release metadata keeps focused
+  # validation, and failed classification must still fail the required status.
   lint:
     name: Lint
     runs-on: ubuntu-24.04
     needs: changes
-    if: always()
+    if: always() && (needs.changes.result != 'success' || needs.changes.outputs.only_changed != 'true' || needs.changes.outputs.release_metadata == 'true')
     timeout-minutes: 30
     env:
       GOPROXY: https://proxy.golang.org

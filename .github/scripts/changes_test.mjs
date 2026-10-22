@@ -22,7 +22,11 @@ const workflow = (
   await readFile(new URL("../workflows/__changes.yml", import.meta.url), "utf8")
 ).replace(/\r\n/g, "\n");
 
-function createCore(baseSha = "", onlyChanged = "true") {
+function createCore(
+  baseSha = "",
+  onlyChanged = "true",
+  releaseMetadata = "false"
+) {
   const outputs = [];
   const failures = [];
   return {
@@ -32,7 +36,9 @@ function createCore(baseSha = "", onlyChanged = "true") {
       ({
         BASE_SHA: baseSha,
         ALL_FILES_COUNT: "2",
-        IGNORED_FILES_COUNT: onlyChanged === "true" ? "2" : "1"
+        IGNORED_FILES_COUNT: onlyChanged === "true" ? "2" : "1",
+        RELEASE_FILES_COUNT: releaseMetadata === "true" ? "1" : "0",
+        WORKFLOW_FILES_COUNT: "0"
       })[name],
     info() {},
     setOutput: (name, value) => outputs.push([name, value]),
@@ -53,16 +59,19 @@ const otherEvents = [
 for (const eventName of [...filteringEvents, ...otherEvents]) {
   for (const baseSha of ["", "base-sha"]) {
     for (const onlyChanged of ["true", "false"]) {
-      test(`${eventName}: base=${baseSha || "absent"}, filter=${onlyChanged}`, async () => {
-        const core = createCore(baseSha, onlyChanged);
-        await changes({ context: { eventName }, core });
-        const expected =
-          filteringEvents.includes(eventName) || baseSha ?
-            onlyChanged
-          : "false";
-        assert.deepEqual(core.outputs, [["only_changed", expected]]);
-        assert.deepEqual(core.failures, []);
-      });
+      for (const releaseMetadata of ["true", "false"]) {
+        test(`${eventName}: base=${baseSha || "absent"}, filter=${onlyChanged}, release=${releaseMetadata}`, async () => {
+          const core = createCore(baseSha, onlyChanged, releaseMetadata);
+          await changes({ context: { eventName }, core });
+          const filtered =
+            filteringEvents.includes(eventName) || Boolean(baseSha);
+          assert.deepEqual(core.outputs, [
+            ["only_changed", filtered ? onlyChanged : "false"],
+            ["release_metadata", filtered ? releaseMetadata : "false"]
+          ]);
+          assert.deepEqual(core.failures, []);
+        });
+      }
     }
   }
 }
@@ -73,9 +82,23 @@ const patterns = workflow
   .split("\n")
   .map((pattern) => pattern.trim());
 
-function countMatchingFiles(files) {
-  const included = patterns.filter((pattern) => !pattern.startsWith("!"));
-  const excluded = patterns
+function filterGroup(name) {
+  const match = workflow.match(
+    new RegExp(`^            ${name}:\\n((?:              - .+\\n)+)`, "m")
+  );
+  assert.ok(match, `missing filter group ${name}`);
+  return match[1]
+    .trim()
+    .split("\n")
+    .map((line) => line.trim().slice(2));
+}
+
+const releasePatterns = filterGroup("release_metadata");
+const workflowPatterns = filterGroup("workflows");
+
+function countMatchingFiles(files, filePatterns = patterns) {
+  const included = filePatterns.filter((pattern) => !pattern.startsWith("!"));
+  const excluded = filePatterns
     .filter((pattern) => pattern.startsWith("!"))
     .map((pattern) => pattern.slice(1));
   return String(
@@ -122,48 +145,75 @@ const relevantInputs = [
 ];
 
 for (const eventName of filteringEvents) {
-  for (const files of [
-    releaseMetadata,
-    ...releaseMetadata.map((file) => [file]),
-    ...relevantInputs.map((file) => [...releaseMetadata, file]),
-    [...releaseMetadata, "cmd/rad/main.go", "docs/renamed-source.md"],
-    []
+  for (const [files, expected] of [
+    [releaseMetadata, true],
+    ...releaseMetadata.map((file) => [[file], true]),
+    ...relevantInputs.map((file) => [[...releaseMetadata, file], false]),
+    [[...releaseMetadata, "cmd/rad/main.go", "docs/renamed-source.md"], false],
+    [[...releaseMetadata, ".github/workflows/purge-old-images.yaml"], false],
+    [[...releaseMetadata, "docs/contributing/README.md"], true],
+    [["README.md"], true],
+    [["docs/contributing/README.md"], true],
+    [[".github/skills/radius-code-review/SKILL.md"], true],
+    [["docs/diagram.svg"], true],
+    [["LICENSE"], true],
+    [[".github/linters/config.yaml"], true],
+    [[".github/configs/label-actions.yaml"], true],
+    [[".github/workflows/publish-docs.yaml"], true],
+    [["README.md", ".github/workflows/publish-docs.yaml"], true],
+    [[".github/workflows/purge-old-images.yaml"], true],
+    [["cmd/rad/main.go"], false],
+    [["README.md", "cmd/rad/main.go"], false],
+    [["go.mod"], false],
+    [["deploy/Chart/values.yaml"], false],
+    [[".github/workflows/unit-tests.yaml"], false],
+    [[".github/workflows/build-release.yaml"], false],
+    [[], false]
   ]) {
     test(`${eventName}: classify ${files.join(", ") || "empty changes"}`, async () => {
-      const expected =
-        files.length > 0 &&
-        files.every((file) => releaseMetadata.includes(file));
       const core = createCore();
+      const releaseFiles = countMatchingFiles(files, releasePatterns);
       core.getInput = (name) =>
         ({
           BASE_SHA: "",
           ALL_FILES_COUNT: String(files.length),
-          IGNORED_FILES_COUNT: countMatchingFiles(files)
+          IGNORED_FILES_COUNT: countMatchingFiles(files),
+          RELEASE_FILES_COUNT: releaseFiles,
+          WORKFLOW_FILES_COUNT: countMatchingFiles(files, workflowPatterns)
         })[name];
       await changes({ context: { eventName }, core });
-      assert.deepEqual(core.outputs, [["only_changed", String(expected)]]);
+      assert.deepEqual(core.outputs, [
+        ["only_changed", String(expected)],
+        ["release_metadata", String(Number(releaseFiles) > 0)]
+      ]);
       assert.deepEqual(core.failures, []);
     });
   }
 }
 
 for (const eventName of [...filteringEvents, "workflow_run"]) {
-  for (const [allFiles, ignoredFiles] of [
-    ["", "2"],
-    ["2", undefined],
-    ["2", "unknown"],
-    ["2", "-1"],
-    ["1", "2"],
-    ["2.5", "2"],
-    ["9007199254740992", "9007199254740992"]
+  for (const [allFiles, ignoredFiles, releaseFiles, workflowFiles] of [
+    ["", "2", "0", "0"],
+    ["2", undefined, "0", "0"],
+    ["2", "unknown", "0", "0"],
+    ["2", "-1", "0", "0"],
+    ["1", "2", "0", "0"],
+    ["2.5", "2", "0", "0"],
+    ["9007199254740992", "9007199254740992", "0", "0"],
+    ["2", "2", "", "0"],
+    ["2", "2", "0", undefined],
+    ["2", "2", "3", "0"],
+    ["2", "2", "0", "3"]
   ]) {
-    test(`${eventName}: rejects invalid file counts ${allFiles}/${ignoredFiles}`, async () => {
+    test(`${eventName}: rejects invalid file counts ${allFiles}/${ignoredFiles}/${releaseFiles}/${workflowFiles}`, async () => {
       const core = createCore();
       core.getInput = (name) =>
         ({
           BASE_SHA: "base-sha",
           ALL_FILES_COUNT: allFiles,
-          IGNORED_FILES_COUNT: ignoredFiles
+          IGNORED_FILES_COUNT: ignoredFiles,
+          RELEASE_FILES_COUNT: releaseFiles,
+          WORKFLOW_FILES_COUNT: workflowFiles
         })[name];
       await changes({ context: { eventName }, core });
       assert.deepEqual(core.outputs, []);
@@ -418,6 +468,16 @@ test("restoration failures cannot bypass the normal success gate or change outpu
       "INPUT_IGNORED_FILES_COUNT: ${{ steps.filter.outputs.ignored_all_changed_and_modified_files_count }}"
     )
   );
+  assert.ok(
+    result.includes(
+      "INPUT_RELEASE_FILES_COUNT: ${{ steps.filter.outputs.release_metadata_all_changed_and_modified_files_count }}"
+    )
+  );
+  assert.ok(
+    result.includes(
+      "INPUT_WORKFLOW_FILES_COUNT: ${{ steps.filter.outputs.workflows_all_changed_and_modified_files_count }}"
+    )
+  );
   assert.ok(result.includes("INPUT_BASE_SHA: ${{ inputs.base_sha }}"));
   assert.ok(
     workflow.includes(
@@ -426,6 +486,14 @@ test("restoration failures cannot bypass the normal success gate or change outpu
   );
   assert.ok(
     workflow.includes("value: ${{ jobs.changes.outputs.only_changed }}")
+  );
+  assert.ok(
+    workflow.includes(
+      "release_metadata: ${{ steps.set-result.outputs.release_metadata }}"
+    )
+  );
+  assert.ok(
+    workflow.includes("value: ${{ jobs.changes.outputs.release_metadata }}")
   );
 });
 
@@ -467,7 +535,10 @@ test("the actual result script imports the restored helper, not PR content", asy
   await runResult({ eventName: "pull_request_target" }, core, {
     env: { GITHUB_WORKSPACE: pathToFileURL(workspace).href }
   });
-  assert.deepEqual(core.outputs, [["only_changed", "false"]]);
+  assert.deepEqual(core.outputs, [
+    ["only_changed", "false"],
+    ["release_metadata", "false"]
+  ]);
   assert.deepEqual(core.failures, []);
 });
 
@@ -550,7 +621,7 @@ test("Build Check includes change detection failures and cancellations", () => {
 test("Lint keeps its required status and release tests without running unrelated tools", () => {
   const lint = job(consumers["lint.yaml"], "lint");
   assert.match(lint, /^    name: Lint$/m);
-  assert.match(lint, /^    if: always\(\)$/m);
+  assert.match(lint, /^    if: always\(\) && /m);
   const guard = step(lint, "Check change detection");
   assert.match(guard, /if: needs\.changes\.result != 'success'/);
   assert.match(guard, /exit 1/);
@@ -587,6 +658,43 @@ test("Lint keeps its required status and release tests without running unrelated
     );
   }
 });
+
+const lintCondition = job(consumers["lint.yaml"], "lint").match(
+  /^    if: (.+)$/m
+)[1];
+const runLintCondition = new Function(
+  "needs",
+  "always",
+  `return ${lintCondition}`
+);
+
+for (const [name, result, onlyChanged, releaseMetadata, expected] of [
+  ["source PR", "success", "false", "false", true],
+  ["mixed source and metadata", "success", "false", "true", true],
+  ["release metadata only", "success", "true", "true", true],
+  ["ordinary docs/config/publisher only", "success", "true", "false", false],
+  ["failed classification", "failure", "", "", true],
+  ["cancelled classification", "cancelled", "", "", true],
+  ["skipped classification", "skipped", "", "", true]
+]) {
+  test(`Lint selection: ${name}`, () => {
+    assert.equal(
+      runLintCondition(
+        {
+          changes: {
+            result,
+            outputs: {
+              only_changed: onlyChanged,
+              release_metadata: releaseMetadata
+            }
+          }
+        },
+        () => true
+      ),
+      expected
+    );
+  });
+}
 
 const cloud = consumers["functional-test-cloud.yaml"];
 const report = job(cloud, "report-test-results");

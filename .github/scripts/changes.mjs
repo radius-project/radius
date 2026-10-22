@@ -14,6 +14,7 @@ export default async ({ context, core }) => {
     core.info(`Base SHA: ${baseSha || "(not provided)"}`);
 
     let result;
+    let releaseMetadata = "false";
     if (
       eventName === "pull_request" ||
       eventName === "pull_request_target" ||
@@ -22,19 +23,27 @@ export default async ({ context, core }) => {
     ) {
       const allFiles = core.getInput("ALL_FILES_COUNT");
       const ignoredFiles = core.getInput("IGNORED_FILES_COUNT");
+      const releaseFiles = core.getInput("RELEASE_FILES_COUNT");
+      const workflowFiles = core.getInput("WORKFLOW_FILES_COUNT");
+      const subsets = [ignoredFiles, releaseFiles, workflowFiles];
       if (
-        [allFiles, ignoredFiles].some(
+        [allFiles, ...subsets].some(
           (count) =>
             !/^(0|[1-9]\d*)$/.test(count) ||
             !Number.isSafeInteger(Number(count))
         ) ||
-        Number(ignoredFiles) > Number(allFiles)
+        subsets.some((count) => Number(count) > Number(allFiles))
       ) {
         throw new Error("Change filter returned invalid file counts");
       }
-      result = String(Number(allFiles) > 0 && allFiles === ignoredFiles);
+      releaseMetadata = String(Number(releaseFiles) > 0);
+      result = String(
+        Number(allFiles) > 0 &&
+          allFiles === ignoredFiles &&
+          !(releaseMetadata === "true" && Number(workflowFiles) > 0)
+      );
       core.info(
-        `PR-like event: ${ignoredFiles}/${allFiles} paths match the skip patterns`
+        `PR-like event: ${ignoredFiles}/${allFiles} paths match the skip patterns; release=${releaseFiles}, workflows=${workflowFiles}`
       );
     } else {
       core.info(
@@ -44,6 +53,7 @@ export default async ({ context, core }) => {
     }
 
     core.setOutput("only_changed", result);
+    core.setOutput("release_metadata", releaseMetadata);
   } catch (error) {
     const message =
       error instanceof Error ?
