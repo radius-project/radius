@@ -131,7 +131,7 @@ test-changelog-range: ## Tests changelog channel boundary resolution
 	@bash ./.github/scripts/changelog-range_test.sh
 
 .PHONY: test-changelog-config
-test-changelog-config: install-git-cliff ## Tests the git-cliff configuration against fixture commits
+test-changelog-config: install-git-cliff install-jq ## Tests the git-cliff configuration against fixture commits
 	@bash ./.github/scripts/changelog-config_test.sh
 
 .PHONY: test-prepare-release
