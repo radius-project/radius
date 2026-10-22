@@ -19,8 +19,8 @@ package helm
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/Masterminds/semver/v3"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -91,6 +91,9 @@ func newCertManagerClients(kubeContext string) (kubernetes.Interface, apiextclie
 // current invocation override the stored release values key by key, matching Helm's reuse-values merge.
 func resolveAuthzMode(stored, current map[string]any) (authz.Mode, error) {
 	enabled, dryRun := rbacFlag(stored, "enabled"), rbacFlag(stored, "dryRun")
+	if rbacCleared(current) {
+		enabled, dryRun = false, false
+	}
 	if v, ok := lookupRBACValue(current, "enabled"); ok {
 		enabled = isTrue(v)
 	}
@@ -122,16 +125,22 @@ func lookupRBACValue(values map[string]any, key string) (any, bool) {
 	return v, ok
 }
 
-func isTrue(v any) bool {
-	switch b := v.(type) {
-	case bool:
-		return b
-	case string:
-		parsed, _ := strconv.ParseBool(b)
-		return parsed
-	default:
-		return false
+// rbacCleared reports whether values explicitly set global or global.rbac to null, which Helm treats as
+// removing the stored map.
+func rbacCleared(values map[string]any) bool {
+	g, ok := values["global"]
+	if ok && g == nil {
+		return true
 	}
+	global, _ := g.(map[string]any)
+	r, ok := global["rbac"]
+	return ok && r == nil
+}
+
+// isTrue applies Go template truthiness, matching how the chart's radius.authz.mode helper reads the flags.
+func isTrue(v any) bool {
+	truth, _ := template.IsTrue(v)
+	return truth
 }
 
 // detectCertManager finds cert-manager by its Certificate CRD and controller Deployment in any namespace.
