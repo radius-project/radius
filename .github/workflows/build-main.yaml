@@ -56,19 +56,19 @@ jobs:
   build-check:
     if: always()
     name: Build Check
-    needs: [build-snapshot, build-and-push-cli, build-and-push-images]
+    needs: [changes, build-snapshot, build-and-push-cli, build-and-push-images]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
     steps:
       - name: Check build matrix results
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        if: needs.changes.result != 'success' || contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: |
-          echo "::error::Snapshot, CLI, or image jobs failed or were cancelled"
+          echo "::error::Change detection, snapshot, CLI, or image jobs did not succeed"
           exit 1
 
       - name: Build matrix succeeded
-        if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+        if: ${{ needs.changes.result == 'success' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
         run: |
           echo "All build matrix jobs completed successfully"
           exit 0

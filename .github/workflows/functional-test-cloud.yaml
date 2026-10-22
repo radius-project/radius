@@ -355,8 +355,8 @@ jobs:
     name: Build Radius for test
     needs: [setup, changes]
     # Require setup to have produced REL_VERSION/CHECKOUT_REF (otherwise the image
-    # tag would be empty); also skip if only docs/markdown changed.
-    if: always() && needs.setup.result == 'success' && needs.changes.outputs.only_changed != 'true'
+    # tag would be empty); also require successful classification before building.
+    if: always() && needs.setup.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.only_changed != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -622,7 +622,7 @@ jobs:
   skip-tests:
     name: Skip Functional Tests
     needs: [setup, changes]
-    if: always() && needs.changes.outputs.only_changed == 'true'
+    if: always() && needs.setup.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.only_changed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -1274,13 +1274,13 @@ jobs:
     # Report final test status. Runs after all tests complete (or are skipped).
     if: always() && github.repository == vars.RADIUS_REPOSITORY
     name: Report test results
-    needs: [setup, build, tests]
+    needs: [authorize, setup, changes, build, skip-tests, tests]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
     env:
-      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
+      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF || github.event.pull_request.head.sha || github.sha }}
     steps:
       - name: Get GitHub app token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -1294,13 +1294,12 @@ jobs:
         id: get_test_status
         run: |
           # Derive the overall status from the needs context instead of querying the
-          # Actions API. `tests` is a matrix job, so needs.tests.result already collapses
-          # all legs (success only if every leg passed). A docs-only run skips build+tests
-          # with setup successful, which yields success and matches the skip-tests job.
-          # failure takes precedence over cancelled.
-          echo "setup=${SETUP_RESULT} build=${BUILD_RESULT} tests=${TESTS_RESULT}"
+          # Actions API. `tests` already collapses all matrix legs. Only a successful
+          # classification and skip report may replace the build and test results.
+          # Failure takes precedence over cancellation.
+          echo "authorize=${AUTHORIZE_RESULT} setup=${SETUP_RESULT} changes=${CHANGES_RESULT} build=${BUILD_RESULT} skip=${SKIP_RESULT} tests=${TESTS_RESULT}"
           TEST_STATUS="success"
-          for result in "${SETUP_RESULT}" "${BUILD_RESULT}" "${TESTS_RESULT}"; do
+          for result in "${AUTHORIZE_RESULT}" "${SETUP_RESULT}" "${CHANGES_RESULT}" "${BUILD_RESULT}" "${SKIP_RESULT}" "${TESTS_RESULT}"; do
             if [[ "${result}" == "failure" ]]; then
               TEST_STATUS="failure"
               break
@@ -1308,11 +1307,26 @@ jobs:
               TEST_STATUS="cancelled"
             fi
           done
+          if [[ "${TEST_STATUS}" == "success" ]]; then
+            if [[ "${AUTHORIZE_RESULT}" != "success" || "${SETUP_RESULT}" != "success" || "${CHANGES_RESULT}" != "success" ]]; then
+              TEST_STATUS="failure"
+            elif [[ "${ONLY_CHANGED}" == "true" ]]; then
+              if [[ "${SKIP_RESULT}" != "success" ]]; then
+                TEST_STATUS="failure"
+              fi
+            elif [[ "${ONLY_CHANGED}" != "false" || "${BUILD_RESULT}" != "success" || "${TESTS_RESULT}" != "success" ]]; then
+              TEST_STATUS="failure"
+            fi
+          fi
           echo "Functional Test Run status: ${TEST_STATUS}"
           echo "test_status=${TEST_STATUS}" >> "${GITHUB_OUTPUT}"
         env:
+          AUTHORIZE_RESULT: ${{ needs.authorize.result }}
           SETUP_RESULT: ${{ needs.setup.result }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          ONLY_CHANGED: ${{ needs.changes.outputs.only_changed }}
           BUILD_RESULT: ${{ needs.build.result }}
+          SKIP_RESULT: ${{ needs.skip-tests.result }}
           TESTS_RESULT: ${{ needs.tests.result }}
 
       - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0

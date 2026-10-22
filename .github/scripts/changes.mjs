@@ -9,7 +9,6 @@ export default async ({ context, core }) => {
 
     const eventName = context.eventName;
     const baseSha = core.getInput("BASE_SHA");
-    const onlyChanged = core.getInput("ONLY_CHANGED");
 
     core.info(`Event name: ${eventName}`);
     core.info(`Base SHA: ${baseSha || "(not provided)"}`);
@@ -18,17 +17,25 @@ export default async ({ context, core }) => {
     if (
       eventName === "pull_request" ||
       eventName === "pull_request_target" ||
-      eventName === "merge_group"
+      eventName === "merge_group" ||
+      baseSha
     ) {
+      const allFiles = core.getInput("ALL_FILES_COUNT");
+      const ignoredFiles = core.getInput("IGNORED_FILES_COUNT");
+      if (
+        [allFiles, ignoredFiles].some(
+          (count) =>
+            !/^(0|[1-9]\d*)$/.test(count) ||
+            !Number.isSafeInteger(Number(count))
+        ) ||
+        Number(ignoredFiles) > Number(allFiles)
+      ) {
+        throw new Error("Change filter returned invalid file counts");
+      }
+      result = String(Number(allFiles) > 0 && allFiles === ignoredFiles);
       core.info(
-        `PR or merge group event detected - using filter result: ${onlyChanged}`
+        `PR-like event: ${ignoredFiles}/${allFiles} paths match the skip patterns`
       );
-      result = onlyChanged;
-    } else if (baseSha) {
-      core.info(
-        `Base SHA provided (PR-like context) - using filter result: ${onlyChanged}`
-      );
-      result = onlyChanged;
     } else {
       core.info(
         "Non-PR event without base SHA - skipping filter (all jobs will run)"
