@@ -23,6 +23,8 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/semver/v3"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -197,7 +199,8 @@ func imageTag(image string) string {
 }
 
 // ensureCertManager makes cert-manager available when Radius authorization is enabled. It installs a pinned
-// version when none exists, upgrades a release rad installed when upgrade is true, reuses a supported
+// version when none exists, upgrades a release rad installed when upgrade is true or when that release is
+// not deployed or its controller is missing, reuses a supported
 // installation it did not install, and fails when that installation is older than CertManagerMinimumVersion.
 // With authorization off it returns without contacting the cluster.
 func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, upgrade bool) error {
@@ -215,17 +218,38 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 
 	helmAction := NewHelmAction(i.Helm)
 	chartOptions := options.CertManager.ChartOptions
-	owned, err := i.isRadOwnedCertManager(chartOptions, kubeContext)
+	ownedRelease, err := i.radOwnedCertManagerRelease(chartOptions, kubeContext)
 	if err != nil {
 		return err
 	}
 
-	if owned {
-		if !upgrade {
-			output.LogInfo("Using cert-manager installed by rad in namespace %s", chartOptions.Namespace)
-			return nil
+	newClients := i.newCertManagerClients
+	if newClients == nil {
+		newClients = newCertManagerClients
+	}
+	detect := func() (certManagerInstallation, error) {
+		kubeClient, apiextClient, err := newClients(kubeContext)
+		if err != nil {
+			return certManagerInstallation{}, fmt.Errorf("failed to create Kubernetes clients: %w", err)
 		}
-		output.LogInfo("Upgrading cert-manager...")
+		return detectCertManager(ctx, kubeClient, apiextClient)
+	}
+
+	if ownedRelease != nil {
+		if !upgrade {
+			healthy := ownedRelease.Info != nil && ownedRelease.Info.Status == releasecommon.StatusDeployed
+			if healthy {
+				existing, err := detect()
+				healthy = err == nil && existing.Installed
+			}
+			if healthy {
+				output.LogInfo("Using cert-manager installed by rad in namespace %s", chartOptions.Namespace)
+				return nil
+			}
+			output.LogInfo("Repairing cert-manager installed by rad...")
+		} else {
+			output.LogInfo("Upgrading cert-manager...")
+		}
 		helmChart, helmConf, err := loadChart(ctx, helmAction, chartOptions, kubeContext)
 		if err != nil {
 			return fmt.Errorf("failed to prepare cert-manager Helm chart, err: %w", err)
@@ -236,15 +260,7 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		return nil
 	}
 
-	newClients := i.newCertManagerClients
-	if newClients == nil {
-		newClients = newCertManagerClients
-	}
-	kubeClient, apiextClient, err := newClients(kubeContext)
-	if err != nil {
-		return fmt.Errorf("failed to create Kubernetes clients: %w", err)
-	}
-	existing, err := detectCertManager(ctx, kubeClient, apiextClient)
+	existing, err := detect()
 	if err != nil {
 		return err
 	}
@@ -269,18 +285,25 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 	return nil
 }
 
-// isRadOwnedCertManager reports whether the cert-manager Helm release exists and carries rad's ownership labels.
-func (i *Impl) isRadOwnedCertManager(options ChartOptions, kubeContext string) (bool, error) {
+// radOwnedCertManagerRelease returns the latest cert-manager Helm release when it carries rad's ownership
+// labels, or nil when the release does not exist or rad did not install it.
+func (i *Impl) radOwnedCertManagerRelease(options ChartOptions, kubeContext string) (*releasev1.Release, error) {
 	rel, err := NewHelmAction(i.Helm).getRelease(kubeContext, options.ReleaseName, options.Namespace)
 	if err != nil || rel == nil {
-		return false, err
+		return nil, err
 	}
 	for k, v := range radManagedByLabels() {
 		if rel.Labels[k] != v {
-			return false, nil
+			return nil, nil
 		}
 	}
-	return true, nil
+	return rel, nil
+}
+
+// isRadOwnedCertManager reports whether the cert-manager Helm release exists and carries rad's ownership labels.
+func (i *Impl) isRadOwnedCertManager(options ChartOptions, kubeContext string) (bool, error) {
+	rel, err := i.radOwnedCertManagerRelease(options, kubeContext)
+	return rel != nil, err
 }
 
 // CertManagerInstalledByRad reports whether the default cert-manager release exists and rad installed it.

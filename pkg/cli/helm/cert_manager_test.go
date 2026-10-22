@@ -29,6 +29,7 @@ import (
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/release"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	appsv1 "k8s.io/api/apps/v1"
@@ -234,7 +235,9 @@ func Test_ensureCertManager(t *testing.T) {
 
 	dryRun := []string{"global.rbac.dryRun=true"}
 	storedDryRun := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
-	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels()}
+	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
+	radOwnedFailed := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusFailed}}
+	healthy := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}
 	userOwned := &releasev1.Release{Name: certManagerReleaseName}
 
 	expectGet := func(rel *releasev1.Release) func(*MockHelmClient) {
@@ -338,8 +341,33 @@ func Test_ensureCertManager(t *testing.T) {
 		{
 			name:    "rad-owned release is reused on install",
 			setArgs: dryRun,
+			cluster: healthy,
 			expect: func(t *testing.T, m *MockHelmClient) {
 				expectGet(radOwned)(m)
+			},
+			wantDetect: true,
+		},
+		{
+			name:    "rad-owned release missing its controller is repaired on install",
+			setArgs: dryRun,
+			cluster: fakeCertManagerCluster{crd: true},
+			expect: func(t *testing.T, m *MockHelmClient) {
+				expectGet(radOwned)(m)
+				expectPull(t, m)
+				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
+					Return(&releasev1.Release{}, nil)
+			},
+			wantDetect: true,
+		},
+		{
+			name:    "failed rad-owned release is repaired on install",
+			setArgs: dryRun,
+			cluster: healthy,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				expectGet(radOwnedFailed)(m)
+				expectPull(t, m)
+				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
+					Return(&releasev1.Release{}, nil)
 			},
 		},
 	}
