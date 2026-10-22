@@ -18,6 +18,7 @@ package mtls
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -85,6 +86,14 @@ func TestNewSource_Errors(t *testing.T) {
 		_, err := NewSource(dir)
 		require.Error(t, err)
 	})
+
+	t.Run("certificate from another CA", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		writeFiles(t, dir, newCA(t).issue(t, certOptions{dnsNames: componentSANs("ucp")}), ca.pem)
+		_, err := NewSource(dir)
+		require.ErrorContains(t, err, "not issued by the CA bundle")
+	})
 }
 
 func TestSource_CertificateExpiresAfterLoad(t *testing.T) {
@@ -136,4 +145,61 @@ func TestSource_Reload(t *testing.T) {
 	result := handshake(t, src.ServerConfig(testNamespace), clientConfig(client, ucpServerName))
 	require.NoError(t, result.serverErr)
 	require.NoError(t, result.clientErr)
+	require.Equal(t, second.cert.Raw, result.clientState.PeerCertificates[0].Raw)
+}
+
+func TestSource_ReloadDuringUpdate(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	dir := newKubeletDir(t, ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}), ca.pem)
+	src, err := NewSource(dir.root)
+	require.NoError(t, err)
+
+	// Swap the Secret after the first read of the key, so that read sees the old
+	// certificate and key with the new CA bundle.
+	rotatedCA := newCA(t)
+	second := rotatedCA.issue(t, certOptions{dnsNames: componentSANs("ucp")})
+	swapped := false
+	src.readFile = func(name string) ([]byte, error) {
+		data, err := os.ReadFile(name)
+		if !swapped && filepath.Base(name) == KeyFile {
+			swapped = true
+			dir.update(t, second, rotatedCA.pem)
+		}
+		return data, err
+	}
+
+	changed, err := src.Reload()
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.True(t, swapped)
+
+	m, err := src.load()
+	require.NoError(t, err)
+	require.Equal(t, second.cert.Raw, m.cert.Leaf.Raw)
+	_, err = m.cert.Leaf.Verify(x509.VerifyOptions{Roots: m.pool, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}})
+	require.NoError(t, err)
+}
+
+func TestSource_ReloadKeepsChanging(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	dir := newKubeletDir(t, ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}), ca.pem)
+	src, err := NewSource(dir.root)
+	require.NoError(t, err)
+	before, err := src.certificate()
+	require.NoError(t, err)
+
+	reads := 0
+	src.readFile = func(name string) ([]byte, error) {
+		reads++
+		data, err := os.ReadFile(name)
+		return append(data, byte(reads)), err
+	}
+
+	_, err = src.Reload()
+	require.ErrorContains(t, err, "kept changing")
+	after, err := src.certificate()
+	require.NoError(t, err)
+	require.Same(t, before, after)
 }

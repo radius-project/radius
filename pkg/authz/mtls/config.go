@@ -32,7 +32,7 @@ import (
 func (s *Source) ServerConfig(namespace string) *tls.Config {
 	outer := &tls.Config{MinVersion: tls.VersionTLS12}
 	outer.GetConfigForClient = func(*tls.ClientHelloInfo) (*tls.Config, error) {
-		cert, err := s.certificate()
+		m, err := s.load()
 		if err != nil {
 			return nil, err
 		}
@@ -46,9 +46,9 @@ func (s *Source) ServerConfig(namespace string) *tls.Config {
 		return &tls.Config{
 			MinVersion:   tls.VersionTLS12,
 			NextProtos:   nextProtos,
-			Certificates: []tls.Certificate{*cert},
+			Certificates: []tls.Certificate{*m.cert},
 			ClientAuth:   tls.RequireAndVerifyClientCert,
-			ClientCAs:    s.pool(),
+			ClientCAs:    m.pool,
 			VerifyConnection: func(cs tls.ConnectionState) error {
 				_, err := identityFromChains(cs.VerifiedChains, namespace)
 				return err
@@ -63,6 +63,11 @@ func (s *Source) ServerConfig(namespace string) *tls.Config {
 // only DNS SAN is the server name. The server name must be the canonical
 // "<component>.<namespace>.svc" name of a Radius component, set either in the returned
 // config or by the caller, such as http.Transport from the request URL.
+//
+// The client verifies the server and selects its own certificate at different points
+// in the handshake, so a reload in between can use two versions. Components also reload
+// at different times, so rotating the CA requires a CA bundle that trusts both the old
+// and new CA until every component has reloaded.
 func (s *Source) ClientConfig(namespace string) *tls.Config {
 	return &tls.Config{
 		MinVersion: tls.VersionTLS12,
@@ -95,7 +100,7 @@ func (s *Source) verifyServer(certs []*x509.Certificate, serverName, namespace s
 	}
 
 	chains, err := certs[0].Verify(x509.VerifyOptions{
-		Roots:         s.pool(),
+		Roots:         s.current.Load().pool,
 		Intermediates: intermediates,
 		DNSName:       serverName,
 		CurrentTime:   s.now(),
