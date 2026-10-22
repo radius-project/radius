@@ -21,11 +21,12 @@ export CALL_LOG="${TEST_DIR}/calls"
 mkdir -p "${TEST_DIR}/bin" \
     "${TEST_DIR}/deploy/manifest/built-in-providers/self-hosted"
 printf '{}\n' >"${TEST_DIR}/deploy/manifest/built-in-providers/self-hosted/test.json"
-images=(ucpd applications-rp dynamic-rp controller testrp magpiego bicep pre-upgrade)
+images=(ucpd applications-rp dynamic-rp controller testrp magpiego rogue-client bicep pre-upgrade)
 for image in "${images[@]}"; do
     directory="deploy/images/${image}"
     case "${image}" in
     testrp | magpiego) directory="test/${image}" ;;
+    rogue-client) directory="test/rogue" ;;
     esac
     mkdir -p "${TEST_DIR}/${directory}"
     cp "${ROOT}/${directory}/Dockerfile" "${TEST_DIR}/${directory}/Dockerfile"

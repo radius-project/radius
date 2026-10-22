@@ -1,6 +1,6 @@
 module github.com/radius-project/radius
 
-go 1.27.2
+go 1.27.3
 
 // Replace digest lib to master to gather access to BLAKE3.
 // xref: https://github.com/opencontainers/go-digest/pull/66
@@ -11,7 +11,7 @@ require (
 	charm.land/bubbletea/v2 v2.1.0
 	charm.land/lipgloss/v2 v2.0.6
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.3
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.1
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.15.0
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.3
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization/v2 v2.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi v1.3.0
@@ -30,7 +30,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.9
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.4
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.82.1
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.338.4
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.339.0
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.66.4
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.3
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.4
@@ -40,12 +40,12 @@ require (
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/distribution/reference v0.6.0
 	github.com/fatih/color v1.19.0
-	github.com/fluxcd/pkg/apis/meta v1.32.0
-	github.com/fluxcd/pkg/http/fetch v0.26.0
-	github.com/fluxcd/pkg/tar v1.2.0
+	github.com/fluxcd/pkg/apis/meta v1.35.0
+	github.com/fluxcd/pkg/http/fetch v0.28.0
+	github.com/fluxcd/pkg/tar v1.3.0
 	github.com/fluxcd/source-controller/api v1.9.6
 	github.com/getkin/kin-openapi v0.150.0
-	github.com/go-chi/chi/v5 v5.4.0
+	github.com/go-chi/chi/v5 v5.5.0
 	github.com/go-git/go-git/v5 v5.19.3
 	github.com/go-logr/logr v1.4.4
 	github.com/go-logr/zapr v1.3.0
@@ -102,7 +102,7 @@ require (
 	golang.org/x/sync v0.24.0
 	golang.org/x/sys v0.49.0
 	golang.org/x/text v0.43.0
-	helm.sh/helm/v4 v4.3.0
+	helm.sh/helm/v4 v4.3.1
 	k8s.io/api v0.37.1
 	k8s.io/apiextensions-apiserver v0.37.1
 	k8s.io/apimachinery v0.37.1
@@ -110,7 +110,7 @@ require (
 	k8s.io/client-go v0.37.1
 	k8s.io/kubectl v0.37.1
 	oras.land/oras-go/v2 v2.6.3
-	sigs.k8s.io/controller-runtime v0.24.1
+	sigs.k8s.io/controller-runtime v0.25.2
 	sigs.k8s.io/secrets-store-csi-driver v1.6.1
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -292,25 +292,20 @@ require (
 	github.com/zeebo/blake3 v0.2.4 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.21.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.43.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.19.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.43.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.43.0 // indirect
 	go.opentelemetry.io/otel/log v1.47.0 // indirect
-	go.opentelemetry.io/otel/sdk/log v0.21.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	golang.org/x/mod v0.41.0 // indirect
-	golang.org/x/net v0.60.0 // indirect
+	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260803160001-6ac0973c030d // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
@@ -330,7 +325,7 @@ require (
 	sigs.k8s.io/controller-tools v0.21.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/kustomize/api v0.21.1 // indirect
-	sigs.k8s.io/kustomize/kyaml v0.21.1 // indirect
+	sigs.k8s.io/kustomize/kyaml v0.21.2 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
 )

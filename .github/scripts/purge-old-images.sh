@@ -16,6 +16,8 @@ readonly RATE_LIMIT_STATUS=75
 readonly PROTECTED_VERSION_MESSAGE="Publicly visible package versions with more \
 than 5000 downloads cannot be deleted. Contact GitHub support for further \
 assistance."
+readonly LAST_TAGGED_VERSION_MESSAGE="You cannot delete the last tagged \
+version of a package. You must delete the package instead."
 
 WORK_DIR=""
 DELETED_COUNT=0
@@ -184,12 +186,15 @@ delete_version() {
         return "${RATE_LIMIT_STATUS}"
     fi
     if [[ "${http_code}" == 400 ]] &&
-        jq -e -s --arg message "${PROTECTED_VERSION_MESSAGE}" '
+        jq -e -s --arg protected "${PROTECTED_VERSION_MESSAGE}" \
+            --arg last_tagged "${LAST_TAGGED_VERSION_MESSAGE}" '
             length == 1 and
-            (.[0] | type == "object" and .message == $message)
+            (.[0] | type == "object" and
+                (.message == $protected or .message == $last_tagged))
         ' "${response}" >/dev/null 2>&1; then
+        message="$(jq -r '.message' "${response}")"
         echo "::warning::${package_name} version ${version_id} is protected" \
-            "from deletion; skipping: ${PROTECTED_VERSION_MESSAGE}" >&2
+            "from deletion; skipping: ${message}" >&2
         return 0
     fi
     message="$(response_message "${response}" | tr '\n' ' ')"

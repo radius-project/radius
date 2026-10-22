@@ -200,6 +200,13 @@ collect_diagnostics() {
         done
     done
 
+    docker ps -a >"${DIAGNOSTICS_DIR}/docker-ps.txt" 2>&1 || true
+    local container
+    while IFS= read -r container; do
+        docker logs --timestamps --tail=1000 "${container}" \
+            >"${DIAGNOSTICS_DIR}/${container}.docker.log" 2>&1 || true
+    done < <(docker ps -a --filter "name=^k3d-" --format '{{.Names}}' || true)
+
     if [[ -f "${HOST_WORKLOAD_KUBECONFIG}" ]]; then
         kubectl --kubeconfig "${HOST_WORKLOAD_KUBECONFIG}" get all -A -o wide \
             >"${DIAGNOSTICS_DIR}/workload-resources.txt" 2>&1 || true
@@ -379,6 +386,8 @@ EOF
 create_workload_cluster() {
     k3d cluster create "${WORKLOAD_CLUSTER}" \
         --network "${NETWORK_NAME}" \
+        --no-lb \
+        --no-rollback \
         --registry-config "${REGISTRY_CONFIG}" \
         --k3s-arg "--disable=traefik@server:*" \
         --wait
@@ -438,6 +447,8 @@ install_control_plane() {
 
     k3d cluster create "${cluster}" \
         --network "${NETWORK_NAME}" \
+        --no-lb \
+        --no-rollback \
         --registry-config "${REGISTRY_CONFIG}" \
         --k3s-arg "--disable=traefik@server:*" \
         --wait

@@ -314,7 +314,11 @@ make test-functional-corerp-noncloud
 make test-functional-all-noncloud
 ```
 
-The supported groups and variants are defined in [`build/test.mk`](../../../../build/test.mk).
+The supported groups, including `authz`, and variants are defined in [`build/test.mk`](../../../../build/test.mk).
+
+The `authz` group (`make test-functional-authz-noncloud`) covers internal component authorization. Its smoke test reads the installed Helm values and checks that every Radius component logs the matching `authz mode=<mode>`, so it passes on any install. The `authz-noncloud` CI leg installs Radius with `--set global.rbac.dryRun=true` so the test checks a non-default mode; to reproduce that locally, run `rad install kubernetes --reinstall --set global.rbac.dryRun=true` before the tests.
+
+Tests that use the rogue client helper (`test/rogue`) run a pod from the `rogue-client` image, which is built from source like `magpiego` and `testrp` and resolved from `DOCKER_REGISTRY` and `REL_VERSION`. It is never published to `ghcr.io/radius-project`: `make docker-build` and `make docker-push` include it, but the GoReleaser publish configuration excludes it, so it exists only in CI and local registries. To use it locally, build and push it to a registry your cluster can pull from, for example `make docker-build-rogue-client docker-push-rogue-client DOCKER_REGISTRY=<registry> DOCKER_TAG_VERSION=<tag>`, then run the tests with the same `DOCKER_REGISTRY` and `REL_VERSION=<tag>`.
 
 ### Run a special test group
 
@@ -332,6 +336,30 @@ The local runner provisions dedicated clusters for these groups. When running th
 For database tests, install Radius into a fresh cluster with `--set database.enabled=true`.
 
 For multicluster tests, create a `target-kubeconfig` Secret in `radius-system`, install Radius with `global.targetCluster.enabled=true`, and set `RADIUS_TEST_EXTERNAL_KUBECONFIG` to the host-side kubeconfig.
+
+### Check for authorization dry-run would-deny logs
+
+CI runs the `corerp`, `dynamicrp`, `kubernetes`, and `ucp` non-cloud groups a second time with Radius installed with `--set global.rbac.dryRun=true`, then fails the leg if any component logged that an authorization check would deny a request (`authzWouldDeny=true`). Under enforcement those requests would be rejected, so this catches false positives before enforcement is turned on. To run the same check locally, install Radius with the dry run enabled, run the tests, then check the current kube context:
+
+```bash
+rad install kubernetes --set global.rbac.dryRun=true
+make test-functional-corerp-noncloud
+make authz-would-deny-check
+```
+
+The check reads current and previous container logs from every pod in `radius-system`. Set `AUTHZ_NAMESPACE` to read another namespace, or pass extra arguments with `AUTHZ_WOULD_DENY_ARGS`, such as `AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/authz-logs"` to also scan saved logs. Known would-deny lines that are tracked by an issue can be listed in [`.github/scripts/authz-would-deny-allowlist.txt`](../../../../.github/scripts/authz-would-deny-allowlist.txt); each entry must start with the issue reference.
+
+CI wraps the entire functional-test command with [`.github/scripts/run-with-authz-logs.py`](../../../../.github/scripts/run-with-authz-logs.py), which requires Python 3.9+ and `kubectl`. It watches pods from the initial inventory's resource version, follows each container incarnation, and retains logs for replaced pods until the command finishes. The collector uses a separate directory containing only `radius-system` logs; the test-owned `dist/container_logs` streams can stop when their first test ends and are not reliable gate evidence. Collection failures, including an interrupted watch, fail the job. CI requires the collector's `complete` marker before scanning its files and uploads the files even on failure. To collect the same evidence locally, use a new directory for each run:
+
+```bash
+AUTHZ_LOG_DIR=./dist/authz-logs-run1 \
+  python3 .github/scripts/run-with-authz-logs.py make test-functional-corerp-noncloud
+make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--collector-dir ./dist/authz-logs-run1"
+```
+
+The Make target also passes `--require-dry-run`: it requires startup logs reporting `authz mode=dryRun` from `ucp`, `applications-rp`, `dynamic-rp`, and `controller`, checking every current replica. With `--collector-dir DIR`, the check requires the collector's `complete` marker and reads startup evidence only from `<pod>.<uid>.<container>.<restart>.log` files matching the live pod UID and container restart count. This preserves startup evidence after kubelet log rotation without accepting logs from replaced pods or earlier container restarts. All retained collector logs are still scanned for would-deny lines, including replaced pods. Without `--collector-dir`, startup verification reads live container logs; arbitrary `--logs-dir` files and previous-container logs cannot substitute for startup evidence. Missing components, missing matching collector files or startup messages, and other modes fail the check. Pod-listing failures, unreadable current or previous logs, file traversal/read errors, and empty saved-log directories also fail rather than reporting a clean run. An allowlist cannot bypass these errors. To scan saved logs without accessing a cluster or verifying startup modes, invoke the script directly with `--logs-dir DIR`.
+
+To check authorization trust boundaries by hand on a local kind cluster, for example when reviewing a pull request that adds one, use the manual test kit in [`hack/authz`](../../../../hack/authz/README.md).
 
 ### Configure test execution
 

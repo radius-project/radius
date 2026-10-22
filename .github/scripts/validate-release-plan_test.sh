@@ -279,6 +279,76 @@ test_accepts_curated_note_sections() {
     ((++PASS))
 }
 
+test_real_preparation_contract() {
+    local output="${TEST_ROOT}/prepared"
+    local siblings="${TEST_ROOT}/planned-siblings.json"
+    local notes="docs/release-notes/v0.61.0-rc.1.md"
+    local plan=".github/release-plans/v0.61.0-rc.1.yaml"
+    local log="${TEST_ROOT}/validation.log"
+
+    mkdir -p "${REPO}/docs/release-notes" "${REPO}/.github/release-parity"
+    cp "${SCRIPT_DIR}/../../cliff.toml" "${REPO}/cliff.toml"
+    cp "${SCRIPT_DIR}/../../docs/release-notes/"template*.md \
+        "${REPO}/docs/release-notes/"
+    printf '{"repository":"radius-project/radius"}\n' \
+        >"${REPO}/.github/release-parity/targets.json"
+    cat >"${REPO}/CHANGELOG.md" <<'EOF'
+# Changelog
+
+## [Unreleased]
+
+[Unreleased]: https://github.com/radius-project/radius/compare/v0.60.0...HEAD
+EOF
+    git -C "${REPO}" add CHANGELOG.md cliff.toml docs .github
+    git -C "${REPO}" commit -q -m "Legacy release change (#201)"
+    BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+    yq -o=json '.siblingRepositories' "${EXPECTED_PLAN}" >"${siblings}"
+    FAKE_PREPARE="${SCRIPT_DIR}/prepare-release.sh"
+    (
+        cd "${REPO}" &&
+            GITHUB_TOKEN="" bash "${FAKE_PREPARE}" \
+                --release-type rc --channel 0.61 \
+                --release-date 2026-08-24 \
+                --backports-file "${EXPECTED_BACKPORTS}" \
+                --sibling-repositories-file "${siblings}" \
+                --output-dir "${output}"
+    ) >"${log}" 2>&1 || {
+        cat "${log}"
+        fail_test "real release preparation failed"
+        return
+    }
+    cp "${output}/release-plan.yaml" "${EXPECTED_PLAN}"
+    wrap_body
+    cp "${REPO}/versions.yaml" "${REPO}/CHANGELOG.md" "${HEAD_DIR}/"
+    cp "${REPO}/${notes}" "${HEAD_DIR}/${notes}"
+    cp "${REPO}/${plan}" "${HEAD_DIR}/${plan}"
+    git -C "${REPO}" show HEAD:versions.yaml >"${REPO}/versions.yaml"
+    git -C "${REPO}" show HEAD:CHANGELOG.md >"${REPO}/CHANGELOG.md"
+    if ! GITHUB_TOKEN="" run_validator >"${log}" 2>&1; then
+        cat "${log}"
+        fail_test "real prepared output must pass trusted regeneration"
+        return
+    fi
+    sed -i \
+        -e 's/^## Highlights$/&\n\nA curated highlight./' \
+        -e 's/^## Upgrading to Radius .*$/&\n\nCurated upgrade guidance./' \
+        "${HEAD_DIR}/${notes}"
+    if ! GITHUB_TOKEN="" run_validator >"${log}" 2>&1; then
+        cat "${log}"
+        fail_test "real output must still allow Highlights and Upgrading curation"
+        return
+    fi
+    sed -i 's/Keep a Changelog 1.1.0/Unsupported convention/' \
+        "${HEAD_DIR}/${notes}"
+    if GITHUB_TOKEN="" run_validator >"${log}" 2>&1 ||
+        ! grep -Fq 'release notes differ outside Highlights or Upgrading' "${log}"; then
+        cat "${log}"
+        fail_test "the generated attribution must not be a curated section"
+        return
+    fi
+    ((++PASS))
+}
+
 test_rejects_product_commit_drift() {
     sed -i "s/${BASE_SHA}/$(printf 'f%.0s' {1..40})/" "${REPO}/body.md"
     if run_validator >/dev/null 2>&1; then
@@ -397,6 +467,8 @@ main() {
     test_rejects_pending_supported_release
     setup_repo
     test_accepts_curated_note_sections
+    setup_repo
+    test_real_preparation_contract
     setup_repo
     test_rejects_product_commit_drift
     setup_repo

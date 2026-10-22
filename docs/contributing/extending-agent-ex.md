@@ -7,8 +7,6 @@ This document is the walkthrough for **adding a new capability** to the Agent Ex
 
 Use it when a new contributor workflow emerges — a new tool in an existing workflow, a brand-new top-level capability, a new agent surface, or a new repo joining the initiative.
 
-The planning docs [agent-ex-features.md](../../specs/002-agent-ex/agent-ex-features.md) and [agent-ex-plan.md](../../specs/002-agent-ex/agent-ex-plan.md) describe the original buildout. They are **not** edited by ongoing capability work — do not add your capability to them.
-
 For conventions, budgets, and templates, see [contributing-agent-assets.md](./contributing-agent-assets.md). For how to write the backing doc itself, see [authoring-contributing-docs.md](./authoring-contributing-docs.md).
 
 ## Prerequisites
@@ -38,9 +36,9 @@ Steps 3 and 5 are the two most easily confused. Choose between them this way:
 
 > **Do not pin a `tools:` allow-list in agent frontmatter.** Tool names change frequently, so a hard-coded list goes stale and silently breaks the agent. Define the agent's scope through prose guardrails — which files it may and may not touch — not a tool list.
 
-Example: [`radius-add-ai-capability`](../../.github/agents/radius-add-ai-capability.agent.md) is a custom agent, not a skill, because it (1) defines a guarded scope that forbids editing product source or the planning docs, and (2) orchestrates the [`radius-author-doc`](../../.github/skills/radius-author-doc/SKILL.md) skill to do the mechanical writing while it handles the decision tree and the scope guardrails. The writing step is a skill; the persona that drives and bounds the session is an agent.
+Example: [`radius-add-ai-capability`](../../.github/agents/radius-add-ai-capability.agent.md) is a custom agent, not a skill, because it (1) defines a guarded scope that forbids editing product source, and (2) orchestrates the [`radius-author-doc`](../../.github/skills/radius-author-doc/SKILL.md) skill to do the mechanical writing while it handles the decision tree and the scope guardrails. The writing step is a skill; the persona that drives and bounds the session is an agent.
 
-**The two-of-four rule** (from [Design Principle 6 in agent-ex-features.md](../../specs/002-agent-ex/agent-ex-features.md#design-principles)): only add a skill, prompt, or custom agent if it satisfies **at least two** of:
+**The two-of-four rule**: only add a skill, prompt, or custom agent if it satisfies **at least two** of:
 
 - project-specific,
 - multi-step / non-obvious,
@@ -59,16 +57,14 @@ Copy the matching template from [contributing-agent-assets.md](./contributing-ag
 
 ### 4. Update the live files
 
-After authoring, update exactly these live files (and no planning docs):
+After authoring, update exactly these live files:
 
 | File | When to update |
 |---|---|
 | The primary contributing doc | Always — this is step 2. |
-| The capability index in [docs/contributing/README.md](./README.md) | Once the capability index exists (Phase 3), add or update the row mapping the capability to its primary doc. |
+| The capability index in [docs/contributing/README.md](./README.md) | Add or update the row mapping the capability to its primary doc. |
 | `AGENTS.md` (repo root) | Only when the capability needs a new top-level link. |
 | Optional wrappers | Whichever you scaffolded in step 3. |
-
-Do **not** edit [agent-ex-features.md](../../specs/002-agent-ex/agent-ex-features.md) or [agent-ex-plan.md](../../specs/002-agent-ex/agent-ex-plan.md).
 
 ### 5. Validate
 
@@ -94,9 +90,8 @@ The change is complete when:
 - The capability has exactly one primary backing contributing doc.
 - Every wrapper links to that doc and stays within its file-size budget.
 - Wrapper and doc names match the [naming conventions](./contributing-agent-assets.md#naming-conventions).
-- Once the capability index exists (Phase 3), a row for the capability exists in the capability index in [docs/contributing/README.md](./README.md).
+- A row for the capability exists in the capability index in [docs/contributing/README.md](./README.md).
 - The change passes the [CI gates](./contributing-agent-assets.md#ci-gates) without manual cleanup — notably the link check and `cspell` (`make spellcheck`).
-- No edits were made to the planning docs.
 
 **Behavioral check**: an agent given only this document can scaffold a correctly-named, correctly-placed new skill (with a backing-doc link) and can execute the onboarding checklist for a new repo, with no extra guidance.
 

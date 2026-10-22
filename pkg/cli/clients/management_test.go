@@ -1049,11 +1049,9 @@ func Test_CreateOrUpdateResource_APIVersion(t *testing.T) {
 				rpClient.EXPECT().
 					GetProviderSummary(gomock.Any(), "local", tt.providerName, gomock.Any()).
 					Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
-						ResourceProviderSummary: ucp.ResourceProviderSummary{
-							Name: new(tt.providerName),
-							ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
-								tt.resourceTypeName: resourceTypeSummary,
-							},
+						Name: new(tt.providerName),
+						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+							tt.resourceTypeName: resourceTypeSummary,
 						},
 					}, nil)
 			}

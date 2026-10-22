@@ -54,8 +54,8 @@ GOTESTSUM_JSONFILE_DIR ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) $(if $(GOTESTSUM_JSONFILE_DIR),--jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication ## Runs unit tests, excluding kubernetes controller tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
+test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check test-authz-kit ## Runs unit tests, excluding kubernetes controller tests
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... ./test/rogue/... $(GOTEST_OPTS)
 
 .PHONY: test-azure-oidc-login
 test-azure-oidc-login: ## Tests cloud CI token request retries and Azure login
@@ -97,6 +97,22 @@ test-install-bicep: test-retry-curl ## Tests bounded Bicep downloads without net
 
 test: test-install-bicep
 
+.PHONY: test-git-http-backend
+test-git-http-backend: ## Tests the Flux test Git server install and port-forward without a cluster
+	@bash ./.github/actions/install-git-http-backend/install-git-http-backend_test.sh
+	@bash ./.github/scripts/start-git-http-port-forward_test.sh
+
+test: test-git-http-backend
+
+.PHONY: test-authz-would-deny-check
+test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned log collector
+	@bash ./.github/scripts/authz-would-deny-check_test.sh
+	@python3 ./.github/scripts/run-with-authz-logs_test.py
+
+.PHONY: test-authz-kit
+test-authz-kit: ## Tests the manual authorization test kit in hack/authz (syntax, --help, helpers, workflows)
+	@bash ./hack/authz/kit_test.sh
+
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
 	@bash ./.github/scripts/collect-cluster-diagnostics_test.sh
@@ -115,7 +131,7 @@ test-changelog-range: ## Tests changelog channel boundary resolution
 	@bash ./.github/scripts/changelog-range_test.sh
 
 .PHONY: test-changelog-config
-test-changelog-config: install-git-cliff ## Tests the git-cliff configuration against fixture commits
+test-changelog-config: install-git-cliff install-jq ## Tests the git-cliff configuration against fixture commits
 	@bash ./.github/scripts/changelog-config_test.sh
 
 .PHONY: test-prepare-release
@@ -124,7 +140,7 @@ test-prepare-release: install-git-cliff ## Tests release version, changelog, not
 	@bash ./.github/scripts/verify-deployment-engine-tag_test.sh
 
 .PHONY: test-release-plan
-test-release-plan: ## Tests release plan schema, policy, source, and file validation
+test-release-plan: install-git-cliff ## Tests release plan schema, policy, source, and file validation
 	@bash ./.github/scripts/capture-release-sibling-commits_test.sh
 	@bash ./.github/scripts/validate-release-plan_test.sh
 	@bash ./.github/scripts/validate-release-merge-group_test.sh
@@ -233,7 +249,7 @@ test-functional-all: test-functional-ucp test-functional-kubernetes test-functio
 
 .PHONY: test-functional-all-noncloud
 # Run all functional tests that do not require cloud resources
-test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud ## Runs all functional tests that do not require cloud resources
+test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud test-functional-authz-noncloud ## Runs all functional tests that do not require cloud resources
 
 .PHONY: test-functional-local-noncloud
 test-functional-local-noncloud: ## Builds and installs Radius locally, then runs standard and isolated non-cloud tests on Linux or macOS
@@ -256,6 +272,19 @@ test-functional-ucp: test-functional-ucp-noncloud test-functional-ucp-cloud ## R
 .PHONY: test-functional-ucp-noncloud
 test-functional-ucp-noncloud: ## Runs UCP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
+.PHONY: test-functional-authz-noncloud
+test-functional-authz-noncloud: ## Runs internal component authorization functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/authz/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
+# Optional overrides for authz-would-deny-check. AUTHZ_WOULD_DENY_ARGS passes extra script arguments,
+# for example AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/authz-logs".
+AUTHZ_NAMESPACE ?= radius-system
+AUTHZ_WOULD_DENY_ARGS ?=
+
+.PHONY: authz-would-deny-check
+authz-would-deny-check: ## Fails if a Radius pod in the current kube context logged an authorization dry-run would-deny line
+	@bash ./.github/scripts/authz-would-deny-check.sh --require-dry-run --namespace "$(AUTHZ_NAMESPACE)" $(AUTHZ_WOULD_DENY_ARGS)
 
 .PHONY: test-functional-ucp-cloud
 test-functional-ucp-cloud: ## Runs UCP functional tests that require cloud resources
