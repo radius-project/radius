@@ -17,6 +17,17 @@ export async function waitForReleaseState(
   read,
   { core, description, sleep = setTimeout, cause }
 ) {
+  if (
+    typeof cause === "object" &&
+    cause !== null &&
+    "status" in cause &&
+    typeof cause.status === "number" &&
+    cause.status >= 400 &&
+    cause.status < 500 &&
+    cause.status !== 422
+  ) {
+    throw cause;
+  }
   const attempts = 5;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     const value = await read();

@@ -296,6 +296,32 @@ test("bounds publication readback and retains the original update error", async 
   assert.equal(state.outputs.release_url, undefined);
 });
 
+test("propagates a forbidden publication without reading or waiting", async () => {
+  const state = fixture();
+  const failure = Object.assign(new Error("publication forbidden"), {
+    status: 403
+  });
+  let reads = 0;
+  state.github.rest.repos.updateRelease = async (request) => {
+    state.updates.push(request);
+    throw failure;
+  };
+  state.github.rest.repos.getRelease = async () => {
+    reads++;
+    return { data: { ...state.release } };
+  };
+  await assert.rejects(
+    () => withNotes(state, () => publishDraftRelease(state)),
+    (error) => error === failure
+  );
+  assert.equal(reads, 0);
+  assert.equal(state.updates.length, 1);
+  assert.equal(state.release.draft, true);
+  assert.deepEqual(state.delays, []);
+  assert.deepEqual(state.messages, []);
+  assert.equal(state.outputs.release_url, undefined);
+});
+
 for (const [change, expected] of [
   [{ prerelease: true }, /wrong classification/],
   [{ tag_name: "v0.62.0" }, /does not match tag v0\.61\.0/]

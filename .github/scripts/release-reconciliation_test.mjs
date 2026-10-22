@@ -68,6 +68,70 @@ test("bounds visibility reads and retains an uncertain write cause", async () =>
   assert.deepEqual(state.delays, [1000, 2000, 4000, 8000]);
 });
 
+for (const status of [400, 401, 403, 404, 409, 429, 499]) {
+  test(`propagates HTTP ${status} write failures without reading or waiting`, async () => {
+    const state = fixture();
+    const failure = Object.assign(new Error("write rejected"), { status });
+    let reads = 0;
+    await assert.rejects(
+      () =>
+        waitForReleaseState(
+          async () => {
+            reads++;
+            return { id: 42 };
+          },
+          { ...state, cause: failure }
+        ),
+      (error) => error === failure
+    );
+    assert.equal(reads, 0);
+    assert.deepEqual(state.delays, []);
+    assert.deepEqual(state.messages, []);
+  });
+}
+
+for (const status of [422, 500, 503]) {
+  test(`reconciles delayed state after an HTTP ${status} write failure`, async () => {
+    const state = fixture();
+    const failure = Object.assign(new Error("write failed"), { status });
+    const result = { id: 42 };
+    let reads = 0;
+    assert.equal(
+      await waitForReleaseState(
+        async () => (++reads < 2 ? undefined : result),
+        { ...state, cause: failure }
+      ),
+      result
+    );
+    assert.equal(reads, 2);
+    assert.deepEqual(state.delays, [1000]);
+  });
+}
+
+test("reconciles unknown write causes without assuming an HTTP status", async () => {
+  for (const cause of [
+    undefined,
+    null,
+    "write response lost",
+    403,
+    { status: "403" },
+    new Error("connection reset")
+  ]) {
+    const state = fixture();
+    const result = { id: 42 };
+    let reads = 0;
+    assert.equal(
+      await waitForReleaseState(
+        async () => (++reads < 2 ? undefined : result),
+        { ...state, cause }
+      ),
+      result
+    );
+    assert.equal(reads, 2);
+    assert.deepEqual(state.delays, [1000]);
+  }
+});
+
 for (const status of [401, 403, 404, 500]) {
   test(`does not convert HTTP ${status} read errors into missing state`, async () => {
     const state = fixture();
