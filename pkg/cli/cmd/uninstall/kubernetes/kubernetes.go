@@ -216,9 +216,10 @@ func (r *Runner) buildCleanupPlan(ctx context.Context, state helm.InstallState) 
 	if state.ContourInstalled {
 		plan.HelmReleases = append(plan.HelmReleases, "contour")
 	}
+	// The uninstall re-checks cert-manager ownership itself, so a failed lookup only affects this plan.
 	certManagerOwned, err := r.Helm.CertManagerInstalledByRad(r.KubeContext)
 	if err != nil {
-		return plan, fmt.Errorf("failed to check for a cert-manager installed by rad: %w", err)
+		r.Output.LogInfo("%s: unable to check for a cert-manager installed by rad: %v", logWarningPrefix, err)
 	}
 	if certManagerOwned {
 		plan.HelmReleases = append(plan.HelmReleases, "cert-manager")
