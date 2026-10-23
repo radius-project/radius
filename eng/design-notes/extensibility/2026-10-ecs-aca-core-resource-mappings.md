@@ -13,14 +13,14 @@ This spec defines what is required to make it real on **Azure Container Apps (AC
 
 ### At a glance
 
-|                          | Azure Container Apps      | Amazon ECS on Fargate                                                            |
-|--------------------------|---------------------------|----------------------------------------------------------------------------------|
-| Platform engineer brings | A managed environment     | Cluster, VPC, subnets, security groups, execution role, ALB, Cloud Map namespace |
-| Containers become        | Container Apps            | Task definitions + services                                                      |
-| Routes become            | `httpRouteConfigs` rules  | ALB listener rules                                                               |
-| Volumes become           | Azure Files share         | EFS file system                                                                  |
-| Secrets become           | Key Vault secret          | Secrets Manager secret                                                           |
-| Service discovery        | Environment-internal FQDN | Service Connect alias                                                            |
+|                          | Azure Container Apps      | Amazon ECS on Fargate                                                                                               |
+|--------------------------|---------------------------|---------------------------------------------------------------------------------------------------------------------|
+| Platform engineer brings | A managed environment     | Cluster, VPC, subnets, security groups, execution role, ALB, Cloud Map namespace, EFS file system and mount targets |
+| Containers become        | Container Apps            | Task definitions + services                                                                                         |
+| Routes become            | `httpRouteConfigs` rules  | ALB listener rules                                                                                                  |
+| Volumes become           | Azure Files share         | EFS access point                                                                                                    |
+| Secrets become           | Key Vault secret          | Secrets Manager secret                                                                                              |
+| Service discovery        | Environment-internal FQDN | Service Connect alias                                                                                               |
 
 ### Top level goals
 
@@ -66,9 +66,9 @@ Dev deploys an application using the core types — two containers, an HTTP rout
 
 ### Scenario 2: Run Radius on ECS
 
-Priya registers the `aws-ecs` pack against her existing Fargate cluster, VPC, ALB, and Cloud Map namespace. Radius deploys into that infrastructure; it does not create it.
+Priya registers the `aws-ecs` pack against her existing Fargate cluster, VPC, ALB, Cloud Map namespace, and EFS file system. Radius deploys into that infrastructure; it does not create it.
 
-Dev deploys the same application definition. It becomes task definitions and services, an ALB target group and listener rule, an EFS file system, and a Secrets Manager secret, and connections resolve to a Service Connect alias.
+Dev deploys the same application definition. It becomes task definitions and services, an ALB target group and listener rule, an EFS access point, and a Secrets Manager secret, and connections resolve to a Service Connect alias.
 
 ## Key dependencies and risks
 
@@ -302,6 +302,7 @@ resource ecsPack 'Radius.Core/recipePacks@2025-08-01-preview' = {
 | `securityGroupIds`        | That ENI needs a security group. AWS has no default that allows traffic between tasks.         | The managed environment allows internal traffic.   |
 | `executionRoleArn`        | The ECS agent assumes this role to pull the image from ECR and write logs to CloudWatch.       | The managed environment handles both.              |
 | `serviceConnectNamespace` | A Cloud Map namespace is what gives containers DNS names for `connections` and `hosts`.        | `*.internal.<env>.<region>.azurecontainerapps.io`. |
+| `fileSystemId`            | The application access point must belong to an EFS file system with mount targets in the VPC.  | The recipe creates an Azure Files share.           |
 
 A recipe could create some of these, but subnets, security groups, and IAM roles are governed by Priya's existing AWS controls, so v1 accepts them as inputs.
 
@@ -337,7 +338,7 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
 }
 ```
 
-**Step 3 — Dev deploys the same application.** It becomes task definitions and ECS services, an ALB target group and listener rule, an EFS file system, and a Secrets Manager secret. The source is identical; the behavior is not, and the documentation says where.
+**Step 3 — Dev deploys the same application.** It becomes task definitions and ECS services, an ALB target group and listener rule, an access point in Priya's EFS file system, and a Secrets Manager secret. The source is identical; the behavior is not, and the documentation says where.
 
 ## Key investments
 
@@ -354,14 +355,14 @@ Each pack implements the same four core types. This is the type-level contract; 
 
 What each pack **consumes** versus **creates** differs. The consumed infrastructure is what Priya brings and passes as `recipeParameters`:
 
-| Pack        | Consumes (pre-existing, supplied as recipe parameters)                           | Creates                                                                                        |
-|-------------|----------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
-| `azure-aca` | Managed environment, workload profile                                            | Container Apps, storage definitions, `httpRouteConfigs` rules, Key Vault and the secrets in it |
-| `aws-ecs`   | Cluster, VPC, subnets, security groups, execution role, ALB, Cloud Map namespace | Task definitions, services, target groups, listener rules, EFS access points, secrets          |
+| Pack        | Consumes (pre-existing, supplied as recipe parameters)                                                              | Creates                                                                                        |
+|-------------|---------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| `azure-aca` | Managed environment, workload profile                                                                               | Container Apps, storage definitions, `httpRouteConfigs` rules, Key Vault and the secrets in it |
+| `aws-ecs`   | Cluster, VPC, subnets, security groups, execution role, ALB, Cloud Map namespace, EFS file system and mount targets | Task definitions, services, target groups, listener rules, EFS access points, secrets          |
 
-Secrets are the one asymmetry. The ACA pack creates the Key Vault it writes into, following the existing Azure secrets recipe, so Priya brings nothing; ECS needs no equivalent because Secrets Manager is account-level.
+Secrets also differ. The ACA pack creates the Key Vault it writes into, following the existing Azure secrets recipe, so Priya brings nothing; ECS needs no equivalent because Secrets Manager is account-level.
 
-Everything in the **Creates** column is owned by the Radius resource that produced it and is deleted with it. Everything in **Consumes** outlives the application — deleting an application never touches Priya's managed environment, cluster, or ALB.
+Everything in the **Creates** column is owned by the Radius resource that produced it and is deleted with it. Everything in **Consumes** outlives the application — deleting an application never touches Priya's managed environment, cluster, ALB, EFS file system, mount targets, or stored data.
 
 These lists are not final — implementation may identify further infrastructure each pack has to consume or create.
 
@@ -488,7 +489,7 @@ It ships with its documentation: what the pack creates, what Priya brings, the s
 
 ### Feature 2: Amazon ECS recipe pack
 
-Publish an `aws-ecs` recipe pack covering all four core types, targeting Fargate with `awsvpc` networking and `kind: HTTP` routing through an ALB. The pack consumes a pre-existing ECS cluster, VPC, subnets, security groups, execution role, and ALB, and creates task definitions, ECS services, target groups, listener rules, EFS access points, and Secrets Manager secrets.
+Publish an `aws-ecs` recipe pack covering all four core types, targeting Fargate with `awsvpc` networking and `kind: HTTP` routing through an ALB. The pack consumes a pre-existing ECS cluster, VPC, subnets, security groups, execution role, ALB, EFS file system, and EFS mount targets, and creates task definitions, ECS services, target groups, listener rules, EFS access points, and Secrets Manager secrets.
 
 It ships with its documentation: what the pack creates, what Priya brings, the support state for every property above, and how to reach ECS-only settings through `platformOptions`.
 
