@@ -178,8 +178,7 @@ The team starts from a maintained suite of GitHub Actions samples. Together, the
 
 ## Key assumptions to test and questions to answer
 
-- Which CI/CD and workload-platform combinations must the first release support? Test the GitHub Actions and Azure DevOps scenarios with AKS, EKS, ACA, and ECS before deciding.
-- Which persistent-state services do prospective users already know how to operate? Confirm their access, retention, and recovery requirements with platform engineers before choosing a storage technology.
+- Which persistent-state services should we begin with first? We'll start with Postgres (options for either self-hosted or cloud service), but external state store should be as configurable as possible to easily support other persistent-state services in the future.
 - What connection and permission setup will teams accept for a centralized control plane, especially on private networks? Test an unattended job with restricted access to one environment.
 - Which recipe configurations and uses of existing resources must work with both temporary and centralized control planes? Test with an application that uses an existing hosting environment and shared backing services.
 - What should users see when a job is cancelled while a centralized service is still executing an operation? Define when work can stop and how a later job discovers its outcome.
@@ -189,6 +188,8 @@ The team starts from a maintained suite of GitHub Actions samples. Together, the
 ## Current state
 
 The [earlier Repo Radius proposal](https://github.com/radius-project/radius/pull/12078) called for running Radius temporarily through GitHub Actions, with GitHub-specific environment and state handling. Repo Radius must also work with other CI/CD systems and connect to an existing centralized control plane. These requirements do not imply that Radius supports those scenarios today.
+
+The [OCI/GHCR state archive design](../architecture/2026-07-oci-ghcr-state-archive.md) defines an initial implementation of externalized state storage. It uses `rad shutdown` to archive control-plane database dumps and Terraform state in GitHub Container Registry, and `rad startup` to restore them for a later run. GHCR holds the saved archive, not the live control-plane database. This provides a starting point for preserving state across temporary jobs in Scenario 2 without making GHCR a requirement for every CI/CD system or future state-storage implementation.
 
 The [external Kubernetes deployment proposal](./2026-05-external-kubernetes.md) covers workloads running on a cluster separate from Radius. It addresses the Kubernetes case; managed container targets also need suitable platform support.
 
