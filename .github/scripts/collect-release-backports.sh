@@ -18,6 +18,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
 GH="${GH:-gh}"
 REPOSITORY=""
 CHANNEL=""
@@ -173,6 +175,7 @@ main() {
     [[ -n "${OUTPUT_FILE}" ]] || fail "output path is required"
     command -v "${GH}" > /dev/null || fail "required command not found: ${GH}"
     command -v jq > /dev/null || fail "required command not found: jq"
+    command -v node > /dev/null || fail "required command not found: node"
 
     TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/release-backports-XXXXXX")"
     labeled_file="${TEMP_DIR}/labeled.json"
@@ -188,8 +191,10 @@ main() {
         --json number,title,url,mergeCommit,mergedAt,baseRefName \
         > "${labeled_file}"
     collect_explicit_prs "${explicit_file}"
-    jq -s 'add | unique_by(.number) | sort_by(.number)' \
+    jq -s 'add | unique_by(.number)' \
         "${labeled_file}" "${explicit_file}" > "${sources_file}"
+    node "${SCRIPT_DIR}/select-release-backports.mjs" \
+        --order-sources "${sources_file}"
     collect_present_sources "${sources_file}" "${release_branch}" "${present_file}"
 
     "${GH}" pr list --repo "${REPOSITORY}" --state all \

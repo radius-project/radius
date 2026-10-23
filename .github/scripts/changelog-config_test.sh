@@ -46,10 +46,10 @@ fail() {
     exit 1
 }
 
-command -v "${GIT_CLIFF}" >/dev/null 2>&1 ||
-    fail "git-cliff not found; run 'make install-git-cliff' or set GIT_CLIFF"
-command -v jq >/dev/null 2>&1 ||
-    fail "jq not found; run 'make install-jq'"
+command -v "${GIT_CLIFF}" > /dev/null 2>&1 \
+                                          || fail "git-cliff not found; run 'make install-git-cliff' or set GIT_CLIFF"
+command -v jq > /dev/null 2>&1 \
+                              || fail "jq not found; run 'make install-jq'"
 [[ -f "${CONFIG}" ]] || fail "missing ${CONFIG}"
 
 commit() {
@@ -83,6 +83,7 @@ build_fixture() {
     commit "Legacy subject without a type (#115)"
     commit 'fix: keep [@linked](https://github.com/linked) intact (#116)'
     commit "fix: keep dev@example.com, \`@code\`, @scope/pkg and pkg@v2 (#117)"
+    commit "improve: conventional fallback (#121)"
     git -C "${FIXTURE}" tag legacy-start
     commit "Preserve legacy client behavior (#118)"
     for type in feat fix perf refactor revert docs style test build ci chore; do
@@ -97,9 +98,9 @@ render() {
     shift
 
     (
-        cd "${FIXTURE}" &&
-            env -u GITHUB_TOKEN "${GIT_CLIFF}" --config "${CONFIG}" --offline \
-                "$@" "${range}"
+        cd "${FIXTURE}" || exit 1
+        env -u GITHUB_TOKEN "${GIT_CLIFF}" --config "${CONFIG}" --offline \
+            "$@" "${range}"
     )
 }
 
@@ -122,8 +123,8 @@ expect_under() {
     local needle="$2"
     local file="$3"
 
-    section "${heading}" "${file}" | grep -Fq -- "${needle}" ||
-        fail "expected '${needle}' under '${heading}'"
+    section "${heading}" "${file}" | grep -Fq -- "${needle}" \
+                                                             || fail "expected '${needle}' under '${heading}'"
 }
 
 expect_absent() {
@@ -137,7 +138,7 @@ expect_absent() {
 
 build_fixture
 
-render v0.60.0..HEAD --strip all >"${UNRELEASED}"
+render v0.60.0..HEAD --strip all > "${UNRELEASED}"
 [[ -s "${UNRELEASED}" ]] || fail "git-cliff rendered nothing"
 
 # Sections appear in the documented order and nothing else is rendered.
@@ -145,8 +146,8 @@ expected_headings="$(printf '%s\n' "### Breaking changes" "### Added" \
     "### Fixed" "### Changed" "### Dependencies" "### Reverted changes" \
     "### Other changes")"
 actual_headings="$(grep '^### ' "${UNRELEASED}")"
-[[ "${actual_headings}" == "${expected_headings}" ]] ||
-    fail "unexpected section order:"$'\n'"${actual_headings}"
+[[ "${actual_headings}" == "${expected_headings}" ]] \
+                                                     || fail "unexpected section order:"$'\n'"${actual_headings}"
 
 expect_under "Breaking changes" "Remove the legacy response field (#104)" "${UNRELEASED}"
 # protect_breaking_commits keeps a breaking commit whose type is otherwise skipped.
@@ -159,14 +160,25 @@ expect_under "Dependencies" "Bump the github-actions group (#107)" "${UNRELEASED
 expect_under "Reverted changes" "Revert the graph walk change (#109)" "${UNRELEASED}"
 expect_under "Other changes" "Legacy subject without a type (#115)" "${UNRELEASED}"
 
-render legacy-start..HEAD --strip all >"${TEST_ROOT}/legacy.md"
-[[ "$(grep '^### ' "${TEST_ROOT}/legacy.md")" == "### Other changes" ]] ||
-    fail "nonconventional-only history must use the fallback group"
+for expected in \
+    'Fixed|(#117),(#116),(#102)' \
+    'Breaking changes|(#105),(#104)' \
+    'Dependencies|(#107),(#106)' \
+    'Other changes|(#119),(#118),(#121),(#115)'; do
+    actual="$(section "${expected%%|*}" "${UNRELEASED}" \
+                                                        | grep -Eo '\(#[0-9]+\)' | paste -sd, -)"
+    [[ "${actual}" == "${expected#*|}" ]] \
+                                          || fail "entries must follow newest-first merge history in ${expected%%|*}: ${actual}"
+done
+
+render legacy-start..HEAD --strip all > "${TEST_ROOT}/legacy.md"
+[[ "$(grep '^### ' "${TEST_ROOT}/legacy.md")" == "### Other changes" ]] \
+                                                                        || fail "nonconventional-only history must use the fallback group"
 while IFS= read -r subject; do
     for output in "${UNRELEASED}" "${TEST_ROOT}/legacy.md"; do
         expect_under "Other changes" "${subject^}" "${output}"
-        [[ "$(grep -Fc -- "- ${subject^}" "${output}")" -eq 1 ]] ||
-            fail "nonconventional commit must appear exactly once: ${subject}"
+        [[ "$(grep -Fc -- "- ${subject^}" "${output}")" -eq 1 ]] \
+                                                                 || fail "nonconventional commit must appear exactly once: ${subject}"
     done
 done < <(git -C "${FIXTURE}" log --format=%s legacy-start..HEAD)
 
@@ -176,17 +188,17 @@ for excluded in "(#108)" "(#110)" "(#111)" "(#112)" "(#113)" "(#114)"; do
 done
 
 # A breaking commit is listed once, under Breaking changes only.
-[[ "$(grep -c '(#104)' "${UNRELEASED}")" -eq 1 ]] ||
-    fail "a breaking commit was rendered more than once"
+[[ "$(grep -c '(#104)' "${UNRELEASED}")" -eq 1 ]] \
+                                                  || fail "a breaking commit was rendered more than once"
 
 # A tagged render carries the Keep a Changelog heading and comparison link.
-render v0.60.0..HEAD --tag v0.61.0 >"${RELEASE}"
-grep -Eq '^## \[0\.61\.0\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' "${RELEASE}" ||
-    fail "release heading is missing or has no ISO date"
-grep -Fq '[0.61.0]: https://github.com/radius-project/radius/compare/v0.60.0...v0.61.0' "${RELEASE}" ||
-    fail "release comparison link is missing"
-grep -Fq '<!-- generated by git-cliff -->' "${RELEASE}" ||
-    fail "generated-by marker is missing"
+render v0.60.0..HEAD --tag v0.61.0 > "${RELEASE}"
+grep -Eq '^## \[0\.61\.0\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$' "${RELEASE}" \
+                                                                       || fail "release heading is missing or has no ISO date"
+grep -Fq '[0.61.0]: https://github.com/radius-project/radius/compare/v0.60.0...v0.61.0' "${RELEASE}" \
+                                                                                                     || fail "release comparison link is missing"
+grep -Fq '<!-- generated by git-cliff -->' "${RELEASE}" \
+                                                        || fail "generated-by marker is missing"
 
 render v0.60.0..HEAD --context | jq '
     .[0].commits |= map(.github += (
@@ -208,8 +220,8 @@ render v0.60.0..HEAD --context | jq '
         {username: "itpropro", pr_number: 115, is_first_time: true},
         {username: "fallback-author", pr_number: 102, is_first_time: false}
     ] | map(. + {pr_labels: []}))
-' >"${CONTEXT}"
-render_context "${CONTEXT}" >"${LINKED}"
+' > "${CONTEXT}"
+render_context "${CONTEXT}" > "${LINKED}"
 
 profile='[@DariuszPorowski](https://github.com/DariuszPorowski)'
 bot='[@dependabot[bot]](https://github.com/apps/dependabot)'
@@ -233,65 +245,65 @@ expect_under "Fixed" \
     "Keep dev@example.com, \`@code\`, @scope/pkg and pkg@v2 (#117)" "${LINKED}"
 
 expected="${profile}, ${bot}, ${new_contributor}, ${fallback}"
-[[ "$(section "Contributors" "${LINKED}")" == "${expected}" ]] ||
-    fail "contributors must be one comma-separated line in metadata order"
+[[ "$(section "Contributors" "${LINKED}")" == "${expected}" ]] \
+                                                               || fail "contributors must be one comma-separated line in metadata order"
 expected="- ${new_contributor} made their first contribution"
 expected+=" in [#115](${pulls}/115)"
-[[ "$(section "New contributors" "${LINKED}")" == "${expected}" ]] ||
-    fail "new contributors must keep their linked first contribution"
+[[ "$(section "New contributors" "${LINKED}")" == "${expected}" ]] \
+                                                                   || fail "new contributors must keep their linked first contribution"
 
-render_context "${CONTEXT}" >"${TEST_ROOT}/rerendered.md"
-cmp "${LINKED}" "${TEST_ROOT}/rerendered.md" ||
-    fail "rendering the same metadata must be deterministic"
+render_context "${CONTEXT}" > "${TEST_ROOT}/rerendered.md"
+cmp "${LINKED}" "${TEST_ROOT}/rerendered.md" \
+                                             || fail "rendering the same metadata must be deterministic"
 
 jq '
     .[0].github.contributors |=
         [{username: null, pr_labels: [], is_first_time: true}] + .[:2] +
         [{pr_labels: [], is_first_time: false}] + .[2:] +
         [{username: null, pr_labels: [], is_first_time: false}]
-' "${CONTEXT}" >"${TEST_ROOT}/missing-usernames.json"
+' "${CONTEXT}" > "${TEST_ROOT}/missing-usernames.json"
 render_context "${TEST_ROOT}/missing-usernames.json" \
-    >"${TEST_ROOT}/missing-usernames.md"
-cmp "${LINKED}" "${TEST_ROOT}/missing-usernames.md" ||
-    fail "missing usernames must not change links, separators, or headings"
+    > "${TEST_ROOT}/missing-usernames.md"
+cmp "${LINKED}" "${TEST_ROOT}/missing-usernames.md" \
+                                                    || fail "missing usernames must not change links, separators, or headings"
 
 jq '.[0].github.contributors |= map(select(.username == null))' \
-    "${TEST_ROOT}/missing-usernames.json" >"${TEST_ROOT}/anonymous.json"
-render_context "${TEST_ROOT}/anonymous.json" >"${TEST_ROOT}/anonymous.md"
+    "${TEST_ROOT}/missing-usernames.json" > "${TEST_ROOT}/anonymous.json"
+render_context "${TEST_ROOT}/anonymous.json" > "${TEST_ROOT}/anonymous.md"
 expect_absent '### Contributors' "${TEST_ROOT}/anonymous.md"
 expect_absent '### New contributors' "${TEST_ROOT}/anonymous.md"
 expect_under "Added" \
     "Add recipe validation by ${profile}" "${TEST_ROOT}/anonymous.md"
 
 jq '.[0].github.contributors = []' "${CONTEXT}" \
-    >"${TEST_ROOT}/empty.json"
-render_context "${TEST_ROOT}/empty.json" >"${TEST_ROOT}/empty.md"
-cmp "${TEST_ROOT}/anonymous.md" "${TEST_ROOT}/empty.md" ||
-    fail "empty and anonymous contributor lists must render identically"
+    > "${TEST_ROOT}/empty.json"
+render_context "${TEST_ROOT}/empty.json" > "${TEST_ROOT}/empty.md"
+cmp "${TEST_ROOT}/anonymous.md" "${TEST_ROOT}/empty.md" \
+                                                        || fail "empty and anonymous contributor lists must render identically"
 
 jq '.[0].github.contributors |= map(
     select(.username == "dependabot[bot]") | .is_first_time = true
-)' "${CONTEXT}" >"${TEST_ROOT}/bot.json"
-render_context "${TEST_ROOT}/bot.json" >"${TEST_ROOT}/bot.md"
-[[ "$(section "Contributors" "${TEST_ROOT}/bot.md")" == "${bot}" ]] ||
-    fail "a bot-only contributor list must retain the app profile link"
+)' "${CONTEXT}" > "${TEST_ROOT}/bot.json"
+render_context "${TEST_ROOT}/bot.json" > "${TEST_ROOT}/bot.md"
+[[ "$(section "Contributors" "${TEST_ROOT}/bot.md")" == "${bot}" ]] \
+                                                                    || fail "a bot-only contributor list must retain the app profile link"
 expect_under "New contributors" \
     "- ${bot} made their first contribution in [#106](${pulls}/106)" \
     "${TEST_ROOT}/bot.md"
 
 jq '.[0].github.contributors |= .[:1]' "${CONTEXT}" \
-    >"${TEST_ROOT}/single.json"
-render_context "${TEST_ROOT}/single.json" >"${LINKED}"
-[[ "$(section "Contributors" "${LINKED}")" == "${profile}" ]] ||
-    fail "a single contributor must have no comma or bullet"
+    > "${TEST_ROOT}/single.json"
+render_context "${TEST_ROOT}/single.json" > "${LINKED}"
+[[ "$(section "Contributors" "${LINKED}")" == "${profile}" ]] \
+                                                              || fail "a single contributor must have no comma or bullet"
 expect_absent '### New contributors' "${LINKED}"
 
 git -C "${FIXTURE}" tag v0.61.0
 commit "fix: preserve later release ordering (#120)"
-render v0.60.0..HEAD --tag v0.62.0 >"${TEST_ROOT}/history.md"
+render v0.60.0..HEAD --tag v0.62.0 > "${TEST_ROOT}/history.md"
 expected="$(printf '%s\n' '[0.62.0]' '[0.61.0]')"
-[[ "$(awk '/^## \[/ { print $2 }' "${TEST_ROOT}/history.md")" == "${expected}" ]] ||
-    fail "release sections must put the newest version first"
+[[ "$(awk '/^## \[/ { print $2 }' "${TEST_ROOT}/history.md")" == "${expected}" ]] \
+                                                                                  || fail "release sections must put the newest version first"
 grep -Fq '[0.62.0]: https://github.com/radius-project/radius/compare/v0.61.0...v0.62.0' \
     "${TEST_ROOT}/history.md" || fail "later release comparison is missing"
 
