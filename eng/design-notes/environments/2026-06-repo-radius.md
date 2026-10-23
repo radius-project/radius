@@ -19,7 +19,7 @@ Radius and the application need not run in the same place. A control plane hoste
 - Let teams choose a temporary control plane or an existing centralized control plane.
 - Keep Radius configuration and deployment state after jobs end so later runs can reuse approved environments and recipes and manage existing applications.
 - Deploy workloads to the team's chosen Azure or AWS platform, regardless of where the Radius control plane runs.
-- Show developers deployment results and how to recover from failures without crossing the platform team's environment and access boundaries.
+- Show developers command outcomes, diagnostics, and whether state was saved, without crossing the platform team's environment and access boundaries.
 
 ### Non-goals (out of scope)
 
@@ -29,7 +29,8 @@ Radius and the application need not run in the same place. A control plane hoste
 - Requiring a new graphical interface or coding assistant to complete a deployment.
 - Installing, upgrading, or operating an organization's centralized Radius service.
 - Migrating existing application state and resource ownership between independent control planes. Connecting to an existing control plane is not a migration.
-- Adding a general-purpose deployment what-if engine, automatic rollback, or continuous cloud drift detection.
+- Adding automatic rollback, retry, or repair after a failed operation. The pipeline or operator decides what to do next.
+- Adding a general-purpose deployment what-if engine or continuous cloud drift detection.
 
 ## User profile and challenges
 
@@ -65,7 +66,7 @@ The platform engineer adds Radius operations to an existing pipeline, such as Gi
 - The job reports when Radius is ready, which application and environment it targets, and whether the requested operations succeeded.
 - When the job finishes normally, it releases the temporary control plane without deleting deployed workloads or their persistent state.
 - A later job can run on a different agent without depending on files left on the previous agent.
-- If Radius fails to start, the job stops before running the requested operations and tells the platform engineer what to correct. If the job is interrupted, the developer follows the recovery steps in Scenario 6.
+- If Radius fails to start, the job stops before running the requested operations and tells the platform engineer what to correct. An interrupted job reports its status and any unknown outcome as described in Scenario 6.
 
 ### Scenario 2: Keep Radius configuration and deployment state independently of the pipeline
 
@@ -124,23 +125,35 @@ The platform engineer configures approved environments and recipe packs in Radiu
 
 The platform team keeps its existing environment and recipe management practices. It does not need a new organization-wide catalog or a fleet-wide update service.
 
-### Scenario 6: Recover from failures and remove an application safely
+### Scenario 6: Understand the result of a pipeline operation
 
-> As an application developer, I want to understand a failed deployment and safely retry or remove my application, so that a failed job does not leave me guessing which resources still exist.
+> As an application developer, I want a clear result and detailed diagnostics for each pipeline operation, so that I can tell what happened and decide what to do next.
 
-The developer reads the job result to see what succeeded, what failed, and whether Radius saved the application state. After correcting the problem, they can retry against the same environment. If an operator must reconcile the recorded state with cloud resources first, the result says so. It does not promise automatic rollback.
+The job identifies the requested command, control plane, application, and environment, then reports the outcome and whether Radius saved the resulting state. The developer can read these results after the job ends. Reporting an outcome does not retry, repair, or roll back the operation; the pipeline or operator decides the next action.
 
-- Failure details remain available after the agent or temporary control plane disappears.
-- The result never reports a cancelled job as a successful deployment. If an operation's outcome is unknown, the result says so and directs the developer to check it before retrying.
-- The developer can explicitly request that Radius remove an application from a named environment, subject to the team's approval rules.
-- Radius deletes application-owned resources while preserving referenced foundations, other applications, and any centralized control plane.
-- If Radius removes only part of an application, the result identifies what remains so a later operation can continue. Stopping Radius alone does not remove an application.
+- The result distinguishes success, failure, cancellation, and an unknown outcome. A cancelled job is not reported as a successful operation.
+- When an operation fails, the result identifies the failed step and includes available error details and diagnostics. It distinguishes completed work from work whose outcome is unknown.
+- The result reports whether state was saved. If saving failed or cannot be confirmed, it warns that recorded state may not match cloud resources.
+- Results and diagnostics remain available after the agent or temporary control plane disappears.
+- If a centralized service may still be running an operation after the job ends, the result makes that uncertainty explicit rather than claiming that cancellation stopped the operation.
+
+### Scenario 7: Delete an application through the pipeline
+
+> As an application developer, I want an authorized pipeline job to run existing Radius deletion commands, so that I can remove an application from the selected environment without managing the control plane.
+
+The developer explicitly requests deletion through the team's pipeline, subject to its approval rules. The job uses the selected control plane and persisted state to run the existing Radius commands against the named application and environment. Repo Radius does not introduce new deletion behavior.
+
+- A fresh job can delete an application recorded in the saved state after the original deployment job and temporary control plane are gone.
+- The job confirms the target application and environment and requires the access needed for deletion.
+- Deletion follows Radius's existing resource-ownership rules. It does not turn referenced foundations, unrelated applications, or the centralized control plane into deletion targets.
+- The result reports completion or partial failure, including known remaining resources and any unknown outcomes. The pipeline or operator decides whether to run another command.
+- Stopping or releasing a temporary control plane does not delete an application. Deletion requires an explicit Radius command.
 
 ## Key dependencies and risks
 
 - **Workload platform support.** Each target needs recipes that provide the requested application capabilities. Users need a list of supported platforms and errors that identify unavailable capabilities.
 - **Network and access configuration.** Jobs and control planes must be able to reach the services they need, including persistent state and deployment targets. Teams using private networks must not have to expose services publicly to adopt Repo Radius.
-- **State and interrupted operations.** A failed job can change cloud resources without recording those changes. Developers need saved state and instructions for recovery before they can safely retry.
+- **State and interrupted operations.** A failed job can change cloud resources without recording those changes. Developers need saved state, diagnostics, and explicit warnings about unknown outcomes to decide what to do next. Restoring an older state snapshot alone does not undo cloud changes.
 - **Shared-service boundaries.** Jobs using a centralized control plane must not disrupt other teams or exceed their authorized environments.
 - **Compatibility.** A pipeline and its selected control plane or recipes may be incompatible. The error must identify the incompatibility and explain what the user can do about it.
 - **Job startup time.** Starting a temporary control plane delays the requested operation. Test how much delay teams will accept in routine deployments.
@@ -156,7 +169,7 @@ The developer reads the job result to see what succeeded, what failed, and wheth
 
 ## Current state
 
-The earlier Repo Radius proposal called for running Radius temporarily through GitHub Actions, with GitHub-specific environment and state handling. Repo Radius must also work with other CI/CD systems and connect to an existing centralized control plane. These requirements do not imply that Radius supports those scenarios today.
+The [earlier Repo Radius proposal](https://github.com/radius-project/radius/pull/12078) called for running Radius temporarily through GitHub Actions, with GitHub-specific environment and state handling. Repo Radius must also work with other CI/CD systems and connect to an existing centralized control plane. These requirements do not imply that Radius supports those scenarios today.
 
 The [external Kubernetes deployment proposal](./2026-05-external-kubernetes.md) covers workloads running on a cluster separate from Radius. It addresses the Kubernetes case; managed container targets also need suitable platform support.
 
@@ -164,11 +177,11 @@ The [external Kubernetes deployment proposal](./2026-05-external-kubernetes.md) 
 
 As a platform engineer, I already have pipelines, environment boundaries, and deployment standards. I want Radius to work within them. My team may not want another permanent service to maintain. Or we may already run Radius and should not need a second instance just for CI/CD. Either way, replacing a disposable agent must not lose our deployment history or change where applications run.
 
-As an application developer, I want to describe my application and deliver it through the same pipeline as the rest of my code. I need to know where it runs, whether the change succeeded, and how to recover if it failed. I should not need to know where the Radius control plane runs or how long it lives.
+As an application developer, I want to describe my application and deliver it through the same pipeline as the rest of my code. I need to know where it runs, whether the change succeeded, and what failed so I can decide what to do next. I should not need to know where the Radius control plane runs or how long it lives.
 
 ## Desired user experience outcome
 
-I can use Radius from my existing pipeline by starting it for a job or connecting to the service my platform team provides. I can deploy to the approved Azure or AWS environment, inspect the result after the job ends, and update the application from a fresh job. If an operation fails, I can see what happened and what to do next without losing track of the application.
+I can use Radius from my existing pipeline by starting it for a job or connecting to the service my platform team provides. I can deploy to the approved Azure or AWS environment, inspect the result after the job ends, and update or explicitly delete the application from a fresh job. If an operation fails, I can see what happened, what remains unknown, and whether Radius saved the state.
 
 ### Detailed user experience
 
@@ -176,8 +189,8 @@ I can use Radius from my existing pipeline by starting it for a job or connectin
 2. **Select the application and destination.** The developer supplies the application revision, operation, and environment through the normal pipeline. Existing review and approval rules still apply.
 3. **Confirm readiness.** The job identifies the selected control plane and workload destination. If configuration is missing, required state is inaccessible, or a connection fails, the job stops the operation and explains why.
 4. **Run the operation.** The pipeline runs existing Radius commands against the selected control plane and environment. The job reports progress and failures.
-5. **Review the outcome.** The developer sees the revision, target, resource results, and any state or recovery warnings. The developer can still inspect the application after the job ends.
-6. **Finish without affecting workloads.** The job releases a temporary control plane or leaves a centralized service running. Deployed applications and their state remain available for the next operation.
+5. **Review the outcome.** The developer sees the revision, target, command status, diagnostics, and whether state was saved. These results remain available after the job ends.
+6. **Release the control plane.** The job releases a temporary control plane or leaves a centralized service running. This cleanup does not delete workloads or discard saved state; application deletion requires an explicit Radius command.
 7. **Run later commands.** A later job uses existing Radius commands to update, inspect, or explicitly remove the application. The developer checks an interrupted or failed operation before retrying.
 
 ## Key investments
@@ -188,7 +201,7 @@ I can use Radius from my existing pipeline by starting it for a job or connectin
 
 ### Feature 2
 
-**Persistent Radius configuration, deployment state, and recovery.** Let fresh jobs reuse saved environments and recipe configuration and manage existing applications. Prevent conflicting updates from silently losing that state, and tell developers when an operation's outcome is unknown.
+**Persistent Radius configuration and deployment state.** Let fresh jobs reuse saved environments and recipe configuration and manage existing applications. Prevent conflicting updates from silently losing that state, and report when saving state fails or cannot be confirmed.
 
 ### Feature 3
 
@@ -196,4 +209,4 @@ I can use Radius from my existing pipeline by starting it for a job or connectin
 
 ### Feature 4
 
-**Command results and recovery.** Show the outcome of existing Radius commands in the pipeline and help developers recover from failed or interrupted jobs. Keep this behavior consistent across both control-plane modes.
+**Command results and explicit deletion.** Preserve status and diagnostics for existing Radius commands, including deletion commands, across both control-plane modes. Leave rollback, retry, and repair decisions to the pipeline or operator.
