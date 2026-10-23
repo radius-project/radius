@@ -74,6 +74,8 @@ Follow the exact downstream run and PR links in the release summary:
 | Final | Confirm automated docs publication, samples publication, and sample tests succeed. Also publish the final's Bicep recipes using the command below.                                                                                     |
 | Patch | Confirm sample tests succeed; no docs/samples release-branch recut is needed.                                                                                                                                                          |
 
+RC upmerges affect only `edge`, not the docs/samples default release branches. Only a final publishes their new `vX.Y` branches and switches their defaults; patches only run sample tests.
+
 **Final only:** confirm `resource-types-contrib` `main` contains the intended recipe source, then run [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml). Replace `0.62.0` with the actual final version **without `v`**:
 
 ```bash
