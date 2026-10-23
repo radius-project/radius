@@ -168,7 +168,7 @@ The team starts from a maintained suite of GitHub Actions samples. Together, the
 
 ## Key dependencies and risks
 
-- **Workload platform support.** Each target needs recipes that provide the requested application capabilities. Users need a list of supported platforms and errors that identify unavailable capabilities.
+- **Recipes for the selected target.** The environment must have recipe packs registered that can deploy the application's requested resources to the chosen platform. If a required recipe is missing, the job reports what is missing rather than deploying to a different target.
 - **Network and access configuration.** Jobs and control planes must be able to reach the services they need, including persistent state and deployment targets. Teams using private networks must not have to expose services publicly to adopt Repo Radius.
 - **State and interrupted operations.** A failed job can change cloud resources without recording those changes. Developers need saved state, diagnostics, and explicit warnings about unknown outcomes to decide what to do next. Restoring an older state snapshot alone does not undo cloud changes.
 - **Shared-service boundaries.** Jobs using a centralized control plane must not disrupt other teams or exceed their authorized environments.
