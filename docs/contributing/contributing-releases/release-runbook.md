@@ -107,4 +107,6 @@ For a frozen first RC, use the resolved release commit from the summary. Before 
 
 **Preparation blocked:** merge missing backports or finish the preceding release, then rerun Prepare Release with the same inputs. Never edit the generated plan to bypass validation.
 
+**RC changelog cleanup blocked in the merge queue:** the queue executes the validator from its trusted base, not the queued PR. Merge the validator support separately into `main` before refreshing and queueing the cleanup PR (including [#13433](https://github.com/radius-project/radius/pull/13433)). The only non-release exception removes the complete leading RC sections and their matching comparison definitions from `CHANGELOG.md`, resetting `[Unreleased]` to the single stable baseline recorded in those trusted definitions. Stable entries and all other prose must remain byte-for-byte unchanged. Ordinary tooling changes may accompany cleanup, but version, release-plan, and release-note changes still require a matching generated release PR. Do not change old release notes, plans, or tags, execute a PR-supplied validator, or bypass the gate.
+
 Never move approved tags, delete locks, overwrite published artifacts, or disable verification. Follow [break-glass recovery](./README.md#break-glass-recovery) for conflicts or fixes needed in already-tagged build code.
