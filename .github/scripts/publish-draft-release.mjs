@@ -2,6 +2,12 @@
 
 import { readFile } from "node:fs/promises";
 
+import {
+  findRelease,
+  listReleases,
+  waitForReleaseState
+} from "./release-reconciliation.mjs";
+
 export const mandatoryChecks = [
   "plan",
   "assets",
@@ -41,28 +47,6 @@ async function requirePublicationManifest(core, tag) {
   );
 }
 
-/** @param {any} github @param {string} owner @param {string} repo */
-async function listReleases(github, owner, repo) {
-  return github.paginate(github.rest.repos.listReleases, {
-    owner,
-    repo,
-    per_page: 100
-  });
-}
-
-function findRelease(releases, tag) {
-  const matches = releases.filter((release) => release.tag_name === tag);
-  if (matches.length !== 1) {
-    throw new Error(`Expected one release for ${tag}; found ${matches.length}`);
-  }
-  return matches[0];
-}
-
-/** @param {any} github @param {string} owner @param {string} repo @param {string} tag */
-async function getRelease(github, owner, repo, tag) {
-  return findRelease(await listReleases(github, owner, repo), tag);
-}
-
 function selectAliases(releases, tag) {
   if (!/^v\d+\.\d+\.\d+(?:-rc\.[1-9]\d*)?$/.test(tag)) {
     throw new Error("TAG must be a Radius release tag");
@@ -84,8 +68,8 @@ function selectAliases(releases, tag) {
   };
 }
 
-/** @param {{github: any, core: any}} options */
-export default async function publishDraftRelease({ github, core }) {
+/** @param {{github: any} & import("./release-reconciliation.mjs").ReleaseReadOptions} options */
+export default async function publishDraftRelease({ github, core, sleep }) {
   const owner = core.getInput("OWNER", { required: true });
   const repo = core.getInput("REPO", { required: true });
   const tag = core.getInput("TAG", { required: true });
@@ -93,8 +77,8 @@ export default async function publishDraftRelease({ github, core }) {
   if (mode !== "publish" && mode !== "select-aliases") {
     throw new Error("MODE must be publish or select-aliases");
   }
-  const releases = await listReleases(github, owner, repo);
-  const aliases = selectAliases(releases, tag);
+  let releases = await listReleases(github, owner, repo);
+  let aliases = selectAliases(releases, tag);
   if (mode === "select-aliases") {
     await requirePublicationManifest(core, tag);
     core.setOutput("promote_channel", String(aliases.channel));
@@ -108,9 +92,20 @@ export default async function publishDraftRelease({ github, core }) {
   if (prerelease && requestedLatest) {
     throw new Error("A prerelease cannot be marked latest");
   }
-  const makeLatest = requestedLatest && aliases.latest;
-
   let release = findRelease(releases, tag);
+  if (!release) {
+    releases = await waitForReleaseState(
+      async () => {
+        const observed = await listReleases(github, owner, repo);
+        return findRelease(observed, tag) ? observed : undefined;
+      },
+      { core, sleep, description: `Release ${tag}` }
+    );
+    release = findRelease(releases, tag);
+    aliases = selectAliases(releases, tag);
+  }
+  const makeLatest = requestedLatest && aliases.latest;
+  const releaseID = release.id;
   const expectedBody = (await readFile(notesFile, "utf8")).trimEnd();
   if (release.name !== `Radius ${tag}`) {
     throw new Error(`Release ${tag} has the wrong title`);
@@ -118,6 +113,7 @@ export default async function publishDraftRelease({ github, core }) {
   if ((release.body ?? "").trimEnd() !== expectedBody) {
     throw new Error(`Release ${tag} does not use the prepared notes`);
   }
+  let publicationError;
   if (!release.draft) {
     if (release.prerelease !== prerelease) {
       throw new Error(`Published release ${tag} has the wrong classification`);
@@ -134,22 +130,58 @@ export default async function publishDraftRelease({ github, core }) {
         make_latest: makeLatest ? "true" : "false"
       });
     } catch (error) {
-      release = await getRelease(github, owner, repo, tag);
-      if (release.draft || release.prerelease !== prerelease) {
-        throw error;
-      }
+      publicationError = error;
     }
   }
 
-  release = await getRelease(github, owner, repo, tag);
-  if (release.draft || release.prerelease !== prerelease) {
-    throw new Error(`Release ${tag} failed publication verification`);
-  }
-  if (makeLatest) {
-    const latest = await github.rest.repos.getLatestRelease({ owner, repo });
-    if (latest.data.tag_name !== tag) {
-      throw new Error(`Latest release is ${latest.data.tag_name}, not ${tag}`);
+  release = await waitForReleaseState(
+    async () => {
+      let observed;
+      try {
+        const response = await github.rest.repos.getRelease({
+          owner,
+          repo,
+          release_id: releaseID
+        });
+        observed = response.data;
+      } catch (error) {
+        if (error.status !== 404) throw error;
+        return undefined;
+      }
+      if (observed.tag_name !== tag) {
+        throw new Error(`Release ${releaseID} does not match tag ${tag}`);
+      }
+      if (observed.draft) return undefined;
+      if (observed.prerelease !== prerelease) {
+        throw new Error(
+          `Published release ${tag} has the wrong classification`
+        );
+      }
+      return observed;
+    },
+    {
+      core,
+      sleep,
+      cause: publicationError,
+      description: `Published release ${tag} (ID ${releaseID})`
     }
+  );
+  if (makeLatest) {
+    await waitForReleaseState(
+      async () => {
+        try {
+          const latest = await github.rest.repos.getLatestRelease({
+            owner,
+            repo
+          });
+          return latest.data.tag_name === tag ? latest.data : undefined;
+        } catch (error) {
+          if (error.status !== 404) throw error;
+          return undefined;
+        }
+      },
+      { core, sleep, description: `Latest release ${tag}` }
+    );
   }
   core.setOutput("release_url", release.html_url);
 }
