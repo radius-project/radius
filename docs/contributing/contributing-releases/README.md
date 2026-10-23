@@ -4,6 +4,8 @@
 
 Release maintainers approve an immutable release plan, monitor its publication, and resume failed stages without changing the approved version or source. The same procedure covers RC, final, and patch releases across `radius-project/resource-types-contrib`, `radius-project/radius`, `radius-project/docs`, `radius-project/samples`, and `azure-octo/deployment-engine`. Automation creates Radius and sibling tags, stages artifacts, verifies installation, publishes the release, and coordinates docs and samples.
 
+For the short operational checklist and copyable commands, use the [Release runbook](./release-runbook.md).
+
 ## Prerequisites
 
 - Choose `rc`, `final`, or `patch` and its `X.Y` channel. Prepare Release computes the version; new RCs use `-rc.N`, starting at `-rc.1`, and the historical `-rcN` form is never mixed into the same version, because SemVer orders every dotted candidate before every legacy one and `rad upgrade` would treat that move as a downgrade. A final uses the last validated RC's product code. `versions.yaml` keeps the previous stable release supported until the final release moves it to `deprecated`. Label selected fixes `backport release/X.Y` and **rebase-merge** their generated backports before preparation.
@@ -54,8 +56,10 @@ Stop if the update is missing or incomplete. Publishing namespaces and recipe pa
 
 Both automatic `pull_request_target` events and manual gateway dispatches execute the default-branch controller, including backport merges into older release branches. Resolver and controller jobs pin tooling to the executing workflow commit. Deployment Engine verification uses the approved plan's `expectedOutputs`, passed between jobs with the resolved plan artifact, rather than the controller checkout's current platform defaults. Publication jobs use the immutable tagged commit, including across an approval wait.
 
+For an existing channel, the controller run started by the main PR merge stops at **State: waiting for the generated release backport**, with approval skipped. After the metadata backport merges, open the separate controller run that shows **State: validated and ready to reconcile**. Record the version and source commit from that run, not the initial main-merge run; the release source is the metadata backport merge commit.
+
 1. Follow the [release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml) summary. It verifies the Deployment Engine tag, or shows the commit it will tag, then pauses on its **Approve release reconciliation** job in the `release` environment. Review the version, metadata-bearing source commit, Deployment Engine commit, and frozen sibling commits it shows, then approve. The Radius controller makes no changes before this approval; external repositories may already have staged immutable artifacts from their own tag builds. The controller then creates the Deployment Engine tag if it is absent. Until the image digest is locked, it waits up to 15 minutes for the tag build to stage the image, including when it resumes after an interrupted attempt. It publishes or adopts and locks the full-version Deployment Engine image, reconciles the frozen sibling commits, and creates the Radius tag last.
-2. Follow the linked [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml). GoReleaser stages core artifacts; the retained Bicep image, Helm chart, and both Bicep type publishers complete before verification. Radius explicitly dispatches and awaits AWS types from the plan's frozen AWS source commit. Bicep type artifacts use full-version tags and carry source/revision/version annotations; existing matching versions are reusable, not overwritten. The release Bicep image also references these full-version extensions, so staged installation does not depend on channel aliases that have not been promoted yet. Edge builds retain their `latest` extension references. `testrp` and `magpiego` are test-workflow outputs, not release assets or channel aliases.
+2. Open the [release build workflow](https://github.com/radius-project/radius/actions/workflows/build-release.yaml), select the run for the approved version, and confirm its source commit matches the controller summary. GoReleaser stages core artifacts; the retained Bicep image, Helm chart, and both Bicep type publishers complete before verification. Radius explicitly dispatches and awaits AWS types from the plan's frozen AWS source commit. Bicep type artifacts use full-version tags and carry source/revision/version annotations; existing matching versions are reusable, not overwritten. The release Bicep image also references these full-version extensions, so staged installation does not depend on channel aliases that have not been promoted yet. Edge builds retain their `latest` extension references. `testrp` and `magpiego` are test-workflow outputs, not release assets or channel aliases.
 3. Review `release-manifest.json` and the staged-installation result. **Finals and patches** wait for a second approval, **Approve final or patch publication**, in the `release` environment; approve only the verified version/source pair. **RCs** publish without this second approval after the same mandatory gate. Outputs are rechecked after approval before alias promotion or publication.
 4. Follow the exact downstream run URLs. For RCs, review and merge docs and samples upmerge PRs, then resume the release. Automation binds the pull request each upmerge run opened and requires it to be merged before running sample tests; both repositories squash-merge, so the source commits never become reachable from `edge`, and a run with nothing to merge is complete. All three successful receipts are required for final preparation and publication; the release build rechecks them during verification and again after publication approval, before any alias moves. Receipts exist only for RCs published with this coordination in place; if the last validated RC predates it, cut another RC before preparing the final. Finals publish docs and samples and run sample tests; patches run sample tests without recutting their release branches.
 
@@ -63,13 +67,13 @@ For a final release, run [Publish Bicep Recipes](https://github.com/radius-proje
 
 ### Resume
 
-Run [Resume Release](https://github.com/radius-project/radius/actions/workflows/resume-release.yaml) from `main` with the failed summary's `version` (including `v`, for example `v0.61.0-rc.1`) and `source-commit`. The source is the release PR squash commit for a first RC, or the generated metadata backport merge commit for an existing channel. Do not substitute the current branch tip.
+Run [Resume Release](https://github.com/radius-project/radius/actions/workflows/resume-release.yaml) from `main` with the failed summary's `version` (including `v`, for example `v0.61.0-rc.1`) and `source-commit`. For a frozen first RC, this means the **resolved signed release commit**, not the frozen product SHA and not a later main tip. If failure occurred before resolution, use the merged metadata PR SHA shown in that summary; replaying it adopts the same immutable source ref once created. For legacy first-RC plans the source remains the PR squash; for subsequent RCs, finals, and patches it remains the metadata backport merge commit.
 
 > **Unknown publisher outcome**: If a dispatch response is lost or returns a server error, the monitor continues looking for its correlated run until its existing timeout and does not send another dispatch in that invocation. Only explicitly rejected rate-limited dispatches are retried automatically. Before resuming an unknown outcome, inspect the publisher runs for the reported `<version>-<source-commit>` identifier and the destination image; wait for an accepted run instead of starting another. A missing run-list result alone does not prove rejection. This also applies after canceling or interrupting the controller. The current protocol does not provide exactly-once publication across separate invocations; that requires publisher-side idempotency.
 
 Resume revalidates the committed plan and source, verifies Deployment Engine against the original output contract, accepts matching tags and locks, reuses active correlated runs, and retries failed jobs in the exact tag-build run. Updated controller tooling does not change the approved platform requirements on resume. The Deployment Engine tag must still point at the commit shown in the same run's validation summary. A full-version Deployment Engine image from another source is a conflict even before its digest is locked; registry errors fail instead of dispatching again. Every resume rejects divergence from the Deployment Engine digest lock on `automation/release-state-<version>` or a lock commit that the release App did not write. Later branch commits are allowed only while the approved source remains reachable. Conflicting tags, plans, branches, or digests stop recovery. Approval rejection does not bypass verification or environment protection. Runs for the same version and source commit queue without canceling the active run, with a maximum of 100 pending attempts.
 
-Use [Approve Release](https://github.com/radius-project/radius/actions/workflows/approve-release.yaml) with the same approved version and source only when the automatic merge event did not start reconciliation. Both gateways dispatch the default-branch controller, and neither accepts a replacement plan. Neither gateway holds release credentials, so running one from another branch cannot change the controller code that uses them. This protects the controller code path, not the credentials: the release and publisher App keys are repository secrets, so any workflow a writer pushes can still read them.
+Use [Approve Release](https://github.com/radius-project/radius/actions/workflows/approve-release.yaml) with the same approved version and source only when the automatic merge event did not start reconciliation. If there is no controller summary, [get the inputs from the merged PRs](#controller-never-started-after-merge). Both gateways dispatch the default-branch controller, and neither accepts a replacement plan. Neither gateway holds release credentials, so running one from another branch cannot change the controller code that uses them. This protects the controller code path, not the credentials: the release and publisher App keys are repository secrets, so any workflow a writer pushes can still read them.
 
 ## Verification
 
@@ -90,6 +94,32 @@ Use [Approve Release](https://github.com/radius-project/radius/actions/workflows
 - Complete the [readiness checks](#confirm-readiness-before-the-first-production-cycle) with this runbook before production use. Local fixtures and draft PRs do not satisfy that rollout gate.
 
 ## Troubleshooting
+
+### Controller never started after merge
+
+Confirm the generated release PR was merged. For an existing channel, its generated metadata backport must also be merged before starting reconciliation. Replace `<release-pr-number>` below with the original release PR number:
+
+```bash
+gh pr view <release-pr-number> --repo radius-project/radius --json state,headRefName,mergeCommit
+```
+
+Check that `state` is `MERGED`, then obtain the inputs:
+
+- **Version:** take the version after `automation/prepare-release-` in `headRefName` and add `v`. For example, `automation/prepare-release-0.62.0-rc.1` gives `v0.62.0-rc.1`.
+- **Source commit for a first RC:** use that PR's full `mergeCommit.oid`. For a frozen first RC that has not started, this is the approved metadata PR commit; the controller resolves the release commit after approval. Do not use the raw product cutoff.
+- **Source commit for an existing channel:** use the generated metadata backport PR's full `mergeCommit.oid`, not the original release PR's squash commit. Replace `<metadata-backport-pr-number>` below with that backport's number, and confirm `state` is `MERGED` and `baseRefName` is the intended `release/X.Y` branch:
+
+  ```bash
+  gh pr view <metadata-backport-pr-number> --repo radius-project/radius --json state,baseRefName,mergeCommit
+  ```
+
+Run Approve Release from `main`, replacing both example inputs with the version and full 40-character source SHA obtained above:
+
+```bash
+gh workflow run approve-release.yaml --repo radius-project/radius --ref main -f version=v0.62.0-rc.1 -f source-commit="<full-40-character-SHA>"
+```
+
+Wait for validation and approve the `release` environment as usual; this command does not bypass either gate. If the controller already started and failed, follow [Resume](#resume) instead. For a frozen first RC, record the resolved release commit from the controller summary for later recovery.
 
 ### Break-glass recovery
 
