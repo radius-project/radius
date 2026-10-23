@@ -250,10 +250,7 @@ func deleteResourceTier(ctx context.Context, client clients.ApplicationsManageme
 		// together.
 		semaphore <- struct{}{}
 
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			defer func() { <-semaphore }()
 
 			// ctx is deliberately not derived from an errgroup: one failure must not cancel the
@@ -262,7 +259,7 @@ func deleteResourceTier(ctx context.Context, client clients.ApplicationsManageme
 			if err != nil && !clients.Is404Error(err) {
 				errs[i] = fmt.Errorf("failed to delete %s: %w", *resource.ID, err)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()

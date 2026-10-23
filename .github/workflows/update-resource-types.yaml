@@ -184,7 +184,7 @@ jobs:
         # the resulting update triggers CI checks. The default GITHUB_TOKEN
         # cannot trigger workflows on pushes it creates.
         id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ secrets.RESOURCE_TYPES_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RESOURCE_TYPES_BOT_PRIVATE_KEY }}
@@ -219,7 +219,7 @@ jobs:
         uses: ./.github/actions/go-mod-download
 
       - name: Setup NodeJS
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
@@ -378,6 +378,7 @@ jobs:
           signoff: true
           sign-commits: true
           title: "chore(resource-types-contrib): updates"
+          labels: pr:standard
           body: |
             Automated refresh of resource type manifests under `deploy/manifest/built-in-providers/` and the kubernetes recipe pack under `deploy/manifest/recipe-packs/`.
 

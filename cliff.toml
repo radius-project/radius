@@ -8,11 +8,15 @@ header = """
 
 All notable changes to Radius are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Radius follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the version policy documented in the [release process](docs/contributing/contributing-releases/README.md).\n
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), with Radius-specific change groups and contributor sections. Radius follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with the version policy documented in the [release process](docs/contributing/contributing-releases/README.md).\n
 """
 body = """
 {%- macro remote_url() -%}
 https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+{%- endmacro -%}
+
+{%- macro profile_link(username) -%}
+[@{{ username }}](https://github.com/{% if username is ending_with("[bot]") %}apps/{{ username | trim_end_matches(pat="[bot]") }}{% else %}{{ username }}{% endif %})
 {%- endmacro -%}
 
 {#- One changelog line per commit. Squash merges end the subject with the pull
@@ -27,7 +31,7 @@ https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 {%- set suffix = " (#" ~ commit.remote.pr_number ~ ")" -%}
 {%- set subject = subject | replace(from=suffix, to="") -%}
 {%- endif -%}
-{{ subject | upper_first | trim }}{% if commit.remote.pr_author or commit.remote.username %} by @{{ commit.remote.pr_author | default(value=commit.remote.username) }}{% endif %}{% if commit.remote.pr_number %} in [#{{ commit.remote.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.remote.pr_number }}){% endif %}
+{{ subject | upper_first | trim }}{% if commit.remote.pr_author or commit.remote.username %} by {{ self::profile_link(username=commit.remote.pr_author | default(value=commit.remote.username)) }}{% endif %}{% if commit.remote.pr_number %} in [#{{ commit.remote.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.remote.pr_number }}){% endif %}
 {%- endmacro -%}
 
 {% if version -%}
@@ -55,18 +59,19 @@ https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 {% endfor %}
 {% endfor %}
 {% if github %}
-{% if github.contributors | length != 0 %}
+{% set contributors = github.contributors | filter(attribute="username") %}
+{% if contributors | length != 0 %}
 ### Contributors
 
-{% for contributor in github.contributors -%}
-- @{{ contributor.username }}{% if contributor.pr_number %} in [#{{ contributor.pr_number }}]({{ self::remote_url() }}/pull/{{ contributor.pr_number }}){% endif %}
-{% endfor %}
+{% for contributor in contributors -%}
+{{ self::profile_link(username=contributor.username) }}{% if not loop.last %}, {% endif %}
+{%- endfor %}
 {% endif %}
-{% if github.contributors | filter(attribute="is_first_time", value=true) | length != 0 %}
+{% if contributors | filter(attribute="is_first_time", value=true) | length != 0 %}
 ### New contributors
 
-{% for contributor in github.contributors | filter(attribute="is_first_time", value=true) -%}
-- @{{ contributor.username }} made their first contribution{% if contributor.pr_number %} in [#{{ contributor.pr_number }}]({{ self::remote_url() }}/pull/{{ contributor.pr_number }}){% endif %}
+{% for contributor in contributors | filter(attribute="is_first_time", value=true) -%}
+- {{ self::profile_link(username=contributor.username) }} made their first contribution{% if contributor.pr_number %} in [#{{ contributor.pr_number }}]({{ self::remote_url() }}/pull/{{ contributor.pr_number }}){% endif %}
 {% endfor %}
 {% endif %}
 {% endif %}
@@ -101,6 +106,8 @@ filter_unconventional = false
 require_conventional = false
 split_commits = false
 commit_parsers = [
+  # Classify unparsed subjects before type-based rules can skip or mislabel them.
+  { field = "conventional", pattern = "^false$", group = "<!-- 6 -->Other changes", default_scope = "other" },
   # Dependabot is configured in .github/dependabot.yml (synced from
   # radius-project/.github) with the `ci` and `chore` prefixes plus `include: scope`,
   # so dependency updates arrive as `ci(deps):` and `chore(deps):`. Match them

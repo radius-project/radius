@@ -1,12 +1,5 @@
-{{/* Parse version and extract major and manor version from Appversion for image tag. */}}
-{{- define "radius.versiontag" }}
-{{- $version := .Chart.AppVersion }}
-{{- /* Tag version will be 'major.minor' unless version is edge, latest, or rc release */}}
-{{- if and (ne $version "edge") (ne $version "latest") (not (contains "rc" $version)) }}
-  {{- $ver := split "." $version }}
-  {{- $version = printf "%s.%s" $ver._0 $ver._1 }}
-{{- end -}}
-{{- print $version }}
+{{- define "radius.versiontag" -}}
+{{- .Chart.AppVersion -}}
 {{- end -}}
 
 {{/* External images retain their independently published latest tag for edge charts. */}}
@@ -146,5 +139,22 @@ Usage (pass the root context):
 {{- if .Values.global.targetCluster.enabled -}}
 - name: RADIUS_TARGET_KUBECONFIG
   value: "{{ .Values.global.targetCluster.mountPath }}/{{ .Values.global.targetCluster.secretKey }}"
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns the authorization mode (off, dryRun, or enforce) derived from global.rbac.
+Fails rendering when dry run is combined with enforcement.
+*/}}
+{{- define "radius.authz.mode" -}}
+{{- $rbac := .Values.global.rbac | default dict -}}
+{{- if and $rbac.enabled $rbac.dryRun -}}
+{{- fail "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run." -}}
+{{- else if $rbac.dryRun -}}
+dryRun
+{{- else if $rbac.enabled -}}
+enforce
+{{- else -}}
+off
 {{- end -}}
 {{- end -}}

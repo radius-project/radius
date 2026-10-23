@@ -59,7 +59,7 @@ func (client *GatewaysClient) BeginCreate(ctx context.Context, rootScope string,
 	}
 }
 
-// Create - Create a GatewayResource
+// create - Create a GatewayResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *GatewaysClient) create(ctx context.Context, rootScope string, gatewayName string, resource GatewayResource, options *GatewaysClientBeginCreateOptions) (*http.Response, error) {
 	var err error
@@ -77,7 +77,7 @@ func (client *GatewaysClient) create(ctx context.Context, rootScope string, gate
 	return httpResp, nil
 }
 
-// createCreateRequest creates the Create request.
+// createCreateRequest creates the create request.
 func (client *GatewaysClient) createCreateRequest(ctx context.Context, rootScope string, gatewayName string, resource GatewayResource, _ *GatewaysClientBeginCreateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
 	if rootScope == "" {
@@ -126,7 +126,7 @@ func (client *GatewaysClient) BeginCreateOrUpdate(ctx context.Context, rootScope
 	}
 }
 
-// CreateOrUpdate - Update a GatewayResource
+// createOrUpdate - Update a GatewayResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *GatewaysClient) createOrUpdate(ctx context.Context, rootScope string, gatewayName string, properties GatewayResource, options *GatewaysClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -144,7 +144,7 @@ func (client *GatewaysClient) createOrUpdate(ctx context.Context, rootScope stri
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *GatewaysClient) createOrUpdateCreateRequest(ctx context.Context, rootScope string, gatewayName string, properties GatewayResource, _ *GatewaysClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
 	if rootScope == "" {
@@ -191,7 +191,7 @@ func (client *GatewaysClient) BeginDelete(ctx context.Context, rootScope string,
 	}
 }
 
-// Delete - Delete a GatewayResource
+// deleteOperation - Delete a GatewayResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *GatewaysClient) deleteOperation(ctx context.Context, rootScope string, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
@@ -209,7 +209,7 @@ func (client *GatewaysClient) deleteOperation(ctx context.Context, rootScope str
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *GatewaysClient) deleteCreateRequest(ctx context.Context, rootScope string, gatewayName string, _ *GatewaysClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/gateways/{gatewayName}"
 	if rootScope == "" {

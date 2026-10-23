@@ -15,15 +15,15 @@ This is the authoritative overview of the Radius test suite. It names every test
 
 Each row is one tier. Run the unit tier on every change; run the higher tiers when your change affects their area.
 
-| Tier                    | Command                                                     | Audience and scope                                                                                                                                                                         | Learn more                                                                                                      |
-|-------------------------|-------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| Unit                    | `make test`                                                 | Every contributor, every PR. Runs the Go unit tests under `./pkg/...` plus the Helm chart unit tests, so it needs the basic prerequisites and Helm.                                        | This page; [first-commit walkthrough](../contributing-code-first-commit/first-commit-05-running-tests/index.md) |
-| Integration             | `make test`                                                 | Contributors changing stateful subsystems. Integration tests live alongside the unit tests under `./pkg/...` and run as part of `make test` (see [Integration tests](#integration-tests)). | [Integration tests](#integration-tests)                                                                         |
-| CLI integration         | `make test-validate-cli`                                    | Contributors changing `rad` CLI commands. Runs `./pkg/cli/cmd/...` and `./cmd/rad/...`.                                                                                                    | [`pkg/cli/cmd/README.md`](../../../../pkg/cli/cmd/README.md)                                                    |
-| Helm chart unit         | `make test-helm`                                            | Contributors changing the Helm chart under `deploy/Chart`.                                                                                                                                 | —                                                                                                               |
-| Bicep validation        | `make test-validate-bicep`                                  | Contributors changing `.bicep` files; validates they compile cleanly.                                                                                                                      | —                                                                                                               |
-| Functional (end-to-end) | `make test-functional-all-noncloud` (and per-group targets) | Contributors validating realistic user scenarios on a real cluster. Deploys applications and asserts on their state.                                                                       | [Running functional tests](./running-functional-tests.md)                                                       |
-| Local iteration         | n/a (build, push, redeploy loop)                            | Contributors iterating quickly on control-plane images against a running cluster.                                                                                                          | [Accelerating local verification](./testing-local.md)                                                           |
+| Tier                    | Command                               | Audience and scope                                                                                                                                                                         | Learn more                                                                                                      |
+|-------------------------|---------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| Unit                    | `make test`                           | Every contributor, every PR. Runs the Go unit tests under `./pkg/...` plus the Helm chart unit tests, so it needs the basic prerequisites and Helm.                                        | This page; [first-commit walkthrough](../contributing-code-first-commit/first-commit-05-running-tests/index.md) |
+| Integration             | `make test`                           | Contributors changing stateful subsystems. Integration tests live alongside the unit tests under `./pkg/...` and run as part of `make test` (see [Integration tests](#integration-tests)). | [Integration tests](#integration-tests)                                                                         |
+| CLI integration         | `make test-validate-cli`              | Contributors changing `rad` CLI commands. Runs `./pkg/cli/cmd/...` and `./cmd/rad/...`.                                                                                                    | [`pkg/cli/cmd/README.md`](../../../../pkg/cli/cmd/README.md)                                                    |
+| Helm chart unit         | `make test-helm`                      | Contributors changing the Helm chart under `deploy/Chart`.                                                                                                                                 | —                                                                                                               |
+| Bicep validation        | `make test-validate-bicep`            | Contributors changing `.bicep` files; validates they compile cleanly.                                                                                                                      | —                                                                                                               |
+| Functional (end-to-end) | `make test-functional-local-noncloud` | Contributors validating realistic user scenarios in isolated local clusters built from their checkout, including groups that need separate clusters.                                       | [Running functional tests](./running-functional-tests.md)                                                       |
+| Local iteration         | n/a (build, push, redeploy loop)      | Contributors iterating quickly on control-plane images against a running cluster.                                                                                                          | [Accelerating local verification](./testing-local.md)                                                           |
 
 ### Unit tests
 
@@ -59,13 +59,15 @@ This runs `./pkg/cli/cmd/...` and `./cmd/rad/...`. See [`pkg/cli/cmd/README.md`]
 
 ### Functional tests
 
-Functional tests (also called end-to-end tests) use Radius to deploy an application to a real hosting environment (Kubernetes) and then assert on its state. They have their own dedicated set of [instructions](./running-functional-tests.md), including prerequisites, the `make test-functional-*` targets, and cleanup modes. The fastest entry point is the non-cloud suite:
+Functional tests (also called end-to-end tests) use Radius to deploy an application to a real hosting environment (Kubernetes) and then assert on its state. They have their own dedicated set of [instructions](./running-functional-tests.md), including prerequisites, the `make test-functional-*` targets, and cleanup modes. The recommended local entry point builds from your checkout, provisions isolated infrastructure, and runs all non-cloud groups:
 
 ```sh
-make test-functional-all-noncloud
+make test-functional-local-noncloud
 ```
 
-The multicluster, database, state-store lifecycle, and upgrade groups have additional setup or isolation requirements. They are documented under [special test groups](./running-functional-tests.md#run-a-special-test-group) and are not all included in the aggregate non-cloud target.
+This runner includes Dynamic RP, multicluster, database, state-store lifecycle, and upgrade tests in separate clusters. To run fewer tests or clean up afterward, follow the [local functional-test guide](./running-functional-tests.md#steps).
+
+For an already configured environment, use `make test-functional-all-noncloud` or a per-group target instead. That existing-environment aggregate excludes groups with additional setup or isolation requirements; see [special test groups](./running-functional-tests.md#run-a-special-test-group).
 
 ### Local-iteration loop
 
@@ -92,6 +94,6 @@ When you are iterating on control-plane images (for example the applications res
 ## Troubleshooting
 
 - **`make test` fails setting up `KUBEBUILDER_ASSETS` / envtest.** The target uses `setup-envtest` (managed as a Go tool via the `tool` directive in `go.mod`) to download Kubernetes test binaries. Ensure you have network access on the first run; the assets are cached under `./bin` afterward.
-- **`make test-helm` cannot find the unittest plugin.** The target installs the `helm-unittest` plugin automatically; if installation is blocked, install it manually with `helm plugin install https://github.com/helm-unittest/helm-unittest.git`.
+- **`make test-helm` cannot find the unittest plugin.** The target installs the `helm-unittest` plugin automatically; if installation is blocked, install it manually with `helm plugin install oci://ghcr.io/helm-unittest/helm-unittest/unittest:1.2.1 --verify=false`.
 - **A unit test needs an external dependency.** It belongs in the functional tier, not in `make test`. Move it so the unit suite keeps running with only the basic prerequisites.
 - **A functional test fails or leaves resources behind.** Follow the [functional test instructions](./running-functional-tests.md), which cover prerequisites, namespaces, and cleanup modes.

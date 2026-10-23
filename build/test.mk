@@ -49,20 +49,74 @@ ENV_SETUP=go tool setup-envtest
 #
 # See: https://github.com/gotestyourself/gotestsum
 GOTEST_OPTS ?=
+GOTESTSUM_JSONFILE_DIR ?=
 # We need the double dash here to separate the 'gotestsum' options from the 'go test' options
-GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
+GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) $(if $(GOTESTSUM_JSONFILE_DIR),--jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller ## Runs unit tests, excluding kubernetes controller tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
+test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check test-authz-kit ## Runs unit tests, excluding kubernetes controller tests
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... ./test/rogue/... $(GOTEST_OPTS)
+
+.PHONY: test-azure-oidc-login
+test-azure-oidc-login: ## Tests cloud CI token request retries and Azure login
+	@node --test ./.github/scripts/azure-oidc-login_test.mjs
 
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh
 
+.PHONY: test-local-functional-runner
+test-local-functional-runner: ## Tests local functional runner safety without infrastructure
+	@bash ./build/scripts/local-functional_test.sh
+
+test: test-local-functional-runner
+
+.PHONY: test-publish-recipes
+test-publish-recipes: ## Tests bounded recipe publishing without a registry
+	@bash ./.github/scripts/publish-recipes_test.sh
+
+test: test-publish-recipes
+
+.PHONY: test-purge-old-images
+test-purge-old-images: ## Tests package cleanup retries without GitHub access
+	@bash ./.github/scripts/purge-old-images_test.sh
+
+.PHONY: test-retry-curl
+test-retry-curl: ## Tests bounded curl downloads without network access
+	@bash ./build/scripts/retry-curl_test.sh
+
+.PHONY: test-retry-helm-pull
+test-retry-helm-pull: ## Tests bounded Helm pulls without registry access
+	@bash ./build/scripts/retry-helm-pull_test.sh
+
+test: test-retry-helm-pull
+
+.PHONY: test-install-bicep
+test-install-bicep: test-retry-curl ## Tests bounded Bicep downloads without network access
+	@bash ./build/scripts/install-bicep_test.sh
+
+test: test-install-bicep
+
+.PHONY: test-git-http-backend
+test-git-http-backend: ## Tests the Flux test Git server install and port-forward without a cluster
+	@bash ./.github/actions/install-git-http-backend/install-git-http-backend_test.sh
+	@bash ./.github/scripts/start-git-http-port-forward_test.sh
+
+test: test-git-http-backend
+
+.PHONY: test-authz-would-deny-check
+test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned log collector
+	@bash ./.github/scripts/authz-would-deny-check_test.sh
+	@python3 ./.github/scripts/run-with-authz-logs_test.py
+
+.PHONY: test-authz-kit
+test-authz-kit: ## Tests the manual authorization test kit in hack/authz (syntax, --help, helpers, workflows)
+	@bash ./hack/authz/kit_test.sh
+
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
 	@bash ./.github/scripts/collect-cluster-diagnostics_test.sh
+	@bash ./.github/scripts/collect-terraform-diagnostics_test.sh
 
 .PHONY: test-release-parity-manifest
 test-release-parity-manifest: ## Tests release parity manifest collection
@@ -77,7 +131,7 @@ test-changelog-range: ## Tests changelog channel boundary resolution
 	@bash ./.github/scripts/changelog-range_test.sh
 
 .PHONY: test-changelog-config
-test-changelog-config: install-git-cliff ## Tests the git-cliff configuration against fixture commits
+test-changelog-config: install-git-cliff install-jq ## Tests the git-cliff configuration against fixture commits
 	@bash ./.github/scripts/changelog-config_test.sh
 
 .PHONY: test-prepare-release
@@ -86,7 +140,7 @@ test-prepare-release: install-git-cliff ## Tests release version, changelog, not
 	@bash ./.github/scripts/verify-deployment-engine-tag_test.sh
 
 .PHONY: test-release-plan
-test-release-plan: ## Tests release plan schema, policy, source, and file validation
+test-release-plan: install-git-cliff ## Tests release plan schema, policy, source, and file validation
 	@bash ./.github/scripts/capture-release-sibling-commits_test.sh
 	@bash ./.github/scripts/validate-release-plan_test.sh
 	@bash ./.github/scripts/validate-release-merge-group_test.sh
@@ -124,13 +178,20 @@ test-capture-release-image-digests: ## Tests production release image digest cap
 .PHONY: test-release-cutover
 test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
 	@bash ./.github/scripts/release-cutover_test.sh
+	@bash ./.github/scripts/goreleaser-snapshot-artifacts_test.sh
 	@bash ./.github/scripts/normalize-release-checksums_test.sh
 	@bash ./.github/scripts/publish-helm-chart_test.sh
-	@node --test ./.github/scripts/ensure-draft-release_test.mjs
-	@node --test ./.github/scripts/release-assets_test.mjs
-	@node --test ./.github/scripts/publish-draft-release_test.mjs
+	@node --test ./.github/scripts/release-reconciliation_test.mjs \
+		./.github/scripts/ensure-draft-release_test.mjs \
+		./.github/scripts/release-assets_test.mjs \
+		./.github/scripts/publish-draft-release_test.mjs
 
 .PHONY: test-release-oci-artifacts
+.PHONY: test-release-publication
+test-release-publication: ## Tests mandatory publication gates, staged installation, coordination, and reporting
+	@node --test ./.github/scripts/verify-release-manifest_test.mjs ./.github/scripts/coordinate-release_test.mjs ./.github/scripts/release-status_test.mjs ./.github/scripts/promote-bicep-types_test.mjs
+	@bash ./.github/scripts/release-verification_test.sh
+
 test-release-oci-artifacts: install-oras ## Tests immutable OCI staging and alias promotion
 	@bash ./.github/scripts/release-oci-artifacts_test.sh
 
@@ -141,10 +202,6 @@ test-release-sboms: ## Tests release SBOM generation and verification wiring
 .PHONY: test-release-tag-and-branch
 test-release-tag-and-branch: ## Tests release tag and branch reconciliation
 	@bash ./.github/scripts/release-create-tag-and-branch_test.sh
-
-.PHONY: test-release-get-version
-test-release-get-version: ## Tests release version selection across repositories
-	@bash ./.github/scripts/release-get-version_test.sh
 
 .PHONY: test-release-version-format
 test-release-version-format: ## Tests release SemVer validation and tag parsing
@@ -159,6 +216,18 @@ test-workflow-changes: ## Tests reusable workflow change detection
 	@node --test ./.github/scripts/changes_test.mjs
 
 test: test-workflow-changes
+
+.PHONY: test-docker-push
+test-docker-push: ## Tests image push recovery without Docker or a registry
+	@bash ./build/scripts/docker-push_test.sh
+
+test: test-docker-push
+
+.PHONY: test-docker-build
+test-docker-build: ## Tests image architecture selection without Docker
+	@bash ./build/scripts/docker-build_test.sh
+
+test: test-docker-build
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
@@ -181,7 +250,18 @@ test-functional-all: test-functional-ucp test-functional-kubernetes test-functio
 
 .PHONY: test-functional-all-noncloud
 # Run all functional tests that do not require cloud resources
-test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud ## Runs all functional tests that do not require cloud resources
+test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud test-functional-authz-noncloud ## Runs all functional tests that do not require cloud resources
+
+.PHONY: test-functional-local-noncloud
+test-functional-local-noncloud: ## Builds and installs Radius locally, then runs standard and isolated non-cloud tests on Linux or macOS
+	bash build/scripts/local-functional.sh all
+
+.PHONY: test-functional-local-noncloud-cleanup
+test-functional-local-noncloud-cleanup: ## Removes local functional test infrastructure while retaining diagnostics
+	bash build/scripts/local-functional.sh cleanup
+
+.PHONY: test-functional-noncloud-cleanup
+test-functional-noncloud-cleanup: test-functional-local-noncloud-cleanup ## Alias for local non-cloud functional test cleanup
 
 .PHONY: test-functional-all-cloud
 # Run all functional tests that require cloud resources
@@ -193,6 +273,19 @@ test-functional-ucp: test-functional-ucp-noncloud test-functional-ucp-cloud ## R
 .PHONY: test-functional-ucp-noncloud
 test-functional-ucp-noncloud: ## Runs UCP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
+.PHONY: test-functional-authz-noncloud
+test-functional-authz-noncloud: ## Runs internal component authorization functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/authz/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
+# Optional overrides for authz-would-deny-check. AUTHZ_WOULD_DENY_ARGS passes extra script arguments,
+# for example AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/authz-logs".
+AUTHZ_NAMESPACE ?= radius-system
+AUTHZ_WOULD_DENY_ARGS ?=
+
+.PHONY: authz-would-deny-check
+authz-would-deny-check: ## Fails if a Radius pod in the current kube context logged an authorization dry-run would-deny line
+	@bash ./.github/scripts/authz-would-deny-check.sh --require-dry-run --namespace "$(AUTHZ_NAMESPACE)" $(AUTHZ_WOULD_DENY_ARGS)
 
 .PHONY: test-functional-ucp-cloud
 test-functional-ucp-cloud: ## Runs UCP functional tests that require cloud resources
@@ -299,15 +392,9 @@ test-validate-bicep: ## Validates that all .bicep files compile cleanly
 .PHONY: test-helm
 test-helm: ## Runs Helm chart unit tests
 	@echo "$(ARROW) Installing helm-unittest plugin if not already installed..."
-	@helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.1.1 --verify=false
+	@helm plugin list | grep -q unittest || helm plugin install oci://ghcr.io/helm-unittest/helm-unittest/unittest:1.2.1 --verify=false
 	@echo "$(ARROW) Running Helm unit tests..."
 	cd deploy/Chart && helm unittest .
-
-# TODO re-enable https://github.com/radius-project/radius/issues/5091
-.PHONY: test-ucp-spec-examples
-test-ucp-spec-examples: generate-tsp-installed ## Validates UCP examples conform to UCP OpenAPI Spec
-	# @echo "$(ARROW) Testing x-ms-examples conform to ucp spec..."
-	# pnpm -C typespec exec oav validate-example ../swagger/specification/ucp/resource-manager/UCP/preview/2023-10-01-preview/openapi.json
 
 .PHONY: test-deploy-lrt-cluster
 test-deploy-aks-cluster: ## Deploys an AKS cluster to Azure for the long-running tests. Optional parameters: [TEST_AKS_AZURE_LOCATION=<location>] [TEST_AKS_RG=<resource group name>]

@@ -53,11 +53,40 @@ apply_workload() {
   envsubst '${NAMESPACE} ${IMAGE} ${SERVER_TEMP_DIR}' <"$1" | kubectl apply -f -
 }
 
+# Wait for pods from replaced ReplicaSets to be fully deleted. `rollout status`
+# returns while they are still Terminating, and `kubectl port-forward svc/...`
+# can pin to one of them and exit once it is gone.
+wait_for_terminating_pods() {
+  local namespace=$1
+  local output
+  local -a terminating
+
+  output=$(kubectl -n "$namespace" get pods -l app=git-http-backend \
+    -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}pod/{.metadata.name}{" "}{end}')
+  read -r -a terminating <<<"$output"
+  if ((${#terminating[@]} > 0)); then
+    kubectl -n "$namespace" wait --for=delete --timeout=120s "${terminating[@]}"
+  fi
+}
+
+# Assign separately so `set -e` stops on lookup errors. --ignore-not-found
+# already returns empty output when the Deployment is absent.
+existing_deployment=$(kubectl -n "$NAMESPACE" get deployment git-http-backend --ignore-not-found -o name)
+deployment_existed=false
+if [[ -n "$existing_deployment" ]]; then
+  deployment_existed=true
+fi
+
 ensure_namespace "$NAMESPACE"
 apply_basic_auth_secret "$NAMESPACE" "$GIT_USERNAME" "$GIT_PASSWORD"
 apply_configmap "$NAMESPACE" "$ENTRYPOINT_FILE" "$NGINX_TEMPLATE" "$WRAPPER_FILE"
 apply_workload "$MANIFEST_TEMPLATE"
 
-kubectl rollout restart deployment/git-http-backend -n "$NAMESPACE" >/dev/null 2>&1 || true
+# ConfigMap and Secret changes do not change the pod template, so restart an
+# existing Deployment to pick them up. A new Deployment already has them.
+if [[ "$deployment_existed" == true ]]; then
+  kubectl rollout restart deployment/git-http-backend -n "$NAMESPACE"
+fi
 
 kubectl rollout status deployment/git-http-backend -n "$NAMESPACE" --timeout=240s
+wait_for_terminating_pods "$NAMESPACE"

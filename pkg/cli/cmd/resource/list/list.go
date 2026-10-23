@@ -40,41 +40,31 @@ import (
 )
 
 // NewCommand creates a new Cobra command and a Runner to list resources of a specified type, or all resources
-// regardless of type, in an application or the default environment. It adds flags for application name,
+// regardless of type, in a Radius.Core application or environment. It adds flags for application name,
 // environment name, resource group, output and workspace.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
-	return newCommand(factory, false)
-}
-
-// NewPreviewCommand creates the preview `rad resource list` command.
-func NewPreviewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
-	return newCommand(factory, true)
-}
-
-func newCommand(factory framework.Factory, preview bool) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
-	runner.Preview = preview
 
 	cmd := &cobra.Command{
 		Use:   "list [resourceType]",
 		Short: "Lists resources",
-		Long:  "List all resources of a specified type. If no resource type is given, lists all resources of any type in an environment or application.",
+		Long: `List all resources of a specified type. If no resource type is given, lists all resources of any type in an environment or application.
+
+Applications and environments given with '-a/--application' and '-e/--environment' are Radius.Core/applications and Radius.Core/environments resources.
+A resource type with no application or environment lists every resource of that type in the resource group, including Applications.* resource types.`,
 		Example: `
-sample list of resourceType: Applications.Core/containers, Applications.Core/gateways, Applications.Dapr/daprPubSubBrokers, Applications.Core/extenders, Applications.Datastores/mongoDatabases, Applications.Messaging/rabbitMQMessageQueues, Applications.Datastores/redisCaches, Applications.Datastores/sqlDatabases, Applications.Dapr/daprStateStores, Applications.Dapr/daprSecretStores
-
-# list all resources of a specified type in the default environment
-
-rad resource list Applications.Core/containers
-rad resource list Applications.Core/gateways
+# list all resources of a specified type in the resource group
+rad resource list Radius.Compute/containers
+rad resource list Radius.Data/redisCaches
 
 # list all resources of a specified type in an application
-rad resource list Applications.Core/containers --application icecream-store
+rad resource list Radius.Compute/containers --application icecream-store
 
 # list all resources of a specified type in an application (shorthand flag)
-rad resource list Applications.Core/containers -a icecream-store
+rad resource list Radius.Compute/containers -a icecream-store
 
 # list all resources of a specified type in a specified environment
-rad resource list Applications.Core/containers -e not-default-env
+rad resource list Radius.Compute/containers -e not-default-env
 
 # list all resources of any type in the default environment
 rad resource list
@@ -84,10 +74,6 @@ rad resource list -e not-default-env
 
 # list all resources of any type in an application
 rad resource list -a icecream-store
-
-# list preview resources in a Radius.Core environment or application
-rad resource list -e not-default-env --preview
-rad resource list -a icecream-store --preview
 `,
 		Args: cobra.MaximumNArgs(1),
 		RunE: framework.RunCommand(runner),
@@ -114,7 +100,6 @@ type Runner struct {
 	ApplicationID             string
 	EnvironmentNameOrID       string
 	Format                    string
-	Preview                   bool
 	ResourceType              string
 	ResourceTypeSuffix        string
 	ResourceProviderNamespace string
@@ -162,8 +147,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return clierrors.Message("The '-e/--environment' flag cannot be combined with '-a/--application'. An application belongs to a single environment.")
 	}
 
-	if r.Preview && r.ApplicationName != "" {
-		err = r.resolvePreviewApplication()
+	if r.ApplicationName != "" {
+		err = r.resolveApplication()
 		if err != nil {
 			return err
 		}
@@ -219,9 +204,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		if r.ApplicationName == "" {
 			resourceList, err = client.ListResourcesInEnvironment(ctx, r.EnvironmentNameOrID)
 		} else {
-			err = r.requireApplicationExists(ctx, client)
+			err = r.requireApplicationExists(ctx)
 			if err == nil {
-				resourceList, err = client.ListResourcesInApplication(ctx, r.applicationNameOrID())
+				resourceList, err = client.ListResourcesInApplication(ctx, r.ApplicationID)
 			}
 		}
 	} else {
@@ -246,9 +231,9 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		switch {
 		case r.ApplicationName != "":
-			err = r.requireApplicationExists(ctx, client)
+			err = r.requireApplicationExists(ctx)
 			if err == nil {
-				resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.applicationNameOrID(), r.ResourceType)
+				resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationID, r.ResourceType)
 			}
 		case r.EnvironmentNameOrID != "":
 			resourceList, err = client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentNameOrID, r.ResourceType)
@@ -264,42 +249,30 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 // requireApplicationExists returns a user-facing error if r.ApplicationName does not exist in the workspace.
-func (r *Runner) requireApplicationExists(ctx context.Context, client clients.ApplicationsManagementClient) error {
-	if r.Preview {
-		if r.RadiusCoreClientFactory == nil {
-			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
-			if err != nil {
-				return err
-			}
-			r.RadiusCoreClientFactory = clientFactory
+func (r *Runner) requireApplicationExists(ctx context.Context) error {
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return err
 		}
-
-		_, err := r.RadiusCoreClientFactory.NewApplicationsClient().Get(ctx, r.Workspace.Scope, r.ApplicationName, nil)
-		if clients.Is404Error(err) {
-			return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
-		}
-		return err
+		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	_, err := client.GetApplication(ctx, r.ApplicationName)
+	_, err := r.RadiusCoreClientFactory.NewApplicationsClient().Get(ctx, r.Workspace.Scope, r.ApplicationName, nil)
 	if clients.Is404Error(err) {
 		return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
 	}
 	return err
 }
 
-func (r *Runner) requireEnvironmentNameOrID(cmd *cobra.Command, args []string) (string, error) {
-	if !r.Preview {
-		return cli.RequireEnvironmentName(cmd, args, *r.Workspace)
-	}
-
-	environmentNameOrID, err := cli.RequireEnvironmentNameOrID(cmd, args, *r.Workspace)
+func (r *Runner) requireEnvironmentNameOrID(command *cobra.Command, args []string) (string, error) {
+	environmentNameOrID, err := cli.RequireEnvironmentNameOrID(command, args, *r.Workspace)
 	if err != nil {
 		return "", err
 	}
 
 	if !strings.HasPrefix(environmentNameOrID, resources.SegmentSeparator) {
-		return resourceID(r.Workspace.Scope, datamodel.EnvironmentResourceType_v20250801preview, environmentNameOrID), nil
+		return cmd.EnvironmentID(r.Workspace.Scope, environmentNameOrID), nil
 	}
 
 	environmentID, err := resources.ParseResource(environmentNameOrID)
@@ -307,7 +280,7 @@ func (r *Runner) requireEnvironmentNameOrID(cmd *cobra.Command, args []string) (
 		return "", err
 	}
 	if !strings.EqualFold(environmentID.Type(), datamodel.EnvironmentResourceType_v20250801preview) {
-		return "", clierrors.Message("The environment ID %q must reference a %s resource when preview mode is enabled.", environmentNameOrID, datamodel.EnvironmentResourceType_v20250801preview)
+		return "", clierrors.Message("The environment ID %q must reference a %s resource. Pass '-e/--environment' with a %s environment, or run 'rad env switch' to change the workspace default environment.", environmentNameOrID, datamodel.EnvironmentResourceType_v20250801preview, datamodel.EnvironmentResourceType_v20250801preview)
 	}
 	if err := r.requireWorkspaceScope(environmentID); err != nil {
 		return "", err
@@ -316,9 +289,9 @@ func (r *Runner) requireEnvironmentNameOrID(cmd *cobra.Command, args []string) (
 	return environmentID.String(), nil
 }
 
-func (r *Runner) resolvePreviewApplication() error {
+func (r *Runner) resolveApplication() error {
 	if !strings.HasPrefix(r.ApplicationName, resources.SegmentSeparator) {
-		r.ApplicationID = resourceID(r.Workspace.Scope, datamodel.ApplicationResourceType_v20250801preview, r.ApplicationName)
+		r.ApplicationID = cmd.ApplicationID(r.Workspace.Scope, r.ApplicationName)
 		return nil
 	}
 
@@ -327,7 +300,7 @@ func (r *Runner) resolvePreviewApplication() error {
 		return err
 	}
 	if !strings.EqualFold(applicationID.Type(), datamodel.ApplicationResourceType_v20250801preview) {
-		return clierrors.Message("The application ID %q must reference a %s resource when preview mode is enabled.", r.ApplicationName, datamodel.ApplicationResourceType_v20250801preview)
+		return clierrors.Message("The application ID %q must reference a %s resource.", r.ApplicationName, datamodel.ApplicationResourceType_v20250801preview)
 	}
 	if err := r.requireWorkspaceScope(applicationID); err != nil {
 		return err
@@ -346,15 +319,4 @@ func (r *Runner) requireWorkspaceScope(id resources.ID) error {
 	}
 
 	return clierrors.Message("The resource ID %q is in scope %q, but workspace %q is scoped to %q. Switch to a workspace with a matching scope to list its resources.", id.String(), id.RootScope(), r.Workspace.Name, r.Workspace.Scope)
-}
-
-func (r *Runner) applicationNameOrID() string {
-	if r.Preview {
-		return r.ApplicationID
-	}
-	return r.ApplicationName
-}
-
-func resourceID(scope string, resourceType string, name string) string {
-	return scope + "/providers/" + resourceType + "/" + name
 }

@@ -38,6 +38,8 @@
 #   DIAGNOSTICS_SINCE_TIME     UTC RFC3339 start time; otherwise read the window
 #                              saved by run-with-cluster-diagnostics.sh.
 #   DIAGNOSTICS_COLLECTION_SECONDS Container log sweep budget (default: 120).
+#   DIAGNOSTICS_TERRAFORM      Set to true for a bounded, selected Terraform
+#                              diagnostic summary in stdout and an artifact.
 # Requires kubectl; optional container collection also requires jq and timeout
 # (GNU coreutils). It has a 120-second budget and a 100 MiB log budget.
 # ============================================================================
@@ -61,7 +63,8 @@ capture() {
 
     {
         echo "=== ${description} ==="
-        if [[ -n "${LOG_NAMESPACES}" ]] &&
+        if [[ -n "${LOG_NAMESPACES}" ||
+            "${DIAGNOSTICS_TERRAFORM:-false}" == true ]] &&
             command -v timeout >/dev/null 2>&1; then
             timeout --kill-after=2s 15s "$@" 2>&1 \
                 || echo "FAILED: ${description} (exit $?)"
@@ -210,6 +213,16 @@ collect_container_logs() {
 }
 
 mkdir -p "${OUTPUT_DIR}"
+
+if [[ "${DIAGNOSTICS_TERRAFORM:-false}" == true ]]; then
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    {
+        echo "=== Terraform failure diagnostics ==="
+        timeout --kill-after=2s 120s bash \
+            "${script_dir}/collect-terraform-diagnostics.sh" \
+            || echo "FAILED: Terraform diagnostics (exit $?)"
+    } 2>&1 | tee "${OUTPUT_DIR}/${DIAGNOSTICS_NAME}-terraform-diagnostics.log"
+fi
 
 # Collect logs before the potentially slow cluster-wide descriptions. Legacy
 # callers retain their existing snapshot behavior unless namespaces are set.

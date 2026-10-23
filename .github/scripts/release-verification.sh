@@ -22,36 +22,123 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 # shellcheck source=.github/scripts/release-version.sh
 source "${SCRIPT_DIR}/release-version.sh"
+# shellcheck source=build/scripts/retry-curl.sh
+source "${SCRIPT_DIR}/../../build/scripts/retry-curl.sh"
+# shellcheck source=build/scripts/retry-helm-pull.sh
+source "${SCRIPT_DIR}/../../build/scripts/retry-helm-pull.sh"
 
 # Configuration
 readonly NAMESPACE="radius-system"
 readonly GITHUB_ORG="radius-project"
 readonly GITHUB_REPO="radius"
+readonly CHART_REFERENCE="oci://ghcr.io/${GITHUB_ORG}/helm-chart/radius"
+readonly CHART_IMAGE_PATTERN='ghcr\.io/radius-project/(applications-rp|bicep|controller|dashboard|deployment-engine|dynamic-rp|pre-upgrade|ucpd):[^"[:space:]]+'
 
 # Parse arguments: version [os] [arch]
 RELEASE_VERSION_NUMBER="${1:-}"
 OS="${2:-linux}"
 ARCH="${3:-amd64}"
+CLI_PATH="${RELEASE_VERIFY_CLI:-}"
+CHART_PATH="${RELEASE_VERIFY_CHART:-./deploy/Chart}"
+MANIFEST_FILE="${RELEASE_VERIFY_MANIFEST:-}"
+DIAGNOSTICS_FILE="${RELEASE_VERIFY_DIAGNOSTICS:-${RELEASE_VERIFY_DIR:-${SCRIPT_DIR}/../../dist/verification}/installation-diagnostics.json}"
+if [[ -n "${MANIFEST_FILE}" && -z "${RELEASE_VERIFY_DIAGNOSTICS:-}" ]]; then
+    DIAGNOSTICS_FILE="$(dirname "${MANIFEST_FILE}")/installation-diagnostics.json"
+fi
+TEMP_DIR=""
+CLUSTER_NAME="radius-verification-$$"
+CLUSTER_CREATED=false
+VERIFICATION_STAGE="prerequisites"
+RAD_VERSION_JSON="null"
+INSTALL_ARGS=(install kubernetes --skip-contour-install)
+
+collect_installation_diagnostics() {
+    local exit_code="$1" helm_version="" rad_version="null"
+    local helm_status="collected" secret_status="collected"
+    if ! helm_version="$(helm version --short)"; then
+        helm_status="unavailable"
+        echo "Warning: Could not collect the Helm version." >&2
+    fi
+    if ! rad_version="$(jq -c 'if type == "object" then {version, release} else null end' <<< "${RAD_VERSION_JSON}")"; then
+        rad_version="null"
+        echo "Warning: Could not parse the CLI version for diagnostics." >&2
+    fi
+    # Filter in the pipe: never write Secret data or last-applied annotations.
+    if ! kubectl get secret radius-encryption-key --namespace "${NAMESPACE}" \
+        --ignore-not-found --show-managed-fields --request-timeout=10s -o json \
+        | jq -s '
+            if length == 0 then null else .[0] | {
+                apiVersion, kind,
+                metadata: (.metadata | {
+                    name, namespace, uid, resourceVersion, creationTimestamp,
+                    annotations: ((.annotations // {}) | with_entries(select(
+                        .key == "radius.dev/last-rotation" or
+                        .key == "meta.helm.sh/release-name" or
+                        .key == "meta.helm.sh/release-namespace"
+                    ))),
+                    managedFields: [.managedFields[]? | {
+                        manager, operation, apiVersion, time,
+                        ownsKeyData: (.fieldsV1["f:data"]["f:keys.json"] != null),
+                        ownsLastRotation: (.fieldsV1["f:metadata"]["f:annotations"]["f:radius.dev/last-rotation"] != null)
+                    }]
+                })
+            } end
+        ' > "${TEMP_DIR}/encryption-secret-metadata.json"; then
+        secret_status="unavailable"
+        echo "Warning: Could not collect encryption Secret metadata." >&2
+        printf 'null\n' > "${TEMP_DIR}/encryption-secret-metadata.json" || return
+    fi
+    jq -n --arg stage "${VERIFICATION_STAGE}" --argjson exitCode "${exit_code}" \
+        --arg helm "${helm_version}" --argjson rad "${rad_version}" \
+        --arg helmStatus "${helm_status}" --arg secretStatus "${secret_status}" \
+        --slurpfile secret "${TEMP_DIR}/encryption-secret-metadata.json" '
+        {stage:$stage, exitCode:$exitCode, versions:{rad:$rad,helm:$helm},
+         encryptionSecret:$secret[0],
+         collection:{helmVersion:$helmStatus,encryptionSecret:$secretStatus}}
+    ' > "${TEMP_DIR}/installation-diagnostics.json" || return
+    mkdir -p "$(dirname "${DIAGNOSTICS_FILE}")" || return
+    mv "${TEMP_DIR}/installation-diagnostics.json" "${DIAGNOSTICS_FILE}" || return
+    echo "Installation diagnostics: ${DIAGNOSTICS_FILE}" >&2
+}
 
 # Cleanup function to remove temporary files and cluster
 cleanup() {
-    if [[ -f "./rad" ]]; then
-        echo "Deleting downloaded ./rad binary..."
-        rm -f ./rad
+    local exit_code="$?"
+    trap - EXIT
+    if ((exit_code != 0)) && [[ -n "${TEMP_DIR}" ]]; then
+        if [[ -n "${MANIFEST_FILE}" && -f "${MANIFEST_FILE}" ]]; then
+            if ! { jq '.checks.installation = "failed"' "${MANIFEST_FILE}" \
+                > "${TEMP_DIR}/failed.json" \
+                && mv "${TEMP_DIR}/failed.json" "${MANIFEST_FILE}"; }; then
+                echo "Warning: Could not record installation failure in the manifest." >&2
+            fi
+        fi
+        if [[ "${CLUSTER_CREATED}" == "true" ]]; then
+            if ! collect_installation_diagnostics "${exit_code}"; then
+                echo "Warning: Could not retain installation diagnostics." >&2
+            fi
+        fi
     fi
-    if kind get clusters 2>/dev/null | grep -q "kind"; then
-        echo "Deleting kind cluster..."
-        kind delete cluster || true
+    if [[ "${CLUSTER_CREATED}" == "true" ]]; then
+        if ! kind delete cluster --name "${CLUSTER_NAME}"; then
+            echo "Warning: Could not delete verification cluster ${CLUSTER_NAME}." >&2
+        fi
     fi
+    if [[ -n "${TEMP_DIR}" ]]; then
+        if ! rm -rf "${TEMP_DIR}"; then
+            echo "Warning: Could not remove verification temporary files." >&2
+        fi
+    fi
+    exit "${exit_code}"
 }
 
 # Set up cleanup trap
-trap cleanup EXIT ERR
+trap cleanup EXIT
 
 # Validates prerequisites and environment
 validate_prerequisites() {
     # Check for required commands
-    local required_commands=("kubectl" "kind" "curl" "jq")
+    local required_commands=("kubectl" "kind" "curl" "jq" "helm")
     for cmd in "${required_commands[@]}"; do
         if ! command -v "$cmd" &> /dev/null; then
             echo "Error: Required command '$cmd' is not installed or not in PATH" >&2
@@ -68,12 +155,12 @@ get_pod_base_image() {
     pod_name=$(kubectl get pods --no-headers -n "$NAMESPACE" -o custom-columns=":metadata.name" \
         | grep "^${pod_prefix}" \
         | head -n 1)
-    
+
     if [[ -z "$pod_name" ]]; then
         echo "Error: No pod found with prefix '$pod_prefix' in namespace '$NAMESPACE'" >&2
         return 1
     fi
-    
+
     kubectl get pod -n "$NAMESPACE" "$pod_name" -o jsonpath="{.spec.containers[*].image}"
 }
 
@@ -83,15 +170,15 @@ verify_pod_image() {
     local pod_prefix="$1"
     local expected_image="$2"
     local component_name="$3"
-    
+
     local actual_image
     actual_image=$(get_pod_base_image "$pod_prefix")
-    
+
     if [[ "$actual_image" != "$expected_image" ]]; then
         echo "Error: $component_name image: $actual_image does not match the desired image: $expected_image." >&2
         exit 1
     fi
-    
+
     echo "$component_name image verified: $actual_image"
 }
 
@@ -100,17 +187,17 @@ verify_pod_image() {
 # This verification checks the container image used in the pre-upgrade job.
 verify_pre_upgrade_image() {
     local expected_image="$1"
-    
-    # expect error - ignore and continue. We only want to trigger the pre-upgrade container to run as a job so that we 
-    # can verify the container image used in the job.
-    helm upgrade radius ./deploy/Chart \
-        --namespace radius-system \
-        --set global.imageTag="${EXPECTED_TAG_VERSION}" \
+
+    # Staged installs reuse pinned digests; public installs keep the exact chart's defaults.
+    VERIFICATION_STAGE="helm-upgrade"
+    helm upgrade radius "${CHART_PATH}" --namespace radius-system --reuse-values \
         --set preupgrade.enabled=true \
+        --set preupgrade.checks.version=false \
         --set preupgrade.targetVersion="${EXPECTED_CLI_VERSION}" \
-        --wait 2>/dev/null || true
+        --wait --timeout 5m
 
     # Extract the "image" field from the pre-upgrade job
+    VERIFICATION_STAGE="pre-upgrade-image"
     PRE_UPGRADE_IMAGE=$(kubectl get job pre-upgrade -n radius-system -o json | jq -r '.spec.template.spec.containers[0].image')
 
     if [[ "$PRE_UPGRADE_IMAGE" != "$expected_image" ]]; then
@@ -119,6 +206,24 @@ verify_pre_upgrade_image() {
     else
         echo "Pre-upgrade image verified: $PRE_UPGRADE_IMAGE"
     fi
+}
+
+# Expects the image tag that the exact public chart renders. Charts published
+# before full-version image tags render major.minor tags for final releases.
+set_public_image_tag() {
+    local rendered tags legacy_tag="${RELEASE_VERSION_NUMBER}"
+    if [[ "${RELEASE_VERSION_NUMBER}" != *-* ]]; then
+        legacy_tag="${RELEASE_VERSION_NUMBER%.*}"
+    fi
+    rendered="$(helm template radius "${CHART_PATH}" --namespace "${NAMESPACE}" \
+        --set preupgrade.enabled=true)"
+    tags="$(grep -oE "${CHART_IMAGE_PATTERN}" <<< "${rendered}" | sed 's/.*://' | sort -u || true)"
+    if [[ "${tags}" != "${RELEASE_VERSION_NUMBER}" && "${tags}" != "${legacy_tag}" ]]; then
+        echo "Error: Chart image tags [$(paste -sd , - <<< "${tags}")] do not match release ${RELEASE_VERSION_NUMBER}." >&2
+        exit 1
+    fi
+    EXPECTED_TAG_VERSION="${tags}"
+    echo "EXPECTED_TAG_VERSION: ${EXPECTED_TAG_VERSION}"
 }
 
 if [[ -z "$RELEASE_VERSION_NUMBER" ]]; then
@@ -141,6 +246,10 @@ if ! is_radius_release_version "${RELEASE_VERSION_NUMBER}"; then
 fi
 
 validate_prerequisites
+TEMP_DIR="$(mktemp -d)"
+export KUBECONFIG="${TEMP_DIR}/kubeconfig"
+rm -f "${DIAGNOSTICS_FILE}"
+VERIFICATION_STAGE="assets"
 
 readonly RADIUS_CLI_ARTIFACT="rad_${OS}_${ARCH}"
 readonly DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
@@ -149,28 +258,58 @@ readonly DOWNLOAD_URL="${DOWNLOAD_BASE}/v${RELEASE_VERSION_NUMBER}/${RADIUS_CLI_
 # EXPECTED_CLI_VERSION is the same as the RELEASE_VERSION_NUMBER
 EXPECTED_CLI_VERSION=$RELEASE_VERSION_NUMBER
 
-EXPECTED_TAG_VERSION="$RELEASE_VERSION_NUMBER"
-# if RELEASE_VERSION_NUMBER contains -rc, then it is a prerelease.
-# In that case, we need to set expected tag version to the major.minor of the
-# release version number
-if [[ "$RELEASE_VERSION_NUMBER" != *"rc"* ]]; then
-    EXPECTED_TAG_VERSION=$(echo "$RELEASE_VERSION_NUMBER" | cut -d '.' -f 1,2)
-fi
-
 echo "RELEASE_VERSION_NUMBER: ${RELEASE_VERSION_NUMBER}"
 echo "OS: ${OS}"
 echo "ARCH: ${ARCH}"
 echo "EXPECTED_CLI_VERSION: ${EXPECTED_CLI_VERSION}"
-echo "EXPECTED_TAG_VERSION: ${EXPECTED_TAG_VERSION}"
 
-echo "Downloading ${DOWNLOAD_URL}"
-if ! curl -sSL "${DOWNLOAD_URL}" -o rad; then
-    echo "Error: Failed to download rad CLI from ${DOWNLOAD_URL}" >&2
+if [[ -z "${CLI_PATH}" ]]; then
+    CLI_PATH="${TEMP_DIR}/rad"
+    retry_curl -o "${CLI_PATH}" "${DOWNLOAD_URL}"
+    # Without --chart, rad installs the newest patch chart in the CLI's channel.
+    retry_helm_pull "${CHART_REFERENCE}" \
+        --version "${RELEASE_VERSION_NUMBER}" \
+        --destination "${TEMP_DIR}"
+    CHART_PATH="${TEMP_DIR}/radius-${RELEASE_VERSION_NUMBER}.tgz"
+    INSTALL_ARGS+=(--chart "${CHART_PATH}")
+    set_public_image_tag
+elif [[ -z "${MANIFEST_FILE}" || ! -f "${CHART_PATH}" ]]; then
+    echo "Staged installation requires a manifest and downloaded chart." >&2
     exit 1
 fi
-chmod +x ./rad
+if [[ -n "${MANIFEST_FILE}" ]]; then
+    jq '.checks.installation = "pending"' "${MANIFEST_FILE}" \
+        > "${TEMP_DIR}/pending.json"
+    mv "${TEMP_DIR}/pending.json" "${MANIFEST_FILE}"
+    binary_digest="$(sha256sum "${CLI_PATH}" | cut -d ' ' -f 1)"
+    jq -e --arg tag "v${RELEASE_VERSION_NUMBER}" \
+        --arg name "${RADIUS_CLI_ARTIFACT}" --arg digest "${binary_digest}" '
+        .tag == $tag and
+        ([.checks | to_entries[] | select(.key != "installation") |
+          .value] | all(. == "verified")) and
+        any(.observed.cli.assets[]; .name == $name and .sha256 == $digest)
+    ' "${MANIFEST_FILE}" > /dev/null
+    chart_digest="sha256:$(sha256sum "${CHART_PATH}" | cut -d ' ' -f 1)"
+    jq -e --arg digest "${chart_digest}" '
+        [.observed.helm.manifest.layers[] |
+         select(.mediaType == "application/vnd.cncf.helm.chart.content.v1.tar+gzip") |
+         .digest] == [$digest]
+    ' "${MANIFEST_FILE}" > /dev/null
+    INSTALL_ARGS+=(--chart "${CHART_PATH}")
+    for component in rp:applications-rp controller:controller ucp:ucpd \
+        dynamicrp:dynamic-rp de:deployment-engine dashboard:dashboard \
+        bicep:bicep preupgrade:pre-upgrade; do
+        image="$(jq -er --arg name "${component#*:}" '
+            .observed.images[] | select(.name == $name) |
+            .reference + "@" + .digest
+        ' "${MANIFEST_FILE}")"
+        INSTALL_ARGS+=(--set "${component%%:*}.image=${image}")
+    done
+fi
+chmod +x "${CLI_PATH}"
 
-RAD_VERSION_JSON=$(./rad version --cli -o json)
+VERIFICATION_STAGE="cli-version"
+RAD_VERSION_JSON=$("${CLI_PATH}" version --cli -o json)
 echo "rad version output: $RAD_VERSION_JSON"
 
 RELEASE_FROM_RAD_VERSION=$(echo "$RAD_VERSION_JSON" | jq -r '.release')
@@ -187,34 +326,55 @@ if [[ "${VERSION_FROM_RAD_VERSION}" != "v${EXPECTED_CLI_VERSION}" ]]; then
 fi
 
 echo "Creating kind cluster..."
-if ! kind create cluster; then
+VERIFICATION_STAGE="cluster"
+CLUSTER_CREATED=true
+if ! kind create cluster --name "${CLUSTER_NAME}" \
+    --kubeconfig "${KUBECONFIG}" --wait 120s; then
     echo "Error: Failed to create kind cluster" >&2
     exit 1
 fi
 
 echo "Installing Radius..."
-if ! ./rad install kubernetes --skip-contour-install; then
+VERIFICATION_STAGE="install"
+if ! "${CLI_PATH}" "${INSTALL_ARGS[@]}"; then
     echo "Error: Failed to install Radius" >&2
     exit 1
 fi
+VERIFICATION_STAGE="deployment-readiness"
+kubectl wait --for=condition=Available deployment --all \
+    --namespace "${NAMESPACE}" --timeout=300s
 
-EXPECTED_APPCORE_RP_IMAGE="ghcr.io/radius-project/applications-rp:${EXPECTED_TAG_VERSION}"
-EXPECTED_DE_IMAGE="ghcr.io/radius-project/deployment-engine:${EXPECTED_TAG_VERSION}"
-EXPECTED_CONTROLLER_IMAGE="ghcr.io/radius-project/controller:${EXPECTED_TAG_VERSION}"
-EXPECTED_DASHBOARD_IMAGE="ghcr.io/radius-project/dashboard:${EXPECTED_TAG_VERSION}"
-EXPECTED_DYNAMIC_RP_IMAGE="ghcr.io/radius-project/dynamic-rp:${EXPECTED_TAG_VERSION}"
-EXPECTED_UCP_IMAGE="ghcr.io/radius-project/ucpd:${EXPECTED_TAG_VERSION}"
-EXPECTED_PRE_UPGRADE_IMAGE="ghcr.io/radius-project/pre-upgrade:${EXPECTED_TAG_VERSION}"
+expected_image() {
+    if [[ -n "${MANIFEST_FILE}" ]]; then
+        jq -er --arg name "$1" '
+            .observed.images[] | select(.name == $name) |
+            .reference + "@" + .digest
+        ' "${MANIFEST_FILE}"
+    else
+        printf 'ghcr.io/radius-project/%s:%s\n' "$1" "${EXPECTED_TAG_VERSION}"
+    fi
+}
 
 # Verify all pod images
 echo "Verifying pod images..."
-verify_pod_image "applications-rp" "$EXPECTED_APPCORE_RP_IMAGE" "Applications RP"
-verify_pod_image "bicep-de" "$EXPECTED_DE_IMAGE" "Deployment Engine"
-verify_pod_image "controller" "$EXPECTED_CONTROLLER_IMAGE" "Controller"
-verify_pod_image "dashboard" "$EXPECTED_DASHBOARD_IMAGE" "Dashboard"
-verify_pod_image "dynamic-rp" "$EXPECTED_DYNAMIC_RP_IMAGE" "Dynamic RP"
-verify_pod_image "ucp" "$EXPECTED_UCP_IMAGE" "UCP"
-verify_pre_upgrade_image "$EXPECTED_PRE_UPGRADE_IMAGE"
+VERIFICATION_STAGE="pod-images"
+verify_pod_image "applications-rp" "$(expected_image applications-rp)" "Applications RP"
+verify_pod_image "bicep-de" "$(expected_image deployment-engine)" "Deployment Engine"
+verify_pod_image "controller" "$(expected_image controller)" "Controller"
+verify_pod_image "dashboard" "$(expected_image dashboard)" "Dashboard"
+verify_pod_image "dynamic-rp" "$(expected_image dynamic-rp)" "Dynamic RP"
+verify_pod_image "ucp" "$(expected_image ucpd)" "UCP"
+verify_pre_upgrade_image "$(expected_image pre-upgrade)"
+if [[ -n "${MANIFEST_FILE}" ]]; then
+    VERIFICATION_STAGE="bicep-image"
+    kubectl get pods -n "${NAMESPACE}" -o json \
+        | jq -e --arg image "$(expected_image bicep)" '
+            any(.items[].spec.initContainers[]?; .image == $image)
+        ' > /dev/null
+    jq '.checks.installation = "verified"' "${MANIFEST_FILE}" \
+        > "${TEMP_DIR}/manifest.json"
+    mv "${TEMP_DIR}/manifest.json" "${MANIFEST_FILE}"
+fi
 
 echo "============================================================================"
 echo "Release verification successful."

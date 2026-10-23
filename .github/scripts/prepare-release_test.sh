@@ -62,6 +62,7 @@ setup_repo() {
     git -C "${REPO}" config user.name "Radius Test"
     git -C "${REPO}" config user.email "test@example.com"
     git -C "${REPO}" config commit.gpgsign false
+    git -C "${REPO}" config tag.gpgsign false
     printf "supported:\n  - channel: '0.60'\n    version: '%s'\n" \
         "${version}" >"${REPO}/versions.yaml"
     printf 'deprecated:\n  - channel: '\''0.59'\''\n    version: '\''v0.59.0'\''\n' \
@@ -138,6 +139,7 @@ EOF
     cat >"${REPO}/fake-git-cliff" <<'EOF'
 #!/bin/bash
 set -euo pipefail
+printf '%s\n' "$@" > out/git-cliff-args.txt
 output=""
 tag=""
 while [[ $# -gt 0 ]]; do
@@ -161,6 +163,10 @@ cat >"${output}" <<BODY
 ### New contributors
 
 - @first made their first contribution
+
+### Contributors
+
+[@first](https://github.com/first), [@dependabot[bot]](https://github.com/apps/dependabot)
 BODY
 EOF
     chmod +x "${REPO}/fake-git-cliff"
@@ -225,6 +231,38 @@ assert_file_contains() {
     return 0
 }
 
+assert_note_format() {
+    local file="$1"
+    local version="$2"
+    local previous="$3"
+    local release_type="$4"
+    local footer
+
+    if [[ "$(grep -Ec '^#{2,3} New contributors$' "${file}")" != 1 ]]; then
+        fail_test "release notes must contain exactly one New contributors section"
+        return 1
+    fi
+    if [[ "${release_type}" != patch ]] &&
+        grep -Fqx '### New contributors' "${file}"; then
+        fail_test "full notes must not repeat New contributors in the changelog"
+        return 1
+    fi
+    assert_file_contains "${file}" \
+        "[${version#v}](https://github.com/radius-project/radius/compare/${previous}...${version}) - 2026-08-24" ||
+        return 1
+    if [[ "$(grep -Fc 'https://keepachangelog.com/en/1.1.0/' "${file}")" != 1 ]]; then
+        fail_test "release notes must contain exactly one format attribution"
+        return 1
+    fi
+    footer="$(awk 'NF { last = $0 } END { print last }' "${file}")"
+    if [[ "${footer}" != *'https://keepachangelog.com/en/1.1.0/'* ||
+        "${footer}" != *'Radius-specific change groups and contributor sections'* ||
+        "${footer}" != *'https://semver.org/spec/v2.0.0.html'* ]]; then
+        fail_test "the final paragraph must explain the changelog conventions"
+        return 1
+    fi
+}
+
 assert_yq_value() {
     local file="$1"
     local expression="$2"
@@ -245,6 +283,8 @@ make_release_branch() {
 
 test_first_rc() {
     setup_repo "v0.60.0"
+    cp "${SCRIPT_DIR}/../../docs/release-notes/template.md" \
+        "${REPO}/docs/release-notes/template.md"
     git -C "${REPO}" tag v0.60.0
     run_prepare rc 0.61
     assert_version "v0.61.0-rc.1" || return
@@ -276,6 +316,13 @@ test_first_rc() {
     assert_yq_value "${REPO}/out/release-plan.yaml" \
         '.source.releaseCommitResolution' \
         'release PR squash commit on main' || return
+    assert_note_format "${REPO}/docs/release-notes/v0.61.0-rc.1.md" \
+        v0.61.0-rc.1 v0.60.0 rc || return
+    assert_file_contains "${REPO}/docs/release-notes/v0.61.0-rc.1.md" \
+        '[@first](https://github.com/first), [@dependabot[bot]](https://github.com/apps/dependabot)' ||
+        return
+    assert_file_contains "${REPO}/CHANGELOG.md" \
+        '### New contributors' || return
     ((++PASS))
 }
 
@@ -355,6 +402,44 @@ test_subsequent_rc() {
     ((++PASS))
 }
 
+test_changelog_pins_product_commit() {
+    local release_type="$1"
+    local channel="$2"
+    local current_version="$3"
+    local expected_version="$4"
+    local source_ref="$5"
+    local product_commit range
+
+    setup_repo "${current_version}"
+    git -C "${REPO}" tag "${current_version}"
+    if [[ "${release_type}" != final ]]; then
+        commit "fix: selected source change"
+    fi
+    if [[ "${source_ref}" != HEAD ]]; then
+        git -C "${REPO}" update-ref "${source_ref}" HEAD
+        commit "feat: main-only change"
+    fi
+    product_commit="$(git -C "${REPO}" rev-parse "${source_ref}^{commit}")"
+
+    GITHUB_TOKEN="fixture-token" run_prepare "${release_type}" "${channel}" \
+        "${REPO}/fake-git-cliff" "${SCRIPT_DIR}/changelog-range.sh"
+    assert_version "${expected_version}" || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" '.source.productRef' \
+        "${source_ref}" || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" '.source.productCommit' \
+        "${product_commit}" || return
+    if grep -Fxq -- '--offline' "${REPO}/out/git-cliff-args.txt"; then
+        fail_test "changelog rendering must keep GitHub metadata enabled"
+        return
+    fi
+    range="$(tail -n 1 "${REPO}/out/git-cliff-args.txt")"
+    if [[ "${range##*..}" != "${product_commit}" ]]; then
+        fail_test "${release_type} changelog has an unpinned source: ${range}"
+        return
+    fi
+    ((++PASS))
+}
+
 test_subsequent_rc_has_one_cumulative_changelog() {
     local renderer section notes candidate message
 
@@ -391,6 +476,9 @@ EOF
         return
     fi
     assert_file_contains "${section}" '## [0.60.0-rc.3] - 2026-08-24' || return
+    assert_file_contains "${notes}" \
+        '[0.60.0-rc.3](https://github.com/radius-project/radius/compare/v0.59.0...v0.60.0-rc.3) - 2026-08-24' ||
+        return
     for message in 'First candidate feature' 'Second candidate fix' 'Third candidate fix'; do
         assert_file_contains "${section}" "${message}" || return
         assert_file_contains "${notes}" "${message}" || return
@@ -460,6 +548,8 @@ test_subsequent_rc_rejects_historical_form() {
 
 test_final() {
     setup_repo "v0.60.0-rc.3"
+    cp "${SCRIPT_DIR}/../../docs/release-notes/template.md" \
+        "${REPO}/docs/release-notes/template.md"
     make_release_branch 0.60
     git -C "${REPO}" tag v0.60.0-rc.3
     run_prepare final 0.60
@@ -469,6 +559,10 @@ test_final() {
     assert_file_contains "${REPO}/out/requires-backport.txt" 'true' || return
     assert_file_contains "${REPO}/docs/release-notes/v0.60.0.md" \
         '## Upgrading to Radius v0.60.0' || return
+    assert_file_contains "${REPO}/docs/release-notes/v0.60.0.md" \
+        'Restarting pods no longer picks up later patches implicitly' || return
+    assert_note_format "${REPO}/docs/release-notes/v0.60.0.md" \
+        v0.60.0 v0.59.0 final || return
     ((++PASS))
 }
 
@@ -558,13 +652,84 @@ test_version_only_does_not_mutate_files() {
 
 test_patch() {
     setup_repo "v0.60.2"
+    cp "${SCRIPT_DIR}/../../docs/release-notes/template_patch.md" \
+        "${REPO}/docs/release-notes/template_patch.md"
     make_release_branch 0.60
     git -C "${REPO}" tag v0.60.2
     git -C "${REPO}" tag v0.61.0
     run_prepare patch 0.60
     assert_version "v0.60.3" || return
+    assert_file_contains "${REPO}/docs/release-notes/v0.60.3.md" \
+        'Restarting pods no longer picks up later patches implicitly' || return
     assert_file_contains "${REPO}/CHANGELOG.md" \
         'compare/v0.60.2...v0.60.3' || return
+    assert_note_format "${REPO}/docs/release-notes/v0.60.3.md" \
+        v0.60.3 v0.60.2 patch || return
+    ((++PASS))
+}
+
+test_legacy_history() {
+    local history="$1"
+    local renderer notes other file
+    local snapshot="${TEST_ROOT}/snapshot-${history}"
+
+    renderer="$(command -v "${GIT_CLIFF:-git-cliff}")" || {
+        fail_test "real git-cliff is required for legacy history regressions"
+        return
+    }
+    setup_repo "v0.60.0"
+    cp "${SCRIPT_DIR}/../../cliff.toml" "${REPO}/cliff.toml"
+    cp "${SCRIPT_DIR}/../../docs/release-notes/template.md" \
+        "${REPO}/docs/release-notes/template.md"
+    git -C "${REPO}" tag v0.60.0
+    commit "Restore legacy client behavior (#201)"
+    commit "docs(legacy):"
+    if [[ "${history}" == mixed ]]; then
+        commit "feat: add release integration (#202)"
+        commit "docs: excluded maintenance (#203)"
+    fi
+
+    GITHUB_TOKEN="" run_prepare rc 0.61 "${renderer}" \
+        "${SCRIPT_DIR}/changelog-range.sh"
+    assert_version "v0.61.0-rc.1" || return
+    notes="${REPO}/docs/release-notes/v0.61.0-rc.1.md"
+    assert_note_format "${notes}" v0.61.0-rc.1 v0.60.0 rc || return
+    for file in "${notes}" "${REPO}/CHANGELOG.md"; do
+        other="$(awk '
+            /^### / { active = ($0 == "### Other changes"); next }
+            /^## / { active = 0 }
+            active { print }
+        ' "${file}")"
+        if [[ "${other}" != *'Restore legacy client behavior (#201)'* ||
+            "${other}" != *'Docs(legacy):'* ]]; then
+            fail_test "${history} history lost a nonconventional commit"
+            return
+        fi
+        if grep -Fq '(#203)' "${file}"; then
+            fail_test "conventional maintenance must remain excluded"
+            return
+        fi
+    done
+    if [[ "${history}" == mixed ]]; then
+        assert_file_contains "${notes}" \
+            'Add release integration (#202)' || return
+    fi
+    assert_file_contains "${REPO}/out/new-contributors.md" 'None.' || return
+    mkdir -p "${snapshot}"
+    cp "${notes}" "${snapshot}/notes.md"
+    cp "${REPO}/CHANGELOG.md" "${snapshot}/CHANGELOG.md"
+    cp "${REPO}/out/release-plan.yaml" "${snapshot}/release-plan.yaml"
+    git -C "${REPO}" show HEAD:versions.yaml >"${REPO}/versions.yaml"
+    git -C "${REPO}" show HEAD:CHANGELOG.md >"${REPO}/CHANGELOG.md"
+    GITHUB_TOKEN="" run_prepare rc 0.61 "${renderer}" \
+        "${SCRIPT_DIR}/changelog-range.sh"
+    assert_version "v0.61.0-rc.1" || return
+    if ! cmp -s "${notes}" "${snapshot}/notes.md" ||
+        ! cmp -s "${REPO}/CHANGELOG.md" "${snapshot}/CHANGELOG.md" ||
+        ! cmp -s "${REPO}/out/release-plan.yaml" "${snapshot}/release-plan.yaml"; then
+        fail_test "repeated preparation must produce identical notes, changelog, and plan"
+        return
+    fi
     ((++PASS))
 }
 
@@ -675,6 +840,13 @@ main() {
     test_pending_supported_release_blocks_preparation v0.60.0
     test_pending_supported_release_blocks_preparation v0.59.1
     test_subsequent_rc
+    test_changelog_pins_product_commit rc 0.61 v0.60.0 v0.61.0-rc.1 HEAD
+    test_changelog_pins_product_commit rc 0.60 v0.60.0-rc.1 \
+        v0.60.0-rc.2 refs/remotes/origin/release/0.60
+    test_changelog_pins_product_commit final 0.60 v0.60.0-rc.1 \
+        v0.60.0 refs/remotes/origin/release/0.60
+    test_changelog_pins_product_commit patch 0.60 v0.60.1 \
+        v0.60.2 refs/remotes/origin/release/0.60
     test_subsequent_rc_has_one_cumulative_changelog
     test_subsequent_rc_rejects_stale_metadata
     test_subsequent_rc_rejects_divergent_branch
@@ -685,6 +857,8 @@ main() {
     test_final_rejects_out_of_policy_rc_number
     test_version_only_does_not_mutate_files
     test_patch
+    test_legacy_history legacy
+    test_legacy_history mixed
     test_unmerged_backport_fails
     test_publisher_uses_prepared_notes_for_every_release
     test_first_rc_rerun_preserves_curated_sections

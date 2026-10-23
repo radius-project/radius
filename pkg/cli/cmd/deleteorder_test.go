@@ -74,7 +74,7 @@ func TestDeleteTierForResourceType(t *testing.T) {
 			expected:     DeleteTierApplication,
 		},
 		{
-			name:         "preview application",
+			name:         "Radius.Core application",
 			resourceType: "Radius.Core/applications",
 			expected:     DeleteTierApplication,
 		},
@@ -84,7 +84,7 @@ func TestDeleteTierForResourceType(t *testing.T) {
 			expected:     DeleteTierEnvironment,
 		},
 		{
-			name:         "preview environment",
+			name:         "Radius.Core environment",
 			resourceType: "Radius.Core/environments",
 			expected:     DeleteTierEnvironment,
 		},

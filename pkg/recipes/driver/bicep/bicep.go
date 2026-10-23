@@ -192,6 +192,19 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
+	// Log only IDs, not output values, which can contain credentials.
+	outputResourceIDs := make([]string, 0, len(resp.Properties.OutputResources))
+	for _, output := range resp.Properties.OutputResources {
+		if output != nil && output.ID != nil {
+			outputResourceIDs = append(outputResourceIDs, *output.ID)
+		}
+	}
+	logger.Info("Deployment engine returned recipe output resource IDs",
+		"deploymentID", deploymentID.String(),
+		"recipeName", opts.Definition.Name,
+		"outputResourceCount", len(resp.Properties.OutputResources),
+		"outputResourceIDs", outputResourceIDs)
+
 	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		if _, ok := errors.AsType[*recipes_util.MissingOutputValuesError](err); ok {
@@ -259,6 +272,12 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	for i := range opts.OutputResources {
 		outputResource := opts.OutputResources[i]
 
+		if outputResource.IsRadiusManaged() && deletingKeyVaultParent(outputResource.ID, opts.OutputResources) {
+			// ARM cannot delete secrets. The batch must still wait for the managed vault deletion to succeed.
+			logger.Info("Skipping direct Key Vault secret deletion; the managed parent vault is in the deletion batch", "resourceID", outputResource.ID.String())
+			continue
+		}
+
 		// Create a goroutine that handles the deletion of one resource
 		g.Go(func() error {
 			id := outputResource.ID.String()
@@ -302,6 +321,36 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	}
 
 	return nil
+}
+
+func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResource) bool {
+	if !strings.EqualFold(id.Type(), "Microsoft.KeyVault/vaults/secrets") || len(id.ExtensionSegments()) != 0 {
+		return false
+	}
+	if id.IsUCPQualified() && !strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), "azure/") {
+		return false
+	}
+
+	parentID := azureResourcePath(id.Truncate())
+	for _, output := range outputResources {
+		if output.IsRadiusManaged() && strings.EqualFold(azureResourcePath(output.ID), parentID) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func azureResourcePath(id resources.ID) string {
+	if !id.IsUCPQualified() {
+		return id.String()
+	}
+	if !strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), "azure/") {
+		return ""
+	}
+
+	// Match the ARM path used by resourceClient.deleteAzureResource, not an unrelated plane's path.
+	return resources.MakeRelativeID(id.ScopeSegments()[1:], id.TypeSegments(), id.ExtensionSegments())
 }
 
 func (d *bicepDriver) resourceClientForDelete(ctx context.Context, opts driver.DeleteOptions) (processors.ResourceClient, error) {

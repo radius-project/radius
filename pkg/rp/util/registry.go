@@ -42,7 +42,7 @@ import (
 // if the client to the registry fails to be created, if the manifest fails to be fetched, if the bytes fail to be fetched, or if
 // the data fails to be unmarshalled.
 func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinition, data *map[string]any, client remote.Client) error {
-	registryRepo, tag, err := parsePath(definition.TemplatePath)
+	registryRepo, ref, err := parsePath(definition.TemplatePath)
 	if err != nil {
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid path %s", err.Error()))
 	}
@@ -58,7 +58,7 @@ func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinit
 		repo.PlainHTTP = true
 	}
 
-	bytes, err := fetchRecipeWithRetry(ctx, repo, tag)
+	bytes, err := fetchRecipeWithRetry(ctx, repo, ref)
 	if err != nil {
 		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", definition.TemplatePath, err.Error()), recipes_util.RecipeSetupError, nil)
 	}
@@ -83,11 +83,11 @@ var registryFetchBackoff = retry.DefaultBackoffStrategy
 // failures while reading a response body (for example a connection reset partway
 // through a blob download from a CDN) and its retry window is only a few seconds,
 // which is shorter than typical DNS or network blips.
-func fetchRecipeWithRetry(ctx context.Context, repo *remote.Repository, tag string) ([]byte, error) {
+func fetchRecipeWithRetry(ctx context.Context, repo *remote.Repository, ref string) ([]byte, error) {
 	var result []byte
 	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: registryFetchBackoff()})
 	err := retryer.RetryFunc(ctx, func(ctx context.Context) error {
-		digest, err := getDigestFromManifest(ctx, repo, tag)
+		digest, err := getDigestFromManifest(ctx, repo, ref)
 		if err == nil {
 			result, err = getBytes(ctx, repo, digest)
 		}
@@ -135,10 +135,9 @@ func isTransientRegistryError(err error) bool {
 		errors.Is(err, io.ErrUnexpectedEOF)
 }
 
-// getDigestFromManifest gets the layers digest from the manifest
-func getDigestFromManifest(ctx context.Context, repo *remote.Repository, tag string) (string, error) {
-	// resolves a manifest descriptor with a Tag reference
-	descriptor, err := repo.Resolve(ctx, tag)
+// getDigestFromManifest gets the layers digest from the manifest that ref, a tag or digest, resolves to.
+func getDigestFromManifest(ctx context.Context, repo *remote.Repository, ref string) (string, error) {
+	descriptor, err := repo.Resolve(ctx, ref)
 	if err != nil {
 		return "", err
 	}
@@ -191,14 +190,12 @@ func getBytes(ctx context.Context, repo *remote.Repository, layerDigest string) 
 	return pulledBlob, nil
 }
 
-// parsePath parses a path in the form of registry/repository:tag. Recipe template
-// paths may include an http(s):// scheme even though OCI references do not, so a
-// leading scheme is stripped before normalizing (matching the previous parser).
-// A tag is required: TagNameOnly defaults a name-only reference to ":latest", but
-// a digest reference such as repo@sha256:... carries no tag, which the registry is
-// resolved by, so it is rejected here with a descriptive error rather than failing
-// later at resolution time.
-func parsePath(path string) (repository string, tag string, err error) {
+// parsePath parses a recipe template path into a repository and the tag or digest
+// to resolve the recipe by. Recipe template paths may include an http(s):// scheme
+// even though OCI references do not, so a leading scheme is stripped first. A digest
+// wins over a tag, so repository:tag@sha256:... stays pinned to the digest. A path
+// with neither resolves the "latest" tag.
+func parsePath(path string) (repository string, ref string, err error) {
 	path = strings.TrimPrefix(path, "https://")
 	path = strings.TrimPrefix(path, "http://")
 
@@ -207,14 +204,13 @@ func parsePath(path string) (repository string, tag string, err error) {
 		return "", "", err
 	}
 
-	named = reference.TagNameOnly(named)
-	tagged, ok := named.(reference.Tagged)
-	if !ok {
-		return "", "", fmt.Errorf("%q does not include a tag; a tagged reference such as repository:tag is required (digest references are not supported)", path)
+	if digested, ok := named.(reference.Digested); ok {
+		return named.Name(), digested.Digest().String(), nil
 	}
-	repository = named.Name()
-	tag = tagged.Tag()
-	return repository, tag, nil
+	if tagged, ok := named.(reference.Tagged); ok {
+		return named.Name(), tagged.Tag(), nil
+	}
+	return named.Name(), "latest", nil
 }
 
 // GetRegistrySecrets retrieves secret data based on the recipe configuration and template path.
