@@ -61,7 +61,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudControlOpts...)
 	if err != nil {
-		return ucpaws.HandleAWSError(err)
+		return ucpaws.HandleAWSError(ctx, err)
 	}
 
 	// TODO there some limitations with listing resources:
