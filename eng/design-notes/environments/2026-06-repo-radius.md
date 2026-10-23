@@ -23,6 +23,7 @@ Radius and the application need not run in the same place. A control plane hoste
 - Deploy workloads to the team's chosen Azure or AWS platform, regardless of where the Radius control plane runs.
 - Show developers command outcomes, diagnostics, and whether state was saved, without crossing the platform team's environment and access boundaries.
 - Provide runnable GitHub Actions reference samples that teams can adapt, from recipe-pack and environment setup through application deployment and deletion.
+- Separate Radius's cloud access from the pipeline's permission to use Radius, with scoped identities and explicit credential requirements for each run.
 
 ### Non-goals (out of scope)
 
@@ -161,10 +162,37 @@ The team starts from a maintained suite of GitHub Actions samples. Together, the
 - The suite demonstrates both temporary control-plane execution and connection to an existing centralized service. Temporary jobs release their control plane without deleting workloads or saved state; connected jobs leave the shared service running.
 - Later application jobs run on fresh GitHub Actions runners and use the saved configuration and deployment state. The samples do not recreate environments or register recipe packs on every deployment.
 - Each sample documents prerequisites, required permissions, configuration inputs, supported workload targets, expected results, and cleanup steps. Maintainers validate the runnable samples against the Radius versions they document.
+- The samples demonstrate cloud access for Radius, authentication and Radius RBAC assignments for the pipeline identity, and access to the state store or archive. They distinguish platform-setup permissions from application-job permissions and show which credential configuration persists and which credentials each run must obtain.
 - Application deployment scripts demonstrate bounded retries for documented retryable failures and a clearly defined rollback procedure, such as redeploying a previous application revision. These are pipeline policies that users can inspect and adapt, not new Radius recovery capabilities.
 - Each rollback example states what it restores and what it cannot reverse. Redeploying an earlier revision does not guarantee reversal of infrastructure or data changes, and restoring an older Radius state snapshot alone is not rollback.
 - The scripts preserve command results and diagnostics, including failed retries or rollback attempts. Unknown outcomes or uncertain saved state require an operator check rather than a blind retry. Destructive cleanup requires an explicit request, not merely a failed deployment.
 - The reference-sample requirement covers GitHub Actions only, not Azure DevOps samples. The broader CI/CD requirements remain unchanged. The suite identifies the workload platforms it demonstrates rather than promising every platform combination.
+
+### Scenario 9: Provide cloud access for Radius operations
+
+> As a platform engineer, I want to configure how Radius obtains cloud credentials, so that pipeline operations can reach approved deployment targets without exposing those credentials to application developers.
+
+The platform engineer configures the identity Radius uses to call the cloud. This outbound identity is separate from the pipeline identity that calls Radius. Saved credential configuration identifies how Radius obtains access; it does not prove that usable credentials are available in a new run.
+
+- Each temporary control-plane run establishes usable cloud credentials through a documented mechanism. Prefer short-lived workload credentials where supported; otherwise supply secrets from an approved CI/CD secret store or external secret manager.
+- The mechanism makes credentials available to the Radius component that calls the cloud. A cloud login on the runner alone does not establish that component's identity.
+- A centralized control plane can retain its platform-managed cloud identity. Application jobs do not need those cloud credentials merely to request deployment through that service.
+- Documentation distinguishes saved credential metadata and references from secret material, states what is persisted, and identifies what each run must supply or renew. The deployment-state archive is not a general-purpose credential vault.
+- Access to the persistent store or GHCR archive is established before restoring state. Credentials needed to retrieve the state cannot exist only inside that state.
+- Missing or expired credentials and cloud authorization failures produce clear errors without exposing secrets. Saved state does not bypass credential rotation or revocation.
+
+### Scenario 10: Authorize the pipeline's identity in Radius
+
+> As a platform administrator, I want to assign Radius permissions to a dedicated pipeline workload identity, so that each job can perform only its approved operations.
+
+The pipeline authenticates through the trusted access path supported by Radius. The administrator assigns roles to the workload identity Radius recognizes, following the [built-in RBAC specification](../security/2026-09-built-in-rbac-feature-spec.md). The identity remains recognizable across runs; a runner's machine name is not its authorization identity.
+
+- Platform-setup jobs receive only the permissions needed to manage their recipe packs, environments, and credential configuration. Routine application jobs receive scoped application permissions, including deletion when authorized, and permission to use the approved environment.
+- Permission to deploy through an environment does not grant permission to read its secrets or modify its platform configuration. Cloud permissions do not automatically grant Radius permissions, or vice versa.
+- Temporary installations establish initial administrator access without an unprotected window. Saved role definitions and assignments remain tied to the intended principals across runs; routine jobs do not fall back to administrator access or disable enforcement.
+- The first-release integration follows the RBAC specification's Kubernetes authentication path. A GitHub OIDC token is not assumed to be directly accepted by Radius; the supported authentication path must establish the pipeline identity.
+- Authentication failures, Radius RBAC denials, and denials from the cloud, Kubernetes, or state registry remain distinguishable. Denied operations stop rather than retrying with broader privileges.
+- Radius actions remain attributable to the pipeline workload identity without exposing secret values. Fresh runs honor revocation within the RBAC contract; restoring saved configuration must not silently revive revoked access.
 
 ## Key dependencies and risks
 
@@ -172,6 +200,8 @@ The team starts from a maintained suite of GitHub Actions samples. Together, the
 - **Network and access configuration.** Jobs and control planes must be able to reach the services they need, including persistent state and deployment targets. Teams using private networks must not have to expose services publicly to adopt Repo Radius.
 - **State and interrupted operations.** A failed job can change cloud resources without recording those changes. Developers need saved state, diagnostics, and explicit warnings about unknown outcomes to decide what to do next. Restoring an older state snapshot alone does not undo cloud changes.
 - **Shared-service boundaries.** Jobs using a centralized control plane must not disrupt other teams or exceed their authorized environments.
+- **Credential delivery and state access.** Restored credential metadata may refer to secrets or identities unavailable to a new control plane. Cloud credential delivery and access to the state store need separate setup; state archives can contain sensitive data and require appropriate protection.
+- **Radius identity and RBAC.** Pipeline authorization depends on the built-in RBAC contract and a supported authentication path. Temporary bootstrap, stable workload identities, and restoration of authorization state must preserve least privilege and revocation.
 - **Compatibility.** A pipeline and its selected control plane or recipes may be incompatible. The error must identify the incompatibility and explain what the user can do about it.
 - **Job startup time.** Starting a temporary control plane delays the requested operation. Test how much delay teams will accept in routine deployments.
 - **Sample maintenance.** Users will copy the reference pipelines. Outdated commands or unsafe recovery scripts can spread into real deployments, so the samples need ongoing validation and clear limits on retry and rollback.
@@ -180,6 +210,8 @@ The team starts from a maintained suite of GitHub Actions samples. Together, the
 
 - Which persistent-state services should we begin with first? We'll start with Postgres (options for either self-hosted or cloud service), but external state store should be as configurable as possible to easily support other persistent-state services in the future.
 - What connection and permission setup will teams accept for a centralized control plane, especially on private networks? Test an unattended job with restricted access to one environment.
+- Which supported mechanisms deliver cloud credentials to a temporary control plane, and what must each run obtain again? Validate short-lived credentials and secret-manager paths separately from runner-only cloud login.
+- How will a fresh control plane recognize the same pipeline principal and restore authorization configuration without reviving revoked access? Validate bootstrap and separate setup, deployment, and deletion permissions against the RBAC specification.
 - Which recipe configurations and uses of existing resources must work with both temporary and centralized control planes? Test with an application that uses an existing hosting environment and shared backing services.
 - What should users see when a job is cancelled while a centralized service is still executing an operation? Define when work can stop and how a later job discovers its outcome.
 - What startup delay is acceptable, and how should a team learn that its pipeline, Radius service, or recipes need an update? Validate with representative deployment and inspection jobs.
@@ -190,6 +222,10 @@ The team starts from a maintained suite of GitHub Actions samples. Together, the
 The [earlier Repo Radius proposal](https://github.com/radius-project/radius/pull/12078) called for running Radius temporarily through GitHub Actions, with GitHub-specific environment and state handling. Repo Radius must also work with other CI/CD systems and connect to an existing centralized control plane. These requirements do not imply that Radius supports those scenarios today.
 
 The [OCI/GHCR state archive design](../architecture/2026-07-oci-ghcr-state-archive.md) defines an initial implementation of externalized state storage. It uses `rad shutdown` to archive control-plane database dumps and Terraform state in GitHub Container Registry, and `rad startup` to restore them for a later run. GHCR holds the saved archive, not the live control-plane database. This provides a starting point for preserving state across temporary jobs in Scenario 2 without making GHCR a requirement for every CI/CD system or future state-storage implementation.
+
+The [credentials architecture](../../../docs/architecture/credentials.md) separates cloud credential metadata in the database from secret material in the default Kubernetes Secret backend. The current database and Terraform-state archive path does not imply that all cloud credential Secrets are preserved. Fresh control planes need a supported way to obtain usable credentials.
+
+The [built-in RBAC specification](../security/2026-09-built-in-rbac-feature-spec.md) defines scoped access for workload identities, including CI/CD automation, and safe bootstrap for ephemeral installations. Its first release uses identities established through the Kubernetes authentication path. Repo Radius must integrate with that contract; these requirements do not claim that the RBAC integration is already available.
 
 The [external Kubernetes deployment proposal](./2026-05-external-kubernetes.md) covers workloads running on a cluster separate from Radius. It addresses the Kubernetes case; managed container targets also need suitable platform support.
 
@@ -205,9 +241,9 @@ I can use Radius from my existing pipeline by starting it for a job or connectin
 
 ### Detailed user experience
 
-1. **Configure the pipeline once.** The platform engineer chooses a temporary control plane or an existing Radius service, provides approved access, and configures the target environments and recipe packs in Radius. For a temporary control plane, the engineer also configures persistent state so later jobs recover this configuration along with application and resource records.
+1. **Configure the pipeline once.** The platform engineer chooses a temporary control plane or an existing Radius service and configures the target environments and recipe packs in Radius. The engineer separately configures Radius's cloud identity, the pipeline workload identity and its Radius role assignments, and access to the state store. For a temporary control plane, persistent state lets later jobs recover the configuration and application records.
 2. **Select the application and destination.** The developer supplies the application revision, operation, and environment through the normal pipeline. Existing review and approval rules still apply.
-3. **Confirm readiness.** The job identifies the selected control plane and workload destination. If configuration is missing, required state is inaccessible, or a connection fails, the job stops the operation and explains why.
+3. **Confirm readiness.** The job identifies the selected control plane, workload destination, and pipeline identity recognized by Radius. It establishes state-store access and the credentials needed for the run. Missing configuration, inaccessible state, authentication failures, and authorization denials stop the affected operation with a clear explanation.
 4. **Run the operation.** The pipeline runs existing Radius commands against the selected control plane and environment. The job reports progress and failures.
 5. **Review the outcome.** The developer sees the revision, target, command status, diagnostics, and whether state was saved. These results remain available after the job ends.
 6. **Release the control plane.** The job releases a temporary control plane or leaves a centralized service running. This cleanup does not delete workloads or discard saved state; application deletion requires an explicit Radius command.
@@ -234,3 +270,7 @@ I can use Radius from my existing pipeline by starting it for a job or connectin
 ### Feature 5
 
 **GitHub Actions reference samples.** Maintain runnable pipelines that separate platform setup from application operations and cover the full path from recipe packs and environments to deployment and deletion. Demonstrate retry and rollback in pipeline scripts, with documented limits and no new built-in recovery behavior.
+
+### Feature 6
+
+**Cloud credentials and pipeline authorization.** Establish Radius's outbound cloud access separately from the pipeline's scoped Radius permissions. Document credential persistence and renewal, protect state-store access, and integrate temporary and centralized jobs with the built-in RBAC contract.
