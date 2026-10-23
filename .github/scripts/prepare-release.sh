@@ -694,7 +694,7 @@ main() {
     changelog_body="${OUTPUT_DIR}/changelog-section.md"
     notes_file="docs/release-notes/${version}.md"
 
-    render_changelog "${version}" "${source_ref}" "${changelog_body}"
+    render_changelog "${version}" "${source_commit}" "${changelog_body}"
     update_versions "${version}" "${current}"
     update_changelog "${version}" "${changelog_base_version}" \
         "${changelog_body}"
