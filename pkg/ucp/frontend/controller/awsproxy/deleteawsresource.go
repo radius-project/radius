@@ -66,7 +66,7 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 		if ucp_aws.IsAWSResourceNotFoundError(err) {
 			return armrpc_rest.NewNoContentResponse(), nil
 		}
-		return ucp_aws.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
 	operation, err := uuid.Parse(*response.ProgressEvent.RequestToken)

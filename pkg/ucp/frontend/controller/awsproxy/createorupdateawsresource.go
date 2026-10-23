@@ -100,13 +100,13 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	if ucp_aws.IsAWSResourceNotFoundError(err) {
 		existing = false
 	} else if err != nil {
-		return ucp_aws.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
 	var operation uuid.UUID
 	desiredState, err := json.Marshal(properties)
 	if err != nil {
-		return ucp_aws.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
 	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
@@ -115,7 +115,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	if getResponse != nil {
 		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
 		if err != nil {
-			return ucp_aws.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(ctx, err)
 		}
 	}
 
@@ -137,14 +137,14 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		resourceTypeSchema := []byte(*describeTypeOutput.Schema)
 		patch, err := awsoperations.GeneratePatch(currentState, desiredState, resourceTypeSchema)
 		if err != nil {
-			return ucp_aws.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(ctx, err)
 		}
 
 		// Call update only if the patch is not empty
 		if len(patch) > 0 {
 			marshaled, err := json.Marshal(&patch)
 			if err != nil {
-				return ucp_aws.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(ctx, err)
 			}
 
 			response, err := p.awsClients.CloudControl.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
@@ -153,12 +153,12 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 				PatchDocument: aws.String(string(marshaled)),
 			}, cloudControlOpts...)
 			if err != nil {
-				return ucp_aws.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(ctx, err)
 			}
 
 			operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 			if err != nil {
-				return ucp_aws.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(ctx, err)
 			}
 		} else {
 			// mark provisioning state as succeeded here
@@ -180,12 +180,12 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			DesiredState: aws.String(string(desiredState)),
 		}, cloudControlOpts...)
 		if err != nil {
-			return ucp_aws.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(ctx, err)
 		}
 
 		operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 		if err != nil {
-			return ucp_aws.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(ctx, err)
 		}
 	}
 
