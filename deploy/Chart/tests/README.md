@@ -7,7 +7,7 @@ This directory contains unit tests for the Radius Helm chart templates.
 Install the helm-unittest plugin:
 
 ```bash
-helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.1.1 --verify=false
+helm plugin install oci://ghcr.io/helm-unittest/helm-unittest/unittest:1.2.1 --verify=false
 ```
 
 ## Running Tests
