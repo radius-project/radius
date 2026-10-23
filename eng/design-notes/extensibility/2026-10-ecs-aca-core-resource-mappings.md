@@ -31,6 +31,7 @@ This spec defines what is required to make it real on **Azure Container Apps (AC
 ### Non-goals (out of scope)
 
 - **Other container platforms.** Google Cloud Run and Nomad.
+- **ECS on EC2.** The ECS pack targets Fargate only.
 - **Live migration between platforms.** Moving a running workload from Kubernetes to ACA is a redeploy.
 - **100% property parity.** A property a platform cannot express is marked unsupported and documented as such.
 - **New core-type properties for single-platform features.** ACA traffic splitting, ECS capacity providers, Fargate Spot. These stay reachable through `platformOptions`.
@@ -62,7 +63,7 @@ Choosing a container platform stops being a choice about whether to use Radius. 
 
 Priya registers the `azure-aca` pack against her existing ACA managed environment.
 
-Dev deploys an application using the core types — two containers, an HTTP route, a volume, and a secret. It becomes Container Apps, ACA ingress, an Azure Files share, and a Key Vault reference, and connections resolve to the environment-internal FQDN.
+Dev deploys an application using the core types — two containers, an HTTP route, a volume, and a secret. It becomes Container Apps, an ACA HTTP route, an Azure Files share, and a Key Vault secret, and connections resolve to the environment-internal FQDN.
 
 ### Scenario 2: Run Radius on ECS
 
@@ -78,7 +79,7 @@ Dev deploys the same application definition. It becomes task definitions and ser
 
 **Risk — the schema's Kubernetes bias means fewer properties map than users expect.** Requests vs. limits, `exec` probes, `restartPolicy`, and secret volumes all assume Kubernetes semantics. *Mitigation:* publish the support documentation up front so every unsupported property is a documented decision, and keep `platformOptions` as the sanctioned way to reach platform-specific settings.
 
-**Risk — silent divergence between packs.** The two packs share no code. ACA is Bicep, ECS is Terraform, written by different contributors and tested on separate paths. Two independently authored packs can map the same property differently — for example, whether `resources.requests` rounds up or fails when the value is not a legal platform combination.
+**Risk — silent divergence between packs.** The two packs share no code. ACA is Bicep and ECS is expected to be Terraform, written by different contributors and tested on separate paths. Two independently authored packs can map the same property differently — for example, whether `resources.requests` rounds up or fails when the value is not a legal platform combination.
 
 *Mitigation:* the published documentation is the written contract, and the reference applications (Feature 3) exercise each pack against it.
 
@@ -295,14 +296,14 @@ resource ecsPack 'Radius.Core/recipePacks@2025-08-01-preview' = {
 
 **Step 2 — Priya creates the environment.** ACA bundles networking, DNS, and logging into the single managed environment resource. ECS has no such container, so each piece is a parameter:
 
-| Parameter                 | Why ECS needs it                                                                               | ACA equivalent                                                                                                                                                                   |
-|---------------------------|------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `clusterArn`              | An ECS service must belong to a cluster; there is no implicit default.                         | The managed environment.                                                                                                                                                         |
-| `subnetIds`               | Fargate's `awsvpc` network mode gives each task an ENI, which must be placed in named subnets. | The managed environment owns its subnet.                                                                                                                                         |
-| `securityGroupIds`        | That ENI needs a security group. AWS has no default that allows traffic between tasks.         | The managed environment allows internal traffic.                                                                                                                                 |
-| `executionRoleArn`        | The ECS agent assumes this role to pull the image from ECR and write logs to CloudWatch.       | Logs: handled by the managed environment. Image pulls: configured on each Container App, not the environment, using registry credentials or a managed identity with pull access. |
-| `serviceConnectNamespace` | A Cloud Map namespace is what gives containers DNS names for `connections` and `hosts`.        | `*.internal.<env>.<region>.azurecontainerapps.io`.                                                                                                                               |
-| `fileSystemId`            | The application access point must belong to an EFS file system with mount targets in the VPC.  | The recipe creates an Azure Files share.                                                                                                                                         |
+| Parameter                 | Why ECS needs it                                                                               | ACA equivalent                                                                       |
+|---------------------------|------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| `clusterArn`              | An ECS service must belong to a cluster; there is no implicit default.                         | The managed environment.                                                             |
+| `subnetIds`               | Fargate's `awsvpc` network mode gives each task an ENI, which must be placed in named subnets. | The managed environment owns its subnet.                                             |
+| `securityGroupIds`        | That ENI needs a security group. AWS has no default that allows traffic between tasks.         | The managed environment allows internal traffic.                                     |
+| `executionRoleArn`        | The ECS agent assumes this role to pull the image from ECR and write logs to CloudWatch.       | Logs: the managed environment. Image pulls: each Container App, not the environment. |
+| `serviceConnectNamespace` | A Cloud Map namespace is what gives containers DNS names for `connections` and `hosts`.        | `*.internal.<env>.<region>.azurecontainerapps.io`.                                   |
+| `fileSystemId`            | The application access point must belong to an EFS file system with mount targets in the VPC.  | The recipe creates an Azure Files share.                                             |
 
 A recipe could create some of these, but subnets, security groups, and IAM roles are governed by Priya's existing AWS controls, so v1 accepts them as inputs.
 
@@ -355,12 +356,16 @@ Each pack implements the same four core types. This is the type-level contract; 
 
 What each pack **consumes** versus **creates** differs. The consumed infrastructure is what Priya brings and passes as `recipeParameters`:
 
-| Pack        | Consumes (pre-existing, supplied as recipe parameters)                                                              | Creates                                                                                        |
-|-------------|---------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
-| `azure-aca` | Managed environment, workload profile                                                                               | Container Apps, storage definitions, `httpRouteConfigs` rules, Key Vault and the secrets in it |
-| `aws-ecs`   | Cluster, VPC, subnets, security groups, execution role, ALB, Cloud Map namespace, EFS file system and mount targets | Task definitions, services, target groups, listener rules, EFS access points, secrets          |
+| Pack        | Consumes (pre-existing, supplied as recipe parameters)                                                              | Creates                                                                                                                                                        |
+|-------------|---------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `azure-aca` | Managed environment, workload profile                                                                               | Container Apps, Azure Files shares and their storage account, storage definitions, `httpRouteConfigs` rules, Key Vault and the secrets in it, managed identity |
+| `aws-ecs`   | Cluster, VPC, subnets, security groups, execution role, ALB, Cloud Map namespace, EFS file system and mount targets | Task definitions, services, target groups, listener rules, EFS access points, secrets                                                                          |
 
 Secrets also differ. The ACA pack creates the Key Vault it writes into, following the existing Azure secrets recipe, so Priya brings nothing; ECS needs no equivalent because Secrets Manager is account-level.
+
+Identity differs too. On ACA the pack creates a managed identity for each Container App and grants it read access to the Key Vault it creates. Pulling from a private registry is the exception: Priya grants pull access on her registry, because the pack does not modify infrastructure it does not own. On ECS the execution role Priya supplies already covers image pulls and secret reads.
+
+Hostnames are Priya's on both platforms. She owns the DNS records that point each hostname at the platform. On ACA the pack requests a managed certificate once DNS validates; on ECS the listener she supplies carries the certificate.
 
 Everything in the **Creates** column is owned by the Radius resource that produced it and is deleted with it. Everything in **Consumes** outlives the application — deleting an application never touches Priya's managed environment, cluster, ALB, EFS file system, mount targets, or stored data.
 
@@ -426,7 +431,7 @@ Behavior notes:
 - **`readinessProbe`** — HTTP is portable when the workload has a route. On ECS it is enforced by the ALB, so a container with no route has no readiness gate.
 - **`restartPolicy`** — ACA always restarts and is not configurable. ECS exposes a boolean, so `Always`, `OnFailure`, and `Never` cannot be distinguished.
 - **`replicas` on ACA** — an exact count is expressed by setting `minReplicas` and `maxReplicas` to the same value.
-- **`autoScaling` on ACA** — the floor is 1, so there is no scale to zero.
+- **`autoScaling` on ACA** — CPU and memory rules keep at least one replica running. Only `custom` rules can scale to zero.
 - **`autoScaling.metrics` `custom` on ECS** — the metric must already be published to CloudWatch and normalized per running task, for example queue depth divided by task count. `averageValue` becomes the target-tracking target.
 
 #### Routes
@@ -491,7 +496,7 @@ It ships with its documentation: what the pack creates, what Priya brings, the s
 
 ### Feature 2: Amazon ECS recipe pack
 
-Publish an `aws-ecs` recipe pack covering all four core types, targeting Fargate with `awsvpc` networking and `kind: HTTP` routing through an ALB. The pack consumes a pre-existing ECS cluster, VPC, subnets, security groups, execution role, ALB, EFS file system, and EFS mount targets, and creates task definitions, ECS services, target groups, listener rules, EFS access points, and Secrets Manager secrets.
+Publish an `aws-ecs` recipe pack covering all four core types, targeting Fargate with `awsvpc` networking and `kind: HTTP` routing through an ALB. The pack consumes a pre-existing ECS cluster, VPC, subnets, security groups, execution role, ALB, Cloud Map namespace, EFS file system, and EFS mount targets, and creates task definitions, ECS services, target groups, listener rules, EFS access points, and Secrets Manager secrets.
 
 It ships with its documentation: what the pack creates, what Priya brings, the support state for every property above, and how to reach ECS-only settings through `platformOptions`.
 
