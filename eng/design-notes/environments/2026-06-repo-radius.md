@@ -25,6 +25,7 @@ Radius and the application need not run in the same place. A control plane hoste
 
 - Selecting workflow files, packaging, storage technologies, authentication protocols, or result schemas. These belong in technical designs.
 - Replacing CI/CD systems, their approval processes, or the tools used to monitor running applications.
+- Defining release management or promotion between environments. Teams keep these workflows in their existing pipelines.
 - Requiring a new graphical interface or coding assistant to complete a deployment.
 - Installing, upgrading, or operating an organization's centralized Radius service.
 - Migrating existing application state and resource ownership between independent control planes. Connecting to an existing control plane is not a migration.
@@ -64,7 +65,7 @@ The platform engineer adds Radius operations to an existing pipeline, such as Gi
 - The job reports when Radius is ready, which application and environment it targets, and whether the requested operations succeeded.
 - When the job finishes normally, it releases the temporary control plane without deleting deployed workloads or their persistent state.
 - A later job can run on a different agent without depending on files left on the previous agent.
-- If Radius fails to start, the job stops before running the requested operations and tells the platform engineer what to correct. If the job is interrupted, the developer follows the recovery steps in Scenario 7.
+- If Radius fails to start, the job stops before running the requested operations and tells the platform engineer what to correct. If the job is interrupted, the developer follows the recovery steps in Scenario 6.
 
 ### Scenario 2: Keep Radius configuration and deployment state independently of the pipeline
 
@@ -123,19 +124,7 @@ The platform engineer configures approved environments and recipe packs in Radiu
 
 The platform team keeps its existing environment and recipe management practices. It does not need a new organization-wide catalog or a fleet-wide update service.
 
-### Scenario 6: Deploy, inspect, and promote an application
-
-> As an application developer, I want to deploy my application and its dependencies through our pipeline, inspect the result, and promote a tested revision to another environment, so that I can deliver changes without managing each cloud resource separately.
-
-The developer commits an application change and runs the team's delivery pipeline. The job identifies the application revision and target environment, then reports progress and the result. After the job ends, the developer can inspect the recorded application resources, their connections, and available endpoints.
-
-- A later deployment updates the existing application using the selected environment's state.
-- When developers inspect an application, they see Radius's last recorded state, not a live view of the cloud. Inspection does not claim to detect changes made outside Radius.
-- To promote an application, the developer selects an explicit revision. The job applies the destination environment's settings and approvals. It does not substitute the latest revision or promise identical infrastructure across environments.
-- Deleting a resource from the application definition does not mean Radius has deleted the resource. Resources that require explicit removal remain visible until removed.
-- Developers can perform these operations through the pipeline without a separate graphical frontend.
-
-### Scenario 7: Recover from failures and remove an application safely
+### Scenario 6: Recover from failures and remove an application safely
 
 > As an application developer, I want to understand a failed deployment and safely retry or remove my application, so that a failed job does not leave me guessing which resources still exist.
 
@@ -186,10 +175,10 @@ I can use Radius from my existing pipeline by starting it for a job or connectin
 1. **Configure the pipeline once.** The platform engineer chooses a temporary control plane or an existing Radius service, provides approved access, and configures the target environments and recipe packs in Radius. For a temporary control plane, the engineer also configures persistent state so later jobs recover this configuration along with application and resource records.
 2. **Select the application and destination.** The developer supplies the application revision, operation, and environment through the normal pipeline. Existing review and approval rules still apply.
 3. **Confirm readiness.** The job identifies the selected control plane and workload destination. If configuration is missing, required state is inaccessible, or a connection fails, the job stops the operation and explains why.
-4. **Run the operation.** The job reports progress and failures while Radius manages the application and its dependencies in the selected environment.
+4. **Run the operation.** The pipeline runs existing Radius commands against the selected control plane and environment. The job reports progress and failures.
 5. **Review the outcome.** The developer sees the revision, target, resource results, and any state or recovery warnings. The developer can still inspect the application after the job ends.
 6. **Finish without affecting workloads.** The job releases a temporary control plane or leaves a centralized service running. Deployed applications and their state remain available for the next operation.
-7. **Continue delivery.** A later job updates, inspects, promotes, or explicitly removes the application. The developer checks an interrupted or failed operation before retrying.
+7. **Run later commands.** A later job uses existing Radius commands to update, inspect, or explicitly remove the application. The developer checks an interrupted or failed operation before retrying.
 
 ## Key investments
 
@@ -207,4 +196,4 @@ I can use Radius from my existing pipeline by starting it for a job or connectin
 
 ### Feature 4
 
-**Application lifecycle experience.** Let developers follow progress, inspect and promote applications, recover from failures, and explicitly remove applications through their existing pipelines. Keep these operations consistent across both control-plane modes.
+**Command results and recovery.** Show the outcome of existing Radius commands in the pipeline and help developers recover from failed or interrupted jobs. Keep this behavior consistent across both control-plane modes.
