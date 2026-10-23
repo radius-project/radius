@@ -77,8 +77,10 @@ func handshake(t *testing.T, server, client *tls.Config) handshakeResult {
 	return handshakeResult{serverState: result.state, clientState: clientState, serverErr: result.err, clientErr: clientErr}
 }
 
-func clientConfig(src *Source, serverName string) *tls.Config {
-	cfg := src.ClientConfig(testNamespace)
+func clientConfig(t *testing.T, src *Source, serverName string) *tls.Config {
+	t.Helper()
+	cfg, err := src.ClientConfig(testNamespace)
+	require.NoError(t, err)
 	cfg.ServerName = serverName
 	return cfg
 }
@@ -112,7 +114,7 @@ func TestHandshake_Success(t *testing.T) {
 	server := newTestSource(t, ca, "ucp")
 	client := newTestSource(t, ca, "controller")
 
-	result := handshake(t, server.ServerConfig(testNamespace), clientConfig(client, ucpServerName))
+	result := handshake(t, server.ServerConfig(testNamespace), clientConfig(t, client, ucpServerName))
 	require.NoError(t, result.serverErr)
 	require.NoError(t, result.clientErr)
 
@@ -127,7 +129,7 @@ func TestHandshake_NameConstrainedCA(t *testing.T) {
 	server := newTestSource(t, ca, "ucp")
 	client := newTestSource(t, ca, "bicep-de")
 
-	result := handshake(t, server.ServerConfig(testNamespace), clientConfig(client, ucpServerName))
+	result := handshake(t, server.ServerConfig(testNamespace), clientConfig(t, client, ucpServerName))
 	require.NoError(t, result.serverErr)
 	require.NoError(t, result.clientErr)
 
@@ -221,7 +223,7 @@ func TestClientConfig_RejectsServer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := handshake(t, tt.server(), clientConfig(client, tt.serverName))
+			result := handshake(t, tt.server(), clientConfig(t, client, tt.serverName))
 			requireCode(t, result.clientErr, "PeerCertificateInvalid")
 		})
 	}
@@ -231,8 +233,63 @@ func TestClientConfig_NoPeerCertificates(t *testing.T) {
 	t.Parallel()
 	client := newTestSource(t, newCA(t), "controller")
 
-	err := client.ClientConfig(testNamespace).VerifyConnection(tls.ConnectionState{ServerName: ucpServerName})
+	err := clientConfig(t, client, ucpServerName).VerifyConnection(tls.ConnectionState{ServerName: ucpServerName})
 	requireCode(t, err, "PeerCertificateInvalid")
+}
+
+// TestClientConfig_RotationDuringHandshake rotates the client's certificate and CA to a
+// new CA after the handshake starts. The client must still verify the server and present
+// its certificate from the version it started with.
+func TestClientConfig_RotationDuringHandshake(t *testing.T) {
+	t.Parallel()
+	oldCA := newCA(t)
+	rotatedCA := newCA(t)
+	dir := newKubeletDir(t, oldCA.issue(t, certOptions{dnsNames: componentSANs("controller")}), oldCA.pem)
+	client, err := NewSource(dir.root)
+	require.NoError(t, err)
+	cfg := clientConfig(t, client, ucpServerName)
+	rotate := dir.stage(t, rotatedCA.issue(t, certOptions{dnsNames: componentSANs("controller")}), rotatedCA.pem)
+
+	pool := x509.NewCertPool()
+	pool.AddCert(oldCA.cert)
+	serverCert := oldCA.issue(t, certOptions{dnsNames: componentSANs("ucp")}).tlsCertificate(t)
+	server := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		// Rotate after the client has started the handshake and before it sees the server certificate.
+		GetConfigForClient: func(*tls.ClientHelloInfo) (*tls.Config, error) {
+			if err := rotate(); err != nil {
+				return nil, err
+			}
+			if _, err := client.Reload(); err != nil {
+				return nil, err
+			}
+			return &tls.Config{
+				MinVersion:   tls.VersionTLS12,
+				Certificates: []tls.Certificate{serverCert},
+				ClientAuth:   tls.RequireAndVerifyClientCert,
+				ClientCAs:    pool,
+			}, nil
+		},
+	}
+
+	result := handshake(t, server, cfg)
+	require.NoError(t, result.clientErr)
+	require.NoError(t, result.serverErr)
+	id, err := identityFromChains(result.serverState.VerifiedChains, testNamespace)
+	require.NoError(t, err)
+	require.Equal(t, "controller.radius-system.svc", id.String())
+
+	// A new config uses the rotated version.
+	m, err := client.load()
+	require.NoError(t, err)
+	require.Same(t, m.cert, mustClientCert(t, clientConfig(t, client, ucpServerName)))
+}
+
+func mustClientCert(t *testing.T, cfg *tls.Config) *tls.Certificate {
+	t.Helper()
+	cert, err := cfg.GetClientCertificate(nil)
+	require.NoError(t, err)
+	return cert
 }
 
 func TestIdentityFromRequest(t *testing.T) {
@@ -259,7 +316,7 @@ func TestIdentityFromRequest(t *testing.T) {
 	srv.StartTLS()
 	t.Cleanup(srv.Close)
 
-	httpClient := &http.Client{Transport: &http.Transport{TLSClientConfig: clientConfig(client, ucpServerName)}}
+	httpClient := &http.Client{Transport: &http.Transport{TLSClientConfig: clientConfig(t, client, ucpServerName)}}
 	resp, err := httpClient.Get(srv.URL)
 	require.NoError(t, err)
 	defer resp.Body.Close()
