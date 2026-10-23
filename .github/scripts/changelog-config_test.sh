@@ -40,6 +40,12 @@ readonly UNRELEASED="${TEST_ROOT}/unreleased.md"
 readonly RELEASE="${TEST_ROOT}/release.md"
 readonly CONTEXT="${TEST_ROOT}/context.json"
 readonly LINKED="${TEST_ROOT}/linked.md"
+readonly TYPE_GROUPS=(
+    "feat|Added" "fix|Fixed" "perf|Changed" "refactor|Changed"
+    "style|Others" "revert|Reverted changes" "docs|Others"
+    "test|Others" "build|Others" "ci|Others" "chore|Others"
+    "improve|Others"
+)
 
 fail() {
     echo "Error: $*" >&2
@@ -57,6 +63,8 @@ commit() {
 }
 
 build_fixture() {
+    local mapping type form header
+
     mkdir -p "${FIXTURE}"
     git -C "${FIXTURE}" init -q -b main
     git -C "${FIXTURE}" config user.name "Radius Test"
@@ -84,6 +92,27 @@ build_fixture() {
     commit 'fix: keep [@linked](https://github.com/linked) intact (#116)'
     commit "fix: keep dev@example.com, \`@code\`, @scope/pkg and pkg@v2 (#117)"
     commit "improve: conventional fallback (#121)"
+    commit "docs(release)!: replace the release guide (#122)"
+    git -C "${FIXTURE}" commit -q --allow-empty \
+        -m "docs: change release prerequisites (#123)" \
+        -m "BREAKING CHANGE: a new release prerequisite is required"
+    git -C "${FIXTURE}" commit -q --allow-empty \
+        -m "chore(tooling): replace build tooling (#124)" \
+        -m "BREAKING CHANGE: the old build tooling is unsupported"
+    commit "ci(deps)!: replace an automation dependency (#125)"
+    git -C "${FIXTURE}" commit -q --allow-empty \
+        -m "chore(deps): replace a runtime dependency (#126)" \
+        -m "BREAKING CHANGE: the dependency requires a new runtime"
+    for mapping in "${TYPE_GROUPS[@]}"; do
+        type="${mapping%%|*}"
+        for form in unscoped scoped; do
+            header="${type}"
+            if [[ "${form}" == scoped ]]; then
+                header+="(cli)"
+            fi
+            commit "${header}: ${type} ${form} coverage"
+        done
+    done
     git -C "${FIXTURE}" tag legacy-start
     commit "Preserve legacy client behavior (#118)"
     for type in feat fix perf refactor revert docs style test build ci chore; do
@@ -136,6 +165,12 @@ expect_absent() {
     fi
 }
 
+expect_once_under() {
+    expect_under "$1" "$2" "$3"
+    [[ "$(grep -Fc -- "- $2" "$3")" -eq 1 ]] \
+        || fail "commit must appear exactly once: $2"
+}
+
 build_fixture
 
 render v0.60.0..HEAD --strip all > "${UNRELEASED}"
@@ -144,13 +179,12 @@ render v0.60.0..HEAD --strip all > "${UNRELEASED}"
 # Sections appear in the documented order and nothing else is rendered.
 expected_headings="$(printf '%s\n' "### Breaking changes" "### Added" \
     "### Fixed" "### Changed" "### Dependencies" "### Reverted changes" \
-    "### Other changes")"
+    "### Others")"
 actual_headings="$(grep '^### ' "${UNRELEASED}")"
 [[ "${actual_headings}" == "${expected_headings}" ]] \
                                                      || fail "unexpected section order:"$'\n'"${actual_headings}"
 
 expect_under "Breaking changes" "Remove the legacy response field (#104)" "${UNRELEASED}"
-# protect_breaking_commits keeps a breaking commit whose type is otherwise skipped.
 expect_under "Breaking changes" "Drop the python build path (#105)" "${UNRELEASED}"
 expect_under "Added" "Add recipe validation (#101)" "${UNRELEASED}"
 expect_under "Fixed" "Preserve resource status (#102)" "${UNRELEASED}"
@@ -158,13 +192,42 @@ expect_under "Changed" "Speed up graph walks (#103)" "${UNRELEASED}"
 expect_under "Dependencies" "Bump the go-deps group (#106)" "${UNRELEASED}"
 expect_under "Dependencies" "Bump the github-actions group (#107)" "${UNRELEASED}"
 expect_under "Reverted changes" "Revert the graph walk change (#109)" "${UNRELEASED}"
-expect_under "Other changes" "Legacy subject without a type (#115)" "${UNRELEASED}"
+expect_under "Others" "Legacy subject without a type (#115)" "${UNRELEASED}"
+expect_once_under "Others" "Format shell scripts (#108)" "${UNRELEASED}"
+expect_once_under "Others" "Update the guide (#110)" "${UNRELEASED}"
+expect_once_under "Others" "Add tests (#111)" "${UNRELEASED}"
+expect_once_under "Others" "Tweak make (#112)" "${UNRELEASED}"
+expect_once_under "Others" "Tweak a workflow (#113)" "${UNRELEASED}"
+expect_once_under "Others" "Tidy (#114)" "${UNRELEASED}"
+expect_once_under "Others" "Conventional fallback (#121)" "${UNRELEASED}"
+expect_once_under "Breaking changes" \
+    "Replace the release guide (#122)" "${UNRELEASED}"
+expect_once_under "Breaking changes" \
+    "Change release prerequisites (#123)" "${UNRELEASED}"
+expect_once_under "Breaking changes" \
+    "Replace build tooling (#124)" "${UNRELEASED}"
+expect_once_under "Breaking changes" \
+    "Replace an automation dependency (#125)" "${UNRELEASED}"
+expect_once_under "Breaking changes" \
+    "Replace a runtime dependency (#126)" "${UNRELEASED}"
+
+for mapping in "${TYPE_GROUPS[@]}"; do
+    type="${mapping%%|*}"
+    for form in unscoped scoped; do
+        expect_once_under "${mapping#*|}" \
+            "${type^} ${form} coverage" "${UNRELEASED}"
+    done
+done
+expected_count="$(git -C "${FIXTURE}" rev-list --count v0.60.0..HEAD)"
+[[ "$(grep -c '^- ' "${UNRELEASED}")" -eq "${expected_count}" ]] \
+    || fail "every selected commit must have one changelog entry"
 
 for expected in \
     'Fixed|(#117),(#116),(#102)' \
-    'Breaking changes|(#105),(#104)' \
+    'Breaking changes|(#126),(#125),(#124),(#123),(#122),(#105),(#104)' \
+    'Changed|(#103)' \
     'Dependencies|(#107),(#106)' \
-    'Other changes|(#119),(#118),(#121),(#115)'; do
+    'Others|(#119),(#118),(#121),(#115),(#114),(#113),(#112),(#111),(#110),(#108)'; do
     actual="$(section "${expected%%|*}" "${UNRELEASED}" \
                                                         | grep -Eo '\(#[0-9]+\)' | paste -sd, -)"
     [[ "${actual}" == "${expected#*|}" ]] \
@@ -172,20 +235,15 @@ for expected in \
 done
 
 render legacy-start..HEAD --strip all > "${TEST_ROOT}/legacy.md"
-[[ "$(grep '^### ' "${TEST_ROOT}/legacy.md")" == "### Other changes" ]] \
+[[ "$(grep '^### ' "${TEST_ROOT}/legacy.md")" == "### Others" ]] \
                                                                         || fail "nonconventional-only history must use the fallback group"
 while IFS= read -r subject; do
     for output in "${UNRELEASED}" "${TEST_ROOT}/legacy.md"; do
-        expect_under "Other changes" "${subject^}" "${output}"
+        expect_under "Others" "${subject^}" "${output}"
         [[ "$(grep -Fc -- "- ${subject^}" "${output}")" -eq 1 ]] \
                                                                  || fail "nonconventional commit must appear exactly once: ${subject}"
     done
 done < <(git -C "${FIXTURE}" log --format=%s legacy-start..HEAD)
-
-# Excluded types never reach the changelog.
-for excluded in "(#108)" "(#110)" "(#111)" "(#112)" "(#113)" "(#114)"; do
-    expect_absent "${excluded}" "${UNRELEASED}"
-done
 
 # A breaking commit is listed once, under Breaking changes only.
 [[ "$(grep -c '(#104)' "${UNRELEASED}")" -eq 1 ]] \
@@ -210,6 +268,8 @@ render v0.60.0..HEAD --context | jq '
             {username: "merger", pr_author: "DariuszPorowski", pr_number: 104}
         elif .message | endswith("(#106)") then
             {username: "dependabot[bot]", pr_number: 106}
+        elif .message | endswith("(#110)") then
+            {username: "merger", pr_author: "DariuszPorowski", pr_number: 110}
         elif .message | endswith("(#115)") then
             {username: "itpropro", pr_number: 115}
         else {} end
@@ -236,6 +296,11 @@ expect_under "Fixed" \
     "Preserve resource status by ${fallback}" "${LINKED}"
 expect_under "Dependencies" \
     "Bump the go-deps group by ${bot}" "${LINKED}"
+expect_once_under "Others" \
+    "Update the guide by ${profile} in [#110](${pulls}/110)" "${LINKED}"
+linked_headings="${expected_headings}"$'\n### Contributors\n### New contributors'
+[[ "$(grep '^### ' "${LINKED}")" == "${linked_headings}" ]] \
+    || fail "Others must be the last change group before contributor sections"
 expect_absent 'by @' "${LINKED}"
 expect_absent '[@merger]' "${LINKED}"
 expect_absent '(#101)' "${LINKED}"
