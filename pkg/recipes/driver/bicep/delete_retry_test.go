@@ -134,6 +134,21 @@ func Test_Bicep_Delete_CanceledDuringRetryDelay(t *testing.T) {
 	})
 }
 
+func Test_Bicep_Delete_CanceledBeforeFirstAttempt(t *testing.T) {
+	d, client, _, _ := setupDeleteInputs(t)
+	d.options = BicepOptions{DeleteRetryCount: 20, DeleteRetryDelaySeconds: 60}
+	id := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/test-account"
+	client.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(0)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	err := d.Delete(ctx, driver.DeleteOptions{OutputResources: []rpv1.OutputResource{
+		{ID: resources.MustParse(id), RadiusManaged: new(true)},
+	}})
+	require.ErrorContains(t, err, context.Canceled.Error())
+	require.ErrorContains(t, err, "after 0 attempt(s)")
+}
+
 func Test_Bicep_Delete_PermanentFailureCancelsOtherRetries(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		d, client, _, _ := setupDeleteInputs(t)
