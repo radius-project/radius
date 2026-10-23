@@ -61,7 +61,7 @@ func (client *APIVersionsClient) BeginCreateOrUpdate(ctx context.Context, planeN
 	}
 }
 
-// CreateOrUpdate - Create or update an API version.
+// createOrUpdate - Create or update an API version.
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *APIVersionsClient) createOrUpdate(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, resource APIVersionResource, options *APIVersionsClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -80,7 +80,7 @@ func (client *APIVersionsClient) createOrUpdate(ctx context.Context, planeName s
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *APIVersionsClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, resource APIVersionResource, _ *APIVersionsClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}/apiversions/{apiVersionName}"
 	if planeName == "" {
@@ -136,7 +136,7 @@ func (client *APIVersionsClient) BeginDelete(ctx context.Context, planeName stri
 	}
 }
 
-// Delete - Delete an API version.
+// deleteOperation - Delete an API version.
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *APIVersionsClient) deleteOperation(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *APIVersionsClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
@@ -155,7 +155,7 @@ func (client *APIVersionsClient) deleteOperation(ctx context.Context, planeName 
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *APIVersionsClient) deleteCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, _ *APIVersionsClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}/apiversions/{apiVersionName}"
 	if planeName == "" {

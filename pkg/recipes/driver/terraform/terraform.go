@@ -327,6 +327,7 @@ func (d *terraformDriver) GetRecipeMetadata(ctx context.Context, opts driver.Bas
 		RootDir:        requestDirPath,
 		ResourceRecipe: &opts.Recipe,
 		EnvRecipe:      &opts.Definition,
+		EnvConfig:      &opts.Configuration,
 		LogLevel:       d.options.LogLevel,
 	})
 

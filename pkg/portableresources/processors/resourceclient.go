@@ -18,11 +18,15 @@ package processors
 
 import (
 	context "context"
+	"errors"
 	"fmt"
+	"net/http"
+	"slices"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -123,7 +127,7 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 		}
 	}
 
-	apiVersion, err := c.lookupARMAPIVersion(ctx, id)
+	apiVersions, err := c.lookupARMAPIVersions(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -133,65 +137,157 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 		return err
 	}
 
-	poller, err := client.BeginDeleteByID(ctx, id.String(), apiVersion, &armresources.ClientBeginDeleteByIDOptions{})
-	if err != nil {
-		if clients.Is404Error(err) {
-			// If the resource that we want to delete doesn't exist, we don't need to delete it.
-			return nil
+	var versionError error
+	for _, apiVersion := range apiVersions {
+		// Provider metadata does not map versions to regions. Ask ARM about the exact
+		// resource, so child, global, and remote-region resources use their own route.
+		_, err := client.GetByID(ctx, id.String(), apiVersion, nil)
+		if strings.EqualFold(id.Type(), "Microsoft.Authorization/locks") {
+			existence, statusCode, errorCode := "unknown", 0, ""
+			if err == nil {
+				existence, statusCode = "present", http.StatusOK
+			} else {
+				if responseError, ok := errors.AsType[*azcore.ResponseError](err); ok {
+					statusCode, errorCode = responseError.StatusCode, responseError.ErrorCode
+					if statusCode == http.StatusNotFound {
+						switch errorCode {
+						case "ResourceNotFound", "ResourceGroupNotFound", "ParentResourceNotFound":
+							existence = "absent"
+						}
+					}
+				}
+			}
+			// This observes existence at cleanup time, not whether this deployment created the lock.
+			ucplog.FromContextOrDiscard(ctx).Info("Azure lock existence check before deletion",
+				"resourceID", id.String(), "apiVersion", apiVersion,
+				"existence", existence, "statusCode", statusCode, "errorCode", errorCode)
+		}
+		if isARMAPIVersionRejection(err) {
+			versionError = err
+			continue
+		}
+		if err != nil {
+			var responseError *azcore.ResponseError
+			if errors.As(err, &responseError) && responseError.StatusCode == http.StatusNotFound {
+				switch responseError.ErrorCode {
+				case "ResourceNotFound", "ResourceGroupNotFound", "ParentResourceNotFound", "RoleAssignmentNotFound":
+					return nil
+				}
+			}
+			return fmt.Errorf("failed to validate API version %q for resource %q: %w", apiVersion, id.String(), err)
 		}
 
-		return err
-	}
-
-	_, err = poller.PollUntilDone(ctx, nil)
-	if err != nil {
-		if clients.Is404Error(err) {
-			// If the resource that we want to delete doesn't exist, we don't need to delete it.
-			return nil
+		poller, err := client.BeginDeleteByID(ctx, id.String(), apiVersion, &armresources.ClientBeginDeleteByIDOptions{})
+		if isARMAPIVersionRejection(err) {
+			// Only an initial ARM routing rejection permits another DELETE. Never
+			// change versions after an operation has been accepted.
+			versionError = err
+			continue
+		}
+		if err != nil {
+			if clients.Is404Error(err) {
+				return nil
+			}
+			return err
 		}
 
-		return err
+		_, err = poller.PollUntilDone(ctx, nil)
+		if err != nil {
+			if clients.Is404Error(err) {
+				return nil
+			}
+			return err
+		}
+
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("no API version was accepted for resource %q: %w", id.String(), versionError)
 }
 
-func (c *resourceClient) lookupARMAPIVersion(ctx context.Context, id resources.ID) (string, error) {
+func isARMAPIVersionRejection(err error) bool {
+	var responseError *azcore.ResponseError
+	if !errors.As(err, &responseError) || responseError.StatusCode != http.StatusBadRequest {
+		return false
+	}
+
+	// These ARM errors reject the request before it reaches a resource operation.
+	return responseError.ErrorCode == "NoRegisteredProviderFound" || responseError.ErrorCode == "InvalidApiVersionParameter"
+}
+
+func (c *resourceClient) lookupARMAPIVersions(ctx context.Context, id resources.ID) ([]string, error) {
 	client, err := clientv2.NewProvidersClient(id.FindScope(resources_azure.ScopeSubscriptions), &c.arm.ClientOptions, c.armClientOptions)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	resp, err := client.Get(ctx, id.ProviderNamespace(), nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	// We need to match on the resource type name without the provider namespace. For an extension
-	// resource (eg: a Microsoft.Authorization/locks resource attached to another resource), the
-	// provider namespace and type come from the extension segments, not the primary type segments.
+	// Provider metadata omits many nested child types, such as
+	// storageAccounts/fileServices/shares. Try the exact type first, then each parent type.
+	for _, shortType := range armTypeCandidates(id) {
+		for _, rt := range resp.ResourceTypes {
+			if rt == nil || rt.ResourceType == nil || !strings.EqualFold(shortType, *rt.ResourceType) {
+				continue
+			}
+
+			versions, err := orderedAPIVersions(rt)
+			if err != nil {
+				return nil, fmt.Errorf("could not find API version for type %q, %w", id.Type(), err)
+			}
+
+			return versions, nil
+		}
+	}
+
+	return nil, fmt.Errorf("could not find API version for type %q, type was not found", id.Type())
+}
+
+// armTypeCandidates returns provider-relative type paths for id, from the exact type to the
+// top-level parent type. It uses the extension segments when the ID has them.
+func armTypeCandidates(id resources.ID) []string {
 	segments := id.TypeSegments()
 	if len(id.ExtensionSegments()) > 0 {
 		segments = id.ExtensionSegments()
 	}
-	shortType := strings.TrimPrefix(segments[0].Type, id.ProviderNamespace()+"/")
-	for _, rt := range resp.ResourceTypes {
-		if !strings.EqualFold(shortType, *rt.ResourceType) {
-			continue
-		}
-		if rt.DefaultAPIVersion != nil {
-			return *rt.DefaultAPIVersion, nil
-		}
-
-		if len(rt.APIVersions) > 0 {
-			return *rt.APIVersions[0], nil
-		}
-
-		return "", fmt.Errorf("could not find API version for type %q, no supported API versions", id.Type())
-
+	if len(segments) == 0 {
+		return nil
 	}
 
-	return "", fmt.Errorf("could not find API version for type %q, type was not found", id.Type())
+	types := []string{strings.TrimPrefix(segments[0].Type, id.ProviderNamespace()+"/")}
+	for _, segment := range segments[1:] {
+		types = append(types, types[len(types)-1]+"/"+segment.Type)
+	}
+	slices.Reverse(types)
+	return types
+}
+
+// orderedAPIVersions returns the unique, non-empty API versions of rt. A supported default
+// version is first.
+func orderedAPIVersions(rt *armresources.ProviderResourceType) ([]string, error) {
+	versions := []string{}
+	for _, version := range rt.APIVersions {
+		if version != nil && strings.TrimSpace(*version) != "" && !slices.Contains(versions, *version) {
+			versions = append(versions, *version)
+		}
+	}
+
+	if len(versions) == 0 {
+		return nil, errors.New("no supported API versions")
+	}
+
+	if rt.DefaultAPIVersion != nil {
+		if index := slices.Index(versions, *rt.DefaultAPIVersion); index > 0 {
+			version := versions[index]
+			copy(versions[1:index+1], versions[:index])
+			versions[0] = version
+		}
+	}
+
+	return versions, nil
 }
 
 func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID) error {

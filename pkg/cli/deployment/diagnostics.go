@@ -43,27 +43,18 @@ import (
 )
 
 type ARMDiagnosticsClient struct {
-	K8sTypedClient    *k8s.Clientset
-	RestConfig        *rest.Config
-	K8sRuntimeClient  client.Client
-	ApplicationClient generated.GenericResourcesClient
-	ContainerClient   generated.GenericResourcesClient
-	EnvironmentClient generated.GenericResourcesClient
-	GatewayClient     generated.GenericResourcesClient
+	K8sTypedClient   *k8s.Clientset
+	RestConfig       *rest.Config
+	K8sRuntimeClient client.Client
+	GatewayClient    generated.GenericResourcesClient
 
-	// Preview indicates the client should operate against the preview resource types
-	// (Radius.Compute/containers, Radius.Core/applications) using the dynamic
-	// API-version resolution provided by ManagementClient.
-	Preview bool
-
-	// ManagementClient is used in preview mode to resolve a container resource using the
-	// API version registered for its resource type. It is only set when Preview is true.
+	// ManagementClient resolves a Radius.Compute/containers resource using the API version
+	// registered for its resource type.
 	ManagementClient clients.ApplicationsManagementClient
 }
 
-// previewContainerResourceType is the preview container resource type resolved via the
-// management client when Preview is enabled.
-const previewContainerResourceType = "Radius.Compute/containers"
+// containerResourceType is the container resource type that Logs and Expose operate on.
+const containerResourceType = "Radius.Compute/containers"
 
 var _ clients.DiagnosticsClient = (*ARMDiagnosticsClient)(nil)
 
@@ -163,76 +154,12 @@ func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOp
 	return streams, err
 }
 
-func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, resourceName string) (string, error) {
-	if dc.Preview {
-		return dc.findNamespaceOfContainerPreview(ctx, resourceName)
-	}
-
-	containerResponse, err := dc.ContainerClient.Get(ctx, resourceName, nil)
-	if err != nil {
-		return "", fmt.Errorf("could not find container %q:%w", resourceName, err)
-	}
-
-	obj, ok := containerResponse.Properties["application"]
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	application, ok := obj.(string)
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	id, err := resources.ParseResource(application)
-	if err != nil {
-		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
-	}
-
-	applicationResponse, err := dc.ApplicationClient.Get(ctx, id.Name(), nil)
-	if err != nil {
-		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
-	}
-
-	obj, ok = applicationResponse.Properties["status"]
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	status, ok := obj.(map[string]any)
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	obj, ok = status["compute"]
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	compute, ok := obj.(map[string]any)
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	kind, ok := compute["kind"].(string)
-	if !ok || !strings.EqualFold(kind, "kubernetes") {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	namespace, ok := compute["namespace"].(string)
-	if ok {
-		return namespace, nil
-	}
-
-	return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-}
-
-// findNamespaceOfContainerPreview resolves the Kubernetes namespace for a preview
-// Radius.Compute/containers resource. Unlike the legacy path, the preview
-// Radius.Core/applications resource does not expose status.compute.namespace, so the
+// findNamespaceOfContainer resolves the Kubernetes namespace for a Radius.Compute/containers
+// resource. Radius.Core/applications does not expose status.compute.namespace, so the
 // namespace is derived from the container's output resources (the backing Deployment's
 // Kubernetes resource ID encodes the namespace).
-func (dc *ARMDiagnosticsClient) findNamespaceOfContainerPreview(ctx context.Context, resourceName string) (string, error) {
-	container, err := dc.ManagementClient.GetResource(ctx, previewContainerResourceType, resourceName)
+func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, resourceName string) (string, error) {
+	container, err := dc.ManagementClient.GetResource(ctx, containerResourceType, resourceName)
 	if err != nil {
 		return "", fmt.Errorf("could not find container %q: %w", resourceName, err)
 	}
@@ -280,7 +207,7 @@ func createLogStreams(ctx context.Context, options clients.LogsOptions, dc *ARMD
 		container := options.Container
 		if container == "" {
 			// We don't really expect this to fail, but let's do something reasonable if it does...
-			container = defaultContainerName(dc, &replica)
+			container = defaultContainerName(&replica)
 			if container == "" {
 				return streams, fmt.Errorf("failed to find the default container for resource '%s'. use '--container <name>' to specify the name", options.Resource)
 			}
@@ -383,24 +310,15 @@ func runPortforward(restconfig *rest.Config, client *k8s.Clientset, replica *cor
 	return fw.ForwardPorts()
 }
 
-func getAppContainerName(replica *corev1.Pod) string {
-	// The container name will be the resource name
-	resource := replica.Labels[k8slabels.LabelRadiusResource]
-	return resource
-}
-
 // defaultContainerName resolves the container to read logs from when none is specified.
-// For preview (Radius.Compute/containers) the pod's container is named after the container
-// map key rather than the resource, so the resource-name heuristic does not apply. When the
-// pod has exactly one container its name is used; otherwise the caller must pass --container.
-func defaultContainerName(dc *ARMDiagnosticsClient, replica *corev1.Pod) string {
-	if dc.Preview {
-		if len(replica.Spec.Containers) == 1 {
-			return replica.Spec.Containers[0].Name
-		}
-		return ""
+// A Radius.Compute/containers pod's container is named after its container map key rather than
+// the resource, so the pod's only container is used. When the pod has more than one container
+// the caller must pass --container.
+func defaultContainerName(replica *corev1.Pod) string {
+	if len(replica.Spec.Containers) == 1 {
+		return replica.Spec.Containers[0].Name
 	}
-	return getAppContainerName(replica)
+	return ""
 }
 
 func streamLogs(ctx context.Context, client *k8s.Clientset, replica *corev1.Pod, container string, follow bool) (io.ReadCloser, error) {

@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import dispatchReleaseController from "./dispatch-release-controller.mjs";
+import dispatchReleaseController, {
+  resumeReleasePublication
+} from "./dispatch-release-controller.mjs";
 
 function fixture() {
   const inputs = {
@@ -70,5 +72,83 @@ test("rejects malformed requests before dispatch", async () => {
     () => dispatchReleaseController(state),
     /SOURCE_SHA must be a full commit SHA/
   );
+  assert.deepEqual(state.dispatches, []);
+});
+
+test("resumes failed publication jobs without creating another tag or dispatch", async () => {
+  const state = fixture();
+  const reruns = [];
+  const run = {
+    id: 77,
+    head_sha: state.inputs.SOURCE_SHA,
+    head_branch: state.inputs.VERSION,
+    event: "push",
+    status: "completed",
+    conclusion: "failure",
+    html_url: "https://example.test/run/77"
+  };
+  state.github.paginate = async (method) => method();
+  state.github.rest.actions = {
+    listWorkflowRuns: async () => [run],
+    reRunWorkflowFailedJobs: async (request) => reruns.push(request)
+  };
+  await resumeReleasePublication(state);
+  assert.equal(reruns[0].run_id, 77);
+  assert.equal(state.outputs["run-url"], run.html_url);
+  assert.deepEqual(state.dispatches, []);
+  run.status = "in_progress";
+  await resumeReleasePublication(state);
+  assert.equal(reruns.length, 1);
+});
+
+for (const event of ["push", "workflow_dispatch"]) {
+  test(`publication resume discovers a delayed ${event} run`, async () => {
+    const state = fixture();
+    let clock = 0;
+    const intervals = [];
+    const run = {
+      id: 78,
+      head_sha: state.inputs.SOURCE_SHA,
+      head_branch: state.inputs.VERSION,
+      event,
+      status: "queued",
+      html_url: "https://example.test/run/78"
+    };
+    state.now = () => clock;
+    state.sleep = async (milliseconds) => {
+      intervals.push(milliseconds);
+      clock += milliseconds;
+    };
+    state.github.paginate = async () => (clock >= 120000 ? [run] : []);
+    state.github.rest.actions = { listWorkflowRuns() {} };
+
+    await resumeReleasePublication(state);
+
+    assert.equal(clock, 120000);
+    assert.deepEqual(intervals, Array(12).fill(10000));
+    assert.equal(state.outputs["run-url"], run.html_url);
+    assert.deepEqual(state.dispatches, []);
+  });
+}
+
+test("publication resume rejects other tags at the same commit", async () => {
+  const state = fixture();
+  let clock = 0;
+  const intervals = [];
+  state.now = () => clock;
+  state.sleep = async (milliseconds) => {
+    intervals.push(milliseconds);
+    clock += milliseconds;
+  };
+  state.github.paginate = async () => [
+    { head_sha: state.inputs.SOURCE_SHA, head_branch: "v0.60.0", event: "push" }
+  ];
+  state.github.rest.actions = { listWorkflowRuns() {} };
+  await assert.rejects(() => resumeReleasePublication(state), {
+    message: `No tag-build run found for ${state.inputs.VERSION} after five minutes; the tag exists. Start it with gh workflow run build-release.yaml --ref ${state.inputs.VERSION}, then resume`
+  });
+  assert.equal(clock, 300000);
+  assert.deepEqual(intervals, Array(30).fill(10000));
+  assert.equal(state.outputs["run-url"], undefined);
   assert.deepEqual(state.dispatches, []);
 });

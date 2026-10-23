@@ -26,11 +26,15 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/rp/util/registrytest"
@@ -218,28 +222,121 @@ func Test_isTransientRegistryError(t *testing.T) {
 	}
 }
 
-func Test_PathParser(t *testing.T) {
-	repository, tag, err := parsePath("ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0")
-	require.NoError(t, err)
-	require.Equal(t, "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure", repository)
-	require.Equal(t, "1.0", tag)
+func Test_parsePath(t *testing.T) {
+	const sha = "sha256:1234567890123456789012345678901234567890123456789012345678901234"
+	tests := []struct {
+		name     string
+		path     string
+		wantRepo string
+		wantRef  string
+		wantErr  string
+	}{
+		{name: "tag", path: "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0", wantRepo: "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure", wantRef: "1.0"},
+		{name: "no tag defaults to latest", path: "ghcr.io/radius-project/recipes/test", wantRepo: "ghcr.io/radius-project/recipes/test", wantRef: "latest"},
+		{name: "digest", path: "ghcr.io/radius-project/recipes/test@" + sha, wantRepo: "ghcr.io/radius-project/recipes/test", wantRef: sha},
+		{name: "digest wins over tag", path: "ghcr.io/radius-project/recipes/test:1.0@" + sha, wantRepo: "ghcr.io/radius-project/recipes/test", wantRef: sha},
+		{name: "registry port with tag", path: "localhost:5000/recipes/test:1.0", wantRepo: "localhost:5000/recipes/test", wantRef: "1.0"},
+		{name: "registry port with digest", path: "localhost:5000/recipes/test@" + sha, wantRepo: "localhost:5000/recipes/test", wantRef: sha},
+		{name: "scheme with digest", path: "https://localhost:5000/recipes/test@" + sha, wantRepo: "localhost:5000/recipes/test", wantRef: sha},
+		{name: "invalid host", path: "******example.com/test/bar:v1", wantErr: "invalid reference format"},
+		{name: "short digest", path: "ghcr.io/radius-project/recipes/test@sha256:1234", wantErr: "invalid reference format"},
+		{name: "unsupported digest algorithm", path: "ghcr.io/radius-project/recipes/test@md5:12345678901234567890123456789012", wantErr: "unsupported digest algorithm"},
+		{name: "empty digest", path: "ghcr.io/radius-project/recipes/test@", wantErr: "invalid reference format"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repository, ref, err := parsePath(tc.path)
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.wantRepo, repository)
+			require.Equal(t, tc.wantRef, ref)
+		})
+	}
 }
 
-func Test_PathParserErr(t *testing.T) {
-	repository, tag, err := parsePath("http://user:passwd@example.com/test/bar:v1")
-	require.Error(t, err)
-	require.Equal(t, "", repository)
-	require.Equal(t, "", tag)
+// newMovedTagRegistry serves repository "test" with two recipes. Tag "v1" points to
+// the second recipe, as if the tag was moved after the first recipe was published.
+// Unlike registrytest.NewFakeRegistryServer, it only serves references that exist,
+// so tests can tell which reference was resolved. It serves plain HTTP.
+func newMovedTagRegistry(t *testing.T) (server *httptest.Server, first digest.Digest) {
+	t.Helper()
+	manifests := map[string][]byte{}
+	blobs := map[string][]byte{}
+	addRecipe := func(name string) digest.Digest {
+		layer := []byte(`{"recipe":"` + name + `"}`)
+		layerDigest := digest.FromBytes(layer)
+		blobs[layerDigest.String()] = layer
+		manifest := []byte(`{"layers":[{"digest":"` + layerDigest.String() + `"}]}`)
+		manifestDigest := digest.FromBytes(manifest)
+		manifests[manifestDigest.String()] = manifest
+		return manifestDigest
+	}
+	first = addRecipe("first")
+	tags := map[string]string{"v1": addRecipe("second").String()}
+
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ref := path.Base(r.URL.Path)
+		contentType, content := ocispec.MediaTypeImageLayer, blobs
+		switch path.Dir(r.URL.Path) {
+		case "/v2/test/manifests":
+			contentType, content = ocispec.MediaTypeImageManifest, manifests
+			if tagged, ok := tags[ref]; ok {
+				ref = tagged
+			}
+		case "/v2/test/blobs":
+		default:
+			content = nil
+		}
+		body, ok := content[ref]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Docker-Content-Digest", ref)
+		w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+		if r.Method == http.MethodGet {
+			_, _ = w.Write(body)
+		}
+	}))
+	t.Cleanup(server.Close)
+	return server, first
 }
 
-func Test_PathParserDigestErr(t *testing.T) {
-	// A digest reference carries no tag, so it must be rejected at parse time
-	// rather than failing later when the registry is resolved by tag.
-	repository, tag, err := parsePath("ghcr.io/radius-project/recipes/test@sha256:1234567890123456789012345678901234567890123456789012345678901234")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "a tagged reference such as repository:tag is required")
-	require.Equal(t, "", repository)
-	require.Equal(t, "", tag)
+func Test_ReadFromRegistry_References(t *testing.T) {
+	setFastRegistryBackoff(t, 0)
+	server, first := newMovedTagRegistry(t)
+
+	tests := []struct {
+		name       string
+		path       string
+		wantRecipe string
+		wantErr    string
+	}{
+		{name: "tag", path: "/test:v1", wantRecipe: "second"},
+		{name: "digest", path: "/test@" + first.String(), wantRecipe: "first"},
+		{name: "digest wins over moved tag", path: "/test:v1@" + first.String(), wantRecipe: "first"},
+		{name: "missing digest", path: "/test@" + digest.FromString("missing").String(), wantErr: "not found"},
+		{name: "missing digest does not fall back to tag", path: "/test:v1@" + digest.FromString("missing").String(), wantErr: "not found"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			data := map[string]any{}
+			err := ReadFromRegistry(t.Context(), recipes.EnvironmentDefinition{TemplatePath: server.URL + tc.path, PlainHTTP: true}, &data, server.Client())
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+				require.Empty(t, data)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.wantRecipe, data["recipe"])
+		})
+	}
 }
 
 func Test_GetRegistrySecrets(t *testing.T) {

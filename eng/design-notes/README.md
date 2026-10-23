@@ -6,24 +6,31 @@ This directory contains design documents that describe the architecture, feature
 
 Design notes are organized by topic area:
 
-| Directory | Description |
-|-----------|-------------|
-| `architecture/` | System-level architecture decisions |
-| `cli/` | CLI-specific designs |
+| Directory        | Description                                                           |
+|------------------|-----------------------------------------------------------------------|
+| `architecture/`  | System-level architecture decisions                                   |
+| `cli/`           | CLI-specific designs                                                  |
 | `extensibility/` | Resource extensibility, user-defined types, and compute extensibility |
-| `gitops/` | GitOps integration designs |
-| `guides/` | Living design guidelines (e.g., API design) |
-| `recipes/` | Recipe engine and providers |
-| `security/` | Threat models and security designs |
-| `templates/` | Design document templates |
-| `tools/` | Engineering tools and workflows |
-| `ucp/` | Universal Control Plane designs |
+| `gitops/`        | GitOps integration designs                                            |
+| `guides/`        | Living design guidelines (e.g., API design)                           |
+| `recipes/`       | Recipe engine and providers                                           |
+| `security/`      | Threat models and security designs                                    |
+| `templates/`     | Design document templates                                             |
+| `tools/`         | Engineering tools and workflows                                       |
+| `ucp/`           | Universal Control Plane designs                                       |
 
-### Related Directories
+## Retained Specifications
 
-| Directory | Description |
-|-----------|-------------|
-| `../specs/` | Spec Kit specifications (structured project artifacts: plans, research, tasks, checklists) |
+These specifications and implementation plans preserve the design history of implemented features. Their original draft statuses, planning checklists, and follow-up work are historical context, not current implementation status.
+
+- [Long-running tests use the current release](lrt-current-release.md)
+- [Remove the Bicep types submodule](remove-bicep-types-submodule.md)
+- [Agent Ex features](agent-ex-features.md)
+- [Agent Ex implementation plan](agent-ex-plan.md)
+- [Agent Ex contributing-docs implementation plan](agent-ex-phase-3-plan.md)
+- [Resource type icons](resource-type-icons.md)
+- [Application graph dependency edges](graph-dependency-edges.md)
+- [Live deployment graph progress](live-deploy-graph.md)
 
 ## Adding a New Design Note
 

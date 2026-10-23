@@ -52,6 +52,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      deployments: read
     steps:
       - name: Checkout main with release history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,7 +72,7 @@ jobs:
       - name: Create release App token
         if: github.repository == 'radius-project/radius'
         id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
@@ -95,7 +96,7 @@ jobs:
       - name: Create Deployment Engine read token
         if: github.repository == 'radius-project/radius'
         id: de-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
@@ -108,7 +109,6 @@ jobs:
         id: preflight
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
-          DE_TOKEN: ${{ steps.de-token.outputs.token || github.token }}
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
         run: |
@@ -126,10 +126,15 @@ jobs:
           git rev-parse --verify --quiet "${release_ref}^{commit}" \
             >/dev/null || release_ref=HEAD
           bash ./.github/scripts/verify-release-build-contract.sh \
-            "${release_ref}"
+            "${release_ref}" --require-sibling-releases
 
-          GH_TOKEN="${DE_TOKEN}" \
-            bash ./.github/scripts/verify-deployment-engine-tag.sh "${version}"
+          # A final promotes the channel's last release candidate.
+          release_candidate=""
+          if [[ "${RELEASE_TYPE}" == "final" ]]; then
+            release_candidate="$(CHANNEL="${CHANNEL}" yq -r \
+              '.supported[] | select(.channel == strenv(CHANNEL)) | .version' \
+              versions.yaml)"
+          fi
 
           existing="$(
             gh pr list --repo "${GITHUB_REPOSITORY}" --state open \
@@ -171,7 +176,42 @@ jobs:
             echo "existing-head=${existing_head}"
             echo "version=${version}"
             echo "branch=${branch}"
+            echo "release-candidate=${release_candidate}"
           } >> "${GITHUB_OUTPUT}"
+
+      # A final ships the Deployment Engine commit that its last RC locked. The
+      # RC tag in the Deployment Engine repository can move; the GitHub-verified
+      # lock on the RC's Radius tag cannot.
+      - name: Read release candidate Deployment Engine lock
+        if: inputs.release-type == 'final'
+        id: rc-lock
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: release-candidate
+          INPUT_VERSION: ${{ steps.preflight.outputs.version }}
+          INPUT_RELEASE_CANDIDATE: ${{ steps.preflight.outputs.release-candidate }}
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-release-controller-lock.mjs`)
+            await script({context, github, core})
+
+      # The controller creates an absent Deployment Engine tag after approval:
+      # at main for an RC or patch, and for a final at the commit its last RC
+      # locked. Check that plan, or an existing tag, before the pull request.
+      - name: Verify or plan Deployment Engine tag
+        env:
+          GH_TOKEN: ${{ steps.de-token.outputs.token || github.token }}
+          VERSION: ${{ steps.preflight.outputs.version }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          RELEASE_CANDIDATE: ${{ steps.preflight.outputs.release-candidate }}
+          RC_DE_COMMIT: ${{ steps.rc-lock.outputs.de-source-commit }}
+        run: |
+          args=(--allow-absent main "${VERSION}")
+          if [[ "${RELEASE_TYPE}" == "final" ]]; then
+            args=(--allow-absent "${RELEASE_CANDIDATE}" "${VERSION}"
+              "${RC_DE_COMMIT:?the release candidate lock has no commit}")
+          fi
+          bash ./.github/scripts/verify-deployment-engine-tag.sh "${args[@]}"
 
       - name: Read curated notes from existing release pull request
         if: >-
@@ -213,7 +253,6 @@ jobs:
           inputs.backport-pr-numbers != ''
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          BACKPORT_PRS: ${{ inputs.backport-pr-numbers }}
           CHANNEL: ${{ inputs.channel }}
         run: |
           release_branch="refs/remotes/origin/release/${CHANNEL}"
@@ -226,12 +265,10 @@ jobs:
           gh label create "${label}" --repo "${GITHUB_REPOSITORY}" \
             --color 5319E7 --description "Backport to release/${CHANNEL}" \
             --force
-          IFS=',' read -r -a pull_requests <<< "${BACKPORT_PRS}"
-          for pull_request in "${pull_requests[@]}"; do
-            pull_request="${pull_request//[[:space:]]/}"
+          while IFS= read -r pull_request; do
             gh pr edit "${pull_request}" --repo "${GITHUB_REPOSITORY}" \
               --add-label "${label}"
-          done
+          done < <(jq -r '.[].source_pr' "${RUNNER_TEMP}/release-backports.json")
 
       - name: Prepare release changes and plan
         id: prepare
@@ -268,6 +305,19 @@ jobs:
             echo "Release state changed after preflight." >&2
             exit 1
           }
+          yq -o=json '.' "${output_dir}/release-plan.yaml" >"${output_dir}/plan.json"
+
+      - name: Require validated RC coordination before a final
+        if: inputs.release-type == 'final'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: check-rc
+          INPUT_PLAN_FILE: ${{ runner.temp }}/release-preparation/plan.json
+        with:
+          retries: 5
+          script: |
+            const { default: coordinate } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
+            await coordinate({ github, context, core })
 
       - name: Preserve curated release note sections
         if: >-
@@ -329,7 +379,7 @@ jobs:
           }
 
       - name: Upload release plan
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-plan-${{ steps.prepare.outputs.version }}
           path: |

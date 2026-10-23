@@ -26,14 +26,15 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v9"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v12"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	"github.com/stretchr/testify/require"
 
 	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
 
@@ -57,7 +58,7 @@ func Test_ACI(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:             step.NewDeployExecutor(template).WithRetry(5*time.Minute, 60*time.Second, isTransientCloudDeployError),
+			Executor:             step.NewDeployExecutor(template, testutil.GetMagpieImage()).WithRetry(5*time.Minute, 60*time.Second, isTransientCloudDeployError),
 			SkipObjectValidation: true,
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{

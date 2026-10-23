@@ -14,6 +14,38 @@
 // limitations under the License.
 // ------------------------------------------------------------
 
+import { execFileSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+
+export function readMainHistory() {
+  return execFileSync(
+    "git",
+    ["rev-list", "--first-parent", "--reverse", "refs/remotes/origin/main"],
+    { encoding: "utf8" }
+  )
+    .trim()
+    .split(/\r?\n/);
+}
+
+export function orderByMainHistory(sources, history) {
+  const positions = new Map(history.map((sha, index) => [sha, index]));
+  const position = (pull) => {
+    const sha = pull.merge_commit_sha ?? pull.mergeCommit?.oid;
+    const index = positions.get(sha);
+    if (index === undefined) {
+      throw new Error(
+        `Source PR #${pull.number} is not in the checked-out main merge history; refresh main and retry`
+      );
+    }
+    return index;
+  };
+  const ranked = sources.map((pull) => ({ pull, index: position(pull) }));
+  return ranked
+    .sort((left, right) => left.index - right.index)
+    .map(({ pull }) => pull);
+}
+
 function expectedBase(pull) {
   if (!pull.head.ref.startsWith("automation/prepare-release-")) {
     return "";
@@ -109,6 +141,7 @@ export async function findIncludedSourceCommits({
 export function selectNextBackport({
   channel,
   sources,
+  mainHistory,
   openBackports,
   historicalBackports,
   includedSourceCommits = []
@@ -147,11 +180,27 @@ export function selectNextBackport({
   }
 
   const included = new Set(includedSourceCommits);
-  const pending = sources
-    .filter(
-      (pull) =>
-        !completed.has(pull.number) && !included.has(pull.merge_commit_sha)
-    )
-    .sort((left, right) => left.number - right.number);
+  const pending = orderByMainHistory(sources, mainHistory).filter(
+    (pull) =>
+      !completed.has(pull.number) && !included.has(pull.merge_commit_sha)
+  );
   return pending.length === 0 ? [] : [backportEntry(pending[0], channel)];
+}
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  const [mode, file] = process.argv.slice(2);
+  if (mode !== "--order-sources" || !file) {
+    throw new Error(
+      "usage: select-release-backports.mjs --order-sources <json>"
+    );
+  }
+  const sources = JSON.parse(readFileSync(file, "utf8"));
+  writeFileSync(
+    file,
+    JSON.stringify(orderByMainHistory(sources, readMainHistory()), null, 2) +
+      "\n"
+  );
 }

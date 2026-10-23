@@ -55,7 +55,7 @@ jobs:
       - name: Checkout trusted validator at the PR base
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -80,28 +80,30 @@ jobs:
               pull_number: context.payload.pull_request.number,
               per_page: 100,
             })
+            const filenames = files.map((file) => file.filename)
             fs.writeFileSync(
               process.env.BODY_FILE,
               context.payload.pull_request.body ?? '',
             )
             fs.writeFileSync(
               process.env.FILES_FILE,
-              JSON.stringify(files.map((file) => file.filename)),
+              JSON.stringify(filenames),
             )
             const root = path.resolve(process.env.HEAD_DIR)
-            for (const file of files) {
-              const target = path.resolve(root, file.filename)
+            // RCs leave the changelog unchanged, but validation still reads it.
+            for (const filename of new Set([...filenames, 'CHANGELOG.md'])) {
+              const target = path.resolve(root, filename)
               if (!target.startsWith(`${root}${path.sep}`)) {
-                throw new Error(`Unsafe pull request path: ${file.filename}`)
+                throw new Error(`Unsafe pull request path: ${filename}`)
               }
               const { data } = await github.rest.repos.getContent({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                path: file.filename,
+                path: filename,
                 ref: context.payload.pull_request.head.sha,
               })
               if (Array.isArray(data) || data.type !== 'file' || !data.content) {
-                throw new Error(`Expected a file at ${file.filename}`)
+                throw new Error(`Expected a file at ${filename}`)
               }
               fs.mkdirSync(path.dirname(target), { recursive: true })
               fs.writeFileSync(target, Buffer.from(data.content, 'base64'))
@@ -206,7 +208,7 @@ jobs:
           if [[ ! -f ./.github/scripts/validate-release-merge-group.sh ]]; then
             changed_files="${RUNNER_TEMP}/release-bootstrap-changes.txt"
             git diff --no-renames --name-only "${BASE_SHA}" "${GITHUB_SHA}" > "${changed_files}"
-            if grep -Eq '^(CHANGELOG\.md|versions\.yaml|docs/release-notes/v[0-9]+\.[0-9]+\.[0-9]+[^/]*\.md|\.github/release-plans/.+\.yaml)$' "${changed_files}"; then
+            if grep -Eq '^(versions\.yaml|docs/release-notes/v[0-9]+\.[0-9]+\.[0-9]+[^/]*\.md|\.github/release-plans/.+\.yaml)$' "${changed_files}"; then
               echo "::error::Release metadata cannot be queued before the trusted release validator is installed on main."
               exit 1
             fi
@@ -272,7 +274,8 @@ jobs:
               JSON.stringify(snapshot.files),
             )
             const root = path.resolve(process.env.HEAD_DIR)
-            for (const filename of snapshot.files) {
+            // RCs leave the changelog unchanged, but validation still reads it.
+            for (const filename of new Set([...snapshot.files, 'CHANGELOG.md'])) {
               const target = path.resolve(root, filename)
               if (!target.startsWith(`${root}${path.sep}`)) {
                 throw new Error(`Unsafe pull request path: ${filename}`)

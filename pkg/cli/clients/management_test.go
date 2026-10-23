@@ -1049,11 +1049,9 @@ func Test_CreateOrUpdateResource_APIVersion(t *testing.T) {
 				rpClient.EXPECT().
 					GetProviderSummary(gomock.Any(), "local", tt.providerName, gomock.Any()).
 					Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
-						ResourceProviderSummary: ucp.ResourceProviderSummary{
-							Name: new(tt.providerName),
-							ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
-								tt.resourceTypeName: resourceTypeSummary,
-							},
+						Name: new(tt.providerName),
+						ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+							tt.resourceTypeName: resourceTypeSummary,
 						},
 					}, nil)
 			}
@@ -1384,27 +1382,6 @@ func Test_Application(t *testing.T) {
 		application, err := client.GetApplication(t.Context(), testResourceID)
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, application)
-	})
-
-	t.Run("GetApplicationGraph", func(t *testing.T) {
-		mock := NewMockapplicationResourceClient(gomock.NewController(t))
-		client := createClient(mock)
-
-		expectedGraph := corerp.ApplicationGraphResponse{
-			Resources: []*corerp.ApplicationGraphResource{
-				{
-					ID: &testResourceID,
-				},
-			},
-		}
-
-		mock.EXPECT().
-			GetGraph(gomock.Any(), testResourceName, gomock.Any(), gomock.Any()).
-			Return(corerp.ApplicationsClientGetGraphResponse{ApplicationGraphResponse: expectedGraph}, nil)
-
-		graph, err := client.GetApplicationGraph(t.Context(), testResourceID)
-		require.NoError(t, err)
-		require.Equal(t, expectedGraph, graph)
 	})
 
 	t.Run("CreateOrUpdateApplication", func(t *testing.T) {

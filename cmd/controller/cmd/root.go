@@ -28,6 +28,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	"github.com/radius-project/radius/pkg/controller"
@@ -60,6 +61,8 @@ var rootCmd = &cobra.Command{
 		ctx := logr.NewContext(context.Background(), logger)
 
 		logger.Info("Loaded options", "configfile", configFilePath)
+
+		authz.LogMode(logger, options.Config.Authorization)
 
 		services := []hosting.Service{
 			&controller.Service{Options: options},

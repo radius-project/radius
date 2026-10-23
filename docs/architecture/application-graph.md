@@ -15,25 +15,29 @@ computation and additionally attaches per-node icon metadata resolved from the
 UCP resource-type registry; see [Radius.Core preview: icon
 enrichment](#radiuscore-preview-icon-enrichment) for the delta.
 
+`rad app graph` calls only the Radius.Core endpoint. The Applications.Core
+endpoint remains on the server for API clients but has no `rad app` command
+surface. The diagram below shows the deployed `rad app graph <name>` path.
+
 ```mermaid
 sequenceDiagram
     participant CLI as rad CLI
     participant SDK as CLI SDK Client
     participant K8s as Kubernetes API Server
     participant UCP as UCP (Proxy)
-    participant RP as Applications RP<br/>(GetGraph Controller)
+    participant RP as Applications RP<br/>(GetGraphv20250801preview Controller)
     participant DB as Database<br/>(APIServer / PostgreSQL)
 
-    CLI->>SDK: GetApplicationGraph(appName)
-    SDK->>K8s: POST .../applications/{name}/getGraph
+    CLI->>SDK: ApplicationsClient.GetGraph(scope, appName, body)
+    SDK->>K8s: POST .../Radius.Core/applications/{name}/getGraph
     K8s->>UCP: Aggregated API forward
-    UCP->>UCP: Resolve downstream for<br/>Applications.Core
+    UCP->>UCP: Resolve downstream for<br/>Radius.Core
     UCP->>RP: Proxy POST getGraph
     RP->>DB: Get Application resource
     RP->>DB: List all resource type names
     RP->>DB: List resources by application
     RP->>DB: List resources by environment
-    RP->>RP: computeGraph()
+    RP->>RP: computeGraph() + icon enrichment
     RP-->>UCP: 200 ApplicationGraphResponse
     UCP-->>K8s: Forward response
     K8s-->>SDK: JSON body
@@ -45,11 +49,9 @@ sequenceDiagram
 
 | Component | Location | Responsibility |
 |---|---|---|
-| `rad app graph` command | `pkg/cli/cmd/app/graph/graph.go` | CLI entry point; dispatches between the stable Applications.Core path and the `--preview` Radius.Core path |
-| `rad app graph --preview` runner | `pkg/cli/cmd/app/graph/preview/graph.go` | Preview runner; owns the `--include-icons` flag, accepts an optional `app.bicep` path for enriched mode, and calls the Radius.Core preview client |
+| `rad app graph` command | `pkg/cli/cmd/app/graph/graph.go` | CLI entry point; selects modeled mode (`.bicep` path only), enriched deployed mode (`.bicep` path plus `-a`), or deployed mode (application name), owns the `--include-icons` flag, and calls the Radius.Core client for deployed modes |
 | `display()` | `pkg/cli/cmd/app/graph/display.go` | Formats graph resources into human-readable text |
-| `UCPApplicationsManagementClient` | `pkg/cli/clients/management.go` | CLI SDK wrapper; calls `ApplicationsClient.GetGraph()` |
-| `ApplicationsClient.GetGraph()` | `pkg/corerp/api/v20231001preview/zz_generated_applications_client.go`, `pkg/corerp/api/v20250801preview/zz_generated_applications_client.go` | Auto-generated ARM clients (one per API version); build the HTTP POST request |
+| `ApplicationsClient.GetGraph()` | `pkg/corerp/api/v20250801preview/zz_generated_applications_client.go` (used by `rad app graph`), `pkg/corerp/api/v20231001preview/zz_generated_applications_client.go` | Auto-generated ARM clients (one per API version); build the HTTP POST request |
 | UCP Proxy | `pkg/ucp/frontend/controller/radius/proxy.go` | Routes request to the Applications RP based on registered provider |
 | `GetGraph` controller (Applications.Core) | `pkg/corerp/frontend/controller/applications/getgraph.go` | Server-side entry point for the stable API; orchestrates resource listing and graph computation |
 | `GetGraphv20250801preview` controller (Radius.Core) | `pkg/corerp/frontend/controller/applications/v20250801preview/getgraph.go` | Preview handler; wraps the shared computation with icon enrichment |
@@ -237,7 +239,7 @@ Today the two producers differ in which sources they consume:
   `Kind: Dependency` edges. Templates that reference another resource
   only via `secretKeyRef` (no `properties.connections` block) still
   surface an implicit dependency edge.
-- **CLI enriched deployed mode** (`rad app graph -a <name> --preview
+- **CLI enriched deployed mode** (`rad app graph -a <name>
   <path>.bicep`) — combines the two: the CLI compiles the Bicep file,
   extracts its `dependsOn` edges via
   [`cligraph.ExtractDependsOnEdges`](../../pkg/cli/graph/modeled.go), and
@@ -555,27 +557,34 @@ affected nodes; see [Design decision: icon absence is not an error](#design-deci
 
 ### CLI
 
-`rad app graph --preview` uses this endpoint. The `--include-icons` flag
+`rad app graph` uses this endpoint for deployed and enriched modes. The `--include-icons` flag
 threads through to `GetGraphRequest.IncludeIcons`; without it the CLI sends
 `nil` and the server defaults to `false`. Text output does not render SVGs;
 the flag is intended for programmatic consumers using `-o json`.
 
-An optional positional argument — the application's `app.bicep` path —
-switches the command into **enriched deployed mode**: the CLI compiles the
-template locally, extracts its `dependsOn` edges, and attaches them to
-`GetGraphRequest.DependsOnEdges`. The server merges them onto the
-deployed graph as `Kind: Dependency`. `-a/--application` is required in
-this shape because the positional slot has been claimed by the file path.
+The positional argument selects the mode:
+
+| Invocation                                          | Mode              | Behavior                                                                                                                                                                                    |
+|-----------------------------------------------------|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `rad app graph <name>` or `rad app graph -a <name>` | Deployed          | Calls the Radius.Core `getGraph` endpoint.                                                                                                                                                  |
+| `rad app graph <path>.bicep -a <name>`              | Enriched deployed | Compiles the template locally, extracts its `dependsOn` edges, and attaches them to `GetGraphRequest.DependsOnEdges`. The server merges them onto the deployed graph as `Kind: Dependency`. |
+| `rad app graph <path>.bicep`                        | Modeled           | Builds the graph offline from the template without contacting the control plane. The modeled graph is type-agnostic, so it covers `Applications.Core` and `Radius.*` templates alike.       |
+
+An explicitly empty `-a`/`--application` value is rejected rather than
+falling back to modeled mode.
 
 ```bash
 # Hash-only: nodes carry iconHash; clients fetch bytes separately by hash.
-rad app graph my-app --preview -o json
+rad app graph my-app -o json
 
 # Bytes inline: response also includes a deduped icons map (hash → SVG bytes).
-rad app graph my-app --preview -o json --include-icons
+rad app graph my-app -o json --include-icons
 
 # Enriched: deployed graph plus dependsOn edges from a local app.bicep.
-rad app graph -a my-app --preview ./app.bicep
+rad app graph -a my-app ./app.bicep
+
+# Modeled: offline graph built from a local app.bicep.
+rad app graph ./app.bicep
 ```
 
 ### Client-side rendering and sanitization boundary

@@ -17,11 +17,14 @@ limitations under the License.
 package terraform
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	reflect "reflect"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
@@ -29,6 +32,8 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
+	"github.com/radius-project/radius/pkg/retry"
+	goretry "github.com/sethvargo/go-retry"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -86,7 +91,11 @@ func runTerraformTestHelper() error {
 		return fmt.Errorf("writing test module outputs: %w", err)
 	}
 	if provider := os.Getenv("RADIUS_TERRAFORM_REQUIRED_PROVIDER"); provider != "" {
-		content := fmt.Sprintf("terraform {\n required_providers {\n %s = {\n source = \"hashicorp/%s\"\n }\n }\n}\n", provider, provider)
+		content := fmt.Sprintf("terraform {\n required_providers {\n %s = {\n source = \"hashicorp/%s\"\n", provider, provider)
+		if alias := os.Getenv("RADIUS_TERRAFORM_PROVIDER_ALIAS"); alias != "" {
+			content += fmt.Sprintf(" configuration_aliases = [%s.%s]\n", provider, alias)
+		}
+		content += " }\n }\n}\n"
 		if err := os.WriteFile(filepath.Join(moduleDir, "providers.tf"), []byte(content), 0600); err != nil {
 			return err
 		}
@@ -100,6 +109,80 @@ func runTerraformTestHelper() error {
 		}
 	}
 	return nil
+}
+
+func TestRetryTerraformInitRetriesTransientProviderDiscoveryFailure(t *testing.T) {
+	retryer := retry.NewRetryer(&retry.RetryConfig{
+		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
+	})
+
+	attempts := 0
+	err := retryTerraformInit(t.Context(), retryer, func(context.Context) error {
+		attempts++
+		if attempts < 3 {
+			return errors.New("failed to\nrequest discovery document: Client.Timeout\nexceeded while awaiting headers")
+		}
+
+		return nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, 3, attempts)
+}
+
+func TestRetryTerraformInitDoesNotRetryPermanentFailure(t *testing.T) {
+	retryer := retry.NewRetryer(&retry.RetryConfig{
+		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
+	})
+
+	attempts := 0
+	expectedErr := fmt.Errorf("failed to query available provider packages: provider does not exist")
+	err := retryTerraformInit(t.Context(), retryer, func(context.Context) error {
+		attempts++
+		return expectedErr
+	})
+
+	require.ErrorIs(t, err, expectedErr)
+	require.Equal(t, 1, attempts)
+}
+
+func TestRetryTerraformInitDoesNotRetryCancellation(t *testing.T) {
+	retryer := retry.NewRetryer(&retry.RetryConfig{
+		BackoffStrategy: goretry.WithMaxRetries(2, goretry.NewConstant(time.Nanosecond)),
+	})
+
+	attempts := 0
+	expectedErr := fmt.Errorf("failed to request discovery document: %w", context.Canceled)
+	err := retryTerraformInit(t.Context(), retryer, func(context.Context) error {
+		attempts++
+		return expectedErr
+	})
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, 1, attempts)
+}
+
+func TestIsTransientTerraformInitError(t *testing.T) {
+	tests := []struct {
+		name      string
+		signature string
+	}{
+		{name: "client timeout", signature: "Client.Timeout exceeded"},
+		{name: "context deadline", signature: "context deadline exceeded"},
+		{name: "connection refused", signature: "connection refused"},
+		{name: "connection reset", signature: "connection reset"},
+		{name: "DNS failure", signature: "no such host"},
+		{name: "temporary DNS failure", signature: "temporary failure in name resolution"},
+		{name: "TLS timeout", signature: "TLS handshake timeout"},
+		{name: "truncated response", signature: "unexpected EOF"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := errors.New("failed to request discovery document: " + tc.signature)
+			require.True(t, isTransientTerraformInitError(err))
+		})
+	}
 }
 
 func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
@@ -305,6 +388,48 @@ func Test_GetTerraformConfig(t *testing.T) {
 	tfConfig, err := getTerraformConfig(t.Context(), testDir, options)
 	require.NoError(t, err)
 	require.Equal(t, &expectedConfig, tfConfig)
+}
+
+func Test_GetTerraformConfig_NoProviderAliasPlaceholders(t *testing.T) {
+	testDir := t.TempDir()
+
+	options := Options{
+		EnvConfig: &recipes.Configuration{
+			RecipeConfig: dm.RecipeConfigProperties{
+				Terraform: dm.TerraformConfigProperties{
+					Providers: map[string][]dm.ProviderConfigProperties{
+						"azurerm": {
+							{AdditionalProperties: map[string]any{"subscription_id": "sub"}},
+							{AdditionalProperties: map[string]any{"alias": "custom", "subscription_id": "sub"}},
+						},
+					},
+				},
+			},
+		},
+		EnvRecipe: &recipes.EnvironmentDefinition{
+			Name:         "test-recipe",
+			TemplatePath: "test/module/source",
+		},
+		ResourceRecipe: &recipes.ResourceMetadata{},
+	}
+
+	// Placeholders are added only to retry a failed module download, so the first download
+	// uses the module configuration only.
+	expectedConfig := config.TerraformConfig{
+		Module: map[string]config.TFModuleConfig{
+			"test-recipe": {"source": "test/module/source"},
+		},
+	}
+	tfConfig, err := getTerraformConfig(t.Context(), testDir, options)
+	require.NoError(t, err)
+	require.Equal(t, &expectedConfig, tfConfig)
+
+	content, err := os.ReadFile(filepath.Join(testDir, "main.tf.json"))
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"terraform": null,
+		"module": {"test-recipe": {"source": "test/module/source"}}
+	}`, string(content))
 }
 
 func Test_GetTerraformConfig_EmptyRecipeName(t *testing.T) {

@@ -64,7 +64,7 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 	if ucpaws.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {
-		return ucpaws.HandleAWSError(err)
+		return ucpaws.HandleAWSError(ctx, err)
 	}
 
 	properties := map[string]any{}

@@ -202,7 +202,7 @@ set -euo pipefail
 if [[ "$1" == "api" ]]; then
     endpoint="${*: -1}"
     case "${endpoint}" in
-        */releases/tags/v0.60.0)
+        */releases/tags/v0.60.0 | */releases/42)
             cat "${FIXTURES}/release.json"
             ;;
         */git/ref/tags/v0.60.0)
@@ -217,6 +217,8 @@ if [[ "$1" == "api" ]]; then
             exit 1
             ;;
     esac
+elif [[ "$1 $2" == "release view" ]]; then
+  echo 42
 elif [[ "$1 $2" == "release download" ]]; then
     output_dir=""
     while [[ $# -gt 0 ]]; do
@@ -452,6 +454,32 @@ jq '.prerelease = false | .body = "# Radius v0.60.0\n"' \
     "${FIXTURES}/release.json" >"${FIXTURES}/release-final.json"
 mv "${FIXTURES}/release-final.json" "${FIXTURES}/release.json"
 
+jq '.draft = true' "${FIXTURES}/release.json" >"${FIXTURES}/draft.json"
+mv "${FIXTURES}/draft.json" "${FIXTURES}/release.json"
+if run_collector 2>/dev/null; then
+  fail "default collection accepted a draft"
+fi
+RELEASE_PARITY_STAGED=true \
+  RELEASE_PARITY_ASSETS_DIR="${TEST_ROOT}/staged-assets" run_collector
+jq -e '
+  .release.draft == true
+  and .release.notes.matchesSource == true
+  and .images[0].reference == "ghcr.io/radius-project/ucpd:0.60.0"
+  and .downstream.ociArtifacts[0].reference == "biceptypes.azurecr.io/radius:0.60.0"
+' "${OUTPUT}" >/dev/null || fail "staged collection used mutable Radius images"
+[[ -f "${TEST_ROOT}/staged-assets/rad_linux_amd64" ]] ||
+  fail "staged collector did not retain the installation binary"
+jq '.images[0].radiusBuild = false' "${TARGETS}" >"${FIXTURES}/external-targets.json"
+mv "${FIXTURES}/external-targets.json" "${TARGETS}"
+RELEASE_PARITY_STAGED=true \
+  RELEASE_PARITY_ASSETS_DIR="${TEST_ROOT}/external-assets" run_collector
+jq -e '.images[0].reference == "ghcr.io/radius-project/ucpd:0.60.0"' \
+  "${OUTPUT}" >/dev/null || fail "staged external inspection used a channel tag"
+jq '.images[0].radiusBuild = true' "${TARGETS}" >"${FIXTURES}/radius-targets.json"
+mv "${FIXTURES}/radius-targets.json" "${TARGETS}"
+jq '.draft = false' "${FIXTURES}/release.json" >"${FIXTURES}/final.json"
+mv "${FIXTURES}/final.json" "${FIXTURES}/release.json"
+
 printf '%064d *rad_linux_amd64\n' 0 \
     >"${ASSETS}/rad_linux_amd64.sha256"
 if run_collector 2>/dev/null; then
@@ -475,7 +503,11 @@ MISSING_DOWNSTREAM="false"
 for baseline in "${SCRIPT_DIR}/../release-parity/baselines/"*.json; do
     jq -e --slurpfile targets "${SCRIPT_DIR}/../release-parity/targets.json" '
         . as $manifest
-        | ($targets[0].images
+        | ($targets[0].images + [
+                {name: "magpiego", requiredPlatforms: ["linux/amd64", "linux/arm/v7", "linux/arm64"]},
+                {name: "testrp", requiredPlatforms: ["linux/amd64", "linux/arm/v7", "linux/arm64"]}
+            ]) as $historical_images
+        | ($historical_images
             | map({key: .name, value: (.requiredPlatforms | sort)})
             | from_entries) as $expected_platforms
         | .schemaVersion == 1
@@ -490,7 +522,7 @@ for baseline in "${SCRIPT_DIR}/../release-parity/baselines/"*.json; do
                 == $manifest.release.sourceCommit
         )
         and ([.images[].name] | sort)
-            == ([$targets[0].images[].name] | sort)
+            == ([$historical_images[].name] | sort)
         and all(.images[];
             ([.platforms[].platform] | sort)
                 == $expected_platforms[.name]

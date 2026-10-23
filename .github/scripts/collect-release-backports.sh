@@ -18,6 +18,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
 GH="${GH:-gh}"
 REPOSITORY=""
 CHANNEL=""
@@ -106,6 +108,34 @@ collect_present_sources() {
     done < "${TEMP_DIR}/source-commits.txt"
 }
 
+# Requesting commits for a page of pull requests exceeds GitHub's GraphQL node
+# limit, so read them only for pull requests that can satisfy a selected source.
+add_candidate_commits() {
+    local sources_file="$1"
+    local backports_file="$2"
+    local number commits
+
+    jq -r --slurpfile sources "${sources_file}" '
+        ($sources[0] | map(.number)) as $selected |
+        .[] |
+        [(.body // "") | scan("<!-- radius-backport-source: #([0-9]+) -->")]
+            as $markers |
+        select(($markers | length) == 1 and
+            ($selected | index($markers[0][0] | tonumber)) != null) |
+        .number
+    ' "${backports_file}" | tr -d '\r' > "${TEMP_DIR}/candidates.txt"
+    while IFS= read -r number; do
+        commits="$(
+            "${GH}" pr view "${number}" --repo "${REPOSITORY}" \
+                --json commits --jq '.commits'
+        )"
+        jq --argjson number "${number}" --argjson commits "${commits}" '
+            map(if .number == $number then . + {commits: $commits} else . end)
+        ' "${backports_file}" > "${backports_file}.tmp"
+        mv "${backports_file}.tmp" "${backports_file}"
+    done < "${TEMP_DIR}/candidates.txt"
+}
+
 main() {
     local label release_branch
     local labeled_file explicit_file sources_file backports_file present_file
@@ -145,6 +175,7 @@ main() {
     [[ -n "${OUTPUT_FILE}" ]] || fail "output path is required"
     command -v "${GH}" > /dev/null || fail "required command not found: ${GH}"
     command -v jq > /dev/null || fail "required command not found: jq"
+    command -v node > /dev/null || fail "required command not found: node"
 
     TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/release-backports-XXXXXX")"
     labeled_file="${TEMP_DIR}/labeled.json"
@@ -160,14 +191,17 @@ main() {
         --json number,title,url,mergeCommit,mergedAt,baseRefName \
         > "${labeled_file}"
     collect_explicit_prs "${explicit_file}"
-    jq -s 'add | unique_by(.number) | sort_by(.number)' \
+    jq -s 'add | unique_by(.number)' \
         "${labeled_file}" "${explicit_file}" > "${sources_file}"
+    node "${SCRIPT_DIR}/select-release-backports.mjs" \
+        --order-sources "${sources_file}"
     collect_present_sources "${sources_file}" "${release_branch}" "${present_file}"
 
     "${GH}" pr list --repo "${REPOSITORY}" --state all \
         --base "${release_branch}" --limit 1000 \
-        --json number,url,body,state,mergedAt,mergeCommit,commits \
+        --json number,url,body,state,mergedAt,mergeCommit \
         > "${backports_file}"
+    add_candidate_commits "${sources_file}" "${backports_file}"
 
     mkdir -p "$(dirname "${OUTPUT_FILE}")"
     jq --slurpfile backports "${backports_file}" \

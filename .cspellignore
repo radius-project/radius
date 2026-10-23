@@ -412,6 +412,7 @@ StateStore
 Stateful
 Statestores
 StaticCredential
+strenv
 Subramanian
 Swappable
 Sylvain
@@ -699,6 +700,7 @@ env
 envSecrets
 envVariables
 environmentVariables
+envsubst
 envtest
 etag
 etcd
@@ -736,7 +738,6 @@ getMeterMust
 getResourceIdentitySchemas
 getgraph
 gh
-ghaction
 ghcr
 github
 gitignore
@@ -797,6 +798,7 @@ inheritence
 init
 initContainer
 initialDelaySeconds
+inotify
 inmemory
 integrations
 integrators
@@ -1163,7 +1165,6 @@ skuName
 snok
 someString
 spanId
-speckit
 sql
 sqlDatabases
 sqldatabases
@@ -1266,6 +1267,7 @@ unvalidated
 upc
 upgradeable
 upmerge
+upmerges
 upsert
 upserts
 upvote

@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -44,7 +45,7 @@ type RadiusChartOptions struct {
 // intentionally separate from helmChart.Values so that Helm's release storage records
 // only the user overrides (and so that upgrades can correctly merge with previously
 // stored user values via ResetThenReuseValues).
-func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeContext string) (*chart.Chart, *helm.Configuration, map[string]any, error) {
+func prepareRadiusChart(ctx context.Context, helmAction HelmAction, options RadiusChartOptions, kubeContext string) (*chart.Chart, *helm.Configuration, map[string]any, error) {
 	var helmChart *chart.Chart
 
 	flags := genericclioptions.ConfigFlags{
@@ -58,7 +59,7 @@ func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeC
 	}
 
 	if options.ChartPath == "" {
-		helmChart, err = helmAction.HelmChartFromContainerRegistry(options.ChartVersion, helmConf, options.ChartRepo, options.ReleaseName)
+		helmChart, err = helmAction.HelmChartFromContainerRegistry(ctx, options.ChartVersion, helmConf, options.ChartRepo, options.ReleaseName)
 	} else {
 		helmChart, err = helmAction.LoadChart(options.ChartPath)
 	}
