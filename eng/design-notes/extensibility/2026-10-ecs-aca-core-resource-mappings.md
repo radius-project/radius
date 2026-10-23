@@ -397,7 +397,9 @@ Where a platform honors part of a property and not the rest, that part gets its 
 | `resources.limits`                                      | **Unsupported** — no separate limit exists             | Supported — container `memory`                        |
 | `livenessProbe.exec`                                    | **Unsupported** — HTTP/TCP probes only                 | Supported — `healthCheck.command`                     |
 | `livenessProbe.httpGet` / `tcpSocket`                   | Supported — `probes[]` type `Liveness`                 | **Unsupported** — health checks are command-based     |
-| `readinessProbe.*`                                      | Supported — `probes[]` type `Readiness`                | Supported — ALB target group health check             |
+| `readinessProbe.httpGet`                                | Supported — HTTP readiness probe                       | Supported — ALB target group health check             |
+| `readinessProbe.tcpSocket`                              | Supported — TCP readiness probe                        | **Unsupported** — ALB does not provide TCP checks     |
+| `readinessProbe.exec`                                   | **Unsupported** — HTTP/TCP probes only                 | **Unsupported** — ALB cannot run container commands   |
 | `restartPolicy`                                         | **Unsupported** — always restarts; not configurable    | **Unsupported** — boolean toggle only                 |
 | `replicas`                                              | Supported — `scale.minReplicas` / `maxReplicas`        | Supported — service `desiredCount`                    |
 | `autoScaling.maxReplicas`                               | Supported — `scale.maxReplicas`                        | Supported — scalable target max capacity              |
@@ -418,8 +420,8 @@ Behavior notes:
 
 - **`resources.requests`** — on ACA this becomes the single allocation, and the legal values depend on the environment's workload profile. On ECS the recipe resolves the task size to the nearest legal Fargate CPU and memory combination, so the value you get may be larger than the value you wrote.
 - **`resources.limits`** — ACA has no separate limit; the request *is* the allocation. On ECS, container `memory` is a hard limit but there is no CPU ceiling, so a CPU limit is ignored.
-- **`livenessProbe`** — no probe kind works on all three platforms. ACA has no `exec`; ECS has no container-level HTTP probe. `readinessProbe` is the portable choice.
-- **`readinessProbe` on ECS** — enforced at the load balancer, so a container with no route in front of it has no readiness gate.
+- **`livenessProbe`** — no probe kind works on all three platforms. ACA has no `exec`; ECS has no container-level HTTP probe.
+- **`readinessProbe`** — HTTP is portable when the workload has a route. On ECS it is enforced by the ALB, so a container with no route has no readiness gate.
 - **`restartPolicy`** — ACA always restarts and is not configurable. ECS exposes a boolean, so `Always`, `OnFailure`, and `Never` cannot be distinguished.
 - **`replicas` on ACA** — an exact count is expressed by setting `minReplicas` and `maxReplicas` to the same value.
 - **`autoScaling` on ACA** — the floor is 1, so there is no scale to zero.
