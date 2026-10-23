@@ -384,38 +384,39 @@ Where a platform honors part of a property and not the rest, that part gets its 
 
 #### Containers
 
-| Property                                                | Azure Container Apps                                   | Amazon ECS (Fargate)                                  |
-|---------------------------------------------------------|--------------------------------------------------------|-------------------------------------------------------|
-| `image`                                                 | Supported — `template.containers[].image`              | Supported — `containerDefinitions[].image`            |
-| `command` / `args`                                      | Supported — `command` / `args`                         | Supported — `entryPoint` / `command`                  |
-| `env.*.value`                                           | Supported — `env[].value`                              | Supported — `environment[]`                           |
-| `env.*.valueFrom.secretKeyRef`                          | Supported — app secret + `env[].secretRef`             | Supported — `secrets[].valueFrom`                     |
-| `workingDir`                                            | **Unsupported** — no equivalent                        | Supported — `workingDirectory`                        |
-| `containers.*.initContainer`                            | Supported — `template.initContainers[]`                | Supported — `dependsOn: SUCCESS` + `essential: false` |
-| `ports.*.containerPort`                                 | Supported — `ingress.targetPort`                       | Supported — `portMappings[].containerPort`            |
-| `ports.*.protocol: UDP`                                 | **Unsupported** — ingress is HTTP/TCP only             | **Unsupported** — needs an NLB                        |
-| `resources.requests`                                    | Supported — `resources.cpu` / `memory`                 | Supported — task `cpu` / `memory`                     |
-| `resources.limits`                                      | **Unsupported** — no separate limit exists             | Supported — container `memory`                        |
-| `livenessProbe.exec`                                    | **Unsupported** — HTTP/TCP probes only                 | Supported — `healthCheck.command`                     |
-| `livenessProbe.httpGet` / `tcpSocket`                   | Supported — `probes[]` type `Liveness`                 | **Unsupported** — health checks are command-based     |
-| `readinessProbe.httpGet`                                | Supported — HTTP readiness probe                       | Supported — ALB target group health check             |
-| `readinessProbe.tcpSocket`                              | Supported — TCP readiness probe                        | **Unsupported** — ALB does not provide TCP checks     |
-| `readinessProbe.exec`                                   | **Unsupported** — HTTP/TCP probes only                 | **Unsupported** — ALB cannot run container commands   |
-| `restartPolicy`                                         | **Unsupported** — always restarts; not configurable    | **Unsupported** — boolean toggle only                 |
-| `replicas`                                              | Supported — `scale.minReplicas` / `maxReplicas`        | Supported — service `desiredCount`                    |
-| `autoScaling.maxReplicas`                               | Supported — `scale.maxReplicas`                        | Supported — scalable target max capacity              |
-| `autoScaling.metrics` `cpu` / `memory`                  | Supported — KEDA scale rules                           | Supported — target tracking policy                    |
-| `autoScaling.metrics` `custom`                          | Supported — KEDA custom scaler                         | Supported — target tracking on a CloudWatch metric    |
-| `autoScaling.metrics.*.target` `averageValue` / `value` | Supported — KEDA absolute threshold                    | **Unsupported** — utilization percentage only         |
-| `volumes.*.persistentVolume`                            | Supported — environment storage + `template.volumes[]` | Supported — `volumes[].efsVolumeConfiguration`        |
-| `volumes.*.secretName`                                  | Supported — `template.volumes[]` type `Secret`         | **Unsupported** — no secrets-as-files primitive       |
-| `volumes.*.emptyDir` `medium: disk`                     | Supported — `storageType: EmptyDir`                    | Supported — task `volumes[]` bind mount               |
-| `volumes.*.emptyDir` `medium: memory`                   | **Unsupported** — no tmpfs-backed option               | Supported — `linuxParameters.tmpfs[]`                 |
-| `volumeMounts`                                          | Supported — `template.containers[].volumeMounts[]`     | Supported — `mountPoints[]`                           |
-| `connections`                                           | Supported — `CONNECTION_*` + internal FQDN             | Supported — `CONNECTION_*` + Service Connect alias    |
-| `hosts` (output)                                        | Supported — environment-internal FQDN                  | Supported — Service Connect client alias              |
-| `platformOptions`                                       | Supported — Container App passthrough                  | Supported — task definition passthrough               |
-| `extensions.daprSidecar`                                | Supported — native Dapr                                | **Unsupported** — ECS has no Dapr integration         |
+| Property                                    | Azure Container Apps                                   | Amazon ECS (Fargate)                                     |
+|---------------------------------------------|--------------------------------------------------------|----------------------------------------------------------|
+| `image`                                     | Supported — `template.containers[].image`              | Supported — `containerDefinitions[].image`               |
+| `command` / `args`                          | Supported — `command` / `args`                         | Supported — `entryPoint` / `command`                     |
+| `env.*.value`                               | Supported — `env[].value`                              | Supported — `environment[]`                              |
+| `env.*.valueFrom.secretKeyRef`              | Supported — app secret + `env[].secretRef`             | Supported — `secrets[].valueFrom`                        |
+| `workingDir`                                | **Unsupported** — no equivalent                        | Supported — `workingDirectory`                           |
+| `containers.*.initContainer`                | Supported — `template.initContainers[]`                | Supported — `dependsOn: SUCCESS` + `essential: false`    |
+| `ports.*.containerPort`                     | Supported — `ingress.targetPort`                       | Supported — `portMappings[].containerPort`               |
+| `ports.*.protocol: UDP`                     | **Unsupported** — ingress is HTTP/TCP only             | **Unsupported** — needs an NLB                           |
+| `resources.requests`                        | Supported — `resources.cpu` / `memory`                 | Supported — task `cpu` / `memory`                        |
+| `resources.limits`                          | **Unsupported** — no separate limit exists             | Supported — container `memory`                           |
+| `livenessProbe.exec`                        | **Unsupported** — HTTP/TCP probes only                 | Supported — `healthCheck.command`                        |
+| `livenessProbe.httpGet` / `tcpSocket`       | Supported — `probes[]` type `Liveness`                 | **Unsupported** — health checks are command-based        |
+| `readinessProbe.httpGet`                    | Supported — HTTP readiness probe                       | Supported — ALB target group health check                |
+| `readinessProbe.tcpSocket`                  | Supported — TCP readiness probe                        | **Unsupported** — ALB does not provide TCP checks        |
+| `readinessProbe.exec`                       | **Unsupported** — HTTP/TCP probes only                 | **Unsupported** — ALB cannot run container commands      |
+| `restartPolicy`                             | **Unsupported** — always restarts; not configurable    | **Unsupported** — boolean toggle only                    |
+| `replicas`                                  | Supported — `scale.minReplicas` / `maxReplicas`        | Supported — service `desiredCount`                       |
+| `autoScaling.maxReplicas`                   | Supported — `scale.maxReplicas`                        | Supported — scalable target max capacity                 |
+| `autoScaling.metrics` `cpu` / `memory`      | Supported — KEDA scale rules                           | Supported — target tracking policy                       |
+| `autoScaling.metrics` `custom`              | Supported — KEDA custom scaler                         | Supported — target tracking on a CloudWatch metric       |
+| `autoScaling.metrics.*.target.averageValue` | Supported — KEDA per-replica target                    | Supported — target tracking on a per-task metric         |
+| `autoScaling.metrics.*.target.value`        | Supported — KEDA absolute threshold                    | **Unsupported** — target tracking needs a per-task value |
+| `volumes.*.persistentVolume`                | Supported — environment storage + `template.volumes[]` | Supported — `volumes[].efsVolumeConfiguration`           |
+| `volumes.*.secretName`                      | Supported — `template.volumes[]` type `Secret`         | **Unsupported** — no secrets-as-files primitive          |
+| `volumes.*.emptyDir` `medium: disk`         | Supported — `storageType: EmptyDir`                    | Supported — task `volumes[]` bind mount                  |
+| `volumes.*.emptyDir` `medium: memory`       | **Unsupported** — no tmpfs-backed option               | Supported — `linuxParameters.tmpfs[]`                    |
+| `volumeMounts`                              | Supported — `template.containers[].volumeMounts[]`     | Supported — `mountPoints[]`                              |
+| `connections`                               | Supported — `CONNECTION_*` + internal FQDN             | Supported — `CONNECTION_*` + Service Connect alias       |
+| `hosts` (output)                            | Supported — environment-internal FQDN                  | Supported — Service Connect client alias                 |
+| `platformOptions`                           | Supported — Container App passthrough                  | Supported — task definition passthrough                  |
+| `extensions.daprSidecar`                    | Supported — native Dapr                                | **Unsupported** — ECS has no Dapr integration            |
 
 Behavior notes:
 
@@ -426,7 +427,7 @@ Behavior notes:
 - **`restartPolicy`** — ACA always restarts and is not configurable. ECS exposes a boolean, so `Always`, `OnFailure`, and `Never` cannot be distinguished.
 - **`replicas` on ACA** — an exact count is expressed by setting `minReplicas` and `maxReplicas` to the same value.
 - **`autoScaling` on ACA** — the floor is 1, so there is no scale to zero.
-- **`autoScaling.metrics` **`custom` on ECS**** — the metric must already be published to CloudWatch.
+- **`autoScaling.metrics` `custom` on ECS** — the metric must already be published to CloudWatch and normalized per running task, for example queue depth divided by task count. `averageValue` becomes the target-tracking target.
 
 #### Routes
 
