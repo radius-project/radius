@@ -431,22 +431,23 @@ Behavior notes:
 
 #### Routes
 
-| Property                            | Azure Container Apps                               | Amazon ECS                                   |
-|-------------------------------------|----------------------------------------------------|----------------------------------------------|
-| `kind: HTTP`                        | Supported — `httpRouteConfigs.rules[]`             | Supported — ALB listener rule → target group |
-| `kind: TCP`                         | Supported — `ingress.transport: tcp`               | **Unsupported** — needs an NLB               |
-| `kind: TLS`                         | **Unsupported** — no SNI matching at the edge      | **Unsupported** — needs an NLB               |
-| `kind: UDP`                         | **Unsupported** — no UDP ingress                   | **Unsupported** — needs an NLB               |
-| `hostnames`                         | Supported — custom domain + managed certificate    | Supported — `host-header` condition          |
-| `rules.*.matches.*.httpPath`        | Supported — `match.prefix`                         | Supported — `path-pattern` condition         |
-| `rules.*.matches.*.httpHeaders`     | **Unsupported** — no header matching               | Supported — `http-header` condition          |
-| `rules.*.matches.*.httpMethod`      | **Unsupported** — no method matching               | Supported — `http-request-method` condition  |
-| `rules.*.matches.*.httpQueryParams` | **Unsupported** — no query matching                | Supported — `query-string` condition         |
-| `listener` (output)                 | Supported — FQDN on the environment default domain | Supported — ALB DNS name                     |
+| Property                            | Azure Container Apps                               | Amazon ECS                                           |
+|-------------------------------------|----------------------------------------------------|------------------------------------------------------|
+| `kind: HTTP`                        | Supported — `httpRouteConfigs.rules[]`             | Supported — ALB listener rule → target group         |
+| `kind: TCP`                         | Supported — `ingress.transport: tcp`               | **Unsupported** — needs an NLB                       |
+| `kind: TLS`                         | **Unsupported** — no SNI matching at the edge      | **Unsupported** — needs an NLB                       |
+| `kind: UDP`                         | **Unsupported** — no UDP ingress                   | **Unsupported** — needs an NLB                       |
+| `hostnames`                         | Supported — custom domain + managed certificate    | Supported — `host-header` condition                  |
+| `rules.*.matches.*.httpPath`        | Supported — `match.pathSeparatedPrefix`            | Supported — `path-pattern` for `/path` and `/path/*` |
+| `rules.*.matches.*.httpHeaders`     | **Unsupported** — no header matching               | Supported — `http-header` condition                  |
+| `rules.*.matches.*.httpMethod`      | **Unsupported** — no method matching               | Supported — `http-request-method` condition          |
+| `rules.*.matches.*.httpQueryParams` | **Unsupported** — no query matching                | Supported — `query-string` condition                 |
+| `listener` (output)                 | Supported — FQDN on the environment default domain | Supported — ALB DNS name                             |
 
 Behavior notes:
 
 - **The L4 kinds on ECS** are unsupported because the pack consumes an ALB, which is HTTP-only. Supporting them would mean consuming an NLB as well.
+- **Path matching keeps Kubernetes path-segment semantics.** A route on `/api` matches `/api` and `/api/orders` but not `/apix`, on every platform, so redeploying the same route elsewhere selects the same requests.
 - **Request matching is the mirror image of each other.** ACA matches on path only; ECS matches on path, header, method, and query. An application that routes on a header is not portable to ACA.
 
 #### Secrets
