@@ -26,7 +26,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -147,8 +147,7 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 			if err == nil {
 				existence, statusCode = "present", http.StatusOK
 			} else {
-				var responseError *azcore.ResponseError
-				if errors.As(err, &responseError) {
+				if responseError, ok := errors.AsType[*azcore.ResponseError](err); ok {
 					statusCode, errorCode = responseError.StatusCode, responseError.ErrorCode
 					if statusCode == http.StatusNotFound {
 						switch errorCode {

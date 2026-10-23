@@ -168,8 +168,12 @@ jobs:
         env:
           RELEASE_COMMIT: ${{ inputs.source-commit }}
         run: |
+          args=("${RELEASE_COMMIT}")
+          if [[ "$(yq -r '.changelogPolicy' "${RUNNER_TEMP}/release-plan.yaml")" == stable-only ]]; then
+            args+=(--require-sibling-releases)
+          fi
           bash ./.github/scripts/verify-release-build-contract.sh \
-            "${RELEASE_COMMIT}"
+            "${args[@]}"
 
       # The approve job below is the only human gate before mutation. An
       # environment without required reviewers lets that job pass immediately.

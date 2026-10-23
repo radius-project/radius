@@ -164,7 +164,7 @@ test-release-backport: ## Tests release backport selection and branch constructi
 	@node --test ./.github/scripts/select-release-backports_test.mjs
 
 .PHONY: test-release-branch-commits
-test-release-branch-commits: ## Tests Conventional Commit validation for release branches
+test-release-branch-commits: ## Tests backport provenance and commit validation for release branches
 	@node --test ./.github/scripts/validate-conventional-commits_test.mjs
 
 .PHONY: test-build-summary
@@ -181,14 +181,15 @@ test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
 	@bash ./.github/scripts/goreleaser-snapshot-artifacts_test.sh
 	@bash ./.github/scripts/normalize-release-checksums_test.sh
 	@bash ./.github/scripts/publish-helm-chart_test.sh
-	@node --test ./.github/scripts/ensure-draft-release_test.mjs
-	@node --test ./.github/scripts/release-assets_test.mjs
-	@node --test ./.github/scripts/publish-draft-release_test.mjs
+	@node --test ./.github/scripts/release-reconciliation_test.mjs \
+		./.github/scripts/ensure-draft-release_test.mjs \
+		./.github/scripts/release-assets_test.mjs \
+		./.github/scripts/publish-draft-release_test.mjs
 
 .PHONY: test-release-oci-artifacts
 .PHONY: test-release-publication
 test-release-publication: ## Tests mandatory publication gates, staged installation, coordination, and reporting
-	@node --test ./.github/scripts/verify-release-manifest_test.mjs ./.github/scripts/coordinate-release_test.mjs ./.github/scripts/release-status_test.mjs ./.github/scripts/promote-bicep-types_test.mjs
+	@node --test ./.github/scripts/verify-release-manifest_test.mjs ./.github/scripts/coordinate-release_test.mjs ./.github/scripts/release-status_test.mjs ./.github/scripts/promote-bicep-types_test.mjs ./.github/scripts/publish-sibling-releases_test.mjs
 	@bash ./.github/scripts/release-verification_test.sh
 
 test-release-oci-artifacts: install-oras ## Tests immutable OCI staging and alias promotion
@@ -391,7 +392,7 @@ test-validate-bicep: ## Validates that all .bicep files compile cleanly
 .PHONY: test-helm
 test-helm: ## Runs Helm chart unit tests
 	@echo "$(ARROW) Installing helm-unittest plugin if not already installed..."
-	@helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.1.1 --verify=false
+	@helm plugin list | grep -q unittest || helm plugin install oci://ghcr.io/helm-unittest/helm-unittest/unittest:1.2.1 --verify=false
 	@echo "$(ARROW) Running Helm unit tests..."
 	cd deploy/Chart && helm unittest .
 

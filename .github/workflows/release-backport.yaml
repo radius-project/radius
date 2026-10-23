@@ -42,7 +42,10 @@ jobs:
     name: Select release channels
     if: >-
       github.repository == 'radius-project/radius' &&
-      (github.event_name == 'push' || github.event.pull_request.merged == true)
+      (github.event_name == 'push' ||
+       (github.event.pull_request.merged == true &&
+        (github.event.pull_request.base.ref != 'main' ||
+         contains(join(github.event.pull_request.labels.*.name, ' '), 'backport release/'))))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -56,6 +59,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Read backport labels
@@ -69,85 +73,85 @@ jobs:
             )
 
             const channel = selector.releaseChannelForEvent(context)
-            if (!channel && context.eventName !== 'push') {
-              return JSON.stringify(
-                selector.entriesForMergedPull(context.payload.pull_request),
+            const channels = channel ? [channel] :
+              context.eventName === 'push' ? [] :
+                selector.entriesForMergedPull(context.payload.pull_request)
+                  .map((entry) => entry.channel)
+            if (channels.length === 0) return '[]'
+            const mainHistory = selector.readMainHistory()
+            const selected = []
+            for (const channel of channels) {
+              const releaseBranch = `release/${channel}`
+              const openBackports = await github.paginate(
+                github.rest.pulls.list,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  base: releaseBranch,
+                  state: 'open',
+                  per_page: 100,
+                },
               )
-            }
-
-            if (!channel) {
-              return '[]'
-            }
-            const releaseBranch = `release/${channel}`
-            const openBackports = await github.paginate(
-              github.rest.pulls.list,
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                base: releaseBranch,
-                state: 'open',
-                per_page: 100,
-              },
-            )
-            const issues = await github.paginate(
-              github.rest.issues.listForRepo,
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                labels: `backport release/${channel}`,
-                state: 'closed',
-                per_page: 100,
-              },
-            )
-            const sources = []
-            for (const issue of issues.filter((item) => item.pull_request)) {
-              const { data: pull } = await github.rest.pulls.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: issue.number,
-              })
-              if (pull.merged_at && pull.base.ref === 'main') {
-                sources.push(pull)
+              const issues = await github.paginate(
+                github.rest.issues.listForRepo,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  labels: `backport release/${channel}`,
+                  state: 'closed',
+                  per_page: 100,
+                },
+              )
+              const sources = []
+              for (const issue of issues.filter((item) => item.pull_request)) {
+                const { data: pull } = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: issue.number,
+                })
+                if (pull.merged_at && pull.base.ref === 'main') {
+                  sources.push(pull)
+                }
               }
-            }
-            const historical = await github.paginate(
-              github.rest.pulls.list,
-              {
+              const historical = await github.paginate(
+                github.rest.pulls.list,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  base: releaseBranch,
+                  state: 'closed',
+                  per_page: 100,
+                },
+              )
+              const historicalWithCommits = []
+              for (const pull of historical) {
+                const commits = pull.merged_at
+                  ? await github.paginate(github.rest.pulls.listCommits, {
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      pull_number: pull.number,
+                      per_page: 100,
+                    })
+                  : []
+                historicalWithCommits.push({ ...pull, commits })
+              }
+              const includedSourceCommits = await selector.findIncludedSourceCommits({
+                github,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                base: releaseBranch,
-                state: 'closed',
-                per_page: 100,
-              },
-            )
-            const historicalWithCommits = []
-            for (const pull of historical) {
-              const commits = pull.merged_at
-                ? await github.paginate(github.rest.pulls.listCommits, {
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    pull_number: pull.number,
-                    per_page: 100,
-                  })
-                : []
-              historicalWithCommits.push({ ...pull, commits })
-            }
-            const includedSourceCommits = await selector.findIncludedSourceCommits({
-              github,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              channel,
-              sources,
-            })
-            return JSON.stringify(
-              selector.selectNextBackport({
                 channel,
                 sources,
-                openBackports,
-                historicalBackports: historicalWithCommits,
-                includedSourceCommits,
-              }),
-            )
+              })
+              selected.push(...selector.selectNextBackport({
+                  channel,
+                  sources,
+                  mainHistory,
+                  openBackports,
+                  historicalBackports: historicalWithCommits,
+                  includedSourceCommits,
+                }))
+            }
+            return JSON.stringify(selected)
 
   backport:
     name: Backport to release/${{ matrix.channel }}
@@ -181,6 +185,7 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: radius
           permission-contents: write
+          permission-workflows: write
           permission-issues: write
           permission-pull-requests: write
 

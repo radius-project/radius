@@ -162,6 +162,10 @@ test_collects_labeled_and_explicit_prs() {
         fail_test "expected three selected pull requests"
         return
     fi
+    if [[ "$(jq -c '[.[].source_pr]' "${output}")" != "[104,101,102]" ]]; then
+        fail_test "selected PRs must follow main history, not input or PR-number order"
+        return
+    fi
     if [[ "$(jq -r '.[] | select(.source_pr == 101) | .backport_merged' \
         "${output}")" != "true" ]]; then
         fail_test "labeled pull request should have a merged backport"
@@ -302,6 +306,17 @@ test_release_without_selected_fixes_reads_no_commits() {
 main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/collect-backports-test-XXXXXX")"
     setup_fake_gh
+    cat > "${TEST_ROOT}/git" << 'EOF'
+#!/bin/bash
+set -euo pipefail
+[[ "$*" == "rev-list --first-parent --reverse refs/remotes/origin/main" ]] || {
+    echo "Unexpected git arguments: $*" >&2
+    exit 1
+}
+printf '%s\n' source-104 source-101 source-102 source-105
+EOF
+    chmod +x "${TEST_ROOT}/git"
+    export PATH="${TEST_ROOT}:${PATH}"
 
     test_collects_labeled_and_explicit_prs
     test_collects_labels_without_explicit_prs

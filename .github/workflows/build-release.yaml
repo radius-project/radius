@@ -1158,6 +1158,92 @@ jobs:
           manifest: dist/verification/release-manifest.json
           webhook: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
 
+  publish-sibling-releases:
+    name: Publish sibling GitHub Releases
+    needs: [release-preflight, verify-release, finalize-release]
+    if: >-
+      !cancelled() && github.repository == 'radius-project/radius' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.verify-release.result == 'success' &&
+      (needs.finalize-release.result == 'success' ||
+       needs.release-preflight.outputs.release-state == 'published')
+    concurrency:
+      group: release-finalization
+      queue: max
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      releases: ${{ steps.publish.outputs.releases }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install plan reader
+        run: make install-yq
+
+      - name: Read approved plan
+        run: yq -o=json '.' ".github/release-plans/${GITHUB_REF_NAME}.yaml" >"${RUNNER_TEMP}/plan.json"
+
+      - name: Download verification evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-verification-${{ github.sha }}
+          path: dist/verification
+
+      - name: Get sibling release token
+        id: sibling-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: radius-project
+          repositories: recipes,dashboard,bicep-types-aws
+          permission-contents: write
+          permission-workflows: write
+
+      - name: Get Deployment Engine release token
+        id: engine-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          owner: azure-octo
+          repositories: deployment-engine
+          permission-contents: write
+          permission-workflows: write
+
+      - name: Reconcile sibling release entries
+        id: publish
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_PLAN_FILE: ${{ runner.temp }}/plan.json
+          INPUT_MANIFEST_FILE: dist/verification/release-manifest.json
+          SIBLING_RELEASE_TOKEN: ${{ steps.sibling-token.outputs.token }}
+          ENGINE_RELEASE_TOKEN: ${{ steps.engine-token.outputs.token }}
+        with:
+          retries: 5
+          script: |
+            const siblings = getOctokit(process.env.SIBLING_RELEASE_TOKEN)
+            const engine = getOctokit(process.env.ENGINE_RELEASE_TOKEN)
+            const { default: publish } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-sibling-releases.mjs`)
+            await publish({ github, siblings, engine, context, core })
+
+      - name: Report sibling release state
+        if: always()
+        continue-on-error: true
+        uses: ./.github/actions/release-status
+        with:
+          stage: sibling-releases
+          state: ${{ job.status }}
+          downstream: ${{ steps.publish.outputs.releases || '[]' }}
+          webhook: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
+
   coordinate-release:
     name: Coordinate docs and samples
     needs: [release-preflight, verify-release, finalize-release]
@@ -1207,9 +1293,8 @@ jobs:
         with:
           retries: 5
           script: |
-            const remote = github.request.defaults({
-              headers: { authorization: `token ${process.env.COORDINATION_TOKEN}` }
-            })
+            // Use a separate client: the job client's auth hook overrides headers.
+            const remote = getOctokit(process.env.COORDINATION_TOKEN).request
             const { default: coordinate } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
             await coordinate({ github, remote, context, core })
 
@@ -1236,6 +1321,7 @@ jobs:
       - verify-release
       - approve-publication
       - coordinate-release
+      - publish-sibling-releases
     if: always() && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -1277,6 +1363,7 @@ jobs:
           VERIFY_RESULT: ${{ needs.verify-release.result }}
           APPROVAL_RESULT: ${{ needs.approve-publication.result }}
           COORDINATION_RESULT: ${{ needs.coordinate-release.result }}
+          SIBLING_RELEASES_RESULT: ${{ needs.publish-sibling-releases.result }}
         run: |
           ./.github/scripts/build-summary.sh \
             "release-preflight:${PREFLIGHT_RESULT}" \
@@ -1287,4 +1374,5 @@ jobs:
             "verify-release:${VERIFY_RESULT}" \
             "approve-publication:${APPROVAL_RESULT}" \
             "coordinate-release:${COORDINATION_RESULT}" \
+            "publish-sibling-releases:${SIBLING_RELEASES_RESULT}" \
             "finalize-release:${FINALIZE_RESULT}"

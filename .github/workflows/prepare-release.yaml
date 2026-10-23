@@ -126,7 +126,7 @@ jobs:
           git rev-parse --verify --quiet "${release_ref}^{commit}" \
             >/dev/null || release_ref=HEAD
           bash ./.github/scripts/verify-release-build-contract.sh \
-            "${release_ref}"
+            "${release_ref}" --require-sibling-releases
 
           # A final promotes the channel's last release candidate.
           release_candidate=""
@@ -253,7 +253,6 @@ jobs:
           inputs.backport-pr-numbers != ''
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          BACKPORT_PRS: ${{ inputs.backport-pr-numbers }}
           CHANNEL: ${{ inputs.channel }}
         run: |
           release_branch="refs/remotes/origin/release/${CHANNEL}"
@@ -266,12 +265,10 @@ jobs:
           gh label create "${label}" --repo "${GITHUB_REPOSITORY}" \
             --color 5319E7 --description "Backport to release/${CHANNEL}" \
             --force
-          IFS=',' read -r -a pull_requests <<< "${BACKPORT_PRS}"
-          for pull_request in "${pull_requests[@]}"; do
-            pull_request="${pull_request//[[:space:]]/}"
+          while IFS= read -r pull_request; do
             gh pr edit "${pull_request}" --repo "${GITHUB_REPOSITORY}" \
               --add-label "${label}"
-          done
+          done < <(jq -r '.[].source_pr' "${RUNNER_TEMP}/release-backports.json")
 
       - name: Prepare release changes and plan
         id: prepare

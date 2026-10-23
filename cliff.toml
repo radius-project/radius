@@ -48,9 +48,12 @@ https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 - {{ self::entry(commit=commit) }}
 {% endfor %}
 {% endif %}
-{% set normal_commits = commits | filter(attribute="breaking", value=false) %}
-{% set unconventional_commits = commits | filter(attribute="conventional", value=false) %}
-{% set normal_commits = normal_commits | concat(with=unconventional_commits) %}
+{% set_global normal_commits = [] %}
+{% for commit in commits %}
+{% if not commit.breaking | default(value=false) %}
+{% set_global normal_commits = normal_commits | concat(with=[commit]) %}
+{% endif %}
+{% endfor %}
 {% for group, commits in normal_commits | group_by(attribute="group") %}
 ### {{ group | striptags | trim }}
 
@@ -132,7 +135,7 @@ fail_on_unmatched_commit = false
 tag_pattern = "^v[0-9]+\\.[0-9]+\\.[0-9]+(?:-rc(?:\\.[0-9]+|[0-9]+))?$"
 topo_order = true
 topo_order_commits = true
-sort_commits = "oldest"
+sort_commits = "newest"
 link_parsers = [
   { pattern = "#(\\d+)", href = "https://github.com/radius-project/radius/issues/$1" },
 ]
