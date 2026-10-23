@@ -337,26 +337,41 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	return nil
 }
 
+// permanentDeleteErrorCodes are ARM error codes that a later attempt cannot fix.
+var permanentDeleteErrorCodes = map[string]struct{}{
+	"authenticationfailed":             {},
+	"authorizationfailed":              {},
+	"invalidauthenticationtoken":       {},
+	"invalidauthenticationtokentenant": {},
+	"linkedauthorizationfailed":        {},
+}
+
+// isRetryableDeleteError reports whether another delete attempt can succeed.
+// Deletes run in parallel without dependency ordering, and dependency failures
+// arrive with many status codes (for example 400 for Azure "in use" errors, or 200
+// for a failed long-running operation). Only errors that are known to be permanent stop retries.
 func isRetryableDeleteError(err error) bool {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return false
 	}
 
-	var statusCode int
-	var statusError apierrors.APIStatus
 	if responseError, ok := errors.AsType[*azcore.ResponseError](err); ok {
-		statusCode = responseError.StatusCode
-	} else if errors.As(err, &statusError) {
-		statusCode = int(statusError.Status().Code)
-	} else {
-		// Preserve retries for transport errors and providers without an HTTP status.
-		return true
+		if _, permanent := permanentDeleteErrorCodes[strings.ToLower(responseError.ErrorCode)]; permanent {
+			return false
+		}
+		return !isAuthStatus(responseError.StatusCode)
 	}
 
-	return statusCode == http.StatusRequestTimeout ||
-		statusCode == http.StatusConflict ||
-		statusCode == http.StatusTooManyRequests ||
-		(statusCode >= http.StatusInternalServerError && statusCode < 600)
+	var statusError apierrors.APIStatus
+	if errors.As(err, &statusError) {
+		return !isAuthStatus(int(statusError.Status().Code))
+	}
+
+	return true
+}
+
+func isAuthStatus(statusCode int) bool {
+	return statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden
 }
 
 func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResource) bool {
