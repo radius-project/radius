@@ -507,4 +507,6 @@ A page per container platform on [docs.radapp.io](https://docs.radapp.io/managem
 
 Each page covers how to register the environment, what the platform engineer brings, a deployment walkthrough, where to find runtime logs and diagnostics, and the unsupported properties with their alternatives, in the same shape as the existing Azure Container Instances example.
 
+Runtime logs and diagnostics use each platform's native tools — ACA log streaming and revision diagnostics; ECS service events and CloudWatch Logs — the same way Kubernetes users rely on `kubectl logs` and `kubectl describe` today.
+
 This is where a developer looks first, before `resource-types-contrib`. The pack READMEs are the reference; these pages are the path in.
