@@ -465,7 +465,7 @@ Behavior notes:
 
 - **`certificate-*`** stores identically to `generic` on both platforms; `kind` drives data-key validation, not storage type.
 - **`basicAuthentication`, `azureWorkloadIdentity`, and `awsIRSA`** are scoped to OCI registry authentication for Bicep recipe storage, not to workload identity — the schema says so explicitly.
-- **Rotation** — on ACA a versionless reference refreshes within \~30 min, but the running revision is not restarted and direct app secrets do not refresh at all. On ECS a value change requires a new deployment.
+- **Rotation** — on ACA a versionless Key Vault reference picks up a new version within \~30 min, and ACA then automatically restarts every active revision that consumes the secret through an environment variable. Rotation is therefore a restart event that users should plan for. Direct app-secret updates do not take effect until the revision is restarted or a new revision is deployed. On ECS a value change requires a new deployment.
 
 #### Persistent volumes
 
