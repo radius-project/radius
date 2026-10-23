@@ -64,29 +64,36 @@ func (s *Source) ServerConfig(namespace string) *tls.Config {
 // "<component>.<namespace>.svc" name of a Radius component, set either in the returned
 // config or by the caller, such as http.Transport from the request URL.
 //
-// The client verifies the server and selects its own certificate at different points
-// in the handshake, so a reload in between can use two versions. Components also reload
-// at different times, so rotating the CA requires a CA bundle that trusts both the old
-// and new CA until every component has reloaded.
-func (s *Source) ClientConfig(namespace string) *tls.Config {
+// The config is bound to the certificate and CA bundle loaded when ClientConfig is called,
+// so the certificate it presents and the CA bundle it verifies against are always from the
+// same version. It does not follow later reloads: call ClientConfig for each new connection,
+// for example from http.Transport.DialTLSContext. Components reload at different times, so
+// rotating the CA requires a CA bundle that trusts both the old and new CA until every
+// component has reloaded.
+func (s *Source) ClientConfig(namespace string) (*tls.Config, error) {
+	m, err := s.load()
+	if err != nil {
+		return nil, err
+	}
+
 	return &tls.Config{
 		MinVersion: tls.VersionTLS12,
 		GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
-			return s.certificate()
+			return m.cert, nil
 		},
-		// The default verifier only supports a fixed RootCAs pool. VerifyConnection
-		// performs the full chain and hostname check against the current CA bundle instead.
+		// The default verifier needs RootCAs and checks only the leaf's hostname.
+		// VerifyConnection performs the full chain, hostname, and identity check instead.
 		InsecureSkipVerify: true, //nolint:gosec // verification is done in VerifyConnection.
 		VerifyConnection: func(cs tls.ConnectionState) error {
-			_, err := s.verifyServer(cs.PeerCertificates, cs.ServerName, namespace)
+			_, err := s.verifyServer(m.pool, cs.PeerCertificates, cs.ServerName, namespace)
 			return err
 		},
-	}
+	}, nil
 }
 
-// verifyServer verifies a server chain against the current CA bundle and server name,
-// then maps it to a component identity.
-func (s *Source) verifyServer(certs []*x509.Certificate, serverName, namespace string) (Identity, error) {
+// verifyServer verifies a server chain against pool and the server name, then maps it
+// to a component identity.
+func (s *Source) verifyServer(pool *x509.CertPool, certs []*x509.Certificate, serverName, namespace string) (Identity, error) {
 	if len(certs) == 0 {
 		return Identity{}, peerError("no peer certificate", nil)
 	}
@@ -100,7 +107,7 @@ func (s *Source) verifyServer(certs []*x509.Certificate, serverName, namespace s
 	}
 
 	chains, err := certs[0].Verify(x509.VerifyOptions{
-		Roots:         s.current.Load().pool,
+		Roots:         pool,
 		Intermediates: intermediates,
 		DNSName:       serverName,
 		CurrentTime:   s.now(),
