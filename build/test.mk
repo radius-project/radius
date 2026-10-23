@@ -164,7 +164,7 @@ test-release-backport: ## Tests release backport selection and branch constructi
 	@node --test ./.github/scripts/select-release-backports_test.mjs
 
 .PHONY: test-release-branch-commits
-test-release-branch-commits: ## Tests Conventional Commit validation for release branches
+test-release-branch-commits: ## Tests backport provenance and commit validation for release branches
 	@node --test ./.github/scripts/validate-conventional-commits_test.mjs
 
 .PHONY: test-build-summary
@@ -189,7 +189,7 @@ test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
 .PHONY: test-release-oci-artifacts
 .PHONY: test-release-publication
 test-release-publication: ## Tests mandatory publication gates, staged installation, coordination, and reporting
-	@node --test ./.github/scripts/verify-release-manifest_test.mjs ./.github/scripts/coordinate-release_test.mjs ./.github/scripts/release-status_test.mjs ./.github/scripts/promote-bicep-types_test.mjs
+	@node --test ./.github/scripts/verify-release-manifest_test.mjs ./.github/scripts/coordinate-release_test.mjs ./.github/scripts/release-status_test.mjs ./.github/scripts/promote-bicep-types_test.mjs ./.github/scripts/publish-sibling-releases_test.mjs
 	@bash ./.github/scripts/release-verification_test.sh
 
 test-release-oci-artifacts: install-oras ## Tests immutable OCI staging and alias promotion

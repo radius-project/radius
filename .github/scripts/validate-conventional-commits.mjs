@@ -71,17 +71,13 @@ export function validateBackportBase(body, baseSha) {
 
 export function validateGeneratedBackport(body, baseSha, headRef, commits) {
   const branch = headRef.match(/^automation\/backport-(\d+)-to-\d+\.\d+$/);
-  if (!branch) {
-    return;
-  }
-
   const sources = [
     ...(body ?? "").matchAll(/<!-- radius-backport-source: #(\d+) -->/g)
   ];
   const sourceCommits = [
     ...(body ?? "").matchAll(/<!-- radius-backport-commit: ([0-9a-f]{40}) -->/g)
   ];
-  if (sources.length !== 1 || sources[0][1] !== branch[1]) {
+  if (sources.length !== 1 || (branch && sources[0][1] !== branch[1])) {
     throw new Error(
       "generated backport must contain one matching source marker"
     );
@@ -97,15 +93,57 @@ export function validateGeneratedBackport(body, baseSha, headRef, commits) {
   }
 
   validateBackportBase(body, baseSha);
+  if (
+    commits.length !== 1 ||
+    (commits[0].parents && commits[0].parents.length !== 1)
+  ) {
+    throw new Error("a backport PR must contain exactly one non-merge commit");
+  }
   const trailer = `(cherry picked from commit ${sourceCommits[0][1]})`;
-  const hasTrailer = commits.some((entry) => {
-    const message = entry?.commit?.message;
-    return (
-      typeof message === "string" && message.split(/\r?\n/).includes(trailer)
-    );
-  });
-  if (!hasTrailer) {
+  const trailers = (commits[0]?.commit?.message ?? "")
+    .split(/\r?\n/)
+    .filter((line) => /^\(cherry picked from commit /.test(line));
+  if (trailers.at(-1) !== trailer) {
     throw new Error(`generated backport is missing exact trailer: ${trailer}`);
+  }
+  return { number: Number(sources[0][1]), sha: sourceCommits[0][1] };
+}
+
+export async function validateMergedBackportSource({
+  github,
+  context,
+  commits,
+  body,
+  baseSha,
+  headRef
+}) {
+  const source = validateGeneratedBackport(body, baseSha, headRef, commits);
+  const { data: pull } = await github.rest.pulls.get({
+    ...context.repo,
+    pull_number: source.number
+  });
+  if (
+    pull.number !== source.number ||
+    !pull.merged ||
+    !pull.merged_at ||
+    pull.base.ref !== "main" ||
+    pull.base.repo.full_name !== `${context.repo.owner}/${context.repo.repo}` ||
+    pull.merge_commit_sha !== source.sha
+  ) {
+    throw new Error(
+      `Backport source #${source.number} must be the matching PR merged into main`
+    );
+  }
+  const { data: comparison } =
+    await github.rest.repos.compareCommitsWithBasehead({
+      ...context.repo,
+      basehead: `${source.sha}...main`,
+      per_page: 1
+    });
+  if (!["ahead", "identical"].includes(comparison.status)) {
+    throw new Error(
+      `Backport source #${source.number} is not reachable from main`
+    );
   }
 }
 

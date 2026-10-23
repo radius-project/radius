@@ -25,6 +25,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly SCRIPT="${SCRIPT_DIR}/build-summary.sh"
+readonly REPO_ROOT="${SCRIPT_DIR}/../.."
+readonly RELEASE_WORKFLOW="${REPO_ROOT}/.github/workflows/build-release.yaml"
 
 TEST_ROOT=""
 PASS=0
@@ -53,7 +55,7 @@ run_summary() {
     shift
 
     SUMMARY_FILE="${TEST_ROOT}/${name}.md"
-    : >"${SUMMARY_FILE}"
+    : > "${SUMMARY_FILE}"
 
     STATUS=0
     OUTPUT="$(GITHUB_STEP_SUMMARY="${SUMMARY_FILE}" bash "${SCRIPT}" "$@" 2>&1)" || STATUS=$?
@@ -148,6 +150,63 @@ test_no_arguments_fails() {
     pass_test
 }
 
+test_release_workflow_sibling_result() {
+    local result="$1"
+    local step mappings command key job value
+    local -a environment=()
+
+    step="$(yq -o=json '.jobs."build-summary".steps[] |
+        select(.name == "Check all build jobs")' "${RELEASE_WORKFLOW}")"
+    if ! jq -e '.env.SIBLING_RELEASES_RESULT ==
+        "${{ needs.publish-sibling-releases.result }}"' <<< "${step}" > /dev/null; then
+        fail_test "release summary must map the sibling publication result"
+        return
+    fi
+    mappings="$(jq -er '.env | to_entries[] |
+        [.key, (.value | capture(
+            "^\\s*\\$\\{\\{ needs\\.(?<job>[a-z-]+)\\.result \\}\\}\\s*$"
+        ).job)] | @tsv' <<< "${step}")"
+    while IFS=$'\t' read -r key job; do
+        value=success
+        if [[ "${job}" == publish-sibling-releases ]]; then
+            value="${result}"
+        fi
+        environment+=("${key}=${value}")
+    done <<< "${mappings}"
+    command="$(jq -er '.run' <<< "${step}")"
+    SUMMARY_FILE="${TEST_ROOT}/release-sibling-${result}.md"
+    : > "${SUMMARY_FILE}"
+    STATUS=0
+    OUTPUT="$(
+        cd "${REPO_ROOT}"
+        env "${environment[@]}" GITHUB_STEP_SUMMARY="${SUMMARY_FILE}" \
+            bash -eu -c "${command}" 2>&1
+    )" || STATUS=$?
+
+    if ! grep -Eq "^\| publish-sibling-releases \| .* ${result} \|$" "${SUMMARY_FILE}"; then
+        fail_test "release summary must include sibling result ${result}"
+        return
+    fi
+    case "${result}" in
+        success | skipped)
+            if [[ "${STATUS}" -ne 0 ]] \
+                                       || ! grep -q "ALL BUILDS PASSED" "${SUMMARY_FILE}"; then
+                fail_test "sibling ${result} should preserve a passing release summary"
+                return
+            fi
+            ;;
+        failure | cancelled)
+            if [[ "${STATUS}" -eq 0 ]] \
+                                       || ! grep -q "BUILD FAILED" "${SUMMARY_FILE}" \
+                                                           || grep -q "ALL BUILDS PASSED" "${SUMMARY_FILE}"; then
+                fail_test "sibling ${result} must fail the release summary"
+                return
+            fi
+            ;;
+    esac
+    pass_test
+}
+
 main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/build-summary-test-XXXXXX")"
 
@@ -157,6 +216,9 @@ main() {
     test_cancelled_fails
     test_malformed_argument_fails
     test_no_arguments_fails
+    for result in success skipped failure cancelled; do
+        test_release_workflow_sibling_result "${result}"
+    done
 
     if ((FAIL > 0)); then
         echo "build summary tests failed: ${PASS} passed, ${FAIL} failed"

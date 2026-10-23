@@ -66,6 +66,18 @@ jobs:
               pull_number: context.payload.pull_request.number,
               per_page: 100,
             })
+            const pull = context.payload.pull_request
+            const { validateMergedBackportSource } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/validate-conventional-commits.mjs`
+            )
+            await validateMergedBackportSource({
+              github,
+              context,
+              commits,
+              body: pull.body ?? '',
+              baseSha: pull.base.sha,
+              headRef: pull.head.ref,
+            })
             fs.writeFileSync(process.env.COMMITS_FILE, JSON.stringify(commits))
             fs.writeFileSync(
               process.env.BODY_FILE,

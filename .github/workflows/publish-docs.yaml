@@ -40,11 +40,9 @@ jobs:
     timeout-minutes: 15
     env:
       GOPRIVATE: github.com/radius-project
-      # Gate the docs-publishing steps (App token, bot identity and the docs PR
-      # sync) to push events (main/release lines) and manual runs that opt in via
-      # open_pull_request. This is always false for pull_request events, so PRs
-      # still generate and upload the docs as artifacts without touching the docs repo.
-      PUBLISH_DOCS: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true') }}
+      # Only main may synchronize edge docs; release branches and PRs retain
+      # their generated previews without writing to the docs repository.
+      PUBLISH_DOCS: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true')) }}
     permissions:
       contents: read
     steps:
@@ -173,9 +171,8 @@ jobs:
       # it force-updates that branch and keeps exactly one open PR per docs branch,
       # amending it in place on subsequent runs.
       #
-      # The step is gated to the same triggers that previously opened a PR (push and
-      # workflow_dispatch with open_pull_request=true); on pull_request the docs are
-      # still generated and uploaded as artifacts above for inspection.
+      # Only main pushes and opted-in main manual runs open a PR. Other refs
+      # still generate and upload the docs as artifacts above for inspection.
       - name: Sync reference docs to docs repository
         if: env.PUBLISH_DOCS == 'true'
         uses: raven-actions/repo-files-sync@511c602835ac7dd8529673f91afe348db8d08185 # v0.1.0-rc.18
