@@ -293,16 +293,16 @@ resource ecsPack 'Radius.Core/recipePacks@2025-08-01-preview' = {
 
 > **Note:** Terraform is an assumption here, if a different IaC tool becomes the better fit for AWS, the pack switches to it.
 
-**Step 2 — Priya creates the environment.** ACA bundles networking, DNS, logging, and image-pull permissions into the single managed environment resource. ECS has no such container, so each piece is a parameter:
+**Step 2 — Priya creates the environment.** ACA bundles networking, DNS, and logging into the single managed environment resource. ECS has no such container, so each piece is a parameter:
 
-| Parameter                 | Why ECS needs it                                                                               | ACA equivalent                                     |
-|---------------------------|------------------------------------------------------------------------------------------------|----------------------------------------------------|
-| `clusterArn`              | An ECS service must belong to a cluster; there is no implicit default.                         | The managed environment.                           |
-| `subnetIds`               | Fargate's `awsvpc` network mode gives each task an ENI, which must be placed in named subnets. | The managed environment owns its subnet.           |
-| `securityGroupIds`        | That ENI needs a security group. AWS has no default that allows traffic between tasks.         | The managed environment allows internal traffic.   |
-| `executionRoleArn`        | The ECS agent assumes this role to pull the image from ECR and write logs to CloudWatch.       | The managed environment handles both.              |
-| `serviceConnectNamespace` | A Cloud Map namespace is what gives containers DNS names for `connections` and `hosts`.        | `*.internal.<env>.<region>.azurecontainerapps.io`. |
-| `fileSystemId`            | The application access point must belong to an EFS file system with mount targets in the VPC.  | The recipe creates an Azure Files share.           |
+| Parameter                 | Why ECS needs it                                                                               | ACA equivalent                                                                                                                                                                   |
+|---------------------------|------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `clusterArn`              | An ECS service must belong to a cluster; there is no implicit default.                         | The managed environment.                                                                                                                                                         |
+| `subnetIds`               | Fargate's `awsvpc` network mode gives each task an ENI, which must be placed in named subnets. | The managed environment owns its subnet.                                                                                                                                         |
+| `securityGroupIds`        | That ENI needs a security group. AWS has no default that allows traffic between tasks.         | The managed environment allows internal traffic.                                                                                                                                 |
+| `executionRoleArn`        | The ECS agent assumes this role to pull the image from ECR and write logs to CloudWatch.       | Logs: handled by the managed environment. Image pulls: configured on each Container App, not the environment, using registry credentials or a managed identity with pull access. |
+| `serviceConnectNamespace` | A Cloud Map namespace is what gives containers DNS names for `connections` and `hosts`.        | `*.internal.<env>.<region>.azurecontainerapps.io`.                                                                                                                               |
+| `fileSystemId`            | The application access point must belong to an EFS file system with mount targets in the VPC.  | The recipe creates an Azure Files share.                                                                                                                                         |
 
 A recipe could create some of these, but subnets, security groups, and IAM roles are governed by Priya's existing AWS controls, so v1 accepts them as inputs.
 
