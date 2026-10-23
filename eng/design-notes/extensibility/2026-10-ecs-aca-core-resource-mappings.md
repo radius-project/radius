@@ -505,6 +505,6 @@ Each one shows what the pack actually delivers on its own platform, including th
 
 A page per container platform on [docs.radapp.io](https://docs.radapp.io/management/container-platforms/), nested under Container platforms — which today carries Azure Container Instances as a single inline example and covers neither ACA nor ECS.
 
-Each page covers how to register the environment, what the platform engineer brings, a deployment walkthrough, and the unsupported properties with their alternatives, in the same shape as the existing Azure Container Instances example.
+Each page covers how to register the environment, what the platform engineer brings, a deployment walkthrough, where to find runtime logs and diagnostics, and the unsupported properties with their alternatives, in the same shape as the existing Azure Container Instances example.
 
 This is where a developer looks first, before `resource-types-contrib`. The pack READMEs are the reference; these pages are the path in.
