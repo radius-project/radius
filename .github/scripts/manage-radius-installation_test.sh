@@ -126,10 +126,45 @@ run_install_or_upgrade_case() (
     [[ "${calls}" -eq 1 ]] || fail "expected exactly one ${operation}"
 )
 
+run_sequential_upgrade_case() (
+    local -a upgrade_versions=()
+
+    # shellcheck source=/dev/null
+    source "${SCRIPT_DIR}/manage-radius-installation.sh"
+
+    # shellcheck disable=SC2329 # Invoked indirectly by the sourced script.
+    rad() {
+        [[ "$1 $2" == "upgrade kubernetes" ]] ||
+            fail "unexpected rad invocation: $*"
+        assert_required_values "$*"
+
+        local version=""
+        while (($#)); do
+            if [[ "$1" == "--version" ]]; then
+                version="$2"
+                break
+            fi
+            shift
+        done
+        upgrade_versions+=("${version:-current}")
+    }
+
+    upgrade_radius_to_cli_version "0.60.2" "0.62.0-rc.2"
+
+    [[ "${upgrade_versions[*]}" == "0.61.0 current" ]] ||
+        fail "unexpected upgrade sequence: ${upgrade_versions[*]}"
+
+    upgrade_versions=()
+    upgrade_radius_to_cli_version "0.61.0" "0.62.0-rc.2"
+    [[ "${upgrade_versions[*]}" == "current" ]] ||
+        fail "unexpected adjacent-version upgrade: ${upgrade_versions[*]}"
+)
+
 run_matching_version_case "false" "true"
 run_matching_version_case "true" "false"
 run_matching_version_case "error" "false"
 run_install_or_upgrade_case "install"
 run_install_or_upgrade_case "upgrade"
+run_sequential_upgrade_case
 
 echo "manage-radius-installation tests passed"

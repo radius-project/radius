@@ -191,6 +191,37 @@ upgrade_radius() {
     rad upgrade kubernetes "${REQUIRED_CHART_VALUES[@]}" "$@"
 }
 
+upgrade_radius_to_cli_version() {
+    local current_version="$1"
+    local cli_version="$2"
+    local current_major current_minor target_major target_minor
+    local next_version minor
+    local version_pattern='^v?([0-9]+)\.([0-9]+)\.[0-9]+'
+    version_pattern+='(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+
+    if [[ "${current_version}" =~ ${version_pattern} ]]; then
+        current_major="${BASH_REMATCH[1]}"
+        current_minor="${BASH_REMATCH[2]}"
+        if [[ "${cli_version}" =~ ${version_pattern} ]]; then
+            target_major="${BASH_REMATCH[1]}"
+            target_minor="${BASH_REMATCH[2]}"
+
+            if [[ "${current_major}" == "${target_major}" ]]; then
+                for ((minor = current_minor + 1;
+                    minor < target_minor;
+                    minor++)); do
+                    next_version="${current_major}.${minor}.0"
+                    printf 'Upgrading Radius to intermediate version %s...\n' \
+                        "${next_version}"
+                    upgrade_radius --version "${next_version}" || return 1
+                done
+            fi
+        fi
+    fi
+
+    upgrade_radius
+}
+
 reconcile_required_chart_values() {
     local irsa_status=0
     aws_irsa_token_volumes_enabled || irsa_status=$?
@@ -339,7 +370,7 @@ main() {
         # detect and report an error, which will cause the workflow to fail. Manual intervention may be required in such cases.
         # Radius preserves stored Helm overrides. Explicit values ensure fresh
         # installs and upgrades use the same required LRT configuration.
-        if ! upgrade_radius; then
+        if ! upgrade_radius_to_cli_version "${cp_version}" "${cli_version}"; then
             echo ""
             echo "============================================================================"
             echo "ERROR: Radius upgrade failed"
