@@ -1364,6 +1364,7 @@ jobs:
           VERIFY_RESULT: ${{ needs.verify-release.result }}
           APPROVAL_RESULT: ${{ needs.approve-publication.result }}
           COORDINATION_RESULT: ${{ needs.coordinate-release.result }}
+          SIBLING_RELEASES_RESULT: ${{ needs.publish-sibling-releases.result }}
         run: |
           ./.github/scripts/build-summary.sh \
             "release-preflight:${PREFLIGHT_RESULT}" \
@@ -1374,4 +1375,5 @@ jobs:
             "verify-release:${VERIFY_RESULT}" \
             "approve-publication:${APPROVAL_RESULT}" \
             "coordinate-release:${COORDINATION_RESULT}" \
+            "publish-sibling-releases:${SIBLING_RELEASES_RESULT}" \
             "finalize-release:${FINALIZE_RESULT}"
