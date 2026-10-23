@@ -231,6 +231,25 @@ assert_file_contains() {
     return 0
 }
 
+assert_changelog_entry() {
+    local file="$1"
+    local heading="$2"
+    local entry="$3"
+    local entries
+
+    entries="$(awk -v heading="### ${heading}" '
+        /^### / { active = ($0 == heading); next }
+        /^## / { active = 0 }
+        active { print }
+    ' "${file}")"
+    if [[ "${entries}" != *"- ${entry}"* ]] \
+        || [[ "$(grep -Fc -- "- ${entry}" "${file}")" != 1 ]]; then
+        fail_test "${file} must list '${entry}' once under ${heading}"
+        return 1
+    fi
+    return 0
+}
+
 assert_note_format() {
     local file="$1"
     local version="$2"
@@ -452,8 +471,10 @@ test_subsequent_rc_has_only_new_changes() {
     commit "feat: first candidate feature"
     git -C "${REPO}" tag v0.60.0-rc.1
     commit "fix: second candidate fix"
+    commit "docs: second candidate guide"
     git -C "${REPO}" tag v0.60.0-rc.2
     commit "fix: third candidate fix"
+    commit "docs(release): add a concise release runbook (#13390)"
     make_release_branch 0.60
     commit "feat: unrelated main change"
     cat >> "${REPO}/CHANGELOG.md" << 'EOF'
@@ -482,8 +503,13 @@ EOF
         '[0.60.0-rc.3](https://github.com/radius-project/radius/compare/v0.60.0-rc.2...v0.60.0-rc.3) - 2026-08-24' \
                                                                                                                    || return
     assert_file_contains "${notes}" 'Third candidate fix' || return
+    for message in "${section}" "${notes}"; do
+        assert_changelog_entry "${message}" Others \
+            'Add a concise release runbook (#13390)' || return
+    done
     assert_file_contains "${notes}" 'releases/tag/v0.60.0-rc.2' || return
-    for message in 'First candidate feature' 'Second candidate fix' 'Unrelated main change'; do
+    for message in 'First candidate feature' 'Second candidate fix' \
+        'Second candidate guide' 'Unrelated main change'; do
         if grep -Fq "${message}" "${section}" "${notes}"; then
             fail_test "later RC notes contain a previous or unapplied change: ${message}"
             return
@@ -502,7 +528,7 @@ EOF
 
 test_stable_note_boundaries() {
     local release_type="$1"
-    local version previous notes renderer
+    local version previous notes renderer file
 
     renderer="$(command -v "${GIT_CLIFF:-git-cliff}")"
     if [[ "${release_type}" == final ]]; then
@@ -516,12 +542,15 @@ test_stable_note_boundaries() {
     fi
     cp "${SCRIPT_DIR}/../../cliff.toml" "${REPO}/cliff.toml"
     commit "feat: earlier version feature"
+    commit "docs: earlier version guide"
     if [[ "${release_type}" == patch ]]; then
         git -C "${REPO}" tag "${previous}"
     else
         git -C "${REPO}" tag v0.60.0-rc.1
     fi
     commit "fix: selected backport"
+    commit "docs(release): selected release guide"
+    commit "chore: selected maintenance"
     if [[ "${release_type}" == final ]]; then
         git -C "${REPO}" tag "${previous}"
     fi
@@ -533,13 +562,21 @@ test_stable_note_boundaries() {
     notes="${REPO}/docs/release-notes/${version}.md"
     assert_file_contains "${notes}" "Selected backport" || return
     assert_file_contains "${REPO}/CHANGELOG.md" "Selected backport" || return
+    for file in "${notes}" "${REPO}/CHANGELOG.md"; do
+        assert_changelog_entry "${file}" Others \
+            'Selected release guide' || return
+        assert_changelog_entry "${file}" Others \
+            'Selected maintenance' || return
+    done
     if grep -Fq "Unrelated main feature" "${notes}"; then
         fail_test "${release_type} notes contain an unapplied main change"
         return
     fi
     if [[ "${release_type}" == final ]]; then
         assert_file_contains "${notes}" "Earlier version feature" || return
-    elif grep -Fq "Earlier version feature" "${notes}"; then
+        assert_changelog_entry "${notes}" Others \
+            'Earlier version guide' || return
+    elif grep -Eq 'Earlier version (feature|guide)' "${notes}"; then
         fail_test "patch notes repeat changes from the previous stable release"
         return
     fi
@@ -736,7 +773,7 @@ test_legacy_history() {
     commit "docs(legacy):"
     if [[ "${history}" == mixed ]]; then
         commit "feat: add release integration (#202)"
-        commit "docs: excluded maintenance (#203)"
+        commit "docs: update release guidance (#203)"
     fi
 
     GITHUB_TOKEN="" run_prepare rc 0.61 "${renderer}" \
@@ -746,7 +783,7 @@ test_legacy_history() {
     assert_note_format "${notes}" v0.61.0-rc.1 v0.60.0 rc || return
     for file in "${notes}" "${REPO}/out/changelog-section.md"; do
         other="$(awk '
-            /^### / { active = ($0 == "### Other changes"); next }
+            /^### / { active = ($0 == "### Others"); next }
             /^## / { active = 0 }
             active { print }
         ' "${file}")"
@@ -755,9 +792,9 @@ test_legacy_history() {
             fail_test "${history} history lost a nonconventional commit"
             return
         fi
-        if grep -Fq '(#203)' "${file}"; then
-            fail_test "conventional maintenance must remain excluded"
-            return
+        if [[ "${history}" == mixed ]]; then
+            assert_changelog_entry "${file}" Others \
+                'Update release guidance (#203)' || return
         fi
     done
     if [[ "${history}" == mixed ]]; then
