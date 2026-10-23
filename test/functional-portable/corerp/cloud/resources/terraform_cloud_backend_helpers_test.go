@@ -75,7 +75,7 @@ func TestTerraformCloudAzureReadinessProbe(t *testing.T) {
 			}))
 			defer server.Close()
 			client, err := azblob.NewClientWithNoCredential(server.URL, &azblob.ClientOptions{
-				ClientOptions: azcore.ClientOptions{Retry: policy.RetryOptions{MaxRetries: -1}},
+				Retry: policy.RetryOptions{MaxRetries: -1},
 			})
 			require.NoError(t, err)
 			err = probeAzureBlobAccess(t.Context(), client, "tfstate")
