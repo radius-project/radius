@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -57,6 +58,13 @@ const (
 	// (Kubernetes object name limit). The owner-name portion is truncated so the name — including the
 	// hash and suffix — never exceeds this.
 	managedSecretNameMaxLength = 63
+)
+
+// deleteConflictTimeout and deleteConflictInterval control how long Delete retries while the managed
+// secret is still being created or updated. They are variables so tests can shorten them.
+var (
+	deleteConflictTimeout  = 2 * time.Minute
+	deleteConflictInterval = 2 * time.Second
 )
 
 // Request describes the managed secret to create or update for an owner resource.
@@ -199,15 +207,30 @@ func (m *clientMaterializer) Delete(ctx context.Context, ownerResourceID string)
 		return err
 	}
 
-	if _, err := client.BeginDelete(ctx, secretName, nil); err != nil {
-		var respErr *azcore.ResponseError
-		if errors.As(err, &respErr) && respErr.StatusCode == http.StatusNotFound {
+	// The managed secret is created asynchronously, so it can still be in an in-progress state (409 Conflict)
+	// when its owner is deleted. Retry for a bounded time until the secret settles.
+	deadline := time.Now().Add(deleteConflictTimeout)
+	for {
+		_, err = client.BeginDelete(ctx, secretName, nil)
+		if err == nil {
 			return nil
+		}
+
+		if respErr, ok := errors.AsType[*azcore.ResponseError](err); ok {
+			if respErr.StatusCode == http.StatusNotFound {
+				return nil
+			}
+			if respErr.StatusCode == http.StatusConflict && time.Now().Before(deadline) {
+				select {
+				case <-ctx.Done():
+					return fmt.Errorf("failed to delete managed secret '%s': %w", secretName, ctx.Err())
+				case <-time.After(deleteConflictInterval):
+					continue
+				}
+			}
 		}
 		return fmt.Errorf("failed to delete managed secret '%s': %w", secretName, err)
 	}
-
-	return nil
 }
 
 // clientOptions returns a shallow copy of the configured ARM client options with the API version overridden

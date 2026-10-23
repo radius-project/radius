@@ -35,10 +35,8 @@ import (
 
 func redisTestPod() *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "redis-pod", Namespace: "test",
-			Labels: map[string]string{"app": "redis", "radapp.io/application": "test-app", "resource": "redis-service"},
-		},
+		Name: "redis-pod", Namespace: "test",
+		Labels: map[string]string{"app": "redis", "radapp.io/application": "test-app", "resource": "redis-service"},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 			ContainerStatuses: []corev1.ContainerStatus{

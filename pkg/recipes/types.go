@@ -54,8 +54,7 @@ type Configuration struct {
 
 // RuntimeConfiguration represents Runtime configuration for the environment.
 type RuntimeConfiguration struct {
-	Kubernetes              *KubernetesRuntime              `json:"kubernetes,omitempty"`
-	AzureContainerInstances *AzureContainerInstancesRuntime `json:"azureContainerInstances,omitempty"`
+	Kubernetes *KubernetesRuntime `json:"kubernetes,omitempty"`
 }
 
 // KubernetesRuntime represents application and environment namespaces.
@@ -64,11 +63,6 @@ type KubernetesRuntime struct {
 	Namespace string `json:"namespace"`
 	// EnvironmentNamespace is set to environment namespace.
 	EnvironmentNamespace string `json:"environmentNamespace"`
-}
-
-// AzureContainerInstancesRuntime represents Azure Container Instances runtime configuration.
-type AzureContainerInstancesRuntime struct {
-	// TODO: Add runtime configuration for Azure Container Instances
 }
 
 // EnvironmentDefinition represents the recipe configuration details.

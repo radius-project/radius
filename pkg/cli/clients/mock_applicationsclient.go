@@ -703,45 +703,6 @@ func (c *MockApplicationsManagementClientGetApplicationCall) DoAndReturn(f func(
 	return c
 }
 
-// GetApplicationGraph mocks base method.
-func (m *MockApplicationsManagementClient) GetApplicationGraph(ctx context.Context, applicationNameOrID string) (v20231001preview.ApplicationGraphResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetApplicationGraph", ctx, applicationNameOrID)
-	ret0, _ := ret[0].(v20231001preview.ApplicationGraphResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetApplicationGraph indicates an expected call of GetApplicationGraph.
-func (mr *MockApplicationsManagementClientMockRecorder) GetApplicationGraph(ctx, applicationNameOrID any) *MockApplicationsManagementClientGetApplicationGraphCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetApplicationGraph", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetApplicationGraph), ctx, applicationNameOrID)
-	return &MockApplicationsManagementClientGetApplicationGraphCall{Call: call}
-}
-
-// MockApplicationsManagementClientGetApplicationGraphCall wrap *gomock.Call
-type MockApplicationsManagementClientGetApplicationGraphCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockApplicationsManagementClientGetApplicationGraphCall) Return(arg0 v20231001preview.ApplicationGraphResponse, arg1 error) *MockApplicationsManagementClientGetApplicationGraphCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockApplicationsManagementClientGetApplicationGraphCall) Do(f func(context.Context, string) (v20231001preview.ApplicationGraphResponse, error)) *MockApplicationsManagementClientGetApplicationGraphCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockApplicationsManagementClientGetApplicationGraphCall) DoAndReturn(f func(context.Context, string) (v20231001preview.ApplicationGraphResponse, error)) *MockApplicationsManagementClientGetApplicationGraphCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // GetEnvironment mocks base method.
 func (m *MockApplicationsManagementClient) GetEnvironment(ctx context.Context, environmentNameOrID string) (v20231001preview.EnvironmentResource, error) {
 	m.ctrl.T.Helper()
@@ -777,45 +738,6 @@ func (c *MockApplicationsManagementClientGetEnvironmentCall) Do(f func(context.C
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockApplicationsManagementClientGetEnvironmentCall) DoAndReturn(f func(context.Context, string) (v20231001preview.EnvironmentResource, error)) *MockApplicationsManagementClientGetEnvironmentCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
-// GetRecipeMetadata mocks base method.
-func (m *MockApplicationsManagementClient) GetRecipeMetadata(ctx context.Context, environmentNameOrID string, recipe v20231001preview.RecipeGetMetadata) (v20231001preview.RecipeGetMetadataResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecipeMetadata", ctx, environmentNameOrID, recipe)
-	ret0, _ := ret[0].(v20231001preview.RecipeGetMetadataResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetRecipeMetadata indicates an expected call of GetRecipeMetadata.
-func (mr *MockApplicationsManagementClientMockRecorder) GetRecipeMetadata(ctx, environmentNameOrID, recipe any) *MockApplicationsManagementClientGetRecipeMetadataCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipeMetadata", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetRecipeMetadata), ctx, environmentNameOrID, recipe)
-	return &MockApplicationsManagementClientGetRecipeMetadataCall{Call: call}
-}
-
-// MockApplicationsManagementClientGetRecipeMetadataCall wrap *gomock.Call
-type MockApplicationsManagementClientGetRecipeMetadataCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockApplicationsManagementClientGetRecipeMetadataCall) Return(arg0 v20231001preview.RecipeGetMetadataResponse, arg1 error) *MockApplicationsManagementClientGetRecipeMetadataCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockApplicationsManagementClientGetRecipeMetadataCall) Do(f func(context.Context, string, v20231001preview.RecipeGetMetadata) (v20231001preview.RecipeGetMetadataResponse, error)) *MockApplicationsManagementClientGetRecipeMetadataCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockApplicationsManagementClientGetRecipeMetadataCall) DoAndReturn(f func(context.Context, string, v20231001preview.RecipeGetMetadata) (v20231001preview.RecipeGetMetadataResponse, error)) *MockApplicationsManagementClientGetRecipeMetadataCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

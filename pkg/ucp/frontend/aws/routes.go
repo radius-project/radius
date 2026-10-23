@@ -77,7 +77,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		}
 
 		if m.AWSClients.CloudFormation == nil {
-			m.AWSClients.CloudFormation = cloudformation.NewFromConfig(awsConfig)
+			m.AWSClients.CloudFormation = ucp_aws.NewDescribeTypeCache(cloudformation.NewFromConfig(awsConfig), ucp_aws.DefaultDescribeTypeCacheTTL)
 		}
 	}
 

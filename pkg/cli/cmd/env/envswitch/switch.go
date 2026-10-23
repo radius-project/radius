@@ -25,11 +25,12 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	util "github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -58,22 +59,20 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 // Runner is the runner implementation for the `rad env switch` command.
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	Output            output.Interface
-	Workspace         *workspaces.Workspace
-	ApplicationName   string
-	EnvironmentId     resources.ID
-	EnvironmentName   string
-	Scope             resources.ID
-	ConnectionFactory connections.Factory
+	ConfigHolder            *framework.ConfigHolder
+	Output                  output.Interface
+	Workspace               *workspaces.Workspace
+	EnvironmentId           resources.ID
+	EnvironmentName         string
+	Scope                   resources.ID
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 }
 
 // NewRunner creates a new instance of the `rad env switch` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
-		ConnectionFactory: factory.GetConnectionFactory(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 	}
 }
 
@@ -95,7 +94,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return workspaces.ErrEditableWorkspaceRequired
 	}
 
-	r.EnvironmentName, err = cli.RequireEnvironmentNameArgs(cmd, args, *r.Workspace)
+	r.EnvironmentName, err = cli.RequireRadiusCoreEnvironmentNameArgs(cmd, args, *r.Workspace)
 	if err != nil {
 		return err
 	}
@@ -105,20 +104,23 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.EnvironmentId = r.Scope.Append(resources.TypeSegment{Type: "Applications.Core/environments", Name: r.EnvironmentName})
+	r.EnvironmentId = r.Scope.Append(resources.TypeSegment{Type: "Radius.Core/environments", Name: r.EnvironmentName})
 
 	if strings.EqualFold(r.Workspace.Environment, r.EnvironmentId.String()) {
 		r.Output.LogInfo("Default environment is already set to %v", r.EnvironmentName)
 		return nil
 	}
 
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
-	if err != nil {
-		return err
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := util.InitializeRadiusCoreClientFactory(cmd.Context(), r.Workspace)
+		if err != nil {
+			return err
+		}
+		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	// Validate that the environment exists
-	_, err = client.GetEnvironment(cmd.Context(), r.EnvironmentName)
+	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
+	_, err = envClient.Get(cmd.Context(), r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientGetOptions{})
 	if clients.Is404Error(err) {
 		return clierrors.Message("Unable to switch environments as requested environment %s does not exist.", r.EnvironmentName)
 	} else if err != nil {

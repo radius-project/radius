@@ -136,11 +136,11 @@ jobs:
             BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
           fi
           UNIQUE_ID=func$(echo $BASE_STR | sha1sum | head -c 10)
-          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
+          echo "REL_VERSION=test-${UNIQUE_ID}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> $GITHUB_ENV
 
           # Set output variables to be used in the other jobs
           {
-            echo "REL_VERSION=pr-${UNIQUE_ID}"
+            echo "REL_VERSION=test-${UNIQUE_ID}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
             echo "DE_IMAGE=${DE_IMAGE}"
             echo "DE_TAG=${DE_TAG}"
           } >> "${GITHUB_OUTPUT}"
@@ -172,7 +172,7 @@ jobs:
             test/testrp
 
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
@@ -208,7 +208,7 @@ jobs:
       - name: Upload functional test inputs
         # Multiple paths use the workspace as their common root, preserving the
         # directory layout while avoiding three artifact lookups per matrix leg.
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: radius_test_inputs
           path: |
@@ -216,9 +216,10 @@ jobs:
             ./dist/images
             ./hack/bicep-types-radius/generated
           if-no-files-found: error
+          overwrite: true
 
   tests:
-    name: Run ${{ matrix.name }} functional tests
+    name: Run ${{ matrix.name }}${{ matrix.authzDryRun && ' (authz dry run)' || '' }} functional tests
     needs: [changes, build]
     if: needs.changes.outputs.only_changed != 'true'
     permissions:
@@ -234,6 +235,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
+        # Legs with authzDryRun: true are extra runs of existing legs with the authorization dry
+        # run enabled, followed by a check that no component logged a would-deny line.
+        authzDryRun: [false]
         name:
           [
             cli-noncloud,
@@ -246,10 +250,16 @@ jobs:
             statestore-noncloud,
             samples-noncloud,
             ucp-noncloud,
+            authz-noncloud,
             datastoresrp-noncloud,
             dynamicrp-noncloud,
-            upgrade-noncloud,
+            upgrade-noncloud
           ]
+        include:
+          - { os: ubuntu-24.04, name: corerp-noncloud, authzDryRun: true }
+          - { os: ubuntu-24.04, name: dynamicrp-noncloud, authzDryRun: true }
+          - { os: ubuntu-24.04, name: kubernetes-noncloud, authzDryRun: true }
+          - { os: ubuntu-24.04, name: ucp-noncloud, authzDryRun: true }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     env:
@@ -259,6 +269,9 @@ jobs:
       BICEP_TRUSTED_REGISTRIES: localhost,radius-registry
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
+      # Unique per leg, so the authz dry-run variant of a leg does not collide with the leg itself
+      # in artifact and check names.
+      LEG_NAME: ${{ matrix.authzDryRun && format('{0}-authz-dryrun', matrix.name) || matrix.name }}
     steps:
       - name: Determine PR number
         if: github.event_name == 'pull_request'
@@ -302,7 +315,7 @@ jobs:
       # One run-scoped artifact restores the original paths on every fresh runner,
       # including when only failed matrix jobs are re-run.
       - name: Download functional test inputs
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: radius_test_inputs
           path: .
@@ -462,6 +475,13 @@ jobs:
         if: matrix.name == 'database-noncloud'
         run: echo "DATABASE_INSTALL_ARGS=--set database.enabled=true" >> "${GITHUB_ENV}"
 
+      - name: Enable the authorization dry run
+        # Installs the authz leg with a non-default authorization mode so its smoke test verifies
+        # that every component reads the mode from the Helm values. The authz dry-run legs use it
+        # so the "Check for authorization would-deny logs" step can find false positives.
+        if: matrix.name == 'authz-noncloud' || matrix.authzDryRun
+        run: echo "AUTHZ_INSTALL_ARGS=--set global.rbac.dryRun=true" >> "${GITHUB_ENV}"
+
       - name: Wait for Deployment Engine image to be available
         # When this run was triggered by deployment-engine's publish dispatch, DE_TAG
         # names an image that repo just pushed to GHCR. The dispatch that starts this
@@ -490,6 +510,10 @@ jobs:
 
           echo "Deployment Engine image ${DE_IMAGE}:${DE_TAG} did not become available after $((MAX_ATTEMPTS * SLEEP_SECONDS))s. Last error: ${manifest_error}"
           exit 1
+
+      - name: Install yq
+        # Required to select the test environment in the workspace config.
+        run: make install-yq
 
       - name: Install Radius
         # The statestore leg drives its own install/uninstall/reinstall lifecycle
@@ -536,6 +560,9 @@ jobs:
           # For the database leg, install the PostgreSQL-backed control plane instead of the
           # default Kubernetes API server store. Empty for all other legs.
           RAD_COMMAND="$RAD_COMMAND ${DATABASE_INSTALL_ARGS:-}"
+
+          # For the authz leg, install with the authorization dry run enabled. Empty for all other legs.
+          RAD_COMMAND="$RAD_COMMAND ${AUTHZ_INSTALL_ARGS:-}"
 
           echo "*** Installing Radius to Kubernetes ***"
           eval $RAD_COMMAND
@@ -590,8 +617,19 @@ jobs:
           rad group switch kind-radius
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create kind-radius --namespace default
-          rad env switch kind-radius
+          #
+          # The environment is deployed declaratively rather than with `rad env create` so that it is
+          # pinned to Applications.Core regardless of which provider the `rad env create` default
+          # targets.
+          rad deploy ./test/infra/radius/legacy-test-environment.bicep \
+            --parameters name=kind-radius \
+            --parameters namespace=default
+
+          # Select the env with yq, not `rad env switch`, so this works whichever type `rad env` targets.
+          scope="$(yq -e '.workspaces.items[.workspaces.default].scope' ~/.rad/config.yaml)"
+          ENVIRONMENT_ID="${scope}/providers/Applications.Core/environments/kind-radius" \
+            yq -i '.workspaces.items[.workspaces.default].environment = strenv(ENVIRONMENT_ID)' ~/.rad/config.yaml
+          rad workspace show
 
         env:
           USE_CERT_FILE: "true"
@@ -610,17 +648,8 @@ jobs:
 
       - name: Port-forward to Git server
         if: matrix.name == 'kubernetes-noncloud'
-        run: |
-          # Start port forwarding in the background
-          kubectl port-forward -n git-http-backend svc/git-http 30080:3000 &
-
-          # Wait for port forwarding to be established
-          sleep 5
-
-          # Test the connection to ensure port forwarding is working
-          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
-
-          echo "Port forwarding established successfully"
+        # The log lands in the container logs artifact uploaded below.
+        run: ./.github/scripts/start-git-http-port-forward.sh "${GITHUB_WORKSPACE}/${RADIUS_CONTAINER_LOG_BASE}/git-http-port-forward.log"
 
       - name: Install Dapr CLI
         if: matrix.name == 'daprrp-noncloud'
@@ -681,6 +710,7 @@ jobs:
           SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
       - name: Run functional tests
+        id: functional-tests
         run: |
           # Ensure rad cli is in path before running tests.
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -690,14 +720,21 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          make "test-functional-${MATRIX_NAME}"
+          if [[ "${AUTHZ_DRY_RUN}" == "true" ]]; then
+            python3 .github/scripts/run-with-authz-logs.py make "test-functional-${MATRIX_NAME}"
+          else
+            make "test-functional-${MATRIX_NAME}"
+          fi
         env:
+          AUTHZ_DRY_RUN: ${{ matrix.authzDryRun }}
+          AUTHZ_LOG_DIR: ${{ github.workspace }}/dist/authz-logs
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           # The statestore leg installs/uninstalls/reinstalls Radius, so it needs
           # far longer than the standard per-leg timeout. The upgrade leg installs
           # Radius twice and runs several upgrades, so it also needs more time.
           TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || matrix.name == 'upgrade-noncloud' && '30m' || env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          AUTHZ_EXPECTED_MODE: ${{ matrix.name == 'authz-noncloud' && 'dryRun' || '' }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
@@ -710,6 +747,31 @@ jobs:
           # local registry; ignored by other legs.
           RADIUS_REGISTRY_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
+      - name: Check for authorization would-deny logs
+        # Fails the authz dry-run legs if any component logged that an authorization check would
+        # deny a request. Under enforcement those requests would be rejected, so this catches
+        # false positives before enforcement is turned on. Scans current and previous container
+        # logs in radius-system plus workflow-owned streams covering the entire test command,
+        # including replaced pods. Test-owned logs stop when their first test finishes and are
+        # not used as gate evidence. The Make target also requires current startup evidence of dryRun
+        # from all four Radius components and fails if any log collection or scan fails.
+        # Tracked exceptions go in
+        # .github/scripts/authz-would-deny-allowlist.txt. The authz-noncloud leg is not checked
+        # because its tests make requests that are meant to be denied.
+        if: ${{ !cancelled() && matrix.authzDryRun && steps.functional-tests.outcome != 'skipped' }}
+        env:
+          AUTHZ_LOG_DIR: ${{ github.workspace }}/dist/authz-logs
+        run: |
+          test -f "${AUTHZ_LOG_DIR}/complete" || { echo "Authorization log collection did not complete"; exit 1; }
+          make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--cluster --collector-dir ${AUTHZ_LOG_DIR}"
+
+      - name: Upload authorization gate logs
+        if: always() && matrix.authzDryRun
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ env.LEG_NAME }}-authz-logs
+          path: dist/authz-logs
+
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
         # Run on success and failure so a passing "Re-run failed jobs" refreshes the
@@ -720,36 +782,34 @@ jobs:
         # the failure artifacts are still uploaded for post-mortem.
         if: always() && github.repository == vars.RADIUS_REPOSITORY
         with:
-          test_group_name: Functional Tests - ${{ matrix.name }}
-          artifact_name: functional_test_results_${{ matrix.name }}
+          test_group_name: Functional Tests - ${{ env.LEG_NAME }}
+          artifact_name: functional_test_results_${{ env.LEG_NAME }}
           result_directory: dist/functional_test/
           comment_mode: failures
 
       - name: Collect detailed Radius logs and events
         id: radius-logs-events
         if: always()
-        env:
-          MATRIX_NAME: ${{ matrix.name }}
         run: |
           # Create Radius logs directory
-          mkdir -p "func-nc/radius-logs-events/${MATRIX_NAME}"
+          mkdir -p "func-nc/radius-logs-events/${LEG_NAME}"
 
           # Get pod logs and save to file
           namespace="radius-system"
           pod_names=($(kubectl get pods -n $namespace -o jsonpath='{.items[*].metadata.name}'))
           for pod_name in "${pod_names[@]}"; do
-            kubectl logs $pod_name -n $namespace > "func-nc/radius-logs-events/${MATRIX_NAME}/${pod_name}.txt" 2>&1 || echo "Failed to get logs for pod: $pod_name" > "func-nc/radius-logs-events/${MATRIX_NAME}/${pod_name}.txt"
+            kubectl logs $pod_name -n $namespace > "func-nc/radius-logs-events/${LEG_NAME}/${pod_name}.txt" 2>&1 || echo "Failed to get logs for pod: $pod_name" > "func-nc/radius-logs-events/${LEG_NAME}/${pod_name}.txt"
           done
-          echo "Pod logs saved to func-nc/radius-logs-events/${MATRIX_NAME}/"
+          echo "Pod logs saved to func-nc/radius-logs-events/${LEG_NAME}/"
           # Get kubernetes events and save to file
-          kubectl get events -n $namespace > "func-nc/radius-logs-events/${MATRIX_NAME}/events.txt"
+          kubectl get events -n $namespace > "func-nc/radius-logs-events/${LEG_NAME}/events.txt"
 
       - name: Upload Pod logs for failed tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && steps.radius-logs-events.outcome == 'success'
         with:
-          name: ${{ matrix.name }}-radius-pod-logs
-          path: func-nc/radius-logs-events/${{ matrix.name }}
+          name: ${{ env.LEG_NAME }}-radius-pod-logs
+          path: func-nc/radius-logs-events/${{ env.LEG_NAME }}
           retention-days: 30
           if-no-files-found: error
 
@@ -762,7 +822,7 @@ jobs:
         continue-on-error: true
         env:
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-          DIAGNOSTICS_NAME: ${{ matrix.name }}
+          DIAGNOSTICS_NAME: ${{ env.LEG_NAME }}
           # kube-apiserver/etcd/kubelet logs are only worth the artifact size when
           # something went wrong. An empty name skips the export.
           KIND_CLUSTER_NAME: ${{ job.status != 'success' && 'kind' || '' }}
@@ -770,9 +830,9 @@ jobs:
 
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ${{ matrix.name }}_container_logs
+          name: ${{ env.LEG_NAME }}_container_logs
           path: ./${{ env.RADIUS_CONTAINER_LOG_BASE }}
 
       - name: Get Terraform recipe publishing logs
@@ -792,10 +852,10 @@ jobs:
           kubectl get events -n $namespace > recipes/pod-logs/events.txt
 
       - name: Upload Terraform recipe publishing logs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: ${{ matrix.name }}_recipes-pod-logs
+          name: ${{ env.LEG_NAME }}_recipes-pod-logs
           path: recipes/pod-logs
           if-no-files-found: error
 

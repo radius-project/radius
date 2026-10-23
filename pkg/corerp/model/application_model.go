@@ -23,9 +23,6 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/handlers"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
-	"github.com/radius-project/radius/pkg/corerp/renderers/aci"
-	aci_gateway "github.com/radius-project/radius/pkg/corerp/renderers/aci/gateway"
-	aci_manualscale "github.com/radius-project/radius/pkg/corerp/renderers/aci/manualscale"
 	"github.com/radius-project/radius/pkg/corerp/renderers/container"
 	azcontainer "github.com/radius-project/radius/pkg/corerp/renderers/container/azure"
 	"github.com/radius-project/radius/pkg/corerp/renderers/daprextension"
@@ -102,9 +99,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 							},
 						},
 					},
-					rpv1.ACIComputeKind: &aci_manualscale.Renderer{
-						Inner: &aci.Renderer{},
-					},
 				},
 			},
 		},
@@ -113,7 +107,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 			Renderer: &mux.Renderer{
 				Inners: map[rpv1.EnvironmentComputeKind]renderers.Renderer{
 					rpv1.KubernetesComputeKind: &gateway.Renderer{},
-					rpv1.ACIComputeKind:        &aci_gateway.Renderer{},
 				},
 			},
 		},
@@ -170,70 +163,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.ContainerInstance/containerGroupProfiles",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzureCGProfileHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.ContainerInstance/nGroups",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzureCGNGroupsHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				// This is temporary as /applications resource doesn't exist. This is to parse application name from id.
-				Type:     "Microsoft.Network/loadBalancers/applications",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzureContainerLoadBalancerHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.Network/virtualNetworks/subnets",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzureVirtualNetworkSubnetHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.Network/publicIPAddresses",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzurePublicIPHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.Network/networkSecurityGroups",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzureNSGHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.Network/applicationGateways",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzureAppGWHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.Network/loadBalancers",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzureContainerLoadBalancerHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     "Microsoft.Network/vitualNetworks/subnets",
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzureVirtualNetworkSubnetHandler(arm),
 		},
 	}
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)

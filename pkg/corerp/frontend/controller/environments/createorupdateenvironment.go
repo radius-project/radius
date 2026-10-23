@@ -21,17 +21,13 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v9"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
-	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/corerp/frontend/controller/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 
@@ -83,7 +79,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	//
 	// This check is deliberately scoped to the current resource group and to this resource type
 	// only. Applications.Core/environments is on a deprecation path, so its enforcement behavior
-	// is frozen: widening it would start failing writes (rad recipe register, rad env update) for
+	// is frozen: widening it would start failing writes (environment API updates, rad env update) for
 	// existing installs that already have duplicate namespaces across resource groups. Plane-wide
 	// uniqueness is enforced on Radius.Core/environments instead, which is where users migrate to.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
@@ -100,16 +96,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 
 		// If a different resource has the same namespace, return a conflict
 		// Otherwise, continue and update the resource
-		if (old == nil || env.ID != old.ID) && env.Properties.Compute.Kind != rpv1.ACIComputeKind {
+		if old == nil || env.ID != old.ID {
 			return rest.NewConflictResponseWithCode(v1.CodeNamespaceAlreadyInUse, util.NamespaceConflictMessage(namespace, env.ID)), nil
 		}
 	}
 
-	if newResource.Properties.Compute.Kind == rpv1.ACIComputeKind {
-		if err := e.createOrUpdateACIEnvironment(ctx, newResource); err != nil {
-			return nil, err
-		}
-	} else if newResource.Properties.Compute.Kind == rpv1.KubernetesComputeKind {
+	if newResource.Properties.Compute.Kind == rpv1.KubernetesComputeKind {
 		// Create environment namespace if it doesn't exist.
 		err = e.Options().KubeClient.Create(ctx, &corev1.Namespace{Name: namespace})
 		if apierrors.IsAlreadyExists(err) {
@@ -128,200 +120,4 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
-}
-
-const (
-	ApplicationAddressSpace = "10.1.0.0/16"
-	LBAddressSpace          = "172.16.0.0/19"
-	InternalLBSubnetName    = "internal-lb"
-	InternalLBSubnet        = "172.16.1.0/24"
-	AppGatewaySubnetName    = "app-gateway"
-	AppGatewaySubnet        = "172.16.2.0/24"
-)
-
-func (e *CreateOrUpdateEnvironment) createOrUpdateACIEnvironment(ctx context.Context, resource *datamodel.Environment) error {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
-	// 1. Create NSG
-	// 2. VNET - Address space. 10.1.0.0/16 for application , 172.16.0.0/16 for load balancer
-	// 3. Subnets - 172.16.0.0/24 for internal load balancer, 172.16.1.0/24 for app gateway
-	// 4. Internal load balancer
-
-	rgID, err := resources.Parse(resource.Properties.Compute.ACICompute.ResourceGroup)
-	if err != nil {
-		return err
-	}
-
-	resourceGroupName := rgID.FindScope("resourceGroups")
-	subscriptionID := rgID.FindScope("subscriptions")
-
-	// Get the location of the resource group
-	resourceLocation, err := clientv2.GetResourceGroupLocation(ctx, subscriptionID, resourceGroupName, &e.Options().Arm.ClientOptions)
-	if err != nil {
-		// If resource group doesn't exist, use a default location
-		// For now, we'll return an error requiring the user to create the resource group first
-		return fmt.Errorf("failed to get resource group location. Please ensure the resource group exists: %w", err)
-	}
-
-	networkClientFactory, err := armnetwork.NewClientFactory(subscriptionID, e.Options().Arm.ClientOptions.Cred, nil)
-	if err != nil {
-		return err
-	}
-
-	virtualNetworksClient := networkClientFactory.NewVirtualNetworksClient()
-
-	envName := resource.Name
-	vnetName := envName
-
-	logger.Info("Creating VNET...", "VNET", vnetName, "SubscriptionID", subscriptionID, "ResourceGroup", resourceGroupName)
-
-	_, err = virtualNetworksClient.Get(ctx, resourceGroupName, vnetName, nil)
-	if err != nil {
-		pollerResp, err := virtualNetworksClient.BeginCreateOrUpdate(
-			ctx,
-			resourceGroupName,
-			vnetName,
-			armnetwork.VirtualNetwork{
-				Location: resourceLocation,
-				Properties: &armnetwork.VirtualNetworkPropertiesFormat{
-					AddressSpace: &armnetwork.AddressSpace{
-						AddressPrefixes: []*string{
-							new(ApplicationAddressSpace),
-							new(LBAddressSpace),
-						},
-					},
-				},
-			},
-			nil)
-
-		if err != nil {
-			return err
-		}
-
-		vnetResp, err := pollerResp.PollUntilDone(ctx, nil)
-		if err != nil {
-			return err
-		}
-		logger.Info("Created VNET.", "ID", vnetResp.ID)
-	}
-
-	// Create NSG for applications
-	nsgName := envName + "-nsg"
-	logger.Info("Creating NSG...", "NSG", nsgName, "SubscriptionID", subscriptionID, "ResourceGroup", resourceGroupName)
-
-	securityGroupsClient := networkClientFactory.NewSecurityGroupsClient()
-	nsgPoller, err := securityGroupsClient.BeginCreateOrUpdate(
-		ctx,
-		resourceGroupName,
-		nsgName,
-		armnetwork.SecurityGroup{
-			Location: resourceLocation,
-			Properties: &armnetwork.SecurityGroupPropertiesFormat{
-				SecurityRules: []*armnetwork.SecurityRule{
-					{
-						Name: new("AllowHTTPInbound"),
-						Properties: &armnetwork.SecurityRulePropertiesFormat{
-							Protocol:                 to.Ptr(armnetwork.SecurityRuleProtocolTCP),
-							SourceAddressPrefix:      new("*"),
-							SourcePortRange:          new("*"),
-							DestinationAddressPrefix: new("*"),
-							DestinationPortRange:     new("443"),
-							Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
-							Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
-							Priority:                 new(int32(110)),
-						},
-					},
-				},
-			},
-		},
-		nil)
-
-	if err != nil {
-		return err
-	}
-
-	internalSubnetNSG, err := nsgPoller.PollUntilDone(ctx, nil)
-	if err != nil {
-		return err
-	}
-
-	logger.Info("Created internal subnet NSG.", "ID", internalSubnetNSG.ID)
-
-	logger.Info("Creating subnet for internal load balancer...", "Subnet", InternalLBSubnet, "SubscriptionID", subscriptionID, "ResourceGroup", resourceGroupName)
-	subnetsClient := networkClientFactory.NewSubnetsClient()
-	subnetPoll, err := subnetsClient.BeginCreateOrUpdate(
-		ctx,
-		resourceGroupName,
-		vnetName,
-		InternalLBSubnetName,
-		armnetwork.Subnet{
-			Properties: &armnetwork.SubnetPropertiesFormat{
-				AddressPrefix: new(InternalLBSubnet),
-				NetworkSecurityGroup: &armnetwork.SecurityGroup{
-					ID: internalSubnetNSG.ID,
-				},
-			},
-		},
-		nil,
-	)
-
-	if err != nil {
-		return err
-	}
-
-	subnetResp, err := subnetPoll.PollUntilDone(ctx, nil)
-	if err != nil {
-		return err
-	}
-
-	logger.Info("Created subnet for internal load balancer.", "ID", subnetResp.ID)
-
-	internalLBName := envName + "-ilb"
-	loadBalancersClient := networkClientFactory.NewLoadBalancersClient()
-	_, err = loadBalancersClient.Get(ctx, resourceGroupName, internalLBName, nil)
-	if err != nil {
-		lbPoller, err := loadBalancersClient.BeginCreateOrUpdate(ctx,
-			resourceGroupName,
-			internalLBName,
-			armnetwork.LoadBalancer{
-				SKU: &armnetwork.LoadBalancerSKU{
-					Name: to.Ptr(armnetwork.LoadBalancerSKUNameStandard),
-					Tier: to.Ptr(armnetwork.LoadBalancerSKUTierRegional),
-				},
-				Location: resourceLocation,
-				Properties: &armnetwork.LoadBalancerPropertiesFormat{
-					// internal loadbalancer must have one frontend ip configuration.
-					FrontendIPConfigurations: []*armnetwork.FrontendIPConfiguration{
-						{
-							Name: new("internal-lb-default"),
-							Properties: &armnetwork.FrontendIPConfigurationPropertiesFormat{
-								PrivateIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodDynamic),
-								Subnet: &armnetwork.Subnet{
-									ID: subnetResp.ID,
-								},
-							},
-						},
-					},
-					// Following resources are not deleted if we do not specify etag
-					// FrontendIPConfigurations: []*armnetwork.FrontendIPConfiguration{},
-					// BackendAddressPools:      []*armnetwork.BackendAddressPool{},
-					// Probes:                   []*armnetwork.Probe{},
-					// LoadBalancingRules:       []*armnetwork.LoadBalancingRule{},
-					// InboundNatRules:          []*armnetwork.InboundNatRule{},
-				},
-			}, nil)
-
-		if err != nil {
-			return err
-		}
-
-		lbResp, err := lbPoller.PollUntilDone(ctx, nil)
-		if err != nil {
-			return err
-		}
-
-		logger.Info("Created internal load balancer.", "ID", lbResp.ID)
-	}
-
-	return nil
 }

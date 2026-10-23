@@ -60,7 +60,7 @@ func (client *SQLDatabasesClient) BeginCreateOrUpdate(ctx context.Context, rootS
 	}
 }
 
-// CreateOrUpdate - Create a SqlDatabaseResource
+// createOrUpdate - Create a SqlDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *SQLDatabasesClient) createOrUpdate(ctx context.Context, rootScope string, sqlDatabaseName string, resource SQLDatabaseResource, options *SQLDatabasesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -78,7 +78,7 @@ func (client *SQLDatabasesClient) createOrUpdate(ctx context.Context, rootScope 
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *SQLDatabasesClient) createOrUpdateCreateRequest(ctx context.Context, rootScope string, sqlDatabaseName string, resource SQLDatabaseResource, _ *SQLDatabasesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}"
 	if rootScope == "" {
@@ -126,7 +126,7 @@ func (client *SQLDatabasesClient) BeginDelete(ctx context.Context, rootScope str
 	}
 }
 
-// Delete - Delete a SqlDatabaseResource
+// deleteOperation - Delete a SqlDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *SQLDatabasesClient) deleteOperation(ctx context.Context, rootScope string, sqlDatabaseName string, options *SQLDatabasesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
@@ -144,7 +144,7 @@ func (client *SQLDatabasesClient) deleteOperation(ctx context.Context, rootScope
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *SQLDatabasesClient) deleteCreateRequest(ctx context.Context, rootScope string, sqlDatabaseName string, _ *SQLDatabasesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}"
 	if rootScope == "" {
@@ -162,6 +162,73 @@ func (client *SQLDatabasesClient) deleteCreateRequest(ctx context.Context, rootS
 	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", version20231001Preview)
 	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	return req, nil
+}
+
+// BeginUpdate - Update a SqlDatabaseResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - sqlDatabaseName - The name of the SqlDatabase portable resource resource
+//   - properties - The resource properties to be updated.
+//   - options - SQLDatabasesClientBeginUpdateOptions contains the optional parameters for the SQLDatabasesClient.BeginUpdate
+//     method.
+func (client *SQLDatabasesClient) BeginUpdate(ctx context.Context, rootScope string, sqlDatabaseName string, properties SQLDatabaseResource, options *SQLDatabasesClientBeginUpdateOptions) (*runtime.Poller[SQLDatabasesClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, rootScope, sqlDatabaseName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SQLDatabasesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[SQLDatabasesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// update - Update a SqlDatabaseResource
+// If the operation fails it returns an *azcore.ResponseError type.
+func (client *SQLDatabasesClient) update(ctx context.Context, rootScope string, sqlDatabaseName string, properties SQLDatabaseResource, options *SQLDatabasesClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, rootScope, sqlDatabaseName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		return nil, runtime.NewResponseError(httpResp)
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the update request.
+func (client *SQLDatabasesClient) updateCreateRequest(ctx context.Context, rootScope string, sqlDatabaseName string, properties SQLDatabaseResource, _ *SQLDatabasesClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if sqlDatabaseName == "" {
+		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{sqlDatabaseName}", url.PathEscape(sqlDatabaseName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 
@@ -214,6 +281,65 @@ func (client *SQLDatabasesClient) getHandleResponse(resp *http.Response, success
 	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseResource); err != nil {
 		return SQLDatabasesClientGetResponse{}, err
+	}
+	return result, nil
+}
+
+// ListSecrets - Lists secrets values for the specified SqlDatabase resource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - sqlDatabaseName - The name of the SqlDatabase portable resource resource
+//   - body - The content of the action request
+//   - options - SQLDatabasesClientListSecretsOptions contains the optional parameters for the SQLDatabasesClient.ListSecrets
+//     method.
+func (client *SQLDatabasesClient) ListSecrets(ctx context.Context, rootScope string, sqlDatabaseName string, body ListSecretsRequest2, options *SQLDatabasesClientListSecretsOptions) (SQLDatabasesClientListSecretsResponse, error) {
+	var err error
+	req, err := client.listSecretsCreateRequest(ctx, rootScope, sqlDatabaseName, body, options)
+	if err != nil {
+		return SQLDatabasesClientListSecretsResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return SQLDatabasesClientListSecretsResponse{}, err
+	}
+	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
+}
+
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *SQLDatabasesClient) listSecretsCreateRequest(ctx context.Context, rootScope string, sqlDatabaseName string, body ListSecretsRequest2, _ *SQLDatabasesClientListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}/listSecrets"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if sqlDatabaseName == "" {
+		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{sqlDatabaseName}", url.PathEscape(sqlDatabaseName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, body); err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *SQLDatabasesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (SQLDatabasesClientListSecretsResponse, error) {
+	result := SQLDatabasesClientListSecretsResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
+	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseListSecretsResult); err != nil {
+		return SQLDatabasesClientListSecretsResponse{}, err
 	}
 	return result, nil
 }
@@ -283,130 +409,4 @@ func (client *SQLDatabasesClient) listByScopeHandleResponse(resp *http.Response,
 		return SQLDatabasesClientListByScopeResponse{}, err
 	}
 	return result, nil
-}
-
-// ListSecrets - Lists secrets values for the specified SqlDatabase resource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - sqlDatabaseName - The name of the SqlDatabase portable resource resource
-//   - body - The content of the action request
-//   - options - SQLDatabasesClientListSecretsOptions contains the optional parameters for the SQLDatabasesClient.ListSecrets
-//     method.
-func (client *SQLDatabasesClient) ListSecrets(ctx context.Context, rootScope string, sqlDatabaseName string, body ListSecretsRequest2, options *SQLDatabasesClientListSecretsOptions) (SQLDatabasesClientListSecretsResponse, error) {
-	var err error
-	req, err := client.listSecretsCreateRequest(ctx, rootScope, sqlDatabaseName, body, options)
-	if err != nil {
-		return SQLDatabasesClientListSecretsResponse{}, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return SQLDatabasesClientListSecretsResponse{}, err
-	}
-	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
-}
-
-// listSecretsCreateRequest creates the ListSecrets request.
-func (client *SQLDatabasesClient) listSecretsCreateRequest(ctx context.Context, rootScope string, sqlDatabaseName string, body ListSecretsRequest2, _ *SQLDatabasesClientListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}/listSecrets"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if sqlDatabaseName == "" {
-		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{sqlDatabaseName}", url.PathEscape(sqlDatabaseName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, body); err != nil {
-		return nil, err
-	}
-	return req, nil
-}
-
-// listSecretsHandleResponse handles the ListSecrets response.
-func (client *SQLDatabasesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (SQLDatabasesClientListSecretsResponse, error) {
-	result := SQLDatabasesClientListSecretsResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
-	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseListSecretsResult); err != nil {
-		return SQLDatabasesClientListSecretsResponse{}, err
-	}
-	return result, nil
-}
-
-// BeginUpdate - Update a SqlDatabaseResource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - sqlDatabaseName - The name of the SqlDatabase portable resource resource
-//   - properties - The resource properties to be updated.
-//   - options - SQLDatabasesClientBeginUpdateOptions contains the optional parameters for the SQLDatabasesClient.BeginUpdate
-//     method.
-func (client *SQLDatabasesClient) BeginUpdate(ctx context.Context, rootScope string, sqlDatabaseName string, properties SQLDatabaseResource, options *SQLDatabasesClientBeginUpdateOptions) (*runtime.Poller[SQLDatabasesClientUpdateResponse], error) {
-	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, rootScope, sqlDatabaseName, properties, options)
-		if err != nil {
-			return nil, err
-		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[SQLDatabasesClientUpdateResponse]{
-			FinalStateVia: runtime.FinalStateViaLocation,
-		})
-		return poller, err
-	} else {
-		return runtime.NewPollerFromResumeToken[SQLDatabasesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
-	}
-}
-
-// Update - Update a SqlDatabaseResource
-// If the operation fails it returns an *azcore.ResponseError type.
-func (client *SQLDatabasesClient) update(ctx context.Context, rootScope string, sqlDatabaseName string, properties SQLDatabaseResource, options *SQLDatabasesClientBeginUpdateOptions) (*http.Response, error) {
-	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, sqlDatabaseName, properties, options)
-	if err != nil {
-		return nil, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		return nil, runtime.NewResponseError(httpResp)
-	}
-	return httpResp, nil
-}
-
-// updateCreateRequest creates the Update request.
-func (client *SQLDatabasesClient) updateCreateRequest(ctx context.Context, rootScope string, sqlDatabaseName string, properties SQLDatabaseResource, _ *SQLDatabasesClientBeginUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Datastores/sqlDatabases/{sqlDatabaseName}"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if sqlDatabaseName == "" {
-		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{sqlDatabaseName}", url.PathEscape(sqlDatabaseName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-		return nil, err
-	}
-	return req, nil
 }

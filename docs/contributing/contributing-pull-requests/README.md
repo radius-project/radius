@@ -54,15 +54,17 @@ Radius uses the pull request title as the squash commit subject. Format the titl
 | `fix`      | Bug fixes                                             | Fixed            |
 | `perf`     | Performance improvements                              | Changed          |
 | `refactor` | Internal changes that affect behavior or maintenance  | Changed          |
-| `style`    | Format and lint changes                               | Excluded         |
+| `style`    | Format and lint changes                               | Others           |
 | `revert`   | Reverted changes                                      | Reverted changes |
-| `docs`     | Documentation-only changes                            | Excluded         |
-| `test`     | Test-only changes                                     | Excluded         |
-| `build`    | Build-system changes                                  | Excluded         |
-| `ci`       | Continuous-integration changes                        | Excluded         |
-| `chore`    | Routine maintenance that fits no user-facing category | Excluded         |
+| `docs`     | Documentation-only changes                            | Others           |
+| `test`     | Test-only changes                                     | Others           |
+| `build`    | Build-system changes                                  | Others           |
+| `ci`       | Continuous-integration changes                        | Others           |
+| `chore`    | Routine maintenance that fits no user-facing category | Others           |
 
-Automated dependency updates keep the prefixes Dependabot is configured with, `ci(deps):` and `chore(deps):`, and are grouped under Dependencies rather than excluded.
+Automated dependency updates keep the prefixes Dependabot is configured with, `ci(deps):` and `chore(deps):`, and are grouped under Dependencies rather than Others.
+
+Every commit in the selected release range is retained. Other parsed conventional types and nonconventional or malformed subjects also appear under Others, the last change group before contributor sections. Breaking commits appear once under Breaking changes instead of their normal group.
 
 Scopes are optional. Add `!` before the colon for a breaking change. For example:
 
@@ -88,6 +90,10 @@ The commit-signature verification workflow posts a non-blocking reminder when an
 
 Open the pull request from your fork against `main`. The form is pre-populated with our [template](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md). Complete its summary, reason for change, test instructions, and per-file change summary so reviewers can understand both the intent and the verification.
 
+Remove the template's HTML comments from the PR description after filling out the sections.
+
+The **How to test** section must give reproducible instructions a reviewer can follow: prerequisites, commands or actions, and expected outcomes. This section should not contain a list of validations performed by the PR author when creating the PR.
+
 Every non-Dependabot pull request must have exactly one release-impact label:
 
 - **`pr:standard`** — ongoing maintenance, minor improvements, documentation updates, and routine development work.
@@ -95,59 +101,11 @@ Every non-Dependabot pull request must have exactly one release-impact label:
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
-The [PR Status Labels workflow](../../../.github/workflows/pr.status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold. These are the default names; maintainers can [change the names in JSON](#configuring-lifecycle-label-names) without changing the status signals:
+The shared [PR Status Labels automation](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md) from `radius-project/.github` keeps one **handoff label** on each open, non-draft pull request so contributors and maintainers can see who owns the next action: `pr:needs-reviewer`, `pr:waiting-for-review`, `pr:waiting-for-author`, or `pr:review-approved`. It also adds `pr:needs-rebase` when the PR has merge conflicts, and `pr:ready-for-queue` when review is approved, the PR is mergeable, required checks pass, and it is not already queued. These labels are signals, not substitutes for GitHub's merge rules or the merge queue. The shared documentation describes the [handoff rules](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#handoff-labels), how to [rename the labels](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#configuration), and the [trust model](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#trust-model). Radius runs the automation through the synced [PR Status Labels](../../../.github/workflows/pr-status-labels.yml) and [PR Review Signal](../../../.github/workflows/pr-review-signal.yml) workflows.
 
-- **`pr:needs-reviewer`** — there is neither a pending reviewer or team request nor an active submitted human review from someone other than the author.
-- **`pr:waiting-for-review`** — a reviewer or team has a pending request, or a human has submitted a review but required approval is still outstanding or cannot be verified. When a reviewer requests changes, the author must re-request a review after addressing them; pushing a commit alone does not hand the PR back.
-- **`pr:waiting-for-author`** — unresolved human-reviewer inline feedback, inline feedback endorsed by a human approval summary, a formal changes-requested review, or a manual author-response request needs action.
-- **`pr:review-approved`** — required reviews are approved and no qualifying unresolved inline feedback remains; this does not mean checks have passed.
+The synced [labels workflow](../../../.github/workflows/labels.yml) applies the [label catalog](../../../.github/labels.yml), which defines the shared lifecycle and hold labels plus the Radius release-impact labels `pr:standard` and `pr:important`. It never deletes other repository labels. The catalog is synced from `radius-project/.github`: shared labels come from `sync-templates/.github/labels.yml.njk` and Radius labels from the `repo_labels` variable in `.github/sync.yml`. Don't edit `.github/labels.yml` here, because the next sync overwrites it; change the definitions in `radius-project/.github` as described in the shared [label catalog](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#label-catalog) documentation.
 
-An unresolved inline thread containing a submitted comment from a human reviewer other than the PR author takes precedence over pending review requests and approvals. Bot comments alone, author-only notes, reviews that are pending, not yet submitted, or dismissed, deleted feedback, and general top-level discussion do not qualify. Replying or pushing commits does not resolve a thread, and outdated but unresolved feedback still counts. Once all qualifying threads are resolved or their qualifying feedback is deleted or dismissed, the workflow recomputes the normal review state: pending requests return the turn to reviewers, approvals can restore approval and queue-ready labels, and an outstanding formal changes-requested review still requires an explicit re-request.
-
-A human reviewer's latest submitted opinionated review also endorses existing inline feedback when it approves the current head, has a nonempty summary, and has not been dismissed. This conservative, deterministic rule counts unresolved submitted feedback, including bot comments, only if both the comment's creation and its review's submission were at or before that approval. It checks summary emptiness, not wording; it uses no language classifier. Empty summaries, stale approvals, and bot comments posted or submitted after the approval do not establish this handoff. An approval summary without qualifying unresolved threads does not request author action, and general issue comments never establish it.
-
-Submitted review evidence establishes who has participated, not whether merging is allowed. Required approvals, CODEOWNER review, and last-push approval safeguards apply to the PR's actual target branch, including stacked targets. If approval cannot be safely established, an active submitted human review keeps the PR waiting for review rather than requesting a new reviewer; qualifying author feedback takes precedence. An outstanding changes-requested review from a human other than the author takes precedence regardless of target protection or GitHub's aggregate review decision. It hands the PR back to reviewers only when a currently pending reviewer or team request was explicitly made after the outstanding change requests. Dismissing the review or superseding it with an approval clears that review's change request; a comment-only review or a push does not.
-
-The workflow also adds **`pr:needs-rebase`** when the PR has merge conflicts, and **`pr:ready-for-queue`** when review is approved, the PR is mergeable, required checks pass, and it is not already queued. A branch that is behind `main` can still be queue-ready once its required checks pass; the merge queue handles the branch update. These labels are signals, not substitutes for GitHub's merge rules or the merge queue.
-
-The status workflow assumes these labels already exist; it never creates repository labels. The independent [labels workflow](../../../.github/workflows/labels.yml) previews changes from the [PR-label catalog](../../../.github/labels.yml) on pull requests and syncs definitions after merge or a manual repository-label change. The catalog also includes the existing `pr:standard` and `pr:important` labels, which contributors still select manually. Unrelated repository labels are preserved.
-
-Draft PRs have no handoff label. Maintainers can apply the existing **`pr:do-not-merge`** label to pause a PR; it removes the handoff and queue-ready labels. Use **`pr:needs-author-response`** for an explicit author-response request, including actionable general discussion outside inline review threads, then remove it after the author responds. The workflow never applies or removes these manual labels. Both manual labels fail the `PR Required Labels` check and remove a PR from the merge queue if it was already queued.
-
-#### Configuring lifecycle label names
-
-[`.github/configs/pr-status-labels.json`](../../../.github/configs/pr-status-labels.json) is the source of the label names used by the [existing status script](../../../.github/scripts/pr-status-labels.mjs) and the required-label merge-hold check:
-
-```json
-{
-  "states": {
-    "needsReviewer": "pr:needs-reviewer",
-    "waitingForReview": "pr:waiting-for-review",
-    "waitingForAuthor": "pr:waiting-for-author",
-    "reviewApproved": "pr:review-approved",
-    "needsRebase": "pr:needs-rebase",
-    "readyForQueue": "pr:ready-for-queue"
-  },
-  "manual": {
-    "needsAuthorResponse": "pr:needs-author-response",
-    "doNotMerge": "pr:do-not-merge"
-  }
-}
-```
-
-Keep the keys unchanged: they identify the status signals supported by the code. Edit their values to change the associated GitHub label names, using distinct, nonempty names valid on GitHub. The script imports this mapping using Node.js's built-in JSON support; there is no third-party parser, assertion block, second hardcoded label map, or separate configuration module. Only `states` labels are automatically applied or removed. The two `manual` labels remain maintainer-controlled holds.
-
-Mapped labels must already exist. Provisioning, descriptions, and colors remain independent in the [label catalog](../../../.github/labels.yml). For a rename, update the mapping and catalog together and deliberately rename or migrate the existing repository label and its assignments. The catalog action supports `from_name: <old-name>` on a renamed entry. While that PR is open, the merge-hold check recognizes both the proposed manual names and those at the PR's base commit, so renaming a hold cannot bypass an existing hold. Coordinate the migration with the mapping change: the status script never migrates old names, and the catalog preserves omitted labels. The release-impact labels and review/merge policy are not configured here.
-
-To check that the configuration loads, run from the repository root using Node.js from [`.node-version`](../../../.node-version):
-
-```bash
-node .github/scripts/pr-status-labels.mjs
-```
-
-This command imports and checks the JSON without calling GitHub or installing dependencies. Missing files and malformed JSON fail through Node.js's native loader. Runtime guards require every supported key to have a distinct, nonempty label name of at most 50 characters, without surrounding whitespace or control characters; missing keys, unknown keys or sections, and case-insensitive duplicate names throw descriptive errors before reconciliation can write labels or dequeue a PR. These are ordinary runtime errors, not test assertions. The existing formatting check covers JSON syntax and formatting, and configuration-only edits are excluded from the shared CI skip list.
-
-The status workflow checks out its script and mapping together from trusted `github.sha`. The required-label workflow checks the proposed mapping and fetches the JSON at the PR's pinned `base.sha` in a read-only `merge-holds` job, applying the same runtime guards to both. If the base file does not exist yet, the job logs that initial-rollout case and checks the proposed holds; other read failures or invalid base configuration fail the job. It never executes code from the base file. Both workflows use the Node.js runtime supplied by `actions/github-script`, with no package installation. The existing write-enabled `pr-required-labels` job checks no PR code out and runs the pinned release-label action only after merge-hold validation succeeds; reminder comments are preserved. A configuration-loading error or failed merge-hold check fails the required-label job rather than silently skipping it. Merge-group reporting remains unchanged.
+Draft PRs have no handoff label. Maintainers can apply the **`pr:do-not-merge`** label to pause a PR; it removes the handoff and queue-ready labels. Use **`pr:needs-author-response`** for an explicit author-response request, including actionable general discussion outside inline review threads, then remove it after the author responds. The automation never applies or removes these manual labels. Both manual labels fail the `PR Required Labels` check, through the shared [hold check](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#hold-check), and remove a PR from the merge queue if it was already queued. Holds also apply to Dependabot PRs, which do not need a release-impact label.
 
 ### 6. (Optional) Self-review with the `radius-code-review` skill
 
@@ -177,7 +135,7 @@ The maintainers or other contributors will add comments giving feedback, asking 
 
 - **Be proactive.** Comment on your own PR to point out relevant locations, decisions, opportunities for feedback, and tricky parts. This focuses reviewers' attention and saves them time.
 - **Resolve feedback.** Mark comments as resolved once you've addressed them through discussion or a code change. If you are the reviewer, follow up (politely) if you feel your feedback hasn't been addressed adequately.
-- **Hand review back explicitly.** Resolve addressed inline threads; replies and pushes alone do not clear them. After addressing a formal changes-requested review, also re-request review from a reviewer or team. When responding to a manually flagged comment, clear `pr:needs-author-response` if you can manage labels, or ask a maintainer to clear it.
+- **Hand review back.** After addressing human feedback, push your changes or reply. A push or comment after the latest outstanding feedback transfers the handoff to reviewers without resolving threads or approving the PR; re-requesting review from each reviewer with outstanding feedback also works. Resolve each review thread from a blocking bot reviewer, such as Copilot, once you have addressed it or decided not to act on it, because those unresolved threads keep the PR waiting for you. Resolve addressed human threads when appropriate. When responding to a manually flagged comment, clear `pr:needs-author-response` if you can manage labels, or ask a maintainer to clear it; neither a response nor a re-request clears this manual hold.
 - **Anyone can participate.** We welcome any contributor or community member to engage with any pull request. Make suggestions and ask relevant questions; if a question is for your own learning, make it clear that it is "non-blocking." See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md) for full guidance.
 
 ## Verification
@@ -212,5 +170,5 @@ The functional-tests workflow requires approval to run. One of our approvers is 
 
   cspell requires [Node.js](https://nodejs.org/); install it globally with `npm install -g cspell`.
 - **A CI failure you can't understand.** Our automation adds comments with links to logs. If you're still stuck, ask the maintainers for help.
-- **A handoff label is missing or outdated.** The status workflow reacts to PR, review, and inline-comment creation/edit/deletion activity. It also checks open PRs on a nominal 15-minute schedule to pick up CI, base-branch, and thread resolution or reopening changes; GitHub may delay scheduled runs. GitHub Actions has no trigger for resolving or reopening threads, so those changes may wait for the scheduled reconciliation or a manual run rather than updating immediately. Fork review and inline-comment events signal a trusted labeling run without executing fork code. Maintainers can rerun `PR Status Labels` from the Actions tab with a PR number, or leave it blank to reconcile all open PRs. If fork PR labeling does not start, check whether the repository's Actions policy allows `pull_request_target`.
+- **A handoff label is missing or outdated.** CI, base-branch, PR conversation comment, and thread resolution changes are picked up by a nominal 15-minute scheduled reconciliation, and the Actions approval policy can hold `PR Review Signal` runs for Copilot or fork review activity; see the shared [limitations](https://github.com/radius-project/.github/blob/main/.github/actions/pr-status-labels/README.md#limitations). Maintainers can rerun `PR Status Labels` from the Actions tab with a PR number, or leave it blank to reconcile all open PRs. If fork PR labeling does not start, check whether the repository's Actions policy allows `pull_request_target`.
 - **Your PR was marked stale.** Pull requests inactive for 28 days are marked with the `stale` label and closed after one further day of inactivity. Comment or push an update to keep your PR active.

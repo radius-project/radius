@@ -84,12 +84,13 @@ func (c *MockInterfaceCallCall) DoAndReturn(f func(...string) ([]byte, error)) *
 }
 
 // PrepareTemplate mocks base method.
-func (m *MockInterface) PrepareTemplate(ctx context.Context, filePath string) (map[string]any, error) {
+func (m *MockInterface) PrepareTemplate(ctx context.Context, filePath string) (map[string]any, RadiusExtensionPin, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PrepareTemplate", ctx, filePath)
 	ret0, _ := ret[0].(map[string]any)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(RadiusExtensionPin)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // PrepareTemplate indicates an expected call of PrepareTemplate.
@@ -105,19 +106,19 @@ type MockInterfacePrepareTemplateCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInterfacePrepareTemplateCall) Return(arg0 map[string]any, arg1 error) *MockInterfacePrepareTemplateCall {
-	c.Call = c.Call.Return(arg0, arg1)
+func (c *MockInterfacePrepareTemplateCall) Return(arg0 map[string]any, arg1 RadiusExtensionPin, arg2 error) *MockInterfacePrepareTemplateCall {
+	c.Call = c.Call.Return(arg0, arg1, arg2)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInterfacePrepareTemplateCall) Do(f func(context.Context, string) (map[string]any, error)) *MockInterfacePrepareTemplateCall {
+func (c *MockInterfacePrepareTemplateCall) Do(f func(context.Context, string) (map[string]any, RadiusExtensionPin, error)) *MockInterfacePrepareTemplateCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfacePrepareTemplateCall) DoAndReturn(f func(context.Context, string) (map[string]any, error)) *MockInterfacePrepareTemplateCall {
+func (c *MockInterfacePrepareTemplateCall) DoAndReturn(f func(context.Context, string) (map[string]any, RadiusExtensionPin, error)) *MockInterfacePrepareTemplateCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

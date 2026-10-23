@@ -105,6 +105,22 @@ checksum:
   ids:
     - rad
 
+sboms:
+  - id: rad-sbom
+    artifacts: binary
+    ids:
+      - rad
+    documents:
+      - "{{ .ArtifactName }}.sbom.json"
+    cmd: bash
+    args:
+      - "../../build/scripts/goreleaser-sbom.sh"
+      - "${artifact}"
+      - --output
+      - "spdx-json=${document}"
+    env:
+      - "GORELEASER_SNAPSHOT={{ .IsSnapshot }}"
+
 dockers_v2:
   - id: ucpd
     ids:
@@ -125,7 +141,7 @@ dockers_v2:
       - linux/amd64
       - linux/arm64
       - linux/arm/v7
-    sbom: false
+    sbom: true
 
   - id: applications-rp
     ids:
@@ -141,7 +157,7 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
     platforms: *image_platforms
-    sbom: false
+    sbom: true
 
   - id: dynamic-rp
     ids:
@@ -157,7 +173,7 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
     platforms: *image_platforms
-    sbom: false
+    sbom: true
 
   - id: controller
     ids:
@@ -173,7 +189,7 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
     platforms: *image_platforms
-    sbom: false
+    sbom: true
 
   - id: pre-upgrade
     ids:
@@ -189,17 +205,19 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
     platforms: *image_platforms
-    sbom: false
+    sbom: true
 
 release:
   ids:
     - rad
+    - rad-sbom
   disable: "{{ .Env.GORELEASER_RELEASE_DISABLE }}"
   name_template: "Radius {{ .Tag }}"
   draft: true
   use_existing_draft: true
   replace_existing_artifacts: true
   prerelease: auto
+  make_latest: false
   mode: replace
 
 changelog:

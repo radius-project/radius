@@ -34,6 +34,19 @@
 
 set -euo pipefail
 
+INSTALL_SCRIPT_DIR=""
+if [[ -n "${BASH_SOURCE:-}" ]]; then
+    INSTALL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+RADIUS_RETRY_CURL_AVAILABLE=false
+if [[ -n "${INSTALL_SCRIPT_DIR}" ]] &&
+    [[ -f "${INSTALL_SCRIPT_DIR}/../build/scripts/retry-curl.sh" ]] &&
+    command -v curl >/dev/null 2>&1; then
+    # shellcheck source=build/scripts/retry-curl.sh
+    source "${INSTALL_SCRIPT_DIR}/../build/scripts/retry-curl.sh"
+    RADIUS_RETRY_CURL_AVAILABLE=true
+fi
+
 # Include release candidates when determining latest version
 : "${INCLUDE_RC:="false"}"
 
@@ -274,19 +287,25 @@ warnExistingRadiusElsewhere() {
 getLatestRelease() {
     local radReleaseUrl="https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/releases"
     local latest_release=""
+    local releases
+
+    if [[ "${RADIUS_RETRY_CURL_AVAILABLE}" == true ]]; then
+        releases="$(retry_curl -fsSL \
+            -H "Accept: application/vnd.github+json" "${radReleaseUrl}")"
+    elif [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
+        releases="$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" "${radReleaseUrl}")"
+    else
+        releases="$(wget -q --header="Accept: application/json" \
+            -O - "${radReleaseUrl}")"
+    fi
 
     if [[ "${INCLUDE_RC}" == "true" ]]; then
-        if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            latest_release=$(curl -s "${radReleaseUrl}" | grep \"tag_name\" | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
-        else
-            latest_release=$(wget -q --header="Accept: application/json" -O - "${radReleaseUrl}" | grep \"tag_name\" | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
-        fi
+        latest_release="$(grep \"tag_name\" <<< "${releases}" |
+            awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')"
     else
-        if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            latest_release=$(curl -s "${radReleaseUrl}" | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
-        else
-            latest_release=$(wget -q --header="Accept: application/json" -O - "${radReleaseUrl}" | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
-        fi
+        latest_release="$(grep \"tag_name\" <<< "${releases}" | grep -v rc |
+            awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')"
     fi
 
     if [[ -z "${latest_release}" ]]; then
@@ -327,7 +346,9 @@ downloadFile() {
         local download_url="${download_base}/${release_tag}/${radius_cli_artifact}"
 
         echo "Downloading ${download_url}..."
-        if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
+        if [[ "${RADIUS_RETRY_CURL_AVAILABLE}" == true ]]; then
+            retry_curl -fsSL -o "${artifact_tmp_file}" "${download_url}"
+        elif [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
             curl -SsL "${download_url}" -o "${artifact_tmp_file}"
         else
             wget -q -O "${artifact_tmp_file}" "${download_url}"

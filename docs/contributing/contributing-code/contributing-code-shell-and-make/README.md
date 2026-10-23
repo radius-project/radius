@@ -23,6 +23,22 @@ The canonical versions, release sources, platform assets, and SHA-256 checksums 
 
 Bicep remains on a manually tested pin (`update: false`) because upgrades must preserve ACR authentication, local registry trust, and extension compatibility. Its `versionFiles` entry synchronizes the version in `pkg/cli/bicep/tools/download_tools.go`, keeping `rad bicep download`, `make install-bicep`, and Bicep container staging on the same release. Local registries require [explicit hostname trust](../contributing-code-tests/running-functional-tests.md#local-bicep-registry-trust); do not disable registry or certificate validation to test an upgrade.
 
+Tool installers use [`build/scripts/retry-curl.sh`](../../../../build/scripts/retry-curl.sh) for temporary download failures. The helper uses increasing delays with jitter, up to 10 retries within a 300-second budget per request. Each attempt has a 15-second connection timeout and may use the remaining request budget, while transfers below 1 KiB/s for 30 seconds are treated as stalled. HTTP 408, 429, 500, 502, 503, and 504, connection failures, incomplete transfers, and HTTP/2 stream resets can be retried. HTTP 403 can be retried only when the final response includes `Retry-After` and `x-ratelimit-remaining` is not 0. A valid `Retry-After` header from the final response sets the minimum wait, whether it contains seconds or an HTTP date. If that wait would use all of the remaining budget, the request fails without another attempt. Other permanent errors, such as a plain HTTP 403, HTTP 404, and invalid certificates, fail at once. Pass `--fail-with-body` to keep the final error response body in the output file, or write it to stdout when no output file is supplied; the request still returns a nonzero status. Pass `--dump-header` to keep the headers of the final response. If the header copy fails, the helper removes its temporary files and returns write-error status 23. Installers verify published or pinned checksums before they replace a binary. Run `make test-retry-curl test-install-bicep` to check the shared policy and Bicep installation without network access.
+
+## Updating resource types and recipe packs
+
+[`deploy/manifest/defaults.yaml`](../../../../deploy/manifest/defaults.yaml) pins the resource-types-contrib commits that Radius ships. `make update-resource-types`, `make update-recipe-packs`, and `make update-resource-types-and-recipe-packs` move the pins; `make sync-resource-types` regenerates the vendored files from the current pins without changing them.
+
+These targets compile the pinned Kubernetes recipe pack (`recipe-packs/kubernetes/default.bicep`) into [`deploy/manifest/recipe-packs/kubernetes/default.json`](../../../../deploy/manifest/recipe-packs/kubernetes/default.json), which `rad` embeds to create the default recipe pack. Compiling requires the Bicep CLI version pinned in `build/tools.yaml`:
+
+```bash
+make install-bicep                  # installs into $HOME/.local/bin by default
+export PATH="$HOME/.local/bin:$PATH" # or set BICEP=/path/to/bicep
+make sync-resource-types
+```
+
+The script fails if `bicep` is missing or is a different version. Commit the regenerated `default.json` together with the `defaults.yaml` change; CI fails if the committed file does not match a fresh compile of the pinned pack.
+
 ## Linting shell scripts with ShellCheck
 
 Every tracked `.sh` script is validated with [ShellCheck](https://github.com/koalaman/shellcheck) as part of the pull request checks, so run it locally before you push. Install the pinned version (into a user-owned bin directory — no `sudo`) and lint every tracked script with:
@@ -32,7 +48,7 @@ make install-shellcheck
 make lint-shell
 ```
 
-`make lint-shell` applies the shared configuration in [`.shellcheckrc`](../../../../.github/linters/.shellcheckrc) and skips the third-party Spec Kit tooling under `.specify/`. The version and per-platform checksums that `make install-shellcheck` pins live in [`build/tools.yaml`](../../../../build/tools.yaml) (`SHELLCHECK_VERSION`).
+`make lint-shell` applies the shared configuration in [`.shellcheckrc`](../../../../.github/linters/.shellcheckrc) to all tracked shell scripts. The version and per-platform checksums that `make install-shellcheck` pins live in [`build/tools.yaml`](../../../../build/tools.yaml) (`SHELLCHECK_VERSION`).
 
 The easy path is the [dev container](../../../../.devcontainer/), which installs the ShellCheck CLI on the `PATH` and the ShellCheck VS Code extension for you, so you can run `make lint-shell` (and see findings inline as you edit) without installing anything.
 

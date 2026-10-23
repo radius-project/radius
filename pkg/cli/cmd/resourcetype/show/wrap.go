@@ -131,7 +131,7 @@ func splitWord(word string, width int) []string {
 	}
 
 	chunks := []string{}
-	for _, chunk := range strings.Split(ansi.Hardwrap(word, width, false), "\n") {
+	for chunk := range strings.SplitSeq(ansi.Hardwrap(word, width, false), "\n") {
 		if chunk != "" {
 			chunks = append(chunks, chunk)
 		}

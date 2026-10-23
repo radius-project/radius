@@ -466,18 +466,16 @@ func Test_deploymentEngineImages(t *testing.T) {
 			t.Parallel()
 			containers := []corev1.Container{{Name: "sidecar", Image: "unrelated"}, {Name: "de", Image: candidate}}
 			deployment := &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{Name: "bicep-de", Namespace: radiusNamespace},
+				Name: "bicep-de", Namespace: radiusNamespace,
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": "bicep-de"}},
 					Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: slices.Clone(containers)}},
 				},
 			}
 			pod := &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "bicep-de-test", Namespace: radiusNamespace,
-					Labels: map[string]string{"app.kubernetes.io/name": "bicep-de"},
-				},
-				Spec: corev1.PodSpec{Containers: containers},
+				Name: "bicep-de-test", Namespace: radiusNamespace,
+				Labels: map[string]string{"app.kubernetes.io/name": "bicep-de"},
+				Spec:   corev1.PodSpec{Containers: containers},
 				Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{
 					{Name: "sidecar"},
 					{Name: "de", Image: candidate, ImageID: imageID, Ready: true, State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}}},
@@ -539,7 +537,7 @@ func Test_deploymentEngineImagesAPIErrors(t *testing.T) {
 			client := fake.NewClientset()
 			if tt.verb != "" {
 				deployment := &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{Name: "bicep-de", Namespace: radiusNamespace},
+					Name: "bicep-de", Namespace: radiusNamespace,
 					Spec: appsv1.DeploymentSpec{
 						Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": "bicep-de"}},
 						Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "de", Image: "candidate"}}}},

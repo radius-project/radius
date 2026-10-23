@@ -20,6 +20,7 @@ import (
 	"bytes"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
@@ -36,6 +37,9 @@ import (
 //
 // For testability, all fields on this struct MUST be parsable from YAML without any further initialization required.
 type Config struct {
+	// Authorization is the configuration for internal component authorization.
+	Authorization authz.Options `yaml:"authorization"`
+
 	// Bicep configures properties for the Bicep recipe driver.
 	Bicep hostoptions.BicepOptions `yaml:"bicep"`
 
