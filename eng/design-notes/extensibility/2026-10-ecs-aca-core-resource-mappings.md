@@ -365,9 +365,9 @@ Secrets also differ. The ACA pack creates the Key Vault it writes into, followin
 
 Identity differs too. On ACA the pack creates a managed identity for each Container App and grants it read access to the Key Vault it creates. Pulling from a private registry is the exception: Priya grants pull access on her registry, because the pack does not modify infrastructure it does not own. On ECS the execution role Priya supplies already covers image pulls and secret reads.
 
-Hostnames are Priya's on both platforms. She owns the DNS records that point each hostname at the platform. On ACA the pack requests a managed certificate once DNS validates; on ECS the listener she supplies carries the certificate.
+Hostnames are Priya's on both platforms. She owns the DNS records that point each hostname at the platform. On ACA the pack requests a managed certificate once DNS validates, except for wildcard hostnames, which ACA managed certificates do not cover, so Priya supplies that certificate. On ECS the listener she supplies carries the certificate.
 
-Everything in the **Creates** column is owned by the Radius resource that produced it and is deleted with it. Everything in **Consumes** outlives the application — deleting an application never touches Priya's managed environment, cluster, ALB, EFS file system, mount targets, or stored data.
+Everything in the **Creates** column is owned by the Radius resource that produced it and is deleted with it. Everything in **Consumes** outlives the application — deleting an application never touches Priya's managed environment, cluster, ALB, EFS file system, mount targets, or the data stored in them. Volume data therefore differs by platform: on ACA the pack creates the Azure Files share, so deleting the volume deletes the share and its data; on ECS the data lives in Priya's EFS file system and survives deletion.
 
 These lists are not final — implementation may identify further infrastructure each pack has to consume or create.
 
@@ -389,65 +389,69 @@ Where a platform honors part of a property and not the rest, that part gets its 
 
 #### Containers
 
-| Property                                    | Azure Container Apps                                   | Amazon ECS (Fargate)                                     |
-|---------------------------------------------|--------------------------------------------------------|----------------------------------------------------------|
-| `image`                                     | Supported — `template.containers[].image`              | Supported — `containerDefinitions[].image`               |
-| `command` / `args`                          | Supported — `command` / `args`                         | Supported — `entryPoint` / `command`                     |
-| `env.*.value`                               | Supported — `env[].value`                              | Supported — `environment[]`                              |
-| `env.*.valueFrom.secretKeyRef`              | Supported — app secret + `env[].secretRef`             | Supported — `secrets[].valueFrom`                        |
-| `workingDir`                                | **Unsupported** — no equivalent                        | Supported — `workingDirectory`                           |
-| `containers.*.initContainer`                | Supported — `template.initContainers[]`                | Supported — `dependsOn: SUCCESS` + `essential: false`    |
-| `ports.*.containerPort`                     | Supported — `ingress.targetPort`                       | Supported — `portMappings[].containerPort`               |
-| `ports.*.protocol: UDP`                     | **Unsupported** — ingress is HTTP/TCP only             | **Unsupported** — needs an NLB                           |
-| `resources.requests`                        | Supported — `resources.cpu` / `memory`                 | Supported — task `cpu` / `memory`                        |
-| `resources.limits`                          | **Unsupported** — no separate limit exists             | Supported — container `memory`                           |
-| `livenessProbe.exec`                        | **Unsupported** — HTTP/TCP probes only                 | Supported — `healthCheck.command`                        |
-| `livenessProbe.httpGet` / `tcpSocket`       | Supported — `probes[]` type `Liveness`                 | **Unsupported** — health checks are command-based        |
-| `readinessProbe.httpGet`                    | Supported — HTTP readiness probe                       | Supported — ALB target group health check                |
-| `readinessProbe.tcpSocket`                  | Supported — TCP readiness probe                        | **Unsupported** — ALB does not provide TCP checks        |
-| `readinessProbe.exec`                       | **Unsupported** — HTTP/TCP probes only                 | **Unsupported** — ALB cannot run container commands      |
-| `restartPolicy`                             | **Unsupported** — always restarts; not configurable    | **Unsupported** — boolean toggle only                    |
-| `replicas`                                  | Supported — `scale.minReplicas` / `maxReplicas`        | Supported — service `desiredCount`                       |
-| `autoScaling.maxReplicas`                   | Supported — `scale.maxReplicas`                        | Supported — scalable target max capacity                 |
-| `autoScaling.metrics` `cpu` / `memory`      | Supported — KEDA scale rules                           | Supported — target tracking policy                       |
-| `autoScaling.metrics` `custom`              | Supported — KEDA custom scaler                         | Supported — target tracking on a CloudWatch metric       |
-| `autoScaling.metrics.*.target.averageValue` | Supported — KEDA per-replica target                    | Supported — target tracking on a per-task metric         |
-| `autoScaling.metrics.*.target.value`        | Supported — KEDA absolute threshold                    | **Unsupported** — target tracking needs a per-task value |
-| `volumes.*.persistentVolume`                | Supported — environment storage + `template.volumes[]` | Supported — `volumes[].efsVolumeConfiguration`           |
-| `volumes.*.secretName`                      | Supported — `template.volumes[]` type `Secret`         | **Unsupported** — no secrets-as-files primitive          |
-| `volumes.*.emptyDir` `medium: disk`         | Supported — `storageType: EmptyDir`                    | Supported — task `volumes[]` bind mount                  |
-| `volumes.*.emptyDir` `medium: memory`       | **Unsupported** — no tmpfs-backed option               | Supported — `linuxParameters.tmpfs[]`                    |
-| `volumeMounts`                              | Supported — `template.containers[].volumeMounts[]`     | Supported — `mountPoints[]`                              |
-| `connections`                               | Supported — `CONNECTION_*` + internal FQDN             | Supported — `CONNECTION_*` + Service Connect alias       |
-| `hosts` (output)                            | Supported — environment-internal FQDN                  | Supported — Service Connect client alias                 |
-| `platformOptions`                           | Supported — Container App passthrough                  | Supported — task definition passthrough                  |
-| `extensions.daprSidecar`                    | Supported — native Dapr                                | **Unsupported** — ECS has no Dapr integration            |
+| Property                                        | Azure Container Apps                                      | Amazon ECS (Fargate)                                       |
+|-------------------------------------------------|-----------------------------------------------------------|------------------------------------------------------------|
+| `image`                                         | Supported — `template.containers[].image`                 | Supported — `containerDefinitions[].image`                 |
+| `command` / `args`                              | Supported — `command` / `args`                            | Supported — `entryPoint` / `command`                       |
+| `env.*.value`                                   | Supported — `env[].value`                                 | Supported — `environment[]`                                |
+| `env.*.valueFrom.secretKeyRef`                  | Supported — app secret + `env[].secretRef`                | Supported — `secrets[].valueFrom`                          |
+| `workingDir`                                    | **Unsupported** — no equivalent                           | Supported — `workingDirectory`                             |
+| `containers.*.initContainer`                    | Supported — `template.initContainers[]`                   | Supported — `dependsOn: SUCCESS` + `essential: false`      |
+| `ports.*.containerPort` — first HTTP port       | Supported — `ingress.targetPort`                          | Supported — `portMappings[].containerPort`                 |
+| `ports.*.containerPort` — additional HTTP ports | **Unsupported** — one HTTP `targetPort` per Container App | Supported — `portMappings[].containerPort`                 |
+| `ports.*.protocol: UDP`                         | **Unsupported** — ingress is HTTP/TCP only                | **Unsupported** — needs an NLB                             |
+| `resources.requests`                            | Supported — `resources.cpu` / `memory`                    | Supported — task `cpu` / `memory`                          |
+| `resources.limits`                              | **Unsupported** — no separate limit exists                | Supported — container `memory`                             |
+| `livenessProbe.exec`                            | **Unsupported** — HTTP/TCP probes only                    | Supported — `healthCheck.command`                          |
+| `livenessProbe.httpGet` / `tcpSocket`           | Supported — `probes[]` type `Liveness`                    | **Unsupported** — health checks are command-based          |
+| `readinessProbe.httpGet`                        | Supported — HTTP readiness probe                          | Supported — ALB target group health check                  |
+| `readinessProbe.httpGet.httpHeaders`            | Supported — probe `httpHeaders`                           | **Unsupported** — ALB health checks send no custom headers |
+| `readinessProbe.tcpSocket`                      | Supported — TCP readiness probe                           | **Unsupported** — ALB does not provide TCP checks          |
+| `readinessProbe.exec`                           | **Unsupported** — HTTP/TCP probes only                    | **Unsupported** — ALB cannot run container commands        |
+| `restartPolicy`                                 | **Unsupported** — always restarts; not configurable       | **Unsupported** — boolean toggle only                      |
+| `replicas`                                      | Supported — `scale.minReplicas` / `maxReplicas`           | Supported — service `desiredCount`                         |
+| `autoScaling.maxReplicas`                       | Supported — `scale.maxReplicas`                           | Supported — scalable target max capacity                   |
+| `autoScaling.metrics` `cpu` / `memory`          | Supported — KEDA scale rules                              | Supported — target tracking policy                         |
+| `autoScaling.metrics` `custom`                  | Supported — KEDA custom scaler                            | Supported — target tracking on a CloudWatch metric         |
+| `autoScaling.metrics.*.target.averageValue`     | Supported — KEDA per-replica target                       | Supported — target tracking on a per-task metric           |
+| `autoScaling.metrics.*.target.value`            | Supported — KEDA absolute threshold                       | **Unsupported** — target tracking needs a per-task value   |
+| `volumes.*.persistentVolume`                    | Supported — environment storage + `template.volumes[]`    | Supported — `volumes[].efsVolumeConfiguration`             |
+| `volumes.*.secretName`                          | Supported — `template.volumes[]` type `Secret`            | **Unsupported** — no secrets-as-files primitive            |
+| `volumes.*.emptyDir` `medium: disk`             | Supported — `storageType: EmptyDir`                       | Supported — task `volumes[]` bind mount                    |
+| `volumes.*.emptyDir` `medium: memory`           | **Unsupported** — no tmpfs-backed option                  | Supported — `linuxParameters.tmpfs[]`                      |
+| `volumeMounts`                                  | Supported — `template.containers[].volumeMounts[]`        | Supported — `mountPoints[]`                                |
+| `connections`                                   | Supported — `CONNECTION_*` + internal FQDN                | Supported — `CONNECTION_*` + Service Connect alias         |
+| `hosts` (output)                                | Supported — environment-internal FQDN                     | Supported — Service Connect client alias                   |
+| `platformOptions`                               | Supported — Container App passthrough                     | Supported — task definition and service passthrough        |
+| `extensions.daprSidecar`                        | Supported — native Dapr                                   | **Unsupported** — ECS has no Dapr integration              |
 
 Behavior notes:
 
+- **Additional HTTP ports on ACA** — a Container App has one HTTP ingress port. Other ports are reachable over TCP only, so a route cannot target a second HTTP port in the same container.
 - **`resources.requests`** — on ACA this becomes the single allocation, and the legal values depend on the environment's workload profile. On ECS the recipe resolves the task size to the nearest legal Fargate CPU and memory combination, so the value you get may be larger than the value you wrote.
 - **`resources.limits`** — ACA has no separate limit; the request *is* the allocation. On ECS, container `memory` is a hard limit but there is no CPU ceiling, so a CPU limit is ignored.
 - **`livenessProbe`** — no probe kind works on all three platforms. ACA has no `exec`; ECS has no container-level HTTP probe.
-- **`readinessProbe`** — HTTP is portable when the workload has a route. On ECS it is enforced by the ALB, so a container with no route has no readiness gate.
+- **`readinessProbe`** — HTTP is portable when the workload has a route. On ECS it is enforced by the ALB, so a container with no route has no readiness gate, and a health endpoint that requires custom headers fails; use one that does not.
 - **`restartPolicy`** — ACA always restarts and is not configurable. ECS exposes a boolean, so `Always`, `OnFailure`, and `Never` cannot be distinguished.
-- **`replicas` on ACA** — an exact count is expressed by setting `minReplicas` and `maxReplicas` to the same value.
+- **`replicas` on ACA** — without `autoScaling`, an exact count is expressed by setting `minReplicas` and `maxReplicas` to the same value. With `autoScaling`, `replicas` is the floor and `autoScaling.maxReplicas` is the ceiling.
 - **`autoScaling` on ACA** — CPU and memory rules keep at least one replica running. Only `custom` rules can scale to zero.
 - **`autoScaling.metrics` `custom` on ECS** — the metric must already be published to CloudWatch and normalized per running task, for example queue depth divided by task count. `averageValue` becomes the target-tracking target.
 
 #### Routes
 
-| Property                            | Azure Container Apps                               | Amazon ECS                                           |
-|-------------------------------------|----------------------------------------------------|------------------------------------------------------|
-| `kind: HTTP`                        | Supported — `httpRouteConfigs.rules[]`             | Supported — ALB listener rule → target group         |
-| `kind: TCP`                         | Supported — `ingress.transport: tcp`               | **Unsupported** — needs an NLB                       |
-| `kind: TLS`                         | **Unsupported** — no SNI matching at the edge      | **Unsupported** — needs an NLB                       |
-| `kind: UDP`                         | **Unsupported** — no UDP ingress                   | **Unsupported** — needs an NLB                       |
-| `hostnames`                         | Supported — custom domain + managed certificate    | Supported — `host-header` condition                  |
-| `rules.*.matches.*.httpPath`        | Supported — `match.pathSeparatedPrefix`            | Supported — `path-pattern` for `/path` and `/path/*` |
-| `rules.*.matches.*.httpHeaders`     | **Unsupported** — no header matching               | Supported — `http-header` condition                  |
-| `rules.*.matches.*.httpMethod`      | **Unsupported** — no method matching               | Supported — `http-request-method` condition          |
-| `rules.*.matches.*.httpQueryParams` | **Unsupported** — no query matching                | Supported — `query-string` condition                 |
-| `listener` (output)                 | Supported — FQDN on the environment default domain | Supported — ALB DNS name                             |
+| Property                            | Azure Container Apps                                   | Amazon ECS                                           |
+|-------------------------------------|--------------------------------------------------------|------------------------------------------------------|
+| `kind: HTTP`                        | Supported — `httpRouteConfigs.rules[]`                 | Supported — ALB listener rule → target group         |
+| `kind: TCP`                         | Supported — `ingress.transport: tcp`                   | **Unsupported** — needs an NLB                       |
+| `kind: TLS`                         | **Unsupported** — no SNI matching at the edge          | **Unsupported** — needs an NLB                       |
+| `kind: UDP`                         | **Unsupported** — no UDP ingress                       | **Unsupported** — needs an NLB                       |
+| `hostnames` — exact                 | Supported — custom domain + managed certificate        | Supported — `host-header` condition                  |
+| `hostnames` — wildcard              | Supported — custom domain + certificate Priya supplies | Supported — `host-header` wildcard condition         |
+| `rules.*.matches.*.httpPath`        | Supported — `match.pathSeparatedPrefix`                | Supported — `path-pattern` for `/path` and `/path/*` |
+| `rules.*.matches.*.httpHeaders`     | **Unsupported** — no header matching                   | Supported — `http-header` condition                  |
+| `rules.*.matches.*.httpMethod`      | **Unsupported** — no method matching                   | Supported — `http-request-method` condition          |
+| `rules.*.matches.*.httpQueryParams` | **Unsupported** — no query matching                    | Supported — `query-string` condition                 |
+| `listener` (output)                 | Supported — FQDN on the environment default domain     | Supported — ALB DNS name                             |
 
 Behavior notes:
 
