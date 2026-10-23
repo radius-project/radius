@@ -232,19 +232,19 @@ the shared `var-files` volume, so it always matches the installed Argo CD.
 The image is not. A Radius image needs the following; "Covered" points to the
 design note (`2026-10-argocd-functional-spec.md`).
 
-| Requirement                                                                                                 | Covered                                                                                             |
-|-------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| Only `rad` and a pinned `bicep`, minimal base                                                               | Yes, Radius CMP sidecar section                                                                     |
-| Non-root (uid 999), read-only root file system, `/tmp` writable                                             | Yes, Radius CMP sidecar section                                                                     |
-| No service account token mounted                                                                            | Yes, Radius CMP sidecar section and threat table                                                    |
-| Radius image scanning, SBOM, patch releases for CVEs                                                        | Yes, Radius CMP sidecar section and threat table                                                    |
-| Bicep extensions pre-fetched; egress or a mirror otherwise                                                  | Yes, Radius CMP sidecar section and admin effort                                                    |
-| Tested against each supported Argo CD version                                                               | Yes, Radius CMP sidecar section                                                                     |
-| Compiles only, holds no credentials                                                                         | Yes, High Level Design and threat table                                                             |
-| Image referenced by digest, not only a tag                                                                  | **No**                                                                                              |
-| Image signed (for example cosign) so admins can verify it                                                   | **No**                                                                                              |
-| All capabilities dropped; CPU and memory limits                                                             | **No**                                                                                              |
-| Behavior when the sidecar's `rad` is older or newer than the Radius control plane (admin forgot to upgrade) | **No**; the note says "released with Radius" and "keep its compiler matched" but not what skew does |
+| Requirement                                                                                                 | Covered                                          |
+|-------------------------------------------------------------------------------------------------------------|--------------------------------------------------|
+| Only `rad` and a pinned `bicep`, minimal base                                                               | Yes, Radius CMP sidecar section                  |
+| Non-root (uid 999), read-only root file system, `/tmp` writable                                             | Yes, Radius CMP sidecar section                  |
+| No service account token mounted                                                                            | Yes, Radius CMP sidecar section and threat table |
+| Radius image scanning, SBOM, patch releases for CVEs                                                        | Yes, Radius CMP sidecar section and threat table |
+| Bicep extensions pre-fetched; egress or a mirror otherwise                                                  | Yes, Radius CMP sidecar section and admin effort |
+| Tested against each supported Argo CD version                                                               | Yes, Radius CMP sidecar section                  |
+| Compiles only, holds no credentials                                                                         | Yes, High Level Design and threat table          |
+| Image referenced by digest, not only a tag                                                                  | Yes, added 2026-10-23                            |
+| Image signed (for example cosign) so admins can verify it                                                   | Yes, added 2026-10-23                            |
+| All capabilities dropped; CPU and memory limits                                                             | Yes, added 2026-10-23                            |
+| Behavior when the sidecar's `rad` is older or newer than the Radius control plane (admin forgot to upgrade) | Yes, added 2026-10-23 (skew window not decided)  |
 
 ## Resume here (paused 2026-10-21)
 
