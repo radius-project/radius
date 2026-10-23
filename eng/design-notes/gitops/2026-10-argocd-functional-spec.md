@@ -16,7 +16,7 @@ This is a high-level design for the [Argo CD feature spec](https://github.com/ra
 | [How do Radius CRDs report why a deployment failed?](#how-radius-crds-report-failure-reasons)      | `status.message` / `status.conditions` / both                          | `status.conditions`, keeping `phrase`                                                                                   | Argo CD shows Degraded with no reason                                                       | Open   |
 | [How is the sidecar versioned?](#how-the-sidecar-is-versioned)                                     | Released with each Radius release / versioned independently            | Released with each Radius release, with a mismatch check                                                                | Compiled output silently differs from what the Radius control plane expects                 | Open   |
 | [How are non-string parameters carried?](#how-non-string-parameters-are-carried)                   | Strings only, documented / new typed field / JSON-encode in strings    | New typed field, added alongside the existing one                                                                       | Parameter-only changes (user story 3) fail for integers, booleans, arrays and objects       | Open   |
-| [How does the plugin name the `DeploymentTemplate`?](#how-the-plugin-names-the-deploymenttemplate) | Bicep file name / Argo CD Application name / user-set parameter        | Not decided; the file name may be enough with one Radius application per namespace                                      | Two Applications in one namespace overwrite each other's template                           | Open   |
+| [How does the plugin name the `DeploymentTemplate`?](#how-the-plugin-names-the-deploymenttemplate) | Bicep file name / Argo CD Application name / user-set parameter        | Keep the file name; v1 supports one Radius application per namespace                                                    | Two Applications in one namespace overwrite each other's template                           | Open   |
 
 ## Overview
 
@@ -60,7 +60,7 @@ This design shares its deployment engine and first three goals with the [Flux co
 1. **Integrate GitOps workflows with Radius and Bicep.** Users put Bicep files and parameters in Git, and Argo CD deploys them through Radius without Flux. This covers Radius Environments, Recipe registrations, Applications and resources. Changing only a parameter file or `bicepconfig.json` triggers a deployment, just as changing a definition does.
 2. **Make the deployed state match Git.** Radius creates, updates and deletes resources as Git changes, including resources removed from a Bicep file and whole Bicep files removed from the repository. Reverting a commit restores the previous configuration. Documented limits: reverting does not restore deleted data, and Radius does not detect drift in cloud resources.
 3. **Fit existing Argo CD workflows.** Users keep Applications, ApplicationSets, projects, sync policies, prune, and the Argo CD UI and CLI. Radius adds only a plugin and health checks. It adds no Radius-specific configuration file such as `radius-gitops-config.yaml` and no Radius code that reads Git. Radius does not change Kubernetes garbage-collection relationships or make shared resources prune targets.
-4. **Report the Radius outcome as Argo CD health**, including Recipe failures, kept separate from sync status. Healthy is labelled as provisioning health, never as runtime health.
+4. **Report the Radius outcome as Argo CD health**, including Recipe failures, kept separate from sync status. Supported failures after provisioning must also turn the Application Degraded, as the feature spec requires; this ships in phases (see [Health mapping](#health-mapping)). Until it does, Healthy is labelled as provisioning health.
 5. **Make failures traceable** from the Argo CD Application and the attempted Git revision to the Radius resource that failed, with a redacted error message.
 6. **No breaking changes for Flux.** Existing Flux setups keep working without changes. Flux and Argo CD share the `DeploymentTemplate` CRD and controller, so the additive status conditions and typed parameters also appear for Flux users, and typed parameters fix non-string parameters being silently dropped on the Flux path.
 
@@ -71,6 +71,7 @@ This design shares its deployment engine and first three goals with the [Flux co
 - CI work: building images, publishing Recipes, or updating image tags. Existing CI tools own that.
 - Terraform-plan-style previews or recovery of deleted data. Out of scope for a first release.
 - Migrating applications between Flux and Argo CD. Possible follow-up.
+- Showing the Git revision on Radius resources outside Argo CD, for example in `rad` or the Radius dashboard. Argo CD and the Radius CRD status already answer which revision was applied.
 
 ### User scenarios (optional)
 
@@ -451,7 +452,7 @@ sequenceDiagram
 | Use the Argo CD Application name (`ARGOCD_APP_NAME`) | Unique per Application in a namespace.                                | Renaming the Application renames the object, so Argo CD prunes it and Radius deletes and redeploys. |
 | Let the user set the name as a plugin parameter      | Explicit and stable.                                                  | One more setting to get right.                                                                      |
 
-**Proposed Option:** not decided. We recommend one Radius application per namespace, which avoids the collision, so keeping the file name may be enough. Revisit if users need several applications in one namespace.
+**Proposed Option:** keep the Bicep file name. v1 supports one Radius application per namespace, which avoids the collision, and the docs state this limit. Revisit if users need several applications in one namespace.
 
 #### Health mapping
 
@@ -468,7 +469,7 @@ sequenceDiagram
 The feature spec also asks for three situations that provisioning status alone does not cover:
 
 - **Stale or unavailable observation:** if the Radius controller stops, the last result stays in status. Conditions carry the time Radius last observed the result, but a Lua health check cannot reliably compare it with the current time, so the check cannot turn it into Unknown on its own. How to show staleness is an [open question](#open-questions); it must never show as a fresh Healthy.
-- **Failure after provisioning,** for example a workload that later crashes or a cloud dependency that fails: Radius does not watch these today. Until it does, health messages say provisioning health only, and the UI extension links to native diagnostics. This is an [open question](#open-questions).
+- **Failure after provisioning,** for example a workload that later crashes or a cloud dependency that fails: Radius does not watch these today. The feature spec requires supported failures to turn the Application Degraded, so this is in scope and ships in phases. In the first phase, health messages say provisioning health only, and the UI extension links to native diagnostics. A later phase adds observation; how is an [open question](#open-questions).
 - **Access denied:** handled by the UI extension, which shows that the view is restricted without protected details. Lua health checks show only the status of objects the user can already see in Argo CD. A Lua sketch is in [Appendix: health check sketch](#health-check-sketch).
 
 ### API design
@@ -616,7 +617,7 @@ No Recipes changes. Recipe failures are surfaced through the new status conditio
 | Radius CMP sidecar image and `plugin.yaml`, added to Radius image scanning and release                                                                                        | M    | P1    |
 | Diff hygiene: normalize `spec.template`; document `ignoreDifferences`                                                                                                         | S    | P1    |
 | Argo CD UI extension: read-only Radius graph with Radius-created Kubernetes objects and external dependencies, and diagnostics behind a proxy, enforcing Radius authorization | L    | P2    |
-| Runtime and dependency health after provisioning, once its open question is answered                                                                                          | L    | P3    |
+| Runtime and dependency health after provisioning (required by the feature spec; design in Open Question 7)                                                                    | L    | P3    |
 
 Estimates include unit and functional tests.
 
@@ -628,7 +629,7 @@ Estimates include unit and functional tests.
 4. **Deletion and retention policy.** What Radius-level policy governs removals within a template, shared resources and failed partial deployments? For example, "retain on delete", so pruning a `DeploymentTemplate` does not destroy shared or production infrastructure, and approval before destructive removals.
 5. **Retry semantics.** Today the controller does not retry a failed template until its spec changes. Which failures should Radius retry on its own, and how does an authorized user ask for a retry without changing Git? A refresh must not count as a retry.
 6. **Stale health.** How does Argo CD show that a Radius result is stale when the controller stops? Options include a controller heartbeat that a separate component checks, or showing staleness only in the UI extension.
-7. **Health after provisioning.** Should Radius watch workload and dependency health after provisioning, so a later failure shows in Argo CD? What is the observation interval and stale threshold?
+7. **Health after provisioning.** Radius must report supported failures after provisioning as Degraded, as the feature spec requires; this ships in phases. How does Radius watch workload and dependency health, and what is the observation interval and stale threshold?
     The health check reads only `status.phrase`, and `Ready` means Radius finished deploying: the deployment engine created every resource in the template without errors. It does not say that the application is running. If a pod crashes ten minutes later, `phrase` stays `Ready`, because Radius does not watch the application after deployment. Whether "finished" includes pods being ready depends on the resource type and its Recipe; the prototype will check this. A cloud database that later becomes unreachable does not change `phrase` either. The feature spec accepts this only as a fallback: where Radius supports an observation, a later failure must make the application's health visibly bad, and where it does not, Argo CD must say so and point to diagnostics. Candidate designs:
     - Radius watches what it created, for example Deployment availability, and writes the result into the `DeploymentTemplate` status, which the health check reads. This fits Argo CD best, because Application health comes only from the `DeploymentTemplate`.
     - Argo CD watches the Kubernetes objects Radius creates. This needs them in Argo CD's tree; see question 2.
@@ -640,7 +641,7 @@ Estimates include unit and functional tests.
     - **One large string.** A team's application grows, so its compiled ARM JSON grows too. Argo CD's default client-side apply copies the whole object into an annotation, and annotations are limited to 256 KB, so the sync fails once the template is too big. `ServerSideApply=true` avoids this. Separately, when a developer changes one line of Bicep, the Argo CD diff shows the whole `spec.template` string as changed, unless the plugin pretty-prints the JSON across lines.
     - **Unstable compiled output.** An operator upgrades the sidecar to a newer Bicep version. Nobody changed any Bicep file, but the compiler metadata in every ARM template changes. Every Application goes OutOfSync, and with auto-sync every application redeploys.
     - **Drift in what Radius created is not fixed.** Someone runs `kubectl scale` on the `vote` Deployment that Radius created. Argo CD does not own that Deployment, and the Radius controller acts only when the `DeploymentTemplate` changes, so the change stays in place and nothing reports it.
-    - **An application without parameters is always OutOfSync.** A developer's Bicep file takes no parameters, so the generated `DeploymentTemplate` has `parameters: {}`. The Radius controller updates the object to add its finalizer, and because `Parameters` is tagged `omitempty`, the update removes the empty map. Argo CD compares Git (`parameters: {}`) with the live object (no `parameters`) and shows OutOfSync, even though Radius reports Ready. Re-syncing does not help. Fixes include leaving out empty `parameters` in the generator or plugin, or an `ignoreDifferences` rule. This was seen while prototyping.
+    - **An application without parameters is always OutOfSync.** A developer's Bicep file takes no parameters, so the generated `DeploymentTemplate` has `parameters: {}`. The Radius controller updates the object to add its finalizer, and because `Parameters` is tagged `omitempty`, the update removes the empty map. Argo CD compares Git (`parameters: {}`) with the live object (no `parameters`) and shows OutOfSync, even though Radius reports Ready. Re-syncing does not help. Fixes include leaving out empty `parameters` in the generator or plugin, or an `ignoreDifferences` rule. This was seen while prototyping and is tracked in [#13436](https://github.com/radius-project/radius/issues/13436).
 
 ## Alternatives considered
 
