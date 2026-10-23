@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/funcr"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -775,12 +775,10 @@ func Test_Bicep_Execute_LogsDeploymentOutputResourceIDs(t *testing.T) {
 			}
 			deploymentClient := &deploymentClientSpy{
 				response: &clients.ClientCreateOrUpdateResponse{
-					DeploymentExtended: armdeployments.DeploymentExtended{
-						Properties: &armdeployments.DeploymentPropertiesExtended{
-							OutputResources: outputs,
-							Outputs: map[string]any{
-								"password": map[string]any{"type": "securestring", "value": "sensitive-output-value"},
-							},
+					Properties: &armdeployments.DeploymentPropertiesExtended{
+						OutputResources: outputs,
+						Outputs: map[string]any{
+							"password": map[string]any{"type": "securestring", "value": "sensitive-output-value"},
 						},
 					},
 				},
