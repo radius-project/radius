@@ -215,7 +215,7 @@ EOF
     chmod +x "${FAKE_PREPARE}"
 }
 
-run_validator() {
+run_with_fixture() {
     local status
 
     pushd "${REPO}" > /dev/null
@@ -225,13 +225,32 @@ run_validator() {
         SIBLING_REPOSITORY_ROOT="${SIBLING_ROOT}" \
         EXPECTED_RELEASE_DIR="${EXPECTED_DIR}" \
         EXPECTED_PLAN_FILE="${EXPECTED_PLAN}" \
-        bash "${SCRIPT}" --body-file body.md --files-file files.json \
-        --base-sha "${BASE_SHA}" --head-dir "${HEAD_DIR}" \
-        --repository radius-project/radius
+        "$@"
     status=$?
     set -e
     popd > /dev/null
     return "${status}"
+}
+
+run_validator() {
+    run_with_fixture bash "${SCRIPT}" \
+        --body-file body.md --files-file files.json \
+        --base-sha "${BASE_SHA}" --head-dir "${HEAD_DIR}" \
+        --repository radius-project/radius
+}
+
+run_snapshot_tests() {
+    SNAPSHOT_SOURCE_DIR="${HEAD_DIR}" SNAPSHOT_BASE_SHA="${BASE_SHA}" \
+        run_with_fixture node --test "$@" \
+        "${SCRIPT_DIR}/release-plan-snapshot_test.mjs"
+}
+
+test_workflow_snapshots() {
+    if ! run_snapshot_tests; then
+        fail_test "workflow snapshots must satisfy the validator input contract"
+        return
+    fi
+    ((++PASS))
 }
 
 test_accepts_generated_plan() {
@@ -319,6 +338,11 @@ EOF
     if ! GITHUB_TOKEN="" run_validator > "${log}" 2>&1; then
         cat "${log}"
         fail_test "real prepared output must pass trusted regeneration"
+        return
+    fi
+    if ! GITHUB_TOKEN="" run_snapshot_tests \
+        --test-name-pattern='materializes stable-only RC'; then
+        fail_test "real prepared output must pass through both workflow snapshots"
         return
     fi
     sed -i \
@@ -473,6 +497,12 @@ test_rejects_unreachable_planned_sibling_commit() {
 main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/release-plan-fixture-XXXXXX")"
 
+    setup_repo
+    if [[ "${1:-}" == "--snapshots-only" ]]; then
+        run_snapshot_tests
+        return
+    fi
+    test_workflow_snapshots
     setup_repo
     test_accepts_generated_plan
     setup_repo
