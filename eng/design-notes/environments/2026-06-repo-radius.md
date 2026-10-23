@@ -20,16 +20,17 @@ Radius and the application need not run in the same place. A control plane hoste
 - Keep Radius configuration and deployment state after jobs end so later runs can reuse approved environments and recipes and manage existing applications.
 - Deploy workloads to the team's chosen Azure or AWS platform, regardless of where the Radius control plane runs.
 - Show developers command outcomes, diagnostics, and whether state was saved, without crossing the platform team's environment and access boundaries.
+- Provide runnable GitHub Actions reference samples that teams can adapt, from recipe-pack and environment setup through application deployment and deletion.
 
 ### Non-goals (out of scope)
 
-- Selecting workflow files, packaging, storage technologies, authentication protocols, or result schemas. These belong in technical designs.
+- Prescribing workflow-file structure, packaging, storage technologies, authentication protocols, or result schemas. These belong in technical designs; this specification defines what the reference samples must demonstrate.
 - Replacing CI/CD systems, their approval processes, or the tools used to monitor running applications.
 - Defining release management or promotion between environments. Teams keep these workflows in their existing pipelines.
 - Requiring a new graphical interface or coding assistant to complete a deployment.
 - Installing, upgrading, or operating an organization's centralized Radius service.
 - Migrating existing application state and resource ownership between independent control planes. Connecting to an existing control plane is not a migration.
-- Adding automatic rollback, retry, or repair after a failed operation. The pipeline or operator decides what to do next.
+- Adding built-in automatic rollback, retry, or repair to Repo Radius. The pipeline or operator decides what to do next; reference samples can demonstrate retry and rollback policies in pipeline scripts.
 - Adding a general-purpose deployment what-if engine or continuous cloud drift detection.
 
 ## User profile and challenges
@@ -149,6 +150,20 @@ The developer explicitly requests deletion through the team's pipeline, subject 
 - The result reports completion or partial failure, including known remaining resources and any unknown outcomes. The pipeline or operator decides whether to run another command.
 - Stopping or releasing a temporary control plane does not delete an application. Deletion requires an explicit Radius command.
 
+### Scenario 8: Adapt GitHub Actions reference pipelines for my team
+
+> As a platform engineer, I want runnable reference pipelines that cover Radius setup and application operations, so that I can adapt a working example instead of assembling my team's pipeline from isolated snippets.
+
+The team starts from a maintained suite of GitHub Actions samples. Together, the samples cover registering and configuring recipe packs, creating and configuring environments, setting up persistent state and access, and deploying, inspecting, updating, and deleting an application. Platform setup is separate from routine application jobs, which reuse the saved environments and recipe registrations.
+
+- The suite demonstrates both temporary control-plane execution and connection to an existing centralized service. Temporary jobs release their control plane without deleting workloads or saved state; connected jobs leave the shared service running.
+- Later application jobs run on fresh agents and use the saved configuration and deployment state. The samples do not recreate environments or register recipe packs on every deployment.
+- Each sample documents prerequisites, required permissions, configuration inputs, supported workload targets, expected results, and cleanup steps. Maintainers validate the runnable samples against the Radius versions they document.
+- Application deployment scripts demonstrate bounded retries for documented retryable failures and a clearly defined rollback procedure, such as redeploying a previous application revision. These are pipeline policies that users can inspect and adapt, not new Radius recovery capabilities.
+- Each rollback example states what it restores and what it cannot reverse. Redeploying an earlier revision does not guarantee reversal of infrastructure or data changes, and restoring an older Radius state snapshot alone is not rollback.
+- The scripts preserve command results and diagnostics, including failed retries or rollback attempts. Unknown outcomes or uncertain saved state require an operator check rather than a blind retry. Destructive cleanup requires an explicit request, not merely a failed deployment.
+- The reference-sample requirement covers GitHub Actions only, not Azure DevOps samples. The broader CI/CD requirements remain unchanged. The suite identifies the workload platforms it demonstrates rather than promising every platform combination.
+
 ## Key dependencies and risks
 
 - **Workload platform support.** Each target needs recipes that provide the requested application capabilities. Users need a list of supported platforms and errors that identify unavailable capabilities.
@@ -157,6 +172,7 @@ The developer explicitly requests deletion through the team's pipeline, subject 
 - **Shared-service boundaries.** Jobs using a centralized control plane must not disrupt other teams or exceed their authorized environments.
 - **Compatibility.** A pipeline and its selected control plane or recipes may be incompatible. The error must identify the incompatibility and explain what the user can do about it.
 - **Job startup time.** Starting a temporary control plane delays the requested operation. Test how much delay teams will accept in routine deployments.
+- **Sample maintenance.** Users will copy the reference pipelines. Outdated commands or unsafe recovery scripts can spread into real deployments, so the samples need ongoing validation and clear limits on retry and rollback.
 
 ## Key assumptions to test and questions to answer
 
@@ -166,6 +182,7 @@ The developer explicitly requests deletion through the team's pipeline, subject 
 - Which recipe configurations and uses of existing resources must work with both temporary and centralized control planes? Test with an application that uses an existing hosting environment and shared backing services.
 - What should users see when a job is cancelled while a centralized service is still executing an operation? Define when work can stop and how a later job discovers its outcome.
 - What startup delay is acceptable, and how should a team learn that its pipeline, Radius service, or recipes need an update? Validate with representative deployment and inspection jobs.
+- Which workload targets and application changes should the GitHub Actions samples demonstrate first? Choose runnable examples for both control-plane modes and document where the sample rollback procedure cannot restore an earlier deployment.
 
 ## Current state
 
@@ -210,3 +227,7 @@ I can use Radius from my existing pipeline by starting it for a job or connectin
 ### Feature 4
 
 **Command results and explicit deletion.** Preserve status and diagnostics for existing Radius commands, including deletion commands, across both control-plane modes. Leave rollback, retry, and repair decisions to the pipeline or operator.
+
+### Feature 5
+
+**GitHub Actions reference samples.** Maintain runnable pipelines that separate platform setup from application operations and cover the full path from recipe packs and environments to deployment and deletion. Demonstrate retry and rollback in pipeline scripts, with documented limits and no new built-in recovery behavior.
