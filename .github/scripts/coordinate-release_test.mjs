@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -8,6 +8,126 @@ import coordinateRelease, {
   coordinateTask,
   checkReleaseCandidate
 } from "./coordinate-release.mjs";
+
+for (const [releaseType, version, expected] of [
+  [
+    "rc",
+    "v0.62.0-rc.2",
+    [
+      ["docs", "upmerge.yaml", undefined],
+      ["samples", "upmerge.yaml", undefined],
+      ["samples", "test.yaml", "edge"]
+    ]
+  ],
+  [
+    "final",
+    "v0.62.0",
+    [
+      ["docs", "release.yaml", "edge"],
+      ["samples", "release.yaml", "edge"],
+      ["samples", "test.yaml", "edge"]
+    ]
+  ],
+  ["patch", "v0.62.1", [["samples", "test.yaml", "edge"]]]
+]) {
+  test(`${releaseType} coordinates only its intended downstream workflows`, () => {
+    const tasks = coordinationTasks(releaseType, version);
+    assert.deepEqual(
+      tasks.map(({ repo, workflow, ref }) => [repo, workflow, ref]),
+      expected
+    );
+    for (const task of tasks) {
+      assert.deepEqual(
+        task.inputs,
+        task.workflow === "upmerge.yaml" ? {} : { version: version.slice(1) }
+      );
+    }
+  });
+}
+
+test("workflow uses the App client remotely and the job client for receipts", async (t) => {
+  const workflow = (
+    await readFile(
+      new URL("../workflows/build-release.yaml", import.meta.url),
+      "utf8"
+    )
+  ).replace(/\r\n/g, "\n");
+  const step = workflow.match(
+    /        id: coordinate\n[\s\S]*?          script: \|\n([\s\S]*?)(?=\n      - name:)/
+  );
+  assert.ok(step, "the downstream coordination step must exist");
+  assert.match(step[0], /          retries: 5\n/);
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  const runStep = new AsyncFunction(
+    "github",
+    "getOctokit",
+    "context",
+    "core",
+    "process",
+    step[1].replace(/^            /gm, "")
+  );
+
+  const state = fixture();
+  const version = "v0.62.1";
+  state.run.head_branch = "edge";
+  state.run.html_url =
+    "https://github.com/radius-project/samples/actions/runs/77";
+  state.github.rest.repos.listReleases = async () => [
+    { tag_name: version, draft: false }
+  ];
+  state.github.request = Object.assign(
+    async () => assert.fail("the job client must not call remote repositories"),
+    {
+      defaults: () =>
+        assert.fail(
+          "request defaults cannot replace the job client's authentication"
+        )
+    }
+  );
+  const directory = await mkdtemp(path.join(os.tmpdir(), "coordination-auth-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const planFile = path.join(directory, "plan.json");
+  await writeFile(planFile, JSON.stringify({ version, releaseType: "patch" }));
+  const outputs = {};
+  const core = {
+    getInput: (name) =>
+      ({ PLAN_FILE: planFile, SOURCE_SHA: state.sourceSha })[name] ?? "",
+    setOutput: (name, value) => {
+      outputs[name] = value;
+    }
+  };
+  const tokens = [];
+  const getOctokit = (token) => {
+    tokens.push(token);
+    return { request: state.remote };
+  };
+  await runStep(state.github, getOctokit, state.context, core, {
+    env: {
+      COORDINATION_TOKEN: "test-app-token",
+      GITHUB_WORKSPACE: new URL("../../", import.meta.url).href.replace(
+        /\/$/,
+        ""
+      )
+    }
+  });
+  assert.deepEqual(tokens, ["test-app-token"]);
+  assert.equal(state.deployments.length, 1);
+  assert.equal(state.deployments[0].repo, "radius");
+  assert.ok(state.statuses.length > 0);
+  assert.ok(state.statuses.every(({ repo }) => repo === "radius"));
+  assert.ok(state.calls.length > 0);
+  assert.ok(state.calls.every(({ request }) => request.repo === "samples"));
+  const dispatch = state.calls.find(({ route }) =>
+    route.endsWith("/dispatches")
+  );
+  assert.equal(dispatch.request.request.retries, 0);
+  assert.ok(
+    state.calls
+      .filter(({ route }) => route.startsWith("GET "))
+      .every(({ request }) => request.request.retries === 5)
+  );
+  assert.equal(JSON.parse(outputs.results)[0].state, "success");
+});
 
 function fixture() {
   const sourceSha = "a".repeat(40);
