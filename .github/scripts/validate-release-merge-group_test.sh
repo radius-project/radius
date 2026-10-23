@@ -169,6 +169,7 @@ test_selects_release_pr_on_advanced_base() {
 test_accepts_group_without_release_pr() {
     local file="${1:-other.txt}"
     local expects_plan="${2:-false}"
+    local with_changelog="${3:-false}"
     local group_sha output status=0
 
     git -C "${REPO}" checkout -q main
@@ -176,10 +177,15 @@ test_accepts_group_without_release_pr() {
     mkdir -p "$(dirname "${REPO}/${file}")"
     printf 'changed\n' > "${REPO}/${file}"
     git -C "${REPO}" add "${file}"
+    if [[ "${with_changelog}" == true ]]; then
+        printf '# Corrected historical changelog\n' >"${REPO}/CHANGELOG.md"
+        git -C "${REPO}" add CHANGELOG.md
+    fi
     git -C "${REPO}" commit -q -m "fix: unrelated change"
     printf '[]\n' > "${REPO}/candidates.json"
     GROUP_BASE_SHA="${BASE_SHA}"
     group_sha="$(git -C "${REPO}" rev-parse HEAD)"
+    GROUP_SHA="${group_sha}"
     output="$(run_validator "${group_sha}" 2>&1)" || status=$?
     if [[ "${expects_plan}" == "true" ]]; then
         if [[ "${status}" == 0 || "${output}" != *"release metadata changed without a matching release plan"* ]]; then
@@ -191,6 +197,18 @@ test_accepts_group_without_release_pr() {
             fail_test "expected ordinary change ${file} to pass without a plan: ${output}"
             return
         fi
+    fi
+    git -C "${REPO}" checkout -q --detach "${GROUP_BASE_SHA}"
+    status=0
+    output="$(run_workflow_selector 2>&1)" || status=$?
+    if [[ "${expects_plan}" == true ]]; then
+        if [[ "${status}" == 0 || "${output}" != *"release metadata changed without a matching release plan"* ]]; then
+            fail_test "trusted workflow must reject metadata ${file}: ${output}"
+            return
+        fi
+    elif [[ "${status}" != 0 ]] || ! grep -Fxq 'number=' "${TEST_ROOT}/workflow/github-output"; then
+        fail_test "trusted workflow must accept documentation ${file}: ${output}"
+        return
     fi
     ((++PASS))
 }
@@ -214,6 +232,7 @@ run_workflow_selector() {
 test_workflow_bootstrap() {
     local file="$1"
     local expects_failure="$2"
+    local with_changelog="${3:-false}"
     local output status=0
 
     setup_repo
@@ -223,6 +242,10 @@ test_workflow_bootstrap() {
     printf '#!/bin/bash\ntouch queued-validator-executed\nexit 99\n' \
         > "${REPO}/.github/scripts/validate-release-merge-group.sh"
     git -C "${REPO}" add "${file}" .github/scripts/validate-release-merge-group.sh
+    if [[ "${with_changelog}" == true ]]; then
+        printf '# Corrected historical changelog\n' >"${REPO}/CHANGELOG.md"
+        git -C "${REPO}" add CHANGELOG.md
+    fi
     git -C "${REPO}" commit -q -m "ci: introduce release validation"
     GROUP_SHA="$(git -C "${REPO}" rev-parse HEAD)"
     GROUP_BASE_SHA="${BASE_SHA}"
@@ -263,195 +286,49 @@ test_workflow_uses_existing_trusted_validator() {
     ((++PASS))
 }
 
-test_rc_cleanup() {
-    local scenario="$1"
-    local expected="$2"
-    local output status=0
+test_rejects_changed_release_content() {
+    local file="$1"
 
     setup_repo true
-    git -C "${REPO}" checkout -q main
-    cat >"${REPO}/CHANGELOG.md" <<'EOF'
-# Changelog
+    create_squash_group false
+    printf 'unexpected content\n' >>"${REPO}/${file}"
+    git -C "${REPO}" add "${file}"
+    git -C "${REPO}" commit -q -m "test: mismatched release content"
+    GROUP_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+    git -C "${REPO}" checkout -q --detach "${GROUP_BASE_SHA}"
+    if run_workflow_selector >/dev/null 2>&1; then
+        fail_test "generated release content mismatch ${file} must fail"
+        return
+    fi
+    ((++PASS))
+}
 
-Keep this introduction.
+test_rejects_metadata_removal() {
+    local file="$1"
+    local operation="$2"
 
-## [Unreleased]
-
-Keep these unreleased notes.
-
-## [0.62.0-rc.2] - 2026-10-23
-
-### Fixed
-
-- Second candidate.
-
-## [0.62.0-rc.1] - 2026-10-22
-
-### Added
-
-- First candidate.
-
-## [0.60.0] - 2026-08-19
-
-### Added
-
-- Keep stable history.
-
-Keep the release history footer.
-
-[Unreleased]: https://github.com/radius-project/radius/compare/v0.62.0-rc.2...HEAD
-[0.62.0-rc.2]: https://github.com/radius-project/radius/compare/v0.61.1...v0.62.0-rc.2
-[0.62.0-rc.1]: https://github.com/radius-project/radius/compare/v0.61.1...v0.62.0-rc.1
-[0.60.0]: https://github.com/radius-project/radius/releases/tag/v0.60.0
-EOF
-    case "${scenario}" in
-        single-rc)
-            sed -i '/^## \[0.62.0-rc.1\]/,/^## \[0.60.0\]/{ /^## \[0.60.0\]/!d; }; /^\[0.62.0-rc.1\]:/d' "${REPO}/CHANGELOG.md"
-            ;;
-        ambiguous-baseline)
-            sed -i '/^\[0.62.0-rc.1\]:/s/v0.61.1/v0.61.0/' "${REPO}/CHANGELOG.md"
-            ;;
-        duplicate-definition)
-            grep '^\[0.62.0-rc.1\]:' "${REPO}/CHANGELOG.md" >>"${REPO}/duplicate"
-            cat "${REPO}/duplicate" >>"${REPO}/CHANGELOG.md"
-            ;;
-        padded-definition)
-            printf '[ Unreleased ]: duplicate\n' >>"${REPO}/CHANGELOG.md"
-            ;;
-        duplicate-heading)
-            sed -i '/^## \[0.62.0-rc.1\]/a ## [0.62.0-rc.1] - 2026-10-22' "${REPO}/CHANGELOG.md"
-            ;;
-        missing-definition)
-            sed -i '/^\[0.62.0-rc.1\]:/d' "${REPO}/CHANGELOG.md"
-            ;;
-        malformed-reference)
-            sed -i '/^\[0.62.0-rc.1\]:/s/$/ extra/' "${REPO}/CHANGELOG.md"
-            ;;
-        wrong-unreleased)
-            sed -i '/^\[Unreleased\]:/s/rc.2/rc.1/' "${REPO}/CHANGELOG.md"
-            ;;
-        unknown-rc)
-            printf '[0.62.0-rc.3]: unknown\n' >>"${REPO}/CHANGELOG.md"
-            ;;
-        malformed-heading)
-            sed -i 's/^## \[0.62.0-rc.1\].*/## [0.62.0-rc.1]/' "${REPO}/CHANGELOG.md"
-            ;;
-        interleaved-stable)
-            sed -i '/^## \[0.62.0-rc.1\]/i ## [0.61.0] - 2026-09-19' "${REPO}/CHANGELOG.md"
-            ;;
-        mixed-rc-version)
-            sed -i 's/0.62.0-rc.1/0.61.0-rc.1/g' "${REPO}/CHANGELOG.md"
-            ;;
-        crlf-base)
-            sed -i 's/$/\r/' "${REPO}/CHANGELOG.md"
-            ;;
-    esac
+    setup_repo true
+    GROUP_BASE_SHA="${RELEASE_SHA}"
+    if [[ "${operation}" == rename ]]; then
+        git -C "${REPO}" mv "${file}" ordinary.txt
+    else
+        git -C "${REPO}" rm -q "${file}"
+    fi
+    printf '# Corrected historical changelog\n' >"${REPO}/CHANGELOG.md"
     git -C "${REPO}" add CHANGELOG.md
-    git -C "${REPO}" commit -q -m "test: trusted RC history"
-    GROUP_BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
-    sed -e '/^## \[0.62.0-rc.2\]/,/^## \[0.60.0\]/{ /^## \[0.60.0\]/!d; }' \
-        -e '/^\[0.62.0-rc.[12]\]:/d' \
-        -e '/^\[Unreleased\]:/s/v0.62.0-rc.2/v0.61.1/' \
-        "${REPO}/CHANGELOG.md" >"${REPO}/cleaned"
-    mv "${REPO}/cleaned" "${REPO}/CHANGELOG.md"
-    case "${scenario}" in
-        stable-content) sed -i 's/Keep stable history/Alter stable history/' "${REPO}/CHANGELOG.md" ;;
-        stable-link) sed -i '/^\[0.60.0\]:/s/v0.60.0/v0.61.1/' "${REPO}/CHANGELOG.md" ;;
-        stable-deletion) sed -i '/^- Keep stable history/d' "${REPO}/CHANGELOG.md" ;;
-        prose) sed -i 's/Keep this introduction/Alter this introduction/' "${REPO}/CHANGELOG.md" ;;
-        unreleased-prose) sed -i 's/Keep these unreleased notes/Alter these unreleased notes/' "${REPO}/CHANGELOG.md" ;;
-        footer) sed -i 's/Keep the release history footer/Alter the release history footer/' "${REPO}/CHANGELOG.md" ;;
-        wrong-baseline) sed -i '/^\[Unreleased\]:/s/v0.61.1/v0.61.0/' "${REPO}/CHANGELOG.md" ;;
-        missing-unreleased) sed -i '/^\[Unreleased\]:/d' "${REPO}/CHANGELOG.md" ;;
-        retained-definition) git -C "${REPO}" show "${GROUP_BASE_SHA}:CHANGELOG.md" | grep '^\[0.62.0-rc.1\]:' >>"${REPO}/CHANGELOG.md" ;;
-        no-newline) truncate -s -1 "${REPO}/CHANGELOG.md" ;;
-        mode) chmod +x "${REPO}/CHANGELOG.md" ;;
-        deleted) rm "${REPO}/CHANGELOG.md" ;;
-        renamed)
-            mv "${REPO}/CHANGELOG.md" "${REPO}/RENAMED.md"
-            git -C "${REPO}" add RENAMED.md
-            ;;
-        symlink)
-            rm "${REPO}/CHANGELOG.md"
-            ln -s base.txt "${REPO}/CHANGELOG.md"
-            ;;
-        no-cleanup)
-            git -C "${REPO}" show "${GROUP_BASE_SHA}:CHANGELOG.md" >"${REPO}/CHANGELOG.md"
-            printf '\n' >>"${REPO}/CHANGELOG.md"
-            ;;
-        link-only)
-            git -C "${REPO}" show "${GROUP_BASE_SHA}:CHANGELOG.md" |
-                sed '/^\[Unreleased\]:/s/v0.62.0-rc.2/v0.61.1/' >"${REPO}/CHANGELOG.md"
-            ;;
-        partial-cleanup)
-            git -C "${REPO}" show "${GROUP_BASE_SHA}:CHANGELOG.md" |
-                sed -e '/^## \[0.62.0-rc.2\]/,/^## \[0.62.0-rc.1\]/{ /^## \[0.62.0-rc.1\]/!d; }' \
-                    -e '/^\[0.62.0-rc.2\]:/d' \
-                    -e '/^\[Unreleased\]:/s/rc.2/rc.1/' >"${REPO}/CHANGELOG.md"
-            ;;
-        version | plan | note | deleted-metadata | renamed-metadata)
-            mkdir -p "${REPO}/.github/release-plans" "${REPO}/docs/release-notes"
-            case "${scenario}" in
-                version)
-                    printf 'supported: []\n' >"${REPO}/versions.yaml"
-                    git -C "${REPO}" add versions.yaml
-                    ;;
-                plan)
-                    printf 'schemaVersion: 2\n' >"${REPO}/.github/release-plans/v0.62.0.yaml"
-                    git -C "${REPO}" add .github/release-plans
-                    ;;
-                note)
-                    printf 'notes\n' >"${REPO}/docs/release-notes/v0.62.0.md"
-                    git -C "${REPO}" add docs/release-notes
-                    ;;
-                deleted-metadata | renamed-metadata)
-                    # The removed metadata must exist in the comparison base.
-                    git -C "${REPO}" show release-pr:versions.yaml >"${REPO}/versions.yaml"
-                    git -C "${REPO}" add versions.yaml
-                    git -C "${REPO}" commit -q -m "test: recorded versions"
-                    GROUP_BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
-                    if [[ "${scenario}" == renamed-metadata ]]; then
-                        git -C "${REPO}" mv versions.yaml ordinary.yaml
-                    else
-                        git -C "${REPO}" rm -q versions.yaml
-                    fi
-                    ;;
-            esac
-            ;;
-        tooling)
-            printf 'tooling\n' >"${REPO}/base.txt"
-            git -C "${REPO}" add base.txt
-            ;;
-        untrusted-validator)
-            printf '#!/bin/bash\ntouch queued-validator-executed\nexit 99\n' \
-                >"${REPO}/.github/scripts/validate-release-merge-group.sh"
-            git -C "${REPO}" add .github/scripts/validate-release-merge-group.sh
-            ;;
-    esac
-    git -C "${REPO}" add -u
-    git -C "${REPO}" commit -q -m "test: ${scenario} cleanup"
+    git -C "${REPO}" commit -q -m "test: ${operation} release metadata"
     GROUP_SHA="$(git -C "${REPO}" rev-parse HEAD)"
     git -C "${REPO}" checkout -q --detach "${GROUP_BASE_SHA}"
     printf '[]\n' >"${REPO}/candidates.json"
-    output="$(run_workflow_selector 2>&1)" || status=$?
-    if [[ -e "${REPO}/queued-validator-executed" ]]; then
-        fail_test "cleanup executed the queued validator"
-        return
-    fi
-    if [[ "${expected}" == pass ]]; then
-        if [[ "${status}" != 0 ]] || ! grep -Fxq 'number=' "${TEST_ROOT}/workflow/github-output"; then
-            fail_test "${scenario} cleanup should pass without selecting a release: ${output}"
-            return
-        fi
-    elif [[ "${status}" == 0 || "${output}" != *"release metadata changed without a matching release plan"* ]]; then
-        fail_test "${scenario} cleanup should fail closed: ${output}"
+    if run_workflow_selector >/dev/null 2>&1; then
+        fail_test "metadata ${operation} ${file} with changelog must fail"
         return
     fi
     ((++PASS))
 }
 
 main() {
-    local file scenario
+    local file with_changelog
 
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/release-merge-group-XXXXXX")"
     WORKFLOW_SELECTOR="$(yq -r '.jobs."validate-merge-group".steps[] | select(.id == "select") | .run' "${WORKFLOW}")"
@@ -462,40 +339,38 @@ main() {
     test_rejects_group_with_extra_changes
     setup_repo
     test_selects_release_pr_on_advanced_base
-    for file in other.txt docs/release-notes/README.md \
+    for file in CHANGELOG.md other.txt docs/release-notes/README.md \
         docs/release-notes/template.md docs/release-notes/template_patch.md; do
-        setup_repo
+        setup_repo true
         test_accepts_group_without_release_pr "${file}"
     done
-    for file in CHANGELOG.md versions.yaml docs/release-notes/v0.61.0.md \
-        docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md \
-        .github/release-plans/v0.61.0-rc.1.yaml; do
-        setup_repo
-        test_accepts_group_without_release_pr "${file}" true
-    done
-    for file in other.txt docs/release-notes/README.md \
+    setup_repo true
+    test_accepts_group_without_release_pr other.txt false true
+    for file in CHANGELOG.md other.txt docs/release-notes/README.md \
         docs/release-notes/template.md docs/release-notes/template_patch.md; do
         test_workflow_bootstrap "${file}" false
     done
-    for file in CHANGELOG.md versions.yaml docs/release-notes/v0.61.0.md \
-        docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md \
-        .github/release-plans/v0.61.0-rc.1.yaml; do
-        test_workflow_bootstrap "${file}" true
+    test_workflow_bootstrap other.txt false true
+    for with_changelog in false true; do
+        for file in versions.yaml docs/release-notes/v0.61.0.md \
+            docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md \
+            .github/release-plans/v0.61.0-rc.1.yaml; do
+            setup_repo true
+            test_accepts_group_without_release_pr "${file}" true "${with_changelog}"
+            test_workflow_bootstrap "${file}" true "${with_changelog}"
+        done
+    done
+    for file in CHANGELOG.md versions.yaml \
+        .github/release-plans/v0.61.0-rc.1.yaml \
+        docs/release-notes/v0.61.0-rc.1.md; do
+        test_rejects_changed_release_content "${file}"
+    done
+    for file in versions.yaml .github/release-plans/v0.61.0-rc.1.yaml \
+        docs/release-notes/v0.61.0-rc.1.md; do
+        test_rejects_metadata_removal "${file}" rename
+        test_rejects_metadata_removal "${file}" delete
     done
     test_workflow_uses_existing_trusted_validator
-    for scenario in cleanup single-rc tooling untrusted-validator; do
-        test_rc_cleanup "${scenario}" pass
-    done
-    for scenario in stable-content stable-link stable-deletion prose \
-        unreleased-prose footer wrong-baseline missing-unreleased \
-        retained-definition no-newline mode deleted renamed symlink no-cleanup \
-        partial-cleanup link-only \
-        version plan note deleted-metadata renamed-metadata \
-        ambiguous-baseline duplicate-definition padded-definition duplicate-heading \
-        missing-definition malformed-reference wrong-unreleased unknown-rc \
-        malformed-heading interleaved-stable mixed-rc-version crlf-base; do
-        test_rc_cleanup "${scenario}" fail
-    done
 
     if ((FAIL > 0)); then
         echo "release merge-group tests failed: ${PASS} passed, ${FAIL} failed"

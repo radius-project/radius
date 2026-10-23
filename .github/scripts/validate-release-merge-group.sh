@@ -36,90 +36,6 @@ tree_entry() {
         printf '%s\n' '<missing>'
 }
 
-is_rc_changelog_cleanup() {
-    node - "${BASE_SHA}" "${MERGE_GROUP_SHA}" <<'NODE'
-const { execFileSync } = require('node:child_process')
-const [base, head] = process.argv.slice(2)
-const git = (...args) => execFileSync('git', args)
-const reject = () => process.exit(1)
-const metadata = /^(CHANGELOG\.md|versions\.yaml|docs\/release-notes\/v[0-9]+\.[0-9]+\.[0-9]+[^/]*\.md|\.github\/release-plans\/.+\.yaml)$/
-const paths = git('diff', '--no-renames', '--name-only', '-z', base, head)
-    .toString().split('\0').filter(path => metadata.test(path))
-if (paths.length !== 1 || paths[0] !== 'CHANGELOG.md') reject()
-for (const commit of [base, head]) {
-    if (!/^100644 blob [0-9a-f]+\tCHANGELOG\.md\0$/.test(
-        git('ls-tree', '-z', commit, '--', 'CHANGELOG.md').toString(),
-    )) reject()
-}
-
-// Only canonical LF changelogs with a leading, complete RC block qualify.
-const original = git('show', `${base}:CHANGELOG.md`)
-const text = original.toString('utf8')
-if (!Buffer.from(text).equals(original) || /[\r\0]/.test(text) ||
-    !text.endsWith('\n')) reject()
-const lines = text.split('\n')
-const stable = '(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)'
-const section = new RegExp(`^## \\[(${stable}(?:-rc\\.[1-9][0-9]*)?)\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$`)
-const headings = []
-const versions = new Set()
-for (const [index, line] of lines.entries()) {
-    if (!/^ {0,3}##(?:\s|$)/.test(line)) continue
-    const version = line === '## [Unreleased]' ? 'Unreleased' :
-        section.exec(line)?.[1]
-    if (!version || versions.has(version)) reject()
-    versions.add(version)
-    headings.push({ index, version })
-}
-if (headings[0]?.version !== 'Unreleased') reject()
-const firstStable = headings.findIndex(item => item.version !== 'Unreleased' &&
-    !item.version.includes('-rc.'))
-if (firstStable < 2 || headings.slice(firstStable).some(
-    item => item.version.includes('-rc.'),
-)) reject()
-const rcs = headings.slice(1, firstStable)
-const release = rcs[0].version.split('-rc.')[0]
-if (rcs.some(item => item.version.split('-rc.')[0] !== release)) reject()
-
-const prefix = 'https://github.com/radius-project/radius/compare/'
-const labels = new Set(['unreleased', ...rcs.map(item => item.version)])
-const definitions = new Map()
-for (const [index, line] of lines.entries()) {
-    const reference = /^ {0,3}\[([^\]]+)\]:/.exec(line)
-    if (!reference) continue
-    const label = reference[1].trim().toLowerCase()
-    if (!labels.has(label)) {
-        if (/-rc[.0-9]/i.test(label)) reject()
-        continue
-    }
-    if (definitions.has(label) || index <= headings.at(-1).index) reject()
-    definitions.set(label, { index, line })
-}
-if (definitions.size !== labels.size) reject()
-const unreleased = definitions.get('unreleased')
-if (unreleased.line !== `[Unreleased]: ${prefix}v${rcs[0].version}...HEAD`) reject()
-let baseline
-const removed = new Set()
-for (const { version } of rcs) {
-    const definition = definitions.get(version)
-    const start = `[${version}]: ${prefix}v`
-    const end = `...v${version}`
-    if (!definition.line.startsWith(start) ||
-        !definition.line.endsWith(end)) reject()
-    const recorded = definition.line.slice(start.length, -end.length)
-    if (!new RegExp(`^${stable}$`).test(recorded) ||
-        (baseline && baseline !== recorded)) reject()
-    baseline = recorded
-    removed.add(definition.index)
-}
-const expected = lines.filter((line, index) =>
-    !(index >= rcs[0].index && index < headings[firstStable].index) &&
-    !removed.has(index),
-).map(line => line === unreleased.line ?
-    `[Unreleased]: ${prefix}v${baseline}...HEAD` : line).join('\n')
-if (!Buffer.from(expected).equals(git('show', `${head}:CHANGELOG.md`))) reject()
-NODE
-}
-
 main() {
     local candidate_sha candidate_number candidate_blob merge_blob file
     local candidates_tsv changed_files candidate_files
@@ -171,7 +87,7 @@ main() {
     sort "${changed_files}.raw" >"${changed_files}"
     rm "${changed_files}.raw"
     if grep -Eq \
-        '^(CHANGELOG\.md|versions\.yaml|docs/release-notes/v[0-9]+\.[0-9]+\.[0-9]+[^/]*\.md|\.github/release-plans/.+\.yaml)$' \
+        '^(versions\.yaml|docs/release-notes/v[0-9]+\.[0-9]+\.[0-9]+[^/]*\.md|\.github/release-plans/.+\.yaml)$' \
         "${changed_files}"; then
         touches_release=true
     fi
@@ -214,10 +130,7 @@ main() {
 
     if ((${#matches[@]} == 0)); then
         if [[ "${touches_release}" == "true" ]]; then
-            if ! is_rc_changelog_cleanup; then
-                fail "release metadata changed without a matching release plan"
-            fi
-            echo "Merge group removes only recorded RC changelog entries."
+            fail "release metadata changed without a matching release plan"
         fi
         : >"${OUTPUT_FILE}"
         echo "Merge group contains no generated release pull request."
