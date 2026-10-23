@@ -5,7 +5,7 @@ https://github.com/radius-project/radius/blob/main/eng/design-notes/templates/fe
 
 # Topic: Repo Radius
 
-- **Author**: Zach Casper (@zachcasper)
+- **Author**: Will Tsai (@willtsai)
 
 ## Topic Summary
 
@@ -166,7 +166,7 @@ The developer reviews the job result to see what succeeded, what failed, and whe
 
 The earlier Repo Radius proposal described temporary execution through GitHub Actions, with GitHub-specific environment and state handling. The scope now includes other CI/CD systems and connections to an existing centralized Radius control plane. These are product requirements, not claims of implemented support.
 
-The [external Kubernetes deployment proposal](../environments/2026-05-external-kubernetes.md) addresses workloads running on a cluster separate from Radius. That separation is one part of this experience; managed container targets also need suitable platform support.
+The [external Kubernetes deployment proposal](./2026-05-external-kubernetes.md) addresses workloads running on a cluster separate from Radius. That separation is one part of this experience; managed container targets also need suitable platform support.
 
 ## Details of user problem
 
