@@ -1207,9 +1207,8 @@ jobs:
         with:
           retries: 5
           script: |
-            const remote = github.request.defaults({
-              headers: { authorization: `token ${process.env.COORDINATION_TOKEN}` }
-            })
+            // Use a separate client: the job client's auth hook overrides headers.
+            const remote = getOctokit(process.env.COORDINATION_TOKEN).request
             const { default: coordinate } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
             await coordinate({ github, remote, context, core })
 
