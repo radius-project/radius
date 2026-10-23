@@ -986,7 +986,7 @@ tests:
       #
       # ENCODING CHAIN:
       # 1. Helm generates JSON with base64-encoded keys
-      # 2. secrets.lookup helper returns base64-encoded JSON
+      # 2. The template base64-encodes the JSON
       # 3. Kubernetes Secret data stores base64-encoded JSON
       # 4. Kubernetes mounts secret → DECODES to JSON in pod
       # 5. Application reads /var/secrets/encryption/keys.json
@@ -1536,18 +1536,7 @@ tests:
           value: ClusterRoleBinding
         documentIndex: 2
 
-  # Test for preserving existing encryption key during upgrades
-  # NOTE: helm-unittest cannot mock the lookup function, so this test verifies:
-  # 1. The template renders successfully (proving secrets.lookup works)
-  # 2. The output contains a valid versioned key store value
-  # 3. The implementation uses secrets.lookup helper (verified by reading source)
-  #
-  # MANUAL VERIFICATION for existing key preservation:
-  # 1. helm install radius ./deploy/Chart
-  # 2. kubectl get secret radius-encryption-key -n radius-system -o jsonpath='{.data.keys\.json}' | base64 -d
-  # 3. helm upgrade radius ./deploy/Chart
-  # 4. kubectl get secret radius-encryption-key -n radius-system -o jsonpath='{.data.keys\.json}' | base64 -d
-  # 5. Verify the keys.json value is IDENTICAL between steps 2 and 4
+  # Existing-secret lookups are covered in encryption_secret_test.yaml.
   - it: should generate encryption key that can be preserved across upgrades (fresh install)
     templates:
       - dynamic-rp/secret.yaml
@@ -1564,32 +1553,6 @@ tests:
           path: data["keys.json"]
           pattern: "^[A-Za-z0-9+/]+=*$"
         documentIndex: 0
-      # The secrets.lookup helper in the template ensures that:
-      # - On fresh install: generates new versioned key store with version 1
-      # - On upgrade: reuses existing keys from cluster (via lookup)
-      # This behavior is implemented in templates/_helpers.tpl using secrets.lookup
-
-  # Integration test: Verify upgrade scenario preserves existing key
-  # This test documents the expected behavior when a secret already exists
-  - it: should use secrets.lookup helper that preserves existing keys on upgrade
-    templates:
-      - dynamic-rp/secret.yaml
-    asserts:
-      # Verify the template uses secrets.lookup (not direct randBytes)
-      # The helper implements the lookup logic to preserve existing keys
-      - isNotNull:
-          path: data["keys.json"]
-        documentIndex: 0
-      # The key store must be properly encoded (base64-encoded JSON)
-      - matchRegex:
-          path: data["keys.json"]
-          pattern: "^[A-Za-z0-9+/]+=*$"
-        documentIndex: 0
-      # BEHAVIOR: secrets.lookup helper checks for existing secret first
-      # - If secret exists in cluster: returns existing value (preserves all keys)
-      # - If secret missing: generates new versioned key store (version 1)
-      # This ensures upgrades never accidentally replace the key store
-      # CronJob handles automatic rotation, not Helm upgrades
 
   # ─────────────────────────────────────────────────────────────────
   # BuildKit sidecar shape: when opted in via dynamicrp.buildkit.enabled,
