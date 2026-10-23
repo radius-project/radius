@@ -201,12 +201,3 @@ func (s *Source) load() (*material, error) {
 	}
 	return m, nil
 }
-
-// certificate returns the current certificate; see load.
-func (s *Source) certificate() (*tls.Certificate, error) {
-	m, err := s.load()
-	if err != nil {
-		return nil, err
-	}
-	return m.cert, nil
-}
