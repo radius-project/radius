@@ -55,7 +55,13 @@ func TestEncryptionSecretUpgrade(t *testing.T) {
 	require.NoError(t, err)
 	require.Regexp(t, `^v4\.`, string(version), "This regression requires Helm 4 server-side apply.")
 
-	environment := &envtest.Environment{}
+	// A regression must fail on this unusable config, never reach a user's cluster.
+	unusedKubeconfig := filepath.Join(t.TempDir(), "unused-kubeconfig")
+	require.NoError(t, os.WriteFile(unusedKubeconfig, []byte("invalid kubeconfig"), 0600))
+	t.Setenv("KUBECONFIG", unusedKubeconfig)
+	t.Setenv("USE_EXISTING_CLUSTER", "true")
+	useExistingCluster := false
+	environment := &envtest.Environment{UseExistingCluster: &useExistingCluster}
 	config, err := environment.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -124,9 +130,7 @@ func TestEncryptionSecretUpgrade(t *testing.T) {
 
 				switch state {
 				case "rotated":
-					require.Eventually(t, func() bool {
-						return time.Now().UTC().Format(time.RFC3339) != secret.Annotations["radius.dev/last-rotation"]
-					}, 3*time.Second, 10*time.Millisecond)
+					waitForEncryptionTimestampBoundary(t, secret.Annotations["radius.dev/last-rotation"])
 					rotatedAt := time.Now().UTC()
 					store.CurrentVersion = 2
 					store.Keys["2"] = encryption.KeyData{
@@ -159,9 +163,7 @@ func TestEncryptionSecretUpgrade(t *testing.T) {
 				rotation, hasRotation := secret.Annotations["radius.dev/last-rotation"]
 				if hasRotation {
 					// Cross a timestamp boundary so the old template fails deterministically.
-					require.Eventually(t, func() bool {
-						return time.Now().UTC().Format(time.RFC3339) != rotation
-					}, 3*time.Second, 10*time.Millisecond)
+					waitForEncryptionTimestampBoundary(t, rotation)
 				}
 
 				if upgrader == "helm" {
@@ -193,6 +195,15 @@ func TestEncryptionSecretUpgrade(t *testing.T) {
 	}
 }
 
+func waitForEncryptionTimestampBoundary(t *testing.T, timestamp string) {
+	t.Helper()
+	instant, err := time.Parse(time.RFC3339, timestamp)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		return time.Now().Truncate(time.Second).After(instant.Truncate(time.Second))
+	}, 3*time.Second, 10*time.Millisecond)
+}
+
 func ownsEncryptionRotation(t *testing.T, secret *corev1.Secret, manager string, operation metav1.ManagedFieldsOperationType) bool {
 	t.Helper()
 	for _, fields := range secret.ManagedFields {
@@ -204,7 +215,7 @@ func ownsEncryptionRotation(t *testing.T, secret *corev1.Secret, manager string,
 				Annotations map[string]json.RawMessage `json:"f:annotations"`
 			} `json:"f:metadata"`
 		}
-		require.NoError(t, json.Unmarshal(fields.FieldsV1.Raw, &owned))
+		require.NoError(t, json.Unmarshal(fields.FieldsV1.GetRawBytes(), &owned))
 		if _, ok := owned.Metadata.Annotations["f:radius.dev/last-rotation"]; ok {
 			return true
 		}
