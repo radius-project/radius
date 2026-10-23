@@ -118,8 +118,6 @@ func getConfiguration(environment *v20231001preview.EnvironmentResource, applica
 			config.Runtime.Kubernetes.Namespace = config.Runtime.Kubernetes.EnvironmentNamespace
 		}
 
-	case *v20231001preview.AzureContainerInstanceCompute:
-		config.Runtime.AzureContainerInstances = &recipes.AzureContainerInstancesRuntime{}
 	default:
 		return nil, ErrUnsupportedComputeKind
 	}

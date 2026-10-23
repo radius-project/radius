@@ -84,14 +84,14 @@
       },
       "recipe": {
         "type": {
-          "$ref": "#/26"
+          "$ref": "#/24"
         },
         "flags": 2,
         "description": "The recipe data at the time of deployment"
       },
       "outputResources": {
         "type": {
-          "$ref": "#/29"
+          "$ref": "#/27"
         },
         "flags": 0,
         "description": "Properties of an output resource"
@@ -119,9 +119,6 @@
       }
     },
     "elements": {
-      "aci": {
-        "$ref": "#/25"
-      },
       "kubernetes": {
         "$ref": "#/23"
       }
@@ -232,30 +229,6 @@
     }
   },
   {
-    "$type": "StringLiteralType",
-    "value": "aci"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "AzureContainerInstanceCompute",
-    "properties": {
-      "kind": {
-        "type": {
-          "$ref": "#/24"
-        },
-        "flags": 1,
-        "description": "The Azure container instance compute kind"
-      },
-      "resourceGroup": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The resource group to use for the environment."
-      }
-    }
-  },
-  {
     "$type": "ObjectType",
     "name": "RecipeStatus",
     "properties": {
@@ -302,7 +275,7 @@
       },
       "radiusManaged": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/26"
         },
         "flags": 0,
         "description": "Determines whether Radius manages the lifecycle of the underlying resource."
@@ -315,7 +288,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/27"
+      "$ref": "#/25"
     }
   },
   {
@@ -357,7 +330,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/32"
+      "$ref": "#/30"
     }
   },
   {
@@ -373,7 +346,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/36"
+          "$ref": "#/34"
         },
         "flags": 0,
         "description": "Key/value parameters to pass into the recipe at deployment"
@@ -388,7 +361,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/35"
+      "$ref": "#/33"
     }
   },
   {
@@ -403,10 +376,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/37"
+        "$ref": "#/35"
       },
       {
-        "$ref": "#/38"
+        "$ref": "#/36"
       }
     ]
   },
@@ -430,7 +403,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/49"
+          "$ref": "#/47"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation."
@@ -444,7 +417,7 @@
       },
       "secrets": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/28"
         },
         "flags": 0,
         "description": "The secrets to connect to the RabbitMQ instance"
@@ -465,7 +438,7 @@
       },
       "port": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/29"
         },
         "flags": 0,
         "description": "The port of the RabbitMQ instance. Defaults to 5672"
@@ -486,28 +459,28 @@
       },
       "resources": {
         "type": {
-          "$ref": "#/50"
+          "$ref": "#/48"
         },
         "flags": 0,
         "description": "List of the resource IDs that support the rabbitMQ resource"
       },
       "tls": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/26"
         },
         "flags": 0,
         "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
       },
       "recipe": {
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/32"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/53"
+          "$ref": "#/51"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed."
@@ -550,6 +523,12 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/39"
+      },
+      {
+        "$ref": "#/40"
+      },
+      {
         "$ref": "#/41"
       },
       {
@@ -566,19 +545,13 @@
       },
       {
         "$ref": "#/46"
-      },
-      {
-        "$ref": "#/47"
-      },
-      {
-        "$ref": "#/48"
       }
     ]
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/32"
+      "$ref": "#/30"
     }
   },
   {
@@ -593,10 +566,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/51"
+        "$ref": "#/49"
       },
       {
-        "$ref": "#/52"
+        "$ref": "#/50"
       }
     ]
   },
@@ -621,7 +594,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/60"
+          "$ref": "#/58"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -642,7 +615,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/65"
+          "$ref": "#/63"
         },
         "flags": 0,
         "description": "The type of identity that last modified the resource."
@@ -676,16 +649,16 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/54"
+      },
+      {
+        "$ref": "#/55"
+      },
+      {
         "$ref": "#/56"
       },
       {
         "$ref": "#/57"
-      },
-      {
-        "$ref": "#/58"
-      },
-      {
-        "$ref": "#/59"
       }
     ]
   },
@@ -709,16 +682,16 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/59"
+      },
+      {
+        "$ref": "#/60"
+      },
+      {
         "$ref": "#/61"
       },
       {
         "$ref": "#/62"
-      },
-      {
-        "$ref": "#/63"
-      },
-      {
-        "$ref": "#/64"
       }
     ]
   },
@@ -784,7 +757,7 @@
       },
       "secrets": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/28"
         },
         "flags": 2,
         "description": "The secrets to connect to the RabbitMQ instance"
@@ -805,7 +778,7 @@
       },
       "port": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/29"
         },
         "flags": 2,
         "description": "The port of the RabbitMQ instance. Defaults to 5672"
@@ -826,42 +799,42 @@
       },
       "resources": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/31"
         },
         "flags": 2,
         "description": "List of the resource IDs that support the rabbitMQ resource"
       },
       "tls": {
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/26"
         },
         "flags": 2,
         "description": "Specifies whether to use SSL when connecting to the RabbitMQ instance"
       },
       "recipe": {
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/32"
         },
         "flags": 2,
         "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/39"
+          "$ref": "#/37"
         },
         "flags": 2,
         "description": "Specifies how the underlying service/resource is provisioned and managed."
       },
       "properties": {
         "type": {
-          "$ref": "#/40"
+          "$ref": "#/38"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/54"
+          "$ref": "#/52"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -875,7 +848,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/55"
+          "$ref": "#/53"
         },
         "flags": 2,
         "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
@@ -906,21 +879,21 @@
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/67"
+      "$ref": "#/65"
     }
   },
   {
     "$type": "ResourceType",
     "name": "Applications.Messaging/rabbitMQQueues@2023-10-01-preview",
     "body": {
-      "$ref": "#/66"
+      "$ref": "#/64"
     },
     "readableScopes": 0,
     "writableScopes": 0,
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/68"
+          "$ref": "#/66"
         },
         "description": "listSecrets"
       }

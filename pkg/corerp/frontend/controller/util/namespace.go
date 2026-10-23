@@ -23,7 +23,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 )
 
 const (
@@ -73,12 +72,6 @@ func FindEnvironmentNamespaceConflict(ctx context.Context, databaseClient databa
 		}
 
 		if strings.EqualFold(env.ID, excludeID) {
-			continue
-		}
-
-		// ACI environments run on Azure Container Instances and never occupy a Kubernetes
-		// namespace, so they do not conflict.
-		if env.Properties.Compute.Kind == rpv1.ACIComputeKind {
 			continue
 		}
 
