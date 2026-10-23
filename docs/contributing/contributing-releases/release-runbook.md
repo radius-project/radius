@@ -9,7 +9,7 @@ Use this checklist to run a Radius RC, final, or patch release. The [full releas
 - Have maintainer access, an authenticated GitHub CLI (`gh auth status`), and an available reviewer for the `release` environment.
 - Complete the [one-time setup](./README.md#prerequisites), including App permissions, package access, environment protection, branch rules, and the current release pipeline on the target branch. Follow the [first-production readiness checks](./README.md#confirm-readiness-before-the-first-production-cycle); green CI alone is not that evidence.
 - If resource types or recipe packs changed, [release them and merge the generated Radius update](./README.md#release-resource-type-namespaces-and-recipe-packs) first. Unchanged, already-pinned releases need no action.
-- For an existing channel, label selected changes `backport release/X.Y` and **rebase-merge** their generated backports before preparation. Every `supported` version in [`versions.yaml`](../../../versions.yaml) must already have its Radius tag; finish any pending release first.
+- For an existing channel, select only PRs merged into `main`, label them `backport release/X.Y`, and **rebase-merge** their generated backports before preparation. Automation processes one PR at a time in main's merge order, regardless of input order. Keep each source marker and cherry-pick trailer; require `Validate release branch commits` in the branch rules. Every `supported` version in [`versions.yaml`](../../../versions.yaml) must already have its Radius tag; finish any pending release first.
 
 ## Steps
 
@@ -41,6 +41,8 @@ While the first-RC PR remains open, rerunning with the same type/channel retains
 
 Review the generated draft PR: version, product commit, sibling commits, selected backports, and expected outputs in `.github/release-plans/`. For RC/final notes, edit only **Highlights** and **Upgrading**; retain the image-pinning warning. Patch notes are fully generated.
 
+Root `CHANGELOG.md` contains finals and patches only. RC.1 and final notes cover the full new-version changes; later RCs show only changes since the preceding RC, and patches only changes since the preceding stable tag in that channel. Entries are newest first within each category. New plans record `changelogPolicy: stable-only`; an RC changes three metadata files, leaving the root changelog unchanged.
+
 Mark the PR ready, obtain approval, and **squash-merge into `main`**. A frozen first-RC plan does not need regeneration just because `main` advanced.
 
 For an existing `release/X.Y` channel, also review and **rebase-merge the generated metadata backport**. The controller waits for this; the main PR merge alone is not enough. For a first RC, automation creates the release branch.
@@ -51,7 +53,7 @@ Open the automatically started [Release controller](https://github.com/radius-pr
 
 In **Review deployments**, approve **Approve release reconciliation** in the `release` environment.
 
-For a frozen first RC, the controller then creates or reuses a signed release-App commit based on the frozen product cutoff, adding only the four reviewed release metadata files, including the PM notes. The release branch, tag, builds, and artifact locks use this resolved commit, not the later `main` squash commit. Record the resolved source SHA from the summary for subsequent recovery.
+For a frozen first RC, the controller then creates or reuses a signed release-App commit based on the frozen product cutoff, adding only the reviewed release metadata files, including the PM notes. The release branch, tag, builds, and artifact locks use this resolved commit, not the later `main` squash commit. Record the resolved source SHA from the summary for subsequent recovery.
 
 Automation creates the Deployment Engine tag when missing, waits up to 15 minutes for its image while unlocked, locks the image digest, reconciles sibling tags, and creates the Radius tag last. **Do not manually create tags or dispatch individual publishers on the normal path.**
 
@@ -63,6 +65,8 @@ Open the [release build workflow](https://github.com/radius-project/radius/actio
 - **Final or patch:** approve **Approve final or patch publication** in the `release` environment only for the verified version/source pair.
 
 Automation rechecks artifacts, promotes eligible stable aliases for finals/patches, and publishes the GitHub Release. RCs do not move stable aliases.
+
+Then require **Publish sibling GitHub Releases** to succeed for recipes, dashboard, AWS Bicep types, and Deployment Engine. Each entry uses GitHub-generated notes and its verified source. RCs are prereleases; finals/patches become GitHub's Latest only if no newer stable release exists. This does not change registry `latest` tags.
 
 ### 5. Finish downstream work
 
@@ -102,6 +106,10 @@ gh workflow run resume-release.yaml --repo radius-project/radius --ref main -f v
 For a frozen first RC, use the resolved release commit from the summary. Before resolution, use the merged metadata PR commit; replaying that same approval identity reuses the original resolved commit. Legacy first RCs and existing-channel releases retain their original release PR squash or metadata-backport commit. **Never substitute the raw product cutoff or current branch tip.** Resume preserves matching tags and locked digests; approvals may be required again.
 
 **Older open first-RC preparation:** after frozen-source support is deployed, rerun preparation once with the same type/channel to migrate an unmerged `productRef: HEAD` plan. This retains its cutoff and PM curation and returns the PR to draft for renewed review. Do not migrate or reprepare a merged or tagged release; resume its existing identity.
+
+**Older open changelog contract:** rerun preparation to adopt `changelogPolicy: stable-only`. Already merged/tagged plans without this marker keep their original four-file contract and recovery identity. Do not recreate an existing release to change its changelog policy.
+
+**Sibling GitHub Release publication failed:** resume the same version/source. Matching entries and their generated notes are reused, even when Radius is already public. Investigate source/classification conflicts rather than deleting releases or moving tags.
 
 **Dispatch outcome unknown:** inspect the correlated publisher run and destination artifacts before resuming, including after cancellation. Do not blindly redispatch; see [lost dispatch recovery](./README.md#lost-dispatch-response).
 
