@@ -17,7 +17,7 @@ Radius and the application need not run in the same place. A control plane hoste
 
 - Run Radius operations unattended in existing CI/CD pipelines without requiring a particular repository host or frontend.
 - Let teams choose a temporary control plane or an existing centralized control plane.
-- Keep deployment state after jobs end so later runs can manage existing applications.
+- Keep Radius configuration and deployment state after jobs end so later runs can reuse approved environments and recipes and manage existing applications.
 - Deploy workloads to the team's chosen Azure or AWS platform, regardless of where the Radius control plane runs.
 - Show developers deployment results and how to recover from failures without crossing the platform team's environment and access boundaries.
 
@@ -66,18 +66,21 @@ The platform engineer adds Radius operations to an existing pipeline, such as Gi
 - A later job can run on a different agent without depending on files left on the previous agent.
 - If Radius fails to start, the job stops before running the requested operations and tells the platform engineer what to correct. If the job is interrupted, the developer follows the recovery steps in Scenario 7.
 
-### Scenario 2: Keep deployment state independently of the pipeline
+### Scenario 2: Keep Radius configuration and deployment state independently of the pipeline
 
-> As a platform engineer, I want each temporary Radius instance to use a centrally managed persistent state store, so that later deployments can find and update resources created by earlier runs.
+> As a platform engineer, I want each temporary Radius instance to use a centrally managed persistent state store, so that later jobs can reuse our environments and recipes and manage resources created by earlier runs.
 
-The platform engineer configures persistent state for the project and environment. Each new job resumes from the recorded deployment instead of starting from scratch. The state outlives the agent and does not require storage from a particular CI/CD vendor.
+The platform engineer configures persistent state for Radius. The store preserves environment definitions, registered recipe packs, their associations and settings, and application and resource records. Each new job recovers this configuration and deployment state instead of starting from scratch. The state outlives the agent and does not require storage from a particular CI/CD vendor.
 
+- A fresh job can use the saved environments and recipe configuration without requiring the platform engineer to recreate them. Scenario 5 depends on this saved configuration.
+- Radius saves recipe sources and configuration in recipe registrations. The Bicep or Terraform modules they reference can stay in external registries or repositories; the state store need not contain copies of those modules.
+- Recovering saved configuration does not grant access. The job still needs credentials and network access and can use only the environments and resources the platform team authorizes.
 - Later jobs can inspect, update, or remove the application's recorded resources after the original job and temporary control plane are gone.
 - The job distinguishes an explicitly new environment from an existing environment whose state is missing or inaccessible. It does not silently replace missing state with an empty deployment.
 - Jobs targeting the same state cannot silently overwrite one another's changes. A conflicting job waits or reports why it cannot proceed.
 - If a job changes cloud resources but cannot save the resulting state, it reports failure and warns that the recorded state may no longer match the cloud resources.
 
-When a pipeline connects to an existing centralized control plane, that service keeps managing its state. The job does not create a separate copy to manage the same application.
+When a pipeline connects to an existing centralized control plane, that service keeps managing its configuration and deployment state. The job uses the environments and recipes already registered there, subject to its permissions, rather than creating a separate copy to manage the same application.
 
 ### Scenario 3: Deploy to the team's chosen Azure or AWS container platform
 
@@ -110,7 +113,7 @@ Connecting to this service does not transfer applications from another control p
 
 > As a platform engineer, I want pipeline deployments to use our approved environments and deployment recipes, so that developers can deliver applications without recreating our infrastructure standards for each project.
 
-The platform engineer makes approved targets, access settings, and recipes available to the pipeline. Developers select an environment and declare what their application needs. They do not configure control-plane hosting, handle deployment credentials manually, or replace the team's existing delivery approvals.
+The platform engineer configures approved environments and recipe packs in Radius and gives the pipeline the access it needs. Scenario 2 preserves that configuration across temporary jobs; jobs connected to a centralized control plane use the configuration that service already manages. The platform engineer does not recreate environments or register recipes for each run. Developers select an authorized environment and declare what their application needs. They do not configure control-plane hosting, handle deployment credentials manually, or replace the team's existing delivery approvals.
 
 - Jobs using either a temporary or a centralized control plane can use the team's approved recipe configuration, including recipes backed by existing infrastructure modules.
 - A deployment can reference existing foundation resources, such as a container hosting environment, storage account, or messaging service, and add application-owned resources within them.
@@ -180,7 +183,7 @@ I can use Radius from my existing pipeline by starting it for a job or connectin
 
 ### Detailed user experience
 
-1. **Configure the pipeline once.** The platform engineer chooses a temporary control plane or an existing Radius service, provides approved access, and makes the target environments and recipes available. For a temporary control plane, the engineer also configures persistent state.
+1. **Configure the pipeline once.** The platform engineer chooses a temporary control plane or an existing Radius service, provides approved access, and configures the target environments and recipe packs in Radius. For a temporary control plane, the engineer also configures persistent state so later jobs recover this configuration along with application and resource records.
 2. **Select the application and destination.** The developer supplies the application revision, operation, and environment through the normal pipeline. Existing review and approval rules still apply.
 3. **Confirm readiness.** The job identifies the selected control plane and workload destination. If configuration is missing, required state is inaccessible, or a connection fails, the job stops the operation and explains why.
 4. **Run the operation.** The job reports progress and failures while Radius manages the application and its dependencies in the selected environment.
@@ -196,7 +199,7 @@ I can use Radius from my existing pipeline by starting it for a job or connectin
 
 ### Feature 2
 
-**Persistent application state and recovery.** Let fresh jobs manage existing applications from saved state. Prevent conflicting updates from silently losing that state, and tell developers when an operation's outcome is unknown.
+**Persistent Radius configuration, deployment state, and recovery.** Let fresh jobs reuse saved environments and recipe configuration and manage existing applications. Prevent conflicting updates from silently losing that state, and tell developers when an operation's outcome is unknown.
 
 ### Feature 3
 
