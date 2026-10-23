@@ -64,11 +64,11 @@ setup_repo() {
     git -C "${REPO}" config commit.gpgsign false
     git -C "${REPO}" config tag.gpgsign false
     printf "supported:\n  - channel: '0.60'\n    version: '%s'\n" \
-        "${version}" >"${REPO}/versions.yaml"
+        "${version}" > "${REPO}/versions.yaml"
     printf 'deprecated:\n  - channel: '\''0.59'\''\n    version: '\''v0.59.0'\''\n' \
-        >>"${REPO}/versions.yaml"
-    printf '[]\n' >"${REPO}/backports.json"
-    cat >"${REPO}/siblings.json" <<'EOF'
+        >> "${REPO}/versions.yaml"
+    printf '[]\n' > "${REPO}/backports.json"
+    cat > "${REPO}/siblings.json" << 'EOF'
 [
     {
         "name": "recipes",
@@ -90,7 +90,7 @@ setup_repo() {
     }
 ]
 EOF
-    cat >"${REPO}/CHANGELOG.md" <<EOF
+    cat > "${REPO}/CHANGELOG.md" << EOF
 # Changelog
 
 ## [Unreleased]
@@ -102,7 +102,7 @@ Previous release.
 [Unreleased]: https://example.test/compare/v${previous_changelog_version}...HEAD
 [${previous_changelog_version}]: https://example.test/releases/v${previous_changelog_version}
 EOF
-    cat >"${REPO}/docs/release-notes/template.md" <<'EOF'
+    cat > "${REPO}/docs/release-notes/template.md" << 'EOF'
 ## Announcing Radius vX.Y.Z
 <!-- REMINDER TO UPDATE THE VERSION ABOVE AND DELETE THIS COMMENT -->
 
@@ -126,7 +126,7 @@ EOF
 
 <!-- PASTE THE OUTPUT OF THE GENERATED CHANGELOG HERE -->
 EOF
-    cat >"${REPO}/docs/release-notes/template_patch.md" <<'EOF'
+    cat > "${REPO}/docs/release-notes/template_patch.md" << 'EOF'
 ## Radius vX.Y.Z
 
 ## Changelog
@@ -134,9 +134,9 @@ EOF
 <!-- PASTE THE OUTPUT OF THE GENERATED CHANGELOG HERE -->
 EOF
     printf '{"cliAssets":[{"name":"rad_linux_amd64"}]}\n' \
-        >"${REPO}/.github/release-parity/targets.json"
-    printf '[changelog]\n' >"${REPO}/cliff.toml"
-    cat >"${REPO}/fake-git-cliff" <<'EOF'
+        > "${REPO}/.github/release-parity/targets.json"
+    printf '[changelog]\n' > "${REPO}/cliff.toml"
+    cat > "${REPO}/fake-git-cliff" << 'EOF'
 #!/bin/bash
 set -euo pipefail
 printf '%s\n' "$@" > out/git-cliff-args.txt
@@ -170,7 +170,7 @@ cat >"${output}" <<BODY
 BODY
 EOF
     chmod +x "${REPO}/fake-git-cliff"
-    cat >"${REPO}/fake-range.sh" <<'EOF'
+    cat > "${REPO}/fake-range.sh" << 'EOF'
 #!/bin/bash
 printf '%s\n' 'HEAD~1..HEAD'
 EOF
@@ -189,8 +189,8 @@ run_prepare() {
 
     set +e
     LAST_OUTPUT="$(
-        cd "${REPO}" &&
-            GIT_CLIFF="${renderer}" \
+        cd "${REPO}" \
+                     && GIT_CLIFF="${renderer}" \
                 CHANGELOG_RANGE_SCRIPT="${range_script}" \
                 bash "${SCRIPT}" \
                 --release-type "${release_type}" \
@@ -242,14 +242,14 @@ assert_note_format() {
         fail_test "release notes must contain exactly one New contributors section"
         return 1
     fi
-    if [[ "${release_type}" != patch ]] &&
-        grep -Fqx '### New contributors' "${file}"; then
+    if [[ "${release_type}" != patch ]] \
+                                        && grep -Fqx '### New contributors' "${file}"; then
         fail_test "full notes must not repeat New contributors in the changelog"
         return 1
     fi
     assert_file_contains "${file}" \
-        "[${version#v}](https://github.com/radius-project/radius/compare/${previous}...${version}) - 2026-08-24" ||
-        return 1
+        "[${version#v}](https://github.com/radius-project/radius/compare/${previous}...${version}) - 2026-08-24" \
+                                                                                                                 || return 1
     if [[ "$(grep -Fc 'https://keepachangelog.com/en/1.1.0/' "${file}")" != 1 ]]; then
         fail_test "release notes must contain exactly one format attribution"
         return 1
@@ -290,10 +290,10 @@ test_first_rc() {
     assert_version "v0.61.0-rc.1" || return
     assert_yq_value "${REPO}/versions.yaml" '.supported[0].version' \
         'v0.61.0-rc.1' || return
-    assert_file_contains "${REPO}/CHANGELOG.md" \
-        '## [0.61.0-rc.1] - 2026-08-24' || return
-    assert_file_contains "${REPO}/CHANGELOG.md" \
-        '[Unreleased]: https://github.com/radius-project/radius/compare/v0.61.0-rc.1...HEAD' || return
+    if ! git -C "${REPO}" diff --quiet -- CHANGELOG.md; then
+        fail_test "first RC must leave the root changelog unchanged"
+        return
+    fi
     assert_file_contains \
         "${REPO}/docs/release-notes/v0.61.0-rc.1.md" \
         '@first made their first contribution' || return
@@ -301,6 +301,8 @@ test_first_rc() {
         'version: v0.61.0-rc.1' || return
     assert_yq_value "${REPO}/out/release-plan.yaml" \
         '.schemaVersion' '2' || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.changelogPolicy' 'stable-only' || return
     assert_yq_value "${REPO}/out/release-plan.yaml" \
         '.siblingRepositories[1].sourceCommit' \
         '2222222222222222222222222222222222222222' || return
@@ -319,10 +321,8 @@ test_first_rc() {
     assert_note_format "${REPO}/docs/release-notes/v0.61.0-rc.1.md" \
         v0.61.0-rc.1 v0.60.0 rc || return
     assert_file_contains "${REPO}/docs/release-notes/v0.61.0-rc.1.md" \
-        '[@first](https://github.com/first), [@dependabot[bot]](https://github.com/apps/dependabot)' ||
-        return
-    assert_file_contains "${REPO}/CHANGELOG.md" \
-        '### New contributors' || return
+        '[@first](https://github.com/first), [@dependabot[bot]](https://github.com/apps/dependabot)' \
+                                                                                                     || return
     ((++PASS))
 }
 
@@ -440,11 +440,11 @@ test_changelog_pins_product_commit() {
     ((++PASS))
 }
 
-test_subsequent_rc_has_one_cumulative_changelog() {
-    local renderer section notes candidate message
+test_subsequent_rc_has_only_new_changes() {
+    local renderer section notes message
 
     renderer="$(command -v "${GIT_CLIFF:-git-cliff}")" || {
-        fail_test "real git-cliff is required for the cumulative changelog regression"
+        fail_test "real git-cliff is required for the incremental changelog regression"
         return
     }
     setup_repo "v0.60.0-rc.2"
@@ -455,6 +455,7 @@ test_subsequent_rc_has_one_cumulative_changelog() {
     git -C "${REPO}" tag v0.60.0-rc.2
     commit "fix: third candidate fix"
     make_release_branch 0.60
+    commit "feat: unrelated main change"
     cat >> "${REPO}/CHANGELOG.md" << 'EOF'
 
 ## [0.60.0-rc.2] - 2026-08-23
@@ -465,6 +466,7 @@ Previous second candidate.
 
 Previous first candidate.
 EOF
+    cp "${REPO}/CHANGELOG.md" "${TEST_ROOT}/before-rc-changelog.md"
 
     GITHUB_TOKEN="" run_prepare rc 0.60 "${renderer}" \
         "${SCRIPT_DIR}/changelog-range.sh"
@@ -472,25 +474,73 @@ EOF
     section="${REPO}/out/changelog-section.md"
     notes="${REPO}/docs/release-notes/v0.60.0-rc.3.md"
     if [[ "$(grep -c '^## \[' "${section}")" != 1 ]]; then
-        fail_test "cumulative changelog must contain only the new release heading"
+        fail_test "incremental notes must contain only the new release heading"
         return
     fi
     assert_file_contains "${section}" '## [0.60.0-rc.3] - 2026-08-24' || return
     assert_file_contains "${notes}" \
-        '[0.60.0-rc.3](https://github.com/radius-project/radius/compare/v0.59.0...v0.60.0-rc.3) - 2026-08-24' ||
-        return
-    for message in 'First candidate feature' 'Second candidate fix' 'Third candidate fix'; do
-        assert_file_contains "${section}" "${message}" || return
-        assert_file_contains "${notes}" "${message}" || return
-    done
-    for candidate in 1 2 3; do
-        if [[ "$(grep -Fc "## [0.60.0-rc.${candidate}] -" "${REPO}/CHANGELOG.md")" != 1 ]]; then
-            fail_test "CHANGELOG.md must contain each historical RC section exactly once"
+        '[0.60.0-rc.3](https://github.com/radius-project/radius/compare/v0.60.0-rc.2...v0.60.0-rc.3) - 2026-08-24' \
+                                                                                                                   || return
+    assert_file_contains "${notes}" 'Third candidate fix' || return
+    assert_file_contains "${notes}" 'releases/tag/v0.60.0-rc.2' || return
+    for message in 'First candidate feature' 'Second candidate fix' 'Unrelated main change'; do
+        if grep -Fq "${message}" "${section}" "${notes}"; then
+            fail_test "later RC notes contain a previous or unapplied change: ${message}"
             return
         fi
     done
+    if ! cmp -s "${REPO}/CHANGELOG.md" "${TEST_ROOT}/before-rc-changelog.md"; then
+        fail_test "later RC must leave the root changelog unchanged"
+        return
+    fi
     if grep -Eq '^## \[0\.60\.0-rc\.[12]\]' "${notes}"; then
         fail_test "new release notes must not contain historical RC headings"
+        return
+    fi
+    ((++PASS))
+}
+
+test_stable_note_boundaries() {
+    local release_type="$1"
+    local version previous notes renderer
+
+    renderer="$(command -v "${GIT_CLIFF:-git-cliff}")"
+    if [[ "${release_type}" == final ]]; then
+        setup_repo v0.60.0-rc.2
+        version=v0.60.0
+        previous=v0.60.0-rc.2
+    else
+        setup_repo v0.60.1
+        version=v0.60.2
+        previous=v0.60.1
+    fi
+    cp "${SCRIPT_DIR}/../../cliff.toml" "${REPO}/cliff.toml"
+    commit "feat: earlier version feature"
+    if [[ "${release_type}" == patch ]]; then
+        git -C "${REPO}" tag "${previous}"
+    else
+        git -C "${REPO}" tag v0.60.0-rc.1
+    fi
+    commit "fix: selected backport"
+    if [[ "${release_type}" == final ]]; then
+        git -C "${REPO}" tag "${previous}"
+    fi
+    make_release_branch 0.60
+    commit "feat: unrelated main feature"
+    GITHUB_TOKEN="" run_prepare "${release_type}" 0.60 "${renderer}" \
+        "${SCRIPT_DIR}/changelog-range.sh"
+    assert_version "${version}" || return
+    notes="${REPO}/docs/release-notes/${version}.md"
+    assert_file_contains "${notes}" "Selected backport" || return
+    assert_file_contains "${REPO}/CHANGELOG.md" "Selected backport" || return
+    if grep -Fq "Unrelated main feature" "${notes}"; then
+        fail_test "${release_type} notes contain an unapplied main change"
+        return
+    fi
+    if [[ "${release_type}" == final ]]; then
+        assert_file_contains "${notes}" "Earlier version feature" || return
+    elif grep -Fq "Earlier version feature" "${notes}"; then
+        fail_test "patch notes repeat changes from the previous stable release"
         return
     fi
     ((++PASS))
@@ -639,7 +689,7 @@ test_version_only_does_not_mutate_files() {
         fail_test "expected version-only success, got: ${LAST_OUTPUT}"
         return
     fi
-    if [[ "$(<"${output_dir}/version.txt")" != "v0.61.0-rc.1" ]]; then
+    if [[ "$(< "${output_dir}/version.txt")" != "v0.61.0-rc.1" ]]; then
         fail_test "version-only mode selected the wrong version"
         return
     fi
@@ -694,7 +744,7 @@ test_legacy_history() {
     assert_version "v0.61.0-rc.1" || return
     notes="${REPO}/docs/release-notes/v0.61.0-rc.1.md"
     assert_note_format "${notes}" v0.61.0-rc.1 v0.60.0 rc || return
-    for file in "${notes}" "${REPO}/CHANGELOG.md"; do
+    for file in "${notes}" "${REPO}/out/changelog-section.md"; do
         other="$(awk '
             /^### / { active = ($0 == "### Other changes"); next }
             /^## / { active = 0 }
@@ -719,14 +769,14 @@ test_legacy_history() {
     cp "${notes}" "${snapshot}/notes.md"
     cp "${REPO}/CHANGELOG.md" "${snapshot}/CHANGELOG.md"
     cp "${REPO}/out/release-plan.yaml" "${snapshot}/release-plan.yaml"
-    git -C "${REPO}" show HEAD:versions.yaml >"${REPO}/versions.yaml"
-    git -C "${REPO}" show HEAD:CHANGELOG.md >"${REPO}/CHANGELOG.md"
+    git -C "${REPO}" show HEAD:versions.yaml > "${REPO}/versions.yaml"
+    git -C "${REPO}" show HEAD:CHANGELOG.md > "${REPO}/CHANGELOG.md"
     GITHUB_TOKEN="" run_prepare rc 0.61 "${renderer}" \
         "${SCRIPT_DIR}/changelog-range.sh"
     assert_version "v0.61.0-rc.1" || return
-    if ! cmp -s "${notes}" "${snapshot}/notes.md" ||
-        ! cmp -s "${REPO}/CHANGELOG.md" "${snapshot}/CHANGELOG.md" ||
-        ! cmp -s "${REPO}/out/release-plan.yaml" "${snapshot}/release-plan.yaml"; then
+    if ! cmp -s "${notes}" "${snapshot}/notes.md" \
+                                                  || ! cmp -s "${REPO}/CHANGELOG.md" "${snapshot}/CHANGELOG.md" \
+                                                                   || ! cmp -s "${REPO}/out/release-plan.yaml" "${snapshot}/release-plan.yaml"; then
         fail_test "repeated preparation must produce identical notes, changelog, and plan"
         return
     fi
@@ -737,7 +787,7 @@ test_unmerged_backport_fails() {
     setup_repo "v0.60.0-rc.1"
     make_release_branch 0.60
     git -C "${REPO}" tag v0.60.0-rc.1
-    cat >"${REPO}/backports.json" <<'EOF'
+    cat > "${REPO}/backports.json" << 'EOF'
 [{"source_pr":123,"backport_merged":false}]
 EOF
     run_prepare rc 0.60
@@ -847,7 +897,9 @@ main() {
         v0.60.0 refs/remotes/origin/release/0.60
     test_changelog_pins_product_commit patch 0.60 v0.60.1 \
         v0.60.2 refs/remotes/origin/release/0.60
-    test_subsequent_rc_has_one_cumulative_changelog
+    test_subsequent_rc_has_only_new_changes
+    test_stable_note_boundaries final
+    test_stable_note_boundaries patch
     test_subsequent_rc_rejects_stale_metadata
     test_subsequent_rc_rejects_divergent_branch
     test_subsequent_rc_rejects_historical_form

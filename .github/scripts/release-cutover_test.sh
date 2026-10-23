@@ -67,6 +67,7 @@ test_release_job_graph() {
         "coordinate-release",
         "finalize-release",
         "goreleaser-release",
+        "publish-sibling-releases",
         "release-preflight",
         "verify-release"
     ]'
@@ -116,7 +117,7 @@ test_publication_gate() {
           .name == "Promote verified Bicep aliases" and
           (.if | contains("promote_channel")) and
           (."continue-on-error" // false) == false))
-    ' >/dev/null; then
+    ' > /dev/null; then
         fail_test "failed verification or missing approval can reach publication"
         return
     fi
@@ -183,8 +184,8 @@ test_rejects_malformed_release_tag() {
 
 test_goreleaser_stages_prepared_draft() {
     # shellcheck disable=SC2016 # Literal Make expression under test.
-    if ! grep -Fq 'make goreleaser-release' "${RELEASE_WORKFLOW}" ||
-        ! grep -Fq -- '--release-notes "$(GORELEASER_RELEASE_NOTES)"' \
+    if ! grep -Fq 'make goreleaser-release' "${RELEASE_WORKFLOW}" \
+                                                                  || ! grep -Fq -- '--release-notes "$(GORELEASER_RELEASE_NOTES)"' \
             "${ARTIFACTS_MAKEFILE}"; then
         fail_test "GoReleaser does not consume the prepared release notes"
         return
@@ -231,9 +232,9 @@ test_finalization_is_digest_locked() {
         return
     fi
     if ! grep -Fq 'make capture-release-image-digests' \
-        "${RELEASE_WORKFLOW}" ||
-        ! grep -Fq 'make release-cli-oci' "${RELEASE_WORKFLOW}" ||
-        ! grep -Fq 'make promote-release-aliases' "${RELEASE_WORKFLOW}"; then
+        "${RELEASE_WORKFLOW}" \
+                              || ! grep -Fq 'make release-cli-oci' "${RELEASE_WORKFLOW}" \
+                                                                || ! grep -Fq 'make promote-release-aliases' "${RELEASE_WORKFLOW}"; then
         fail_test "finalization is not based on immutable digest locks"
         return
     fi
@@ -255,19 +256,63 @@ test_main_publishes_only_edge() {
             return
         fi
     done
-    if ! grep -Fq ':edge"' "${CLI_WORKFLOW}" ||
-        ! grep -Fq 'DOCKER_TAG_VERSION: edge' "${IMAGE_WORKFLOW}"; then
+    if ! grep -Fq ':edge"' "${CLI_WORKFLOW}" \
+                                             || ! grep -Fq 'DOCKER_TAG_VERSION: edge' "${IMAGE_WORKFLOW}"; then
         fail_test "main publication does not write edge directly"
         return
     fi
     ((++PASS))
 }
 
+test_only_main_synchronizes_edge_docs() {
+    local expression
+    expression="$(yq -r '.jobs.reference-docs.env.PUBLISH_DOCS' \
+        "${REPO_ROOT}/.github/workflows/publish-docs.yaml")"
+    # shellcheck disable=SC2016 # Literal GitHub expression under test.
+    if [[ "${expression}" != '${{ github.ref == '\''refs/heads/main'\'' && (github.event_name == '\''push'\'' || (github.event_name == '\''workflow_dispatch'\'' && github.event.inputs.open_pull_request == '\''true'\'')) }}' ]]; then
+        fail_test "release branches or manual non-main runs can synchronize edge docs"
+        return
+    fi
+    if ! yq -o=json '.' "${REPO_ROOT}/.github/workflows/publish-docs.yaml" \
+                                                                           | jq -e '
+            (.on.push.branches | index("release/*") != null) and
+            (.jobs."reference-docs".steps |
+                all(.[] | select(.id == "app-token" or .id == "bot-details" or
+                    .name == "Sync reference docs to docs repository");
+                    .if == "env.PUBLISH_DOCS == '\''true'\''"))
+        ' > /dev/null; then
+        fail_test "release previews or main-only docs write gates changed"
+        return
+    fi
+    ((++PASS))
+}
+
+test_sibling_release_publication_is_gated_and_resumable() {
+    if ! yq -o=json '.jobs' "${RELEASE_WORKFLOW}" | jq -e '
+        ."publish-sibling-releases" as $job |
+        ($job.needs | sort) == ["finalize-release", "release-preflight", "verify-release"] and
+        ($job.if | contains("needs.verify-release.result == '\''success'\''")) and
+        ($job.if | contains("needs.finalize-release.result == '\''success'\''")) and
+        ($job.if | contains("needs.release-preflight.outputs.release-state == '\''published'\''")) and
+        $job.concurrency.group == "release-finalization" and
+        $job.concurrency.queue == "max" and
+        $job.permissions.contents == "read" and
+        ($job.steps | [.[] | select(.id == "sibling-token" or .id == "engine-token")] |
+            length == 2 and all(.[]; .with."permission-workflows" == "write")) and
+        ($job.steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json")) and
+        (.["build-summary"].needs | index("publish-sibling-releases") != null)
+    ' > /dev/null; then
+        fail_test "sibling GitHub Releases bypass publication, serialization or resume reporting"
+        return
+    fi
+    ((++PASS))
+}
+
 test_old_release_paths_are_deleted() {
-    if [[ -e "${REPO_ROOT}/.github/workflows/__publish-release.yaml" ]] ||
-        [[ -e "${REPO_ROOT}/.github/scripts/verify-goreleaser-shadow.sh" ]] ||
-        [[ -e "${REPO_ROOT}/.github/scripts/image-payload-manifest/main.go" ]] ||
-        grep -Fq 'goreleaser-shadow' "${RELEASE_WORKFLOW}"; then
+    if [[ -e "${REPO_ROOT}/.github/workflows/__publish-release.yaml" ]] \
+                                                                        || [[ -e "${REPO_ROOT}/.github/scripts/verify-goreleaser-shadow.sh" ]] \
+                                                                            || [[ -e "${REPO_ROOT}/.github/scripts/image-payload-manifest/main.go" ]] \
+                                                                               || grep -Fq 'goreleaser-shadow' "${RELEASE_WORKFLOW}"; then
         fail_test "superseded tag release paths are still present"
         return
     fi
@@ -293,9 +338,9 @@ test_final_cleanup_contract() {
         return
     fi
     if ! yq -o=json '.jobs."build-and-push-remaining-images".strategy.matrix.image' \
-        "${RELEASE_WORKFLOW}" | jq -e '. == ["bicep"]' >/dev/null ||
-        ! jq -e 'all(.images[]; .category != "test")' \
-            "${REPO_ROOT}/.github/release-parity/targets.json" >/dev/null; then
+        "${RELEASE_WORKFLOW}" | jq -e '. == ["bicep"]' > /dev/null \
+                                                                  || ! jq -e 'all(.images[]; .category != "test")' \
+            "${REPO_ROOT}/.github/release-parity/targets.json" > /dev/null; then
         fail_test "test images are still official release outputs"
         return
     fi
@@ -305,7 +350,7 @@ test_final_cleanup_contract() {
             (."build-and-push-cli".needs | index("build-snapshot") != null) and
             (."build-and-push-images".needs | index("build-snapshot") != null) and
             (."build-check".needs | index("build-snapshot") != null and index("build-and-push-images") != null)
-        ' >/dev/null; then
+        ' > /dev/null; then
             fail_test "${workflow} bypasses the shared snapshot or its required check"
             return
         fi
@@ -315,7 +360,7 @@ test_final_cleanup_contract() {
             ([to_entries[] | select(.key != "publish-edge") | .value.permissions.packages] | all(. == null)) and
             (."publish-edge".if | contains("refs/heads/main") and contains("radius-project/radius")) and
             (."publish-edge".steps | any(.id == "current-main" and (.with.script | contains("getBranch"))))
-        ' >/dev/null; then
+        ' > /dev/null; then
             fail_test "snapshot exports gained registry permissions or edge lost its main-head guard"
             return
         fi
@@ -353,13 +398,13 @@ test_test_image_tags_are_attempt_scoped() {
         .build.outputs.REL_VERSION == "${{ steps.test-image-version.outputs.REL_VERSION }}" and
         .tests.env.REL_VERSION == "${{ needs.build.outputs.REL_VERSION }}" and
         .tests.env.BICEP_RECIPE_TAG_VERSION == .tests.env.REL_VERSION
-    ' >/dev/null; then
+    ' > /dev/null; then
         fail_test "cloud test images can reuse tags across build attempts"
         return
     fi
     if ! yq -o=json '.jobs.build.steps' "${REPO_ROOT}/.github/workflows/functional-test-noncloud.yaml" | jq -e '
         any(.[]; .id == "gen-id" and (.run | contains("REL_VERSION=test-") and contains("${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}")))
-    ' >/dev/null; then
+    ' > /dev/null; then
         fail_test "noncloud test images do not use attempt-specific tags"
         return
     fi
@@ -467,7 +512,7 @@ test_bicep_image_uses_staged_extension_versions() {
         "${RELEASE_WORKFLOW}" | jq -e '
         any(.[]; .run == "make docker-publish-bicep" and
             .env.BICEP_EXTENSION_TAG == "${{ env.REL_VERSION }}")
-    ' >/dev/null; then
+    ' > /dev/null; then
         fail_test "release Bicep image still depends on unpublished channel aliases"
         return
     fi
@@ -488,7 +533,7 @@ test_bicep_image_uses_staged_extension_versions() {
             jq -e --arg tag "${expected}" '
                 .extensions.radius == ("br:biceptypes.azurecr.io/radius:" + $tag) and
                 .extensions.aws == ("br:biceptypes.azurecr.io/aws:" + $tag)
-            ' "${directory}/bicepconfig.json" >/dev/null || exit 1
+            ' "${directory}/bicepconfig.json" > /dev/null || exit 1
         done
     ); then
         fail_test "Bicep extension configuration changed its tag contract"
@@ -508,6 +553,8 @@ main() {
     test_goreleaser_stages_prepared_draft
     test_finalization_is_digest_locked
     test_main_publishes_only_edge
+    test_only_main_synchronizes_edge_docs
+    test_sibling_release_publication_is_gated_and_resumable
     test_old_release_paths_are_deleted
     test_final_cleanup_contract
     test_test_image_tags_are_attempt_scoped
