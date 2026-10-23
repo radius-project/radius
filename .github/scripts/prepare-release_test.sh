@@ -139,6 +139,7 @@ EOF
     cat >"${REPO}/fake-git-cliff" <<'EOF'
 #!/bin/bash
 set -euo pipefail
+printf '%s\n' "$@" > out/git-cliff-args.txt
 output=""
 tag=""
 while [[ $# -gt 0 ]]; do
@@ -398,6 +399,44 @@ test_subsequent_rc() {
     git -C "${REPO}" tag v0.60.0-rc.2
     run_prepare rc 0.60
     assert_version "v0.60.0-rc.3" || return
+    ((++PASS))
+}
+
+test_changelog_pins_product_commit() {
+    local release_type="$1"
+    local channel="$2"
+    local current_version="$3"
+    local expected_version="$4"
+    local source_ref="$5"
+    local product_commit range
+
+    setup_repo "${current_version}"
+    git -C "${REPO}" tag "${current_version}"
+    if [[ "${release_type}" != final ]]; then
+        commit "fix: selected source change"
+    fi
+    if [[ "${source_ref}" != HEAD ]]; then
+        git -C "${REPO}" update-ref "${source_ref}" HEAD
+        commit "feat: main-only change"
+    fi
+    product_commit="$(git -C "${REPO}" rev-parse "${source_ref}^{commit}")"
+
+    GITHUB_TOKEN="fixture-token" run_prepare "${release_type}" "${channel}" \
+        "${REPO}/fake-git-cliff" "${SCRIPT_DIR}/changelog-range.sh"
+    assert_version "${expected_version}" || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" '.source.productRef' \
+        "${source_ref}" || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" '.source.productCommit' \
+        "${product_commit}" || return
+    if grep -Fxq -- '--offline' "${REPO}/out/git-cliff-args.txt"; then
+        fail_test "changelog rendering must keep GitHub metadata enabled"
+        return
+    fi
+    range="$(tail -n 1 "${REPO}/out/git-cliff-args.txt")"
+    if [[ "${range##*..}" != "${product_commit}" ]]; then
+        fail_test "${release_type} changelog has an unpinned source: ${range}"
+        return
+    fi
     ((++PASS))
 }
 
@@ -801,6 +840,13 @@ main() {
     test_pending_supported_release_blocks_preparation v0.60.0
     test_pending_supported_release_blocks_preparation v0.59.1
     test_subsequent_rc
+    test_changelog_pins_product_commit rc 0.61 v0.60.0 v0.61.0-rc.1 HEAD
+    test_changelog_pins_product_commit rc 0.60 v0.60.0-rc.1 \
+        v0.60.0-rc.2 refs/remotes/origin/release/0.60
+    test_changelog_pins_product_commit final 0.60 v0.60.0-rc.1 \
+        v0.60.0 refs/remotes/origin/release/0.60
+    test_changelog_pins_product_commit patch 0.60 v0.60.1 \
+        v0.60.2 refs/remotes/origin/release/0.60
     test_subsequent_rc_has_one_cumulative_changelog
     test_subsequent_rc_rejects_stale_metadata
     test_subsequent_rc_rejects_divergent_branch
