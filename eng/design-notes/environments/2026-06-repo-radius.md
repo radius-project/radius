@@ -11,6 +11,8 @@ https://github.com/radius-project/radius/blob/main/eng/design-notes/templates/fe
 
 Repo Radius lets teams deploy and manage applications through their existing CI/CD pipelines without operating a permanent Radius control plane. A job can start a temporary control plane or connect to a centralized service that the platform team already runs.
 
+A CI/CD runner executes pipeline jobs. Azure DevOps calls these runners agents.
+
 Radius and the application need not run in the same place. A control plane hosted on Kubernetes can deploy workloads to a separate Kubernetes cluster or a managed container environment. Teams should be able to use GitHub Actions or Azure DevOps to deploy to Azure Kubernetes Service (AKS), Amazon Elastic Kubernetes Service (EKS), Azure Container Apps (ACA), or Amazon Elastic Container Service (ECS). These are intended targets; not every combination is available today.
 
 ### Top level goals
@@ -66,14 +68,14 @@ The platform engineer adds Radius operations to an existing pipeline, such as Gi
 
 - The job reports when Radius is ready, which application and environment it targets, and whether the requested operations succeeded.
 - When the job finishes normally, it releases the temporary control plane without deleting deployed workloads or their persistent state.
-- A later job can run on a different agent without depending on files left on the previous agent.
+- A later job can run on a different CI/CD runner without depending on files left on the previous runner.
 - If Radius fails to start, the job stops before running the requested operations and tells the platform engineer what to correct. An interrupted job reports its status and any unknown outcome as described in Scenario 6.
 
 ### Scenario 2: Keep Radius configuration and deployment state independently of the pipeline
 
 > As a platform engineer, I want each temporary Radius instance to use a centrally managed persistent state store, so that later jobs can reuse our environments and recipes and manage resources created by earlier runs.
 
-The platform engineer configures persistent state for Radius. The store preserves environment definitions, registered recipe packs, their associations and settings, and application and resource records. Each new job recovers this configuration and deployment state instead of starting from scratch. The state outlives the agent and does not require storage from a particular CI/CD vendor.
+The platform engineer configures persistent state for Radius. The store preserves environment definitions, registered recipe packs, their associations and settings, and application and resource records. Each new job recovers this configuration and deployment state instead of starting from scratch. The state outlives the CI/CD runner and does not require storage from a particular CI/CD vendor.
 
 - A fresh job can use the saved environments and recipe configuration without requiring the platform engineer to recreate them. Scenario 5 depends on this saved configuration.
 - Radius saves recipe sources and configuration in recipe registrations. The Bicep or Terraform modules they reference can stay in external registries or repositories; the state store need not contain copies of those modules.
@@ -104,7 +106,7 @@ A centralized control plane also lets teams choose a separate workload destinati
 
 The platform engineer selects the existing service and target Radius environment, then supplies the approved connection and access settings. The job connects to that service and runs the requested operations against the state the service already manages.
 
-- The pipeline does not start another control plane or require the agent to host Kubernetes for Radius.
+- The pipeline does not start another control plane or require the CI/CD runner to host Kubernetes for Radius.
 - The job identifies the connected service and target environment before making changes.
 - If the connection or authorization fails, the job stops the operation and explains what to correct. It does not fall back to a new local control plane or a different environment.
 - Whether the job completes, fails, or is cancelled, it leaves the centralized service, its state, and unrelated applications intact.
@@ -135,7 +137,7 @@ The job identifies the requested command, control plane, application, and enviro
 - The result distinguishes success, failure, cancellation, and an unknown outcome. A cancelled job is not reported as a successful operation.
 - When an operation fails, the result identifies the failed step and includes available error details and diagnostics. It distinguishes completed work from work whose outcome is unknown.
 - The result reports whether state was saved. If saving failed or cannot be confirmed, it warns that recorded state may not match cloud resources.
-- Results and diagnostics remain available after the agent or temporary control plane disappears.
+- Results and diagnostics remain available after the CI/CD runner or temporary control plane disappears.
 - If a centralized service may still be running an operation after the job ends, the result makes that uncertainty explicit rather than claiming that cancellation stopped the operation.
 
 ### Scenario 7: Delete an application through the pipeline
@@ -157,7 +159,7 @@ The developer explicitly requests deletion through the team's pipeline, subject 
 The team starts from a maintained suite of GitHub Actions samples. Together, the samples cover registering and configuring recipe packs, creating and configuring environments, setting up persistent state and access, and deploying, inspecting, updating, and deleting an application. Platform setup is separate from routine application jobs, which reuse the saved environments and recipe registrations.
 
 - The suite demonstrates both temporary control-plane execution and connection to an existing centralized service. Temporary jobs release their control plane without deleting workloads or saved state; connected jobs leave the shared service running.
-- Later application jobs run on fresh agents and use the saved configuration and deployment state. The samples do not recreate environments or register recipe packs on every deployment.
+- Later application jobs run on fresh GitHub Actions runners and use the saved configuration and deployment state. The samples do not recreate environments or register recipe packs on every deployment.
 - Each sample documents prerequisites, required permissions, configuration inputs, supported workload targets, expected results, and cleanup steps. Maintainers validate the runnable samples against the Radius versions they document.
 - Application deployment scripts demonstrate bounded retries for documented retryable failures and a clearly defined rollback procedure, such as redeploying a previous application revision. These are pipeline policies that users can inspect and adapt, not new Radius recovery capabilities.
 - Each rollback example states what it restores and what it cannot reverse. Redeploying an earlier revision does not guarantee reversal of infrastructure or data changes, and restoring an older Radius state snapshot alone is not rollback.
@@ -192,7 +194,7 @@ The [external Kubernetes deployment proposal](./2026-05-external-kubernetes.md) 
 
 ## Details of user problem
 
-As a platform engineer, I already have pipelines, environment boundaries, and deployment standards. I want Radius to work within them. My team may not want another permanent service to maintain. Or we may already run Radius and should not need a second instance just for CI/CD. Either way, replacing a disposable agent must not lose our deployment history or change where applications run.
+As a platform engineer, I already have pipelines, environment boundaries, and deployment standards. I want Radius to work within them. My team may not want another permanent service to maintain. Or we may already run Radius and should not need a second instance just for CI/CD. Either way, replacing a disposable CI/CD runner must not lose our deployment history or change where applications run.
 
 As an application developer, I want to describe my application and deliver it through the same pipeline as the rest of my code. I need to know where it runs, whether the change succeeded, and what failed so I can decide what to do next. I should not need to know where the Radius control plane runs or how long it lives.
 
