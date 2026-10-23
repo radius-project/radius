@@ -107,6 +107,4 @@ For a frozen first RC, use the resolved release commit from the summary. Before 
 
 **Preparation blocked:** merge missing backports or finish the preceding release, then rerun Prepare Release with the same inputs. Never edit the generated plan to bypass validation.
 
-**Manual changelog edits:** ordinary root `CHANGELOG.md` edits, including historical corrections and RC cleanup, are reviewed documentation and may accompany ordinary tooling changes. Human review protects their accuracy; the merge-group gate does not validate their content. Changes to `versions.yaml`, `.github/release-plans/*.yaml`, and versioned `docs/release-notes/v*.md` still require a matching generated release PR. Generated release PRs still undergo exact file/content matching and changelog regeneration validation; publication gates are unchanged. The queue executes the trusted base's validator, not queued PR code: merge [#13434](https://github.com/radius-project/radius/pull/13434) into `main` before refreshing and requeueing the cleanup in [#13433](https://github.com/radius-project/radius/pull/13433). Do not bypass checks or modify published release identities.
-
 Never move approved tags, delete locks, overwrite published artifacts, or disable verification. Follow [break-glass recovery](./README.md#break-glass-recovery) for conflicts or fixes needed in already-tagged build code.
