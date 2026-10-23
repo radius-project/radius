@@ -9,17 +9,17 @@ https://github.com/radius-project/radius/blob/main/eng/design-notes/templates/fe
 
 ## Topic Summary
 
-Repo Radius lets teams use Radius from their existing CI/CD pipelines without requiring every team to operate a permanent Radius control plane. A pipeline can start a temporary control plane for a job or connect to a centralized control plane that the platform team already operates. Both paths let developers deploy and manage applications through the delivery process they already use.
+Repo Radius lets teams deploy and manage applications through their existing CI/CD pipelines without operating a permanent Radius control plane. A job can start a temporary control plane or connect to a centralized service that the platform team already runs.
 
-Where Radius runs does not determine where the application runs. A control plane hosted on Kubernetes can deploy workloads to a separate Kubernetes cluster or a managed container environment. Teams should be able to use GitHub Actions or Azure DevOps to deploy to Azure Kubernetes Service (AKS), Amazon Elastic Kubernetes Service (EKS), Azure Container Apps (ACA), or Amazon Elastic Container Service (ECS). These are intended targets; not every combination is available today.
+Radius and the application need not run in the same place. A control plane hosted on Kubernetes can deploy workloads to a separate Kubernetes cluster or a managed container environment. Teams should be able to use GitHub Actions or Azure DevOps to deploy to Azure Kubernetes Service (AKS), Amazon Elastic Kubernetes Service (EKS), Azure Container Apps (ACA), or Amazon Elastic Container Service (ECS). These are intended targets; not every combination is available today.
 
 ### Top level goals
 
 - Run Radius operations unattended in existing CI/CD pipelines without requiring a particular repository host or frontend.
 - Let teams choose a temporary control plane or an existing centralized control plane.
-- Preserve deployment state independently of disposable jobs so later runs can manage existing applications.
-- Deploy workloads to the Azure or AWS platform selected by the team, independently of where the Radius control plane runs.
-- Give developers clear deployment results and recovery guidance while preserving the platform team's environment and access boundaries.
+- Keep deployment state after jobs end so later runs can manage existing applications.
+- Deploy workloads to the team's chosen Azure or AWS platform, regardless of where the Radius control plane runs.
+- Show developers deployment results and how to recover from failures without crossing the platform team's environment and access boundaries.
 
 ### Non-goals (out of scope)
 
@@ -34,14 +34,14 @@ Where Radius runs does not determine where the application runs. A control plane
 
 ### User persona(s)
 
-**Platform engineer.** Owns deployment standards, cloud access, and the environments available to application teams. Some platform engineers operate a shared Radius service; others want Radius to exist only while a pipeline job runs. Both need to fit Radius into established delivery practices.
+**Platform engineer.** Sets deployment standards, controls cloud access, and provides environments for application teams. Some platform engineers run a shared Radius service; others want Radius to run only during a pipeline job. Both need Radius to work within their existing delivery practices.
 
-**Application developer.** Maintains an application and its declared dependencies. Wants to deploy, inspect, update, and remove it through the team's pipeline without learning how to host Radius or configure each cloud service.
+**Application developer.** Maintains an application and its declared dependencies. Uses the team's pipeline to deploy, inspect, update, and remove the application without having to learn how to host Radius or configure each cloud service.
 
 ### Challenge(s) faced by the user
 
-- Operating a permanent control plane adds maintenance before a team can deploy its first application.
-- Disposable jobs cannot rely on local state surviving until the next deployment.
+- Maintaining a permanent control plane adds work before a team can deploy its first application.
+- A disposable job can lose its local state before the next deployment.
 - A pipeline-specific integration can force teams to change CI/CD systems or duplicate environment configuration.
 - Requiring workloads to run beside Radius prevents teams from choosing a different cluster or a managed container platform.
 - Teams with a centralized Radius installation need to reuse it rather than create another control plane for every job.
@@ -49,7 +49,7 @@ Where Radius runs does not determine where the application runs. A control plane
 
 ### Positive user outcome
 
-A platform engineer configures how a pipeline reaches Radius and which environments it may manage. Developers then use that pipeline to deliver applications without managing the control plane. Each job finds the right application state, targets the intended workload environment, and leaves enough information for the next job or an operator to continue.
+A platform engineer configures the pipeline's connection to Radius and the environments it may manage. Developers use that pipeline to deliver applications without managing the control plane. Each job reads the application's state, targets the selected environment, and saves enough information for the next job or an operator to continue.
 
 A fresh job can update an earlier deployment. A job using a shared control plane leaves that service running. Neither mode requires application workloads to share the control plane's cluster.
 
@@ -59,64 +59,64 @@ A fresh job can update an earlier deployment. A job using a shared control plane
 
 > As a platform engineer, I want to run Radius for the duration of a CI/CD pipeline job, so that I can automate application deployment without operating a permanent Radius control plane.
 
-The platform engineer adds Radius operations to an existing pipeline, such as GitHub Actions or Azure DevOps, and chooses to run Radius temporarily. The job starts Radius, selects the environment and its saved state, and runs the requested operations without interactive prompts.
+The platform engineer adds Radius operations to an existing pipeline, such as GitHub Actions or Azure DevOps, and chooses a temporary control plane. The job starts Radius, selects the environment and its saved state, and runs the requested operations without interactive prompts.
 
-- The job reports when Radius is ready, which application and environment it is targeting, and whether the requested operations succeeded.
-- Normal job completion releases the temporary control plane without deleting deployed workloads or their persistent state.
+- The job reports when Radius is ready, which application and environment it targets, and whether the requested operations succeeded.
+- When the job finishes normally, it releases the temporary control plane without deleting deployed workloads or their persistent state.
 - A later job can run on a different agent without depending on files left on the previous agent.
-- Startup failure stops the requested operations and identifies what the platform engineer needs to correct. An interrupted job follows the recovery experience in Scenario 7.
+- If Radius fails to start, the job stops before running the requested operations and tells the platform engineer what to correct. If the job is interrupted, the developer follows the recovery steps in Scenario 7.
 
 ### Scenario 2: Keep deployment state independently of the pipeline
 
 > As a platform engineer, I want each temporary Radius instance to use a centrally managed persistent state store, so that later deployments can find and update resources created by earlier runs.
 
-The platform engineer configures persistent state for the project and environment. A fresh job resumes from the recorded deployment rather than treating each run as a first deployment. The state does not depend on the lifetime of an agent or on storage supplied by a particular CI/CD vendor.
+The platform engineer configures persistent state for the project and environment. Each new job resumes from the recorded deployment instead of starting from scratch. The state outlives the agent and does not require storage from a particular CI/CD vendor.
 
-- Subsequent jobs can inspect, update, or remove the application's recorded resources after the original job and temporary control plane are gone.
+- Later jobs can inspect, update, or remove the application's recorded resources after the original job and temporary control plane are gone.
 - The job distinguishes an explicitly new environment from an existing environment whose state is missing or inaccessible. It does not silently replace missing state with an empty deployment.
 - Jobs targeting the same state cannot silently overwrite one another's changes. A conflicting job waits or reports why it cannot proceed.
-- If a job changes cloud resources but cannot preserve the resulting state, it reports failure and warns that recorded state may not reflect the cloud.
+- If a job changes cloud resources but cannot save the resulting state, it reports failure and warns that the recorded state may no longer match the cloud resources.
 
-When a pipeline connects to an existing centralized control plane, that service remains responsible for its state. The job does not create a separate copy to manage the same application.
+When a pipeline connects to an existing centralized control plane, that service keeps managing its state. The job does not create a separate copy to manage the same application.
 
 ### Scenario 3: Deploy to the team's chosen Azure or AWS container platform
 
 > As an application developer, I want Radius to deploy my application to the Azure or AWS container platform selected by our platform team, so that adopting Radius does not force my project onto Kubernetes.
 
-The developer selects an approved environment rather than the location where Radius happens to run. That environment can target an external AKS or EKS cluster, or a managed container platform such as ACA or ECS. Kubernetes-based workloads still need a workload cluster; managed container workloads do not require a Kubernetes workload cluster merely because Radius uses one.
+The developer selects an approved workload environment, separate from the location where Radius runs. The environment can target an external AKS or EKS cluster, or a managed container platform such as ACA or ECS. Kubernetes workloads still need a workload cluster. Managed container workloads do not need one just because Radius runs on Kubernetes.
 
 - The job identifies the workload destination separately from the Radius control plane it uses.
-- The application and its dependencies deploy to the selected destination, not to a temporary control plane's cluster.
+- Radius deploys the application and its dependencies to the selected destination, not to a temporary control plane's cluster.
 - Stopping a temporary control plane does not stop the application.
 - If the target cannot support a requested application capability, the job identifies the unsupported capability rather than silently selecting another platform.
 
-The same separation applies when the pipeline uses a centralized control plane. Platform-specific settings may differ; the experience does not promise identical capabilities across all targets.
+A centralized control plane also lets teams choose a separate workload destination. Settings and supported capabilities may differ across target platforms.
 
 ### Scenario 4: Connect a pipeline to an existing centralized Radius control plane
 
-> As a platform engineer, I want a CI/CD job to connect to an existing external Radius control plane and execute Radius commands against it, so that teams can use the Radius service we already operate.
+> As a platform engineer, I want a CI/CD job to connect to an existing external Radius control plane and run Radius commands against it, so that teams can use the Radius service we already operate.
 
-The platform engineer selects the existing service, supplies the approved connection and access configuration, and identifies the target Radius environment. The job connects to that service and runs the requested operations against the state it already manages.
+The platform engineer selects the existing service and target Radius environment, then supplies the approved connection and access settings. The job connects to that service and runs the requested operations against the state the service already manages.
 
 - The pipeline does not start another control plane or require the agent to host Kubernetes for Radius.
 - The job identifies the connected service and target environment before making changes.
-- A connection or authorization failure stops the operation with guidance. The pipeline does not fall back to a new local control plane or a different environment.
-- Job completion, failure, or cancellation does not shut down the centralized service, discard its state, or delete unrelated applications.
-- The job's access remains limited to the applications and environments authorized by the platform team.
+- If the connection or authorization fails, the job stops the operation and explains what to correct. It does not fall back to a new local control plane or a different environment.
+- Whether the job completes, fails, or is cancelled, it leaves the centralized service, its state, and unrelated applications intact.
+- The job can access only the applications and environments the platform team authorizes.
 
-Selecting this mode does not transfer applications from another control plane. The target service must already manage the application, or the job must be creating a new application there.
+Connecting to this service does not transfer applications from another control plane. The service must already manage the application, or the job must create a new application there.
 
 ### Scenario 5: Use approved environments and existing infrastructure
 
-> As a platform engineer, I want pipeline deployments to use our approved environments and deployment recipes, so that developers can deliver applications without rebuilding our infrastructure standards for each project.
+> As a platform engineer, I want pipeline deployments to use our approved environments and deployment recipes, so that developers can deliver applications without recreating our infrastructure standards for each project.
 
 The platform engineer makes approved targets, access settings, and recipes available to the pipeline. Developers select an environment and declare what their application needs. They do not configure control-plane hosting, handle deployment credentials manually, or replace the team's existing delivery approvals.
 
-- Both execution modes can use the team's approved recipe configuration, including recipes backed by existing infrastructure modules.
-- Application deployments can reference existing foundation resources, such as a container hosting environment, storage account, or messaging service, and add application-owned resources within them.
-- Environment-specific settings and supported application settings, such as scaling configuration, apply without duplicating the application definition.
-- Deployments preserve the approved networking and project isolation. Missing access or configuration produces an actionable failure rather than broader access or a different target.
-- Referenced resources remain distinct from resources owned by the application, so removing an application does not remove shared foundations.
+- Jobs using either a temporary or a centralized control plane can use the team's approved recipe configuration, including recipes backed by existing infrastructure modules.
+- A deployment can reference existing foundation resources, such as a container hosting environment, storage account, or messaging service, and add application-owned resources within them.
+- Teams can apply environment-specific settings and supported application settings, such as scaling configuration, without duplicating the application definition.
+- Deployments preserve the approved networking and project isolation. If access or configuration is missing, the job explains what to correct instead of broadening access or choosing a different target.
+- Referencing a shared resource does not make the application its owner. Removing the application leaves those shared resources intact.
 
 The platform team keeps its existing environment and recipe management practices. It does not need a new organization-wide catalog or a fleet-wide update service.
 
@@ -124,79 +124,79 @@ The platform team keeps its existing environment and recipe management practices
 
 > As an application developer, I want to deploy my application and its dependencies through our pipeline, inspect the result, and promote a tested revision to another environment, so that I can deliver changes without managing each cloud resource separately.
 
-The developer commits an application change and runs the normal delivery pipeline. The job identifies the application revision and target environment, then reports progress and the result. The developer can inspect the recorded application resources, their connections, and available endpoints after the job ends.
+The developer commits an application change and runs the team's delivery pipeline. The job identifies the application revision and target environment, then reports progress and the result. After the job ends, the developer can inspect the recorded application resources, their connections, and available endpoints.
 
-- A later deployment updates the existing application using the state associated with the selected environment.
-- Inspection distinguishes Radius's last recorded state from a live view of the cloud; it does not claim to detect changes made outside Radius.
-- Promotion selects an explicit application revision and applies the destination environment's settings and approvals. It does not substitute the latest revision or promise identical infrastructure across environments.
-- Removing a resource from the application definition does not imply that Radius has deleted it. Resources that require explicit removal remain visible until removed.
+- A later deployment updates the existing application using the selected environment's state.
+- When developers inspect an application, they see Radius's last recorded state, not a live view of the cloud. Inspection does not claim to detect changes made outside Radius.
+- To promote an application, the developer selects an explicit revision. The job applies the destination environment's settings and approvals. It does not substitute the latest revision or promise identical infrastructure across environments.
+- Deleting a resource from the application definition does not mean Radius has deleted the resource. Resources that require explicit removal remain visible until removed.
 - Developers can perform these operations through the pipeline without a separate graphical frontend.
 
 ### Scenario 7: Recover from failures and remove an application safely
 
 > As an application developer, I want to understand a failed deployment and safely retry or remove my application, so that a failed job does not leave me guessing which resources still exist.
 
-The developer reviews the job result to see what succeeded, what failed, and whether Radius preserved the application state. After correcting the problem, they can retry against the same environment. The result explains when an operator must reconcile recorded state with cloud resources before a retry; it does not promise automatic rollback.
+The developer reads the job result to see what succeeded, what failed, and whether Radius saved the application state. After correcting the problem, they can retry against the same environment. If an operator must reconcile the recorded state with cloud resources first, the result says so. It does not promise automatic rollback.
 
 - Failure details remain available after the agent or temporary control plane disappears.
-- A cancelled job is not reported as a successful deployment. If the outcome of an in-progress operation is unknown, the result says so and directs the developer to check it before retrying.
-- The developer can explicitly request removal of an application from a named environment, subject to the team's approval rules.
-- Removal deletes application-owned resources while preserving referenced foundations, other applications, and any centralized control plane.
-- Partial removal identifies what remains and allows a later operation to continue. Stopping Radius alone is never treated as application removal.
+- The result never reports a cancelled job as a successful deployment. If an operation's outcome is unknown, the result says so and directs the developer to check it before retrying.
+- The developer can explicitly request that Radius remove an application from a named environment, subject to the team's approval rules.
+- Radius deletes application-owned resources while preserving referenced foundations, other applications, and any centralized control plane.
+- If Radius removes only part of an application, the result identifies what remains so a later operation can continue. Stopping Radius alone does not remove an application.
 
 ## Key dependencies and risks
 
-- **Workload platform support.** Each target needs recipes that provide the requested application capabilities. Users need a clear supported-platform list and understandable errors where a capability is unavailable.
-- **Network and access configuration.** The selected execution mode must be able to reach the control plane, persistent state, and deployment targets it needs. Teams using private networks must not have to expose services publicly to adopt Repo Radius.
-- **State and interrupted operations.** A failed job can change cloud resources without recording those changes. Developers need preserved state and explicit recovery guidance before they can safely retry.
+- **Workload platform support.** Each target needs recipes that provide the requested application capabilities. Users need a list of supported platforms and errors that identify unavailable capabilities.
+- **Network and access configuration.** Jobs and control planes must be able to reach the services they need, including persistent state and deployment targets. Teams using private networks must not have to expose services publicly to adopt Repo Radius.
+- **State and interrupted operations.** A failed job can change cloud resources without recording those changes. Developers need saved state and instructions for recovery before they can safely retry.
 - **Shared-service boundaries.** Jobs using a centralized control plane must not disrupt other teams or exceed their authorized environments.
-- **Compatibility.** A pipeline and its selected control plane or recipes may be incompatible. The user needs an actionable compatibility error rather than an unexplained deployment failure.
-- **Job startup time.** Temporary execution adds time before an operation starts. The acceptable delay must be tested with teams using the feature in routine deployments.
+- **Compatibility.** A pipeline and its selected control plane or recipes may be incompatible. The error must identify the incompatibility and explain what the user can do about it.
+- **Job startup time.** Starting a temporary control plane delays the requested operation. Test how much delay teams will accept in routine deployments.
 
 ## Key assumptions to test and questions to answer
 
-- Which CI/CD and workload-platform combinations must be available together in the first release? Validate GitHub Actions and Azure DevOps against the AKS, EKS, ACA, and ECS journeys before setting release coverage.
-- Which persistent-state services can target teams already operate, and what access, retention, and recovery requirements must Repo Radius satisfy? Validate with platform engineers without prescribing a storage technology here.
+- Which CI/CD and workload-platform combinations must the first release support? Test the GitHub Actions and Azure DevOps scenarios with AKS, EKS, ACA, and ECS before deciding.
+- Which persistent-state services do prospective users already know how to operate? Confirm their access, retention, and recovery requirements with platform engineers before choosing a storage technology.
 - What connection and permission setup will teams accept for a centralized control plane, especially on private networks? Test an unattended job with restricted access to one environment.
-- Which recipe configurations and existing-resource patterns must work across both execution modes? Validate with an application that uses an existing hosting environment and shared backing services.
+- Which recipe configurations and uses of existing resources must work with both temporary and centralized control planes? Test with an application that uses an existing hosting environment and shared backing services.
 - What should users see when a job is cancelled while a centralized service is still executing an operation? Define when work can stop and how a later job discovers its outcome.
 - What startup delay is acceptable, and how should a team learn that its pipeline, Radius service, or recipes need an update? Validate with representative deployment and inspection jobs.
 
 ## Current state
 
-The earlier Repo Radius proposal described temporary execution through GitHub Actions, with GitHub-specific environment and state handling. The scope now includes other CI/CD systems and connections to an existing centralized Radius control plane. These are product requirements, not claims of implemented support.
+The earlier Repo Radius proposal called for running Radius temporarily through GitHub Actions, with GitHub-specific environment and state handling. Repo Radius must also work with other CI/CD systems and connect to an existing centralized control plane. These requirements do not imply that Radius supports those scenarios today.
 
-The [external Kubernetes deployment proposal](./2026-05-external-kubernetes.md) addresses workloads running on a cluster separate from Radius. That separation is one part of this experience; managed container targets also need suitable platform support.
+The [external Kubernetes deployment proposal](./2026-05-external-kubernetes.md) covers workloads running on a cluster separate from Radius. It addresses the Kubernetes case; managed container targets also need suitable platform support.
 
 ## Details of user problem
 
-As a platform engineer, I already have pipelines, environment boundaries, and deployment standards. I want Radius to work within them. For some teams, running another permanent service is too much overhead. For others, we already operate Radius and should not have to create a second instance just to use it from CI/CD. In either case, a disposable agent must not lose our deployment history or change where applications run.
+As a platform engineer, I already have pipelines, environment boundaries, and deployment standards. I want Radius to work within them. My team may not want another permanent service to maintain. Or we may already run Radius and should not need a second instance just for CI/CD. Either way, replacing a disposable agent must not lose our deployment history or change where applications run.
 
-As an application developer, I want to describe my application and deliver it through the same pipeline as the rest of my code. I need to know where it was deployed, whether the change succeeded, and how to recover when it did not. I should not have to understand the location or lifetime of the Radius control plane to do that.
+As an application developer, I want to describe my application and deliver it through the same pipeline as the rest of my code. I need to know where it runs, whether the change succeeded, and how to recover if it failed. I should not need to know where the Radius control plane runs or how long it lives.
 
 ## Desired user experience outcome
 
-I can use Radius from my existing pipeline, either temporarily or through the service my platform team provides. I can deploy to the approved Azure or AWS environment, inspect the result after the job ends, and update it from a fresh job. If an operation fails, I can see what happened and what to do next without losing track of the application.
+I can use Radius from my existing pipeline by starting it for a job or connecting to the service my platform team provides. I can deploy to the approved Azure or AWS environment, inspect the result after the job ends, and update the application from a fresh job. If an operation fails, I can see what happened and what to do next without losing track of the application.
 
 ### Detailed user experience
 
-1. **Configure the pipeline once.** The platform engineer chooses temporary execution or an existing Radius service, provides approved access, and makes the target environments and recipes available. Temporary execution also has persistent state configured.
+1. **Configure the pipeline once.** The platform engineer chooses a temporary control plane or an existing Radius service, provides approved access, and makes the target environments and recipes available. For a temporary control plane, the engineer also configures persistent state.
 2. **Select the application and destination.** The developer supplies the application revision, operation, and environment through the normal pipeline. Existing review and approval rules still apply.
-3. **Confirm readiness.** The job identifies the selected control plane and workload destination. Missing configuration, inaccessible required state, or a failed connection stops the operation with an explanation.
+3. **Confirm readiness.** The job identifies the selected control plane and workload destination. If configuration is missing, required state is inaccessible, or a connection fails, the job stops the operation and explains why.
 4. **Run the operation.** The job reports progress and failures while Radius manages the application and its dependencies in the selected environment.
-5. **Review the outcome.** The developer sees the revision, target, resource results, and any state or recovery warnings. Inspection remains available after the job ends.
-6. **Finish without affecting workloads.** Temporary execution releases its control plane; connected execution leaves the centralized service running. Deployed applications and their state remain available for the next operation.
-7. **Continue delivery.** A later job updates, inspects, promotes, or explicitly removes the application. An interrupted or failed operation is checked before a retry.
+5. **Review the outcome.** The developer sees the revision, target, resource results, and any state or recovery warnings. The developer can still inspect the application after the job ends.
+6. **Finish without affecting workloads.** The job releases a temporary control plane or leaves a centralized service running. Deployed applications and their state remain available for the next operation.
+7. **Continue delivery.** A later job updates, inspects, promotes, or explicitly removes the application. The developer checks an interrupted or failed operation before retrying.
 
 ## Key investments
 
 ### Feature 1
 
-**CI/CD execution choices.** Let teams run Radius temporarily or connect to a centralized service through unattended jobs, without requiring a particular CI/CD vendor or frontend.
+**CI/CD execution choices.** Let teams run Radius for a job or connect to a centralized service. Jobs run unattended and do not require a particular CI/CD vendor or frontend.
 
 ### Feature 2
 
-**Persistent application state and recovery.** Let fresh jobs resume management of existing applications, prevent conflicting updates from silently losing state, and make uncertain outcomes visible.
+**Persistent application state and recovery.** Let fresh jobs manage existing applications from saved state. Prevent conflicting updates from silently losing that state, and tell developers when an operation's outcome is unknown.
 
 ### Feature 3
 
@@ -204,4 +204,4 @@ I can use Radius from my existing pipeline, either temporarily or through the se
 
 ### Feature 4
 
-**Application lifecycle experience.** Give developers consistent progress, inspection, promotion, failure recovery, and explicit removal through their existing pipelines.
+**Application lifecycle experience.** Let developers follow progress, inspect and promote applications, recover from failures, and explicitly remove applications through their existing pipelines. Keep these operations consistent across both control-plane modes.
