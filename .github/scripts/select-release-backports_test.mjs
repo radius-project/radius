@@ -15,13 +15,18 @@
 // ------------------------------------------------------------
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import {
   entriesForMergedPull,
   findIncludedSourceCommits,
+  orderByMainHistory,
   releaseChannelForEvent,
-  selectNextBackport
+  selectNextBackport as select
 } from "./select-release-backports.mjs";
 
 const source = (number) => ({
@@ -31,6 +36,41 @@ const source = (number) => ({
   html_url: `https://example.test/pull/${number}`,
   head: { ref: `feature-${number}` },
   labels: [{ name: "backport release/0.60" }]
+});
+
+const selectNextBackport = (options) =>
+  select({
+    mainHistory: [source(101).merge_commit_sha, source(102).merge_commit_sha],
+    ...options
+  });
+
+test("orders backports by main ancestry, not PR number, date, or input order", () => {
+  const earlier = { ...source(102), merged_at: "2026-08-24T00:00:00Z" };
+  const later = { ...source(101), merged_at: earlier.merged_at };
+  const history = [earlier.merge_commit_sha, later.merge_commit_sha];
+  for (const sources of [
+    [earlier, later],
+    [later, earlier]
+  ]) {
+    assert.deepEqual(orderByMainHistory(sources, history), [earlier, later]);
+    assert.equal(
+      selectNextBackport({
+        channel: "0.60",
+        sources,
+        mainHistory: history,
+        openBackports: [],
+        historicalBackports: []
+      })[0].source_pr,
+      102
+    );
+  }
+});
+
+test("rejects sources absent from the pinned main history", () => {
+  assert.throws(
+    () => orderByMainHistory([source(101)], [source(102).merge_commit_sha]),
+    /not in the checked-out main merge history/
+  );
 });
 
 test("serializes two backports through successive release pushes", () => {
@@ -265,5 +305,97 @@ test("does not select a release queue for main or unmerged pull requests", () =>
     }
   ]) {
     assert.equal(releaseChannelForEvent(context), "");
+  }
+});
+
+test("main merge events and release pushes use the same history-ordered queue", async (t) => {
+  const workflow = (
+    await readFile(
+      new URL("../workflows/release-backport.yaml", import.meta.url),
+      "utf8"
+    )
+  ).replace(/\r\n/g, "\n");
+  const script = workflow.match(
+    /          script: \|\n([\s\S]*?)(?=\n  backport:)/
+  )?.[1];
+  assert.ok(script);
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  const run = new AsyncFunction(
+    "github",
+    "context",
+    "process",
+    script.replace(/^            /gm, "")
+  );
+  const directory = await mkdtemp(path.join(os.tmpdir(), "backport-order-"));
+  t.after(() => rm(directory, { recursive: true, force: true, maxRetries: 5 }));
+  const git = (...args) =>
+    execFileSync("git", ["-C", directory, ...args], {
+      encoding: "utf8"
+    }).trim();
+  git("init", "--quiet", "-b", "main");
+  git("config", "user.name", "Backport test");
+  git("config", "user.email", "test@example.com");
+  git("config", "commit.gpgsign", "false");
+  git("commit", "--quiet", "--allow-empty", "-m", "fix: merged first");
+  const earlier = {
+    ...source(102),
+    merge_commit_sha: git("rev-parse", "HEAD"),
+    merged_at: "2026-10-23T00:00:00Z",
+    base: { ref: "main" },
+    merged: true
+  };
+  git("commit", "--quiet", "--allow-empty", "-m", "fix: merged later");
+  const later = {
+    ...source(101),
+    merge_commit_sha: git("rev-parse", "HEAD"),
+    merged_at: earlier.merged_at,
+    base: { ref: "main" },
+    merged: true
+  };
+  git("update-ref", "refs/remotes/origin/main", "HEAD");
+  const original = process.cwd();
+  try {
+    process.chdir(directory);
+    for (const sources of [
+      [earlier, later],
+      [later, earlier]
+    ]) {
+      const github = {
+        paginate: async (method, args) => method(args),
+        rest: {
+          pulls: {
+            list: async () => [],
+            get: async ({ pull_number }) => ({
+              data: sources.find((pull) => pull.number === pull_number)
+            })
+          },
+          issues: {
+            listForRepo: async () =>
+              sources.map(({ number }) => ({ number, pull_request: {} }))
+          },
+          git: { listMatchingRefs: async () => ({ data: [] }) }
+        }
+      };
+      for (const event of [
+        { eventName: "pull_request_target", payload: { pull_request: later } },
+        { eventName: "push", ref: "refs/heads/release/0.60" }
+      ]) {
+        const result = await run(
+          github,
+          { repo: { owner: "radius-project", repo: "radius" }, ...event },
+          {
+            env: {
+              GITHUB_WORKSPACE: new URL("../../", import.meta.url).href.replace(
+                /\/$/,
+                ""
+              )
+            }
+          }
+        );
+        assert.equal(JSON.parse(result)[0].source_pr, 102);
+      }
+    }
+  } finally {
+    process.chdir(original);
   }
 });

@@ -47,7 +47,7 @@ async function requirePublicationManifest(core, tag) {
   );
 }
 
-function selectAliases(releases, tag) {
+export function selectAliases(releases, tag) {
   if (!/^v\d+\.\d+\.\d+(?:-rc\.[1-9]\d*)?$/.test(tag)) {
     throw new Error("TAG must be a Radius release tag");
   }

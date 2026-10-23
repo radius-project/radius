@@ -52,8 +52,9 @@ fail_test() {
 write_plan() {
     local product_commit="$1"
 
-    cat >"${EXPECTED_PLAN}" <<EOF
+    cat > "${EXPECTED_PLAN}" << EOF
 schemaVersion: 2
+changelogPolicy: stable-only
 version: v0.61.0-rc.1
 releaseType: rc
 channel: "0.61"
@@ -89,7 +90,7 @@ create_sibling_repository() {
     git -C "${seed}" config user.name "Radius Test"
     git -C "${seed}" config user.email "test@example.com"
     git -C "${seed}" config commit.gpgsign false
-    printf '%s main\n' "${name}" >"${seed}/state.txt"
+    printf '%s main\n' "${name}" > "${seed}/state.txt"
     git -C "${seed}" add state.txt
     git -C "${seed}" commit -q -m "Initial ${name} state"
     git -C "${seed}" remote add origin "${origin}"
@@ -100,7 +101,7 @@ advance_sibling_main() {
     local name="$1"
     local seed="${SIBLING_ROOT}/${name}-seed"
 
-    printf '%s later\n' "${name}" >>"${seed}/state.txt"
+    printf '%s later\n' "${name}" >> "${seed}/state.txt"
     git -C "${seed}" commit -q -am "Later ${name} change"
     git -C "${seed}" push -q origin main
 }
@@ -118,7 +119,7 @@ wrap_body() {
         cat "${EXPECTED_PLAN}"
         echo '```'
         echo '<!-- radius-release-plan:end -->'
-    } >"${REPO}/body.md"
+    } > "${REPO}/body.md"
 }
 
 setup_repo() {
@@ -142,25 +143,26 @@ setup_repo() {
     git -C "${REPO}" config user.email "test@example.com"
     git -C "${REPO}" config commit.gpgsign false
     git -C "${REPO}" config tag.gpgsign false
-    cat >"${REPO}/versions.yaml" <<'EOF'
+    cat > "${REPO}/versions.yaml" << 'EOF'
 supported:
   - channel: '0.60'
     version: 'v0.60.0'
 deprecated: []
 EOF
-    git -C "${REPO}" add versions.yaml
+    printf '# Changelog\n\n## [Unreleased]\n' > "${REPO}/CHANGELOG.md"
+    git -C "${REPO}" add versions.yaml CHANGELOG.md
     git -C "${REPO}" commit -q -m "chore: initial"
     git -C "${REPO}" tag v0.60.0
     BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
     write_plan "${BASE_SHA}"
     wrap_body
     printf '%s\n' \
-        '[".github/release-plans/v0.61.0-rc.1.yaml","CHANGELOG.md","docs/release-notes/v0.61.0-rc.1.md","versions.yaml"]' \
-        >"${REPO}/files.json"
+        '[".github/release-plans/v0.61.0-rc.1.yaml","docs/release-notes/v0.61.0-rc.1.md","versions.yaml"]' \
+        > "${REPO}/files.json"
 
     mkdir -p "${EXPECTED_DIR}/docs/release-notes" \
         "${HEAD_DIR}/.github/release-plans"
-    cat >"${EXPECTED_DIR}/versions.yaml" <<'EOF'
+    cat > "${EXPECTED_DIR}/versions.yaml" << 'EOF'
 supported:
   - channel: "0.61"
     version: v0.61.0-rc.1
@@ -168,18 +170,8 @@ deprecated:
   - channel: '0.60'
     version: 'v0.60.0'
 EOF
-    cat >"${EXPECTED_DIR}/CHANGELOG.md" <<'EOF'
-# Changelog
-
-## [Unreleased]
-
-## [0.61.0-rc.1] - 2026-08-24
-
-### Fixed
-
-- Fix release preparation
-EOF
-    cat >"${EXPECTED_DIR}/docs/release-notes/v0.61.0-rc.1.md" <<'EOF'
+    cp "${REPO}/CHANGELOG.md" "${EXPECTED_DIR}/CHANGELOG.md"
+    cat > "${EXPECTED_DIR}/docs/release-notes/v0.61.0-rc.1.md" << 'EOF'
 ## Announcing Radius v0.61.0-rc.1
 
 ## Highlights
@@ -199,8 +191,8 @@ EOF
     cp -R "${EXPECTED_DIR}/." "${HEAD_DIR}/"
     cp "${EXPECTED_PLAN}" \
         "${HEAD_DIR}/.github/release-plans/v0.61.0-rc.1.yaml"
-    printf '[]\n' >"${EXPECTED_BACKPORTS}"
-    cat >"${FAKE_PREPARE}" <<'EOF'
+    printf '[]\n' > "${EXPECTED_BACKPORTS}"
+    cat > "${FAKE_PREPARE}" << 'EOF'
 #!/bin/bash
 set -euo pipefail
 output_dir=""
@@ -226,7 +218,7 @@ EOF
 run_validator() {
     local status
 
-    pushd "${REPO}" >/dev/null
+    pushd "${REPO}" > /dev/null
     set +e
     PREPARE_RELEASE_SCRIPT="${FAKE_PREPARE}" \
         EXPECTED_BACKPORTS_FILE="${EXPECTED_BACKPORTS}" \
@@ -238,12 +230,12 @@ run_validator() {
         --repository radius-project/radius
     status=$?
     set -e
-    popd >/dev/null
+    popd > /dev/null
     return "${status}"
 }
 
 test_accepts_generated_plan() {
-    if ! run_validator >/dev/null; then
+    if ! run_validator > /dev/null; then
         fail_test "expected the generated plan to pass"
         return
     fi
@@ -272,7 +264,7 @@ test_accepts_curated_note_sections() {
         "${HEAD_DIR}/docs/release-notes/v0.61.0-rc.1.md"
     sed -i 's/<!-- CURATE UPGRADING -->/Run the documented upgrade command./' \
         "${HEAD_DIR}/docs/release-notes/v0.61.0-rc.1.md"
-    if ! run_validator >/dev/null; then
+    if ! run_validator > /dev/null; then
         fail_test "expected curated note sections to pass"
         return
     fi
@@ -291,8 +283,8 @@ test_real_preparation_contract() {
     cp "${SCRIPT_DIR}/../../docs/release-notes/"template*.md \
         "${REPO}/docs/release-notes/"
     printf '{"repository":"radius-project/radius"}\n' \
-        >"${REPO}/.github/release-parity/targets.json"
-    cat >"${REPO}/CHANGELOG.md" <<'EOF'
+        > "${REPO}/.github/release-parity/targets.json"
+    cat > "${REPO}/CHANGELOG.md" << 'EOF'
 # Changelog
 
 ## [Unreleased]
@@ -302,17 +294,17 @@ EOF
     git -C "${REPO}" add CHANGELOG.md cliff.toml docs .github
     git -C "${REPO}" commit -q -m "Legacy release change (#201)"
     BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
-    yq -o=json '.siblingRepositories' "${EXPECTED_PLAN}" >"${siblings}"
+    yq -o=json '.siblingRepositories' "${EXPECTED_PLAN}" > "${siblings}"
     FAKE_PREPARE="${SCRIPT_DIR}/prepare-release.sh"
     (
-        cd "${REPO}" &&
-            GITHUB_TOKEN="" bash "${FAKE_PREPARE}" \
-                --release-type rc --channel 0.61 \
-                --release-date 2026-08-24 \
-                --backports-file "${EXPECTED_BACKPORTS}" \
-                --sibling-repositories-file "${siblings}" \
-                --output-dir "${output}"
-    ) >"${log}" 2>&1 || {
+        cd "${REPO}" || exit 1
+        GITHUB_TOKEN="" bash "${FAKE_PREPARE}" \
+            --release-type rc --channel 0.61 \
+            --release-date 2026-08-24 \
+            --backports-file "${EXPECTED_BACKPORTS}" \
+            --sibling-repositories-file "${siblings}" \
+            --output-dir "${output}"
+    ) > "${log}" 2>&1 || {
         cat "${log}"
         fail_test "real release preparation failed"
         return
@@ -322,9 +314,9 @@ EOF
     cp "${REPO}/versions.yaml" "${REPO}/CHANGELOG.md" "${HEAD_DIR}/"
     cp "${REPO}/${notes}" "${HEAD_DIR}/${notes}"
     cp "${REPO}/${plan}" "${HEAD_DIR}/${plan}"
-    git -C "${REPO}" show HEAD:versions.yaml >"${REPO}/versions.yaml"
-    git -C "${REPO}" show HEAD:CHANGELOG.md >"${REPO}/CHANGELOG.md"
-    if ! GITHUB_TOKEN="" run_validator >"${log}" 2>&1; then
+    git -C "${REPO}" show HEAD:versions.yaml > "${REPO}/versions.yaml"
+    git -C "${REPO}" show HEAD:CHANGELOG.md > "${REPO}/CHANGELOG.md"
+    if ! GITHUB_TOKEN="" run_validator > "${log}" 2>&1; then
         cat "${log}"
         fail_test "real prepared output must pass trusted regeneration"
         return
@@ -333,15 +325,15 @@ EOF
         -e 's/^## Highlights$/&\n\nA curated highlight./' \
         -e 's/^## Upgrading to Radius .*$/&\n\nCurated upgrade guidance./' \
         "${HEAD_DIR}/${notes}"
-    if ! GITHUB_TOKEN="" run_validator >"${log}" 2>&1; then
+    if ! GITHUB_TOKEN="" run_validator > "${log}" 2>&1; then
         cat "${log}"
         fail_test "real output must still allow Highlights and Upgrading curation"
         return
     fi
     sed -i 's/Keep a Changelog 1.1.0/Unsupported convention/' \
         "${HEAD_DIR}/${notes}"
-    if GITHUB_TOKEN="" run_validator >"${log}" 2>&1 ||
-        ! grep -Fq 'release notes differ outside Highlights or Upgrading' "${log}"; then
+    if GITHUB_TOKEN="" run_validator > "${log}" 2>&1 \
+                                                    || ! grep -Fq 'release notes differ outside Highlights or Upgrading' "${log}"; then
         cat "${log}"
         fail_test "the generated attribution must not be a curated section"
         return
@@ -351,7 +343,7 @@ EOF
 
 test_rejects_product_commit_drift() {
     sed -i "s/${BASE_SHA}/$(printf 'f%.0s' {1..40})/" "${REPO}/body.md"
-    if run_validator >/dev/null 2>&1; then
+    if run_validator > /dev/null 2>&1; then
         fail_test "expected product commit drift to fail"
         return
     fi
@@ -360,10 +352,30 @@ test_rejects_product_commit_drift() {
 
 test_rejects_unexpected_file() {
     jq '. + ["unrelated.txt"]' "${REPO}/files.json" \
-        >"${REPO}/files.json.tmp"
+        > "${REPO}/files.json.tmp"
     mv "${REPO}/files.json.tmp" "${REPO}/files.json"
-    if run_validator >/dev/null 2>&1; then
+    if run_validator > /dev/null 2>&1; then
         fail_test "expected an unrelated changed file to fail"
+        return
+    fi
+    ((++PASS))
+}
+
+test_rejects_rc_changelog_file() {
+    jq '. + ["CHANGELOG.md"]' "${REPO}/files.json" \
+        > "${REPO}/files.json.tmp"
+    mv "${REPO}/files.json.tmp" "${REPO}/files.json"
+    if run_validator > /dev/null 2>&1; then
+        fail_test "a new RC plan must not change the root changelog"
+        return
+    fi
+    ((++PASS))
+}
+
+test_requires_new_preparation_policy() {
+    sed -i '/changelogPolicy:/d' "${REPO}/body.md"
+    if run_validator > /dev/null 2>&1; then
+        fail_test "an open legacy preparation must be regenerated"
         return
     fi
     ((++PASS))
@@ -371,7 +383,7 @@ test_rejects_unexpected_file() {
 
 test_rejects_tampered_versions() {
     yq -i '.supported[0].version = "v9.9.9"' "${HEAD_DIR}/versions.yaml"
-    if run_validator >/dev/null 2>&1; then
+    if run_validator > /dev/null 2>&1; then
         fail_test "expected tampered versions.yaml to fail"
         return
     fi
@@ -379,8 +391,8 @@ test_rejects_tampered_versions() {
 }
 
 test_rejects_tampered_changelog() {
-    printf '\n- Unplanned entry\n' >>"${HEAD_DIR}/CHANGELOG.md"
-    if run_validator >/dev/null 2>&1; then
+    printf '\n- Unplanned entry\n' >> "${HEAD_DIR}/CHANGELOG.md"
+    if run_validator > /dev/null 2>&1; then
         fail_test "expected a tampered changelog to fail"
         return
     fi
@@ -390,7 +402,7 @@ test_rejects_tampered_changelog() {
 test_rejects_tampered_generated_notes() {
     sed -i 's/Fix release preparation/Replace generated content/' \
         "${HEAD_DIR}/docs/release-notes/v0.61.0-rc.1.md"
-    if run_validator >/dev/null 2>&1; then
+    if run_validator > /dev/null 2>&1; then
         fail_test "expected generated note changes to fail"
         return
     fi
@@ -399,7 +411,7 @@ test_rejects_tampered_generated_notes() {
 
 test_rejects_tampered_output_contract() {
     sed -i 's|radius-project/radius|other/repository|' "${REPO}/body.md"
-    if run_validator >/dev/null 2>&1; then
+    if run_validator > /dev/null 2>&1; then
         fail_test "expected a tampered output contract to fail"
         return
     fi
@@ -409,7 +421,7 @@ test_rejects_tampered_output_contract() {
 test_rejects_tampered_committed_plan() {
     yq -i '.previousVersion = "v9.9.9"' \
         "${HEAD_DIR}/.github/release-plans/v0.61.0-rc.1.yaml"
-    if run_validator >/dev/null 2>&1; then
+    if run_validator > /dev/null 2>&1; then
         fail_test "expected a tampered committed plan to fail"
         return
     fi
@@ -419,7 +431,7 @@ test_rejects_tampered_committed_plan() {
 test_rejects_tampered_backports() {
     sed -i 's/includedBackports: \[\]/includedBackports: [{source_pr: 1, backport_merged: true}]/' \
         "${REPO}/body.md"
-    if run_validator >/dev/null 2>&1; then
+    if run_validator > /dev/null 2>&1; then
         fail_test "expected a tampered backport list to fail"
         return
     fi
@@ -427,10 +439,10 @@ test_rejects_tampered_backports() {
 }
 
 test_rejects_live_backport_state_drift() {
-    cat >"${EXPECTED_BACKPORTS}" <<'EOF'
+    cat > "${EXPECTED_BACKPORTS}" << 'EOF'
 [{"source_pr":123,"backport_merged":true}]
 EOF
-    if run_validator >/dev/null 2>&1; then
+    if run_validator > /dev/null 2>&1; then
         fail_test "expected live backport state drift to fail"
         return
     fi
@@ -439,7 +451,7 @@ EOF
 
 test_accepts_sibling_branch_advance() {
     advance_sibling_main recipes
-    if ! run_validator >/dev/null; then
+    if ! run_validator > /dev/null; then
         fail_test "expected a sibling branch that advanced after planning to pass"
         return
     fi
@@ -451,7 +463,7 @@ test_rejects_unreachable_planned_sibling_commit() {
 
     sed -i "s/${RECIPES_COMMIT}/${unreachable}/" "${REPO}/body.md" \
         "${EXPECTED_PLAN}" "${HEAD_DIR}/.github/release-plans/v0.61.0-rc.1.yaml"
-    if run_validator >/dev/null 2>&1; then
+    if run_validator > /dev/null 2>&1; then
         fail_test "expected an unreachable planned sibling commit to fail"
         return
     fi
@@ -473,6 +485,10 @@ main() {
     test_rejects_product_commit_drift
     setup_repo
     test_rejects_unexpected_file
+    setup_repo
+    test_rejects_rc_changelog_file
+    setup_repo
+    test_requires_new_preparation_policy
     setup_repo
     test_rejects_tampered_versions
     setup_repo
