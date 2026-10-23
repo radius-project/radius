@@ -27,6 +27,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"testing"
@@ -779,4 +781,90 @@ func Test_ApplyHelmChart_QueryReleaseError(t *testing.T) {
 	}, vals)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to query Helm release")
+}
+
+func Test_GetPreviousReleaseVersion(t *testing.T) {
+	newRelease := func(revision int, appVersion string, status releasecommon.Status) *releasev1.Release {
+		return &releasev1.Release{
+			Version: revision,
+			Chart:   &chart.Chart{Metadata: &chart.Metadata{AppVersion: appVersion}},
+			Info:    &releasev1.Info{Status: status},
+		}
+	}
+
+	// storageOrder returns revisions 1..n in the order Kubernetes lists the release
+	// Secrets: sorted by name, so v10 and v11 come before v2.
+	storageOrder := func(n int, release func(revision int) *releasev1.Release) []*releasev1.Release {
+		releases := make([]*releasev1.Release, 0, n)
+		for revision := 1; revision <= n; revision++ {
+			releases = append(releases, release(revision))
+		}
+		slices.SortFunc(releases, func(a, b *releasev1.Release) int {
+			return strings.Compare(fmt.Sprintf("v%d", a.Version), fmt.Sprintf("v%d", b.Version))
+		})
+		return releases
+	}
+
+	tests := []struct {
+		name            string
+		history         []*releasev1.Release
+		expectedVersion string
+		expectedErr     string
+	}{
+		{
+			name: "history in storage order picks highest revision",
+			history: storageOrder(11, func(revision int) *releasev1.Release {
+				switch revision {
+				case 11:
+					return newRelease(revision, "0.61.1", releasecommon.StatusDeployed)
+				case 10:
+					return newRelease(revision, "0.61.0", releasecommon.StatusSuperseded)
+				default:
+					return newRelease(revision, "0.60.2", releasecommon.StatusSuperseded)
+				}
+			}),
+			expectedVersion: "0.61.1",
+		},
+		{
+			name: "pending upgrade is skipped",
+			history: storageOrder(12, func(revision int) *releasev1.Release {
+				switch revision {
+				case 12:
+					return newRelease(revision, "0.62.0", releasecommon.StatusPendingUpgrade)
+				case 11:
+					return newRelease(revision, "0.61.1", releasecommon.StatusDeployed)
+				default:
+					return newRelease(revision, "0.60.2", releasecommon.StatusSuperseded)
+				}
+			}),
+			expectedVersion: "0.61.1",
+		},
+		{
+			name: "no deployed or superseded release",
+			history: []*releasev1.Release{
+				newRelease(1, "0.61.1", releasecommon.StatusFailed),
+				newRelease(2, "0.62.0", releasecommon.StatusPendingInstall),
+			},
+			expectedErr: "no deployed or superseded release found for radius",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockHelmClient := NewMockHelmClient(gomock.NewController(t))
+			mockHelmClient.EXPECT().
+				RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
+				Return(tt.history, nil).Times(1)
+
+			version, err := NewHelmAction(mockHelmClient).GetPreviousReleaseVersion("", "radius", "radius-system")
+			if tt.expectedErr != "" {
+				require.ErrorContains(t, err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedVersion, version)
+		})
+	}
 }

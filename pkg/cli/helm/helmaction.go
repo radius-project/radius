@@ -26,7 +26,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 
@@ -37,6 +36,7 @@ import (
 	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/registry"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"oras.land/oras-go/v2/registry/remote/errcode"
@@ -324,20 +324,27 @@ func (helmAction *HelmActionImpl) GetPreviousReleaseVersion(kubeContext, release
 		return "", fmt.Errorf("failed to get helm history for release %s in namespace %s (context: %s): %w", releaseName, namespace, kubeContext, err)
 	}
 
-	// Find the most recent deployed or superseded release
-	// We iterate from the end (newest) to find the last stable release
-	for _, rel := range slices.Backward(releases) {
-
-		if rel.Info != nil && (rel.Info.Status == releasecommon.StatusDeployed || rel.Info.Status == releasecommon.StatusSuperseded) {
-			if rel.Chart != nil && rel.Chart.Metadata != nil {
-				version := rel.Chart.Metadata.AppVersion
-
-				return version, nil
-			}
+	// Find the deployed or superseded release with the highest revision. Helm returns
+	// history in storage order (release Secrets sorted by name, so v10 comes before v2),
+	// not by revision, so the slice order can't be used to find the newest release.
+	var latest *releasev1.Release
+	for _, rel := range releases {
+		if rel.Info == nil || (rel.Info.Status != releasecommon.StatusDeployed && rel.Info.Status != releasecommon.StatusSuperseded) {
+			continue
+		}
+		if rel.Chart == nil || rel.Chart.Metadata == nil {
+			continue
+		}
+		if latest == nil || rel.Version > latest.Version {
+			latest = rel
 		}
 	}
 
-	return "", fmt.Errorf("no deployed or superseded release found for %s", releaseName)
+	if latest == nil {
+		return "", fmt.Errorf("no deployed or superseded release found for %s", releaseName)
+	}
+
+	return latest.Chart.Metadata.AppVersion, nil
 }
 
 func (helmAction *HelmActionImpl) LoadChart(chartPath string) (*chart.Chart, error) {
