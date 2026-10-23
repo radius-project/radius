@@ -7,7 +7,7 @@ This directory contains unit tests for the Radius Helm chart templates.
 Install the helm-unittest plugin:
 
 ```bash
-helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2
+helm plugin install oci://ghcr.io/helm-unittest/helm-unittest/unittest:1.2.1 --verify=false
 ```
 
 ## Running Tests
@@ -29,6 +29,19 @@ To run a specific test file:
 ```bash
 helm unittest . -f tests/helpers_test.yaml
 ```
+
+### Encryption Secret upgrades
+
+`encryption_secret_test.yaml` uses the plugin's Kubernetes provider to exercise real template `lookup` calls against existing Secret fixtures. It covers preserved key-store bytes and rotation metadata, legacy missing annotations, malformed metadata, and refusal to replace missing or empty key data. Nonempty key data is treated as opaque: an upgrade never attempts to repair or regenerate a malformed store.
+
+For server-side apply, run the focused Go regression from the repository root on Linux or macOS with Go, Helm 4, and the repository's envtest binaries (envtest is not supported on Windows):
+
+```bash
+KUBEBUILDER_ASSETS="$(go tool setup-envtest use -p path '1.30.*')" \
+  go test ./pkg/cli/helm -run '^TestEncryptionSecretUpgrade$' -count=1
+```
+
+The test starts its own API server and etcd, uses a temporary kubeconfig, and installs the shipping encryption Secret template without control-plane workloads. It exercises the Radius Helm client with the staged `rad_linux_amd64` manager followed by the standalone Helm binary, as well as ordinary `rad` upgrades. Fresh, previously rotated, and legacy Secrets must keep their UID, key-data SHA-256 digest, and rotation annotation presence/value. It never logs key data or uses an existing cluster. `make test` also runs this regression; direct `go test` skips it when `KUBEBUILDER_ASSETS` is unset. This focused regression does not replace full installation or previous-supported-release upgrade verification.
 
 ## Test Structure
 
