@@ -20,12 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	reflect "reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/go-logr/logr"
@@ -50,6 +52,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/rest"
 )
 
@@ -290,28 +293,39 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 			}
 
 			var err error
-			for attempt := 0; attempt <= d.options.DeleteRetryCount; attempt++ {
-				logger.WithValues("attempt", attempt)
-				ctx := logr.NewContext(groupCtx, logger)
-				logger.V(ucplog.LevelDebug).Info("beginning attempt")
+			attempts := 0
+			for {
+				if err = groupCtx.Err(); err != nil {
+					break
+				}
+				attempts++
+				attemptLogger := logger.WithValues("attempt", attempts, "resourceID", id)
+				ctx := logr.NewContext(groupCtx, attemptLogger)
+				attemptLogger.V(ucplog.LevelDebug).Info("beginning attempt")
 
 				err = resourceClient.Delete(ctx, id)
-				if err != nil {
-					if attempt <= d.options.DeleteRetryCount {
-						logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
-						time.Sleep(time.Duration(d.options.DeleteRetryDelaySeconds) * time.Second)
-						continue
-					}
-
-					return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+				if err == nil {
+					attemptLogger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
+					return nil
+				}
+				if attempts > d.options.DeleteRetryCount || !isRetryableDeleteError(err) {
+					break
 				}
 
-				// If the err is nil, then the resource is deleted successfully
-				logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
-				return nil
+				attemptLogger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
+				timer := time.NewTimer(time.Duration(d.options.DeleteRetryDelaySeconds) * time.Second)
+				select {
+				case <-groupCtx.Done():
+					err = groupCtx.Err()
+				case <-timer.C:
+				}
+				timer.Stop()
+				if groupCtx.Err() != nil {
+					break
+				}
 			}
 
-			deletionErr := fmt.Errorf("failed to delete resource after %d attempt(s), last error: %s", d.options.DeleteRetryCount+1, err.Error())
+			deletionErr := fmt.Errorf("failed to delete resource after %d attempt(s), last error: %w", attempts, err)
 			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, deletionErr.Error(), "", recipes.GetErrorDetails(deletionErr))
 		})
 	}
@@ -321,6 +335,28 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	}
 
 	return nil
+}
+
+func isRetryableDeleteError(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+
+	var statusCode int
+	var statusError apierrors.APIStatus
+	if responseError, ok := errors.AsType[*azcore.ResponseError](err); ok {
+		statusCode = responseError.StatusCode
+	} else if errors.As(err, &statusError) {
+		statusCode = int(statusError.Status().Code)
+	} else {
+		// Preserve retries for transport errors and providers without an HTTP status.
+		return true
+	}
+
+	return statusCode == http.StatusRequestTimeout ||
+		statusCode == http.StatusConflict ||
+		statusCode == http.StatusTooManyRequests ||
+		(statusCode >= http.StatusInternalServerError && statusCode < 600)
 }
 
 func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResource) bool {
