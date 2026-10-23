@@ -109,25 +109,20 @@ filter_unconventional = false
 require_conventional = false
 split_commits = false
 commit_parsers = [
-  # Classify unparsed subjects before type-based rules can skip or mislabel them.
-  { field = "conventional", pattern = "^false$", group = "<!-- 6 -->Other changes", default_scope = "other" },
+  # Classify unparsed subjects before type-based rules can mislabel them.
+  { field = "conventional", pattern = "^false$", group = "<!-- 6 -->Others", default_scope = "other" },
   # Dependabot is configured in .github/dependabot.yml (synced from
   # radius-project/.github) with the `ci` and `chore` prefixes plus `include: scope`,
   # so dependency updates arrive as `ci(deps):` and `chore(deps):`. Match them
-  # before the type-wide skip rules below, otherwise they are dropped silently.
+  # before the Others fallback so they retain their specialized group.
   { message = "^(?:chore|ci)\\(deps\\)", group = "<!-- 4 -->Dependencies" },
   { message = "^feat(?:\\([^)]*\\))?!?:", group = "<!-- 1 -->Added" },
   { message = "^fix(?:\\([^)]*\\))?!?:", group = "<!-- 2 -->Fixed" },
   { message = "^perf(?:\\([^)]*\\))?!?:", group = "<!-- 3 -->Changed" },
   { message = "^refactor(?:\\([^)]*\\))?!?:", group = "<!-- 3 -->Changed" },
   { message = "^revert(?:\\([^)]*\\))?!?:", group = "<!-- 5 -->Reverted changes" },
-  { message = "^docs(?:\\([^)]*\\))?!?:", skip = true },
-  { message = "^style(?:\\([^)]*\\))?!?:", skip = true },
-  { message = "^test(?:\\([^)]*\\))?!?:", skip = true },
-  { message = "^build(?:\\([^)]*\\))?!?:", skip = true },
-  { message = "^ci(?:\\([^)]*\\))?!?:", skip = true },
-  { message = "^chore(?:\\([^)]*\\))?!?:", skip = true },
-  { message = ".*", group = "<!-- 6 -->Other changes", default_scope = "other" },
+  # Retain every other parsed conventional type, including maintenance changes.
+  { field = "conventional", pattern = "^true$", group = "<!-- 6 -->Others" },
 ]
 protect_breaking_commits = true
 filter_commits = false

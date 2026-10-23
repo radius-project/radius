@@ -380,6 +380,8 @@ The trade-off is ongoing release-engineer effort, possible merge conflicts in a 
 
 Entries within each category follow newest-first merge history using git-cliff's native topological ordering. RC.1 and final notes cover the new version since its stable baseline; later RCs cover only the preceding RC to the frozen product SHA, and patches cover the preceding stable tag in the same channel to that SHA. Schema-v2 plans record `changelogPolicy: stable-only`: RC metadata has three changed files, while final/patch metadata also changes `CHANGELOG.md`. Previously approved plans without the marker retain their four-file contract for recovery; their published notes and tags are not rewritten.
 
+Every commit in the selected range is retained. Documentation and maintenance types, other parsed conventional types without a specialized group, and nonconventional or malformed subjects use **Others**, the last change group before contributor sections. Breaking commits appear once under Breaking changes instead of their normal group; dependency and revert groups remain specialized. Others is a Radius extension to Keep a Changelog, not an inferred user-facing category.
+
 #### Capability ownership
 
 The migration should use GoReleaser directly where it has a native release primitive and keep lifecycle orchestration outside it. Hooks are not a substitute for a resumable controller because a failed hook has no durable cross-repository state.
@@ -704,7 +706,7 @@ The work should be delivered in phases.
 - Remove superseded production Go build, image, checksum, and GitHub Release paths from Make, Python, shell, and `build.yaml`.
 - Retain developer, Bicep, and separate-module test targets that still have owners and consumers.
 - Replace the manual release checklist with approval, monitoring, resume, and break-glass procedures.
-- Adopt and enforce the selected changelog input policy, including an explicit exemption for changes that do not need release notes.
+- Adopt and enforce the selected changelog input policy, retaining all selected commits in their applicable groups, including Others for documentation and maintenance.
 - Add automatic version proposals only after the team validates the `0.x`, release-branch, RC, revert, and override behavior.
 - Evaluate signing, SBOM, and attestation additions.
 - Revisit any remaining non-Go publication steps for future simplification.
