@@ -693,6 +693,10 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					"/planes/kubernetes/local/namespaces/default/providers/core/ServiceAccount/test-service-account",
 					"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/test-dapr",
 				},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_subnet/subnet-0ddfaa93733f98002": "arn:aws:ec2:us-east-2:179022619019:subnet/subnet-0ddfaa93733f98002",
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_subnet/Subnet-0ddfaa93733f98002": "arn:aws:ec2:us-east-2:179022619019:Subnet/Subnet-0ddfaa93733f98002",
+				},
 				Status: &rpv1.RecipeStatus{
 					TemplateKind:    recipes.TemplateKindTerraform,
 					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
@@ -731,6 +735,45 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			expectedErr:      errors.New("\"arn:aws:ec2:us-east-2:179022619019\" is not a valid ARN"),
 		},
 		{
+			desc: "AWS ARN is kept under the result resource ID when it differs only by case",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"resources": []any{"/planes/aws/aws/accounts/179022619019/regions/global/providers/terraform.aws/aws_s3_bucket/my-bucket"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_s3_bucket",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "my-bucket",
+									"arn": "arn:aws:s3:::my-bucket",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/global/providers/terraform.aws/aws_s3_bucket/my-bucket"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/global/providers/terraform.aws/aws_s3_bucket/my-bucket": "arn:aws:s3:::my-bucket",
+				},
+				Secrets: map[string]any{},
+				Values:  map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
 			desc: "AWS S3 bucket ARN uses Terraform AWS output resource identity",
 			state: &tfjson.State{
 				Values: &tfjson.StateValues{
@@ -750,6 +793,9 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 			expectedResponse: &recipes.RecipeOutput{
 				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket": "arn:aws:s3:::my-bucket",
+				},
 				Status: &rpv1.RecipeStatus{
 					TemplateKind:    recipes.TemplateKindTerraform,
 					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
@@ -777,6 +823,9 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 			expectedResponse: &recipes.RecipeOutput{
 				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42": "arn:aws:ecs:us-east-2:179022619019:task-definition/orders:42",
+				},
 				Status: &rpv1.RecipeStatus{
 					TemplateKind:    recipes.TemplateKindTerraform,
 					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
@@ -803,6 +852,9 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 			expectedResponse: &recipes.RecipeOutput{
 				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42": "arn:aws:ecs:us-east-2:179022619019:task-definition/orders:42",
+				},
 				Status: &rpv1.RecipeStatus{
 					TemplateKind:    recipes.TemplateKindTerraform,
 					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",

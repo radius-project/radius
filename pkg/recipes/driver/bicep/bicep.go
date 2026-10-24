@@ -28,6 +28,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
+	awsarn "github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/go-logr/logr"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2/registry/remote"
@@ -48,6 +49,7 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"k8s.io/client-go/rest"
@@ -212,6 +214,8 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		}
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
+
+	d.addAWSProviderResourceIDs(ctx, recipeResponse)
 
 	// containerImages recipes may declare an imageBuild output. Check for it first, then run the
 	// embedded build script and merge the resulting image reference into the recipe output.
@@ -611,6 +615,64 @@ func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefini
 	}
 
 	return recipeResponse, nil
+}
+
+// addAWSProviderResourceIDs records the ARN of each AWS output resource as its provider resource ID. This covers
+// resources the recipe deploys and resources it returns in result.resources, including existing resources.
+//
+// It is best effort: when the ARN can't be determined, the output resource is stored without it.
+func (d *bicepDriver) addAWSProviderResourceIDs(ctx context.Context, output *recipes.RecipeOutput) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	var resourceClient processors.ResourceClient
+	for _, resource := range output.Resources {
+		id, err := resources.ParseResource(resource)
+		if _, ok := output.ProviderResourceIDs[resource]; err != nil || ok || !isAWSResource(id) {
+			continue
+		}
+
+		// Some AWS resource types, such as SNS topics, use the ARN as their identifier.
+		if awsarn.IsARN(id.Name()) {
+			output.SetProviderResourceID(resource, id.Name())
+			continue
+		}
+
+		if resourceClient == nil {
+			if d.resourceClientFactory == nil {
+				return
+			}
+			resourceClient = d.resourceClientFactory(nil)
+			if resourceClient == nil {
+				return
+			}
+		}
+
+		properties, err := resourceClient.GetProperties(ctx, resource)
+		if err != nil {
+			logger.Info("Could not read the AWS output resource to find its ARN", "resourceID", resource, "error", err.Error())
+			continue
+		}
+
+		if arn := arnFromProperties(properties); arn != "" {
+			output.SetProviderResourceID(resource, arn)
+		}
+	}
+}
+
+// arnFromProperties returns the ARN in the AWS Cloud Control properties of a resource, or an empty string when the
+// properties don't include one.
+func arnFromProperties(properties map[string]any) string {
+	for _, key := range []string{"Arn", "ARN", "arn"} {
+		if arn, ok := properties[key].(string); ok && awsarn.IsARN(arn) {
+			return arn
+		}
+	}
+
+	return ""
+}
+
+func isAWSResource(id resources.ID) bool {
+	return id.IsUCPQualified() && strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), resources_aws.PlaneTypeAWS+"/")
 }
 
 // collectARMOutputs splits ARM deployment outputs into non-sensitive values and sensitive secrets
