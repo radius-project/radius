@@ -65,3 +65,8 @@ func ToUCPResourceID(arn string) (string, error) {
 
 	return ucpID, nil
 }
+
+// IsAWSResource reports whether id is a resource (not a scope) in the AWS plane.
+func IsAWSResource(id resources.ID) bool {
+	return id.IsUCPQualified() && strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), PlaneTypeAWS+"/") && id.IsResource()
+}
