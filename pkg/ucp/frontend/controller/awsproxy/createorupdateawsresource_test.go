@@ -45,6 +45,12 @@ func Test_CreateAWSResource(t *testing.T) {
 			Message: aws.String("Resource not found"),
 		})
 
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudformation.DescribeTypeOutput{
+			TypeName: aws.String(testResource.AWSResourceType),
+			Schema:   aws.String(testResource.Schema),
+		}, nil)
+
 	testOptions.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.CreateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{

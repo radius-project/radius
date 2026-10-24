@@ -18,7 +18,6 @@ package awsproxy
 import (
 	"context"
 	"encoding/json"
-	"maps"
 	http "net/http"
 
 	"uuid"
@@ -109,29 +108,34 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
+	// Get resource type schema
+	describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+		Type:     types.RegistryTypeResource,
+		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
+	}, cloudFormationOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	secrets, err := secretProperties(serviceCtx.ResourceTypeInAWSFormat(), aws.ToString(describeTypeOutput.Schema))
+	if err != nil {
+		return ucp_aws.HandleAWSError(ctx, err)
+	}
+
 	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
 	// simulate that here.
-	responseProperties := map[string]any{}
+	currentProperties := map[string]any{}
 	if getResponse != nil {
-		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
+		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &currentProperties)
 		if err != nil {
 			return ucp_aws.HandleAWSError(ctx, err)
 		}
 	}
 
-	// Properties specified by users take precedence
-	maps.Copy(responseProperties, properties)
+	// Properties specified by users take precedence, except secrets, which are never echoed back.
+	responseProperties := buildResponseProperties(currentProperties, properties, secrets)
 
 	if existing {
-		// Get resource type schema
-		describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
-			Type:     types.RegistryTypeResource,
-			TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
-		}, cloudFormationOpts...)
-		if err != nil {
-			return nil, err
-		}
-
 		// Generate patch
 		currentState := []byte(*getResponse.ResourceDescription.Properties)
 		resourceTypeSchema := []byte(*describeTypeOutput.Schema)
