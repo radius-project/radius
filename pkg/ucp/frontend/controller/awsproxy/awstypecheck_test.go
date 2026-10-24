@@ -148,7 +148,9 @@ func nonProvisionableSchema(t *testing.T, handlers ...string) string {
 	return string(b)
 }
 
-func Test_Create_NonProvisionableTypes(t *testing.T) {
+// Test_Put_NonProvisionableTypes checks that UCP rejects a PUT of a NON_PROVISIONABLE type without reading the resource
+// from Cloud Control, which rejects that read for most of these types.
+func Test_Put_NonProvisionableTypes(t *testing.T) {
 	tests := []struct {
 		name     string
 		handlers []string
@@ -161,10 +163,10 @@ func Test_Create_NonProvisionableTypes(t *testing.T) {
 		},
 		{
 			name: "not creatable",
-			want: "Radius cannot create the AWS resource type AWS::EC2::Image because AWS Cloud Control does not support it.",
+			want: "Radius cannot create or change the AWS resource type AWS::EC2::Image because AWS Cloud Control does not support it.",
 		},
 	}
-	creates := []struct {
+	puts := []struct {
 		name    string
 		factory controllerFactory
 		method  string
@@ -174,15 +176,13 @@ func Test_Create_NonProvisionableTypes(t *testing.T) {
 		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, tt := range tests {
-		for _, op := range creates {
+		for _, op := range puts {
 			t.Run(tt.name+" "+op.name, func(t *testing.T) {
 				options := setupTest(t)
 				options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
 					ProvisioningType: cftypes.ProvisioningTypeNonProvisionable,
 					Schema:           aws.String(nonProvisionableSchema(t, tt.handlers...)),
 				}, nil)
-				options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-					nil, &cctypes.ResourceNotFoundException{Message: aws.String("not found")})
 
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Image" + op.suffix
 				body := map[string]any{"properties": map[string]any{"Name": "name", "Secret": secretValue}}
@@ -278,27 +278,10 @@ func Test_Create_ImmutableType(t *testing.T) {
 	require.Equal(t, http.StatusCreated, status, raw)
 }
 
-func Test_Update_ReadOnlyType(t *testing.T) {
-	options := setupTest(t)
-	options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
-		ProvisioningType: cftypes.ProvisioningTypeNonProvisionable,
-		Schema:           aws.String(nonProvisionableSchema(t, "read", "list")),
-	}, nil)
-	options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudcontrol.GetResourceOutput{
-		ResourceDescription: &cctypes.ResourceDescription{Identifier: aws.String("name"), Properties: aws.String(`{"Name": "name", "Description": "a"}`)},
-	}, nil)
-
-	path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Image/name"
-	status, message, raw := runController(t, NewCreateOrUpdateAWSResource, clientsFor(options), http.MethodPut, path, map[string]any{"properties": map[string]any{"Name": "name", "Description": secretValue}})
-	require.Equal(t, http.StatusBadRequest, status)
-	require.Equal(t, "The AWS resource type AWS::EC2::Image is created by AWS, so Radius cannot create or change it. Reference an existing resource with the Bicep `existing` keyword instead.", message)
-	require.NotContains(t, raw, secretValue)
-}
-
 func Test_CheckPatch_FullyMutable(t *testing.T) {
 	patch := jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}}
 	for _, provisioningType := range []cftypes.ProvisioningType{cftypes.ProvisioningTypeFullyMutable, ""} {
-		got, errResponse, err := checkPatch("AWS::Test::Mutable", &cloudformation.DescribeTypeOutput{ProvisioningType: provisioningType}, patch)
+		got, errResponse, err := checkPatch(t.Context(), "AWS::Test::Mutable", &cloudformation.DescribeTypeOutput{ProvisioningType: provisioningType}, patch)
 		require.NoError(t, err)
 		require.Nil(t, errResponse)
 		require.Equal(t, patch, got)

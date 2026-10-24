@@ -17,6 +17,7 @@ limitations under the License.
 package awsproxy
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -30,6 +31,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/aws/awstypes"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // Error messages name the type and properties, never property values, because values can hold secrets.
@@ -44,9 +46,11 @@ func unsupportedTypeResponse(typeName string) armrpc_rest.Response {
 	return badRequest(message)
 }
 
-// createErrorResponse returns a 400 response when Cloud Control cannot create typeName, and nil when it can. It uses
-// the provisioning type from CloudFormation, so a type works as soon as AWS adds Cloud Control support for it.
-func createErrorResponse(typeName string, typeInfo *cloudformation.DescribeTypeOutput) (armrpc_rest.Response, error) {
+// putErrorResponse returns a 400 response when Cloud Control cannot create or update typeName, and nil when it can.
+// It uses the provisioning type from CloudFormation, so a type works as soon as AWS adds Cloud Control support for it.
+// Callers check this before they look for an existing resource, because Cloud Control rejects that read for most
+// NON_PROVISIONABLE types.
+func putErrorResponse(typeName string, typeInfo *cloudformation.DescribeTypeOutput) (armrpc_rest.Response, error) {
 	if typeInfo.ProvisioningType != types.ProvisioningTypeNonProvisionable {
 		return nil, nil
 	}
@@ -57,50 +61,42 @@ func createErrorResponse(typeName string, typeInfo *cloudformation.DescribeTypeO
 	if schema.isReadOnly() {
 		return badRequest(awstypes.ReadOnlyMessage(typeName)), nil
 	}
-	return badRequest(fmt.Sprintf("Radius cannot create the AWS resource type %s because AWS Cloud Control does not support it.", typeName)), nil
+	return badRequest(fmt.Sprintf("Radius cannot create or change the AWS resource type %s because AWS Cloud Control does not support it.", typeName)), nil
 }
 
-// checkPatch checks a non-empty patch to an existing resource against the provisioning type of typeName. It returns
-// the patch to send to Cloud Control, or a 400 response when the type cannot be changed.
+// checkPatch checks a non-empty patch to an existing resource. It returns the patch to send to Cloud Control, or a
+// 400 response when a create-and-delete-only (IMMUTABLE) type would change.
 //
-// A create-and-delete-only (IMMUTABLE) type cannot be updated. AWS never returns write-only properties, so they are
-// always in the patch even when they did not change. They are left out of the check and of the returned patch, so a
-// deploy that changes nothing else succeeds without calling AWS.
-func checkPatch(typeName string, typeInfo *cloudformation.DescribeTypeOutput, patch jsondiff.Patch) (jsondiff.Patch, armrpc_rest.Response, error) {
-	switch typeInfo.ProvisioningType {
-	case types.ProvisioningTypeNonProvisionable:
-		schema, err := parseTypeSchema(typeInfo)
-		if err != nil {
-			return nil, nil, err
-		}
-		if schema.isReadOnly() {
-			return nil, badRequest(awstypes.ReadOnlyMessage(typeName)), nil
-		}
-		return nil, badRequest(fmt.Sprintf("Radius cannot change the AWS resource type %s because AWS Cloud Control does not support it.", typeName)), nil
-
-	case types.ProvisioningTypeImmutable:
-		schema, err := parseTypeSchema(typeInfo)
-		if err != nil {
-			return nil, nil, err
-		}
-		changed := []string{}
-		for _, op := range patch {
-			if schema.isWriteOnly(op.Path) {
-				continue
-			}
-			if name := topLevelProperty(op.Path); !slices.Contains(changed, name) {
-				changed = append(changed, name)
-			}
-		}
-		if len(changed) == 0 {
-			return nil, nil, nil
-		}
-		slices.Sort(changed)
-		return nil, badRequest(fmt.Sprintf("The AWS resource type %s can only be created and deleted, so these properties of the existing resource cannot change: %s. To change them, delete the resource and deploy again.", typeName, strings.Join(changed, ", "))), nil
-
-	default:
+// AWS never returns write-only properties, so they are always in the patch even when they did not change. For an
+// IMMUTABLE type they are left out of the check and of the returned patch, so a deploy that changes nothing else
+// succeeds without calling AWS. UCP cannot tell whether a write-only value changed, so a changed value is not applied.
+func checkPatch(ctx context.Context, typeName string, typeInfo *cloudformation.DescribeTypeOutput, patch jsondiff.Patch) (jsondiff.Patch, armrpc_rest.Response, error) {
+	if typeInfo.ProvisioningType != types.ProvisioningTypeImmutable {
 		return patch, nil, nil
 	}
+	schema, err := parseTypeSchema(typeInfo)
+	if err != nil {
+		return nil, nil, err
+	}
+	changed, writeOnly := []string{}, []string{}
+	for _, op := range patch {
+		name := topLevelProperty(op.Path)
+		if schema.isWriteOnly(op.Path) {
+			if !slices.Contains(writeOnly, name) {
+				writeOnly = append(writeOnly, name)
+			}
+			continue
+		}
+		if !slices.Contains(changed, name) {
+			changed = append(changed, name)
+		}
+	}
+	if len(changed) == 0 {
+		ucplog.FromContextOrDiscard(ctx).Info("Skipping write-only properties of a create-and-delete-only AWS resource type because AWS does not return their values", "resourceType", typeName, "properties", writeOnly)
+		return nil, nil, nil
+	}
+	slices.Sort(changed)
+	return nil, badRequest(fmt.Sprintf("The AWS resource type %s can only be created and deleted, so these properties of the existing resource cannot change: %s. To change them, delete the resource and deploy again.", typeName, strings.Join(changed, ", "))), nil
 }
 
 // typeSchema is the part of a CloudFormation resource type schema that the type checks need.

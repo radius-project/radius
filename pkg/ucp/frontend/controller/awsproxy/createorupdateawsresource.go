@@ -101,6 +101,11 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	if err != nil {
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
+	if errResponse, err := putErrorResponse(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput); err != nil {
+		return nil, err
+	} else if errResponse != nil {
+		return errResponse, nil
+	}
 
 	// Create and update work differently for AWS - we need to know if the resource
 	// we're working on exists already.
@@ -145,7 +150,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 		if len(patch) > 0 {
 			var errResponse armrpc_rest.Response
-			patch, errResponse, err = checkPatch(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput, patch)
+			patch, errResponse, err = checkPatch(ctx, serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput, patch)
 			if err != nil {
 				return nil, err
 			} else if errResponse != nil {
@@ -188,13 +193,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			return resp, nil
 		}
 	} else {
-		errResponse, err := createErrorResponse(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput)
-		if err != nil {
-			return nil, err
-		} else if errResponse != nil {
-			return errResponse, nil
-		}
-
 		response, err := p.awsClients.CloudControl.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     new(serviceCtx.ResourceTypeInAWSFormat()),
 			DesiredState: aws.String(string(desiredState)),
