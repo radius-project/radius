@@ -289,6 +289,8 @@ The record says who owns the alias, so each request has to say who is asking. UC
 
 A PUT or DELETE from the same owner proceeds as usual. One from a different owner fails with 409, naming the alias and the owner that holds it, and nothing changes in AWS.
 
+An AWS resource has one record, and so one owner that updates and deletes it. Two aliases can point at the same resource, for example when two recipes set the same `BucketName`. So when UCP takes over a resource, it first checks whether another record already holds that AWS identifier. If one does, the deploy fails with 409, naming the alias that holds it. An app that needs a resource another app owns references it with `existing`, which reads it without managing it.
+
 Recipe authors make aliases unique by building them from `context.aws.resourceNameHash`, a new recipe context value that works like `context.azure.resourceNameHash`: a hash of the AWS account and region, application ID, environment ID, and Radius resource ID.
 
 ### Reading and `existing`
@@ -342,14 +344,14 @@ Because the record shows the current operation, a second PUT or DELETE while one
 
 Upgrading changes one thing: AWS resource IDs end in the alias instead of the AWS identifier. The first deploy after the upgrade saves a record for each AWS resource.
 
-| Before the upgrade                                    | First deploy after the upgrade                                                                                                             |
-|-------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
-| A resource the template names, such as the bucket     | UCP finds it by `BucketName` and takes it over. Nothing new is created                                                                     |
-| A resource AWS names, such as the VPC                 | UCP cannot find it, so it creates one more. This is the last duplicate. The user deletes the old ones                                      |
-| A recipe's output resources, stored under the old IDs | The recipe's cleanup sends a DELETE for each old ID. UCP skips it for a resource now tracked under an alias, and deletes the rest as today |
-| Two templates that used the same alias                | The first to deploy gets the alias. The second gets 409, and its author changes the alias                                                  |
-| A deployment running during the upgrade               | It fails at its next AWS resource. Rerunning it works                                                                                      |
-| An operation started before the upgrade               | For one release, UCP reads its status from Cloud Control                                                                                   |
+| Before the upgrade                                                         | First deploy after the upgrade                                                                                                             |
+|----------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| A resource the template names, such as the bucket                          | UCP finds it by `BucketName` and takes it over. Nothing new is created                                                                     |
+| A resource AWS names, such as the VPC                                      | UCP cannot find it, so it creates one more. This is the last duplicate. The user deletes the old ones                                      |
+| A recipe's output resources, stored under the old IDs                      | The recipe's cleanup sends a DELETE for each old ID. UCP skips it for a resource now tracked under an alias, and deletes the rest as today |
+| Two templates that used the same alias, or took over the same AWS resource | The first to deploy gets it. The second gets 409, and its author changes the alias or references the resource with `existing`              |
+| A deployment running during the upgrade                                    | It fails at its next AWS resource. Rerunning it works                                                                                      |
+| An operation started before the upgrade                                    | For one release, UCP reads its status from Cloud Control                                                                                   |
 
 ## Failure handling
 
@@ -359,6 +361,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
 
 - A record exists, but the template names a different AWS identifier: 409 naming the alias and both identifiers.
 - Another owner holds the alias: 409 naming the alias and that owner.
+- Another record already holds the AWS resource being taken over: 409 naming that record's alias.
 - Another operation is running on the resource: 409.
 - A create-only property changed: 400 naming the property, without its value.
 - The alias contains `/`: 400, because the alias is part of the resource ID.
@@ -393,6 +396,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
   - a pending record and client token on a retried create
   - `name` taking over an existing resource, and `name` that differs from the record
   - 409 for concurrent operations, and for a PUT or DELETE with the same alias and a different owner, including one app deployed to two environments in one resource group
+  - 409 when taking over an AWS resource that another record already holds
   - DELETE by an old ID that a record holds
   - operation status from UCP's store, and from Cloud Control for an operation started before upgrade
 - **Upgrade tests**: install the latest Radius release with `rad install kubernetes --version`, deploy, then upgrade to the build under test with `rad upgrade kubernetes --chart`. Use a versioned copy of the in-repo chart, as `rad_upgrade_kubernetes_test.go` does, because the upgrade preflight compares versions. Deploy again and check that no resource is duplicated or deleted, for a type with a chosen identifier (S3 bucket) and one with an assigned identifier (VPC). These need AWS credentials, so they run with the cloud functional tests.
