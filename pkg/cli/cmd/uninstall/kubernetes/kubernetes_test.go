@@ -92,6 +92,10 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(false, nil).
+			Times(1)
+
 		promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
 			Return(prompt.ConfirmYes, nil).
 			Times(1)
@@ -193,6 +197,10 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", ContourInstalled: true}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(true, nil).
+			Times(1)
+
 		promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
 			Return(prompt.ConfirmYes, nil).
 			Times(1)
@@ -217,7 +225,7 @@ func Test_Run(t *testing.T) {
 			},
 			output.LogOutput{
 				Format: "- Helm releases: %s",
-				Params: []any{"radius, contour"},
+				Params: []any{"radius, contour, cert-manager"},
 			},
 			output.LogOutput{
 				Format: "- Radius environments:",
@@ -310,6 +318,10 @@ func Test_Run(t *testing.T) {
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
+			Times(1)
+
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(false, nil).
 			Times(1)
 
 		promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
@@ -410,6 +422,10 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(false, nil).
+			Times(1)
+
 		promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
 			Return(prompt.ConfirmNo, nil).
 			Times(1)
@@ -449,6 +465,10 @@ func Test_Run(t *testing.T) {
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
+			Times(1)
+
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(false, nil).
 			Times(1)
 
 		helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
@@ -498,6 +518,10 @@ func Test_Run(t *testing.T) {
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", ContourInstalled: true}, nil).
+			Times(1)
+
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(false, nil).
 			Times(1)
 
 		helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
@@ -568,5 +592,57 @@ func Test_Run(t *testing.T) {
 			},
 		}
 		require.Equal(t, expectedWrites, outputMock.Writes)
+	})
+
+	t.Run("Warning: Purge continues when cert-manager ownership lookup fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		helmMock := helm.NewMockInterface(ctrl)
+		outputMock := &output.MockOutput{}
+		k8sMock := kubernetes.NewMockInterface(ctrl)
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		connFactory := &connections.MockFactory{ApplicationsManagementClient: appManagementClient}
+		lookupErr := errors.New("helm get failed")
+
+		ctx := t.Context()
+		runner := &Runner{
+			Helm:        helmMock,
+			Output:      outputMock,
+			Kubernetes:  k8sMock,
+			Connections: connFactory,
+			AssumeYes:   true,
+
+			KubeContext: "test-context",
+			Purge:       true,
+		}
+
+		helmMock.EXPECT().CheckRadiusInstall("test-context").
+			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
+			Times(1)
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(false, lookupErr).
+			Times(1)
+		appManagementClient.EXPECT().ListEnvironmentsAll(ctx).
+			Return([]corerpv20231001.EnvironmentResource{}, nil).
+			Times(1)
+		helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
+			Return(nil).
+			Times(1)
+
+		expectedCleanup := kubernetes.CleanupPlan{
+			Namespaces:  []string{helm.RadiusSystemNamespace},
+			APIServices: []string{ucpAPIServiceName},
+			CRDs:        radiusCRDs,
+		}
+		k8sMock.EXPECT().PerformRadiusCleanup(ctx, "test-context", expectedCleanup).Return(nil).Times(1)
+
+		err := runner.Run(ctx)
+		require.NoError(t, err)
+		require.Contains(t, outputMock.Writes, output.LogOutput{
+			Format: "%s: unable to check for a cert-manager installed by rad: %v",
+			Params: []any{logWarningPrefix, lookupErr},
+		})
+		require.Contains(t, outputMock.Writes, output.LogOutput{
+			Format: "Radius was fully uninstalled. All data has been removed.",
+		})
 	})
 }
