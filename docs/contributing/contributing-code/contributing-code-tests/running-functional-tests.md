@@ -392,6 +392,10 @@ Set `go.testTimeout` to `60m` and add `-v` to `go.testFlags`. Set `RAD_PATH` in 
 
 The `functional-test-noncloud.yaml` and `functional-test-cloud.yaml` workflows build Radius, publish test assets, create isolated infrastructure, run each selected group, capture diagnostics, and remove the test infrastructure.
 
+For PRs targeting `main` or `features/*` and for the `main` merge queue, the non-cloud workflow omits the legacy-only `daprrp-noncloud`, `datastoresrp-noncloud`, and `msgrp-noncloud` groups before allocating test runners. Mixed suites, all authorization dry-run variants, and cloud coverage remain unchanged. The Dapr Redis-helper unit tests still run on every PR through `make test-dapr-helpers`. `make test` checks the omitted suites' test inventory so new tests require an explicit decision about whether they need per-PR coverage.
+
+All three scheduled runs, at 01:00, 13:00, and 19:00 UTC, retain the full matrix. PRs targeting `release/*`, deployment-engine repository dispatches, and manual runs also retain full coverage by default. To reproduce the reduced matrix manually, dispatch `functional-test-noncloud.yaml` with the desired `branch` and `test-profile: pr`; leave `test-profile: full` for compatibility fixes. Legacy-only regressions can merge before a scheduled run detects them. Existing local functional-test Make targets continue to run their complete groups.
+
 The scheduled purge workflows remove cloud resources left by cancelled or timed-out runs. The `long-running-azure.yaml` workflow uses published Radius artifacts while running diagnostics from the `main` workflow checkout.
 
 Download the `all_container_logs` artifact to investigate a run. Treat downloaded logs as potentially sensitive.
