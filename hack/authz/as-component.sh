@@ -57,7 +57,7 @@ Environment:
 
 Example:
   $(basename "$0") dynamic-rp -- \\
-    'https://applications-rp.radius-system:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
+    'https://applications-rp.radius-system.svc:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
 
 Component certificates are added in Stack A. Until then this reports which
 Secret is missing and exits 3.

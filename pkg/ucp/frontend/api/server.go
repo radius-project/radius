@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -29,6 +30,8 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
+	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/ucp"
@@ -232,11 +235,37 @@ func (s *Service) Run(ctx context.Context) error {
 		_ = service.Shutdown(ctx)
 	}()
 
+	internalErr := make(chan error, 1)
+	if s.options.Config.Authorization.EffectiveMode() != authz.ModeOff {
+		if s.options.Config.Server.InternalPort == 0 {
+			return errors.New("server.internalPort is required when the authorization mode is not off")
+		}
+		internal := s.internalServer(service)
+		go func() {
+			<-ctx.Done()
+			_ = internal.Shutdown(ctx)
+		}()
+		go func() {
+			logger.Info(fmt.Sprintf("listening for internal traffic on: '%s'...", internal.Addr))
+			err := mtls.ListenAndServe(ctx, internal, s.options.Config.Authorization, nil)
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				internalErr <- fmt.Errorf("internal endpoint failed: %w", err)
+				_ = service.Shutdown(ctx)
+			}
+		}()
+	}
+
 	logger.Info(fmt.Sprintf("listening on: '%s'...", s.options.Config.Server.Address()))
 	if s.options.Config.Server.TLSCertificateDirectory == "" {
 		err = service.ListenAndServe()
 	} else {
 		err = service.ListenAndServeTLS(s.options.Config.Server.TLSCertificateDirectory+"/tls.crt", s.options.Config.Server.TLSCertificateDirectory+"/tls.key")
+	}
+
+	select {
+	case ierr := <-internalErr:
+		return ierr
+	default:
 	}
 
 	if err == http.ErrServerClosed {
@@ -249,4 +278,15 @@ func (s *Service) Run(ctx context.Context) error {
 
 	logger.Info("Server stopped...")
 	return nil
+}
+
+// internalServer returns a server for internal component traffic. It serves the same
+// routes as the aggregation endpoint on InternalPort, so the Kubernetes API aggregation
+// endpoint and its certificate are unchanged.
+func (s *Service) internalServer(aggregation *http.Server) *http.Server {
+	return &http.Server{
+		Addr:        fmt.Sprintf("%s:%d", s.options.Config.Server.Host, s.options.Config.Server.InternalPort),
+		Handler:     aggregation.Handler,
+		BaseContext: aggregation.BaseContext,
+	}
 }
