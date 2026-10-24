@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" font-family="Helvetica, Arial, sans-serif" font-size="14">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1e1e1e"/></marker></defs>
+<rect width="1200" height="720" fill="#ffffff"/>
+<rect x="240" y="40" width="500" height="640" rx="10" ry="10" fill="#f8f9fa" stroke="#868e96" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="254" y="64" font-weight="bold" fill="#495057">argocd namespace (Argo CD owns)</text>
+<rect x="790" y="40" width="390" height="640" rx="10" ry="10" fill="#f8f9fa" stroke="#868e96" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="804" y="64" font-weight="bold" fill="#495057">radius-system (Radius owns)</text>
+<rect x="40" y="125" width="170" height="90" rx="10" ry="10" fill="#fff9db" stroke="#1e1e1e" stroke-width="2"/>
+<text x="125.0" y="155.0" text-anchor="middle" font-weight="bold">Git (ops repo)</text>
+<text x="125.0" y="175.0" text-anchor="middle" fill="#495057" font-size="13">Bicep, kustomization.yaml,</text>
+<text x="125.0" y="195.0" text-anchor="middle" fill="#495057" font-size="13">source.yaml</text>
+<rect x="290" y="130" width="400" height="80" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="490.0" y="165.0" text-anchor="middle" font-weight="bold">repo-server</text>
+<text x="490.0" y="185.0" text-anchor="middle" fill="#495057" font-size="13">checks out the commit, runs Kustomize</text>
+<rect x="290" y="300" width="400" height="80" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="490.0" y="335.0" text-anchor="middle" font-weight="bold">application-controller</text>
+<text x="490.0" y="355.0" text-anchor="middle" fill="#495057" font-size="13">diff, apply, prune, self-heal</text>
+<rect x="290" y="440" width="400" height="70" rx="10" ry="10" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text x="490.0" y="470.0" text-anchor="middle" font-weight="bold">Radius Lua health checks</text>
+<text x="490.0" y="490.0" text-anchor="middle" fill="#495057" font-size="13">new: read BicepSource status</text>
+<rect x="830" y="300" width="320" height="80" rx="10" ry="10" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text x="990.0" y="335.0" text-anchor="middle" font-weight="bold">Source reconciler</text>
+<text x="990.0" y="355.0" text-anchor="middle" fill="#495057" font-size="13">new: compiles Bicep (shares Flux code)</text>
+<rect x="830" y="440" width="320" height="70" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="990.0" y="470.0" text-anchor="middle" font-weight="bold">DeploymentTemplate controller</text>
+<text x="990.0" y="490.0" text-anchor="middle" fill="#495057" font-size="13">richer status (D4, D6)</text>
+<rect x="810" y="580" width="170" height="70" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="895.0" y="610.0" text-anchor="middle" font-weight="bold">DeploymentResource</text>
+<text x="895.0" y="630.0" text-anchor="middle" fill="#495057" font-size="13">controller, one per resource</text>
+<rect x="995" y="580" width="170" height="70" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="1080.0" y="610.0" text-anchor="middle" font-weight="bold">Radius API / UCP</text>
+<text x="1080.0" y="630.0" text-anchor="middle" fill="#495057" font-size="13">Recipes → cloud</text>
+<polyline points="210,170 290,170" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="227.0" y="145" width="46.0" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="250" y="159" text-anchor="middle" font-size="13" font-style="italic">fetch</text>
+<polyline points="490,210 490,300" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="402.2" y="249" width="175.6" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="490" y="263" text-anchor="middle" font-size="13" font-style="italic">ConfigMap + BicepSource</text>
+<polyline points="690,325 830,325" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="650.6" y="274" width="218.8" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="760" y="288" text-anchor="middle" font-size="13" font-style="italic">apply ConfigMap + BicepSource</text>
+<polyline points="830,358 690,358" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<rect x="697.4" y="363" width="125.2" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="760" y="377" text-anchor="middle" font-size="13" font-style="italic">rolled-up status</text>
+<polyline points="490,440 490,380" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<rect x="463.4" y="401" width="53.2" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="490" y="415" text-anchor="middle" font-size="13" font-style="italic">health</text>
+<polyline points="940,380 940,440" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="888.2" y="401" width="103.60000000000001" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="940" y="415" text-anchor="middle" font-size="13" font-style="italic">creates, owns</text>
+<polyline points="1060,440 1060,380" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<rect x="1033.4" y="401" width="53.2" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="1060" y="415" text-anchor="middle" font-size="13" font-style="italic">status</text>
+<polyline points="895,510 895,580" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="875.6" y="535" width="38.8" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="895" y="549" text-anchor="middle" font-size="13" font-style="italic">owns</text>
+<polyline points="1080,510 1080,580" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="1053.4" y="535" width="53.2" height="18" fill="#ffffff" opacity="0.9"/>
+<text x="1080" y="549" text-anchor="middle" font-size="13" font-style="italic">deploy</text>
+<rect x="40" y="600" width="22" height="16" rx="3" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/><text x="70" y="613" font-size="13">new Radius code</text>
+</svg>
