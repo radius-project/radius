@@ -101,3 +101,39 @@ func Test_GetOutputResourcesFromRecipe_Invalid(t *testing.T) {
 	require.IsType(t, &ValidationError{}, err)
 	require.Equal(t, "resource id \"/////asdf////\" returned by recipe is invalid", err.Error())
 }
+
+func Test_GetOutputResourcesFromRecipe_AWS(t *testing.T) {
+	tests := []struct {
+		name    string
+		id      string
+		managed bool
+	}{
+		{
+			name:    "read-only AWS type",
+			id:      "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.EC2/Image/ami-0123456789abcdef0",
+			managed: false,
+		},
+		{
+			name:    "read-only AWS type with different casing",
+			id:      "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/aws.bedrock/foundationmodel/anthropic.claude-v2",
+			managed: false,
+		},
+		{
+			name:    "regular AWS type",
+			id:      "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.S3/Bucket/my-bucket",
+			managed: true,
+		},
+		{
+			name:    "Kubernetes resource",
+			id:      "/planes/kubernetes/local/namespaces/default/providers/core/Service/my-service",
+			managed: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := GetOutputResourcesFromRecipe(&recipes.RecipeOutput{Resources: []string{tt.id}})
+			require.NoError(t, err)
+			require.Equal(t, []rpv1.OutputResource{{ID: resources.MustParse(tt.id), RadiusManaged: new(tt.managed)}}, actual)
+		})
+	}
+}

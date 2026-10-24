@@ -48,6 +48,7 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"k8s.io/client-go/rest"
@@ -689,7 +690,7 @@ func (d *bicepDriver) getGCOutputResources(current []string, previous []string) 
 
 			diff = append(diff, rpv1.OutputResource{
 				ID:            id,
-				RadiusManaged: new(true),
+				RadiusManaged: new(!resources_aws.IsReadOnlyResource(id)),
 			})
 		}
 	}

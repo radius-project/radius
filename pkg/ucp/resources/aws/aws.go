@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/aws/awstypes"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -64,4 +65,16 @@ func ToUCPResourceID(arn string) (string, error) {
 	ucpID := fmt.Sprintf("/planes/aws/%s/accounts/%s/regions/%s/providers/AWS.%s/%s", arnSegments[1], account, region, service, resourcePath)
 
 	return ucpID, nil
+}
+
+// IsAWSResource reports whether id is a UCP-qualified AWS resource ID, such as
+// /planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket/b.
+func IsAWSResource(id resources.ID) bool {
+	return id.IsResource() && strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), PlaneTypeAWS+"/")
+}
+
+// IsReadOnlyResource reports whether id is an AWS resource of a type that AWS creates on its own, such as
+// AWS.EC2/Image. Radius can reference these resources but never creates or deletes them.
+func IsReadOnlyResource(id resources.ID) bool {
+	return IsAWSResource(id) && awstypes.IsReadOnly(ToAWSResourceType(id))
 }

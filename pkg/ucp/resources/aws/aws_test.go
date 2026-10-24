@@ -74,3 +74,17 @@ func Test_ToUCPResourceID(t *testing.T) {
 		require.EqualError(t, err, "\"arn:aws:ec2:us-east-2:179022619019\" is not a valid ARN")
 	})
 }
+
+func Test_IsAWSResource(t *testing.T) {
+	require.True(t, IsAWSResource(resources.MustParse("/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket/b")))
+	require.False(t, IsAWSResource(resources.MustParse("/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket")))
+	require.False(t, IsAWSResource(resources.MustParse("/planes/radius/local/resourceGroups/g/providers/Applications.Core/containers/c")))
+	require.False(t, IsAWSResource(resources.MustParse("/subscriptions/s/resourceGroups/g/providers/Microsoft.Storage/storageAccounts/a")))
+}
+
+func Test_IsReadOnlyResource(t *testing.T) {
+	require.True(t, IsReadOnlyResource(resources.MustParse("/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.EC2/Image/ami-1")))
+	require.True(t, IsReadOnlyResource(resources.MustParse("/planes/aws/aws/accounts/1/regions/us-west-2/providers/aws.ec2/image/ami-1")))
+	require.False(t, IsReadOnlyResource(resources.MustParse("/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket/b")))
+	require.False(t, IsReadOnlyResource(resources.MustParse("/planes/radius/local/resourceGroups/g/providers/AWS.EC2/Image/ami-1")))
+}

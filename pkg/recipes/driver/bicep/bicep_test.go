@@ -924,6 +924,19 @@ func Test_GetGCOutputResources(t *testing.T) {
 	require.Equal(t, exp, res)
 }
 
+func Test_GetGCOutputResources_AWSReadOnly(t *testing.T) {
+	d := &bicepDriver{}
+	image := "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.EC2/Image/ami-0123456789abcdef0"
+	bucket := "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.S3/Bucket/my-bucket"
+	exp := []rpv1.OutputResource{
+		{ID: resources.MustParse(image), RadiusManaged: new(false)},
+		{ID: resources.MustParse(bucket), RadiusManaged: new(true)},
+	}
+	res, err := d.getGCOutputResources(nil, []string{image, bucket})
+	require.NoError(t, err)
+	require.Equal(t, exp, res)
+}
+
 func Test_GetGCOutputResources_NoDiff(t *testing.T) {
 	d := &bicepDriver{}
 	before := []string{
