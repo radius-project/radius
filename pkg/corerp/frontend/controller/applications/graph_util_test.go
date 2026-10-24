@@ -397,6 +397,11 @@ func Test_azurePortalURL(t *testing.T) {
 	}
 }
 
+const (
+	testAWSQueueID  = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SQS/Queue/q1"
+	testAWSQueueURL = "https://us-west-2.console.aws.amazon.com/sqs/v3/home?region=us-west-2#/queues"
+)
+
 func Test_outputResourceEntryFromID(t *testing.T) {
 	const tenantID = "11111111-1111-1111-1111-111111111111"
 	const azureStorageID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
@@ -424,6 +429,62 @@ func Test_outputResourceEntryFromID(t *testing.T) {
 			tenantID:      "",
 			wantName:      "mystorage",
 			wantType:      "Microsoft.Storage/storageAccounts",
+			wantPortalURL: "",
+		},
+		{
+			name:          "AWS ID of a known type sets the console URL without a tenant",
+			id:            testAWSQueueID,
+			tenantID:      "",
+			wantName:      "q1",
+			wantType:      "AWS.SQS/Queue",
+			wantPortalURL: testAWSQueueURL,
+		},
+		{
+			name:          "AWS ID in a GovCloud region sets the GovCloud console URL",
+			id:            "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.RDS/DBInstance/db1",
+			tenantID:      tenantID,
+			wantName:      "db1",
+			wantType:      "AWS.RDS/DBInstance",
+			wantPortalURL: "https://console.amazonaws-us-gov.com/rds/home?region=us-gov-west-1#databases:",
+		},
+		{
+			name:          "AWS ID of an unknown type omits PortalURL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/t1",
+			tenantID:      tenantID,
+			wantName:      "t1",
+			wantType:      "AWS.Unknown/Thing",
+			wantPortalURL: "",
+		},
+		{
+			name:          "AWS ID in the global region omits PortalURL for a regional console page",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.SQS/Queue/q2",
+			tenantID:      tenantID,
+			wantName:      "q2",
+			wantType:      "AWS.SQS/Queue",
+			wantPortalURL: "",
+		},
+		{
+			name:          "Terraform AWS ID sets the console URL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/us-east-2/providers/Terraform.AWS/aws_db_instance/db2",
+			tenantID:      "",
+			wantName:      "db2",
+			wantType:      "Terraform.AWS/aws_db_instance",
+			wantPortalURL: "https://us-east-2.console.aws.amazon.com/rds/home?region=us-east-2#databases:",
+		},
+		{
+			name:          "Terraform AWS S3 bucket in the global region sets the global console URL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/b2",
+			tenantID:      "",
+			wantName:      "b2",
+			wantType:      "Terraform.AWS/aws_s3_bucket",
+			wantPortalURL: "https://console.aws.amazon.com/s3/buckets",
+		},
+		{
+			name:          "Terraform AWS ID of an unknown type omits PortalURL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/us-east-2/providers/Terraform.AWS/aws_subnet/subnet-1",
+			tenantID:      tenantID,
+			wantName:      "subnet-1",
+			wantType:      "Terraform.AWS/aws_subnet",
 			wantPortalURL: "",
 		},
 		{
@@ -524,6 +585,37 @@ func Test_outputResourcesFromAPIData(t *testing.T) {
 			wantIDsInOrder: []string{azureStorageID, kubernetesUCPID},
 			wantPortalURLByID: map[string]string{
 				azureStorageID: "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
+			},
+		},
+		{
+			name: "Azure and AWS IDs both get their portal links",
+			resource: makeResource(map[string]any{
+				"status": map[string]any{"outputResources": []any{
+					map[string]any{"id": azureStorageID},
+					map[string]any{"id": testAWSQueueID},
+					map[string]any{"id": kubernetesUCPID},
+				}},
+			}),
+			tenantID: tenantID,
+			// Sorted by Type: "AWS.SQS/Queue" < "Microsoft.Storage/storageAccounts" < "apps/Deployment".
+			wantIDsInOrder: []string{testAWSQueueID, azureStorageID, kubernetesUCPID},
+			wantPortalURLByID: map[string]string{
+				azureStorageID: "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
+				testAWSQueueID: testAWSQueueURL,
+			},
+		},
+		{
+			name: "empty tenant still links AWS IDs",
+			resource: makeResource(map[string]any{
+				"status": map[string]any{"outputResources": []any{
+					map[string]any{"id": azureStorageID},
+					map[string]any{"id": testAWSQueueID},
+				}},
+			}),
+			tenantID:       "",
+			wantIDsInOrder: []string{testAWSQueueID, azureStorageID},
+			wantPortalURLByID: map[string]string{
+				testAWSQueueID: testAWSQueueURL,
 			},
 		},
 		{

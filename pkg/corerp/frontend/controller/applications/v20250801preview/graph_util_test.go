@@ -213,3 +213,79 @@ func Test_computeGraph_OmitsContainerEnvironment(t *testing.T) {
 		})
 	}
 }
+
+func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
+	t.Parallel()
+
+	const (
+		tenantID       = "11111111-1111-1111-1111-111111111111"
+		appID          = "/planes/radius/local/resourceGroups/default/providers/Radius.Core/applications/myapp"
+		databaseID     = "/planes/radius/local/resourceGroups/default/providers/Radius.Data/mySqlDatabases/db"
+		azureStorageID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
+		awsDatabaseID  = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.RDS/DBInstance/mydb"
+		awsGovQueueID  = "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.SQS/Queue/myqueue"
+		awsUnknownID   = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/mything"
+		tfBucketID     = "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/mybucket"
+		tfSubnetID     = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_subnet/mysubnet"
+		kubernetesID   = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/mydeployment"
+	)
+
+	tests := []struct {
+		name     string
+		tenantID string
+		want     map[string]string
+	}{
+		{
+			name:     "with an Azure tenant",
+			tenantID: tenantID,
+			want: map[string]string{
+				azureStorageID: "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
+				awsDatabaseID:  "https://us-west-2.console.aws.amazon.com/rds/home?region=us-west-2#databases:",
+				awsGovQueueID:  "https://console.amazonaws-us-gov.com/sqs/v3/home?region=us-gov-west-1#/queues",
+				awsUnknownID:   "",
+				tfBucketID:     "https://console.aws.amazon.com/s3/buckets",
+				tfSubnetID:     "",
+				kubernetesID:   "",
+			},
+		},
+		{
+			name: "without an Azure tenant",
+			want: map[string]string{
+				azureStorageID: "",
+				awsDatabaseID:  "https://us-west-2.console.aws.amazon.com/rds/home?region=us-west-2#databases:",
+				awsGovQueueID:  "https://console.amazonaws-us-gov.com/sqs/v3/home?region=us-gov-west-1#/queues",
+				awsUnknownID:   "",
+				tfBucketID:     "https://console.aws.amazon.com/s3/buckets",
+				tfSubnetID:     "",
+				kubernetesID:   "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			outputResources := []any{}
+			for id := range tt.want {
+				outputResources = append(outputResources, map[string]any{"id": id})
+			}
+			graph := computeGraph([]generated.GenericResource{{
+				ID:   to.Ptr(databaseID),
+				Name: to.Ptr("db"),
+				Type: to.Ptr("Radius.Data/mySqlDatabases"),
+				Properties: map[string]any{
+					"application": appID,
+					"status":      map[string]any{"outputResources": outputResources},
+				},
+			}}, nil, tt.tenantID, nil)
+
+			require.Len(t, graph.Resources, 1)
+			got := map[string]string{}
+			for _, outputResource := range graph.Resources[0].OutputResources {
+				got[to.String(outputResource.ID)] = to.String(outputResource.PortalURL)
+			}
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
