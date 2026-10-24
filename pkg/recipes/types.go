@@ -214,11 +214,29 @@ func (ro *RecipeOutput) SetProviderResourceID(id string, providerResourceID stri
 	if ro.ProviderResourceIDs == nil {
 		ro.ProviderResourceIDs = map[string]string{}
 	}
-	ro.ProviderResourceIDs[strings.ToLower(id)] = providerResourceID
+	ro.ProviderResourceIDs[id] = providerResourceID
 }
 
 // ProviderResourceID returns the provider-native ID of the output resource with the given ID, or an empty string
-// when the driver could not determine it. Resource IDs are compared case-insensitively.
+// when the driver could not determine it.
+//
+// An exact match wins. Otherwise IDs are compared case-insensitively, because recipe drivers deduplicate output
+// resource IDs case-insensitively. A case-insensitive match is used only when every match has the same value.
 func (ro *RecipeOutput) ProviderResourceID(id string) string {
-	return ro.ProviderResourceIDs[strings.ToLower(id)]
+	if providerResourceID, ok := ro.ProviderResourceIDs[id]; ok {
+		return providerResourceID
+	}
+
+	match := ""
+	for key, providerResourceID := range ro.ProviderResourceIDs {
+		if !strings.EqualFold(key, id) {
+			continue
+		}
+		if match != "" && match != providerResourceID {
+			return ""
+		}
+		match = providerResourceID
+	}
+
+	return match
 }

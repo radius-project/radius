@@ -247,7 +247,7 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 	var deployedResources []string
 	if tfState.Values != nil && tfState.Values.RootModule != nil {
 		var err error
-		deployedResources, err = d.getDeployedOutputResources(ctx, tfState.Values.RootModule, configuration)
+		deployedResources, err = d.getDeployedOutputResources(ctx, tfState.Values.RootModule, configuration, recipeResponse)
 		if err != nil {
 			return &recipes.RecipeOutput{}, err
 		}
@@ -389,7 +389,8 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.
 // Currently only Azure, AWS and Kubernetes providers are supported by output resources.
-func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule, configuration recipes.Configuration) ([]string, error) {
+// It records the ARN of each AWS resource as its provider resource ID on output.
+func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule, configuration recipes.Configuration, output *recipes.RecipeOutput) ([]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	recipeResources := []string{}
 	if module == nil {
@@ -473,6 +474,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 						return []string{}, err
 					}
 					recipeResources = append(recipeResources, awsResourceID)
+					output.SetProviderResourceID(awsResourceID, arn)
 				}
 			}
 		default:
@@ -481,7 +483,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 	}
 
 	for _, childModule := range module.ChildModules {
-		modResources, err := d.getDeployedOutputResources(ctx, childModule, configuration)
+		modResources, err := d.getDeployedOutputResources(ctx, childModule, configuration, output)
 		if err != nil {
 			return []string{}, err
 		}
