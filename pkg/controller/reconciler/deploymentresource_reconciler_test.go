@@ -18,22 +18,32 @@ package reconciler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/sdk"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
@@ -283,6 +293,160 @@ func Test_resourceWithinScope(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func Test_DeploymentResourceReconciler_DeleteAPIVersion(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name        string
+		id          string
+		version     string
+		status      int
+		summaryCode int
+	}{
+		{name: "modern", id: "/planes/radius/remote/resourceGroups/test/providers/Radius.Data/rediscaches/one", version: "2025-08-01-preview"},
+		{name: "legacy", id: "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/one", version: "2023-10-01-preview"},
+		{name: "user defined", id: "/planes/radius/local/resourceGroups/test/providers/Contoso.Test/widgets/one", version: "release-blue"},
+		{name: "not found", id: "/planes/radius/local/resourceGroups/test/providers/Radius.Data/rediscaches/one", version: "2025-08-01-preview", status: http.StatusNotFound},
+		{name: "async resume", id: "/planes/radius/local/resourceGroups/test/providers/Radius.Data/rediscaches/one", version: "2025-08-01-preview", status: http.StatusAccepted},
+		{name: "missing provider", id: "/planes/radius/local/resourceGroups/test/providers/Radius.Data/rediscaches/one", summaryCode: http.StatusNotFound},
+		{name: "empty versions", id: "/planes/radius/local/resourceGroups/test/providers/Radius.Data/rediscaches/one"},
+		{name: "native Azure", id: "/planes/azure/cloud/subscriptions/sub/resourceGroups/test/providers/Microsoft.Compute/virtualMachines/one", version: "2023-10-01-preview"},
+		{name: "native AWS", id: "/planes/aws/aws/accounts/123/regions/us-east-1/providers/AWS.S3/Bucket/one", version: "2023-10-01-preview"},
+		{name: "native Kubernetes", id: "/planes/kubernetes/local/namespaces/default/providers/core/Secret/one", version: "2023-10-01-preview"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			id, err := resources.ParseResource(tt.id)
+			require.NoError(t, err)
+			_, shortType, _ := strings.Cut(id.Type(), "/")
+			var summaries, deletes, polls int
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/planes/radius/" + id.FindScope("radius") + "/providers/" + id.ProviderNamespace():
+					summaries++
+					assert.Equal(t, http.MethodGet, r.Method)
+					if tt.summaryCode != 0 {
+						w.WriteHeader(tt.summaryCode)
+						return
+					}
+					versions := map[string]any{}
+					if tt.version != "" {
+						versions[tt.version] = map[string]any{}
+					}
+					assert.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+						"resourceTypes": map[string]any{
+							strings.ToUpper(shortType): map[string]any{"apiVersions": versions},
+						},
+					}))
+				case tt.id:
+					deletes++
+					assert.Equal(t, http.MethodDelete, r.Method)
+					assert.Equal(t, tt.version, r.URL.Query().Get("api-version"))
+					if tt.status == http.StatusAccepted {
+						w.Header().Set("Azure-AsyncOperation", "http://"+r.Host+"/operations/delete")
+					}
+					if tt.status != 0 {
+						w.WriteHeader(tt.status)
+					} else {
+						w.WriteHeader(http.StatusNoContent)
+					}
+				case "/operations/delete":
+					polls++
+					assert.Equal(t, http.MethodGet, r.Method)
+					assert.NoError(t, json.NewEncoder(w).Encode(map[string]string{"status": "Succeeded"}))
+				default:
+					t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+					w.WriteHeader(http.StatusBadRequest)
+				}
+			}))
+			t.Cleanup(server.Close)
+			connection, err := sdk.NewDirectConnection(server.URL)
+			require.NoError(t, err)
+			deploymentsClient, err := sdkclients.NewResourceDeploymentsClient(&sdkclients.Options{
+				BaseURI: server.URL, Cred: &aztoken.AnonymousCredential{}, ARMClientOptions: sdk.NewClientOptions(connection),
+			})
+			require.NoError(t, err)
+			r := &DeploymentResourceReconciler{Radius: NewRadiusClient(connection), ResourceDeploymentsClient: deploymentsClient}
+			dr := &radappiov1alpha3.DeploymentResource{Spec: radappiov1alpha3.DeploymentResourceSpec{Id: tt.id}}
+			poller, err := r.startDeleteOperation(t.Context(), dr)
+			if tt.summaryCode != 0 || tt.version == "" {
+				require.Error(t, err)
+				require.Zero(t, deletes, "discovery failures must not issue DELETE")
+			} else {
+				require.NoError(t, err)
+				if tt.status == http.StatusNotFound {
+					require.Nil(t, poller, "DELETE 404 completes synchronously")
+				} else if tt.status == http.StatusAccepted {
+					require.NotNil(t, poller)
+					require.False(t, poller.Done())
+					token, err := poller.ResumeToken()
+					require.NoError(t, err)
+					dr.Status.Operation = &radappiov1alpha3.ResourceOperation{
+						ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete,
+					}
+					// No finalizer is needed here: exercise the real resume/poll path without a Kubernetes API.
+					result, err := r.reconcileOperation(t.Context(), dr)
+					require.NoError(t, err)
+					require.True(t, result.IsZero())
+					require.Equal(t, 1, polls)
+				} else {
+					require.NotNil(t, poller)
+					require.True(t, poller.Done())
+					_, err = poller.Result(t.Context())
+					require.NoError(t, err)
+				}
+				require.Equal(t, 1, deletes)
+			}
+			if id.FindScope("radius") != "" {
+				require.Equal(t, 1, summaries, "resume must not rediscover the API version")
+			} else {
+				require.Zero(t, summaries, "native routes must not query Radius provider metadata")
+			}
+		})
+	}
+}
+
+func Test_DeploymentResourceReconciler_DeleteEligibilityBeforeDiscovery(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name       string
+		namespace  string
+		uid        types.UID
+		scope      string
+		controller bool
+	}{
+		{name: "no controller owner", namespace: "test", uid: "owner", scope: "test"},
+		{name: "different namespace", namespace: "other", uid: "owner", scope: "test", controller: true},
+		{name: "different UID", namespace: "test", uid: "stale", scope: "test", controller: true},
+		{name: "different root scope", namespace: "test", uid: "owner", scope: "test-suffix", controller: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			scheme := runtime.NewScheme()
+			require.NoError(t, radappiov1alpha3.AddToScheme(scheme))
+			providerConfig, err := sdkclients.NewDefaultProviderConfig("test").String()
+			require.NoError(t, err)
+			owner := makeDeploymentTemplate(types.NamespacedName{Namespace: "test", Name: "owner"}, "{}", providerConfig, nil)
+			owner.UID = "owner"
+			dr := &radappiov1alpha3.DeploymentResource{
+				Name: "child", Namespace: tt.namespace, Finalizers: []string{DeploymentResourceFinalizer},
+				Spec: radappiov1alpha3.DeploymentResourceSpec{
+					Id: "/planes/radius/local/resourceGroups/" + tt.scope + "/providers/Radius.Data/redisCaches/one",
+				},
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: deploymentTemplateKind, Name: owner.Name, UID: tt.uid, Controller: new(tt.controller),
+				}},
+			}
+			kubeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(owner, dr).Build()
+			// Nil Radius/deployment clients ensure neither discovery nor deletion can be called.
+			r := &DeploymentResourceReconciler{Client: kubeClient, EventRecorder: record.NewFakeRecorder(10)}
+			_, err = r.reconcileDelete(t.Context(), dr)
+			require.NoError(t, err)
+			require.NotContains(t, dr.Finalizers, DeploymentResourceFinalizer)
 		})
 	}
 }

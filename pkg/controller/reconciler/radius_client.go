@@ -29,6 +29,7 @@ import (
 )
 
 type RadiusClient interface {
+	ResolveAPIVersion(ctx context.Context, id resources.ID) (string, error)
 	Applications(scope string) ApplicationClient
 	Containers(scope string) ContainerClient
 	Environments(scope string) EnvironmentClient
@@ -77,6 +78,11 @@ func NewRadiusClient(connection sdk.Connection) *RadiusClientImpl {
 }
 
 var _ RadiusClient = (*RadiusClientImpl)(nil)
+
+// ResolveAPIVersion returns a supported API version for the resource's Radius plane and type.
+func (c *RadiusClientImpl) ResolveAPIVersion(ctx context.Context, id resources.ID) (string, error) {
+	return sdkclients.ResolveAPIVersion(ctx, c.connection, id)
+}
 
 func (c *RadiusClientImpl) Applications(scope string) ApplicationClient {
 	ac, err := corerpv20231001preview.NewApplicationsClient(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))

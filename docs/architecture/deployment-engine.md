@@ -232,6 +232,8 @@ enables Kubernetes-native deployment of Bicep/ARM templates through a CRD. It:
 - Creates `DeploymentResource` CRDs for each output resource
 - Manages the full lifecycle including deletion via finalizers
 
+Before deleting an eligible controller-owned `DeploymentResource`, the controller resolves the resource type's supported API version from the provider summary in that resource's Radius plane. The shared SDK [API-version resolver](../../pkg/sdk/clients/apiversion.go) prefers an exact advertised nonempty default; an invalid default or missing provider, type, or usable versions is an error. Without a default, it chooses the lexicographically first nonempty advertised version as a stable fallback, not as a "latest" or semantic-version ordering. This leaves owner, namespace, and root-scope eligibility checks unchanged; resuming an existing delete operation does not repeat discovery.
+
 ### Entry Point 3: Bicep Recipe Execution
 
 ```mermaid
@@ -280,6 +282,8 @@ executes the recipe by:
    `ResourceDeploymentsClient.CreateOrUpdate` API
 5. Polling until the deployment completes
 6. Garbage-collecting output resources that are no longer needed from previous deployments
+
+For Radius-managed recipe outputs, [resource cleanup](../../pkg/portableresources/processors/resourceclient.go) uses the same provider-summary resolver before sending DELETE, including during recipe deletion cascades. Native Azure, AWS, and Kubernetes outputs retain their existing deletion routes rather than using Radius provider metadata.
 
 ## Component Interaction Diagram
 
