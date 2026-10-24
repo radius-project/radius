@@ -1190,6 +1190,53 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironmentOrApplicat
 	return results, nil
 }
 
+// ListResourcesInPlane lists the resources in every resource group of the plane that contains the
+// configured scope. It skips the same types as ListAllResourceTypesNames and makes one list call
+// per resource type.
+func (amc *UCPApplicationsManagementClient) ListResourcesInPlane(ctx context.Context) ([]generated.GenericResource, error) {
+	scope, err := resources.ParseScope(amc.RootScope)
+	if err != nil {
+		return nil, err
+	}
+
+	// The configured scope is usually a resource group, but may already be a plane.
+	if scope.FindScope(resources_radius.ScopeResourceGroups) != "" {
+		scope = scope.Truncate()
+	}
+
+	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
+	if err != nil {
+		return nil, err
+	}
+
+	results := []generated.GenericResource{}
+	for _, resourceType := range resourceTypesList {
+		apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get API versions for resource type %q: %w", resourceType, err)
+		}
+
+		client, err := amc.getGenericClient(scope.String(), resourceType, apiVersion, false)
+		if err != nil {
+			return nil, err
+		}
+
+		pager := client.NewListByRootScopePager(&generated.GenericResourcesClientListByRootScopeOptions{})
+		for pager.More() {
+			page, err := pager.NextPage(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to list resources of type %q: %w", resourceType, err)
+			}
+
+			for _, resource := range page.Value {
+				results = append(results, *resource)
+			}
+		}
+	}
+
+	return results, nil
+}
+
 // isResourceInEnvironmentOrApplications reports whether the resource belongs to the given
 // environment or to any of the given applications. A resource is appended at most once by the
 // caller, so the two directions cannot produce duplicates.

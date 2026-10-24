@@ -549,6 +549,89 @@ func Test_Run(t *testing.T) {
 			}
 			require.Equal(t, expected, outputSink.Writes)
 		})
+
+		// The resource's Terraform recipe output and another resource's Bicep recipe output refer to
+		// the same S3 bucket under different output resource IDs. The warning names the other
+		// resource, is shown before the prompt, and does not stop the delete.
+		for _, confirm := range []bool{false, true} {
+			t.Run(fmt.Sprintf("Success: warns about shared output resources and still deletes (yes=%v)", confirm), func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+
+				const bucketARN = "arn:aws:s3:::shared-bucket"
+				resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Storage/buckets/data"
+				otherResourceID := "/planes/radius/local/resourceGroups/other-group/providers/Radius.Storage/buckets/data"
+				resource := generated.GenericResource{
+					ID: &resourceID,
+					Properties: map[string]any{
+						"environment": "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/environments/my-test-env",
+						"application": "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/applications/my-test-app",
+						"status": map[string]any{"outputResources": []any{
+							map[string]any{"id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket", "providerResourceId": bucketARN, "radiusManaged": true},
+						}},
+					},
+				}
+				otherResource := generated.GenericResource{
+					ID: &otherResourceID,
+					Properties: map[string]any{"status": map[string]any{"outputResources": []any{
+						map[string]any{"id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/shared-bucket", "providerResourceId": bucketARN, "radiusManaged": true},
+					}}},
+				}
+
+				appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+				appManagementClient.EXPECT().
+					GetResource(gomock.Any(), "Radius.Storage/buckets", "data").
+					Return(resource, nil).
+					Times(1)
+				appManagementClient.EXPECT().
+					ListResourcesInPlane(gomock.Any()).
+					Return([]generated.GenericResource{resource, otherResource}, nil).
+					Times(1)
+				appManagementClient.EXPECT().
+					DeleteResource(gomock.Any(), "Radius.Storage/buckets", "data", false).
+					Return(true, nil).
+					Times(1)
+
+				outputSink := &output.MockOutput{}
+				var logsAtPromptTime []any
+				promptMock := prompt.NewMockInterface(ctrl)
+				if !confirm {
+					promptMock.EXPECT().
+						GetListInput(gomock.Any(), gomock.Any()).
+						DoAndReturn(func(choices []string, promptMsg string) (string, error) {
+							logsAtPromptTime = append([]any{}, outputSink.Writes...)
+							return prompt.ConfirmYes, nil
+						}).
+						Times(1)
+				}
+
+				runner := &Runner{
+					ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+					Output:                         outputSink,
+					InputPrompter:                  promptMock,
+					Workspace:                      &workspaces.Workspace{},
+					FullyQualifiedResourceTypeName: "Radius.Storage/buckets",
+					ResourceName:                   "data",
+					Format:                         "table",
+					Confirm:                        confirm,
+				}
+
+				err := runner.Run(t.Context())
+				require.NoError(t, err)
+
+				warning := []any{
+					output.LogOutput{Format: "WARNING: Deleting %s also deletes output resources that other Radius resources use:", Params: []any{"Radius.Storage/buckets/data"}},
+					output.LogOutput{Format: "  - %s, also used by %s", Params: []any{bucketARN, otherResourceID}},
+				}
+				expected := append(append([]any{}, warning...), output.LogOutput{
+					Format: "%s/%s deleted",
+					Params: []any{"Radius.Storage/buckets", "data"},
+				})
+				require.Equal(t, expected, outputSink.Writes)
+				if !confirm {
+					require.Equal(t, warning, logsAtPromptTime)
+				}
+			})
+		}
 	})
 
 }
