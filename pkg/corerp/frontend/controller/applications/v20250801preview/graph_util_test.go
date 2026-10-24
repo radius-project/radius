@@ -225,6 +225,8 @@ func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
 		awsDatabaseID  = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.RDS/DBInstance/mydb"
 		awsGovQueueID  = "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.SQS/Queue/myqueue"
 		awsUnknownID   = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/mything"
+		tfBucketID     = "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/mybucket"
+		tfSubnetID     = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_subnet/mysubnet"
 		kubernetesID   = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/mydeployment"
 	)
 
@@ -241,6 +243,8 @@ func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
 				awsDatabaseID:  "https://us-west-2.console.aws.amazon.com/rds/home?region=us-west-2#databases:",
 				awsGovQueueID:  "https://console.amazonaws-us-gov.com/sqs/v3/home?region=us-gov-west-1#/queues",
 				awsUnknownID:   "",
+				tfBucketID:     "https://console.aws.amazon.com/s3/buckets",
+				tfSubnetID:     "",
 				kubernetesID:   "",
 			},
 		},
@@ -251,6 +255,8 @@ func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
 				awsDatabaseID:  "https://us-west-2.console.aws.amazon.com/rds/home?region=us-west-2#databases:",
 				awsGovQueueID:  "https://console.amazonaws-us-gov.com/sqs/v3/home?region=us-gov-west-1#/queues",
 				awsUnknownID:   "",
+				tfBucketID:     "https://console.aws.amazon.com/s3/buckets",
+				tfSubnetID:     "",
 				kubernetesID:   "",
 			},
 		},

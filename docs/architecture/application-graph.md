@@ -701,5 +701,7 @@ The CLI uses `GITHUB_HEAD_REF`, falling back to `GITHUB_REF_NAME`, as the source
   `portalUrl`. Azure resources link to the resource in the Azure Portal. AWS
   resources link to their service's list page in the AWS console, in the
   resource's region, because AWS has no link format to a single resource that
-  works for every type. The mapping lives in `pkg/ucp/resources/aws/console.go`;
-  AWS types with no mapping, and resources in the `global` region, get no link.
+  works for every type. The mapping lives in `pkg/ucp/resources/aws/console.go`
+  and covers both `AWS.*` types and `Terraform.AWS/*` types from Terraform
+  recipes. Resources in the `global` region link only when their console page
+  is global (S3 and IAM). Types with no mapping get no link.

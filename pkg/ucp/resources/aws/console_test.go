@@ -57,12 +57,41 @@ func Test_ConsoleURL(t *testing.T) {
 			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/t",
 		},
 		{
-			name: "Terraform-discovered type has no link",
-			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_db_instance/db",
+			name: "Terraform type with a region",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-east-2/providers/Terraform.AWS/aws_db_instance/db",
+			want: "https://us-east-2.console.aws.amazon.com/rds/home?region=us-east-2#databases:",
 		},
 		{
-			name: "global region has no link",
-			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/b",
+			name: "Terraform type in a GovCloud region",
+			id:   "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-east-1/providers/Terraform.AWS/aws_lb/my-lb",
+			want: "https://console.amazonaws-us-gov.com/ec2/home?region=us-gov-east-1#LoadBalancers:",
+		},
+		{
+			name: "Terraform type with a global console page in the global region",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket",
+			want: "https://console.aws.amazon.com/s3/buckets",
+		},
+		{
+			name: "global console page in the GovCloud partition",
+			id:   "/planes/aws/aws-us-gov/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket",
+			want: "https://console.amazonaws-us-gov.com/s3/buckets",
+		},
+		{
+			name: "AWS type with a global console page in the global region",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.IAM/AccessKey/k",
+			want: "https://console.aws.amazon.com/iam/home#/users",
+		},
+		{
+			name: "global console page in the China partition has no link",
+			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket",
+		},
+		{
+			name: "regional console page in the global region has no link",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_sqs_queue/q",
+		},
+		{
+			name: "unknown Terraform type has no link",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-east-2/providers/Terraform.AWS/aws_subnet/subnet-1",
 		},
 		{
 			name: "missing region has no link",
@@ -105,7 +134,8 @@ func Test_consolePages(t *testing.T) {
 
 	for resourceType, page := range consolePages {
 		require.Equal(t, strings.ToLower(resourceType), resourceType, "keys must be lower case")
-		require.True(t, strings.HasPrefix(resourceType, "aws."), "%s must be an AWS type", resourceType)
+		require.True(t, strings.HasPrefix(resourceType, "aws.") || strings.HasPrefix(resourceType, "terraform.aws/aws_"),
+			"%s must be an AWS or Terraform AWS type", resourceType)
 		require.True(t, strings.HasPrefix(page.path, "/"), "%s path must start with /", resourceType)
 		require.True(t, page.hash == "" || strings.HasPrefix(page.hash, "#"), "%s hash must start with #", resourceType)
 	}
