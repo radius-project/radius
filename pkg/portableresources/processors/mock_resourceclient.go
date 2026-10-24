@@ -77,3 +77,42 @@ func (c *MockResourceClientDeleteCall) DoAndReturn(f func(context.Context, strin
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
+
+// GetProperties mocks base method.
+func (m *MockResourceClient) GetProperties(ctx context.Context, id string) (map[string]any, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetProperties", ctx, id)
+	ret0, _ := ret[0].(map[string]any)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetProperties indicates an expected call of GetProperties.
+func (mr *MockResourceClientMockRecorder) GetProperties(ctx, id any) *MockResourceClientGetPropertiesCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProperties", reflect.TypeOf((*MockResourceClient)(nil).GetProperties), ctx, id)
+	return &MockResourceClientGetPropertiesCall{Call: call}
+}
+
+// MockResourceClientGetPropertiesCall wrap *gomock.Call
+type MockResourceClientGetPropertiesCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockResourceClientGetPropertiesCall) Return(arg0 map[string]any, arg1 error) *MockResourceClientGetPropertiesCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockResourceClientGetPropertiesCall) Do(f func(context.Context, string) (map[string]any, error)) *MockResourceClientGetPropertiesCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockResourceClientGetPropertiesCall) DoAndReturn(f func(context.Context, string) (map[string]any, error)) *MockResourceClientGetPropertiesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}

@@ -101,3 +101,19 @@ func Test_GetOutputResourcesFromRecipe_Invalid(t *testing.T) {
 	require.IsType(t, &ValidationError{}, err)
 	require.Equal(t, "resource id \"/////asdf////\" returned by recipe is invalid", err.Error())
 }
+
+func Test_GetOutputResourcesFromRecipe_ProviderResourceID(t *testing.T) {
+	awsID := "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+	azureID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Cache/redis/test-resource1"
+	output := recipes.RecipeOutput{Resources: []string{awsID, azureID}}
+	output.SetProviderResourceID(awsID, "arn:aws:s3:::my-bucket")
+
+	expected := []rpv1.OutputResource{
+		{ID: resources.MustParse(awsID), RadiusManaged: new(true), ProviderResourceID: "arn:aws:s3:::my-bucket"},
+		{ID: resources.MustParse(azureID), RadiusManaged: new(true)},
+	}
+
+	actual, err := GetOutputResourcesFromRecipe(&output)
+	require.NoError(t, err)
+	require.Equal(t, expected, actual)
+}

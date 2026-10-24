@@ -18,6 +18,7 @@ package recipes
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -104,4 +105,25 @@ func TestRecipeOutput_PrepareRecipeResponse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRecipeOutput_PrepareRecipeResponse_RejectsProviderResourceIDs(t *testing.T) {
+	ro := &RecipeOutput{}
+	err := ro.PrepareRecipeResponse(map[string]any{
+		"resources":           []string{"outputResourceId1"},
+		"providerResourceIDs": map[string]any{"outputresourceid1": "arn:aws:s3:::my-bucket"},
+	})
+	require.EqualError(t, err, "json: unknown field \"providerResourceIDs\"")
+	require.Empty(t, ro.ProviderResourceIDs)
+}
+
+func TestRecipeOutput_ProviderResourceID(t *testing.T) {
+	id := "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+	ro := &RecipeOutput{}
+	require.Empty(t, ro.ProviderResourceID(id))
+
+	ro.SetProviderResourceID(id, "arn:aws:s3:::my-bucket")
+	require.Equal(t, "arn:aws:s3:::my-bucket", ro.ProviderResourceID(id))
+	require.Equal(t, "arn:aws:s3:::my-bucket", ro.ProviderResourceID(strings.ToUpper(id)))
+	require.Empty(t, ro.ProviderResourceID("/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/other"))
 }

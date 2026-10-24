@@ -110,6 +110,30 @@ func (c *resourceClient) Delete(ctx context.Context, id string) error {
 	}
 }
 
+// GetProperties reads a UCP resource, such as an AWS resource, and returns its properties.
+func (c *resourceClient) GetProperties(ctx context.Context, id string) (map[string]any, error) {
+	parsed, err := resources.ParseResource(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if !parsed.IsUCPQualified() {
+		return nil, fmt.Errorf("resource %q is not a UCP resource", id)
+	}
+
+	client, err := generated.NewGenericResourcesClient(parsed.Type(), parsed.RootScope(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := client.Get(ctx, parsed.Name(), nil)
+	if err != nil {
+		return nil, c.wrapError(parsed, err)
+	}
+
+	return response.Properties, nil
+}
+
 func (c *resourceClient) wrapError(id resources.ID, err error) error {
 	if err != nil {
 		return &ResourceError{Inner: err, ID: id.String()}
