@@ -20,12 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	reflect "reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/go-logr/logr"
@@ -50,6 +52,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/rest"
 )
 
@@ -290,28 +293,39 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 			}
 
 			var err error
-			for attempt := 0; attempt <= d.options.DeleteRetryCount; attempt++ {
-				logger.WithValues("attempt", attempt)
-				ctx := logr.NewContext(groupCtx, logger)
-				logger.V(ucplog.LevelDebug).Info("beginning attempt")
+			attempts := 0
+			for {
+				if err = groupCtx.Err(); err != nil {
+					break
+				}
+				attempts++
+				attemptLogger := logger.WithValues("attempt", attempts, "resourceID", id)
+				ctx := logr.NewContext(groupCtx, attemptLogger)
+				attemptLogger.V(ucplog.LevelDebug).Info("beginning attempt")
 
 				err = resourceClient.Delete(ctx, id)
-				if err != nil {
-					if attempt <= d.options.DeleteRetryCount {
-						logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
-						time.Sleep(time.Duration(d.options.DeleteRetryDelaySeconds) * time.Second)
-						continue
-					}
-
-					return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+				if err == nil {
+					attemptLogger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
+					return nil
+				}
+				if attempts > d.options.DeleteRetryCount || !isRetryableDeleteError(err) {
+					break
 				}
 
-				// If the err is nil, then the resource is deleted successfully
-				logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
-				return nil
+				attemptLogger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
+				timer := time.NewTimer(time.Duration(d.options.DeleteRetryDelaySeconds) * time.Second)
+				select {
+				case <-groupCtx.Done():
+					err = groupCtx.Err()
+				case <-timer.C:
+				}
+				timer.Stop()
+				if groupCtx.Err() != nil {
+					break
+				}
 			}
 
-			deletionErr := fmt.Errorf("failed to delete resource after %d attempt(s), last error: %s", d.options.DeleteRetryCount+1, err.Error())
+			deletionErr := fmt.Errorf("failed to delete resource after %d attempt(s), last error: %w", attempts, err)
 			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, deletionErr.Error(), "", recipes.GetErrorDetails(deletionErr))
 		})
 	}
@@ -321,6 +335,43 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	}
 
 	return nil
+}
+
+// permanentDeleteErrorCodes are ARM error codes that a later attempt cannot fix.
+var permanentDeleteErrorCodes = map[string]struct{}{
+	"authenticationfailed":             {},
+	"authorizationfailed":              {},
+	"invalidauthenticationtoken":       {},
+	"invalidauthenticationtokentenant": {},
+	"linkedauthorizationfailed":        {},
+}
+
+// isRetryableDeleteError reports whether another delete attempt can succeed.
+// Deletes run in parallel without dependency ordering, and dependency failures
+// arrive with many status codes (for example 400 for Azure "in use" errors, or 200
+// for a failed long-running operation). Only errors that are known to be permanent stop retries.
+func isRetryableDeleteError(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+
+	if responseError, ok := errors.AsType[*azcore.ResponseError](err); ok {
+		if _, permanent := permanentDeleteErrorCodes[strings.ToLower(responseError.ErrorCode)]; permanent {
+			return false
+		}
+		return !isAuthStatus(responseError.StatusCode)
+	}
+
+	var statusError apierrors.APIStatus
+	if errors.As(err, &statusError) {
+		return !isAuthStatus(int(statusError.Status().Code))
+	}
+
+	return true
+}
+
+func isAuthStatus(statusCode int) bool {
+	return statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden
 }
 
 func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResource) bool {
