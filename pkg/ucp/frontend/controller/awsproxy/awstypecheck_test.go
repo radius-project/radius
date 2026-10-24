@@ -195,17 +195,18 @@ func Test_Put_NonProvisionableTypes(t *testing.T) {
 	}
 }
 
-// immutableSchema is the schema of a create-and-delete-only type with a write-only Password property.
+// immutableSchema is the schema of a create-and-delete-only type with write-only properties at the top level, inside
+// an object, and inside array items.
 const immutableSchema = `{
 	"primaryIdentifier": ["/properties/Name"],
 	"readOnlyProperties": ["/properties/Arn"],
 	"createOnlyProperties": ["/properties/Name", "/properties/Size", "/properties/Settings", "/properties/Password"],
-	"writeOnlyProperties": ["/properties/Password"],
+	"writeOnlyProperties": ["/properties/Password", "/properties/Auth/Token", "/properties/Users/*/Secret"],
 	"handlers": {"create": {}, "read": {}, "delete": {}, "list": {}}
 }`
 
 func Test_Update_ImmutableType(t *testing.T) {
-	current := `{"Name": "name", "Arn": "arn:aws:x:us-west-2:1:y/name", "Size": 1, "Settings": {"Mode": "a"}}`
+	current := `{"Name": "name", "Arn": "arn:aws:x:us-west-2:1:y/name", "Size": 1, "Settings": {"Mode": "a"}, "Users": [{"Name": "u"}]}`
 	tests := []struct {
 		name       string
 		properties map[string]any
@@ -224,6 +225,20 @@ func Test_Update_ImmutableType(t *testing.T) {
 		{
 			name:       "only write-only properties",
 			properties: map[string]any{"Name": "name", "Size": 1, "Password": secretValue},
+		},
+		{
+			// AWS omits Auth because its only property is write-only, so the patch adds the whole object.
+			name:       "write-only property in an absent parent",
+			properties: map[string]any{"Name": "name", "Size": 1, "Auth": map[string]any{"Token": secretValue}},
+		},
+		{
+			name:       "readable property next to a write-only property in an absent parent",
+			properties: map[string]any{"Name": "name", "Size": 1, "Auth": map[string]any{"Token": secretValue, "Type": secretValue}},
+			want:       "The AWS resource type AWS::Test::Immutable can only be created and deleted, so these properties of the existing resource cannot change: Auth. To change them, delete the resource and deploy again.",
+		},
+		{
+			name:       "write-only property in array items",
+			properties: map[string]any{"Name": "name", "Size": 1, "Users": []any{map[string]any{"Name": "u", "Secret": secretValue}}},
 		},
 	}
 	updates := []struct {
@@ -303,4 +318,33 @@ func Test_IsWriteOnly(t *testing.T) {
 	require.False(t, schema.isWriteOnly("/PasswordLength"))
 	require.False(t, schema.isWriteOnly("/Auth"))
 	require.False(t, schema.isWriteOnly("/Auth/Type"))
+
+	schema = &typeSchema{WriteOnlyProperties: []string{"/properties/Users/*/Secret"}}
+	require.True(t, schema.isWriteOnly("/Users/0/Secret"))
+	require.True(t, schema.isWriteOnly("/Users/12/Secret/Value"))
+	require.False(t, schema.isWriteOnly("/Users/0/Name"))
+	require.False(t, schema.isWriteOnly("/Users/0"))
+}
+
+func Test_OnlyWriteOnly(t *testing.T) {
+	schema := &typeSchema{WriteOnlyProperties: []string{"/properties/Auth/Token", "/properties/Users/*/Secret"}}
+	tests := []struct {
+		name string
+		op   jsondiff.Operation
+		want bool
+	}{
+		{"write-only path", jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Auth/Token", Value: "x"}, true},
+		{"object of write-only properties", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{"Token": "x"}}, true},
+		{"object with a readable property", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{"Token": "x", "Type": "y"}}, false},
+		{"empty object", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{}}, false},
+		{"array item of write-only properties", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Users/0", Value: map[string]any{"Secret": "x"}}, true},
+		{"array item with a readable property", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Users/0", Value: map[string]any{"Secret": "x", "Name": "y"}}, false},
+		{"readable scalar", jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}, false},
+		{"remove of a parent", jsondiff.Operation{Type: jsondiff.OperationRemove, Path: "/Auth"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, schema.onlyWriteOnly(tt.op))
+		})
+	}
 }

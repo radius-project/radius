@@ -81,7 +81,7 @@ func checkPatch(ctx context.Context, typeName string, typeInfo *cloudformation.D
 	changed, writeOnly := []string{}, []string{}
 	for _, op := range patch {
 		name := topLevelProperty(op.Path)
-		if schema.isWriteOnly(op.Path) {
+		if schema.onlyWriteOnly(op) {
 			if !slices.Contains(writeOnly, name) {
 				writeOnly = append(writeOnly, name)
 			}
@@ -120,12 +120,63 @@ func (s *typeSchema) isReadOnly() bool {
 	return read && !create
 }
 
-// isWriteOnly reports whether a JSON patch path is a write-only property or is inside one.
+// isWriteOnly reports whether a JSON patch path is a write-only property or is inside one. A "*" segment in a
+// write-only property matches any array index.
 func (s *typeSchema) isWriteOnly(patchPath string) bool {
-	path := "/properties" + patchPath
+	path := strings.Split(strings.TrimPrefix(patchPath, "/"), "/")
 	return slices.ContainsFunc(s.WriteOnlyProperties, func(w string) bool {
-		return path == w || strings.HasPrefix(path, w+"/")
+		pattern := strings.Split(strings.TrimPrefix(w, "/properties/"), "/")
+		if len(path) < len(pattern) {
+			return false
+		}
+		for i, segment := range pattern {
+			if segment != "*" && segment != path[i] {
+				return false
+			}
+		}
+		return true
 	})
+}
+
+// onlyWriteOnly reports whether a patch operation sets only write-only properties. When AWS omits an object because
+// all of its properties are write-only, the patch adds the whole object, so every leaf of the added value is checked.
+func (s *typeSchema) onlyWriteOnly(op jsondiff.Operation) bool {
+	if s.isWriteOnly(op.Path) {
+		return true
+	}
+	if op.Type != jsondiff.OperationAdd && op.Type != jsondiff.OperationReplace {
+		return false
+	}
+	leaves := leafPaths(op.Path, op.Value)
+	return !slices.ContainsFunc(leaves, func(p string) bool { return !s.isWriteOnly(p) })
+}
+
+// leafPaths returns the JSON patch paths of the values inside value, which is at path. An empty object or array is a
+// leaf itself.
+func leafPaths(path string, value any) []string {
+	switch v := value.(type) {
+	case map[string]any:
+		if len(v) == 0 {
+			return []string{path}
+		}
+		escape := strings.NewReplacer("~", "~0", "/", "~1")
+		paths := []string{}
+		for key, child := range v {
+			paths = append(paths, leafPaths(path+"/"+escape.Replace(key), child)...)
+		}
+		return paths
+	case []any:
+		if len(v) == 0 {
+			return []string{path}
+		}
+		paths := []string{}
+		for i, child := range v {
+			paths = append(paths, leafPaths(fmt.Sprintf("%s/%d", path, i), child)...)
+		}
+		return paths
+	default:
+		return []string{path}
+	}
 }
 
 // topLevelProperty returns the name of the top-level property a JSON patch path points into.
