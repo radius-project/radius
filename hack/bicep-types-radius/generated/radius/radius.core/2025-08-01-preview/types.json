@@ -2549,5 +2549,510 @@
     "readableScopes": 0,
     "writableScopes": 0,
     "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Core/roleDefinitions"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "RoleDefinitionProperties",
+    "properties": {
+      "displayName": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "A human-readable role name."
+      },
+      "description": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "A description of the intended access."
+      },
+      "roleType": {
+        "type": {
+          "$ref": "#/222"
+        },
+        "flags": 2,
+        "description": "Server-owned distinction between immutable release-defined built-ins and custom roles."
+      },
+      "permissions": {
+        "type": {
+          "$ref": "#/223"
+        },
+        "flags": 1,
+        "description": "Explicit catalog permissions. Unknown permissions fail with UnknownPermission; custom wildcards and deny rules are not supported."
+      },
+      "assignableScopes": {
+        "type": {
+          "$ref": "#/224"
+        },
+        "flags": 0,
+        "description": "Scopes where the role may be assigned, including descendants. Defaults to the role definition's scope. Writers must be allowed to create roles at every listed scope."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "BuiltIn"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Custom"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/220"
+      },
+      {
+        "$ref": "#/221"
+      }
+    ]
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Core/roleDefinitions",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/217"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/218"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/219"
+        },
+        "flags": 1,
+        "description": "The resource-specific properties for this resource."
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/41"
+        },
+        "flags": 2,
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
+      }
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Radius.Core/roleDefinitions@2025-08-01-preview",
+    "body": {
+      "$ref": "#/225"
+    },
+    "readableScopes": 0,
+    "writableScopes": 0,
+    "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Core/roleAssignments"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "RoleAssignmentProperties",
+    "properties": {
+      "roleDefinitionId": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The immutable full role definition ID. The assignment scope must be covered by the role's assignableScopes."
+      },
+      "principal": {
+        "type": {
+          "$ref": "#/230"
+        },
+        "flags": 1,
+        "description": "The principal. Its type, issuer, and subject cannot change."
+      },
+      "description": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "An optional description of why access was granted."
+      },
+      "scope": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Server-owned canonical scope derived from the assignment ID, including / for installation assignments."
+      },
+      "managedBy": {
+        "type": {
+          "$ref": "#/235"
+        },
+        "flags": 2,
+        "description": "Server-owned provenance. Only the same GitOps source may modify its assignments unless an authorized deletion explicitly takes ownership. Bootstrap assignments are managed through installation settings."
+      },
+      "createdBy": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Server-owned identity of the creator, formatted as type:issuer:subject for display, not parsed to establish identity."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Principal",
+    "properties": {
+      "type": {
+        "type": {
+          "$ref": "#/234"
+        },
+        "flags": 1,
+        "description": "The kind of principal."
+      },
+      "issuer": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller."
+      },
+      "subject": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>."
+      },
+      "displayName": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "An optional mutable label that is never used to match principals."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "user"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "group"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "workload"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/231"
+      },
+      {
+        "$ref": "#/232"
+      },
+      {
+        "$ref": "#/233"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "AssignmentManagement",
+    "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/240"
+        },
+        "flags": 1,
+        "description": "How the assignment was created."
+      },
+      "source": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The verified Git source URL for GitOps assignments."
+      },
+      "revision": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The Git revision."
+      },
+      "path": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The template path within the source."
+      },
+      "principal": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The verified submitting principal, formatted for display."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Imperative"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deployment"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "GitOps"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Bootstrap"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/236"
+      },
+      {
+        "$ref": "#/237"
+      },
+      {
+        "$ref": "#/238"
+      },
+      {
+        "$ref": "#/239"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Core/roleAssignments",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/227"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/228"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/229"
+        },
+        "flags": 1,
+        "description": "The resource-specific properties for this resource."
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/41"
+        },
+        "flags": 2,
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
+      }
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Radius.Core/roleAssignments@2025-08-01-preview",
+    "body": {
+      "$ref": "#/241"
+    },
+    "readableScopes": 16,
+    "writableScopes": 16,
+    "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "default"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Core/authorizationSettings"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "AuthorizationSettingsProperties",
+    "properties": {
+      "mode": {
+        "type": {
+          "$ref": "#/250"
+        },
+        "flags": 1,
+        "description": "Disabled performs no user authorization checks; DryRun evaluates and records would-be denials without blocking; Enforce blocks denied operations. This contract does not enable any mode."
+      },
+      "generation": {
+        "type": {
+          "$ref": "#/251"
+        },
+        "flags": 2,
+        "description": "Server-owned generation of the applied policy. It increases once per applied access change."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Disabled"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "DryRun"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Enforce"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/247"
+      },
+      {
+        "$ref": "#/248"
+      },
+      {
+        "$ref": "#/249"
+      }
+    ]
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Core/authorizationSettings",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/243"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/244"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/245"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/246"
+        },
+        "flags": 1,
+        "description": "The resource-specific properties for this resource."
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/41"
+        },
+        "flags": 2,
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
+      }
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Radius.Core/authorizationSettings@2025-08-01-preview",
+    "body": {
+      "$ref": "#/252"
+    },
+    "readableScopes": 0,
+    "writableScopes": 0,
+    "functions": {}
   }
 ]

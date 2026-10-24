@@ -22,13 +22,18 @@ import {
   BicepType,
   ObjectType,
   ObjectTypePropertyFlags,
+  ResourceType,
+  ScopeType,
   StringLiteralType,
   TypeBaseKind,
   TypeFactory,
   TypeReference,
   UnionType
 } from "../src/bicep.js";
-import { translateModelProperties } from "../src/type-translator.js";
+import {
+  buildResourceType,
+  translateModelProperties
+} from "../src/type-translator.js";
 
 /** Compiles a single `@test model Target { ... }` and returns it plus the program. */
 async function compileTarget(
@@ -71,6 +76,35 @@ async function translate(body: string): Promise<{
 }
 
 describe("parseType", () => {
+  it("preserves singleton resource names", async () => {
+    const { program, target } = await compileTarget(
+      `@test model Target { name: "default"; properties: { mode: string; }; }`
+    );
+    const factory = new TypeFactory();
+    const reference = buildResourceType(
+      program,
+      factory,
+      {
+        fullyQualifiedType: "Radius.Core/authorizationSettings",
+        apiVersion: "2025-08-01-preview",
+        resourceTypeName:
+          "Radius.Core/authorizationSettings@2025-08-01-preview",
+        namespace: "Radius.Core",
+        bodyModel: target,
+        readableScopes: ScopeType.None,
+        writableScopes: ScopeType.None,
+        actions: []
+      },
+      new Map<Type, TypeReference>()
+    );
+    const resource = factory.lookupType(reference) as ResourceType;
+    const body = factory.lookupType(resource.body) as ObjectType;
+    expect(factory.lookupType(body.properties.name.type)).toEqual({
+      type: TypeBaseKind.StringLiteralType,
+      value: "default"
+    });
+  });
+
   it("maps scalars to the closest Bicep primitive", async () => {
     const { props } = await translate(
       `@test model Target { s: string; i: int32; n: int64; f: float64; b: boolean; u: url; }`
