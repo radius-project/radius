@@ -101,7 +101,7 @@ sequenceDiagram
 
 **Proposed.** UCP verifies the Kubernetes API server's client certificate before trusting the user and group names in the forwarded headers, so an application cannot impersonate the user; the trusted certificate authority and proxy names come from Kubernetes's aggregation configuration. This is new behavior — it replaces today's header-stripping with authenticated proxy identity — and requires configuring client-certificate verification on the UCP endpoint that serves aggregated requests.
 
-Calls between Radius services use mutual TLS: each service has its own auto-renewing certificate, so UCP can tell the deployment engine from Dynamic RP, and no service can obtain another's certificate or service account. Each certificate carries DNS Subject Alternative Names (SANs) that all name the same service, such as `applications-rp`, `applications-rp.radius-system`, and `applications-rp.radius-system.svc`, so clients can reach it by any of its usual DNS names. The canonical form `<service>.<namespace>.svc`, for example `applications-rp.radius-system.svc`, is the component's identity wherever this design compares callers, including the record's `submitter` and each operation's `assignedComponent`. Services ignore other certificate fields, such as the subject common name, for authorization. Identifying a component is not enough — the receiving service still checks what that component may do. The deployment engine, for example, can submit operations for an approved deployment but cannot assign itself an administrator role.
+Calls between Radius services use mutual TLS: each service has its own auto-renewing certificate, so UCP can tell the deployment engine from Dynamic RP, and no service can obtain another's certificate or service account. Each certificate carries exactly one DNS Subject Alternative Name (SAN), the service's canonical name `<service>.<namespace>.svc`, for example `applications-rp.radius-system.svc`, and Radius components always connect to each other by that name. A single canonical name keeps every certificate inside the CA's name constraint (see [Certificate options](#certificate-options)); short names such as `applications-rp` or `applications-rp.radius-system` cannot be constrained to the Radius namespace, so certificates do not carry them. The canonical name is the component's identity wherever this design compares callers, including the record's `submitter` and each operation's `assignedComponent`. Services ignore other certificate fields, such as the subject common name, for authorization. Identifying a component is not enough — the receiving service still checks what that component may do. The deployment engine, for example, can submit operations for an approved deployment but cannot assign itself an administrator role.
 
 UCP makes the user-facing decision, so resource providers need only verify that an authorized caller sent the request and that the work was approved — not the user's original headers or role logic. Identity can travel with the approval for logging, but identity alone is not permission.
 
@@ -120,7 +120,7 @@ All of these options except ServiceAccount tokens are mTLS-based and therefore r
 | SPIFFE/SPIRE workload identity                | SPIRE attests each workload and issues a short-lived SPIFFE identity (X.509 or JWT).                                                                                                          | Purpose-built for workload identity and portable across clusters and clouds, but adds a component to operate.                                                                                    |
 | Service-mesh mTLS (Istio, Linkerd)            | A sidecar mesh transparently establishes mTLS between pods.                                                                                                                                   | No application code change, but forces a mesh dependency on every Radius install and still needs an application-level authorization check on top.                                                |
 
-**Recommendation:** issue one X.509 identity per service through an in-cluster CA (cert-manager) and require mTLS on all internal connections. It verifies offline, needs no per-call dependency on the Kubernetes API server, and — unlike a service mesh — does not impose a mesh on users. Name **SPIFFE/SPIRE** as the growth path if Radius's own components are hosted across multiple clusters or clouds and must attest each other's identity across that boundary — not merely deploying to remote targets. Do not mandate a service mesh.
+**Recommendation:** issue one X.509 identity per service through an in-cluster CA (cert-manager) and require mTLS on all internal connections. It verifies offline, needs no per-call dependency on the Kubernetes API server, and — unlike a service mesh — does not impose a mesh on users. Name **SPIFFE/SPIRE** as the growth path if Radius's own components are hosted across multiple clusters or clouds and must attest each other's identity across that boundary — not merely deploying to remote targets. Do not mandate a service mesh, but let installations that already enforce mTLS with their own network stack use it instead (see [Using the customer's own mTLS](#using-the-customers-own-mtls)).
 
 ##### Issuing and protecting service identities
 
@@ -128,25 +128,102 @@ Radius does not use cert-manager today: the Helm chart generates UCP's API serve
 
 cert-manager is needed only on the cluster that runs the Radius control plane, not on remote target clusters. A cluster runs one cert-manager, shared by all workloads, so Radius uses an existing installation rather than adding a second one:
 
-| Cluster state                             | Radius behavior                                                                                                                                                                                                                                         |
-|-------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| No cert-manager                           | `rad install` installs a pinned, supported version and upgrades it with Radius, as Cluster API's `clusterctl init` does. The Radius Helm chart does not bundle cert-manager, because it installs cluster-wide resources that other workloads may share. |
-| cert-manager at a supported version       | Radius uses it and creates only its own `Issuer` and `Certificate` objects. The user remains responsible for upgrading it.                                                                                                                              |
-| cert-manager older than the minimum       | Installation stops and reports the minimum version. Radius does not upgrade a cert-manager it did not install.                                                                                                                                          |
-| Another certificate tool, or none allowed | The operator provides each service's certificate, key, and CA bundle as Secrets and handles rotation (bring your own certificates).                                                                                                                     |
+| Cluster state                       | Radius behavior                                                                                                                                                                                                                                         |
+|-------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| No cert-manager                     | `rad install` installs a pinned, supported version and upgrades it with Radius, as Cluster API's `clusterctl init` does. The Radius Helm chart does not bundle cert-manager, because it installs cluster-wide resources that other workloads may share. |
+| cert-manager at a supported version | Radius uses it and creates only its own `Issuer` and `Certificate` objects. The user remains responsible for upgrading it.                                                                                                                              |
+| cert-manager older than the minimum | Installation stops and reports the minimum version. Radius does not upgrade a cert-manager it did not install.                                                                                                                                          |
 
-Radius services read their certificate, key, and CA bundle from mounted files and reload them when they change, so they do not depend on cert-manager directly. Operators may also point the Radius `Certificate` objects at their own cert-manager issuer, such as an organization CA. That is opt-in: with a shared CA, other workloads could obtain certificates for Radius service names unless the organization restricts who may request them, so the default is a Radius-only CA.
+Radius services read their certificate, key, and CA bundle from mounted files and reload them when they change, so they do not depend on cert-manager directly.
+
+##### Certificate options
+
+Operators choose where the Radius CA comes from with the Helm value `global.rbac.certificates.mode` or the matching `rad install` flags (see [CLI Design](#cli-design-if-applicable)):
+
+| Mode                   | Who signs the service certificates                                                                            | When to use it                                                                |
+|------------------------|---------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| `selfSigned` (default) | A Radius CA that cert-manager creates. Its root is self-signed and trusted only by Radius.                    | Development, testing, and production without a corporate PKI requirement.     |
+| `caSecret`             | A CA certificate and key the operator provides, usually an intermediate signed by the organization's root CA. | **Recommended for production.** Certificates chain to the organization's PKI. |
+| `issuerRef`            | An existing cert-manager `Issuer` or `ClusterIssuer`, such as Vault, AWS Private CA, or Azure Key Vault.      | The CA key must stay in an external service or HSM.                           |
+
+`selfSigned` is not weaker than the other modes: the root is a trust anchor only for Radius's internal calls, and its key is protected like any other CA key. Production teams usually pick another mode because their policy requires certificates to chain to the organization's PKI, or the CA key to be held in an HSM.
+
+**`caSecret`, bring your own signed CA.** The operator creates a `kubernetes.io/tls` Secret in the Radius namespace whose `tls.crt` holds the CA certificate (followed by its chain) and `tls.key` its private key. Radius's own cert-manager `CA` issuer signs the service certificates with it, so issuance stays limited to Radius. Requirements:
+
+- The certificate is a CA (`basicConstraints: CA:TRUE`), should use `pathLenConstraint: 0`, and should carry name constraints with a single permitted DNS subtree, `<radius-namespace>.svc` (RFC 5280 syntax, which allows `<service>.<radius-namespace>.svc`). X.509 verification checks every DNS SAN against this constraint, which is why Radius certificates carry only the canonical name. Tests verify service certificates against a CA with this constraint.
+- Receivers trust this CA, not the organization root, so a certificate that some other team obtains from the organization root is not accepted as a Radius service.
+- The operator owns the CA's renewal. Radius logs a warning and raises an alert 30 days before it expires. To rotate, the operator updates the Secret; Radius keeps the old CA in the trust bundle until every service certificate is reissued.
+
+**`issuerRef`.** Because a shared issuer can also sign certificates for other workloads, this mode requires a certificate request policy (such as cert-manager's approver-policy) that limits Radius service names to Radius's own `Certificate` objects. Installation fails if the policy is missing.
+
+##### Key algorithm and lifetime
+
+These are fixed, not settings:
+
+- **Key.** Radius generates every service key as ECDSA P-256 in the modes where it issues certificates (`selfSigned`, `caSecret`, `issuerRef`). It is fast, small, and supported by every TLS stack Radius uses.
+- **Lifetime.** Radius requests 24-hour certificates and renews them at two-thirds of their lifetime. Short lifetimes limit how long a stolen key works, because Radius relies on expiry rather than revocation lists. If an `issuerRef` issuer returns a different lifetime, cert-manager renews at two-thirds of the lifetime actually issued, so nothing breaks.
+- **What receivers accept.** An organization's CA is often RSA, which Radius does not control. So in every mode receivers accept ECDSA P-256 or P-384 and RSA 2048 bits or larger, and reject anything else. `rad install` applies the same check to `--ca-cert`.
+- **FIPS.** The fixed key and every accepted key above are FIPS-approved, so a later FIPS mode for Radius needs no certificate changes. FIPS mode itself is out of scope for this design.
+
+##### Kubernetes API server trust
+
+The Kubernetes API server is also a client of UCP. It forwards `rad` and `kubectl` requests to UCP through the `APIService` `v1alpha3.api.ucp.dev`, and it checks UCP's certificate against that APIService's `caBundle`. Today the Helm chart generates a separate `ucp-ca` (10 years, never rotated) for this. If `caBundle` does not hold the CA that signed UCP's current certificate, the APIService becomes unavailable and every `rad` command fails.
+
+UCP's certificate now comes from the configured CA, so `caBundle` must follow it:
+
+| When                       | What changes                                                                                                           |
+|----------------------------|------------------------------------------------------------------------------------------------------------------------|
+| Fresh install              | The chart stops generating `ucp-ca`. `caBundle` holds the configured CA from the start.                                |
+| Upgrade                    | `caBundle` moves from `ucp-ca` to the configured CA. It holds both until UCP serves a certificate from the new CA.     |
+| CA rotation or mode switch | `caBundle` holds the old and new CA until every certificate is reissued, as under [Rotating the CA](#rotating-the-ca). |
+
+Daily service certificate renewals do not change `caBundle`, because the CA stays the same. The chart annotates the APIService with `cert-manager.io/inject-ca-from: <radius-namespace>/ucp-cert`, and cert-manager's CA injector keeps `caBundle` in sync for all three cases. Any admission webhook Radius adds later follows the same rule.
+
+This applies only to the API server's trust in UCP. UCP's check that a request came from the API server uses the cluster's front-proxy CA, which belongs to Kubernetes and is not changed by these modes.
 
 mTLS is only as strong as the rule that one service cannot obtain another's certificate. With cert-manager, anyone who can create a `Certificate` or `CertificateRequest` for the Radius issuer, or read the Secret that holds a service's private key, can act as that service. The design therefore requires:
 
-| Concern                       | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                           |
-|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| A dedicated issuer            | A Radius-only CA and `Issuer` in the Radius namespace, not a cluster-wide `ClusterIssuer` shared with other workloads. Receivers trust only this CA for internal calls.                                                                                                                                                                                                                                                               |
-| Who can request a certificate | No Radius component has permission to create or update `Certificate`, `CertificateRequest`, or `Issuer` objects. The Helm chart creates one `Certificate` per service. A policy on certificate requests, such as cert-manager's approver-policy, approves only the expected DNS SANs for each service and denies all other requests to the Radius issuer.                                                                             |
-| Where private keys live       | Keys are stored in Kubernetes Secrets by default. No Radius component may read Secrets in the Radius namespace other than those it needs, restricted by `resourceNames`, and none may read another service's key. The cert-manager CSI driver, which generates each key inside the pod so it is never stored in a Secret, is optional hardening that operators can enable; it is another component to install, so it is not required. |
-| Which identities are valid    | A receiver accepts only certificates from the Radius CA whose DNS SANs all name the same Radius component from a fixed list, and maps them to that component's canonical `<service>.<namespace>.svc` name. A certificate with no SAN, a SAN outside the list, or SANs naming two different components is rejected, even if the chain is valid.                                                                                        |
-| Rotating the CA               | Distribute trust through a bundle (for example trust-manager). Add the new CA to the bundle before issuing from it, reissue every service certificate, then remove the old CA.                                                                                                                                                                                                                                                        |
-| CA compromise                 | Treat as a full incident: replace the CA as above, reissue all certificates, and revoke all active execution records, because a stolen CA key could have been used to act as any `submitter` or `assignedComponent`.                                                                                                                                                                                                                  |
+| Concern                       | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| A dedicated issuer            | A Radius-only `Issuer` in the Radius namespace, not a cluster-wide `ClusterIssuer` shared with other workloads, in `selfSigned` and `caSecret` modes. `issuerRef` mode may use a shared issuer only with the request policy below. Receivers trust only the configured CA for internal calls.                                                                                                                                                                                                     |
+| Who can request a certificate | No Radius component has permission to create or update `Certificate`, `CertificateRequest`, or `Issuer` objects. The Helm chart creates one `Certificate` per service. A policy on certificate requests, such as cert-manager's approver-policy, approves only the expected DNS SANs for each service and denies all other requests to the Radius issuer.                                                                                                                                         |
+| Where private keys live       | Keys are stored in Kubernetes Secrets by default. No Radius component may read Secrets in the Radius namespace other than those it needs, restricted by `resourceNames`, and none may read another service's key. The cert-manager CSI driver, which generates each key inside the pod so it is never stored in a Secret, is optional hardening that operators can enable; it is another component to install, so it is not required.                                                             |
+| Which identities are valid    | A receiver accepts only certificates from the configured CA (the Radius CA, the provided CA in `caSecret` mode, or the CA bundle the operator sets in `issuerRef` mode) whose only DNS SAN is the canonical `<service>.<namespace>.svc` name of a Radius component from a fixed list. A certificate with no SAN, more than one SAN, or a SAN outside the list is rejected, even if the chain is valid. This SAN check is what stops other workloads when the CA is shared.                        |
+| Rotating the CA               | `rad upgrade kubernetes` publishes the new CA, reissues every service certificate, and only then removes the old CA, as described in [Rotating the CA](#rotating-the-ca). Switching modes on an existing installation, such as `selfSigned` to `caSecret`, is a CA rotation and uses the same steps.                                                                                                                                                                                              |
+| CA compromise                 | Treat as a full incident: replace the CA as above, reissue all certificates, and revoke all active execution records, because a stolen CA key could have been used to act as any `submitter` or `assignedComponent`. Recovery uses the rotation steps below but removes the old CA immediately instead of waiting for certificates to be reissued, accepting a short outage until every component has a new certificate. In `caSecret` mode the operator also revokes the intermediate with the organization's CA. |
+
+##### Rotating the CA
+
+cert-manager's CA injector merges CA bundles and drops a certificate only after it expires, and updating a CA issuer's Secret does not reissue the certificates it signed. Neither knows when Radius has finished switching certificates, so `rad upgrade kubernetes` runs the rotation itself. It is triggered by a new `--ca-cert`/`--ca-key` or `--ca-secret`, a mode switch, or, in `selfSigned` mode, by `rad upgrade kubernetes --rotate-ca`:
+
+1. **Publish new trust.** Add the new CA to the trust bundle that every component mounts and to the APIService `caBundle`, keeping the old CA in both.
+2. **Wait for components to load it.** Each component reports the CA fingerprints it currently trusts. `rad` waits until every pod trusts the new CA, then continues.
+3. **Switch issuance and reissue.** Point the Radius issuer at the new CA, renew every service `Certificate` (as `cmctl renew` does), and wait until each one is Ready and signed by the new CA and every component serves it.
+4. **Retire old trust.** Remove the old CA from the trust bundle and from `caBundle` explicitly, rather than waiting for it to expire.
+
+Each step is idempotent, so rerunning `rad upgrade kubernetes` after an interruption resumes the rotation. For a compromised CA, step 4 runs immediately after step 1, as described under CA compromise.
+
+##### Using the customer's own mTLS
+
+Some organizations already encrypt and authenticate all traffic between pods with their own network stack and do not want Radius to add a second layer. Examples include a service mesh such as Istio (sidecar or ambient) or Linkerd, Cilium's mutual authentication or WireGuard encryption, and Azure networking features that encrypt pod-to-pod traffic. These installations turn off Radius-managed mTLS with `rad install kubernetes --mtls-provider external` (Helm: `global.rbac.mtls.provider=external`). The default stays `radius`.
+
+Radius does not depend on any particular stack. It needs two things, and gets them separately:
+
+| Need                                | Where it comes from in `external` mode                                                                                                                        |
+|-------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Encryption and integrity in transit | The customer's network stack. Radius sends plain HTTP inside the cluster and relies on the stack to protect it.                                               |
+| Which component called              | A projected Kubernetes ServiceAccount token that each component sends with every internal request. This works on any stack, including ones that only encrypt. |
+
+Radius does not read identity from mesh-specific headers such as Istio's `X-Forwarded-Client-Cert`, because each stack passes identity differently and many, such as Istio ambient mode or WireGuard encryption, pass none.
+
+In `external` mode:
+
+- **Identity.** Each Radius component already runs under its own service account (`ucp`, `applications-rp`, `dynamic-rp`, `controller`, `bicep-de`, and so on). Kubernetes mounts a short-lived token (10 minutes, refreshed by the kubelet) for each service the component calls, with that receiver's name as the token's audience, so a receiver cannot replay a token it was sent to another component. The caller sends it as `Authorization: Bearer <token>`.
+- **Verification.** The receiver checks the token offline against the cluster's service account signing keys, which it reads from the API server's OIDC discovery endpoint and caches. It refetches them every 5 minutes, and also when it sees an unknown key ID (at most once every 30 seconds), so a signing key removed from the cluster stops being accepted within 5 minutes. If the keys cannot be refreshed for 15 minutes, the receiver rejects every request with `AuthorizationUnavailable` until a refresh succeeds, rather than trusting keys that may have been removed. It checks the issuer, its own audience, the expiry, the Radius namespace, and that the service account is in the fixed list, then maps it to the component's canonical `<service>.<namespace>.svc` name, so the rest of this design is unchanged. A missing or invalid token is rejected with `InvalidAuthenticationInfo`.
+- **Trust.** The cluster's service account signing key becomes the root of Radius's internal identity, and the customer's network stack is trusted to protect tokens in transit.
+- **The operator owns encryption.** Radius cannot confirm that an arbitrary stack encrypts every connection, so choosing `external` is the operator's statement that it does. `rad install` prints a warning saying so, and the operator must also cover Radius's connections to storage and queues.
+- **UCP's aggregated API port is unchanged.** The Kubernetes API server calls it directly, so it keeps its certificate (see [Kubernetes API server trust](#kubernetes-api-server-trust)). It is the only certificate Radius manages in this mode. The certificate mode is chosen independently, so `external` with `caSecret` signs this certificate with the operator's CA.
+- **Switching** between `radius` and `external` restarts all Radius components together, because callers and receivers must use the same mode.
 
 #### Keep deployment authority limited
 
@@ -392,9 +469,36 @@ The internal contract must distinguish "a user requested this deployment" from "
 
 ### CLI Design (if applicable)
 
-No new user-facing CLI commands are introduced. The changes are internal to service-to-service communication. Operators configure certificates and controller namespace mappings through installation, described below, not through `rad`.
+No new user-facing CLI commands are introduced. The changes are internal to service-to-service communication. Operators configure certificates and controller namespace mappings at install time, described below.
 
 Authorization is on by default once the feature is complete. Operators who do not want it opt out at install time with a new `rad install kubernetes --skip-rbac` flag, which follows the existing `--skip-contour-install` flag. Helm installs set the equivalent value, `global.rbac.enabled=false`. The installation then stays in the Off stage described under [Compatibility](#compatibility-optional), and cert-manager is not required.
+
+`rad install kubernetes` and `rad upgrade kubernetes` get flags for the [certificate options](#certificate-options), so a production install needs no manual Helm values. The flags used decide the mode:
+
+| Flags                                | Mode                   | Effect                                                                          |
+|--------------------------------------|------------------------|---------------------------------------------------------------------------------|
+| None                                 | `selfSigned` (default) | Radius creates its own CA.                                                      |
+| `--ca-cert FILE` and `--ca-key FILE` | `caSecret`             | Creates the CA Secret from the files. Both are required together.               |
+| `--ca-secret NAME`                   | `caSecret`             | Uses an existing Secret in the Radius namespace.                                |
+| `--cert-issuer KIND/NAME`            | `issuerRef`            | Uses an existing cert-manager issuer, for example `ClusterIssuer/vault-issuer`. |
+
+```bash
+# Development or no corporate PKI: selfSigned is the default
+rad install kubernetes
+
+# Production: bring your own CA signed by the organization's root
+rad install kubernetes --ca-cert ./radius-ca.crt --ca-key ./radius-ca.key
+
+# Production: CA key stays in Vault, an HSM, or a cloud CA
+rad install kubernetes --cert-issuer ClusterIssuer/vault-issuer
+
+# Rely on the cluster's own mTLS, such as a service mesh
+rad install kubernetes --mtls-provider external
+```
+
+`rad` rejects invalid combinations: `--ca-cert` without `--ca-key` (or the reverse), flags for more than one mode, and any of these flags or `--mtls-provider` with `--skip-rbac`. Before installing in `caSecret` mode, `rad` checks that the certificate is a CA, matches the key, and is not expired, and warns if it expires within 30 days. On `rad upgrade kubernetes`, omitting the flags keeps the installation's current mode. A new CA or mode on `rad upgrade kubernetes` runs the [CA rotation](#rotating-the-ca); in `selfSigned` mode, `rad upgrade kubernetes --rotate-ca` replaces the Radius CA the same way.
+
+`--mtls-provider` takes `radius` (default) or `external` (see [Using the customer's own mTLS](#using-the-customers-own-mtls)). It is independent of the certificate flags, which work with either value. With `external`, they apply only to UCP's aggregated API certificate.
 
 ### Implementation Details
 
@@ -514,16 +618,24 @@ Most checks run on paths that already make network or storage calls, so the adde
 
 Unit tests should cover verification of deployment approvals and grant-scope checks. Functional tests should exercise complete requests across services, using scenarios such as:
 
-| Scenario                                                             | Expected result                                                                            |
-|----------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| An application sends a fake user header or calls a provider directly | It cannot impersonate a user or bypass UCP's approval.                                     |
-| The engine uses development approval for a production resource       | UCP rejects the request.                                                                   |
-| A controller object targets another team's resource group            | The controller rejects it before starting the change.                                      |
-| A worker receives altered inputs or the same message twice           | It rejects the changed work and avoids duplicate effects.                                  |
-| Permission is removed during deployment                              | New steps stop; any permitted cleanup stays within its limits.                             |
-| A provider tries to access unrelated state or credentials            | The backend denies access, not just the HTTP API.                                          |
-| An application pod uses a control-plane service account or Secret    | Admission rejects it with `AdmissionPolicyDenied`.                                         |
-| A record expires during a deployment                                 | The deployment fails with `ExecutionRecordNotActive`, and rerunning `rad deploy` succeeds. |
+| Scenario                                                                               | Expected result                                                                                                    |
+|----------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| An application sends a fake user header or calls a provider directly                   | It cannot impersonate a user or bypass UCP's approval.                                                             |
+| The engine uses development approval for a production resource                         | UCP rejects the request.                                                                                           |
+| A controller object targets another team's resource group                              | The controller rejects it before starting the change.                                                              |
+| A worker receives altered inputs or the same message twice                             | It rejects the changed work and avoids duplicate effects.                                                          |
+| Permission is removed during deployment                                                | New steps stop; any permitted cleanup stays within its limits.                                                     |
+| A provider tries to access unrelated state or credentials                              | The backend denies access, not just the HTTP API.                                                                  |
+| An application pod uses a control-plane service account or Secret                      | Admission rejects it with `AdmissionPolicyDenied`.                                                                 |
+| A record expires during a deployment                                                   | The deployment fails with `ExecutionRecordNotActive`, and rerunning `rad deploy` succeeds.                         |
+| Upgrade an existing installation, then rotate the CA                                   | `rad` commands keep working throughout; the APIService stays available.                                            |
+| A peer presents an RSA-1024 or otherwise disallowed key                                | The receiver fails the handshake and logs `PeerCertificateInvalid`.                                                |
+| Install with `--ca-cert` and `--ca-key`                                                | Service certificates chain to the provided CA. A certificate signed directly by the organization root is rejected. |
+| `external` mode: a component replays a token it received to another component          | The receiver rejects it with `InvalidAuthenticationInfo` because the audience does not match.                      |
+| `external` mode: a known signing key is removed while the receiver keeps running       | Tokens signed with that key are rejected within 5 minutes.                                                         |
+| `external` mode: the signing keys cannot be refreshed for 15 minutes                   | The receiver rejects requests with `AuthorizationUnavailable`.                                                     |
+| Service certificates are verified against a CA constrained to `<radius-namespace>.svc` | Verification succeeds.                                                                                             |
+| CA rotation is interrupted and `rad upgrade kubernetes` is rerun                       | The rotation resumes, and the old CA is removed only after every certificate is reissued.                          |
 
 Use cluster integration tests for certificate renewal, protected service accounts, restarts, upgrades, and interrupted deployments. Include the external engine and both legacy and current resource APIs. Test recipes that create cluster-wide objects separately from namespace-limited application templates.
 
@@ -579,9 +691,9 @@ The Detailed Design proposes a specific option for each major decision; what rem
 
 **Q: Which CA issues service certificates, and how are they rotated?**
 
-**A:** [cert-manager](https://cert-manager.io) is the default issuer. It issues one X.509 certificate per service from a Radius-only CA and renews each certificate automatically before it expires. `rad install` installs cert-manager when the cluster has none and uses an existing supported installation otherwise (see [Issuing and protecting service identities](#issuing-and-protecting-service-identities)). SPIFFE/SPIRE stays the growth path if Radius components later span clusters, and the other issuers considered are listed under [Certificate issuer](#certificate-issuer).
+**A:** [cert-manager](https://cert-manager.io) is the default issuer. It issues one X.509 certificate per service from a Radius-only CA and renews each certificate automatically before it expires. Production installations can instead use their own signed CA or an existing issuer (see [Certificate options](#certificate-options)). `rad install` installs cert-manager when the cluster has none and uses an existing supported installation otherwise (see [Issuing and protecting service identities](#issuing-and-protecting-service-identities)). SPIFFE/SPIRE stays the growth path if Radius components later span clusters, and the other issuers considered are listed under [Certificate issuer](#certificate-issuer).
 
-Service certificates last **24 hours** and are renewed after two-thirds of their lifetime (about 16 hours), which is cert-manager's default renewal point. That leaves an 8-hour grace window for the retry behavior under [Certificate authority and rotation](#certificate-authority-and-rotation). The 24-hour lifetime matches the workload certificates of Istio, Linkerd, and Dapr. The Radius CA certificate lasts **1 year**, as Dapr's root does, and is also renewed at two-thirds of its lifetime; the CA bundle holds both the old and new CA until every service certificate is reissued.
+Service certificates last **24 hours** (see [Key algorithm and lifetime](#key-algorithm-and-lifetime)) and are renewed after two-thirds of their lifetime (about 16 hours), which is cert-manager's default renewal point. That leaves an 8-hour grace window for the retry behavior under [Certificate authority and rotation](#certificate-authority-and-rotation). The 24-hour lifetime matches the workload certificates of Istio, Linkerd, and Dapr. The Radius CA certificate lasts **1 year**, as Dapr's root does, and is also renewed at two-thirds of its lifetime; the CA bundle holds both the old and new CA until every service certificate is reissued.
 
 Local development does not need cert-manager: `--skip-rbac` (see [CLI Design](#cli-design-if-applicable)) leaves the installation in the Off stage without cert-manager or mTLS.
 
@@ -589,7 +701,6 @@ Remaining implementation details:
 
 - The supported cert-manager version range.
 - Whether to require trust-manager for CA bundle distribution and approver-policy for certificate request approval, or implement those checks another way.
-- How existing installations move from the Helm-generated certificates.
 
 **Q: What are the execution record's limits?**
 
@@ -651,7 +762,7 @@ The design needs an issuer that gives each Radius service its own certificate an
 | cert-manager (chosen)                                 | A CNCF graduated project and the most widely used certificate tool in Kubernetes. It has a built-in CA issuer, automatic renewal, and add-ons for trust bundles and request approval. Many clusters already run it, and other projects such as Cluster API install it when it is missing. |
 | Built-in Radius CA (like Dapr's Sentry)               | Needs no extra install, but Radius would build and maintain a security-critical CA service: verifying callers before signing, rotating certificates and the root CA, and protecting the CA key.                                                                                           |
 | SPIFFE/SPIRE                                          | Stronger workload attestation, but another system to run. Kept as the growth path if Radius components span clusters (see [Options for component identity](#options-for-component-identity)).                                                                                             |
-| Service mesh CA (Istio, Linkerd)                      | Would force a mesh on every Radius installation.                                                                                                                                                                                                                                          |
+| Service mesh CA (Istio, Linkerd)                      | Not the default, because it would force a mesh on every Radius installation. Installations that already enforce mTLS, with a mesh or otherwise, can use it instead (see [Using the customer's own mTLS](#using-the-customers-own-mtls)).                                                  |
 | HashiCorp Vault PKI                                   | Suitable for organizations that already run Vault, and usable through a cert-manager Vault issuer. Too heavy to require for every Radius installation.                                                                                                                                    |
 | smallstep step-ca                                     | A lightweight standalone CA that works, but is less widely used in Kubernetes than cert-manager and adds a component Radius would install and support.                                                                                                                                    |
 | Kubernetes pod certificates (`PodCertificateRequest`) | Would let pods receive certificates without cert-manager, but the feature is not generally available. Worth revisiting when it is.                                                                                                                                                        |
