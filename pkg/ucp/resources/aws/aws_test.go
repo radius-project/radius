@@ -85,6 +85,8 @@ func Test_IsAWSResource(t *testing.T) {
 		{id: "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/b", want: true},
 		{id: "/planes/AWS/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.S3/Bucket/b", want: true},
 		{id: "/planes/aws/aws/accounts/123456789012/regions/us-west-2", want: false},
+		{id: "/planes", want: false},
+		{id: "/planes/aws", want: false},
 		{id: "/planes/radius/local/resourceGroups/g/providers/Applications.Core/containers/c", want: false},
 		{id: "/subscriptions/s/resourceGroups/g/providers/Microsoft.Storage/storageAccounts/a", want: false},
 	}

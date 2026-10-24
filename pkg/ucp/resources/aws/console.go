@@ -71,22 +71,23 @@ var (
 	ec2Volumes              = consolePage{path: "/ec2/home", hash: "#Volumes:"}
 	ecrRepositories         = consolePage{path: "/ecr/private-registry/repositories"}
 	eksClusters             = consolePage{path: "/eks/home", hash: "#/clusters"}
-	elastiCacheClusters     = consolePage{path: "/elasticache/home", hash: "#/redis"}
-	emrClusters             = consolePage{path: "/emr/home", hash: "#/clusters"}
-	fsxFileSystems          = consolePage{path: "/fsx/home", hash: "#file-systems"}
-	iamUsers                = consolePage{path: "/iam/home", hash: "#/users", global: true}
-	lambdaFunctions         = consolePage{path: "/lambda/home", hash: "#/functions"}
-	mediaLiveChannels       = consolePage{path: "/medialive/home", hash: "#/channels"}
-	memoryDBClusters        = consolePage{path: "/memorydb/home", hash: "#/clusters"}
-	mskClusters             = consolePage{path: "/msk/home", hash: "#/clusters"}
-	openSearchDomains       = consolePage{path: "/aos/home", hash: "#opensearch/domains"}
-	rdsDatabases            = consolePage{path: "/rds/home", hash: "#databases:"}
-	rdsSubnetGroups         = consolePage{path: "/rds/home", hash: "#db-subnet-groups-list:"}
-	s3Buckets               = consolePage{path: "/s3/buckets", global: true}
-	secretsManagerSecrets   = consolePage{path: "/secretsmanager/listsecrets"}
-	snsTopics               = consolePage{path: "/sns/v3/home", hash: "#/topics"}
-	sqsQueues               = consolePage{path: "/sqs/v3/home", hash: "#/queues"}
-	vpcClientVPNEndpoints   = consolePage{path: "/vpc/home", hash: "#ClientVPNEndpoints:"}
+	// ElastiCache links to its dashboard because the ID does not name the engine, and each engine has its own list.
+	elastiCacheClusters   = consolePage{path: "/elasticache/home"}
+	emrClusters           = consolePage{path: "/emr/home", hash: "#/clusters"}
+	fsxFileSystems        = consolePage{path: "/fsx/home", hash: "#file-systems"}
+	iamUsers              = consolePage{path: "/iam/home", hash: "#/users", global: true}
+	lambdaFunctions       = consolePage{path: "/lambda/home", hash: "#/functions"}
+	mediaLiveChannels     = consolePage{path: "/medialive/home", hash: "#/channels"}
+	memoryDBClusters      = consolePage{path: "/memorydb/home", hash: "#/clusters"}
+	mskClusters           = consolePage{path: "/msk/home", hash: "#/clusters"}
+	openSearchDomains     = consolePage{path: "/aos/home", hash: "#opensearch/domains"}
+	rdsDatabases          = consolePage{path: "/rds/home", hash: "#databases:"}
+	rdsSubnetGroups       = consolePage{path: "/rds/home", hash: "#db-subnet-groups-list:"}
+	s3Buckets             = consolePage{path: "/s3/buckets", global: true}
+	secretsManagerSecrets = consolePage{path: "/secretsmanager/listsecrets"}
+	snsTopics             = consolePage{path: "/sns/v3/home", hash: "#/topics"}
+	sqsQueues             = consolePage{path: "/sqs/v3/home", hash: "#/queues"}
+	vpcClientVPNEndpoints = consolePage{path: "/vpc/home", hash: "#ClientVPNEndpoints:"}
 )
 
 // consolePages maps each known AWS resource type, keyed by its lower-cased UCP type, to the console list page of its
