@@ -40,6 +40,12 @@ func Test_CreateAWSResource(t *testing.T) {
 	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	testOptions := setupTest(t)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudformation.DescribeTypeOutput{
+			TypeName: aws.String(testResource.AWSResourceType),
+			Schema:   aws.String(testResource.Schema),
+		}, nil)
+
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),

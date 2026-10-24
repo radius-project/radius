@@ -56,6 +56,9 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 	if errResponse != nil {
 		return errResponse, nil
 	}
+	if errResponse := unsupportedTypeResponse(serviceCtx.ResourceTypeInAWSFormat()); errResponse != nil {
+		return errResponse, nil
+	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	response, err := p.awsClients.CloudControl.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{

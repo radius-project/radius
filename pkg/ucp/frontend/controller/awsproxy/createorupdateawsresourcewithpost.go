@@ -64,6 +64,9 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	if errResponse != nil {
 		return errResponse, nil
 	}
+	if errResponse := unsupportedTypeResponse(serviceCtx.ResourceTypeInAWSFormat()); errResponse != nil {
+		return errResponse, nil
+	}
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
@@ -139,6 +142,16 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return ucp_aws.HandleAWSError(ctx, err)
 		}
 
+		if len(patch) > 0 {
+			var errResponse armrpc_rest.Response
+			patch, errResponse, err = checkPatch(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput, patch)
+			if err != nil {
+				return nil, err
+			} else if errResponse != nil {
+				return errResponse, nil
+			}
+		}
+
 		// Call update only if the patch is not empty
 		if len(patch) > 0 {
 			marshaled, err := json.Marshal(&patch)
@@ -174,6 +187,13 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return resp, nil
 		}
 	} else {
+		errResponse, err := createErrorResponse(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput)
+		if err != nil {
+			return nil, err
+		} else if errResponse != nil {
+			return errResponse, nil
+		}
+
 		logger.Info(fmt.Sprintf("Creating resource : resourceType %q resourceID %q", serviceCtx.ResourceTypeInAWSFormat(), awsResourceIdentifier))
 		response, err := p.awsClients.CloudControl.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     new(serviceCtx.ResourceTypeInAWSFormat()),

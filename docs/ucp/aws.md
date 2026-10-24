@@ -62,3 +62,21 @@ Many AWS resources have a generated name and the resource schema does not necess
 To address this issue, we will introduce state storage in UCP. The user will specify a friendly name for the resource in the bicep file that is unique in the deployment scope (which will be the Radius resource group). UCP will create a mapping between the friendly name and the actual AWS resource deployed. After this point, UCP will use this mapping to determine if the resource with the particular friendly name is being created or updated.
 
 The details of this design can be found at: https://github.com/radius-project/design-notes/pull/21
+
+<br/><br/>
+
+### AWS types that Cloud Control cannot fully manage
+
+UCP returns a `400` for these AWS types instead of the error Cloud Control returns. Error messages name the type and properties, never property values.
+
+| Type                                                                                      | How UCP knows                                                                                       | What UCP returns                                                                                                                                                               |
+|-------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Legacy type with a supported replacement, for example `AWS::IAM::Policy`                  | List in `pkg/aws/awstypes`                                                                          | `400` naming the replacement, on every operation. Nothing is called in AWS                                                                                                     |
+| Deprecated service or CloudFormation template feature, for example `AWS::OpsWorks::Stack` | List in `pkg/aws/awstypes`                                                                          | `400` saying Radius does not support the type, on every operation. Nothing is called in AWS                                                                                    |
+| Read-only type created by AWS, for example `AWS::EC2::Image`                              | `DescribeType` reports `NON_PROVISIONABLE`, and the schema has a read handler but no create handler | `400` on a create or a change, saying the type can only be used with `existing`                                                                                                |
+| Other type Cloud Control cannot create                                                    | `DescribeType` reports `NON_PROVISIONABLE`                                                          | `400` on a create or a change                                                                                                                                                  |
+| Create-and-delete-only type                                                               | `DescribeType` reports `IMMUTABLE`                                                                  | Create works. A change to an existing resource fails with `400` naming the changed properties. Write-only properties are left out of the check, because AWS never returns them |
+
+UCP reads the provisioning type from CloudFormation at run time, so a type starts working without a Radius release when AWS adds Cloud Control support for it.
+
+The read-only list in `pkg/aws/awstypes` is for callers that have no AWS access, such as the recipe engine. It is generated from a snapshot of the CloudFormation registry. To refresh it with AWS credentials, run `go run ./gen -refresh` from `pkg/aws/awstypes`.
