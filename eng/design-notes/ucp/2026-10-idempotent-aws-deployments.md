@@ -231,7 +231,7 @@ A PUT goes through four steps.
 
 **1. Read the record.** If there is no record, this is the first deploy under this alias. Any other read error returns 500, which the Deployment Engine retries. UCP never treats an error as "no record", because it would then create a duplicate.
 
-**2. With no record, take over or create.** This is the first deploy under this alias, or the first deploy after upgrading Radius. UCP looks for an existing AWS resource the same way POST `/:put` does today: first by `name`, then by the AWS identifier in the properties. If AWS has that resource, UCP **takes it over**: it saves a record and continues as an update. Otherwise UCP creates the resource.
+**2. With no record, take over or create.** This is the first deploy under this alias, or the first deploy after upgrading Radius. UCP looks for an existing AWS resource the same way POST `/:put` does today: first by `name`, then by the AWS identifier in the properties. If AWS has that resource, UCP **takes it over**: it saves a record and continues as an update. Otherwise UCP creates the resource, unless the template sets `name` and the properties do not give that same identifier. Then the deploy fails with 400, as described in [The `name` field](#the-name-field).
 
 Before it asks AWS to create anything, UCP saves the record as pending with a new Cloud Control client token. If UCP stops after AWS accepts the create, the retry finds the pending record and sends the same token. Cloud Control then returns the original request, with its AWS identifier, instead of creating a second resource. After a create fails, UCP drops the client token, so the next deploy starts a new create.
 
@@ -273,6 +273,8 @@ resource vpc 'AWS.EC2/VPC@default' = {
 ```
 
 On the first deploy there is no record for `app-vpc`, so UCP finds `vpc-0a1b2c3d` in AWS and **takes it over**: it saves a record that points to it. From then on, Radius manages that VPC as if it had created it, and UCP finds it through the record. If the template later changes `name` to a different VPC, the deploy fails with 409, because `app-vpc` already points to `vpc-0a1b2c3d`.
+
+If AWS has no resource with that `name`, the deploy fails with 400 before UCP calls AWS, for example when `name` has a typo. Creating a resource would not help, because its identifier would come from the properties or from AWS, not from `name`, and every later deploy would fail with 409. The one exception is when the properties set the same identifier, such as `name: 'contoso-app-assets'` with `BucketName: 'contoso-app-assets'`. Then UCP creates the bucket under that name.
 
 `name` stays on AWS types because removing it would break templates that set it, and because it is the only way to take over a resource whose identifier AWS assigns. A template cannot set `VpcId` in `properties`.
 
@@ -362,6 +364,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
 - A record exists, but the template names a different AWS identifier: 409 naming the alias and both identifiers.
 - Another owner holds the alias: 409 naming the alias and that owner.
 - Another record already holds the AWS resource being taken over: 409 naming that record's alias.
+- The template sets `name`, AWS has no such resource, and the properties do not set the same identifier: 400 naming `name`.
 - Another operation is running on the resource: 409.
 - A create-only property changed: 400 naming the property, without its value.
 - The alias contains `/`: 400, because the alias is part of the resource ID.
@@ -394,7 +397,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
   - take over or create when there is no record: by `name`, by properties, and neither
   - each property comparison rule, including write-only and create-only properties
   - a pending record and client token on a retried create
-  - `name` taking over an existing resource, and `name` that differs from the record
+  - `name` taking over an existing resource, `name` that differs from the record, `name` that matches nothing in AWS (400), and `name` that matches the identifier in the properties (create)
   - 409 for concurrent operations, and for a PUT or DELETE with the same alias and a different owner, including one app deployed to two environments in one resource group
   - 409 when taking over an AWS resource that another record already holds
   - DELETE by an old ID that a record holds
