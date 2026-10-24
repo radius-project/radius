@@ -32,7 +32,6 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"golang.org/x/exp/slices"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
@@ -253,14 +252,23 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 		}
 	}
 
-	uniqueResourceIDs := []string{}
+	// Resources the recipe returns in result.resources take precedence over deployed resources with the same ID,
+	// compared case-insensitively. Keep the provider resource ID under the ID that is kept.
+	resultResourceIDs := map[string]string{}
 	for _, val := range recipeResponse.Resources {
-		uniqueResourceIDs = append(uniqueResourceIDs, strings.ToLower(val))
+		resultResourceIDs[strings.ToLower(val)] = val
 	}
 
 	for _, val := range deployedResources {
-		if !slices.Contains(uniqueResourceIDs, strings.ToLower(val)) {
+		kept, ok := resultResourceIDs[strings.ToLower(val)]
+		if !ok {
 			recipeResponse.Resources = append(recipeResponse.Resources, val)
+			continue
+		}
+		providerResourceID := recipeResponse.ProviderResourceID(val)
+		if kept != val && providerResourceID != "" && recipeResponse.ProviderResourceID(kept) == "" {
+			recipeResponse.SetProviderResourceID(kept, providerResourceID)
+			delete(recipeResponse.ProviderResourceIDs, val)
 		}
 	}
 

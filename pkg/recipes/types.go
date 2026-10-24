@@ -19,7 +19,6 @@ package recipes
 import (
 	"bytes"
 	"encoding/json"
-	"strings"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -218,25 +217,8 @@ func (ro *RecipeOutput) SetProviderResourceID(id string, providerResourceID stri
 }
 
 // ProviderResourceID returns the provider-native ID of the output resource with the given ID, or an empty string
-// when the driver could not determine it.
-//
-// An exact match wins. Otherwise IDs are compared case-insensitively, because recipe drivers deduplicate output
-// resource IDs case-insensitively. A case-insensitive match is used only when every match has the same value.
+// when the driver could not determine it. IDs must match exactly: AWS resource names are case-sensitive, so IDs that
+// differ only by case can be different resources.
 func (ro *RecipeOutput) ProviderResourceID(id string) string {
-	if providerResourceID, ok := ro.ProviderResourceIDs[id]; ok {
-		return providerResourceID
-	}
-
-	match := ""
-	for key, providerResourceID := range ro.ProviderResourceIDs {
-		if !strings.EqualFold(key, id) {
-			continue
-		}
-		if match != "" && match != providerResourceID {
-			return ""
-		}
-		match = providerResourceID
-	}
-
-	return match
+	return ro.ProviderResourceIDs[id]
 }

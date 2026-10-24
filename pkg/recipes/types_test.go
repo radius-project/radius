@@ -124,18 +124,6 @@ func TestRecipeOutput_ProviderResourceID(t *testing.T) {
 
 	ro.SetProviderResourceID(id, "arn:aws:s3:::my-bucket")
 	require.Equal(t, "arn:aws:s3:::my-bucket", ro.ProviderResourceID(id))
-	require.Equal(t, "arn:aws:s3:::my-bucket", ro.ProviderResourceID(strings.ToUpper(id)))
+	require.Empty(t, ro.ProviderResourceID(strings.ToUpper(id)), "IDs that differ by case can be different AWS resources")
 	require.Empty(t, ro.ProviderResourceID("/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/other"))
-}
-
-func TestRecipeOutput_ProviderResourceID_IDsDifferingByCase(t *testing.T) {
-	lower := "/planes/aws/aws/accounts/123456789012/regions/us-east-2/providers/Terraform.AWS/aws_subnet/subnet-1"
-	upper := "/planes/aws/aws/accounts/123456789012/regions/us-east-2/providers/Terraform.AWS/aws_subnet/Subnet-1"
-	ro := &RecipeOutput{}
-	ro.SetProviderResourceID(lower, "arn:aws:ec2:us-east-2:123456789012:subnet/subnet-1")
-	ro.SetProviderResourceID(upper, "arn:aws:ec2:us-east-2:123456789012:Subnet/Subnet-1")
-
-	require.Equal(t, "arn:aws:ec2:us-east-2:123456789012:subnet/subnet-1", ro.ProviderResourceID(lower))
-	require.Equal(t, "arn:aws:ec2:us-east-2:123456789012:Subnet/Subnet-1", ro.ProviderResourceID(upper))
-	require.Empty(t, ro.ProviderResourceID(strings.ToUpper(lower)), "an ambiguous case-insensitive match has no provider resource ID")
 }

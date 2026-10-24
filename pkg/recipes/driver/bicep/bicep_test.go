@@ -1311,3 +1311,15 @@ func Test_Bicep_AddAWSProviderResourceIDs_NoResourceClient(t *testing.T) {
 	require.Equal(t, "arn:aws:sns:us-west-2:123456789012:my-topic", output.ProviderResourceID(topicID))
 	require.Empty(t, output.ProviderResourceID(bucketID))
 }
+
+func Test_Bicep_AddAWSProviderResourceIDs_IDsDifferingByCase(t *testing.T) {
+	const lowerID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/arn:aws:sns:us-west-2:123456789012:orders"
+	const upperID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/arn:aws:sns:us-west-2:123456789012:Orders"
+
+	d := &bicepDriver{}
+	output := &recipes.RecipeOutput{Resources: []string{lowerID, upperID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Equal(t, "arn:aws:sns:us-west-2:123456789012:orders", output.ProviderResourceID(lowerID))
+	require.Equal(t, "arn:aws:sns:us-west-2:123456789012:Orders", output.ProviderResourceID(upperID))
+}

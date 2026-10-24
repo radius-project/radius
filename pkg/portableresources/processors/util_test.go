@@ -117,3 +117,15 @@ func Test_GetOutputResourcesFromRecipe_ProviderResourceID(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 }
+
+func Test_GetOutputResourcesFromRecipe_ProviderResourceIDMatchesExactly(t *testing.T) {
+	lowerID := "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/orders"
+	upperID := "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/Orders"
+	output := recipes.RecipeOutput{Resources: []string{lowerID, upperID}}
+	output.SetProviderResourceID(lowerID, "arn:aws:sns:us-west-2:123456789012:orders")
+
+	actual, err := GetOutputResourcesFromRecipe(&output)
+	require.NoError(t, err)
+	require.Equal(t, "arn:aws:sns:us-west-2:123456789012:orders", actual[0].ProviderResourceID)
+	require.Empty(t, actual[1].ProviderResourceID, "a different resource must not take the ARN of an ID that differs only by case")
+}

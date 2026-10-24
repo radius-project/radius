@@ -627,7 +627,7 @@ func (d *bicepDriver) addAWSProviderResourceIDs(ctx context.Context, output *rec
 	var resourceClient processors.ResourceClient
 	for _, resource := range output.Resources {
 		id, err := resources.ParseResource(resource)
-		if err != nil || !isAWSResource(id) || output.ProviderResourceID(resource) != "" {
+		if _, ok := output.ProviderResourceIDs[resource]; err != nil || ok || !isAWSResource(id) {
 			continue
 		}
 
