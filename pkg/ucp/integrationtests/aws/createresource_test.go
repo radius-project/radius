@@ -28,13 +28,19 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 func Test_CreateAWSResource(t *testing.T) {
-	ucp, cloudcontrolClient, _ := initializeAWSTest(t)
+	ucp, cloudcontrolClient, cloudformationClient := initializeAWSTest(t)
+
+	cloudformationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
+		TypeName: new("AWS::Kinesis::Stream"),
+		Schema:   new(`{"primaryIdentifier": ["/properties/Name"]}`),
+	}, nil)
 
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 		notfound := types.ResourceNotFoundException{
