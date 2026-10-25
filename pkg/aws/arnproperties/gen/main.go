@@ -90,7 +90,7 @@ func run() error {
 	flag.Parse()
 
 	if *refresh {
-		if err := refreshSnapshot(context.Background(), *snapshotPath); err != nil {
+		if err := refreshFromAWS(context.Background(), *snapshotPath); err != nil {
 			return err
 		}
 	}
@@ -296,9 +296,14 @@ func render(properties map[string]string) ([]byte, error) {
 	return format.Source(b.Bytes())
 }
 
-// refreshSnapshot lists the public FULLY_MUTABLE AWS types in the CloudFormation registry, reads the primary
-// identifier and read-only ARN properties of each from its schema, and writes the snapshot to path.
-func refreshSnapshot(ctx context.Context, path string) error {
+// registryClient is the part of the CloudFormation client that refreshSnapshot uses.
+type registryClient interface {
+	cloudformation.ListTypesAPIClient
+	DescribeType(ctx context.Context, params *cloudformation.DescribeTypeInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeTypeOutput, error)
+}
+
+// refreshFromAWS rewrites the snapshot at path from the CloudFormation registry in AWS_REGION (default us-west-2).
+func refreshFromAWS(ctx context.Context, path string) error {
 	region := os.Getenv("AWS_REGION")
 	if region == "" {
 		region = "us-west-2"
@@ -315,8 +320,12 @@ func refreshSnapshot(ctx context.Context, path string) error {
 	if err != nil {
 		return err
 	}
-	client := cloudformation.NewFromConfig(cfg)
+	return refreshSnapshot(ctx, cloudformation.NewFromConfig(cfg), region, time.Now(), path)
+}
 
+// refreshSnapshot lists the public FULLY_MUTABLE AWS types in the registry, reads the primary identifier and read-only
+// ARN properties of each from its schema, and writes the snapshot to path.
+func refreshSnapshot(ctx context.Context, client registryClient, region string, now time.Time, path string) error {
 	names := []string{}
 	paginator := cloudformation.NewListTypesPaginator(client, &cloudformation.ListTypesInput{
 		Type:             types.RegistryTypeResource,
@@ -361,7 +370,7 @@ func refreshSnapshot(ctx context.Context, path string) error {
 	}
 
 	var b bytes.Buffer
-	fmt.Fprintf(&b, "# Public FULLY_MUTABLE AWS resource types in the CloudFormation registry (%s, %s): the type name, its primary\n", region, time.Now().UTC().Format("January 2006"))
+	fmt.Fprintf(&b, "# Public FULLY_MUTABLE AWS resource types in the CloudFormation registry (%s, %s): the type name, its primary\n", region, now.UTC().Format("January 2006"))
 	b.WriteString("# identifier properties, and its top-level read-only properties whose names end in \"arn\".\n")
 	b.WriteString("# Refresh with `go run ./gen -refresh` from pkg/aws/arnproperties.\n")
 	for _, line := range lines {
@@ -379,7 +388,7 @@ func formatEntry(e entry) string {
 }
 
 // describeEntry reads the schema of a type.
-func describeEntry(ctx context.Context, client *cloudformation.Client, name string) (entry, error) {
+func describeEntry(ctx context.Context, client registryClient, name string) (entry, error) {
 	desc, err := client.DescribeType(ctx, &cloudformation.DescribeTypeInput{Type: types.RegistryTypeResource, TypeName: aws.String(name)})
 	if err != nil {
 		return entry{}, err

@@ -17,11 +17,17 @@ limitations under the License.
 package main
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -121,4 +127,113 @@ func Test_EntryFromSchema(t *testing.T) {
 
 	_, err = entryFromSchema("AWS::A::B", []byte(`{}`))
 	require.ErrorContains(t, err, "no primary identifier")
+
+	_, err = entryFromSchema("AWS::A::B", []byte(`not json`))
+	require.Error(t, err)
+}
+
+func Test_Generate_Errors(t *testing.T) {
+	dir := t.TempDir()
+	snapshot := filepath.Join(dir, "snapshot.txt")
+	reviewed := filepath.Join(dir, "reviewed.txt")
+	require.NoError(t, os.WriteFile(snapshot, []byte("AWS::Location::Map MapName Arn,MapArn\n"), 0o600))
+	require.NoError(t, os.WriteFile(reviewed, []byte("# nothing reviewed\n"), 0o600))
+
+	_, _, err := generate(filepath.Join(dir, "missing.txt"), reviewed)
+	require.ErrorIs(t, err, os.ErrNotExist)
+
+	_, _, err = generate(snapshot, filepath.Join(dir, "missing.txt"))
+	require.ErrorIs(t, err, os.ErrNotExist)
+
+	_, _, err = generate(snapshot, reviewed)
+	require.ErrorContains(t, err, "AWS::Location::Map: needs a decision")
+
+	require.NoError(t, os.WriteFile(reviewed, []byte("AWS::Location::Map Arn\n"), 0o600))
+	_, _, err = generate(snapshot, reviewed)
+	require.ErrorContains(t, err, "reviewed.txt: line 1")
+
+	require.NoError(t, os.WriteFile(snapshot, []byte("AWS::Location::Map\n"), 0o600))
+	_, _, err = generate(snapshot, reviewed)
+	require.ErrorContains(t, err, "snapshot.txt: line 1")
+}
+
+// fakeRegistry serves ListTypes in pages and DescribeType from a map of schemas.
+type fakeRegistry struct {
+	pages   [][]string
+	schemas map[string]string
+	listErr error
+}
+
+func (f *fakeRegistry) ListTypes(_ context.Context, params *cloudformation.ListTypesInput, _ ...func(*cloudformation.Options)) (*cloudformation.ListTypesOutput, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	if params.Type != types.RegistryTypeResource || params.Visibility != types.VisibilityPublic ||
+		params.ProvisioningType != types.ProvisioningTypeFullyMutable || params.Filters.Category != types.CategoryAwsTypes {
+		return nil, errors.New("unexpected ListTypes filter")
+	}
+	page := 0
+	if params.NextToken != nil {
+		page = len(*params.NextToken)
+	}
+	out := &cloudformation.ListTypesOutput{}
+	for _, name := range f.pages[page] {
+		out.TypeSummaries = append(out.TypeSummaries, types.TypeSummary{TypeName: aws.String(name)})
+	}
+	if page+1 < len(f.pages) {
+		out.NextToken = aws.String(strings.Repeat("x", page+1))
+	}
+	return out, nil
+}
+
+func (f *fakeRegistry) DescribeType(_ context.Context, params *cloudformation.DescribeTypeInput, _ ...func(*cloudformation.Options)) (*cloudformation.DescribeTypeOutput, error) {
+	schema, ok := f.schemas[aws.ToString(params.TypeName)]
+	if !ok {
+		return nil, errors.New("type not found")
+	}
+	return &cloudformation.DescribeTypeOutput{Schema: aws.String(schema)}, nil
+}
+
+func Test_RefreshSnapshot(t *testing.T) {
+	registry := &fakeRegistry{
+		pages: [][]string{{"AWS::SNS::Topic"}, {"AWS::EC2::VPC"}},
+		schemas: map[string]string{
+			"AWS::SNS::Topic": `{"primaryIdentifier": ["/properties/TopicArn"], "readOnlyProperties": ["/properties/TopicArn"]}`,
+			"AWS::EC2::VPC":   `{"primaryIdentifier": ["/properties/VpcId"], "readOnlyProperties": ["/properties/VpcId", "/properties/CidrBlockAssociations"]}`,
+		},
+	}
+	path := filepath.Join(t.TempDir(), defaultSnapshot)
+
+	err := refreshSnapshot(t.Context(), registry, "us-west-2", time.Date(2026, time.October, 1, 0, 0, 0, 0, time.UTC), path)
+	require.NoError(t, err)
+
+	got, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, `# Public FULLY_MUTABLE AWS resource types in the CloudFormation registry (us-west-2, October 2026): the type name, its primary
+# identifier properties, and its top-level read-only properties whose names end in "arn".
+# Refresh with `+"`go run ./gen -refresh`"+` from pkg/aws/arnproperties.
+AWS::EC2::VPC VpcId none
+AWS::SNS::Topic TopicArn TopicArn
+`, string(got))
+
+	entries, err := readFile(path, parseSnapshot)
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+}
+
+func Test_RefreshSnapshot_Errors(t *testing.T) {
+	path := filepath.Join(t.TempDir(), defaultSnapshot)
+	now := time.Now()
+
+	err := refreshSnapshot(t.Context(), &fakeRegistry{listErr: errors.New("access denied")}, "us-west-2", now, path)
+	require.ErrorContains(t, err, "access denied")
+
+	registry := &fakeRegistry{
+		pages:   [][]string{{"AWS::A::Missing", "AWS::A::NoIdentifier"}},
+		schemas: map[string]string{"AWS::A::NoIdentifier": `{}`},
+	}
+	err = refreshSnapshot(t.Context(), registry, "us-west-2", now, path)
+	require.ErrorContains(t, err, "AWS::A::Missing: type not found")
+	require.ErrorContains(t, err, "AWS::A::NoIdentifier: schema has no primary identifier")
+	require.NoFileExists(t, path)
 }

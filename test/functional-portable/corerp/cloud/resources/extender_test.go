@@ -44,6 +44,7 @@ func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
 	appName := "corerp-resources-extenders-aws-logs-recipe-app"
 	logGroupName := "radiusfunctionaltest-" + uuid.New().String()
 	logGroupID := fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s/providers/AWS.Logs/LogGroup/%s", awsAccountID, awsRegion, logGroupName)
+	logGroupARN := fmt.Sprintf("arn:aws:logs:%s:%s:log-group:%s:*", awsRegion, awsAccountID, logGroupName)
 	creationTimestamp := testutil.GetCreationTimestamp()
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
@@ -73,7 +74,8 @@ func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
 						App:  appName,
 						OutputResources: []validation.OutputResourceResponse{
 							{
-								ID: logGroupID,
+								ID:                 logGroupID,
+								ProviderResourceID: logGroupARN,
 							},
 						},
 					},

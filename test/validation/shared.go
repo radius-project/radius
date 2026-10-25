@@ -84,6 +84,10 @@ type RPResource struct {
 type OutputResourceResponse struct {
 	// ID is the resource ID of the output resource.
 	ID string
+
+	// ProviderResourceID is the provider-native ID of the output resource, such as an AWS ARN. When set on an
+	// expected output resource, the actual output resource must have the same value.
+	ProviderResourceID string `json:"providerResourceId,omitempty"`
 }
 
 type RPResourceSet struct {
@@ -312,6 +316,9 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 					for _, actualOutputResource := range outputResources {
 						if strings.EqualFold(expectedOutputResource.ID, actualOutputResource.ID) {
 							found = true
+							if expectedOutputResource.ProviderResourceID != "" {
+								require.Equalf(t, expectedOutputResource.ProviderResourceID, actualOutputResource.ProviderResourceID, "providerResourceId of output resource %s", actualOutputResource.ID)
+							}
 							break
 						}
 					}
