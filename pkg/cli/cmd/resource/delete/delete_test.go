@@ -632,6 +632,78 @@ func Test_Run(t *testing.T) {
 				}
 			})
 		}
+
+		// A different bucket elsewhere gives no warning, and a failed check logs a warning. Both
+		// still delete the resource.
+		for _, tc := range []struct {
+			name           string
+			otherARN       string
+			listErr        error
+			expectedWrites []any
+		}{
+			{name: "no match", otherARN: "arn:aws:s3:::other-bucket"},
+			{
+				name:    "listing fails",
+				listErr: fmt.Errorf("list failed"),
+				expectedWrites: []any{
+					output.LogOutput{Format: "WARNING: Could not check whether other Radius resources use the output resources of %s: %v", Params: []any{"Radius.Storage/buckets/data", fmt.Errorf("list failed")}},
+				},
+			},
+		} {
+			t.Run("Success: deletes when "+tc.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+
+				resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Storage/buckets/data"
+				otherResourceID := "/planes/radius/local/resourceGroups/other-group/providers/Radius.Storage/buckets/data"
+				resource := generated.GenericResource{
+					ID: &resourceID,
+					Properties: map[string]any{"status": map[string]any{"outputResources": []any{
+						map[string]any{"id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket", "providerResourceId": "arn:aws:s3:::shared-bucket", "radiusManaged": true},
+					}}},
+				}
+				otherResource := generated.GenericResource{
+					ID: &otherResourceID,
+					Properties: map[string]any{"status": map[string]any{"outputResources": []any{
+						map[string]any{"id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/other-bucket", "providerResourceId": tc.otherARN, "radiusManaged": true},
+					}}},
+				}
+
+				appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+				appManagementClient.EXPECT().
+					GetResource(gomock.Any(), "Radius.Storage/buckets", "data").
+					Return(resource, nil).
+					Times(1)
+				if tc.listErr != nil {
+					appManagementClient.EXPECT().ListResourcesInPlane(gomock.Any()).Return(nil, tc.listErr).Times(1)
+				} else {
+					appManagementClient.EXPECT().ListResourcesInPlane(gomock.Any()).Return([]generated.GenericResource{resource, otherResource}, nil).Times(1)
+				}
+				appManagementClient.EXPECT().
+					DeleteResource(gomock.Any(), "Radius.Storage/buckets", "data", false).
+					Return(true, nil).
+					Times(1)
+
+				outputSink := &output.MockOutput{}
+				runner := &Runner{
+					ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+					Output:                         outputSink,
+					Workspace:                      &workspaces.Workspace{},
+					FullyQualifiedResourceTypeName: "Radius.Storage/buckets",
+					ResourceName:                   "data",
+					Format:                         "table",
+					Confirm:                        true,
+				}
+
+				err := runner.Run(t.Context())
+				require.NoError(t, err)
+
+				expected := append(append([]any{}, tc.expectedWrites...), output.LogOutput{
+					Format: "%s/%s deleted",
+					Params: []any{"Radius.Storage/buckets", "data"},
+				})
+				require.Equal(t, expected, outputSink.Writes)
+			})
+		}
 	})
 
 }
