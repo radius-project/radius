@@ -608,6 +608,77 @@ func Test_Bicep_Delete_MultipleOutputResources(t *testing.T) {
 	}
 }
 
+// Test_Bicep_Delete_RetriesEachResource checks that each output resource gets its own retries.
+func Test_Bicep_Delete_RetriesEachResource(t *testing.T) {
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	driverBicep.options.DeleteRetryCount = 2
+	driverBicep.options.DeleteRetryDelaySeconds = 0
+
+	alwaysFails := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/always-fails"
+	failsOnce := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/fails-once"
+	succeeds := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/succeeds"
+	outputResources := []rpv1.OutputResource{
+		{ID: resources.MustParse(alwaysFails), RadiusManaged: new(true)},
+		{ID: resources.MustParse(failsOnce), RadiusManaged: new(true)},
+		{ID: resources.MustParse(succeeds), RadiusManaged: new(true)},
+	}
+
+	client.EXPECT().Delete(gomock.Any(), alwaysFails).Return(errors.New("always-fails is locked")).Times(3)
+	gomock.InOrder(
+		client.EXPECT().Delete(gomock.Any(), failsOnce).Return(errors.New("fails-once is busy")),
+		client.EXPECT().Delete(gomock.Any(), failsOnce).Return(nil),
+	)
+	client.EXPECT().Delete(gomock.Any(), succeeds).Return(nil).Times(1)
+
+	err := driverBicep.Delete(t.Context(), driver.DeleteOptions{OutputResources: outputResources})
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeletionFailed,
+			Message: fmt.Sprintf("failed to delete resource %q after 3 attempt(s), last error: always-fails is locked", alwaysFails),
+		},
+	}, err)
+}
+
+// Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource checks that when a redeploy drops output resources,
+// one failed delete does not stop the other stale resources from being deleted.
+func Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	driverBicep.DeploymentClient = &deploymentClientSpy{
+		response: &clients.ClientCreateOrUpdateResponse{
+			Properties: &armdeployments.DeploymentPropertiesExtended{},
+		},
+	}
+	driverBicep.RegistryClient = ts.TestServer.Client()
+
+	failing := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/failing"
+	stale := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/stale"
+	client.EXPECT().Delete(gomock.Any(), failing).Return(errors.New("failing is locked")).Times(1)
+	client.EXPECT().Delete(gomock.Any(), stale).Return(nil).Times(1)
+
+	_, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Recipe: recipes.ResourceMetadata{
+				Name:          "test-resource",
+				ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+			},
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "direct-module",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: ts.TestImageURL,
+			},
+		},
+		PrevState: []string{failing, stale},
+	})
+	recipeErr := &recipes.RecipeError{}
+	require.ErrorAs(t, err, &recipeErr)
+	require.Equal(t, recipes.RecipeGarbageCollectionFailed, recipeErr.ErrorDetails.Code)
+	require.Equal(t, fmt.Sprintf("code RecipeDeletionFailed: err failed to delete resource %q after 1 attempt(s), last error: failing is locked", failing), recipeErr.ErrorDetails.Message)
+}
+
 // Test_Bicep_Delete_FailureDoesNotCancelOtherDeletes checks that a delete still running when another delete runs out
 // of retries keeps a live context and finishes.
 func Test_Bicep_Delete_FailureDoesNotCancelOtherDeletes(t *testing.T) {
