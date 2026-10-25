@@ -37,10 +37,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -55,33 +51,7 @@ func TestEncryptionSecretUpgrade(t *testing.T) {
 	require.NoError(t, err)
 	require.Regexp(t, `^v4\.`, string(version), "This regression requires Helm 4 server-side apply.")
 
-	// A regression must fail on this unusable config, never reach a user's cluster.
-	unusedKubeconfig := filepath.Join(t.TempDir(), "unused-kubeconfig")
-	require.NoError(t, os.WriteFile(unusedKubeconfig, []byte("invalid kubeconfig"), 0600))
-	t.Setenv("KUBECONFIG", unusedKubeconfig)
-	t.Setenv("USE_EXISTING_CLUSTER", "true")
-	useExistingCluster := false
-	environment := &envtest.Environment{UseExistingCluster: &useExistingCluster}
-	config, err := environment.Start()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		require.NoError(t, environment.Stop())
-	})
-	client, err := kubernetes.NewForConfig(config)
-	require.NoError(t, err)
-	kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
-	require.NoError(t, clientcmd.WriteToFile(clientcmdapi.Config{
-		Clusters: map[string]*clientcmdapi.Cluster{
-			"test": {Server: config.Host, CertificateAuthorityData: config.CAData},
-		},
-		AuthInfos: map[string]*clientcmdapi.AuthInfo{
-			"test": {ClientCertificateData: config.CertData, ClientKeyData: config.KeyData},
-		},
-		Contexts: map[string]*clientcmdapi.Context{
-			"test": {Cluster: "test", AuthInfo: "test"},
-		},
-		CurrentContext: "test",
-	}, kubeconfig))
+	kubeconfig, client := startTestAPIServer(t)
 
 	// Use the shipping template, without workloads that require a kubelet.
 	chartPath := t.TempDir()
@@ -99,13 +69,6 @@ func TestEncryptionSecretUpgrade(t *testing.T) {
 	for _, upgrader := range []string{"helm", "rad"} {
 		for _, state := range []string{"fresh", "rotated", "legacy"} {
 			t.Run(upgrader+"/"+state, func(t *testing.T) {
-				// Keep this test serial: Helm derives its default manager from os.Args[0].
-				originalBinary := os.Args[0]
-				os.Args[0] = "rad"
-				if upgrader == "helm" {
-					os.Args[0] = "rad_linux_amd64"
-				}
-				t.Cleanup(func() { os.Args[0] = originalBinary })
 				namespace := "encryption-" + upgrader + "-" + state
 				flags := genericclioptions.NewConfigFlags(false)
 				flags.KubeConfig = &kubeconfig
@@ -126,7 +89,7 @@ func TestEncryptionSecretUpgrade(t *testing.T) {
 				key, err := base64.StdEncoding.DecodeString(store.Keys["1"].Key)
 				require.NoError(t, err)
 				require.Len(t, key, 32)
-				require.True(t, ownsEncryptionRotation(t, secret, os.Args[0], metav1.ManagedFieldsOperationApply))
+				require.True(t, ownsEncryptionRotation(t, secret, FieldManager, metav1.ManagedFieldsOperationApply))
 
 				switch state {
 				case "rotated":

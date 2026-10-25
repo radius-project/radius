@@ -42,7 +42,17 @@ const (
 
 	uninstallTimeout = time.Duration(5) * time.Minute
 	rollbackTimeout  = time.Duration(5) * time.Minute
+
+	// FieldManager is the server-side apply field manager for every change Radius makes through Helm.
+	FieldManager = "rad"
 )
+
+// Helm 4 otherwise names the field manager after the running executable, so the same CLI saved as
+// rad and as rad_linux_amd64 owns fields as two managers, and an upgrade that changes those fields
+// fails with a conflict. See https://github.com/radius-project/radius/issues/13454.
+func init() {
+	kube.ManagedFieldsManager = FieldManager
+}
 
 //go:generate go tool mockgen -typed -source=helmclient.go -destination=./mock_helmclient.go -package=helm -imports helm=helm.sh/helm/v4/pkg/action,chart=helm.sh/helm/v4/pkg/chart/v2,release=helm.sh/helm/v4/pkg/release,releasev1=helm.sh/helm/v4/pkg/release/v1
 

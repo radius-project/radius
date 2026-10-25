@@ -41,7 +41,7 @@ KUBEBUILDER_ASSETS="$(go tool setup-envtest use -p path '1.30.*')" \
   go test ./pkg/cli/helm -run '^TestEncryptionSecretUpgrade$' -count=1
 ```
 
-The test starts its own API server and etcd, uses a temporary kubeconfig, and installs the shipping encryption Secret template without control-plane workloads. It exercises the Radius Helm client with the staged `rad_linux_amd64` manager followed by the standalone Helm binary, as well as ordinary `rad` upgrades. Fresh, previously rotated, and legacy Secrets must keep their UID, key-data SHA-256 digest, and rotation annotation presence/value. It never logs key data or uses an existing cluster. `make test` also runs this regression; direct `go test` skips it when `KUBEBUILDER_ASSETS` is unset. This focused regression does not replace full installation or previous-supported-release upgrade verification.
+The test starts its own API server and etcd, uses a temporary kubeconfig, and installs the shipping encryption Secret template without control-plane workloads. It installs through the Radius Helm client, which always applies as the `rad` field manager, then upgrades with either the standalone Helm binary or an ordinary `rad` upgrade. Fresh, previously rotated, and legacy Secrets must keep their UID, key-data SHA-256 digest, and rotation annotation presence/value. It never logs key data or uses an existing cluster. `make test` also runs this regression; direct `go test` skips it when `KUBEBUILDER_ASSETS` is unset. This focused regression does not replace full installation or previous-supported-release upgrade verification.
 
 ## Test Structure
 

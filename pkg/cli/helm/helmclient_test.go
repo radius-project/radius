@@ -235,6 +235,11 @@ func TestHelmClient_Constants(t *testing.T) {
 	require.Equal(t, time.Duration(10)*time.Minute, DefaultInstallTimeout)
 }
 
+func TestHelmClient_FieldManager(t *testing.T) {
+	require.Equal(t, "rad", FieldManager)
+	require.Equal(t, FieldManager, kube.ManagedFieldsManager)
+}
+
 // Test_waitStrategy verifies that we wait using Helm's legacy poller rather than the v4
 // default kstatus watcher, which can hang until timeout on resources that are already ready.
 // See https://github.com/helm/helm/issues/31526.
