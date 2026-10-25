@@ -281,9 +281,24 @@ func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
 			}}, nil, tt.tenantID, nil)
 
 			require.Len(t, graph.Resources, 1)
+
+			// Check the wire format that HTTP clients see, not just the Go struct.
+			raw, err := json.Marshal(graph)
+			require.NoError(t, err)
+			var decoded struct {
+				Resources []struct {
+					OutputResources []struct {
+						ID        string `json:"id"`
+						PortalURL string `json:"portalUrl"`
+					} `json:"outputResources"`
+				} `json:"resources"`
+			}
+			require.NoError(t, json.Unmarshal(raw, &decoded))
+			require.Len(t, decoded.Resources, 1)
+
 			got := map[string]string{}
-			for _, outputResource := range graph.Resources[0].OutputResources {
-				got[to.String(outputResource.ID)] = to.String(outputResource.PortalURL)
+			for _, outputResource := range decoded.Resources[0].OutputResources {
+				got[outputResource.ID] = outputResource.PortalURL
 			}
 			require.Equal(t, tt.want, got)
 		})

@@ -62,6 +62,18 @@ func Test_ConsoleURL(t *testing.T) {
 			id:   "/planes",
 		},
 		{
+			name: "AWS plane type with no name has no link",
+			id:   "/planes/aws",
+		},
+		{
+			name: "AWS plane with no resource has no link",
+			id:   "/planes/aws/aws",
+		},
+		{
+			name: "global console page in an unrecognized partition has no link",
+			id:   "/planes/aws/other/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/b",
+		},
+		{
 			name: "unknown type has no link",
 			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/t",
 		},

@@ -844,64 +844,83 @@ func Test_azureTenantID(t *testing.T) {
 	}
 }
 
-func Test_computeGraph_azurePortalLinksInGraphJSON(t *testing.T) {
+func Test_computeGraph_portalLinksInGraphJSON(t *testing.T) {
 	const tenantID = "11111111-1111-1111-1111-111111111111"
 	const containerID = "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/mycontainer"
 	const azureStorageID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
 	const kubernetesDeploymentID = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/foo"
+	const terraformBucketID = "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/mybucket"
 
-	container := generated.GenericResource{
-		ID:   to.Ptr(containerID),
-		Name: to.Ptr("mycontainer"),
-		Type: to.Ptr("Applications.Core/containers"),
-		Properties: map[string]any{
-			"application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/applications/myapp",
-			"status": map[string]any{
-				"outputResources": []any{
-					map[string]any{"id": azureStorageID},
-					map[string]any{"id": kubernetesDeploymentID},
-				},
+	azureURL := "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID
+	tests := []struct {
+		name     string
+		tenantID string
+		want     map[string]*string // nil means the output resource must not carry a portalUrl
+	}{
+		{
+			name:     "with an Azure tenant",
+			tenantID: tenantID,
+			want: map[string]*string{
+				azureStorageID:         &azureURL,
+				testAWSQueueID:         to.Ptr(testAWSQueueURL),
+				terraformBucketID:      to.Ptr("https://console.aws.amazon.com/s3/buckets"),
+				kubernetesDeploymentID: nil,
+			},
+		},
+		{
+			name: "without an Azure tenant",
+			want: map[string]*string{
+				azureStorageID:         nil,
+				testAWSQueueID:         to.Ptr(testAWSQueueURL),
+				terraformBucketID:      to.Ptr("https://console.aws.amazon.com/s3/buckets"),
+				kubernetesDeploymentID: nil,
 			},
 		},
 	}
 
-	graph := computeGraph([]generated.GenericResource{container}, nil, tenantID)
-	require.Len(t, graph.Resources, 1, "expected exactly one graph resource")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputResources := []any{}
+			for id := range tt.want {
+				outputResources = append(outputResources, map[string]any{"id": id})
+			}
+			container := generated.GenericResource{
+				ID:   to.Ptr(containerID),
+				Name: to.Ptr("mycontainer"),
+				Type: to.Ptr("Applications.Core/containers"),
+				Properties: map[string]any{
+					"application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/applications/myapp",
+					"status":      map[string]any{"outputResources": outputResources},
+				},
+			}
 
-	// Marshal to JSON and re-parse so the assertion actually exercises the wire format
-	// that HTTP clients (rad CLI, portal, tests) will see.
-	raw, err := json.Marshal(graph)
-	require.NoError(t, err)
+			graph := computeGraph([]generated.GenericResource{container}, nil, tt.tenantID)
+			require.Len(t, graph.Resources, 1, "expected exactly one graph resource")
 
-	var decoded struct {
-		Resources []struct {
-			ID              string `json:"id"`
-			OutputResources []struct {
-				ID        string  `json:"id"`
-				Name      string  `json:"name"`
-				Type      string  `json:"type"`
-				PortalURL *string `json:"portalUrl,omitempty"`
-			} `json:"outputResources"`
-		} `json:"resources"`
+			// Marshal to JSON and re-parse so the assertion actually exercises the wire format
+			// that HTTP clients (rad CLI, portal, tests) will see.
+			raw, err := json.Marshal(graph)
+			require.NoError(t, err)
+
+			var decoded struct {
+				Resources []struct {
+					ID              string `json:"id"`
+					OutputResources []struct {
+						ID        string  `json:"id"`
+						PortalURL *string `json:"portalUrl,omitempty"`
+					} `json:"outputResources"`
+				} `json:"resources"`
+			}
+			require.NoError(t, json.Unmarshal(raw, &decoded))
+
+			require.Len(t, decoded.Resources, 1)
+			require.Equal(t, containerID, decoded.Resources[0].ID)
+
+			got := map[string]*string{}
+			for _, or := range decoded.Resources[0].OutputResources {
+				got[or.ID] = or.PortalURL
+			}
+			require.Equal(t, tt.want, got)
+		})
 	}
-	require.NoError(t, json.Unmarshal(raw, &decoded))
-
-	require.Len(t, decoded.Resources, 1)
-	require.Equal(t, containerID, decoded.Resources[0].ID)
-
-	// Index the output resources by ID so we can make ID-based assertions regardless of
-	// the sort order chosen by outputResourcesFromAPIData.
-	byID := map[string]*string{}
-	for _, or := range decoded.Resources[0].OutputResources {
-		byID[or.ID] = or.PortalURL
-	}
-
-	azurePortalURL, hasAzure := byID[azureStorageID]
-	require.True(t, hasAzure, "graph JSON must include the Azure output resource")
-	require.NotNil(t, azurePortalURL, "Azure output resource must carry a portalUrl in the graph JSON")
-	require.Equal(t, "https://portal.azure.com/#@"+tenantID+"/resource"+azureStorageID, *azurePortalURL)
-
-	k8sPortalURL, hasK8s := byID[kubernetesDeploymentID]
-	require.True(t, hasK8s, "graph JSON must include the Kubernetes output resource")
-	require.Nil(t, k8sPortalURL, "non-Azure output resource must not carry a portalUrl in the graph JSON")
 }
