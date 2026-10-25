@@ -217,6 +217,37 @@ func Test_CreateOrUpdateAWSResource_Secrets(t *testing.T) {
 				"provisioningState": "Provisioning",
 			},
 		},
+		{
+			name:     "update does not echo secret the schema does not mark and keeps the AWS value",
+			resource: newVerifiedAccessTrustProviderTestResource(),
+			current:  map[string]any{"VerifiedAccessTrustProviderId": "vatp-123", "OidcOptions": map[string]any{"Issuer": "old", "ClientSecret": awsSecret}},
+			request:  map[string]any{"OidcOptions": map[string]any{"Issuer": "new", "ClientSecret": requestSecret}},
+			lookup:   true,
+			write:    "update",
+
+			wantStatus: http.StatusCreated,
+			wantProperties: map[string]any{
+				"VerifiedAccessTrustProviderId": "vatp-123",
+				"OidcOptions":                   map[string]any{"Issuer": "new", "ClientSecret": awsSecret},
+				"provisioningState":             "Provisioning",
+			},
+		},
+		{
+			name:     "no change keeps the client secret AWS returns",
+			resource: newCognitoUserPoolClientTestResource(),
+			current:  map[string]any{"UserPoolId": "pool", "ClientId": "client", "ClientName": "app", "ClientSecret": awsSecret},
+			request:  map[string]any{"UserPoolId": "pool", "ClientName": "app"},
+			lookup:   true,
+
+			wantStatus: http.StatusOK,
+			wantProperties: map[string]any{
+				"UserPoolId":        "pool",
+				"ClientId":          "client",
+				"ClientName":        "app",
+				"ClientSecret":      awsSecret,
+				"provisioningState": "Succeeded",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -283,6 +314,37 @@ func Test_CreateOrUpdateAWSResourceWithPost_Secrets(t *testing.T) {
 				"ClientName":        "new",
 				"ClientSecret":      awsSecret,
 				"provisioningState": "Provisioning",
+			},
+		},
+		{
+			name:     "update does not echo secret the schema does not mark and keeps the AWS value",
+			resource: newVerifiedAccessTrustProviderTestResource(),
+			current:  map[string]any{"VerifiedAccessTrustProviderId": "vatp-123", "OidcOptions": map[string]any{"Issuer": "old", "ClientSecret": awsSecret}},
+			request:  map[string]any{"VerifiedAccessTrustProviderId": "vatp-123", "OidcOptions": map[string]any{"Issuer": "new", "ClientSecret": requestSecret}},
+			lookup:   true,
+			write:    "update",
+
+			wantStatus: http.StatusCreated,
+			wantProperties: map[string]any{
+				"VerifiedAccessTrustProviderId": "vatp-123",
+				"OidcOptions":                   map[string]any{"Issuer": "new", "ClientSecret": awsSecret},
+				"provisioningState":             "Provisioning",
+			},
+		},
+		{
+			name:     "no change keeps the client secret AWS returns",
+			resource: newCognitoUserPoolClientTestResource(),
+			current:  map[string]any{"UserPoolId": "pool", "ClientId": "client", "ClientName": "app", "ClientSecret": awsSecret},
+			request:  map[string]any{"UserPoolId": "pool", "ClientId": "client", "ClientName": "app"},
+			lookup:   true,
+
+			wantStatus: http.StatusOK,
+			wantProperties: map[string]any{
+				"UserPoolId":        "pool",
+				"ClientId":          "client",
+				"ClientName":        "app",
+				"ClientSecret":      awsSecret,
+				"provisioningState": "Succeeded",
 			},
 		},
 	}
