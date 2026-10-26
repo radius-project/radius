@@ -23,6 +23,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry"
+	"github.com/radius-project/radius/pkg/rp/util"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/retry"
@@ -63,18 +64,18 @@ func (wi *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath
 		return nil, err
 	}
 
-	registryHost, err := getRegistryHostname(templatePath)
+	registryName, err := util.RegistryName(templatePath)
 	if err != nil {
 		return nil, err
 	}
 
-	ac, err := azcontainerregistry.NewAuthenticationClient(fmt.Sprintf("https://%s", registryHost), &azcontainerregistry.AuthenticationClientOptions{})
+	ac, err := azcontainerregistry.NewAuthenticationClient(fmt.Sprintf("https://%s", registryName), &azcontainerregistry.AuthenticationClientOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	// Get refresh token from ACR by exchanging for the above AAD access token
-	rt, err := ac.ExchangeAADAccessTokenForACRRefreshToken(ctx, "access_token", registryHost, &azcontainerregistry.AuthenticationClientExchangeAADAccessTokenForACRRefreshTokenOptions{
+	rt, err := ac.ExchangeAADAccessTokenForACRRefreshToken(ctx, "access_token", registryName, &azcontainerregistry.AuthenticationClientExchangeAADAccessTokenForACRRefreshTokenOptions{
 		AccessToken: new(aadToken.Token),
 		Tenant:      new(wi.tenantID),
 	})
@@ -86,7 +87,7 @@ func (wi *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath
 	// Return a new auth.Client using the retrieved refresh token for ACR
 	return &auth.Client{
 		Client: retry.DefaultClient,
-		Credential: auth.StaticCredential(registryHost, auth.Credential{
+		Credential: auth.StaticCredential(registryName, auth.Credential{
 			RefreshToken: *rt.RefreshToken,
 		}),
 	}, nil
