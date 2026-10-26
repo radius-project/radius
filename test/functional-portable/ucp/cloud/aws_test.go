@@ -33,6 +33,8 @@ import (
 	awsgo "github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
@@ -45,6 +47,106 @@ var (
 	logGroupResourceType    = "AWS.Logs/LogGroup"
 	awsLogGroupResourceType = "AWS::Logs::LogGroup"
 )
+
+func Test_AWS_GetResourceWithImageID(t *testing.T) {
+	myTest := test.NewUCPTest(t, t.Name(), func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		ctx := t.Context()
+		cfg, err := awsconfig.LoadDefaultConfig(ctx)
+		require.NoError(t, err)
+		pages := ec2.NewDescribeImagesPaginator(ec2.NewFromConfig(cfg), &ec2.DescribeImagesInput{
+			Owners: []string{"amazon"},
+			Filters: []ec2types.Filter{
+				{Name: awsgo.String("name"), Values: []string{"al2023-ami-2023.*-x86_64"}},
+				{Name: awsgo.String("architecture"), Values: []string{"x86_64"}},
+				{Name: awsgo.String("state"), Values: []string{"available"}},
+				{Name: awsgo.String("is-public"), Values: []string{"true"}},
+			},
+		})
+		var newest ec2types.Image
+		for pages.HasMorePages() {
+			page, err := pages.NextPage(ctx)
+			require.NoError(t, err)
+			for _, image := range page.Images {
+				if awsgo.ToString(image.CreationDate) > awsgo.ToString(newest.CreationDate) {
+					newest = image
+				}
+			}
+		}
+		imageID := awsgo.ToString(newest.ImageId)
+		require.NotEmpty(t, imageID, "Amazon Linux 2023 must have a public AMI in %s", cfg.Region)
+
+		body := postGetAWSResource(t, ctx, url, roundTripper, "AWS.EC2/Image", map[string]any{"ImageId": imageID})
+		properties, ok := body["properties"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, imageID, properties["ImageId"])
+		require.Equal(t, properties["Arn"], body["name"])
+		require.NotEmpty(t, properties["Arn"])
+		require.Contains(t, body["name"], "::image/"+imageID)
+		require.Equal(t, "AWS.EC2/Image", body["type"])
+	})
+	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}
+	myTest.Test(t)
+}
+
+func Test_AWS_GetResourceWithModelID(t *testing.T) {
+	myTest := test.NewUCPTest(t, t.Name(), func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		ctx := t.Context()
+		cfg, err := awsconfig.LoadDefaultConfig(ctx)
+		require.NoError(t, err)
+		pages := cloudcontrol.NewListResourcesPaginator(cloudcontrol.NewFromConfig(cfg), &cloudcontrol.ListResourcesInput{
+			TypeName: awsgo.String("AWS::Bedrock::FoundationModel"),
+		})
+		var modelID, modelARN string
+		for pages.HasMorePages() && modelID == "" {
+			page, err := pages.NextPage(ctx)
+			require.NoError(t, err)
+			for _, model := range page.ResourceDescriptions {
+				if model.Properties == nil {
+					continue
+				}
+				var properties map[string]any
+				require.NoError(t, json.Unmarshal([]byte(awsgo.ToString(model.Properties)), &properties))
+				if id, ok := properties["ModelId"].(string); ok && id != "" {
+					modelID = id
+					modelARN = awsgo.ToString(model.Identifier)
+					break
+				}
+			}
+		}
+		require.NotEmpty(t, modelID, "Bedrock must list a foundation model in %s", cfg.Region)
+		require.NotEmpty(t, modelARN)
+
+		body := postGetAWSResource(t, ctx, url, roundTripper, "AWS.Bedrock/FoundationModel", map[string]any{"ModelId": modelID})
+		properties, ok := body["properties"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, modelID, properties["ModelId"])
+		require.Equal(t, modelARN, body["name"])
+		require.Equal(t, modelARN, properties["ModelArn"])
+		require.Equal(t, "AWS.Bedrock/FoundationModel", body["type"])
+	})
+	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}
+	myTest.Test(t)
+}
+
+func postGetAWSResource(t *testing.T, ctx context.Context, url string, roundTripper http.RoundTripper, resourceType string, properties map[string]any) map[string]any {
+	t.Helper()
+	collection, err := validation.GetResourceIdentifier(ctx, resourceType, "")
+	require.NoError(t, err)
+	payload, err := json.Marshal(map[string]any{"properties": properties})
+	require.NoError(t, err)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		fmt.Sprintf("%s%s:get?api-version=%s", url, collection, v20231001preview.Version), bytes.NewReader(payload))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	response, err := roundTripper.RoundTrip(req)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	requireResponseStatus(t, response, http.StatusOK)
+	var body map[string]any
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&body))
+	require.Equal(t, strings.TrimSuffix(collection, "/")+"/"+fmt.Sprint(body["name"]), body["id"])
+	return body
+}
 
 func Test_AWS_DeleteResource(t *testing.T) {
 	ctx := t.Context()

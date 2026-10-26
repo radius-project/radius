@@ -66,6 +66,8 @@ simple proxying.
 
 AWS POST `/:get` reads accept the schema's primary identifier or a complete set of `additionalIdentifiers`. [Read identifier resolution](../../pkg/ucp/frontend/controller/awsproxy/readidentifier.go) uses a live-verified ARN format for EC2 images and otherwise searches every Cloud Control `ListResources` page, reading candidates whose list properties are incomplete. ARN regex patterns are not construction templates. The fallback needs list permissions in addition to read permissions and passes request properties as `ResourceModel` for types that require parent scope. No match returns 404; multiple matching resources return 409 and require the caller to supply the primary identifier. Primary-identifier reads, creates, updates, and deletes do not use this fallback.
 
+GET `.../<name>` continues to pass the URL name directly as the Cloud Control primary identifier. A bare name does not identify which additional property or composite identifier set to use. Use POST `/:get` with named properties for friendly-identifier resolution.
+
 ## Invariants And Constraints
 
 - UCP should stay focused on routing, identity of targets, and translation.
