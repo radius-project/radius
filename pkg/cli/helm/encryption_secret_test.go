@@ -215,7 +215,91 @@ func TestEncryptionSecretUpgradeRotationRace(t *testing.T) {
 			upgraded, err := secrets.Get(t.Context(), secret.Name, metav1.GetOptions{})
 			require.NoError(t, err)
 			require.Equal(t, secret.Data, upgraded.Data)
+
+			// A rollback renders the Secret the same way, so it must fail the same way.
+			stored, err := configuration.Releases.Get("radius", 1)
+			require.NoError(t, err)
+			target, err := asRelease(stored)
+			require.NoError(t, err)
+			rollbackClient := newRollbackClient(configuration, namespace, 1, false, serverSideApply)
+			rollbackClient.PostRenderer = postRenderFunc(func() { rotateEncryptionKey(t, secrets) })
+			_, err = rollbackClient.Run("radius", target.Chart, target.Config)
+			require.ErrorContains(t, err, "the object has been modified")
+			rolledBack, err := secrets.Get(t.Context(), secret.Name, metav1.GetOptions{})
+			require.NoError(t, err)
+			store = encryption.KeyStore{}
+			require.NoError(t, json.Unmarshal(rolledBack.Data[encryption.DefaultEncryptionKeySecretKey], &store))
+			require.Equal(t, 3, store.CurrentVersion, "The rollback must not remove the rotated key.")
 		})
+	}
+}
+
+// TestEncryptionSecretRollback rolls back across upgrades that wrote the encryption Secret. The rollback must
+// succeed and keep the live keys, whether or not a key was rotated after the target revision.
+func TestEncryptionSecretRollback(t *testing.T) {
+	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
+		t.Skip("Run make test or set KUBEBUILDER_ASSETS to run the isolated API-server regression.")
+	}
+	runtimelog.SetLogger(logr.Discard())
+	kubeconfig, client := startTestAPIServer(t)
+	_, chart := encryptionSecretChart(t)
+
+	tests := []struct {
+		name string
+		// rotateAfterTarget rotates a key after revision A instead of before it.
+		rotateAfterTarget bool
+	}{
+		// Install, rotate, upgrade to A, upgrade to B, roll back to A. A's upgrade wrote the Secret, so the
+		// resourceVersion stored in A's manifest is stale even though the keys haven't changed since.
+		{name: "keys unchanged since target"},
+		// Install, upgrade to A, upgrade to B, rotate, roll back to A. The rollback must keep the rotated key.
+		{name: "key rotated since target", rotateAfterTarget: true},
+	}
+	for _, tt := range tests {
+		for _, serverSideApply := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/serverSideApply=%t", tt.name, serverSideApply), func(t *testing.T) {
+				namespace := fmt.Sprintf("encryption-rollback-%t-%t", tt.rotateAfterTarget, serverSideApply)
+				flags := genericclioptions.NewConfigFlags(false)
+				flags.KubeConfig = &kubeconfig
+				flags.Namespace = &namespace
+				configuration := &helm.Configuration{}
+				require.NoError(t, configuration.Init(flags, namespace, helmDriverSecret))
+				installClient := newInstallClient(configuration, "radius", namespace, false, time.Minute)
+				installClient.ServerSideApply = serverSideApply
+				_, err := installClient.Run(chart, map[string]any{})
+				require.NoError(t, err)
+
+				secrets := client.CoreV1().Secrets(namespace)
+				radiusClient := NewHelmClient()
+				if !tt.rotateAfterTarget {
+					rotateEncryptionKey(t, secrets)
+				}
+				revisionA, err := radiusClient.RunHelmUpgrade(configuration, chart, nil, "radius", namespace, false, true, time.Minute)
+				require.NoError(t, err)
+				_, err = radiusClient.RunHelmUpgrade(configuration, chart, nil, "radius", namespace, false, true, time.Minute)
+				require.NoError(t, err)
+				if tt.rotateAfterTarget {
+					rotateEncryptionKey(t, secrets)
+				}
+				before, err := secrets.Get(t.Context(), encryption.DefaultEncryptionKeySecretName, metav1.GetOptions{})
+				require.NoError(t, err)
+
+				require.NoError(t, radiusClient.RunHelmRollback(configuration, "radius", revisionA.Version, false))
+
+				after, err := secrets.Get(t.Context(), before.Name, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, before.UID, after.UID)
+				require.Equal(t, before.Data, after.Data, "Rollback must keep the live key store.")
+				require.Equal(t, before.Annotations["radius.dev/last-rotation"], after.Annotations["radius.dev/last-rotation"])
+				var store encryption.KeyStore
+				require.NoError(t, json.Unmarshal(after.Data[encryption.DefaultEncryptionKeySecretKey], &store))
+				require.Equal(t, 2, store.CurrentVersion)
+
+				latest, err := radiusClient.RunHelmGet(configuration, "radius")
+				require.NoError(t, err)
+				require.Equal(t, fmt.Sprintf("Rollback to %d", revisionA.Version), latest.Info.Description)
+			})
+		}
 	}
 }
 
