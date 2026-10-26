@@ -120,7 +120,9 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 			}
 			return c.mapping(ResourceRequest, "System."+planeType+"/credentials/use/action", plane)
 		}
-		if strings.EqualFold(planeType, "azure") && len(parts) > 5 && strings.EqualFold(parts[3], "providers") && !strings.EqualFold(parts[4], "System.Azure") {
+		// UCP-owned namespaces keep their resource permissions on cloud planes.
+		if strings.EqualFold(planeType, "azure") && len(parts) > 5 && strings.EqualFold(parts[3], "providers") &&
+			!containsFold([]string{"System.Azure", "System.Resources", "Radius.Core"}, parts[4]) {
 			return c.mapping(ResourceRequest, "System.Azure/credentials/use/action", plane)
 		}
 		if method == http.MethodGet && len(parts) >= 8 &&
