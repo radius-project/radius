@@ -153,20 +153,14 @@ func (r *schemaRules) equivalent(segments []string, desired any, current any, pa
 			}
 			return true
 		}
-		used := make([]bool, len(c))
-		for _, di := range d {
-			found := false
-			for j, cj := range c {
-				if !used[j] && r.equivalent(items, di, cj, nil, root) {
-					used[j], found = true, true
-					break
-				}
-			}
-			if !found {
-				return false
+		matches := make([][]bool, len(d))
+		for i := range d {
+			matches[i] = make([]bool, len(c))
+			for j := range c {
+				matches[i][j] = r.equivalent(items, d[i], c[j], nil, root)
 			}
 		}
-		return true
+		return perfectMatching(matches)
 	case map[string]any:
 		c, ok := current.(map[string]any)
 		if !ok {
@@ -187,6 +181,34 @@ func (r *schemaRules) equivalent(segments []string, desired any, current any, pa
 		t := r.transforms[path]
 		return t != nil && t.matches(parent, root, current)
 	}
+}
+
+// perfectMatching reports whether every template item can be paired with its own AWS item, where matches[i][j]
+// reports whether template item i matches AWS item j. An item can match more than one counterpart when transforms
+// overlap, such as "8.4" and "8.4.11" both matching "8.4.11", so an earlier pairing moves when that frees a match for
+// a later item (augmenting paths).
+func perfectMatching(matches [][]bool) bool {
+	owner := map[int]int{}
+	var assign func(i int, seen map[int]bool) bool
+	assign = func(i int, seen map[int]bool) bool {
+		for j, ok := range matches[i] {
+			if !ok || seen[j] {
+				continue
+			}
+			seen[j] = true
+			if k, taken := owner[j]; !taken || assign(k, seen) {
+				owner[j] = i
+				return true
+			}
+		}
+		return false
+	}
+	for i := range matches {
+		if !assign(i, map[int]bool{}) {
+			return false
+		}
+	}
+	return true
 }
 
 func normalize(v any) any {

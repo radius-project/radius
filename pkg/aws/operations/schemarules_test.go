@@ -303,6 +303,25 @@ func Test_SchemaRules_EquivalentAt(t *testing.T) {
 
 	// An object compares field by field. A null field AWS reports equals an unset one.
 	require.True(t, rules.equivalentAt("Rules/*", map[string]any{"Name": "A"}, map[string]any{"Name": "a", "Ports": nil}, nil))
+
+	t.Run("overlapping transforms pair items one to one in either order", func(t *testing.T) {
+		versions := parseSchemaRules([]byte(`{
+			"properties": {"Engines": {"type": "array", "insertionOrder": false, "items": {"$ref": "#/definitions/Engine"}}},
+			"definitions": {"Engine": {"type": "object", "properties": {"Version": {"type": "string"}}}},
+			"propertyTransform": {"/properties/Engines/*/Version": "$join([$string(Version), \".*\"])"}
+		}`))
+		engines := func(vs ...string) []any {
+			out := []any{}
+			for _, v := range vs {
+				out = append(out, map[string]any{"Version": v})
+			}
+			return out
+		}
+		desired := engines("8.4", "8.4.11")
+		require.True(t, versions.equivalentAt("Engines", desired, engines("8.4.11", "8.4.12"), nil))
+		require.True(t, versions.equivalentAt("Engines", desired, engines("8.4.12", "8.4.11"), nil))
+		require.False(t, versions.equivalentAt("Engines", desired, engines("8.4.12", "8.4.13"), nil), "8.4.11 has no match")
+	})
 }
 
 // Test_GeneratePatch_SchemaRules covers values AWS reports in a different form.
