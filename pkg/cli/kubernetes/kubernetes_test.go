@@ -172,7 +172,7 @@ users:
 }
 
 // Test_GetKubeContext_UsesKUBECONFIG verifies that GetKubeContext reads the kubeconfig that KUBECONFIG selects
-// instead of ~/.kube/config, as Helm does. See https://github.com/radius-project/radius/issues/13202.
+// instead of ~/.kube/config, as Helm does.
 func Test_GetKubeContext_UsesKUBECONFIG(t *testing.T) {
 	useEnvKubeconfig(t)
 
@@ -183,7 +183,7 @@ func Test_GetKubeContext_UsesKUBECONFIG(t *testing.T) {
 }
 
 // Test_GetContextFromConfigFileIfExists_UsesKUBECONFIG verifies that GetContextFromConfigFileIfExists reads the
-// kubeconfig that KUBECONFIG selects when no path is given. See https://github.com/radius-project/radius/issues/13202.
+// kubeconfig that KUBECONFIG selects when no path is given.
 func Test_GetContextFromConfigFileIfExists_UsesKUBECONFIG(t *testing.T) {
 	explicitPath := useEnvKubeconfig(t)
 

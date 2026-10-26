@@ -32,7 +32,7 @@ import (
 )
 
 // Test_initHelmConfig_MatchesRadKubeconfigResolution verifies that rad and Helm resolve each kubeconfig
-// workflow to the same cluster. See https://github.com/radius-project/radius/issues/13202.
+// workflow to the same cluster.
 func Test_initHelmConfig_MatchesRadKubeconfigResolution(t *testing.T) {
 	const (
 		homeServer      = "https://home.example.com"

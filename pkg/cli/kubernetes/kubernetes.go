@@ -53,8 +53,6 @@ var (
 	Scheme = k8s_runtime.NewScheme()
 )
 
-// radiusSystemNamespace matches helm.RadiusSystemNamespace. pkg/cli/helm imports this package, so this package
-// cannot import pkg/cli/helm.
 const radiusSystemNamespace = "radius-system"
 
 func init() {
