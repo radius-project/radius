@@ -22,11 +22,11 @@ test("examples preserve the requested role and assignment shapes", async (t) => 
       assert.equal(parameters.scope.endsWith("/"), false);
       assert.equal(
         response.name,
-        parameters.roleDefinitionName ?? parameters.roleAssignmentName,
+        parameters.roleDefinitionName ?? parameters.roleAssignmentName
       );
       assert.equal(
         response.id,
-        `/${parameters.scope}/providers/${response.type}/${response.name}`,
+        `/${parameters.scope}/providers/${response.type}/${response.name}`
       );
       const request = parameters.resource.properties;
       if (response.type === "Radius.Core/roleDefinitions") {
@@ -34,7 +34,7 @@ test("examples preserve the requested role and assignment shapes", async (t) => 
         assert.equal("roleType" in request, false);
         assert.deepEqual(response.properties.permissions, request.permissions);
         assert.ok(
-          request.permissions.every((permission) => !permission.includes("*")),
+          request.permissions.every((permission) => !permission.includes("*"))
         );
       } else {
         assert.equal(response.type, "Radius.Core/roleAssignments");
@@ -43,7 +43,7 @@ test("examples preserve the requested role and assignment shapes", async (t) => 
           assert.equal(
             field in request,
             false,
-            `${field} must be server-owned`,
+            `${field} must be server-owned`
           );
         }
         assert.deepEqual(request.principal, response.properties.principal);
@@ -51,18 +51,18 @@ test("examples preserve the requested role and assignment shapes", async (t) => 
           Object.fromEntries(
             ["type", "issuer", "subject"].map((key) => [
               key,
-              request.principal[key],
-            ]),
+              request.principal[key]
+            ])
           ),
           {
             type: "group",
             issuer: "kubernetes:6c1e9a8e-1c21-4774-a261-d760b21ad530",
-            subject: "team-a-devs",
-          },
+            subject: "team-a-devs"
+          }
         );
         assert.equal(
           response.properties.roleDefinitionId,
-          request.roleDefinitionId,
+          request.roleDefinitionId
         );
       }
     });
@@ -70,11 +70,11 @@ test("examples preserve the requested role and assignment shapes", async (t) => 
   const environment = examples.find(({ file }) => file.includes("Environment"));
   assert.equal(
     environment.parameters.scope,
-    "planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging",
+    "planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging"
   );
   assert.match(
     environment.responses["201"].body.id,
-    /\/environments\/staging\/providers\/Radius[.]Core\/roleAssignments\//,
+    /\/environments\/staging\/providers\/Radius[.]Core\/roleAssignments\//
   );
 });
 
@@ -83,7 +83,7 @@ test("entry points keep authorization out of Applications RP generation", () => 
   assert.doesNotMatch(applicationEntry, /import\s+["'][^"']*authorization/);
   assert.match(
     read(new URL("main.tsp", import.meta.url)),
-    /import "\.\.\/authorization[.]tsp"/,
+    /import "\.\.\/authorization[.]tsp"/
   );
   const bicepEntry = read(new URL("../bicep/main.tsp", import.meta.url));
   assert.match(bicepEntry, /import "\.\.\/main[.]tsp"/);
@@ -97,7 +97,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
   const source = read(new URL("../authorization.tsp", import.meta.url));
   const scalarPattern = (name) => {
     const match = source.match(
-      new RegExp(`@pattern\\("([^"]+)"\\)\\s*scalar ${name} extends string`),
+      new RegExp(`@pattern\\("([^"]+)"\\)\\s*scalar ${name} extends string`)
     );
     assert.ok(match, `missing scalar constraint: ${name}`);
     return new RegExp(JSON.parse(`"${match[1]}"`));
@@ -110,7 +110,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
     plane,
     group,
     "/planes/aws/aws-account",
-    "/planes/azure/azure-subscription",
+    "/planes/azure/azure-subscription"
   ]) {
     assert.ok(scope.test(value), value);
   }
@@ -119,7 +119,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
     "Radius.Core/recipePacks",
     "Radius.Core/applications",
     "Applications.Core/environments",
-    "Applications.Core/applications",
+    "Applications.Core/applications"
   ]) {
     const value = `${group}/providers/${type}/one`;
     assert.ok(scope.test(value), value);
@@ -130,7 +130,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
     `${group}/`,
     `${group}//providers/Radius.Core/environments/one`,
     `${group}/providers/Radius.Core/environments/*`,
-    `${group}/providers/Radius.Core/environments/white space`,
+    `${group}/providers/Radius.Core/environments/white space`
   ]) {
     assert.equal(scope.test(value), false, value);
   }
@@ -139,7 +139,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
     "Radius.Core/applications/read",
     "Radius.Core/environments/use/action",
     "System.Resources/resourceProviders/resourceTypes/joinPermissionSet/action",
-    "Radius.Data/my-sql/read",
+    "Radius.Data/my-sql/read"
   ]) {
     assert.ok(permission.test(value), value);
   }
@@ -147,7 +147,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
     "*",
     "Radius.Core/*",
     "Radius.Core/applications/*",
-    "Radius.Core/applications/read ",
+    "Radius.Core/applications/read "
   ]) {
     assert.equal(permission.test(value), false, value);
   }
@@ -161,15 +161,15 @@ test("Bicep merges existing resources, preserves extensions and singleton, and e
   const types = json(
     new URL(
       "hack/bicep-types-radius/generated/radius/radius.core/2025-08-01-preview/types.json",
-      root,
-    ),
+      root
+    )
   );
   const resolve = (reference) => types[Number(reference.$ref.slice(2))];
   const resource = (name) => {
     const found = types.find(
       (type) =>
         type.$type === "ResourceType" &&
-        type.name === `Radius.Core/${name}@2025-08-01-preview`,
+        type.name === `Radius.Core/${name}@2025-08-01-preview`
     );
     assert.ok(found, name);
     return found;
@@ -179,7 +179,7 @@ test("Bicep merges existing resources, preserves extensions and singleton, and e
     "environments",
     "recipePacks",
     "bicepSettings",
-    "terraformSettings",
+    "terraformSettings"
   ]) {
     resource(name);
   }
@@ -198,24 +198,24 @@ test("Bicep merges existing resources, preserves extensions and singleton, and e
     resolve(body("authorizationSettings").properties.name.type),
     {
       $type: "StringLiteralType",
-      value: "default",
-    },
+      value: "default"
+    }
   );
   assert.equal(
     types.some(
       (type) =>
         type.$type === "ResourceType" &&
-        /\/(accessChanges|permissions)@/.test(type.name),
+        /\/(accessChanges|permissions)@/.test(type.name)
     ),
-    false,
+    false
   );
   const index = json(
-    new URL("hack/bicep-types-radius/generated/index.json", root),
+    new URL("hack/bicep-types-radius/generated/index.json", root)
   );
   for (const name of [
     "roleDefinitions",
     "roleAssignments",
-    "authorizationSettings",
+    "authorizationSettings"
   ]) {
     assert.ok(index.resources[`Radius.Core/${name}@2025-08-01-preview`]);
   }
@@ -225,8 +225,8 @@ test("generated Swagger preserves scope routes, read-only fields, and operation 
   const spec = json(
     new URL(
       "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
-      root,
-    ),
+      root
+    )
   );
   assert.equal(spec.info.version, "2025-08-01-preview");
   const prefix = "/providers/Radius.Core";
@@ -237,13 +237,13 @@ test("generated Swagger preserves scope routes, read-only fields, and operation 
   for (const scope of ["", "/{scope}"]) {
     for (const [type, key] of [
       ["roleDefinitions", "roleDefinitionName"],
-      ["roleAssignments", "roleAssignmentName"],
+      ["roleAssignments", "roleAssignmentName"]
     ]) {
       assert.deepEqual(methods(`${scope}${prefix}/${type}`), ["get"]);
       assert.deepEqual(methods(`${scope}${prefix}/${type}/{${key}}`), [
         "delete",
         "get",
-        "put",
+        "put"
       ]);
     }
     assert.deepEqual(methods(`${scope}${prefix}/checkAccess`), ["post"]);
@@ -252,23 +252,23 @@ test("generated Swagger preserves scope routes, read-only fields, and operation 
   }
   assert.deepEqual(methods(`${prefix}/authorizationSettings/default`), [
     "get",
-    "put",
+    "put"
   ]);
   assert.deepEqual(methods(`${prefix}/permissions`), ["get"]);
   assert.deepEqual(methods(`${prefix}/accessChanges`), ["get"]);
   assert.deepEqual(methods(`${prefix}/accessChanges/{accessChangeName}`), [
-    "get",
+    "get"
   ]);
   assert.deepEqual(methods(`${prefix}/whoAmI`), ["get"]);
   assert.equal(
     Object.keys(spec.paths).some((path) => /internal|preflight/.test(path)),
-    false,
+    false
   );
 
   const definitions = Object.values(spec.definitions);
   const properties = (required) => {
     const model = definitions.find((definition) =>
-      required.every((key) => Object.hasOwn(definition.properties ?? {}, key)),
+      required.every((key) => Object.hasOwn(definition.properties ?? {}, key))
     );
     assert.ok(model, `missing properties: ${required.join(", ")}`);
     return model.properties;
@@ -280,32 +280,32 @@ test("generated Swagger preserves scope routes, read-only fields, and operation 
     "principal",
     "scope",
     "managedBy",
-    "createdBy",
+    "createdBy"
   ]);
   for (const key of ["scope", "managedBy", "createdBy"]) {
     assert.equal(assignment[key].readOnly, true, key);
   }
   assert.deepEqual(assignment.roleDefinitionId["x-ms-mutability"], [
     "read",
-    "create",
+    "create"
   ]);
   const principal = properties(["type", "issuer", "subject"]);
   for (const key of ["type", "issuer", "subject"]) {
     assert.deepEqual(
       principal[key]["x-ms-mutability"],
       ["read", "create"],
-      key,
+      key
     );
   }
   const mode = definitions.find((definition) =>
-    definition.enum?.includes("DryRun"),
+    definition.enum?.includes("DryRun")
   );
   assert.deepEqual([...mode.enum].sort(), ["Disabled", "DryRun", "Enforce"]);
 
   const resolve = (parameter) =>
-    parameter.$ref?.startsWith("#/parameters/")
-      ? spec.parameters[parameter.$ref.split("/").at(-1)]
-      : parameter;
+    parameter.$ref?.startsWith("#/parameters/") ?
+      spec.parameters[parameter.$ref.split("/").at(-1)]
+    : parameter;
   const scopedPut =
     spec.paths[`/{scope}${prefix}/roleAssignments/{roleAssignmentName}`].put;
   const scope = scopedPut.parameters
@@ -317,15 +317,15 @@ test("generated Swagger preserves scope routes, read-only fields, and operation 
   const applicationSpec = json(
     new URL(
       "swagger/specification/radius/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
-      root,
-    ),
+      root
+    )
   );
   assert.equal(
     Object.keys(applicationSpec.paths).some((path) =>
       /roleDefinitions|roleAssignments|authorizationSettings|accessChanges|checkAccess|whoAmI/.test(
-        path,
-      ),
+        path
+      )
     ),
-    false,
+    false
   );
 });
