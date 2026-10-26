@@ -26,6 +26,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 )
 
 const (
@@ -75,7 +76,7 @@ type HelmClient interface {
 	// RunHelmGet retrieves the Helm release information.
 	RunHelmGet(helmConf *helm.Configuration, releaseName string) (*releasev1.Release, error)
 
-	// RunHelmHistory retrieves the history of a Helm release.
+	// RunHelmHistory retrieves the history of a Helm release in ascending revision order.
 	RunHelmHistory(helmConf *helm.Configuration, releaseName string) ([]*releasev1.Release, error)
 
 	// RunHelmRollback rolls back a release to a previous revision.
@@ -208,7 +209,7 @@ func (client *HelmClientImpl) RunHelmGet(helmConf *helm.Configuration, releaseNa
 }
 
 // RunHelmHistory retrieves the revision history of a Helm release.
-// It returns all revisions of the release, including superseded and failed deployments.
+// It returns all revisions in ascending revision order, including superseded and failed deployments.
 func (client *HelmClientImpl) RunHelmHistory(helmConf *helm.Configuration, releaseName string) ([]*releasev1.Release, error) {
 	historyClient := helm.NewHistory(helmConf)
 	historyClient.Max = 0 // Get all revisions
@@ -218,7 +219,14 @@ func (client *HelmClientImpl) RunHelmHistory(helmConf *helm.Configuration, relea
 		return nil, err
 	}
 
-	return asReleases(releases)
+	history, err := asReleases(releases)
+	if err != nil {
+		return nil, err
+	}
+
+	// Helm's history action preserves storage order, which may sort v10 before v9.
+	releaseutil.SortByRevision(history)
+	return history, nil
 }
 
 // RunHelmPull downloads a Helm chart from a repository to the local filesystem.
