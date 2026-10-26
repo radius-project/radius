@@ -120,3 +120,16 @@ tests:
       - failedTemplate:
           errorMessage: "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run."
         template: ucp/configmaps.yaml
+
+  - it: renders namespace mappings for the controller
+    set:
+      global.rbac.enabled: true
+      global.rbac.namespaceMappings:
+        - namespace: team-a
+          resourceGroup: /planes/radius/local/resourceGroups/team-a
+          environment: /planes/radius/local/resourceGroups/team-a/providers/Applications.Core/environments/env
+    asserts:
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: '(?m)^  namespaceMappings:\n    - namespace: "team-a"\n      resourceGroup: "/planes/radius/local/resourceGroups/team-a"\n      environment: "/planes/radius/local/resourceGroups/team-a/providers/Applications.Core/environments/env"$'
+        template: controller/configmaps.yaml

@@ -27,7 +27,7 @@ KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly KIT_DIR
 REPO_ROOT="$(cd "${KIT_DIR}/../.." && pwd)"
 readonly REPO_ROOT
-readonly SCRIPTS=(up.sh rogue.sh as-component.sh records.sh would-deny.sh)
+readonly SCRIPTS=(up.sh prototype-up.sh rogue.sh as-component.sh records.sh would-deny.sh)
 
 TEST_ROOT="$(mktemp -d)"
 readonly TEST_ROOT
@@ -221,6 +221,9 @@ case "$1 $2" in
         ;;
     "wait pod" | "delete pod")
         ;;
+    "get --raw" | "replace --raw" | "delete --raw")
+        echo '{"value":[]}'
+        ;;
     "config view")
         if [[ "${MOCK_CONTEXT_EXISTS}" == "false" ]]; then
             echo "error: context not found" >&2
@@ -310,7 +313,7 @@ reset_calls() {
 }
 
 echo "Test: scripts parse with bash -n"
-for script in lib.sh kit_test.sh "${SCRIPTS[@]}"; do
+for script in lib.sh kit_test.sh prototype/deployment-template.sh "${SCRIPTS[@]}"; do
     if bash -n "${KIT_DIR}/${script}"; then
         pass_test
     else
@@ -520,13 +523,26 @@ assert_output_contains "invalid component name"
 run_kit as-component.sh ucp dynamic-rp -- http://x
 assert_status 2
 
-echo "Test: records.sh is a placeholder until Stack B"
+echo "Test: records.sh calls the UCP execution records hook"
+reset_calls
 run_kit records.sh
 assert_status 0
-assert_output "execution records are added in Stack B"
-run_kit records.sh rec-123
+assert_calls_contain "get --raw /apis/api.ucp.dev/v1alpha3/planes/radius/local/providers/System.Authorization/executionRecords"
+reset_calls
+run_kit records.sh get rec-123
 assert_status 0
-run_kit records.sh a b
+assert_calls_contain "executionRecords/rec-123"
+reset_calls
+run_kit records.sh create rec-123 /tmp/rec.json
+assert_status 0
+assert_calls_contain "replace --raw /apis/api.ucp.dev/v1alpha3/planes/radius/local/providers/System.Authorization/executionRecords/rec-123 --filename /tmp/rec.json"
+reset_calls
+run_kit records.sh revoke rec-123
+assert_status 0
+assert_calls_contain "delete --raw"
+run_kit records.sh get
+assert_status 2
+run_kit records.sh bogus
 assert_status 2
 
 echo "Test: would-deny.sh delegates to the dry-run would-deny check"

@@ -19,6 +19,8 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/radius-project/radius/pkg/authz/rpcheck"
+	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
@@ -65,6 +67,9 @@ func (s *APIService) Run(ctx context.Context) error {
 		Location: s.Options.Config.Env.RoleLocation,
 		Address:  address,
 		PathBase: s.Options.Config.Server.PathBase,
+		// Only UCP routes requests to applications-rp.
+		AllowedCallers: []string{"ucp"},
+		Middlewares:    []func(http.Handler) http.Handler{rpcheck.Middleware(databaseClient)},
 		Configure: func(r chi.Router) error {
 			for _, b := range s.handlerBuilder {
 				opts := apictrl.Options{

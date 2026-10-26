@@ -17,44 +17,66 @@
 # ------------------------------------------------------------
 
 # ============================================================================
-# Shows execution records. Placeholder until Stack B adds execution records.
+# Lists, shows, creates and revokes UCP execution records through the
+# PROTOTYPE test hook. Calls go through the Kubernetes API server as the
+# current kubeconfig user.
 # ============================================================================
 
 set -euo pipefail
 
+# shellcheck source=hack/authz/lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+readonly RECORDS_PATH="/apis/api.ucp.dev/v1alpha3/planes/radius/local/providers/System.Authorization/executionRecords"
+
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [RECORD_ID]
+Usage: $(basename "$0") [list]
+       $(basename "$0") get RECORD_ID
+       $(basename "$0") create RECORD_ID FILE
+       $(basename "$0") revoke RECORD_ID
 
-Shows UCP execution records, the approvals that scope what a deployment may
-change. Execution records are added in Stack B; until then this prints a notice
-and exits 0.
+Shows UCP execution records, the approvals that scope what a deployment may change.
 
-Planned output:
-  Without RECORD_ID, one line per record:
-    ID  STATUS  DEPLOYMENT  CREATED  EXPIRES  TARGETS
-  With RECORD_ID, the record's status (active, closed, or expired), parent
-  record, approved actions and targets, and its operations with their assigned
-  component and inputHash.
+  list     Print all records as JSON (default).
+  get      Print one record.
+  create   Create a record from a JSON file (PROTOTYPE test hook). The file has
+           submitter, actions, targets, ttl and optional operations
+           [{resourceId, action, assignedComponent, body}]. Prints the record
+           and the created operation IDs.
+  revoke   Close a record as revoked.
 EOF
 }
 
-case "${1:-}" in
+fail_usage() {
+    usage >&2
+    authz_die "$1"
+}
+
+command="${1:-list}"
+case "${command}" in
     -h | --help)
         usage
         exit 0
         ;;
-    -*)
-        usage >&2
-        echo "error: unknown option '$1'" >&2
-        exit 2
+    list)
+        [[ $# -le 1 ]] || fail_usage "list takes no arguments"
+        authz_kubectl get --raw "${RECORDS_PATH}"
+        ;;
+    get)
+        [[ $# -eq 2 ]] || fail_usage "get needs RECORD_ID"
+        authz_kubectl get --raw "${RECORDS_PATH}/$2"
+        ;;
+    create)
+        [[ $# -eq 3 ]] || fail_usage "create needs RECORD_ID and FILE"
+        authz_kubectl replace --raw "${RECORDS_PATH}/$2" --filename "$3"
+        ;;
+    revoke)
+        [[ $# -eq 2 ]] || fail_usage "revoke needs RECORD_ID"
+        authz_kubectl delete --raw "${RECORDS_PATH}/$2"
+        ;;
+    *)
+        fail_usage "unknown command '${command}'"
         ;;
 esac
-
-if [[ $# -gt 1 ]]; then
-    usage >&2
-    echo "error: at most one record ID is allowed" >&2
-    exit 2
-fi
-
-echo "execution records are added in Stack B"
+echo

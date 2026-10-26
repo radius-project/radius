@@ -1,0 +1,89 @@
+{{- /*
+PROTOTYPE (E2): keeps application workloads that Radius creates away from the
+control-plane service accounts and Secrets. It matches only requests from the
+Radius identities that apply application templates, so installs, upgrades and
+Kubernetes-managed pod replacement are not affected. Rendered only when the
+authorization mode is not off. dryRun warns and audits; enforce denies.
+*/ -}}
+{{- $mode := include "radius.authz.mode" . -}}
+{{- if ne $mode "off" }}
+{{- $ns := .Release.Namespace }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: radius-control-plane-workloads
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["jobs", "cronjobs"]
+  matchConditions:
+    - name: radius-application-template-identity
+      expression: >-
+        request.userInfo.username in [
+        'system:serviceaccount:{{ $ns }}:applications-rp',
+        'system:serviceaccount:{{ $ns }}:dynamic-rp',
+        'system:serviceaccount:{{ $ns }}:controller',
+        'system:serviceaccount:{{ $ns }}:bicep-de']
+  variables:
+    - name: spec
+      expression: >-
+        object.kind == 'Pod' ? object.spec :
+        (object.kind == 'CronJob' ? object.spec.jobTemplate.spec.template.spec : object.spec.template.spec)
+    - name: controlPlane
+      expression: "namespaceObject.metadata.name == '{{ $ns }}'"
+    - name: serviceAccounts
+      expression: "['ucp', 'applications-rp', 'dynamic-rp', 'controller', 'bicep-de', 'dashboard', 'pre-upgrade', 'database', 'radius-api-readiness']"
+    - name: secrets
+      expression: "['radius-ca', 'ucp-mtls', 'applications-rp-mtls', 'dynamic-rp-mtls', 'controller-mtls', 'bicep-de-mtls']"
+  validations:
+    - expression: >-
+        !variables.controlPlane || !has(variables.spec.serviceAccountName) ||
+        !(variables.spec.serviceAccountName in variables.serviceAccounts)
+      message: "AdmissionPolicyDenied: application workloads may not use a Radius control-plane service account"
+      reason: Forbidden
+    - expression: >-
+        !variables.controlPlane || !has(variables.spec.volumes) ||
+        !variables.spec.volumes.exists(v, has(v.secret) && has(v.secret.secretName) && v.secret.secretName in variables.secrets)
+      message: "AdmissionPolicyDenied: application workloads may not mount a Radius control-plane Secret"
+      reason: Forbidden
+    - expression: >-
+        !variables.controlPlane ||
+        !variables.spec.containers.exists(c,
+          (has(c.envFrom) && c.envFrom.exists(e, has(e.secretRef) && e.secretRef.name in variables.secrets)) ||
+          (has(c.env) && c.env.exists(e, has(e.valueFrom) && has(e.valueFrom.secretKeyRef) && e.valueFrom.secretKeyRef.name in variables.secrets)))
+      message: "AdmissionPolicyDenied: application workloads may not read a Radius control-plane Secret"
+      reason: Forbidden
+    - expression: "!variables.controlPlane"
+      message: "AdmissionPolicyDenied: application workloads may not run in the Radius control-plane namespace"
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: radius-control-plane-workloads
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  policyName: radius-control-plane-workloads
+  validationActions:
+  {{- if eq $mode "enforce" }}
+    - Deny
+  {{- else }}
+    - Warn
+    - Audit
+  {{- end }}
+{{- end }}

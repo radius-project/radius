@@ -83,10 +83,10 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour").Return(nil, driver.ErrReleaseNotFound).Times(2)
 
 	// Mock Helm Install
-	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, gomock.Any()).Return(radiusRelease, nil).Times(1)
+	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, gomock.Any(), gomock.Nil()).Return(radiusRelease, nil).Times(1)
 	var contourValues map[string]any
-	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "contour", "radius-system", false, gomock.Any()).
-		DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, _ string, _ string, _ bool, _ time.Duration) (*releasev1.Release, error) {
+	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "contour", "radius-system", false, gomock.Any(), gomock.Nil()).
+		DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, _ string, _ string, _ bool, _ time.Duration, _ map[string]string) (*releasev1.Release, error) {
 			contourValues = vals
 			return contourRelease, nil
 		}).Times(1)
@@ -132,6 +132,12 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 			Times(1)
 	}
 
+	// cert-manager is removed only when rad installed it; here it is not installed.
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), certManagerReleaseName).
+		Return(nil, driver.ErrReleaseNotFound).
+		Times(1)
+
 	err := impl.UninstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
 	require.Equal(t, 1, gatewayCalls.removeCalls)
@@ -169,6 +175,12 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 			Times(1)
 	}
 
+	// cert-manager is removed only when rad installed it; here it is not installed.
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), certManagerReleaseName).
+		Return(nil, driver.ErrReleaseNotFound).
+		Times(1)
+
 	err := impl.UninstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err) // ErrReleaseNotFound should be swallowed
 }
@@ -196,6 +208,7 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
 	// Set the release status to deployed for the history check
 	radiusRelease.Info = &releasev1.Info{Status: releasecommon.StatusDeployed}
+	radiusRelease.Config = map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
 
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
@@ -214,6 +227,7 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	require.False(t, state.ContourInstalled)
 	require.Equal(t, "0.1.0", state.RadiusVersion)
 	require.Equal(t, "", state.ContourVersion)
+	require.Equal(t, radiusRelease.Config, state.RadiusValues)
 }
 
 // Test_Helm_CheckRadiusInstall_ContourStatus verifies that CheckRadiusInstall reports the status of the Contour release,

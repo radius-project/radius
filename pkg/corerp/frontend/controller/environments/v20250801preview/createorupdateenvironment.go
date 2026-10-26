@@ -107,6 +107,9 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 			}
 			return nil, err
 		}
+		if err := kubeutil.ApplyPodSecurityLabels(ctx, namespaceClient, namespace); err != nil {
+			return nil, err
+		}
 	} else if old != nil {
 		// The environment is dropping its Kubernetes provider entirely. That releases a namespace
 		// claim, which is not permitted once one has been established -- see validateNamespace.

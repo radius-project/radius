@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/ucp/userauth"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -39,6 +40,8 @@ type Config struct {
 	// AWS is the configuration for the AWS plane.
 	AWS AWSConfig `yaml:"aws"`
 
+	// UserAuthorization enables the opt-in user-facing RBAC prototype.
+	UserAuthorization userauth.Options `yaml:"userAuthorization"`
 	// Authorization is the configuration for internal component authorization.
 	Authorization authz.Options `yaml:"authorization"`
 

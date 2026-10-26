@@ -57,7 +57,7 @@ Environment:
 
 Example:
   $(basename "$0") dynamic-rp -- \\
-    'https://applications-rp.radius-system:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
+    'https://applications-rp.radius-system.svc:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
 
 Component certificates are added in Stack A. Until then this reports which
 Secret is missing and exits 3.
@@ -137,19 +137,29 @@ done
 
 authz_ensure_rogue_pod
 
+# Writes stdin to a temporary file and keeps it only if it is a complete PEM
+# block, because kubectl exec can drop stdin data.
 # shellcheck disable=SC2016 # Expanded by sh in the pod.
-readonly WRITE_KEY_SCRIPT='umask 077 && mkdir -p "$1" && base64 -d >"$1/$2"'
+readonly WRITE_KEY_SCRIPT='umask 077 && mkdir -p "$1" && base64 -d >"$1/$2.tmp" && grep -q -- "-----END" "$1/$2.tmp" && mv "$1/$2.tmp" "$1/$2"'
+
+copy_key() {
+    authz_kubectl get secret "${SECRET_NAME}" \
+        --namespace "${AUTHZ_RADIUS_NAMESPACE}" \
+        --output "jsonpath={.data.${1//./\\.}}" |
+        authz_kubectl exec --stdin "${AUTHZ_ROGUE_POD}" \
+            --namespace "${AUTHZ_ROGUE_NAMESPACE}" \
+            --container "${AUTHZ_ROGUE_OPENSSL_CONTAINER}" -- \
+            sh -c "${WRITE_KEY_SCRIPT}" sh "${CERT_DIR}" "$1"
+}
 
 # The data stays base64-encoded until it is inside the pod, so the private key
 # is never written to the local disk.
 for key in "${SECRET_KEYS[@]}"; do
-    authz_kubectl get secret "${SECRET_NAME}" \
-        --namespace "${AUTHZ_RADIUS_NAMESPACE}" \
-        --output "jsonpath={.data.${key//./\\.}}" |
-        authz_kubectl exec --stdin "${AUTHZ_ROGUE_POD}" \
-            --namespace "${AUTHZ_ROGUE_NAMESPACE}" \
-            --container "${AUTHZ_ROGUE_OPENSSL_CONTAINER}" -- \
-            sh -c "${WRITE_KEY_SCRIPT}" sh "${CERT_DIR}" "${key}"
+    for attempt in 1 2 3; do
+        copy_key "${key}" && break
+        ((attempt < 3)) || authz_die "could not copy ${key} into the rogue pod"
+        echo "Retrying copy of ${key} into the rogue pod" >&2
+    done
 done
 
 echo "Calling as ${COMPONENT} with ${AUTHZ_RADIUS_NAMESPACE}/${SECRET_NAME}" >&2

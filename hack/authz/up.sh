@@ -61,6 +61,8 @@ Environment:
   AUTHZ_REGISTRY_NAME  Registry container name (default: ${AUTHZ_REGISTRY_NAME}).
   AUTHZ_REGISTRY_PORT  Registry port on localhost (default: ${AUTHZ_REGISTRY_PORT}).
   RAD                  rad CLI to use (default: rad).
+  DOCKER_BUILD_ARCH    Image architecture passed to make (default: amd64).
+  AUTHZ_EXTRA_SET_VALUES  Extra "rad install --set" values, one key=value per line.
 
 Requires docker, kind, kubectl, helm, rad, make, and go.
 EOF
@@ -168,7 +170,9 @@ build_images() {
     # Podman's Docker-compatible CLI does not expose this info template field.
     architecture="$(docker info --format '{{.Architecture}}' 2>/dev/null)" \
         || architecture="$(uname -m)"
-    if [[ "${architecture}" != "x86_64" && "${architecture}" != "amd64" ]]; then
+    if [[ -n "${DOCKER_BUILD_ARCH:-}" ]]; then
+        echo "Building linux/${DOCKER_BUILD_ARCH} images (DOCKER_BUILD_ARCH)."
+    elif [[ "${architecture}" != "x86_64" && "${architecture}" != "amd64" ]]; then
         echo "note: make docker-build builds linux/amd64 images; on this host they run under Docker's amd64 emulation."
     fi
     make -C "${AUTHZ_REPO_ROOT}" "${targets[@]}" \
@@ -184,6 +188,12 @@ install_radius() {
     while IFS= read -r value; do
         set_args+=(--set "${value}")
     done < <(authz_install_set_values "${MODE}" "${REGISTRY}" "${IMAGE_TAG}")
+    # Extra key=value pairs, one per line, for example namespace mappings.
+    while IFS= read -r value; do
+        if [[ -n "${value}" ]]; then
+            set_args+=(--set "${value}")
+        fi
+    done <<<"${AUTHZ_EXTRA_SET_VALUES:-}"
 
     echo "Installing Radius in authz mode ${MODE}"
     "${RAD}" install kubernetes --kubecontext "${AUTHZ_KUBE_CONTEXT}" \
@@ -219,16 +229,16 @@ print_next_steps() {
 
 Radius is installed on ${AUTHZ_KUBE_CONTEXT} in authz mode ${MODE}. Next steps:
 
-  # Call applications-rp from a rogue workload
-  hack/authz/rogue.sh exec -- \\
-    'http://applications-rp.${AUTHZ_RADIUS_NAMESPACE}:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
+  # Call applications-rp from a workload with no client certificate.
+  # In enforce mode the TLS handshake fails with "certificate required".
+  hack/authz/rogue.sh exec -- -k \\
+    'https://applications-rp.${AUTHZ_RADIUS_NAMESPACE}:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
 
-  # The response ends with radius-rogue-status:200 on success.
   # Fail if any component logged a dry-run would-deny line
   hack/authz/would-deny.sh
 
-See hack/authz/README.md for the manual verification checklist. To remove
-the cluster and registry:
+See hack/authz/PROTOTYPE.md for the manual scenarios. To remove the cluster
+(the registry may be shared with other kit clusters):
   kind delete cluster --name ${AUTHZ_CLUSTER_NAME} && docker rm --force ${AUTHZ_REGISTRY_NAME}
 EOF
 }

@@ -62,6 +62,7 @@ var rootCmd = &cobra.Command{
 		defer flush()
 
 		authz.LogMode(logger, options.Config.Authorization)
+		authz.SetProcessOptions(options.Config.Authorization)
 
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)

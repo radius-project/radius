@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/radius-project/radius/pkg/authz/records"
 	"strings"
 	"time"
 
@@ -191,6 +192,8 @@ func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *v1.ARMR
 		ClientObjectID:   sCtx.ClientObjectID,
 		OperationTimeout: &operationTimeout,
 	}
+	ids := records.IDsFromContext(ctx)
+	msg.AuthzRecordID, msg.AuthzOperationID = ids.RecordID, ids.OperationID
 
 	return aom.queue.Enqueue(ctx, queue.NewMessage(msg))
 }

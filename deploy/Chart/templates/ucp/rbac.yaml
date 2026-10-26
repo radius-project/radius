@@ -6,6 +6,11 @@ metadata:
     app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
 rules:
+  {{- if .Values.rbac.enabled }}
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["create"]
+  {{- end }}
   - apiGroups:
       - ""
     resources:
@@ -54,3 +59,93 @@ subjects:
   - kind: ServiceAccount
     name: ucp
     namespace: {{ .Release.Namespace }}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+---
+# A6: UCP reads the cluster's request header CA so it can verify the aggregation
+# proxy's client certificate before it trusts X-Remote-* headers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ucp-extension-apiserver-authentication-reader
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: ucp
+    namespace: {{ .Release.Namespace }}
+---
+# Prototype exemption until A7: UCP lists deployment engine pods to recognize the
+# engine's calls, which do not carry a client certificate yet.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ucp-authz
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ucp-authz
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ucp-authz
+subjects:
+  - kind: ServiceAccount
+    name: ucp
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+{{- if .Values.rbac.enabled }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: radius-api-user
+rules:
+  - apiGroups: ["api.ucp.dev"]
+    resources:
+      - planes
+      - planes/local
+      - providers
+      - providers/initializeAuthorization
+      - providers/whoami
+      - providers/roleDefinitions
+      - providers/roleAssignments
+      - providers/authorizationSettings
+      - providers/permissions
+      - providers/checkAccess
+      - providers/explainAccess
+      - providers/accessChanges
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: radius-rbac-bootstrap
+rules:
+  - apiGroups: ["api.ucp.dev"]
+    resources: ["authorizationsettings"]
+    resourceNames: ["default"]
+    verbs: ["update"]
+{{- end }}

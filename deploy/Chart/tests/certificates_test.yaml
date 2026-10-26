@@ -1,0 +1,266 @@
+suite: test service certificates
+templates:
+  - global/certificates.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: renders nothing when authorization is off
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders nothing when global.rbac is missing
+    set:
+      global.rbac: null
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders the CA, issuers, and service certificates in dry run
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - hasDocuments:
+          count: 8
+
+  - it: renders the self-signed bootstrap issuer and Radius CA
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 8
+      - isKind:
+          of: Issuer
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: radius-selfsigned-bootstrap
+        documentIndex: 0
+      - equal:
+          path: spec.selfSigned
+          value: {}
+        documentIndex: 0
+      - isKind:
+          of: Certificate
+        documentIndex: 1
+      - equal:
+          path: metadata.name
+          value: radius-ca
+        documentIndex: 1
+      - equal:
+          path: metadata.namespace
+          value: radius-system
+        documentIndex: 1
+      - equal:
+          path: spec.isCA
+          value: true
+        documentIndex: 1
+      - equal:
+          path: spec.secretName
+          value: radius-ca
+        documentIndex: 1
+      - equal:
+          path: spec.privateKey
+          value:
+            algorithm: ECDSA
+            size: 256
+            rotationPolicy: Always
+        documentIndex: 1
+      - equal:
+          path: spec.issuerRef.name
+          value: radius-selfsigned-bootstrap
+        documentIndex: 1
+      - isKind:
+          of: Issuer
+        documentIndex: 2
+      - equal:
+          path: metadata.name
+          value: radius-ca-issuer
+        documentIndex: 2
+      - equal:
+          path: spec.ca.secretName
+          value: radius-ca
+        documentIndex: 2
+
+  - it: renders a ucp certificate
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: ucp-cert
+    asserts: &serviceCert
+      - isKind:
+          of: Certificate
+      - equal:
+          path: spec.duration
+          value: 24h
+      - equal:
+          path: spec.renewBefore
+          value: 8h
+      - equal:
+          path: spec.privateKey
+          value:
+            algorithm: ECDSA
+            size: 256
+            rotationPolicy: Always
+      - equal:
+          path: spec.usages
+          value:
+            - digital signature
+            - server auth
+            - client auth
+      - equal:
+          path: spec.issuerRef
+          value:
+            group: cert-manager.io
+            kind: Issuer
+            name: radius-ca-issuer
+      - notExists:
+          path: spec.commonName
+
+  - it: sets ucp secret and SANs
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: ucp-cert
+    asserts:
+      - equal:
+          path: spec.secretName
+          value: ucp-mtls
+      - equal:
+          path: spec.dnsNames
+          value: [ucp.radius-system.svc]
+
+  - it: renders an applications-rp certificate
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: applications-rp-cert
+    asserts: *serviceCert
+
+  - it: sets applications-rp secret and SANs
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: applications-rp-cert
+    asserts:
+      - equal:
+          path: spec.secretName
+          value: applications-rp-mtls
+      - equal:
+          path: spec.dnsNames
+          value: [applications-rp.radius-system.svc]
+
+  - it: renders a dynamic-rp certificate
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: dynamic-rp-cert
+    asserts: *serviceCert
+
+  - it: sets dynamic-rp secret and SANs
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: dynamic-rp-cert
+    asserts:
+      - equal:
+          path: spec.secretName
+          value: dynamic-rp-mtls
+      - equal:
+          path: spec.dnsNames
+          value: [dynamic-rp.radius-system.svc]
+
+  - it: renders a controller certificate
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: controller-cert
+    asserts: *serviceCert
+
+  - it: sets controller secret and SANs
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: controller-cert
+    asserts:
+      - equal:
+          path: spec.secretName
+          value: controller-mtls
+      - equal:
+          path: spec.dnsNames
+          value: [controller.radius-system.svc]
+
+  - it: renders a bicep-de certificate
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: bicep-de-cert
+    asserts: *serviceCert
+
+  - it: sets bicep-de secret and SANs
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: bicep-de-cert
+    asserts:
+      - equal:
+          path: spec.secretName
+          value: bicep-de-mtls
+      - equal:
+          path: spec.dnsNames
+          value: [bicep-de.radius-system.svc]
+
+  - it: uses the release namespace in SANs
+    release:
+      namespace: custom-ns
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: ucp-cert
+    asserts:
+      - equal:
+          path: spec.dnsNames
+          value: [ucp.custom-ns.svc]
+
+  - it: fails for caSecret mode
+    set:
+      global.rbac.enabled: true
+      global.rbac.certificates.mode: caSecret
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.mode=caSecret is not supported yet. Use selfSigned."
+
+  - it: fails for issuerRef mode
+    set:
+      global.rbac.enabled: true
+      global.rbac.certificates.mode: issuerRef
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.mode=issuerRef is not supported yet. Use selfSigned."
+
+  - it: fails for an unknown mode
+    set:
+      global.rbac.enabled: true
+      global.rbac.certificates.mode: bogus
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.mode=bogus is not valid. Use selfSigned."
+
+  - it: ignores the certificate mode when authorization is off
+    set:
+      global.rbac.certificates.mode: caSecret
+    asserts:
+      - hasDocuments:
+          count: 0

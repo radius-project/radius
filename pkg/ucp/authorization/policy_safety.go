@@ -463,6 +463,12 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 		operation = api.PolicyChangeOperationUpdate
 		change.Before = &api.PolicySnapshot{AuthorizationSettings: policy.Settings.Properties}
 		policy.Settings.Properties = mutation.Settings
+		if mutation.Settings.Mode != nil && *mutation.Settings.Mode == api.UserAuthorizationModeEnforce {
+			policy.Assignments = slices.DeleteFunc(policy.Assignments, func(assignment api.RoleAssignmentResource) bool {
+				return assignment.Properties.ManagedBy != nil && assignment.Properties.ManagedBy.Kind != nil &&
+					*assignment.Properties.ManagedBy.Kind == api.AssignmentManagementKindBootstrap
+			})
+		}
 		change.After = &api.PolicySnapshot{AuthorizationSettings: mutation.Settings}
 		highImpact = true
 	default:

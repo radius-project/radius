@@ -1,0 +1,6 @@
+{
+  "submitter": "bicep-de",
+  "actions": ["*"],
+  "targets": ["/planes/radius/local/resourceGroups/dev"],
+  "ttl": "1h"
+}
