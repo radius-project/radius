@@ -12,5 +12,13 @@ spec:
       name: https
       protocol: TCP
       targetPort: 9443
+    {{- if ne (include "radius.authz.mode" .) "off" }}
+    # Internal component traffic uses mTLS on a separate port. The aggregation
+    # endpoint above and its certificate are unchanged.
+    - port: 9444
+      name: internal
+      protocol: TCP
+      targetPort: 9444
+    {{- end }}
   selector:
       app.kubernetes.io/name: ucp

@@ -58,6 +58,7 @@ build_fixture() {
     git -C "${FIXTURE}" config user.name "Radius Test"
     git -C "${FIXTURE}" config user.email "test@example.com"
     git -C "${FIXTURE}" config commit.gpgsign false
+    git -C "${FIXTURE}" config tag.gpgsign false
 
     commit "initial"
     git -C "${FIXTURE}" tag v0.60.0

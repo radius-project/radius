@@ -698,6 +698,7 @@ env
 envSecrets
 envVariables
 environmentVariables
+envsubst
 envtest
 etag
 etcd
@@ -735,7 +736,6 @@ getMeterMust
 getResourceIdentitySchemas
 getgraph
 gh
-ghaction
 ghcr
 github
 gitignore
@@ -796,6 +796,7 @@ inheritence
 init
 initContainer
 initialDelaySeconds
+inotify
 inmemory
 integrations
 integrators

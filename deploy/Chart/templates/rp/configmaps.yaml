@@ -47,11 +47,15 @@ data:
     workerServer:
       maxOperationConcurrency: 10
       maxOperationRetryCount: 2
-    ucp:
-      kind: kubernetes
+      {{- with dig "workerServer" "dequeueInterval" "" .Values.rp }}
+      dequeueInterval: {{ . | quote }}
+      {{- end }}
+    {{- include "radius.authz.ucpConnection" . | nindent 4 }}
     logging:
       level: "info"
       json: true
+
+    {{- with include "radius.authz.serverConfig" . | trim }}{{ . | nindent 4 }}{{- end }}
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
       enabled: true

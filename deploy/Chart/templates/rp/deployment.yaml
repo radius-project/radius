@@ -25,12 +25,13 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
+        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
-      {{- end }}
+        {{- end }}
     spec:
       serviceAccountName: applications-rp
       {{- if .Values.global.imagePullSecrets }}
@@ -220,6 +221,7 @@ spec:
           readOnly: true
         {{- end }}
         {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
+        {{- with include "radius.authz.mtls.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.rp.resources }}
         resources:{{ toYaml .Values.rp.resources | nindent 10 }}
         {{- end }}
@@ -227,6 +229,7 @@ spec:
         - name: config-volume
           configMap:
             name: applications-rp-config
+        {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "applications-rp") | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token
           projected:

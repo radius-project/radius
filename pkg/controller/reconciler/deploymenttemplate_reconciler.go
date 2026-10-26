@@ -19,7 +19,11 @@ package reconciler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/records"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -66,6 +70,7 @@ type DeploymentTemplateReconciler struct {
 func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "DeploymentTemplate", "name", req.Name, "namespace", req.Namespace)
 	ctx = logr.NewContext(ctx, logger)
+	ctx = records.WithSourceNamespace(ctx, req.Namespace)
 
 	deploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
 	err := r.Client.Get(ctx, req.NamespacedName, &deploymentTemplate)
@@ -322,11 +327,14 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 	logger.Info("Reconciling resource.")
 
 	// Ensure that our finalizer is present before we start any operations.
+	// Return after adding it: the update queues another reconcile, and starting the
+	// PUT now lets that reconcile read a stale cache and start a second deployment.
 	if controllerutil.AddFinalizer(deploymentTemplate, DeploymentTemplateFinalizer) {
 		err := r.Client.Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+		return ctrl.Result{}, nil
 	}
 
 	// Since we're going to reconcile, update the observed generation.
@@ -342,6 +350,12 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 
 		if statusErr := r.updateFailedStatus(ctx, deploymentTemplate); statusErr != nil {
 			return ctrl.Result{}, statusErr
+		}
+
+		// A mapping denial will not change on retry.
+		var denied *authz.DeniedError
+		if errors.As(err, &denied) {
+			return ctrl.Result{}, nil
 		}
 
 		// Return the error to the controller-runtime.
@@ -492,6 +506,11 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 		return nil, fmt.Errorf("providerConfig.Deployments.Value.Scope is empty")
 	}
 
+	// C3: the controller may only deploy to the resource group mapped to this namespace.
+	if err := checkNamespaceMapping(ctx, deploymentTemplate.Namespace, providerConfig.Deployments.Value.Scope); err != nil {
+		return nil, err
+	}
+
 	// Create the Radius resource group corresponding the providerConfig.Deployments.Value.Scope
 	// if it does not exist. This is necessary because the resource group is required for the
 	// deployment operation.
@@ -618,6 +637,25 @@ func isUpToDate(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) bool {
 
 	stored := deploymentTemplate.Status.StatusHash
 	return stored == hashutil.Hex(b) || stored == hashutil.LegacyHex(b)
+}
+
+// checkNamespaceMapping checks that scope is inside the resource group mapped to namespace.
+func checkNamespaceMapping(ctx context.Context, namespace, scope string) error {
+	// UCP checks the same mapping on the deployment write and logs the dryRun
+	// decision, so the local check only fails fast in enforce mode.
+	mode := authz.ProcessMode()
+	if mode != authz.ModeEnforce {
+		return nil
+	}
+	decision := authz.Decision{Allowed: true, Action: "Microsoft.Resources/deployments/write", Target: scope}
+	mapping, ok := authz.ProcessOptions().MappingFor(namespace)
+	switch {
+	case !ok:
+		decision.Allowed, decision.Code = false, v1.CodeAuthorizationFailed
+	case !records.ScopeCovers(mapping.ResourceGroup, scope):
+		decision.Allowed, decision.Code = false, v1.CodeGrantScopeExceeded
+	}
+	return authz.Apply(ctx, mode, decision)
 }
 
 // updateFailedStatus updates the deployment template status to failed state and clears the operation.

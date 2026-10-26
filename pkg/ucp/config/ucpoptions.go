@@ -18,7 +18,12 @@ package config
 
 import (
 	"errors"
+	"fmt"
+	"github.com/radius-project/radius/pkg/authz/records"
+	"net/url"
 
+	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/sdk"
 	"k8s.io/client-go/rest"
 )
@@ -53,12 +58,30 @@ type UCPDirectConnectionOptions struct {
 // NewConnectionFromUCPConfig creates a Connection for UCP endpoint. It checks if the connection kind is direct and if so,
 // checks if the endpoint is provided and returns a direct connection, otherwise it returns a Kubernetes connection from
 // the provided config. It returns an error if the endpoint is not provided when the connection kind is direct.
-func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config) (sdk.Connection, error) {
+//
+// When the authorization mode is not off, a direct connection must use https and presents this component's
+// certificate to UCP's internal mTLS endpoint. A Kubernetes connection is unchanged.
+func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config, authorization authz.Options) (sdk.Connection, error) {
 	if option.Kind == UCPConnectionKindDirect {
 		if option.Direct == nil || option.Direct.Endpoint == "" {
 			return nil, errors.New("the property .ucp.direct.endpoint is required when using a direct connection")
 		}
-		return sdk.NewDirectConnection(option.Direct.Endpoint)
+		if authorization.EffectiveMode() == authz.ModeOff {
+			return sdk.NewDirectConnection(option.Direct.Endpoint)
+		}
+
+		endpoint, err := url.Parse(option.Direct.Endpoint)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse endpoint %q: %w", option.Direct.Endpoint, err)
+		}
+		if endpoint.Scheme != "https" {
+			return nil, fmt.Errorf("the property .ucp.direct.endpoint must use https when the authorization mode is %q", authorization.EffectiveMode())
+		}
+		transport, err := mtls.NewClientTransport(authorization)
+		if err != nil {
+			return nil, err
+		}
+		return sdk.NewDirectConnectionWithTransport(option.Direct.Endpoint, &records.HeaderTransport{Inner: transport})
 	} else if option.Kind == UCPConnectionKindKubernetes {
 		return sdk.NewKubernetesConnectionFromConfig(k8sConfig)
 	}

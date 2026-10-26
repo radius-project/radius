@@ -33,6 +33,7 @@ import (
 )
 
 func Test_GroupDelete(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 

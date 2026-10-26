@@ -606,7 +606,7 @@ func Test_ApplyHelmChart_TimeoutPropagation(t *testing.T) {
 					RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
 					Return(nil, driver.ErrReleaseNotFound).Times(1)
 				mockHelmClient.EXPECT().
-					RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, tt.timeout).
+					RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, tt.timeout, gomock.Nil()).
 					Return(existingRelease, nil).Times(1)
 			}
 
@@ -640,7 +640,7 @@ func Test_ApplyHelmChart_InstallError(t *testing.T) {
 
 	// Install returns an error
 	mockHelmClient.EXPECT().
-		RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, gomock.Any()).
+		RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, gomock.Any(), gomock.Nil()).
 		Return(nil, errors.New("install failed")).Times(1)
 
 	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{

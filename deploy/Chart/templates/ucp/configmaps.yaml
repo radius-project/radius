@@ -17,6 +17,9 @@ data:
       port: 9443
       pathBase: /apis/api.ucp.dev/v1alpha3
       tlsCertificateDirectory: /var/tls/cert
+      {{- if ne (include "radius.authz.mode" .) "off" }}
+      internalPort: 9444
+      {{- end }}
     databaseProvider:
     {{- if .Values.database.enabled }}
       provider: "postgresql"
@@ -61,6 +64,20 @@ data:
 
     identity:
       authMethod: UCPCredential
+    {{- if .Values.rbac.enabled }}
+    {{- if eq (include "radius.authz.mode" .) "off" }}
+    {{- fail "rbac.enabled requires internal authorization (global.rbac)" }}
+    {{- end }}
+    userAuthorization:
+      enabled: true
+      kubernetesIssuer: {{ required "rbac.kubernetesIssuer must identify this cluster" .Values.rbac.kubernetesIssuer | quote }}
+      acceptIncompleteHistory: {{ .Values.rbac.acceptIncompleteHistory }}
+    {{- end }}
+    {{- with dig "workerServer" "dequeueInterval" "" .Values.ucp }}
+
+    workerServer:
+      dequeueInterval: {{ . | quote }}
+    {{- end }}
 
     ucp:
       kind: kubernetes
@@ -78,6 +95,8 @@ data:
     logging:
       level: "info"
       json: true
+
+    {{- with include "radius.authz.serverConfig" . | trim }}{{ . | nindent 4 }}{{- end }}
 
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:

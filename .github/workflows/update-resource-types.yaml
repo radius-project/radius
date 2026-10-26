@@ -378,6 +378,7 @@ jobs:
           signoff: true
           sign-commits: true
           title: "chore(resource-types-contrib): updates"
+          labels: pr:standard
           body: |
             Automated refresh of resource type manifests under `deploy/manifest/built-in-providers/` and the kubernetes recipe pack under `deploy/manifest/recipe-packs/`.
 

@@ -50,8 +50,8 @@ type HelmClient interface {
 	// RunHelmInstall installs the Helm chart using the supplied user-values map as the
 	// override set. The map should contain only user-supplied overrides (not the chart
 	// defaults); Helm merges them on top of the chart's defaults at render time.
-	// A non-positive timeout falls back to DefaultInstallTimeout.
-	RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, timeout time.Duration) (*releasev1.Release, error)
+	// A non-positive timeout falls back to DefaultInstallTimeout. Labels, if any, are stored on the release.
+	RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, timeout time.Duration, labels map[string]string) (*releasev1.Release, error)
 
 	// RunHelmUpgrade upgrades the Helm chart. When reuseValues is true,
 	// upgrade uses ResetThenReuseValues semantics: it starts from the new chart's
@@ -105,8 +105,9 @@ func NewHelmClient() HelmClient {
 // The vals map should contain only user-supplied overrides; Helm merges them on top of
 // the chart's defaults during rendering.
 // A non-positive timeout falls back to DefaultInstallTimeout.
-func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, timeout time.Duration) (*releasev1.Release, error) {
+func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, timeout time.Duration, labels map[string]string) (*releasev1.Release, error) {
 	installClient := newInstallClient(helmConf, releaseName, namespace, wait, timeout)
+	installClient.Labels = labels
 
 	if vals == nil {
 		vals = map[string]any{}

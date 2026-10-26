@@ -21,6 +21,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/records"
+	"github.com/radius-project/radius/pkg/authz/rpcheck"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -113,7 +116,7 @@ func New(
 	if options.DeduplicationDuration == time.Duration(0) {
 		options.DeduplicationDuration = defaultDeduplicationDuration
 	}
-	if options.DequeueIntervalDuration == time.Duration(0) {
+	if options.DequeueIntervalDuration <= time.Duration(0) {
 		options.DequeueIntervalDuration = defaultDequeueInterval
 	}
 
@@ -168,6 +171,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 			reqCtx = v1.WithARMRequestContext(reqCtx, armReqCtx)
+			reqCtx = records.WithIDs(reqCtx, records.IDs{RecordID: op.AuthzRecordID, OperationID: op.AuthzOperationID})
 
 			asyncCtrl, err := w.registry.Get(armReqCtx.OperationType)
 			if err != nil {
@@ -220,6 +224,23 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			if dup {
 				opLogger.Info("duplicated message detected")
 				return
+			}
+
+			// B6: claim the authorization operation before doing any work.
+			if mode := authz.ProcessMode(); mode != authz.ModeOff {
+				code, err := rpcheck.Claim(reqCtx, asyncCtrl.DatabaseClient(), op.AuthzOperationID)
+				if err != nil {
+					opLogger.Error(err, "failed to claim authorization operation")
+					code = v1.CodeAuthorizationUnavailable
+				}
+				if code != "" {
+					decision := authz.Decision{Code: code, Action: armReqCtx.OperationType.String(), Target: op.ResourceID}
+					if err := authz.Apply(reqCtx, mode, decision); err != nil {
+						failed := ctrl.NewFailedResult(v1.ErrorDetails{Code: code, Message: err.Error(), Target: op.ResourceID})
+						w.completeOperation(reqCtx, msgreq, failed, asyncCtrl.DatabaseClient())
+						return
+					}
+				}
 			}
 
 			if err = w.updateResourceAndOperationStatus(reqCtx, asyncCtrl.DatabaseClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
@@ -375,6 +396,10 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 		if err := w.requestQueue.FinishMessage(ctx, message); err != nil {
 			logger.Error(err, "failed to finish the message")
 		}
+	}
+
+	if !result.Requeue {
+		rpcheck.Finish(ctx, sc, req.AuthzOperationID, result.Error == nil)
 	}
 
 	metrics.DefaultAsyncOperationMetrics.RecordAsyncOperation(ctx, req, &result)

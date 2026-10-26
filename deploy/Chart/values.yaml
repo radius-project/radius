@@ -1,3 +1,10 @@
+rbac:
+  # Experimental user-facing RBAC. Separate from global.rbac (internal auth).
+  enabled: false
+  kubernetesIssuer: ""
+  # POC-only explicit waiver until durable dry-run history is implemented.
+  acceptIncompleteHistory: false
+
 global:
   # Configure global.imageRegistry to use a custom container registry for all Radius images.
   # When empty (default), images will use ghcr.io/radius-project as the registry.
@@ -100,6 +107,38 @@ global:
     secretKey: "kubeconfig"
     mountPath: "/etc/radius/target-kubeconfig"
 
+  # Configure internal component authorization. Both settings are disabled by default.
+  # The settings map to the authorization mode every Radius service reads:
+  #   enabled=false, dryRun=false -> off (default)
+  #   dryRun=true                 -> dryRun (denials will be logged, not rejected)
+  #   enabled=true                -> enforce (denials will be rejected)
+  # Setting both enabled=true and dryRun=true fails installation: the dry run is a
+  # preflight check for an installation that is not yet enforcing.
+  # PROTOTYPE: see hack/authz/PROTOTYPE.md for the checks each mode turns on.
+  # Example: rad install kubernetes --set global.rbac.dryRun=true
+  rbac:
+    # Enforce internal component authorization.
+    enabled: false
+    # Log what authorization checks would deny without rejecting requests.
+    dryRun: false
+    # Maps Kubernetes namespaces to the Radius resource group (and optional environment)
+    # the controller may deploy to for resources in that namespace. The controller is
+    # denied in namespaces without a mapping. Example:
+    #   namespaceMappings:
+    #     - namespace: default
+    #       resourceGroup: /planes/radius/local/resourceGroups/default
+    #       environment: /planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/default
+    namespaceMappings: []
+    # Service certificates for mTLS between Radius components. Rendered only when the
+    # authorization mode is not off, and require cert-manager (rad install installs it).
+    certificates:
+      # Where the Radius CA comes from. Only selfSigned is supported today: cert-manager
+      # creates a Radius-only CA (Certificate and Secret "radius-ca") and Issuer "radius-ca-issuer".
+      # Each component gets Certificate "<component>-cert" stored in Secret "<component>-mtls"
+      # (tls.crt, tls.key, ca.crt) for ucp, applications-rp, dynamic-rp, controller, and bicep-de.
+      # Keys are ECDSA P-256; certificates last 24h and renew 8h before expiry.
+      mode: selfSigned
+
 controller:
   image: controller
   # Default tag uses Chart AppVersion.
@@ -125,6 +164,10 @@ ucp:
   image: ucpd
   # Default tag uses Chart AppVersion.
   # tag: latest
+  workerServer:
+    # How long the async worker waits before polling again after finding its queue empty,
+    # such as "2s". Empty keeps the 200ms default. See the chart README.
+    dequeueInterval: ""
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
@@ -136,6 +179,10 @@ dynamicrp:
   image: dynamic-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
+  workerServer:
+    # How long the async worker waits before polling again after finding its queue empty,
+    # such as "2s". Empty keeps the 200ms default. See the chart README.
+    dequeueInterval: ""
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
@@ -184,6 +231,10 @@ rp:
   image: applications-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
+  workerServer:
+    # How long the async worker waits before polling again after finding its queue empty,
+    # such as "2s". Empty keeps the 200ms default. See the chart README.
+    dequeueInterval: ""
   publicEndpointOverride: ""
   resources:
     requests:
@@ -275,6 +326,8 @@ controlPlaneReadiness:
   # set another image value.
   image: ""
   tag: ""
+  # Use IfNotPresent for images loaded directly into a local kind cluster.
+  imagePullPolicy: Always
   # This also covers UCP cold-start time when the chart is installed directly
   # without --wait. Keep it below Helm's operation timeout so hook failure details
   # can be reported before Helm cancels the operation.

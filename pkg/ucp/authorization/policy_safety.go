@@ -363,8 +363,10 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 		if mutation.Delete || mutation.Settings == nil {
 			return fail(fmt.Errorf("authorization settings cannot be deleted"))
 		}
-		if err := current.allows(actor.Identity, "Radius.Core/authorizationSettings/write", id); err != nil {
-			return fail(err)
+		if *policy.Settings.Properties.Mode == api.UserAuthorizationModeEnforce {
+			if err := current.allows(actor.Identity, "Radius.Core/authorizationSettings/write", id); err != nil {
+				return fail(err)
+			}
 		}
 		if guard == nil {
 			return fail(fmt.Errorf("AuthorizationUnavailable: settings transition guard is not installed"))
@@ -376,6 +378,12 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 		operation = api.PolicyChangeOperationUpdate
 		change.Before = &api.PolicySnapshot{AuthorizationSettings: policy.Settings.Properties}
 		policy.Settings.Properties = mutation.Settings
+		if mutation.Settings.Mode != nil && *mutation.Settings.Mode == api.UserAuthorizationModeEnforce {
+			policy.Assignments = slices.DeleteFunc(policy.Assignments, func(assignment api.RoleAssignmentResource) bool {
+				return assignment.Properties.ManagedBy != nil && assignment.Properties.ManagedBy.Kind != nil &&
+					*assignment.Properties.ManagedBy.Kind == api.AssignmentManagementKindBootstrap
+			})
+		}
 		change.After = &api.PolicySnapshot{AuthorizationSettings: mutation.Settings}
 		highImpact = true
 	default:

@@ -19,6 +19,9 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/radius-project/radius/pkg/authz/dataaccess"
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"os"
 
 	"github.com/go-logr/logr"
@@ -26,6 +29,7 @@ import (
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/dynamicrp/server"
@@ -48,6 +52,10 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse config file %s: %w", configFilePath, err)
 		}
 
+		if err := routeWritesThroughUCP(&config.UCP, config.Authorization); err != nil {
+			return err
+		}
+
 		options, err := dynamicrp.NewOptions(cmd.Context(), config)
 		if err != nil {
 			return err
@@ -58,6 +66,9 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 		defer flush()
+
+		authz.LogMode(logger, options.Config.Authorization)
+		authz.SetProcessOptions(options.Config.Authorization)
 
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
@@ -78,4 +89,18 @@ func Execute() {
 	rootCmd.Flags().String("config-file", fmt.Sprintf("dynamicrp-%s.yaml", hostoptions.Environment()), "The service configuration file.")
 
 	cobra.CheckErr(rootCmd.ExecuteContext(context.Background()))
+}
+
+// routeWritesThroughUCP sends this process's database writes through UCP's
+// data-access endpoint when internal authorization is on (D2, D3).
+func routeWritesThroughUCP(ucp *ucpconfig.UCPOptions, options authz.Options) error {
+	if options.EffectiveMode() == authz.ModeOff || ucp.Kind != ucpconfig.UCPConnectionKindDirect {
+		return nil
+	}
+	conn, err := ucpconfig.NewConnectionFromUCPConfig(ucp, nil, options)
+	if err != nil {
+		return err
+	}
+	databaseprovider.SetProcessWrapper(dataaccess.Wrapper(conn))
+	return nil
 }

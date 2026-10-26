@@ -1,0 +1,18 @@
+{
+  "submitter": "ucp",
+  "actions": ["*"],
+  "targets": ["/planes/radius/local/resourceGroups/default"],
+  "ttl": "1h",
+  "operations": [
+    {
+      "resourceId": "/planes/radius/local/resourceGroups/default/providers/Applications.Core/applications/tamper-app",
+      "assignedComponent": "applications-rp",
+      "body": {
+        "location": "global",
+        "properties": {
+          "environment": "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/proto-env"
+        }
+      }
+    }
+  ]
+}
