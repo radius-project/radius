@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -34,6 +35,7 @@ import (
 	gomock "go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/stretchr/testify/require"
@@ -230,6 +232,36 @@ func Test_Terraform_Execute_InvalidOutputMapping(t *testing.T) {
 			verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 		})
 	}
+}
+
+func Test_Terraform_Execute_UnresolvedParameterExpression(t *testing.T) {
+	ctx := t.Context()
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, tfDriver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+
+	resolutionErr := &paramresolver.ResolutionError{Errors: []error{errors.New(`parameter "name": unresolved expression {{context.resource.unknown}}: unknown context path "context.resource.unknown"`)}}
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, fmt.Errorf("wrapped: %w", resolutionErr))
+
+	output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
+	})
+
+	require.Nil(t, output)
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeploymentFailed,
+			Message: "wrapped: " + resolutionErr.Error(),
+		},
+		DeploymentStatus: recipes_util.ExecutionError,
+	}, err)
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
 func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
