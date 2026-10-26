@@ -65,6 +65,18 @@ const (
 	skipOutputMappingValidation
 )
 
+// parameterResolutionMode controls how direct-module {{context.*}} parameter expressions that cannot
+// be resolved are handled during configuration generation.
+type parameterResolutionMode int
+
+const (
+	// strictParameterResolution fails configuration generation on an unresolvable expression.
+	strictParameterResolution parameterResolutionMode = iota
+	// bestEffortParameterResolution logs unresolvable expressions and passes them through unchanged.
+	// It is used when deleting so that a recipe whose expressions no longer resolve can still be destroyed.
+	bestEffortParameterResolution
+)
+
 var _ TerraformExecutor = (*executor)(nil)
 
 // NewExecutor creates a new Executor with the given UCP connection and secret provider, to execute a Terraform recipe.
@@ -130,7 +142,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	// Create Terraform config in the working directory
-	backend, err := e.generateConfig(ctx, tf, options, auth, requireValidOutputMappings)
+	backend, err := e.generateConfig(ctx, tf, options, auth, requireValidOutputMappings, strictParameterResolution)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +195,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Create Terraform config after setting registry and backend authentication.
-	backend, err := e.generateConfig(ctx, tf, options, auth, skipOutputMappingValidation)
+	backend, err := e.generateConfig(ctx, tf, options, auth, skipOutputMappingValidation, bestEffortParameterResolution)
 	if err != nil {
 		return err
 	}
@@ -347,7 +359,7 @@ func splitEnvVar(envVars []string) map[string]string {
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
-func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options, auth backends.CloudBackendAuth, validationMode outputMappingValidationMode) (*backendResult, error) {
+func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options, auth backends.CloudBackendAuth, validationMode outputMappingValidationMode, paramMode parameterResolutionMode) (*backendResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	workingDir := tf.WorkingDir()
 
@@ -446,7 +458,13 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 			resourceParams = options.ResourceRecipe.Parameters
 		}
 		mergedParams := recipes_util.ShallowMergeParameters(options.EnvRecipe.Parameters, resourceParams)
-		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipectx)
+		resolvedParams, err := resolveDirectModuleParameters(mergedParams, recipectx, paramMode)
+		if err != nil {
+			if paramMode != bestEffortParameterResolution {
+				return nil, err
+			}
+			logger.Info("Some recipe parameter expressions could not be resolved and are passed through unchanged", "error", err.Error())
+		}
 		if resolvedParams != nil {
 			tfConfig.Module[options.EnvRecipe.Name].SetParams(config.RecipeParams(resolvedParams))
 		}
@@ -484,6 +502,15 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	}
 
 	return result, nil
+}
+
+// resolveDirectModuleParameters resolves {{context.*}} expressions in direct-module parameters. In
+// best-effort mode unresolved expressions are kept verbatim and the returned error is informational.
+func resolveDirectModuleParameters(params map[string]any, recipectx *recipecontext.Context, mode parameterResolutionMode) (map[string]any, error) {
+	if mode == bestEffortParameterResolution {
+		return paramresolver.ResolveParameterExpressionsBestEffort(params, recipectx)
+	}
+	return paramresolver.ResolveParameterExpressions(params, recipectx)
 }
 
 func usesOutputMappings(definition *recipes.EnvironmentDefinition, module *moduleInspectResult, validationMode outputMappingValidationMode) bool {
