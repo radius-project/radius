@@ -19,12 +19,15 @@ limitations under the License.
 package helm
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -32,11 +35,13 @@ import (
 	"github.com/radius-project/radius/pkg/crypto/encryption"
 	"github.com/stretchr/testify/require"
 	helm "helm.sh/helm/v4/pkg/action"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -53,18 +58,7 @@ func TestEncryptionSecretUpgrade(t *testing.T) {
 
 	kubeconfig, client := startTestAPIServer(t)
 
-	// Use the shipping template, without workloads that require a kubelet.
-	chartPath := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(chartPath, "templates"), 0700))
-	require.NoError(t, os.WriteFile(filepath.Join(chartPath, "Chart.yaml"),
-		[]byte("apiVersion: v2\nname: radius\nversion: 0.1.0\n"), 0600))
-	for _, name := range []string{"_helpers.tpl", "dynamic-rp/secret.yaml"} {
-		content, err := os.ReadFile(filepath.Join("..", "..", "..", "deploy", "Chart", "templates", filepath.FromSlash(name)))
-		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(filepath.Join(chartPath, "templates", filepath.Base(name)), content, 0600))
-	}
-	chart, err := loader.Load(chartPath)
-	require.NoError(t, err)
+	chartPath, chart := encryptionSecretChart(t)
 
 	for _, upgrader := range []string{"helm", "rad"} {
 		for _, state := range []string{"fresh", "rotated", "legacy"} {
@@ -156,6 +150,106 @@ func TestEncryptionSecretUpgrade(t *testing.T) {
 			})
 		}
 	}
+}
+
+// encryptionSecretChart returns a chart with the shipping encryption Secret template, without workloads that
+// require a kubelet.
+func encryptionSecretChart(t *testing.T) (string, *chart.Chart) {
+	t.Helper()
+	chartPath := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(chartPath, "templates"), 0700))
+	require.NoError(t, os.WriteFile(filepath.Join(chartPath, "Chart.yaml"),
+		[]byte("apiVersion: v2\nname: radius\nversion: 0.1.0\n"), 0600))
+	for _, name := range []string{"_helpers.tpl", "dynamic-rp/secret.yaml"} {
+		content, err := os.ReadFile(filepath.Join("..", "..", "..", "deploy", "Chart", "templates", filepath.FromSlash(name)))
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(chartPath, "templates", filepath.Base(name)), content, 0600))
+	}
+	loaded, err := loader.Load(chartPath)
+	require.NoError(t, err)
+	return chartPath, loaded
+}
+
+// TestEncryptionSecretUpgradeRotationRace rotates a key after Helm reads the Secret and before it applies it.
+// The upgrade must fail instead of writing back the stale key store, even though upgrades force conflicts.
+func TestEncryptionSecretUpgradeRotationRace(t *testing.T) {
+	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
+		t.Skip("Run make test or set KUBEBUILDER_ASSETS to run the isolated API-server regression.")
+	}
+	runtimelog.SetLogger(logr.Discard())
+	kubeconfig, client := startTestAPIServer(t)
+	_, chart := encryptionSecretChart(t)
+
+	for _, serverSideApply := range []bool{true, false} {
+		t.Run(fmt.Sprintf("serverSideApply=%t", serverSideApply), func(t *testing.T) {
+			namespace := fmt.Sprintf("encryption-race-%t", serverSideApply)
+			flags := genericclioptions.NewConfigFlags(false)
+			flags.KubeConfig = &kubeconfig
+			flags.Namespace = &namespace
+			configuration := &helm.Configuration{}
+			require.NoError(t, configuration.Init(flags, namespace, helmDriverSecret))
+			installClient := newInstallClient(configuration, "radius", namespace, false, time.Minute)
+			installClient.ServerSideApply = serverSideApply
+			_, err := installClient.Run(chart, map[string]any{})
+			require.NoError(t, err)
+			require.Equal(t, serverSideApply, usesServerSideApply(configuration, "radius"))
+
+			secrets := client.CoreV1().Secrets(namespace)
+			upgradeClient := newUpgradeClient(configuration, namespace, false, true, time.Minute, serverSideApply)
+			require.Equal(t, serverSideApply, upgradeClient.ForceConflicts)
+			// Helm runs the post-renderer after the template has read the Secret and before it applies the manifest.
+			upgradeClient.PostRenderer = postRenderFunc(func() { rotateEncryptionKey(t, secrets) })
+			_, err = upgradeClient.Run("radius", chart, map[string]any{})
+			require.ErrorContains(t, err, "the object has been modified")
+
+			secret, err := secrets.Get(t.Context(), encryption.DefaultEncryptionKeySecretName, metav1.GetOptions{})
+			require.NoError(t, err)
+			var store encryption.KeyStore
+			require.NoError(t, json.Unmarshal(secret.Data[encryption.DefaultEncryptionKeySecretKey], &store))
+			require.Equal(t, 2, store.CurrentVersion, "The upgrade must not remove the rotated key.")
+			require.Contains(t, store.Keys, "2")
+
+			// The next upgrade reads the rotated Secret and succeeds.
+			_, err = NewHelmClient().RunHelmUpgrade(configuration, chart, nil, "radius", namespace, false, true, time.Minute)
+			require.NoError(t, err)
+			upgraded, err := secrets.Get(t.Context(), secret.Name, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, secret.Data, upgraded.Data)
+		})
+	}
+}
+
+type postRenderFunc func()
+
+func (f postRenderFunc) Run(manifests *bytes.Buffer) (*bytes.Buffer, error) {
+	f()
+	return manifests, nil
+}
+
+// rotateEncryptionKey adds a new current key the way the rotation CronJob does, with kubectl patch.
+func rotateEncryptionKey(t *testing.T, secrets typedcorev1.SecretInterface) {
+	t.Helper()
+	secret, err := secrets.Get(t.Context(), encryption.DefaultEncryptionKeySecretName, metav1.GetOptions{})
+	require.NoError(t, err)
+	var store encryption.KeyStore
+	require.NoError(t, json.Unmarshal(secret.Data[encryption.DefaultEncryptionKeySecretKey], &store))
+	rotatedAt := time.Now().UTC()
+	store.CurrentVersion++
+	store.Keys[strconv.Itoa(store.CurrentVersion)] = encryption.KeyData{
+		Key:       base64.StdEncoding.EncodeToString(make([]byte, 32)),
+		Version:   store.CurrentVersion,
+		CreatedAt: rotatedAt.Format(time.RFC3339),
+		ExpiresAt: rotatedAt.Add(90 * 24 * time.Hour).Format(time.RFC3339),
+	}
+	data, err := json.Marshal(store)
+	require.NoError(t, err)
+	patch, err := json.Marshal(corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{"radius.dev/last-rotation": rotatedAt.Format(time.RFC3339)}},
+		Data:       map[string][]byte{encryption.DefaultEncryptionKeySecretKey: data},
+	})
+	require.NoError(t, err)
+	_, err = secrets.Patch(t.Context(), secret.Name, types.MergePatchType, patch, metav1.PatchOptions{FieldManager: "kubectl-patch"})
+	require.NoError(t, err)
 }
 
 func waitForEncryptionTimestampBoundary(t *testing.T, timestamp string) {
