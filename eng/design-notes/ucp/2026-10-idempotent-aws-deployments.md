@@ -122,6 +122,7 @@ Each failure comes from one missing piece of memory:
 2. Removing a property from the template clears it in AWS on the next deploy.
 3. Redeploying an unchanged password or other write-only value changes nothing in AWS.
 4. Changing a property that cannot change after create fails before UCP calls AWS, with an error that names the property.
+5. Redeploying a property that AWS reports in a different form, such as reordered subnets or a fuller engine version, changes nothing in AWS.
 
 ### Non-goals
 
@@ -248,6 +249,13 @@ A PUT goes through four steps.
 ### Comparing properties
 
 UCP compares properties by path, the way `GeneratePatch` in `pkg/aws/operations` does today: nested objects are flattened, so `VersioningConfiguration/Status` is one property. An array is one value, so if any item differs, UCP sends the whole array.
+
+AWS often reports a value in a different form than the template set it. UCP uses the type's schema, which it already loads with `DescribeType`, so that these count as unchanged:
+
+- **Arrays where order does not matter.** The schema marks them `"insertionOrder": false`, such as `SubnetIds` on a DB subnet group and `Tags` on most types. UCP compares them ignoring order, because AWS returns their items in its own order.
+- **Values AWS rewrites.** The schema's `propertyTransform` turns the template's value into a pattern that AWS's value must match. For example, an RDS `EngineVersion` of `8.4` matches a running `8.4.11`, and `DBInstanceIdentifier` is compared in lowercase. UCP supports the functions most schemas use: `$lowercase`, `$uppercase`, `$join`, and `$OR`. A property whose transform uses any other function is compared as it is.
+
+Without these rules, an unchanged redeploy of an RDS instance sends `EngineVersion` again. When the running minor version is below AWS's default for `8.4`, RDS upgrades the database to that default and reboots it right away. A template that names the instance in mixed case would also fail every redeploy, because `DBInstanceIdentifier` cannot change after create and AWS reports it in lowercase.
 
 | Property                                                                     | What UCP does                                                                                                                                             |
 |------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -403,6 +411,10 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
 - **Unit tests**
   - take over or create when there is no record: by `name`, by properties, and neither
   - each row of the property comparison table, including nested paths, a changed array item, and a removed create-only property
+  - a DB subnet group whose `SubnetIds` AWS returns in a different order: no AWS call
+  - an RDS instance with `EngineVersion: 8.4` against a running `8.4.11`: no AWS call. Changing the template to `8.0` sends it
+  - an RDS instance whose template sets `DBInstanceIdentifier` in mixed case: no 400 and no AWS call
+  - a property whose `propertyTransform` uses an unsupported function: compared as it is
   - the client token on a retried create
   - a stale operation that the next PUT resumes instead of returning 409, and a long operation that the worker keeps polling, which neither goes stale nor hits the async worker's timeout
   - a retry after UCP failed between saving the record and queuing the create, which resumes the create with the same client token right away
