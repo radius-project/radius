@@ -1,0 +1,58 @@
+suite: experimental user RBAC
+templates:
+  - ucp/configmaps.yaml
+  - ucp/rbac.yaml
+tests:
+  - it: does not grant the bootstrap SAR permission through the API gate
+    template: ucp/rbac.yaml
+    set:
+      global.rbac.enabled: true
+      rbac.enabled: true
+      rbac.kubernetesIssuer: kubernetes:test
+    documentSelector:
+      path: metadata.name
+      value: radius-api-user
+    asserts:
+      - equal:
+          path: rules[0].resources
+          value:
+            - planes
+            - planes/local
+            - providers
+            - providers/initializeAuthorization
+            - providers/whoami
+            - providers/roleDefinitions
+            - providers/roleAssignments
+            - providers/authorizationSettings
+            - providers/permissions
+            - providers/checkAccess
+            - providers/explainAccess
+            - providers/accessChanges
+
+  - it: leaves existing installations unchanged
+    template: ucp/configmaps.yaml
+    asserts:
+      - notMatchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'userAuthorization:'
+  - it: requires authenticated component transport
+    template: ucp/configmaps.yaml
+    set:
+      rbac.enabled: true
+      rbac.kubernetesIssuer: kubernetes:test
+    asserts:
+      - failedTemplate:
+          errorMessage: rbac.enabled requires internal authorization (global.rbac)
+  - it: renders separate user authorization options
+    template: ucp/configmaps.yaml
+    set:
+      global.rbac.enabled: true
+      rbac.enabled: true
+      rbac.kubernetesIssuer: kubernetes:test
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'kubernetesIssuer: "kubernetes:test"'
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'acceptIncompleteHistory: false'

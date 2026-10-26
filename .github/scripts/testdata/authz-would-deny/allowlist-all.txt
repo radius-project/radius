@@ -1,0 +1,4 @@
+# Known would-deny lines tracked by issues.
+
+https://github.com/radius-project/radius/issues/99901 "authzCode":[[:space:]]*"AuthorizationFailed".*"authzAction":[[:space:]]*"Applications[.]Core/containers/write".*"authzTarget":[[:space:]]*"/planes/radius/local/resourceGroups/test"
+radius-project/radius#99902   "authzCode":[[:space:]]*"InvalidClientIdentity".*"authzAction":[[:space:]]*"Applications[.]Test/widgets/write".*"authzTarget":[[:space:]]*"/planes/radius/local/resourceGroups/test"

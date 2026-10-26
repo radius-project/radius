@@ -68,6 +68,9 @@ func (w *AsyncWorker) init(ctx context.Context) error {
 		if w.options.Config.WorkerServer.MaxOperationRetryCount != nil {
 			workerOptions.MaxOperationRetryCount = *w.options.Config.WorkerServer.MaxOperationRetryCount
 		}
+		if w.options.Config.WorkerServer.DequeueInterval != nil {
+			workerOptions.DequeueIntervalDuration = *w.options.Config.WorkerServer.DequeueInterval
+		}
 	}
 
 	queueProvider := queueprovider.New(w.options.Config.QueueProvider)

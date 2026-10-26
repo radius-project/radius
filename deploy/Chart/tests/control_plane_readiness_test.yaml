@@ -8,6 +8,15 @@ release:
   name: radius
   namespace: radius-system
 tests:
+  - it: supports a locally loaded readiness image without a registry pull
+    set:
+      controlPlaneReadiness.imagePullPolicy: IfNotPresent
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: IfNotPresent
+        template: control-plane-readiness/job.yaml
+
   - it: always renders the readiness hook when pre-upgrade checks are disabled
     set:
       preupgrade.enabled: false

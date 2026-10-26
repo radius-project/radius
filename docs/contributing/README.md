@@ -40,6 +40,7 @@ Every contributing doc, grouped by topic. This is the single index that [AGENTS.
 
 - [Test matrix overview](./contributing-code/contributing-code-tests/README.md) — every test tier and its command.
 - [Running functional tests](./contributing-code/contributing-code-tests/running-functional-tests.md)
+- [User RBAC prototype](./contributing-code/contributing-code-tests/user-rbac-poc.md) — dedicated kind setup and real API scenarios.
 - [Local test iteration](./contributing-code/contributing-code-tests/testing-local.md)
 - [Writing functional tests](./contributing-code/contributing-code-tests/writing-functional-tests.md)
 - [Test naming conventions](./contributing-code/contributing-code-tests/tests-naming-conventions.md)
@@ -97,6 +98,7 @@ Maps each capability in [agent-ex-features.md](../../specs/002-agent-ex/agent-ex
 | 3 Investigate issues                      | [contributing-issues/README.md](./contributing-issues/README.md)                                                 |
 | n/a Configure a deploy environment        | [contributing-deploy-environments.md](./contributing-deploy-environments.md)                                     |
 | n/a Investigate flaky tests               | [investigating-flaky-tests.md](./contributing-code/contributing-code-tests/investigating-flaky-tests.md)         |
+| n/a Test user RBAC prototype              | [user-rbac-poc.md](./contributing-code/contributing-code-tests/user-rbac-poc.md)                                 |
 | 5 Author and evolve docs and capabilities | [Documentation index](#documentation-index)                                                                      |
 | 5.1 Author a new doc                      | [authoring-contributing-docs.md](./authoring-contributing-docs.md)                                               |
 | 5.2 Repair drift                          | [extending-agent-ex.md](./extending-agent-ex.md)                                                                 |

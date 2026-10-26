@@ -1,0 +1,39 @@
+suite: test control-plane admission policy
+templates:
+  - global/admissionpolicy.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: renders nothing when authorization is off
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: warns and audits in dryRun
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: spec.validationActions
+          value: [Warn, Audit]
+        documentIndex: 1
+      - matchRegex:
+          path: spec.matchConditions[0].expression
+          pattern: "system:serviceaccount:radius-system:applications-rp"
+        documentIndex: 0
+
+  - it: denies in enforce
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - equal:
+          path: spec.validationActions
+          value: [Deny]
+        documentIndex: 1
+      - equal:
+          path: spec.policyName
+          value: radius-control-plane-workloads
+        documentIndex: 1

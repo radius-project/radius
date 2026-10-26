@@ -35,6 +35,7 @@ import (
 // pre-creating an environment or specifying the environment name via the
 // --environment flag.
 func Test_DeployEnvironmentTemplate(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 

@@ -183,7 +183,8 @@ remote_ref() {
     local name="$1"
     local ref="$2"
 
-    git -C "${TEST_ROOT}/${name}.git" rev-parse --verify --quiet "${ref}" || true
+    git --git-dir="${TEST_ROOT}/${name}.git" \
+        rev-parse --verify --quiet "${ref}" || true
 }
 
 install_concurrent_tag_hook() {

@@ -141,3 +141,91 @@ Usage (pass the root context):
   value: "{{ .Values.global.targetCluster.mountPath }}/{{ .Values.global.targetCluster.secretKey }}"
 {{- end -}}
 {{- end -}}
+
+{{/*
+Returns the authorization mode (off, dryRun, or enforce) derived from global.rbac.
+Fails rendering when dry run is combined with enforcement.
+*/}}
+{{- define "radius.authz.mode" -}}
+{{- $rbac := .Values.global.rbac | default dict -}}
+{{- if and $rbac.enabled $rbac.dryRun -}}
+{{- fail "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run." -}}
+{{- else if $rbac.dryRun -}}
+dryRun
+{{- else if $rbac.enabled -}}
+enforce
+{{- else -}}
+off
+{{- end -}}
+{{- end -}}
+
+{{/*
+Path where a component's mTLS Secret (<component>-mtls) is mounted.
+*/}}
+{{- define "radius.authz.mtls.mountPath" -}}
+/var/run/radius/mtls
+{{- end -}}
+
+{{/*
+Renders the authorization config block for a component. Renders nothing when
+the authorization mode is off, so a default install is unchanged.
+*/}}
+{{- define "radius.authz.serverConfig" -}}
+{{- $mode := include "radius.authz.mode" . -}}
+{{- if ne $mode "off" }}
+authorization:
+  mode: {{ $mode | quote }}
+  certificateDirectory: {{ include "radius.authz.mtls.mountPath" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  {{- with .Values.global.rbac.namespaceMappings }}
+  namespaceMappings:
+    {{- range . }}
+    - namespace: {{ .namespace | quote }}
+      resourceGroup: {{ .resourceGroup | quote }}
+      {{- with .environment }}
+      environment: {{ . | quote }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders the ucp connection block for a component that calls UCP. When the authorization
+mode is not off, the component calls UCP's internal mTLS port directly instead of going
+through the Kubernetes API server.
+*/}}
+{{- define "radius.authz.ucpConnection" -}}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+ucp:
+  kind: direct
+  direct:
+    endpoint: "https://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3"
+{{- else }}
+ucp:
+  kind: kubernetes
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders the mTLS volume mount for a component container when the authorization mode is not off.
+*/}}
+{{- define "radius.authz.mtls.volumeMount" -}}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+- name: mtls
+  mountPath: {{ include "radius.authz.mtls.mountPath" . }}
+  readOnly: true
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders the mTLS Secret volume for a component when the authorization mode is not off.
+Call with (dict "root" $ "component" "<component>").
+*/}}
+{{- define "radius.authz.mtls.volume" -}}
+{{- if ne (include "radius.authz.mode" .root) "off" }}
+- name: mtls
+  secret:
+    secretName: {{ .component }}-mtls
+{{- end }}
+{{- end -}}

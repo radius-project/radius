@@ -16,6 +16,7 @@
 
 DOCKER_REGISTRY?=$(shell whoami)
 DOCKER_TAG_VERSION?=latest
+DOCKER_BUILD_ARCH?=amd64
 IMAGE_SRC?=https://github.com/radius-project/radius
 MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 
@@ -40,12 +41,12 @@ docker-publish-bicep: build-bicep-linux-amd64 build-bicep-linux-arm64 build-bice
 define generateDockerTargets
 ifeq ($(strip $(4)),go)
 .PHONY: docker-build-$(1)
-docker-build-$(1): build-$(1)-linux-amd64
+docker-build-$(1): build-$(1)-linux-$(DOCKER_BUILD_ARCH)
 	@echo "$(ARROW) Building Go image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 	@cp -v $(3) $(OUT_DIR)/Dockerfile-$(1)
 
 	cd $(OUT_DIR) && docker build $(2) -f ./Dockerfile-$(1) \
-		--platform linux/amd64 \
+		--platform linux/$(DOCKER_BUILD_ARCH) \
 		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
 		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
 		--label org.opencontainers.image.description="$(1)" \
@@ -84,6 +85,7 @@ APPS_MAP := ucpd:./deploy/images/ucpd \
 	controller:./deploy/images/controller \
 	testrp:./test/testrp \
 	magpiego:./test/magpiego \
+	rogue-client:./test/rogue \
 	bicep:./deploy/images/bicep \
 	pre-upgrade:./deploy/images/pre-upgrade
 

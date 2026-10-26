@@ -236,6 +236,16 @@ func (c *PolicyCache) Ready() error {
 	return nil
 }
 
+// Snapshot returns an immutable snapshot only within the cache freshness bound.
+func (c *PolicyCache) Snapshot() (*PolicySnapshot, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.value == nil || c.clock.Since(c.asOf) >= PolicyMaxAge {
+		return nil, ErrAuthorizationUnavailable
+	}
+	return c.value, nil
+}
+
 // Evaluate refuses to decide at or beyond the thirty-second boundary.
 func (c *PolicyCache) Evaluate(identity Identity, checks []Check) ([]Decision, error) {
 	c.mu.RLock()

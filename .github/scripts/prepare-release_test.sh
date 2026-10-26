@@ -62,6 +62,7 @@ setup_repo() {
     git -C "${REPO}" config user.name "Radius Test"
     git -C "${REPO}" config user.email "test@example.com"
     git -C "${REPO}" config commit.gpgsign false
+    git -C "${REPO}" config tag.gpgsign false
     printf "supported:\n  - channel: '0.60'\n    version: '%s'\n" \
         "${version}" >"${REPO}/versions.yaml"
     printf 'deprecated:\n  - channel: '\''0.59'\''\n    version: '\''v0.59.0'\''\n' \

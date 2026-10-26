@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/ucp/authzcheck"
 	"net/http"
 	"net/url"
 	"strings"
@@ -138,10 +140,19 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 		return armrpc_rest.NewInternalServerErrorARMResponse(response), nil
 	}
 
+	grant, err := authzcheck.AuthorizeProxyWrite(ctx, p.DatabaseClient(), req, id, downstreamURL)
+	var denied *authz.DeniedError
+	if errors.As(err, &denied) {
+		return denied.Response()
+	} else if err != nil {
+		return nil, err
+	}
+
 	proxyReq, err := p.PrepareProxyRequest(ctx, req, downstreamURL.String(), relativePath)
 	if err != nil {
 		return nil, err
 	}
+	grant.SetHeaders(proxyReq)
 
 	interceptor := &responseInterceptor{Inner: p.transport}
 	sender := proxy.NewARMProxy(proxy.ReverseProxyOptions{RoundTripper: interceptor}, downstreamURL, nil)
@@ -151,6 +162,8 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 		logger.V(ucplog.LevelDebug).Error(err, "failed to proxy request")
 		return nil, nil
 	}
+
+	grant.Finish(ctx, interceptor.Response)
 
 	// If we get here then we've successfully proxied the request. Now we interpret the response.
 	logger.V(ucplog.LevelDebug).Info("finished proxy request", "http.statuscode", interceptor.Response.StatusCode)

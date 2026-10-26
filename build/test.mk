@@ -49,12 +49,13 @@ ENV_SETUP=go tool setup-envtest
 #
 # See: https://github.com/gotestyourself/gotestsum
 GOTEST_OPTS ?=
+GOTESTSUM_JSONFILE_DIR ?=
 # We need the double dash here to separate the 'gotestsum' options from the 'go test' options
-GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
+GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) $(if $(GOTESTSUM_JSONFILE_DIR),--jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication ## Runs unit tests, excluding kubernetes controller tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
+test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check test-authz-kit ## Runs unit tests, excluding kubernetes controller tests
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... ./test/rogue/... $(GOTEST_OPTS)
 
 .PHONY: test-azure-oidc-login
 test-azure-oidc-login: ## Tests cloud CI token request retries and Azure login
@@ -69,6 +70,18 @@ test: test-authorization-contracts
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh
+
+.PHONY: test-local-functional-runner
+test-local-functional-runner: ## Tests local functional runner safety without infrastructure
+	@bash ./build/scripts/local-functional_test.sh
+
+test: test-local-functional-runner
+
+.PHONY: test-publish-recipes
+test-publish-recipes: ## Tests bounded recipe publishing without a registry
+	@bash ./.github/scripts/publish-recipes_test.sh
+
+test: test-publish-recipes
 
 .PHONY: test-purge-old-images
 test-purge-old-images: ## Tests package cleanup retries without GitHub access
@@ -89,6 +102,15 @@ test-install-bicep: test-retry-curl ## Tests bounded Bicep downloads without net
 	@bash ./build/scripts/install-bicep_test.sh
 
 test: test-install-bicep
+
+.PHONY: test-authz-would-deny-check
+test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned log collector
+	@bash ./.github/scripts/authz-would-deny-check_test.sh
+	@python3 ./.github/scripts/run-with-authz-logs_test.py
+
+.PHONY: test-authz-kit
+test-authz-kit: ## Tests the manual authorization test kit in hack/authz (syntax, --help, helpers, workflows)
+	@bash ./hack/authz/kit_test.sh
 
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
@@ -199,6 +221,12 @@ test-docker-push: ## Tests image push recovery without Docker or a registry
 
 test: test-docker-push
 
+.PHONY: test-docker-build
+test-docker-build: ## Tests image architecture selection without Docker
+	@bash ./build/scripts/docker-build_test.sh
+
+test: test-docker-build
+
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
 	@echo "$(ARROW) Compiling unit tests..."
@@ -220,7 +248,18 @@ test-functional-all: test-functional-ucp test-functional-kubernetes test-functio
 
 .PHONY: test-functional-all-noncloud
 # Run all functional tests that do not require cloud resources
-test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud ## Runs all functional tests that do not require cloud resources
+test-functional-all-noncloud: test-functional-ucp-noncloud test-functional-kubernetes-noncloud test-functional-corerp-noncloud test-functional-cli-noncloud test-functional-msgrp-noncloud test-functional-daprrp-noncloud test-functional-datastoresrp-noncloud test-functional-samples-noncloud test-functional-dynamicrp-noncloud test-functional-authz-noncloud ## Runs all functional tests that do not require cloud resources
+
+.PHONY: test-functional-local-noncloud
+test-functional-local-noncloud: ## Builds and installs Radius locally, then runs standard and isolated non-cloud tests on Linux or macOS
+	bash build/scripts/local-functional.sh all
+
+.PHONY: test-functional-local-noncloud-cleanup
+test-functional-local-noncloud-cleanup: ## Removes local functional test infrastructure while retaining diagnostics
+	bash build/scripts/local-functional.sh cleanup
+
+.PHONY: test-functional-noncloud-cleanup
+test-functional-noncloud-cleanup: test-functional-local-noncloud-cleanup ## Alias for local non-cloud functional test cleanup
 
 .PHONY: test-functional-all-cloud
 # Run all functional tests that require cloud resources
@@ -232,6 +271,19 @@ test-functional-ucp: test-functional-ucp-noncloud test-functional-ucp-cloud ## R
 .PHONY: test-functional-ucp-noncloud
 test-functional-ucp-noncloud: ## Runs UCP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/ucp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
+.PHONY: test-functional-authz-noncloud
+test-functional-authz-noncloud: ## Runs internal component authorization functional tests that do not require cloud resources
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/authz/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
+# Optional overrides for authz-would-deny-check. AUTHZ_WOULD_DENY_ARGS passes extra script arguments,
+# for example AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/authz-logs".
+AUTHZ_NAMESPACE ?= radius-system
+AUTHZ_WOULD_DENY_ARGS ?=
+
+.PHONY: authz-would-deny-check
+authz-would-deny-check: ## Fails if a Radius pod in the current kube context logged an authorization dry-run would-deny line
+	@bash ./.github/scripts/authz-would-deny-check.sh --require-dry-run --namespace "$(AUTHZ_NAMESPACE)" $(AUTHZ_WOULD_DENY_ARGS)
 
 .PHONY: test-functional-ucp-cloud
 test-functional-ucp-cloud: ## Runs UCP functional tests that require cloud resources

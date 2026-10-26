@@ -19,6 +19,7 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"github.com/radius-project/radius/pkg/authz/records"
 	"strings"
 	"time"
 
@@ -68,6 +69,7 @@ type DeploymentResourceReconciler struct {
 func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "DeploymentResource", "name", req.Name, "namespace", req.Namespace)
 	ctx = logr.NewContext(ctx, logger)
+	ctx = records.WithSourceNamespace(ctx, req.Namespace)
 
 	deploymentResource := radappiov1alpha3.DeploymentResource{}
 	err := r.Client.Get(ctx, req.NamespacedName, &deploymentResource)

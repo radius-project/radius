@@ -20,6 +20,7 @@ import (
 	"bytes"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
@@ -28,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/ucp/userauth"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -35,6 +37,11 @@ import (
 //
 // For testability, all fields on this struct MUST be parsable from YAML without any further initialization required.
 type Config struct {
+	// UserAuthorization enables the opt-in user-facing RBAC prototype.
+	UserAuthorization userauth.Options `yaml:"userAuthorization"`
+	// Authorization is the configuration for internal component authorization.
+	Authorization authz.Options `yaml:"authorization"`
+
 	// Database is the configuration for the database used for resource data.
 	Database databaseprovider.Options `yaml:"databaseProvider"`
 

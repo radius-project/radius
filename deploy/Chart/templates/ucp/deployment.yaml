@@ -22,12 +22,13 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
+        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
-      {{- end }}
+        {{- end }}
     spec:
       serviceAccountName: ucp
       {{- if .Values.global.appendRootCA.cert }}
@@ -76,6 +77,11 @@ spec:
         - containerPort: 9443
           name: ucp
           protocol: TCP
+        {{- if ne (include "radius.authz.mode" .) "off" }}
+        - containerPort: 9444
+          name: internal
+          protocol: TCP
+        {{- end }}
         {{- if eq .Values.global.prometheus.enabled true }}
         - containerPort: {{ .Values.global.prometheus.port }}
           name: metrics
@@ -130,6 +136,7 @@ spec:
         - name: encryption-secret
           mountPath: /var/secrets/encryption
           readOnly: true
+        {{- with include "radius.authz.mtls.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
       volumes:
         - name: config-volume
           configMap:
@@ -161,3 +168,4 @@ spec:
           secret:
             secretName: radius-encryption-key
             defaultMode: 0400
+        {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "ucp") | trim }}{{ . | nindent 8 }}{{- end }}

@@ -158,6 +158,9 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 	} else {
 		logger.Info("Created the namespace", "namespace", kubeNamespace)
 	}
+	if err := kubeutil.ApplyPodSecurityLabels(ctx, namespaceClient, kubeNamespace); err != nil {
+		return nil, err
+	}
 
 	return nil, nil
 }

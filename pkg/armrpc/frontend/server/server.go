@@ -45,6 +45,13 @@ type Options struct {
 	EnableArmAuth bool
 	Configure     func(chi.Router) error
 	ArmCertMgr    *authentication.ArmCertManager
+
+	// AllowedCallers lists the Radius components that may call this server when
+	// internal component authorization is on. Empty allows any Radius component.
+	AllowedCallers []string
+
+	// Middlewares run after the ARM request context middleware.
+	Middlewares []func(http.Handler) http.Handler
 }
 
 // New creates a frontend server that can listen on the provided address and serve requests - it creates an HTTP server with a router,
@@ -64,6 +71,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 		r.Use(authentication.ClientCertValidator(options.ArmCertMgr))
 	}
 	r.Use(servicecontext.ARMRequestCtx(options.PathBase, options.Location))
+	r.Use(options.Middlewares...)
 
 	r.Get(versionEndpoint, version.ReportVersionHandler)
 	r.Get(healthzEndpoint, version.ReportVersionHandler)

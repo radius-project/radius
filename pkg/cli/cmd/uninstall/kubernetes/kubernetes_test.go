@@ -92,6 +92,10 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(false, nil).
+			Times(1)
+
 		promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
 			Return(prompt.ConfirmYes, nil).
 			Times(1)
@@ -193,6 +197,10 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", ContourInstalled: true}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(true, nil).
+			Times(1)
+
 		promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
 			Return(prompt.ConfirmYes, nil).
 			Times(1)
@@ -217,7 +225,7 @@ func Test_Run(t *testing.T) {
 			},
 			output.LogOutput{
 				Format: "- Helm releases: %s",
-				Params: []any{"radius, contour"},
+				Params: []any{"radius, contour, cert-manager"},
 			},
 			output.LogOutput{
 				Format: "- Radius environments:",
@@ -310,6 +318,10 @@ func Test_Run(t *testing.T) {
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
+			Times(1)
+
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(false, nil).
 			Times(1)
 
 		promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
@@ -410,6 +422,10 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(false, nil).
+			Times(1)
+
 		promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
 			Return(prompt.ConfirmNo, nil).
 			Times(1)
@@ -449,6 +465,10 @@ func Test_Run(t *testing.T) {
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
+			Times(1)
+
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(false, nil).
 			Times(1)
 
 		helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
@@ -498,6 +518,10 @@ func Test_Run(t *testing.T) {
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", ContourInstalled: true}, nil).
+			Times(1)
+
+		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
+			Return(false, nil).
 			Times(1)
 
 		helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
