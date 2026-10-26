@@ -95,7 +95,7 @@ The scenarios are the [feature spec's key scenarios](https://github.com/radius-p
 **This design:**
 
 - **(Phase 1)** An operator commits `env.bicep` (the Radius Environment and its Recipe pack); a developer commits `app.bicep` and `app.bicepparam`. An Argo CD Application points at that path with the Radius plugin, Argo CD syncs it, and Radius deploys it. Where plugins are not allowed, a CI job commits the generated manifests and the Application points at those instead (see [Who compiles Bicep for Argo CD](#who-compiles-bicep-for-argo-cd)).
-- **(Phase 1)** The application deploys only after the Environment exists, so `env.bicep` must sync first. Phase 1 documents one Argo CD Application per file, with the environment synced first. Whether Radius should also support sync waves or an app-of-apps is [open question 12](#open-questions).
+- **(Phase 1)** The application deploys only after the Environment exists, so `env.bicep` must sync first. A repository holds one app, and the environment is part of that app, so Phase 1 uses one Argo CD Application per repository. The plugin parameter `bicepFiles` lists the files in deploy order, for example `env/env.bicep app/app.bicep`. The plugin compiles each file into its own `DeploymentTemplate` and sets the `argocd.argoproj.io/sync-wave` annotation to the file's position. Argo CD applies a wave only after the previous wave is Healthy, and the health check reports Healthy only when Radius reports Ready, so the Environment and its Recipe pack are ready before the app deploys. See [open question 12](#open-questions).
 - **(Phase 1)** Argo CD shows the synced revision and destination, and the plugin stamps the revision on the `DeploymentTemplate`. A compile error fails rendering, so Argo CD shows a ComparisonError and does not sync.
 - **(Phase 1, non-string parameters in Phase 2)** Changing only `app.bicepparam`, for example `replicaCount`, changes the `DeploymentTemplate` parameters, so Argo CD syncs and Radius redeploys. Phase 1 supports string parameters only. Whether it works when the `.bicepparam` file lives in a different repository is [open question 1](#open-questions).
 - **(Phase 1)** Installing Radius itself as an Argo CD Application from the Helm chart is not in the feature spec's scenarios. Phase 1 validates and documents it, because operators who use Argo CD will try it.
@@ -174,14 +174,13 @@ metadata: { name: orders-dev, namespace: argocd }
 spec:
   project: default
   source:
-    repoURL: https://github.com/contoso/orders-ops
+    repoURL: https://github.com/contoso/orders
     targetRevision: main
-    path: apps/orders
+    path: .
     plugin:
       name: radius-bicep
       parameters:
-        - { name: bicepFile, string: app.bicep }
-        - { name: paramsFile, string: app.bicepparam }
+        - { name: bicepFiles, string: env/env.bicep app/app.bicep } # deploy order
         - { name: resourceGroup, string: orders-dev }
   destination: { server: https://kubernetes.default.svc, namespace: orders }
   syncPolicy: { automated: { prune: true, selfHeal: true } }
@@ -196,9 +195,9 @@ rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --
 ```yaml
 spec:
   source:
-    repoURL: https://github.com/contoso/orders-ops
+    repoURL: https://github.com/contoso/orders
     targetRevision: main
-    path: apps/orders/generated
+    path: generated
 ```
 
 **Sample Output:** the Argo CD Application tree after a Recipe failure.
@@ -329,7 +328,7 @@ Argo CD health:              Progressing ──────────► Healt
 *Create Argo CD plugin:*
 
 1. **Argo CD admin, once:** add the Radius sidecar and `plugin.yaml` to the Argo CD install (Helm values or Kustomize patch) and, on hardened clusters, allow outbound access to the Bicep extension registry.
-2. **Developer, once per app:** commit `app.bicep` and `app.bicepparam`, then create an Application with the plugin parameters `bicepFile`, `paramsFile` and `resourceGroup`.
+2. **Developer, once per app:** commit `app.bicep` and `app.bicepparam`, then create one Application with the plugin parameters `bicepFiles` (in deploy order, environment first) and `resourceGroup`. Each file's parameters come from a parameters file with the same base name next to it.
 3. **Developer, each change:** edit the Bicep or parameters and merge.
 4. **Argo CD, automatically:** the sidecar compiles the Bicep into a `DeploymentTemplate`; Argo CD diffs and applies it, and Radius deploys it.
 5. **If compilation fails:** the sync is blocked and the error shows in Argo CD.
@@ -542,7 +541,7 @@ One container image plus a `plugin.yaml`; it compiles and never deploys.
 - **Maintenance and security ownership:** Radius owns this image for its lifetime. Build from a minimal base and run as non-root with a read-only root file system. Include it in Radius image scanning and SBOM publishing, and cover it in the Radius security policy so CVE fixes in the base image, Bicep or `rad` ship as patch releases. Test it against each supported Argo CD version, because Argo CD can change the sidecar contract (mounts, environment, socket) between releases. The container must not mount the repo-server's service account token.
 - **Supply chain and hardening:** publish the image signed (for example with cosign) and document its digest, so admins reference it by digest rather than by a mutable tag and can verify it before adding it to `argocd-repo-server`. The documented container settings drop all Linux capabilities and set CPU and memory requests and limits, so a large or hostile Bicep file cannot starve the repo-server pod.
 - **Version skew with the control plane:** the sidecar is upgraded by the Argo CD admin, separately from Radius, so its `rad` can be older or newer than the cluster's Radius. The sidecar's output must use a `DeploymentTemplate` API version and fields the cluster's controller accepts. For example, typed parameters written by a newer sidecar must not be dropped silently by an older controller. The supported skew (for example, the same minor release, or one minor release apart) and the error a user sees outside it are not yet decided.
-- **Plugin definition:** discovers `*.bicep`; parameters `bicepFile`, `paramsFile`, `resourceGroup`, and optional cloud scopes mapped to `--azure-scope` and `--aws-scope`. Sketch in [Appendix: plugin definition sketch](#plugin-definition-sketch).
+- **Plugin definition:** discovers `*.bicep`; parameters `bicepFiles` (in deploy order; each file's position becomes its sync wave), `resourceGroup`, and optional cloud scopes mapped to `--azure-scope` and `--aws-scope`. Sketch in [Appendix: plugin definition sketch](#plugin-definition-sketch).
 - **Determinism:** output must be byte-identical for identical inputs, or Argo CD shows OutOfSync forever and redeploys repeatedly. The manifest's `metadata.name` comes from the template file name. `json.MarshalIndent` sorts map keys; Bicep output stability needs a test. Pretty-print `spec.template` with stable key order so Argo CD's diff shows only the changed lines.
 - **Compiler configuration:** `bicepconfig.json` in the source directory is an input. Argo CD re-renders on every new commit, so a change to it produces a new template; the sidecar must not cache extension resolution across renders in a way that ignores it.
 - **No side effects:** Argo CD may call `generate` many times and caches by commit. The plugin must not write outside its working directory or call any cluster.
@@ -688,7 +687,7 @@ Estimates include unit and functional tests.
     - **An application without parameters is always OutOfSync.** A developer's Bicep file takes no parameters, so the generated `DeploymentTemplate` has `parameters: {}`. The Radius controller updates the object to add its finalizer, and because `Parameters` is tagged `omitempty`, the update removes the empty map. Argo CD compares Git (`parameters: {}`) with the live object (no `parameters`) and shows OutOfSync, even though Radius reports Ready. Re-syncing does not help. Fixes include leaving out empty `parameters` in the generator or plugin, or an `ignoreDifferences` rule. This was seen while prototyping and is tracked in [#13436](https://github.com/radius-project/radius/issues/13436).
 
 11. **(Phase 2) Secure parameters.** A `@secure()` parameter passed through the plugin is written to `spec.parameters` in plain text (see question 10). Should the plugin or CI reference a Kubernetes Secret instead of a value, and must the first release support secure parameters at all, or is "use Radius secret stores" enough until Phase 2?
-12. **(Phase 1) Order of environment and application.** `app.bicep` needs the Environment from `env.bicep`. Phase 1 documents separate Applications synced in order. Should Radius also support sync waves in one Application, or an app-of-apps, and what does the application show while the Environment is missing?
+12. **(Phase 1) Order of environment and application.** `app.bicep` needs the Environment from `env.bicep`. Proposed: one repository holds one app, and one Application deploys it, with the plugin assigning sync waves from the order of `bicepFiles`. Still open: what the application shows while the Environment is not Ready.
 13. **(Phase 3) UI data and access.** Is enforcing Argo CD project and Application scope in the proxy backend the right access model, given that Radius has no per-user authorization? Which parts of the feature spec's mockups are needed first: the last successful revision per resource, a failure pinned to one resource, the "not observed" state, failure categories and step timestamps?
 
 ## Alternatives considered
@@ -733,16 +732,15 @@ spec:
     fileName: "*.bicep"
   parameters:
     static:
-      - name: bicepFile
-      - name: paramsFile
+      - name: bicepFiles # space-separated, deploy order
       - name: resourceGroup
   generate:
-    command: [sh, -c]
-    args:
-      - >
-        rad bicep generate-kubernetes-manifest "$PARAM_BICEPFILE"
-        --parameters "@$PARAM_PARAMSFILE" --group "$PARAM_RESOURCEGROUP"
-        --destination-file -
+    # For each file in $PARAM_BICEPFILES, in order: run
+    #   rad bicep generate-kubernetes-manifest <file> --group "$PARAM_RESOURCEGROUP"
+    #     [--parameters @<matching parameters file>] --destination-file -
+    # and add the annotations argocd.argoproj.io/sync-wave: "<position>" and
+    # radapp.io/source-revision: "$ARGOCD_APP_REVISION".
+    command: [/usr/local/bin/radius-generate.sh]
 ```
 
 **How Argo CD runs this.** `discover` tells Argo CD the plugin applies to a directory containing `*.bicep`. On every render, the repo-server checks out the commit into a shared volume, then runs `generate` inside the sidecar with the Application's parameters as environment variables. Whatever the command prints on stdout is the manifest set; anything non-zero is a ComparisonError. The plugin never applies anything; the application-controller does that later.
