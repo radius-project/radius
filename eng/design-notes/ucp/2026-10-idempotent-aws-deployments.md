@@ -128,6 +128,7 @@ Each failure comes from one missing piece of memory:
 1. **Detecting changes made outside Radius.** Radius does not watch AWS between deploys. The next deploy changes back any property the template sets, as it does today.
 2. **Moving a resource to a new alias or owner**, such as renaming its alias, moving it to another template, or moving the app to another environment. The only way is to delete the resource and deploy it again under the new alias or owner.
 3. **Carrying over AWS resources deployed with Bicep before this change.** UCP has no records for them, so a deploy after this change treats them like resources created outside Radius, and deleting them through Radius does nothing in AWS. A migration path would need to keep deleting by AWS identifier, which can delete an unrelated resource whose identifier matches an alias.
+4. **Returning alias-based IDs from a list request.** A list of AWS resources still returns IDs that end in the AWS identifier, which do not work for GET because GET expects the alias. Recipes are the main way to deploy AWS resources, and a recipe saves each resource's alias-based ID on the Radius resource, so Radius never needs a list to find them.
 
 ## Design overview
 
@@ -319,10 +320,6 @@ Every `existing` block has an alias, because Bicep requires one, so the Deployme
 
 Neither route saves a record or checks the owner, because reading another owner's resource does not change it. A type whose Bicep `properties` field is required cannot use an alias-only `existing` block.
 
-### Listing resources
-
-A list request returns every resource of the type that AWS returns, as today. For a resource that a record points at, the ID ends in the record's alias, so a GET on it works. For any other resource, the ID ends in its AWS identifier, as today. Radius does not manage those resources, and a GET on that ID returns 404. They can be read with POST `/:get`.
-
 ### Deleting a resource
 
 A DELETE by alias reads the record, checks the owner, deletes the resource in AWS by the record's identifier, and then removes the record. If the record has no AWS identifier yet, or AWS says the resource does not exist, UCP only removes the record. If there is no record, UCP returns 204 without calling AWS, so a retried DELETE never deletes a different resource that happens to have the alias as its identifier.
@@ -416,7 +413,6 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
   - the owner: a missing header (400), a different owner on PUT and DELETE (409), owners that differ only by case (match), and one app deployed to two environments in one resource group (409)
   - another alias's record with the same AWS identifier (409), including one whose create is still in progress and a VPC taken over by `name` after another alias created it
   - DELETE by an alias, by an alias whose record has no AWS identifier or whose resource AWS no longer has (record removed), and by an alias with no record (204, nothing sent to AWS)
-  - list IDs: the alias for a resource a record points at, and the AWS identifier for any other
   - a missing HMAC key: AWS PUTs fail with 500, and reads still work
   - operation status from UCP's data store
 - **Functional tests through the Deployment Engine**
@@ -426,7 +422,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
   - redeploy an unchanged password, and check that nothing is sent
   - reference a VPC created by another template with an alias-only `existing` block, and check that the read returns that VPC
 - **Existing tests to update**
-  - `pkg/ucp/frontend/controller/awsproxy`: delete the tests for POST `/:put` and `/:delete`. Rewrite the PUT, DELETE, and GET tests to go through the record, the identifier search, and the owner check. Update the operation status and result tests to read UCP's data store, the list tests for alias-based IDs, and `routes_test.go` for the removed routes.
+  - `pkg/ucp/frontend/controller/awsproxy`: delete the tests for POST `/:put` and `/:delete`. Rewrite the PUT, DELETE, and GET tests to go through the record, the identifier search, and the owner check. Update the operation status and result tests to read UCP's data store, and `routes_test.go` for the removed routes.
   - `pkg/recipes/driver/bicep`: the owner in `providerConfig`, and the owner header on DELETE.
   - `pkg/recipes/recipecontext` and `pkg/recipes/paramresolver`: `context.aws.resourceNameHash`.
   - `pkg/cli/deployment`: the owner in `GetProviderConfigs`.
