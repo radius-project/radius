@@ -42,6 +42,8 @@ const (
 		"writeOnlyProperties": ["/properties/MasterUserPassword"]
 	}`
 	testPassword = "request-password"
+
+	testUserPoolClientCollectionPath = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Cognito/UserPoolClient"
 )
 
 // Test_PutAWSResource_DoesNotEchoWriteOnlyValue checks through the UCP routes that a write-only value from the request
@@ -98,40 +100,54 @@ func Test_PutAWSResource_DoesNotEchoWriteOnlyValue(t *testing.T) {
 	}
 }
 
-// Test_PutAWSResource_NoChange_DoesNotEchoWriteOnlyValue checks the 200 UCP returns when nothing changed.
-func Test_PutAWSResource_NoChange_DoesNotEchoWriteOnlyValue(t *testing.T) {
+// Test_PutAWSResource_NoChange_KeepsAWSSecret checks the 200 UCP returns when nothing changed: the client secret AWS
+// generates for a Cognito user pool client is still returned.
+func Test_PutAWSResource_NoChange_KeepsAWSSecret(t *testing.T) {
 	ucp, cloudcontrolClient, cloudFormationClient := initializeAWSTest(t)
 
 	cloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
-		TypeName: aws.String("AWS::RDS::DBInstance"),
-		// A request with a write-only value changes nothing only when the property is also create-only: the patch
-		// keeps the current value.
+		TypeName: aws.String("AWS::Cognito::UserPoolClient"),
 		Schema: aws.String(`{
-			"primaryIdentifier": ["/properties/DBInstanceIdentifier"],
-			"createOnlyProperties": ["/properties/DBInstanceIdentifier", "/properties/MasterUserPassword"],
-			"writeOnlyProperties": ["/properties/MasterUserPassword"]
+			"primaryIdentifier": ["/properties/UserPoolId", "/properties/ClientId"],
+			"readOnlyProperties": ["/properties/ClientSecret", "/properties/Name", "/properties/ClientId"],
+			"createOnlyProperties": ["/properties/UserPoolId", "/properties/GenerateSecret"]
 		}`),
 	}, nil)
 
-	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudcontrol.GetResourceOutput{
-		ResourceDescription: &types.ResourceDescription{
-			Identifier: aws.String("app-db"),
-			Properties: aws.String(`{"DBInstanceIdentifier": "app-db", "MasterUsername": "admin", "MasterUserPassword": "aws-value"}`),
-		},
-	}, nil)
+	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
+			require.Equal(t, "us-east-1_pool|client", aws.ToString(params.Identifier))
+			return &cloudcontrol.GetResourceOutput{
+				ResourceDescription: &types.ResourceDescription{
+					Identifier: params.Identifier,
+					Properties: aws.String(`{
+						"UserPoolId": "us-east-1_pool",
+						"ClientId": "client",
+						"ClientName": "app",
+						"GenerateSecret": true,
+						"Name": "app",
+						"ClientSecret": "aws-generated-secret"
+					}`),
+				},
+			}, nil
+		})
 
-	status, properties := sendPut(t, ucp, http.MethodPut, testDBInstancePath, map[string]any{
-		"DBInstanceIdentifier": "app-db",
-		"MasterUsername":       "admin",
-		"MasterUserPassword":   testPassword,
+	status, properties := sendPut(t, ucp, http.MethodPost, testUserPoolClientCollectionPath+"/:put", map[string]any{
+		"UserPoolId":     "us-east-1_pool",
+		"ClientId":       "client",
+		"ClientName":     "app",
+		"GenerateSecret": true,
 	})
 
 	require.Equal(t, http.StatusOK, status)
 	require.Equal(t, map[string]any{
-		"DBInstanceIdentifier": "app-db",
-		"MasterUsername":       "admin",
-		"MasterUserPassword":   "aws-value",
-		"provisioningState":    "Succeeded",
+		"UserPoolId":        "us-east-1_pool",
+		"ClientId":          "client",
+		"ClientName":        "app",
+		"GenerateSecret":    true,
+		"Name":              "app",
+		"ClientSecret":      "aws-generated-secret",
+		"provisioningState": "Succeeded",
 	}, properties)
 }
 

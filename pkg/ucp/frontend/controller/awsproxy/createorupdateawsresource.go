@@ -114,7 +114,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudFormationOpts...)
 	if err != nil {
-		return nil, err
+		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
 	secrets, err := secretProperties(serviceCtx.ResourceTypeInAWSFormat(), aws.ToString(describeTypeOutput.Schema))
