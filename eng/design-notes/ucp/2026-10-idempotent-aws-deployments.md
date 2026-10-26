@@ -181,9 +181,6 @@ type AWSResourceProperties struct {
     // a retry as the same request. Cleared when the create finishes.
     ClientToken string `json:"clientToken,omitempty"`
 
-    // ClientTokenCreatedAt is when UCP generated ClientToken.
-    ClientTokenCreatedAt time.Time `json:"clientTokenCreatedAt,omitempty"`
-
     // RequestToken is the token Cloud Control returns when it accepts a
     // create, update, or delete. UCP also uses it as the operation ID.
     RequestToken string `json:"requestToken,omitempty"`
@@ -388,7 +385,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
 - Reading or searching records fails for a reason other than "not found": 500, which the Deployment Engine retries. A failed read is never treated as "no record", because UCP would then create a duplicate.
 - Saving a record or pending values fails before UCP calls AWS: 500, and AWS is not called.
 - Reading the resource from AWS fails for a reason other than "not found": the deploy fails, and nothing is created or changed.
-- UCP stops after AWS accepted a create, before it saved the request token: the retry sends the same client token, and Cloud Control returns the first request. Cloud Control honors a client token for 36 hours, so UCP never resends one older than 24 hours. Instead, the deploy fails with 409 saying a create for the alias may already have run in AWS, and UCP removes the record. The user checks AWS, then takes over or deletes any resource that was created.
+- UCP stops after AWS accepted a create, before it saved the request token: the retry sends the same client token, and Cloud Control returns the first request. Cloud Control only remembers a client token for 36 hours, so a retry after that creates a second resource.
 - UCP stops before it queues an operation, or the worker stops polling: the next PUT resumes the operation, as described in [Operations](#operations).
 - Saving the result fails after AWS finished: the worker retries, and the operation stays in progress until the result is saved.
 - Removing the record fails after AWS deleted the resource: the worker retries until it is removed.
@@ -409,7 +406,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
 - **Unit tests**
   - take over or create when there is no record: by `name`, by properties, and neither
   - each row of the property comparison table, including nested paths, a changed array item, and a removed create-only property
-  - the client token on a retried create, and a client token older than 24 hours that fails with 409 and removes the record
+  - the client token on a retried create
   - a stale operation that the next PUT resumes instead of returning 409, and a long operation that the worker keeps polling, which neither goes stale nor hits the async worker's timeout
   - a retry after UCP failed between saving the record and queuing the create, which resumes the create with the same client token right away
   - pending values moved to last-applied on success, cleared when an update fails, the record removed when a create fails, and a failed save retried
