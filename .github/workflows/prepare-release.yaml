@@ -228,16 +228,13 @@ jobs:
             --jq .content | tr -d '\n' | base64 --decode > "${output}"
 
       - name: Collect selected backports
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
-          CHANNEL: ${{ inputs.channel }}
-          EXPLICIT_PRS: ${{ inputs.backport-pr-numbers }}
-        run: |
-          bash ./.github/scripts/collect-release-backports.sh \
-            --repository "${GITHUB_REPOSITORY}" \
-            --channel "${CHANNEL}" \
-            --explicit-prs "${EXPLICIT_PRS}" \
-            --output "${RUNNER_TEMP}/release-backports.json"
+        uses: radius-project/.github/.github/actions/release-backport@main
+        with:
+          operation: collect
+          github-token: ${{ steps.app-token.outputs.token || github.token }}
+          channel: ${{ inputs.channel }}
+          explicit-prs: ${{ inputs.backport-pr-numbers }}
+          output-file: ${{ runner.temp }}/release-backports.json
 
       - name: Capture sibling repository commits
         env:

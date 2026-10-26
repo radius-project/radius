@@ -54,7 +54,7 @@ GOTESTSUM_JSONFILE_DIR ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) $(if $(GOTESTSUM_JSONFILE_DIR),--jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check test-authz-kit ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check test-authz-kit ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... ./test/rogue/... $(GOTEST_OPTS)
 
 .PHONY: test-azure-oidc-login
@@ -156,12 +156,6 @@ test-release-controller: ## Tests release controller input binding and stage ord
 	@bash ./.github/scripts/release-controller-resume_test.sh
 	@bash ./.github/scripts/verify-deployment-engine-image_test.sh
 	@bash ./.github/scripts/verify-release-build-contract_test.sh
-
-.PHONY: test-release-backport
-test-release-backport: ## Tests release backport selection and branch construction
-	@bash ./.github/scripts/collect-release-backports_test.sh
-	@bash ./.github/scripts/create-release-backport_test.sh
-	@node --test ./.github/scripts/select-release-backports_test.mjs
 
 .PHONY: test-release-branch-commits
 test-release-branch-commits: ## Tests backport provenance and commit validation for release branches
