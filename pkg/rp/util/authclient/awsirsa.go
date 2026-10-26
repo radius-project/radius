@@ -40,6 +40,9 @@ var _ AuthClient = (*awsIRSA)(nil)
 
 type awsIRSA struct {
 	roleARN string
+
+	// ecrConfigOptions is nil in production. Tests use it to replace the STS credentials and the HTTP client.
+	ecrConfigOptions []func(*config.LoadOptions) error
 }
 
 // NewAwsIRSA creates a new awsIRSA instance.
@@ -76,10 +79,10 @@ func (b *awsIRSA) GetAuthClient(ctx context.Context, templatePath string) (remot
 		},
 	))
 
-	ecrCfg, err := config.LoadDefaultConfig(ctx,
+	ecrCfg, err := config.LoadDefaultConfig(ctx, append([]func(*config.LoadOptions) error{
 		config.WithRegion(region),
 		config.WithCredentialsProvider(credsCache),
-	)
+	}, b.ecrConfigOptions...)...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}

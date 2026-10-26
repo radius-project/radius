@@ -64,19 +64,23 @@ func (wi *azureWorkloadIdentity) GetAuthClient(ctx context.Context, templatePath
 		return nil, err
 	}
 
+	return wi.exchangeForACRClient(ctx, templatePath, aadToken.Token, &azcontainerregistry.AuthenticationClientOptions{})
+}
+
+// exchangeForACRClient takes options so that tests can replace the transport.
+func (wi *azureWorkloadIdentity) exchangeForACRClient(ctx context.Context, templatePath string, aadToken string, options *azcontainerregistry.AuthenticationClientOptions) (remote.Client, error) {
 	registryName, err := util.RegistryName(templatePath)
 	if err != nil {
 		return nil, err
 	}
 
-	ac, err := azcontainerregistry.NewAuthenticationClient(fmt.Sprintf("https://%s", registryName), &azcontainerregistry.AuthenticationClientOptions{})
+	ac, err := azcontainerregistry.NewAuthenticationClient(fmt.Sprintf("https://%s", registryName), options)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get refresh token from ACR by exchanging for the above AAD access token
 	rt, err := ac.ExchangeAADAccessTokenForACRRefreshToken(ctx, "access_token", registryName, &azcontainerregistry.AuthenticationClientExchangeAADAccessTokenForACRRefreshTokenOptions{
-		AccessToken: new(aadToken.Token),
+		AccessToken: new(aadToken),
 		Tenant:      new(wi.tenantID),
 	})
 
