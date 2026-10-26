@@ -451,7 +451,7 @@ func (p *parser) parseString() (string, error) {
 				if p.pos+4 > len(p.input) {
 					return "", fmt.Errorf("%w: bad escape", errUnsupported)
 				}
-				r, err := strconv.ParseUint(p.input[p.pos:p.pos+4], 16, 32)
+				r, err := strconv.ParseUint(p.input[p.pos:p.pos+4], 16, 16)
 				if err != nil {
 					return "", fmt.Errorf("%w: bad escape", errUnsupported)
 				}
