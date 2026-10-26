@@ -18,6 +18,7 @@ package helm
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"slices"
 	"strings"
@@ -30,6 +31,8 @@ import (
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/release"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
@@ -130,25 +133,71 @@ func helmWorkloadImages(t *testing.T, manifest string) []string {
 }
 
 func TestHelmClientImpl_RunHelmHistory(t *testing.T) {
-	client := &HelmClientImpl{}
+	t.Parallel()
 
-	// Since RunHelmHistory uses real Helm internals that require a configured cluster,
-	// we test the method exists and has the correct signature.
-	// The actual functionality is tested through integration tests in cluster_test.go
-	require.NotNil(t, client.RunHelmHistory)
+	tests := []struct {
+		name      string
+		revisions []int
+		expected  []int
+	}{
+		{"secret name order", []int{1, 10, 11, 2, 9}, []int{1, 2, 9, 10, 11}},
+		{"reverse revision order", []int{11, 10, 9}, []int{9, 10, 11}},
+		{"revision order", []int{9, 10, 11}, []int{9, 10, 11}},
+		{"single revision", []int{10}, []int{10}},
+		{"empty history", nil, []int{}},
+	}
 
-	// Test with nil configuration - should handle gracefully or panic predictably
-	defer func() {
-		if r := recover(); r != nil {
-			// Expected behavior when configuration is nil
-			t.Log("Expected panic when configuration is nil")
-		}
-	}()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	// This will panic or error, which is expected behavior
-	_, err := client.RunHelmHistory(nil, "test-release")
-	if err == nil {
-		t.Error("Expected error when configuration is nil, but got nil")
+			history := make([]release.Releaser, 0, len(tt.revisions))
+			for _, revision := range tt.revisions {
+				history = append(history, &releasev1.Release{Name: "radius", Version: revision})
+			}
+			configuration := newHistoryTestConfiguration(history, nil)
+
+			releases, err := NewHelmClient().RunHelmHistory(configuration, "radius")
+			require.NoError(t, err)
+
+			revisions := make([]int, 0, len(releases))
+			for _, rel := range releases {
+				revisions = append(revisions, rel.Version)
+			}
+			require.Equal(t, tt.expected, revisions)
+		})
+	}
+}
+
+func TestHelmClientImpl_RunHelmHistory_Error(t *testing.T) {
+	t.Parallel()
+
+	expected := errors.New("failed to query release history")
+	configuration := newHistoryTestConfiguration(nil, expected)
+
+	releases, err := NewHelmClient().RunHelmHistory(configuration, "radius")
+	require.ErrorIs(t, err, expected)
+	require.Nil(t, releases)
+}
+
+type historyTestDriver struct {
+	driver.Driver
+	releases []release.Releaser
+	err      error
+}
+
+func (d *historyTestDriver) Query(map[string]string) ([]release.Releaser, error) {
+	return d.releases, d.err
+}
+
+func newHistoryTestConfiguration(releases []release.Releaser, err error) *helm.Configuration {
+	return &helm.Configuration{
+		Releases: storage.Init(&historyTestDriver{
+			Driver:   driver.NewMemory(),
+			releases: releases,
+			err:      err,
+		}),
+		KubeClient: &kubefake.PrintingKubeClient{Out: io.Discard},
 	}
 }
 

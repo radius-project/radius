@@ -117,7 +117,7 @@ func (th *TestHost) Close() {
 		th.cancel()
 
 		if th.stoppedChan != nil {
-			<-th.stoppedChan // host stopped
+			<-th.stoppedChan //nolint:errcheck // Only wait for the host to stop during cleanup.
 		}
 	})
 }
