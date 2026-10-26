@@ -201,9 +201,19 @@ func Test_ResolveReadIdentifier_List(t *testing.T) {
 			hydrationErr: errors.New("access denied"), errorContains: "access denied",
 		},
 		{
-			name: "missing read properties is an error", pages: []cloudcontrol.ListResourcesOutput{{ResourceDescriptions: []types.ResourceDescription{{Identifier: matching.Identifier}}}},
-			hydrated:      &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{Properties: aws.String(`{}`)}},
-			errorContains: "missing additional identifiers",
+			name: "missing read identifier is not a match", pages: []cloudcontrol.ListResourcesOutput{{ResourceDescriptions: []types.ResourceDescription{{Identifier: matching.Identifier}}}},
+			hydrated: &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{Properties: aws.String(`{}`)}},
+			status:   http.StatusNotFound,
+		},
+		{
+			name: "invalid read identifier is an error", pages: []cloudcontrol.ListResourcesOutput{{ResourceDescriptions: []types.ResourceDescription{{Identifier: matching.Identifier}}}},
+			hydrated:      &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{Properties: aws.String(`{"ModelId":42}`)}},
+			errorContains: "must be a string",
+		},
+		{
+			name: "invalid read JSON is an error", pages: []cloudcontrol.ListResourcesOutput{{ResourceDescriptions: []types.ResourceDescription{{Identifier: matching.Identifier}}}},
+			hydrated:      &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{Properties: aws.String(`{`)}},
+			errorContains: "decoding Cloud Control read properties",
 		},
 		{name: "list error", pages: []cloudcontrol.ListResourcesOutput{{}}, listErr: errors.New("list denied"), errorContains: "list denied"},
 		{name: "invalid list JSON", pages: []cloudcontrol.ListResourcesOutput{{ResourceDescriptions: []types.ResourceDescription{{Identifier: matching.Identifier, Properties: aws.String(`{`)}}}}, errorContains: "decoding"},
@@ -291,8 +301,16 @@ func Test_ResolveReadIdentifier_AlternativeIdentifierSets(t *testing.T) {
 	options := setupTest(t)
 	options.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(&cloudcontrol.ListResourcesOutput{ResourceDescriptions: []types.ResourceDescription{
+			{Identifier: aws.String("unrelated"), Properties: aws.String(`{"Parent":"parent","Child":"child"}`)},
 			{Identifier: aws.String("matching"), Properties: aws.String(`{"Name":"name"}`)},
 		}}, nil)
+	options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, input *cloudcontrol.GetResourceInput, _ ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
+			require.Equal(t, "unrelated", aws.ToString(input.Identifier))
+			return &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{
+				Identifier: aws.String("unrelated"), Properties: aws.String(`{"Parent":"parent","Child":"child"}`),
+			}}, nil
+		})
 	controller := &GetAWSResourceWithPost{awsClients: ucpaws.Clients{CloudControl: options.AWSCloudControlClient}}
 	schema := `{"primaryIdentifier":["/properties/Arn"],"additionalIdentifiers":[["/properties/Parent","/properties/Child"],["/properties/Name"]]}`
 	id, response, err := controller.resolveReadIdentifier(t.Context(), map[string]any{"Name": "name", "Parent": "parent"}, schema, "AWS::Example::Resource", "us-west-2")

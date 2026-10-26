@@ -170,7 +170,11 @@ func (p *GetAWSResourceWithPost) findReadIdentifier(ctx context.Context, propert
 				}
 				candidateValues, err = identifierValues(candidateProperties, identifiers)
 				if err != nil {
-					return "", nil, fmt.Errorf("Cloud Control read is missing additional identifiers for %s: %w", resourceType, err)
+					var missing *ucpaws.AWSMissingPropertyError
+					if errors.As(err, &missing) {
+						continue
+					}
+					return "", nil, fmt.Errorf("invalid additional identifiers in Cloud Control read for %s: %w", resourceType, err)
 				}
 			}
 			if !slices.Equal(values, candidateValues) {
