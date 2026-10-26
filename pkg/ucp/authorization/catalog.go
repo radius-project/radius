@@ -43,6 +43,7 @@ type Registration struct {
 type Catalog struct {
 	permissions map[string]string
 	application map[string]bool
+	registered  map[string]bool
 	roles       map[string][]string
 }
 
@@ -52,11 +53,15 @@ func NewCatalog(registrations []Registration) (*Catalog, error) {
 	if err := json.Unmarshal(releaseCatalog, &generated); err != nil {
 		return nil, fmt.Errorf("decode release catalog: %w", err)
 	}
-	catalog := &Catalog{permissions: map[string]string{}, application: map[string]bool{}, roles: generated.Roles}
+	catalog := &Catalog{
+		permissions: map[string]string{},
+		application: map[string]bool{},
+		registered:  map[string]bool{},
+		roles:       generated.Roles,
+	}
 	for _, permission := range generated.Permissions {
 		catalog.permissions[strings.ToLower(permission)] = permission
 	}
-	seen := map[string]bool{}
 	for _, registration := range registrations {
 		typ := strings.ToLower(registration.Type)
 		if !resourceTypePattern.MatchString(registration.Type) ||
@@ -65,10 +70,10 @@ func NewCatalog(registrations []Registration) (*Catalog, error) {
 			strings.HasPrefix(typ, "applications.core/") {
 			return nil, fmt.Errorf("invalid registered resource type %q", registration.Type)
 		}
-		if seen[typ] {
+		if catalog.registered[typ] {
 			return nil, fmt.Errorf("duplicate registration %q", registration.Type)
 		}
-		seen[typ] = true
+		catalog.registered[typ] = true
 		for _, set := range registration.PermissionSets {
 			if set != ApplicationResources {
 				return nil, fmt.Errorf("unknown permission set %q", set)
