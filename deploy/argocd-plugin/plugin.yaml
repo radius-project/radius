@@ -7,8 +7,8 @@ spec:
     command: [/usr/local/bin/radius-generate.sh]
   parameters:
     static:
-      - name: bicepFile
+      - name: bicepFiles
+        title: Bicep files, space-separated, in deploy order (e.g. "env/env.bicep app/app.bicep")
         required: true
       - name: resourceGroup
         required: true
-      - name: paramsFile
