@@ -17,6 +17,7 @@ limitations under the License.
 package create
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -177,6 +178,25 @@ func Test_Validate_Environment(t *testing.T) {
 		require.Contains(t, err.Error(), "Radius.Core/environments/env1")
 		require.NotContains(t, err.Error(), "does not exist")
 	})
+}
+
+func Test_Validate_KubeconfigLoadErrorIncludesCause(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	kubeMock := kubernetes.NewMockInterface(ctrl)
+	kubeMock.EXPECT().GetKubeContext().Return(nil, errors.New("no usable kubeconfig found (checked: /tmp/missing)")).Times(1)
+
+	fw := &framework.Impl{
+		ConfigHolder:        &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)},
+		Output:              &output.MockOutput{},
+		KubernetesInterface: kubeMock,
+	}
+	cmd, runner := NewCommand(fw)
+	cmd.SetContext(t.Context())
+
+	err := runner.Validate(cmd, []string{"kubernetes"})
+	require.ErrorContains(t, err, "Failed to read Kubernetes configuration")
+	require.ErrorContains(t, err, "no usable kubeconfig found (checked: /tmp/missing)")
 }
 
 func Test_Run(t *testing.T) {

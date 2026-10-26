@@ -134,7 +134,9 @@ var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
 func prettyPrintRPError(err error) string {
-	if new := clientv2.TryUnfoldResponseError(err); new != nil {
+	// Skip details with no code and no message. They come from a response body that is not an ARM error, such as a
+	// Kubernetes Status. The ResponseError text includes the status and the raw body instead.
+	if new := clientv2.TryUnfoldResponseError(err); new != nil && (new.Code != "" || new.Message != "") {
 		m, err := prettyPrintJSON(new)
 		if err == nil {
 			return m

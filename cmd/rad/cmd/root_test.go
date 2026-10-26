@@ -18,12 +18,16 @@ package cmd
 
 import (
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/radius-project/radius/pkg/statearchive/factory"
 	"github.com/stretchr/testify/require"
 )
@@ -74,6 +78,38 @@ func Test_prettyPrintRPError(t *testing.T) {
 	err := fmt.Errorf("test error message")
 	result := prettyPrintRPError(err)
 	require.Contains(t, result, "test error")
+}
+
+func Test_prettyPrintRPError_ResponseError(t *testing.T) {
+	newResponseError := func(t *testing.T, body string) error {
+		requestURL, err := url.Parse("https://example.com/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups")
+		require.NoError(t, err)
+		return runtime.NewResponseError(&http.Response{
+			Status:     "403 Forbidden",
+			StatusCode: http.StatusForbidden,
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Request:    &http.Request{Method: http.MethodGet, URL: requestURL},
+		})
+	}
+
+	t.Run("ARM error body prints the error details", func(t *testing.T) {
+		err := newResponseError(t, `{"error": {"code": "Forbidden", "message": "access denied"}}`)
+
+		result := prettyPrintRPError(err)
+
+		require.JSONEq(t, `{"code": "Forbidden", "message": "access denied"}`, result)
+	})
+
+	t.Run("body without ARM error details prints the response error", func(t *testing.T) {
+		// The Kubernetes API server returns a Status object, not an ARM error, when it rejects a request.
+		err := newResponseError(t, `{"kind": "Status", "apiVersion": "v1", "status": "Failure", "message": "services \"ucp\" is forbidden", "reason": "Forbidden", "code": 403}`)
+
+		result := prettyPrintRPError(err)
+
+		require.Equal(t, err.Error(), result)
+		require.Contains(t, result, "403 Forbidden")
+		require.Contains(t, result, `services \"ucp\" is forbidden`)
+	})
 }
 
 func Test_prettyPrintJSON(t *testing.T) {
