@@ -33,6 +33,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/distribution/reference"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -40,6 +41,7 @@ import (
 	"github.com/radius-project/radius/pkg/rp/util/registrytest"
 	goretry "github.com/sethvargo/go-retry"
 	"github.com/stretchr/testify/require"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
@@ -222,38 +224,101 @@ func Test_isTransientRegistryError(t *testing.T) {
 	}
 }
 
-func Test_parsePath(t *testing.T) {
-	const sha = "sha256:1234567890123456789012345678901234567890123456789012345678901234"
+const testDigest = "sha256:1234567890123456789012345678901234567890123456789012345678901234"
+
+// Test_parseTemplatePath checks the normalized reference and RegistryName for valid paths.
+// wantRegistry is the key for registry credentials. wantHost is where ORAS sends requests.
+// They differ only for Docker Hub.
+func Test_parseTemplatePath(t *testing.T) {
+	t.Parallel()
+	const sha = testDigest
 	tests := []struct {
-		name     string
-		path     string
-		wantRepo string
-		wantRef  string
-		wantErr  string
+		name           string
+		path           string
+		wantRegistry   string
+		wantRepository string
+		wantRef        string
+		wantHost       string
 	}{
-		{name: "tag", path: "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0", wantRepo: "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure", wantRef: "1.0"},
-		{name: "no tag defaults to latest", path: "ghcr.io/radius-project/recipes/test", wantRepo: "ghcr.io/radius-project/recipes/test", wantRef: "latest"},
-		{name: "digest", path: "ghcr.io/radius-project/recipes/test@" + sha, wantRepo: "ghcr.io/radius-project/recipes/test", wantRef: sha},
-		{name: "digest wins over tag", path: "ghcr.io/radius-project/recipes/test:1.0@" + sha, wantRepo: "ghcr.io/radius-project/recipes/test", wantRef: sha},
-		{name: "registry port with tag", path: "localhost:5000/recipes/test:1.0", wantRepo: "localhost:5000/recipes/test", wantRef: "1.0"},
-		{name: "registry port with digest", path: "localhost:5000/recipes/test@" + sha, wantRepo: "localhost:5000/recipes/test", wantRef: sha},
-		{name: "scheme with digest", path: "https://localhost:5000/recipes/test@" + sha, wantRepo: "localhost:5000/recipes/test", wantRef: sha},
-		{name: "invalid host", path: "******example.com/test/bar:v1", wantErr: "invalid reference format"},
-		{name: "short digest", path: "ghcr.io/radius-project/recipes/test@sha256:1234", wantErr: "invalid reference format"},
-		{name: "unsupported digest algorithm", path: "ghcr.io/radius-project/recipes/test@md5:12345678901234567890123456789012", wantErr: "unsupported digest algorithm"},
-		{name: "empty digest", path: "ghcr.io/radius-project/recipes/test@", wantErr: "invalid reference format"},
+		{name: "tag", path: "ghcr.io/radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure:1.0", wantRegistry: "ghcr.io", wantRepository: "radius-project/dev/recipes/functionaltest/parameters/mongodatabases/azure", wantRef: "1.0", wantHost: "ghcr.io"},
+		{name: "no tag defaults to latest", path: "ghcr.io/radius-project/recipes/test", wantRegistry: "ghcr.io", wantRepository: "radius-project/recipes/test", wantRef: "latest", wantHost: "ghcr.io"},
+		{name: "digest", path: "ghcr.io/radius-project/recipes/test@" + sha, wantRegistry: "ghcr.io", wantRepository: "radius-project/recipes/test", wantRef: sha, wantHost: "ghcr.io"},
+		{name: "digest wins over tag", path: "ghcr.io/radius-project/recipes/test:1.0@" + sha, wantRegistry: "ghcr.io", wantRepository: "radius-project/recipes/test", wantRef: sha, wantHost: "ghcr.io"},
+
+		// Registry ports stay part of the registry.
+		{name: "registry port with tag", path: "localhost:5000/recipes/test:1.0", wantRegistry: "localhost:5000", wantRepository: "recipes/test", wantRef: "1.0", wantHost: "localhost:5000"},
+		{name: "registry port with digest", path: "localhost:5000/recipes/test@" + sha, wantRegistry: "localhost:5000", wantRepository: "recipes/test", wantRef: sha, wantHost: "localhost:5000"},
+		{name: "IPv6 with port", path: "[::1]:5000/recipes/redis:1.0", wantRegistry: "[::1]:5000", wantRepository: "recipes/redis", wantRef: "1.0", wantHost: "[::1]:5000"},
+		{name: "explicit 443 is kept", path: "myreg.azurecr.io:443/recipes/redis:1.0", wantRegistry: "myreg.azurecr.io:443", wantRepository: "recipes/redis", wantRef: "1.0", wantHost: "myreg.azurecr.io:443"},
+
+		// A leading lowercase scheme is ignored.
+		{name: "https scheme with digest", path: "https://localhost:5000/recipes/test@" + sha, wantRegistry: "localhost:5000", wantRepository: "recipes/test", wantRef: sha, wantHost: "localhost:5000"},
+		{name: "http scheme with port", path: "http://registry.example.com:5000/recipes/redis:1.0", wantRegistry: "registry.example.com:5000", wantRepository: "recipes/redis", wantRef: "1.0", wantHost: "registry.example.com:5000"},
+		{name: "https scheme on Docker Hub", path: "https://docker.io/myuser/redis:1.0", wantRegistry: "docker.io", wantRepository: "myuser/redis", wantRef: "1.0", wantHost: "registry-1.docker.io"},
+
+		// Docker Hub short names and hosts normalize to docker.io.
+		{name: "official image", path: "redis", wantRegistry: "docker.io", wantRepository: "library/redis", wantRef: "latest", wantHost: "registry-1.docker.io"},
+		{name: "official image with tag", path: "redis:1.0", wantRegistry: "docker.io", wantRepository: "library/redis", wantRef: "1.0", wantHost: "registry-1.docker.io"},
+		{name: "official image with digest", path: "redis@" + sha, wantRegistry: "docker.io", wantRepository: "library/redis", wantRef: sha, wantHost: "registry-1.docker.io"},
+		{name: "namespace short name", path: "myuser/redis:1.0", wantRegistry: "docker.io", wantRepository: "myuser/redis", wantRef: "1.0", wantHost: "registry-1.docker.io"},
+		{name: "namespace short name with tag and digest", path: "myuser/redis:1.0@" + sha, wantRegistry: "docker.io", wantRepository: "myuser/redis", wantRef: sha, wantHost: "registry-1.docker.io"},
+		{name: "index.docker.io", path: "index.docker.io/myuser/redis:1.0", wantRegistry: "docker.io", wantRepository: "myuser/redis", wantRef: "1.0", wantHost: "registry-1.docker.io"},
+		{name: "registry-1.docker.io is not rewritten", path: "registry-1.docker.io/myuser/redis:1.0", wantRegistry: "registry-1.docker.io", wantRepository: "myuser/redis", wantRef: "1.0", wantHost: "registry-1.docker.io"},
+		{name: "name without dot or port is a Docker Hub namespace", path: "registry/recipes/redis:1.0", wantRegistry: "docker.io", wantRepository: "registry/recipes/redis", wantRef: "1.0", wantHost: "registry-1.docker.io"},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			repository, ref, err := parsePath(tc.path)
-			if tc.wantErr != "" {
-				require.ErrorContains(t, err, tc.wantErr)
-				return
-			}
+			t.Parallel()
+			ref, err := parseTemplatePath(tc.path)
 			require.NoError(t, err)
-			require.Equal(t, tc.wantRepo, repository)
-			require.Equal(t, tc.wantRef, ref)
+			require.Equal(t, tc.wantRegistry, ref.Registry)
+			require.Equal(t, tc.wantRepository, ref.Repository)
+			require.Equal(t, tc.wantRef, ref.ReferenceOrDefault())
+			require.Equal(t, tc.wantHost, ref.Host())
+
+			name, err := RegistryName(tc.path)
+			require.NoError(t, err)
+			require.Equal(t, tc.wantRegistry, name)
+		})
+	}
+}
+
+// Test_parseTemplatePath_Invalid checks that parseTemplatePath and RegistryName reject paths
+// that are not valid references. wantErr is the sentinel error that the parser wraps. It is
+// nil for an uppercase repository, because distribution/reference wraps no sentinel for it.
+func Test_parseTemplatePath_Invalid(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		path    string
+		wantErr error
+	}{
+		{name: "invalid host", path: "******example.com/test/bar:v1", wantErr: reference.ErrReferenceInvalidFormat},
+		{name: "space in host", path: "test.azu recr.io/test-private-registry:latest", wantErr: reference.ErrReferenceInvalidFormat},
+		{name: "short digest", path: "ghcr.io/radius-project/recipes/test@sha256:1234", wantErr: reference.ErrReferenceInvalidFormat},
+		{name: "unsupported digest algorithm", path: "ghcr.io/radius-project/recipes/test@md5:12345678901234567890123456789012", wantErr: digest.ErrDigestUnsupported},
+		{name: "empty digest", path: "ghcr.io/radius-project/recipes/test@", wantErr: reference.ErrReferenceInvalidFormat},
+		{name: "uppercase scheme", path: "HTTPS://myreg.azurecr.io/recipes/redis:1.0", wantErr: reference.ErrReferenceInvalidFormat},
+		{name: "oci scheme", path: "oci://myreg.azurecr.io/recipes/redis:1.0", wantErr: reference.ErrReferenceInvalidFormat},
+		{name: "bicep br: syntax", path: "br:myreg.azurecr.io/recipes/redis:1.0", wantErr: reference.ErrReferenceInvalidFormat},
+		{name: "uppercase repository", path: "myreg.azurecr.io/Recipes/redis:1.0"},
+		{name: "bracketed host that is not an IP address", path: "[000]:0000/000000", wantErr: errdef.ErrInvalidReference},
+		{name: "empty", path: "", wantErr: reference.ErrReferenceInvalidFormat},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := parseTemplatePath(tc.path)
+			require.Error(t, err)
+			name, nameErr := RegistryName(tc.path)
+			require.Error(t, nameErr)
+			require.Empty(t, name)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
+				require.ErrorIs(t, nameErr, tc.wantErr)
+			}
 		})
 	}
 }
@@ -340,101 +405,117 @@ func Test_ReadFromRegistry_References(t *testing.T) {
 }
 
 func Test_GetRegistrySecrets(t *testing.T) {
+	t.Parallel()
+	const (
+		acrSecretID = "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr"
+		ecrSecretID = "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/ecr"
+	)
+	basicSecret := recipes.SecretData{
+		Type: "basicAuthentication",
+		Data: map[string]string{
+			"username": "test-username",
+			"password": "test-password",
+		},
+	}
+	secrets := map[string]recipes.SecretData{acrSecretID: basicSecret}
+	acrAndECR := recipes.Configuration{
+		RecipeConfig: datamodel.RecipeConfigProperties{
+			Bicep: datamodel.BicepConfigProperties{
+				Authentication: map[string]datamodel.RegistrySecretConfig{
+					"test.azurecr.io": {Secret: acrSecretID},
+					"123456789012.dkr.ecr.us-west-2.amazonaws.com": {Secret: ecrSecretID},
+				},
+			},
+		},
+	}
+	keyed := func(key string, config datamodel.RegistrySecretConfig) recipes.Configuration {
+		return recipes.Configuration{
+			RecipeConfig: datamodel.RecipeConfigProperties{
+				Bicep: datamodel.BicepConfigProperties{
+					Authentication: map[string]datamodel.RegistrySecretConfig{key: config},
+				},
+			},
+		}
+	}
+
 	testset := []struct {
+		name         string
 		definition   recipes.Configuration
 		templatePath string
 		secrets      map[string]recipes.SecretData
 		exp          recipes.SecretData
-		err          string
 	}{
 		{
-			definition: recipes.Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Bicep: datamodel.BicepConfigProperties{
-						Authentication: map[string]datamodel.RegistrySecretConfig{
-							"test.azurecr.io": {
-								Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr",
-							},
-							"123456789012.dkr.ecr.us-west-2.amazonaws.com": {
-								Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/ecr",
-							},
-						},
-					},
-				},
-			},
+			name:         "matching registry",
+			definition:   acrAndECR,
 			templatePath: "test.azurecr.io/test-private-registry:latest",
-			secrets: map[string]recipes.SecretData{
-				"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr": {
-					Type: "basicAuthentication",
-					Data: map[string]string{
-						"username": "test-username",
-						"password": "test-password",
-					},
-				},
-			},
-			exp: recipes.SecretData{
-				Type: "basicAuthentication",
-				Data: map[string]string{
-					"username": "test-username",
-					"password": "test-password",
-				},
-			},
+			secrets:      secrets,
+			exp:          basicSecret,
 		},
 		{
-			definition: recipes.Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Bicep: datamodel.BicepConfigProperties{},
-				},
-			},
+			name:         "no authentication configured",
+			definition:   recipes.Configuration{RecipeConfig: datamodel.RecipeConfigProperties{Bicep: datamodel.BicepConfigProperties{}}},
 			templatePath: "test.azurecr.io/test-private-registry:latest",
-			secrets: map[string]recipes.SecretData{
-				"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr": {
-					Type: "basicAuthentication",
-					Data: map[string]string{
-						"username": "test-username",
-						"password": "test-password",
-					},
-				},
-			},
-			exp: recipes.SecretData{},
+			secrets:      secrets,
+			exp:          recipes.SecretData{},
 		},
 		{
-			definition: recipes.Configuration{
-				RecipeConfig: datamodel.RecipeConfigProperties{
-					Bicep: datamodel.BicepConfigProperties{
-						Authentication: map[string]datamodel.RegistrySecretConfig{
-							"test.azurecr.io": {
-								Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr",
-							},
-							"123456789012.dkr.ecr.us-west-2.amazonaws.com": {
-								Secret: "/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/ecr",
-							},
-						},
-					},
-				},
+			name:         "docker.io key matches a Docker Hub short name",
+			definition:   keyed("docker.io", datamodel.RegistrySecretConfig{Secret: acrSecretID}),
+			templatePath: "myuser/redis:1.0",
+			secrets:      secrets,
+			exp:          basicSecret,
+		},
+		{
+			name:         "key with port matches an http:// path",
+			definition:   keyed("registry.example.com:5000", datamodel.RegistrySecretConfig{Secret: acrSecretID}),
+			templatePath: "http://registry.example.com:5000/recipes/redis:1.0",
+			secrets:      secrets,
+			exp:          basicSecret,
+		},
+		{
+			name:         "key matches an https:// path with a digest",
+			definition:   keyed("myreg.azurecr.io", datamodel.RegistrySecretConfig{Secret: acrSecretID}),
+			templatePath: "https://myreg.azurecr.io/recipes/redis@" + testDigest,
+			secrets:      secrets,
+			exp:          basicSecret,
+		},
+		{
+			name:         "Docker Hub namespace key does not match",
+			definition:   keyed("myuser", datamodel.RegistrySecretConfig{Secret: acrSecretID}),
+			templatePath: "myuser/redis:1.0",
+			secrets:      secrets,
+			exp:          recipes.SecretData{},
+		},
+		{
+			name:         "bicepSettings authentication method selects the type",
+			definition:   keyed("docker.io", datamodel.RegistrySecretConfig{Secret: acrSecretID, AuthenticationMethod: "BasicAuth"}),
+			templatePath: "myuser/redis:1.0",
+			secrets: map[string]recipes.SecretData{
+				acrSecretID: {Data: basicSecret.Data},
 			},
+			exp: basicSecret,
+		},
+		{
+			name:         "bicep br: syntax returns no secrets",
+			definition:   keyed("myreg.azurecr.io", datamodel.RegistrySecretConfig{Secret: acrSecretID}),
+			templatePath: "br:myreg.azurecr.io/recipes/redis:1.0",
+			secrets:      secrets,
+			exp:          recipes.SecretData{},
+		},
+		{
+			name:         "space in host returns no secrets",
+			definition:   acrAndECR,
 			templatePath: "test.azu recr.io/test-private-registry:latest",
-			secrets: map[string]recipes.SecretData{
-				"/planes/radius/local/resourcegroups/default/providers/Applications.Core/secretStores/acr": {
-					Type: "basicAuthentication",
-					Data: map[string]string{
-						"username": "test-username",
-						"password": "test-password",
-					},
-				},
-			},
-			exp: recipes.SecretData{},
-			err: "invalid character \" \" in host name",
+			secrets:      secrets,
+			exp:          recipes.SecretData{},
 		},
 	}
 	for _, tc := range testset {
-		secrets, err := GetRegistrySecrets(tc.definition, tc.templatePath, tc.secrets)
-		if tc.err != "" {
-			require.Error(t, err)
-			require.Contains(t, err.Error(), tc.err)
-		} else {
-			require.NoError(t, err)
-			require.Equal(t, secrets, tc.exp)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			secrets := GetRegistrySecrets(tc.definition, tc.templatePath, tc.secrets)
+			require.Equal(t, tc.exp, secrets)
+		})
 	}
 }
