@@ -130,7 +130,7 @@ generate-rad-daprrp-client: generate-tsp-installed generate-openapi-spec ## Gene
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-ucp-client
-generate-rad-ucp-client: generate-tsp-installed test-ucp-spec-examples ## Generates the UCP client SDK (TypeSpec Go emitter).
+generate-rad-ucp-client: generate-tsp-installed ## Generates the UCP client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/ucp/api/v20231001preview'"
 	$(call generate-typespec-go-client,typespec/UCP,pkg/ucp/api/v20231001preview,true)
 	@echo "$(ARROW) Done."
@@ -237,12 +237,6 @@ publish-bicep-extension: ## Publish the unified `radius` Bicep extension to BICE
 	@which bicep > /dev/null || { echo "ERROR: 'bicep' CLI not found in PATH"; exit 1; }
 	@echo "$(ARROW) Publishing Bicep extension index $(BICEP_PUBLISH_INDEX) -> $(BICEP_PUBLISH_TARGET)"
 	bicep publish-extension "$(BICEP_PUBLISH_INDEX)" --target "$(BICEP_PUBLISH_TARGET)" --force
-
-# NOTE: The Azure Container Instances SDK in pkg/sdk/v20241101preview is now
-# maintained by hand. It targets the 2024-11-01-preview NGroups/CGProfile APIs
-# which are not published in github.com/Azure/azure-sdk-for-go and have no
-# TypeSpec source, so there is no code-generation step for it anymore. Apply any
-# API changes directly to the Go sources under pkg/sdk/v20241101preview.
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))..

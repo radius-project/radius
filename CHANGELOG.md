@@ -21,5 +21,5 @@ For curated highlights, upgrade guidance, contributors, and the complete change 
 
 Release history before v0.60.0 remains available on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
-[Unreleased]: https://github.com/radius-project/radius/compare/v0.60.0...HEAD
+[Unreleased]: https://github.com/radius-project/radius/compare/v0.61.1...HEAD
 [0.60.0]: https://github.com/radius-project/radius/releases/tag/v0.60.0

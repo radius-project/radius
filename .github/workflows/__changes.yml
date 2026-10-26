@@ -30,13 +30,12 @@ on:
           .gitignore
           .cspellignore
           versions.yaml
-          !docs/release-notes/v*.md
+          .github/release-plans/v*.yaml
           .codecov.yml
           .devcontainer/**
           grafana/**
           .github/CODEOWNERS
           .github/configs/**
-          !.github/configs/pr-status-labels.json
           .github/linters/**
           .github/dependabot.yml
           .github/ISSUE_TEMPLATE/**
@@ -75,8 +74,11 @@ on:
         type: string
     outputs:
       only_changed:
-        description: Returns 'true' when only files in the configured patterns have changed.
+        description: Returns 'true' for matching-only changes, except release metadata mixed with workflows.
         value: ${{ jobs.changes.outputs.only_changed }}
+      release_metadata:
+        description: Returns 'true' when release metadata changed in a PR-like comparison.
+        value: ${{ jobs.changes.outputs.release_metadata }}
 
 permissions: {}
 
@@ -90,6 +92,7 @@ jobs:
       pull-requests: read
     outputs:
       only_changed: ${{ steps.set-result.outputs.only_changed }}
+      release_metadata: ${{ steps.set-result.outputs.release_metadata }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -124,8 +127,20 @@ jobs:
         uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           json: true
-          files: ${{ inputs.files }}
+          files_yaml: |
+            all: "**"
+            ignored: ${{ toJSON(inputs.files) }}
+            release_metadata:
+              - CHANGELOG.md
+              - versions.yaml
+              - docs/release-notes/v*.md
+              - .github/release-plans/v*.yaml
+            workflows:
+              - .github/workflows/**
           base_sha: ${{ inputs.base_sha }}
+          output_renamed_files_as_deleted_and_added: true
+          fail_on_initial_diff_error: true
+          fail_on_submodule_diff_error: true
 
       # The first checkout includes the caller's changes.mjs, possibly from a PR.
       # The "Filter" workflow step above detects changed files in that checkout
@@ -163,5 +178,9 @@ jobs:
             const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/changes.mjs`)
             await script({context, core})
         env:
-          INPUT_ONLY_CHANGED: ${{ steps.filter.outputs.only_changed }}
+          # Count every change type; only_changed/only_modified omit some types.
+          INPUT_ALL_FILES_COUNT: ${{ steps.filter.outputs.all_all_changed_and_modified_files_count }}
+          INPUT_IGNORED_FILES_COUNT: ${{ steps.filter.outputs.ignored_all_changed_and_modified_files_count }}
+          INPUT_RELEASE_FILES_COUNT: ${{ steps.filter.outputs.release_metadata_all_changed_and_modified_files_count }}
+          INPUT_WORKFLOW_FILES_COUNT: ${{ steps.filter.outputs.workflows_all_changed_and_modified_files_count }}
           INPUT_BASE_SHA: ${{ inputs.base_sha }}

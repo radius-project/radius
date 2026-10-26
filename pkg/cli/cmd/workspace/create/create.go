@@ -33,7 +33,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
-	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/spf13/cobra"
 )
 
@@ -217,7 +216,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // validateEnvironment validates that the Radius.Core/environments resource exists in the
 // workspace scope and returns its fully-qualified resource ID.
 func (r *Runner) validateEnvironment(ctx context.Context, envName string) (string, error) {
-	envID := r.Workspace.Scope + "/providers/" + datamodel.EnvironmentResourceType_v20250801preview + "/" + envName
+	envID := cmd.EnvironmentID(r.Workspace.Scope, envName)
 
 	if r.RadiusCoreClientFactory == nil {
 		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)

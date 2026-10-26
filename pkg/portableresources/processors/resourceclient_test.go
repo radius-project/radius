@@ -20,11 +20,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
@@ -124,6 +125,7 @@ func Test_Delete_ARM(t *testing.T) {
 				{
 					ResourceType:      new("virtualMachines"),
 					DefaultAPIVersion: new(ARMAPIVersion),
+					APIVersions:       []*string{new(ARMAPIVersion)},
 				},
 			},
 		}, 200))
@@ -163,7 +165,13 @@ func Test_Delete_ARM(t *testing.T) {
 
 	t.Run("success - deletion returns 404", func(t *testing.T) {
 		mux := http.NewServeMux()
-		mux.HandleFunc(ARMResourceID, handleNotFound(t))
+		mux.HandleFunc(ARMResourceID, func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				handleDeleteSuccess()(w, r)
+				return
+			}
+			handleNotFound(t)(w, r)
+		})
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: new("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
@@ -174,6 +182,7 @@ func Test_Delete_ARM(t *testing.T) {
 				{
 					ResourceType:      new("virtualMachines"),
 					DefaultAPIVersion: new(ARMAPIVersion),
+					APIVersions:       []*string{new(ARMAPIVersion)},
 				},
 			},
 		}, 200))
@@ -255,6 +264,7 @@ func Test_Delete_ARM(t *testing.T) {
 				{
 					ResourceType:      new("locks"),
 					DefaultAPIVersion: new(ARMAPIVersion),
+					APIVersions:       []*string{new(ARMAPIVersion)},
 				},
 			},
 		}, 200))
@@ -268,6 +278,143 @@ func Test_Delete_ARM(t *testing.T) {
 		err := c.Delete(t.Context(), ARMExtensionResourceID)
 		require.NoError(t, err)
 	})
+}
+
+func Test_Delete_ARM_NestedChildTypeFallback(t *testing.T) {
+	const (
+		shareID          = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/account/fileServices/default/shares/share"
+		storagePath      = "/subscriptions/0000/providers/Microsoft.Storage"
+		mongoID          = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/account/mongodbDatabases/db"
+		documentDBPath   = "/subscriptions/0000/providers/Microsoft.DocumentDB"
+		extensionChildID = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/account/providers/Microsoft.Test/parents/parent/children/child"
+		testProviderPath = "/subscriptions/0000/providers/Microsoft.Test"
+	)
+
+	resourceType := func(name string, versions ...string) *armresources.ProviderResourceType {
+		rt := &armresources.ProviderResourceType{ResourceType: new(name)}
+		for _, version := range versions {
+			rt.APIVersions = append(rt.APIVersions, new(version))
+		}
+		return rt
+	}
+
+	tests := []struct {
+		name            string
+		id              string
+		providerPath    string
+		types           []*armresources.ProviderResourceType
+		rejectedVersion string
+		wantVersion     string
+		wantErr         string
+	}{
+		{
+			name:         "nested child absent from metadata uses top-level type",
+			id:           shareID,
+			providerPath: storagePath,
+			types:        []*armresources.ProviderResourceType{resourceType("storageAccounts", "top-level")},
+			wantVersion:  "top-level",
+		},
+		{
+			name:            "missing child type retries next parent version after read rejection",
+			id:              shareID,
+			providerPath:    storagePath,
+			types:           []*armresources.ProviderResourceType{resourceType("storageAccounts", "2026-10-01", "2025-08-01")},
+			rejectedVersion: "2026-10-01",
+			wantVersion:     "2025-08-01",
+		},
+		{
+			name:         "nearest listed parent is preferred",
+			id:           shareID,
+			providerPath: storagePath,
+			types: []*armresources.ProviderResourceType{
+				resourceType("storageAccounts", "top-level"),
+				resourceType("storageAccounts/fileServices", "parent"),
+			},
+			wantVersion: "parent",
+		},
+		{
+			name:         "exact child type is preferred",
+			id:           shareID,
+			providerPath: storagePath,
+			types: []*armresources.ProviderResourceType{
+				resourceType("storageAccounts", "top-level"),
+				resourceType("storageAccounts/fileServices/shares", "exact"),
+			},
+			wantVersion: "exact",
+		},
+		{
+			name:         "single-level child absent from metadata uses parent type",
+			id:           mongoID,
+			providerPath: documentDBPath,
+			types:        []*armresources.ProviderResourceType{resourceType("databaseAccounts", "top-level")},
+			wantVersion:  "top-level",
+		},
+		{
+			name:         "extension child absent from metadata uses extension parent type",
+			id:           extensionChildID,
+			providerPath: testProviderPath,
+			types:        []*armresources.ProviderResourceType{resourceType("parents", "extension-parent")},
+			wantVersion:  "extension-parent",
+		},
+		{
+			name:         "no listed type or parent",
+			id:           shareID,
+			providerPath: storagePath,
+			types:        []*armresources.ProviderResourceType{resourceType("blobServices", "unrelated")},
+			wantErr:      `could not find API version for type "Microsoft.Storage/storageAccounts/fileServices/shares", type was not found`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var calls []string
+			var mu sync.Mutex
+			mux := http.NewServeMux()
+			mux.HandleFunc(tt.providerPath, handleJSONResponse(t, armresources.Provider{ResourceTypes: tt.types}, http.StatusOK))
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				defer mu.Unlock()
+				version := r.URL.Query().Get("api-version")
+				calls = append(calls, r.Method+" "+r.URL.Path+" "+version)
+				if r.URL.Path != tt.id {
+					http.NotFound(w, r)
+					return
+				}
+				if r.Method == http.MethodGet && version == tt.rejectedVersion {
+					handleJSONResponse(t, v1.ErrorResponse{
+						Error: &v1.ErrorDetails{Code: "InvalidApiVersionParameter"},
+					}, http.StatusBadRequest)(w, r)
+					return
+				}
+				handleDeleteSuccess()(w, r)
+			})
+
+			server := httptest.NewServer(mux)
+			defer server.Close()
+
+			c := NewResourceClient(newArmOptions(server.URL), nil, nil)
+			c.armClientOptions = newClientOptions(server.Client(), server.URL)
+
+			err := c.Delete(t.Context(), tt.id)
+			mu.Lock()
+			defer mu.Unlock()
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Empty(t, calls)
+				return
+			}
+
+			require.NoError(t, err)
+			var want []string
+			if tt.rejectedVersion != "" {
+				want = append(want, "GET "+tt.id+" "+tt.rejectedVersion)
+			}
+			want = append(want, "GET "+tt.id+" "+tt.wantVersion, "DELETE "+tt.id+" "+tt.wantVersion)
+			require.Equal(t, want, calls)
+		})
+	}
 }
 
 func Test_Delete_Kubernetes(t *testing.T) {
@@ -443,6 +590,11 @@ func newClientOptions(c *http.Client, url string) *arm.ClientOptions {
 func handleDeleteSuccess() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{}`))
+			return
+		}
 		w.WriteHeader(204)
 	}
 }

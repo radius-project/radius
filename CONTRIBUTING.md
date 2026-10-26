@@ -21,6 +21,12 @@ There are many ways to get involved and make a meaningful impact on the Radius p
 
 For all contributor guides and conventions, see the **[contributor documentation](./docs/contributing/)**.
 
+## Reporting bugs and security vulnerabilities
+
+For ordinary bugs, search the existing [issues](https://github.com/radius-project/radius/issues) first. If the problem has not been reported, use the [Bug Report form](https://github.com/radius-project/radius/issues/new?template=bug.yaml). Include your Radius version, steps to reproduce, expected and observed behavior, and relevant logs with credentials and sensitive information removed.
+
+**Do not report suspected security vulnerabilities in public GitHub issues.** Follow our [security policy](./SECURITY.md) to report them privately. If the listed channel is unavailable, ask maintainers for a working private reporting channel without posting vulnerability details publicly.
+
 ## Current status
 
 We welcome small pull request contributions from anyone (docs improvements, bug fixes, minor features.) as long as they follow a few guidelines:

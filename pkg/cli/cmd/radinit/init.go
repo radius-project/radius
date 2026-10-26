@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
-	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -213,15 +212,15 @@ func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
 
 	// Use this channel to send progress updates to the UI.
-	progressChan := make(chan common.ProgressMsg)
+	progressChan := make(chan progressMsg)
 	defer close(progressChan)
 	progressCompleteChan := make(chan error)
-	progress := common.ProgressMsg{}
+	progress := progressMsg{}
 
 	// Redirect stdout to the null device while the progress UI owns the terminal so that
 	// stray writes from the installation steps (for example Helm's install logs) cannot
 	// corrupt the rendered output. The UI is given the real stdout explicitly.
-	progressOut, restoreStdout := common.RedirectStdout()
+	progressOut, restoreStdout := redirectStdout()
 	defer restoreStdout()
 
 	go func() {

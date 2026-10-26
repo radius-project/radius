@@ -27,7 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func Test_findNamespaceOfContainerPreview(t *testing.T) {
+func Test_findNamespaceOfContainer(t *testing.T) {
 	const resourceName = "myapp-frontend"
 	deploymentID := "/planes/kubernetes/local/namespaces/my-namespace/providers/apps/Deployment/myapp-frontend"
 
@@ -111,11 +111,11 @@ func Test_findNamespaceOfContainerPreview(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			managementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			managementClient.EXPECT().
-				GetResource(gomock.Any(), previewContainerResourceType, resourceName).
+				GetResource(gomock.Any(), containerResourceType, resourceName).
 				Return(tt.resource, tt.getErr)
 
-			dc := &ARMDiagnosticsClient{Preview: true, ManagementClient: managementClient}
-			namespace, err := dc.findNamespaceOfContainerPreview(t.Context(), resourceName)
+			dc := &ARMDiagnosticsClient{ManagementClient: managementClient}
+			namespace, err := dc.findNamespaceOfContainer(t.Context(), resourceName)
 
 			if tt.expectErr {
 				require.Error(t, err)
@@ -138,25 +138,20 @@ func Test_defaultContainerName(t *testing.T) {
 		return pod
 	}
 
-	t.Run("preview pod with a single container uses that container name", func(t *testing.T) {
-		dc := &ARMDiagnosticsClient{Preview: true}
-		require.Equal(t, "main", defaultContainerName(dc, podWithContainers("main")))
-	})
+	tests := []struct {
+		name     string
+		pod      *corev1.Pod
+		expected string
+	}{
+		{name: "single container uses that container name", pod: podWithContainers("main"), expected: "main"},
+		{name: "multiple containers returns empty so caller requires --container", pod: podWithContainers("main", "sidecar"), expected: ""},
+		{name: "no containers returns empty", pod: podWithContainers(), expected: ""},
+	}
 
-	t.Run("preview pod with multiple containers returns empty so caller requires --container", func(t *testing.T) {
-		dc := &ARMDiagnosticsClient{Preview: true}
-		require.Equal(t, "", defaultContainerName(dc, podWithContainers("main", "sidecar")))
-	})
-
-	t.Run("preview pod with no containers returns empty", func(t *testing.T) {
-		dc := &ARMDiagnosticsClient{Preview: true}
-		require.Equal(t, "", defaultContainerName(dc, podWithContainers()))
-	})
-
-	t.Run("legacy pod uses the radius resource label as the container name", func(t *testing.T) {
-		dc := &ARMDiagnosticsClient{Preview: false}
-		pod := podWithContainers("anything")
-		pod.Labels = map[string]string{"radapp.io/resource": "frontend"}
-		require.Equal(t, "frontend", defaultContainerName(dc, pod))
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.expected, defaultContainerName(tt.pod))
+		})
+	}
 }

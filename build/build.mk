@@ -128,6 +128,7 @@ BINARIES := docgen:./cmd/docgen \
 	controller:./cmd/controller \
 	testrp:./test/testrp \
 	magpiego:./test/magpiego \
+	rogue-client:./test/rogue/cmd/rogue-client \
 	pre-upgrade:./cmd/pre-upgrade
 
 # This function parses binary name and entrypoint from an item in the BINARIES list.
@@ -157,6 +158,8 @@ clean: ## Cleans output directory.
 .PHONY: build-bicep
 build-bicep: build-bicep-$(GOOS)-$(GOARCH)
 
+BICEP_EXTENSION_TAG ?= $(REL_CHANNEL)
+
 # Generate a target for the bicep container
 # Params:
 # $(1): the OS
@@ -167,7 +170,7 @@ build-bicep-$(1)-$(2):
 	$(eval BINS_OUT_DIR_$(1)_$(2) := $(OUT_DIR)/$(1)_$(2)/$(BUILDTYPE_DIR))
 	@echo "$(ARROW) Building bicep container on $(1)/$(2) to $(BINS_OUT_DIR_$(1)_$(2))/bicep"
 	BICEP_VERSION="$$(BICEP_VERSION)" BICEP_CHECKSUM_LINUX_AMD64="$$(BICEP_CHECKSUM_LINUX_AMD64)" BICEP_CHECKSUM_LINUX_ARM64="$$(BICEP_CHECKSUM_LINUX_ARM64)" BICEP_OS=linux BICEP_ARCH=$(2) bash build/scripts/install-bicep.sh $(BINS_OUT_DIR_$(1)_$(2))/bicep
-	./build/scripts/generate-bicepconfig.sh $(REL_CHANNEL) $(BINS_OUT_DIR_$(1)_$(2))/bicep
+	./build/scripts/generate-bicepconfig.sh $(BICEP_EXTENSION_TAG) $(BINS_OUT_DIR_$(1)_$(2))/bicep
 endef
 
 # Generate bicep build targets for each combination of OS and ARCH

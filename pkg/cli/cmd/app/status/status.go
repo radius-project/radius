@@ -31,7 +31,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
-	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -135,7 +134,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	applicationID := r.Workspace.Scope + "/providers/" + datamodel.ApplicationResourceType_v20250801preview + "/" + r.ApplicationName
+	applicationID := cmd.ApplicationID(r.Workspace.Scope, r.ApplicationName)
 	resourceList, err := managementClient.ListResourcesInApplication(ctx, applicationID)
 	if err != nil {
 		return err

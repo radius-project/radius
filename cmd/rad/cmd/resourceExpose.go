@@ -91,7 +91,7 @@ func exposeResource(cmd *cobra.Command, args []string) error {
 		remotePort = localPort
 	}
 
-	client, err := connections.DefaultFactory.CreateDiagnosticsClientPreview(cmd.Context(), *workspace)
+	client, err := connections.DefaultFactory.CreateDiagnosticsClient(cmd.Context(), *workspace)
 	if err != nil {
 		return err
 	}

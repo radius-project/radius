@@ -27,14 +27,19 @@
 #
 # Re-running against an already reconciled repository is a no-op, so a release
 # that failed part way through can be resumed.
+#
+# With RELEASE_RECONCILE_TAG_ONLY=true, only the tag is reconciled at the
+# required planned commit, for a repository that releases without a branch.
 
 set -euo pipefail
 
 CHECK_ONLY="${RELEASE_RECONCILE_CHECK_ONLY:-false}"
+TAG_ONLY="${RELEASE_RECONCILE_TAG_ONLY:-false}"
 
 usage() {
     cat <<EOF
 Usage: $0 <repository-directory> <tag-name> <release-branch-name> [planned-commit]
+       RELEASE_RECONCILE_TAG_ONLY=true $0 <repository-directory> <tag-name> <planned-commit>
 
 Example: $0 radius v0.61.0 release/0.61 abc123
 EOF
@@ -194,13 +199,25 @@ reconcile_tag() {
 main() {
     local repository="${1:-}"
     local tag="${2:-}"
-    local branch="${3:-}"
-    local planned_commit="${4:-}"
+    local branch=""
+    local planned_commit=""
     local release_commit
 
-    if [[ -z "${repository}" || -z "${tag}" || -z "${branch}" ]]; then
-        usage >&2
-        fail "repository directory, tag name, and release branch name are required"
+    [[ "${TAG_ONLY}" =~ ^(true|false)$ ]] ||
+        fail "RELEASE_RECONCILE_TAG_ONLY must be true or false"
+    if [[ "${TAG_ONLY}" == "true" ]]; then
+        planned_commit="${3:-}"
+        if [[ -z "${repository}" || -z "${tag}" || -z "${planned_commit}" ]]; then
+            usage >&2
+            fail "repository directory, tag name, and planned commit are required"
+        fi
+    else
+        branch="${3:-}"
+        planned_commit="${4:-}"
+        if [[ -z "${repository}" || -z "${tag}" || -z "${branch}" ]]; then
+            usage >&2
+            fail "repository directory, tag name, and release branch name are required"
+        fi
     fi
     [[ -d "${repository}" ]] || fail "repository directory not found: ${repository}"
     [[ "${CHECK_ONLY}" =~ ^(true|false)$ ]] ||
@@ -220,6 +237,11 @@ main() {
         planned_commit="$(git rev-parse "${planned_commit}^{commit}")"
     fi
 
+    if [[ "${TAG_ONLY}" == "true" ]]; then
+        echo "Reconciling ${tag} for ${repository}"
+        reconcile_tag "${tag}" "${planned_commit}"
+        return
+    fi
     echo "Reconciling ${tag} on ${branch} for ${repository}"
     release_commit="$(reconcile_branch "${branch}" "${planned_commit}")"
     reconcile_tag "${tag}" "${release_commit}"

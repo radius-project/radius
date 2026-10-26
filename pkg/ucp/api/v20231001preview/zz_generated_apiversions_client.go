@@ -123,7 +123,7 @@ func (client *APIVersionsClient) createOrUpdateCreateRequest(ctx context.Context
 //   - options - APIVersionsClientBeginDeleteOptions contains the optional parameters for the APIVersionsClient.BeginDelete method.
 func (client *APIVersionsClient) BeginDelete(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *APIVersionsClientBeginDeleteOptions) (*runtime.Poller[APIVersionsClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, planeName, resourceProviderName, resourceTypeName, apiVersionName, options)
+		resp, err := client.deleteOperation(ctx, planeName, resourceProviderName, resourceTypeName, apiVersionName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -136,9 +136,9 @@ func (client *APIVersionsClient) BeginDelete(ctx context.Context, planeName stri
 	}
 }
 
-// delete - Delete an API version.
+// deleteOperation - Delete an API version.
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *APIVersionsClient) delete(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *APIVersionsClientBeginDeleteOptions) (*http.Response, error) {
+func (client *APIVersionsClient) deleteOperation(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *APIVersionsClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "APIVersionsClient.BeginDelete")
 	req, err := client.deleteCreateRequest(ctx, planeName, resourceProviderName, resourceTypeName, apiVersionName, options)

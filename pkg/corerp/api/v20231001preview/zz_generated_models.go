@@ -5,12 +5,6 @@ package v20231001preview
 
 import "time"
 
-// ACIRuntimeProperties - The runtime configuration properties for Kubernetes
-type ACIRuntimeProperties struct {
-	// The ID of the gateway that is providing L7 traffic for the container
-	GatewayID *string
-}
-
 // ApplicationGraphConnection - Describes the connection between two resources.
 type ApplicationGraphConnection struct {
 	// REQUIRED; The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and
@@ -129,48 +123,6 @@ type ApplicationResourceListResult struct {
 type AuthConfig struct {
 	// Authentication information used to access private Terraform modules from Git repository sources.
 	Git *GitAuthConfig
-}
-
-// AzureContainerInstanceCompute - The Azure container instance compute configuration
-type AzureContainerInstanceCompute struct {
-	// CONSTANT; The Azure container instance compute kind
-	// Field has constant value "aci", any specified value is ignored.
-	Kind *string
-
-	// Configuration for supported external identity providers
-	Identity *IdentitySettings
-
-	// The resource group to use for the environment.
-	ResourceGroup *string
-
-	// The resource id of the compute resource for application environment.
-	ResourceID *string
-}
-
-// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type AzureContainerInstanceCompute.
-func (a *AzureContainerInstanceCompute) GetEnvironmentCompute() *EnvironmentCompute {
-	return &EnvironmentCompute{
-		Identity:   a.Identity,
-		Kind:       a.Kind,
-		ResourceID: a.ResourceID,
-	}
-}
-
-// AzureContainerInstanceExtension - Azure container instance resource group extension of a environment/application resource.
-type AzureContainerInstanceExtension struct {
-	// CONSTANT; The kind of the resource.
-	// Field has constant value "aci", any specified value is ignored.
-	Kind *string
-
-	// REQUIRED; The resource group of the application environment.
-	ResourceGroup *string
-}
-
-// GetExtension implements the ExtensionClassification interface for type AzureContainerInstanceExtension.
-func (a *AzureContainerInstanceExtension) GetExtension() *Extension {
-	return &Extension{
-		Kind: a.Kind,
-	}
 }
 
 // AzureKeyVaultVolumeProperties - Represents Azure Key Vault Volume properties
@@ -1194,9 +1146,6 @@ type ResourceStatus struct {
 
 // RuntimesProperties - The properties for runtime configuration
 type RuntimesProperties struct {
-	// The runtime configuration properties for ACI
-	Aci *ACIRuntimeProperties
-
 	// The runtime configuration properties for Kubernetes
 	Kubernetes *KubernetesRuntimeProperties
 }

@@ -113,7 +113,7 @@ func (client *ConfigurationStoresClient) createOrUpdateCreateRequest(ctx context
 //     method.
 func (client *ConfigurationStoresClient) BeginDelete(ctx context.Context, rootScope string, configurationStoreName string, options *ConfigurationStoresClientBeginDeleteOptions) (*runtime.Poller[ConfigurationStoresClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, configurationStoreName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, configurationStoreName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -126,9 +126,9 @@ func (client *ConfigurationStoresClient) BeginDelete(ctx context.Context, rootSc
 	}
 }
 
-// delete - Delete a DaprConfigurationStoreResource
+// deleteOperation - Delete a DaprConfigurationStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *ConfigurationStoresClient) delete(ctx context.Context, rootScope string, configurationStoreName string, options *ConfigurationStoresClientBeginDeleteOptions) (*http.Response, error) {
+func (client *ConfigurationStoresClient) deleteOperation(ctx context.Context, rootScope string, configurationStoreName string, options *ConfigurationStoresClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, configurationStoreName, options)
 	if err != nil {

@@ -18,12 +18,15 @@ package bicep
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	corerp_datamodel "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -46,6 +49,17 @@ import (
 type deploymentClientSpy struct {
 	clients.ResourceDeploymentsClient
 	createOrUpdateCalls int
+	deployment          clients.Deployment
+	response            *clients.ClientCreateOrUpdateResponse
+}
+
+type deploymentPollerStub struct {
+	clients.Poller[clients.ClientCreateOrUpdateResponse]
+	response clients.ClientCreateOrUpdateResponse
+}
+
+func (p *deploymentPollerStub) PollUntilDone(context.Context, *clients.PollUntilDoneOptions) (clients.ClientCreateOrUpdateResponse, error) {
+	return p.response, nil
 }
 
 type clusterAccessResolverStub struct {
@@ -65,8 +79,12 @@ func (s *clusterAccessResolverStub) ResolveKubeconfigSource(context.Context, *re
 	return clusteraccess.KubeconfigSource{}, errors.New("unexpected ResolveKubeconfigSource call")
 }
 
-func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, _ clients.Deployment, _, _ string) (clients.Poller[clients.ClientCreateOrUpdateResponse], error) {
+func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, deployment clients.Deployment, _, _ string) (clients.Poller[clients.ClientCreateOrUpdateResponse], error) {
 	s.createOrUpdateCalls++
+	s.deployment = deployment
+	if s.response != nil {
+		return &deploymentPollerStub{response: *s.response}, nil
+	}
 	return nil, errors.New("unexpected deployment")
 }
 
@@ -471,9 +489,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 	}
 
 	err := driverBicep.Delete(ctx, driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: configuration,
-		},
+		Configuration:   configuration,
 		OutputResources: outputResources,
 	})
 	require.NoError(t, err)
@@ -692,6 +708,123 @@ func Test_Bicep_Execute_InvalidOutputMappingDoesNotDeploy(t *testing.T) {
 		DeploymentStatus: recipes_util.RecipeSetupError,
 	}, err)
 	require.Zero(t, deploymentClient.createOrUpdateCalls)
+}
+
+func Test_Bicep_Execute_DirectModuleParameters(t *testing.T) {
+	t.Parallel()
+
+	for _, kind := range []string{"None", "CanNotDelete"} {
+		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
+
+			ts := registrytest.NewFakeRegistryServer(t)
+			t.Cleanup(ts.CloseServer)
+
+			deploymentClient := &deploymentClientSpy{}
+			driverBicep := &bicepDriver{
+				DeploymentClient: deploymentClient,
+				RegistryClient:   ts.TestServer.Client(),
+			}
+
+			_, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+				Recipe: recipes.ResourceMetadata{
+					Name:          "direct-module",
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/direct-module",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+				},
+				Definition: recipes.EnvironmentDefinition{
+					Name:         "direct-module",
+					Driver:       recipes.TemplateKindBicep,
+					TemplatePath: ts.TestImageURL,
+					ResourceType: "Test.Resources/resources",
+					Parameters: map[string]any{
+						"name":  "{{context.resource.name}}",
+						"lock":  map[string]any{"kind": kind},
+						"kinds": []any{"None", "CanNotDelete"},
+					},
+				},
+			})
+
+			// Stop at the deployment boundary and inspect the serialized ARM payload.
+			require.Error(t, err)
+			require.Equal(t, 1, deploymentClient.createOrUpdateCalls)
+			payload, err := json.Marshal(deploymentClient.deployment.Properties.Parameters)
+			require.NoError(t, err)
+			require.JSONEq(t, fmt.Sprintf(`{
+				"name": {"value": "direct-module"},
+				"lock": {"value": {"kind": %q}},
+				"kinds": {"value": ["None", "CanNotDelete"]}
+			}`, kind), string(payload))
+		})
+	}
+}
+
+func Test_Bicep_Execute_LogsDeploymentOutputResourceIDs(t *testing.T) {
+	t.Parallel()
+
+	const lockID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Authorization/locks/test-lock"
+	for _, ids := range [][]string{{}, {lockID}} {
+		t.Run(fmt.Sprintf("%d outputs", len(ids)), func(t *testing.T) {
+			t.Parallel()
+
+			ts := registrytest.NewFakeRegistryServer(t)
+			t.Cleanup(ts.CloseServer)
+			outputs := make([]*armdeployments.ResourceReference, 0, len(ids))
+			for _, id := range ids {
+				outputs = append(outputs, &armdeployments.ResourceReference{ID: new(id)})
+			}
+			deploymentClient := &deploymentClientSpy{
+				response: &clients.ClientCreateOrUpdateResponse{
+					Properties: &armdeployments.DeploymentPropertiesExtended{
+						OutputResources: outputs,
+						Outputs: map[string]any{
+							"password": map[string]any{"type": "securestring", "value": "sensitive-output-value"},
+						},
+					},
+				},
+			}
+			d := &bicepDriver{DeploymentClient: deploymentClient, RegistryClient: ts.TestServer.Client()}
+			var logs []string
+			ctx := logr.NewContext(t.Context(), funcr.NewJSON(func(line string) {
+				logs = append(logs, line)
+			}, funcr.Options{}))
+
+			result, err := d.Execute(ctx, driver.ExecuteOptions{
+				Recipe: recipes.ResourceMetadata{
+					Name:          "test-resource",
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+				},
+				Definition: recipes.EnvironmentDefinition{
+					Name:         "direct-module",
+					Driver:       recipes.TemplateKindBicep,
+					TemplatePath: ts.TestImageURL,
+					Parameters:   map[string]any{"password": "sensitive-parameter-value"},
+				},
+			})
+			require.NoError(t, err)
+			require.ElementsMatch(t, ids, result.Resources)
+			require.Equal(t, "sensitive-output-value", result.Secrets["password"])
+
+			var diagnostic map[string]any
+			for _, line := range logs {
+				require.NotContains(t, line, "sensitive-output-value")
+				require.NotContains(t, line, "sensitive-parameter-value")
+				if strings.Contains(line, "Deployment engine returned recipe output resource IDs") {
+					require.NoError(t, json.Unmarshal([]byte(line), &diagnostic))
+				}
+			}
+			require.NotNil(t, diagnostic)
+			require.Equal(t, "direct-module", diagnostic["recipeName"])
+			require.Contains(t, diagnostic["deploymentID"], "/providers/Microsoft.Resources/deployments/recipe")
+			require.Equal(t, float64(len(ids)), diagnostic["outputResourceCount"])
+			expectedIDs := make([]any, 0, len(ids))
+			for _, id := range ids {
+				expectedIDs = append(expectedIDs, id)
+			}
+			require.Equal(t, expectedIDs, diagnostic["outputResourceIDs"])
+		})
+	}
 }
 
 func Test_ValidateOutputMappings(t *testing.T) {

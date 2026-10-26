@@ -4,7 +4,8 @@
 
 retry_curl() {
     local -a curl_args=()
-    local url="" output="" write_out=""
+    local url="" output="" write_out="" headers_output=""
+    local fail_flag="--fail"
     local temporary_output=false
     local argument
 
@@ -14,6 +15,14 @@ retry_curl() {
             -o | --output)
                 output="${2:-}"
                 shift 2
+                ;;
+            -D | --dump-header)
+                headers_output="${2:-}"
+                shift 2
+                ;;
+            --fail-with-body)
+                fail_flag="--fail-with-body"
+                shift
                 ;;
             -w | --write-out)
                 write_out="${2:-}"
@@ -84,8 +93,16 @@ retry_curl() {
         remaining=$((deadline - SECONDS))
         if ((remaining <= 0)); then
             echo "curl request exceeded the ${max_seconds}-second budget" >&2
-            rm -rf "${temporary_directory}"
-            return 28
+            status=28
+            if [[ "${fail_flag}" == --fail-with-body &&
+                "${temporary_output}" == true && -f "${output}" ]]; then
+                cat "${output}" || status=23
+            fi
+            retry_curl_write_out \
+                "${write_out}" "${http_code}" "${effective_url}"
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}" ||
+                return "$?"
+            return "${status}"
         fi
         timeout="${remaining}"
 
@@ -93,7 +110,8 @@ retry_curl() {
         status=0
         if ((${#curl_args[@]})); then
             result="$(
-                curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+                curl --proto '=https' --tlsv1.2 "${fail_flag}" \
+                    --silent --show-error \
                     --location --connect-timeout 15 --max-time "${timeout}" \
                     --speed-limit 1024 --speed-time 30 \
                     "${curl_args[@]}" --output "${output}" \
@@ -102,7 +120,8 @@ retry_curl() {
             )" || status=$?
         else
             result="$(
-                curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+                curl --proto '=https' --tlsv1.2 "${fail_flag}" \
+                    --silent --show-error \
                     --location --connect-timeout 15 --max-time "${timeout}" \
                     --speed-limit 1024 --speed-time 30 \
                     --output "${output}" --dump-header "${headers}" \
@@ -119,14 +138,21 @@ retry_curl() {
             elif [[ "${temporary_output}" == true ]]; then
                 cat "${output}"
             fi
-            rm -rf "${temporary_directory}"
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}" ||
+                return "$?"
             return 0
         fi
 
-        if ! retry_curl_is_transient "${status}" "${http_code}"; then
+        if ! retry_curl_is_transient \
+            "${status}" "${http_code}" "${headers}"; then
+            if [[ "${fail_flag}" == --fail-with-body &&
+                "${temporary_output}" == true && -f "${output}" ]]; then
+                cat "${output}" || status=23
+            fi
             retry_curl_write_out \
                 "${write_out}" "${http_code}" "${effective_url}"
-            rm -rf "${temporary_directory}"
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}" ||
+                return "$?"
             return "${status}"
         fi
 
@@ -134,9 +160,14 @@ retry_curl() {
         remaining=$((deadline - SECONDS))
         if ((attempt >= max_attempts || remaining <= wait_time)); then
             echo "curl request exhausted its retry budget" >&2
+            if [[ "${fail_flag}" == --fail-with-body &&
+                "${temporary_output}" == true && -f "${output}" ]]; then
+                cat "${output}" || status=23
+            fi
             retry_curl_write_out \
                 "${write_out}" "${http_code}" "${effective_url}"
-            rm -rf "${temporary_directory}"
+            retry_curl_cleanup "${temporary_directory}" "${headers_output}" ||
+                return "$?"
             return "${status}"
         fi
 
@@ -149,6 +180,18 @@ retry_curl() {
             delay="${max_delay}"
         fi
     done
+}
+
+retry_curl_cleanup() {
+    local temporary_directory="$1"
+    local headers_output="$2"
+    local status=0
+
+    if [[ -n "${headers_output}" ]]; then
+        cp "${temporary_directory}/headers" "${headers_output}" || status=23
+    fi
+    rm -rf "${temporary_directory}" || return "$?"
+    return "${status}"
 }
 
 retry_curl_write_out() {
@@ -165,8 +208,16 @@ retry_curl_write_out() {
 retry_curl_is_transient() {
     local status="$1"
     local http_code="$2"
+    local headers="${3:-}"
 
     case "${status}:${http_code}" in
+        22:403)
+            [[ -n "${headers}" &&
+                "$(retry_curl_header_value \
+                    "${headers}" x-ratelimit-remaining)" != 0 &&
+                -n "$(retry_curl_header_value "${headers}" retry-after)" ]]
+            return
+            ;;
         22:408 | 22:429 | 22:500 | 22:502 | 22:503 | 22:504)
             return 0
             ;;
@@ -179,6 +230,22 @@ retry_curl_is_transient() {
     esac
 }
 
+retry_curl_header_value() {
+    local headers="$1"
+    local name="$2"
+
+    [[ -f "${headers}" ]] || return 0
+    awk -v name="${name}" '
+        /^HTTP\// { value = "" }
+        tolower($1) == name ":" {
+            sub(/^[^:]*:[ \t]*/, "")
+            sub(/[ \t\r]*$/, "")
+            value = $0
+        }
+        END { print value }
+    ' "${headers}"
+}
+
 retry_curl_wait_seconds() {
     local headers="$1"
     local delay="$2"
@@ -187,17 +254,7 @@ retry_curl_wait_seconds() {
     local wait_time="${delay}"
     local now
 
-    retry_after="$(
-        awk '
-            /^HTTP\// { value = "" }
-            tolower($1) == "retry-after:" {
-                sub(/^[^:]*:[ \t]*/, "")
-                sub(/[ \t\r]*$/, "")
-                value = $0
-            }
-            END { print value }
-        ' "${headers}"
-    )"
+    retry_after="$(retry_curl_header_value "${headers}" retry-after)"
     if [[ -n "${retry_after}" ]]; then
         case "${retry_after}" in
             *[!0-9]*)
