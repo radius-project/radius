@@ -178,9 +178,7 @@ async function verifyUpmerge({ call, context, task, run, status, record }) {
       `Pull request #${number} closed without merging`,
       url
     );
-    throw new Error(
-      `${task.repo} upmerge pull request ${url} closed without merging; reconcile the receipt before resuming`
-    );
+    return false;
   }
   await record(
     "in_progress",
@@ -331,7 +329,7 @@ export async function coordinateTask({
       auto_inactive: false,
       log_url: logUrl,
       description,
-      ...(environmentUrl ? { environment_url: environmentUrl } : {})
+      environment_url: environmentUrl ?? ""
     });
   const ref = deployment.payload.ref;
   const { data: workflow } = await call(
@@ -410,12 +408,28 @@ export async function coordinateTask({
     status?.description?.startsWith("Retry after attempt ") ?
       Number(status.description.slice(20)) + 1
     : 0;
+  let pullRequest;
   if (
-    status &&
-    status.state !== "success" &&
+    task.workflow === "upmerge.yaml" &&
     run.status === "completed" &&
-    run.conclusion !== "success" &&
+    run.conclusion === "success" &&
     !requiredAttempt
+  ) {
+    pullRequest = await verifyUpmerge({
+      call,
+      context,
+      task,
+      run,
+      status,
+      record
+    });
+  }
+  const replaceClosedUpmerge = pullRequest === false;
+  if (
+    run.status === "completed" &&
+    !requiredAttempt &&
+    (replaceClosedUpmerge ||
+      (status && status.state !== "success" && run.conclusion !== "success"))
   ) {
     requiredAttempt = run.run_attempt + 1;
     await record(
@@ -425,7 +439,9 @@ export async function coordinateTask({
     );
     try {
       await call(
-        "POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs",
+        replaceClosedUpmerge ?
+          "POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun"
+        : "POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs",
         { run_id: runID }
       );
     } catch (error) {
@@ -457,16 +473,24 @@ export async function coordinateTask({
     );
     throw new Error(`${task.id} failed: ${run.html_url}`);
   }
-  let pullRequest = null;
-  if (task.workflow === "upmerge.yaml") {
+  if (
+    task.workflow === "upmerge.yaml" &&
+    (pullRequest === undefined || requiredAttempt)
+  ) {
     pullRequest = await verifyUpmerge({
       call,
       context,
       task,
       run,
-      status,
+      // A new attempt creates its own PR; never reuse the old attempt's binding.
+      status: requiredAttempt ? undefined : status,
       record
     });
+  }
+  if (pullRequest === false) {
+    throw new Error(
+      `${task.repo} replacement upmerge PR closed without merging; resume to create another pull request`
+    );
   }
   if (task.workflow === "release.yaml") {
     const channel = `v${version.slice(1).split(".").slice(0, 2).join(".")}`;

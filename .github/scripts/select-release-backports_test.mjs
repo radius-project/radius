@@ -16,7 +16,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -26,6 +26,7 @@ import {
   findIncludedSourceCommits,
   orderByMainHistory,
   releaseChannelForEvent,
+  selectReleaseBackports,
   selectNextBackport as select
 } from "./select-release-backports.mjs";
 
@@ -309,23 +310,6 @@ test("does not select a release queue for main or unmerged pull requests", () =>
 });
 
 test("main merge events and release pushes use the same history-ordered queue", async (t) => {
-  const workflow = (
-    await readFile(
-      new URL("../workflows/release-backport.yaml", import.meta.url),
-      "utf8"
-    )
-  ).replace(/\r\n/g, "\n");
-  const script = workflow.match(
-    /          script: \|\n([\s\S]*?)(?=\n  backport:)/
-  )?.[1];
-  assert.ok(script);
-  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-  const run = new AsyncFunction(
-    "github",
-    "context",
-    "process",
-    script.replace(/^            /gm, "")
-  );
   const directory = await mkdtemp(path.join(os.tmpdir(), "backport-order-"));
   t.after(() => rm(directory, { recursive: true, force: true, maxRetries: 5 }));
   const git = (...args) =>
@@ -378,24 +362,30 @@ test("main merge events and release pushes use the same history-ordered queue", 
       };
       for (const event of [
         { eventName: "pull_request_target", payload: { pull_request: later } },
-        { eventName: "push", ref: "refs/heads/release/0.60" }
+        { eventName: "push", ref: "refs/heads/release/0.60" },
+        { eventName: "workflow_dispatch", channel: "0.60" }
       ]) {
-        const result = await run(
+        const result = await selectReleaseBackports({
           github,
-          { repo: { owner: "radius-project", repo: "radius" }, ...event },
-          {
-            env: {
-              GITHUB_WORKSPACE: new URL("../../", import.meta.url).href.replace(
-                /\/$/,
-                ""
-              )
-            }
-          }
-        );
-        assert.equal(JSON.parse(result)[0].source_pr, 102);
+          context: {
+            repo: { owner: "radius-project", repo: "recipes" },
+            ...event
+          },
+          channel: event.channel
+        });
+        assert.equal(result[0].source_pr, 102);
       }
     }
   } finally {
     process.chdir(original);
+  }
+});
+
+test("manual backport selection rejects invalid channels before API or Git access", async () => {
+  for (const channel of ["0", "release/0.62", "0.062", "../main", "0.62\n"]) {
+    await assert.rejects(
+      selectReleaseBackports({ channel }),
+      /channel must use X.Y format/
+    );
   }
 });

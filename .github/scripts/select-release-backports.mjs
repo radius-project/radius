@@ -187,6 +187,90 @@ export function selectNextBackport({
   return pending.length === 0 ? [] : [backportEntry(pending[0], channel)];
 }
 
+export async function selectReleaseBackports({
+  github,
+  context,
+  channel = ""
+}) {
+  if (channel && !/^(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(channel)) {
+    throw new Error("channel must use X.Y format");
+  }
+  channel ||= releaseChannelForEvent(context);
+  const channels =
+    channel ? [channel]
+    : (
+      context.eventName === "pull_request_target" &&
+      context.payload.pull_request.merged &&
+      context.payload.pull_request.base.ref === "main"
+    ) ?
+      entriesForMergedPull(context.payload.pull_request).map(
+        (entry) => entry.channel
+      )
+    : [];
+  if (channels.length === 0) return [];
+  const mainHistory = readMainHistory();
+  const selected = [];
+  for (const channel of channels) {
+    const repository = { owner: context.repo.owner, repo: context.repo.repo };
+    const releaseBranch = `release/${channel}`;
+    const openBackports = await github.paginate(github.rest.pulls.list, {
+      ...repository,
+      base: releaseBranch,
+      state: "open",
+      per_page: 100
+    });
+    const issues = await github.paginate(github.rest.issues.listForRepo, {
+      ...repository,
+      labels: `backport release/${channel}`,
+      state: "closed",
+      per_page: 100
+    });
+    const sources = [];
+    for (const issue of issues.filter((item) => item.pull_request)) {
+      const { data: pull } = await github.rest.pulls.get({
+        ...repository,
+        pull_number: issue.number
+      });
+      if (pull.merged_at && pull.base.ref === "main") sources.push(pull);
+    }
+    const historical = await github.paginate(github.rest.pulls.list, {
+      ...repository,
+      base: releaseBranch,
+      state: "closed",
+      per_page: 100
+    });
+    const historicalWithCommits = [];
+    for (const pull of historical) {
+      const commits =
+        pull.merged_at ?
+          await github.paginate(github.rest.pulls.listCommits, {
+            ...repository,
+            pull_number: pull.number,
+            per_page: 100
+          })
+        : [];
+      historicalWithCommits.push({ ...pull, commits });
+    }
+    const includedSourceCommits = await findIncludedSourceCommits({
+      github,
+      ...repository,
+      channel,
+      sources
+    });
+    selected.push(
+      ...selectNextBackport({
+        channel,
+        sources,
+        mainHistory,
+        openBackports,
+        historicalBackports: historicalWithCommits,
+        includedSourceCommits
+      })
+    );
+  }
+  return selected;
+}
+
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href

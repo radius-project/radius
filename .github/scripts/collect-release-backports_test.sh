@@ -20,7 +20,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
-readonly SCRIPT="${SCRIPT_DIR}/collect-release-backports.sh"
+readonly SCRIPT="${BACKPORT_SCRIPT_DIR:-${SCRIPT_DIR}}/collect-release-backports.sh"
 
 TEST_ROOT=""
 PASS=0

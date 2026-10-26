@@ -99,6 +99,10 @@ write_pr_body() {
 }
 
 is_release_metadata_commit() {
+    if [[ -n "${GITHUB_REPOSITORY:-}" &&
+        "${GITHUB_REPOSITORY}" != "radius-project/radius" ]]; then
+        return 1
+    fi
     git diff-tree --no-commit-id --name-only -r "${SOURCE_COMMIT}" -- \
         '.github/release-plans/*.yaml' | grep -q .
 }

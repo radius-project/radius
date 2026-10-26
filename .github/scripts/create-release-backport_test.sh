@@ -20,7 +20,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
-readonly SCRIPT="${SCRIPT_DIR}/create-release-backport.sh"
+readonly SCRIPT="${BACKPORT_SCRIPT_DIR:-${SCRIPT_DIR}}/create-release-backport.sh"
 
 TEST_ROOT=""
 REMOTE=""
@@ -147,7 +147,11 @@ test_successful_backport() {
     ((++PASS))
 }
 
-test_release_metadata_backport_removes_legacy_workflow() {
+test_release_metadata_backport_handles_legacy_workflow() {
+    local repository="$1"
+    local expected="$2"
+    local actual="kept"
+
     setup_repo false
     mkdir -p "${REPO}/.github/release-plans"
     printf 'schemaVersion: 2\n' \
@@ -157,10 +161,13 @@ test_release_metadata_backport_removes_legacy_workflow() {
         -m "chore(release): prepare v0.60.1"
     SOURCE_COMMIT="$(git -C "${REPO}" rev-parse HEAD)"
 
-    run_backport
-    if ! git -C "${REPO}" diff --cached --name-only --diff-filter=D |
+    GITHUB_REPOSITORY="${repository}" run_backport
+    if git -C "${REPO}" diff --cached --name-only --diff-filter=D |
         grep -Fqx '.github/workflows/release.yaml'; then
-        fail_test "release metadata backport kept the legacy workflow"
+        actual="removed"
+    fi
+    if [[ "${actual}" != "${expected}" ]]; then
+        fail_test "${repository} legacy workflow was ${actual}, expected ${expected}"
         return
     fi
     if ! git -C "${REPO}" diff --cached --name-only --diff-filter=A |
@@ -312,7 +319,10 @@ main() {
     REPO="${TEST_ROOT}/repo"
 
     test_successful_backport
-    test_release_metadata_backport_removes_legacy_workflow
+    test_release_metadata_backport_handles_legacy_workflow radius-project/radius removed
+    test_release_metadata_backport_handles_legacy_workflow radius-project/bicep-types-aws kept
+    test_release_metadata_backport_handles_legacy_workflow radius-project/dashboard kept
+    test_release_metadata_backport_handles_legacy_workflow radius-project/recipes kept
     test_conflict_creates_safe_handoff
     test_already_present_source_is_satisfied tip
     test_already_present_source_is_satisfied ancestor
