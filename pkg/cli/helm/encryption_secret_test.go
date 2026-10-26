@@ -70,7 +70,7 @@ func TestEncryptionSecretUpgrade(t *testing.T) {
 				configuration := &helm.Configuration{}
 				require.NoError(t, configuration.Init(flags, namespace, helmDriverSecret))
 				radiusClient := NewHelmClient()
-				_, err := radiusClient.RunHelmInstall(configuration, chart, nil, "radius", namespace, false, time.Minute)
+				_, err := radiusClient.RunHelmInstall(configuration, chart, nil, "radius", namespace, false, time.Minute, nil)
 				require.NoError(t, err)
 
 				secrets := client.CoreV1().Secrets(namespace)
