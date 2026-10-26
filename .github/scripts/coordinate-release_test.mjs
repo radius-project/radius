@@ -458,11 +458,30 @@ test("a replacement upmerge with no changes clears the closed PR binding", async
   assert.equal(state.statuses.at(-1).environment_url, "");
 });
 
-test("a rejected replacement attempt can be retried without redispatching", async () => {
-  for (const status of [403, 429]) {
+test("rejected replacements preserve bound PRs and retry without redispatching", async () => {
+  for (const [status, manuallyBound] of [
+    [403, true],
+    [429, true],
+    [403, false],
+    [429, false]
+  ]) {
     const state = fixture();
     state.pulls[1].state = "open";
     state.pulls[1].merged = false;
+    if (manuallyBound) {
+      state.pulls[0].created_at = state.pulls[1].created_at;
+      await assert.rejects(
+        () => coordinateTask(state),
+        /2 upmerge pull requests match/
+      );
+      state.statuses.push({
+        id: state.statuses.length + 1,
+        deployment_id: state.deployments[0].id,
+        state: "in_progress",
+        log_url: state.run.html_url,
+        environment_url: state.pulls[1].html_url
+      });
+    }
     await assert.rejects(
       () => coordinateTask(state),
       /Merge the docs upmerge PR/
@@ -477,9 +496,28 @@ test("a rejected replacement attempt can be retried without redispatching", asyn
       return remote(route, request);
     };
     await assert.rejects(() => coordinateTask(state), /replacement rejected/);
+    const rejection = state.statuses.at(-1);
+    assert.equal(state.run.run_attempt, 1);
+    assert.equal(
+      state.statuses.find(
+        (entry) => entry.description === "Retry after attempt 1"
+      ).environment_url,
+      ""
+    );
     state.remote = remote;
     await assert.rejects(() => coordinateTask(state), /upmerge PR .*\/pull\/7/);
+    assert.equal(rejection.state, "failure");
+    assert.equal(rejection.environment_url, state.pulls[1].html_url);
     assert.equal(state.run.run_attempt, 2);
+    assert.equal(
+      state.statuses.at(-1).environment_url,
+      state.pulls[2].html_url
+    );
+    assert.equal(
+      state.calls.filter(({ route }) => route.endsWith("/pulls")).length,
+      2,
+      "resume must not rediscover the original bound PR"
+    );
     assert.equal(
       state.calls.filter(({ route }) => route.endsWith("/dispatches")).length,
       1
@@ -499,6 +537,7 @@ test("an uncertain replacement request is not repeated on resume", async () => {
     () => coordinateTask(state),
     /Merge the docs upmerge PR/
   );
+  state.pulls[0].created_at = state.pulls[1].created_at;
   state.pulls[1].state = "closed";
   const remote = state.remote;
   state.remote = async (route, request) => {

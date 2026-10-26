@@ -446,12 +446,13 @@ export async function coordinateTask({
       );
     } catch (error) {
       // A 4xx response proves no attempt was created; keep the marker otherwise.
-      const status = Number(error?.status ?? error?.response?.status ?? 0);
-      if (status >= 400 && status < 500) {
+      const httpStatus = Number(error?.status ?? error?.response?.status ?? 0);
+      if (httpStatus >= 400 && httpStatus < 500) {
         await record(
           "failure",
           run.html_url,
-          `Rerun rejected with HTTP ${status}; resume to retry`
+          `Rerun rejected with HTTP ${httpStatus}; resume to retry`,
+          status?.environment_url
         );
       }
       throw error;
