@@ -30,8 +30,9 @@ type ReferenceDescriptor struct {
 	Required     bool
 }
 
-// ReferenceChecks extracts every present built-in reference and schema-declared
-// reference on PUT/PATCH, including unchanged references. For PATCH the caller
+// ReferenceChecks extracts standard environment/application references on
+// built-in and registered resources, built-in connections, and schema-declared
+// references on PUT/PATCH, including unchanged references. For PATCH the caller
 // must supply the complete effective resource after applying the patch, not
 // just its changed fields. It does not read target resources or follow their
 // references. Reads/deletes require no reference checks.
@@ -83,7 +84,7 @@ func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, op
 	isBuiltIn := strings.HasPrefix(typ, "applications.") ||
 		strings.HasPrefix(typ, "radius.") && !strings.HasPrefix(typ, "radius.core/") ||
 		containsFold([]string{"Radius.Core/applications", "Radius.Core/environments", "Radius.Core/recipePacks"}, typ)
-	if isBuiltIn {
+	if isBuiltIn || c.registered[typ] {
 		if value, exists := body["properties"]; exists {
 			properties, ok := value.(map[string]any)
 			if !ok {
@@ -102,7 +103,7 @@ func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, op
 					}
 				}
 			}
-			if value, exists := properties["connections"]; exists {
+			if value, exists := properties["connections"]; exists && isBuiltIn {
 				connections, ok := value.(map[string]any)
 				if !ok {
 					return nil, fmt.Errorf("connections must be an object")

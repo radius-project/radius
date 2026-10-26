@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/radius-project/radius/pkg/ucp/authorization/internal/cataloggen"
 	"github.com/stretchr/testify/require"
 )
@@ -47,6 +48,8 @@ func TestRequestMapping(t *testing.T) {
 		{"GET", "/planes/aws/local/accounts/123/regions/us-west-2/providers/AWS.S3/Bucket/test", "System.AWS/credentials/use/action", "/planes/aws/local", ResourceRequest},
 		{"POST", "/planes/aws/local/accounts/123/regions/us-west-2/providers/AWS.S3/Bucket/:put", "System.AWS/credentials/use/action", "/planes/aws/local", ResourceRequest},
 		{"GET", "/planes/azure/local/subscriptions/123/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/test", "System.Azure/credentials/use/action", "/planes/azure/local", ResourceRequest},
+		{"GET", "/planes/azure/local/providers/Microsoft.Authorization/roleAssignments/grant", "System.Azure/credentials/use/action", "/planes/azure/local", ResourceRequest},
+		{"GET", "/planes/azure/local/providers/System.Resources/locations/global/operationStatuses/123", "", "", OperationStatusRequest},
 	} {
 		t.Run(tt.method+tt.path, func(t *testing.T) {
 			result, err := catalog.MapRequest(tt.method, tt.path)
@@ -70,29 +73,73 @@ func TestRequestMapping(t *testing.T) {
 	}
 }
 
+func TestCloudPlaneAccessManagement(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	identity := testIdentity()
+	for _, plane := range []string{"/planes/azure/local", "/planes/aws/local"} {
+		for _, typ := range []string{"roleDefinitions", "roleAssignments"} {
+			collection := plane + "/providers/Radius.Core/" + typ
+			for _, method := range []string{"GET", "PUT", "PATCH", "DELETE"} {
+				t.Run(method+collection, func(t *testing.T) {
+					target := collection + "/grant"
+					operation := map[string]string{"GET": "read", "PUT": "write", "PATCH": "write", "DELETE": "delete"}[method]
+					mapping, err := catalog.MapRequest(method, target)
+					require.NoError(t, err)
+					require.Equal(t, ResourceRequest, mapping.Kind)
+					require.Equal(t, []Check{{"Radius.Core/" + typ + "/" + operation, strings.ToLower(target)}}, mapping.Checks)
+					if method == "GET" {
+						mapping, err = catalog.MapRequest(method, collection)
+						require.NoError(t, err)
+						require.Equal(t, ListRequest, mapping.Kind)
+						require.Equal(t, []Check{{"Radius.Core/" + typ + "/read", plane}}, mapping.Checks)
+					}
+					for _, role := range []string{"platform-administrator", "access-administrator"} {
+						evaluator, err := NewEvaluator(catalog, nil, []api.RoleAssignmentResource{
+							testAssignment("grant", builtInID(role), plane, identity.Principal),
+						})
+						require.NoError(t, err)
+						results, err := evaluator.Evaluate(identity, mapping.Checks)
+						require.NoError(t, err)
+						require.Len(t, results, 1)
+						require.Equal(t, role == "access-administrator", results[0].Allowed, role)
+					}
+				})
+			}
+		}
+	}
+}
+
 func TestSwaggerOperationsMap(t *testing.T) {
 	catalog, err := NewCatalog(nil)
 	require.NoError(t, err)
 	var generated cataloggen.Catalog
 	require.NoError(t, json.Unmarshal(releaseCatalog, &generated))
 	for _, route := range generated.Routes {
-		t.Run(route.Method+route.Path, func(t *testing.T) {
-			path := sampleSwaggerPath(route.Path)
-			mapping, err := catalog.MapRequest(route.Method, path)
-			require.NoError(t, err)
-			if mapping.Kind != SelfAccessRequest {
-				require.NotEmpty(t, mapping.Checks)
-			}
-			if mapping.Kind != SelfAccessRequest && !strings.HasSuffix(route.Path, "/effectiveAccess") {
-				require.Equal(t, strings.ToLower(route.Permission), strings.ToLower(mapping.Checks[0].Permission))
-			}
-		})
+		scopes := []string{"planes/radius/local/resourceGroups/team-a"}
+		if strings.HasPrefix(route.Permission, "Radius.Core/roleDefinitions/") ||
+			strings.HasPrefix(route.Permission, "Radius.Core/roleAssignments/") {
+			scopes = append(scopes, "planes/radius/local", "planes/azure/local", "planes/aws/local")
+		}
+		for _, scope := range scopes {
+			t.Run(scope+"/"+route.Method+route.Path, func(t *testing.T) {
+				path := sampleSwaggerPath(route.Path, scope)
+				mapping, err := catalog.MapRequest(route.Method, path)
+				require.NoError(t, err)
+				if mapping.Kind != SelfAccessRequest {
+					require.NotEmpty(t, mapping.Checks)
+				}
+				if mapping.Kind != SelfAccessRequest && !strings.HasSuffix(route.Path, "/effectiveAccess") {
+					require.Equal(t, strings.ToLower(route.Permission), strings.ToLower(mapping.Checks[0].Permission))
+				}
+			})
+		}
 	}
 }
 
-func sampleSwaggerPath(path string) string {
-	path = strings.ReplaceAll(path, "{rootScope}", "planes/radius/local/resourceGroups/team-a")
-	path = strings.ReplaceAll(path, "{scope}", "planes/radius/local/resourceGroups/team-a")
+func sampleSwaggerPath(path, scope string) string {
+	path = strings.ReplaceAll(path, "{rootScope}", scope)
+	path = strings.ReplaceAll(path, "{scope}", scope)
 	for strings.Contains(path, "{") {
 		start := strings.Index(path, "{")
 		end := strings.Index(path[start:], "}") + start

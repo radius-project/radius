@@ -40,6 +40,46 @@ func TestBuiltInReferences(t *testing.T) {
 				require.NoError(t, err)
 				require.Empty(t, checks)
 			}
+			for _, property := range []string{"environment", "application"} {
+				for _, value := range []any{nil, "", 42, plane, teamA + "/providers/Team.Data/widgets/other"} {
+					_, err := catalog.ReferenceChecks("PUT", teamA+"/providers/"+typ+"/test",
+						map[string]any{"properties": map[string]any{property: value}}, ReferenceOptions{})
+					require.Error(t, err, "%s=%v", property, value)
+				}
+			}
+		})
+	}
+}
+
+func TestRegisteredResourceReferences(t *testing.T) {
+	for _, registration := range []Registration{
+		{Type: "Team.Data/widgets", PermissionSets: []string{ApplicationResources}},
+		{Type: "Team.Data/gadgets"},
+	} {
+		t.Run(registration.Type, func(t *testing.T) {
+			catalog, err := NewCatalog([]Registration{registration})
+			require.NoError(t, err)
+			target := teamA + "/providers/" + strings.ToUpper(registration.Type) + "/test"
+			body := map[string]any{"properties": map[string]any{
+				"environment": envA,
+				"application": appA,
+				"connections": []any{"custom-schema-value"},
+			}}
+			for _, method := range []string{"PUT", "PATCH"} {
+				checks, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+				require.NoError(t, err)
+				require.ElementsMatch(t, []Check{
+					{"Radius.Core/environments/use/action", lowerTarget(envA)},
+					{"Radius.Core/applications/write", lowerTarget(appA)},
+				}, checks)
+			}
+			for _, property := range []string{"environment", "application"} {
+				for _, value := range []any{nil, "", 42, plane, target} {
+					_, err := catalog.ReferenceChecks("PUT", target,
+						map[string]any{"properties": map[string]any{property: value}}, ReferenceOptions{})
+					require.Error(t, err, "%s=%v", property, value)
+				}
+			}
 		})
 	}
 }
@@ -99,18 +139,35 @@ func TestResolvedSchemaReferences(t *testing.T) {
 }
 
 func TestReferenceBoundaryDecisions(t *testing.T) {
-	catalog, err := NewCatalog(nil)
+	catalog, err := NewCatalog([]Registration{{Type: "Team.Data/widgets", PermissionSets: []string{ApplicationResources}}})
 	require.NoError(t, err)
 	identity := testIdentity()
 	evaluator, err := NewEvaluator(catalog, nil, []api.RoleAssignmentResource{testAssignment("developer", builtInID("application-developer"), teamA, identity.Principal)})
 	require.NoError(t, err)
-	body := map[string]any{"properties": map[string]any{"environment": envA, "application": teamB + "/providers/Radius.Core/applications/other"}}
-	checks, err := catalog.ReferenceChecks("PUT", appA, body, ReferenceOptions{})
-	require.NoError(t, err)
-	results, err := evaluator.Evaluate(identity, append([]Check{{"Radius.Core/applications/write", appA}}, checks...))
-	require.NoError(t, err)
-	require.True(t, results[0].Allowed)
-	for _, result := range results[1:] {
-		require.False(t, result.Allowed, result.Permission+" "+result.Target)
+	for _, tt := range []struct{ typ, environment string }{
+		{"Radius.Core/applications", envA},
+		{"Team.Data/widgets", teamB + "/providers/Radius.Core/environments/other"},
+	} {
+		for _, method := range []string{"PUT", "PATCH"} {
+			t.Run(method+"/"+tt.typ, func(t *testing.T) {
+				target := teamA + "/providers/" + tt.typ + "/test"
+				body := map[string]any{"properties": map[string]any{
+					"environment": tt.environment,
+					"application": teamB + "/providers/Radius.Core/applications/other",
+				}}
+				checks, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+				require.NoError(t, err)
+				require.ElementsMatch(t, []Check{
+					{"Radius.Core/environments/use/action", lowerTarget(tt.environment)},
+					{"Radius.Core/applications/write", lowerTarget(teamB + "/providers/Radius.Core/applications/other")},
+				}, checks)
+				results, err := evaluator.Evaluate(identity, append([]Check{{tt.typ + "/write", target}}, checks...))
+				require.NoError(t, err)
+				require.True(t, results[0].Allowed)
+				for _, result := range results[1:] {
+					require.False(t, result.Allowed, result.Permission+" "+result.Target)
+				}
+			})
+		}
 	}
 }
