@@ -149,7 +149,7 @@ func newInstallClient(helmConf *helm.Configuration, releaseName, namespace strin
 // A non-positive timeout falls back to DefaultInstallTimeout.
 // See https://helm.sh/docs/helm/helm_upgrade/#options for details on --reset-then-reuse-values behavior.
 func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool, timeout time.Duration) (*releasev1.Release, error) {
-	upgradeClient := newUpgradeClient(helmConf, namespace, wait, reuseValues, timeout)
+	upgradeClient := newUpgradeClient(helmConf, namespace, wait, reuseValues, timeout, usesServerSideApply(helmConf, releaseName))
 
 	if vals == nil {
 		vals = map[string]any{}
@@ -165,7 +165,7 @@ func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmC
 
 // newUpgradeClient builds the Helm upgrade action used by RunHelmUpgrade. It is separated from
 // RunHelmUpgrade so the wait strategy and timeout configuration can be asserted without a cluster.
-func newUpgradeClient(helmConf *helm.Configuration, namespace string, wait bool, reuseValues bool, timeout time.Duration) *helm.Upgrade {
+func newUpgradeClient(helmConf *helm.Configuration, namespace string, wait bool, reuseValues bool, timeout time.Duration, serverSideApply bool) *helm.Upgrade {
 	upgradeClient := helm.NewUpgrade(helmConf)
 	upgradeClient.Namespace = namespace
 	upgradeClient.WaitStrategy = waitStrategy(wait)
@@ -174,8 +174,29 @@ func newUpgradeClient(helmConf *helm.Configuration, namespace string, wait bool,
 	// any user overrides previously stored on the release. When the caller opts out, use ResetValues semantics.
 	upgradeClient.ResetThenReuseValues = reuseValues
 	upgradeClient.ResetValues = !reuseValues
+	// Take over fields owned by other managers, such as an older CLI saved under a different file name, helm,
+	// or kubectl, as client-side apply did with Helm 3. Helm rejects this option for client-side apply, which
+	// releases first installed with Helm 3 still use and which already overwrites those fields.
+	upgradeClient.ForceConflicts = serverSideApply
 
 	return upgradeClient
+}
+
+// usesServerSideApply reports whether Helm will upgrade the release with server-side apply. Helm upgrades
+// in "auto" mode, which keeps the apply method of the release's latest revision.
+func usesServerSideApply(helmConf *helm.Configuration, releaseName string) bool {
+	if helmConf.Releases == nil {
+		return false
+	}
+	last, err := helmConf.Releases.Last(releaseName)
+	if err != nil {
+		return false
+	}
+	rel, err := asRelease(last)
+	if err != nil || rel == nil {
+		return false
+	}
+	return rel.ApplyMethod == string(releasev1.ApplyMethodServerSideApply)
 }
 
 // RunHelmUninstall removes a Helm release and its associated resources from the cluster.

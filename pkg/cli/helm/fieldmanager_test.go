@@ -19,6 +19,8 @@ limitations under the License.
 package helm
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,8 +30,11 @@ import (
 	"github.com/stretchr/testify/require"
 	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -37,9 +42,9 @@ import (
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// TestFieldManagerIgnoresExecutableName installs as the release asset name and upgrades as rad.
-// Before the field manager was fixed, the upgrade failed with a server-side apply conflict.
-func TestFieldManagerIgnoresExecutableName(t *testing.T) {
+// TestUpgradeTakesOverFields upgrades a value that another manager also owns. Radius must apply as rad and take
+// the field over, as client-side apply did with Helm 3, instead of failing with a server-side apply conflict.
+func TestUpgradeTakesOverFields(t *testing.T) {
 	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
 		t.Skip("Run make test or set KUBEBUILDER_ASSETS to run the isolated API-server regression.")
 	}
@@ -56,36 +61,76 @@ func TestFieldManagerIgnoresExecutableName(t *testing.T) {
 	chart, err := loader.Load(chartPath)
 	require.NoError(t, err)
 
-	namespace := "field-manager"
-	flags := genericclioptions.NewConfigFlags(false)
-	flags.KubeConfig = &kubeconfig
-	flags.Namespace = &namespace
-	configuration := &helm.Configuration{}
-	require.NoError(t, configuration.Init(flags, namespace, helmDriverSecret))
-	radiusClient := NewHelmClient()
+	tests := []struct {
+		name            string
+		serverSideApply bool
+		otherManager    string
+		otherOperation  metav1.ManagedFieldsOperationType
+	}{
+		{name: "release asset name", serverSideApply: true, otherManager: "rad_linux_amd64", otherOperation: metav1.ManagedFieldsOperationApply},
+		{name: "kubectl edit", serverSideApply: true, otherManager: "kubectl-edit", otherOperation: metav1.ManagedFieldsOperationUpdate},
+		{name: "client-side apply release", serverSideApply: false, otherManager: "kubectl-edit", otherOperation: metav1.ManagedFieldsOperationUpdate},
+	}
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			namespace := fmt.Sprintf("field-manager-%d", i)
+			flags := genericclioptions.NewConfigFlags(false)
+			flags.KubeConfig = &kubeconfig
+			flags.Namespace = &namespace
+			configuration := &helm.Configuration{}
+			require.NoError(t, configuration.Init(flags, namespace, helmDriverSecret))
 
-	// Keep this test serial: Helm's default manager comes from os.Args[0].
-	originalBinary := os.Args[0]
-	t.Cleanup(func() { os.Args[0] = originalBinary })
+			installClient := newInstallClient(configuration, "radius", namespace, false, time.Minute)
+			installClient.ServerSideApply = tt.serverSideApply
+			_, err := installClient.Run(chart, map[string]any{})
+			require.NoError(t, err)
+			require.Equal(t, tt.serverSideApply, usesServerSideApply(configuration, "radius"))
 
-	os.Args[0] = "rad_linux_amd64"
-	_, err = radiusClient.RunHelmInstall(configuration, chart, nil, "radius", namespace, false, time.Minute)
-	require.NoError(t, err)
+			configMaps := client.CoreV1().ConfigMaps(namespace)
+			if tt.otherOperation == metav1.ManagedFieldsOperationApply {
+				_, err = configMaps.Apply(t.Context(),
+					corev1ac.ConfigMap("field-manager", namespace).WithData(map[string]string{"image": "0.61"}),
+					metav1.ApplyOptions{FieldManager: tt.otherManager})
+			} else {
+				_, err = configMaps.Patch(t.Context(), "field-manager", types.MergePatchType,
+					[]byte(`{"data":{"image":"0.61-custom"}}`), metav1.PatchOptions{FieldManager: tt.otherManager})
+			}
+			require.NoError(t, err)
+			configMap, err := configMaps.Get(t.Context(), "field-manager", metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Contains(t, imageOwners(t, configMap), tt.otherManager)
 
-	os.Args[0] = "rad"
-	_, err = radiusClient.RunHelmUpgrade(configuration, chart, map[string]any{"image": "0.62.0"}, "radius", namespace, false, true, time.Minute)
-	require.NoError(t, err)
+			_, err = NewHelmClient().RunHelmUpgrade(configuration, chart, map[string]any{"image": "0.62.0"}, "radius", namespace, false, true, time.Minute)
+			require.NoError(t, err)
 
-	configMap, err := client.CoreV1().ConfigMaps(namespace).Get(t.Context(), "field-manager", metav1.GetOptions{})
-	require.NoError(t, err)
-	require.Equal(t, "0.62.0", configMap.Data["image"])
-	var managers []string
+			configMap, err = configMaps.Get(t.Context(), "field-manager", metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, "0.62.0", configMap.Data["image"])
+			require.NotContains(t, imageOwners(t, configMap), tt.otherManager)
+			if tt.serverSideApply {
+				require.Equal(t, []string{FieldManager}, imageOwners(t, configMap))
+			}
+		})
+	}
+}
+
+// imageOwners returns the managers that own data.image on the ConfigMap.
+func imageOwners(t *testing.T, configMap *corev1.ConfigMap) []string {
+	t.Helper()
+	var owners []string
 	for _, fields := range configMap.ManagedFields {
-		if fields.Operation == metav1.ManagedFieldsOperationApply {
-			managers = append(managers, fields.Manager)
+		if fields.FieldsV1 == nil {
+			continue
+		}
+		var owned struct {
+			Data map[string]json.RawMessage `json:"f:data"`
+		}
+		require.NoError(t, json.Unmarshal(fields.FieldsV1.GetRawBytes(), &owned))
+		if _, ok := owned.Data["f:image"]; ok {
+			owners = append(owners, fields.Manager)
 		}
 	}
-	require.Equal(t, []string{FieldManager}, managers)
+	return owners
 }
 
 // startTestAPIServer starts a private API server and returns a kubeconfig path and a client for it.

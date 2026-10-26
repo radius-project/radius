@@ -32,6 +32,7 @@ import (
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -383,13 +384,15 @@ func Test_newInstallClient_Configuration(t *testing.T) {
 }
 
 // Test_newUpgradeClient_Configuration asserts that the upgrade action is actually configured with
-// the legacy wait strategy, an effective timeout, and the expected value-reuse semantics.
+// the legacy wait strategy, an effective timeout, the expected value-reuse semantics, and forced
+// conflicts whenever the upgrade uses server-side apply.
 func Test_newUpgradeClient_Configuration(t *testing.T) {
 	tests := []struct {
 		name            string
 		wait            bool
 		reuseValues     bool
 		timeout         time.Duration
+		serverSideApply bool
 		expectedWait    kube.WaitStrategy
 		expectedTimeout time.Duration
 	}{
@@ -398,6 +401,7 @@ func Test_newUpgradeClient_Configuration(t *testing.T) {
 			wait:            true,
 			reuseValues:     true,
 			timeout:         20 * time.Minute,
+			serverSideApply: true,
 			expectedWait:    kube.LegacyStrategy,
 			expectedTimeout: 20 * time.Minute,
 		},
@@ -406,6 +410,7 @@ func Test_newUpgradeClient_Configuration(t *testing.T) {
 			wait:            true,
 			reuseValues:     false,
 			timeout:         0,
+			serverSideApply: true,
 			expectedWait:    kube.LegacyStrategy,
 			expectedTimeout: DefaultInstallTimeout,
 		},
@@ -423,13 +428,46 @@ func Test_newUpgradeClient_Configuration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			upgradeClient := newUpgradeClient(&helm.Configuration{}, "test-namespace", tt.wait, tt.reuseValues, tt.timeout)
+			upgradeClient := newUpgradeClient(&helm.Configuration{}, "test-namespace", tt.wait, tt.reuseValues, tt.timeout, tt.serverSideApply)
 
 			require.Equal(t, tt.expectedWait, upgradeClient.WaitStrategy)
 			require.Equal(t, tt.expectedTimeout, upgradeClient.Timeout)
 			require.Equal(t, "test-namespace", upgradeClient.Namespace)
 			require.Equal(t, tt.reuseValues, upgradeClient.ResetThenReuseValues)
 			require.Equal(t, !tt.reuseValues, upgradeClient.ResetValues)
+			require.Equal(t, tt.serverSideApply, upgradeClient.ForceConflicts)
+			require.Equal(t, "auto", upgradeClient.ServerSideApply)
+		})
+	}
+}
+
+func Test_usesServerSideApply(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		applyMethod string
+		noRelease   bool
+		expected    bool
+	}{
+		{name: "server-side apply release", applyMethod: "ssa", expected: true},
+		{name: "client-side apply release", applyMethod: "csa", expected: false},
+		{name: "release from Helm 3", applyMethod: "", expected: false},
+		{name: "no release", noRelease: true, expected: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			configuration := &helm.Configuration{Releases: storage.Init(driver.NewMemory())}
+			if !tt.noRelease {
+				require.NoError(t, configuration.Releases.Create(&releasev1.Release{
+					Name:        "radius",
+					Version:     1,
+					Namespace:   "radius-system",
+					ApplyMethod: tt.applyMethod,
+					Info:        &releasev1.Info{Status: releasecommon.StatusDeployed},
+				}))
+			}
+			require.Equal(t, tt.expected, usesServerSideApply(configuration, "radius"))
 		})
 	}
 }
