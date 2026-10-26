@@ -17,7 +17,6 @@
 package v20250801preview
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -50,7 +49,7 @@ func TestAssignmentRequestScopes(t *testing.T) {
 					},
 				},
 			}
-			request, err := client.createOrUpdateCreateRequest(context.Background(), scope, "team-a", resource, nil)
+			request, err := client.createOrUpdateCreateRequest(t.Context(), scope, "team-a", resource, nil)
 			require.NoError(t, err)
 			require.Equal(t, http.MethodPut, request.Raw().Method)
 			require.Equal(t, "/"+scope+"/providers/Radius.Core/roleAssignments/team-a", request.Raw().URL.Path)
@@ -59,7 +58,7 @@ func TestAssignmentRequestScopes(t *testing.T) {
 			body, err := io.ReadAll(request.Raw().Body)
 			require.NoError(t, err)
 			require.JSONEq(t, `{"properties":{"roleDefinitionId":"/providers/Radius.Core/roleDefinitions/environment-deployer","principal":{"type":"group","issuer":"kubernetes:cluster-id","subject":"team-a-devs"}}}`, string(body))
-			deletion, err := client.deleteCreateRequest(context.Background(), scope, "team-a", &ScopedRoleAssignmentsClientDeleteOptions{TakeOwnership: to.Ptr(true)})
+			deletion, err := client.deleteCreateRequest(t.Context(), scope, "team-a", &ScopedRoleAssignmentsClientDeleteOptions{TakeOwnership: to.Ptr(true)})
 			require.NoError(t, err)
 			require.Equal(t, request.Raw().URL.Path, deletion.Raw().URL.Path)
 			require.Equal(t, "true", deletion.Raw().URL.Query().Get("takeOwnership"))
@@ -71,12 +70,12 @@ func TestInstallationAssignmentAndSettingsPaths(t *testing.T) {
 	t.Parallel()
 	assignment, err := NewInstallationRoleAssignmentsClient(nil, nil)
 	require.NoError(t, err)
-	request, err := assignment.getCreateRequest(context.Background(), "bootstrap", nil)
+	request, err := assignment.getCreateRequest(t.Context(), "bootstrap", nil)
 	require.NoError(t, err)
 	require.Equal(t, "/providers/Radius.Core/roleAssignments/bootstrap", request.Raw().URL.Path)
 	settings, err := NewAuthorizationSettingsClient(nil, nil)
 	require.NoError(t, err)
-	request, err = settings.getCreateRequest(context.Background(), nil)
+	request, err = settings.getCreateRequest(t.Context(), nil)
 	require.NoError(t, err)
 	require.Equal(t, "/providers/Radius.Core/authorizationSettings/default", request.Raw().URL.Path)
 }
@@ -96,7 +95,7 @@ func TestAccessInspectionDoesNotAssertGroups(t *testing.T) {
 	t.Parallel()
 	client, err := NewInstallationAccessClient(nil, nil)
 	require.NoError(t, err)
-	request, err := client.checkAccessCreateRequest(context.Background(), AccessCheckRequest{
+	request, err := client.checkAccessCreateRequest(t.Context(), AccessCheckRequest{
 		Checks: []*AccessCheck{{
 			Permission: to.Ptr("Radius.Core/environments/use/action"),
 			Target:     to.Ptr("/planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging"),
