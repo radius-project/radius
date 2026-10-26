@@ -49,6 +49,9 @@ func (s *Source) ServerConfig(namespace string) *tls.Config {
 			Certificates: []tls.Certificate{*m.cert},
 			ClientAuth:   tls.RequireAndVerifyClientCert,
 			ClientCAs:    m.pool,
+			// Resumed sessions keep the chains verified in the original handshake, so a
+			// client could reconnect after its CA was removed from the bundle.
+			SessionTicketsDisabled: true,
 			VerifyConnection: func(cs tls.ConnectionState) error {
 				_, err := identityFromChains(cs.VerifiedChains, namespace)
 				return err
@@ -78,45 +81,25 @@ func (s *Source) ClientConfig(namespace string) (*tls.Config, error) {
 
 	return &tls.Config{
 		MinVersion: tls.VersionTLS12,
+		RootCAs:    m.pool,
+		Time:       s.now,
 		GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
 			return m.cert, nil
 		},
-		// The default verifier needs RootCAs and checks only the leaf's hostname.
-		// VerifyConnection performs the full chain, hostname, and identity check instead.
-		InsecureSkipVerify: true, //nolint:gosec // verification is done in VerifyConnection.
+		// The standard verifier has checked the chain, validity dates, and server name.
 		VerifyConnection: func(cs tls.ConnectionState) error {
-			_, err := s.verifyServer(m.pool, cs.PeerCertificates, cs.ServerName, namespace)
+			// A long-lived config must not keep using an expired certificate, even with a
+			// server that does not request one.
+			if err := s.checkExpiry(m.cert); err != nil {
+				return err
+			}
+			if _, err := identityFromSAN(cs.ServerName, namespace); err != nil {
+				return peerError(fmt.Sprintf("server name %q is not a canonical Radius component name", cs.ServerName), nil)
+			}
+			_, err := identityFromChains(cs.VerifiedChains, namespace)
 			return err
 		},
 	}, nil
-}
-
-// verifyServer verifies a server chain against pool and the server name, then maps it
-// to a component identity.
-func (s *Source) verifyServer(pool *x509.CertPool, certs []*x509.Certificate, serverName, namespace string) (Identity, error) {
-	if len(certs) == 0 {
-		return Identity{}, peerError("no peer certificate", nil)
-	}
-	if _, err := identityFromSAN(serverName, namespace); err != nil {
-		return Identity{}, peerError(fmt.Sprintf("server name %q is not a canonical Radius component name", serverName), nil)
-	}
-
-	intermediates := x509.NewCertPool()
-	for _, cert := range certs[1:] {
-		intermediates.AddCert(cert)
-	}
-
-	chains, err := certs[0].Verify(x509.VerifyOptions{
-		Roots:         pool,
-		Intermediates: intermediates,
-		DNSName:       serverName,
-		CurrentTime:   s.now(),
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-	})
-	if err != nil {
-		return Identity{}, peerError("certificate verification failed", err)
-	}
-	return identityFromChains(chains, namespace)
 }
 
 // identityFromChains returns the identity from the first verified chain that passes
