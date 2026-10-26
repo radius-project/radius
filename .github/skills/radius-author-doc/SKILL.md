@@ -17,6 +17,7 @@ Draft a contributing doc grounded in real code, in the format the repository pre
 | **Fix** an existing doc that drifted from code                       | [radius-update-doc](../radius-update-doc/SKILL.md)                               |
 | **Find** missing or stale docs, or assess a code change's doc impact | [radius-contributing-docs-updater](../radius-contributing-docs-updater/SKILL.md) |
 | **Diagram** a subsystem / write an architecture doc                  | [radius-architecture-documenter](../radius-architecture-documenter/SKILL.md)     |
+| **Propose** a technical design for review (design note)              | [radius-author-design-note](../radius-author-design-note/SKILL.md)               |
 
 Backing doc: [authoring-contributing-docs.md](../../../docs/contributing/authoring-contributing-docs.md). This skill is a convenience wrapper — it adds no knowledge that is not already in that doc. The asset conventions, templates, and budgets it relies on live in [contributing-agent-assets.md](../../../docs/contributing/contributing-agent-assets.md).
 
