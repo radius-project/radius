@@ -60,5 +60,4 @@ If you are new to the codebase, read these in order:
 - UCP-specific background and older walkthroughs live in [../ucp](../ucp).
 - contributor-oriented operational setup lives in
   [../contributing](../contributing).
-- larger design proposals and historical decisions live in the external
-  `radius-project/design-notes` repository.
+- larger design proposals and historical decisions live in [eng/design-notes](../../eng/design-notes/README.md).
