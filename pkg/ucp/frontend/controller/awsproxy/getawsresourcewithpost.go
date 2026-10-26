@@ -89,16 +89,12 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return ucpaws.HandleAWSError(ctx, err)
 	}
 
-	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(properties, *describeTypeOutput.Schema)
-	if err != nil {
-		e := v1.ErrorResponse{
-			Error: &v1.ErrorDetails{
-				Code:    v1.CodeInvalid,
-				Message: err.Error(),
-			},
-		}
-
-		return armrpc_rest.NewBadRequestARMResponse(e), nil
+	if describeTypeOutput == nil || describeTypeOutput.Schema == nil {
+		return nil, fmt.Errorf("CloudFormation DescribeType returned no schema for %s", serviceCtx.ResourceTypeInAWSFormat())
+	}
+	awsResourceIdentifier, errResponse, err := p.resolveReadIdentifier(ctx, properties, *describeTypeOutput.Schema, serviceCtx.ResourceTypeInAWSFormat(), region)
+	if err != nil || errResponse != nil {
+		return errResponse, err
 	}
 
 	cloudcontrolOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
