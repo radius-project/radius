@@ -15,7 +15,7 @@ The [original GitOps feature specification](2024-06-gitops-feature-spec.md) rema
 - Distinguish Git synchronization, Radius provisioning, and observed workload health so a successfully applied manifest cannot conceal a failed Recipe or an unobserved deployment.
 - Make a failed Bicep or Terraform operation traceable from the Argo CD application to the affected Radius resource, attempted revision, and actionable diagnostic.
 - Preserve the separation of operator, developer, and SRE responsibilities, with application and environment scope enforced throughout navigation and deployment.
-- Let operators adopt Argo CD without requiring Flux, while leaving existing Flux installations and configuration unchanged. Success means users can complete Scenarios 2-5 on a representative application containing a Kubernetes workload, an external dependency, and a failed Recipe without requiring cluster-admin access.
+- Let operators adopt Argo CD without requiring Flux, while leaving existing Flux installations and configuration unchanged. Success means users can complete Scenarios 2-5 on a representative application containing a Kubernetes workload, a dependency outside its Kubernetes resource tree (such as a cloud-hosted database), and a failed Recipe without requiring cluster-admin access.
 
 ### Non-goals (out of scope)
 
