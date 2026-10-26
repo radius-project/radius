@@ -53,6 +53,16 @@ func Test_ConsoleURL(t *testing.T) {
 			want: "https://console.amazonaws-us-gov.com/sqs/v3/home?region=us-gov-west-1#/queues",
 		},
 		{
+			name: "CloudWatch log group",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Logs/LogGroup/my-logs",
+			want: "https://us-west-2.console.aws.amazon.com/cloudwatch/home?region=us-west-2#logsV2:log-groups",
+		},
+		{
+			name: "Terraform CloudWatch log group",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-east-2/providers/Terraform.AWS/aws_cloudwatch_log_group/my-logs",
+			want: "https://us-east-2.console.aws.amazon.com/cloudwatch/home?region=us-east-2#logsV2:log-groups",
+		},
+		{
 			name: "ElastiCache links to its engine-neutral dashboard",
 			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_elasticache_cluster/memcached-1",
 			want: "https://us-west-2.console.aws.amazon.com/elasticache/home?region=us-west-2",

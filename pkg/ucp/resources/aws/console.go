@@ -59,6 +59,7 @@ var (
 	bedrockAgents           = consolePage{path: "/bedrock/home", hash: "#/agents"}
 	bedrockGuardrails       = consolePage{path: "/bedrock/home", hash: "#/guardrails"}
 	bedrockKnowledgeBases   = consolePage{path: "/bedrock/home", hash: "#/knowledge-bases"}
+	cloudWatchLogGroups     = consolePage{path: "/cloudwatch/home", hash: "#logsV2:log-groups"}
 	codeBuildProjects       = consolePage{path: "/codesuite/codebuild/projects"}
 	daxClusters             = consolePage{path: "/dynamodbv2/home", hash: "#dax-clusters"}
 	dmsReplicationInstances = consolePage{path: "/dms/v2/home", hash: "#replicationInstances"}
@@ -123,6 +124,7 @@ var consolePages = map[string]consolePage{
 	"aws.iam/accesskey":                         iamUsers,
 	"aws.lambda/function":                       lambdaFunctions,
 	"aws.medialive/channel":                     mediaLiveChannels,
+	"aws.logs/loggroup":                         cloudWatchLogGroups,
 	"aws.memorydb/cluster":                      memoryDBClusters,
 	"aws.msk/cluster":                           mskClusters,
 	"aws.msk/serverlesscluster":                 mskClusters,
@@ -139,6 +141,7 @@ var consolePages = map[string]consolePage{
 	"terraform.aws/aws_alb_target_group":              ec2TargetGroups,
 	"terraform.aws/aws_appsync_graphql_api":           appSyncAPIs,
 	"terraform.aws/aws_bedrockagent_knowledge_base":   bedrockKnowledgeBases,
+	"terraform.aws/aws_cloudwatch_log_group":          cloudWatchLogGroups,
 	"terraform.aws/aws_codebuild_project":             codeBuildProjects,
 	"terraform.aws/aws_dax_cluster":                   daxClusters,
 	"terraform.aws/aws_db_instance":                   rdsDatabases,
