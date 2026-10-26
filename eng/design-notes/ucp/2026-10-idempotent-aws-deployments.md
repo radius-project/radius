@@ -154,7 +154,8 @@ type AWSResource struct {
 
 type AWSResourceProperties struct {
     // AWSIdentifier is what Cloud Control finds the resource by, such as
-    // vpc-0a1b2c3d. Empty until the first create finishes.
+    // vpc-0a1b2c3d. Saved before the create when the properties give it,
+    // such as BucketName, and when the create finishes otherwise.
     AWSIdentifier string `json:"awsIdentifier,omitempty"`
 
     // Owner is who deploys this alias, in the format described in
@@ -177,7 +178,7 @@ type AWSResourceProperties struct {
 
     // ClientToken is a UUID that UCP generates before the first create and
     // sends with every attempt to create the resource, so Cloud Control treats
-    // a retry as the same request.
+    // a retry as the same request. Cleared when the create finishes.
     ClientToken string `json:"clientToken,omitempty"`
 
     // ClientTokenCreatedAt is when UCP generated ClientToken.
@@ -189,12 +190,10 @@ type AWSResourceProperties struct {
 }
 ```
 
-UCP also keeps a **claim** for each AWS identifier that a record points at: a small entry keyed by the AWS account, region, type, and AWS identifier, which holds the alias whose record points at that resource. It makes sure two aliases never manage the same AWS resource, as described in [Alias ownership](#alias-ownership).
-
 ```mermaid
 flowchart LR
   DE[Deployment Engine] -- "PUT .../Type/{alias}" --> P[UCP]
-  P <-- read and save records and claims --> RR[(Data store)]
+  P <-- read and save records --> RR[(Data store)]
   P -- start create or update --> H[Cloud Control]
   P -- queue --> W[UCP worker]
   W -- poll request status --> H
@@ -226,14 +225,14 @@ sequenceDiagram
     U->>AWS: Update only what changed
   else No record
     U->>AWS: Look for an existing resource by name or properties
+    U->>DB: Check no other alias's record has the AWS identifier, if known
     U->>DB: Save record with a client token and pending values
-    U->>DB: Claim the AWS identifier, if known
     U->>AWS: Create with the record's client token
   end
   U->>DB: Save operation
   U-->>DE: 201 Created
   W->>AWS: Poll until done
-  W->>DB: Claim an identifier AWS assigned, save it, move pending values to last-applied
+  W->>DB: Save AWS identifier, move pending values to last-applied
   DE->>U: Poll operation status
   U->>DB: Read operation
 ```
@@ -242,11 +241,11 @@ A PUT goes through four steps.
 
 **1. Read the record.** If there is no record, this is the first deploy under this alias.
 
-**2. With no record, take over or create.** UCP looks for an existing AWS resource the same way POST `/:put` does today: first by `name`, then by the AWS identifier in the properties. If AWS has that resource, UCP **takes it over**: it saves a record and a claim, and continues as an update. Otherwise UCP creates the resource, unless the template sets `name`, as described in [The `name` field](#the-name-field). Before it creates anything, UCP saves the record with a new client token, and claims the identifier if the properties give one. It sends that token with every attempt to create the resource, so Cloud Control treats a retry as the same request instead of creating a second resource.
+**2. With no record, take over or create.** UCP looks for an existing AWS resource the same way POST `/:put` does today: first by `name`, then by the AWS identifier in the properties. Before it takes over or creates a resource whose identifier it knows, UCP checks that no other alias manages it, as described in [Alias ownership](#alias-ownership). If AWS has that resource, UCP **takes it over**: it saves a record and continues as an update. Otherwise UCP creates the resource, unless the template sets `name`, as described in [The `name` field](#the-name-field). Before it creates anything, UCP saves the record with a new client token, and with the AWS identifier when the properties give one. It sends that token with every attempt to create the resource, so Cloud Control treats a retry as the same request instead of creating a second resource.
 
-**3. With a record, compute the update.** If the record has no AWS identifier yet, its first create has not finished: the PUT gets 409 while that create is in progress, and otherwise resumes it, as described in [Operations](#operations). If no claim holds the record's identifier, because saving the claim failed earlier, UCP claims it first, as described in [Alias ownership](#alias-ownership). UCP then reads the resource from AWS by the identifier in the record, and compares it with the template and the last-applied properties, as described in [Comparing properties](#comparing-properties). If nothing differs, UCP saves the new last-applied properties and fingerprints and returns 200 without calling AWS. Saving them matters when the template starts setting a property that already matches AWS: Radius now owns it, so removing it later clears it.
+**3. With a record, compute the update.** If the record still has a client token, its first create has not finished: the PUT gets 409 while that create is in progress, and otherwise resumes it, as described in [Operations](#operations). Otherwise UCP reads the resource from AWS by the identifier in the record, and compares it with the template and the last-applied properties, as described in [Comparing properties](#comparing-properties). If nothing differs, UCP saves the new last-applied properties and fingerprints and returns 200 without calling AWS. Saving them matters when the template starts setting a property that already matches AWS: Radius now owns it, so removing it later clears it.
 
-**4. Finish the operation.** Before it calls AWS, UCP saves the new last-applied properties and fingerprints on the record as **pending values**. It then saves an operation and returns 201. A UCP worker polls Cloud Control until AWS finishes. On success, it claims the identifier if AWS assigned it, saves the identifier, and moves the pending values to last-applied. On failure, it clears the pending values, so the previous last-applied properties stay, and drops the client token, so the next deploy starts a new create.
+**4. Finish the operation.** Before it calls AWS, UCP saves the new last-applied properties and fingerprints on the record as **pending values**. It then saves an operation and returns 201. A UCP worker polls Cloud Control until AWS finishes. On success, it saves the identifier if AWS assigned it, moves the pending values to last-applied, and clears the client token. When an update fails, it clears the pending values, so the previous last-applied properties stay. When a create fails, it removes the record, so the next deploy starts over.
 
 ### Comparing properties
 
@@ -304,7 +303,7 @@ Two owners match when the strings are equal, ignoring case, because Radius IDs a
 
 The record says who owns the alias, so each request has to say who is asking. UCP cannot work that out on its own, because a request carries only the alias-based ID and the properties. The caller sends the owner in a header, as described in [Changes outside UCP](#changes-outside-ucp). A PUT or DELETE without the header fails with 400. A PUT or DELETE from the same owner proceeds as usual. One from a different owner fails with 409, naming the alias and the owner that holds it, and nothing changes in AWS.
 
-An AWS resource has one claim, and so one alias that updates and deletes it. Two aliases can point at the same resource, for example when two recipes set the same `BucketName`. So before UCP takes over or creates a resource whose identifier it knows, it saves the record and then claims the identifier, with a check that fails if a claim already exists. A claim held by the same alias passes, so a retried deploy is not blocked by its own claim. While a create is in progress, the record has no AWS identifier yet, but it still holds its claim as long as it has a client token or request token. If another alias holds the claim, UCP removes the record it just saved, and the deploy fails with 409 naming that alias. Two deploys racing for the same resource cannot both win. For a resource whose identifier AWS assigns, such as a VPC, the worker claims the identifier when AWS returns it, before it marks the create as done. Without that claim, another alias could take over the VPC by setting `name` to its ID.
+An AWS resource has one record, and so one alias that updates and deletes it. Two aliases can point at the same resource, for example when two recipes set the same `BucketName`, or when a template sets `name` to a VPC that another alias created. So before UCP takes over a resource, or creates one whose identifier the properties give, it searches the records in the same account, region, and type for that AWS identifier. If a record under another alias has it, the deploy fails with 409 naming that alias, and nothing changes in AWS. Because UCP saves the identifier before a create when the properties give it, the search also finds a create that is still in progress. The search and the save are separate steps, so two deploys that take over the same resource at the same moment can both succeed. This needs two apps to deploy the same resource within seconds of each other, so the design accepts it.
 
 An app that needs a resource another app owns references it with `existing`, which reads it without managing it.
 
@@ -325,11 +324,11 @@ Neither route saves a record or checks the owner, because reading another owner'
 
 ### Listing resources
 
-A list request returns every resource of the type that AWS returns, as today. For a resource that a claim holds, the ID ends in the claim's alias, so a GET on it works. For any other resource, the ID ends in its AWS identifier, as today. Radius does not manage those resources, and a GET on that ID returns 404. They can be read with POST `/:get`.
+A list request returns every resource of the type that AWS returns, as today. For a resource that a record points at, the ID ends in the record's alias, so a GET on it works. For any other resource, the ID ends in its AWS identifier, as today. Radius does not manage those resources, and a GET on that ID returns 404. They can be read with POST `/:get`.
 
 ### Deleting a resource
 
-A DELETE by alias reads the record, checks the owner, deletes the resource in AWS by the record's identifier, and then removes the record and its claim. If the record's create failed, so it has no AWS identifier, UCP only removes the record and its claim. If there is no record, UCP returns 204 without calling AWS, so a retried DELETE never deletes a different resource that happens to have the alias as its identifier.
+A DELETE by alias reads the record, checks the owner, deletes the resource in AWS by the record's identifier, and then removes the record. If the record has no AWS identifier yet, or AWS says the resource does not exist, UCP only removes the record. If there is no record, UCP returns 204 without calling AWS, so a retried DELETE never deletes a different resource that happens to have the alias as its identifier.
 
 ### Operations
 
@@ -340,7 +339,7 @@ The Deployment Engine polls UCP for operation status, today and with this design
 
 This is the standard ARM-RPC pattern: the resource provider owns its async operations, and the client only polls. UCP already works this way for resource groups and resource providers.
 
-A second PUT or DELETE while an operation is in progress gets 409. An operation is in progress from when UCP queues it until it finishes, as long as the worker keeps polling it. The worker records each poll, and an operation that has not been polled for 10 minutes is stale. A create that UCP never queued, because UCP failed after saving the record, has no operation in progress. The next PUT resumes a stale or never-queued create instead of getting 409: with a request token, the worker polls the original request again, and without one, UCP sends the create again with the record's client token, or with a new one if the last create failed.
+A second PUT or DELETE while an operation is in progress gets 409. An operation is in progress from when UCP queues it until it finishes, as long as the worker keeps polling it. The worker records each poll, and an operation that has not been polled for 10 minutes is stale. A create that UCP never queued, because UCP failed after saving the record, has no operation in progress. The next PUT resumes a stale or never-queued create instead of getting 409: with a request token, the worker polls the original request again, and without one, UCP sends the create again with the record's client token.
 
 UCP queues AWS operations with a timeout longer than any Cloud Control request can run, instead of the async worker's default of 2 minutes, so UCP never gives up on a request that Cloud Control is still running. Cloud Control applies each type's own time limit. A long create, such as an RDS instance that takes 30 minutes, never looks stale while the worker is polling it.
 
@@ -376,7 +375,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
 - A record exists, but the template names a different AWS identifier: 409 naming the alias and both identifiers.
 - Another owner holds the alias: 409 naming the alias and that owner.
 - The owner header is missing: 400.
-- Another alias holds the claim on the AWS resource: 409 naming that alias.
+- Another alias's record has the same AWS identifier: 409 naming that alias.
 - The template sets `name`, AWS has no such resource, and the properties do not set the same identifier: 400 naming `name`.
 - Another operation is in progress on the resource: 409.
 - A create-only property changed or was removed: 400 naming the property, without its value.
@@ -386,19 +385,17 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
 
 **Safe to retry.** A retry picks up where the last attempt stopped, and nothing is created twice.
 
-- Reading a record or claim fails for a reason other than "not found": 500, which the Deployment Engine retries. A failed read is never treated as "no record", because UCP would then create a duplicate.
-- Saving a record, claim, or pending values fails before UCP calls AWS: 500, and AWS is not called.
+- Reading or searching records fails for a reason other than "not found": 500, which the Deployment Engine retries. A failed read is never treated as "no record", because UCP would then create a duplicate.
+- Saving a record or pending values fails before UCP calls AWS: 500, and AWS is not called.
 - Reading the resource from AWS fails for a reason other than "not found": the deploy fails, and nothing is created or changed.
-- UCP stops after AWS accepted a create, before it saved the request token: the retry sends the same client token, and Cloud Control returns the first request. Cloud Control honors a client token for 36 hours, so UCP never resends one older than 24 hours. Instead, the deploy fails with 409 saying a create for the alias may already have run in AWS, and UCP removes the record and its claim. The user checks AWS, then takes over or deletes any resource that was created.
+- UCP stops after AWS accepted a create, before it saved the request token: the retry sends the same client token, and Cloud Control returns the first request. Cloud Control honors a client token for 36 hours, so UCP never resends one older than 24 hours. Instead, the deploy fails with 409 saying a create for the alias may already have run in AWS, and UCP removes the record. The user checks AWS, then takes over or deletes any resource that was created.
 - UCP stops before it queues an operation, or the worker stops polling: the next PUT resumes the operation, as described in [Operations](#operations).
 - Saving the result fails after AWS finished: the worker retries, and the operation stays in progress until the result is saved.
-- Removing the record or claim fails after AWS deleted the resource: the worker retries until both are removed.
+- Removing the record fails after AWS deleted the resource: the worker retries until it is removed.
 
 **Repaired by the next deploy.**
 
 - The resource was deleted outside Radius: AWS returns "not found", so UCP creates it again and updates the record.
-- A claim was left behind by a failure, because its alias has no record, its record points at a different identifier, or its record has no identifier and no client token or request token: the next deploy that takes over or creates that resource replaces it.
-- Another alias claims an identifier AWS assigned before the worker does: the operation fails, naming that alias, which now manages the resource. UCP removes this alias's record, so its next deploy creates a new resource.
 
 ## Security
 
@@ -414,15 +411,15 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
   - each row of the property comparison table, including nested paths, a changed array item, and a removed create-only property
   - the client token on a retried create, and a client token older than 24 hours that fails with 409 and removes the record
   - a stale operation that the next PUT resumes instead of returning 409, and a long operation that the worker keeps polling, which neither goes stale nor hits the async worker's timeout
-  - a retry after UCP failed between saving the record and queuing the create, which resumes the create with the same client token right away, and a retry after saving the claim failed, which saves the claim
-  - pending values moved to last-applied on success, cleared on failure, and a failed save retried
+  - a retry after UCP failed between saving the record and queuing the create, which resumes the create with the same client token right away
+  - pending values moved to last-applied on success, cleared when an update fails, the record removed when a create fails, and a failed save retried
   - the no-op path saving last-applied properties, so a property the template starts setting is cleared when removed later
   - a taken-over resource with write-only values and no fingerprints: an updatable value is sent once, a create-only value is not sent and does not fail, and fingerprints are saved
   - `name` taking over an existing resource, `name` that differs from the record, `name` that matches nothing in AWS (400), and `name` that matches the identifier in the properties (create)
   - the owner: a missing header (400), a different owner on PUT and DELETE (409), owners that differ only by case (match), and one app deployed to two environments in one resource group (409)
-  - claims: another alias holding the claim (409, and the new record removed), another alias holding the claim during its create, before AWS returns the identifier (409), a retry by the same alias (passes), two takeovers at the same time, taking over a VPC by `name` after another alias created it, and a claim left behind by a failure (replaced)
-  - DELETE by an alias, by an alias whose create failed (record and claim removed, nothing sent to AWS), and by an alias with no record (204, nothing sent to AWS)
-  - list IDs: the alias for a claimed resource, and the AWS identifier for any other
+  - another alias's record with the same AWS identifier (409), including one whose create is still in progress and a VPC taken over by `name` after another alias created it
+  - DELETE by an alias, by an alias whose record has no AWS identifier or whose resource AWS no longer has (record removed), and by an alias with no record (204, nothing sent to AWS)
+  - list IDs: the alias for a resource a record points at, and the AWS identifier for any other
   - a missing HMAC key: AWS PUTs fail with 500, and reads still work
   - operation status from UCP's data store
 - **Functional tests through the Deployment Engine**
@@ -432,7 +429,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
   - redeploy an unchanged password, and check that nothing is sent
   - reference a VPC created by another template with an alias-only `existing` block, and check that the read returns that VPC
 - **Existing tests to update**
-  - `pkg/ucp/frontend/controller/awsproxy`: delete the tests for POST `/:put` and `/:delete`. Rewrite the PUT, DELETE, and GET tests to go through the record, the claim, and the owner check. Update the operation status and result tests to read UCP's data store, the list tests for alias-based IDs, and `routes_test.go` for the removed routes.
+  - `pkg/ucp/frontend/controller/awsproxy`: delete the tests for POST `/:put` and `/:delete`. Rewrite the PUT, DELETE, and GET tests to go through the record, the identifier search, and the owner check. Update the operation status and result tests to read UCP's data store, the list tests for alias-based IDs, and `routes_test.go` for the removed routes.
   - `pkg/recipes/driver/bicep`: the owner in `providerConfig`, and the owner header on DELETE.
   - `pkg/recipes/recipecontext` and `pkg/recipes/paramresolver`: `context.aws.resourceNameHash`.
   - `pkg/cli/deployment`: the owner in `GetProviderConfigs`.
