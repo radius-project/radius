@@ -14,6 +14,16 @@ With UCP, we want to support ARM-RPC protocol for clients even for systems such 
 
 <br/><br/>
 
+### Comparing values AWS reports in a different form
+
+AWS often reports a value in a different form than the template set it. `GeneratePatch` (`pkg/aws/operations`) uses the type's schema, already loaded with `DescribeType`, to count these as unchanged, so an unchanged redeploy sends nothing to AWS:
+
+- **Arrays where order does not matter.** The schema marks them `"insertionOrder": false`, such as `SubnetIds` on a DB subnet group and `Tags` on most types. They are compared ignoring order, as multisets, with each item compared by its own rules.
+- **Values AWS rewrites.** The schema's `propertyTransform` turns the template's value into a pattern AWS's value must match. For example, an RDS `EngineVersion` of `8.4` matches a running `8.4.11`, and `DBInstanceIdentifier` is compared in lowercase. `$lowercase`, `$uppercase`, `$join`, `$string`, and `$OR` are supported, with string literals, array literals, and property references. A reference resolves against the property's parent object first, then the root. Text from the template is matched literally, and string literals in the expression are regular expressions. A property whose transform uses any other function or operator, or has an alternative that reads no template property (such as a fixed KMS key ARN pattern), is compared as it is, so a real change is still sent.
+- **Empty objects.** An empty object AWS reports, such as `DataProtectionPolicy: {}` on a log group, is kept unless the template sets values inside it.
+
+<br/><br/>
+
 ### Extension of ARM-RPC protocol in UCP
 
 All Azure resources have a name where the name is used in the resource ID
