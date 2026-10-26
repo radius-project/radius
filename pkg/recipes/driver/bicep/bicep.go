@@ -101,10 +101,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
-	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
-	if err != nil {
-		return nil, err
-	}
+	secrets := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
 
 	registryClient := d.RegistryClient
 	// Get ORAS authentication client if secrets are found for the registry.
@@ -117,7 +114,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		registryClient = authClient
 	}
 
-	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
+	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, recipes.RecipeDownloadFailed))
@@ -482,10 +479,7 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOpt
 	//		}
 	//	}
 	recipeData := make(map[string]any)
-	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
-	if err != nil {
-		return nil, err
-	}
+	secrets := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
 
 	registryClient := d.RegistryClient
 	// Get ORAS authentication client if secrets are found for the registry.
@@ -498,7 +492,7 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOpt
 		registryClient = authClient
 	}
 
-	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
+	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
 		return nil, err
 	}
