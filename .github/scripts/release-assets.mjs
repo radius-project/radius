@@ -75,7 +75,11 @@ function downloadUploadedAsset(github, owner, repo, asset, options) {
   );
 }
 
-export async function readBicepExtensionLock(github, tag) {
+export async function readBicepExtensionLock(
+  github,
+  tag,
+  options = { core: console }
+) {
   const owner = "radius-project";
   const repo = "radius";
   const releases = await github.paginate(github.rest.repos.listReleases, {
@@ -104,7 +108,9 @@ export async function readBicepExtensionLock(github, tag) {
     return undefined;
   }
   return JSON.parse(
-    (await downloadAsset(github, owner, repo, asset.id)).toString("utf8")
+    (await downloadUploadedAsset(github, owner, repo, asset, options)).toString(
+      "utf8"
+    )
   );
 }
 
