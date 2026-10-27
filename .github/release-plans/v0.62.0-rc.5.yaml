@@ -1,0 +1,368 @@
+schemaVersion: 2
+changelogPolicy: stable-only
+version: v0.62.0-rc.5
+releaseType: rc
+channel: "0.62"
+releaseDate: "2026-10-27"
+chartVersion: 0.62.0-rc.5
+source:
+  productRef: refs/remotes/origin/release/0.62
+  productCommit: 71f6fec3cae221e44827acf4b368317d3d2fd24c
+  releaseCommit: null
+  releaseCommitResolution: generated release backport commit on release/0.62
+releaseBranch: release/0.62
+releasePlanPath: .github/release-plans/v0.62.0-rc.5.yaml
+previousVersion: v0.62.0-rc.4
+siblingRepositories:
+  - name: recipes
+    repository: radius-project/recipes
+    sourceCommit: fbb82d03be20fe61eea1a9fbb9faeb1903bcaf88
+    sourceRef: release/0.62
+  - name: dashboard
+    repository: radius-project/dashboard
+    sourceCommit: b2b8934c2fb70724c48511cb606be244dcf20a79
+    sourceRef: release/0.62
+  - name: bicep-types-aws
+    repository: radius-project/bicep-types-aws
+    sourceCommit: b6f96f772b9463032fd1fdf0acd5d1a4cf791d8f
+    sourceRef: release/0.62
+expectedOutputs:
+  repository: radius-project/radius
+  cliAssets:
+    - arch: amd64
+      name: rad_darwin_amd64
+      os: darwin
+    - arch: arm64
+      name: rad_darwin_arm64
+      os: darwin
+    - arch: amd64
+      name: rad_linux_amd64
+      os: linux
+    - arch: arm
+      name: rad_linux_arm
+      os: linux
+    - arch: arm64
+      name: rad_linux_arm64
+      os: linux
+    - arch: amd64
+      name: rad_windows_amd64.exe
+      os: windows
+    - arch: arm64
+      name: rad_windows_arm64.exe
+      os: windows
+  images:
+    - category: production
+      name: applications-rp
+      radiusBuild: true
+      requiredPlatforms:
+        - linux/amd64
+        - linux/arm/v7
+        - linux/arm64
+    - category: non-go
+      name: bicep
+      radiusBuild: true
+      requiredPlatforms:
+        - linux/amd64
+        - linux/arm/v7
+        - linux/arm64
+    - category: production
+      name: controller
+      radiusBuild: true
+      requiredPlatforms:
+        - linux/amd64
+        - linux/arm/v7
+        - linux/arm64
+    - category: downstream
+      name: dashboard
+      radiusBuild: false
+      requiredPlatforms:
+        - linux/amd64
+    - category: downstream
+      name: deployment-engine
+      radiusBuild: false
+      requiredPlatforms:
+        - linux/amd64
+        - linux/arm/v7
+        - linux/arm64
+    - category: production
+      name: dynamic-rp
+      radiusBuild: true
+      requiredPlatforms:
+        - linux/amd64
+        - linux/arm/v7
+        - linux/arm64
+    - category: production
+      name: pre-upgrade
+      radiusBuild: true
+      requiredPlatforms:
+        - linux/amd64
+        - linux/arm/v7
+        - linux/arm64
+    - category: production
+      name: ucpd
+      radiusBuild: true
+      requiredPlatforms:
+        - linux/amd64
+        - linux/arm/v7
+        - linux/arm64
+  imageRegistry: ghcr.io/radius-project
+  helm:
+    expectedImages:
+      - alpine
+      - applications-rp
+      - bicep
+      - controller
+      - dashboard
+      - deployment-engine
+      - dynamic-rp
+      - kubectl
+      - pre-upgrade
+      - ucpd
+    ociReference: oci://ghcr.io/radius-project/helm-chart/radius
+    orasReference: ghcr.io/radius-project/helm-chart/radius
+  siblingRepositories:
+    - radius-project/bicep-types-aws
+    - radius-project/dashboard
+    - radius-project/recipes
+  ociArtifacts:
+    - artifactType: application/vnd.ms.bicep.provider.artifact
+      name: aws-bicep-types
+      repository: biceptypes.azurecr.io/aws
+    - artifactType: application/vnd.ms.bicep.provider.artifact
+      name: radius-bicep-types
+      repository: biceptypes.azurecr.io/radius
+includedBackports:
+  - source_pr: 13408
+    source_commit: 78d76f4e3ef8cb1fcd609acdf845f0a2ab2fba31
+    source_title: 'chore(deps): remove unused oav dev dependency'
+    source_url: https://github.com/radius-project/radius/pull/13408
+    already_present: false
+    backport_pr: 13420
+    backport_url: https://github.com/radius-project/radius/pull/13420
+    backport_merged: true
+    backport_commit: 6587fd9907664d70a0f6d08e501783ec5ca846bf
+  - source_pr: 13411
+    source_commit: ab4a57745d36c664a32cec69ec47850f08174123
+    source_title: 'fix: stop running Test_GetVersion subtests in parallel'
+    source_url: https://github.com/radius-project/radius/pull/13411
+    already_present: false
+    backport_pr: 13422
+    backport_url: https://github.com/radius-project/radius/pull/13422
+    backport_merged: true
+    backport_commit: bcce36ae98d7ee80cff118f215e07424fe7bf221
+  - source_pr: 13412
+    source_commit: 6a0e8300b428e770b6eabbd046a495eb88ebb282
+    source_title: 'fix(ucp): cache AWS DescribeType results and log AWS errors returned as 500'
+    source_url: https://github.com/radius-project/radius/pull/13412
+    already_present: false
+    backport_pr: 13423
+    backport_url: https://github.com/radius-project/radius/pull/13423
+    backport_merged: true
+    backport_commit: 8a09ba53cafc38c30bf1448f5a6aec62e6f2b027
+  - source_pr: 13409
+    source_commit: dc289da1b838cc018a055c74061bc52d8ee77b68
+    source_title: 'fix(release): handle delayed GitHub release visibility'
+    source_url: https://github.com/radius-project/radius/pull/13409
+    already_present: false
+    backport_pr: 13421
+    backport_url: https://github.com/radius-project/radius/pull/13421
+    backport_merged: true
+    backport_commit: ea667014c0aad6b92400edaa055f363be01b5707
+  - source_pr: 13413
+    source_commit: 2f1011fa72ec083e0c0104b1fed068a93819d6dc
+    source_title: 'fix(helm): preserve encryption Secret state during upgrades'
+    source_url: https://github.com/radius-project/radius/pull/13413
+    already_present: false
+    backport_pr: 13424
+    backport_url: https://github.com/radius-project/radius/pull/13424
+    backport_merged: true
+    backport_commit: 9a7629de27169eae022e62ece03d8f0e380f8934
+  - source_pr: 13425
+    source_commit: cef6aafffe0e003f940a886626d156d2e186a1a7
+    source_title: 'fix(release): pin changelog rendering to the product commit'
+    source_url: https://github.com/radius-project/radius/pull/13425
+    already_present: false
+    backport_pr: 13426
+    backport_url: https://github.com/radius-project/radius/pull/13426
+    backport_merged: true
+    backport_commit: 1313c3a0fb18e6d2574e476e33c2e60567e33108
+  - source_pr: 13428
+    source_commit: 55d667f10f18826ca65cc87210129a01f578fec3
+    source_title: 'chore(release): prepare v0.62.0-rc.2'
+    source_url: https://github.com/radius-project/radius/pull/13428
+    already_present: false
+    backport_pr: 13429
+    backport_url: https://github.com/radius-project/radius/pull/13429
+    backport_merged: true
+    backport_commit: 6bb9d35df9ccd7434adbb3af6dbc58a366f83faa
+  - source_pr: 13390
+    source_commit: f48895a8d181e5e5adb48dbde69f7c67f9e3ff11
+    source_title: 'docs(release): add a concise release runbook'
+    source_url: https://github.com/radius-project/radius/pull/13390
+    already_present: false
+    backport_pr: 13437
+    backport_url: https://github.com/radius-project/radius/pull/13437
+    backport_merged: true
+    backport_commit: 1c3f38dc2120d17e4164652193d8a8eb73704fff
+  - source_pr: 13431
+    source_commit: d389d89cefa68cabf69b2c777a747f0dc47b2e31
+    source_title: 'fix(release): authenticate docs and samples coordination'
+    source_url: https://github.com/radius-project/radius/pull/13431
+    already_present: false
+    backport_pr: 13438
+    backport_url: https://github.com/radius-project/radius/pull/13438
+    backport_merged: true
+    backport_commit: adfcdcc205bee9034a1686d1954f615364346b91
+  - source_pr: 13419
+    source_commit: a0a387cc948666cee4a87b01609e6ee002aada6f
+    source_title: 'chore(deps): update Azure SDK dependencies and refactor imports'
+    source_url: https://github.com/radius-project/radius/pull/13419
+    already_present: false
+    backport_pr: 13439
+    backport_url: https://github.com/radius-project/radius/pull/13439
+    backport_merged: true
+    backport_commit: facb24f23c648dd02b0a9b6fa0e1ba7e11bf456a
+  - source_pr: 13434
+    source_commit: 039c29675facec705382daf03f92368bf3058b68
+    source_title: 'fix(release): allow reviewed root changelog edits'
+    source_url: https://github.com/radius-project/radius/pull/13434
+    already_present: false
+    backport_pr: 13440
+    backport_url: https://github.com/radius-project/radius/pull/13440
+    backport_merged: true
+    backport_commit: bf687dca7cdcb1c7488cc9e6056a664e0a63df03
+  - source_pr: 13433
+    source_commit: f5e4741d185bf1eb4cb6f82cffbcec39c76b03d9
+    source_title: 'fix(release): align backports, changelogs, and sibling releases'
+    source_url: https://github.com/radius-project/radius/pull/13433
+    already_present: false
+    backport_pr: 13441
+    backport_url: https://github.com/radius-project/radius/pull/13441
+    backport_merged: true
+    backport_commit: a03b01b3e369fe413fc5e3da60621361bb0b4756
+  - source_pr: 13444
+    source_commit: f06c88c1c4e395b388eeab8c46e664ecc7db52b9
+    source_title: 'fix(release): include maintenance commits in changelogs'
+    source_url: https://github.com/radius-project/radius/pull/13444
+    already_present: false
+    backport_pr: 13446
+    backport_url: https://github.com/radius-project/radius/pull/13446
+    backport_merged: true
+    backport_commit: 37908c48554ae9d5e1326adc63124c0d1b9b93ba
+  - source_pr: 13445
+    source_commit: 32f8d21a83e2be98b6ff8b343eeb502c06a01972
+    source_title: 'fix(release): include unchanged changelog in plan snapshots'
+    source_url: https://github.com/radius-project/radius/pull/13445
+    already_present: false
+    backport_pr: 13447
+    backport_url: https://github.com/radius-project/radius/pull/13447
+    backport_merged: true
+    backport_commit: 69e518c54043d0b5c98325c5a38e3c3ef4630257
+  - source_pr: 13442
+    source_commit: 57e044ff46999708452f82a52454dbac0834e513
+    source_title: 'chore(tools): bump versions'
+    source_url: https://github.com/radius-project/radius/pull/13442
+    already_present: false
+    backport_pr: 13448
+    backport_url: https://github.com/radius-project/radius/pull/13448
+    backport_merged: true
+    backport_commit: 70e4453bfb5a8c644d8d0c91919880c0dcce4818
+  - source_pr: 13449
+    source_commit: 9b1c68e7cf5842175a0d8a48911b8fcd8373668f
+    source_title: 'chore(release): prepare v0.62.0-rc.3'
+    source_url: https://github.com/radius-project/radius/pull/13449
+    already_present: false
+    backport_pr: 13450
+    backport_url: https://github.com/radius-project/radius/pull/13450
+    backport_merged: true
+    backport_commit: af1e3f0fad097d13de5e139a8129c5eec88b058b
+  - source_pr: 13293
+    source_commit: f7af50d7b0974f65771a59989dcedbc312f012d7
+    source_title: 'refactor(corerp)!: remove legacy Azure Container Instances support'
+    source_url: https://github.com/radius-project/radius/pull/13293
+    already_present: false
+    backport_pr: 13483
+    backport_url: https://github.com/radius-project/radius/pull/13483
+    backport_merged: true
+    backport_commit: cd62601a8d76336c92410d034beb43007236c9eb
+  - source_pr: 13435
+    source_commit: ff7c5770abe6c7d7fc1da5a8c63b2c6b15f523bf
+    source_title: 'fix(helm): sort release history by revision'
+    source_url: https://github.com/radius-project/radius/pull/13435
+    already_present: false
+    backport_pr: 13484
+    backport_url: https://github.com/radius-project/radius/pull/13484
+    backport_merged: true
+    backport_commit: c9b9138932df93774febc9df3fd263e286ae2297
+  - source_pr: 13233
+    source_commit: 7caf262e82d0eca944be4c0427b590e8764b713c
+    source_title: 'docs: Add functional spec for ECS and Azure Container Apps core resource mappings'
+    source_url: https://github.com/radius-project/radius/pull/13233
+    already_present: false
+    backport_pr: 13485
+    backport_url: https://github.com/radius-project/radius/pull/13485
+    backport_merged: true
+    backport_commit: bee6b703ca3d4a5608bdb53da04ea5b3389b2244
+  - source_pr: 13297
+    source_commit: 200f6044a0f29c05c90f5ad8a3a251fbc6df3a37
+    source_title: 'feat(recipes): add expression evaluator for direct module recipe parameters'
+    source_url: https://github.com/radius-project/radius/pull/13297
+    already_present: false
+    backport_pr: 13486
+    backport_url: https://github.com/radius-project/radius/pull/13486
+    backport_merged: true
+    backport_commit: 2cbe14a27c65a902dbfb98d6510d704bdb8f721b
+  - source_pr: 13451
+    source_commit: 6121edba70d5b2e098f5625b70e2422c2086fe9f
+    source_title: 'fix(recipes): stop retrying permanent Bicep delete errors'
+    source_url: https://github.com/radius-project/radius/pull/13451
+    already_present: false
+    backport_pr: 13487
+    backport_url: https://github.com/radius-project/radius/pull/13487
+    backport_merged: true
+    backport_commit: 6bb34a323ea48e49cd6132c7ab416390f4fdc4e5
+  - source_pr: 13456
+    source_commit: f4aad22ed9eb86212610a38b8d38f01c0b4502bf
+    source_title: 'docs: point design note contributors to eng/design-notes'
+    source_url: https://github.com/radius-project/radius/pull/13456
+    already_present: false
+    backport_pr: 13490
+    backport_url: https://github.com/radius-project/radius/pull/13490
+    backport_merged: true
+    backport_commit: e3df79bd8d1461c3f51fd34f7069b91f249ab400
+  - source_pr: 13492
+    source_commit: bbea5c7265509fea3d7bcf97eeca569753f06982
+    source_title: 'chore(release): prepare v0.62.0-rc.4'
+    source_url: https://github.com/radius-project/radius/pull/13492
+    already_present: false
+    backport_pr: 13493
+    backport_url: https://github.com/radius-project/radius/pull/13493
+    backport_merged: true
+    backport_commit: 97f1d27e98e2b4870bd0d7c6c3d3a95b03adcc39
+  - source_pr: 13489
+    source_commit: ab3d4826fb6716b6367b6292cef41837364e3899
+    source_title: 'fix(recipes): match Bicep registry credentials to the registry Radius pulls from'
+    source_url: https://github.com/radius-project/radius/pull/13489
+    already_present: false
+    backport_pr: 13501
+    backport_url: https://github.com/radius-project/radius/pull/13501
+    backport_merged: true
+    backport_commit: d0981b3c73285cffffd3afde3cea3c1994e09292
+  - source_pr: 13498
+    source_commit: 28aa5e70e42e4479cd92644f558e2c53d2c26044
+    source_title: 'fix(release): recover upmerges and share backport automation'
+    source_url: https://github.com/radius-project/radius/pull/13498
+    already_present: false
+    backport_pr: 13503
+    backport_url: https://github.com/radius-project/radius/pull/13503
+    backport_merged: true
+    backport_commit: 71bfe924c7ac468f0b1ee3706672e27d465603ed
+  - source_pr: 13504
+    source_commit: b935e1f4883ca240d6f2e293923598a0b44fb662
+    source_title: 'fix(workflow): update release-backport action to specific commit'
+    source_url: https://github.com/radius-project/radius/pull/13504
+    already_present: false
+    backport_pr: 13505
+    backport_url: https://github.com/radius-project/radius/pull/13505
+    backport_merged: true
+    backport_commit: 71f6fec3cae221e44827acf4b368317d3d2fd24c
