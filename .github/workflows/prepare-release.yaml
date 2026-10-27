@@ -228,7 +228,7 @@ jobs:
             --jq .content | tr -d '\n' | base64 --decode > "${output}"
 
       - name: Collect selected backports
-        uses: radius-project/.github/.github/actions/release-backport@main
+        uses: radius-project/.github/.github/actions/release-backport@7ac45fd6568840927049680d60bb5e9853e67838
         with:
           operation: collect
           github-token: ${{ steps.app-token.outputs.token || github.token }}
