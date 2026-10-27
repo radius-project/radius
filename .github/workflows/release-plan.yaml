@@ -128,7 +128,7 @@ jobs:
           echo "channel=${channel}" >> "${GITHUB_OUTPUT}"
 
       - name: Collect live backport records
-        uses: radius-project/.github/.github/actions/release-backport@main
+        uses: radius-project/.github/.github/actions/release-backport@7ac45fd6568840927049680d60bb5e9853e67838
         with:
           operation: collect
           channel: ${{ steps.channel.outputs.channel }}
@@ -340,7 +340,7 @@ jobs:
 
       - name: Collect live backport records
         if: steps.select.outputs.number != ''
-        uses: radius-project/.github/.github/actions/release-backport@main
+        uses: radius-project/.github/.github/actions/release-backport@7ac45fd6568840927049680d60bb5e9853e67838
         with:
           operation: collect
           channel: ${{ steps.channel.outputs.channel }}
