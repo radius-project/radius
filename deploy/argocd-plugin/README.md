@@ -26,13 +26,26 @@ Parameters for `x/y.bicep` are read from `x/y.parameters.json` when that file ex
 
 `argocd-values.yaml` adds two Lua health checks to `argocd-cm`:
 
-| Object               | Healthy when                                       | Notes                                                                                   |
-|----------------------|----------------------------------------------------|-----------------------------------------------------------------------------------------|
-| `DeploymentTemplate` | `phrase` is Ready and `observedGeneration` current | Drives Application health and sync waves                                                |
-| `DeploymentResource` | `phrase` is Ready                                  | Ready means the Radius resource exists; `observedGeneration` is only set while deleting |
+| Object / phrase                           | Health      | Message                                                  |
+|-------------------------------------------|-------------|----------------------------------------------------------|
+| `DeploymentTemplate`, generation not seen | Progressing | Waiting for Radius to pick up this revision              |
+| `DeploymentTemplate` Updating             | Progressing | Deploying: Radius is applying this revision              |
+| `DeploymentTemplate` ReadyPendingCleanup  | Progressing | Finishing the change: new outputs are ready, cleanup ... |
+| `DeploymentTemplate` Ready                | Healthy     | Ready: N outputs tracked (generation G)                  |
+| `DeploymentResource` Ready                | Healthy     | Output tracked (provisioned; not runtime health)         |
+| `DeploymentResource` Deleting or Deleted  | Progressing | Cleanup in progress: removed from the desired template   |
+| Either, Failed                            | Degraded    | Radius error text                                        |
 
-Failed maps to Degraded; anything else is Progressing. Neither check looks at the
-running workload, so a crashing container still shows Healthy.
+Argo CD reports an object with a `deletionTimestamp` as "Pending deletion" before
+it runs these checks. Neither check looks at the running workload, so a crashing
+container still shows Healthy. Test a check offline with:
+
+```bash
+argocd admin settings resource-overrides health obj.yaml --argocd-cm-path argocd-cm.yaml
+```
+
+Optional header rows go in the Application's `spec.info`, for example
+`- {name: Radius group, value: voting-argo}`.
 
 ```bash
 helm upgrade --install argocd argo/argo-cd -n argocd --create-namespace \

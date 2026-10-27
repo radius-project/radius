@@ -5,12 +5,18 @@ configs:
     resource.customizations.health.radapp.io_DeploymentTemplate: |
       hs = {}
       local st = obj.status
+      local n = 0
+      if st ~= nil and st.outputResources ~= nil then n = #st.outputResources end
       if st == nil or st.observedGeneration == nil or st.observedGeneration < obj.metadata.generation then
         hs.status = "Progressing"; hs.message = "Waiting for Radius to pick up this revision"
       elseif st.phrase == "Ready" then
-        hs.status = "Healthy"; hs.message = "Radius says Ready"
+        hs.status = "Healthy"; hs.message = "Ready: " .. n .. " outputs tracked (generation " .. st.observedGeneration .. ")"
+      elseif st.phrase == "ReadyPendingCleanup" then
+        hs.status = "Progressing"; hs.message = "Finishing the change: new outputs are ready, cleanup of removed resources has not finished"
+      elseif st.phrase == "Updating" then
+        hs.status = "Progressing"; hs.message = "Deploying: Radius is applying this revision"
       elseif st.phrase == "Failed" then
-        hs.status = "Degraded"; hs.message = "Radius says Failed"
+        hs.status = "Degraded"; hs.message = "Failed: Radius could not deploy this revision"
       else
         hs.status = "Progressing"; hs.message = "Radius is " .. tostring(st.phrase)
       end
@@ -20,8 +26,10 @@ configs:
       local st = obj.status
       if st == nil or st.phrase == nil then
         hs.status = "Progressing"; hs.message = "Waiting for Radius"
+      elseif st.phrase == "Deleting" or st.phrase == "Deleted" then
+        hs.status = "Progressing"; hs.message = "Cleanup in progress: removed from the desired template"
       elseif st.phrase == "Ready" then
-        hs.status = "Healthy"; hs.message = "Radius resource exists"
+        hs.status = "Healthy"; hs.message = "Output tracked (provisioned; not runtime health)"
       elseif st.phrase == "Failed" then
         hs.status = "Degraded"; hs.message = "Radius operation failed"
       else
