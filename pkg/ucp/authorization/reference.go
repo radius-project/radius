@@ -34,7 +34,8 @@ type ReferenceDescriptor struct {
 // built-in and registered resources, built-in connections, and schema-declared
 // references on PUT/PATCH, including unchanged references. For PATCH the caller
 // must supply the complete effective resource after applying the patch, not
-// just its changed fields. It does not read target resources or follow their
+// just its changed fields. The top-level properties field must use exact casing.
+// It does not read target resources or follow their
 // references. Reads/deletes require no reference checks.
 // Required marked references and malformed values fail closed. Public
 // x-radius-reference syntax and the registration schema adapter are not defined here.
@@ -55,6 +56,11 @@ func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, op
 	}
 	if body == nil {
 		return nil, fmt.Errorf("request body is required")
+	}
+	for name := range body {
+		if name != "properties" && strings.EqualFold(name, "properties") {
+			return nil, fmt.Errorf("noncanonical properties field %q", name)
+		}
 	}
 	checks := []Check{}
 	add := func(value any, operation string, expected []string) error {
@@ -81,9 +87,8 @@ func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, op
 		return nil
 	}
 	typ := strings.ToLower(id.Type())
-	isBuiltIn := strings.HasPrefix(typ, "applications.") ||
-		strings.HasPrefix(typ, "radius.") && !strings.HasPrefix(typ, "radius.core/") ||
-		containsFold([]string{"Radius.Core/applications", "Radius.Core/environments", "Radius.Core/recipePacks"}, typ)
+	isBuiltIn := c.builtInConnections[typ] ||
+		containsFold([]string{"Radius.Core/environments", "Applications.Core/environments", "Radius.Core/recipePacks"}, typ)
 	if isBuiltIn || c.registered[typ] {
 		if value, exists := body["properties"]; exists {
 			properties, ok := value.(map[string]any)

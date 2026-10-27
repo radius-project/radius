@@ -28,7 +28,7 @@ const (
 	JoinPermissionSet = "System.Resources/resourceProviders/resourceTypes/joinPermissionSet/action"
 )
 
-var resourceTypePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9.]*[.][A-Za-z0-9.]+/[A-Za-z][A-Za-z0-9]*(/[A-Za-z][A-Za-z0-9]*)*$`)
+var resourceTypePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9.-]*[.][A-Za-z0-9.-]+/[A-Za-z][A-Za-z0-9-]*(/[A-Za-z][A-Za-z0-9-]*)*$`)
 var actionPattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]*$`)
 
 // Registration is a trusted resource type registration, not a caller assertion.
@@ -41,10 +41,11 @@ type Registration struct {
 
 // Catalog is an immutable release catalog plus a snapshot of registered types.
 type Catalog struct {
-	permissions map[string]string
-	application map[string]bool
-	registered  map[string]bool
-	roles       map[string][]string
+	permissions        map[string]string
+	application        map[string]bool
+	registered         map[string]bool
+	builtInConnections map[string]bool
+	roles              map[string][]string
 }
 
 // NewCatalog validates registrations and creates a catalog snapshot.
@@ -54,13 +55,17 @@ func NewCatalog(registrations []Registration) (*Catalog, error) {
 		return nil, fmt.Errorf("decode release catalog: %w", err)
 	}
 	catalog := &Catalog{
-		permissions: map[string]string{},
-		application: map[string]bool{},
-		registered:  map[string]bool{},
-		roles:       generated.Roles,
+		permissions:        map[string]string{},
+		application:        map[string]bool{},
+		registered:         map[string]bool{},
+		builtInConnections: map[string]bool{},
+		roles:              generated.Roles,
 	}
 	for _, permission := range generated.Permissions {
 		catalog.permissions[strings.ToLower(permission)] = permission
+		if typ, ok := strings.CutSuffix(strings.ToLower(permission), "/connect/action"); ok {
+			catalog.builtInConnections[typ] = true
+		}
 	}
 	for _, registration := range registrations {
 		typ := strings.ToLower(registration.Type)
