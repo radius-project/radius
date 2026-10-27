@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/radius-project/radius/pkg/cli/cmd/auth"
 	"os"
 	"runtime/debug"
 	"strings"
@@ -279,6 +280,7 @@ func initSubCommands() {
 
 	deployCmd, _ := cmd_deploy.NewCommand(framework)
 	RootCmd.AddCommand(deployCmd)
+	RootCmd.AddCommand(auth.NewCommand(framework))
 
 	runCmd, _ := run.NewCommand(framework)
 	RootCmd.AddCommand(runCmd)

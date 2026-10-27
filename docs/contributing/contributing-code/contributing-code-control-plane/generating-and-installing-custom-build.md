@@ -54,4 +54,6 @@ Note that installing a custom build could corrupt existing data or installation.
 5. Use `rad init` command to set up the Radius workspace, environment, credentials, and provider as needed.
    The setup is ready for use!
 
+`rad install kubernetes --skip-rbac` disables internal component authorization and its dry run, including stored values during reinstallation, without installing cert-manager. To exercise the internal authorization preflight instead, use `--set global.rbac.enabled=false --set global.rbac.dryRun=true`. User-RBAC testing uses the separate [dedicated-cluster walkthrough](../contributing-code-tests/user-rbac-poc.md).
+
 If you run into issues using working with a custom build, please refer to [Troubleshooting Installation](./troubleshooting-installation.md)

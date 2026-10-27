@@ -50,7 +50,7 @@ func (c apiClient) request(method, path string, body any, statuses ...int) []byt
 	if strings.Contains(strings.ToLower(path), "/providers/microsoft.resources/deployments/") {
 		version = sdkclients.DeploymentsClientAPIVersion
 	}
-	if strings.Contains(strings.ToLower(path), "/providers/radius.core/") && !strings.Contains(strings.ToLower(path), "/applications/") {
+	if strings.Contains(strings.ToLower(path), "/providers/radius.core/") {
 		version = "2025-08-01-preview"
 	}
 	req, err := http.NewRequestWithContext(c.t.Context(), method, c.config.Host+base+path+"?api-version="+version, bytes.NewReader(raw))
@@ -78,6 +78,7 @@ func TestKindUserRBAC(t *testing.T) {
 		&clientcmd.ConfigOverrides{CurrentContext: contextName}).ClientConfig()
 	require.NoError(t, err)
 	config.Timeout = 45 * time.Second
+	cli := prepareCLI(t, kubeconfig, contextName)
 	kube, err := kubernetes.NewForConfig(config)
 	require.NoError(t, err)
 	ns, err := kube.CoreV1().Namespaces().Get(t.Context(), "kube-system", metav1.GetOptions{})
@@ -234,6 +235,9 @@ func TestKindUserRBAC(t *testing.T) {
 		require.NoError(t, err)
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+	})
+	t.Run("CLI end to end", func(t *testing.T) {
+		testCLI(t, cli, kube, admin.forTest(t), assignment)
 	})
 }
 

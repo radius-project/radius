@@ -38,6 +38,7 @@ func TestTryUnfoldResponseError(t *testing.T) {
 	type args struct {
 		resp *http.Response
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -65,6 +66,18 @@ func TestTryUnfoldResponseError(t *testing.T) {
 			_ = TryUnfoldResponseError(respErr)
 		})
 	}
+}
+
+func TestKubernetesStatusDoesNotBecomeEmptyARMError(t *testing.T) {
+	t.Parallel()
+	response := &http.Response{
+		Status: "403 Forbidden", StatusCode: http.StatusForbidden,
+		Body:    io.NopCloser(strings.NewReader(`{"kind":"Status","status":"Failure","message":"providers/whoAmI is forbidden","reason":"Forbidden","code":403}`)),
+		Request: &http.Request{Method: http.MethodGet, URL: parseURL(t, baseURI+"/providers/Radius.Core/whoAmI")},
+	}
+	err := runtime.NewResponseError(response)
+	require.Nil(t, TryUnfoldResponseError(err))
+	require.Contains(t, err.Error(), "providers/whoAmI is forbidden")
 }
 
 func TestUnfoldResponseError(t *testing.T) {

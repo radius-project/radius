@@ -67,7 +67,7 @@ func (r *Runtime) Middleware(next http.Handler) http.Handler {
 		}
 		mode := *policy.Settings.Properties.Mode
 		if lower == "/providers/radius.core/whoami" && req.Method == http.MethodGet {
-			write(w, http.StatusOK, map[string]any{"principal": identity.Principal, "groups": identity.Groups, "mode": mode, "generation": policy.Generation})
+			write(w, http.StatusOK, r.whoami(policy, identity))
 			return
 		}
 		mapping, err := r.Catalog.MapRequest(req.Method, path)
@@ -145,6 +145,12 @@ func (r *Runtime) Middleware(next http.Handler) http.Handler {
 				setBody(req, body)
 			}
 			checks, approvals, err := r.writeChecks(path, body)
+			var mutations []authorization.PolicyMutation
+			actor := authorization.PolicyActor{
+				Identity: identity, RequestID: uuid.NewString(),
+				CorrelationID: req.Header.Get("X-Ms-Correlation-Request-Id"),
+				Management:    api.AssignmentManagement{Kind: to.Ptr(api.AssignmentManagementKindDeployment)},
+			}
 			if err != nil {
 				if mode == api.UserAuthorizationModeEnforce {
 					fail(w, err)
@@ -153,6 +159,17 @@ func (r *Runtime) Middleware(next http.Handler) http.Handler {
 				ucplog.FromContextOrDiscard(req.Context()).Info("user authorization would deny", "wouldDeny", true, "reason", err.Error(), "target", path)
 			}
 			if err == nil && strings.Contains(lower, "/providers/microsoft.resources/deployments/") {
+				mutations, err = deploymentPolicyMutations(path, body)
+				if err != nil {
+					fail(w, err)
+					return
+				}
+				if len(mutations) > 0 {
+					if err := r.Store.ValidateDeployment(req.Context(), snapshot, actor, mutations); err != nil {
+						fail(w, err)
+						return
+					}
+				}
 				converted, conversionError := engineDeploymentBody(body)
 				if conversionError != nil {
 					if mode == api.UserAuthorizationModeEnforce {
@@ -174,6 +191,18 @@ func (r *Runtime) Middleware(next http.Handler) http.Handler {
 			if err != nil {
 				fail(w, err)
 				return
+			}
+			if len(mutations) > 0 {
+				// Policy is one atomic transaction, before the engine applies any
+				// workload. Components never receive policy-administration rights.
+				if _, err := r.Store.ApplyDeployment(req.Context(), actor.RequestID, snapshot.Generation(), actor, mutations); err != nil {
+					fail(w, err)
+					return
+				}
+				if err := r.Cache.Refresh(req.Context()); err != nil {
+					fail(w, fmt.Errorf("AuthorizationUnavailable: deployment policy committed but cache refresh failed: %w", err))
+					return
+				}
 			}
 			req = req.WithContext(records.WithUserApproval(req.Context(), records.UserApproval{Identity: string(rawIdentity), Resources: approvals}))
 		}
@@ -256,6 +285,10 @@ func effectivePatch(req *http.Request, patch []byte, next http.Handler) ([]byte,
 
 func (r *Runtime) policyAPI(w http.ResponseWriter, req *http.Request, path string, identity authorization.Identity, snapshot *authorization.PolicySnapshot, policy authorization.Policy, mapping authorization.RequestMapping) bool {
 	lower := strings.ToLower(path)
+	if strings.HasSuffix(lower, "/providers/radius.core/effectiveaccess") && req.Method == http.MethodGet {
+		r.effectiveAccess(w, req, identity, snapshot, policy, mapping)
+		return true
+	}
 	isRole := strings.Contains(lower, "/providers/radius.core/roledefinitions")
 	isAssignment := strings.Contains(lower, "/providers/radius.core/roleassignments")
 	isSettings := lower == settingsPath
@@ -292,6 +325,16 @@ func (r *Runtime) policyAPI(w http.ResponseWriter, req *http.Request, path strin
 			}
 			checks = append(checks, authorization.Check{Permission: *check.Permission, Target: *check.Target})
 		}
+		if input.Principal != nil && !samePrincipal(input.Principal, &identity.Principal) {
+			inspectionChecks := make([]authorization.Check, len(checks))
+			for i, check := range checks {
+				inspectionChecks[i] = authorization.Check{Permission: mapping.Checks[0].Permission, Target: check.Target}
+			}
+			if err := r.check(req, snapshot, identity, inspectionChecks, api.UserAuthorizationModeEnforce); err != nil {
+				fail(w, err)
+				return true
+			}
+		}
 		decisions, err := snapshot.Evaluate(subject, checks)
 		if err != nil {
 			fail(w, err)
@@ -301,7 +344,18 @@ func (r *Runtime) policyAPI(w http.ResponseWriter, req *http.Request, path strin
 		for _, decision := range decisions {
 			results = append(results, api.AccessCheckResult{Allowed: to.Ptr(decision.Allowed), Permission: to.Ptr(decision.Permission), Target: to.Ptr(decision.Target)})
 		}
-		// This POC deliberately redacts grant IDs for all callers.
+		if strings.HasSuffix(lower, "/explainaccess") {
+			checks, err := explainedChecks(snapshot, identity, policy, decisions)
+			if err != nil {
+				fail(w, err)
+				return true
+			}
+			write(w, http.StatusOK, api.ExplainAccessResponse{
+				Principal: &subject.Principal, Mode: policy.Settings.Properties.Mode,
+				Generation: &policy.Generation, Checks: checks,
+			})
+			return true
+		}
 		write(w, http.StatusOK, map[string]any{"principal": subject.Principal, "mode": policy.Settings.Properties.Mode, "generation": policy.Generation, "checks": results})
 		return true
 	}
@@ -382,7 +436,11 @@ func (r *Runtime) policyRead(w http.ResponseWriter, req *http.Request, path stri
 	case permissions:
 		values := []map[string]string{}
 		for _, permission := range r.Catalog.Permissions() {
-			values = append(values, map[string]string{"name": permission})
+			parts := strings.Split(permission, "/")
+			values = append(values, map[string]string{
+				"name": permission, "displayName": permission,
+				"description": fmt.Sprintf("%s on %s", parts[len(parts)-1], strings.Join(parts[:len(parts)-1], "/")),
+			})
 		}
 		write(w, http.StatusOK, map[string]any{"value": values})
 	case change:
@@ -414,6 +472,8 @@ func (r *Runtime) policyRead(w http.ResponseWriter, req *http.Request, path stri
 	case role:
 		values := []api.RoleDefinitionResource{}
 		for _, value := range append(r.Catalog.BuiltInRoles(), policy.CustomRoles...) {
+			value.Name = to.Ptr((*value.ID)[strings.LastIndex(*value.ID, "/")+1:])
+			value.Type = to.Ptr("Radius.Core/roleDefinitions")
 			if strings.EqualFold(*value.ID, path) {
 				write(w, http.StatusOK, value)
 				return
@@ -430,6 +490,8 @@ func (r *Runtime) policyRead(w http.ResponseWriter, req *http.Request, path stri
 	case assignment:
 		values := []api.RoleAssignmentResource{}
 		for _, value := range policy.Assignments {
+			value.Name = to.Ptr((*value.ID)[strings.LastIndex(*value.ID, "/")+1:])
+			value.Type = to.Ptr("Radius.Core/roleAssignments")
 			if strings.EqualFold(*value.ID, path) {
 				write(w, http.StatusOK, value)
 				return
