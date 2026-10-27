@@ -451,13 +451,14 @@ model AssignmentListOptions {
 
 @doc("A principal query encoded as a JSON object with type, issuer, and subject. Omit to inspect the caller. No group memberships may be asserted in this query.")
 model PrincipalQuery {
+  @doc("A principal encoded as a JSON object containing type, issuer, and subject, not a display-form principal string. Omit to inspect the caller. No group memberships may be asserted in this query.")
   @query
   principal?: string;
 }
 
 @doc("Optional access-history filters. Principal is a JSON-encoded type, issuer, and subject tuple; scope includes changes at or below that scope.")
 model AccessChangeListOptions {
-  @doc("Filter by the authenticated actor that made the change.")
+  @doc("Filter by the authenticated actor that made the change, encoded as a JSON object containing type, issuer, and subject, not a display-form principal string.")
   @query
   principal?: string;
 

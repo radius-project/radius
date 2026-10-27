@@ -2011,7 +2011,7 @@
     "AccessChangeListOptions.principal": {
       "name": "principal",
       "in": "query",
-      "description": "Filter by the authenticated actor that made the change.",
+      "description": "Filter by the authenticated actor that made the change, encoded as a JSON object containing type, issuer, and subject, not a display-form principal string.",
       "required": false,
       "type": "string",
       "x-ms-parameter-location": "method"
@@ -2070,6 +2070,7 @@
     "PrincipalQuery": {
       "name": "principal",
       "in": "query",
+      "description": "A principal encoded as a JSON object containing type, issuer, and subject, not a display-form principal string. Omit to inspect the caller. No group memberships may be asserted in this query.",
       "required": false,
       "type": "string",
       "x-ms-parameter-location": "method"

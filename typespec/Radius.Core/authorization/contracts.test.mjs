@@ -314,6 +314,32 @@ test("generated Swagger preserves scope routes, read-only fields, and operation 
   assert.equal(scope.in, "path");
   assert.equal(scope["x-ms-skip-url-encoding"], true);
 
+  for (const path of [
+    `${prefix}/effectiveAccess`,
+    `/{scope}${prefix}/effectiveAccess`,
+    `${prefix}/accessChanges`
+  ]) {
+    const principal = spec.paths[path].get.parameters
+      .map(resolve)
+      .find((parameter) => parameter.name === "principal");
+    assert.equal(principal.in, "query");
+    assert.match(
+      principal.description,
+      /JSON object containing type, issuer, and subject/
+    );
+    assert.match(principal.description, /not a display-form principal string/);
+    if (path.endsWith("/effectiveAccess")) {
+      assert.equal(principal.required, false);
+      assert.match(principal.description, /Omit to inspect the caller/);
+      assert.match(
+        principal.description,
+        /No group memberships may be asserted/
+      );
+    } else {
+      assert.match(principal.description, /authenticated actor/);
+    }
+  }
+
   const applicationSpec = json(
     new URL(
       "swagger/specification/radius/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",

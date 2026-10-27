@@ -12,7 +12,8 @@ type AccessChangesClientGetOptions struct {
 
 // AccessChangesClientListOptions contains the optional parameters for the AccessChangesClient.NewListPager method.
 type AccessChangesClientListOptions struct {
-	// Filter by the authenticated actor that made the change.
+	// Filter by the authenticated actor that made the change, encoded as a JSON object containing type, issuer, and subject,
+	// not a display-form principal string.
 	Principal *string
 
 	// Filter by the changed policy's scope.
@@ -42,6 +43,8 @@ type InstallationAccessClientCheckAccessOptions struct {
 // InstallationAccessClientEffectiveAccessOptions contains the optional parameters for the InstallationAccessClient.EffectiveAccess
 // method.
 type InstallationAccessClientEffectiveAccessOptions struct {
+	// A principal encoded as a JSON object containing type, issuer, and subject, not a display-form principal string. Omit to
+	// inspect the caller. No group memberships may be asserted in this query.
 	Principal *string
 }
 
@@ -120,6 +123,8 @@ type ScopedAccessClientCheckAccessOptions struct {
 
 // ScopedAccessClientEffectiveAccessOptions contains the optional parameters for the ScopedAccessClient.EffectiveAccess method.
 type ScopedAccessClientEffectiveAccessOptions struct {
+	// A principal encoded as a JSON object containing type, issuer, and subject, not a display-form principal string. Omit to
+	// inspect the caller. No group memberships may be asserted in this query.
 	Principal *string
 }
 
