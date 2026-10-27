@@ -1,9 +1,13 @@
 {{- if ne (include "radius.authz.mode" .) "off" }}
-{{- $mode := ((.Values.global.rbac).certificates).mode | default "selfSigned" }}
+{{- $certificates := ((.Values.global.rbac).certificates) | default dict }}
+{{- $mode := "selfSigned" }}
+{{- if hasKey $certificates "mode" }}
+{{- $mode = toString $certificates.mode }}
+{{- end }}
 {{- if has $mode (list "caSecret" "issuerRef") }}
 {{- fail (printf "global.rbac.certificates.mode=%s is not supported yet. Use selfSigned." $mode) }}
 {{- else if ne $mode "selfSigned" }}
-{{- fail (printf "global.rbac.certificates.mode=%s is not valid. Use selfSigned." $mode) }}
+{{- fail (printf "global.rbac.certificates.mode=%q is not valid. Use selfSigned." $mode) }}
 {{- end }}
 {{- $ns := .Release.Namespace }}
 apiVersion: cert-manager.io/v1
@@ -27,13 +31,14 @@ spec:
   isCA: true
   commonName: radius-ca
   secretName: radius-ca
-  # 1 year, renewed at two-thirds of its lifetime.
+  # 1 year, renewed at two-thirds of its lifetime. Renewal keeps the CA key so certificates
+  # already issued stay valid; replacing the key needs coordinated CA rotation.
   duration: 8760h
   renewBefore: 2920h
   privateKey:
     algorithm: ECDSA
     size: 256
-    rotationPolicy: Always
+    rotationPolicy: Never
   issuerRef:
     group: cert-manager.io
     kind: Issuer

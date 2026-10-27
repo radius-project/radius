@@ -65,7 +65,7 @@ tests:
           value:
             algorithm: ECDSA
             size: 256
-            rotationPolicy: Always
+            rotationPolicy: Never
         documentIndex: 1
       - equal:
           path: spec.issuerRef.name
@@ -256,7 +256,31 @@ tests:
       global.rbac.certificates.mode: bogus
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=bogus is not valid. Use selfSigned."
+          errorMessage: "global.rbac.certificates.mode=\"bogus\" is not valid. Use selfSigned."
+
+  - it: fails for a false mode instead of defaulting
+    set:
+      global.rbac.enabled: true
+      global.rbac.certificates.mode: false
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.mode=\"false\" is not valid. Use selfSigned."
+
+  - it: fails for a zero mode instead of defaulting
+    set:
+      global.rbac.enabled: true
+      global.rbac.certificates.mode: 0
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.mode=\"0\" is not valid. Use selfSigned."
+
+  - it: fails for an empty mode instead of defaulting
+    set:
+      global.rbac.enabled: true
+      global.rbac.certificates.mode: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.mode=\"\" is not valid. Use selfSigned."
 
   - it: ignores the certificate mode when authorization is off
     set:
