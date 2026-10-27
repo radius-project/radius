@@ -114,6 +114,7 @@ rad install kubernetes --timeout 15m
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 
 	cmd.Flags().BoolVar(&runner.ContourDisabled, "skip-contour-install", false, "Install Contour ingress controller (enabled by default)")
+	cmd.Flags().BoolVar(&runner.SkipRBAC, "skip-rbac", false, "Disable internal component RBAC and its dry run")
 	cmd.Flags().StringVar(&runner.ContourChart, "contour-chart", "", "Specify a local file path to a helm chart to install Contour from")
 	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
@@ -142,6 +143,7 @@ type Runner struct {
 	ContourSetFile  []string
 
 	Reinstall bool
+	SkipRBAC  bool
 
 	// Timeout is how long to wait for the Radius control plane resources to become ready.
 	Timeout time.Duration
@@ -175,11 +177,15 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // depending on the "Reinstall" flag. If no installation is found, it installs the version of Radius corresponding
 // to the cli version. It then returns any errors that occur during the installation.
 func (r *Runner) Run(ctx context.Context) error {
+	set := append([]string(nil), r.Set...)
+	if r.SkipRBAC {
+		set = append(set, "global.rbac.enabled=false", "global.rbac.dryRun=false")
+	}
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.ChartOptions{
 			Reinstall:   r.Reinstall,
 			ChartPath:   r.Chart,
-			SetArgs:     r.Set,
+			SetArgs:     set,
 			SetFileArgs: r.SetFile,
 			Timeout:     r.Timeout,
 		},

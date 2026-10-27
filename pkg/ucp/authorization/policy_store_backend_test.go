@@ -26,6 +26,8 @@ func runPolicyBackend(t *testing.T, newClient func(*testing.T) database.Client) 
 	t.Run("crashes", func(t *testing.T) { runPolicyStoreCrashRecovery(t, newClient) })
 	t.Run("delayed_recoverer", func(t *testing.T) { runPolicyStoreDelayedRecovery(t, newClient(t)) })
 	t.Run("role_races", func(t *testing.T) { runPolicyRoleRaces(t, newClient) })
+	t.Run("deployment", func(t *testing.T) { runDeploymentPolicyContract(t, newClient(t)) })
+	t.Run("deployment_crashes", func(t *testing.T) { runDeploymentPolicyCrashRecovery(t, newClient) })
 }
 
 func TestPolicyStoreAPIServer(t *testing.T) {

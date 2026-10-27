@@ -167,6 +167,10 @@ func checkOwnership(actor PolicyActor, existing *api.RoleAssignmentProperties, d
 }
 
 func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor PolicyActor, mutation PolicyMutation, guard SettingsChangeGuard) (Policy, *api.PolicyChange, bool, error) {
+	return applyPolicyMutationWithAuthority(ctx, current, current, actor, mutation, guard)
+}
+
+func applyPolicyMutationWithAuthority(ctx context.Context, current, authority *PolicySnapshot, actor PolicyActor, mutation PolicyMutation, guard SettingsChangeGuard) (Policy, *api.PolicyChange, bool, error) {
 	fail := func(err error) (Policy, *api.PolicyChange, bool, error) { return Policy{}, nil, false, err }
 	if _, err := key(&actor.Identity.Principal); err != nil {
 		return fail(err)
@@ -216,7 +220,7 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 		if mutation.Delete {
 			permission = "Radius.Core/roleDefinitions/delete"
 		}
-		if err := current.allows(actor.Identity, permission, id); err != nil {
+		if err := authority.allows(actor.Identity, permission, id); err != nil {
 			return fail(err)
 		}
 		index := slices.IndexFunc(policy.CustomRoles, func(r api.RoleDefinitionResource) bool { return strings.EqualFold(*r.ID, id) })
@@ -247,7 +251,7 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 				definition.Properties.AssignableScopes = to.SliceOfPtrs(scope)
 			}
 			for _, assignable := range compiled.scopes {
-				if err := current.allows(actor.Identity, "Radius.Core/roleDefinitions/write", assignable); err != nil {
+				if err := authority.allows(actor.Identity, "Radius.Core/roleDefinitions/write", assignable); err != nil {
 					return fail(err)
 				}
 				granted := compiled
@@ -265,7 +269,7 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 						}
 					}
 				}
-				if err := current.mayGrant(actor.Identity, granted, assignable); err != nil {
+				if err := authority.mayGrant(actor.Identity, granted, assignable); err != nil {
 					return fail(err)
 				}
 			}
@@ -286,13 +290,13 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 		if mutation.Delete {
 			permission = "Radius.Core/roleAssignments/delete"
 		}
-		if err := current.allows(actor.Identity, permission, id); err != nil {
+		if err := authority.allows(actor.Identity, permission, id); err != nil {
 			return fail(err)
 		}
 		index := slices.IndexFunc(policy.Assignments, func(a api.RoleAssignmentResource) bool { return strings.EqualFold(*a.ID, id) })
 		if index >= 0 {
 			change.Before = &api.PolicySnapshot{RoleAssignment: policy.Assignments[index].Properties}
-			if err := checkOwnership(actor, policy.Assignments[index].Properties, mutation.Delete, current, scope); err != nil {
+			if err := checkOwnership(actor, policy.Assignments[index].Properties, mutation.Delete, authority, scope); err != nil {
 				return fail(err)
 			}
 		}
@@ -323,8 +327,20 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 				if !strings.EqualFold(*old.RoleDefinitionID, roleID) || oldKey != principal {
 					return fail(fmt.Errorf("RoleAssignmentImmutable: %s", id))
 				}
-				// A repeated tuple is a no-op, including labels and descriptions.
-				return policy, nil, false, nil
+				if reflect.DeepEqual(old.Description, p.Description) &&
+					reflect.DeepEqual(old.Principal.DisplayName, p.Principal.DisplayName) {
+					return policy, nil, false, nil
+				}
+				updated, err := clonePolicyValue(*old)
+				if err != nil {
+					return fail(err)
+				}
+				updated.Description = p.Description
+				updated.Principal.DisplayName = p.Principal.DisplayName
+				policy.Assignments[index].Properties = &updated
+				change.After = &api.PolicySnapshot{RoleAssignment: &updated}
+				operation = api.PolicyChangeOperationUpdate
+				break
 			}
 			definition, exists := current.roles[roleID]
 			if !exists {
@@ -333,7 +349,7 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 			if err := validateAssignmentScope(definition, scope); err != nil {
 				return fail(err)
 			}
-			if err := current.mayGrant(actor.Identity, definition, scope); err != nil {
+			if err := authority.mayGrant(actor.Identity, definition, scope); err != nil {
 				return fail(err)
 			}
 			for _, existing := range current.evaluator.assignments {
@@ -364,7 +380,7 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 			return fail(fmt.Errorf("authorization settings cannot be deleted"))
 		}
 		if *policy.Settings.Properties.Mode == api.UserAuthorizationModeEnforce {
-			if err := current.allows(actor.Identity, "Radius.Core/authorizationSettings/write", id); err != nil {
+			if err := authority.allows(actor.Identity, "Radius.Core/authorizationSettings/write", id); err != nil {
 				return fail(err)
 			}
 		}

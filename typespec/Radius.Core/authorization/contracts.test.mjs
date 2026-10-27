@@ -185,9 +185,13 @@ test("Bicep merges existing resources, preserves extensions and singleton, and e
   }
   assert.equal(resource("roleDefinitions").readableScopes, 0);
   assert.equal(resource("roleDefinitions").writableScopes, 0);
-  assert.equal(resource("roleAssignments").readableScopes, 16);
-  assert.equal(resource("roleAssignments").writableScopes, 16);
+  assert.equal(resource("roleAssignments").readableScopes, 0);
+  assert.equal(resource("roleAssignments").writableScopes, 0);
   const body = (name) => resolve(resource(name).body);
+  for (const name of ["roleDefinitions", "roleAssignments"]) {
+    assert.ok(body(name).properties.scope, name);
+  }
+  assert.equal(body("roleAssignments").properties.name.flags & 8, 0);
   const properties = (name) =>
     resolve(body(name).properties.properties.type).properties;
   for (const key of ["scope", "managedBy", "createdBy"]) {

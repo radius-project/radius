@@ -17,9 +17,11 @@ export GOMAXPROCS="${GOMAXPROCS:-4}"
 usage() {
     cat <<'EOF'
 Usage: bash hack/user-rbac/poc.sh up|test|logs|down
+       bash hack/user-rbac/poc.sh rad <poc-identity> <rad arguments...>
 
 up    Build local images, create a dedicated kind cluster and install Radius.
-test  Run real aggregated-API scenarios (requires the dedicated cluster).
+test  Build rad and run real API and CLI scenarios on the dedicated cluster.
+rad   Run the built CLI using an isolated POC identity prepared by test.
 logs  Save UCP JSON audit logs and workload image IDs in this cluster's state.
 down  Delete only the cluster created by this kit; retain logs and credentials.
 
@@ -136,10 +138,16 @@ up() {
     )
     local release
     release="$(helm list --kube-context "${CONTEXT}" -n radius-system \
-        --all --filter '^radius$' -q)"
+        --filter '^radius$' -q)"
     if [[ "${release}" == radius ]]; then
+        # rad and Helm use different server-side apply field managers.
+        local upgrade_flags=(--reuse-values --wait)
+        if [[ "$(helm version --template '{{.Version}}')" == v4.* ]]; then
+            upgrade_flags+=(--server-side=false)
+        fi
         helm upgrade radius "${ROOT}/deploy/Chart" --kube-context "${CONTEXT}" \
-            -n radius-system --reuse-values --wait --timeout 10m "${overrides[@]}"
+            -n radius-system "${upgrade_flags[@]}" \
+            --timeout 10m "${overrides[@]}"
         # The kit deliberately reuses local tags; restart only its own services.
         kubectl --context "${CONTEXT}" -n radius-system rollout restart \
             deployment/ucp deployment/applications-rp deployment/dynamic-rp \
@@ -176,6 +184,7 @@ logs() {
 
 direct_spoof() (
     local pid port status attempt
+    : >"${STATE}/port-forward.log"
     kubectl --context "${CONTEXT}" -n radius-system port-forward \
         --address 127.0.0.1 service/ucp :443 \
         >"${STATE}/port-forward.log" 2>&1 &
@@ -206,14 +215,40 @@ case "${1:---help}" in
     up) up ;;
     test)
         owned
+        command -v bicep >/dev/null || die "missing bicep; run make install-bicep"
+        export BICEP="${BICEP:-$(command -v bicep)}"
+        go run "${ROOT}/pkg/ucp/authorization/internal/bicepgen" \
+            --types "${ROOT}/hack/bicep-types-radius/generated/radius/radius.core/2025-08-01-preview/types.json"
+        mkdir -p "${STATE}/cli"
+        export RADIUS_USER_RBAC_BICEP_EXTENSION="${STATE}/cli/radius-policy.tgz"
+        "${BICEP}" publish-extension "${ROOT}/hack/bicep-types-radius/generated/index.json" \
+            --target "${RADIUS_USER_RBAC_BICEP_EXTENSION}" --force
+        make -C "${ROOT}" build-rad
+        export RADIUS_USER_RBAC_RAD="${ROOT}/dist/$(go env GOOS)_$(go env GOARCH)/release/rad"
         direct_spoof
         export RADIUS_USER_RBAC_KUBECONFIG="${KUBECONFIG}"
         export RADIUS_USER_RBAC_CONTEXT="${CONTEXT}"
         result=0
-        go test -count=1 -v "${ROOT}/test/user-rbac" 2>&1 |
+        CGO_ENABLED=0 go test -count=1 -v "${ROOT}/test/user-rbac" 2>&1 |
             tee "${STATE}/scenarios.log" || result=$?
         logs
         exit "${result}"
+        ;;
+    rad)
+        owned
+        identity="${2:-}"
+        case "${identity}" in
+            poc-admin | poc-developer | poc-reader | poc-outsider) ;;
+            *) die "choose poc-admin, poc-developer, poc-reader or poc-outsider" ;;
+        esac
+        [[ -f "${STATE}/cli/rad.json" ]] || die "run test first to prepare CLI identities"
+        command -v bicep >/dev/null || die "missing bicep; run make install-bicep"
+        export BICEP="${BICEP:-$(command -v bicep)}"
+        shift 2
+        [[ $# -gt 0 ]] || die "provide a rad command"
+        export KUBECONFIG="${STATE}/cli/home/.kube/config"
+        HOME="${STATE}/cli/home" "${ROOT}/dist/$(go env GOOS)_$(go env GOARCH)/release/rad" \
+            "$@" --config "${STATE}/cli/rad.json" --workspace "${identity}"
         ;;
     logs) logs ;;
     down)

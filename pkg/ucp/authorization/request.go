@@ -160,6 +160,14 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 		return RequestMapping{}, err
 	}
 	typ := id.Type()
+	if method == http.MethodGet && len(id.ExtensionSegments()) == 0 &&
+		id.PlaneScope() == "/planes/radius/local" && id.FindScope("resourcegroups") != "" &&
+		(typ == "microsoft.resources/deployments/operationstatuses" && id.IsResource() ||
+			typ == "microsoft.resources/deployments/operations" && id.IsResourceCollection()) {
+		// The engine resolves these two routes by the parent deployment, not an
+		// independently addressable operation ID. Recheck its read permission.
+		return c.mapping(ResourceRequest, "Microsoft.Resources/deployments/read", id.Truncate().String())
+	}
 	kind := ResourceRequest
 	if id.IsResourceCollection() {
 		if method != http.MethodGet {

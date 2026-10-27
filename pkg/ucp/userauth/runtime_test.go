@@ -15,6 +15,7 @@ import (
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/authz/records"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/radius-project/radius/pkg/ucp/authzcheck"
 	"github.com/stretchr/testify/require"
@@ -286,6 +287,39 @@ func TestDeploymentProviderScopeAndCanonicalReferences(t *testing.T) {
 	require.Equal(t, groupPath, providers["radius"].(map[string]any)["value"].(map[string]any)["scope"])
 	_, err = deploymentBody(target, prepared)
 	require.NoError(t, err)
+	cliBody, err := json.Marshal(map[string]any{"properties": map[string]any{
+		"mode": "Incremental", "template": map[string]any{"resources": []any{}},
+		"providerconfig": sdkclients.NewDefaultProviderConfig("team"),
+	}})
+	require.NoError(t, err)
+	_, err = deploymentBody(target, cliBody)
+	require.NoError(t, err, "accept the provider configuration emitted by rad deploy")
+	_, err = deploymentBody(strings.ToLower(target), cliBody)
+	require.NoError(t, err, "resource IDs in the SDK configuration are case-insensitive")
+	for _, test := range []struct {
+		name   string
+		mutate func(map[string]any)
+	}{
+		{"wrong provider type", func(config map[string]any) {
+			config["radius"].(map[string]any)["type"] = "Azure"
+		}},
+		{"extra provider", func(config map[string]any) {
+			config["azure"] = map[string]any{"type": "Azure"}
+		}},
+		{"extra value field", func(config map[string]any) {
+			config["radius"].(map[string]any)["value"].(map[string]any)["extra"] = true
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var document map[string]any
+			require.NoError(t, json.Unmarshal(cliBody, &document))
+			test.mutate(document["properties"].(map[string]any)["providerconfig"].(map[string]any))
+			raw, err := json.Marshal(document)
+			require.NoError(t, err)
+			_, err = deploymentBody(target, raw)
+			require.ErrorContains(t, err, "deployment resource group")
+		})
+	}
 	providers["radius"].(map[string]any)["value"].(map[string]any)["scope"] = "/planes/radius/local/resourceGroups/other"
 	tampered, err := json.Marshal(body)
 	require.NoError(t, err)
@@ -299,6 +333,32 @@ func TestDeploymentProviderScopeAndCanonicalReferences(t *testing.T) {
 		var document map[string]any
 		require.NoError(t, json.Unmarshal([]byte(raw), &document))
 		require.ErrorContains(t, canonicalFields(document), "canonical JSON field")
+	}
+}
+
+func TestDeploymentPollingRequiresCurrentParentReadPermission(t *testing.T) {
+	t.Parallel()
+	_, h, _ := testRuntime(t)
+	role := "/providers/Radius.Core/roleDefinitions/deployment-reader"
+	require.Equal(t, http.StatusOK, call(t, h, "admin", []string{"admins"}, http.MethodPut, role,
+		map[string]any{"properties": map[string]any{
+			"permissions": []string{"Microsoft.Resources/deployments/read"}, "assignableScopes": []string{groupPath},
+		}}).Code)
+	grant := groupPath + "/providers/Radius.Core/roleAssignments/deployment-reader"
+	require.Equal(t, http.StatusOK, call(t, h, "admin", []string{"admins"}, http.MethodPut, grant,
+		assignmentBody("deployment-reader", "user", "reader")).Code)
+	setMode(t, h, "Enforce")
+	for _, suffix := range []string{"/operationStatuses/123", "/operations"} {
+		target := groupPath + "/providers/Microsoft.Resources/deployments/demo" + suffix
+		require.Equal(t, http.StatusOK, call(t, h, "reader", nil, http.MethodGet, target, nil).Code)
+		require.Equal(t, http.StatusForbidden, call(t, h, "outsider", nil, http.MethodGet, target, nil).Code)
+		other := strings.Replace(target, "/resourceGroups/team/", "/resourceGroups/other/", 1)
+		require.Equal(t, http.StatusForbidden, call(t, h, "reader", nil, http.MethodGet, other, nil).Code)
+	}
+	require.Equal(t, http.StatusNoContent, call(t, h, "admin", []string{"admins"}, http.MethodDelete, grant, nil).Code)
+	for _, suffix := range []string{"/operationStatuses/123", "/operations"} {
+		target := groupPath + "/providers/Microsoft.Resources/deployments/demo" + suffix
+		require.Equal(t, http.StatusForbidden, call(t, h, "reader", nil, http.MethodGet, target, nil).Code)
 	}
 }
 

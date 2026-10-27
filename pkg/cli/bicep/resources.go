@@ -97,6 +97,11 @@ type TemplateInspectionResult struct {
 	// DeprecatedResources contains the resources that use a legacy Applications.* resource type
 	// with the deprecated API version, along with their replacements.
 	DeprecatedResources []DeprecatedResource
+
+	// AuthorizationResources contains policy changes, including those in inline nested deployments.
+	AuthorizationResources []map[string]any
+	// AuthorizationOnly excludes existing declarations and contains no workloads.
+	AuthorizationOnly bool
 }
 
 // ResourceTypeEntry represents a parsed resource type from a compiled Bicep/ARM template.
@@ -192,12 +197,40 @@ func HasOnlyRadiusResourceTypes(template map[string]any) bool {
 // {"resources": {"resourceName": {"type": "Applications.Core/containers@2023-10-01-preview", ...}}}
 func InspectTemplateResources(template map[string]any) TemplateInspectionResult {
 	containsEnvironment, environmentResources := inspectEnvironmentResources(template)
+	authorizationResources := inspectAuthorizationResources(template)
+	authorizationOnly := len(authorizationResources) > 0
+	walkTemplateResources(template, func(resource map[string]any, _ bool) {
+		if existing, _ := resource["existing"].(bool); existing {
+			return
+		}
+		typ, _ := resource["type"].(string)
+		typ, _, _ = strings.Cut(strings.ToLower(typ), "@")
+		if typ != "radius.core/roledefinitions" && typ != "radius.core/roleassignments" && typ != "radius.core/authorizationsettings" {
+			authorizationOnly = false
+		}
+	})
 
 	return TemplateInspectionResult{
 		ContainsEnvironmentResource: containsEnvironment,
 		EnvironmentResources:        environmentResources,
 		DeprecatedResources:         inspectDeprecatedResources(template),
+		AuthorizationResources:      authorizationResources,
+		AuthorizationOnly:           authorizationOnly,
 	}
+}
+
+func inspectAuthorizationResources(template map[string]any) []map[string]any {
+	var result []map[string]any
+	walkTemplateResources(template, func(resource map[string]any, _ bool) {
+		resourceType, _ := resource["type"].(string)
+		resourceType, _, _ = strings.Cut(strings.ToLower(resourceType), "@")
+		existing, _ := resource["existing"].(bool)
+		if !existing && (resourceType == "radius.core/roledefinitions" ||
+			resourceType == "radius.core/roleassignments" || resourceType == "radius.core/authorizationsettings") {
+			result = append(result, resource)
+		}
+	})
+	return result
 }
 
 // inspectEnvironmentResources walks the top-level resources of a compiled template and reports

@@ -33,6 +33,25 @@ func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
 }
 
+func TestSkipRBACOverridesHelmValues(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := helm.NewMockInterface(ctrl)
+	command, commandRunner := NewCommand(&framework.Impl{HelmInterface: mock, Output: &output.MockOutput{}})
+	require.NoError(t, command.ParseFlags([]string{"--skip-rbac", "--set", "global.rbac.enabled=true"}))
+	runner := commandRunner.(*Runner)
+	require.True(t, runner.SkipRBAC)
+	mock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{}, nil)
+	options := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
+		Radius: helm.ChartOptions{
+			SetArgs: []string{"global.rbac.enabled=true", "global.rbac.enabled=false", "global.rbac.dryRun=false"}, Timeout: helm.DefaultInstallTimeout,
+		},
+	})
+	mock.EXPECT().InstallRadius(gomock.Any(), options, "").Return(nil)
+	require.NoError(t, runner.Run(t.Context()))
+	require.Equal(t, []string{"global.rbac.enabled=true"}, runner.Set)
+}
+
 func Test_Validate(t *testing.T) {
 	t.Parallel()
 	testcases := []radcli.ValidateInput{

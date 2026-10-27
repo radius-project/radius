@@ -44,6 +44,10 @@ func TestRequestMapping(t *testing.T) {
 			"System.Resources/resourceProviders/resourceTypes/apiVersions/read", plane + "/providers/System.Resources/resourceproviders/Team.Data/resourcetypes/widgets", ListRequest},
 		{"GET", plane + "/providers/System.Resources/locations/global/operationStatuses/123", "", "", OperationStatusRequest},
 		{"GET", teamA + "/providers/Applications.Core/locations/global/operationResults/123", "", "", OperationStatusRequest},
+		{"GET", teamA + "/providers/Microsoft.Resources/deployments/demo/operationStatuses/123",
+			"Microsoft.Resources/deployments/read", teamA + "/providers/Microsoft.Resources/deployments/demo", ResourceRequest},
+		{"GET", teamA + "/providers/Microsoft.Resources/deployments/demo/operations",
+			"Microsoft.Resources/deployments/read", teamA + "/providers/Microsoft.Resources/deployments/demo", ResourceRequest},
 		{"GET", "/planes/aws/local/accounts/123/regions/us-west-2/providers/AWS.S3/Bucket/test", "System.AWS/credentials/use/action", "/planes/aws/local", ResourceRequest},
 		{"POST", "/planes/aws/local/accounts/123/regions/us-west-2/providers/AWS.S3/Bucket/:put", "System.AWS/credentials/use/action", "/planes/aws/local", ResourceRequest},
 		{"GET", "/planes/azure/local/subscriptions/123/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/test", "System.Azure/credentials/use/action", "/planes/azure/local", ResourceRequest},
@@ -64,6 +68,13 @@ func TestRequestMapping(t *testing.T) {
 		{"GET", "/planes/radius/local//resourceGroups/team-a"}, {"GET", appA + "/../other"},
 		{"GET", appA + "%2f"}, {"GET", "https://host" + appA}, {"GET", appA + "?api-version=2025"},
 		{"GET", teamA + "/providers/Unknown.Namespace/types/test"},
+		{"PUT", teamA + "/providers/Microsoft.Resources/deployments/demo/operationStatuses/123"},
+		{"GET", teamA + "/providers/Microsoft.Resources/deployments/demo/operationStatuses"},
+		{"GET", teamA + "/providers/Microsoft.Resources/deployments/demo/operations/123"},
+		{"GET", teamA + "/providers/Microsoft.Resources/deployments/demo/operationStatuses/123/children/other"},
+		{"GET", teamA + "/providers/Radius.Core/applications/demo/providers/Microsoft.Resources/deployments/demo/operationStatuses/123"},
+		{"GET", "/planes/radius/other/resourceGroups/team-a/providers/Microsoft.Resources/deployments/demo/operationStatuses/123"},
+		{"GET", plane + "/providers/Microsoft.Resources/deployments/demo/operations"},
 	} {
 		_, err := catalog.MapRequest(tt.method, tt.path)
 		require.Error(t, err, "%s %s", tt.method, tt.path)

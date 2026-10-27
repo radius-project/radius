@@ -130,12 +130,14 @@ rules:
       - providers
       - providers/initializeAuthorization
       - providers/whoami
+      - providers/whoAmI
       - providers/roleDefinitions
       - providers/roleAssignments
       - providers/authorizationSettings
       - providers/permissions
       - providers/checkAccess
       - providers/explainAccess
+      - providers/effectiveAccess
       - providers/accessChanges
     verbs: ["get", "list", "create", "update", "patch", "delete"]
 ---

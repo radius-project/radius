@@ -40,6 +40,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -140,6 +141,7 @@ rad deploy myapp.bicep --parameters @myfile.json --parameters version=latest
 	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddParameterFlag(cmd)
 	cmd.Flags().Bool("preview", false, "Deploy the application using the Radius.Core/applications resource type instead of Applications.Core/applications (can also be set via RADIUS_PREVIEW=true)")
+	cmd.Flags().BoolVarP(&runner.Yes, "yes", "y", false, "Confirm authorization changes without prompting; does not bypass permission checks")
 
 	return cmd, runner
 }
@@ -168,7 +170,9 @@ type Runner struct {
 	EnvResult                *EnvironmentCheckResult
 	// Preview indicates that the application should be deployed using the
 	// Radius.Core/applications resource type instead of Applications.Core/applications.
-	Preview bool
+	Preview  bool
+	Yes      bool
+	Prompter prompt.Interface
 }
 
 // NewRunner creates a new instance of the `rad deploy` runner.
@@ -180,6 +184,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		Deploy:            factory.GetDeploy(),
 		Output:            factory.GetOutput(),
 		Providers:         &clients.Providers{},
+		Prompter:          factory.GetPrompter(),
 	}
 }
 
@@ -227,7 +232,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Check if the template contains an environment resource
 	templateCreatesEnvironment := r.TemplateInspectionResult.ContainsEnvironmentResource
 
-	if !templateCreatesEnvironment || environmentProvidedExplicitly {
+	if r.TemplateInspectionResult.AuthorizationOnly {
+		r.EnvironmentNameOrID = ""
+	} else if !templateCreatesEnvironment || environmentProvidedExplicitly {
 		// Environment is required if:
 		// 1. Template doesn't create environment, OR
 		// 2. User explicitly provided --environment flag or workspace has default environment
@@ -245,6 +252,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.ApplicationName, err = cli.ReadApplicationName(cmd, *workspace)
 	if err != nil {
 		return err
+	}
+	if r.TemplateInspectionResult.AuthorizationOnly {
+		if cmd.Flags().Changed("application") || cmd.Flags().Changed("environment") {
+			return clierrors.Message("Authorization-only deployments use --group, not --application or --environment. Set an assignment's target scope in the template.")
+		}
+		r.ApplicationName = ""
 	}
 
 	// Resolve whether to use the Radius.Core preview behavior for the application resource.
@@ -335,6 +348,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if err := r.confirmAuthorizationChanges(); err != nil {
+		return err
+	}
 
 	// Create application if specified. This supports the case where the application resource
 	// is not specified in Bicep. Creating the application automatically helps us "bootstrap" in a new environment.
@@ -342,7 +358,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// r.EnvironmentNameOrID will be empty and we'll skip this step (the template deployment will create
 	// whatever resources it defines).
 
-	if r.ApplicationName != "" {
+	if r.ApplicationName != "" && len(r.TemplateInspectionResult.AuthorizationResources) == 0 {
 		// Environment validation has already happened, so only create application if we have an environment
 		if r.Providers.Radius.EnvironmentID != "" {
 			if r.useRadiusCoreApplication() {
@@ -371,7 +387,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	displayPath := bicep.RedactTemplatePath(r.FilePath)
 
 	progressText := ""
-	if r.ApplicationName == "" {
+	if r.TemplateInspectionResult.AuthorizationOnly {
+		progressText = fmt.Sprintf(
+			"Deploying authorization template '%v' into scope '%v' from workspace '%v'...\n\n"+
+				"Deployment In Progress...", displayPath, r.Workspace.Scope, r.Workspace.Name)
+	} else if r.ApplicationName == "" {
 		progressText = fmt.Sprintf(
 			"Deploying template '%v' into environment '%v' from workspace '%v'...\n\n"+
 				"Deployment In Progress...", displayPath, r.EnvironmentNameOrID, r.Workspace.Name)
@@ -384,9 +404,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Before deploying, set up recipe packs for any Radius.Core environments in the
 	// template. This creates default recipe pack resource if not found and injects its
 	// ID into the template.
-	err = r.setupRecipePack(ctx, template)
-	if err != nil {
-		return err
+	if len(r.TemplateInspectionResult.AuthorizationResources) == 0 {
+		err = r.setupRecipePack(ctx, template)
+		if err != nil {
+			return err
+		}
 	}
 
 	_, err = r.Deploy.DeployWithProgress(ctx, deploy.Options{

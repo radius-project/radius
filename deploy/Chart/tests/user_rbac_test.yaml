@@ -21,12 +21,14 @@ tests:
             - providers
             - providers/initializeAuthorization
             - providers/whoami
+            - providers/whoAmI
             - providers/roleDefinitions
             - providers/roleAssignments
             - providers/authorizationSettings
             - providers/permissions
             - providers/checkAccess
             - providers/explainAccess
+            - providers/effectiveAccess
             - providers/accessChanges
 
   - it: leaves existing installations unchanged
