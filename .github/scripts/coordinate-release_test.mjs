@@ -214,6 +214,26 @@ function fixture() {
       run.conclusion = "success";
       return {};
     }
+    if (route.endsWith("/rerun")) {
+      run.run_attempt++;
+      step.started_at = new Date(
+        Date.parse(step.started_at) + 60000
+      ).toISOString();
+      step.completed_at = new Date(
+        Date.parse(step.completed_at) + 60000
+      ).toISOString();
+      const number = pulls.at(-1).number + 1;
+      pulls.push({
+        number,
+        html_url: `https://github.com/radius-project/docs/pull/${number}`,
+        created_at: step.started_at,
+        state: "open",
+        merged: false,
+        base: { ref: "edge" },
+        head: { ref: `upmerge/${run.id}-${run.run_attempt}` }
+      });
+      return {};
+    }
     if (route.endsWith("/{run_id}")) return { data: { ...run } };
     if (route.endsWith("/{run_id}/jobs"))
       return { data: { jobs: [{ steps: [{ ...step }] }] } };
@@ -370,9 +390,217 @@ test("an upmerge pull request that cannot be bound exactly stops for reconciliat
   });
   const result = await coordinateTask(state);
   assert.equal(result.pullRequest, state.pulls[1].html_url);
+});
+
+test("a closed unmerged upmerge reruns all jobs and binds the replacement PR", async () => {
+  const state = fixture();
+  state.pulls[1].state = "open";
   state.pulls[1].merged = false;
+  await assert.rejects(
+    () => coordinateTask(state),
+    /Merge the docs upmerge PR/
+  );
+  const original = state.pulls[1];
+  original.state = "closed";
+
+  await assert.rejects(() => coordinateTask(state), /upmerge PR .*\/pull\/7/);
+  const replacement = state.pulls.at(-1);
+  assert.equal(original.state, "closed");
+  assert.equal(original.merged, false);
+  assert.equal(state.run.run_attempt, 2);
+  assert.equal(state.deployments.length, 1);
+  assert.equal(state.statuses.at(-1).state, "in_progress");
+  assert.equal(state.statuses.at(-1).environment_url, replacement.html_url);
+  assert.equal(
+    state.statuses.find(
+      (status) => status.description === "Retry after attempt 1"
+    ).environment_url,
+    ""
+  );
+  replacement.state = "closed";
+  replacement.merged = true;
+  const result = await coordinateTask(state);
+  assert.equal(result.pullRequest, replacement.html_url);
+  assert.equal(state.statuses.at(-1).state, "success");
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/dispatches")).length,
+    1
+  );
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/rerun")).length,
+    1
+  );
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/rerun-failed-jobs"))
+      .length,
+    0
+  );
+});
+
+test("a replacement upmerge with no changes clears the closed PR binding", async () => {
+  const state = fixture();
+  state.pulls[1].state = "open";
+  state.pulls[1].merged = false;
+  await assert.rejects(
+    () => coordinateTask(state),
+    /Merge the docs upmerge PR/
+  );
   state.pulls[1].state = "closed";
-  await assert.rejects(() => coordinateTask(state), /closed without merging/);
+  const remote = state.remote;
+  state.remote = async (route, request) => {
+    const result = await remote(route, request);
+    if (route.endsWith("/rerun")) state.step.conclusion = "skipped";
+    return result;
+  };
+  const result = await coordinateTask(state);
+  assert.equal(result.state, "success");
+  assert.equal(result.pullRequest, undefined);
+  assert.equal(state.statuses.at(-1).environment_url, "");
+});
+
+test("rejected replacements preserve bound PRs and retry without redispatching", async () => {
+  for (const [status, manuallyBound] of [
+    [403, true],
+    [429, true],
+    [403, false],
+    [429, false]
+  ]) {
+    const state = fixture();
+    state.pulls[1].state = "open";
+    state.pulls[1].merged = false;
+    if (manuallyBound) {
+      state.pulls[0].created_at = state.pulls[1].created_at;
+      await assert.rejects(
+        () => coordinateTask(state),
+        /2 upmerge pull requests match/
+      );
+      state.statuses.push({
+        id: state.statuses.length + 1,
+        deployment_id: state.deployments[0].id,
+        state: "in_progress",
+        log_url: state.run.html_url,
+        environment_url: state.pulls[1].html_url
+      });
+    }
+    await assert.rejects(
+      () => coordinateTask(state),
+      /Merge the docs upmerge PR/
+    );
+    state.pulls[1].state = "closed";
+    const remote = state.remote;
+    state.remote = async (route, request) => {
+      if (route.endsWith("/rerun")) {
+        state.calls.push({ route, request });
+        throw Object.assign(new Error("replacement rejected"), { status });
+      }
+      return remote(route, request);
+    };
+    await assert.rejects(() => coordinateTask(state), /replacement rejected/);
+    const rejection = state.statuses.at(-1);
+    assert.equal(state.run.run_attempt, 1);
+    assert.equal(
+      state.statuses.find(
+        (entry) => entry.description === "Retry after attempt 1"
+      ).environment_url,
+      ""
+    );
+    state.remote = remote;
+    await assert.rejects(() => coordinateTask(state), /upmerge PR .*\/pull\/7/);
+    assert.equal(rejection.state, "failure");
+    assert.equal(rejection.environment_url, state.pulls[1].html_url);
+    assert.equal(state.run.run_attempt, 2);
+    assert.equal(
+      state.statuses.at(-1).environment_url,
+      state.pulls[2].html_url
+    );
+    assert.equal(
+      state.calls.filter(({ route }) => route.endsWith("/pulls")).length,
+      2,
+      "resume must not rediscover the original bound PR"
+    );
+    assert.equal(
+      state.calls.filter(({ route }) => route.endsWith("/dispatches")).length,
+      1
+    );
+    assert.equal(
+      state.calls.filter(({ route }) => route.endsWith("/rerun")).length,
+      2
+    );
+  }
+});
+
+test("an uncertain replacement request is not repeated on resume", async () => {
+  const state = fixture();
+  state.pulls[1].state = "open";
+  state.pulls[1].merged = false;
+  await assert.rejects(
+    () => coordinateTask(state),
+    /Merge the docs upmerge PR/
+  );
+  state.pulls[0].created_at = state.pulls[1].created_at;
+  state.pulls[1].state = "closed";
+  const remote = state.remote;
+  state.remote = async (route, request) => {
+    if (route.endsWith("/rerun")) {
+      state.calls.push({ route, request });
+      throw new Error("lost replacement response");
+    }
+    return remote(route, request);
+  };
+  await assert.rejects(
+    () => coordinateTask(state),
+    /lost replacement response/
+  );
+  assert.equal(state.statuses.at(-1).description, "Retry after attempt 1");
+  assert.equal(state.statuses.at(-1).environment_url, "");
+  let clock = 0;
+  state.now = () => clock;
+  state.deadline = 10;
+  state.sleep = async () => {
+    clock += 10;
+  };
+  await assert.rejects(() => coordinateTask(state), /Timed out monitoring/);
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/rerun")).length,
+    1
+  );
+
+  state.step.started_at = "2026-09-10T10:01:00Z";
+  state.step.completed_at = "2026-09-10T10:01:03Z";
+  state.run.run_attempt = 2;
+  state.pulls.push({
+    ...state.pulls[1],
+    number: 7,
+    html_url: "https://github.com/radius-project/docs/pull/7",
+    created_at: "2026-09-10T10:01:01Z",
+    state: "open",
+    head: { ref: "upmerge/77-2" }
+  });
+  await assert.rejects(() => coordinateTask(state), /upmerge PR .*\/pull\/7/);
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/rerun")).length,
+    1
+  );
+});
+
+test("a replacement closed immediately requires another resume rather than a loop", async () => {
+  const state = fixture();
+  state.pulls[1].state = "closed";
+  state.pulls[1].merged = false;
+  const remote = state.remote;
+  state.remote = async (route, request) => {
+    const result = await remote(route, request);
+    if (route.endsWith("/rerun")) state.pulls.at(-1).state = "closed";
+    return result;
+  };
+  await assert.rejects(
+    () => coordinateTask(state),
+    /replacement upmerge PR closed/
+  );
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/rerun")).length,
+    1
+  );
   assert.equal(state.statuses.at(-1).state, "failure");
 });
 

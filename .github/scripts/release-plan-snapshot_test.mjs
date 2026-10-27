@@ -165,7 +165,9 @@ function validate(state, error) {
       "--head-dir",
       state.env.HEAD_DIR,
       "--repository",
-      "radius-project/radius"
+      "radius-project/radius",
+      "--backports-file",
+      process.env.EXPECTED_BACKPORTS_FILE
     ],
     { encoding: "utf8" }
   );
