@@ -24,6 +24,9 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/go-logr/logr"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
+
 	"github.com/radius-project/radius/pkg/authz"
 )
 
@@ -46,9 +49,17 @@ func sharedSource(dir string) (*Source, error) {
 	if err != nil {
 		return nil, err
 	}
-	go s.Start(context.Background(), DefaultPollInterval)
+	go s.Start(reloadContext(), DefaultPollInterval)
 	sharedSources[dir] = s
 	return s, nil
+}
+
+// reloadContext returns the context for a shared Source's reload loop. Transports are often
+// built before the component creates its logger, so the context carries controller-runtime's
+// process logger, which every Radius component sets at startup and which forwards to that
+// logger once it is set.
+func reloadContext() context.Context {
+	return logr.NewContext(context.Background(), runtimelog.Log)
 }
 
 // NewClientTransport returns an HTTP transport that presents this component's certificate
@@ -74,6 +85,9 @@ func newClientTransport(options authz.Options, serverName string) (*http.Transpo
 	}
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
+	// A proxy would tunnel the TLS connection without the client certificate, and
+	// internal calls never go through a proxy.
+	transport.Proxy = nil
 	transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		name := serverName
 		if name == "" {
