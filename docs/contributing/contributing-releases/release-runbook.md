@@ -112,8 +112,6 @@ For a frozen first RC, use the resolved release commit from the summary. Before 
 
 **Sibling GitHub Release publication failed:** resume the same version/source. Matching entries and their generated notes are reused, even when Radius is already public. Investigate source/classification conflicts rather than deleting releases or moving tags.
 
-**Samples fixed after a failed test:** merge the fix into samples `edge`, then resume the same Radius version/source. With the updated coordinator, a completed unsuccessful test is replaced by a fresh full `test.yaml` run on current `edge`, automatically bound to the existing receipt. Check the new run URL and samples commit in the summary. Active runs and successful gates are reused. Older tagged coordinators need [exact-run recovery](./README.md#retrying-failed-sample-tests); merging the coordinator fix into `main` alone does not update them.
-
 **Dispatch outcome unknown:** inspect the correlated publisher run and destination artifacts before resuming, including after cancellation. Do not blindly redispatch; see [lost dispatch recovery](./README.md#lost-dispatch-response).
 
 **Upmerge PR closed without merging:** with the updated coordinator, resume the same release to rerun the bound downstream workflow and create a replacement PR. Merged upmerges are reused. Clean merges create ready PRs; real content conflicts stop for resolution rather than creating draft snapshots. An older tagged coordinator does not gain this behavior by rerunning: follow [closed or conflicting upmerge recovery](./README.md#closed-or-conflicting-upmerge-pull-requests).
