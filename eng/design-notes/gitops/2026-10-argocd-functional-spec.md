@@ -517,7 +517,8 @@ sequenceDiagram
 - Sync status with branch and commit, and the tree of `Application` → `DeploymentTemplate` → `DeploymentResource`: built in.
 - Health and the message above on each tree node: shown on the health icon and in the node's summary panel, not as text on the tile.
 - Header rows such as Radius group, environment and application: `spec.info` on the Application, set by the user or an ApplicationSet template. They are static; the observed generation cannot be shown there.
-- Not possible: extra text on a tile (Argo CD adds tile text only from Kubernetes labels listed in `resource.customLabels`, which would need the Radius controller to write labels), a Radius status side panel, and a Radius graph tab. These need an Argo CD UI extension.
+- Radius type and status on each `DeploymentResource` tile: the Radius controller sets labels `radapp.io/resource-type` (for example `Radius.Compute.containers`) and `radapp.io/phrase` (mirrors `status.phrase`), and `resource.customLabels` in `argocd-cm` lists both. Argo CD shows at most two such chips per tile. This is a small controller change, prototyped on Phase 1.
+- Not possible: a Radius status side panel, a Radius graph tab, and hiding nodes such as environments and recipe packs from the tree. These need an Argo CD UI extension. Hiding cannot be done by dropping the nodes either: `resource.exclusions` matches only API group and kind, and each `DeploymentResource` must keep its owner reference to the `DeploymentTemplate`, because Radius uses that reference to decide which resources it may delete when they leave Git.
 
 The feature spec also asks for three situations that provisioning status alone does not cover:
 
