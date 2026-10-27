@@ -45,6 +45,9 @@ func TestRegistrations(t *testing.T) {
 		{Type: "bad"}, {Type: "AWS.S3/Bucket"}, {Type: "System.Foo/types"},
 		{Type: "Radius.Core/environments"}, {Type: "Team.Data/widgets", PermissionSets: []string{"all"}},
 		{Type: "Team.Data/widgets", Actions: []string{"*"}},
+		{Type: "Team.Data/widgets", Actions: []string{"connect"}}, {Type: "Team.Data/widgets", Actions: []string{"Connect"}},
+		{Type: "Team.Data/widgets", Actions: []string{"CONNECT"}}, {Type: "Team.Data/widgets", Actions: []string{"use"}},
+		{Type: "Team.Data/widgets", Actions: []string{"write"}}, {Type: "Team.Data/widgets", Actions: []string{"joinPermissionSet"}},
 	} {
 		_, err := NewCatalog([]Registration{registration})
 		require.Error(t, err)
