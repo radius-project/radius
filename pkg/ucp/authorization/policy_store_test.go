@@ -506,12 +506,7 @@ func TestPolicyStoreSettings(t *testing.T) {
 	require.Equal(t, int64(1), snapshot.Generation(), "server-owned generation cannot turn an identical mode PUT into a change")
 }
 
-func TestPolicyStoreManifestCapacity(t *testing.T) {
-	if testing.Short() {
-		t.Skip("full 10000 assignment and 1000 role capacity exercise")
-	}
-	db := inmemory.NewClient()
-	store := newTestPolicyStore(t, db, false)
+func fullCapacityPolicy() Policy {
 	policy := initialPolicy()
 	for n := range 1000 {
 		id := fmt.Sprintf("%s/providers/Radius.Core/roleDefinitions/custom-%d", teamA, n)
@@ -524,6 +519,16 @@ func TestPolicyStoreManifestCapacity(t *testing.T) {
 		a.Properties.ManagedBy = &api.AssignmentManagement{Kind: to.Ptr(api.AssignmentManagementKindImperative)}
 		policy.Assignments = append(policy.Assignments, a)
 	}
+	return policy
+}
+
+func TestPolicyStoreManifestCapacity(t *testing.T) {
+	if testing.Short() {
+		t.Skip("full 10000 assignment and 1000 role capacity exercise")
+	}
+	db := inmemory.NewClient()
+	store := newTestPolicyStore(t, db, false)
+	policy := fullCapacityPolicy()
 	initializer, err := NewPolicyInitializer(store, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
 	require.NoError(t, err)
 	require.NoError(t, initializer.Initialize(t.Context(), policy))
@@ -551,4 +556,116 @@ func TestPolicyStoreManifestCapacity(t *testing.T) {
 	})
 	require.ErrorContains(t, err, "PolicyCapacityExceeded")
 	t.Logf("assignments=%d roles=%d pages=%d anchorBytes=%d", len(copy.Assignments), len(copy.CustomRoles), len(root.Pages), len(raw))
+}
+
+func TestPolicyStorePayloadByteBound(t *testing.T) {
+	for _, over := range []bool{false, true} {
+		t.Run(fmt.Sprintf("over=%v", over), func(t *testing.T) {
+			store := newTestPolicyStore(t, inmemory.NewClient(), false)
+			policy := initialPolicy()
+			assignment := policy.Assignments[0]
+			assignment.Properties.Description = to.Ptr("")
+			raw, err := json.Marshal(assignment)
+			require.NoError(t, err)
+			key, err := json.Marshal(strings.ToLower(*assignment.ID))
+			require.NoError(t, err)
+			size := maxPolicyBytes - len(`{"entries":{}}`) - len(key) - 1 - len(raw)
+			if over {
+				size++
+			}
+			assignment.Properties.Description = to.Ptr(strings.Repeat("x", size))
+			policy.Assignments[0] = assignment
+			initializer, err := NewPolicyInitializer(store, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
+			require.NoError(t, err)
+			err = initializer.Initialize(t.Context(), policy)
+			if over {
+				require.ErrorContains(t, err, "PolicyCapacityExceeded")
+				return
+			}
+			require.NoError(t, err)
+			snapshot, err := store.LoadPolicy(t.Context(), -1)
+			require.NoError(t, err)
+			actual, err := snapshot.Policy()
+			require.NoError(t, err)
+			require.ElementsMatch(t, policy.Assignments, actual.Assignments)
+			var version accessVersion
+			_, err = store.read(t.Context(), accessVersionID, &version)
+			require.NoError(t, err)
+			var root manifestRoot
+			_, err = store.read(t.Context(), version.Root, &root)
+			require.NoError(t, err)
+			require.Len(t, root.Pages, 3, "isolate the full-size payload from entries sorting before and after it")
+			largest := 0
+			for _, id := range root.Pages {
+				var page manifestPage
+				_, err = store.read(t.Context(), id, &page)
+				require.NoError(t, err)
+				require.NotEmpty(t, page.Entries)
+				var payload json.RawMessage
+				_, err = store.read(t.Context(), page.Object, &payload)
+				require.NoError(t, err)
+				largest = max(largest, len(payload))
+			}
+			require.Equal(t, maxPolicyBytes, largest)
+		})
+	}
+}
+
+func TestPolicyStorePayloadValidation(t *testing.T) {
+	for _, scenario := range []struct {
+		name   string
+		change func(*manifestPage, *policyPayload)
+		error  string
+	}{
+		{"invalid payload reference", func(page *manifestPage, _ *policyPayload) {
+			page.Object = "/providers/Radius.Core/roleAssignments/alpha"
+		}, "invalid private policy payload"},
+		{"missing entry", func(page *manifestPage, payload *policyPayload) {
+			delete(payload.Entries, page.Entries[0].ID)
+		}, "entry count mismatch"},
+		{"extra entry", func(_ *manifestPage, payload *policyPayload) {
+			payload.Entries["unexpected"] = json.RawMessage(`{}`)
+		}, "entry count mismatch"},
+		{"wrong entry key", func(page *manifestPage, payload *policyPayload) {
+			id := page.Entries[0].ID
+			payload.Entries["unexpected"] = payload.Entries[id]
+			delete(payload.Entries, id)
+		}, "reference missing from payload"},
+		{"mismatched assignment ID", func(page *manifestPage, payload *policyPayload) {
+			for _, ref := range page.Entries {
+				if ref.Kind == "assignment" {
+					payload.Entries[ref.ID] = json.RawMessage(`{"id":"wrong"}`)
+					return
+				}
+			}
+		}, "assignment manifest ID mismatch"},
+		{"duplicate reference", func(page *manifestPage, _ *policyPayload) {
+			page.Entries[1] = page.Entries[0]
+		}, "duplicate or invalid policy reference"},
+		{"unknown entry kind", func(page *manifestPage, _ *policyPayload) {
+			page.Entries[0].Kind = "unknown"
+		}, "unknown policy entry kind"},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			store := newTestPolicyStore(t, inmemory.NewClient(), true)
+			var version accessVersion
+			_, err := store.read(t.Context(), accessVersionID, &version)
+			require.NoError(t, err)
+			var root manifestRoot
+			_, err = store.read(t.Context(), version.Root, &root)
+			require.NoError(t, err)
+			var page manifestPage
+			_, err = store.read(t.Context(), root.Pages[0], &page)
+			require.NoError(t, err)
+			var payload policyPayload
+			_, err = store.read(t.Context(), page.Object, &payload)
+			require.NoError(t, err)
+			payloadID := page.Object
+			scenario.change(&page, &payload)
+			require.NoError(t, store.save(t.Context(), root.Pages[0], page))
+			require.NoError(t, store.save(t.Context(), payloadID, payload))
+			_, err = store.LoadPolicy(t.Context(), -1)
+			require.ErrorContains(t, err, scenario.error)
+		})
+	}
 }

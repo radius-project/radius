@@ -52,19 +52,21 @@ type manifestRoot struct {
 }
 
 type policyReference struct {
-	ID     string `json:"id"`
-	Object string `json:"object"`
-	Kind   string `json:"kind"`
+	ID   string `json:"id"`
+	Kind string `json:"kind"`
 }
 
 type manifestPage struct {
+	Object  string            `json:"object"`
 	Entries []policyReference `json:"entries"`
+}
+
+type policyPayload struct {
+	Entries map[string]json.RawMessage `json:"entries"`
 }
 
 type storedPolicy struct {
 	policy Policy
-	refs   map[string]policyReference
-	raw    map[string]json.RawMessage
 }
 
 // PolicyStore persists private immutable objects, not mutable public resource
@@ -141,7 +143,7 @@ func (i *PolicyInitializer) Initialize(ctx context.Context, initial Policy) erro
 	if err != nil {
 		return err
 	}
-	root, err := i.store.prepare(ctx, intent.String(), policy, nil)
+	root, err := i.store.prepare(ctx, intent.String(), policy)
 	if err != nil {
 		return err
 	}
@@ -267,7 +269,7 @@ func (s *PolicyStore) immutable(ctx context.Context, id string, value any) error
 	return nil
 }
 
-func (s *PolicyStore) prepare(ctx context.Context, intent string, policy Policy, previous *storedPolicy) (string, error) {
+func (s *PolicyStore) prepare(ctx context.Context, intent string, policy Policy) (string, error) {
 	if err := validateStoredPolicy(policy); err != nil {
 		return "", err
 	}
@@ -283,33 +285,56 @@ func (s *PolicyStore) prepare(ctx context.Context, intent string, policy Policy,
 		entries = append(entries, entry{strings.ToLower(*a.ID), "assignment", a})
 	}
 	slices.SortFunc(entries, func(a, b entry) int { return strings.Compare(a.id, b.id) })
-	refs := make([]policyReference, 0, len(entries))
-	for index, e := range entries {
+	root := manifestRoot{Generation: policy.Generation}
+	page := manifestPage{}
+	payload := policyPayload{Entries: map[string]json.RawMessage{}}
+	payloadBytes := len(`{"entries":{}}`)
+	flush := func() error {
+		if len(root.Pages) == manifestFanout {
+			return fmt.Errorf("PolicyCapacityExceeded: manifest root fanout")
+		}
+		index := strconv.Itoa(len(root.Pages))
+		page.Object = policyObjectID + intent + "-object-" + index
+		if err := s.immutable(ctx, page.Object, payload); err != nil {
+			return err
+		}
+		id := policyObjectID + intent + "-page-" + index
+		if err := s.immutable(ctx, id, page); err != nil {
+			return err
+		}
+		root.Pages = append(root.Pages, id)
+		page = manifestPage{}
+		payload = policyPayload{Entries: map[string]json.RawMessage{}}
+		payloadBytes = len(`{"entries":{}}`)
+		return nil
+	}
+	for _, e := range entries {
 		raw, err := json.Marshal(e.value)
 		if err != nil {
 			return "", err
 		}
-		if previous != nil && bytes.Equal(previous.raw[e.id], raw) {
-			refs = append(refs, previous.refs[e.id])
-			continue
-		}
-		id := policyObjectID + intent + "-object-" + strconv.Itoa(index)
-		if err := s.immutable(ctx, id, json.RawMessage(raw)); err != nil {
+		key, err := json.Marshal(e.id)
+		if err != nil {
 			return "", err
 		}
-		refs = append(refs, policyReference{e.id, id, e.kind})
-	}
-	root := manifestRoot{Generation: policy.Generation}
-	for start := 0; start < len(refs); start += manifestFanout {
-		end := min(start+manifestFanout, len(refs))
-		id := policyObjectID + intent + "-page-" + strconv.Itoa(start/manifestFanout)
-		if err := s.immutable(ctx, id, manifestPage{Entries: refs[start:end]}); err != nil {
-			return "", err
+		entryBytes := len(key) + 1 + len(raw)
+		if len(`{"entries":{}}`)+entryBytes > maxPolicyBytes {
+			return "", fmt.Errorf("PolicyCapacityExceeded: policy entry %s exceeds payload byte bound", e.id)
 		}
-		root.Pages = append(root.Pages, id)
+		if len(page.Entries) > 0 && (len(page.Entries) == manifestFanout || payloadBytes+1+entryBytes > maxPolicyBytes) {
+			if err := flush(); err != nil {
+				return "", err
+			}
+		}
+		if len(page.Entries) > 0 {
+			payloadBytes++
+		}
+		payload.Entries[e.id] = raw
+		payloadBytes += entryBytes
+		page.Entries = append(page.Entries, policyReference{ID: e.id, Kind: e.kind})
 	}
-	if len(root.Pages) > manifestFanout {
-		return "", fmt.Errorf("PolicyCapacityExceeded: manifest root fanout")
+	if err := flush(); err != nil {
+		return "", err
 	}
 	id := policyObjectID + intent + "-root"
 	if err := s.immutable(ctx, id, root); err != nil {
@@ -329,7 +354,8 @@ func (s *PolicyStore) loadRoot(ctx context.Context, id string, generation int64)
 	if root.Generation != generation || len(root.Pages) == 0 || len(root.Pages) > manifestFanout {
 		return nil, fmt.Errorf("invalid policy manifest generation or fanout")
 	}
-	result := &storedPolicy{policy: Policy{Generation: generation}, refs: map[string]policyReference{}, raw: map[string]json.RawMessage{}}
+	result := &storedPolicy{policy: Policy{Generation: generation}}
+	seen := map[string]bool{}
 	settings := 0
 	for _, pageID := range root.Pages {
 		if !strings.HasPrefix(pageID, policyObjectID) {
@@ -342,13 +368,23 @@ func (s *PolicyStore) loadRoot(ctx context.Context, id string, generation int64)
 		if len(page.Entries) == 0 || len(page.Entries) > manifestFanout {
 			return nil, fmt.Errorf("invalid policy page fanout")
 		}
+		if !strings.HasPrefix(page.Object, policyObjectID) {
+			return nil, fmt.Errorf("invalid private policy payload")
+		}
+		var payload policyPayload
+		if _, err := s.read(ctx, page.Object, &payload); err != nil {
+			return nil, err
+		}
+		if len(payload.Entries) != len(page.Entries) {
+			return nil, fmt.Errorf("policy payload and manifest entry count mismatch")
+		}
 		for _, ref := range page.Entries {
-			if _, exists := result.refs[ref.ID]; exists || !strings.HasPrefix(ref.Object, policyObjectID) {
+			if seen[ref.ID] {
 				return nil, fmt.Errorf("duplicate or invalid policy reference")
 			}
-			var raw json.RawMessage
-			if _, err := s.read(ctx, ref.Object, &raw); err != nil {
-				return nil, err
+			raw, exists := payload.Entries[ref.ID]
+			if !exists {
+				return nil, fmt.Errorf("policy reference missing from payload")
 			}
 			switch ref.Kind {
 			case "role":
@@ -380,7 +416,7 @@ func (s *PolicyStore) loadRoot(ctx context.Context, id string, generation int64)
 			default:
 				return nil, fmt.Errorf("unknown policy entry kind %s", ref.Kind)
 			}
-			result.refs[ref.ID], result.raw[ref.ID] = ref, raw
+			seen[ref.ID] = true
 		}
 	}
 	if settings != 1 {
@@ -534,7 +570,7 @@ func (s *PolicyStore) Mutate(ctx context.Context, actor PolicyActor, mutation Po
 		if err != nil {
 			return nil, err
 		}
-		root, err := s.prepare(ctx, intent.String(), next, stored)
+		root, err := s.prepare(ctx, intent.String(), next)
 		if err != nil {
 			return nil, err
 		}
