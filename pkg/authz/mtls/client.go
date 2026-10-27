@@ -19,6 +19,7 @@ package mtls
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
@@ -65,8 +66,34 @@ func reloadContext() context.Context {
 // NewClientTransport returns an HTTP transport that presents this component's certificate
 // and verifies that the server is the Radius component named by the request URL's host.
 // It requires options.CertificateDirectory and options.Namespace.
-func NewClientTransport(options authz.Options) (*http.Transport, error) {
+func NewClientTransport(options authz.Options) (http.RoundTripper, error) {
 	return newClientTransport(options, "")
+}
+
+// clientTransport is an http.Transport that stops using a connection once the certificate
+// it presented is outside its validity period. The TLS handshake checks the certificate
+// only when a connection is opened, so without this a reused connection would outlive it.
+type clientTransport struct {
+	*http.Transport
+	source *Source
+
+	mu sync.Mutex
+	// conns maps each open connection to the certificate it presented.
+	conns map[*trackedConn]*x509.Certificate
+}
+
+// trackedConn is a connection that clientTransport stops tracking when it is closed.
+type trackedConn struct {
+	net.Conn
+	transport *clientTransport
+}
+
+// Close implements net.Conn.
+func (c *trackedConn) Close() error {
+	c.transport.mu.Lock()
+	delete(c.transport.conns, c)
+	c.transport.mu.Unlock()
+	return c.Conn.Close()
 }
 
 // newClientTransport is NewClientTransport with an optional TLS server name that replaces
@@ -74,7 +101,7 @@ func NewClientTransport(options authz.Options) (*http.Transport, error) {
 //
 // Each connection reads the certificate and CA bundle once, so the certificate it presents
 // and the CA bundle it verifies the server against always come from the same version.
-func newClientTransport(options authz.Options, serverName string) (*http.Transport, error) {
+func newClientTransport(options authz.Options, serverName string) (*clientTransport, error) {
 	if options.CertificateDirectory == "" || options.Namespace == "" {
 		return nil, fmt.Errorf("authorization mode %q requires certificateDirectory and namespace", options.EffectiveMode())
 	}
@@ -84,38 +111,77 @@ func newClientTransport(options authz.Options, serverName string) (*http.Transpo
 		return nil, fmt.Errorf("failed to load mTLS certificate: %w", err)
 	}
 
-	transport := http.DefaultTransport.(*http.Transport).Clone()
+	t := &clientTransport{
+		Transport: http.DefaultTransport.(*http.Transport).Clone(),
+		source:    source,
+		conns:     map[*trackedConn]*x509.Certificate{},
+	}
 	// A proxy would tunnel the TLS connection without the client certificate, and
 	// internal calls never go through a proxy.
-	transport.Proxy = nil
-	transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+	t.Proxy = nil
+	t.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		name := serverName
 		if name == "" {
 			name = hostname(addr)
 		}
 
-		config, err := source.ClientConfig(options.Namespace)
+		config, leaf, err := source.clientConfig(options.Namespace)
 		if err != nil {
 			return nil, err
 		}
 		config.ServerName = name
 		config.NextProtos = []string{"h2", "http/1.1"}
 
-		raw, err := transport.DialContext(ctx, network, addr)
+		raw, err := t.DialContext(ctx, network, addr)
 		if err != nil {
 			return nil, err
 		}
 
-		ctx, cancel := context.WithTimeout(ctx, transport.TLSHandshakeTimeout)
+		ctx, cancel := context.WithTimeout(ctx, t.TLSHandshakeTimeout)
 		defer cancel()
-		conn := tls.Client(raw, config)
+		tracked := &trackedConn{Conn: raw, transport: t}
+		conn := tls.Client(tracked, config)
 		if err := conn.HandshakeContext(ctx); err != nil {
 			_ = raw.Close()
 			return nil, err
 		}
+
+		t.mu.Lock()
+		t.conns[tracked] = leaf
+		t.mu.Unlock()
 		return conn, nil
 	}
-	return transport, nil
+	return t, nil
+}
+
+// RoundTrip implements http.RoundTripper. It first closes every connection whose presented
+// certificate is outside its validity period, so the request uses a new connection, which
+// presents the current certificate or fails with CertificateExpired.
+func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.closeExpired()
+	return t.Transport.RoundTrip(req)
+}
+
+func (t *clientTransport) closeExpired() {
+	var expired []*trackedConn
+	t.mu.Lock()
+	for conn, leaf := range t.conns {
+		if !t.source.isValid(leaf) {
+			expired = append(expired, conn)
+		}
+	}
+	t.mu.Unlock()
+	if len(expired) == 0 {
+		return
+	}
+
+	// Closing idle connections removes them from the pool before this request picks one.
+	// Connections in use are closed too, which aborts their in-flight requests: an HTTP/2
+	// connection in use would otherwise take new requests.
+	t.CloseIdleConnections()
+	for _, conn := range expired {
+		_ = conn.Close()
+	}
 }
 
 // NewUpgradeTransport returns plain when the authorization mode is off. Otherwise it returns

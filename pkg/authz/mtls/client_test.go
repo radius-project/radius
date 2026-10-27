@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -209,7 +210,7 @@ func TestUpgradeTransport_CanonicalServerName(t *testing.T) {
 // dialTo sends every connection of the mTLS transport for host to addr.
 func dialTo(t *testing.T, rt http.RoundTripper, host, addr string) {
 	t.Helper()
-	secure := rt.(*upgradeTransport).secure[host].(*http.Transport)
+	secure := rt.(*upgradeTransport).secure[host].(*clientTransport)
 	secure.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, network, addr)
 	}
@@ -258,7 +259,7 @@ func TestClientTransport_RotationMidHandshake(t *testing.T) {
 	go func() { _ = srv.Serve(ln) }()
 	t.Cleanup(func() { _ = srv.Close() })
 
-	transport, err := NewClientTransport(options)
+	transport, err := newClientTransport(options, "")
 	require.NoError(t, err)
 	require.Nil(t, transport.Proxy)
 	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
@@ -276,4 +277,72 @@ func TestClientTransport_RotationMidHandshake(t *testing.T) {
 	transport.CloseIdleConnections()
 	_, err = get(client, "https://"+appsRPServerName+":5443/")
 	require.ErrorContains(t, err, "unknown authority")
+}
+
+// TestClientTransport_CertificateExpiresOnOpenConnection keeps a connection open while the
+// client's certificate expires. The next request must not reuse it: it fails with
+// CertificateExpired, or presents the renewed certificate on a new connection.
+func TestClientTransport_CertificateExpiresOnOpenConnection(t *testing.T) {
+	ca := newCA(t)
+	for _, renewed := range []bool{false, true} {
+		t.Run(fmt.Sprintf("renewed=%t", renewed), func(t *testing.T) {
+			presented := make(chan []byte, 1)
+			srv := startServerWithHandler(t, ca, authz.ModeEnforce, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				presented <- r.TLS.PeerCertificates[0].Raw
+			}))
+
+			dir := t.TempDir()
+			first := ca.issue(t, certOptions{dnsNames: componentSANs("ucp"), notAfter: time.Now().Add(10 * time.Minute)})
+			writeFiles(t, dir, first, ca.pem)
+			options := authz.Options{Mode: authz.ModeEnforce, CertificateDirectory: dir, Namespace: testNamespace}
+			source, err := sharedSource(dir)
+			require.NoError(t, err)
+
+			transport, err := newClientTransport(options, "")
+			require.NoError(t, err)
+			transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, network, srv.url)
+			}
+			t.Cleanup(transport.CloseIdleConnections)
+			client := &http.Client{Transport: transport}
+			url := "https://" + appsRPServerName + ":5443/"
+
+			status, err := get(client, url)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
+			require.Equal(t, first.tlsCertificate(t).Certificate[0], <-presented)
+			require.Equal(t, 1, transport.openConns())
+
+			// Reload holds mu while it reads the clock, so changing the clock under mu does
+			// not race with the shared Source's reload loop.
+			source.mu.Lock()
+			source.now = func() time.Time { return time.Now().Add(30 * time.Minute) }
+			source.mu.Unlock()
+
+			if !renewed {
+				_, err = get(client, url)
+				requireCode(t, err, "CertificateExpired")
+				require.Zero(t, transport.openConns())
+				return
+			}
+
+			second := ca.issue(t, certOptions{dnsNames: componentSANs("ucp")})
+			writeFiles(t, dir, second, ca.pem)
+			changed, err := source.Reload()
+			require.NoError(t, err)
+			require.True(t, changed)
+
+			status, err = get(client, url)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
+			require.Equal(t, second.tlsCertificate(t).Certificate[0], <-presented)
+			require.Equal(t, 1, transport.openConns())
+		})
+	}
+}
+
+func (t *clientTransport) openConns() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return len(t.conns)
 }
