@@ -584,17 +584,26 @@ test("secure Kind workload DNS preserves CoreDNS and rejects a disconnected regi
   const directory = await temporary(t);
   const action = readYaml(".github/actions/create-kind-cluster/action.yaml");
   const steps = action.runs.steps;
-  const dns = step({ steps }, "Resolve the secure registry from cluster workloads");
+  const dns = step(
+    { steps },
+    "Resolve the secure registry from cluster workloads"
+  );
   assert.equal(
     dns.if,
     "${{ inputs.with-local-registry == 'true' && inputs.secure == 'true' }}"
   );
   assert.ok(
     steps.indexOf(dns) >
-      steps.indexOf(step({ steps }, "Create a KinD cluster with a secure local registry"))
+      steps.indexOf(
+        step({ steps }, "Create a KinD cluster with a secure local registry")
+      )
   );
-  const original = ".:53 {\n    errors\n    kubernetes cluster.local\n    forward . /etc/resolv.conf\n}\n";
-  await writeFile(join(directory, "original.json"), JSON.stringify({ data: { Corefile: original } }));
+  const original =
+    ".:53 {\n    errors\n    kubernetes cluster.local\n    forward . /etc/resolv.conf\n}\n";
+  await writeFile(
+    join(directory, "original.json"),
+    JSON.stringify({ data: { Corefile: original } })
+  );
   await writeFile(
     join(directory, "docker"),
     '#!/bin/sh\nprintf "%s\\n" "$REGISTRY_IP"\n',
@@ -625,7 +634,8 @@ esac
   const updated = JSON.parse(await readFile(join(directory, "applied.json")));
   assert.equal(
     updated.data.Corefile,
-    "radius-registry:53 {\n    hosts {\n        172.18.0.3 radius-registry\n    }\n}\n" + original
+    "radius-registry:53 {\n    hosts {\n        172.18.0.3 radius-registry\n    }\n}\n" +
+      original
   );
   await rm(join(directory, "applied.json"));
   const failed = spawnSync("bash", ["-c", dns.run], {
@@ -634,7 +644,9 @@ esac
   });
   assert.equal(failed.status, 1);
   assert.match(failed.stdout, /Secure registry is not connected/);
-  await assert.rejects(readFile(join(directory, "applied.json")), { code: "ENOENT" });
+  await assert.rejects(readFile(join(directory, "applied.json")), {
+    code: "ENOENT"
+  });
 });
 
 test("certificate properties and invalid-hostname rejection remain intact", async (t) => {

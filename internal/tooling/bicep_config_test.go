@@ -34,7 +34,7 @@ func TestGenerateBicepConfig(t *testing.T) {
 	t.Parallel()
 	script, err := os.ReadFile("../../build/scripts/generate-bicepconfig.sh")
 	require.NoError(t, err)
-	for _, channel := range []string{"edge", "0.61", "0.61.1", "0.61.0-rc.1", "0.60.0-rc3", "latest"} {
+	for _, channel := range []string{"edge", "0.62", "0.62.0", "0.62.0-rc.1", "0.61", "0.61.1", "0.61.0-rc.1", "0.60.0-rc3", "latest"} {
 		t.Run(channel, func(t *testing.T) {
 			t.Parallel()
 			dir := filepath.Join(t.TempDir(), "output with spaces")
