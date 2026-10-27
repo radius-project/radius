@@ -170,9 +170,9 @@ test("recovers from a real HTTP request timeout before Azure login", async (t) =
           fetch(`http://127.0.0.1:${server.address().port}`, {
             ...options,
             signal:
-              calls === 0
-                ? AbortSignal.any([options.signal, timeout.signal])
-                : options.signal
+              calls === 0 ?
+                AbortSignal.any([options.signal, timeout.signal])
+              : options.signal
           })
       }),
     delay: async () => {},

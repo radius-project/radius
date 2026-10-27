@@ -160,6 +160,30 @@ func TestApplicationResourceOptIn(t *testing.T) {
 	}
 }
 
+func TestCustomActionsDoNotGrantConnect(t *testing.T) {
+	catalog, err := NewCatalog([]Registration{{
+		Type: "Team.Data/widgets", Actions: []string{"restart"}, PermissionSets: []string{ApplicationResources},
+	}})
+	require.NoError(t, err)
+	evaluator, err := NewEvaluator(catalog, nil, []api.RoleAssignmentResource{
+		testAssignment("grant", builtInID("application-developer"), teamA, testIdentity().Principal),
+	})
+	require.NoError(t, err)
+	widget := teamA + "/providers/Team.Data/widgets/test"
+	for _, action := range []string{"connect", "Connect", "use", "deploy"} {
+		_, err := catalog.MapRequest("POST", widget+"/"+action)
+		require.Error(t, err, action)
+	}
+	_, err = catalog.MapRequest("POST", teamA+"/providers/Applications.Core/containers/test/connect")
+	require.Error(t, err)
+	mapping, err := catalog.MapRequest("POST", widget+"/restart")
+	require.NoError(t, err)
+	require.Equal(t, []Check{{"Team.Data/widgets/restart/action", lowerTarget(widget)}}, mapping.Checks)
+	result, err := evaluator.Evaluate(testIdentity(), mapping.Checks)
+	require.NoError(t, err)
+	require.False(t, result[0].Allowed)
+}
+
 func TestPolicyValidation(t *testing.T) {
 	catalog, err := NewCatalog(nil)
 	require.NoError(t, err)

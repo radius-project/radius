@@ -156,7 +156,8 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 	if method == http.MethodPost {
 		index := strings.LastIndex(path, "/")
 		action := path[index+1:]
-		if !actionPattern.MatchString(action) {
+		// POST invokes a callable action; it never grants semantic permissions.
+		if !actionPattern.MatchString(action) || isReservedAction(action) {
 			return RequestMapping{}, fmt.Errorf("invalid request action")
 		}
 		target = path[:index]

@@ -31,8 +31,17 @@ const (
 var resourceTypePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9.-]*[.][A-Za-z0-9.-]+/[A-Za-z][A-Za-z0-9-]*(/[A-Za-z][A-Za-z0-9-]*)*$`)
 var actionPattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]*$`)
 
+// reservedActions are semantic permission names. A callable action must never
+// share a key with permission to reference or use another resource.
+var reservedActions = []string{"read", "write", "delete", "connect", "use", "joinPermissionSet"}
+
+func isReservedAction(action string) bool {
+	return containsFold(reservedActions, action)
+}
+
 // Registration is a trusted resource type registration, not a caller assertion.
 // Actions enter the catalog but never enter applicationResources or custom roles.
+// Actions must not reuse reserved semantic names such as connect or use.
 type Registration struct {
 	Type           string
 	Actions        []string
@@ -90,7 +99,7 @@ func NewCatalog(registrations []Registration) (*Catalog, error) {
 			catalog.permissions[strings.ToLower(permission)] = permission
 		}
 		for _, action := range registration.Actions {
-			if !actionPattern.MatchString(action) {
+			if !actionPattern.MatchString(action) || isReservedAction(action) {
 				return nil, fmt.Errorf("invalid registered action %q", action)
 			}
 			permission := registration.Type + "/" + action + "/action"
