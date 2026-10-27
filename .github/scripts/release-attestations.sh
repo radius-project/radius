@@ -116,6 +116,9 @@ validate_args() {
         [[ -n "${OUTPUT}" ]] || fail "--output is required"
     elif [[ ! "${SOURCE_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
         fail "invalid source commit: ${SOURCE_SHA}"
+    elif [[ ! "${RETRY_ATTEMPTS}" =~ ^[1-9][0-9]*$ ]]; then
+        # Zero attempts would skip every check and accept unverified artifacts.
+        fail "RELEASE_RETRY_ATTEMPTS must be a positive integer"
     fi
 }
 

@@ -133,7 +133,8 @@ run_script() {
     STATUS=0
     OUTPUT="$(
         PATH="${TEST_ROOT}/bin:${PATH}" FAKE_GH_MODE="${gh_mode}" \
-            FAKE_GH_LOG="${TEST_ROOT}/gh.log" RELEASE_RETRY_ATTEMPTS=3 \
+            FAKE_GH_LOG="${TEST_ROOT}/gh.log" \
+            RELEASE_RETRY_ATTEMPTS="${TEST_RETRY_ATTEMPTS:-3}" \
             RELEASE_RETRY_NO_SLEEP=true bash "${SCRIPT}" "$@" 2>&1
     )" || STATUS=$?
 }
@@ -265,6 +266,8 @@ test_verify_enforces_release_policy() {
 }
 
 test_verify_fails_closed() {
+    local attempts
+
     setup_release
     run_verify reject
     if [[ "${STATUS}" -eq 0 ]] \
@@ -295,6 +298,15 @@ test_verify_fails_closed() {
         fail_test "verification ran without the full source commit"
         return
     fi
+
+    for attempts in 0 -1 abc; do
+        setup_release
+        TEST_RETRY_ATTEMPTS="${attempts}" run_verify ok
+        if [[ "${STATUS}" -eq 0 || "$(gh_calls)" != "0" ]]; then
+            fail_test "verification passed with ${attempts} retry attempts"
+            return
+        fi
+    done
     ((++PASS))
 }
 
