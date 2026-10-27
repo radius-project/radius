@@ -780,3 +780,49 @@ func Test_ApplyHelmChart_QueryReleaseError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to query Helm release")
 }
+
+func Test_queryReleaseValues_ReleaseSelection(t *testing.T) {
+	t.Parallel()
+
+	newRelease := func(revision int, status releasecommon.Status, dryRun bool) *releasev1.Release {
+		return &releasev1.Release{
+			Name:    "radius",
+			Version: revision,
+			Chart:   &chart.Chart{Metadata: &chart.Metadata{AppVersion: "0.1.0"}},
+			Info:    &releasev1.Info{Status: status},
+			Config:  map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": dryRun}}},
+		}
+	}
+	deployed := newRelease(1, releasecommon.StatusDeployed, true)
+	failed := newRelease(2, releasecommon.StatusFailed, false)
+	onlyFailed := newRelease(1, releasecommon.StatusFailed, true)
+
+	tests := []struct {
+		name    string
+		latest  *releasev1.Release
+		history []*releasev1.Release
+		want    *releasev1.Release
+	}{
+		{name: "deployed latest skips history", latest: deployed, want: deployed},
+		{name: "failed latest uses deployed revision", latest: failed, history: []*releasev1.Release{deployed, failed}, want: deployed},
+		{name: "no deployed revision uses latest", latest: onlyFailed, history: []*releasev1.Release{onlyFailed}, want: onlyFailed},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(tt.latest, nil)
+			if tt.history != nil {
+				client.EXPECT().RunHelmHistory(gomock.Any(), "radius").Return(tt.history, nil)
+			}
+
+			installed, version, values, err := NewHelmAction(client).queryReleaseValues("test-context", "radius", "radius-system")
+			require.NoError(t, err)
+			require.True(t, installed)
+			require.Equal(t, "0.1.0", version)
+			require.Equal(t, tt.want.Config, values)
+		})
+	}
+}

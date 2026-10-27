@@ -23,6 +23,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/semver/v3"
+	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -90,18 +91,12 @@ func newCertManagerClients(kubeContext string) (kubernetes.Interface, apiextclie
 }
 
 // resolveAuthzMode returns the authorization mode the Radius chart will render from global.rbac. Values from the
-// current invocation override the stored release values key by key, matching Helm's reuse-values merge.
+// current invocation are merged over the stored release values with Helm's own CoalesceTables, the merge Helm
+// upgrade applies for ResetThenReuseValues, so null or non-map replacements clear stored flags like Helm does.
 func resolveAuthzMode(stored, current map[string]any) (authz.Mode, error) {
-	enabled, dryRun := rbacFlag(stored, "enabled"), rbacFlag(stored, "dryRun")
-	if rbacCleared(current) {
-		enabled, dryRun = false, false
-	}
-	if v, ok := lookupRBACValue(current, "enabled"); ok {
-		enabled = isTrue(v)
-	}
-	if v, ok := lookupRBACValue(current, "dryRun"); ok {
-		dryRun = isTrue(v)
-	}
+	// CoalesceTables mutates both arguments, so merge copies.
+	merged := valuesutil.CoalesceTables(copyValues(current), copyValues(stored))
+	enabled, dryRun := rbacFlag(merged, "enabled"), rbacFlag(merged, "dryRun")
 
 	switch {
 	case enabled && dryRun:
@@ -116,27 +111,24 @@ func resolveAuthzMode(stored, current map[string]any) (authz.Mode, error) {
 }
 
 func rbacFlag(values map[string]any, key string) bool {
-	v, _ := lookupRBACValue(values, key)
-	return isTrue(v)
-}
-
-func lookupRBACValue(values map[string]any, key string) (any, bool) {
 	global, _ := values["global"].(map[string]any)
 	rbac, _ := global["rbac"].(map[string]any)
-	v, ok := rbac[key]
-	return v, ok
+	return isTrue(rbac[key])
 }
 
-// rbacCleared reports whether values explicitly set global or global.rbac to null, which Helm treats as
-// removing the stored map.
-func rbacCleared(values map[string]any) bool {
-	g, ok := values["global"]
-	if ok && g == nil {
-		return true
+// copyValues deep-copies the nested maps of a values tree; leaf values are shared.
+func copyValues(values map[string]any) map[string]any {
+	if values == nil {
+		return nil
 	}
-	global, _ := g.(map[string]any)
-	r, ok := global["rbac"]
-	return ok && r == nil
+	out := make(map[string]any, len(values))
+	for k, v := range values {
+		if m, ok := v.(map[string]any); ok {
+			v = copyValues(m)
+		}
+		out[k] = v
+	}
+	return out
 }
 
 // isTrue applies Go template truthiness, matching how the chart's radius.authz.mode helper reads the flags.

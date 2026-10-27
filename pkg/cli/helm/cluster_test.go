@@ -263,7 +263,7 @@ func Test_Helm_HistoryConsumers_RevisionOrder(t *testing.T) {
 				RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 				DoAndReturn(func(_ *helm.Configuration, name string) ([]*releasev1.Release, error) {
 					return NewHelmClient().RunHelmHistory(configuration, name)
-				}).Times(3)
+				}).Times(4) // The latest revision is failed, so stored values come from history too.
 			client.EXPECT().
 				RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 				Return(failed, nil)
