@@ -108,6 +108,23 @@ tests:
           value: 123456789.dkr.ecr.us-west-2.amazonaws.com/custom-ucpd:1.0.0
         template: ucp/deployment.yaml
 
+  - it: should preserve fully qualified external image digests
+    set:
+      global.imageRegistry: radius-local-registry:5443
+      de.image: example.test/de@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      de.tag: unused
+      dashboard.image: example.test/dashboard@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      dashboard.tag: unused
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example.test/de@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example.test/dashboard@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+        template: dashboard/deployment.yaml
+
   # Tests for global.imagePullSecrets functionality
   - it: should add imagePullSecrets when specified
     set:

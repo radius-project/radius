@@ -37,6 +37,117 @@ esac
 
 cd "${REPO_ROOT}"
 
+configure_inputs() {
+    if [[ -n "${DE_IMAGE:-}" && -z "${DE_TAG:-}" ||
+        -z "${DE_IMAGE:-}" && -n "${DE_TAG:-}" ]]; then
+        echo "DE_IMAGE and DE_TAG must both be set or both be empty." >&2
+        exit 2
+    fi
+    if [[ -n "${LOCAL_FUNCTIONAL_DASHBOARD_IMAGE:-}" &&
+        -z "${LOCAL_FUNCTIONAL_DASHBOARD_TAG:-}" ||
+        -z "${LOCAL_FUNCTIONAL_DASHBOARD_IMAGE:-}" &&
+        -n "${LOCAL_FUNCTIONAL_DASHBOARD_TAG:-}" ]]; then
+        echo "LOCAL_FUNCTIONAL_DASHBOARD_IMAGE and LOCAL_FUNCTIONAL_DASHBOARD_TAG must both be set or both be empty." >&2
+        exit 2
+    fi
+    export DE_IMAGE="${DE_IMAGE:-ghcr.io/radius-project/deployment-engine}"
+    export DE_TAG="${DE_TAG:-latest}"
+    export LOCAL_FUNCTIONAL_DASHBOARD_IMAGE="${LOCAL_FUNCTIONAL_DASHBOARD_IMAGE:-ghcr.io/radius-project/dashboard}"
+    export LOCAL_FUNCTIONAL_DASHBOARD_TAG="${LOCAL_FUNCTIONAL_DASHBOARD_TAG:-latest}"
+    export LOCAL_FUNCTIONAL_SAMPLES_REVISION="${LOCAL_FUNCTIONAL_SAMPLES_REVISION:-}"
+    samples_external=false
+    if [[ -n "${RADIUS_SAMPLES_REPO_ROOT:-}" ]]; then
+        samples_external=true
+        if [[ "${RADIUS_SAMPLES_REPO_ROOT}" != /* ||
+            -z "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}" ]]; then
+            echo "RADIUS_SAMPLES_REPO_ROOT requires an absolute checkout path and LOCAL_FUNCTIONAL_SAMPLES_REVISION." >&2
+            exit 2
+        fi
+    fi
+    export RADIUS_SAMPLES_REPO_ROOT="${RADIUS_SAMPLES_REPO_ROOT:-${STATE}/samples}"
+    if [[ -n "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}" ]]; then
+        if [[ ! "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "LOCAL_FUNCTIONAL_SAMPLES_REVISION must be a full lowercase 40-character commit SHA, not a branch or tag." >&2
+            exit 2
+        fi
+        if [[ "${samples_external}" == true || -e "${RADIUS_SAMPLES_REPO_ROOT}" ]]; then
+            check_samples_checkout
+        fi
+        case "$1" in
+        all | setup | fixtures)
+            if [[ "${samples_external}" == true ]]; then
+                check_samples_revision
+            fi
+            ;;
+        *) check_samples_revision ;;
+        esac
+    fi
+}
+
+check_samples_checkout() {
+    local root="${RADIUS_SAMPLES_REPO_ROOT}" top dirty
+    if [[ ! -e "${root}/.git" ]]; then
+        echo "Pinned samples require a Git checkout at ${root}." >&2
+        exit 1
+    fi
+    top="$(git -C "${root}" rev-parse --show-toplevel)"
+    if [[ "${top}" != "$(cd "${root}" && pwd -P)" ]]; then
+        echo "RADIUS_SAMPLES_REPO_ROOT must be the samples checkout root." >&2
+        exit 1
+    fi
+    dirty="$(git -C "${root}" status --porcelain --untracked-files=all --ignored)"
+    if [[ -n "${dirty}" ]]; then
+        echo "Pinned samples checkout is dirty: ${root}. Preserve or remove changes before retrying." >&2
+        exit 1
+    fi
+}
+
+check_samples_revision() {
+    check_samples_checkout
+    local actual
+    actual="$(git -C "${RADIUS_SAMPLES_REPO_ROOT}" rev-parse --verify HEAD)"
+    if [[ "${actual}" != "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}" ]]; then
+        echo "Samples HEAD ${actual} does not match LOCAL_FUNCTIONAL_SAMPLES_REVISION=${LOCAL_FUNCTIONAL_SAMPLES_REVISION}." >&2
+        exit 1
+    fi
+}
+
+prepare_samples() {
+    local root="${RADIUS_SAMPLES_REPO_ROOT}"
+    if [[ -z "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}" ]]; then
+        if [[ ! -d "${root}/.git" ]]; then
+            git clone --depth 1 --branch edge \
+                https://github.com/radius-project/samples.git "${root}"
+        else
+            git -C "${root}" pull --ff-only origin edge
+        fi
+        return
+    fi
+    if [[ "${samples_external}" == false ]]; then
+        if [[ ! -e "${root}" ]]; then
+            git init "${root}"
+            git -C "${root}" remote add origin \
+                https://github.com/radius-project/samples.git
+        fi
+        check_samples_checkout
+        local commit
+        if ! commit="$(git -C "${root}" rev-parse --verify --quiet \
+            "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}^{commit}")"; then
+            git -C "${root}" fetch --depth 1 \
+                https://github.com/radius-project/samples.git \
+                "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}"
+            commit="$(git -C "${root}" rev-parse --verify \
+                "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}^{commit}")"
+        fi
+        if [[ "${commit}" != "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}" ]]; then
+            echo "LOCAL_FUNCTIONAL_SAMPLES_REVISION must identify a commit, not a tag object." >&2
+            exit 1
+        fi
+        git -C "${root}" checkout --detach "${commit}"
+    fi
+    check_samples_revision
+}
+
 configure_environment() {
     local suffix="${LOCAL_FUNCTIONAL_SUITE:+-${LOCAL_FUNCTIONAL_SUITE}}"
     export GOPATH="${GOPATH:-$(go env GOPATH)}"
@@ -59,13 +170,10 @@ configure_environment() {
     export RADIUS_REGISTRY_CERT_FILE="${CA_FILE}"
     export RADIUS_CHART_LOCATION="${REPO_ROOT}/deploy/Chart"
     export RADIUS_CONTAINER_LOG_PATH="${STATE}/container_logs"
-    export RADIUS_SAMPLES_REPO_ROOT="${STATE}/samples"
     export GIT_HTTP_SERVER_URL="http://localhost:30080"
     export GIT_HTTP_USERNAME="testuser"
     export GIT_HTTP_EMAIL="testuser@radapp.io"
     export GIT_HTTP_PASSWORD="not-a-secret-password"
-    export DE_IMAGE="ghcr.io/radius-project/deployment-engine"
-    export DE_TAG="latest"
     export RADIUS_TEST_FAST_CLEANUP=false
     export TEST_TIMEOUT="${TEST_TIMEOUT:-1h}"
 }
@@ -124,8 +232,8 @@ install_radius() {
         --set "global.imageRegistry=${DOCKER_REGISTRY}" \
         --set "global.imageTag=${TAG}" \
         --set "de.image=${DE_IMAGE},de.tag=${DE_TAG}" \
-        --set dashboard.image=ghcr.io/radius-project/dashboard \
-        --set dashboard.tag=latest \
+        --set "dashboard.image=${LOCAL_FUNCTIONAL_DASHBOARD_IMAGE}" \
+        --set "dashboard.tag=${LOCAL_FUNCTIONAL_DASHBOARD_TAG}" \
         --set-file "global.rootCA.cert=${CA_FILE}" "$@"
     local gateway_resources attempt
     for attempt in {1..36}; do
@@ -315,6 +423,9 @@ fixtures() (
     local fixture_pids=()
     prepare_configs
     trap 'trap "" INT TERM; wait_workers "${fixture_pids[@]}" || true; finish_tests' EXIT
+    if [[ -n "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}" ]]; then
+        prepare_samples
+    fi
     (
         flux install --namespace=flux-system --version=v2.6.4 \
             --components=source-controller --network-policy=false
@@ -340,11 +451,8 @@ fixtures() (
         --target "br:localhost:${REGISTRY_PORT}/testresources:${TAG}" --force
     BICEP_RECIPE_PUBLISH_PARALLELISM=4 make publish-test-bicep-recipes \
         BICEP_RECIPE_REGISTRY="localhost:${REGISTRY_PORT}"
-    if [[ ! -d "${STATE}/samples/.git" ]]; then
-        git clone --depth 1 --branch edge \
-            https://github.com/radius-project/samples.git "${STATE}/samples"
-    else
-        git -C "${STATE}/samples" pull --ff-only origin edge
+    if [[ -z "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}" ]]; then
+        prepare_samples
     fi
     wait_workers "${fixture_pids[@]}"
     finish_tests
@@ -562,6 +670,9 @@ run_tests() {
     fi
     kubectl cluster-info
     prepare_configs
+    if [[ -n "${LOCAL_FUNCTIONAL_SAMPLES_REVISION}" ]]; then
+        check_samples_revision
+    fi
     restore_extensions
     if [[ -z "${LOCAL_FUNCTIONAL_SUITE:-}" ]]; then
         kubectl port-forward -n git-http-backend svc/git-http 30080:3000 \
@@ -676,6 +787,10 @@ cleanup() {
     fi
     echo "Infrastructure removed; logs and isolated CLI configuration remain in ${STATE}."
 }
+
+if [[ "${1:-}" != cleanup ]]; then
+    configure_inputs "${1:-}"
+fi
 
 case "${1:-}" in
 all)

@@ -72,6 +72,7 @@ func TestTestImageReferences(test *testing.T) {
 			expectedTag:      "test-functional-123-2",
 		},
 	}
+
 	for _, testCase := range testCases {
 		test.Run(testCase.name, func(test *testing.T) {
 			test.Setenv("DOCKER_REGISTRY", testCase.registry)
@@ -81,6 +82,39 @@ func TestTestImageReferences(test *testing.T) {
 			require.Equal(test, testCase.expectedTag, tag)
 			require.Equal(test, "magpieimage="+registry+"/magpiego:"+tag, GetMagpieImage())
 			require.Equal(test, "magpietag="+tag, GetMagpieTag())
+		})
+	}
+}
+
+func TestLocalFunctionalDashboardValues(t *testing.T) {
+	for _, tc := range []struct {
+		name, image, tag string
+		want             []string
+		wantErr          bool
+	}{
+		{name: "defaults"},
+		{name: "image only", image: "example.test/dashboard", wantErr: true},
+		{name: "tag only", tag: "pinned-sha", wantErr: true},
+		{
+			name: "pinned", image: "example.test:5001/dashboard", tag: "00123",
+			want: []string{"dashboard.image=example.test:5001/dashboard", "dashboard.tag=00123"},
+		},
+		{
+			name: "digest", image: "example.test/dashboard@sha256:" + strings.Repeat("a", 64), tag: "unused",
+			want: []string{"dashboard.image=example.test/dashboard@sha256:" + strings.Repeat("a", 64), "dashboard.tag=unused"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("LOCAL_FUNCTIONAL_DASHBOARD_IMAGE", tc.image)
+			t.Setenv("LOCAL_FUNCTIONAL_DASHBOARD_TAG", tc.tag)
+			values, err := LocalFunctionalDashboardValues()
+			if tc.wantErr {
+				require.EqualError(t, err, "LOCAL_FUNCTIONAL_DASHBOARD_IMAGE and LOCAL_FUNCTIONAL_DASHBOARD_TAG must both be set or both be empty")
+				require.Nil(t, values)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.want, values)
 		})
 	}
 }

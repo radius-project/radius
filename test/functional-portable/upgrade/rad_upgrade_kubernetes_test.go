@@ -72,6 +72,8 @@ const (
 // in parallel, and each subtest depends on the state the previous one left behind.
 func Test_RadUpgradeKubernetes(t *testing.T) {
 	ctx := t.Context()
+	dashboardValues, err := testutil.LocalFunctionalDashboardValues()
+	require.NoError(t, err, "Invalid dashboard image configuration")
 	cli := radcli.NewCLI(t, "")
 
 	k8sClient, err := newKubernetesClient()
@@ -81,7 +83,7 @@ func Test_RadUpgradeKubernetes(t *testing.T) {
 	require.NoError(t, err, "Invalid Deployment Engine image configuration")
 
 	registry, tag := testutil.SetDefault()
-	imageArgs := radUpgradeImageArgs(registry, tag, deImage, os.Getenv("RADIUS_REGISTRY_CERT_FILE"))
+	imageArgs := radUpgradeImageArgs(registry, tag, deImage, dashboardValues, os.Getenv("RADIUS_REGISTRY_CERT_FILE"))
 	ucpImage := fmt.Sprintf("%s/ucpd:%s", registry, tag)
 
 	chartDir := t.TempDir()
@@ -235,7 +237,7 @@ func Test_RadUpgradeKubernetes(t *testing.T) {
 // chart's appVersion, which the versioned chart copies change. The Radius images come from the
 // build under test. The Deployment Engine and dashboard fall back to the tags the edge chart
 // renders ("latest") when no override is configured.
-func radUpgradeImageArgs(registry, tag string, deImage deploymentEngineImage, rootCACertFile string) []string {
+func radUpgradeImageArgs(registry, tag string, deImage deploymentEngineImage, dashboardValues []string, rootCACertFile string) []string {
 	var args []string
 	for _, component := range radiusImageComponents {
 		args = append(args, "--set", fmt.Sprintf("%s.image=%s/%s,%s.tag=%s", component.key, registry, component.image, component.key, tag))
@@ -245,7 +247,13 @@ func radUpgradeImageArgs(registry, tag string, deImage deploymentEngineImage, ro
 	} else {
 		args = append(args, "--set", "de.tag=latest")
 	}
-	args = append(args, "--set", "dashboard.tag=latest")
+	if len(dashboardValues) == 0 {
+		args = append(args, "--set", "dashboard.tag=latest")
+	} else {
+		for _, value := range dashboardValues {
+			args = append(args, "--set", value)
+		}
+	}
 	if rootCACertFile != "" {
 		args = append(args, "--set-file", "global.rootCA.cert="+rootCACertFile)
 	}
@@ -399,10 +407,11 @@ func Test_radUpgradeImageArgs(t *testing.T) {
 		"--set", "preupgrade.image=radius-registry:5000/pre-upgrade,preupgrade.tag=pr-1",
 	}
 	for _, tc := range []struct {
-		name    string
-		deImage deploymentEngineImage
-		cert    string
-		want    []string
+		name            string
+		deImage         deploymentEngineImage
+		dashboardValues []string
+		cert            string
+		want            []string
 	}{
 		{
 			name: "default Deployment Engine",
@@ -417,10 +426,55 @@ func Test_radUpgradeImageArgs(t *testing.T) {
 				"--set", "dashboard.tag=latest",
 				"--set-file", "global.rootCA.cert=/tmp/certs/client.crt"),
 		},
+		{
+			name:            "pinned dashboard",
+			dashboardValues: []string{"dashboard.image=example.test/dashboard", "dashboard.tag=00123"},
+			want: append(slices.Clone(components),
+				"--set", "de.tag=latest",
+				"--set", "dashboard.image=example.test/dashboard",
+				"--set", "dashboard.tag=00123"),
+		},
+		{
+			name: "digest pins",
+			deImage: deploymentEngineImage{
+				repository: "example.test/de@sha256:" + strings.Repeat("a", 64),
+				tag:        "unused",
+			},
+			dashboardValues: []string{
+				"dashboard.image=example.test/dashboard@sha256:" + strings.Repeat("b", 64),
+				"dashboard.tag=unused",
+			},
+			want: append(slices.Clone(components),
+				"--set", "de.image=example.test/de@sha256:"+strings.Repeat("a", 64)+",de.tag=unused",
+				"--set", "dashboard.image=example.test/dashboard@sha256:"+strings.Repeat("b", 64),
+				"--set", "dashboard.tag=unused"),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.want, radUpgradeImageArgs("radius-registry:5000", "pr-1", tc.deImage, tc.cert))
+			require.Equal(t, tc.want, radUpgradeImageArgs("radius-registry:5000", "pr-1", tc.deImage, tc.dashboardValues, tc.cert))
 		})
+	}
+}
+
+func Test_dashboardImagePartialInputFailsBeforeCleanup(t *testing.T) {
+	for _, entrypoint := range []string{"Test_PreflightContainer", "Test_RadUpgradeKubernetes"} {
+		for _, variable := range []string{"LOCAL_FUNCTIONAL_DASHBOARD_IMAGE", "LOCAL_FUNCTIONAL_DASHBOARD_TAG"} {
+			t.Run(entrypoint+"/"+variable, func(t *testing.T) {
+				t.Setenv("DE_IMAGE", "")
+				t.Setenv("DE_TAG", "")
+				t.Setenv("LOCAL_FUNCTIONAL_DASHBOARD_IMAGE", "")
+				t.Setenv("LOCAL_FUNCTIONAL_DASHBOARD_TAG", "")
+				t.Setenv(variable, "candidate")
+				t.Setenv("KUBECONFIG", t.TempDir()+"/missing-kubeconfig")
+				t.Setenv("PATH", t.TempDir())
+				cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^"+entrypoint+"$", "-test.v")
+				output, err := cmd.CombinedOutput()
+				require.Error(t, err)
+				require.Contains(t, string(output), "LOCAL_FUNCTIONAL_DASHBOARD_IMAGE and LOCAL_FUNCTIONAL_DASHBOARD_TAG must both be set or both be empty")
+				require.NotContains(t, string(output), "Failed to create Kubernetes client")
+				require.NotContains(t, string(output), "Cleaning up any existing Radius installation")
+			})
+		}
 	}
 }
 

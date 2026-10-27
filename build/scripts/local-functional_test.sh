@@ -5,10 +5,12 @@
 # You may obtain a copy of the License at
 # http://www.apache.org/licenses/LICENSE-2.0
 
+# shellcheck disable=SC2030,SC2031 # Subshells intentionally isolate input overrides.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 work_dir="$(mktemp -d "${TMPDIR:-/tmp}/radius-local-functional-test.XXXXXX")"
+work_dir="$(cd "${work_dir}" && pwd -P)"
 trap 'rm -rf "${work_dir}"' EXIT
 
 fail() {
@@ -24,9 +26,10 @@ assert_not_contains() {
     [[ "$1" != *"$2"* ]] || fail "did not expect '$1' to contain '$2'"
 }
 
-export REAL_MAKE REAL_SLEEP
+export REAL_MAKE REAL_SLEEP REAL_GIT
 REAL_MAKE="$(command -v make)"
 REAL_SLEEP="$(command -v sleep)"
+REAL_GIT="$(command -v git)"
 mkdir -p "${work_dir}/build/scripts" "${work_dir}/bin" \
     "${work_dir}/dist/local-functional" \
     "${work_dir}/test/functional-portable/dynamicrp/noncloud/resources/testdata" \
@@ -55,7 +58,10 @@ export MOCK_CLUSTERS="" MOCK_CONTAINERS="" MOCK_NETWORKS=""
 export MOCK_DOCKER_PLATFORM=linux/x86_64
 export MOCK_GOTEST_OPTS="-count=1"
 export MOCK_GATEWAY_DISCOVERY=ready
+export MOCK_REAL_SAMPLES_GIT=false MOCK_REPO_ROOT="${work_dir}"
 unset MAKEFLAGS MFLAGS GOTEST_OPTS
+unset DE_IMAGE DE_TAG LOCAL_FUNCTIONAL_DASHBOARD_IMAGE LOCAL_FUNCTIONAL_DASHBOARD_TAG
+unset RADIUS_SAMPLES_REPO_ROOT LOCAL_FUNCTIONAL_SAMPLES_REVISION
 cat >"${MOCK_FIXTURE_HELPER}" <<'EOF'
 #!/bin/bash
 set -euo pipefail
@@ -69,7 +75,7 @@ sleep 0.2
 touch "${MOCK_LOG}.fixture-$1-done"
 EOF
 
-# Only filesystem utilities and GNU Make are real; infrastructure is mocked.
+# Filesystem utilities, GNU Make, and opt-in samples Git operations are real.
 for tool in dirname mkdir mktemp mv rm grep bash cp touch rmdir sed cat chmod ln; do
     ln -s "$(command -v "${tool}")" "${work_dir}/bin/${tool}"
 done
@@ -88,6 +94,17 @@ if [[ "${MOCK_FIXTURE_CONCURRENCY}" == true && "${tool}" =~ ^(flux|dapr)$ ]]; th
 fi
 case "${tool}" in
 git)
+    if [[ "${MOCK_REAL_SAMPLES_GIT}" == true ]]; then
+        if [[ "${1:-}" == init ]]; then
+            exec "${REAL_GIT}" "$@"
+        elif [[ "${1:-}" == -C && "${2}" != "${MOCK_REPO_ROOT}" ]]; then
+            if [[ "${3:-}" == fetch ]]; then
+                exec "${REAL_GIT}" -C "$2" fetch --depth 1 \
+                    "${MOCK_SAMPLES_ORIGIN}" "${7}"
+            fi
+            exec "${REAL_GIT}" "$@"
+        fi
+    fi
     case "${1:-}" in
     clone) mkdir -p "${7}/.git" ;;
     -C)
@@ -262,6 +279,7 @@ make)
         }
         printf 'external=%s\n' "${RADIUS_TEST_EXTERNAL_KUBECONFIG-<unset>}" \
             >>"${MOCK_LOG}"
+        printf 'samples=%s\n' "${RADIUS_SAMPLES_REPO_ROOT}" >>"${MOCK_LOG}"
         cat test/bicepconfig.json >>"${MOCK_LOG}"
         if [[ -n "${MOCK_SIGNAL}" ]]; then
             kill "-${MOCK_SIGNAL}" "${PPID}"
@@ -296,6 +314,80 @@ run_runner() {
         fail "expected exit ${expected_status}, got ${status}: ${output}"
     calls="$(<"${MOCK_LOG}")"
 }
+
+for variable in DE_IMAGE DE_TAG \
+    LOCAL_FUNCTIONAL_DASHBOARD_IMAGE LOCAL_FUNCTIONAL_DASHBOARD_TAG; do
+    (
+        export "${variable}=candidate"
+        run_runner 2 setup
+        assert_contains "${output}" "must both be set or both be empty"
+        assert_not_contains "${calls}" "docker "
+        assert_not_contains "${calls}" "make "
+        assert_not_contains "${calls}" "sudo "
+        run_runner 0 cleanup
+    )
+done
+(
+    export DE_IMAGE="" DE_TAG=""
+    export LOCAL_FUNCTIONAL_DASHBOARD_IMAGE="" LOCAL_FUNCTIONAL_DASHBOARD_TAG=""
+    run_runner 0 install
+    assert_contains "${calls}" \
+        "--set de.image=ghcr.io/radius-project/deployment-engine,de.tag=latest"
+    assert_contains "${calls}" \
+        "--set dashboard.image=ghcr.io/radius-project/dashboard --set dashboard.tag=latest"
+)
+(
+    export DE_IMAGE=example.test/de DE_TAG=candidate-sha
+    export LOCAL_FUNCTIONAL_DASHBOARD_IMAGE=example.test/dashboard
+    export LOCAL_FUNCTIONAL_DASHBOARD_TAG=pinned-sha
+    for suite in "" database upgrade dynamicrp multicluster; do
+        export LOCAL_FUNCTIONAL_SUITE="${suite}"
+        run_runner 0 install
+        assert_contains "${calls}" \
+            "--set de.image=example.test/de,de.tag=candidate-sha"
+        assert_contains "${calls}" \
+            "--set dashboard.image=example.test/dashboard --set dashboard.tag=pinned-sha"
+    done
+    # shellcheck disable=SC2016 # Expanded after the runner configures its environment.
+    run_runner 0 exec bash -c 'printf "%s|%s|%s|%s" "$DE_IMAGE" "$DE_TAG" "$LOCAL_FUNCTIONAL_DASHBOARD_IMAGE" "$LOCAL_FUNCTIONAL_DASHBOARD_TAG"'
+    [[ "${output}" == "example.test/de|candidate-sha|example.test/dashboard|pinned-sha" ]] ||
+        fail "image overrides did not reach test subprocesses"
+    export DE_IMAGE=example.test/de@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    export DE_TAG=unused
+    export LOCAL_FUNCTIONAL_DASHBOARD_IMAGE=example.test/dashboard@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    export LOCAL_FUNCTIONAL_DASHBOARD_TAG=unused
+    run_runner 0 install
+    assert_contains "${calls}" "--set de.image=${DE_IMAGE},de.tag=unused"
+    assert_contains "${calls}" "--set dashboard.image=${LOCAL_FUNCTIONAL_DASHBOARD_IMAGE} --set dashboard.tag=unused"
+)
+for revision in edge v1.0 deadbeef \
+    0123456789012345678901234567890123456789ABCDEF; do
+    (
+        export LOCAL_FUNCTIONAL_SAMPLES_REVISION="${revision}"
+        run_runner 2 setup
+        assert_contains "${output}" "full lowercase 40-character commit SHA"
+        assert_not_contains "${calls}" "docker "
+        assert_not_contains "${calls}" "make "
+        run_runner 0 cleanup
+    )
+done
+(
+    export RADIUS_SAMPLES_REPO_ROOT="${work_dir}/external-samples"
+    run_runner 2 setup
+    assert_contains "${output}" "requires an absolute checkout path and LOCAL_FUNCTIONAL_SAMPLES_REVISION"
+    export RADIUS_SAMPLES_REPO_ROOT=relative/path
+    export LOCAL_FUNCTIONAL_SAMPLES_REVISION=0123456789012345678901234567890123456789
+    run_runner 2 setup
+    assert_contains "${output}" "requires an absolute checkout path"
+    export RADIUS_SAMPLES_REPO_ROOT="${work_dir}/missing-samples"
+    run_runner 1 setup
+    assert_contains "${output}" "require a Git checkout"
+    assert_not_contains "${calls}" "docker "
+    mkdir "${RADIUS_SAMPLES_REPO_ROOT}"
+    run_runner 1 fixtures
+    assert_contains "${output}" "require a Git checkout"
+    assert_not_contains "${calls}" "git init"
+)
 
 for platform in linux/arm windows/amd64 windows/arm64; do
     export LOCAL_FUNCTIONAL_HOST_OS="${platform%/*}"
@@ -510,6 +602,159 @@ export MOCK_FAILURE="flux install --namespace=flux-system --version=v2.6.4 --com
 run_runner 1 fixtures
 assert_contains "${output}" "mock failure"
 export MOCK_FAILURE=""
+
+(
+    export MOCK_REAL_SAMPLES_GIT=true
+    export MOCK_SAMPLES_ORIGIN="${work_dir}/samples-origin"
+    export LOCAL_FUNCTIONAL_HOST_OS=darwin
+    "${REAL_GIT}" init --quiet "${MOCK_SAMPLES_ORIGIN}"
+    printf 'first\n' >"${MOCK_SAMPLES_ORIGIN}/sample"
+    printf 'ignored\n' >"${MOCK_SAMPLES_ORIGIN}/.gitignore"
+    "${REAL_GIT}" -C "${MOCK_SAMPLES_ORIGIN}" add sample .gitignore
+    "${REAL_GIT}" -C "${MOCK_SAMPLES_ORIGIN}" \
+        -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false \
+        commit --quiet -m first
+    first="$("${REAL_GIT}" -C "${MOCK_SAMPLES_ORIGIN}" rev-parse HEAD)"
+    printf 'second\n' >"${MOCK_SAMPLES_ORIGIN}/sample"
+    "${REAL_GIT}" -C "${MOCK_SAMPLES_ORIGIN}" add sample
+    "${REAL_GIT}" -C "${MOCK_SAMPLES_ORIGIN}" \
+        -c user.name=Test -c user.email=test@example.com -c commit.gpgsign=false \
+        commit --quiet -m second
+    second="$("${REAL_GIT}" -C "${MOCK_SAMPLES_ORIGIN}" rev-parse HEAD)"
+    "${REAL_GIT}" -C "${MOCK_SAMPLES_ORIGIN}" \
+        -c user.name=Test -c user.email=test@example.com \
+        -c tag.gpgsign=false tag -a pinned-tag -m tag
+    tag_object="$("${REAL_GIT}" -C "${MOCK_SAMPLES_ORIGIN}" rev-parse pinned-tag)"
+    mv "${state}/samples" "${state}/samples-mock"
+    export LOCAL_FUNCTIONAL_SAMPLES_REVISION="${first}"
+    run_runner 0 setup
+    assert_contains "${calls}" \
+        "fetch --depth 1 https://github.com/radius-project/samples.git ${first}"
+    assert_contains "${calls}" "checkout --detach ${first}"
+    [[ "$(<"${state}/samples/sample")" == first ]] ||
+        fail "setup did not select the pinned commit"
+    for command in fixtures cleanup setup; do
+        run_runner 0 "${command}"
+        assert_not_contains "${calls}" " fetch "
+        assert_not_contains "${calls}" " pull "
+        assert_not_contains "${calls}" "git clone"
+        [[ "$("${REAL_GIT}" -C "${state}/samples" rev-parse HEAD)" == "${first}" ]] ||
+            fail "${command} changed the pinned samples"
+    done
+    export LOCAL_FUNCTIONAL_SAMPLES_REVISION="${second}"
+    run_runner 0 fixtures
+    [[ "$(<"${state}/samples/sample")" == second ]] ||
+        fail "fixtures did not update to the requested commit"
+    export LOCAL_FUNCTIONAL_SAMPLES_REVISION="${first}"
+    run_runner 1 test test-functional-samples-noncloud
+    assert_contains "${output}" "does not match LOCAL_FUNCTIONAL_SAMPLES_REVISION"
+    assert_not_contains "${calls}" "make "
+    run_runner 0 fixtures
+
+    for dirty in tracked staged untracked ignored; do
+        case "${dirty}" in
+        tracked | staged)
+            printf 'local edit\n' >"${state}/samples/sample"
+            if [[ "${dirty}" == staged ]]; then
+                "${REAL_GIT}" -C "${state}/samples" add sample
+            fi
+            ;;
+        *) touch "${state}/samples/${dirty}" ;;
+        esac
+        run_runner 1 setup
+        assert_contains "${output}" "Pinned samples checkout is dirty"
+        assert_not_contains "${calls}" "docker "
+        assert_not_contains "${calls}" " checkout "
+        assert_not_contains "${calls}" " fetch "
+        case "${dirty}" in
+        tracked | staged)
+            [[ "$(<"${state}/samples/sample")" == "local edit" ]] ||
+                fail "dirty samples edits were overwritten"
+            # Restore only this test's known fixture edits.
+            printf 'first\n' >"${state}/samples/sample"
+            "${REAL_GIT}" -C "${state}/samples" add sample
+            ;;
+        *) rm "${state}/samples/${dirty}" ;;
+        esac
+    done
+
+    for failure in missing tag fetch checkout; do
+        export MOCK_FAILURE=""
+        case "${failure}" in
+        missing)
+            export LOCAL_FUNCTIONAL_SAMPLES_REVISION=0000000000000000000000000000000000000000
+            ;;
+        tag) export LOCAL_FUNCTIONAL_SAMPLES_REVISION="${tag_object}" ;;
+        fetch)
+            export LOCAL_FUNCTIONAL_SAMPLES_REVISION=1111111111111111111111111111111111111111
+            export MOCK_FAILURE="git -C ${state}/samples fetch --depth 1 https://github.com/radius-project/samples.git ${LOCAL_FUNCTIONAL_SAMPLES_REVISION}"
+            ;;
+        checkout)
+            export LOCAL_FUNCTIONAL_SAMPLES_REVISION="${second}"
+            export MOCK_FAILURE="git -C ${state}/samples checkout --detach ${second}"
+            ;;
+        esac
+        expected=1
+        [[ "${failure}" == missing ]] && expected=128
+        run_runner "${expected}" fixtures
+        assert_not_contains "${calls}" " pull "
+        assert_not_contains "${calls}" "git clone"
+        assert_not_contains "${calls}" "flux install"
+        [[ "$("${REAL_GIT}" -C "${state}/samples" rev-parse HEAD)" == "${first}" ]] ||
+            fail "${failure} pin failure changed HEAD"
+        [[ "$(<"${work_dir}/test/bicepconfig.json")" == "original config" &&
+            ! -e "${dynamic_config}" && ! -e "${state}/test.lock" ]] ||
+            fail "${failure} pin failure leaked fixture state"
+    done
+    export MOCK_FAILURE="" LOCAL_FUNCTIONAL_SAMPLES_REVISION="${first}"
+    export RADIUS_SAMPLES_REPO_ROOT="${work_dir}/external samples"
+    "${REAL_GIT}" -C "${MOCK_SAMPLES_ORIGIN}" worktree add --quiet \
+        --detach "${RADIUS_SAMPLES_REPO_ROOT}" "${first}"
+    for command in setup fixtures cleanup setup; do
+        run_runner 0 "${command}"
+        assert_not_contains "${calls}" " fetch "
+        assert_not_contains "${calls}" " checkout "
+        assert_not_contains "${calls}" " pull "
+        assert_not_contains "${calls}" "git clone"
+        [[ "$("${REAL_GIT}" -C "${RADIUS_SAMPLES_REPO_ROOT}" rev-parse HEAD)" == "${first}" ]] ||
+            fail "${command} changed the external checkout"
+    done
+    # shellcheck disable=SC2016 # Expanded after the runner selects the samples checkout.
+    run_runner 0 exec bash -c 'printf "%s" "$RADIUS_SAMPLES_REPO_ROOT"'
+    [[ "${output}" == "${RADIUS_SAMPLES_REPO_ROOT}" ]] ||
+        fail "external samples path was not exported"
+    run_runner 0 test test-functional-samples-noncloud
+    assert_contains "${calls}" "samples=${RADIUS_SAMPLES_REPO_ROOT}"
+    assert_not_contains "${calls}" " fetch "
+    assert_not_contains "${calls}" " checkout "
+    assert_not_contains "${calls}" " pull "
+    export LOCAL_FUNCTIONAL_SAMPLES_REVISION="${second}"
+    run_runner 1 fixtures
+    assert_contains "${output}" "does not match LOCAL_FUNCTIONAL_SAMPLES_REVISION"
+    assert_not_contains "${calls}" " checkout "
+    export LOCAL_FUNCTIONAL_SAMPLES_REVISION="${first}"
+    touch "${RADIUS_SAMPLES_REPO_ROOT}/untracked"
+    run_runner 1 fixtures
+    assert_contains "${output}" "Pinned samples checkout is dirty"
+    run_runner 0 cleanup
+    [[ -f "${RADIUS_SAMPLES_REPO_ROOT}/untracked" ]] ||
+        fail "cleanup removed external samples changes"
+    mv "${state}/samples" "${state}/samples-pinned"
+    unset RADIUS_SAMPLES_REPO_ROOT
+    export LOCAL_FUNCTIONAL_SAMPLES_REVISION=0000000000000000000000000000000000000000
+    run_runner 128 fixtures
+    assert_not_contains "${calls}" "git clone"
+    assert_not_contains "${calls}" " pull "
+    [[ -d "${state}/samples/.git" && ! -e "${state}/test.lock" ]] ||
+        fail "fresh pin failure leaked fixture state"
+    run_runner 0 cleanup
+    export LOCAL_FUNCTIONAL_SAMPLES_REVISION="${first}"
+    run_runner 0 setup
+    [[ "$(<"${state}/samples/sample")" == first ]] ||
+        fail "setup could not recover from a failed initial fetch"
+    mv "${state}/samples" "${state}/samples-retried"
+    mv "${state}/samples-mock" "${state}/samples"
+)
 
 (
     unset SSL_CERT_FILE

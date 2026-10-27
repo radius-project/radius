@@ -98,6 +98,8 @@ func Test_PreflightContainer(t *testing.T) {
 	registry, tag := testutil.SetDefault()
 	deImage, err := deploymentEngineImageFromEnv()
 	require.NoError(t, err, "Invalid Deployment Engine image configuration")
+	dashboardValues, err := testutil.LocalFunctionalDashboardValues()
+	require.NoError(t, err, "Invalid dashboard image configuration")
 
 	k8sClient, err := newKubernetesClient()
 	require.NoError(t, err, "Failed to create Kubernetes client")
@@ -105,7 +107,7 @@ func Test_PreflightContainer(t *testing.T) {
 	cleanupAndWait(t, ctx, k8sClient)
 
 	t.Log("Installing Radius with preflight enabled and custom configuration")
-	require.NoError(t, helmInstall(ctx, registry, tag, deImage, preflightEnabledValues()), "Failed to install Radius")
+	require.NoError(t, helmInstall(ctx, registry, tag, deImage, dashboardValues, preflightEnabledValues()), "Failed to install Radius")
 
 	t.Cleanup(func() {
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupCommandTimeout)
@@ -118,7 +120,7 @@ func Test_PreflightContainer(t *testing.T) {
 	// The chart's post-install hook verifies the aggregated API through
 	// kube-apiserver before Helm returns, so no test-specific readiness wait is
 	// needed here.
-	release := preflightRelease{options: rp.NewRPTestOptions(t), registry: registry, tag: tag, deImage: deImage}
+	release := preflightRelease{options: rp.NewRPTestOptions(t), registry: registry, tag: tag, deImage: deImage, dashboardValues: dashboardValues}
 
 	// The subtests are given the parent's context rather than their own so the shared
 	// release outlives any single subtest.
@@ -131,10 +133,11 @@ func Test_PreflightContainer(t *testing.T) {
 // preflightRelease is the state the preflight subtests share: the single Helm release
 // they upgrade in sequence and the clients used to observe it.
 type preflightRelease struct {
-	options  rp.RPTestOptions
-	registry string
-	tag      string
-	deImage  deploymentEngineImage
+	options         rp.RPTestOptions
+	registry        string
+	tag             string
+	deImage         deploymentEngineImage
+	dashboardValues []string
 }
 
 // preflightEnabledValues returns the Helm values that enable the pre-upgrade hook with
@@ -155,7 +158,7 @@ func testPreflightEnabled(t *testing.T, ctx context.Context, release preflightRe
 	t.Log("Upgrading to trigger pre-upgrade hook")
 	// The upgrade itself is allowed to fail: the preflight checks may legitimately
 	// reject it. The assertion is that the hook created the job.
-	if err := helmUpgrade(ctx, release.registry, release.tag, release.deImage, preflightEnabledValues()); err != nil {
+	if err := helmUpgrade(ctx, release.registry, release.tag, release.deImage, release.dashboardValues, preflightEnabledValues()); err != nil {
 		t.Logf("Upgrade with preflight enabled failed, which is expected when the preflight checks reject it: %v", err)
 	}
 
@@ -184,7 +187,7 @@ func testPreflightDisabled(t *testing.T, ctx context.Context, release preflightR
 	t.Log("Upgrading with preflight disabled")
 	// With the hook disabled there is no job to reject the upgrade, so it must succeed.
 	// Otherwise the assertion below would pass simply because no upgrade ran.
-	err := helmUpgrade(ctx, release.registry, release.tag, release.deImage, map[string]string{"preupgrade.enabled": "false"})
+	err := helmUpgrade(ctx, release.registry, release.tag, release.deImage, release.dashboardValues, map[string]string{"preupgrade.enabled": "false"})
 	require.NoError(t, err, "Upgrade with preflight disabled should succeed")
 
 	t.Log("Verifying no preflight job was created")
@@ -276,8 +279,8 @@ func deletePreflightJob(t *testing.T, ctx context.Context, options rp.RPTestOpti
 // Helper functions
 
 // helmInstall runs helm install with the given registry, tag, and additional values.
-func helmInstall(ctx context.Context, registry, tag string, deImage deploymentEngineImage, values map[string]string) error {
-	return runCommand(ctx, helmReleaseArgs("install", registry, tag, deImage, values))
+func helmInstall(ctx context.Context, registry, tag string, deImage deploymentEngineImage, dashboardValues []string, values map[string]string) error {
+	return runCommand(ctx, helmReleaseArgs("install", registry, tag, deImage, dashboardValues, values))
 }
 
 // helmUpgrade runs helm upgrade with the given registry, tag, and additional values.
@@ -286,8 +289,8 @@ func helmInstall(ctx context.Context, registry, tag string, deImage deploymentEn
 // upgrade again: it removes resources the failed attempt created rather than leaving
 // them for the next attempt to reconcile. It does not remove the pre-upgrade job, which
 // Helm tracks as a hook rather than as a resource created from the release manifest.
-func helmUpgrade(ctx context.Context, registry, tag string, deImage deploymentEngineImage, values map[string]string) error {
-	return runCommand(ctx, helmReleaseArgs("upgrade", registry, tag, deImage, values))
+func helmUpgrade(ctx context.Context, registry, tag string, deImage deploymentEngineImage, dashboardValues []string, values map[string]string) error {
+	return runCommand(ctx, helmReleaseArgs("upgrade", registry, tag, deImage, dashboardValues, values))
 }
 
 // radiusImageComponents maps each chart value prefix to the Radius image built for it. Tests pin
@@ -301,7 +304,7 @@ var radiusImageComponents = []struct{ key, image string }{
 	{"preupgrade", "pre-upgrade"},
 }
 
-func helmReleaseArgs(operation, registry, tag string, deImage deploymentEngineImage, values map[string]string) []string {
+func helmReleaseArgs(operation, registry, tag string, deImage deploymentEngineImage, dashboardValues []string, values map[string]string) []string {
 	args := []string{
 		"helm", operation, helmReleaseName, relativeChartPath,
 		"--namespace", radiusNamespace,
@@ -324,6 +327,9 @@ func helmReleaseArgs(operation, registry, tag string, deImage deploymentEngineIm
 			"--set-string", "de.image="+deImage.repository,
 			"--set-string", "de.tag="+deImage.tag)
 	}
+	for _, value := range dashboardValues {
+		args = append(args, "--set-string", value)
+	}
 	for key, value := range values {
 		args = append(args, "--set", fmt.Sprintf("%s=%s", key, value))
 	}
@@ -332,26 +338,34 @@ func helmReleaseArgs(operation, registry, tag string, deImage deploymentEngineIm
 
 func Test_helmReleaseArgs(t *testing.T) {
 	for _, settings := range []struct {
-		name         string
-		registry     string
-		tag          string
-		deRepository string
-		deTag        string
-		wantRegistry string
-		wantTag      string
+		name                string
+		registry            string
+		tag                 string
+		deRepository        string
+		deTag               string
+		dashboardRepository string
+		dashboardTag        string
+		wantRegistry        string
+		wantTag             string
 	}{
 		{name: "defaults", wantRegistry: "ghcr.io/radius-project", wantTag: "test-local"},
 		{name: "ci", registry: "radius-registry:5000", tag: "pr-func2b7a279e78", wantRegistry: "radius-registry:5000", wantTag: "pr-func2b7a279e78"},
 		{name: "defaults with candidate DE", deRepository: "candidate.example:5001/custom-de", deTag: "00123", wantRegistry: "ghcr.io/radius-project", wantTag: "test-local"},
 		{name: "ci with candidate DE", registry: "radius-registry:5000", tag: "pr-func2b7a279e78", deRepository: "candidate.example:5001/custom-de", deTag: "candidate-13081", wantRegistry: "radius-registry:5000", wantTag: "pr-func2b7a279e78"},
+		{name: "pinned dashboard", dashboardRepository: "example.test/dashboard", dashboardTag: "00123", wantRegistry: "ghcr.io/radius-project", wantTag: "test-local"},
+		{name: "digest pins", deRepository: "example.test/de@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", deTag: "unused", dashboardRepository: "example.test/dashboard@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", dashboardTag: "unused", wantRegistry: "ghcr.io/radius-project", wantTag: "test-local"},
 	} {
 		t.Run(settings.name, func(t *testing.T) {
 			t.Setenv("DOCKER_REGISTRY", settings.registry)
 			t.Setenv("REL_VERSION", settings.tag)
 			t.Setenv("DE_IMAGE", settings.deRepository)
 			t.Setenv("DE_TAG", settings.deTag)
+			t.Setenv("LOCAL_FUNCTIONAL_DASHBOARD_IMAGE", settings.dashboardRepository)
+			t.Setenv("LOCAL_FUNCTIONAL_DASHBOARD_TAG", settings.dashboardTag)
 			registry, tag := testutil.SetDefault()
 			deImage, err := deploymentEngineImageFromEnv()
+			require.NoError(t, err)
+			dashboardValues, err := testutil.LocalFunctionalDashboardValues()
 			require.NoError(t, err)
 
 			for _, operation := range []struct{ name, flag string }{
@@ -361,7 +375,7 @@ func Test_helmReleaseArgs(t *testing.T) {
 				t.Run(operation.name, func(t *testing.T) {
 					for _, enabled := range []string{"true", "false"} {
 						t.Run("preflight="+enabled, func(t *testing.T) {
-							args := helmReleaseArgs(operation.name, registry, tag, deImage, map[string]string{"preupgrade.enabled": enabled})
+							args := helmReleaseArgs(operation.name, registry, tag, deImage, dashboardValues, map[string]string{"preupgrade.enabled": enabled})
 							want := []string{
 								"helm", operation.name, "radius", "../../../deploy/Chart",
 								"--namespace", "radius-system", "--wait", "--timeout", "5m", operation.flag,
@@ -382,6 +396,11 @@ func Test_helmReleaseArgs(t *testing.T) {
 								want = append(want,
 									"--set-string", "de.image="+settings.deRepository,
 									"--set-string", "de.tag="+settings.deTag)
+							}
+							if settings.dashboardRepository != "" {
+								want = append(want,
+									"--set-string", "dashboard.image="+settings.dashboardRepository,
+									"--set-string", "dashboard.tag="+settings.dashboardTag)
 							}
 							want = append(want, "--set", "preupgrade.enabled="+enabled)
 							require.Equal(t, want, args)

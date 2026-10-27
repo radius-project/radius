@@ -96,6 +96,8 @@ var registryHTTPClient = &http.Client{Timeout: 5 * time.Second}
 // to the public images.
 func installRadius(ctx context.Context, t *testing.T, cli *radcli.CLI) {
 	t.Helper()
+	dashboardValues, err := testutil.LocalFunctionalDashboardValues()
+	require.NoError(t, err, "Invalid dashboard image configuration")
 	registry, tag := testutil.SetDefault()
 
 	args := []string{
@@ -111,6 +113,9 @@ func installRadius(ctx context.Context, t *testing.T, cli *radcli.CLI) {
 	}
 	if deImage := os.Getenv("DE_IMAGE"); deImage != "" {
 		args = append(args, "--set", fmt.Sprintf("de.image=%s,de.tag=%s", deImage, os.Getenv("DE_TAG")))
+	}
+	for _, value := range dashboardValues {
+		args = append(args, "--set", value)
 	}
 	if cert := os.Getenv("RADIUS_REGISTRY_CERT_FILE"); cert != "" {
 		args = append(args, "--set-file", "global.rootCA.cert="+cert)
