@@ -525,6 +525,7 @@ sequenceDiagram
 | `Ready` and observed generation current                        | Healthy, "Ready: N outputs tracked (generation G)" (provisioning scope only)                              |
 | `Failed`, including failures before any output resource exists | Degraded, with the redacted reason                                                                        |
 | `Deleting`                                                     | Progressing                                                                                               |
+| `DeploymentResource` Ready, owning template deploying          | Progressing, "Deploying: Radius is applying template generation G"                                        |
 | `DeploymentResource` Ready                                     | Healthy, "Output tracked (provisioned; not runtime health)"                                               |
 | `DeploymentResource` Deleting or Deleted                       | Progressing, "Cleanup in progress: removed from the desired template"                                     |
 
@@ -537,6 +538,7 @@ sequenceDiagram
 - Health and the message above on each tree node: shown on the health icon and in the node's summary panel, not as text on the tile.
 - Header rows such as Radius group, environment and application: `spec.info` on the Application, set by the user or an ApplicationSet template. They are static; the observed generation cannot be shown there.
 - Radius type and status on each `DeploymentResource` tile: the Radius controller sets labels `radapp.io/resource-type` (for example `Radius.Compute.containers`) and `radapp.io/phrase` (mirrors `status.phrase`), and `resource.customLabels` in `argocd-cm` lists both. Argo CD shows at most two such chips per tile. This is a small controller change, prototyped on Phase 1.
+- Per-resource progress during a deploy: Radius deploys the whole template in one call and does not touch `DeploymentResource` objects unless the set of outputs changes, so without help every resource tile stays Healthy while the template tile shows Deploying. The prototype adds a small controller change: while a `DeploymentTemplate` deploys, the controller sets the annotation `radapp.io/deploying-generation` on every `DeploymentResource` it owns and removes it when the deploy succeeds or fails; the phrase label reads `Updating` and the health check returns Progressing. Marking every resource is accurate because a Radius deploy re-applies every resource in the template. Two limits remain: resources new in this revision appear only after the deploy finishes, and the Kubernetes objects Radius creates (Deployments, pods) are not in the tree, so Argo CD cannot show a pod rollout.
 - Not possible: a Radius status side panel, a Radius graph tab, and hiding nodes such as environments and recipe packs from the tree. These need an Argo CD UI extension. Hiding cannot be done by dropping the nodes either: `resource.exclusions` matches only API group and kind, and each `DeploymentResource` must keep its owner reference to the `DeploymentTemplate`, because Radius uses that reference to decide which resources it may delete when they leave Git.
 
 The feature spec also asks for three situations that provisioning status alone does not cover:
@@ -587,9 +589,10 @@ Lua scripts for `DeploymentTemplate` and `DeploymentResource` implementing [Heal
 
 #### `DeploymentTemplate` and `DeploymentResource` controllers (changed, Phases 2 and 4)
 
-Richer status and typed parameters in Phase 2, and observation after provisioning in Phase 4; deploy logic unchanged.
+The deploying annotation and display labels in Phase 1, richer status and typed parameters in Phase 2, and observation after provisioning in Phase 4; deploy logic unchanged.
 
 - Packages: [`pkg/controller/api/radapp.io/v1alpha3`](../../../pkg/controller/api/radapp.io/v1alpha3/), [`pkg/controller/reconciler`](../../../pkg/controller/reconciler/).
+- (Phase 1) Set `radapp.io/resource-type` and `radapp.io/phrase` labels on each `DeploymentResource`, and the `radapp.io/deploying-generation` annotation while its template deploys. See [What plain Argo CD can show](#health-mapping).
 - Set conditions on every phrase transition, with redacted messages.
 - Read the typed parameters field and convert it with a helper shared by the Flux path.
 - Copy the source revision annotation into conditions, and refresh the last-observed time on each reconcile.
