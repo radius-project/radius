@@ -1,0 +1,42 @@
+configs:
+  params:
+    server.insecure: true
+  cm:
+    resource.customizations.health.radapp.io_DeploymentTemplate: |
+      hs = {}
+      local st = obj.status
+      if st == nil or st.observedGeneration == nil or st.observedGeneration < obj.metadata.generation then
+        hs.status = "Progressing"; hs.message = "Waiting for Radius to pick up this revision"
+      elseif st.phrase == "Ready" then
+        hs.status = "Healthy"; hs.message = "Radius says Ready"
+      elseif st.phrase == "Failed" then
+        hs.status = "Degraded"; hs.message = "Radius says Failed"
+      else
+        hs.status = "Progressing"; hs.message = "Radius is " .. tostring(st.phrase)
+      end
+      return hs
+    resource.customizations.health.radapp.io_DeploymentResource: |
+      hs = {}
+      local st = obj.status
+      if st == nil or st.phrase == nil then
+        hs.status = "Progressing"; hs.message = "Waiting for Radius"
+      elseif st.phrase == "Ready" then
+        hs.status = "Healthy"; hs.message = "Radius resource exists"
+      elseif st.phrase == "Failed" then
+        hs.status = "Degraded"; hs.message = "Radius operation failed"
+      else
+        hs.status = "Progressing"; hs.message = "Radius is " .. tostring(st.phrase)
+      end
+      return hs
+repoServer:
+  extraContainers:
+    - name: radius-bicep
+      image: ghcr.io/nithyatsu/radius-cmp:0.61.1-proto.2
+      command: [/var/run/argocd/argocd-cmp-server]
+      securityContext: {runAsNonRoot: true, runAsUser: 999}
+      volumeMounts:
+        - {mountPath: /var/run/argocd, name: var-files}
+        - {mountPath: /home/argocd/cmp-server/plugins, name: plugins}
+        - {mountPath: /tmp, name: cmp-tmp}
+  volumes:
+    - {name: cmp-tmp, emptyDir: {}}
