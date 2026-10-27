@@ -184,6 +184,9 @@ spec:
         - { name: resourceGroup, string: orders-dev }
   destination: { server: https://kubernetes.default.svc, namespace: orders }
   syncPolicy: { automated: { prune: true, selfHeal: true } }
+  info: # optional rows in the Argo CD app header
+    - { name: Radius group, value: orders-dev }
+    - { name: Radius environment, value: dev }
 ```
 
 **Sample Input, generated-manifest fallback:** CI runs `rad bicep generate-kubernetes-manifest` and commits the result to `generated/`. The Application points at that directory with no plugin, as in the feature spec.
@@ -495,15 +498,26 @@ sequenceDiagram
 
 #### Health mapping
 
-| Radius state                                                            | Argo CD health                                |
-|-------------------------------------------------------------------------|-----------------------------------------------|
-| `status.observedGeneration` behind `metadata.generation`, or `Updating` | Progressing                                   |
-| `ReadyPendingCleanup`                                                   | Progressing ("cleaning up removed resources") |
-| `Ready` and observed generation current                                 | Healthy (provisioning scope only)             |
-| `Failed`, including failures before any output resource exists          | Degraded, with the redacted reason            |
-| `Deleting`                                                              | Progressing                                   |
+| Radius state                                                   | Argo CD health and message (prototype wording)                                                            |
+|----------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| `status.observedGeneration` behind `metadata.generation`       | Progressing, "Waiting for Radius to pick up this revision"                                                |
+| `Updating`                                                     | Progressing, "Deploying: Radius is applying this revision"                                                |
+| `ReadyPendingCleanup`                                          | Progressing, "Finishing the change: new outputs are ready, cleanup of removed resources has not finished" |
+| `Ready` and observed generation current                        | Healthy, "Ready: N outputs tracked (generation G)" (provisioning scope only)                              |
+| `Failed`, including failures before any output resource exists | Degraded, with the redacted reason                                                                        |
+| `Deleting`                                                     | Progressing                                                                                               |
+| `DeploymentResource` Ready                                     | Healthy, "Output tracked (provisioned; not runtime health)"                                               |
+| `DeploymentResource` Deleting or Deleted                       | Progressing, "Cleanup in progress: removed from the desired template"                                     |
 
-`DeploymentResource` uses the same mapping for its Ready, Failed and Deleting phrases, without the generation check: its controller sets `observedGeneration` only while deleting, and Ready means only that the Radius resource exists. The prototype confirmed that without its own health check every `DeploymentResource` shows no health in the Argo CD tree, and with it each shows Healthy. Every message includes the Git revision: in Phase 1 the health check reads it from the revision annotation, and from Phase 2 from the conditions. The redacted reason comes from conditions in Phase 2; in Phase 1 the message is the raw Radius error. **Healthy means Radius finished provisioning, not that the workload or cloud service is healthy now.** Health messages must state that scope.
+`DeploymentResource` uses the same mapping for its Ready, Failed and Deleting phrases, without the generation check: its controller sets `observedGeneration` only while deleting, and Ready means only that the Radius resource exists. The prototype confirmed that without its own health check every `DeploymentResource` shows no health in the Argo CD tree, and with it each shows Healthy. Every message includes the Git revision: in Phase 1 the health check reads it from the revision annotation, and from Phase 2 from the conditions. The redacted reason comes from conditions in Phase 2; in Phase 1 the message is the raw Radius error. **Healthy means Radius finished provisioning, not that the workload or cloud service is healthy now.** Health messages must state that scope. Argo CD reports any object with a `deletionTimestamp` as Progressing "Pending deletion" before it runs a custom health check, so a `DeploymentResource` that Radius is removing shows that message, not the Deleting text above.
+
+**What plain Argo CD can show, without a UI extension (checked in the prototype):**
+
+- App health Progressing while cleanup runs: comes from the `DeploymentTemplate` health check above.
+- Sync status with branch and commit, and the tree of `Application` → `DeploymentTemplate` → `DeploymentResource`: built in.
+- Health and the message above on each tree node: shown on the health icon and in the node's summary panel, not as text on the tile.
+- Header rows such as Radius group, environment and application: `spec.info` on the Application, set by the user or an ApplicationSet template. They are static; the observed generation cannot be shown there.
+- Not possible: extra text on a tile (Argo CD adds tile text only from Kubernetes labels listed in `resource.customLabels`, which would need the Radius controller to write labels), a Radius status side panel, and a Radius graph tab. These need an Argo CD UI extension.
 
 The feature spec also asks for three situations that provisioning status alone does not cover:
 
