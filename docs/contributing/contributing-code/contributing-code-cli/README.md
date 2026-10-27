@@ -60,17 +60,21 @@ Replace `/path/to/radius` with your repository root, then `chmod +x dev-rad`. Be
 
 ### Install a local build
 
-Use the Makefile to install a local build. By default it installs to `/usr/local/bin/rad`, which may require `sudo` depending on the destination's permissions:
+Use the Makefile to install a local build without an elevated shell:
 
 ```sh
-sudo make install
+make install
 ```
 
-Override the destination with `RAD_LOCATION`. The path must end in `rad` and should be on your `PATH`:
+The default destination matches the release installer: `$HOME/.local/bin/rad` for non-root macOS/Linux users and `%LOCALAPPDATA%\radius\rad.exe` on Windows. When run as root on macOS/Linux, it uses `/usr/local/bin/rad`. Make creates the destination directory if needed.
+
+Override the destination with `RAD_LOCATION`, using the full executable path (`rad.exe` on Windows). Quote paths that contain spaces:
 
 ```sh
-sudo make RAD_LOCATION=/my/custom/location/rad install
+make RAD_LOCATION="$HOME/my custom bin/rad" install
 ```
+
+You can also set `RAD_LOCATION` in the environment; a Make command-line assignment takes precedence. Ensure the destination directory is on your `PATH`. On macOS/Linux, add `export PATH="$HOME/.local/bin:$PATH"` to your shell profile if needed. On Windows, add `%LOCALAPPDATA%\radius` to your user `PATH` and open a new shell.
 
 ### Test Windows background execution
 
@@ -116,7 +120,7 @@ if errors.Is(err, NotFoundError{}) {
 ## Verification
 
 - `go run ./cmd/rad/main.go version` prints version information that includes your local changes.
-- After `sudo make install`, running `rad version` from any directory resolves to your freshly installed build.
+- After `make install`, running `rad version` from any directory resolves to your freshly installed build. Check `command -v rad` on macOS/Linux or `Get-Command rad -All` in PowerShell to verify which executable your shell resolves.
 - A breakpoint set in `cmd/rad/` is hit when you run **"Debug rad CLI (prompt for args)"**.
 - On Windows, the focused process tests pass on the native architecture.
 
@@ -125,5 +129,6 @@ if errors.Is(err, NotFoundError{}) {
 - **`go run` fails to resolve modules.** Run it from inside the repository; Go needs the module context.
 - **The debugger never stops at your breakpoint.** Confirm you selected **"Debug rad CLI (prompt for args)"** and that the breakpoint is on an executable line in code the command actually reaches.
 - **A debugged command hangs waiting for input.** Add `--yes` to the prompted arguments (except for `rad init`).
-- **`make install` is denied.** The destination needs elevated permissions; prefix with `sudo` or point `RAD_LOCATION` at a writable directory on your `PATH`.
+- **`make install` is denied.** Check the selected destination's permissions and any `RAD_LOCATION` override. Use a user-writable directory instead of `sudo` for a user-local install.
+- **`rad` still runs an older release.** Check `command -v rad` on macOS/Linux or `Get-Command rad -All` in PowerShell. Put the local build's directory before other installations on `PATH`; refresh your shell's command cache or open a new shell.
 - **Archival reports a configuration error.** Configure `RADIUS_STATE_REGISTRY` for startup/shutdown or `RADIUS_GRAPH_REGISTRY` for GitHub Actions graph output, authenticate to that registry, and unset `RADIUS_STATE_BACKEND` or set it to `oci`.
