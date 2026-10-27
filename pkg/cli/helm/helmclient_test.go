@@ -222,7 +222,7 @@ func TestHelmClientImpl_RunHelmRollback(t *testing.T) {
 			Capabilities: common.DefaultCapabilities,
 		}
 		client := NewHelmClient()
-		_, err := client.RunHelmInstall(configuration, newChart("0.61.0"), map[string]any{"setting": "first"}, "radius", "radius-system", false, time.Minute)
+		_, err := client.RunHelmInstall(configuration, newChart("0.61.0"), map[string]any{"setting": "first"}, "radius", "radius-system", false, time.Minute, nil)
 		require.NoError(t, err)
 		_, err = client.RunHelmUpgrade(configuration, newChart("0.62.0"), map[string]any{"setting": "second"}, "radius", "radius-system", false, false, time.Minute)
 		require.NoError(t, err)
@@ -266,7 +266,7 @@ func TestHelmClientImpl_RunHelmRollback(t *testing.T) {
 			KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
 			Capabilities: common.DefaultCapabilities,
 		}
-		_, err := client.RunHelmInstall(installedOnly, newChart("0.61.0"), nil, "radius", "radius-system", false, time.Minute)
+		_, err := client.RunHelmInstall(installedOnly, newChart("0.61.0"), nil, "radius", "radius-system", false, time.Minute, nil)
 		require.NoError(t, err)
 		require.ErrorContains(t, client.RunHelmRollback(installedOnly, "radius", 0, false), "no previous revision")
 	})
