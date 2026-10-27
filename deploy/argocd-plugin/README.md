@@ -61,17 +61,31 @@ The Radius controller on this branch labels each `DeploymentResource` with
 0.61 controller does not set them, so build and load this branch's controller:
 
 ```bash
-DOCKER_BUILD_ARCH=arm64 DOCKER_REGISTRY=ghcr.io/nithyatsu DOCKER_TAG_VERSION=0.61.1-labels \
+DOCKER_BUILD_ARCH=arm64 DOCKER_REGISTRY=ghcr.io/nithyatsu DOCKER_TAG_VERSION=0.61.1-progress \
   make docker-build-controller
-kind load docker-image ghcr.io/nithyatsu/controller:0.61.1-labels --name kind-argo
+kind load docker-image ghcr.io/nithyatsu/controller:0.61.1-progress --name kind-argo
 kubectl -n radius-system set image deploy/controller \
-  controller=ghcr.io/nithyatsu/controller:0.61.1-labels
+  controller=ghcr.io/nithyatsu/controller:0.61.1-progress
 ```
 
 After changing `resource.customLabels`, hard-refresh the Application; Argo CD
 keeps the old tree until then. Environments and recipe packs still show in the
 tree: they are owned by the `DeploymentTemplate`, and that owner reference is
 what lets Radius clean them up when they leave Git.
+
+## Deploy progress on resource tiles
+
+A Radius deployment applies the whole template in one call, so the
+`DeploymentResource` objects do not change while it runs. To show progress, the
+controller on this branch adds the annotation
+`radapp.io/deploying-generation: "<template generation>"` to every
+`DeploymentResource` the template owns when the deploy starts, and removes it
+when the deploy succeeds or fails. While it is set, the `radapp.io/phrase` label
+reads `Updating` and the health check returns Progressing with "Deploying: Radius
+is applying template generation N". Marking every resource is accurate: Radius
+re-applies every resource in the template. Resources that are new in this
+revision appear only after the deploy finishes, and the Kubernetes objects
+Radius creates (Deployments, pods) are still not in the Argo CD tree.
 
 ## Build and push
 

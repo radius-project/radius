@@ -33,10 +33,11 @@ func Test_syncDisplayLabels(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		id       string
-		phrase   radappiov1alpha3.DeploymentResourcePhrase
-		expected map[string]string
+		name      string
+		id        string
+		phrase    radappiov1alpha3.DeploymentResourcePhrase
+		deploying bool
+		expected  map[string]string
 	}{
 		{
 			name:   "container ready",
@@ -45,6 +46,16 @@ func Test_syncDisplayLabels(t *testing.T) {
 			expected: map[string]string{
 				DeploymentResourceTypeLabel:   "Radius.Compute.containers",
 				DeploymentResourcePhraseLabel: "Ready",
+			},
+		},
+		{
+			name:      "ready while template deploys shows Updating",
+			id:        "/planes/radius/local/resourceGroups/g/providers/Radius.Compute/containers/vote",
+			phrase:    radappiov1alpha3.DeploymentResourcePhraseReady,
+			deploying: true,
+			expected: map[string]string{
+				DeploymentResourceTypeLabel:   "Radius.Compute.containers",
+				DeploymentResourcePhraseLabel: "Updating",
 			},
 		},
 		{
@@ -68,6 +79,9 @@ func Test_syncDisplayLabels(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "dr", Namespace: "ns"},
 				Spec:       radappiov1alpha3.DeploymentResourceSpec{Id: tt.id},
 				Status:     radappiov1alpha3.DeploymentResourceStatus{Phrase: tt.phrase},
+			}
+			if tt.deploying {
+				dr.Annotations = map[string]string{DeploymentResourceDeployingAnnotation: "2"}
 			}
 			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dr).Build()
 

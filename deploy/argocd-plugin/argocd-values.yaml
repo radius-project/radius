@@ -30,6 +30,8 @@ configs:
         hs.status = "Progressing"; hs.message = "Waiting for Radius"
       elseif st.phrase == "Deleting" or st.phrase == "Deleted" then
         hs.status = "Progressing"; hs.message = "Cleanup in progress: removed from the desired template"
+      elseif st.phrase == "Ready" and obj.metadata.annotations ~= nil and obj.metadata.annotations["radapp.io/deploying-generation"] ~= nil then
+        hs.status = "Progressing"; hs.message = "Deploying: Radius is applying template generation " .. obj.metadata.annotations["radapp.io/deploying-generation"]
       elseif st.phrase == "Ready" then
         hs.status = "Healthy"; hs.message = "Output tracked (provisioned; not runtime health)"
       elseif st.phrase == "Failed" then

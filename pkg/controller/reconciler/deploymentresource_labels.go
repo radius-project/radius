@@ -33,14 +33,19 @@ const (
 	DeploymentResourceTypeLabel = "radapp.io/resource-type"
 
 	// DeploymentResourcePhraseLabel mirrors status.phrase so tools that only read labels can show it.
+	// It reads "Updating" while the owning DeploymentTemplate is being deployed.
 	DeploymentResourcePhraseLabel = "radapp.io/phrase"
 )
 
 // syncDisplayLabels sets the resource-type and phrase labels on a DeploymentResource.
 // It patches only when a value changed, so repeated reconciles do not cause extra writes.
 func syncDisplayLabels(ctx context.Context, c client.Client, deploymentResource *radappiov1alpha3.DeploymentResource) error {
+	phrase := string(deploymentResource.Status.Phrase)
+	if _, ok := deploymentResource.Annotations[DeploymentResourceDeployingAnnotation]; ok && deploymentResource.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseReady {
+		phrase = "Updating"
+	}
 	desired := map[string]string{
-		DeploymentResourcePhraseLabel: string(deploymentResource.Status.Phrase),
+		DeploymentResourcePhraseLabel: phrase,
 	}
 	if id, err := resources.ParseResource(deploymentResource.Spec.Id); err == nil {
 		if t := strings.ReplaceAll(id.Type(), "/", "."); len(validation.IsValidLabelValue(t)) == 0 {
