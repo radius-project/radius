@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "version": "v0.62.0",
+  "releaseSourceCommit": "37a8cbd33e990886460f4fd1987d6a4fefd901c5",
+  "deploymentEngine": {
+    "signedTag": "v0.62.0",
+    "sourceCommit": "a51ee00bec1cebded6e95cc9fcd1ac3a2258cef9",
+    "image": "ghcr.io/radius-project/deployment-engine",
+    "imageTag": "0.62.0",
+    "digest": "sha256:de78b4b34351a96fbc7f678f29fef39b46da8b977de1681e263454a9ffb68fb8"
+  }
+}
