@@ -317,7 +317,7 @@ export async function coordinateTask({
   }
   const latest = await latestStatus(github, context, deployment);
   // An explicitly rejected dispatch created no run, so resume may dispatch again.
-  const status =
+  let status =
     latest?.description?.startsWith("Dispatch rejected with HTTP ") ?
       undefined
     : latest;
@@ -336,19 +336,7 @@ export async function coordinateTask({
     "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}",
     { workflow_id: task.workflow }
   );
-  let runID;
-  if (status) {
-    const prefix = `${context.serverUrl ?? "https://github.com"}/${context.repo.owner}/${task.repo}/actions/runs/`;
-    if (
-      !status.log_url?.startsWith(prefix) ||
-      !/^\d+$/.test(status.log_url.slice(prefix.length))
-    ) {
-      throw new Error(
-        `Dispatch outcome unknown for deployment ${deployment.id}; bind its exact remote run URL before resuming. No duplicate was dispatched.`
-      );
-    }
-    runID = Number(status.log_url.slice(prefix.length));
-  } else {
+  const dispatchRun = async () => {
     await record(
       "queued",
       "",
@@ -376,7 +364,7 @@ export async function coordinateTask({
       }
       throw error;
     }
-    runID = data.workflow_run_id;
+    const runID = data.workflow_run_id;
     if (!Number.isSafeInteger(runID) || runID < 1)
       throw new Error(
         "Workflow dispatch returned no run ID; do not redispatch"
@@ -386,6 +374,22 @@ export async function coordinateTask({
       `${context.serverUrl ?? "https://github.com"}/${context.repo.owner}/${task.repo}/actions/runs/${runID}`,
       "Monitoring exact dispatched run"
     );
+    return runID;
+  };
+  let runID;
+  if (status) {
+    const prefix = `${context.serverUrl ?? "https://github.com"}/${context.repo.owner}/${task.repo}/actions/runs/`;
+    if (
+      !status.log_url?.startsWith(prefix) ||
+      !/^\d+$/.test(status.log_url.slice(prefix.length))
+    ) {
+      throw new Error(
+        `Dispatch outcome unknown for deployment ${deployment.id}; bind its exact remote run URL before resuming. No duplicate was dispatched.`
+      );
+    }
+    runID = Number(status.log_url.slice(prefix.length));
+  } else {
+    runID = await dispatchRun();
   }
   const getRun = async () => {
     const { data } = await call(
@@ -401,6 +405,8 @@ export async function coordinateTask({
         `Run ${runID} does not match the recorded workflow and ref`
       );
     }
+    if (task.id === "sample-tests" && !/^[a-f0-9]{40}$/.test(data.head_sha))
+      throw new Error(`Sample-test run ${runID} has no valid source commit`);
     return data;
   };
   let run = await getRun();
@@ -408,6 +414,20 @@ export async function coordinateTask({
     status?.description?.startsWith("Retry after attempt ") ?
       Number(status.description.slice(20)) + 1
     : 0;
+  if (
+    task.id === "sample-tests" &&
+    status &&
+    status.state !== "success" &&
+    run.status === "completed" &&
+    run.conclusion !== "success" &&
+    (!requiredAttempt || run.run_attempt >= requiredAttempt)
+  ) {
+    // Reruns retain old workflow code; dispatch once per resume to refresh edge.
+    runID = await dispatchRun();
+    status = undefined;
+    requiredAttempt = 0;
+    run = await getRun();
+  }
   let pullRequest;
   if (
     task.workflow === "upmerge.yaml" &&
@@ -472,7 +492,10 @@ export async function coordinateTask({
       run.html_url,
       `Remote workflow concluded ${run.conclusion}`
     );
-    throw new Error(`${task.id} failed: ${run.html_url}`);
+    throw new Error(
+      `${task.id} failed: ${run.html_url}` +
+        (task.id === "sample-tests" ? ` (samples commit ${run.head_sha})` : "")
+    );
   }
   if (
     task.workflow === "upmerge.yaml" &&
@@ -513,6 +536,7 @@ export async function coordinateTask({
     state: "success",
     runId: runID,
     url: run.html_url,
+    ...(task.id === "sample-tests" ? { samplesCommit: run.head_sha } : {}),
     ...(pullRequest ? { pullRequest } : {}),
     deploymentId: deployment.id
   };
