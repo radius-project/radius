@@ -31,12 +31,18 @@ set -euo pipefail
 SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_NAME
 
+readonly DYNAMIC_RP_MEMORY_REQUEST=512Mi
+readonly DYNAMIC_RP_MEMORY_LIMIT=2Gi
+
 readonly REQUIRED_CHART_VALUES=(
     --set global.azureWorkloadIdentity.enabled=true
     --set global.aws.irsa.enabled=true
     --set database.enabled=false
     --set de.resources.requests.memory=256Mi
     --set de.resources.limits.memory=512Mi
+    # Terraform and concurrent cloud provider processes share dynamic-rp's limit.
+    --set "dynamicrp.resources.requests.memory=${DYNAMIC_RP_MEMORY_REQUEST}"
+    --set "dynamicrp.resources.limits.memory=${DYNAMIC_RP_MEMORY_LIMIT}"
 )
 
 usage() {
@@ -166,9 +172,10 @@ save_skip_resources_list() {
     fi
 }
 
-aws_irsa_token_volumes_enabled() {
+required_chart_values_configured() {
     local -a deployments=(ucp applications-rp dynamic-rp)
-    local deployment volume_name
+    local deployment volume_name memory
+    local status=0
 
     for deployment in "${deployments[@]}"; do
         if ! volume_name=$(
@@ -180,11 +187,23 @@ aws_irsa_token_volumes_enabled() {
         fi
 
         if [[ "${volume_name}" != "aws-iam-token" ]]; then
-            return 1
+            status=1
         fi
     done
 
-    return 0
+    if ! memory=$(
+        kubectl get deployment dynamic-rp -n radius-system \
+            -o jsonpath='{.spec.template.spec.containers[?(@.name=="dynamic-rp")].resources.requests.memory}{" "}{.spec.template.spec.containers[?(@.name=="dynamic-rp")].resources.limits.memory}'
+    ); then
+        echo "Error: Failed to inspect dynamic-rp memory configuration." >&2
+        return 2
+    fi
+
+    if [[ "${memory}" != "${DYNAMIC_RP_MEMORY_REQUEST} ${DYNAMIC_RP_MEMORY_LIMIT}" ]]; then
+        status=1
+    fi
+
+    return "${status}"
 }
 
 upgrade_radius() {
@@ -192,19 +211,19 @@ upgrade_radius() {
 }
 
 reconcile_required_chart_values() {
-    local irsa_status=0
-    aws_irsa_token_volumes_enabled || irsa_status=$?
+    local values_status=0
+    required_chart_values_configured || values_status=$?
 
-    if [[ ${irsa_status} -eq 0 ]]; then
+    if [[ ${values_status} -eq 0 ]]; then
         echo "Required Radius chart values are already configured."
         return 0
     fi
 
-    if [[ ${irsa_status} -ne 1 ]]; then
+    if [[ ${values_status} -ne 1 ]]; then
         return 1
     fi
 
-    echo "AWS IRSA is not enabled on the current Radius installation. Reconciling chart values..."
+    echo "Required AWS IRSA or dynamic-rp memory configuration is missing. Reconciling chart values..."
     # The upgrade preflight rejects a same-version target. We already established
     # that this is an installed, matching-version control plane, so skip preflight
     # for this one-time Helm value reconciliation.
@@ -213,8 +232,8 @@ reconcile_required_chart_values() {
         return 1
     fi
 
-    if ! aws_irsa_token_volumes_enabled; then
-        echo "Error: AWS IRSA token volumes are still missing after reconciliation." >&2
+    if ! required_chart_values_configured; then
+        echo "Error: Required Radius chart values are still missing after reconciliation." >&2
         return 1
     fi
 
