@@ -118,6 +118,11 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 				(len(parts) < 5 || !strings.EqualFold(parts[3], "subscriptions")) {
 				return RequestMapping{}, fmt.Errorf("invalid Azure resource request path")
 			}
+			if strings.EqualFold(planeType, "aws") && method == http.MethodGet && len(parts) == 13 &&
+				strings.EqualFold(parts[9], "locations") &&
+				containsFold([]string{"operationStatuses", "operationResults"}, parts[11]) {
+				return RequestMapping{Kind: OperationStatusRequest}, nil
+			}
 			return c.mapping(ResourceRequest, "System."+planeType+"/credentials/use/action", plane)
 		}
 		// UCP-owned namespaces keep their resource permissions on cloud planes.

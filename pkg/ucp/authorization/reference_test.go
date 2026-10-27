@@ -4,6 +4,7 @@
 package authorization
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -55,6 +56,8 @@ func TestRegisteredResourceReferences(t *testing.T) {
 	for _, registration := range []Registration{
 		{Type: "Team.Data/widgets", PermissionSets: []string{ApplicationResources}},
 		{Type: "Team.Data/gadgets"},
+		{Type: "Applications.Custom/widgets"},
+		{Type: "Radius.Custom/widgets"},
 	} {
 		t.Run(registration.Type, func(t *testing.T) {
 			catalog, err := NewCatalog([]Registration{registration})
@@ -66,13 +69,30 @@ func TestRegisteredResourceReferences(t *testing.T) {
 				"connections": []any{"custom-schema-value"},
 			}}
 			for _, method := range []string{"PUT", "PATCH"} {
-				checks, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
-				require.NoError(t, err)
-				require.ElementsMatch(t, []Check{
-					{"Radius.Core/environments/use/action", lowerTarget(envA)},
-					{"Radius.Core/applications/write", lowerTarget(appA)},
-				}, checks)
+				for _, connections := range []any{
+					[]any{"custom-schema-value"},
+					map[string]any{"custom": map[string]any{"source": appA}},
+				} {
+					body["properties"].(map[string]any)["connections"] = connections
+					checks, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+					require.NoError(t, err)
+					require.ElementsMatch(t, []Check{
+						{"Radius.Core/environments/use/action", lowerTarget(envA)},
+						{"Radius.Core/applications/write", lowerTarget(appA)},
+					}, checks)
+				}
 			}
+			checks, err := catalog.ReferenceChecks("PUT", target, body, ReferenceOptions{
+				References: []ReferenceDescriptor{{
+					Path: []string{"properties", "connections", "*", "source"}, ResourceType: "Radius.Core/applications",
+				}},
+			})
+			require.NoError(t, err)
+			require.ElementsMatch(t, []Check{
+				{"Radius.Core/environments/use/action", lowerTarget(envA)},
+				{"Radius.Core/applications/write", lowerTarget(appA)},
+				{"Radius.Core/applications/read", lowerTarget(appA)},
+			}, checks)
 			for _, property := range []string{"environment", "application"} {
 				for _, value := range []any{nil, "", 42, plane, target} {
 					_, err := catalog.ReferenceChecks("PUT", target,
@@ -81,6 +101,33 @@ func TestRegisteredResourceReferences(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestReferenceChecksRejectPropertiesAliases(t *testing.T) {
+	catalog, err := NewCatalog([]Registration{{Type: "Team.Data/widgets"}})
+	require.NoError(t, err)
+	for _, alias := range []string{"Properties", "PROPERTIES", "pRoPeRtIeS"} {
+		for _, method := range []string{"PUT", "PATCH"} {
+			t.Run(method+"/"+alias, func(t *testing.T) {
+				raw := `{"properties":{"environment":"` + envA + `"},"` + alias +
+					`":{"environment":"` + teamB + `/providers/Radius.Core/environments/other"}}`
+				var backend struct {
+					Properties map[string]any `json:"properties"`
+				}
+				require.NoError(t, json.Unmarshal([]byte(raw), &backend))
+				require.Equal(t, teamB+"/providers/Radius.Core/environments/other", backend.Properties["environment"])
+				for _, target := range []string{appA, teamA + "/providers/Team.Data/widgets/test"} {
+					var body map[string]any
+					require.NoError(t, json.Unmarshal([]byte(raw), &body))
+					_, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+					require.ErrorContains(t, err, "noncanonical properties field")
+					delete(body, "properties")
+					_, err = catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+					require.ErrorContains(t, err, "noncanonical properties field")
+				}
+			})
+		}
 	}
 }
 

@@ -57,6 +57,24 @@ func TestRegistrations(t *testing.T) {
 	require.ErrorContains(t, err, "duplicate registration")
 }
 
+func TestHyphenatedRegistrations(t *testing.T) {
+	catalog, err := NewCatalog([]Registration{{
+		Type: "Team-One.Data/my-widgets", PermissionSets: []string{ApplicationResources},
+	}})
+	require.NoError(t, err)
+	target := teamA + "/providers/Team-One.Data/my-widgets/widget"
+	mapping, err := catalog.MapRequest("PUT", target)
+	require.NoError(t, err)
+	require.Equal(t, []Check{{"Team-One.Data/my-widgets/write", lowerTarget(target)}}, mapping.Checks)
+	checks, err := catalog.ReferenceChecks("PUT", appA, map[string]any{
+		"properties": map[string]any{"widget": target},
+	}, ReferenceOptions{References: []ReferenceDescriptor{{
+		Path: []string{"properties", "widget"}, ResourceType: "Team-One.Data/my-widgets", Required: true,
+	}}})
+	require.NoError(t, err)
+	require.Equal(t, []Check{{"Team-One.Data/my-widgets/read", lowerTarget(target)}}, checks)
+}
+
 func TestBuiltInRolesAreCopies(t *testing.T) {
 	catalog, err := NewCatalog(nil)
 	require.NoError(t, err)
