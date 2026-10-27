@@ -846,6 +846,74 @@ jobs:
     permissions:
       contents: read # Required for actions/checkout
 
+  attest-release:
+    name: Attest release provenance
+    needs:
+      - release-preflight
+      - goreleaser-release
+      - build-and-push-remaining-images
+      - build-and-push-helm-chart
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.release-preflight.outputs.release-state != 'published'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Signing runs in this job alone, after staging, so no build tool can
+    # request the OIDC token used to sign the release provenance.
+    permissions:
+      contents: write # GitHub only lists draft releases for push access
+      id-token: write # Required to sign the provenance with Sigstore
+      attestations: write # Required to store the provenance attestation
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Parse release version
+        run: bash ./.github/scripts/release-version.sh >>"${GITHUB_ENV}"
+
+      - name: Install attestation tools
+        run: make install-jq
+
+      - name: Download staged checksums and image locks
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: download
+          INPUT_NAMES: >-
+            ["rad_darwin_amd64.sha256","rad_darwin_arm64.sha256",
+            "rad_linux_amd64.sha256","rad_linux_arm.sha256","rad_linux_arm64.sha256",
+            "rad_windows_amd64.exe.sha256","rad_windows_arm64.exe.sha256",
+            "production-image-digests.json","bicep-image-digests.json"]
+          INPUT_OUTPUT_DIR: dist/attestation
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Prepare attestation subjects
+        env:
+          CHART_DIGEST: ${{ needs.build-and-push-helm-chart.outputs.chart-digest }}
+        run: |
+          bash ./.github/scripts/release-attestations.sh subjects \
+            --version "${REL_VERSION}" \
+            --targets .github/release-parity/targets.json \
+            --assets-dir dist/attestation \
+            --chart-digest "${CHART_DIGEST}" \
+            --output dist/attestation/subjects.txt
+
+      - name: Attest release provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: dist/attestation/subjects.txt
+
   verify-release:
     name: Verify release manifest and staged installation
     needs:
@@ -854,13 +922,15 @@ jobs:
       - build-and-push-remaining-images
       - build-and-push-helm-chart
       - build-and-push-bicep-types
+      - attest-release
     if: >-
       !cancelled() && needs.release-preflight.result == 'success' &&
       (needs.release-preflight.outputs.release-state == 'published' ||
        (needs.goreleaser-release.result == 'success' &&
         needs.build-and-push-remaining-images.result == 'success' &&
         needs.build-and-push-helm-chart.result == 'success' &&
-        needs.build-and-push-bicep-types.result == 'success'))
+        needs.build-and-push-bicep-types.result == 'success' &&
+        needs.attest-release.result == 'success'))
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     permissions:
@@ -868,6 +938,7 @@ jobs:
       packages: read
       actions: read
       deployments: read
+      attestations: read # Required to verify the release provenance
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -972,6 +1043,7 @@ jobs:
       - build-and-push-remaining-images
       - build-and-push-helm-chart
       - build-and-push-bicep-types
+      - attest-release
       - verify-release
       - approve-publication
     if: >-
@@ -988,6 +1060,7 @@ jobs:
       packages: write # Required for promoting image and CLI OCI aliases
       actions: read
       deployments: read # Required to recheck the previous RC's coordination receipts
+      attestations: read # Required to recheck the release provenance
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1317,6 +1390,7 @@ jobs:
       - build-and-push-remaining-images
       - build-and-push-helm-chart
       - build-and-push-bicep-types
+      - attest-release
       - finalize-release
       - verify-release
       - approve-publication
@@ -1359,6 +1433,7 @@ jobs:
             ${{ needs.build-and-push-remaining-images.result }}
           HELM_RESULT: ${{ needs.build-and-push-helm-chart.result }}
           BICEP_RESULT: ${{ needs.build-and-push-bicep-types.result }}
+          ATTESTATION_RESULT: ${{ needs.attest-release.result }}
           FINALIZE_RESULT: ${{ needs.finalize-release.result }}
           VERIFY_RESULT: ${{ needs.verify-release.result }}
           APPROVAL_RESULT: ${{ needs.approve-publication.result }}
@@ -1371,6 +1446,7 @@ jobs:
             "remaining-images:${REMAINING_IMAGES_RESULT}" \
             "build-and-push-helm-chart:${HELM_RESULT}" \
             "build-and-push-bicep-types:${BICEP_RESULT}" \
+            "attest-release:${ATTESTATION_RESULT}" \
             "verify-release:${VERIFY_RESULT}" \
             "approve-publication:${APPROVAL_RESULT}" \
             "coordinate-release:${COORDINATION_RESULT}" \
