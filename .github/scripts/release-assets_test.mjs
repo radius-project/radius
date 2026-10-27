@@ -199,6 +199,46 @@ test("Bicep reconciliation distinguishes unstaged drafts from missing published 
   );
 });
 
+test("uploaded Bicep locks wait for visibility without regenerating or replacing evidence", async () => {
+  for (const status of [404, 401, 403]) {
+    const state = fixture({
+      assets: [
+        { id: 1, name: bicepExtensionLockName, contents: '{"schemaVersion":1}' }
+      ]
+    });
+    const download = state.github.request;
+    let attempts = 0;
+    state.github.request = async (...args) => {
+      if (++attempts < 3)
+        throw Object.assign(new Error("not readable"), { status });
+      return download(...args);
+    };
+    const pending = readBicepExtensionLock(state.github, "v0.61.0", state);
+    if (status === 404) {
+      assert.deepEqual(await pending, { schemaVersion: 1 });
+      assert.deepEqual(state.delays, [1000, 2000]);
+    } else {
+      await assert.rejects(pending, /not readable/);
+      assert.equal(attempts, 1);
+      assert.deepEqual(state.delays, []);
+    }
+    assert.deepEqual(state.calls.deleted, []);
+    assert.deepEqual(state.calls.uploaded, []);
+  }
+  const state = fixture({
+    assets: [{ id: 1, name: bicepExtensionLockName, contents: "{}" }]
+  });
+  state.github.request = async () => {
+    throw Object.assign(new Error("not readable"), { status: 404 });
+  };
+  await assert.rejects(
+    readBicepExtensionLock(state.github, "v0.61.0", state),
+    /after 5 attempts/
+  );
+  assert.deepEqual(state.delays, [1000, 2000, 4000, 8000]);
+  assert.deepEqual(state.calls.deleted, []);
+});
+
 test("Bicep pair reconstruction reuses hardened draft starter-asset recovery", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "bicep-starter-"));
   t.after(() => rm(root, { recursive: true, force: true }));

@@ -48,6 +48,14 @@ write_pipeline() {
     printf '%s\n' 'on: [push, pull_request]' > "${WORKFLOWS}/lint.yaml"
 }
 
+use_legacy_contract() {
+    yq -i -o=json '
+        del(.bicepExtensionsContract) |
+        .ociArtifacts[0].repository = "biceptypes.azurecr.io/aws" |
+        .ociArtifacts[1].repository = "biceptypes.azurecr.io/radius"
+    ' "${REPO}/.github/release-parity/targets.json"
+}
+
 # Commits the fixture and expects a pass, or a failure that contains $1.
 expect() {
     local expected="$1"
@@ -72,7 +80,7 @@ expect() {
 }
 
 main() {
-    local job dependency mutation
+    local job dependency mutation contract
     command -v yq > /dev/null || {
         echo "yq is required" >&2
         exit 1
@@ -96,17 +104,27 @@ main() {
     expect "has no publish-sibling-releases job" \
         "new preparations reject a branch without sibling publication" HEAD --require-sibling-releases
 
-    for mutation in \
-        '.jobs."publish-sibling-releases".if = "always()"' \
-        '.jobs."publish-sibling-releases".needs = []' \
-        '.jobs."publish-sibling-releases"."continue-on-error" = true' \
-        '.jobs."publish-sibling-releases".concurrency.group = "unserialized"' \
-        '(.jobs."publish-sibling-releases".steps[] | select(.name == "Reconcile sibling release entries")).if = "false"' \
-        '(.jobs."publish-sibling-releases".steps[] | select(.name == "Reconcile sibling release entries"))."continue-on-error" = true'; do
+    for contract in ghcr legacy; do
         write_pipeline
-        yq -i "${mutation}" "${WORKFLOWS}/build-release.yaml"
-        expect "does not enforce the sibling publication gate" \
-            "weakened sibling gate: ${mutation}"
+        [[ "${contract}" != legacy ]] || use_legacy_contract
+        expect pass "${contract} pipeline requires gated sibling publication" HEAD --require-sibling-releases
+        for mutation in \
+            '.jobs."publish-sibling-releases".if = "always()"' \
+            '.jobs."publish-sibling-releases".if += " || true"' \
+            '.jobs."publish-sibling-releases".needs = []' \
+            '.jobs."publish-sibling-releases"."continue-on-error" = true' \
+            '.jobs."publish-sibling-releases".concurrency.group = "unserialized"' \
+            '.jobs."publish-sibling-releases".concurrency."cancel-in-progress" = true' \
+            '.jobs."build-summary".needs |= map(select(. != "publish-sibling-releases"))' \
+            '(.jobs."publish-sibling-releases".steps[] | select(.name == "Reconcile sibling release entries")).env.INPUT_MANIFEST_FILE = "unverified.json"' \
+            '(.jobs."publish-sibling-releases".steps[] | select(.name == "Reconcile sibling release entries")).if = "false"' \
+            '(.jobs."publish-sibling-releases".steps[] | select(.name == "Reconcile sibling release entries"))."continue-on-error" = true'; do
+            write_pipeline
+            [[ "${contract}" != legacy ]] || use_legacy_contract
+            yq -i "${mutation}" "${WORKFLOWS}/build-release.yaml"
+            expect "does not enforce the sibling publication gate" \
+                "${contract} weakened sibling gate: ${mutation}" HEAD --require-sibling-releases
+        done
     done
 
     for selector in '""' 'null' '"ghcr-v2"'; do
@@ -122,11 +140,7 @@ main() {
     expect "invalid Bicep release contract" "GHCR outputs without selector"
 
     write_pipeline
-    yq -i -o=json '
-        del(.bicepExtensionsContract) |
-        .ociArtifacts[0].repository = "biceptypes.azurecr.io/aws" |
-        .ociArtifacts[1].repository = "biceptypes.azurecr.io/radius"
-    ' "${REPO}/.github/release-parity/targets.json"
+    use_legacy_contract
     expect pass "dual pipeline preserves selector-free ACR plans"
     yq -i '
         .jobs."build-and-push-bicep-types" = .jobs."publish-legacy-bicep-types" |
