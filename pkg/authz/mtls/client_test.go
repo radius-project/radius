@@ -32,7 +32,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
+
+// TestReloadContext checks that reload errors from a shared Source are logged rather than
+// discarded.
+func TestReloadContext(t *testing.T) {
+	require.NotNil(t, ucplog.FromContextOrDiscard(reloadContext()).GetSink())
+}
 
 type recordingTransport struct {
 	urls []string
@@ -253,6 +260,7 @@ func TestClientTransport_RotationMidHandshake(t *testing.T) {
 
 	transport, err := NewClientTransport(options)
 	require.NoError(t, err)
+	require.Nil(t, transport.Proxy)
 	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, network, ln.Addr().String())
 	}
