@@ -17,7 +17,7 @@ import time
 import unittest
 
 
-SCRIPT = Path(__file__).with_name("run-with-authz-logs.py")
+SCRIPT = Path(__file__).with_name("run-with-authz-logs.sh")
 GATE = Path(__file__).with_name("authz-would-deny-check.sh")
 
 MOCK = r'''
@@ -28,6 +28,8 @@ if "--raw" not in args:
     assert args[args.index("--namespace") + 1] == "radius-system"
 with (root / "pids").open("a") as f:
     f.write(str(os.getpid()) + "\n")
+if (root / "hang").exists():
+    time.sleep(60)
 if args[0] == "get":
     if "--raw" not in args:
         if (root / "list-error").exists():
@@ -152,12 +154,12 @@ class CollectorTests(unittest.TestCase):
             "metadata": {"resourceVersion": "123"}, "items": pods,
         }))
 
-    def run_collector(self, command="", expected=0):
+    def run_collector(self, command="", expected=0, timeout=25):
         result = subprocess.run(
-            [sys.executable, str(SCRIPT), sys.executable, "-c",
+            ["bash", str(SCRIPT), sys.executable, "-c",
              COMMAND_HELPERS + command],
             env=self.env, text=True, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, timeout=25,
+            stderr=subprocess.STDOUT, timeout=timeout,
         )
         self.assertEqual(result.returncode, expected, result.stdout)
         if (self.root / "pids").exists():
@@ -170,6 +172,120 @@ class CollectorTests(unittest.TestCase):
         self.run_collector('wait_for("ucp-initial.ucp.started")\n')
         self.assertTrue((self.output / "complete").is_file())
         self.assertIn("startup", "".join(f.read_text() for f in self.output.glob("*.log")))
+
+    def test_command_arguments_are_not_reinterpreted_by_shell(self):
+        argument = 'spaces; $(touch should-not-exist) "quotes"'
+        result = subprocess.run(
+            ["bash", str(SCRIPT), sys.executable, "-c",
+             "import sys; print(sys.argv[1])", argument],
+            env=self.env, text=True, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, timeout=25,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn(argument, result.stdout)
+        self.assertTrue((self.output / "complete").is_file())
+
+    def test_output_path_with_spaces_and_trailing_slash(self):
+        self.output = self.root / "logs with spaces"
+        self.env["AUTHZ_LOG_DIR"] = str(self.output) + "/"
+        self.run_collector()
+        self.assertTrue((self.output / "complete").is_file())
+
+    def test_kubectl_timeout_stops_collection_and_cleans_up(self):
+        (self.root / "hang").touch()
+        started = time.monotonic()
+        result = self.run_collector(
+            '(root / "command-started").touch()\n', expected=2, timeout=40)
+        self.assertIn("kubectl timed out after 30 seconds", result)
+        self.assertLess(time.monotonic() - started, 35)
+        self.assertFalse((self.root / "command-started").exists())
+        self.assertFalse((self.output / "complete").exists())
+
+    def test_initialization_errors_never_start_command(self):
+        for inventory in ("not json", '{"items": []}',
+                          '{"items": [{}], "metadata": {}}'):
+            with self.subTest(inventory=inventory):
+                (self.root / "inventory").write_text(inventory)
+                self.run_collector('(root / "command-started").touch()\n',
+                                   expected=2)
+                self.assertFalse((self.root / "command-started").exists())
+                self.assertFalse((self.output / "complete").exists())
+                self.output.rmdir()
+                (self.root / "pids").unlink()
+
+    def test_init_and_ephemeral_containers_are_collected(self):
+        self.initial["status"]["initContainerStatuses"] = [{
+            "name": "init", "restartCount": 0,
+            "state": {"terminated": {"exitCode": 0}},
+        }]
+        self.initial["status"]["ephemeralContainerStatuses"] = [{
+            "name": "debug", "restartCount": 0,
+            "state": {"running": {}},
+        }]
+        self.inventory([self.initial])
+        (self.root / "ucp-initial.init.log").write_text("init startup\n")
+        (self.root / "ucp-initial.debug.log").write_text("debug startup\n")
+        self.run_collector('wait_for("ucp-initial.debug.read")\n')
+        self.assertIn("init startup", (
+            self.output / "ucp-initial.ucp-initial-uid.init.0.log").read_text())
+        self.assertIn("debug startup", (
+            self.output / "ucp-initial.ucp-initial-uid.debug.0.log").read_text())
+
+    def test_waiting_container_is_collected_when_it_starts(self):
+        waiting = pod("ucp-initial")
+        waiting["status"]["containerStatuses"][0]["state"] = {
+            "waiting": {"reason": "ContainerCreating"}}
+        self.inventory([waiting])
+        command = f'''
+wait_for("watch-started")
+(root / "inventory").write_text(json.dumps({{
+    "metadata": {{"resourceVersion": "124"}}, "items": [{self.initial!r}]}}))
+event("MODIFIED", {self.initial!r})
+wait_for("ucp-initial.ucp.read")
+'''
+        self.run_collector(command)
+        self.assertIn("startup", (
+            self.output / "ucp-initial.ucp-initial-uid.ucp.0.log").read_text())
+
+    def test_pretty_printed_watch_events_are_parsed(self):
+        command = f'''
+wait_for("watch-started")
+with (root / "events").open("a") as f:
+    f.write(json.dumps({{"type": "MODIFIED", "object": {self.initial!r}}},
+                       indent=2) + "\\n")
+time.sleep(.3)
+'''
+        self.run_collector(command)
+        self.assertTrue((self.output / "complete").is_file())
+
+    def test_malformed_watch_data_fails_closed(self):
+        for data in ('{"type": invalid}\n', '{"type": "MODIFIED"'):
+            with self.subTest(data=data):
+                (self.root / "events").write_text(data)
+                result = self.run_collector("time.sleep(.5)\n", expected=2)
+                self.assertIn("authz log collection failed", result)
+                self.assertFalse((self.output / "complete").exists())
+                for file in self.output.iterdir():
+                    file.unlink()
+                self.output.rmdir()
+                (self.root / "pids").unlink()
+
+    def test_final_snapshot_failure_never_marks_complete(self):
+        command = '''
+wait_for("ucp-initial.ucp.read")
+(root / "log-error").touch()
+'''
+        self.run_collector(command, expected=2)
+        self.assertFalse((self.output / "complete").exists())
+
+    def test_wrapped_command_signal_status_is_preserved(self):
+        command = '''
+wait_for("ucp-initial.ucp.started")
+import signal
+os.kill(os.getpid(), signal.SIGTERM)
+'''
+        self.run_collector(command, expected=143)
+        self.assertTrue((self.output / "complete").is_file())
 
     def test_replacement_after_first_test_finishes_is_gated(self):
         replacement = pod("ucp-replacement")
@@ -365,12 +481,19 @@ time.sleep(.5)
 
     def test_cancellation_stops_command_and_collectors(self):
         command = COMMAND_HELPERS + '''
+import signal, subprocess, sys
 wait_for("ucp-initial.ucp.started")
+child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+def terminated(_signal, _frame):
+    child.wait(timeout=5)
+    raise SystemExit(143)
+signal.signal(signal.SIGTERM, terminated)
+(root / "child-pid").write_text(str(child.pid))
 (root / "command-pid").write_text(str(os.getpid()))
 time.sleep(60)
 '''
         process = subprocess.Popen(
-            [sys.executable, str(SCRIPT), sys.executable, "-c", command],
+            ["bash", str(SCRIPT), sys.executable, "-c", command],
             env=self.env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True,
         )
@@ -385,7 +508,8 @@ time.sleep(60)
             self.assertEqual(process.returncode, 143, output)
             self.assertFalse((self.output / "complete").exists())
             pids = ((self.root / "pids").read_text().splitlines() +
-                    [(self.root / "command-pid").read_text()])
+                    [(self.root / "command-pid").read_text(),
+                     (self.root / "child-pid").read_text()])
             for pid in pids:
                 with self.assertRaises(ProcessLookupError, msg="leaked process " + pid):
                     os.kill(int(pid), 0)
