@@ -102,7 +102,7 @@ export default async function stage({ github, context, core }) {
     "Trusted controller AWS evidence is missing; resume the controller before the build"
   );
   await observeExtension(aws.artifact);
-  const lock = await readBicepExtensionLock(github, plan.version);
+  const lock = await readBicepExtensionLock(github, plan.version, { core });
   if (lock) {
     await verifyPair(plan, source.commit, lock);
     assert.deepEqual(
