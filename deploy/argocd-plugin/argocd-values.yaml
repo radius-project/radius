@@ -2,6 +2,8 @@ configs:
   params:
     server.insecure: true
   cm:
+    # Show Radius type and status as chips on DeploymentResource tiles.
+    resource.customLabels: radapp.io/resource-type,radapp.io/phrase
     resource.customizations.health.radapp.io_DeploymentTemplate: |
       hs = {}
       local st = obj.status

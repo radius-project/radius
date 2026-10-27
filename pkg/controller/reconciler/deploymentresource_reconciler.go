@@ -124,6 +124,10 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	if err := syncDisplayLabels(ctx, r.Client, &deploymentResource); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	r.EventRecorder.Event(&deploymentResource, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
 	return ctrl.Result{}, nil
 }
@@ -254,6 +258,9 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
 	err = r.Client.Status().Update(ctx, deploymentResource)
 	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if err := syncDisplayLabels(ctx, r.Client, deploymentResource); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -432,7 +439,10 @@ func (r *DeploymentResourceReconciler) completeDeleteOperation(ctx context.Conte
 func (r *DeploymentResourceReconciler) updateFailedStatus(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) error {
 	deploymentResource.Status.Operation = nil
 	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseFailed
-	return r.Client.Status().Update(ctx, deploymentResource)
+	if err := r.Client.Status().Update(ctx, deploymentResource); err != nil {
+		return err
+	}
+	return syncDisplayLabels(ctx, r.Client, deploymentResource)
 }
 
 // SetupWithManager sets up the controller with the Manager.

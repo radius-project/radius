@@ -52,6 +52,27 @@ helm upgrade --install argocd argo/argo-cd -n argocd --create-namespace \
   --version 10.10.5 -f argocd-values.yaml
 ```
 
+## Tile labels
+
+The Radius controller on this branch labels each `DeploymentResource` with
+`radapp.io/resource-type` (for example `Radius.Compute.containers`) and
+`radapp.io/phrase` (mirrors `status.phrase`). `resource.customLabels` in
+`argocd-values.yaml` makes Argo CD show both as chips on the tile. The released
+0.61 controller does not set them, so build and load this branch's controller:
+
+```bash
+DOCKER_BUILD_ARCH=arm64 DOCKER_REGISTRY=ghcr.io/nithyatsu DOCKER_TAG_VERSION=0.61.1-labels \
+  make docker-build-controller
+kind load docker-image ghcr.io/nithyatsu/controller:0.61.1-labels --name kind-argo
+kubectl -n radius-system set image deploy/controller \
+  controller=ghcr.io/nithyatsu/controller:0.61.1-labels
+```
+
+After changing `resource.customLabels`, hard-refresh the Application; Argo CD
+keeps the old tree until then. Environments and recipe packs still show in the
+tree: they are owned by the `DeploymentTemplate`, and that owner reference is
+what lets Radius clean them up when they leave Git.
+
 ## Build and push
 
 ```bash
