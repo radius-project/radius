@@ -378,6 +378,12 @@ func (i *Impl) uninstallCertManager(ctx context.Context, options ClusterOptions,
 	return i.uninstallHelmRelease("cert-manager", chartOptions.ReleaseName, chartOptions.Namespace, kubeContext)
 }
 
+// UninstallCertManager removes cert-manager on its own, with the same ownership and other-workload checks
+// that UninstallRadius applies. It does not touch the Radius or Contour releases.
+func (i *Impl) UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
+}
+
 // buildCertManagerValues installs the CRDs with the release and removes them on uninstall, so a later
 // install does not find CRDs without a controller.
 func buildCertManagerValues() map[string]any {

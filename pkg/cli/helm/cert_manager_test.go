@@ -467,7 +467,7 @@ func fakeCertManagerDynamicClient(listErr error, objects ...runtime.Object) *dyn
 	return client
 }
 
-func Test_uninstallCertManager(t *testing.T) {
+func Test_UninstallCertManager(t *testing.T) {
 	t.Parallel()
 
 	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels()}
@@ -534,7 +534,7 @@ func Test_uninstallCertManager(t *testing.T) {
 				},
 				logInfo: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 			}
-			err := impl.uninstallCertManager(t.Context(), NewDefaultClusterOptions(), "test-context")
+			err := impl.UninstallCertManager(t.Context(), NewDefaultClusterOptions(), "test-context")
 			if tt.wantErr {
 				require.Error(t, err)
 				return

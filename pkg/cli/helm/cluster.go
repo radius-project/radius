@@ -234,6 +234,9 @@ type Interface interface {
 	// CertManagerInstalledByRad reports whether the cluster has a cert-manager release that rad installed.
 	CertManagerInstalledByRad(kubeContext string) (bool, error)
 
+	// UninstallCertManager uninstalls cert-manager only when rad installed it and no other workload uses it.
+	UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
+
 	// RollbackRadius rolls back the Radius installation to the previous revision.
 	RollbackRadius(ctx context.Context, kubeContext string) error
 

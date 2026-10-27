@@ -310,6 +310,44 @@ func (c *MockInterfaceRollbackRadiusToRevisionCall) DoAndReturn(f func(context.C
 	return c
 }
 
+// UninstallCertManager mocks base method.
+func (m *MockInterface) UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UninstallCertManager", ctx, clusterOptions, kubeContext)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UninstallCertManager indicates an expected call of UninstallCertManager.
+func (mr *MockInterfaceMockRecorder) UninstallCertManager(ctx, clusterOptions, kubeContext any) *MockInterfaceUninstallCertManagerCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UninstallCertManager", reflect.TypeOf((*MockInterface)(nil).UninstallCertManager), ctx, clusterOptions, kubeContext)
+	return &MockInterfaceUninstallCertManagerCall{Call: call}
+}
+
+// MockInterfaceUninstallCertManagerCall wrap *gomock.Call
+type MockInterfaceUninstallCertManagerCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceUninstallCertManagerCall) Return(arg0 error) *MockInterfaceUninstallCertManagerCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceUninstallCertManagerCall) Do(f func(context.Context, ClusterOptions, string) error) *MockInterfaceUninstallCertManagerCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceUninstallCertManagerCall) DoAndReturn(f func(context.Context, ClusterOptions, string) error) *MockInterfaceUninstallCertManagerCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // UninstallRadius mocks base method.
 func (m *MockInterface) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	m.ctrl.T.Helper()

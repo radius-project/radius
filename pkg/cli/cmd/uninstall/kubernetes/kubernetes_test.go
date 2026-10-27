@@ -122,36 +122,6 @@ func Test_Run(t *testing.T) {
 		require.Equal(t, expectedWrites, outputMock.Writes)
 	})
 
-	t.Run("Success: Not Installed -> Uninstalled", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		helmMock := helm.NewMockInterface(ctrl)
-		outputMock := &output.MockOutput{}
-		promptMock := prompt.NewMockInterface(ctrl)
-
-		ctx := t.Context()
-		runner := &Runner{
-			Helm:        helmMock,
-			Output:      outputMock,
-			Connections: &connections.MockFactory{},
-			Prompter:    promptMock,
-
-			KubeContext: "test-context",
-		}
-
-		helmMock.EXPECT().CheckRadiusInstall("test-context").
-			Return(helm.InstallState{}, nil).
-			Times(1)
-
-		err := runner.Run(ctx)
-		require.NoError(t, err)
-
-		expectedWrites := []any{
-			output.LogOutput{
-				Format: "Radius is not installed on the Kubernetes cluster",
-			},
-		}
-		require.Equal(t, expectedWrites, outputMock.Writes)
-	})
 	t.Run("Success: Installed -> Uninstalled -> Purge", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		helmMock := helm.NewMockInterface(ctrl)
@@ -645,4 +615,120 @@ func Test_Run(t *testing.T) {
 			Format: "Radius was fully uninstalled. All data has been removed.",
 		})
 	})
+}
+
+func Test_Run_RadiusNotInstalled(t *testing.T) {
+	t.Parallel()
+
+	notInstalled := output.LogOutput{Format: "Radius is not installed on the Kubernetes cluster"}
+	certManagerPlan := []any{
+		notInstalled,
+		output.LogOutput{Format: "Found a cert-manager installed by rad. This will remove only:"},
+		output.LogOutput{Format: "- Helm releases: %s", Params: []any{"cert-manager"}},
+	}
+	lookupErr := errors.New("helm get failed")
+
+	tests := []struct {
+		name          string
+		owned         bool
+		ownedErr      error
+		assumeYes     bool
+		promptAnswer  string
+		wantUninstall bool
+		uninstallErr  error
+		wantErr       error
+		wantWrites    []any
+	}{
+		{
+			name:       "cert-manager not owned by rad",
+			wantWrites: []any{notInstalled},
+		},
+		{
+			name:     "cert-manager ownership lookup fails",
+			ownedErr: lookupErr,
+			wantWrites: []any{
+				notInstalled,
+				output.LogOutput{Format: "%s: unable to check for a cert-manager installed by rad: %v", Params: []any{logWarningPrefix, lookupErr}},
+			},
+		},
+		{
+			name:          "owned cert-manager removed after confirmation",
+			owned:         true,
+			promptAnswer:  prompt.ConfirmYes,
+			wantUninstall: true,
+			wantWrites:    append(append([]any{}, certManagerPlan...), output.LogOutput{Format: "cert-manager cleanup finished."}),
+		},
+		{
+			name:          "owned cert-manager removed with --yes",
+			owned:         true,
+			assumeYes:     true,
+			wantUninstall: true,
+			wantWrites: append(append([]any{}, certManagerPlan...),
+				output.LogOutput{Format: "Skipping confirmation because --yes flag was provided."},
+				output.LogOutput{Format: "cert-manager cleanup finished."},
+			),
+		},
+		{
+			name:         "owned cert-manager kept when user declines",
+			owned:        true,
+			promptAnswer: prompt.ConfirmNo,
+			wantWrites:   append(append([]any{}, certManagerPlan...), output.LogOutput{Format: "Uninstall cancelled."}),
+		},
+		{
+			// The ownership re-check and other-workload guard live in helm.Interface.UninstallCertManager.
+			name:          "owned cert-manager uninstall error is returned",
+			owned:         true,
+			assumeYes:     true,
+			wantUninstall: true,
+			uninstallErr:  lookupErr,
+			wantErr:       lookupErr,
+			wantWrites: append(append([]any{}, certManagerPlan...),
+				output.LogOutput{Format: "Skipping confirmation because --yes flag was provided."},
+			),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			helmMock := helm.NewMockInterface(ctrl)
+			promptMock := prompt.NewMockInterface(ctrl)
+			outputMock := &output.MockOutput{}
+			ctx := t.Context()
+
+			// Strict mocks with no Kubernetes, UninstallRadius, or environment expectations prove that
+			// this path never touches Radius, Contour, or Radius data, even with --purge.
+			runner := &Runner{
+				Helm:        helmMock,
+				Output:      outputMock,
+				Kubernetes:  kubernetes.NewMockInterface(ctrl),
+				Connections: &connections.MockFactory{},
+				Prompter:    promptMock,
+				KubeContext: "test-context",
+				Purge:       true,
+				AssumeYes:   tt.assumeYes,
+			}
+
+			helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{}, nil)
+			helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(tt.owned, tt.ownedErr)
+			if tt.promptAnswer != "" {
+				promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
+					Return(tt.promptAnswer, nil)
+			}
+			if tt.wantUninstall {
+				helmMock.EXPECT().UninstallCertManager(ctx, helm.NewDefaultClusterOptions(), "test-context").
+					Return(tt.uninstallErr)
+			}
+
+			err := runner.Run(ctx)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tt.wantWrites, outputMock.Writes)
+		})
+	}
 }
