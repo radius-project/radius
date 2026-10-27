@@ -151,6 +151,45 @@ func TestPolicySafetyOwnership(t *testing.T) {
 	}
 }
 
+func TestPolicySafetyMetadataOwnership(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	for _, scenario := range []struct {
+		name       string
+		management api.AssignmentManagement
+		sameSource bool
+		allowed    bool
+	}{
+		{"same GitOps source", api.AssignmentManagement{Kind: to.Ptr(api.AssignmentManagementKindGitOps), Source: to.Ptr("https://example.test/platform")}, true, true},
+		{"other GitOps source", api.AssignmentManagement{Kind: to.Ptr(api.AssignmentManagementKindGitOps), Source: to.Ptr("https://example.test/platform")}, false, false},
+		{"bootstrap", api.AssignmentManagement{Kind: to.Ptr(api.AssignmentManagementKindBootstrap)}, false, false},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			policy := initialPolicy()
+			policy.Assignments[1].Properties.ManagedBy = &scenario.management
+			snapshot, err := NewPolicySnapshot(catalog, policy)
+			require.NoError(t, err)
+			actor := policyActor()
+			if scenario.sameSource {
+				actor.Management = scenario.management
+			}
+			properties, err := clonePolicyValue(policy.Assignments[1].Properties)
+			require.NoError(t, err)
+			properties.Description = to.Ptr("updated")
+			_, change, _, err := applyPolicyMutation(t.Context(), snapshot, actor, PolicyMutation{
+				Target: *policy.Assignments[1].ID, Assignment: properties,
+			}, nil)
+			if scenario.allowed {
+				require.NoError(t, err)
+				require.Equal(t, "updated", *change.After.RoleAssignment.Description)
+				require.Equal(t, scenario.management, *change.After.RoleAssignment.ManagedBy)
+			} else {
+				require.ErrorContains(t, err, "ManagedByConflict")
+			}
+		})
+	}
+}
+
 func TestPolicySafetyDelegation(t *testing.T) {
 	catalog, err := NewCatalog(nil)
 	require.NoError(t, err)

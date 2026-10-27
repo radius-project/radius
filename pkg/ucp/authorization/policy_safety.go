@@ -323,8 +323,16 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 				if !strings.EqualFold(*old.RoleDefinitionID, roleID) || oldKey != principal {
 					return fail(fmt.Errorf("RoleAssignmentImmutable: %s", id))
 				}
-				// A repeated tuple is a no-op, including labels and descriptions.
-				return policy, nil, false, nil
+				updated, err := clonePolicyValue(old)
+				if err != nil {
+					return fail(err)
+				}
+				updated.Description = p.Description
+				updated.Principal.DisplayName = p.Principal.DisplayName
+				operation = api.PolicyChangeOperationUpdate
+				policy.Assignments[index].Properties = updated
+				change.After = &api.PolicySnapshot{RoleAssignment: updated}
+				break
 			}
 			definition, exists := current.roles[roleID]
 			if !exists {

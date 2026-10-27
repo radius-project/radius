@@ -265,6 +265,66 @@ func TestPolicyStoreContract(t *testing.T) {
 	runPolicyStoreContract(t, inmemory.NewClient())
 }
 
+func TestPolicyStoreAssignmentMetadata(t *testing.T) {
+	for _, scenario := range []struct {
+		name        string
+		description *string
+		displayName *string
+	}{
+		{"description", to.Ptr("updated description"), to.Ptr("Original")},
+		{"display label", to.Ptr("original description"), to.Ptr("Updated")},
+		{"both", to.Ptr("updated description"), to.Ptr("Updated")},
+		{"clear", nil, nil},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			store := newTestPolicyStore(t, inmemory.NewClient(), true)
+			mutation := readerMutation()
+			mutation.Assignment.Description = to.Ptr("original description")
+			mutation.Assignment.Principal.DisplayName = to.Ptr("Original")
+			_, err := store.Mutate(t.Context(), policyActor(), mutation)
+			require.NoError(t, err)
+			before, err := store.AccessChange(t.Context(), 1)
+			require.NoError(t, err)
+			original := before.Properties.PolicyChange.After.RoleAssignment
+			mutation.Assignment.Description = scenario.description
+			mutation.Assignment.Principal.DisplayName = scenario.displayName
+			mutation.Assignment.Scope = to.Ptr(teamB)
+			mutation.Assignment.CreatedBy = to.Ptr("spoofed")
+			mutation.Assignment.ManagedBy = &api.AssignmentManagement{Kind: to.Ptr(api.AssignmentManagementKindBootstrap)}
+			snapshot, err := store.Mutate(t.Context(), policyActor(), mutation)
+			require.NoError(t, err)
+			require.Equal(t, int64(2), snapshot.Generation())
+			event, err := store.AccessChange(t.Context(), 2)
+			require.NoError(t, err)
+			require.Equal(t, api.PolicyChangeOperationUpdate, *event.Properties.PolicyChange.Operation)
+			require.Equal(t, original, event.Properties.PolicyChange.Before.RoleAssignment)
+			updated := event.Properties.PolicyChange.After.RoleAssignment
+			require.Equal(t, scenario.description, updated.Description)
+			require.Equal(t, scenario.displayName, updated.Principal.DisplayName)
+			require.Equal(t, original.RoleDefinitionID, updated.RoleDefinitionID)
+			require.Equal(t, original.Principal.Type, updated.Principal.Type)
+			require.Equal(t, original.Principal.Issuer, updated.Principal.Issuer)
+			require.Equal(t, original.Principal.Subject, updated.Principal.Subject)
+			require.Equal(t, original.Scope, updated.Scope)
+			require.Equal(t, original.ManagedBy, updated.ManagedBy)
+			require.Equal(t, original.CreatedBy, updated.CreatedBy)
+			policy, err := snapshot.Policy()
+			require.NoError(t, err)
+			found := false
+			for _, assignment := range policy.Assignments {
+				if strings.EqualFold(*assignment.ID, mutation.Target) {
+					require.Equal(t, updated, assignment.Properties)
+					found = true
+				}
+			}
+			require.True(t, found)
+			snapshot, err = store.Mutate(t.Context(), policyActor(), mutation)
+			require.NoError(t, err)
+			require.Equal(t, int64(2), snapshot.Generation(), "identical metadata PUT must remain idempotent")
+		})
+	}
+}
+
 func runPolicyRoleRaces(t *testing.T, newClient func(*testing.T) database.Client) {
 	for _, operation := range []string{"delete", "restrict scopes"} {
 		t.Run(operation, func(t *testing.T) {
