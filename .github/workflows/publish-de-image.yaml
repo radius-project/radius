@@ -12,7 +12,7 @@ on:
         description: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
         required: true
       tag:
-        description: Destination tag (full release version, latest, or development tag; not X.Y)
+        description: Destination tag (full release version, edge, or development tag; not X.Y or latest)
         required: true
       source_tag:
         description: Source tag in ACR, when different from the destination
@@ -57,8 +57,8 @@ jobs:
           EXPECTED_REVISION: ${{ github.event.client_payload.expected_revision || inputs.expected_revision }}
           EXPECTED_REF: ${{ github.event.client_payload.expected_ref || inputs.expected_ref }}
         run: |
-          if [[ "${TAG}" =~ ^[0-9]+\.[0-9]+$ ]]; then
-            echo "Stable channel aliases are promoted only by the approved release finalizer." >&2
+          if [[ "${TAG}" =~ ^[0-9]+\.[0-9]+$ || "${TAG}" == latest ]]; then
+            echo "Stable channel and latest aliases are promoted only by the approved release finalizer." >&2
             exit 1
           fi
           source_tag="${SOURCE_TAG:-${TAG}}"

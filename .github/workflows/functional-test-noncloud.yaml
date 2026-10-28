@@ -109,7 +109,7 @@ jobs:
       contents: read # Required for actions/checkout
     env:
       DE_IMAGE: ghcr.io/radius-project/deployment-engine
-      DE_TAG: latest
+      DE_TAG: edge
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}

@@ -222,7 +222,7 @@ jobs:
       pull-requests: read # Required for fetching PR details
     env:
       DE_IMAGE: ghcr.io/radius-project/deployment-engine
-      DE_TAG: latest
+      DE_TAG: edge
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
