@@ -211,6 +211,9 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		}
 
 		for _, outputResourceId := range outputResources {
+			if !isTrackedOutputResource(outputResourceId) {
+				continue
+			}
 			if _, ok := existingOutputResources[outputResourceId]; !ok {
 				// Resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
 
@@ -246,6 +249,11 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		for _, resource := range deploymentTemplate.Status.OutputResources {
 			if _, ok := newOutputResources[resource]; !ok {
 				// Resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
+				if !isTrackedOutputResource(resource) {
+					// Untracked resources are deleted only with the whole template.
+					logger.Info("Leaving untracked resource removed from the template in place.", "resourceId", resource)
+					continue
+				}
 
 				logger.Info("Deleting resource.", "resourceId", resource)
 				resourceName, err := generateDeploymentResourceName(resource)
@@ -440,6 +448,10 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 		}
 
 		return ctrl.Result{}, fmt.Errorf("Requeuing to wait for owned resources to be deleted, %d remaining", len(ownedResources))
+	}
+
+	if err := r.deleteUntrackedOutputResources(ctx, deploymentTemplate); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	logger.Info("Resource is deleted.")

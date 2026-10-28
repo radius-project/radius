@@ -324,9 +324,15 @@ func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context,
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceId := deploymentResource.Spec.Id
-	radiusAPIVersion := "2023-10-01-preview"
+	radiusAPIVersion := defaultDeleteAPIVersion
+	if ownerRef := metav1.GetControllerOf(deploymentResource); ownerRef != nil {
+		owner := &radappiov1alpha3.DeploymentTemplate{}
+		if err := r.Client.Get(ctx, client.ObjectKey{Namespace: deploymentResource.Namespace, Name: ownerRef.Name}, owner); err == nil {
+			radiusAPIVersion = deleteAPIVersion(owner.Spec.Template, resourceId)
+		}
+	}
 
-	logger.Info("Starting DELETE operation.")
+	logger.Info("Starting DELETE operation.", "apiVersion", radiusAPIVersion)
 	poller, err := r.ResourceDeploymentsClient.Delete(ctx, resourceId, radiusAPIVersion)
 	if err != nil {
 		return nil, err

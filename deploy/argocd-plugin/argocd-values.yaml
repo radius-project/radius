@@ -43,7 +43,7 @@ configs:
 repoServer:
   extraContainers:
     - name: radius-bicep
-      image: ghcr.io/nithyatsu/radius-cmp:0.61.1-proto.2
+      image: ghcr.io/nithyatsu/radius-cmp:0.61.1-proto.3
       command: [/var/run/argocd/argocd-cmp-server]
       securityContext: {runAsNonRoot: true, runAsUser: 999}
       volumeMounts:

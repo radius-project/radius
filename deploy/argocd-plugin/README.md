@@ -11,11 +11,48 @@ An Argo CD Config Management Plugin sidecar that compiles Radius Bicep into
 | `prefetch/`          | Dummy Bicep compiled at build time to cache the Radius extension        |
 | `argocd-values.yaml` | Argo CD Helm values: Lua health checks and the `radius-bicep` sidecar   |
 
-## One Application per app, ordered by sync waves
+## One Application per app
 
-An app's environment and Recipe pack must exist before the app. List the Bicep
-files in deploy order in `bicepFiles`, for example `env/env.bicep app/app.bicep`.
-The plugin compiles each file into one `DeploymentTemplate` and annotates it with
+The recommended layout keeps the environment out of the app's Application: set
+up the environment and Recipe pack with `rad` (or a separate platform
+Application), and point the app's Application at the app folder only:
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: example-voting-app
+  namespace: argocd
+spec:
+  project: default
+  info:
+    - {name: Radius group, value: voting-argo}
+    - {name: Radius application, value: example-voting-app}
+  source:
+    repoURL: https://github.com/nithyatsu/ignite2026-argocd
+    targetRevision: main
+    path: app
+    plugin:
+      name: radius-bicep
+      parameters:
+        - {name: bicepFiles, string: app.bicep}
+        - {name: resourceGroup, string: voting-argo}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: voting-argo
+```
+
+With a single file in `bicepFiles`, the plugin names the `DeploymentTemplate`
+after the Application (`ARGOCD_APP_NAME`), so the tree reads Application
+`example-voting-app` → template `example-voting-app`. Renaming an existing
+template makes Argo CD delete the old one and create the new one, so Radius
+redeploys the app once.
+
+### Several files, ordered by sync waves
+
+To deploy the environment from the same Application, list the Bicep files in
+deploy order, for example `env/env.bicep app/app.bicep`. Each template then
+keeps its file name so the names stay unique. The plugin compiles each file into one `DeploymentTemplate` and annotates it with
 `argocd.argoproj.io/sync-wave` set to its position (0, 1, ...). Argo CD applies wave
 `n+1` only after every wave `n` resource is Healthy, and the `DeploymentTemplate`
 health check reports Healthy only when Radius reports Ready for the current generation.
@@ -61,17 +98,34 @@ The Radius controller on this branch labels each `DeploymentResource` with
 0.61 controller does not set them, so build and load this branch's controller:
 
 ```bash
-DOCKER_BUILD_ARCH=arm64 DOCKER_REGISTRY=ghcr.io/nithyatsu DOCKER_TAG_VERSION=0.61.1-progress \
+DOCKER_BUILD_ARCH=arm64 DOCKER_REGISTRY=ghcr.io/nithyatsu DOCKER_TAG_VERSION=0.61.1-core2 \
   make docker-build-controller
-kind load docker-image ghcr.io/nithyatsu/controller:0.61.1-progress --name kind-argo
+kind load docker-image ghcr.io/nithyatsu/controller:0.61.1-core2 --name kind-argo
 kubectl -n radius-system set image deploy/controller \
-  controller=ghcr.io/nithyatsu/controller:0.61.1-progress
+  controller=ghcr.io/nithyatsu/controller:0.61.1-core2
 ```
 
 After changing `resource.customLabels`, hard-refresh the Application; Argo CD
 keeps the old tree until then. Environments and recipe packs still show in the
-tree: they are owned by the `DeploymentTemplate`, and that owner reference is
-what lets Radius clean them up when they leave Git.
+tree only when they are deployed from the same Application; see the next section.
+
+## No tiles for Radius.Core resources
+
+The controller on this branch creates no `DeploymentResource` for output
+resources in the `Radius.Core` namespace (applications, environments, Recipe
+packs): the Application and the `DeploymentTemplate` already stand for the
+application. Without a `DeploymentResource`, these resources are deleted only
+when the whole `DeploymentTemplate` is deleted, after every tracked resource is
+gone, in the order applications, environments, Recipe packs. Removing one of
+them from the Bicep while the template stays leaves it in place.
+
+## Delete API version
+
+The released controller deletes every resource with API version
+`2023-10-01-preview`, which `Radius.*` types reject, so deleting a template left
+its resources stuck in `Failed`. This branch deletes each resource with the API
+version the template deployed it with (for example
+`Radius.Compute/containers@2025-08-01-preview`).
 
 ## Deploy progress on resource tiles
 
@@ -90,8 +144,8 @@ Radius creates (Deployments, pods) are still not in the Argo CD tree.
 ## Build and push
 
 ```bash
-docker build -t ghcr.io/nithyatsu/radius-cmp:0.61.1-proto.2 .
-docker push ghcr.io/nithyatsu/radius-cmp:0.61.1-proto.2
+docker build -t ghcr.io/nithyatsu/radius-cmp:0.61.1-proto.3 .
+docker push ghcr.io/nithyatsu/radius-cmp:0.61.1-proto.3
 ```
 
 Prototype only: no secret handling, no failure messages.
