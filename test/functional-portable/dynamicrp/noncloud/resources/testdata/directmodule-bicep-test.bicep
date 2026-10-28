@@ -10,6 +10,12 @@ param version string
 @description('Name of the Radius Application.')
 param appName string
 
+@description('Kubernetes namespace for the unlocked environment.')
+param appNamespace string
+
+@description('Kubernetes namespace for the locked environment.')
+param lockedNamespace string
+
 // This recipe pack points source directly at a standard (non-wrapped) Bicep
 // module (test/testrecipes/test-bicep-recipes/directmodule-kubernetes.bicep) that has
 // NO `context` parameter and NO structured `result` output. Radius resolves the
@@ -80,13 +86,13 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
     ]
     providers: {
       kubernetes: {
-        namespace: 'directmodule-bicep-ns'
+        namespace: appNamespace
       }
     }
   }
 }
 
-// Uses the same Kubernetes namespace as `env`, so both resources deploy to one namespace.
+// Each environment owns a distinct Kubernetes namespace.
 resource lockedEnv 'Radius.Core/environments@2025-08-01-preview' = {
   name: 'directmodule-bicep-locked-env'
   location: 'global'
@@ -96,7 +102,7 @@ resource lockedEnv 'Radius.Core/environments@2025-08-01-preview' = {
     ]
     providers: {
       kubernetes: {
-        namespace: 'directmodule-bicep-ns'
+        namespace: lockedNamespace
       }
     }
   }
