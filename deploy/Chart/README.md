@@ -57,7 +57,7 @@ New deployments wait for previous tracked cleanup to finish unless an applicatio
 
 `ReadyPendingCleanup` means cleanup is still outstanding; it does not mean all deletes have started. Already submitted deletes must finish before conflicting desired outputs are reapplied and their tracking is restored. Do not strip finalizers to bypass cleanup.
 
-Deleting or pruning a template does not discard a completed deployment's output inventory. Missing output trackers are recovered for cleanup before the saved operation is cleared, including when deletion interrupts tracker replacement. The template remains until its owned resources finish cleanup; inactive sources still hold these effects.
+Deleting or pruning a template does not discard a completed deployment's output inventory. Missing output trackers are recovered for cleanup before the saved operation is cleared, including when deletion interrupts tracker replacement. In a terminating namespace, existing trackers are reused and missing outputs are instead retained in the template's `status.pendingCleanup`, including resumable deletion operations. The template remains until both inventories finish cleanup; inactive sources still hold these effects.
 
 #### Migrating existing templates
 

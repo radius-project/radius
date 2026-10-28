@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"encoding/json"
 	"io"
 	"strings"
 	"testing"
@@ -31,6 +32,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -78,6 +80,30 @@ func TestRadiusChart_FluxSelection(t *testing.T) {
 			}
 			if meta.Kind == "Deployment" && meta.Name == "controller" {
 				require.NoError(t, yaml.NewYAMLOrJSONDecoder(strings.NewReader(string(data)), 4096).Decode(&deployment))
+				desired, err := json.Marshal(object)
+				require.NoError(t, err)
+				// Helm's client-side upgrade merges the previous manifest, desired
+				// manifest and live object, which has API-defaulted rollingUpdate.
+				spec := object["spec"].(map[string]any)
+				delete(spec, "strategy")
+				original, err := json.Marshal(object)
+				require.NoError(t, err)
+				spec["strategy"] = map[string]any{"type": "RollingUpdate", "rollingUpdate": map[string]any{
+					"maxSurge": "25%", "maxUnavailable": "25%",
+				}}
+				live, err := json.Marshal(object)
+				require.NoError(t, err)
+				metadata, err := strategicpatch.NewPatchMetaFromStruct(appsv1.Deployment{})
+				require.NoError(t, err)
+				patch, err := strategicpatch.CreateThreeWayMergePatch(original, desired, live, metadata, true)
+				require.NoError(t, err)
+				require.Contains(t, string(patch), `"$retainKeys":["type"]`)
+				upgraded, err := strategicpatch.StrategicMergePatch(live, patch, appsv1.Deployment{})
+				require.NoError(t, err)
+				var afterUpgrade appsv1.Deployment
+				require.NoError(t, json.Unmarshal(upgraded, &afterUpgrade))
+				require.Equal(t, appsv1.RecreateDeploymentStrategyType, afterUpgrade.Spec.Strategy.Type)
+				require.Nil(t, afterUpgrade.Spec.Strategy.RollingUpdate, "client-side upgrade must clear the API-defaulted strategy")
 			}
 		}
 		require.Equal(t, appsv1.RecreateDeploymentStrategyType, deployment.Spec.Strategy.Type)

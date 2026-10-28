@@ -132,6 +132,34 @@ spec:
                 items:
                   type: string
                 type: array
+              pendingCleanup:
+                description: PendingCleanup retains outputs that cannot have trackers
+                  in a terminating namespace.
+                items:
+                  description: OutputResourceCleanup persists deletion progress for
+                    an output without a tracker.
+                  properties:
+                    id:
+                      description: ID is the output resource ID returned by a completed
+                        deployment.
+                      type: string
+                    operation:
+                      description: Operation is the accepted DELETE operation, if
+                        any.
+                      properties:
+                        operationKind:
+                          description: OperationKind describes the type of operation
+                            being performed.
+                          type: string
+                        resumeToken:
+                          description: ResumeToken is a token that can be used to
+                            resume an in-progress provisioning operation.
+                          type: string
+                      type: object
+                  required:
+                  - id
+                  type: object
+                type: array
               phrase:
                 description: Phrase indicates the current status of the Deployment
                   Template.
