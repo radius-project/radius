@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -215,6 +216,16 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			newOutputResources[resource] = true
 		}
 
+		if deploymentTemplate.DeletionTimestamp != nil {
+			terminating, err := r.namespaceTerminating(ctx, deploymentTemplate.Namespace)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			if terminating {
+				return ctrl.Result{}, r.recoverTerminatingOutputs(ctx, deploymentTemplate, outputResources)
+			}
+		}
+
 		desiredDeletionPending := false
 		for _, outputResourceId := range outputResources {
 			// Recreate missing trackers even when the ID was recorded before cleanup.
@@ -237,16 +248,19 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			if err := r.SourcePolicy.checkTemplate(ctx, deploymentTemplate); err != nil {
 				return ctrl.Result{}, err
 			}
-			err = r.Client.Create(ctx, deploymentResource)
-			if apierrors.IsAlreadyExists(err) {
-				reader := client.Reader(r.Client)
-				if r.SourcePolicy != nil && r.SourcePolicy.reader != nil {
-					reader = r.SourcePolicy.reader
+			var existing radappiov1alpha3.DeploymentResource
+			err = r.liveReader().Get(ctx, client.ObjectKeyFromObject(deploymentResource), &existing)
+			if apierrors.IsNotFound(err) {
+				err = r.Client.Create(ctx, deploymentResource)
+				if err == nil {
+					continue
 				}
-				var existing radappiov1alpha3.DeploymentResource
-				if err := reader.Get(ctx, client.ObjectKeyFromObject(deploymentResource), &existing); err != nil {
+				if !apierrors.IsAlreadyExists(err) {
 					return ctrl.Result{}, err
 				}
+				err = r.liveReader().Get(ctx, client.ObjectKeyFromObject(deploymentResource), &existing)
+			}
+			if err == nil {
 				if !isOwnedBy(existing, deploymentTemplate) || existing.Spec.Id != outputResourceId {
 					return ctrl.Result{}, &sourceHold{"OutputResourceMismatch", "An output resource is already tracked by a different template or resource ID"}
 				}
@@ -294,7 +308,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 					return ctrl.Result{}, err
 				}
 				var existing radappiov1alpha3.DeploymentResource
-				err = r.Client.Get(ctx, client.ObjectKey{Name: resourceName, Namespace: deploymentTemplate.Namespace}, &existing)
+				err = r.liveReader().Get(ctx, client.ObjectKey{Name: resourceName, Namespace: deploymentTemplate.Namespace}, &existing)
 				if apierrors.IsNotFound(err) {
 					continue
 				} else if err != nil {
@@ -502,7 +516,12 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 				logger.Error(err, "Failed to delete owned resource, continuing with other resources", "resourceName", resource.Name)
 			}
 		}
+	}
 
+	if len(deploymentTemplate.Status.PendingCleanup) > 0 {
+		return r.reconcilePendingCleanup(ctx, deploymentTemplate, ownedResources)
+	}
+	if len(ownedResources) > 0 {
 		return ctrl.Result{}, fmt.Errorf("Requeuing to wait for owned resources to be deleted, %d remaining", len(ownedResources))
 	}
 
@@ -649,13 +668,139 @@ func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1al
 	return false
 }
 
+func (r *DeploymentTemplateReconciler) liveReader() client.Reader {
+	if r.SourcePolicy != nil && r.SourcePolicy.reader != nil {
+		return r.SourcePolicy.reader
+	}
+	return r.Client
+}
+
+func (r *DeploymentTemplateReconciler) namespaceTerminating(ctx context.Context, namespace string) (bool, error) {
+	var object corev1.Namespace
+	if err := r.liveReader().Get(ctx, client.ObjectKey{Name: namespace}, &object); err != nil {
+		return false, client.IgnoreNotFound(err)
+	}
+	return object.DeletionTimestamp != nil, nil
+}
+
+func (r *DeploymentTemplateReconciler) recoverTerminatingOutputs(ctx context.Context, template *radappiov1alpha3.DeploymentTemplate, outputs []string) error {
+	pending := make([]radappiov1alpha3.OutputResourceCleanup, 0)
+	seen := map[string]bool{}
+	for _, id := range append(slices.Clone(template.Status.OutputResources), outputs...) {
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		name, err := generateDeploymentResourceName(id)
+		if err != nil {
+			return err
+		}
+		var existing radappiov1alpha3.DeploymentResource
+		err = r.liveReader().Get(ctx, client.ObjectKey{Namespace: template.Namespace, Name: name}, &existing)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		if err == nil {
+			if !isOwnedBy(existing, template) || existing.Spec.Id != id {
+				return &sourceHold{"OutputResourceMismatch", "An output is tracked by a different template or resource ID"}
+			}
+			if controllerutil.ContainsFinalizer(&existing, DeploymentResourceFinalizer) {
+				continue
+			}
+		}
+		pending = append(pending, radappiov1alpha3.OutputResourceCleanup{ID: id})
+	}
+	if err := r.SourcePolicy.checkTemplate(ctx, template); err != nil {
+		return err
+	}
+	// Keep the PUT result recoverable until the API confirms the cleanup inventory
+	// survived schema pruning. Older CRDs must not silently lose these outputs.
+	template.Status.PendingCleanup = pending
+	if err := r.Client.Status().Update(ctx, template); err != nil {
+		return err
+	}
+	if !slices.EqualFunc(pending, template.Status.PendingCleanup, func(a, b radappiov1alpha3.OutputResourceCleanup) bool { return a.ID == b.ID }) {
+		return fmt.Errorf("deployment template schema does not retain pendingCleanup; apply the matching chart CRD")
+	}
+	template.Status.OutputResources = outputs
+	template.Status.Operation = nil
+	template.Status.OperationSpecHash = ""
+	template.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
+	return r.Client.Status().Update(ctx, template)
+}
+
+func (r *DeploymentTemplateReconciler) reconcilePendingCleanup(ctx context.Context, template *radappiov1alpha3.DeploymentTemplate, owned []radappiov1alpha3.DeploymentResource) (ctrl.Result, error) {
+	dependencies := appendPendingCleanup(owned, template.Status.PendingCleanup)
+	resourceController := &DeploymentResourceReconciler{Client: r.Client, SourcePolicy: r.SourcePolicy,
+		ResourceDeploymentsClient: r.ResourceDeploymentsClient}
+	for i := range template.Status.PendingCleanup {
+		item := &template.Status.PendingCleanup[i]
+		output := &radappiov1alpha3.DeploymentResource{
+			Namespace: template.Namespace, Spec: radappiov1alpha3.DeploymentResourceSpec{Id: item.ID},
+		}
+		if err := controllerutil.SetControllerReference(template, output, r.Scheme); err != nil {
+			return ctrl.Result{}, err
+		}
+		var poller sdkclients.Poller[sdkclients.ClientDeleteResponse]
+		var err error
+		if item.Operation != nil {
+			poller, err = r.ResourceDeploymentsClient.ContinueDeleteOperation(ctx, item.Operation.ResumeToken)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("continuing untracked output deletion: %w", err)
+			}
+			if _, err := poller.Poll(ctx); err != nil {
+				return ctrl.Result{}, fmt.Errorf("polling untracked output deletion: %w", err)
+			}
+		} else {
+			dependency, dependencyErr := checkForDeploymentResourceDependencies(output, dependencies)
+			if dependencyErr != nil {
+				return ctrl.Result{}, dependencyErr
+			}
+			if dependency != "" {
+				continue
+			}
+			poller, err = resourceController.startDeleteOperation(ctx, output)
+		}
+		if err != nil && !clients.Is404Error(err) {
+			return ctrl.Result{}, err
+		}
+		if err == nil && poller != nil {
+			if !poller.Done() {
+				token, err := poller.ResumeToken()
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				item.Operation = &radappiov1alpha3.ResourceOperation{OperationKind: radappiov1alpha3.OperationKindDelete, ResumeToken: token}
+				return ctrl.Result{RequeueAfter: r.requeueDelay()}, r.Client.Status().Update(ctx, template)
+			}
+			_, err = poller.Result(ctx)
+			if err != nil && !clients.Is404Error(err) {
+				item.Operation = nil
+				if statusErr := r.Client.Status().Update(ctx, template); statusErr != nil {
+					return ctrl.Result{}, statusErr
+				}
+				return ctrl.Result{}, fmt.Errorf("deleting untracked output %q: %w", item.ID, err)
+			}
+		}
+		if err := r.SourcePolicy.checkTemplate(ctx, template); err != nil {
+			return ctrl.Result{}, err
+		}
+		template.Status.PendingCleanup = slices.Delete(template.Status.PendingCleanup, i, i+1)
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, r.Client.Status().Update(ctx, template)
+	}
+	return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+}
+
+func appendPendingCleanup(owned []radappiov1alpha3.DeploymentResource, pending []radappiov1alpha3.OutputResourceCleanup) []radappiov1alpha3.DeploymentResource {
+	for _, item := range pending {
+		owned = append(owned, radappiov1alpha3.DeploymentResource{Spec: radappiov1alpha3.DeploymentResourceSpec{Id: item.ID}})
+	}
+	return owned
+}
+
 func (r *DeploymentTemplateReconciler) ownedDeploymentResources(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) ([]radappiov1alpha3.DeploymentResource, error) {
 	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
-	reader := client.Reader(r.Client)
-	if r.SourcePolicy != nil && r.SourcePolicy.reader != nil {
-		reader = r.SourcePolicy.reader
-	}
-	if err := reader.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace)); err != nil {
+	if err := r.liveReader().List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace)); err != nil {
 		return nil, err
 	}
 	owned := make([]radappiov1alpha3.DeploymentResource, 0, len(deploymentResourceList.Items))

@@ -73,6 +73,9 @@ type DeploymentTemplateStatus struct {
 	// OutputResources is a list of the resourceIDs that were created by the template on the last deployment.
 	OutputResources []string `json:"outputResources,omitempty"`
 
+	// PendingCleanup retains outputs that cannot have trackers in a terminating namespace.
+	PendingCleanup []OutputResourceCleanup `json:"pendingCleanup,omitempty"`
+
 	// Operation tracks the status of an in-progress provisioning operation.
 	Operation *ResourceOperation `json:"operation,omitempty"`
 
@@ -81,6 +84,14 @@ type DeploymentTemplateStatus struct {
 
 	// Phrase indicates the current status of the Deployment Template.
 	Phrase DeploymentTemplatePhrase `json:"phrase,omitempty"`
+}
+
+// OutputResourceCleanup persists deletion progress for an output without a tracker.
+type OutputResourceCleanup struct {
+	// ID is the output resource ID returned by a completed deployment.
+	ID string `json:"id"`
+	// Operation is the accepted DELETE operation, if any.
+	Operation *ResourceOperation `json:"operation,omitempty"`
 }
 
 // DeploymentTemplatePhrase is a string representation of the current status of a Deployment Template.

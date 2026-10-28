@@ -21,6 +21,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -358,9 +359,14 @@ func (r *FluxController) pruneTemplate(ctx context.Context, key client.ObjectKey
 		if err := r.Client.Delete(ctx, &latest, client.Preconditions{UID: &latest.UID, ResourceVersion: &latest.ResourceVersion}); err != nil {
 			return client.IgnoreNotFound(err)
 		}
-		if err := r.SourcePolicy.reader.Get(ctx, key, &latest); err != nil {
-			return client.IgnoreNotFound(err)
-		}
+	}
+	return r.refreshCleanupAttribution(ctx, key, uid, ref)
+}
+
+func (r *FluxController) refreshCleanupAttribution(ctx context.Context, key client.ObjectKey, uid types.UID, ref *radappiov1alpha3.DeploymentTemplateSourceReference) error {
+	var latest radappiov1alpha3.DeploymentTemplate
+	if err := r.SourcePolicy.reader.Get(ctx, key, &latest); err != nil {
+		return client.IgnoreNotFound(err)
 	}
 	if latest.UID != uid || latest.DeletionTimestamp.IsZero() {
 		return &sourceHold{"TemplateSourceMismatch", "DeploymentTemplate changed while requesting cleanup"}
@@ -587,6 +593,11 @@ func (r *FluxController) preflightTargets(ctx context.Context, config []ConfigEn
 		seen[key] = true
 		var existing radappiov1alpha3.DeploymentTemplate
 		if err := r.SourcePolicy.reader.Get(ctx, key, &existing); err == nil {
+			if existing.DeletionTimestamp != nil {
+				if err := r.refreshCleanupAttribution(ctx, key, existing.UID, ref); err != nil {
+					return nil, err
+				}
+			}
 			if err := checkTemplateWritable(&existing, ref); err != nil {
 				return nil, err
 			}

@@ -66,6 +66,12 @@ func Test_Flux_SourceMigration(t *testing.T) {
 	crdPath := filepath.Join(relativeChartPath, "crds", "radius", "radapp.io_deploymenttemplates.yaml")
 	crdData, err := os.ReadFile(crdPath)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupCommandTimeout)
+		defer cancel()
+		require.NoError(t, runCommand(cleanupCtx, []string{"kubectl", "apply", "-f", crdPath}),
+			"restore the current CRD even when migration fails before the schema upgrade")
+	})
 	var legacyCRD apiextensionsv1.CustomResourceDefinition
 	require.NoError(t, yaml.Unmarshal(crdData, &legacyCRD))
 	delete(legacyCRD.Spec.Versions[0].Schema.OpenAPIV3Schema.Properties["spec"].Properties, "sourceRef")

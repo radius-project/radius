@@ -268,6 +268,14 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	var owner radappiov1alpha3.DeploymentTemplate
+	if err := reader.Get(ctx, client.ObjectKey{Namespace: deploymentResource.Namespace, Name: ownerRef.Name}, &owner); err != nil {
+		return ctrl.Result{}, err
+	}
+	if owner.UID != ownerRef.UID {
+		return ctrl.Result{}, &sourceHold{"ResourceOwnerChanged", "Resource owner changed before dependency checks"}
+	}
+	deploymentResourceList = appendPendingCleanup(deploymentResourceList, owner.Status.PendingCleanup)
 
 	// Check if the resource is being used by another resource
 	dependentResource, err := checkForDeploymentResourceDependencies(deploymentResource, deploymentResourceList)
