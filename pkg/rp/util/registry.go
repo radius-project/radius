@@ -24,7 +24,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"syscall"
 
@@ -34,31 +33,22 @@ import (
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/retry"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
 // ReadFromRegistry reads data from an OCI compliant registry and stores it in a map. It returns an error if the path is invalid,
-// if the client to the registry fails to be created, if the manifest fails to be fetched, if the bytes fail to be fetched, or if
-// the data fails to be unmarshalled.
+// if the manifest fails to be fetched, if the bytes fail to be fetched, or if the data fails to be unmarshalled.
 func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinition, data *map[string]any, client remote.Client) error {
-	registryRepo, tag, err := parsePath(definition.TemplatePath)
+	ref, err := parseTemplatePath(definition.TemplatePath)
 	if err != nil {
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid path %s", err.Error()))
 	}
 
-	repo, err := remote.NewRepository(registryRepo)
-	if err != nil {
-		return fmt.Errorf("failed to create client to registry %s", err.Error())
-	}
+	repo := &remote.Repository{Reference: ref, Client: client, PlainHTTP: definition.PlainHTTP}
 
-	repo.Client = client
-
-	if definition.PlainHTTP {
-		repo.PlainHTTP = true
-	}
-
-	bytes, err := fetchRecipeWithRetry(ctx, repo, tag)
+	bytes, err := fetchRecipeWithRetry(ctx, repo, ref.ReferenceOrDefault())
 	if err != nil {
 		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", definition.TemplatePath, err.Error()), recipes_util.RecipeSetupError, nil)
 	}
@@ -83,11 +73,11 @@ var registryFetchBackoff = retry.DefaultBackoffStrategy
 // failures while reading a response body (for example a connection reset partway
 // through a blob download from a CDN) and its retry window is only a few seconds,
 // which is shorter than typical DNS or network blips.
-func fetchRecipeWithRetry(ctx context.Context, repo *remote.Repository, tag string) ([]byte, error) {
+func fetchRecipeWithRetry(ctx context.Context, repo *remote.Repository, ref string) ([]byte, error) {
 	var result []byte
 	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: registryFetchBackoff()})
 	err := retryer.RetryFunc(ctx, func(ctx context.Context) error {
-		digest, err := getDigestFromManifest(ctx, repo, tag)
+		digest, err := getDigestFromManifest(ctx, repo, ref)
 		if err == nil {
 			result, err = getBytes(ctx, repo, digest)
 		}
@@ -135,10 +125,9 @@ func isTransientRegistryError(err error) bool {
 		errors.Is(err, io.ErrUnexpectedEOF)
 }
 
-// getDigestFromManifest gets the layers digest from the manifest
-func getDigestFromManifest(ctx context.Context, repo *remote.Repository, tag string) (string, error) {
-	// resolves a manifest descriptor with a Tag reference
-	descriptor, err := repo.Resolve(ctx, tag)
+// getDigestFromManifest gets the layers digest from the manifest that ref, a tag or digest, resolves to.
+func getDigestFromManifest(ctx context.Context, repo *remote.Repository, ref string) (string, error) {
+	descriptor, err := repo.Resolve(ctx, ref)
 	if err != nil {
 		return "", err
 	}
@@ -191,41 +180,52 @@ func getBytes(ctx context.Context, repo *remote.Repository, layerDigest string) 
 	return pulledBlob, nil
 }
 
-// parsePath parses a path in the form of registry/repository:tag. Recipe template
-// paths may include an http(s):// scheme even though OCI references do not, so a
-// leading scheme is stripped before normalizing (matching the previous parser).
-// A tag is required: TagNameOnly defaults a name-only reference to ":latest", but
-// a digest reference such as repo@sha256:... carries no tag, which the registry is
-// resolved by, so it is rejected here with a descriptive error rather than failing
-// later at resolution time.
-func parsePath(path string) (repository string, tag string, err error) {
-	path = strings.TrimPrefix(path, "https://")
+// parseTemplatePath parses a recipe template path into a fully qualified reference.
+// Recipe template paths may include an http(s):// scheme even though OCI references do
+// not, so a leading lowercase "https://" or "http://" is ignored. PlainHTTP, not the
+// scheme, selects the transport. distribution/reference applies Docker normalization,
+// so Docker Hub short names and index.docker.io become docker.io. ORAS then splits the
+// normalized name. For repository:tag@digest the digest wins, and a path with neither
+// resolves the "latest" tag through ReferenceOrDefault. It returns the parser error if
+// the path without its scheme is not a valid reference.
+func parseTemplatePath(templatePath string) (registry.Reference, error) {
+	path := strings.TrimPrefix(templatePath, "https://")
 	path = strings.TrimPrefix(path, "http://")
 
 	named, err := reference.ParseNormalizedNamed(path)
 	if err != nil {
-		return "", "", err
+		return registry.Reference{}, err
 	}
 
-	named = reference.TagNameOnly(named)
-	tagged, ok := named.(reference.Tagged)
-	if !ok {
-		return "", "", fmt.Errorf("%q does not include a tag; a tagged reference such as repository:tag is required (digest references are not supported)", path)
-	}
-	repository = named.Name()
-	tag = tagged.Tag()
-	return repository, tag, nil
+	return registry.ParseReference(named.String())
 }
 
-// GetRegistrySecrets retrieves secret data based on the recipe configuration and template path.
-// It matches the secretstore resource ID associated with the template path in recipe configuration to the secretstore resource id in the secrets data.
-func GetRegistrySecrets(definition recipes.Configuration, templatePath string, secrets map[string]recipes.SecretData) (recipes.SecretData, error) {
-	parsedURL, err := url.Parse("https://" + templatePath)
+// RegistryName returns the registry name of a recipe template path, which is the key used
+// to look up registry credentials. It is the name, not the network host: for Docker Hub it
+// returns "docker.io", and ORAS sends the requests to registry-1.docker.io and maps
+// docker.io credentials to that host. The only error is a path that does not parse.
+func RegistryName(templatePath string) (string, error) {
+	ref, err := parseTemplatePath(templatePath)
 	if err != nil {
-		return recipes.SecretData{}, err
+		return "", err
 	}
 
-	authConfig := definition.RecipeConfig.Bicep.Authentication[parsedURL.Host]
+	return ref.Registry, nil
+}
+
+// GetRegistrySecrets returns the secret data for the registry of a recipe template path.
+// It looks up the registry name in the Bicep registry authentication of the recipe
+// configuration, then returns the secret data for the secret ID that the entry points to.
+// It returns empty secret data if no entry matches or the template path does not parse.
+// ReadFromRegistry rejects a path that does not parse with BadRequest before it sends a
+// request, so empty secret data for that path does not hide the error.
+func GetRegistrySecrets(definition recipes.Configuration, templatePath string, secrets map[string]recipes.SecretData) recipes.SecretData {
+	registryName, err := RegistryName(templatePath)
+	if err != nil {
+		return recipes.SecretData{}
+	}
+
+	authConfig := definition.RecipeConfig.Bicep.Authentication[registryName]
 	secretData := secrets[authConfig.Secret]
 
 	// When the environment's bicepSettings specify an explicit authentication method, it is the
@@ -237,7 +237,7 @@ func GetRegistrySecrets(definition recipes.Configuration, templatePath string, s
 		secretData.Type = t
 	}
 
-	return secretData, nil
+	return secretData
 }
 
 // secretTypeForAuthMethod maps a bicepSettings authenticationMethod to the SecretData.Type expected

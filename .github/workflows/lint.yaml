@@ -45,15 +45,13 @@ jobs:
       contents: read
       pull-requests: read
 
-  # A single "Lint" job runs every linter and reports one aggregated status
-  # check. The independent, read-only linters run concurrently as parallel steps
-  # (see the `parallel:` group below), so a failure in any one of them still lets
-  # the others run and surface their findings in the same job.
+  # Preserve ordinary ignored-change skips. Release metadata keeps focused
+  # validation, and failed classification must still fail the required status.
   lint:
     name: Lint
     runs-on: ubuntu-24.04
     needs: changes
-    if: needs.changes.outputs.only_changed != 'true'
+    if: always() && (needs.changes.result != 'success' || needs.changes.outputs.only_changed != 'true' || needs.changes.outputs.release_metadata == 'true')
     timeout-minutes: 30
     env:
       GOPROXY: https://proxy.golang.org
@@ -61,12 +59,19 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Check change detection
+        if: needs.changes.result != 'success'
+        run: |
+          echo "::error::Change detection did not succeed"
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Setup Go
+        if: needs.changes.outputs.only_changed != 'true'
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
@@ -74,10 +79,11 @@ jobs:
           cache: true
 
       - name: Download Go modules
+        if: needs.changes.outputs.only_changed != 'true'
         uses: ./.github/actions/go-mod-download
 
       - name: Setup NodeJS
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
 
@@ -85,15 +91,29 @@ jobs:
         # Required by make generate to parse defaults.yaml.
         run: make install-yq
 
+      - name: Install release metadata tools
+        if: needs.changes.outputs.only_changed == 'true'
+        run: make install-jq install-git-cliff
+
+      - name: Test release metadata
+        if: needs.changes.outputs.only_changed == 'true'
+        run: |
+          make test-workflow-changes test-release-version-format \
+            test-changelog-range test-changelog-config \
+            test-prepare-release test-release-plan
+
       - name: Install helm
+        if: needs.changes.outputs.only_changed != 'true'
         # Version pinned in build/tools.yaml (HELM_VERSION).
         run: make install-helm
 
       - name: Install golangci-lint
+        if: needs.changes.outputs.only_changed != 'true'
         # Pinned version + checksums live in build/tools.yaml (GOLANGCI_LINT_VERSION).
         run: make install-golangci-lint
 
       - name: Install shellcheck
+        if: needs.changes.outputs.only_changed != 'true'
         # Pinned version + checksums live in build/tools.yaml (SHELLCHECK_VERSION).
         run: make install-shellcheck
 
@@ -105,34 +125,40 @@ jobs:
       # (a single status check).
       - parallel:
           - name: Go lint
+            if: needs.changes.outputs.only_changed != 'true'
             run: make lint-go
 
           - name: Helm lint and unit tests
+            if: needs.changes.outputs.only_changed != 'true'
             run: |
               helm lint "${HELM_CHARTS_DIR}"
               make test-helm
 
           - name: pnpm-based checks
+            if: needs.changes.outputs.only_changed != 'true'
             run: |
               make tsp-format-check
               make format-check || { echo "Format check failed. Run 'make format-write' to fix the formatting issues."; exit 1; }
 
           - name: Shell lint
+            if: needs.changes.outputs.only_changed != 'true'
             run: make lint-shell
 
       # The generated-code check mutates the working tree, so it runs
       # sequentially after the parallel linters rather than inside the group.
       - name: Run make generate
+        if: needs.changes.outputs.only_changed != 'true'
         run: make generate
 
       - name: Check if generated code is up to date
+        if: needs.changes.outputs.only_changed != 'true'
         continue-on-error: true
         id: gitdiff
         run: |
           git diff --exit-code
 
       - name: Check failures
-        if: steps.gitdiff.outcome != 'success'
+        if: needs.changes.outputs.only_changed != 'true' && steps.gitdiff.outcome != 'success'
         run: |
           echo "Generated code is not up to date, run 'make generate' to update generated code."
           exit 1

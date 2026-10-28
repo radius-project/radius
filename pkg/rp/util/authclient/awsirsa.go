@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/radius-project/radius/pkg/rp/util"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -39,6 +40,9 @@ var _ AuthClient = (*awsIRSA)(nil)
 
 type awsIRSA struct {
 	roleARN string
+
+	// ecrConfigOptions is nil in production. Tests use it to replace the STS credentials and the HTTP client.
+	ecrConfigOptions []func(*config.LoadOptions) error
 }
 
 // NewAwsIRSA creates a new awsIRSA instance.
@@ -48,13 +52,13 @@ func NewAwsIRSA(roleARN string) AuthClient {
 
 // GetAuthClient retrieves an authenticated client for accessing remote client for interacting with an Amazon ECR registry using AWS IRSA.
 func (b *awsIRSA) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
-	registryHost, err := getRegistryHostname(templatePath)
+	registryName, err := util.RegistryName(templatePath)
 	if err != nil {
 		return nil, err
 	}
 
 	// Determine the AWS region for the ECR registry based on the registry hostname.
-	region, err := getECRRegion(registryHost)
+	region, err := getECRRegion(registryName)
 	if err != nil {
 		return nil, err
 	}
@@ -75,10 +79,10 @@ func (b *awsIRSA) GetAuthClient(ctx context.Context, templatePath string) (remot
 		},
 	))
 
-	ecrCfg, err := config.LoadDefaultConfig(ctx,
+	ecrCfg, err := config.LoadDefaultConfig(ctx, append([]func(*config.LoadOptions) error{
 		config.WithRegion(region),
 		config.WithCredentialsProvider(credsCache),
-	)
+	}, b.ecrConfigOptions...)...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
@@ -108,7 +112,7 @@ func (b *awsIRSA) GetAuthClient(ctx context.Context, templatePath string) (remot
 
 	return &auth.Client{
 		Client: retry.DefaultClient,
-		Credential: auth.StaticCredential(registryHost, auth.Credential{
+		Credential: auth.StaticCredential(registryName, auth.Credential{
 			Username: creds[0],
 			Password: creds[1],
 		}),

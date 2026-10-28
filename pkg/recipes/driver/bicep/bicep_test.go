@@ -18,12 +18,23 @@ package bicep
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"net/http"
+	"net/http/httptest"
+	"slices"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	corerp_datamodel "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -41,11 +52,23 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"oras.land/oras-go/v2/registry/remote/auth"
 )
 
 type deploymentClientSpy struct {
 	clients.ResourceDeploymentsClient
 	createOrUpdateCalls int
+	deployment          clients.Deployment
+	response            *clients.ClientCreateOrUpdateResponse
+}
+
+type deploymentPollerStub struct {
+	clients.Poller[clients.ClientCreateOrUpdateResponse]
+	response clients.ClientCreateOrUpdateResponse
+}
+
+func (p *deploymentPollerStub) PollUntilDone(context.Context, *clients.PollUntilDoneOptions) (clients.ClientCreateOrUpdateResponse, error) {
+	return p.response, nil
 }
 
 type clusterAccessResolverStub struct {
@@ -65,8 +88,12 @@ func (s *clusterAccessResolverStub) ResolveKubeconfigSource(context.Context, *re
 	return clusteraccess.KubeconfigSource{}, errors.New("unexpected ResolveKubeconfigSource call")
 }
 
-func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, _ clients.Deployment, _, _ string) (clients.Poller[clients.ClientCreateOrUpdateResponse], error) {
+func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, deployment clients.Deployment, _, _ string) (clients.Poller[clients.ClientCreateOrUpdateResponse], error) {
 	s.createOrUpdateCalls++
+	s.deployment = deployment
+	if s.response != nil {
+		return &deploymentPollerStub{response: *s.response}, nil
+	}
 	return nil, errors.New("unexpected deployment")
 }
 
@@ -471,9 +498,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 	}
 
 	err := driverBicep.Delete(ctx, driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: configuration,
-		},
+		Configuration:   configuration,
 		OutputResources: outputResources,
 	})
 	require.NoError(t, err)
@@ -690,6 +715,161 @@ func Test_Bicep_Execute_InvalidOutputMappingDoesNotDeploy(t *testing.T) {
 			Message: `recipe "mongo-azure" for resource type "Applications.Datastores/mongoDatabases": invalid outputs mapping: no declared module output matches secrets["connectionString"] -> "primaryConnectionString"; available module outputs: none`,
 		},
 		DeploymentStatus: recipes_util.RecipeSetupError,
+	}, err)
+	require.Zero(t, deploymentClient.createOrUpdateCalls)
+}
+
+func Test_Bicep_Execute_DirectModuleParameters(t *testing.T) {
+	t.Parallel()
+
+	for _, kind := range []string{"None", "CanNotDelete"} {
+		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
+
+			ts := registrytest.NewFakeRegistryServer(t)
+			t.Cleanup(ts.CloseServer)
+
+			deploymentClient := &deploymentClientSpy{}
+			driverBicep := &bicepDriver{
+				DeploymentClient: deploymentClient,
+				RegistryClient:   ts.TestServer.Client(),
+			}
+
+			_, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+				Recipe: recipes.ResourceMetadata{
+					Name:          "direct-module",
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/direct-module",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+				},
+				Definition: recipes.EnvironmentDefinition{
+					Name:         "direct-module",
+					Driver:       recipes.TemplateKindBicep,
+					TemplatePath: ts.TestImageURL,
+					ResourceType: "Test.Resources/resources",
+					Parameters: map[string]any{
+						"name":  "{{context.resource.name}}",
+						"lock":  map[string]any{"kind": kind},
+						"kinds": []any{"None", "CanNotDelete"},
+					},
+				},
+			})
+
+			// Stop at the deployment boundary and inspect the serialized ARM payload.
+			require.Error(t, err)
+			require.Equal(t, 1, deploymentClient.createOrUpdateCalls)
+			payload, err := json.Marshal(deploymentClient.deployment.Properties.Parameters)
+			require.NoError(t, err)
+			require.JSONEq(t, fmt.Sprintf(`{
+				"name": {"value": "direct-module"},
+				"lock": {"value": {"kind": %q}},
+				"kinds": {"value": ["None", "CanNotDelete"]}
+			}`, kind), string(payload))
+		})
+	}
+}
+
+func Test_Bicep_Execute_LogsDeploymentOutputResourceIDs(t *testing.T) {
+	t.Parallel()
+
+	const lockID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Authorization/locks/test-lock"
+	for _, ids := range [][]string{{}, {lockID}} {
+		t.Run(fmt.Sprintf("%d outputs", len(ids)), func(t *testing.T) {
+			t.Parallel()
+
+			ts := registrytest.NewFakeRegistryServer(t)
+			t.Cleanup(ts.CloseServer)
+			outputs := make([]*armdeployments.ResourceReference, 0, len(ids))
+			for _, id := range ids {
+				outputs = append(outputs, &armdeployments.ResourceReference{ID: new(id)})
+			}
+			deploymentClient := &deploymentClientSpy{
+				response: &clients.ClientCreateOrUpdateResponse{
+					Properties: &armdeployments.DeploymentPropertiesExtended{
+						OutputResources: outputs,
+						Outputs: map[string]any{
+							"password": map[string]any{"type": "securestring", "value": "sensitive-output-value"},
+						},
+					},
+				},
+			}
+			d := &bicepDriver{DeploymentClient: deploymentClient, RegistryClient: ts.TestServer.Client()}
+			var logs []string
+			ctx := logr.NewContext(t.Context(), funcr.NewJSON(func(line string) {
+				logs = append(logs, line)
+			}, funcr.Options{}))
+
+			result, err := d.Execute(ctx, driver.ExecuteOptions{
+				Recipe: recipes.ResourceMetadata{
+					Name:          "test-resource",
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+				},
+				Definition: recipes.EnvironmentDefinition{
+					Name:         "direct-module",
+					Driver:       recipes.TemplateKindBicep,
+					TemplatePath: ts.TestImageURL,
+					Parameters:   map[string]any{"password": "sensitive-parameter-value"},
+				},
+			})
+			require.NoError(t, err)
+			require.ElementsMatch(t, ids, result.Resources)
+			require.Equal(t, "sensitive-output-value", result.Secrets["password"])
+
+			var diagnostic map[string]any
+			for _, line := range logs {
+				require.NotContains(t, line, "sensitive-output-value")
+				require.NotContains(t, line, "sensitive-parameter-value")
+				if strings.Contains(line, "Deployment engine returned recipe output resource IDs") {
+					require.NoError(t, json.Unmarshal([]byte(line), &diagnostic))
+				}
+			}
+			require.NotNil(t, diagnostic)
+			require.Equal(t, "direct-module", diagnostic["recipeName"])
+			require.Contains(t, diagnostic["deploymentID"], "/providers/Microsoft.Resources/deployments/recipe")
+			require.Equal(t, float64(len(ids)), diagnostic["outputResourceCount"])
+			expectedIDs := make([]any, 0, len(ids))
+			for _, id := range ids {
+				expectedIDs = append(expectedIDs, id)
+			}
+			require.Equal(t, expectedIDs, diagnostic["outputResourceIDs"])
+		})
+	}
+}
+
+func Test_Bicep_Execute_UnresolvedExpressionDoesNotDeploy(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	deploymentClient := &deploymentClientSpy{}
+	driverBicep := &bicepDriver{
+		DeploymentClient: deploymentClient,
+		RegistryClient:   ts.TestServer.Client(),
+	}
+
+	output, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+		Recipe: recipes.ResourceMetadata{
+			Name:          "mongo",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+		},
+		Definition: recipes.EnvironmentDefinition{
+			Name:         "mongo-azure",
+			Driver:       recipes.TemplateKindBicep,
+			TemplatePath: ts.TestImageURL,
+			ResourceType: "Applications.Datastores/mongoDatabases",
+			Parameters: map[string]any{
+				"documentdbName": "{{context.resource.unknown}}",
+			},
+		},
+	})
+
+	require.Nil(t, output)
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeploymentFailed,
+			Message: `failed to resolve recipe parameter expressions: parameter "documentdbName": unresolved expression {{context.resource.unknown}}: unknown context path "context.resource.unknown"`,
+		},
+		DeploymentStatus: recipes_util.ExecutionError,
 	}, err)
 	require.Zero(t, deploymentClient.createOrUpdateCalls)
 }
@@ -1072,6 +1252,321 @@ func Test_WrapARMParameters(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := wrapARMParameters(tt.params)
 			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+const (
+	fakeRegistryUser     = "user"
+	fakeRegistryPassword = "pass"
+	publicRegistryHost   = "public.example.com"
+	dockerHubHost        = "registry-1.docker.io"
+	dockerHubAuthHost    = "auth.docker.io"
+	bearerPrefix         = "Bearer "
+)
+
+// registryRequest records one request that fakeRegistries received.
+type registryRequest struct{ scheme, host, authorization string }
+
+func (r registryRequest) sentCredentials() bool {
+	return r.authorization == "Basic" || r.authorization == bearerPrefix+"pull"
+}
+
+// fakeRegistries replaces http.DefaultTransport, which ORAS uses for every request the
+// driver makes. Docker Hub issues a "pull" token for valid basic credentials and an
+// "anonymous" token otherwise. Anonymous tokens can pull only library/ repositories.
+// public.example.com needs no credentials. Every other host needs basic credentials.
+type fakeRegistries struct {
+	mu       sync.Mutex
+	requests []registryRequest
+	manifest []byte
+	layer    []byte
+}
+
+func newFakeRegistries(t *testing.T) *fakeRegistries {
+	t.Helper()
+	layer := []byte(`{"parameters":{"name":{"type":"string"}}}`)
+	f := &fakeRegistries{
+		layer:    layer,
+		manifest: []byte(`{"layers":[{"digest":"` + digest.FromBytes(layer).String() + `"}]}`),
+	}
+	original := http.DefaultTransport
+	http.DefaultTransport = f
+	t.Cleanup(func() { http.DefaultTransport = original })
+	return f
+}
+
+func (f *fakeRegistries) RoundTrip(req *http.Request) (*http.Response, error) {
+	recorder := httptest.NewRecorder()
+	f.serve(recorder, req)
+	resp := recorder.Result()
+	resp.Request = req
+	return resp, nil
+}
+
+func (f *fakeRegistries) take() []registryRequest {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	requests := f.requests
+	f.requests = nil
+	return requests
+}
+
+func (f *fakeRegistries) serve(w http.ResponseWriter, r *http.Request) {
+	authorization := r.Header.Get("Authorization")
+	if strings.HasPrefix(authorization, "Basic ") {
+		authorization = "Basic"
+	}
+	f.mu.Lock()
+	f.requests = append(f.requests, registryRequest{scheme: r.URL.Scheme, host: r.URL.Host, authorization: authorization})
+	f.mu.Unlock()
+
+	switch r.URL.Host {
+	case dockerHubAuthHost:
+		token := "anonymous"
+		if user, password, ok := r.BasicAuth(); ok {
+			if user != fakeRegistryUser || password != fakeRegistryPassword {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			token = "pull"
+		}
+		// A failed write means the client went away. The client then fails the test.
+		_ = json.NewEncoder(w).Encode(map[string]string{"token": token})
+		return
+	case dockerHubHost:
+		official := strings.HasPrefix(r.URL.Path, "/v2/library/")
+		if authorization != bearerPrefix+"pull" && (!official || authorization != bearerPrefix+"anonymous") {
+			w.Header().Set("WWW-Authenticate", bearerPrefix+`realm="https://auth.docker.io/token",service="registry.docker.io"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+	case publicRegistryHost:
+	default:
+		if user, password, ok := r.BasicAuth(); !ok || user != fakeRegistryUser || password != fakeRegistryPassword {
+			w.Header().Set("WWW-Authenticate", `Basic realm="private"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+	}
+
+	var body []byte
+	var contentType string
+	switch {
+	case strings.Contains(r.URL.Path, "/manifests/"):
+		body, contentType = f.manifest, ocispec.MediaTypeImageManifest
+	case strings.Contains(r.URL.Path, "/blobs/"):
+		body, contentType = f.layer, ocispec.MediaTypeImageLayer
+	default:
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Docker-Content-Digest", digest.FromBytes(body).String())
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	if r.Method == http.MethodGet {
+		// A failed write means the client went away. The client then fails the test.
+		_, _ = w.Write(body)
+	}
+}
+
+type registrySecret struct{ secretType, user, password string }
+
+var (
+	validRegistrySecret   = registrySecret{"basicAuthentication", fakeRegistryUser, fakeRegistryPassword}
+	wrongPasswordSecret   = registrySecret{"basicAuthentication", fakeRegistryUser, "wrong"}
+	unsupportedSecretType = registrySecret{"notAType", fakeRegistryUser, fakeRegistryPassword}
+)
+
+type registryAuthCase struct {
+	name      string
+	path      string
+	plainHTTP bool
+	// keys are the registry authentication keys that all point to the same secret.
+	keys   []string
+	secret *registrySecret
+	// wantCode, when set, is the expected error code. wantErr, when set, is a substring of the error.
+	// When both are empty, the call must succeed with the recipe parameters.
+	wantCode string
+	wantErr  string
+	// wantCreds lists exactly the hosts that receive credentials.
+	wantCreds []string
+	// wantHosts, when set, lists exactly the registry hosts that are contacted.
+	wantHosts  []string
+	noRequests bool
+}
+
+func (tc registryAuthCase) options() driver.BaseOptions {
+	secret := validRegistrySecret
+	if tc.secret != nil {
+		secret = *tc.secret
+	}
+	authentication := map[string]corerp_datamodel.RegistrySecretConfig{}
+	for _, key := range tc.keys {
+		authentication[key] = corerp_datamodel.RegistrySecretConfig{Secret: "creds"}
+	}
+	return driver.BaseOptions{
+		Configuration: recipes.Configuration{RecipeConfig: corerp_datamodel.RecipeConfigProperties{
+			Bicep: corerp_datamodel.BicepConfigProperties{Authentication: authentication},
+		}},
+		Secrets: map[string]recipes.SecretData{
+			"creds": {Type: secret.secretType, Data: map[string]string{"username": secret.user, "password": secret.password}},
+		},
+		Definition: recipes.EnvironmentDefinition{
+			Name:         "redis",
+			Driver:       recipes.TemplateKindBicep,
+			TemplatePath: tc.path,
+			PlainHTTP:    tc.plainHTTP,
+			ResourceType: "Applications.Datastores/redisCaches",
+		},
+	}
+}
+
+// errorCode returns the code of a recipe or client error, or "" for any other error.
+func errorCode(err error) string {
+	if recipeErr, ok := errors.AsType[*recipes.RecipeError](err); ok {
+		return recipeErr.ErrorDetails.Code
+	}
+	if clientErr, ok := errors.AsType[*v1.ErrClientRP](err); ok {
+		return clientErr.Code
+	}
+	return ""
+}
+
+// runRegistryAuthCase calls the driver and checks the result, which hosts received
+// credentials, and that plainHttp, not the scheme in the path, selects the transport.
+func runRegistryAuthCase(t *testing.T, f *fakeRegistries, tc registryAuthCase, call func(driver.BaseOptions) (map[string]any, error)) {
+	t.Run(tc.name, func(t *testing.T) {
+		// The anonymous client caches Docker Hub tokens across calls.
+		cache := auth.DefaultClient.Cache
+		auth.DefaultClient.Cache = auth.NewCache()
+		t.Cleanup(func() { auth.DefaultClient.Cache = cache })
+		f.take()
+
+		data, err := call(tc.options())
+
+		requests := f.take()
+		wantScheme := "https"
+		if tc.plainHTTP {
+			wantScheme = "http"
+		}
+		creds, hosts := map[string]bool{}, map[string]bool{}
+		for _, r := range requests {
+			if r.host != dockerHubAuthHost {
+				require.Equalf(t, wantScheme, r.scheme, "scheme for %s", r.host)
+				hosts[r.host] = true
+			}
+			if r.sentCredentials() {
+				creds[r.host] = true
+			}
+		}
+		if tc.noRequests {
+			require.Empty(t, requests, "no registry or token request is expected")
+		} else {
+			require.NotEmpty(t, requests)
+		}
+		require.ElementsMatch(t, tc.wantCreds, slices.Collect(maps.Keys(creds)), "hosts that received credentials")
+		if tc.wantHosts != nil {
+			require.ElementsMatch(t, tc.wantHosts, slices.Collect(maps.Keys(hosts)), "registry hosts contacted")
+		}
+
+		if tc.wantCode == "" && tc.wantErr == "" {
+			require.NoError(t, err)
+			require.Equal(t, map[string]any{"name": map[string]any{"type": "string"}}, data["parameters"])
+			return
+		}
+		require.Error(t, err)
+		require.Equal(t, tc.wantCode, errorCode(err), err.Error())
+		require.ErrorContains(t, err, tc.wantErr)
+	})
+}
+
+// Test_Bicep_GetRecipeMetadata_RegistryAuthentication replaces http.DefaultTransport,
+// so it must not run in parallel.
+func Test_Bicep_GetRecipeMetadata_RegistryAuthentication(t *testing.T) {
+	f := newFakeRegistries(t)
+	manifestDigest := digest.FromBytes(f.manifest).String()
+	private := "registry.example.com:5000"
+	acr := "myreg.azurecr.io"
+	dockerHub := []string{dockerHubAuthHost, dockerHubHost}
+	fetchFailed := recipes.RecipeLanguageFailure
+
+	testset := []registryAuthCase{
+		// Private registry with basic authentication.
+		{name: "port and tag", path: private + "/recipes/redis:1.0", keys: []string{private}, wantCreds: []string{private}},
+		{name: "port and digest", path: private + "/recipes/redis@" + manifestDigest, keys: []string{private}, wantCreds: []string{private}},
+		{name: "tag and digest", path: acr + "/recipes/redis:1.0@" + manifestDigest, keys: []string{acr}, wantCreds: []string{acr}},
+		{name: "IPv6 and port", path: "[::1]:5000/recipes/redis:1.0", keys: []string{"[::1]:5000"}, wantCreds: []string{"[::1]:5000"}},
+		{name: "http scheme with plainHttp", path: "http://" + private + "/recipes/redis:1.0", plainHTTP: true, keys: []string{private}, wantCreds: []string{private}},
+		{name: "https scheme", path: "https://" + acr + "/recipes/redis:1.0", keys: []string{acr}, wantCreds: []string{acr}},
+		{name: "https scheme and digest", path: "https://" + acr + "/recipes/redis@" + manifestDigest, keys: []string{acr}, wantCreds: []string{acr}},
+		{name: "https scheme, plainHttp true sends http", path: "https://" + private + "/recipes/redis:1.0", plainHTTP: true, keys: []string{private}, wantCreds: []string{private}},
+		{name: "http scheme, plainHttp false sends https", path: "http://" + private + "/recipes/redis:1.0", keys: []string{private}, wantCreds: []string{private}},
+
+		// Registry without credentials. plainHttp selects the scheme.
+		{name: "public, https scheme, plainHttp true sends http", path: "https://" + publicRegistryHost + "/recipes/redis:1.0", plainHTTP: true},
+		{name: "public, http scheme, plainHttp false sends https", path: "http://" + publicRegistryHost + "/recipes/redis:1.0"},
+
+		// Credentials stay with their registry.
+		{name: "key for another registry", path: "other.example.com/recipes/redis:1.0", keys: []string{acr}, wantCode: fetchFailed, wantHosts: []string{"other.example.com"}},
+		{name: "public registry, key for another registry", path: publicRegistryHost + "/recipes/redis:1.0", keys: []string{acr}},
+
+		// Docker Hub. The key is docker.io and requests go to registry-1.docker.io.
+		{name: "Docker Hub docker.io namespace", path: "docker.io/myuser/redis:1.0", keys: []string{"docker.io"}, wantCreds: dockerHub},
+		{name: "Docker Hub https scheme", path: "https://docker.io/myuser/redis:1.0", keys: []string{"docker.io"}, wantCreds: dockerHub},
+		{name: "Docker Hub short name", path: "myuser/redis:1.0", keys: []string{"docker.io"}, wantCreds: dockerHub, wantHosts: []string{dockerHubHost}},
+		{name: "Docker Hub short name and digest", path: "myuser/redis@" + manifestDigest, keys: []string{"docker.io"}, wantCreds: dockerHub},
+		{name: "Docker Hub official image, no authentication", path: "redis:1.0", wantHosts: []string{dockerHubHost}},
+		{name: "Docker Hub official image digest, no authentication", path: "redis@" + manifestDigest},
+		{name: "Docker Hub official image with docker.io key sends credentials", path: "redis:1.0", keys: []string{"docker.io"}, wantCreds: dockerHub},
+		{name: "Docker Hub index.docker.io path, docker.io key", path: "index.docker.io/myuser/redis:1.0", keys: []string{"docker.io"}, wantCreds: dockerHub},
+		{name: "Docker Hub registry-1.docker.io path and key", path: "registry-1.docker.io/myuser/redis:1.0", keys: []string{"registry-1.docker.io"}, wantCreds: dockerHub},
+
+		// Keys that do not match the normalized registry.
+		{name: "Docker Hub namespace key", path: "myuser/redis:1.0", keys: []string{"myuser"}, wantCode: fetchFailed},
+		{name: "Docker Hub index.docker.io key", path: "index.docker.io/myuser/redis:1.0", keys: []string{"index.docker.io"}, wantCode: fetchFailed},
+		{name: "key case differs", path: "MyReg.example.com/recipes/redis:1.0", keys: []string{"myreg.example.com"}, wantCode: fetchFailed},
+		{name: "explicit 443, key without port", path: acr + ":443/recipes/redis:1.0", keys: []string{acr}, wantCode: fetchFailed},
+		{name: "key with scheme", path: acr + "/recipes/redis:1.0", keys: []string{"https://" + acr}, wantCode: fetchFailed},
+		{name: "in-cluster name without dot or port goes to Docker Hub", path: "registry/recipes/redis:1.0", keys: []string{"registry"}, wantCode: fetchFailed, wantHosts: []string{dockerHubHost}},
+
+		// Paths that are not valid send no registry or token request.
+		{name: "uppercase scheme", path: "HTTPS://" + acr + "/recipes/redis:1.0", keys: []string{acr}, wantCode: v1.CodeInvalid, wantErr: "invalid path", noRequests: true},
+		{name: "oci scheme", path: "oci://" + acr + "/recipes/redis:1.0", keys: []string{acr}, wantCode: v1.CodeInvalid, wantErr: "invalid path", noRequests: true},
+		{name: "bicep br: syntax", path: "br:" + acr + "/recipes/redis:1.0", keys: []string{acr}, wantCode: v1.CodeInvalid, wantErr: "invalid path", noRequests: true},
+		{name: "bicep br: syntax skips auth client setup", path: "br:" + acr + "/recipes/redis:1.0", keys: []string{acr}, secret: &unsupportedSecretType, wantCode: v1.CodeInvalid, wantErr: "invalid path", noRequests: true},
+		{name: "uppercase repository", path: acr + "/Recipes/redis:1.0", keys: []string{acr}, wantCode: v1.CodeInvalid, wantErr: "invalid path", noRequests: true},
+		{name: "bracketed host that is not an IP address", path: "[000]:0000/000000", wantCode: v1.CodeInvalid, wantErr: "invalid path", noRequests: true},
+
+		// Authentication failures on valid paths still fail.
+		{name: "unsupported secret type", path: acr + "/recipes/redis:1.0", keys: []string{acr}, secret: &unsupportedSecretType, wantErr: "invalid type", noRequests: true},
+		{name: "wrong password", path: private + "/recipes/redis:1.0", keys: []string{private}, secret: &wrongPasswordSecret, wantCode: fetchFailed, wantCreds: []string{private}},
+		{name: "https scheme, wrong password", path: "https://" + acr + "/recipes/redis:1.0", keys: []string{acr}, secret: &wrongPasswordSecret, wantCode: fetchFailed, wantCreds: []string{acr}},
+	}
+	for _, tc := range testset {
+		runRegistryAuthCase(t, f, tc, func(opts driver.BaseOptions) (map[string]any, error) {
+			return (&bicepDriver{}).GetRecipeMetadata(t.Context(), opts)
+		})
+	}
+}
+
+// Test_Bicep_Execute_RegistryAuthenticationErrors checks that Execute wraps download
+// failures as RecipeDownloadFailed and returns auth client errors unchanged. It replaces
+// http.DefaultTransport, so it must not run in parallel.
+func Test_Bicep_Execute_RegistryAuthenticationErrors(t *testing.T) {
+	f := newFakeRegistries(t)
+	acr := "myreg.azurecr.io"
+	testset := []registryAuthCase{
+		{name: "bicep br: syntax", path: "br:" + acr + "/recipes/redis:1.0", keys: []string{acr}, wantCode: recipes.RecipeDownloadFailed, wantErr: "invalid path", noRequests: true},
+		{name: "uppercase repository", path: acr + "/Recipes/redis:1.0", keys: []string{acr}, wantCode: recipes.RecipeDownloadFailed, wantErr: "invalid path", noRequests: true},
+		{name: "bracketed host that is not an IP address", path: "[000]:0000/000000", wantCode: recipes.RecipeDownloadFailed, wantErr: "invalid path", noRequests: true},
+		{name: "https scheme, wrong password", path: "https://" + acr + "/recipes/redis:1.0", keys: []string{acr}, secret: &wrongPasswordSecret, wantCode: recipes.RecipeDownloadFailed, wantCreds: []string{acr}},
+		{name: "unsupported secret type", path: acr + "/recipes/redis:1.0", keys: []string{acr}, secret: &unsupportedSecretType, wantErr: "invalid type", noRequests: true},
+	}
+	for _, tc := range testset {
+		runRegistryAuthCase(t, f, tc, func(opts driver.BaseOptions) (map[string]any, error) {
+			_, err := (&bicepDriver{}).Execute(t.Context(), driver.ExecuteOptions{BaseOptions: opts})
+			return nil, err
 		})
 	}
 }

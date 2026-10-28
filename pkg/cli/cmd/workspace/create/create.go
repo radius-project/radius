@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -31,7 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/spf13/cobra"
 )
 
@@ -52,13 +53,17 @@ Available workspaceTypes: kubernetes
 
 Workspaces allow you to manage multiple Radius platforms and environments using a local configuration file. 
 
-You can easily define and switch between workspaces to deploy and manage applications across local, test, and production environments.`,
+You can easily define and switch between workspaces to deploy and manage applications across local, test, and production environments.
+
+Use '--environment' to bind the workspace to a Radius.Core environment created with 'rad env create'.`,
 		Args: ValidateArgs(),
 		Example: `
 # Create a workspace with name 'myworkspace' and kubernetes context 'aks'
 rad workspace create kubernetes myworkspace --context aks
 # Create a workspace with name of current kubernetes context in current kubernetes context
-rad workspace create kubernetes`,
+rad workspace create kubernetes
+# Create a workspace bound to the environment 'my-env' in the resource group 'my-grp'
+rad workspace create kubernetes myworkspace --group my-grp --environment my-env`,
 		RunE: framework.RunCommand(runner),
 	}
 
@@ -71,13 +76,6 @@ rad workspace create kubernetes`,
 	return cmd, runner
 }
 
-// EnvironmentValidator validates that the environment named envName exists in the
-// scope of ws, and returns the fully-qualified environment resource ID to be persisted
-// on the workspace. mgmtClient is the management client already created for the workspace
-// scope; implementations are free to ignore it (e.g. preview implementations that talk
-// to the Radius.Core resource provider directly).
-type EnvironmentValidator func(ctx context.Context, ws *workspaces.Workspace, mgmtClient clients.ApplicationsManagementClient, envName string) (envID string, err error)
-
 // Runner is the runner implementation for the `rad workspace create` command.
 type Runner struct {
 	ConfigHolder        *framework.ConfigHolder
@@ -89,10 +87,9 @@ type Runner struct {
 	HelmInterface       helm.Interface
 	KubernetesInterface kubernetes.Interface
 
-	// EnvironmentValidator is invoked to validate that the requested environment exists
-	// and to construct the environment resource ID stored on the workspace. When nil,
-	// the legacy Applications.Core/environments validator is used.
-	EnvironmentValidator EnvironmentValidator
+	// RadiusCoreClientFactory validates the Radius.Core/environments resource. When nil,
+	// it is initialized from the workspace connection. Tests may pre-populate it.
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 }
 
 // NewRunner creates a new instance of the `rad workspace create` runner.
@@ -105,21 +102,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		HelmInterface:       factory.GetHelmInterface(),
 		KubernetesInterface: factory.GetKubernetesInterface(),
 	}
-	r.EnvironmentValidator = ValidateApplicationsCoreEnvironment
 	return r
-}
-
-// ValidateApplicationsCoreEnvironment is the default EnvironmentValidator. It targets
-// Applications.Core/environments via the management client.
-func ValidateApplicationsCoreEnvironment(ctx context.Context, ws *workspaces.Workspace, mgmtClient clients.ApplicationsManagementClient, envName string) (string, error) {
-	envID := ws.Scope + "/providers/" + datamodel.EnvironmentResourceType + "/" + envName
-	if _, err := mgmtClient.GetEnvironment(ctx, envName); err != nil {
-		if clients.Is404Error(err) {
-			return "", clierrors.Message("The environment %q does not exist. Run `rad env create` and try again.", envID)
-		}
-		return "", clierrors.MessageWithCause(err, "Failed to get environment %q.", envID)
-	}
-	return envID, nil
 }
 
 // Validate runs validation for the `rad workspace create` command.
@@ -138,7 +121,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	kubeContextList, err := r.KubernetesInterface.GetKubeContext()
 	if err != nil {
-		return clierrors.Message("Failed to read Kubernetes configuration. Ensure you have a valid Kubeconfig file and try again.")
+		return clierrors.MessageWithCause(err, "Failed to read Kubernetes configuration. Ensure you have a valid Kubeconfig file and try again.")
 	}
 	context, err := cli.RequireKubeContext(cmd, kubeContextList.CurrentContext)
 	if err != nil {
@@ -220,11 +203,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return clierrors.Message("Cannot set environment for workspace with empty scope. Use --group to set a scope.")
 		}
 
-		validator := r.EnvironmentValidator
-		if validator == nil {
-			validator = ValidateApplicationsCoreEnvironment
-		}
-		envID, err := validator(cmd.Context(), r.Workspace, client, env)
+		envID, err := r.validateEnvironment(cmd.Context(), env)
 		if err != nil {
 			return err
 		}
@@ -232,6 +211,28 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// validateEnvironment validates that the Radius.Core/environments resource exists in the
+// workspace scope and returns its fully-qualified resource ID.
+func (r *Runner) validateEnvironment(ctx context.Context, envName string) (string, error) {
+	envID := cmd.EnvironmentID(r.Workspace.Scope, envName)
+
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return "", err
+		}
+		r.RadiusCoreClientFactory = clientFactory
+	}
+
+	if _, err := r.RadiusCoreClientFactory.NewEnvironmentsClient().Get(ctx, r.Workspace.Scope, envName, nil); err != nil {
+		if clients.Is404Error(err) {
+			return "", clierrors.Message("The environment %q does not exist. Run `rad env create` and try again.", envID)
+		}
+		return "", clierrors.MessageWithCause(err, "Failed to get environment %q.", envID)
+	}
+	return envID, nil
 }
 
 // Run runs the `rad workspace create` command.

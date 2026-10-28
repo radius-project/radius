@@ -1,6 +1,6 @@
 AAD
+Abdulrahim
 ACA
-ACIRuntimeProperties
 ADDENDUMS
 AKS
 APIM
@@ -291,6 +291,7 @@ OutputResource
 PATs
 POC
 POSIX
+Priya
 PRs
 PUBLICHOSTNAMEORIP
 PVCs
@@ -411,6 +412,7 @@ StateStore
 Stateful
 Statestores
 StaticCredential
+strenv
 Subramanian
 Swappable
 Sylvain
@@ -698,6 +700,7 @@ env
 envSecrets
 envVariables
 environmentVariables
+envsubst
 envtest
 etag
 etcd
@@ -735,7 +738,6 @@ getMeterMust
 getResourceIdentitySchemas
 getgraph
 gh
-ghaction
 ghcr
 github
 gitignore
@@ -796,6 +798,7 @@ inheritence
 init
 initContainer
 initialDelaySeconds
+inotify
 inmemory
 integrations
 integrators
@@ -1162,7 +1165,6 @@ skuName
 snok
 someString
 spanId
-speckit
 sql
 sqlDatabases
 sqldatabases
@@ -1252,6 +1254,7 @@ uncompiled
 unittest
 unmarshal
 unmarshaling
+unmigrated
 unpushed
 unregister
 unregistering
@@ -1264,6 +1267,7 @@ unvalidated
 upc
 upgradeable
 upmerge
+upmerges
 upsert
 upserts
 upvote

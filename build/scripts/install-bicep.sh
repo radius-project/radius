@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# shellcheck source=build/scripts/retry-curl.sh
+source "$(dirname "${BASH_SOURCE[0]}")/retry-curl.sh"
+
 # Installs the Bicep CLI into a user-owned directory (no sudo) for the current
 # platform. Works on linux and darwin, amd64 and arm64, for both CI and local
 # development; under GitHub Actions the install dir is added to the job PATH so
@@ -49,28 +52,13 @@ cleanup() {
     fi
 }
 
-# curl wrapper for GitHub requests: enforces HTTPS + TLS 1.2, sets a User-Agent,
-# and adds an Authorization header when GITHUB_TOKEN is set (raises API rate
-# limits and allows private repositories). curl drops the Authorization header on
-# cross-host redirects, so the token is not sent to the download CDN. The array is
-# seeded with the User-Agent so it is never empty -- expanding an empty array
-# under 'set -u' is an error on bash 3.2 (macOS).
+# curl wrapper for authenticated GitHub requests.
 gh_curl() {
     local headers=(-H "User-Agent: ${REPO##*/}-installer")
-    if [ -n "${GITHUB_TOKEN:-}" ]; then
-        headers+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        headers+=(-H "Authorization: ******")
     fi
-    # --retry rides out transient failures (timeouts and HTTP 408/429/5xx such as
-    # the 504 gateway timeouts GitHub's release CDN returns intermittently) with
-    # exponential backoff. --retry-all-errors extends that same backoff to
-    # failures curl's default retry logic does not classify as transient,
-    # notably curl 56 ("Connection died"), the dropped/reset mid-download
-    # connections seen intermittently against the release CDN (see #12661).
-    # Combined with -f (used by every caller below), --retry-all-errors also
-    # retries HTTP 404s (e.g. a wrong/nonexistent version) instead of failing
-    # immediately, so a bad version now takes the full retry budget (~31s) to
-    # fail rather than failing fast.
-    curl --proto '=https' --tlsv1.2 --retry 5 --retry-connrefused --retry-all-errors "${headers[@]}" "$@"
+    retry_curl "${headers[@]}" "$@"
 }
 
 detect_os() {
@@ -93,7 +81,7 @@ detect_arch() {
 # Avoids the GitHub API (no token, no rate limit).
 resolve_latest_version() {
     local effective_url
-    effective_url="$(gh_curl -fsSLI -o /dev/null -w '%{url_effective}' "${RELEASES_URL}/latest")" \
+    effective_url="$(gh_curl --head -o /dev/null -w '%{url_effective}' "${RELEASES_URL}/latest")" \
         || fail "could not resolve the latest bicep version"
     printf '%s\n' "${effective_url##*/tag/}"
 }
@@ -174,13 +162,15 @@ main() {
     WORKDIR="$(mktemp -d)"
 
     log "downloading ${asset} ${version}..."
-    gh_curl -fsSL "${RELEASES_URL}/download/${version}/${asset}" -o "${WORKDIR}/bicep" \
+    gh_curl -o "${WORKDIR}/bicep" \
+        "${RELEASES_URL}/download/${version}/${asset}" \
         || fail "could not download ${asset} ${version}"
 
     # Azure/bicep does not publish checksums, so verification only happens when a
     # pinned checksum is supplied (the common case via build/tools.yaml).
     if [ -n "$checksum" ]; then
-        verify_checksum "$checksum" "${WORKDIR}/bicep"
+        verify_checksum "$checksum" "${WORKDIR}/bicep" \
+            || fail "checksum verification failed for ${asset} ${version}"
     else
         log "WARNING: no checksum supplied for ${platform}; installing without verification."
     fi
@@ -200,5 +190,7 @@ main() {
     fi
 }
 
-trap cleanup EXIT
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    trap cleanup EXIT
+    main "$@"
+fi

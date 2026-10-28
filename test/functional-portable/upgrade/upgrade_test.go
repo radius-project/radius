@@ -340,9 +340,9 @@ func Test_helmReleaseArgs(t *testing.T) {
 		wantRegistry string
 		wantTag      string
 	}{
-		{name: "defaults", wantRegistry: "ghcr.io/radius-project", wantTag: "latest"},
+		{name: "defaults", wantRegistry: "ghcr.io/radius-project", wantTag: "test-local"},
 		{name: "ci", registry: "radius-registry:5000", tag: "pr-func2b7a279e78", wantRegistry: "radius-registry:5000", wantTag: "pr-func2b7a279e78"},
-		{name: "defaults with candidate DE", deRepository: "candidate.example:5001/custom-de", deTag: "00123", wantRegistry: "ghcr.io/radius-project", wantTag: "latest"},
+		{name: "defaults with candidate DE", deRepository: "candidate.example:5001/custom-de", deTag: "00123", wantRegistry: "ghcr.io/radius-project", wantTag: "test-local"},
 		{name: "ci with candidate DE", registry: "radius-registry:5000", tag: "pr-func2b7a279e78", deRepository: "candidate.example:5001/custom-de", deTag: "candidate-13081", wantRegistry: "radius-registry:5000", wantTag: "pr-func2b7a279e78"},
 	} {
 		t.Run(settings.name, func(t *testing.T) {

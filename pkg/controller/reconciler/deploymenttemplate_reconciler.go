@@ -31,7 +31,7 @@ import (
 
 	"uuid"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
@@ -263,9 +263,14 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			}
 		}
 
-		hash, err := computeHash(deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
+		// ObservedGeneration is the generation this operation submitted. If the spec changed since,
+		// leave the hash empty so the next reconcile deploys the current spec.
+		var hash string
+		if deploymentTemplate.Generation == deploymentTemplate.Status.ObservedGeneration {
+			hash, err = computeHash(deploymentTemplate)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 
 		// If any owned DR has a Spec.Id not in the new outputResources set, it

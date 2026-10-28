@@ -17,8 +17,10 @@ limitations under the License.
 package terraform
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -33,6 +35,7 @@ import (
 	gomock "go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/stretchr/testify/require"
@@ -231,6 +234,36 @@ func Test_Terraform_Execute_InvalidOutputMapping(t *testing.T) {
 	}
 }
 
+func Test_Terraform_Execute_UnresolvedParameterExpression(t *testing.T) {
+	ctx := t.Context()
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, tfDriver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+
+	resolutionErr := &paramresolver.ResolutionError{Errors: []error{errors.New(`parameter "name": unresolved expression {{context.resource.unknown}}: unknown context path "context.resource.unknown"`)}}
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, fmt.Errorf("wrapped: %w", resolutionErr))
+
+	output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
+	})
+
+	require.Nil(t, output)
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeploymentFailed,
+			Message: "wrapped: " + resolutionErr.Error(),
+		},
+		DeploymentStatus: recipes_util.ExecutionError,
+	}, err)
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
+}
+
 func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
@@ -369,18 +402,26 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
 	tfExecutor, tfDriver := setup(t)
-	_, _, envRecipe := buildTestInputs()
+	envConfig, _, envRecipe := buildTestInputs()
 
 	expectedOutput := map[string]any{
 		"parameters": map[string]any{
 			"redis_cache_name": "redis-test",
 		},
 	}
-	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).DoAndReturn(
+		func(_ context.Context, options terraform.Options) (map[string]any, error) {
+			// The environment configuration is required to add provider alias placeholders before the module download.
+			require.NotNil(t, options.EnvConfig)
+			require.Equal(t, envConfig, *options.EnvConfig)
+			require.Equal(t, envRecipe, *options.EnvRecipe)
+			return expectedOutput, nil
+		})
 
 	recipeData, err := tfDriver.GetRecipeMetadata(ctx, driver.BaseOptions{
-		Recipe:     recipes.ResourceMetadata{},
-		Definition: envRecipe,
+		Recipe:        recipes.ResourceMetadata{},
+		Definition:    envRecipe,
+		Configuration: envConfig,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeData)
@@ -443,13 +484,32 @@ func Test_Terraform_Delete_Success(t *testing.T) {
 
 	tfExecutor, tfDriver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+	envConfig.RecipeConfig.Terraform.Providers = map[string][]datamodel.ProviderConfigProperties{
+		"azurerm": {{
+			AdditionalProperties: map[string]any{"alias": "custom"},
+			Secrets:              map[string]datamodel.SecretReference{"tenant_id": {Source: "settings", Key: "tenant"}},
+		}},
+	}
+	envConfig.RecipeConfig.EnvSecrets = map[string]datamodel.SecretReference{
+		"ARM_CLIENT_ID": {Source: "settings", Key: "client"},
+	}
+	secrets := map[string]recipes.SecretData{
+		"settings": {Data: map[string]string{"tenant": "test-tenant", "client": "test-client"}},
+	}
 
-	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).Times(1).Return(nil)
+	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, opts terraform.Options) error {
+		require.Equal(t, &envConfig, opts.EnvConfig)
+		require.Equal(t, secrets, opts.Secrets, "destroy needs provider and environment secrets")
+		require.Equal(t, &recipeMetadata, opts.ResourceRecipe)
+		require.Equal(t, &envRecipe, opts.EnvRecipe)
+		return nil
+	})
 
 	err := tfDriver.Delete(ctx, driver.DeleteOptions{
 		Configuration:   envConfig,
 		Recipe:          recipeMetadata,
 		Definition:      envRecipe,
+		Secrets:         secrets,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.NoError(t, err)

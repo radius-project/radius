@@ -256,8 +256,7 @@ func (e *executor) deleteS3State(ctx context.Context, settings *datamodel.Terraf
 // which is a misconfiguration the operator needs to see, as a missing object and report cleanup as
 // having nothing to do.
 func isS3NotFound(err error) bool {
-	var apiErr smithy.APIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[smithy.APIError](err); ok {
 		return apiErr.ErrorCode() == "NoSuchKey" || apiErr.ErrorCode() == "NotFound"
 	}
 	return s3ResponseStatus(err) == 404

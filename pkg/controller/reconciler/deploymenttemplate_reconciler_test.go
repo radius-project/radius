@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
@@ -392,6 +392,36 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait for the DeploymentTemplate to be deleted.
+	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
+}
+
+func Test_DeploymentTemplateReconciler_SpecChangedDuringOperation(t *testing.T) {
+	ctx := t.Context()
+	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
+	namespacedName := types.NamespacedName{Namespace: "deploymenttemplate-spec-change", Name: "test-deploymenttemplate"}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(namespacedName.Namespace).String()
+	require.NoError(t, err)
+	require.NoError(t, k8sClient.Create(ctx, &corev1.Namespace{Name: namespacedName.Namespace}))
+
+	deploymentTemplate := makeDeploymentTemplate(namespacedName, "{}", providerConfig, nil)
+	require.NoError(t, k8sClient.Create(ctx, deploymentTemplate))
+	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
+
+	// Change the spec while the first operation runs.
+	require.NoError(t, k8sClient.Get(ctx, namespacedName, deploymentTemplate))
+	deploymentTemplate.Spec.Template = `{"resources":[]}`
+	require.NoError(t, k8sClient.Update(ctx, deploymentTemplate))
+	updatedHash, err := computeHash(deploymentTemplate)
+	require.NoError(t, err)
+
+	// The first operation's success must start a second one for the changed spec.
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
+	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, status.Operation)
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
+	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+	require.Equal(t, updatedHash, status.StatusHash)
+
+	require.NoError(t, k8sClient.Delete(ctx, deploymentTemplate))
 	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
 }
 

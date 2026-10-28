@@ -1,0 +1,51 @@
+# Rogue workload for manual authorization checks. It stands in for a compromised
+# application workload in an environment namespace: no service account token and
+# no special permissions. hack/authz/rogue.sh and as-component.sh create it with
+# "kubectl apply --namespace <ns>".
+#
+# lib.sh renders the locally built rogue-client image recorded by up.sh.
+# The shell-free client shares /work with the OpenSSL sidecar, which writes
+# copied component certificates for as-component.sh.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: radius-authz-rogue
+  labels:
+    app.kubernetes.io/name: radius-rogue-client
+    app.kubernetes.io/part-of: radius-authz-kit
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  terminationGracePeriodSeconds: 0
+  securityContext:
+    runAsNonRoot: true
+    fsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: rogue
+      image: AUTHZ_ROGUE_IMAGE
+      command: ["/rogue-client", "idle"]
+      securityContext:
+        runAsUser: 65532
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: work
+          mountPath: /work
+    - name: openssl
+      image: docker.io/alpine/openssl:3.5.9@sha256:e8a2319d15637db5296c0ff540bb028cfabc480b22fcdd4a020582393d32673f
+      command: ["sleep", "infinity"]
+      securityContext:
+        runAsUser: 65532
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - name: work
+          mountPath: /work
+  volumes:
+    - name: work
+      emptyDir: {}

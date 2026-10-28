@@ -32,13 +32,13 @@ type GenericResourcesServer struct {
 	// HTTP status codes to indicate success: http.StatusOK
 	Get func(ctx context.Context, resourceName string, options *generated.GenericResourcesClientGetOptions) (resp azfake.Responder[generated.GenericResourcesClientGetResponse], errResp azfake.ErrorResponder)
 
-	// NewListByRootScopePager is the fake for method GenericResourcesClient.NewListByRootScopePager
-	// HTTP status codes to indicate success: http.StatusOK
-	NewListByRootScopePager func(options *generated.GenericResourcesClientListByRootScopeOptions) (resp azfake.PagerResponder[generated.GenericResourcesClientListByRootScopeResponse])
-
 	// ListSecrets is the fake for method GenericResourcesClient.ListSecrets
 	// HTTP status codes to indicate success: http.StatusOK
 	ListSecrets func(ctx context.Context, resourceName string, options *generated.GenericResourcesClientListSecretsOptions) (resp azfake.Responder[generated.GenericResourcesClientListSecretsResponse], errResp azfake.ErrorResponder)
+
+	// NewListByRootScopePager is the fake for method GenericResourcesClient.NewListByRootScopePager
+	// HTTP status codes to indicate success: http.StatusOK
+	NewListByRootScopePager func(options *generated.GenericResourcesClientListByRootScopeOptions) (resp azfake.PagerResponder[generated.GenericResourcesClientListByRootScopeResponse])
 }
 
 // NewGenericResourcesServerTransport creates a new instance of GenericResourcesServerTransport with the provided implementation.
@@ -89,10 +89,10 @@ func (g *GenericResourcesServerTransport) dispatchToMethodFake(req *http.Request
 				res.resp, res.err = g.dispatchBeginDelete(req)
 			case "GenericResourcesClient.Get":
 				res.resp, res.err = g.dispatchGet(req)
-			case "GenericResourcesClient.NewListByRootScopePager":
-				res.resp, res.err = g.dispatchNewListByRootScopePager(req)
 			case "GenericResourcesClient.ListSecrets":
 				res.resp, res.err = g.dispatchListSecrets(req)
+			case "GenericResourcesClient.NewListByRootScopePager":
+				res.resp, res.err = g.dispatchNewListByRootScopePager(req)
 			default:
 				res.err = fmt.Errorf("unhandled API %s", method)
 			}
@@ -222,6 +222,35 @@ func (g *GenericResourcesServerTransport) dispatchGet(req *http.Request) (*http.
 	return resp, nil
 }
 
+func (g *GenericResourcesServerTransport) dispatchListSecrets(req *http.Request) (*http.Response, error) {
+	if g.srv.ListSecrets == nil {
+		return nil, &nonRetriableError{errors.New("fake for method ListSecrets not implemented")}
+	}
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/(?P<resourceType>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/(?P<resourceName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/listSecrets`
+	regex := regexp.MustCompile(regexStr)
+	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+	if len(matches) < 4 {
+		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+	}
+	resourceNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceName")])
+	if err != nil {
+		return nil, err
+	}
+	respr, errRespr := g.srv.ListSecrets(req.Context(), resourceNameParam, nil)
+	if respErr := server.GetError(errRespr, req); respErr != nil {
+		return nil, respErr
+	}
+	respContent := server.GetResponseContent(respr)
+	if !slices.Contains([]int{http.StatusOK}, respContent.HTTPStatus) {
+		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK", respContent.HTTPStatus)}
+	}
+	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).Value, req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 func (g *GenericResourcesServerTransport) dispatchNewListByRootScopePager(req *http.Request) (*http.Response, error) {
 	if g.srv.NewListByRootScopePager == nil {
 		return nil, &nonRetriableError{errors.New("fake for method NewListByRootScopePager not implemented")}
@@ -251,35 +280,6 @@ func (g *GenericResourcesServerTransport) dispatchNewListByRootScopePager(req *h
 	}
 	if !server.PagerResponderMore(newListByRootScopePager) {
 		g.newListByRootScopePager.remove(req)
-	}
-	return resp, nil
-}
-
-func (g *GenericResourcesServerTransport) dispatchListSecrets(req *http.Request) (*http.Response, error) {
-	if g.srv.ListSecrets == nil {
-		return nil, &nonRetriableError{errors.New("fake for method ListSecrets not implemented")}
-	}
-	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/(?P<resourceType>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/(?P<resourceName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/listSecrets`
-	regex := regexp.MustCompile(regexStr)
-	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-	if len(matches) < 4 {
-		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-	}
-	resourceNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceName")])
-	if err != nil {
-		return nil, err
-	}
-	respr, errRespr := g.srv.ListSecrets(req.Context(), resourceNameParam, nil)
-	if respErr := server.GetError(errRespr, req); respErr != nil {
-		return nil, respErr
-	}
-	respContent := server.GetResponseContent(respr)
-	if !slices.Contains([]int{http.StatusOK}, respContent.HTTPStatus) {
-		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK", respContent.HTTPStatus)}
-	}
-	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).Value, req)
-	if err != nil {
-		return nil, err
 	}
 	return resp, nil
 }

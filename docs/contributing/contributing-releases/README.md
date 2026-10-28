@@ -1,372 +1,192 @@
-<!-- markdownlint-disable MD024 -->
-
-# How to create and publish a Radius release
+# Create and monitor a Radius release
 
 ## Purpose
 
-This document is the maintainers' reference for cutting and publishing a Radius release across the `radius-project/resource-types-contrib`, `radius-project/radius`, `radius-project/docs`, `radius-project/samples`, and `azure-octo/deployment-engine` repositories. It covers release candidates, final releases, and patch releases, and the branching, tagging, and validation steps each requires. It is intended for project maintainers with release responsibility, not day-to-day contributors.
+Release maintainers approve an immutable release plan, monitor its publication, and resume failed stages without changing the approved version or source. The same procedure covers RC, final, and patch releases across `radius-project/resource-types-contrib`, `radius-project/radius`, `radius-project/docs`, `radius-project/samples`, and `azure-octo/deployment-engine`. Automation creates Radius and sibling tags, stages artifacts, verifies installation, publishes the release, and coordinates docs and samples.
+
+For the short operational checklist and copyable commands, use the [Release runbook](./release-runbook.md).
+
+Backport selection, collection, preparation, and their tests live only in the [shared custom action](https://github.com/radius-project/.github/tree/main/.github/actions/release-backport). Radius keeps no helper copies: Prepare Release and both release-plan validation paths call its read-only `collect` operation directly. The Radius validator requires the resulting JSON through `--backports-file` and still verifies that live backports match the plan. Run backport behavior tests in the shared repository; Radius's `test-release-plan` and release-branch provenance checks remain local.
 
 ## Prerequisites
 
-Before starting a release, ensure you have:
+- Choose `rc`, `final`, or `patch` and its `X.Y` channel. Prepare Release computes the version; new RCs use `-rc.N`, starting at `-rc.1`, and the historical `-rcN` form is never mixed into the same version, because SemVer orders every dotted candidate before every legacy one and `rad upgrade` would treat that move as a downgrade. A final uses the last validated RC's product code. `versions.yaml` keeps the previous stable release supported until the final release moves it to `deprecated`. Label selected fixes `backport release/X.Y` and **rebase-merge** their generated backports before preparation.
+- Every version listed under `supported` in `versions.yaml` must have a Radius Git tag before preparing another release. Complete any pending final or patch metadata backport first. Open release plans enforce the same prerequisite.
+- Backport only PRs already merged into this repository's `main`. Automation applies pending sources in main's first-parent merge order, oldest first, regardless of PR number or input order, and opens one backport PR at a time per channel. Each backport must contain one non-merge commit with the original source marker and exact cherry-pick trailer; the required release-branch check verifies the source PR and its reachability from `main`. Do not add release-only fixes or remove the provenance markers. Selecting an older fix after newer fixes have shipped cannot reorder existing release history.
+- Radius, `bicep-types-aws`, `dashboard`, and `recipes` use the [centrally maintained backport workflow](https://github.com/radius-project/.github/blob/main/eng/SYNC.md#release-backports), distributed through the organization's normal Sync PRs. Apply the same `backport release/X.Y` label in the repository that owns the fix, and merge its backport before Radius preparation captures that sibling's release-branch commit. The caller also supports manual queue reconciliation from `main`, for example `gh workflow run release-backport.yaml --repo radius-project/recipes --ref main -f channel=0.62`. Existing release branches need the synced caller bootstrapped before release-branch events can advance their queues. Each repository needs the channel label, access to both release-App secrets, and App Contents, Workflows, Issues, and Pull requests write permissions. See the shared guide for rollout; adding the sync mapping does not provision credentials, labels, or branch rules.
+- Have maintainer access to the organization repositories, including `resource-types-contrib`, and permission to approve the `release` environment. In the repository rulesets, require `action-semantic-pull-request` and `Validate release plan` on `main`, and `Validate release branch commits` with up-to-date branches on `release/*`, in addition to the existing required checks. The title policy uses the `action-semantic-pull-request` commit status, not the green `Validate pull request title` job, because a `[WIP]` title leaves the status pending. Merging the workflows does not configure these rulesets. Ordinary `main` PRs use squash merge; backports use rebase merge. Create branches directly in the organization repositories, not personal forks.
+- For the `release/*` status-check rule, enable **Do not require status checks on creation** (`do_not_enforce_on_create`). The controller creates a new channel from an approved, checked `main` commit that has not yet been the subject of a release-branch PR. Requiring the release-branch-only check on that initial creation would block the first RC. Existing release branches still require their checks and an up-to-date base.
+- Protect the `release` environment with required reviewers. The release controller refuses to start unless it requires reviewers and pauses there before any mutation; finals and patches wait there again after verification. Enable **Prevent self-review** if the person who merges a release PR must not also approve it, and restrict deployments to `main`, where the controller runs, and to `v*` release tags. Recommended: add tag rulesets for `v*` that block updates and deletion by anyone except the App that creates those tags: the release App in `radius`, `recipes`, `dashboard`, and `bicep-types-aws`, and the publisher App in `deployment-engine`. Add a branch ruleset for `automation/release-state-*` in `radius` that does the same for the release App. The controller never moves a tag and rejects a Deployment Engine lock that the release App did not write, but only rulesets stop someone else from moving a tag or deleting the lock.
+- Release from a branch on the current release pipeline. A tag runs the workflows in the tagged commit, not those on `main`. Prepare Release and the controller require draft-only GoReleaser publication and a `build-release.yaml` that runs on `v*` tags with the complete staging, verification, approval, finalization, and coordination job graph. The check validates the dependency graph, final/RC approval conditions, mandatory verification and recheck steps, and their ordering before alias promotion and publication. It also rejects another workflow with a tag filter, such as the legacy `build.yaml`. A branch cut earlier, such as `release/0.61`, must first receive the complete current release pipeline, including the scripts and Make targets it calls, through a reviewed pull request to `release/<major>.<minor>`. A passing source check does not replace the live release-cycle verification below.
+- Release the required resource type namespaces and recipe packs and merge their generated Radius update before preparation, as described in [Release resource type namespaces and recipe packs](#release-resource-type-namespaces-and-recipe-packs).
+- Configure the release App identities, including `RADIUS_RELEASE_BOT` Actions write, Contents read, Pull requests read, and Metadata read on `docs` and `samples`. Give the Radius repository Actions package-write access to the GHCR `dashboard` and `deployment-engine` packages for gated channel promotion. Helm publication waits up to ten minutes for a missing full-version image whose publisher is still building the planned source; an existing full-version tag with conflicting provenance fails immediately. Install the publisher App (`RADIUS_PUBLISHER_BOT`) on `azure-octo` for `deployment-engine` and `radius-publisher` with Contents write and Actions read; installation permissions apply to every selected repository, and each job requests only what it needs. Prepare Release and the controller read the private Deployment Engine tags with it, the controller creates an approved Deployment Engine tag with it and rejects a token from any other App, and it dispatches correlated staging and promotion runs. Coordination records same-repository deployment receipts with `GITHUB_TOKEN` and `deployments: write` in the `release-coordination` environment, which must stay free of protection rules.
+- Require the dashboard publisher to stamp `org.opencontainers.image.revision` with the exact built commit. Verify the actual image build reached by `yarn run build-image`, not just the workflow's source checkout. The publisher change must be included in the dashboard commit frozen by preparation, including on an existing `release/X.Y` branch. Both external-image pinning and the release manifest require the label. Missing provenance, conflicting digests, or incomplete platforms must not be waived.
+- Give the release App Contents write and Workflows write on `radius`, `recipes`, `dashboard`, and `bicep-types-aws`, and the publisher App the same permissions on Deployment Engine. Workflows write permits backporting workflow changes and satisfies GitHub's release-creation authorization when the pinned commit changes workflows relative to the default branch. Each job requests these permissions only for its target repositories; grant/approve the App installation permissions separately before rollout. Release entries use the existing approved tags; publishing them does not edit workflows, create source commits, or change registry aliases.
+- Deploy the coordinated publisher changes before using this Radius pipeline. `radius-publisher` must support separate Deployment Engine source/destination tags, immutable source-annotated Radius and AWS Bicep types, and `promote-bicep-types.yml`. Dashboard release builds must stage full-version tags without updating channels. The Deployment Engine sender must use its full-version `ghcr-tag` for both mirroring and functional tests while retaining the ACR `container-tag` as `source_tag`. Merge and deploy `radius-publisher` first, then this Radius change and the dashboard change in either order, and the Deployment Engine sender last; each step sends inputs that only the previous one accepts. The current Deployment Engine sender also rejects dotted RC tags such as `v0.62.0-rc.1`. Create no Radius or Deployment Engine release tag until all four changes are deployed, and do not mix old channel-writing publishers with the new finalizer.
+- The controller creates the matching **Deployment Engine tag** in `azure-octo/deployment-engine` after release approval when GitHub reports it missing; any other lookup error stops validation. It tags Deployment Engine `main` for an RC or patch. A final releases the Deployment Engine commit that its last RC locked on `automation/release-state-<rc-version>`; that RC's Deployment Engine tag, and an existing final tag, must still point there, so cut another RC to release a different commit. Prepare Release checks that commit, and the controller shows it in the validation summary before approval. Only the Radius Publisher App pushes the tag, at an existing commit; the controller creates no Deployment Engine commits. The tag push starts the Deployment Engine tag build, which stages the image that the controller then verifies and locks. To release a commit that is not on `main`, such as a hotfix, push a signed annotated tag before preparation instead: in a clean Deployment Engine clone, run `git tag -s <version> -m "release tag <version>" <commit>`, then `git push origin <version>`. GitHub must verify that signature; an unsigned tag is accepted only at a GitHub-verified commit on `main`. Never manually tag the Radius repositories.
+- Use the Teams release thread for approvals and exceptional recovery. Set the optional `RELEASE_TEAMS_WEBHOOK` secret to an HTTPS Adaptive Card endpoint for automated updates. GitHub summaries remain authoritative when notifications are unavailable.
 
-- **Release type and channel**: Choose `rc`, `final`, or `patch` and the target `<major>.<minor>` channel. Prepare Release computes and validates the version.
-- **Repository access**: Write access to `radius-project/resource-types-contrib`, `radius-project/radius`, `radius-project/docs`, `radius-project/samples`, and `azure-octo/deployment-engine`.
-- **Resource type releases**: Release the required `resource-types-contrib` namespaces and recipe packs and merge the generated resource-type update PR into `radius` before starting the Radius release automation. Follow [the namespace release step](#step-2-release-resource-type-namespaces-and-recipe-packs) before merging the `versions.yaml` change.
-- **GPG signing configured**: The `azure-octo` org requires [verified tags](https://docs.github.com/en/authentication/managing-commit-signature-verification/displaying-verification-statuses-for-all-of-your-commits). [Set up GPG signing locally](https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key) before starting.
-- **Local clone of `radius-project/radius`**: Clone directly from the organization repo, not a personal fork. CI workflows require access to organization secrets that are not available in forks.
+### Confirm readiness before the first production cycle
 
-  ```bash
-  git clone git@github.com:radius-project/radius.git
-  ```
+Check the live repository settings and publisher contracts, not just the merged workflow files:
 
-- **Required release checks configured**: The `Validate release plan` check is required for generated release pull requests to `main`. The `release/*` ruleset requires `Validate release branch commits` with **Require branches to be up to date before merging** enabled; this makes the backport's recorded base SHA fail closed if the release branch advances. Backport pull requests use rebase merge; ordinary `main` pull requests continue to use squash merge.
-- **Publisher App access to Deployment Engine**: Prepare Release verifies the signed Deployment Engine tag with the publisher App (`RADIUS_PUBLISHER_BOT`). Its installation on `azure-octo` must include `deployment-engine` with Contents read, because neither `GITHUB_TOKEN` nor the release App can read that private repository.
+1. Confirm the required reviewers, branch/tag deployment restrictions, required check contexts, App installation permissions, and GHCR package access listed above. The `release-coordination` environment must remain unprotected; it stores receipts rather than publication approvals.
+2. Confirm the publisher workflows accept `release_identifier` and expose the exact run names `deployment-engine / <identifier>`, `bicep-types / <identifier>`, `bicep-types-aws / <identifier>`, and `bicep-types.promote / <identifier>`. Confirm the frozen dashboard source produces its required revision label. Successful edge builds do not exercise signed release tags, stable alias promotion, or the release approval gates.
+3. Record an approved RC-to-final cycle on the complete pipeline, including the staged installation, all three RC coordination receipts, and a controlled failure/resume exercise. Verify that resuming preserves locked digests and that a digest mismatch blocks publication. Run any destructive failure injection only against disposable test artifacts, never existing releases. Separately verify an upgrade from the previous supported release; the automatic installation gate only exercises a same-version Helm upgrade.
 
-> **Important**: For the entire release process, create branches directly in repositories under the `radius-project` organization. Do not use personal forks.
+Do not declare production readiness from a green snapshot or an earlier pipeline's tag build. Keep the exact workflow run URLs and verification artifacts with the release record.
 
-## Terminology
+## Steps
 
-| Term                | Description                                                                                                   | Example                        |
-|---------------------|---------------------------------------------------------------------------------------------------------------|--------------------------------|
-| **RC release**      | A release candidate for internal validation before public release. Create additional RCs if validation fails. | `v0.56.0-rc.1`, `v0.56.0-rc.2` |
-| **Final release**   | A public release, built from the last validated RC.                                                           | `v0.56.0`                      |
-| **Patch release**   | A bug-fix release for an existing final release.                                                              | `v0.56.1`                      |
-| **Release channel** | A `<major>.<minor>` pair that groups all releases for a version.                                              | `0.56`                         |
-| **Release branch**  | A branch in the format `release/<channel>` that holds release code.                                           | `release/0.56`                 |
+### Release resource type namespaces and recipe packs
 
-New release candidates use the dotted SemVer form `-rc.N`, starting at `-rc.1`. Historical `-rcN` releases remain valid inputs for verification and upgrade tooling, but do not use that form for new tags. Never mix the two forms within one version: SemVer orders every dotted candidate before every legacy candidate of the same version, so `rad upgrade` would refuse the move from a legacy candidate to a dotted one as a downgrade. Start the dotted form with the first RC of a version, never partway through an RC series.
-
-## How releases work
-
-### Release channels
-
-Each release belongs to a channel named `<major>.<minor>`. The `rad` CLI and control plane for a given channel only interact with assets from that channel. Patch releases within a channel (e.g., `v0.56.1`) maintain backward compatibility with the original release.
-
-> **Compatibility**: Cross-channel compatibility is not guaranteed. For example, the behavior of a `0.55` `rad` CLI talking to a `0.56` control plane is unspecified.
-
-### Cadence
-
-Radius follows a monthly release cadence. All contributions merged to `main` through the pull-request process are included in the next scheduled release.
-
-### Release automation
-
-Four GitHub Actions workflows drive release preparation, backports, and publication after the [resource type namespaces and recipe packs are released and their update PR is merged](#step-2-release-resource-type-namespaces-and-recipe-packs). **No one manually creates tags in `radius-project` repos.** Radius release tags are created automatically by the `release.yaml` workflow; resource type namespace tags are created independently by `resource-types-contrib`'s `release-namespace.yaml` workflow. (The [Deployment Engine repo](https://github.com/azure-octo/deployment-engine) in the `azure-octo` organization still requires manual tagging — see the release steps below.)
-
-1. **[Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml)** (`prepare-release.yaml`): Manually dispatched with a release type and channel. It applies the fixed version policy, validates selected backports, renders `CHANGELOG.md` and the release notes with git-cliff, updates `versions.yaml`, records a structured release plan, and opens a signed draft pull request against `main`.
-2. **[Release backport](https://github.com/radius-project/radius/actions/workflows/release-backport.yaml)** (`release-backport.yaml`): Runs when a merged `main` pull request has a `backport release/<channel>` label. It cherry-picks the squash commit with `-x` and opens a pull request against the release branch. A conflict produces a draft pull request with an exact resolution handoff instead of committing conflict markers.
-3. **[Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml)** (`release.yaml`): Triggered whenever `versions.yaml` is pushed to `main` or a `release/*` branch. This workflow:
-   - Scans `versions.yaml` in `.supported[]` order and selects the first `.version` whose tag is missing from any of `radius`, `recipes`, `dashboard`, or `bicep-types-aws`
-   - **Automatically creates and pushes the version tag** (e.g., `v0.56.0-rc.1`) for `radius`, `recipes`, `dashboard`, and `bicep-types-aws`
-   - Creates the release branch (`release/<channel>`) if it does not already exist
-   - Dispatches Deployment Engine image publishing to GHCR
-   - Reconciles matching existing branches and tags as successful state, rejects conflicting tag targets, and resumes any repositories left incomplete by a failed run
-   - Waits on a `main` push only when the release branch exists but does not yet contain the triggering commit (this prevents duplicate work before the `versions.yaml` change is cherry-picked)
-
-   > **Note**: The workflow always checks out and reads `versions.yaml` from `main`, even when triggered by a push to a `release/*` branch. This means the version must be merged into `main` before the generated release backport triggers tag creation.
-   >
-   > **Important**:
-   >
-   > - Add the new release version at the top of the `supported` list in `versions.yaml`.
-   > - Change only one version per PR.
-   > - If more than one incomplete version is present in `supported`, `release.yaml` fails rather than guessing which one to release.
-4. **[Release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml)** (`build-release.yaml`): Triggered by `v*` tag pushes (created by `release.yaml` above). This workflow:
-   - Runs GoReleaser once to build the CLI assets and checksums, publish immutable full-version production images, and stage a draft GitHub Release from the prepared file in `docs/release-notes/`
-   - Builds the Bicep, `testrp`, and `magpiego` images under immutable full-version tags using their existing paths until their consumers move in the final migration phase
-   - Publishes immutable full-version CLI OCI artifacts and records image and CLI digests for finalization
-   - Publishes the Helm chart and dispatches Bicep types publishing while the GitHub Release remains a draft
-   - Verifies the expected image platform sets and promotes eligible channel and `latest` image and CLI OCI aliases from the recorded immutable digests for final and patch releases; RCs advance no mutable aliases
-   - Publishes the draft GitHub Release only after GoReleaser, Helm, Bicep types, and alias promotion succeed
-
-   The release carries internal JSON lock assets for the core, retained images, and complete image set. A rerun verifies these locks and skips the immutable work they already cover; a full-version tag that no longer matches its lock stops the release instead of being rebuilt or moved. Tags pushed by an interrupted attempt are not yet locked, so a rerun re-stages them rather than stranding the release. Main-branch builds publish Radius images and CLI OCI artifacts only as `edge`. The `latest` alias always points to the most recent stable release after this cutover.
-
-   Finalization is serialized across release versions. A patch to an older supported channel updates that channel without replacing global `latest`; an older version finishing after a newer version in the same channel changes neither alias. Builds remain parallel, and alias promotion uses the recorded digests without rebuilding artifacts.
-
-   #### Release SBOMs
-
-   Each raw `rad` binary has an SPDX 2.x JSON SBOM beside it on the GitHub Release, named by adding `.sbom.json` to the binary asset name. For example, `rad_linux_amd64.sbom.json` describes `rad_linux_amd64`. The release workflow generates these documents with the pinned Syft version and verifies their structure before publication. SBOM assets deliberately carry no `.sha256` sidecar, so the split checksum contract still covers exactly the `rad` binaries.
-
-   Production image SBOMs are SPDX JSON predicates in per-platform BuildKit attestations attached to the immutable full-version OCI image index. BuildKit generates them with its own bundled scanner during the image build, so they are independent of the pinned Syft used for the CLI assets. They are not duplicate GitHub Release assets. Inspect one by immutable digest with Docker Buildx:
-
-   ```bash
-   docker buildx imagetools inspect \
-      "ghcr.io/radius-project/ucpd@sha256:<digest>" \
-      --format '{{ json (index .SBOM "linux/amd64").SPDX }}'
-   ```
-
-   The release workflow requires a valid attestation for every published production-image platform before it locks the image digest or publishes the GitHub Release.
-
-The automated flow after dispatching Prepare Release:
-
-```text
-Prepare Release opens a draft release PR against main
-   → maintainer curates Highlights and Upgrading, then merges the PR
-      → first RC: release.yaml creates the release branch and tag
-      → existing channel: release-backport opens a PR against release/X.Y
-         → rebase-merge the backport PR
-            → release.yaml creates the tag
-               → build-release.yaml stages and verifies immutable artifacts
-                  → stable aliases are promoted and GitHub Release is published
-```
-
-#### When does tag creation happen?
-
-| Scenario          | Trigger                                          | What happens                                                                |
-|-------------------|--------------------------------------------------|-----------------------------------------------------------------------------|
-| **First RC**      | `versions.yaml` merged to `main`                 | `release.yaml` creates the release branch from `main` and pushes the RC tag |
-| **Subsequent RC** | Generated release backport merged to `release/*` | `release.yaml` runs on the release branch and pushes the new RC tag         |
-| **Final release** | Generated release backport merged to `release/*` | `release.yaml` runs on the release branch and pushes the final tag          |
-| **Patch release** | Generated release backport merged to `release/*` | `release.yaml` runs on the release branch and pushes the patch tag          |
-
-### Preparing release changes
-
-Every version currently listed in `versions.yaml` under `supported` must have a Radius Git tag before another release can be prepared. If a final or patch release is still waiting for its metadata backport, complete that release first. The same prerequisite is checked when validating an open release plan.
-
-Run the [Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml) workflow from `main` with these inputs:
-
-| Input                 | Value                                                           |
-|-----------------------|-----------------------------------------------------------------|
-| `release-type`        | `rc`, `final`, or `patch`                                       |
-| `channel`             | The target `X.Y` channel, such as `0.61`                        |
-| `backport-pr-numbers` | Optional comma-separated merged `main` pull requests to include |
-
-The workflow computes the version from the repository state; release engineers do not type or edit it. It also maintains `versions.yaml` the way past releases did: a first RC is added at the top of `supported` while the previous stable release stays supported, a final release moves every other supported entry to `deprecated`, and later RCs and patches replace the channel's version in place. The generated draft pull request contains the `versions.yaml` and `CHANGELOG.md` updates, generated release notes, and a structured release plan with the approved product commit, expected outputs, included backports, and the rule for resolving the later metadata-bearing release commit. Review the plan, curate only Highlights and Upgrading in the generated release notes, then mark the pull request ready and squash-merge it to `main`.
-
-If `main` advances while the generated release pull request is open, rerun Prepare Release with the same inputs. The workflow regenerates the plan and generated sections from the new base while preserving the existing Highlights and Upgrading text. Patch notes contain no curated sections and are regenerated completely.
-
-If an explicit pull request still needs a backport, the workflow adds the channel label and fails with the pending pull request number. Merge the generated backport pull request, then rerun Prepare Release. It never silently excludes a selected backport.
-
-### Backporting changes to a release branch
-
-After a pull request is squash-merged to `main`, add the `backport release/<channel>` label to include it in a subsequent RC or patch. The release-backport workflow opens one pull request at a time from `automation/backport-<source-pr>-to-<channel>` to `release/<channel>` and records the source pull request and squash commit in its body. Both merged release-branch pull requests and release-branch pushes select the next pending labeled change; the merge event also covers older branches without a branch-local push workflow. This serial ordering keeps every backport pinned to the current release-branch base. Release preparation stops until every selected fix has a merged backport or its exact source commit is already an ancestor of the release branch.
-
-A source commit already included when the release branch was created needs no backport pull request. An empty cherry-pick without that ancestry proof stops with a diagnostic; review and reconcile the existing release-branch changes rather than treating an unstaged patch as a completed backport.
-
-If the cherry-pick conflicts, the workflow opens a draft pull request containing a conflict-handoff file and posts the exact recovery commands on the source pull request. Follow those commands, force-push the resolved branch with `--force-with-lease`, delete the handoff commit by resetting to the release branch as instructed, and mark the pull request ready.
-
-Always **rebase-merge** backport pull requests. Rebase merging is enabled for this repository so the original Conventional Commit title remains on the release branch; the `release-branch-commits` check validates every commit message. Do not squash-merge a backport pull request.
-
-The generated release pull request receives the same backport label automatically whenever the release branch already exists. A first RC needs no backport because `release.yaml` creates the new release branch from the merged `main` commit.
-
-## Creating an RC release
-
-When starting the release process, first create an RC release. If validation fails, create additional RCs (incrementing the RC number) until validation passes.
-
-### Step 1: Start a Teams release thread
-
-Before performing any release actions, start and join a meeting in the team's Microsoft Teams channel dedicated to releases. Title the thread with the target final release version for the entire release cycle (for example, use "Release v0.56.0", not "Release v0.56.0-rc.1").
-
-Turn on transcription for the meeting. Recording is not necessary. Verbally announce each step as you perform it, and post updates in the thread with the same information. This creates a detailed timeline of the release process that can be reviewed later for improvements and serves as a record of the release.
-
-Use this same thread throughout the entire release lifecycle, including all RCs and the final release:
-
-- **Log every action** as you perform it, including which step you are on, what commands you ran, and the result (success or failure).
-- **Log any issues** encountered during the release, including error messages, failed workflows, and the resolution.
-- **Announce completion** of the release in the thread once all steps are finished and validation passes.
-
-This detailed release log helps the team improve future releases by reviewing the overall timeline, identifying inefficiencies, errors, or bottlenecks, and preserving institutional knowledge about the release process.
-
-### Step 2: Release resource type namespaces and recipe packs
-
-Complete this step **before updating `versions.yaml` or starting the Radius release automation** so the release includes the intended resource types.
+Complete this step before starting Radius release preparation so the approved product commit includes the intended resource types.
 
 1. In `radius-project/resource-types-contrib`, run the [Release Namespace](https://github.com/radius-project/resource-types-contrib/actions/workflows/release-namespace.yaml) workflow from `main` for each namespace consumed by Radius under `resourceTypes` in [`deploy/manifest/defaults.yaml`](../../../deploy/manifest/defaults.yaml). Select the namespace and the appropriate semantic version `bump` (`patch`, `minor`, or `major`). Leave `prerelease_label` empty and `dry_run` and `force` disabled. Namespace versions are independent of the Radius version; even for a Radius RC, publish stable namespace releases because prereleases do not notify Radius.
-2. In the same repository, run the [Release Recipe Pack](https://github.com/radius-project/resource-types-contrib/actions/workflows/release-recipe-pack.yaml) workflow from `main` for each pack listed under `recipePacks` in [`deploy/manifest/defaults.yaml`](../../../deploy/manifest/defaults.yaml). Select the pack and the appropriate `bump`. Leave `prerelease_label` empty and `dry_run` and `force` disabled. Pack versions are independent of the Radius version. A pack that hasn't changed since its last release is skipped. The workflow fails if any recipe image the pack references can't be pulled.
-3. Wait for each namespace and recipe pack workflow to succeed. An unchanged namespace is skipped and does not need a new release. For each published release, confirm that [Notify Radius](https://github.com/radius-project/resource-types-contrib/actions/workflows/notify-radius.yaml) succeeds and triggers Radius's [Update Resource Types](https://github.com/radius-project/radius/actions/workflows/update-resource-types.yaml) workflow.
-4. Wait for all namespace and recipe pack updates to finish, then review the generated `chore(resource-types-contrib): updates` PR from `bot/update-resource-types` in `radius-project/radius`. Successive notifications refresh the same open PR. Confirm that `deploy/manifest/defaults.yaml` pins the intended stable namespace and recipe pack releases and that the copied manifests and generated artifacts are included. Wait for required checks and approval, then **merge the PR into `main` before proceeding**. If all namespaces are unchanged and Radius already has the intended pins, no new PR is required.
-5. Record the namespace and recipe pack releases and merged update PR in the Teams release thread. For the first RC, the release branch will inherit this update from `main`. For a subsequent RC, use [Backporting changes to a release branch](#backporting-changes-to-a-release-branch) to merge any new resource-type or recipe-pack update into `release/X.Y` before preparing the release.
+2. In the same repository, run [Release Recipe Pack](https://github.com/radius-project/resource-types-contrib/actions/workflows/release-recipe-pack.yaml) from `main` for each pack under `recipePacks` in [`deploy/manifest/defaults.yaml`](../../../deploy/manifest/defaults.yaml). Select the pack and appropriate `bump`; leave `prerelease_label` empty and `dry_run` and `force` disabled. Pack versions are independent of Radius. Unchanged packs are skipped, and a pack release fails if a referenced recipe image cannot be pulled. Release the `kubernetes` pack whenever its recipes change: `rad` creates the default recipe pack from the pinned release, so an unreleased change does not reach Radius.
+3. Wait for each namespace and recipe-pack workflow to succeed. Unchanged namespaces and packs do not need new releases. For each published release, confirm that [Notify Radius](https://github.com/radius-project/resource-types-contrib/actions/workflows/notify-radius.yaml) succeeds and triggers Radius's [Update Resource Types](https://github.com/radius-project/radius/actions/workflows/update-resource-types.yaml) workflow.
+4. Review the generated `chore(resource-types-contrib): updates` PR from `bot/update-resource-types` in `radius-project/radius`. Successive notifications refresh the same open PR. Confirm that `deploy/manifest/defaults.yaml` pins the intended stable namespace and recipe-pack releases and that the copied manifests and generated artifacts are included. If the PR changes the `kubernetes` recipe-pack pin, it should also update the compiled pack (`deploy/manifest/recipe-packs/kubernetes/default.json`) unless the new release left the pack's Bicep unchanged. Wait for required checks and approval, then merge the PR into `main` before preparation. If all namespaces and packs are unchanged and Radius already has the intended pins, no new PR is required.
+5. Record the namespace and recipe-pack releases and merged update PR in the Teams release thread. A first RC inherits this update from `main`. For a subsequent RC or a patch with resource-type or recipe-pack changes, label the update `backport release/X.Y` and rebase-merge its generated backport into `release/X.Y` before preparing the release.
 
-> **Stop if the update is missing or incomplete.** Inspect the namespace release, notification, and Radius update workflow runs and resolve failures before continuing. Publishing namespace releases alone is not enough: their resource-type update must be merged into the code that Radius will release.
+Stop if the update is missing or incomplete. Publishing namespaces and recipe packs alone is not enough: their generated update must be merged into the code that Radius will release.
 
-### Step 3: Tag the Deployment Engine
+### Approve the plan
 
-Run the following in a local clone of the [Deployment Engine repo](https://github.com/azure-octo/deployment-engine), replacing `vX.Y.Z-rc.N` with the RC version (e.g., `v0.56.0-rc.1`):
+1. Run [Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml) from `main` with `release-type`, `channel`, and optional comma-separated `backport-pr-numbers`.
+2. Review the generated draft PR's version, product commit, frozen sibling commits, selected backports, expected outputs, and schema-v2 plan under `.github/release-plans/`. Curate only Highlights and Upgrading in RC or final notes; patch notes are generated completely. Retain the warning that chart-default images are pinned to the full version: pod restarts no longer pick up later patches, and explicit image overrides remain respected.
+3. If the base advances, rerun Prepare Release with the same inputs. A frozen sibling head that advances does not invalidate the plan; rerun only when the later sibling change belongs in the release. It regenerates the plan and generated prose while preserving the allowed curated sections. If preparation reports a pending backport, merge it and rerun; do not omit the fix to bypass validation.
+4. Mark the release PR ready, obtain review, and **squash-merge** it to `main`. For the first RC, the controller creates `release/X.Y`. For an existing channel, review and **rebase-merge** the generated metadata backport to `release/X.Y`; the initial controller run waits without mutation until that merge.
 
-```bash
-git checkout main
-git pull origin main
-git tag -s vX.Y.Z-rc.N -m "release tag vX.Y.Z-rc.N"
-git push origin vX.Y.Z-rc.N
-```
+New schema-v2 plans record `changelogPolicy: stable-only`. RC preparation changes only the plan, `versions.yaml`, and its release-note file; root `CHANGELOG.md` changes only for finals and patches. Entries within each category follow merge history, newest first. RC.1 and final notes contain the full new-version changes since the stable baseline. Later RC notes contain only changes applied since the previous RC and link its notes; patch notes contain only changes since the previous stable tag in that channel. Both incremental ranges end at the frozen product SHA, never current `main`.
 
-> **Note**: This manual tagging step is a temporary workaround. Ideally the [Deployment Engine Release Workflow](https://github.com/azure-octo/deployment-engine/actions/workflows/release.yaml) would handle this, but GPG signing is not yet configured there. See [azure-octo/deployment-engine#456](https://github.com/azure-octo/deployment-engine/issues/456).
+Every commit in the selected range appears in the [documented change groups](../contributing-pull-requests/README.md#3-use-a-conventional-commit-pull-request-title). Documentation and maintenance types, other parsed conventional types without a specialized group, and nonconventional or malformed subjects appear under **Others**, the last change group before contributor sections. Breaking commits appear once under Breaking changes instead of their normal group.
 
-### Step 4: Prepare the RC
+New preparations also require the gated sibling GitHub Release job in the selected product source. Backport the updated release tooling into an existing channel before preparing its next version; changing only `main` does not update tagged workflows. Recovery of older plans without the policy marker keeps their original build contract.
 
-Run the [Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml) workflow from `main` with `release-type` set to `rc` and `channel` set to the target `X.Y` channel. For a subsequent RC, first label and merge every fix that must be included as described in [Backporting changes to a release branch](#backporting-changes-to-a-release-branch).
+Rerun an open preparation created before this policy to regenerate its contract; do not hand-edit its plan. Already merged or tagged schema-v2 plans without the policy marker retain their original four-file metadata contract for recovery. Do not regenerate published RC notes or move their tags.
 
-The workflow computes `rc.1` for a new channel or increments the highest existing RC number. It opens a signed draft release pull request containing `versions.yaml`, `CHANGELOG.md`, generated release notes, and the structured release plan.
+### Monitor and approve publication
 
-### Step 5: Review and merge the release pull request
+Both automatic `pull_request_target` events and manual gateway dispatches execute the default-branch controller, including backport merges into older release branches. Resolver and controller jobs pin tooling to the executing workflow commit. Deployment Engine verification uses the approved plan's `expectedOutputs`, passed between jobs with the resolved plan artifact, rather than the controller checkout's current platform defaults. Publication jobs use the immutable tagged commit, including across an approval wait.
 
-Verify the generated version, product commit, included backports, and expected outputs in the release plan. Curate Highlights and Upgrading in the generated release notes. Mark the pull request ready, obtain approval, and squash-merge it to `main`.
+For an existing channel, the controller run started by the main PR merge stops at **State: waiting for the generated release backport**, with approval skipped. After the metadata backport merges, open the separate controller run that shows **State: validated and ready to reconcile**. Record the version and source commit from that run, not the initial main-merge run; the release source is the metadata backport merge commit.
 
-### Step 6: Verify the automated release
+1. Follow the [release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml) summary. It verifies the Deployment Engine tag, or shows the commit it will tag, then pauses on its **Approve release reconciliation** job in the `release` environment. Review the version, metadata-bearing source commit, Deployment Engine commit, and frozen sibling commits it shows, then approve. The Radius controller makes no changes before this approval; external repositories may already have staged immutable artifacts from their own tag builds. The controller then creates the Deployment Engine tag if it is absent. Until the image digest is locked, it waits up to 15 minutes for the tag build to stage the image, including when it resumes after an interrupted attempt. It publishes or adopts and locks the full-version Deployment Engine image, reconciles the frozen sibling commits, and creates the Radius tag last.
+2. Open the [release build workflow](https://github.com/radius-project/radius/actions/workflows/build-release.yaml), select the run for the approved version, and confirm its source commit matches the controller summary. GoReleaser stages core artifacts; the retained Bicep image, Helm chart, and both Bicep type publishers complete before verification. Radius explicitly dispatches and awaits AWS types from the plan's frozen AWS source commit. Bicep type artifacts use full-version tags and carry source/revision/version annotations; existing matching versions are reusable, not overwritten. The release Bicep image also references these full-version extensions, so staged installation does not depend on channel aliases that have not been promoted yet. Edge builds retain their `latest` extension references. `testrp` and `magpiego` are test-workflow outputs, not release assets or channel aliases.
+3. Review `release-manifest.json` and the staged-installation result. **Finals and patches** wait for a second approval, **Approve final or patch publication**, in the `release` environment; approve only the verified version/source pair. **RCs** publish without this second approval after the same mandatory gate. Outputs are rechecked after approval before alias promotion or publication.
+4. Follow the exact downstream run URLs. For RCs, review and merge docs and samples upmerge PRs, then resume the release. Automation binds the pull request each upmerge run opened and requires it to be merged before running sample tests; both repositories squash-merge, so the source commits never become reachable from `edge`, and a run with nothing to merge is complete. All three successful receipts are required for final preparation and publication; the release build rechecks them during verification and again after publication approval, before any alias moves. Receipts exist only for RCs published with this coordination in place; if the last validated RC predates it, cut another RC before preparing the final. Finals publish docs and samples and run sample tests; patches run sample tests without recutting their release branches.
 
-After merging, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on `main`.
+RC upmerges copy the current default release branch into `edge` through reviewed PRs; they do not change either repository's default branch or publish a new stable docs/samples channel. Only final coordination dispatches their `release.yaml` workflows to publish `vX.Y` and select it as the new default. The release App client handles these cross-repository calls; the Radius job token remains responsible for same-repository coordination receipts.
 
-- **First RC**: The workflow creates the `release/X.Y` branch from `main` and pushes the `vX.Y.Z-rc.N` tag. The tag push then triggers the [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow. No manual tag creation is needed. Verify the release using the checklist below.
-- **Subsequent RCs**: The workflow detects that the release branch already exists and **skips tag creation**. This is expected — the generated release backport will create the tag after it lands on the release branch in [Step 7](#step-7-merge-the-generated-release-backport-subsequent-rcs-only). Skip ahead to Step 7 for now and return to verify after completing it.
+After Radius is public, **Publish sibling GitHub Releases** creates or resumes source-bound entries for `recipes`, `dashboard`, `bicep-types-aws`, and Deployment Engine. Notes come from GitHub's native release-notes API. Finals compare against the preceding stable tag, later RCs against the preceding RC, and patches against their preceding stable tag. An initial release without a preceding stable tag uses GitHub's full-history generation. RC entries are prereleases and never Latest. Finals and patches become GitHub's Latest only when no newer stable release exists. This does not change container or OCI `latest` semantics. A failure leaves completed entries intact; the same release can resume without replacing their notes or artifacts.
 
-Monitor and verify:
+Automatic edge reference-documentation PRs come only from Radius `main`; manual publishing also requires `main` and `open_pull_request=true`. Release-branch pushes and other refs may generate preview artifacts but cannot synchronize the shared edge reference-doc PR. This is separate from the explicit docs/samples release coordination above.
 
-1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully. For the first RC, confirm it created the `release/X.Y` [branch](https://github.com/radius-project/radius/branches) and the `vX.Y.Z-rc.N` [tag](https://github.com/radius-project/radius/tags).
-2. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. This workflow also dispatches Bicep types publishing automatically.
-3. An RC release marked as pre-release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
+For a final release, run [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml) from `main` in `radius-project/resource-types-contrib` with `release_version` set to the version without `v`, such as `0.56.0`. This remains a separate maintainer action: the Radius controller does not dispatch it. Confirm the selected recipe source is intended for the release, wait for publication to succeed, and record its run URL. This publishes release-version recipe-image tags and moves the `latest` tags referenced by recipe packs.
 
-### Step 7: Merge the generated release backport (subsequent RCs only)
+### Resume
 
-> **Skip this step for the first RC.** The release branch was just created from `main` and already contains all changes.
+Run [Resume Release](https://github.com/radius-project/radius/actions/workflows/resume-release.yaml) from `main` with the failed summary's `version` (including `v`, for example `v0.61.0-rc.1`) and `source-commit`. For a frozen first RC, this means the **resolved signed release commit**, not the frozen product SHA and not a later main tip. If failure occurred before resolution, use the merged metadata PR SHA shown in that summary; replaying it adopts the same immutable source ref once created. For legacy first-RC plans the source remains the PR squash; for subsequent RCs, finals, and patches it remains the metadata backport merge commit.
 
-The release pull request is automatically labeled for the channel. After it merges to `main`, the release-backport workflow opens a pull request against `release/X.Y`. Verify that it contains the release metadata commit and that the `release-branch-commits` check passes, then **rebase-merge** it. This triggers release automation on the release branch and creates the new RC tag. Return to [Step 6](#step-6-verify-the-automated-release) to verify the release completed successfully.
+> **Unknown publisher outcome**: If a dispatch response is lost or returns a server error, the monitor continues looking for its correlated run until its existing timeout and does not send another dispatch in that invocation. Only explicitly rejected rate-limited dispatches are retried automatically. Before resuming an unknown outcome, inspect the publisher runs for the reported `<version>-<source-commit>` identifier and the destination image; wait for an accepted run instead of starting another. A missing run-list result alone does not prove rejection. This also applies after canceling or interrupting the controller. The current protocol does not provide exactly-once publication across separate invocations; that requires publisher-side idempotency.
 
-### Step 8: Run validation workflows
+Resume revalidates the committed plan and source, verifies Deployment Engine against the original output contract, accepts matching tags and locks, reuses active correlated runs, and retries failed jobs in the exact tag-build run. Updated controller tooling does not change the approved platform requirements on resume. The Deployment Engine tag must still point at the commit shown in the same run's validation summary. A full-version Deployment Engine image from another source is a conflict even before its digest is locked; registry errors fail instead of dispatching again. Every resume rejects divergence from the Deployment Engine digest lock on `automation/release-state-<version>` or a lock commit that the release App did not write. Later branch commits are allowed only while the approved source remains reachable. Conflicting tags, plans, branches, or digests stop recovery. Approval rejection does not bypass verification or environment protection. Runs for the same version and source commit queue without canceling the active run, with a maximum of 100 pending attempts.
 
-1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the RC version number without the `v` prefix as the version (e.g., `0.56.0-rc.1`).
+Use [Approve Release](https://github.com/radius-project/radius/actions/workflows/approve-release.yaml) with the same approved version and source only when the automatic merge event did not start reconciliation. If there is no controller summary, [get the inputs from the merged PRs](#controller-never-started-after-merge). Both gateways dispatch the default-branch controller, and neither accepts a replacement plan. Neither gateway holds release credentials, so running one from another branch cannot change the controller code that uses them. This protects the controller code path, not the credentials: the release and publisher App keys are repository secrets, so any workflow a writer pushes can still read them.
 
-2. In `radius-project/docs`, run the [Upmerge docs to edge](https://github.com/radius-project/docs/actions/workflows/upmerge.yaml) workflow from the **previous** release branch (e.g., run from `v0.55` when releasing `v0.56`).
+## Verification
 
-   > This generates a PR. Get approval and merge it before proceeding. The PR excludes branch-specific files (`docs/config.toml` and `docs/layouts/partials/hooks/body-end.html`).
+- The summary identifies the approved version/source, every mandatory stage, elapsed duration, expected and observed outputs, downstream run URLs, and the exact resume command. Keep the summary and release-thread links as the release record.
+- The manifest binds the approved plan to binaries, checksums, Go/linker metadata, SBOMs, image digests and platforms, full-version chart references, and downstream outputs. The isolated kind installation uses the staged CLI and chart with digest overrides. Its same-version upgrade disables only the version-transition check; it is not evidence of a cross-version upgrade.
+- Installation failures set `checks.installation` to `failed`, keeping publication blocked. Before deleting the verification cluster, the verifier writes `installation-diagnostics.json` beside the staged manifest; the existing `release-verification-<sha>` artifact retains it. The original upgrade error stays in the job log, and diagnostic or cleanup failures do not replace its exit code. Diagnostics include the failed stage, CLI/Helm versions, and only allowlisted encryption Secret metadata: identity, rotation and Helm ownership annotations, and managed-field owners with key/rotation ownership flags. Secret data, arbitrary annotations (including last-applied configuration), kubeconfigs, and credentials are not retained. Unavailable diagnostic reads are reported explicitly. Public-release verification, which has no manifest, writes the same diagnostics under `dist/verification` by default; `RELEASE_VERIFY_DIR` changes that directory, and `RELEASE_VERIFY_DIAGNOSTICS` overrides the output file.
+- Each CLI asset has an SPDX 2.x JSON SBOM, such as `rad_linux_amd64.sbom.json`. Its binary retains its own `.sha256` sidecar. Production image SBOMs are per-platform BuildKit attestations, inspected by immutable digest:
 
-3. In `radius-project/samples`, run the [Upmerge samples to edge](https://github.com/radius-project/samples/actions/workflows/upmerge.yaml) workflow from the **previous** release branch.
+  ```bash
+  docker buildx imagetools inspect \
+    "ghcr.io/radius-project/ucpd@sha256:<digest>" \
+    --format '{{ json (index .SBOM "linux/amd64").SPDX }}'
+  ```
 
-   > This generates a PR. Get approval and merge it before proceeding. The PR excludes `bicepconfig.json`.
+- The GitHub Release is public only after verification succeeds. For Radius-built images and CLI OCI artifacts, RCs advance no aliases; finals and patches promote eligible `X.Y` and `latest` aliases from locked digests without rebuilding, and an older release never replaces a newer published release's aliases. Main publishes only `edge` from snapshots, together with the moving `edge-<os>-<arch>` tags of the platform manifests the `edge` index is assembled from, and is outside the release transaction.
+- Dashboard and Deployment Engine `X.Y` aliases are promoted from their verified source-bound locks in the same finalizer as Radius images. ORAS preserves the dashboard's single-manifest digest. Radius and AWS Bicep `X.Y` aliases are promoted by correlated publisher runs using the exact verified full-version digests before the GitHub Release becomes public. RCs move none of these aliases. External `latest` tags retain their independently owned edge behavior.
+- Confirm all four sibling/Deployment Engine GitHub Release links in the sibling publication summary, their approved tag commits, and their RC/stable classification. A public Radius release alone does not prove this post-publication stage completed. The resolved tag binds the source: GitHub's `target_commitish` field may name a branch and is ignored for existing tags. A conflicting tag or classification stops publication rather than replacing an entry.
+- A new stable channel needs no legacy bootstrap. An existing Bicep channel without comparable source/version annotations is rejected rather than blindly overwritten. Migrating such a channel is a separately reviewed compatibility prerequisite against known publication history; do not edit old immutable artifacts or blindly annotate an alias to bypass the check. Limit registry writes to the serialized publishers and finalizer: OCI registries do not provide a portable atomic create-only tag operation.
+- Complete the [readiness checks](#confirm-readiness-before-the-first-production-cycle) with this runbook before production use. Local fixtures and draft PRs do not satisfy that rollout gate.
 
-4. In `radius-project/samples`, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow from the `edge` branch. Enter the RC version number without the `v` prefix as the version (e.g., `0.56.0-rc.1`).
+## Troubleshooting
 
-   > Run this only after the upmerge PR has been merged to `edge`. If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
+### Controller never started after merge
 
-### Step 9: Assess results
-
-If all validation workflows pass, proceed to [creating the final release](#creating-the-final-release).
-
-If validation fails, fix the issues on `main`, then create a new RC (increment the RC number, e.g., `rc.2`, `rc.3`) by repeating the steps above.
-
-## Creating the final release
-
-The final release is built from the **last validated RC** on the release branch. The generated release backport changes only the version, changelog, and release notes, so the final release contains exactly the same product code as the validated RC.
-
-### Step 1: Update the Teams release thread
-
-Post an update in the Teams release thread (started during the [RC release](#step-1-start-a-teams-release-thread)) indicating that the final release process is beginning. Continue logging every action, result, and issue in this thread throughout the final release steps.
-
-### Step 2: Tag the Deployment Engine
-
-Run the following in a local clone of the [Deployment Engine repo](https://github.com/azure-octo/deployment-engine), replacing `vX.Y.Z` with the final version (e.g., `v0.56.0`):
+Confirm the generated release PR was merged. For an existing channel, its generated metadata backport must also be merged before starting reconciliation. Replace `<release-pr-number>` below with the original release PR number:
 
 ```bash
-git checkout main
-git pull origin main
-git tag -s vX.Y.Z -m "release tag vX.Y.Z"
-git push origin vX.Y.Z
+gh pr view <release-pr-number> --repo radius-project/radius --json state,headRefName,mergeCommit
 ```
 
-> **Note**: Same temporary workaround as for [RC releases](#step-3-tag-the-deployment-engine). See [azure-octo/deployment-engine#456](https://github.com/azure-octo/deployment-engine/issues/456).
+Check that `state` is `MERGED`, then obtain the inputs:
 
-### Step 3: Prepare the final release
+- **Version:** take the version after `automation/prepare-release-` in `headRefName` and add `v`. For example, `automation/prepare-release-0.62.0-rc.1` gives `v0.62.0-rc.1`.
+- **Source commit for a first RC:** use that PR's full `mergeCommit.oid`. For a frozen first RC that has not started, this is the approved metadata PR commit; the controller resolves the release commit after approval. Do not use the raw product cutoff.
+- **Source commit for an existing channel:** use the generated metadata backport PR's full `mergeCommit.oid`, not the original release PR's squash commit. Replace `<metadata-backport-pr-number>` below with that backport's number, and confirm `state` is `MERGED` and `baseRefName` is the intended `release/X.Y` branch:
 
-Run the [Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml) workflow from `main` with `release-type` set to `final` and the validated RC's `X.Y` channel. The workflow removes the RC suffix according to policy, renders the canonical changelog section and contributor list, and opens a signed draft release pull request.
+  ```bash
+  gh pr view <metadata-backport-pr-number> --repo radius-project/radius --json state,baseRefName,mergeCommit
+  ```
 
-### Step 4: Review and merge the release pull request
+Run Approve Release from `main`, replacing both example inputs with the version and full 40-character source SHA obtained above:
 
-Verify that the plan references the last validated RC and contains no unmerged backports. Curate Highlights and Upgrading, mark the pull request ready, obtain approval, and squash-merge it to `main`.
+```bash
+gh workflow run approve-release.yaml --repo radius-project/radius --ref main -f version=v0.62.0-rc.1 -f source-commit="<full-40-character-SHA>"
+```
 
-### Step 5: Merge the generated release backport
+Wait for validation and approve the `release` environment as usual; this command does not bypass either gate. If the controller already started and failed, follow [Resume](#resume) instead. For a frozen first RC, record the resolved release commit from the controller summary for later recovery.
 
-After the release pull request merges, the release-backport workflow opens a pull request against `release/X.Y`. Verify that it changes only release metadata and notes, then **rebase-merge** it. Do not squash-merge it.
+### Break-glass recovery
 
-### Step 6: Verify the automated release
+Stop and record the failed stage, version, source, plan, manifest, and exact run URLs in the release thread. Fix the underlying automation or prerequisite through review, then use the same approved recovery gateway. There is no manual preparation fallback. Never move an approved tag, replace a locked artifact, edit an approved plan, or disable the manifest, installation, RC-coordination, or approval gates. Published content is corrected with a new version, not an overwrite.
 
-After the generated release backport is merged to the `release/X.Y` branch, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on a `release/*` branch. It reads the final version from `versions.yaml`, creates and pushes the `vX.Y.Z` tag, and the tag push triggers the [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow. No manual tag creation is needed.
+Controller-only fixes on `main` are picked up by a new Resume Release invocation. Fixes to `build-release.yaml`, its called workflows, or its release scripts are different: the tag build still executes the original tagged code. Merge and backport those fixes before preparing a new release version; rerunning the old tag does not adopt them.
 
-Monitor and verify:
+### Resuming a staged draft
 
-1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags).
-2. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. Its summary must show successful GoReleaser, Helm, Bicep types, and finalization jobs.
-3. A final release (not pre-release) appears on [GitHub Releases](https://github.com/radius-project/radius/releases). Its full-version tags and eligible `X.Y` and `latest` production image and CLI OCI aliases resolve to the recorded digests; aliases for newer published versions remain unchanged.
+Prefer Resume Release, which retries failed jobs in the exact existing build without repeating successful jobs. The tag preflight has the push access GitHub requires to observe drafts. Every staging attempt also reloads the optional image and CLI locks after ensuring the source-bound draft exists, even when a failed-job retry retains the original preflight's `absent` result. Matching locks are reused; a conflicting lock stops the run. Never delete a lock to make a rebuild pass.
 
-### Step 7: Publish docs, samples, and recipes
+GitHub can accept a release write before subsequent reads reflect it. Draft creation retains the returned release instead of immediately rediscovering it in the release list. Asset verification uses the returned asset ID, and publication verification uses the existing release ID. Required release lookups and post-write verification retry missing or stale state up to five times, waiting 1, 2, 4, and 8 seconds between reads. HTTP read errors other than an expected post-write 404 still fail; conflicting metadata, duplicate releases or assets, and checksum mismatches are not treated as visibility delays. Definite HTTP 4xx write failures fail immediately with the original error, except 422, which still reconciles possible duplicate state. Uncertain write outcomes are reconciled with existing state after any HTTP retries.
 
-1. In `radius-project/docs`, run the [Release docs](https://github.com/radius-project/docs/actions/workflows/release.yaml) workflow from the `edge` branch. Enter the version number without the `v` prefix (e.g., `0.56.0`).
+Publication PATCH requests and asset uploads inherit the workflow's five HTTP retries against the same release ID. A repeated upload uses the same filename; if GitHub already accepted it, the duplicate returns 422 and the existing asset is adopted only after exact-byte verification. Conflicting bytes still fail without replacing the accepted asset. Incomplete `starter` uploads are removed only from drafts, with the existing three-attempt cleanup limit. HTTP retry budgets are separate from visibility polling and do not bypass the publication manifest, latest-version checks, or published and immutable asset protections. Draft creation still disables automatic write retries.
 
-2. In `radius-project/samples`, run the [Release samples](https://github.com/radius-project/samples/actions/workflows/release.yaml) workflow from the `edge` branch. Enter the version number without the `v` prefix (e.g., `0.56.0`).
+If a visibility timeout persists, inspect the version, source, release ID when available, and original API error before resuming the same approved release. Preserve the draft and locks; do not publish manually or move the tag. An older tagged script's `Release ... is not a draft` error can also mean that the newly created draft was not yet visible in a release listing. Confirm that exactly one matching draft exists, its prepared notes and source match, and it is still unpublished before resuming. Workflow HTTP retries alone do not retry a successful but stale API response.
 
-3. In `radius-project/resource-types-contrib`, run the [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml) workflow from the `main` branch. Enter the version number without the `v` prefix as `release_version` (e.g., `0.56.0`). This tags the recipe images with the release version and moves their `latest` tag, which the recipe packs in `resource-types-contrib` reference.
+### Encryption Secret upgrade failures
 
-### Step 8: Run validation workflows
+An apply conflict on `radius-encryption-key` can occur when a standalone Helm upgrade changes `radius.dev/last-rotation` owned by another client, such as the `rad` CLI or the rotation CronJob. `rad upgrade kubernetes` applies as the `rad` field manager and forces conflicts, so it takes those fields over; older CLIs used the executable name, such as `rad_linux_amd64`, and did not force conflicts. An upgrade that fails with `the object has been modified` on the Secret saw it change after Helm read it, for example a key rotation during the upgrade; rerun the upgrade so it reads the current keys. Compare the preserved upgrade error with `installation-diagnostics.json`; different manager names do not imply different Helm major versions. Ordinary upgrades must preserve both existing `keys.json` bytes and the actual rotation annotation, including its absence on legacy Secrets. Only a new Secret initializes keys and a timestamp; the rotation CronJob updates them together. A missing or empty key store in an existing Secret fails rendering instead of silently replacing encryption keys. Investigate or restore that store through the approved recovery process; do not delete the Secret, force conflicts, or recreate keys to make the gate pass.
 
-1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the final version number without the `v` prefix as the version (e.g., `0.56.0`).
+Run `bash .github/scripts/release-verification_test.sh` with Helm, Bash, jq, and yq to check failure reporting without a cluster. Run the [focused chart and API-server regressions](../../../deploy/Chart/tests/README.md#encryption-secret-upgrades) to check key and timestamp preservation. These checks do not authorize retagging or replacing a staged immutable chart; follow [Break-glass recovery](#break-glass-recovery) for fixes to tagged product code.
 
-2. In `radius-project/samples`, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow from the `edge` branch. Enter the final version number without the `v` prefix as the version (e.g., `0.56.0`).
+### Lost dispatch response
 
-   > If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
+Downstream tasks have GitHub deployment receipts in the `release-coordination` environment, one per version and task (`release-coordination:<version>:<task>`), bound to the Radius source SHA. If a dispatch response was lost before its returned run ID was persisted, automation stops instead of dispatching twice. Find the accepted run, verify its workflow, branch, inputs, and source, and add an `in_progress` status with its exact `log_url` to the reported receipt before resuming. If no run was accepted, reconcile the receipt explicitly before retrying. Never guess a run from a time window. For an upmerge, the receipt's environment URL is the pull request the run opened; automation binds it once, from the single upmerge pull request into `edge` created while the run's pull-request step ran, then checks only that pull request's merge state. If it cannot bind exactly one pull request, add an `in_progress` status with the run's `log_url` and the pull request as `environment_url` to the receipt before resuming.
 
-If all workflows pass, the release is complete. Post a final update in the Teams release thread announcing the successful release and summarizing the timeline.
+### Retrying failed sample tests
 
-## Patching
+After merging a samples or test-workflow fix into `radius-project/samples` `edge`, resume the same Radius version and approved source. When the previously recorded sample-test run completed unsuccessfully, the coordinator dispatches a new `test.yaml` run on current `edge`, retaining the original Radius version input. This reloads both the workflow definition and sample code and runs the complete matrix at the new run's commit; retrying jobs of the old samples run would retain its old workflow and source. The existing receipt automatically records the returned replacement run URL, and the release summary reports the tested samples commit separately from the approved Radius source. No routine manual receipt edit is needed.
 
-Use this process to fix a bug in an already-released version.
+An active test run is monitored rather than replaced, and a successful gate is reused even if `edge` later advances. Each resume starts at most one replacement; a new failure waits for another resume. A missing dispatch acknowledgement or an unresolved legacy rerun marker still stops for [exact-run reconciliation](#lost-dispatch-response), rather than risking duplicate work. Other downstream tasks retain their existing retry behavior.
 
-Before preparing a patch, create and push the signed [Deployment Engine](https://github.com/azure-octo/deployment-engine) tag with the patch version, following the same process as the [final release](#step-2-tag-the-deployment-engine). This tag is required even when Deployment Engine source did not change because it identifies the downstream image used by the Radius release. Prepare Release verifies the signature before changing labels or files.
+This policy must be present in the tagged Radius coordinator. Merging it into `main` does not update an already-tagged RC's code. For an older release, use the existing exact-run receipt recovery after a fresh samples test against the same Radius version, or include the reviewed coordinator fix before tagging a later release. Never move a tag or change the approved release source to adopt new recovery code.
 
-### Step 1: Start a Teams release thread
+### Closed or conflicting upmerge pull requests
 
-Start a new thread in the team's Microsoft Teams release channel titled with the patch version (e.g., "Patch Release v0.56.1"). As with RC and final releases, log every action, result, and issue in this thread throughout the patch release process.
+With the current coordinator, closing an upmerge PR without merging it is retryable: resume the same release. The coordinator reruns **all jobs** of that exact downstream run, clears the old PR binding, and binds the replacement created by the new attempt. The closed PR stays closed, merged upmerges are not repeated, and sample tests still wait for both upmerges to complete. A replacement that has no net changes is successful without a PR. An explicitly rejected rerun restores the previous PR binding; accepted or uncertain requests leave that old binding cleared. An uncertain rerun response retains its attempt marker and is not requested twice.
 
-### Step 2: Merge the fix to main
+Clean upmerges open ready for review. Genuine content conflicts stop with a file list instead of publishing a draft source snapshot that could omit edge-only changes. Resolve the conflicts on either the selected release branch or `edge` through normal review, then rerun. The shared upmerge workflow fetches both branches' latest commits at the start of every attempt and records their exact SHAs in its summary and PR body; commits pushed after that fetch enter the next attempt. This does not change the approved Radius release source or its receipt identity. Do not mark an older provisional snapshot ready without reconciling all edge-only content.
 
-Open a PR with the bug fix targeting `main`. After approval, squash-merge it, add the `backport release/X.Y` label, and rebase-merge the generated backport pull request before preparing the patch.
+For a downstream upmerge run created before fresh-head retries were deployed, choose **Re-run all jobs** on that docs/samples run after the shared fix merges. GitHub re-resolves the shared workflow's `@main` for a full rerun; rerunning only failed or specific jobs retains the first attempt's shared-workflow commit and can still use the old source-selection behavior. A run created with the updated implementation refreshes both content heads on every retry.
 
-If the patch changes resource types or recipe packs, first follow [the namespace and recipe-pack release step](#step-2-release-resource-type-namespaces-and-recipe-packs) to publish the affected releases and merge the generated Radius update PR into `main`. Label that update with `backport release/X.Y` and rebase-merge its generated backport into `release/X.Y` before preparing the patch.
+This coordinator change cannot alter an already-tagged release's scripts. Rerunning an older tag-build job still uses that tag's coordinator. For such a release, either bind a separately verified replacement downstream run and PR using the existing receipt-reconciliation procedure, or include the fix in the next candidate; never move the tag or edit its approved source.
 
-### Step 3: Prepare the patch release
+### Backport conflicts or missing prerequisites
 
-Run the [Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml) workflow from `main` with `release-type` set to `patch` and the target `X.Y` channel. The workflow verifies that every selected fix has a merged backport, increments the channel's patch version, generates patch notes, and opens a signed draft release pull request.
+Selected fixes require either a merged backport or their exact source commit already present in the release branch's ancestry. A source included when that branch was created needs no backport PR. An empty cherry-pick without ancestry proof stops for reconciliation; do not treat it as a completed backport.
 
-### Step 4: Review and merge the generated pull requests
-
-Review the version, included fixes, changelog, and expected outputs. Mark the release pull request ready and squash-merge it to `main`. Then verify the generated release backport and **rebase-merge** it to `release/X.Y`.
-
-### Step 5: Verify the automated release
-
-After the generated release backport is merged to the `release/X.Y` branch, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on a `release/*` branch. It reads the patch version from `versions.yaml`, creates and pushes the `vX.Y.Z` tag, and the tag push triggers the [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow. No manual tag creation is needed.
-
-Monitor and verify:
-
-1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags).
-2. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. Its summary must show successful GoReleaser, Helm, Bicep types, and finalization jobs.
-3. A patch release appears on [GitHub Releases](https://github.com/radius-project/radius/releases). Its full-version tags and eligible `X.Y` production image and CLI OCI aliases resolve to the recorded digests. Global `latest` changes only when the patch is the newest stable version; newer versions in the same channel are never replaced.
-
-### Step 6: Run validation workflows
-
-1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the patch version number without the `v` prefix as the version (e.g., `0.56.1`).
-
-2. In `radius-project/samples`, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow from the `edge` branch. Enter the patch version number without the `v` prefix as the version (e.g., `0.56.1`).
-
-   > If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
-
-If all workflows pass, the patch release is complete. Post a final update in the Teams release thread announcing the successful patch and summarizing the timeline.
-
-## Break-glass manual preparation
-
-> **Temporary fallback:** Use this path only when Prepare Release or release-backport automation is unavailable. It remains until the final migration sweep. Record why break-glass was required in the Teams release thread and open an issue for the automation failure.
-
-1. Choose the version strictly from the [version policy](#terminology): first RC uses the next minor channel and `-rc.1`, a subsequent RC increments the RC number, final removes the RC suffix, and patch increments the patch number.
-2. Create a branch from `main`, update `versions.yaml`, render and add the corresponding section to `CHANGELOG.md`, and create `docs/release-notes/vX.Y.Z[-rc.N].md` from the appropriate template. Open a Conventional Commit pull request against `main` and squash-merge it.
-3. For a first RC, stop here; `release.yaml` creates the release branch from `main`. For an existing channel, manually backport each required squash commit and the release preparation commit:
-
-   ```bash
-   git checkout release/X.Y
-   git pull origin release/X.Y
-   git checkout -b <USERNAME>/backport-X.Y
-   git cherry-pick -x <SOURCE_COMMIT> [<ADDITIONAL_SOURCE_COMMITS>...]
-   git push origin <USERNAME>/backport-X.Y
-   ```
-
-4. Open the backport pull request against `release/X.Y`, verify every commit follows Conventional Commits, and **rebase-merge** it. Never move or replace an existing release tag.
-
-## After every release
-
-### Review and improve this document
-
-Review this document while the release experience is fresh. Identify any stale instructions, missing details, unclear language, unnecessary complexity, or troubleshooting guidance that would improve the next release. Submit a pull request against `main` with the updates.
+Follow the source PR's generated conflict handoff, resolve it on the pinned release-branch base, and rebase-merge the reviewed backport. If the controller cannot create the Deployment Engine tag, for example because the publisher App lacks Contents write on `deployment-engine`, push a signed tag at the commit shown in the validation summary. If validation reports that the last RC's Deployment Engine tag no longer points at the commit that RC locked, restore that tag or push a signed final tag at the locked commit. If it could not look up the Deployment Engine tag, rerun once the reported GitHub API error clears; only a missing tag is planned. For a missing provenance label, package permission, or successful previous-RC receipt, complete that prerequisite and resume without changing the release identity. A notification failure alone does not affect publication safety.

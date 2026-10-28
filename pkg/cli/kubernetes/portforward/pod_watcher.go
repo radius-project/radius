@@ -87,7 +87,7 @@ func (pw *podWatcher) Run(ctx context.Context) error {
 			if pw.forwarder == nil {
 				close(pw.forwarderDone)
 			} else {
-				<-pw.forwarderDone
+				<-pw.forwarderDone //nolint:errcheck // Only wait for shutdown; return the context error below.
 			}
 
 			return ctx.Err()

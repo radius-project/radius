@@ -51,7 +51,7 @@
       },
       "metadata": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/31"
         },
         "flags": 0,
         "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
@@ -72,14 +72,14 @@
       },
       "recipe": {
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/32"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/39"
+          "$ref": "#/37"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed."
@@ -160,14 +160,14 @@
       },
       "recipe": {
         "type": {
-          "$ref": "#/27"
+          "$ref": "#/25"
         },
         "flags": 2,
         "description": "The recipe data at the time of deployment"
       },
       "outputResources": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/28"
         },
         "flags": 0,
         "description": "Properties of an output resource"
@@ -195,9 +195,6 @@
       }
     },
     "elements": {
-      "aci": {
-        "$ref": "#/26"
-      },
       "kubernetes": {
         "$ref": "#/24"
       }
@@ -308,30 +305,6 @@
     }
   },
   {
-    "$type": "StringLiteralType",
-    "value": "aci"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "AzureContainerInstanceCompute",
-    "properties": {
-      "kind": {
-        "type": {
-          "$ref": "#/25"
-        },
-        "flags": 1,
-        "description": "The Azure container instance compute kind"
-      },
-      "resourceGroup": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The resource group to use for the environment."
-      }
-    }
-  },
-  {
     "$type": "ObjectType",
     "name": "RecipeStatus",
     "properties": {
@@ -378,7 +351,7 @@
       },
       "radiusManaged": {
         "type": {
-          "$ref": "#/29"
+          "$ref": "#/27"
         },
         "flags": 0,
         "description": "Determines whether Radius manages the lifecycle of the underlying resource."
@@ -391,7 +364,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/28"
+      "$ref": "#/26"
     }
   },
   {
@@ -407,7 +380,7 @@
       },
       "secretKeyRef": {
         "type": {
-          "$ref": "#/32"
+          "$ref": "#/30"
         },
         "flags": 0,
         "description": "A reference of a value in a secret store component"
@@ -439,7 +412,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/31"
+      "$ref": "#/29"
     }
   },
   {
@@ -455,7 +428,7 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/36"
+          "$ref": "#/34"
         },
         "flags": 0,
         "description": "Key/value parameters to pass into the recipe at deployment"
@@ -470,7 +443,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/35"
+      "$ref": "#/33"
     }
   },
   {
@@ -485,10 +458,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/37"
+        "$ref": "#/35"
       },
       {
-        "$ref": "#/38"
+        "$ref": "#/36"
       }
     ]
   },
@@ -513,7 +486,7 @@
       },
       "createdByType": {
         "type": {
-          "$ref": "#/46"
+          "$ref": "#/44"
         },
         "flags": 0,
         "description": "The type of identity that created the resource."
@@ -534,7 +507,7 @@
       },
       "lastModifiedByType": {
         "type": {
-          "$ref": "#/51"
+          "$ref": "#/49"
         },
         "flags": 0,
         "description": "The type of identity that last modified the resource."
@@ -568,16 +541,16 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/40"
+      },
+      {
+        "$ref": "#/41"
+      },
+      {
         "$ref": "#/42"
       },
       {
         "$ref": "#/43"
-      },
-      {
-        "$ref": "#/44"
-      },
-      {
-        "$ref": "#/45"
       }
     ]
   },
@@ -601,16 +574,16 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/45"
+      },
+      {
+        "$ref": "#/46"
+      },
+      {
         "$ref": "#/47"
       },
       {
         "$ref": "#/48"
-      },
-      {
-        "$ref": "#/49"
-      },
-      {
-        "$ref": "#/50"
       }
     ]
   },
@@ -655,7 +628,7 @@
       },
       "tags": {
         "type": {
-          "$ref": "#/40"
+          "$ref": "#/38"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -669,7 +642,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/41"
+          "$ref": "#/39"
         },
         "flags": 2,
         "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
@@ -680,7 +653,7 @@
     "$type": "ResourceType",
     "name": "Applications.Dapr/secretStores@2023-10-01-preview",
     "body": {
-      "$ref": "#/52"
+      "$ref": "#/50"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -714,7 +687,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/65"
+          "$ref": "#/63"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation."
@@ -735,7 +708,7 @@
       },
       "metadata": {
         "type": {
-          "$ref": "#/66"
+          "$ref": "#/64"
         },
         "flags": 0,
         "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
@@ -756,28 +729,28 @@
       },
       "auth": {
         "type": {
-          "$ref": "#/67"
+          "$ref": "#/65"
         },
         "flags": 0,
         "description": "The name of the Dapr component to be used as a secret store"
       },
       "resources": {
         "type": {
-          "$ref": "#/69"
+          "$ref": "#/67"
         },
         "flags": 0,
         "description": "A collection of references to resources associated with the state store"
       },
       "recipe": {
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/32"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/72"
+          "$ref": "#/70"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed."
@@ -820,6 +793,12 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/55"
+      },
+      {
+        "$ref": "#/56"
+      },
+      {
         "$ref": "#/57"
       },
       {
@@ -836,12 +815,6 @@
       },
       {
         "$ref": "#/62"
-      },
-      {
-        "$ref": "#/63"
-      },
-      {
-        "$ref": "#/64"
       }
     ]
   },
@@ -850,7 +823,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/31"
+      "$ref": "#/29"
     }
   },
   {
@@ -882,7 +855,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/68"
+      "$ref": "#/66"
     }
   },
   {
@@ -897,10 +870,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/70"
+        "$ref": "#/68"
       },
       {
-        "$ref": "#/71"
+        "$ref": "#/69"
       }
     ]
   },
@@ -932,28 +905,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/54"
+          "$ref": "#/52"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/55"
+          "$ref": "#/53"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/56"
+          "$ref": "#/54"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/73"
+          "$ref": "#/71"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -967,7 +940,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/41"
+          "$ref": "#/39"
         },
         "flags": 2,
         "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
@@ -978,7 +951,7 @@
     "$type": "ResourceType",
     "name": "Applications.Dapr/stateStores@2023-10-01-preview",
     "body": {
-      "$ref": "#/74"
+      "$ref": "#/72"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -1012,7 +985,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/87"
+          "$ref": "#/85"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation."
@@ -1033,7 +1006,7 @@
       },
       "metadata": {
         "type": {
-          "$ref": "#/88"
+          "$ref": "#/86"
         },
         "flags": 0,
         "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
@@ -1054,28 +1027,28 @@
       },
       "auth": {
         "type": {
-          "$ref": "#/67"
+          "$ref": "#/65"
         },
         "flags": 0,
         "description": "The name of the Dapr component to be used as a secret store"
       },
       "resources": {
         "type": {
-          "$ref": "#/89"
+          "$ref": "#/87"
         },
         "flags": 0,
         "description": "A collection of references to resources associated with the pubSubBroker"
       },
       "recipe": {
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/32"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/92"
+          "$ref": "#/90"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed."
@@ -1118,6 +1091,12 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/77"
+      },
+      {
+        "$ref": "#/78"
+      },
+      {
         "$ref": "#/79"
       },
       {
@@ -1134,12 +1113,6 @@
       },
       {
         "$ref": "#/84"
-      },
-      {
-        "$ref": "#/85"
-      },
-      {
-        "$ref": "#/86"
       }
     ]
   },
@@ -1148,13 +1121,13 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/31"
+      "$ref": "#/29"
     }
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/68"
+      "$ref": "#/66"
     }
   },
   {
@@ -1169,10 +1142,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/90"
+        "$ref": "#/88"
       },
       {
-        "$ref": "#/91"
+        "$ref": "#/89"
       }
     ]
   },
@@ -1204,28 +1177,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/76"
+          "$ref": "#/74"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/77"
+          "$ref": "#/75"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/78"
+          "$ref": "#/76"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/93"
+          "$ref": "#/91"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1239,7 +1212,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/41"
+          "$ref": "#/39"
         },
         "flags": 2,
         "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
@@ -1250,7 +1223,7 @@
     "$type": "ResourceType",
     "name": "Applications.Dapr/pubSubBrokers@2023-10-01-preview",
     "body": {
-      "$ref": "#/94"
+      "$ref": "#/92"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -1284,7 +1257,7 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/107"
+          "$ref": "#/105"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation."
@@ -1305,7 +1278,7 @@
       },
       "metadata": {
         "type": {
-          "$ref": "#/108"
+          "$ref": "#/106"
         },
         "flags": 0,
         "description": "The metadata for Dapr resource which must match the values specified in Dapr component spec"
@@ -1326,28 +1299,28 @@
       },
       "auth": {
         "type": {
-          "$ref": "#/67"
+          "$ref": "#/65"
         },
         "flags": 0,
         "description": "The name of the Dapr component to be used as a secret store"
       },
       "resources": {
         "type": {
-          "$ref": "#/109"
+          "$ref": "#/107"
         },
         "flags": 0,
         "description": "A collection of references to resources associated with the configuration store"
       },
       "recipe": {
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/32"
         },
         "flags": 0,
         "description": "The recipe used to automatically deploy underlying infrastructure for the resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/112"
+          "$ref": "#/110"
         },
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed."
@@ -1390,6 +1363,12 @@
     "$type": "UnionType",
     "elements": [
       {
+        "$ref": "#/97"
+      },
+      {
+        "$ref": "#/98"
+      },
+      {
         "$ref": "#/99"
       },
       {
@@ -1406,12 +1385,6 @@
       },
       {
         "$ref": "#/104"
-      },
-      {
-        "$ref": "#/105"
-      },
-      {
-        "$ref": "#/106"
       }
     ]
   },
@@ -1420,13 +1393,13 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/31"
+      "$ref": "#/29"
     }
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/68"
+      "$ref": "#/66"
     }
   },
   {
@@ -1441,10 +1414,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/110"
+        "$ref": "#/108"
       },
       {
-        "$ref": "#/111"
+        "$ref": "#/109"
       }
     ]
   },
@@ -1476,28 +1449,28 @@
       },
       "type": {
         "type": {
-          "$ref": "#/96"
+          "$ref": "#/94"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/97"
+          "$ref": "#/95"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/98"
+          "$ref": "#/96"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/113"
+          "$ref": "#/111"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1511,7 +1484,7 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/41"
+          "$ref": "#/39"
         },
         "flags": 2,
         "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
@@ -1522,7 +1495,7 @@
     "$type": "ResourceType",
     "name": "Applications.Dapr/configurationStores@2023-10-01-preview",
     "body": {
-      "$ref": "#/114"
+      "$ref": "#/112"
     },
     "readableScopes": 0,
     "writableScopes": 0,

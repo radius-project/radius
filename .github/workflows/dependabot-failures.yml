@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
+---
+name: Dependabot Failures
+
+# A failed Dependabot update opens no pull request. This keeps one open issue
+# listing the updates whose latest run failed.
+# Docs: https://github.com/radius-project/.github/tree/main/.github/actions/dependabot-failures
+on:
+  schedule:
+    - cron: 23 6 * * *
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Log the issue that would be written and change nothing
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: dependabot-failures-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    uses: radius-project/.github/.github/workflows/__dependabot-failures.yml@main
+    permissions:
+      actions: read
+      issues: write
+    with:
+      dry-run: ${{ inputs.dry_run == true }}

@@ -29,6 +29,10 @@ HEAD_DIR=""
 EXPECTED_DIR=""
 EXPECTED_PLAN=""
 EXPECTED_BACKPORTS=""
+SIBLING_ROOT=""
+RECIPES_COMMIT=""
+DASHBOARD_COMMIT=""
+AWS_COMMIT=""
 FAKE_PREPARE=""
 PASS=0
 FAIL=0
@@ -49,7 +53,8 @@ write_plan() {
     local product_commit="$1"
 
     cat > "${EXPECTED_PLAN}" << EOF
-schemaVersion: 1
+schemaVersion: 2
+changelogPolicy: stable-only
 version: v0.61.0-rc.1
 releaseType: rc
 channel: "0.61"
@@ -61,11 +66,48 @@ source:
   releaseCommit: null
   releaseCommitResolution: release PR squash commit on main
 releaseBranch: release/0.61
+releasePlanPath: .github/release-plans/v0.61.0-rc.1.yaml
 previousVersion: v0.60.0
+siblingRepositories: [{name: recipes, repository: radius-project/recipes,
+        sourceRef: main, sourceCommit: "${RECIPES_COMMIT}"},
+    {name: dashboard, repository: radius-project/dashboard,
+        sourceRef: main, sourceCommit: "${DASHBOARD_COMMIT}"},
+    {name: bicep-types-aws, repository: radius-project/bicep-types-aws,
+        sourceRef: main, sourceCommit: "${AWS_COMMIT}"}]
 expectedOutputs:
   repository: radius-project/radius
 includedBackports: []
 EOF
+}
+
+create_sibling_repository() {
+    local name="$1"
+    local origin="${SIBLING_ROOT}/${name}.git"
+    local seed="${SIBLING_ROOT}/${name}-seed"
+
+    git init -q --bare "${origin}"
+    git init -q -b main "${seed}"
+    git -C "${seed}" config user.name "Radius Test"
+    git -C "${seed}" config user.email "test@example.com"
+    git -C "${seed}" config commit.gpgsign false
+    printf '%s main\n' "${name}" > "${seed}/state.txt"
+    git -C "${seed}" add state.txt
+    git -C "${seed}" commit -q -m "Initial ${name} state"
+    git -C "${seed}" remote add origin "${origin}"
+    git -C "${seed}" push -q origin main
+}
+
+advance_sibling_main() {
+    local name="$1"
+    local seed="${SIBLING_ROOT}/${name}-seed"
+
+    printf '%s later\n' "${name}" >> "${seed}/state.txt"
+    git -C "${seed}" commit -q -am "Later ${name} change"
+    git -C "${seed}" push -q origin main
+}
+
+sibling_main_commit() {
+    git --git-dir="${SIBLING_ROOT}/$1.git" rev-parse main
 }
 
 wrap_body() {
@@ -86,30 +128,40 @@ setup_repo() {
     EXPECTED_DIR="${TEST_ROOT}/expected"
     EXPECTED_PLAN="${TEST_ROOT}/expected-plan.yaml"
     EXPECTED_BACKPORTS="${TEST_ROOT}/expected-backports.json"
+    SIBLING_ROOT="${TEST_ROOT}/siblings"
     FAKE_PREPARE="${TEST_ROOT}/fake-prepare.sh"
-    rm -rf "${REPO}" "${HEAD_DIR}" "${EXPECTED_DIR}"
-    mkdir -p "${REPO}"
+    rm -rf "${REPO}" "${HEAD_DIR}" "${EXPECTED_DIR}" "${SIBLING_ROOT}"
+    mkdir -p "${REPO}" "${SIBLING_ROOT}"
+    create_sibling_repository recipes
+    create_sibling_repository dashboard
+    create_sibling_repository bicep-types-aws
+    RECIPES_COMMIT="$(sibling_main_commit recipes)"
+    DASHBOARD_COMMIT="$(sibling_main_commit dashboard)"
+    AWS_COMMIT="$(sibling_main_commit bicep-types-aws)"
     git -C "${REPO}" init -q -b main
     git -C "${REPO}" config user.name "Radius Test"
     git -C "${REPO}" config user.email "test@example.com"
     git -C "${REPO}" config commit.gpgsign false
+    git -C "${REPO}" config tag.gpgsign false
     cat > "${REPO}/versions.yaml" << 'EOF'
 supported:
   - channel: '0.60'
     version: 'v0.60.0'
 deprecated: []
 EOF
-    git -C "${REPO}" add versions.yaml
+    printf '# Changelog\n\n## [Unreleased]\n' > "${REPO}/CHANGELOG.md"
+    git -C "${REPO}" add versions.yaml CHANGELOG.md
     git -C "${REPO}" commit -q -m "chore: initial"
     git -C "${REPO}" tag v0.60.0
     BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
     write_plan "${BASE_SHA}"
     wrap_body
     printf '%s\n' \
-        '["CHANGELOG.md","docs/release-notes/v0.61.0-rc.1.md","versions.yaml"]' \
+        '[".github/release-plans/v0.61.0-rc.1.yaml","docs/release-notes/v0.61.0-rc.1.md","versions.yaml"]' \
         > "${REPO}/files.json"
 
-    mkdir -p "${EXPECTED_DIR}/docs/release-notes"
+    mkdir -p "${EXPECTED_DIR}/docs/release-notes" \
+        "${HEAD_DIR}/.github/release-plans"
     cat > "${EXPECTED_DIR}/versions.yaml" << 'EOF'
 supported:
   - channel: "0.61"
@@ -118,17 +170,7 @@ deprecated:
   - channel: '0.60'
     version: 'v0.60.0'
 EOF
-    cat > "${EXPECTED_DIR}/CHANGELOG.md" << 'EOF'
-# Changelog
-
-## [Unreleased]
-
-## [0.61.0-rc.1] - 2026-08-24
-
-### Fixed
-
-- Fix release preparation
-EOF
+    cp "${REPO}/CHANGELOG.md" "${EXPECTED_DIR}/CHANGELOG.md"
     cat > "${EXPECTED_DIR}/docs/release-notes/v0.61.0-rc.1.md" << 'EOF'
 ## Announcing Radius v0.61.0-rc.1
 
@@ -147,6 +189,8 @@ EOF
 - Fix release preparation
 EOF
     cp -R "${EXPECTED_DIR}/." "${HEAD_DIR}/"
+    cp "${EXPECTED_PLAN}" \
+        "${HEAD_DIR}/.github/release-plans/v0.61.0-rc.1.yaml"
     printf '[]\n' > "${EXPECTED_BACKPORTS}"
     cat > "${FAKE_PREPARE}" << 'EOF'
 #!/bin/bash
@@ -159,31 +203,55 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 mkdir -p "${output_dir}" docs/release-notes
+mkdir -p .github/release-plans
 cp "${EXPECTED_RELEASE_DIR}/versions.yaml" versions.yaml
 cp "${EXPECTED_RELEASE_DIR}/CHANGELOG.md" CHANGELOG.md
 cp "${EXPECTED_RELEASE_DIR}/docs/release-notes/v0.61.0-rc.1.md" \
     docs/release-notes/v0.61.0-rc.1.md
 cp "${EXPECTED_PLAN_FILE}" "${output_dir}/release-plan.yaml"
+cp "${EXPECTED_PLAN_FILE}" \
+    .github/release-plans/v0.61.0-rc.1.yaml
 EOF
     chmod +x "${FAKE_PREPARE}"
 }
 
-run_validator() {
+run_with_fixture() {
     local status
 
     pushd "${REPO}" > /dev/null
     set +e
     PREPARE_RELEASE_SCRIPT="${FAKE_PREPARE}" \
         EXPECTED_BACKPORTS_FILE="${EXPECTED_BACKPORTS}" \
+        SIBLING_REPOSITORY_ROOT="${SIBLING_ROOT}" \
         EXPECTED_RELEASE_DIR="${EXPECTED_DIR}" \
         EXPECTED_PLAN_FILE="${EXPECTED_PLAN}" \
-        bash "${SCRIPT}" --body-file body.md --files-file files.json \
-        --base-sha "${BASE_SHA}" --head-dir "${HEAD_DIR}" \
-        --repository radius-project/radius
+        "$@"
     status=$?
     set -e
     popd > /dev/null
     return "${status}"
+}
+
+run_validator() {
+    run_with_fixture bash "${SCRIPT}" \
+        --body-file body.md --files-file files.json \
+        --base-sha "${BASE_SHA}" --head-dir "${HEAD_DIR}" \
+        --repository radius-project/radius \
+        --backports-file "${EXPECTED_BACKPORTS}"
+}
+
+run_snapshot_tests() {
+    SNAPSHOT_SOURCE_DIR="${HEAD_DIR}" SNAPSHOT_BASE_SHA="${BASE_SHA}" \
+        run_with_fixture node --test "$@" \
+        "${SCRIPT_DIR}/release-plan-snapshot_test.mjs"
+}
+
+test_workflow_snapshots() {
+    if ! run_snapshot_tests; then
+        fail_test "workflow snapshots must satisfy the validator input contract"
+        return
+    fi
+    ((++PASS))
 }
 
 test_accepts_generated_plan() {
@@ -223,6 +291,81 @@ test_accepts_curated_note_sections() {
     ((++PASS))
 }
 
+test_real_preparation_contract() {
+    local output="${TEST_ROOT}/prepared"
+    local siblings="${TEST_ROOT}/planned-siblings.json"
+    local notes="docs/release-notes/v0.61.0-rc.1.md"
+    local plan=".github/release-plans/v0.61.0-rc.1.yaml"
+    local log="${TEST_ROOT}/validation.log"
+
+    mkdir -p "${REPO}/docs/release-notes" "${REPO}/.github/release-parity"
+    cp "${SCRIPT_DIR}/../../cliff.toml" "${REPO}/cliff.toml"
+    cp "${SCRIPT_DIR}/../../docs/release-notes/"template*.md \
+        "${REPO}/docs/release-notes/"
+    printf '{"repository":"radius-project/radius"}\n' \
+        > "${REPO}/.github/release-parity/targets.json"
+    cat > "${REPO}/CHANGELOG.md" << 'EOF'
+# Changelog
+
+## [Unreleased]
+
+[Unreleased]: https://github.com/radius-project/radius/compare/v0.60.0...HEAD
+EOF
+    git -C "${REPO}" add CHANGELOG.md cliff.toml docs .github
+    git -C "${REPO}" commit -q -m "Legacy release change (#201)"
+    BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+    yq -o=json '.siblingRepositories' "${EXPECTED_PLAN}" > "${siblings}"
+    FAKE_PREPARE="${SCRIPT_DIR}/prepare-release.sh"
+    (
+        cd "${REPO}" || exit 1
+        GITHUB_TOKEN="" bash "${FAKE_PREPARE}" \
+            --release-type rc --channel 0.61 \
+            --release-date 2026-08-24 \
+            --backports-file "${EXPECTED_BACKPORTS}" \
+            --sibling-repositories-file "${siblings}" \
+            --output-dir "${output}"
+    ) > "${log}" 2>&1 || {
+        cat "${log}"
+        fail_test "real release preparation failed"
+        return
+    }
+    cp "${output}/release-plan.yaml" "${EXPECTED_PLAN}"
+    wrap_body
+    cp "${REPO}/versions.yaml" "${REPO}/CHANGELOG.md" "${HEAD_DIR}/"
+    cp "${REPO}/${notes}" "${HEAD_DIR}/${notes}"
+    cp "${REPO}/${plan}" "${HEAD_DIR}/${plan}"
+    git -C "${REPO}" show HEAD:versions.yaml > "${REPO}/versions.yaml"
+    git -C "${REPO}" show HEAD:CHANGELOG.md > "${REPO}/CHANGELOG.md"
+    if ! GITHUB_TOKEN="" run_validator > "${log}" 2>&1; then
+        cat "${log}"
+        fail_test "real prepared output must pass trusted regeneration"
+        return
+    fi
+    if ! GITHUB_TOKEN="" run_snapshot_tests \
+        --test-name-pattern='materializes stable-only RC'; then
+        fail_test "real prepared output must pass through both workflow snapshots"
+        return
+    fi
+    sed -i \
+        -e 's/^## Highlights$/&\n\nA curated highlight./' \
+        -e 's/^## Upgrading to Radius .*$/&\n\nCurated upgrade guidance./' \
+        "${HEAD_DIR}/${notes}"
+    if ! GITHUB_TOKEN="" run_validator > "${log}" 2>&1; then
+        cat "${log}"
+        fail_test "real output must still allow Highlights and Upgrading curation"
+        return
+    fi
+    sed -i 's/Keep a Changelog 1.1.0/Unsupported convention/' \
+        "${HEAD_DIR}/${notes}"
+    if GITHUB_TOKEN="" run_validator > "${log}" 2>&1 \
+                                                    || ! grep -Fq 'release notes differ outside Highlights or Upgrading' "${log}"; then
+        cat "${log}"
+        fail_test "the generated attribution must not be a curated section"
+        return
+    fi
+    ((++PASS))
+}
+
 test_rejects_product_commit_drift() {
     sed -i "s/${BASE_SHA}/$(printf 'f%.0s' {1..40})/" "${REPO}/body.md"
     if run_validator > /dev/null 2>&1; then
@@ -238,6 +381,26 @@ test_rejects_unexpected_file() {
     mv "${REPO}/files.json.tmp" "${REPO}/files.json"
     if run_validator > /dev/null 2>&1; then
         fail_test "expected an unrelated changed file to fail"
+        return
+    fi
+    ((++PASS))
+}
+
+test_rejects_rc_changelog_file() {
+    jq '. + ["CHANGELOG.md"]' "${REPO}/files.json" \
+        > "${REPO}/files.json.tmp"
+    mv "${REPO}/files.json.tmp" "${REPO}/files.json"
+    if run_validator > /dev/null 2>&1; then
+        fail_test "a new RC plan must not change the root changelog"
+        return
+    fi
+    ((++PASS))
+}
+
+test_requires_new_preparation_policy() {
+    sed -i '/changelogPolicy:/d' "${REPO}/body.md"
+    if run_validator > /dev/null 2>&1; then
+        fail_test "an open legacy preparation must be regenerated"
         return
     fi
     ((++PASS))
@@ -280,6 +443,16 @@ test_rejects_tampered_output_contract() {
     ((++PASS))
 }
 
+test_rejects_tampered_committed_plan() {
+    yq -i '.previousVersion = "v9.9.9"' \
+        "${HEAD_DIR}/.github/release-plans/v0.61.0-rc.1.yaml"
+    if run_validator > /dev/null 2>&1; then
+        fail_test "expected a tampered committed plan to fail"
+        return
+    fi
+    ((++PASS))
+}
+
 test_rejects_tampered_backports() {
     sed -i 's/includedBackports: \[\]/includedBackports: [{source_pr: 1, backport_merged: true}]/' \
         "${REPO}/body.md"
@@ -301,9 +474,55 @@ EOF
     ((++PASS))
 }
 
+test_requires_fresh_backport_input() {
+    local output status data
+
+    for data in missing invalid object; do
+        case "${data}" in
+            missing) rm "${EXPECTED_BACKPORTS}" ;;
+            invalid) printf 'not JSON\n' > "${EXPECTED_BACKPORTS}" ;;
+            object) printf '{}\n' > "${EXPECTED_BACKPORTS}" ;;
+        esac
+        status=0
+        output="$(run_validator 2>&1)" || status=$?
+        if [[ "${status}" == 0 || "${output}" != *"backports file"* ]]; then
+            fail_test "${data} backport input must fail explicitly: ${output}"
+            return
+        fi
+    done
+    ((++PASS))
+}
+
+test_accepts_sibling_branch_advance() {
+    advance_sibling_main recipes
+    if ! run_validator > /dev/null; then
+        fail_test "expected a sibling branch that advanced after planning to pass"
+        return
+    fi
+    ((++PASS))
+}
+
+test_rejects_unreachable_planned_sibling_commit() {
+    local unreachable="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+    sed -i "s/${RECIPES_COMMIT}/${unreachable}/" "${REPO}/body.md" \
+        "${EXPECTED_PLAN}" "${HEAD_DIR}/.github/release-plans/v0.61.0-rc.1.yaml"
+    if run_validator > /dev/null 2>&1; then
+        fail_test "expected an unreachable planned sibling commit to fail"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/release-plan-fixture-XXXXXX")"
 
+    setup_repo
+    if [[ "${1:-}" == "--snapshots-only" ]]; then
+        run_snapshot_tests
+        return
+    fi
+    test_workflow_snapshots
     setup_repo
     test_accepts_generated_plan
     setup_repo
@@ -311,9 +530,15 @@ main() {
     setup_repo
     test_accepts_curated_note_sections
     setup_repo
+    test_real_preparation_contract
+    setup_repo
     test_rejects_product_commit_drift
     setup_repo
     test_rejects_unexpected_file
+    setup_repo
+    test_rejects_rc_changelog_file
+    setup_repo
+    test_requires_new_preparation_policy
     setup_repo
     test_rejects_tampered_versions
     setup_repo
@@ -323,9 +548,17 @@ main() {
     setup_repo
     test_rejects_tampered_output_contract
     setup_repo
+    test_rejects_tampered_committed_plan
+    setup_repo
     test_rejects_tampered_backports
     setup_repo
     test_rejects_live_backport_state_drift
+    setup_repo
+    test_requires_fresh_backport_input
+    setup_repo
+    test_accepts_sibling_branch_advance
+    setup_repo
+    test_rejects_unreachable_planned_sibling_commit
 
     if ((FAIL > 0)); then
         echo "release plan tests failed: ${PASS} passed, ${FAIL} failed"

@@ -31,6 +31,7 @@ import (
 	tfjson "github.com/hashicorp/terraform-json"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	goretry "github.com/sethvargo/go-retry"
 
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
@@ -43,6 +44,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
+	"github.com/radius-project/radius/pkg/retry"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -61,6 +63,18 @@ type outputMappingValidationMode int
 const (
 	requireValidOutputMappings outputMappingValidationMode = iota
 	skipOutputMappingValidation
+)
+
+// parameterResolutionMode controls how direct-module {{context.*}} parameter expressions that cannot
+// be resolved are handled during configuration generation.
+type parameterResolutionMode int
+
+const (
+	// strictParameterResolution fails configuration generation on an unresolvable expression.
+	strictParameterResolution parameterResolutionMode = iota
+	// bestEffortParameterResolution logs unresolvable expressions and passes them through unchanged.
+	// It is used when deleting so that a recipe whose expressions no longer resolve can still be destroyed.
+	bestEffortParameterResolution
 )
 
 var _ TerraformExecutor = (*executor)(nil)
@@ -128,7 +142,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	// Create Terraform config in the working directory
-	backend, err := e.generateConfig(ctx, tf, options, auth, requireValidOutputMappings)
+	backend, err := e.generateConfig(ctx, tf, options, auth, requireValidOutputMappings, strictParameterResolution)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +195,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Create Terraform config after setting registry and backend authentication.
-	backend, err := e.generateConfig(ctx, tf, options, auth, skipOutputMappingValidation)
+	backend, err := e.generateConfig(ctx, tf, options, auth, skipOutputMappingValidation, bestEffortParameterResolution)
 	if err != nil {
 		return err
 	}
@@ -245,12 +259,12 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 		return nil, err
 	}
 
-	_, err = getTerraformConfig(ctx, tf.WorkingDir(), options)
+	tfConfig, err := getTerraformConfig(ctx, tf.WorkingDir(), options)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := downloadAndInspect(ctx, tf, options)
+	result, err := downloadAndInspect(ctx, tf, tfConfig, options)
 	if err != nil {
 		return nil, err
 	}
@@ -345,7 +359,7 @@ func splitEnvVar(envVars []string) map[string]string {
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
-func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options, auth backends.CloudBackendAuth, validationMode outputMappingValidationMode) (*backendResult, error) {
+func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options, auth backends.CloudBackendAuth, validationMode outputMappingValidationMode, paramMode parameterResolutionMode) (*backendResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	workingDir := tf.WorkingDir()
 
@@ -354,7 +368,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		return nil, err
 	}
 
-	loadedModule, err := downloadAndInspect(ctx, tf, options)
+	loadedModule, err := downloadAndInspect(ctx, tf, tfConfig, options)
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +458,13 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 			resourceParams = options.ResourceRecipe.Parameters
 		}
 		mergedParams := recipes_util.ShallowMergeParameters(options.EnvRecipe.Parameters, resourceParams)
-		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipectx)
+		resolvedParams, err := resolveDirectModuleParameters(mergedParams, recipectx, paramMode)
+		if err != nil {
+			if paramMode != bestEffortParameterResolution {
+				return nil, err
+			}
+			logger.Info("Some recipe parameter expressions could not be resolved and are passed through unchanged", "error", err.Error())
+		}
 		if resolvedParams != nil {
 			tfConfig.Module[options.EnvRecipe.Name].SetParams(config.RecipeParams(resolvedParams))
 		}
@@ -482,6 +502,15 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	}
 
 	return result, nil
+}
+
+// resolveDirectModuleParameters resolves {{context.*}} expressions in direct-module parameters. In
+// best-effort mode unresolved expressions are kept verbatim and the returned error is informational.
+func resolveDirectModuleParameters(params map[string]any, recipectx *recipecontext.Context, mode parameterResolutionMode) (map[string]any, error) {
+	if mode == bestEffortParameterResolution {
+		return paramresolver.ResolveParameterExpressionsBestEffort(params, recipectx)
+	}
+	return paramresolver.ResolveParameterExpressions(params, recipectx)
 }
 
 func usesOutputMappings(definition *recipes.EnvironmentDefinition, module *moduleInspectResult, validationMode outputMappingValidationMode) bool {
@@ -549,7 +578,7 @@ func initAndApply(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout st
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
 	terraformInitStartTime := time.Now()
-	if err := tf.Init(ctx); err != nil {
+	if err := initializeTerraform(ctx, tf); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
@@ -590,7 +619,7 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout 
 	// Initialize Terraform
 	logger.Info("Initializing Terraform")
 	terraformInitStartTime := time.Now()
-	if err := tf.Init(ctx); err != nil {
+	if err := initializeTerraform(ctx, tf); err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordTerraformInitializationDuration(ctx, terraformInitStartTime,
 			[]attribute.KeyValue{metrics.OperationStateAttrKey.String(metrics.FailedOperationState)})
 
@@ -605,4 +634,52 @@ func initAndDestroy(ctx context.Context, tf *tfexec.Terraform, stateLockTimeout 
 	}
 
 	return nil
+}
+
+func initializeTerraform(ctx context.Context, tf *tfexec.Terraform) error {
+	backoff := goretry.WithMaxRetries(2, goretry.NewExponential(time.Second))
+	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: backoff})
+	return retryTerraformInit(ctx, retryer, func(ctx context.Context) error {
+		return tf.Init(ctx)
+	})
+}
+
+func retryTerraformInit(ctx context.Context, retryer *retry.Retryer, initFn func(context.Context) error) error {
+	return retryer.RetryFunc(ctx, func(ctx context.Context) error {
+		err := initFn(ctx)
+		if err != nil && isTransientTerraformInitError(err) {
+			return retry.RetryableError(err)
+		}
+
+		return err
+	})
+}
+
+func isTransientTerraformInitError(err error) bool {
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
+
+	message := strings.ToLower(strings.Join(strings.Fields(err.Error()), " "))
+	if !strings.Contains(message, "failed to request discovery document") {
+		return false
+	}
+
+	transientErrors := []string{
+		"client.timeout exceeded",
+		"context deadline exceeded",
+		"connection refused",
+		"connection reset",
+		"no such host",
+		"temporary failure in name resolution",
+		"tls handshake timeout",
+		"unexpected eof",
+	}
+	for _, transientError := range transientErrors {
+		if strings.Contains(message, transientError) {
+			return true
+		}
+	}
+
+	return false
 }
