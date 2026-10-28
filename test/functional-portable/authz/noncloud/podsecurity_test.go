@@ -161,11 +161,16 @@ func (w *warningRecorder) HandleWarningHeader(_ int, _ string, text string) {
 }
 
 func (w *warningRecorder) podSecurity() []string {
+	return w.matching("PodSecurity")
+}
+
+// matching returns the recorded warnings that contain substr.
+func (w *warningRecorder) matching(substr string) []string {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	var result []string
 	for _, warning := range w.warnings {
-		if strings.Contains(warning, "PodSecurity") {
+		if strings.Contains(warning, substr) {
 			result = append(result, warning)
 		}
 	}
