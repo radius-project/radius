@@ -450,10 +450,10 @@ func Test_Resource(t *testing.T) {
 		resourceTypes, err := client.ListAllResourceTypesNames(t.Context(), "local")
 		require.NoError(t, err)
 		require.Equal(t, []string{
+			"Applications.Core/environments",
 			"Applications.Test1/resourceType1",
 			"Applications.Test2/resourceType2",
 			"Applications.Test3/resourceType3",
-			"Applications.Core/environments",
 		}, resourceTypes)
 
 		// Radius.Core/environments is excluded here on purpose: this is an inventory query. It must
@@ -708,6 +708,36 @@ func Test_Resource(t *testing.T) {
 		resources, err := client.ListResourcesInEnvironmentOrApplications(t.Context(), "other-environment", []string{"other-application"})
 		require.NoError(t, err)
 		require.Empty(t, resources)
+	})
+
+	t.Run("ListResourcesIn* list each type without a provider summary request", func(t *testing.T) {
+		mockResourceClient := NewMockgenericResourceClient(gomock.NewController(t))
+		mockResourceProviderClient := NewMockresourceProviderClient(gomock.NewController(t))
+		client := createResourceAndResourceProviderClient(mockResourceClient, mockResourceProviderClient)
+
+		mockResourceProviderClient.EXPECT().
+			NewListProviderSummariesPager("local", gomock.Any()).
+			DoAndReturn(func(string, *ucp.ResourceProvidersClientListProviderSummariesOptions) *runtime.Pager[ucp.ResourceProvidersClientListProviderSummariesResponse] {
+				return pager(resourceProviderSummaryPages)
+			}).Times(3)
+		mockResourceProviderClient.EXPECT().GetProviderSummary(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+		mockResourceClient.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			DoAndReturn(func(*generated.GenericResourcesClientListByRootScopeOptions) *runtime.Pager[generated.GenericResourcesClientListByRootScopeResponse] {
+				return pager(listPages)
+			}).Times(3 * inventoryResourceTypeCount)
+
+		resources, err := client.ListResourcesInApplication(t.Context(), "test-application")
+		require.NoError(t, err)
+		require.Len(t, resources, inventoryResourceTypeCount)
+
+		resources, err = client.ListResourcesInEnvironment(t.Context(), "test-environment")
+		require.NoError(t, err)
+		require.Len(t, resources, 2*inventoryResourceTypeCount)
+
+		resources, err = client.ListResourcesInEnvironmentOrApplications(t.Context(), "test-environment", []string{"test-application"})
+		require.NoError(t, err)
+		require.Len(t, resources, 2*inventoryResourceTypeCount)
 	})
 
 	t.Run("GetResource", func(t *testing.T) {

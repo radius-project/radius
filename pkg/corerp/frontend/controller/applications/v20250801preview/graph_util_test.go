@@ -18,11 +18,17 @@ package v20250801preview
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -301,6 +307,112 @@ func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
 				got[outputResource.ID] = outputResource.PortalURL
 			}
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_computeGraphPayload_ListsEachScopeOnce(t *testing.T) {
+	t.Parallel()
+
+	const summary = `{"name":"Applications.Test","resourceTypes":{"widgets":{"apiVersions":{"2023-10-01-preview":{}},"defaultApiVersion":"2023-10-01-preview"}}}`
+	const applicationScope = "/planes/radius/local/resourcegroups/default"
+	applicationID := resources.MustParse(applicationScope + "/providers/Radius.Core/applications/myapp")
+
+	tests := []struct {
+		name          string
+		environmentID string
+		wantRequests  map[string]int
+	}{
+		{
+			name:          "environment in the application scope with different case",
+			environmentID: "/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/myenv",
+			wantRequests: map[string]int{
+				"GET /planes/radius/local/providers":                                                  1,
+				"GET /planes/radius/local/resourcegroups/default/providers/applications.test/widgets": 1,
+			},
+		},
+		{
+			name:          "environment in another scope",
+			environmentID: "/planes/radius/local/resourceGroups/other/providers/Radius.Core/environments/myenv",
+			wantRequests: map[string]int{
+				"GET /planes/radius/local/providers":                                                  1,
+				"GET /planes/radius/local/resourcegroups/default/providers/applications.test/widgets": 1,
+				"GET /planes/radius/local/resourcegroups/other/providers/applications.test/widgets":   1,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			frontendID := applicationScope + "/providers/Applications.Test/widgets/frontend"
+			backendID := resources.MustParse(tt.environmentID).RootScope() + "/providers/Applications.Test/widgets/backend"
+			widgets := []generated.GenericResource{
+				{
+					ID:   new(frontendID),
+					Type: new("Applications.Test/widgets"),
+					Properties: map[string]any{
+						"application": applicationID.String(),
+						"connections": map[string]any{"backend": map[string]any{"source": backendID}},
+					},
+				},
+				{
+					ID:         new(backendID),
+					Type:       new("Applications.Test/widgets"),
+					Properties: map[string]any{"environment": tt.environmentID},
+				},
+				{
+					ID:         new(applicationScope + "/providers/Applications.Test/widgets/other"),
+					Type:       new("Applications.Test/widgets"),
+					Properties: map[string]any{"application": applicationScope + "/providers/Radius.Core/applications/otherapp"},
+				},
+			}
+
+			var mu sync.Mutex
+			requests := map[string]int{}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				path := strings.ToLower(r.URL.Path)
+				mu.Lock()
+				requests[r.Method+" "+path]++
+				mu.Unlock()
+
+				w.Header().Set("Content-Type", "application/json")
+				switch {
+				case path == "/planes/radius/local/providers":
+					_, _ = w.Write([]byte(`{"value":[` + summary + `]}`))
+				case path == "/planes/radius/local/providers/applications.test":
+					_, _ = w.Write([]byte(summary))
+				case strings.HasSuffix(path, "/providers/applications.test/widgets"):
+					scope := strings.TrimSuffix(path, "/providers/applications.test/widgets")
+					inScope := []generated.GenericResource{}
+					for _, widget := range widgets {
+						if strings.HasPrefix(strings.ToLower(*widget.ID), scope+"/") {
+							inScope = append(inScope, widget)
+						}
+					}
+					_ = json.NewEncoder(w).Encode(map[string]any{"value": inScope})
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer server.Close()
+
+			conn, err := sdk.NewDirectConnection(server.URL)
+			require.NoError(t, err)
+
+			payload, err := computeGraphPayload(t.Context(), applicationID, tt.environmentID, conn, nil)
+			require.NoError(t, err)
+
+			gotIDs := []string{}
+			for _, resource := range payload.Resources {
+				gotIDs = append(gotIDs, *resource.ID)
+			}
+			require.ElementsMatch(t, []string{frontendID, backendID}, gotIDs)
+
+			mu.Lock()
+			defer mu.Unlock()
+			require.Equal(t, tt.wantRequests, requests)
 		})
 	}
 }

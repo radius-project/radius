@@ -62,6 +62,12 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Cont
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API versions for resource type %q: %w", resourceType, err)
 	}
+
+	return amc.listResourcesOfTypeAtAPIVersion(ctx, resourceType, apiVersion)
+}
+
+// listResourcesOfTypeAtAPIVersion lists all resources of a given type at apiVersion in the configured scope.
+func (amc *UCPApplicationsManagementClient) listResourcesOfTypeAtAPIVersion(ctx context.Context, resourceType string, apiVersion string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 
 	client, err := amc.getGenericClient(amc.RootScope, resourceType, apiVersion, false)
@@ -1070,27 +1076,53 @@ func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx contex
 	return amc.listResourceTypeNames(ctx, planeName, inventoryExcludedResourceTypes)
 }
 
+// ListAllResourceTypesAPIVersions returns the API version to use for each resource type that
+// ListAllResourceTypesNames returns, keyed by type name. The version is empty if the type has none.
+func (amc *UCPApplicationsManagementClient) ListAllResourceTypesAPIVersions(ctx context.Context, planeName string) (map[string]string, error) {
+	return amc.listResourceTypeAPIVersions(ctx, planeName, inventoryExcludedResourceTypes)
+}
+
 // listResourceTypeNames lists the names of all resource types in all resource providers in the
 // given plane, omitting the supplied types. Exclusions are compared case-insensitively and must be
 // supplied in lowercase.
 func (amc *UCPApplicationsManagementClient) listResourceTypeNames(ctx context.Context, planeName string, excludedResourceTypesList []string) ([]string, error) {
+	apiVersions, err := amc.listResourceTypeAPIVersions(ctx, planeName, excludedResourceTypesList)
+	if err != nil {
+		return nil, err
+	}
+
+	return sortedResourceTypes(apiVersions), nil
+}
+
+// sortedResourceTypes returns the resource type names in apiVersions in sorted order, so that
+// listings and the resources they return are in the same order on each call.
+func sortedResourceTypes(apiVersions map[string]string) []string {
+	resourceTypes := maps.Keys(apiVersions)
+	slices.Sort(resourceTypes)
+	return resourceTypes
+}
+
+// listResourceTypeAPIVersions maps the name of each resource type in the given plane to the API
+// version to use for it, omitting the supplied types. Exclusions are compared case-insensitively
+// and must be supplied in lowercase.
+func (amc *UCPApplicationsManagementClient) listResourceTypeAPIVersions(ctx context.Context, planeName string, excludedResourceTypesList []string) (map[string]string, error) {
 	resourceProviderSummaries, err := amc.ListResourceProviderSummaries(ctx, planeName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list resource provider summaries: %v", err)
 	}
 
-	resourceTypeNames := []string{}
+	apiVersions := map[string]string{}
 	for _, resourceProvider := range resourceProviderSummaries {
 		resourceProviderName := *resourceProvider.Name
-		for typeName := range resourceProvider.ResourceTypes {
+		for typeName, summary := range resourceProvider.ResourceTypes {
 			fullResourceName := resourceProviderName + "/" + typeName
 			if !slices.Contains(excludedResourceTypesList, strings.ToLower(fullResourceName)) {
-				resourceTypeNames = append(resourceTypeNames, fullResourceName)
+				apiVersions[fullResourceName] = apiVersionFromSummary(summary)
 			}
 		}
 	}
 
-	return resourceTypeNames, nil
+	return apiVersions, nil
 }
 
 // ListResourcesInApplication lists all resources in a given application in the configured scope.
@@ -1101,22 +1133,9 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx conte
 		return nil, err
 	}
 
-	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
-	if err != nil {
-		return nil, err
-	}
-
-	results := []generated.GenericResource{}
-	for _, resourceType := range resourceTypesList {
-		resources, err := amc.ListResourcesOfTypeInApplication(ctx, applicationID, resourceType)
-		if err != nil {
-			return nil, err
-		}
-
-		results = append(results, resources...)
-	}
-
-	return results, nil
+	return amc.listResourcesOfAllTypes(ctx, func(resource generated.GenericResource) bool {
+		return isResourceInApplication(resource, applicationID)
+	})
 }
 
 // ListResourcesInEnvironment lists all resources in a given environment in the configured scope.
@@ -1127,19 +1146,30 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx conte
 		return nil, err
 	}
 
-	results := []generated.GenericResource{}
-	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
+	return amc.listResourcesOfAllTypes(ctx, func(resource generated.GenericResource) bool {
+		return isResourceInEnvironment(resource, environmentID)
+	})
+}
+
+// listResourcesOfAllTypes lists all resources in the configured scope for which include returns true.
+func (amc *UCPApplicationsManagementClient) listResourcesOfAllTypes(ctx context.Context, include func(generated.GenericResource) bool) ([]generated.GenericResource, error) {
+	apiVersions, err := amc.ListAllResourceTypesAPIVersions(ctx, "local")
 	if err != nil {
 		return nil, err
 	}
 
-	for _, resourceType := range resourceTypesList {
-		resources, err := amc.ListResourcesOfTypeInEnvironment(ctx, environmentID, resourceType)
+	results := []generated.GenericResource{}
+	for _, resourceType := range sortedResourceTypes(apiVersions) {
+		resources, err := amc.listResourcesOfTypeAtAPIVersion(ctx, resourceType, apiVersions[resourceType])
 		if err != nil {
 			return nil, err
 		}
 
-		results = append(results, resources...)
+		for _, resource := range resources {
+			if include(resource) {
+				results = append(results, resource)
+			}
+		}
 	}
 
 	return results, nil
@@ -1168,26 +1198,9 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironmentOrApplicat
 		applicationIDs = append(applicationIDs, applicationID)
 	}
 
-	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
-	if err != nil {
-		return nil, err
-	}
-
-	results := []generated.GenericResource{}
-	for _, resourceType := range resourceTypesList {
-		resources, err := amc.ListResourcesOfType(ctx, resourceType)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, resource := range resources {
-			if isResourceInEnvironmentOrApplications(resource, environmentID, applicationIDs) {
-				results = append(results, resource)
-			}
-		}
-	}
-
-	return results, nil
+	return amc.listResourcesOfAllTypes(ctx, func(resource generated.GenericResource) bool {
+		return isResourceInEnvironmentOrApplications(resource, environmentID, applicationIDs)
+	})
 }
 
 // isResourceInEnvironmentOrApplications reports whether the resource belongs to the given
@@ -1494,22 +1507,31 @@ func (amc *UCPApplicationsManagementClient) getAPIVersionForResourceType(ctx con
 		return "", fmt.Errorf("resource type %q not found in the resource provider %q", resType, provider)
 	}
 
+	return apiVersionFromSummary(resourceTypeSummary), nil
+}
+
+// apiVersionFromSummary picks the API version to use for a resource type from its summary.
+func apiVersionFromSummary(resourceTypeSummary *ucpv20231001.ResourceProviderSummaryResourceType) string {
+	if resourceTypeSummary == nil {
+		return ""
+	}
+
 	// Prefer the API version the resource provider declares as its default. Resource types may
 	// advertise several versions, and map iteration order is not stable, so falling straight
 	// through to an arbitrary key would pick a different version from one call to the next.
 	if resourceTypeSummary.DefaultAPIVersion != nil && *resourceTypeSummary.DefaultAPIVersion != "" {
-		return *resourceTypeSummary.DefaultAPIVersion, nil
+		return *resourceTypeSummary.DefaultAPIVersion
 	}
 
 	apiVersions := maps.Keys(resourceTypeSummary.APIVersions)
 	if len(apiVersions) == 0 {
-		return "", nil
+		return ""
 	}
 
 	// No default is declared, so sort to keep the choice stable across invocations.
 	slices.Sort(apiVersions)
 
-	return apiVersions[0], nil
+	return apiVersions[0]
 }
 
 // getGenericClient returns a generic resource client for the specified scope and resource type
