@@ -4,18 +4,16 @@ templates:
 release:
   name: radius
   namespace: radius-system
-capabilities:
-  apiVersions:
-    - admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy
 tests:
   - it: renders nothing when authorization is off
+    capabilities: &vap
+      apiVersions:
+        - admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy
     asserts:
       - hasDocuments:
           count: 0
 
   - it: renders nothing when the cluster has no ValidatingAdmissionPolicy API
-    capabilities:
-      apiVersions: []
     set:
       global.rbac.enabled: true
     asserts:
@@ -23,6 +21,7 @@ tests:
           count: 0
 
   - it: warns and audits in dryRun
+    capabilities: *vap
     set:
       global.rbac.dryRun: true
     asserts:
@@ -34,6 +33,7 @@ tests:
         documentIndex: 1
 
   - it: denies in enforce
+    capabilities: *vap
     set:
       global.rbac.enabled: true
     asserts:
@@ -61,6 +61,7 @@ tests:
         documentIndex: 1
 
   - it: names each rule in its message
+    capabilities: *vap
     set:
       global.rbac.enabled: true
     asserts:
@@ -78,6 +79,7 @@ tests:
         documentIndex: 0
 
   - it: bakes the control-plane names from chart values
+    capabilities: *vap
     set:
       global.rbac.enabled: true
       global.rootCA.secretName: my-root-ca
@@ -102,6 +104,7 @@ tests:
         documentIndex: 0
 
   - it: uses custom application identities
+    capabilities: *vap
     set:
       global.rbac.dryRun: true
       global.rbac.admission.applicationIdentities:
