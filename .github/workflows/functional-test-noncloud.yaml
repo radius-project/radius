@@ -721,7 +721,7 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
 
           if [[ "${AUTHZ_DRY_RUN}" == "true" ]]; then
-            python3 .github/scripts/run-with-authz-logs.py make "test-functional-${MATRIX_NAME}"
+            bash .github/scripts/run-with-authz-logs.sh make "test-functional-${MATRIX_NAME}"
           else
             make "test-functional-${MATRIX_NAME}"
           fi

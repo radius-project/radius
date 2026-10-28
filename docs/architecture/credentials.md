@@ -461,11 +461,11 @@ config, err := kubernetes.NewCLIClientConfig(c.Context)
 return sdk.NewKubernetesConnectionFromConfig(config)
 ```
 
-`NewKubernetesConnectionFromConfig` ([pkg/sdk/connection_kubernetes.go](../../pkg/sdk/connection_kubernetes.go)) takes the kubeconfig REST config and overlays the UCP API path (`/apis/api.ucp.dev/v1alpha3`). Every Radius API call from the CLI is then a plain Kubernetes API call, transported with the kubeconfig's existing credentials and TLS settings.
+`NewCLIClientConfig` selects the kubeconfig the same way as `kubectl` and Helm. It merges the files listed in `KUBECONFIG`, or it reads `~/.kube/config` when `KUBECONFIG` is not set. Inside a pod, it uses the pod's service account when the kubeconfig selects no cluster server, for example when no kubeconfig exists or it has no current context. Helm does the same. `NewKubernetesConnectionFromConfig` ([pkg/sdk/connection_kubernetes.go](../../pkg/sdk/connection_kubernetes.go)) takes the kubeconfig REST config and overlays the UCP API path (`/apis/api.ucp.dev/v1alpha3`). Every Radius API call from the CLI is then a plain Kubernetes API call, transported with the kubeconfig's existing credentials and TLS settings.
 
 ```mermaid
 graph LR
-    User --> Kubeconfig["~/.kube/config<br/>(token / cert / exec plugin / OIDC / cloud auth)"]
+    User --> Kubeconfig["kubeconfig (KUBECONFIG or ~/.kube/config)<br/>(token / cert / exec plugin / OIDC / cloud auth)"]
     Kubeconfig --> CLI["rad CLI"]
     CLI -->|"https://kube-apiserver/apis/api.ucp.dev/v1alpha3/..."| K8sAPI[Kubernetes API server]
     K8sAPI -->|aggregation layer| UCPSvc["Service: ucp.radius-system:443"]
