@@ -67,6 +67,9 @@ func (*Service) Name() string {
 // Run implements the main functionality of the service.
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	if err := s.Options.Config.Controller.Flux.Validate(); err != nil {
+		return err
+	}
 
 	metricsAddr := "0" // Setting the address to 0 will disable the metrics server.
 	if s.Options.Config.MetricsProvider.Enabled {
@@ -87,6 +90,10 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create controller manager: %w", err)
 	}
+	sourcePolicy, err := reconciler.NewFluxSourcePolicy(s.Options.Config.Controller.Flux, mgr.GetAPIReader())
+	if err != nil {
+		return err
+	}
 
 	logger.Info("Registering controllers.")
 	resourceDeploymentsClient, err := sdkclients.NewResourceDeploymentsClient(&sdkclients.Options{
@@ -104,6 +111,7 @@ func (s *Service) Run(ctx context.Context) error {
 		EventRecorder:             mgr.GetEventRecorderFor("deploymenttemplate-controller"),
 		Radius:                    reconciler.NewRadiusClient(s.Options.UCPConnection),
 		ResourceDeploymentsClient: resourceDeploymentsClient,
+		SourcePolicy:              sourcePolicy,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "DeploymentTemplate", err)
@@ -115,21 +123,29 @@ func (s *Service) Run(ctx context.Context) error {
 		EventRecorder:             mgr.GetEventRecorderFor("deploymentresource-controller"),
 		Radius:                    reconciler.NewRadiusClient(s.Options.UCPConnection),
 		ResourceDeploymentsClient: resourceDeploymentsClient,
+		SourcePolicy:              sourcePolicy,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "DeploymentResource", err)
 	}
 
-	err = (&reconciler.FluxController{
-		Client:         mgr.GetClient(),
-		ArchiveFetcher: reconciler.NewArchiveFetcher(),
-		FileSystem:     filesystem.NewOSFS(),
-		Bicep: &bicep.Impl{
-			FileSystem: filesystem.NewOSFS(),
-		},
-	}).SetupWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to setup %s controller: %w", "FluxController", err)
+	if sourcePolicy.Enabled() {
+		err = (&reconciler.FluxController{
+			Client:         mgr.GetClient(),
+			SourcePolicy:   sourcePolicy,
+			ArchiveFetcher: reconciler.NewArchiveFetcher(),
+			FileSystem:     filesystem.NewOSFS(),
+			Bicep: &bicep.Impl{
+				FileSystem: filesystem.NewOSFS(),
+			},
+		}).SetupWithManager(mgr)
+		if err != nil {
+			return fmt.Errorf("failed to setup %s controller: %w", "FluxController", err)
+		}
+	} else {
+		logger.Info("Flux reconciliation is disabled or no sources are selected",
+			"enabled", s.Options.Config.Controller.Flux.Enabled,
+			"selectedSources", len(s.Options.Config.Controller.Flux.Sources))
 	}
 
 	logger.Info("Registering health checks.")

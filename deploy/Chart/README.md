@@ -17,6 +17,107 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system
 
 ## Configuration Options
 
+### Flux source selection
+
+Flux reconciliation is disabled by default. Enable it by selecting each `GitRepository` with its exact namespace, name, and Kubernetes UID:
+
+```yaml
+controller:
+  flux:
+    enabled: true
+    sources:
+      - namespace: flux-system
+        name: applications
+        uid: "<metadata.uid of the GitRepository>"
+```
+
+Read the UID from the existing object, not from a manifest or a previous object with the same name:
+
+```console
+kubectl get gitrepositories.source.toolkit.fluxcd.io applications -n flux-system -o jsonpath='{.metadata.uid}'
+```
+
+An empty list selects no sources. Duplicate namespace/name entries, missing fields, and wildcard identities are rejected, including in disabled configuration. Invalid settings stop controller startup, so render reviewed values with `helm template` before applying them. Use the matching controller image and chart; older controller binaries do not understand these options.
+
+#### Before enabling
+
+Selecting a source trusts its accepted publishers with the installation's deployment capabilities. The default deployment engine uses `cluster-admin` and supports arbitrary Kubernetes resources; selection does not limit a template to one namespace or provide tenant isolation. Trust must extend to executable content from included repositories, submodules, Bicep modules, and any other accepted dependencies.
+
+Only installation administrators should modify source specifications, referenced verification keys and included sources, or controller configuration. DeploymentTemplate specifications and status must be writable only by the controller and installation-trusted operators. Verify the actual user and group permissions before enabling sources; see the [configuration guide](../../docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md#flux-source-configuration). A selected namespace/name/UID is not a substitute for those write restrictions.
+
+The source must be active and Ready for its current generation with an artifact. An administrator's source-specification change holds older generated templates until the new generation is ready and reconciled. Source deletion/recreation requires an explicit identity update. A selected source in `flux-system` may deploy templates into other namespaces.
+
+Settings are read at process startup. The chart changes a pod checksum and uses `Recreate` for the single controller replica, avoiding overlap between old and new selections. This briefly pauses all controller reconcilers. A configuration change takes full effect only after the old controller has stopped and the new pod is ready.
+
+#### Target changes and cleanup
+
+Moving an existing entry to another namespace while retaining its template name and Radius deployment scope is held while the old DeploymentTemplate exists, including while it is deleting. First remove the entry and wait for its template and resources to finish deletion, then add it in the new namespace. This sequence deletes and recreates the workload; it is not a live transfer. Initial cross-namespace targets and moves to a different deployment scope remain supported.
+
+New deployments wait for previous tracked cleanup to finish unless an application or environment is waiting on live child resources owned by the same template. In that case, changed desired content can proceed so it can remove those dependencies. If the update restores the parent before its backend deletion has started, the controller replaces only the terminating tracking object and retains the backend resource and any still-desired children.
+
+`ReadyPendingCleanup` means cleanup is still outstanding; it does not mean all deletes have started. Already submitted deletes must finish before conflicting desired outputs are reapplied and their tracking is restored. Do not strip finalizers to bypass cleanup.
+
+Deleting or pruning a template does not discard a completed deployment's output inventory. Missing output trackers are recovered for cleanup before the saved operation is cleared, including when deletion interrupts tracker replacement. The template remains until its owned resources finish cleanup; inactive sources still hold these effects.
+
+#### Migrating existing templates
+
+Existing source-managed templates with only `spec.repository` are held until an administrator reviews and associates them with a source. `Held` does not delete running resources; it retains tracking objects and finalizers, which can delay namespace deletion. Direct templates with neither source field continue through the existing trusted Kubernetes-writer workflow.
+
+Use an installation-specific, reviewed chart directory and values file. Keep the inventory and patch files private: templates and parameters can contain application data.
+
+1. Inventory source identities, template UIDs/specifications, tracked resource IDs, and in-progress operation IDs. Pause the controller and wait for its pods to stop:
+
+   ```console
+   kubectl scale deployment/controller -n radius-system --replicas=0
+   kubectl wait --for=delete pod -n radius-system -l app.kubernetes.io/name=controller --timeout=120s
+   ```
+
+2. Apply the DeploymentTemplate CRD from the same reviewed chart version as the new controller. Helm does not upgrade existing definitions from its `crds` directory. Install the new build with Flux disabled:
+
+   ```sh
+   CHART=deploy/Chart
+   kubectl apply -f "$CHART/crds/radius/radapp.io_deploymenttemplates.yaml"
+   helm upgrade radius "$CHART" -n radius-system -f reviewed-values.yaml \
+     --set controller.flux.enabled=false --set-json 'controller.flux.sources=[]' --wait
+   ```
+
+3. For each reviewed template, read the current source and template as JSON. Confirm source readiness and compare the template, parameters, provider configuration, and resource inventory with the approved source content. Generate a JSON Patch that tests the template UID and resource version before adding attribution; do not delete and recreate the template:
+
+   ```sh
+   kubectl get gitrepositories.source.toolkit.fluxcd.io "$SOURCE" -n "$SOURCE_NAMESPACE" -o json > source.json
+   kubectl get deploymenttemplates.radapp.io "$TEMPLATE" -n "$TEMPLATE_NAMESPACE" -o json > template.json
+   jq -n --slurpfile source source.json --slurpfile template template.json '
+     $source[0] as $s | $template[0] as $t |
+     [
+       {op: "test", path: "/metadata/uid", value: $t.metadata.uid},
+       {op: "test", path: "/metadata/resourceVersion", value: $t.metadata.resourceVersion},
+       {op: "add", path: "/spec/repository", value: $s.metadata.name},
+       {op: "add", path: "/spec/sourceRef", value: {
+         namespace: $s.metadata.namespace, name: $s.metadata.name,
+         uid: $s.metadata.uid, generation: $s.metadata.generation,
+         revision: $s.status.artifact.revision, digest: $s.status.artifact.digest
+       }}
+     ]' > association.json
+   kubectl patch deploymenttemplates.radapp.io "$TEMPLATE" -n "$TEMPLATE_NAMESPACE" \
+     --type=json --patch-file association.json
+   ```
+
+4. Read both objects again. Confirm the association, unchanged template UID/business specification/finalizers, and unchanged resource IDs. Enable the reviewed source list and wait for the new controller:
+
+   ```sh
+   helm upgrade radius "$CHART" -n radius-system -f reviewed-selected-values.yaml --wait
+   kubectl rollout status deployment/controller -n radius-system --timeout=180s
+   kubectl get deploymenttemplates.radapp.io -A
+   ```
+
+Templates should leave `Held` only when their current source and attribution match. Use the same reviewed in-place association for an intentional transfer to a recreated source; never infer ownership from a reused name. Clean up through an active approved source before retiring it. If a transfer is not approved, leave objects held and choose recovery explicitly rather than removing finalizers.
+
+#### Pausing and recovery
+
+Suspend a source and remove it from the selected list to prevent new source-managed effects. Complete the controller rollout, or stop all controller pods for a stronger controller-side pause. Source-managed deletion is also held. Previously accepted deployment-engine operations can continue independently; polling and tracking them is not cancellation.
+
+Prefer the new controller build with Flux disabled as the fallback. Do not use ordinary `helm rollback` or a pre-change controller image to restore service: an older binary either rejects the new configuration or resumes its old source processing with old configuration. Exceptional recovery with an older build must keep the entire controller stopped until a maintainer-approved compatible build is available.
+
 ### In-Cluster Container Image Builds
 
 The `Radius.Compute/containerImages` resource type requires the opt-in rootless BuildKit sidecar:

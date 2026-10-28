@@ -20,6 +20,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,9 +34,9 @@ import (
 )
 
 const (
-	deploymentTemplateRepositoryField = "spec.repository"
-	radiusConfigFileName              = "radius-gitops-config.yaml"
-	armJSONParametersKeyName          = "parameters"
+	deploymentTemplateSourceField = "spec.sourceRef"
+	radiusConfigFileName          = "radius-gitops-config.yaml"
+	armJSONParametersKeyName      = "parameters"
 )
 
 // FluxController watches GitRepository objects for revision changes
@@ -47,6 +49,7 @@ type FluxController struct {
 	Bicep          bicep.Interface
 	FileSystem     filesystem.FileSystem
 	ArchiveFetcher ArchiveFetcher
+	SourcePolicy   *FluxSourcePolicy
 	initialized    *atomic.Bool // Track if we've initialized the controller
 }
 
@@ -67,16 +70,24 @@ type ConfigEntry struct {
 	ResourceGroup string `yaml:"resourceGroup,omitempty"`
 }
 
-// deploymentTemplateRepositoryIndexer indexes DeploymentTemplate objects by their repository field.
-func deploymentTemplateRepositoryIndexer(o client.Object) []string {
+// deploymentTemplateSourceIndexer indexes templates by complete source identity.
+func deploymentTemplateSourceIndexer(o client.Object) []string {
 	deploymentTemplate, ok := o.(*radappiov1alpha3.DeploymentTemplate)
 	if !ok {
 		return nil
 	}
-	return []string{deploymentTemplate.Spec.Repository}
+	key := sourceKey(deploymentTemplate.Spec.SourceRef)
+	if key == "" {
+		return nil
+	}
+	return []string{key}
 }
 
 func (r *FluxController) SetupWithManager(mgr ctrl.Manager) error {
+	if !r.SourcePolicy.Enabled() {
+		mgr.GetLogger().Info("Flux reconciliation is disabled or no sources are selected")
+		return nil
+	}
 	r.initialized = &atomic.Bool{}
 
 	// Register a controller for CustomResourceDefinition events.
@@ -134,7 +145,7 @@ func (r *FluxController) registerFluxController(obj client.Object, mgr ctrl.Mana
 // setupFluxController creates a new controller for GitRepository objects
 // and sets it up with the manager.
 func (r *FluxController) setupFluxController(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &radappiov1alpha3.DeploymentTemplate{}, deploymentTemplateRepositoryField, deploymentTemplateRepositoryIndexer); err != nil {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &radappiov1alpha3.DeploymentTemplate{}, deploymentTemplateSourceField, deploymentTemplateSourceIndexer); err != nil {
 		return err
 	}
 
@@ -157,11 +168,33 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "FluxController", "name", req.Name, "namespace", req.Namespace)
 	ctx = logr.NewContext(ctx, logger)
 
-	// Get the GitRepository object from the cluster
-	var repository sourcev1.GitRepository
-	if err := r.Get(ctx, req.NamespacedName, &repository); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+	result, err := r.reconcileSource(ctx, req)
+	var hold *sourceHold
+	if errors.As(err, &hold) {
+		source := &sourcev1.GitRepository{ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: req.Namespace}}
+		result = reportSourceHold(ctx, source, nil, hold)
+		if hold.reason == "SourceNotSelected" {
+			result = ctrl.Result{}
+		}
+		return result, nil
 	}
+	return result, err
+}
+
+func (r *FluxController) reconcileSource(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	// Get the GitRepository object from the cluster
+	repository, hold, err := r.SourcePolicy.source(ctx, req.NamespacedName)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if hold != nil {
+		return ctrl.Result{}, hold
+	}
+	if err := r.SourcePolicy.templateSchema(ctx); err != nil {
+		return ctrl.Result{}, err
+	}
+	ref := sourceReference(repository)
 
 	// Check if the Artifact field is set
 	artifact := repository.Status.Artifact
@@ -215,24 +248,19 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
-	// Run bicep build on all bicep files specified in radius-gitops-config.yaml
-	for _, bicepFile := range radiusConfig.Config {
+	entries, err := r.preflightTargets(ctx, radiusConfig.Config, ref)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	// Resolve and check every target before compiling or changing any target.
+	for _, bicepFile := range entries {
+		if err := r.SourcePolicy.checkArtifact(ctx, ref); err != nil {
+			return ctrl.Result{}, err
+		}
 		fileName := bicepFile.Name
 		paramFileName := bicepFile.Params
 		namespace := bicepFile.Namespace
-		nameBase := strings.TrimSuffix(fileName, path.Ext(fileName))
-
-		if namespace == "" {
-			// If the namespace is not set, use the name of the bicep file
-			// (without extension) as the namespace. e.g. "example.bicep" -> "example"
-			namespace = nameBase
-		}
 		resourceGroup := bicepFile.ResourceGroup
-		if resourceGroup == "" {
-			// If the resource group is not set, use the name of the bicep file
-			// (without extension) as the resource group. e.g. "example.bicep" -> "example"
-			resourceGroup = nameBase
-		}
 
 		// Run bicep build on the bicep file
 		logger.Info("Running bicep build", "name", fileName)
@@ -261,6 +289,9 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 
 		// Create the namespace if it doesn't exist
+		if err := r.SourcePolicy.checkArtifact(ctx, ref); err != nil {
+			return ctrl.Result{}, err
+		}
 		namespaceObj := &corev1.Namespace{
 			Name: namespace,
 		}
@@ -276,7 +307,7 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		// specified in the git repository.
 		logger.Info("Creating or updating DeploymentTemplate", "name", bicepFile.Name)
 		parameters := convertFromARMJSONParameters(armJSONParameters)
-		err = r.createOrUpdateDeploymentTemplate(ctx, bicepFile.Name, namespace, template, string(marshalledProviderConfig), parameters, repository.Name)
+		err = r.createOrUpdateDeploymentTemplate(ctx, bicepFile.Name, namespace, template, string(marshalledProviderConfig), parameters, ref)
 		if err != nil {
 			logger.Error(err, "failed to create or update deployment template")
 			return ctrl.Result{}, err
@@ -287,7 +318,7 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	// List all DeploymentTemplates on the cluster that are from the same git repository
 	deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
-	err = r.Client.List(ctx, deploymentTemplates, client.MatchingFields{deploymentTemplateRepositoryField: repository.Name}, client.InNamespace(""))
+	err = r.Client.List(ctx, deploymentTemplates, client.MatchingFields{deploymentTemplateSourceField: sourceKey(ref)}, client.InNamespace(""))
 	if err != nil {
 		logger.Error(err, "unable to list deployment templates")
 		return ctrl.Result{}, err
@@ -298,19 +329,55 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// For all of the DeploymentTemplates on the cluster, check if the bicep file
 	// that it was created from is still present in config. If not, delete the DeploymentTemplate.
 	for _, deploymentTemplate := range deploymentTemplates.Items {
-		if !isSpecifiedInConfig(deploymentTemplate.Name, radiusConfig.Config) {
-			// The DeploymentTemplate is not specified in the config, so we should delete it
-			logger.Info("Deleting DeploymentTemplate", "name", deploymentTemplate.Name)
-			if err := r.Client.Delete(ctx, &deploymentTemplate); err != nil {
-				logger.Error(err, "unable to delete deployment template")
+		if !isSpecifiedInConfig(client.ObjectKeyFromObject(&deploymentTemplate), entries) {
+			if err := r.pruneTemplate(ctx, client.ObjectKeyFromObject(&deploymentTemplate), ref); err != nil {
 				return ctrl.Result{}, err
 			}
-
-			logger.Info("Deleted DeploymentTemplate", "name", deploymentTemplate.Name)
 		}
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *FluxController) pruneTemplate(ctx context.Context, key client.ObjectKey, ref *radappiov1alpha3.DeploymentTemplateSourceReference) error {
+	if err := r.SourcePolicy.checkArtifact(ctx, ref); err != nil {
+		return err
+	}
+	var latest radappiov1alpha3.DeploymentTemplate
+	if err := r.SourcePolicy.reader.Get(ctx, key, &latest); err != nil {
+		return client.IgnoreNotFound(err)
+	}
+	if err := checkTemplateOwner(&latest, ref); err != nil {
+		return err
+	}
+	uid := latest.UID
+	if latest.DeletionTimestamp.IsZero() {
+		if err := r.SourcePolicy.checkArtifact(ctx, ref); err != nil {
+			return err
+		}
+		if err := r.Client.Delete(ctx, &latest, client.Preconditions{UID: &latest.UID, ResourceVersion: &latest.ResourceVersion}); err != nil {
+			return client.IgnoreNotFound(err)
+		}
+		if err := r.SourcePolicy.reader.Get(ctx, key, &latest); err != nil {
+			return client.IgnoreNotFound(err)
+		}
+	}
+	if latest.UID != uid || latest.DeletionTimestamp.IsZero() {
+		return &sourceHold{"TemplateSourceMismatch", "DeploymentTemplate changed while requesting cleanup"}
+	}
+	if err := checkTemplateOwner(&latest, ref); err != nil {
+		return err
+	}
+	if latest.Spec.SourceRef.Generation == ref.Generation {
+		return nil
+	}
+	if err := r.SourcePolicy.checkArtifact(ctx, ref); err != nil {
+		return err
+	}
+	// Refresh cleanup authority only after deletion starts, never enabling an old
+	// pending template for a new deployment under the current source generation.
+	latest.Spec.SourceRef = ref.DeepCopy()
+	return r.Client.Update(ctx, &latest)
 }
 
 func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename string) (armJSON string, err error) {
@@ -381,12 +448,15 @@ func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, file
 
 // createOrUpdateDeploymentTemplate creates or updates a DeploymentTemplate object in the cluster
 // with the given spec.
-func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, namespace, template, providerConfig string, parameters map[string]string, repository string) error {
+func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, namespace, template, providerConfig string, parameters map[string]string, ref *radappiov1alpha3.DeploymentTemplateSourceReference) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	if err := r.SourcePolicy.checkArtifact(ctx, ref); err != nil {
+		return err
+	}
 
 	// Try to get the DeploymentTemplate object from the cluster
 	deploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
-	err := r.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: fileName}, &deploymentTemplate)
+	err := r.SourcePolicy.reader.Get(ctx, client.ObjectKey{Namespace: namespace, Name: fileName}, &deploymentTemplate)
 	if err != nil {
 		if client.IgnoreNotFound(err) != nil {
 			// Error getting the DeploymentTemplate object that is not a NotFound error
@@ -402,8 +472,12 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 				Template:       template,
 				Parameters:     parameters,
 				ProviderConfig: providerConfig,
-				Repository:     repository,
+				Repository:     ref.Name,
+				SourceRef:      ref.DeepCopy(),
 			},
+		}
+		if err := r.SourcePolicy.checkArtifact(ctx, ref); err != nil {
+			return err
 		}
 		if err := r.Client.Create(ctx, deploymentTemplate); err != nil {
 			logger.Error(err, "unable to create deployment template")
@@ -414,12 +488,19 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 		return nil
 	}
 
+	if err := checkTemplateWritable(&deploymentTemplate, ref); err != nil {
+		return err
+	}
+	if err := r.SourcePolicy.checkArtifact(ctx, ref); err != nil {
+		return err
+	}
 	// If the DeploymentTemplate already exists, update it
 	deploymentTemplate.Spec = radappiov1alpha3.DeploymentTemplateSpec{
 		Template:       template,
 		Parameters:     parameters,
 		ProviderConfig: providerConfig,
-		Repository:     repository,
+		Repository:     ref.Name,
+		SourceRef:      ref.DeepCopy(),
 	}
 	if err := r.Client.Update(ctx, &deploymentTemplate); err != nil {
 		logger.Error(err, "unable to update deployment template")
@@ -485,9 +566,70 @@ func (r *FluxController) parseAndValidateRadiusGitOpsConfigFromFile(dir, configF
 	return &radiusConfig, nil
 }
 
-func isSpecifiedInConfig(fileName string, config []ConfigEntry) bool {
+func (r *FluxController) preflightTargets(ctx context.Context, config []ConfigEntry, ref *radappiov1alpha3.DeploymentTemplateSourceReference) ([]ConfigEntry, error) {
+	entries := make([]ConfigEntry, 0, len(config))
+	seen := make(map[client.ObjectKey]bool, len(config))
+	for _, entry := range config {
+		nameBase := strings.TrimSuffix(entry.Name, path.Ext(entry.Name))
+		if entry.Namespace == "" {
+			entry.Namespace = nameBase
+		}
+		if entry.ResourceGroup == "" {
+			entry.ResourceGroup = nameBase
+		}
+		if len(validation.IsDNS1123Label(entry.Namespace)) != 0 || len(validation.IsDNS1123Subdomain(entry.Name)) != 0 {
+			return nil, fmt.Errorf("invalid DeploymentTemplate target %s/%s", entry.Namespace, entry.Name)
+		}
+		key := client.ObjectKey{Namespace: entry.Namespace, Name: entry.Name}
+		if seen[key] {
+			return nil, fmt.Errorf("duplicate DeploymentTemplate target %s", key)
+		}
+		seen[key] = true
+		var existing radappiov1alpha3.DeploymentTemplate
+		if err := r.SourcePolicy.reader.Get(ctx, key, &existing); err == nil {
+			if err := checkTemplateWritable(&existing, ref); err != nil {
+				return nil, err
+			}
+		} else if !k8serrors.IsNotFound(err) {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	if len(entries) == 0 {
+		return entries, nil
+	}
+	var existing radappiov1alpha3.DeploymentTemplateList
+	if err := r.SourcePolicy.reader.List(ctx, &existing); err != nil {
+		return nil, err
+	}
+	for _, previous := range existing.Items {
+		if !sameSource(previous.Spec.SourceRef, ref) || seen[client.ObjectKeyFromObject(&previous)] {
+			continue
+		}
+		for _, entry := range entries {
+			if previous.Name != entry.Name || previous.Namespace == entry.Namespace {
+				continue
+			}
+			oldScope, err := ParseDeploymentScopeFromProviderConfig(previous.Spec.ProviderConfig)
+			if err != nil {
+				return nil, fmt.Errorf("reading previous template scope for %s: %w", client.ObjectKeyFromObject(&previous), err)
+			}
+			if oldScope == "" {
+				return nil, fmt.Errorf("previous template %s has no deployment scope", client.ObjectKeyFromObject(&previous))
+			}
+			newScope := sdkclients.NewDefaultProviderConfig(entry.ResourceGroup).Deployments.Value.Scope
+			if strings.EqualFold(strings.TrimRight(oldScope, "/"), strings.TrimRight(newScope, "/")) {
+				return nil, &sourceHold{"TemplateTargetConflict",
+					"Moving a template between namespaces while retaining its resource group requires completing the previous target's cleanup first"}
+			}
+		}
+	}
+	return entries, nil
+}
+
+func isSpecifiedInConfig(target client.ObjectKey, config []ConfigEntry) bool {
 	for _, bicepFile := range config {
-		if bicepFile.Name == fileName {
+		if bicepFile.Name == target.Name && bicepFile.Namespace == target.Namespace {
 			return true
 		}
 	}

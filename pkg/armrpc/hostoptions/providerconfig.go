@@ -18,6 +18,7 @@ package hostoptions
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/radius-project/radius/pkg/authz"
@@ -30,6 +31,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // ProviderConfig includes the resource provider configuration.
@@ -49,9 +51,50 @@ type ProviderConfig struct {
 	Bicep            BicepOptions                         `yaml:"bicep,omitempty"`
 	Terraform        TerraformOptions                     `yaml:"terraform,omitempty"`
 	Authorization    authz.Options                        `yaml:"authorization,omitempty"`
+	Controller       ControllerOptions                    `yaml:"controller,omitempty"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
+}
+
+// ControllerOptions configures Kubernetes reconciliation.
+type ControllerOptions struct {
+	Flux FluxOptions `yaml:"flux,omitempty"`
+}
+
+// FluxOptions selects the GitRepository objects processed by Radius.
+type FluxOptions struct {
+	Enabled bool                  `yaml:"enabled"`
+	Sources []FluxSourceSelection `yaml:"sources"`
+}
+
+// FluxSourceSelection identifies one installation-trusted GitRepository.
+type FluxSourceSelection struct {
+	Namespace string `yaml:"namespace"`
+	Name      string `yaml:"name"`
+	UID       string `yaml:"uid"`
+}
+
+// Validate rejects ambiguous or malformed source selections, even when disabled.
+func (o FluxOptions) Validate() error {
+	seen := make(map[string]bool, len(o.Sources))
+	for i, source := range o.Sources {
+		if len(validation.IsDNS1123Label(source.Namespace)) != 0 {
+			return fmt.Errorf("controller.flux.sources[%d].namespace must be a Kubernetes namespace", i)
+		}
+		if len(validation.IsDNS1123Subdomain(source.Name)) != 0 {
+			return fmt.Errorf("controller.flux.sources[%d].name must be a Kubernetes object name", i)
+		}
+		if source.UID == "" || strings.ContainsAny(source.UID, " \t\r\n*/\\") {
+			return fmt.Errorf("controller.flux.sources[%d].uid must be a nonempty exact UID", i)
+		}
+		key := source.Namespace + "/" + source.Name
+		if seen[key] {
+			return fmt.Errorf("controller.flux.sources contains duplicate source %s", key)
+		}
+		seen[key] = true
+	}
+	return nil
 }
 
 // ServerOptions includes http server bootstrap options.

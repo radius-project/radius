@@ -19,23 +19,270 @@ package upgrade_test
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
+	fluxmeta "github.com/fluxcd/pkg/apis/meta"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/sdk"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	controllerclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
+
+func Test_Flux_SourceMigration(t *testing.T) {
+	ctx := t.Context()
+	registry, tag := testutil.SetDefault()
+	deImage, err := deploymentEngineImageFromEnv()
+	require.NoError(t, err)
+	k8sClient, err := newKubernetesClient()
+	require.NoError(t, err)
+	cleanupAndWait(t, ctx, k8sClient)
+
+	crdPath := filepath.Join(relativeChartPath, "crds", "radius", "radapp.io_deploymenttemplates.yaml")
+	crdData, err := os.ReadFile(crdPath)
+	require.NoError(t, err)
+	var legacyCRD apiextensionsv1.CustomResourceDefinition
+	require.NoError(t, yaml.Unmarshal(crdData, &legacyCRD))
+	delete(legacyCRD.Spec.Versions[0].Schema.OpenAPIV3Schema.Properties["spec"].Properties, "sourceRef")
+	legacyData, err := yaml.Marshal(legacyCRD)
+	require.NoError(t, err)
+	legacyPath := filepath.Join(t.TempDir(), "deploymenttemplates.yaml")
+	require.NoError(t, os.WriteFile(legacyPath, legacyData, 0o600))
+	require.NoError(t, runCommand(ctx, []string{"kubectl", "apply", "-R", "-f", filepath.Join(relativeChartPath, "crds")}))
+	require.NoError(t, runCommand(ctx, []string{"kubectl", "apply", "-f", legacyPath}))
+	// The fixture owns CRD installation so Helm must not replace its legacy schema.
+	installArgs := helmReleaseArgs("install", registry, tag, deImage, map[string]string{"controller.flux.enabled": "false"})
+	require.NoError(t, runCommand(ctx, append(installArgs, "--skip-crds")))
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupCommandTimeout)
+		defer cancel()
+		helmUninstall(t, cleanupCtx)
+	})
+	opts := rp.NewRPTestOptions(t)
+	require.NoError(t, sourcev1.AddToScheme(opts.Client.Scheme()))
+	require.NoError(t, apiextensionsv1.AddToScheme(opts.Client.Scheme()))
+	var installedCRD apiextensionsv1.CustomResourceDefinition
+	require.NoError(t, opts.Client.Get(ctx, controllerclient.ObjectKey{Name: legacyCRD.Name}, &installedCRD))
+	require.NotContains(t, installedCRD.Spec.Versions[0].Schema.OpenAPIV3Schema.Properties["spec"].Properties, "sourceRef")
+	require.NoError(t, runCommand(ctx, []string{"flux", "install", "--namespace=flux-system", "--version=v2.6.4", "--components=source-controller", "--network-policy=false"}))
+	require.NoError(t, runCommand(ctx, []string{"kubectl", "wait", "--for=condition=available", "deployment/source-controller", "-n", "flux-system", "--timeout=180s"}))
+	source := createMigrationSource(t, ctx, opts)
+
+	const namespace = "flux-source-migration"
+	require.NoError(t, opts.Client.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}))
+	templateData, err := os.ReadFile(filepath.Join("..", "kubernetes", "noncloud", "testdata", "env", "env.json"))
+	require.NoError(t, err)
+	provider, err := sdkclients.NewDefaultProviderConfig(namespace).String()
+	require.NoError(t, err)
+	dt := &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{Name: "migration", Namespace: namespace},
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{
+			Template: string(templateData), ProviderConfig: provider,
+			Parameters: map[string]string{"name": namespace, "namespace": namespace},
+		},
+	}
+	require.NoError(t, opts.Client.Create(ctx, dt))
+	key := controllerclient.ObjectKeyFromObject(dt)
+	waitMigrationTemplate(t, ctx, opts.Client, key, radappiov1alpha3.DeploymentTemplatePhraseReady, dt)
+	originalUID := dt.UID
+	originalOutputs := append([]string(nil), dt.Status.OutputResources...)
+	originalFinalizers := append([]string(nil), dt.Finalizers...)
+	originalParameters := dt.Spec.DeepCopy().Parameters
+	require.NotEmpty(t, originalOutputs)
+	environment, err := generated.NewGenericResourcesClient("Applications.Core/environments",
+		"/planes/radius/local/resourceGroups/"+namespace, &aztoken.AnonymousCredential{}, sdk.NewClientOptions(opts.Connection))
+	require.NoError(t, err)
+	assertPreserved := func() {
+		require.NoError(t, opts.Client.Get(ctx, key, dt))
+		require.Equal(t, originalUID, dt.UID)
+		require.Equal(t, originalOutputs, dt.Status.OutputResources)
+		require.ElementsMatch(t, originalFinalizers, dt.Finalizers)
+		require.Equal(t, originalParameters, dt.Spec.Parameters)
+		require.Equal(t, string(templateData), dt.Spec.Template)
+		require.Equal(t, provider, dt.Spec.ProviderConfig)
+		_, err := environment.Get(ctx, namespace+"-env", nil)
+		require.NoError(t, err)
+	}
+
+	// Seed legacy data while stopped; no pre-change binary is run by this test.
+	require.NoError(t, runCommand(ctx, []string{"kubectl", "scale", "deployment/controller", "-n", radiusNamespace, "--replicas=0"}))
+	require.EventuallyWithT(t, func(check *assert.CollectT) {
+		pods, err := k8sClient.CoreV1().Pods(radiusNamespace).List(ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/name=controller"})
+		require.NoError(check, err)
+		require.Empty(check, pods.Items)
+	}, 2*time.Minute, time.Second)
+	dt.Spec.Repository = source.Name
+	require.NoError(t, opts.Client.Update(ctx, dt))
+	require.NoError(t, runCommand(ctx, []string{"kubectl", "apply", "-f", crdPath}))
+	require.NoError(t, helmUpgrade(ctx, registry, tag, deImage, map[string]string{"controller.flux.enabled": "false"}))
+	waitMigrationTemplate(t, ctx, opts.Client, key, radappiov1alpha3.DeploymentTemplatePhraseHeld, dt)
+	assertPreserved()
+	associateMigrationTemplate(t, ctx, opts.Client, dt, source)
+	require.NoError(t, helmUpgrade(ctx, registry, tag, deImage, migrationSourceValues(source)))
+	waitMigrationTemplate(t, ctx, opts.Client, key, radappiov1alpha3.DeploymentTemplatePhraseReady, dt)
+	assertPreserved()
+
+	// A policy-only restart holds persisted work without a new source revision.
+	require.NoError(t, helmUpgrade(ctx, registry, tag, deImage, map[string]string{"controller.flux.enabled": "false"}))
+	waitMigrationTemplate(t, ctx, opts.Client, key, radappiov1alpha3.DeploymentTemplatePhraseHeld, dt)
+	assertPreserved()
+	require.NoError(t, helmUpgrade(ctx, registry, tag, deImage, migrationSourceValues(source)))
+	waitMigrationTemplate(t, ctx, opts.Client, key, radappiov1alpha3.DeploymentTemplatePhraseReady, dt)
+
+	oldUID := source.UID
+	sourceSpec := source.Spec
+	sourceKey := controllerclient.ObjectKeyFromObject(source)
+	require.NoError(t, opts.Client.Delete(ctx, source))
+	require.Eventually(t, func() bool {
+		return apierrors.IsNotFound(opts.Client.Get(ctx, sourceKey, &sourcev1.GitRepository{}))
+	}, 2*time.Minute, time.Second)
+	source = &sourcev1.GitRepository{ObjectMeta: metav1.ObjectMeta{Name: sourceKey.Name, Namespace: sourceKey.Namespace}, Spec: sourceSpec}
+	require.NoError(t, opts.Client.Create(ctx, source))
+	waitMigrationSource(t, ctx, opts.Client, source)
+	require.NotEqual(t, oldUID, source.UID)
+	require.NoError(t, helmUpgrade(ctx, registry, tag, deImage, migrationSourceValues(source)))
+	waitMigrationTemplate(t, ctx, opts.Client, key, radappiov1alpha3.DeploymentTemplatePhraseHeld, dt)
+	assertPreserved()
+	associateMigrationTemplate(t, ctx, opts.Client, dt, source)
+	waitMigrationTemplate(t, ctx, opts.Client, key, radappiov1alpha3.DeploymentTemplatePhraseReady, dt)
+	assertPreserved()
+	require.Equal(t, source.UID, dt.Spec.SourceRef.UID)
+
+	require.NoError(t, opts.Client.Delete(ctx, dt))
+	require.Eventually(t, func() bool {
+		return apierrors.IsNotFound(opts.Client.Get(ctx, key, &radappiov1alpha3.DeploymentTemplate{}))
+	}, 5*time.Minute, time.Second)
+	require.NoError(t, opts.Client.Delete(ctx, source))
+	require.NoError(t, opts.Client.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}))
+}
+
+func migrationSourceValues(source *sourcev1.GitRepository) map[string]string {
+	return map[string]string{
+		"controller.flux.enabled":              "true",
+		"controller.flux.sources[0].namespace": source.Namespace,
+		"controller.flux.sources[0].name":      source.Name,
+		"controller.flux.sources[0].uid":       string(source.UID),
+	}
+}
+
+func waitMigrationTemplate(t *testing.T, ctx context.Context, client controllerclient.Client, key controllerclient.ObjectKey, phrase radappiov1alpha3.DeploymentTemplatePhrase, dt *radappiov1alpha3.DeploymentTemplate) {
+	t.Helper()
+	require.EventuallyWithT(t, func(check *assert.CollectT) {
+		require.NoError(check, client.Get(ctx, key, dt))
+		require.Equal(check, phrase, dt.Status.Phrase)
+		if phrase == radappiov1alpha3.DeploymentTemplatePhraseReady {
+			require.Nil(check, dt.Status.Operation)
+			require.Equal(check, dt.Generation, dt.Status.ObservedGeneration)
+		}
+	}, 5*time.Minute, time.Second, "template did not reach %s", phrase)
+}
+
+func waitMigrationSource(t *testing.T, ctx context.Context, client controllerclient.Client, source *sourcev1.GitRepository) {
+	t.Helper()
+	key := controllerclient.ObjectKeyFromObject(source)
+	require.EventuallyWithT(t, func(check *assert.CollectT) {
+		require.NoError(check, client.Get(ctx, key, source))
+		ready := apimeta.FindStatusCondition(source.Status.Conditions, fluxmeta.ReadyCondition)
+		require.NotNil(check, ready)
+		require.Equal(check, metav1.ConditionTrue, ready.Status, "source is not ready: %s", ready.Message)
+		require.Equal(check, source.Generation, ready.ObservedGeneration)
+		require.Equal(check, source.Generation, source.Status.ObservedGeneration)
+		require.NotNil(check, source.Status.Artifact)
+	}, 3*time.Minute, time.Second)
+}
+
+func associateMigrationTemplate(t *testing.T, ctx context.Context, client controllerclient.Client, dt *radappiov1alpha3.DeploymentTemplate, source *sourcev1.GitRepository) {
+	t.Helper()
+	require.NoError(t, client.Get(ctx, controllerclient.ObjectKeyFromObject(dt), dt))
+	patch, err := json.Marshal([]map[string]any{
+		{"op": "test", "path": "/metadata/uid", "value": dt.UID},
+		{"op": "test", "path": "/metadata/resourceVersion", "value": dt.ResourceVersion},
+		{"op": "add", "path": "/spec/repository", "value": source.Name},
+		{"op": "add", "path": "/spec/sourceRef", "value": radappiov1alpha3.DeploymentTemplateSourceReference{
+			Namespace: source.Namespace, Name: source.Name, UID: source.UID, Generation: source.Generation,
+			Revision: source.Status.Artifact.Revision, Digest: source.Status.Artifact.Digest,
+		}},
+	})
+	require.NoError(t, err)
+	require.NoError(t, client.Patch(ctx, dt, controllerclient.RawPatch(types.JSONPatchType, patch)))
+}
+
+func createMigrationSource(t *testing.T, ctx context.Context, opts rp.RPTestOptions) *sourcev1.GitRepository {
+	t.Helper()
+	const fixtureNamespace = "flux-migration-git"
+	const username = "migration"
+	password := rand.Text()
+	require.NoError(t, runCommand(ctx, []string{"bash", "../../../.github/actions/install-git-http-backend/install-git-http-backend.sh", username, password, fixtureNamespace}))
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+		defer cancel()
+		err := opts.Client.Delete(cleanupCtx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: fixtureNamespace}})
+		require.NoError(t, controllerclient.IgnoreNotFound(err))
+	})
+	repository := "migration-" + strings.ToLower(rand.Text()[:8])
+	script := `set -eu
+work="$(mktemp -d)"
+git -C "$work" init -b main
+git -C "$work" -c user.name=fixture -c user.email=fixture@example.test commit --allow-empty -m initial
+repo="${GIT_SERVER_TEMP_DIR}/$1.git"
+git clone --bare "$work" "$repo"
+git --git-dir="$repo" config http.uploadpack true
+git --git-dir="$repo" update-server-info
+touch "$repo/git-daemon-export-ok"
+chown -R nginx:nginx "$repo"
+chmod -R u+rwX,go+rX "$repo"
+`
+	require.NoError(t, runCommand(ctx, []string{"kubectl", "exec", "deployment/git-http-backend", "-n", fixtureNamespace,
+		"--", "sh", "-c", script, "sh", repository}))
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: repository, Namespace: "flux-system"},
+		Type:       corev1.SecretTypeBasicAuth,
+		Data:       map[string][]byte{"username": []byte(username), "password": []byte(password)},
+	}
+	require.NoError(t, opts.Client.Create(ctx, secret))
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+		defer cancel()
+		require.NoError(t, controllerclient.IgnoreNotFound(opts.Client.Delete(cleanupCtx, secret)))
+	})
+	source := &sourcev1.GitRepository{
+		ObjectMeta: metav1.ObjectMeta{Name: repository, Namespace: "flux-system"},
+		Spec: sourcev1.GitRepositorySpec{
+			URL:       fmt.Sprintf("http://git-http.%s.svc.cluster.local:3000/%s.git", fixtureNamespace, repository),
+			Interval:  metav1.Duration{Duration: 30 * time.Second},
+			Reference: &sourcev1.GitRepositoryRef{Branch: "main"},
+			SecretRef: &fluxmeta.LocalObjectReference{Name: secret.Name},
+		},
+	}
+	require.NoError(t, opts.Client.Create(ctx, source))
+	waitMigrationSource(t, ctx, opts.Client, source)
+	return source
+}
 
 const (
 	radiusNamespace   = "radius-system"

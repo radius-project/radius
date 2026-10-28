@@ -26,20 +26,399 @@ import (
 
 	"github.com/fluxcd/pkg/apis/meta"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/yaml"
 )
+
+type fluxWriteCounter struct {
+	k8sclient.Client
+	creates               int
+	updates               int
+	deletes               int
+	activeTemplateUpdates int
+}
+
+func (c *fluxWriteCounter) Create(ctx context.Context, object k8sclient.Object, opts ...k8sclient.CreateOption) error {
+	c.creates++
+	return c.Client.Create(ctx, object, opts...)
+}
+
+func (c *fluxWriteCounter) Update(ctx context.Context, object k8sclient.Object, opts ...k8sclient.UpdateOption) error {
+	c.updates++
+	if _, ok := object.(*radappiov1alpha3.DeploymentTemplate); ok && object.GetDeletionTimestamp().IsZero() {
+		c.activeTemplateUpdates++
+	}
+	return c.Client.Update(ctx, object, opts...)
+}
+
+func (c *fluxWriteCounter) Delete(ctx context.Context, object k8sclient.Object, opts ...k8sclient.DeleteOption) error {
+	c.deletes++
+	return c.Client.Delete(ctx, object, opts...)
+}
+
+func fluxTemplateCRD(t *testing.T) *apiextensionsv1.CustomResourceDefinition {
+	t.Helper()
+	data, err := os.ReadFile("../../../deploy/Chart/crds/radius/radapp.io_deploymenttemplates.yaml")
+	require.NoError(t, err)
+	var crd apiextensionsv1.CustomResourceDefinition
+	require.NoError(t, yaml.Unmarshal(data, &crd))
+	return &crd
+}
+
+func Test_FluxController_Preflight(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name       string
+		config     string
+		unselected bool
+		conflict   bool
+		wantErr    string
+	}{
+		{name: "unselected source", unselected: true},
+		{name: "existing different owner", conflict: true, config: "config:\n- name: app.bicep\n  namespace: target\n"},
+		{name: "duplicate targets", config: "config:\n- name: app.bicep\n- name: app.bicep\n", wantErr: "duplicate"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			source := readyFluxSource()
+			objects := []k8sclient.Object{source, fluxTemplateCRD(t)}
+			if tt.conflict {
+				objects = append(objects, &radappiov1alpha3.DeploymentTemplate{
+					ObjectMeta: metav1.ObjectMeta{Name: "app.bicep", Namespace: "target", UID: "existing"},
+					Spec:       radappiov1alpha3.DeploymentTemplateSpec{Template: "unchanged", Repository: "other"},
+				})
+			}
+			c := &fluxWriteCounter{Client: fake.NewClientBuilder().WithScheme(newFluxPolicyTestScheme(t)).WithObjects(objects...).Build()}
+			options := hostoptions.FluxOptions{}
+			if !tt.unselected {
+				options = hostoptions.FluxOptions{Enabled: true, Sources: []hostoptions.FluxSourceSelection{{
+					Namespace: source.Namespace, Name: source.Name, UID: string(source.UID),
+				}}}
+			}
+			policy, err := NewFluxSourcePolicy(options, c)
+			require.NoError(t, err)
+			mocks := gomock.NewController(t)
+			fs := filesystem.NewMemMapFileSystem()
+			fetcher := NewMockArchiveFetcher(mocks)
+			compiler := bicep.NewMockInterface(mocks)
+			if !tt.unselected {
+				fetcher.EXPECT().Fetch(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_, _, dir string) error {
+					require.NoError(t, fs.WriteFile(path.Join(dir, radiusConfigFileName), []byte(tt.config), 0o600))
+					return fs.WriteFile(path.Join(dir, "app.bicep"), []byte(""), 0o600)
+				})
+			}
+			r := &FluxController{Client: c, SourcePolicy: policy, FileSystem: fs, ArchiveFetcher: fetcher, Bicep: compiler}
+			result, err := r.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(source)})
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+			if tt.conflict {
+				require.Positive(t, result.RequeueAfter)
+			}
+			require.Zero(t, c.creates)
+			require.Zero(t, c.updates)
+			require.Zero(t, c.deletes)
+		})
+	}
+}
+
+func Test_FluxController_PruneSourceIdentity(t *testing.T) {
+	t.Parallel()
+	source := readyFluxSource()
+	ref := sourceReference(source)
+	otherRef := ref.DeepCopy()
+	otherRef.Namespace, otherRef.UID = "another-source-namespace", "another-uid"
+	owned := &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{Name: "old.bicep", Namespace: "target", UID: "owned"},
+		Spec:       radappiov1alpha3.DeploymentTemplateSpec{Repository: source.Name, SourceRef: ref},
+	}
+	unrelated := owned.DeepCopy()
+	unrelated.Namespace, unrelated.UID, unrelated.Spec.SourceRef = "other-target", "unrelated", otherRef
+	pending := owned.DeepCopy()
+	pending.Name, pending.UID = "pending.bicep", "pending"
+	pending.DeletionTimestamp = new(metav1.Now())
+	pending.Finalizers = []string{DeploymentTemplateFinalizer}
+	c := &fluxWriteCounter{Client: fake.NewClientBuilder().WithScheme(newFluxPolicyTestScheme(t)).
+		WithIndex(&radappiov1alpha3.DeploymentTemplate{}, deploymentTemplateSourceField, deploymentTemplateSourceIndexer).
+		WithObjects(source, owned, pending, unrelated, fluxTemplateCRD(t)).Build()}
+	policy, err := NewFluxSourcePolicy(hostoptions.FluxOptions{Enabled: true, Sources: []hostoptions.FluxSourceSelection{{
+		Namespace: source.Namespace, Name: source.Name, UID: string(source.UID),
+	}}}, c)
+	require.NoError(t, err)
+	mocks := gomock.NewController(t)
+	fs := filesystem.NewMemMapFileSystem()
+	fetcher := NewMockArchiveFetcher(mocks)
+	fetcher.EXPECT().Fetch(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_, _, dir string) error {
+		return fs.WriteFile(path.Join(dir, radiusConfigFileName), []byte("config: []\n"), 0o600)
+	})
+	r := &FluxController{Client: c, SourcePolicy: policy, FileSystem: fs, ArchiveFetcher: fetcher, Bicep: bicep.NewMockInterface(mocks)}
+	_, err = r.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(source)})
+	require.NoError(t, err)
+	require.Equal(t, 1, c.deletes)
+	require.True(t, apierrors.IsNotFound(c.Get(t.Context(), k8sclient.ObjectKeyFromObject(owned), &radappiov1alpha3.DeploymentTemplate{})))
+	var got radappiov1alpha3.DeploymentTemplate
+	require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(unrelated), &got))
+	require.Equal(t, unrelated.Spec, got.Spec)
+	require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(pending), &radappiov1alpha3.DeploymentTemplate{}),
+		"pending cleanup must not prevent pruning other removed targets")
+}
+
+func Test_FluxController_NamespaceMove(t *testing.T) {
+	t.Parallel()
+	for _, deleting := range []bool{false, true} {
+		name := "existing target"
+		if deleting {
+			name = "target still draining"
+		}
+		t.Run(name, func(t *testing.T) {
+			source := readyFluxSource()
+			provider, err := sdkclients.NewDefaultProviderConfig("shared").String()
+			require.NoError(t, err)
+			previous := &radappiov1alpha3.DeploymentTemplate{
+				ObjectMeta: metav1.ObjectMeta{Name: "app.bicep", Namespace: "old-target", UID: "template-uid",
+					Finalizers: []string{DeploymentTemplateFinalizer}},
+				Spec: radappiov1alpha3.DeploymentTemplateSpec{
+					Repository: source.Name, SourceRef: sourceReference(source), ProviderConfig: provider, Template: "{}",
+				},
+			}
+			if deleting {
+				previous.DeletionTimestamp = new(metav1.Now())
+			}
+			c := &fluxWriteCounter{Client: fake.NewClientBuilder().WithScheme(newFluxPolicyTestScheme(t)).
+				WithIndex(&radappiov1alpha3.DeploymentTemplate{}, deploymentTemplateSourceField, deploymentTemplateSourceIndexer).
+				WithObjects(source, previous, fluxTemplateCRD(t)).Build()}
+			var before radappiov1alpha3.DeploymentTemplate
+			require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(previous), &before))
+			policy := selectedSourcePolicy(t, c, source)
+			mocks := gomock.NewController(t)
+			fs := filesystem.NewMemMapFileSystem()
+			fetcher := NewMockArchiveFetcher(mocks)
+			fetcher.EXPECT().Fetch(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_, _, dir string) error {
+				require.NoError(t, fs.WriteFile(path.Join(dir, "app.bicep"), nil, 0o600))
+				return fs.WriteFile(path.Join(dir, radiusConfigFileName),
+					[]byte("config:\n- name: app.bicep\n  namespace: new-target\n  resourceGroup: shared\n"), 0o600)
+			})
+			r := &FluxController{Client: c, SourcePolicy: policy, FileSystem: fs,
+				ArchiveFetcher: fetcher, Bicep: bicep.NewMockInterface(mocks)}
+			result, err := r.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(source)})
+			require.NoError(t, err)
+			require.Positive(t, result.RequeueAfter)
+			require.Zero(t, c.creates)
+			require.Zero(t, c.updates)
+			require.Zero(t, c.deletes)
+			var got radappiov1alpha3.DeploymentTemplate
+			require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(previous), &got))
+			require.Equal(t, previous.Spec, got.Spec)
+			require.Equal(t, previous.UID, got.UID)
+			require.Equal(t, before.DeletionTimestamp, got.DeletionTimestamp)
+		})
+	}
+}
+
+func Test_FluxController_PruneAfterSourceGeneration(t *testing.T) {
+	t.Parallel()
+	for _, alreadyDeleting := range []bool{false, true} {
+		name := "new deletion"
+		if alreadyDeleting {
+			name = "resume old generation deletion"
+		}
+		t.Run(name, func(t *testing.T) {
+			source := readyFluxSource()
+			oldRef := sourceReference(source)
+			source.Generation = 2
+			source.Status.ObservedGeneration = 2
+			source.Status.Conditions[0].ObservedGeneration = 2
+			provider, err := sdkclients.NewDefaultProviderConfig("target").String()
+			require.NoError(t, err)
+			previous := &radappiov1alpha3.DeploymentTemplate{
+				ObjectMeta: metav1.ObjectMeta{Name: "old.bicep", Namespace: "target", UID: "template-uid",
+					Finalizers: []string{DeploymentTemplateFinalizer}},
+				Spec: radappiov1alpha3.DeploymentTemplateSpec{Template: "{}", Repository: source.Name, SourceRef: oldRef, ProviderConfig: provider},
+			}
+			if alreadyDeleting {
+				previous.DeletionTimestamp = new(metav1.Now())
+			}
+			child := &radappiov1alpha3.DeploymentResource{
+				ObjectMeta: metav1.ObjectMeta{Name: "output", Namespace: previous.Namespace, UID: "output-uid",
+					Finalizers: []string{DeploymentResourceFinalizer},
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: radappiov1alpha3.GroupVersion.String(), Kind: deploymentTemplateKind,
+						Name: previous.Name, UID: previous.UID, Controller: new(true),
+					}}},
+				Spec: radappiov1alpha3.DeploymentResourceSpec{Id: "/planes/radius/local/resourceGroups/target/providers/Applications.Core/containers/output"},
+			}
+			c := &fluxWriteCounter{Client: fake.NewClientBuilder().WithScheme(newFluxPolicyTestScheme(t)).
+				WithStatusSubresource(&radappiov1alpha3.DeploymentTemplate{}, &radappiov1alpha3.DeploymentResource{}).
+				WithIndex(&radappiov1alpha3.DeploymentTemplate{}, deploymentTemplateSourceField, deploymentTemplateSourceIndexer).
+				WithObjects(source, previous, child, fluxTemplateCRD(t)).Build()}
+			policy := selectedSourcePolicy(t, c, source)
+			mocks := gomock.NewController(t)
+			fs := filesystem.NewMemMapFileSystem()
+			fetcher := NewMockArchiveFetcher(mocks)
+			fetcher.EXPECT().Fetch(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_, _, dir string) error {
+				return fs.WriteFile(path.Join(dir, radiusConfigFileName), []byte("config: []\n"), 0o600)
+			})
+			r := &FluxController{Client: c, SourcePolicy: policy, FileSystem: fs,
+				ArchiveFetcher: fetcher, Bicep: bicep.NewMockInterface(mocks)}
+			_, err = r.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(source)})
+			require.NoError(t, err)
+			var deleting radappiov1alpha3.DeploymentTemplate
+			require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(previous), &deleting))
+			require.NotNil(t, deleting.DeletionTimestamp)
+			require.Equal(t, source.Generation, deleting.Spec.SourceRef.Generation)
+			require.Equal(t, previous.UID, deleting.UID)
+			require.Equal(t, previous.Spec.Template, deleting.Spec.Template)
+			require.Zero(t, c.activeTemplateUpdates, "cleanup authorization must not enable old content before deletion")
+			mockBackend := sdkclients.NewMockResourceDeploymentsClient()
+			backend := &sourceTestDeployments{ResourceDeploymentsClient: mockBackend}
+			templateController := &DeploymentTemplateReconciler{Client: c, SourcePolicy: policy, EventRecorder: record.NewFakeRecorder(5),
+				ResourceDeploymentsClient: backend}
+			_, err = templateController.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(previous)})
+			require.ErrorContains(t, err, "owned resources")
+			resourceController := &DeploymentResourceReconciler{Client: c, SourcePolicy: policy, EventRecorder: record.NewFakeRecorder(5),
+				ResourceDeploymentsClient: backend}
+			var pending radappiov1alpha3.DeploymentResource
+			require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(child), &pending))
+			eligible, err := resourceController.deleteIsEligible(t.Context(), &pending, metav1.GetControllerOf(&pending))
+			require.NoError(t, err)
+			require.True(t, eligible, "current-generation cleanup must retain the original owner and scope: %+v", pending.OwnerReferences)
+			_, err = resourceController.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(child)})
+			require.NoError(t, err)
+			require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(child), &pending))
+			require.NotNil(t, pending.Status.Operation)
+			require.Equal(t, 1, backend.deletes)
+			require.Zero(t, backend.creates)
+			mockBackend.CompleteOperation(pending.Status.Operation.ResumeToken, nil)
+			_, err = resourceController.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(child)})
+			require.NoError(t, k8sclient.IgnoreNotFound(err))
+			require.True(t, apierrors.IsNotFound(c.Get(t.Context(), k8sclient.ObjectKeyFromObject(child), &radappiov1alpha3.DeploymentResource{})))
+			require.Equal(t, 1, backend.deletes)
+			_, err = templateController.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(previous)})
+			require.NoError(t, err)
+			require.True(t, apierrors.IsNotFound(c.Get(t.Context(), k8sclient.ObjectKeyFromObject(previous), &radappiov1alpha3.DeploymentTemplate{})))
+			require.Zero(t, backend.creates)
+		})
+	}
+}
+
+func Test_FluxController_PruneInactiveSource(t *testing.T) {
+	t.Parallel()
+	source := readyFluxSource()
+	ref := sourceReference(source)
+	source.Generation = 2
+	source.Spec.Suspend = true
+	previous := &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{Name: "old.bicep", Namespace: "target", UID: "template-uid",
+			DeletionTimestamp: new(metav1.Now()), Finalizers: []string{DeploymentTemplateFinalizer}},
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{Repository: source.Name, SourceRef: ref},
+	}
+	c := &fluxWriteCounter{Client: fake.NewClientBuilder().WithScheme(newFluxPolicyTestScheme(t)).WithObjects(source, previous).Build()}
+	r := &FluxController{Client: c, SourcePolicy: selectedSourcePolicy(t, c, source)}
+	ref.Generation = source.Generation
+	err := r.pruneTemplate(t.Context(), k8sclient.ObjectKeyFromObject(previous), ref)
+	require.ErrorContains(t, err, "SourceNotReady")
+	require.Zero(t, c.updates)
+	require.Zero(t, c.deletes)
+	r.SourcePolicy, err = NewFluxSourcePolicy(hostoptions.FluxOptions{}, c)
+	require.NoError(t, err)
+	require.ErrorContains(t, r.pruneTemplate(t.Context(), k8sclient.ObjectKeyFromObject(previous), ref), "SourceNotSelected")
+	require.Zero(t, c.updates)
+	require.Zero(t, c.deletes)
+}
+
+func Test_FluxController_DistinctScopeTarget(t *testing.T) {
+	t.Parallel()
+	source := readyFluxSource()
+	ref := sourceReference(source)
+	provider, err := sdkclients.NewDefaultProviderConfig("old-group").String()
+	require.NoError(t, err)
+	previous := &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{Name: "app.bicep", Namespace: "old-target"},
+		Spec:       radappiov1alpha3.DeploymentTemplateSpec{Repository: source.Name, SourceRef: ref, ProviderConfig: provider},
+	}
+	c := fake.NewClientBuilder().WithScheme(newFluxPolicyTestScheme(t)).WithObjects(source, previous).Build()
+	r := &FluxController{Client: c, SourcePolicy: selectedSourcePolicy(t, c, source)}
+	entries, err := r.preflightTargets(t.Context(), []ConfigEntry{{Name: previous.Name, Namespace: "new-target", ResourceGroup: "new-group"}}, ref)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	require.Equal(t, "new-target", entries[0].Namespace)
+	require.Equal(t, "new-group", entries[0].ResourceGroup)
+}
+
+func Test_FluxController_ProtectedWriters(t *testing.T) {
+	SkipWithoutEnvironment(t)
+	ctx := t.Context()
+	admin, err := k8sclient.New(config, k8sclient.Options{Scheme: scheme})
+	require.NoError(t, err)
+	const namespace = "flux-protected-writers"
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+	require.NoError(t, admin.Create(ctx, ns))
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Second*10)
+		defer cancel()
+		require.NoError(t, k8sclient.IgnoreNotFound(admin.Delete(cleanupCtx, ns)))
+	})
+	source := makeGitRepository(types.NamespacedName{Namespace: namespace, Name: "source"}, "https://example.invalid/fixture.git")
+	require.NoError(t, admin.Create(ctx, &source))
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{Name: "reader", Namespace: namespace},
+		Rules:      []rbacv1.PolicyRule{{APIGroups: []string{sourcev1.GroupVersion.Group}, Resources: []string{"gitrepositories"}, Verbs: []string{"get"}}},
+	}
+	require.NoError(t, admin.Create(ctx, role))
+	require.NoError(t, admin.Create(ctx, &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: "reader", Namespace: namespace},
+		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "Role", Name: role.Name},
+		Subjects:   []rbacv1.Subject{{APIGroup: rbacv1.GroupName, Kind: "User", Name: "flux-fixture-reader"}},
+	}))
+	userConfig := rest.CopyConfig(config)
+	userConfig.Impersonate = rest.ImpersonationConfig{UserName: "flux-fixture-reader", Groups: []string{"system:authenticated"}}
+	reader, err := k8sclient.New(userConfig, k8sclient.Options{Scheme: scheme})
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		return reader.Get(ctx, k8sclient.ObjectKeyFromObject(&source), &sourcev1.GitRepository{}) == nil
+	}, time.Second*10, time.Millisecond*100, "read-only principal must be authenticated and permitted to read its source")
+	source.Spec.URL = "https://example.invalid/changed.git"
+	require.True(t, apierrors.IsForbidden(reader.Update(ctx, &source)))
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "verification", Namespace: namespace}}
+	require.NoError(t, admin.Create(ctx, secret))
+	secret.Data = map[string][]byte{"public-key": []byte("fixture-public-material")}
+	require.True(t, apierrors.IsForbidden(reader.Update(ctx, secret)))
+	dt := &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{Name: "application", Namespace: namespace},
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{Repository: source.Name, SourceRef: &radappiov1alpha3.DeploymentTemplateSourceReference{
+			Namespace: namespace, Name: source.Name, UID: source.UID, Generation: source.Generation,
+		}},
+	}
+	require.NoError(t, admin.Create(ctx, dt))
+	dt.Spec.Repository, dt.Spec.SourceRef = "", nil
+	require.True(t, apierrors.IsForbidden(reader.Update(ctx, dt)), "clearing attribution must not create a direct path")
+	require.True(t, apierrors.IsForbidden(reader.Status().Update(ctx, dt)))
+	require.True(t, apierrors.IsForbidden(reader.Delete(ctx, dt)))
+	require.True(t, apierrors.IsForbidden(reader.Create(ctx, &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{Name: "direct", Namespace: namespace},
+	})))
+}
 
 func Test_FluxController_Basic(t *testing.T) {
 	testGitRepoName := "flux-basic-repo"
@@ -132,6 +511,41 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 	archiveFetcher := NewMockArchiveFetcher(opts.mctrl)
 	bicep := bicep.NewMockInterface(opts.mctrl)
 
+	direct, err := k8sclient.New(config, k8sclient.Options{Scheme: scheme})
+	require.NoError(t, err)
+	selected := make(map[types.NamespacedName]bool)
+	sourceOptions := hostoptions.FluxOptions{Enabled: true}
+	for _, step := range steps {
+		radiusConfig, err := ParseRadiusGitOpsConfig(path.Join(step.Path, "radius-gitops-config.yaml"))
+		require.NoError(t, err)
+		for _, entry := range radiusConfig.Config {
+			namespace := entry.Namespace
+			if namespace == "" {
+				namespace = strings.TrimSuffix(entry.Name, path.Ext(entry.Name))
+			}
+			key := types.NamespacedName{Namespace: namespace, Name: opts.testGitRepoName}
+			if selected[key] {
+				continue
+			}
+			selected[key] = true
+			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+			err := direct.Create(ctx, ns)
+			if err != nil {
+				require.NoError(t, k8sclient.IgnoreAlreadyExists(err))
+			}
+			source := makeGitRepository(key, opts.testGitRepoURL)
+			require.NoError(t, direct.Create(ctx, &source))
+			sourceOptions.Sources = append(sourceOptions.Sources, hostoptions.FluxSourceSelection{
+				Namespace: namespace, Name: source.Name, UID: string(source.UID),
+			})
+			t.Cleanup(func() {
+				cleanupCtx, cleanupCancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+				defer cleanupCancel()
+				require.NoError(t, k8sclient.IgnoreNotFound(direct.Delete(cleanupCtx, &source)))
+			})
+		}
+	}
+
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
 		Controller: crconfig.Controller{
@@ -143,12 +557,15 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 		LeaderElection: false,
 	})
 	require.NoError(t, err)
+	sourcePolicy, err := NewFluxSourcePolicy(sourceOptions, mgr.GetAPIReader())
+	require.NoError(t, err)
 
 	fluxController := &FluxController{
 		Client:         mgr.GetClient(),
 		FileSystem:     fs,
 		Bicep:          bicep,
 		ArchiveFetcher: archiveFetcher,
+		SourcePolicy:   sourcePolicy,
 	}
 	err = (fluxController).SetupWithManager(mgr)
 	require.NoError(t, err)
@@ -346,21 +763,7 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 			gitRepo := sourcev1.GitRepository{}
 			gitRepoNamespacedName := types.NamespacedName{Name: opts.testGitRepoName, Namespace: namespaceName}
 			if stepNumber == 1 {
-				// Create a GitRepository resource on the cluster
-				gitRepo = makeGitRepository(gitRepoNamespacedName, opts.testGitRepoURL)
-				err = opts.client.Create(ctx, &gitRepo)
-				require.NoError(t, err)
-				defer func() {
-					// Clean up the GitRepository resource after the test
-					err := opts.client.Delete(ctx, &gitRepo)
-					if err != nil {
-						if k8sclient.IgnoreNotFound(err) != nil {
-							require.NoError(t, err)
-						}
-					}
-				}()
-
-				// Wait for the GitRepository to be created
+				// Sources were created before manager startup so selection uses their actual UIDs.
 				err = waitForGitRepositoryToExistWithGeneration(ctx, opts.client, gitRepoNamespacedName, &gitRepo, int64(stepNumber))
 				require.NoError(t, err, "GitRepository was not created successfully")
 			}
@@ -371,7 +774,7 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 
 			// Update the Status subresource
 			updatedStatus := sourcev1.GitRepositoryStatus{
-				ObservedGeneration: int64(stepNumber),
+				ObservedGeneration: gitRepo.Generation,
 				Artifact: &meta.Artifact{
 					URL:      opts.testGitRepoURL,
 					Digest:   opts.testGitRepoSHA,
@@ -382,10 +785,11 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 				},
 				Conditions: []metav1.Condition{
 					{
-						Type:    "Ready",
-						Status:  metav1.ConditionTrue,
-						Reason:  "Succeeded",
-						Message: "Repository is ready",
+						Type:               "Ready",
+						Status:             metav1.ConditionTrue,
+						ObservedGeneration: gitRepo.Generation,
+						Reason:             "Succeeded",
+						Message:            "Repository is ready",
 						LastTransitionTime: metav1.Time{
 							Time: time.Now(),
 						},
@@ -417,7 +821,8 @@ func makeGitRepository(namespacedName types.NamespacedName, url string) sourcev1
 		Name:       namespacedName.Name,
 		Namespace:  namespacedName.Namespace,
 		Spec: sourcev1.GitRepositorySpec{
-			URL: url,
+			URL:      url,
+			Interval: metav1.Duration{Duration: time.Minute},
 		},
 	}
 }
@@ -486,10 +891,11 @@ func waitForDeploymentTemplateToExistWithGeneration(ctx context.Context, k8sClie
 
 func Test_isSpecifiedInConfig(t *testing.T) {
 	tests := []struct {
-		name     string
-		fileName string
-		config   []ConfigEntry
-		expected bool
+		name      string
+		fileName  string
+		namespace string
+		config    []ConfigEntry
+		expected  bool
 	}{
 		{
 			name:     "File exists in config",
@@ -521,12 +927,77 @@ func Test_isSpecifiedInConfig(t *testing.T) {
 			config:   nil,
 			expected: false,
 		},
+		{
+			name:      "Same filename in another namespace",
+			fileName:  "example.bicep",
+			namespace: "old-target",
+			config:    []ConfigEntry{{Name: "example.bicep", Namespace: "new-target"}},
+			expected:  false,
+		},
+		{
+			name:      "Same namespace and filename",
+			fileName:  "example.bicep",
+			namespace: "target",
+			config:    []ConfigEntry{{Name: "example.bicep", Namespace: "target"}},
+			expected:  true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := isSpecifiedInConfig(tt.fileName, tt.config)
+			result := isSpecifiedInConfig(k8sclient.ObjectKey{Name: tt.fileName, Namespace: tt.namespace}, tt.config)
 			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func Test_FluxController_TemplateOwnership(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name   string
+		change func(*radappiov1alpha3.DeploymentTemplateSourceReference)
+		legacy bool
+	}{
+		{name: "same source"},
+		{name: "different source", change: func(ref *radappiov1alpha3.DeploymentTemplateSourceReference) { ref.Name = "other" }},
+		{name: "same name different namespace", change: func(ref *radappiov1alpha3.DeploymentTemplateSourceReference) { ref.Namespace = "other" }},
+		{name: "recreated source", change: func(ref *radappiov1alpha3.DeploymentTemplateSourceReference) { ref.UID = "old-uid" }},
+		{name: "legacy", legacy: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			source := readyFluxSource()
+			ref := sourceReference(source)
+			owner := ref.DeepCopy()
+			if tt.change != nil {
+				tt.change(owner)
+			}
+			if tt.legacy {
+				owner = nil
+			}
+			template := &radappiov1alpha3.DeploymentTemplate{
+				ObjectMeta: metav1.ObjectMeta{Name: "application.bicep", Namespace: "target", UID: "template-uid"},
+				Spec:       radappiov1alpha3.DeploymentTemplateSpec{Template: "before", Repository: source.Name, SourceRef: owner},
+			}
+			s := newFluxPolicyTestScheme(t)
+			c := fake.NewClientBuilder().WithScheme(s).WithObjects(source, template).Build()
+			policy, err := NewFluxSourcePolicy(hostoptions.FluxOptions{Enabled: true, Sources: []hostoptions.FluxSourceSelection{{
+				Namespace: source.Namespace, Name: source.Name, UID: string(source.UID),
+			}}}, c)
+			require.NoError(t, err)
+			r := &FluxController{Client: c, SourcePolicy: policy}
+			before := template.Spec.DeepCopy()
+			err = r.createOrUpdateDeploymentTemplate(t.Context(), template.Name, template.Namespace, "after", "config", nil, ref)
+			var got radappiov1alpha3.DeploymentTemplate
+			require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(template), &got))
+			require.Equal(t, template.UID, got.UID)
+			if tt.change != nil || tt.legacy {
+				require.ErrorContains(t, err, "TemplateSourceMismatch")
+				require.Equal(t, *before, got.Spec)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, "after", got.Spec.Template)
+				require.Equal(t, ref, got.Spec.SourceRef)
+			}
 		})
 	}
 }

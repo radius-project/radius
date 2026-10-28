@@ -5,6 +5,76 @@ release:
   name: radius
   namespace: radius-system
 tests:
+  - it: defaults to no Flux sources and uses a nonoverlapping rollout
+    asserts:
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: 'controller:\s+flux:\s+enabled: false\s+sources: \[\]'
+        template: controller/configmaps.yaml
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+        template: controller/deployment.yaml
+      - notExists:
+          path: spec.strategy.rollingUpdate
+        template: controller/deployment.yaml
+      - matchRegex:
+          path: spec.template.metadata.annotations["checksum/flux-config"]
+          pattern: '^[a-f0-9]{64}$'
+        template: controller/deployment.yaml
+
+  - it: renders explicitly selected Flux identities
+    set:
+      controller.flux.enabled: true
+      controller.flux.sources:
+        - namespace: flux-system
+          name: applications
+          uid: source-uid
+    templates:
+      - controller/configmaps.yaml
+    asserts:
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: 'flux:\s+enabled: true\s+sources:\s+- name: applications\s+namespace: flux-system\s+uid: source-uid'
+
+  - it: rejects incomplete source identities even while disabled
+    set:
+      controller.flux.sources:
+        - namespace: flux-system
+          name: applications
+    templates:
+      - controller/deployment.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: controller.flux.sources uid must be a string
+
+  - it: rejects duplicate source identities
+    set:
+      controller.flux.sources:
+        - namespace: flux-system
+          name: applications
+          uid: source-a
+        - namespace: flux-system
+          name: applications
+          uid: source-b
+    templates:
+      - controller/deployment.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: controller.flux.sources contains duplicate source flux-system/applications
+
+  - it: rejects wildcard source identifiers
+    set:
+      controller.flux.sources:
+        - namespace: flux-system
+          name: applications
+          uid: "*"
+    templates:
+      - controller/deployment.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: controller.flux.sources uid must be a nonempty exact UID
+
   - it: renders only the deployment, configuration, service account, and RBAC
     asserts:
       - hasDocuments:

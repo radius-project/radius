@@ -28,9 +28,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
 	"github.com/radius-project/radius/test/rp"
+	"go.yaml.in/yaml/v3"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -40,13 +43,16 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	gitobject "github.com/go-git/go-git/v5/plumbing/object"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/remotecommand"
@@ -82,7 +88,6 @@ const (
 )
 
 func Test_Flux_Basic(t *testing.T) {
-	t.Parallel()
 	testName := "flux-basic"
 	steps := []GitOpsTestStep{
 		{
@@ -105,11 +110,10 @@ func Test_Flux_Basic(t *testing.T) {
 		"flux-basic",
 	}
 
-	testFluxIntegration(t, testName, steps, namespaces)
+	testFluxIntegration(t, testName, steps, namespaces, false)
 }
 
 func Test_Flux_Complex(t *testing.T) {
-	t.Parallel()
 	testName := "flux-complex"
 	steps := []GitOpsTestStep{
 		{
@@ -147,11 +151,136 @@ func Test_Flux_Complex(t *testing.T) {
 		"flux-complex-flux-complex-app",
 	}
 
-	testFluxIntegration(t, testName, steps, namespaces)
+	testFluxIntegration(t, testName, steps, namespaces, false)
+}
+
+func Test_Flux_SourceSelection(t *testing.T) {
+	steps := []GitOpsTestStep{
+		{
+			path: "testdata/gitops/basic/step1", resourceGroup: "flux-basic",
+			expectedResources: [][]string{{"Applications.Core/environments", "flux-basic-env"}},
+		},
+		{
+			path: "testdata/gitops/basic/step2", resourceGroup: "flux-basic",
+			expectedResourcesToNotExist: [][]string{{"Applications.Core/environments", "flux-basic-env"}},
+		},
+	}
+	testFluxIntegration(t, "flux-selection", steps, []string{"flux-basic"}, true)
+}
+
+type fluxSelectionFixture struct {
+	client          kubernetes.Interface
+	originalConfig  string
+	originalRestart string
+	hadRestart      bool
+}
+
+const fluxRestartAnnotation = "radapp.io/flux-test-restart"
+
+func newFluxSelectionFixture(t *testing.T, ctx context.Context, client kubernetes.Interface) *fluxSelectionFixture {
+	t.Helper()
+	cm, err := client.CoreV1().ConfigMaps("radius-system").Get(ctx, "controller-config", metav1.GetOptions{})
+	require.NoError(t, err)
+	deployment, err := client.AppsV1().Deployments("radius-system").Get(ctx, "controller", metav1.GetOptions{})
+	require.NoError(t, err)
+	value, present := deployment.Spec.Template.Annotations[fluxRestartAnnotation]
+	fixture := &fluxSelectionFixture{client: client, originalConfig: cm.Data["controller-config.yaml"], originalRestart: value, hadRestart: present}
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 4*time.Minute)
+		defer cancel()
+		require.NoError(t, fixture.apply(cleanupCtx, fixture.originalConfig, fixture.originalRestart, fixture.hadRestart))
+	})
+	return fixture
+}
+
+func (f *fluxSelectionFixture) selectSources(t *testing.T, ctx context.Context, sources []hostoptions.FluxSourceSelection) {
+	t.Helper()
+	cm, err := f.client.CoreV1().ConfigMaps("radius-system").Get(ctx, "controller-config", metav1.GetOptions{})
+	require.NoError(t, err)
+	var config map[string]any
+	require.NoError(t, yaml.Unmarshal([]byte(cm.Data["controller-config.yaml"]), &config))
+	config["controller"] = hostoptions.ControllerOptions{Flux: hostoptions.FluxOptions{Enabled: true, Sources: sources}}
+	data, err := yaml.Marshal(config)
+	require.NoError(t, err)
+	require.NoError(t, f.apply(ctx, string(data), time.Now().Format(time.RFC3339Nano), true))
+}
+
+func (f *fluxSelectionFixture) apply(ctx context.Context, config, restart string, includeRestart bool) error {
+	oldPods, err := f.client.CoreV1().Pods("radius-system").List(ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/name=controller"})
+	if err != nil {
+		return err
+	}
+	oldUIDs := make(map[types.UID]bool, len(oldPods.Items))
+	for _, pod := range oldPods.Items {
+		oldUIDs[pod.UID] = true
+	}
+	if err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		cm, err := f.client.CoreV1().ConfigMaps("radius-system").Get(ctx, "controller-config", metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		cm.Data["controller-config.yaml"] = config
+		_, err = f.client.CoreV1().ConfigMaps("radius-system").Update(ctx, cm, metav1.UpdateOptions{})
+		return err
+	}); err != nil {
+		return err
+	}
+	var desiredGeneration int64
+	var restarted bool
+	if err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		deployment, err := f.client.AppsV1().Deployments("radius-system").Get(ctx, "controller", metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if deployment.Spec.Strategy.Type != appsv1.RecreateDeploymentStrategyType {
+			return fmt.Errorf("Flux fixture requires the controller Recreate strategy")
+		}
+		if deployment.Spec.Template.Annotations == nil {
+			deployment.Spec.Template.Annotations = map[string]string{}
+		}
+		if includeRestart {
+			deployment.Spec.Template.Annotations[fluxRestartAnnotation] = restart
+		} else {
+			delete(deployment.Spec.Template.Annotations, fluxRestartAnnotation)
+		}
+		updated, err := f.client.AppsV1().Deployments("radius-system").Update(ctx, deployment, metav1.UpdateOptions{})
+		if err == nil {
+			desiredGeneration = updated.Generation
+			restarted = updated.Generation != deployment.Generation
+		}
+		return err
+	}); err != nil {
+		return err
+	}
+	if !restarted {
+		return nil
+	}
+	waitCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
+	return wait.PollUntilContextCancel(waitCtx, time.Second, true, func(ctx context.Context) (bool, error) {
+		deployment, err := f.client.AppsV1().Deployments("radius-system").Get(ctx, "controller", metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		if deployment.Status.ObservedGeneration < desiredGeneration || deployment.Status.UpdatedReplicas != 1 ||
+			deployment.Status.ReadyReplicas != 1 || deployment.Status.AvailableReplicas != 1 {
+			return false, nil
+		}
+		pods, err := f.client.CoreV1().Pods("radius-system").List(ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/name=controller"})
+		if err != nil {
+			return false, err
+		}
+		for _, pod := range pods.Items {
+			if oldUIDs[pod.UID] {
+				return false, nil
+			}
+		}
+		return len(pods.Items) == 1, nil
+	})
 }
 
 // testFluxIntegration is a helper function that runs a test for the integration of Radius and Flux.
-func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, namespaces []string) {
+func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, namespaces []string, checkSelection bool) {
 	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 
@@ -256,10 +385,36 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 	// Wait for the GitRepository to be ready.
 	_, err = waitForGitRepositoryReady(t, ctx, types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}, opts.Client, fluxGitRepository.ResourceVersion)
 	require.NoError(t, err)
+	selection := []hostoptions.FluxSourceSelection{{
+		Namespace: fluxGitRepository.Namespace, Name: fluxGitRepository.Name, UID: string(fluxGitRepository.UID),
+	}}
+	fixture := newFluxSelectionFixture(t, ctx, opts.K8sClient)
+	if checkSelection {
+		fixture.selectSources(t, ctx, []hostoptions.FluxSourceSelection{})
+	} else {
+		fixture.selectSources(t, ctx, selection)
+	}
 
 	cleanupDTs := map[types.NamespacedName]struct{}{}
 	for stepIndex, step := range steps {
 		stepNumber := stepIndex + 1
+		gitRepoNN := types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}
+		if checkSelection && stepIndex > 0 {
+			// Keep the old artifact inactive until the next configuration is pushed.
+			err = retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+				repo := &sourcev1.GitRepository{}
+				if err := opts.Client.Get(ctx, gitRepoNN, repo); err != nil {
+					return err
+				}
+				repo.Spec.Suspend = true
+				return opts.Client.Update(ctx, repo)
+			})
+			require.NoError(t, err)
+			var suspended sourcev1.GitRepository
+			require.NoError(t, opts.Client.Get(ctx, gitRepoNN, &suspended))
+			require.Equal(t, fluxGitRepository.UID, suspended.UID)
+			require.Greater(t, suspended.Generation, fluxGitRepository.Generation)
+		}
 
 		// Remove all files from the repository.
 		// Add all files from step.path to the repository.
@@ -288,8 +443,6 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 		require.NoError(t, err)
 		t.Log("Pushed changes successfully")
 
-		gitRepoNN := types.NamespacedName{Name: gitRepoName, Namespace: fluxSystemNamespace}
-
 		// Request an immediate reconcile of the GitRepository. RFC3339Nano is used so
 		// that two requests issued within the same second are still distinct;
 		// otherwise source-controller treats the second request as already handled.
@@ -304,6 +457,9 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 			}
 			annotations[meta.ReconcileRequestAnnotation] = time.Now().Format(time.RFC3339Nano)
 			repo.SetAnnotations(annotations)
+			if checkSelection && stepIndex > 0 {
+				repo.Spec.Suspend = false
+			}
 			return opts.Client.Update(ctx, repo)
 		})
 		require.NoError(t, err)
@@ -315,6 +471,26 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 
 		radiusConfig, err := reconciler.ParseRadiusGitOpsConfig(path.Join(step.path, "radius-gitops-config.yaml"))
 		require.NoError(t, err)
+		if checkSelection && stepIndex == 0 {
+			notSelectedErr := wait.PollUntilContextTimeout(ctx, time.Second, 10*time.Second, true, func(_ context.Context) (bool, error) {
+				// Give the final read its own budget rather than the polling window's remaining milliseconds.
+				readCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				defer cancel()
+				for _, entry := range radiusConfig.Config {
+					name, namespace, _, _ := getValuesFromRadiusGitOpsConfig(entry)
+					err := opts.Client.Get(readCtx, types.NamespacedName{Namespace: namespace, Name: name}, &radappiov1alpha3.DeploymentTemplate{})
+					if err == nil {
+						return false, fmt.Errorf("unselected source created DeploymentTemplate %s/%s", namespace, name)
+					}
+					if !apierrors.IsNotFound(err) {
+						return false, err
+					}
+				}
+				return false, nil
+			})
+			require.ErrorIs(t, notSelectedErr, context.DeadlineExceeded, "unselected source must not create templates")
+			fixture.selectSources(t, ctx, selection)
+		}
 
 		// DeploymentTemplates from earlier steps that are no longer in the config
 		// must be pruned by the Radius Flux controller (not by the test).
@@ -371,6 +547,31 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 		// on, so the next push does not race an in-flight deployment.
 		for nn := range currentDTs {
 			waitForDeploymentTemplateToBeReady(ctx, t, nn, opts.Client)
+		}
+		if checkSelection && stepIndex == 0 {
+			before := map[types.NamespacedName]*radappiov1alpha3.DeploymentTemplate{}
+			for nn := range currentDTs {
+				dt := &radappiov1alpha3.DeploymentTemplate{}
+				require.NoError(t, opts.Client.Get(ctx, nn, dt))
+				require.NotNil(t, dt.Spec.SourceRef)
+				require.Equal(t, fluxGitRepository.UID, dt.Spec.SourceRef.UID)
+				before[nn] = dt
+			}
+			fixture.selectSources(t, ctx, []hostoptions.FluxSourceSelection{})
+			for nn, original := range before {
+				require.EventuallyWithT(t, func(check *assert.CollectT) {
+					var dt radappiov1alpha3.DeploymentTemplate
+					require.NoError(check, opts.Client.Get(ctx, nn, &dt))
+					require.Equal(check, original.UID, dt.UID)
+					require.Equal(check, original.Spec, dt.Spec)
+					require.Equal(check, radappiov1alpha3.DeploymentTemplatePhraseHeld, dt.Status.Phrase)
+				}, time.Minute, time.Second)
+			}
+			require.NoError(t, assertExpectedResourcesExist(ctx, scope, step.expectedResources, opts.Connection))
+			fixture.selectSources(t, ctx, selection)
+			for nn := range currentDTs {
+				waitForDeploymentTemplateToBeReady(ctx, t, nn, opts.Client)
+			}
 		}
 	}
 
