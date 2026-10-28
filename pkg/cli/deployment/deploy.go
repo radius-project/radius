@@ -225,7 +225,11 @@ func (dc *ResourceDeploymentClient) monitorProgress(ctx context.Context, name st
 
 	// Now loop forever for updates. We're relying on cancellation of the context to terminate.
 	for ctx.Err() == nil {
-		time.Sleep(OperationPollInterval)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(OperationPollInterval):
+		}
 
 		operations, err := dc.listOperations(ctx, name)
 		if err != nil && err == ctx.Err() {
