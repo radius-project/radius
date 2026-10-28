@@ -24,7 +24,7 @@ Install these tools and make sure each command is available on `PATH`:
 - Helm
 - OpenSSL 1.1.1 or later
 - jq
-- Python 3
+- zip
 - envsubst (provided by gettext)
 - curl 7.71.0 or later
 - Flux CLI 2.6.4
@@ -279,6 +279,8 @@ To run functional tests against an existing environment:
    ```bash
    make publish-test-terraform-recipes
    ```
+
+   The publisher uses Bash, `zip`, and `kubectl`; Python is not required for recipe publishing. Run `make test-publish-recipes` to check both recipe publishers without a registry or cluster (`zip` and `unzip` are required).
 
    Set `TF_RECIPE_MODULE_SERVER_URL` to the URL that test deployments can reach. CI and the local runner use `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local`; direct local tests default to `http://localhost:8999`.
 
