@@ -172,7 +172,7 @@ func Test_DirectModule_Terraform(t *testing.T) {
 //   - Object enum parameters control conditional resources for both None and CanNotDelete
 //
 // Steps:
-//  1. Create the Kubernetes namespace (expected to be created by Ops).
+//  1. Create the Kubernetes namespaces (expected to be created by Ops).
 //  2. Register the user-defined resource type "Test.Resources/userTypeAlpha".
 //  3. Deploy a Bicep template with a direct-module recipe pack (outputs mapping + expression params).
 //  4. Verify Kubernetes deployments are created in the target namespace and the mapped outputs
@@ -181,6 +181,7 @@ func Test_DirectModule_Bicep(t *testing.T) {
 	template := "testdata/directmodule-bicep-test.bicep"
 	appName := "directmodule-bicep-app"
 	appNamespace := "directmodule-bicep-ns"
+	lockedNamespace := "directmodule-bicep-locked-ns"
 	parentResourceTypeName := "Test.Resources/userTypeAlpha"
 	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
@@ -189,21 +190,25 @@ func Test_DirectModule_Bicep(t *testing.T) {
 
 	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
-			// Create the Kubernetes namespace the recipe deploys into.
+			// Each environment requires its own Kubernetes namespace.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
-				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
-					Name: appNamespace,
-				}, metav1.CreateOptions{})
-				if err != nil && !apierrors.IsAlreadyExists(err) {
-					require.NoError(t, err)
+				for _, namespace := range []string{appNamespace, lockedNamespace} {
+					_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+						Name: namespace,
+					}, metav1.CreateOptions{})
+					if err != nil && !apierrors.IsAlreadyExists(err) {
+						require.NoError(t, err)
+					}
 				}
 			}),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, appNamespace, metav1.GetOptions{})
-				require.NoError(t, err, "Namespace should be created")
+				for _, namespace := range []string{appNamespace, lockedNamespace} {
+					_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+					require.NoError(t, err, "Namespace %s should be created", namespace)
+				}
 			},
 		},
 		{
@@ -223,7 +228,7 @@ func Test_DirectModule_Bicep(t *testing.T) {
 		},
 		{
 			// Deploy the direct-module recipe pack and the resource that uses it.
-			Executor:                               step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion(), "appName="+appName),
+			Executor:                               step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion(), "appName="+appName, "appNamespace="+appNamespace, "lockedNamespace="+lockedNamespace),
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   false,
 			SkipKubernetesOutputResourceValidation: true,
@@ -263,40 +268,37 @@ func Test_DirectModule_Bicep(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				// Verify that the Bicep module created Kubernetes deployments in the target
-				// namespace. The direct module resolves {{context.runtime.kubernetes.namespace}}
-				// to the namespace configured in the environment's providers, proving expression
-				// resolution and module execution end-to-end.
-				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{})
-				require.NoError(t, err)
-				require.NotEmpty(t, deployments.Items, "Expected Bicep module to create deployments in namespace %s", appNamespace)
-
-				t.Logf("Found %d deployments in namespace %s", len(deployments.Items), appNamespace)
-				for _, deploy := range deployments.Items {
-					t.Logf("  Deployment: %s", deploy.Name)
+				// Verify each module resolved its environment's namespace independently.
+				for _, workload := range []struct {
+					namespace string
+					resource  string
+				}{
+					{namespace: appNamespace, resource: "directmodule-bicep-resource"},
+					{namespace: lockedNamespace, resource: "directmodule-bicep-locked-resource"},
+				} {
+					_, err := test.Options.K8sClient.AppsV1().Deployments(workload.namespace).Get(ctx, workload.resource, metav1.GetOptions{})
+					require.NoError(t, err, "Expected deployment %s in namespace %s", workload.resource, workload.namespace)
+					verifyDirectModuleMappedOutputs(ctx, t, test, workload.resource)
 				}
 
-				// Verify the module's plain outputs (host, port) were mapped onto the
-				// resource's properties via the recipe `outputs` field.
-				verifyDirectModuleMappedOutputs(ctx, t, test, "directmodule-bicep-resource")
-				verifyDirectModuleMappedOutputs(ctx, t, test, "directmodule-bicep-locked-resource")
-
-				_, err = test.Options.K8sClient.CoreV1().ConfigMaps(appNamespace).Get(ctx, "directmodule-bicep-resource-lock", metav1.GetOptions{})
+				_, err := test.Options.K8sClient.CoreV1().ConfigMaps(appNamespace).Get(ctx, "directmodule-bicep-resource-lock", metav1.GetOptions{})
 				require.True(t, apierrors.IsNotFound(err), "kind None must skip the conditional resource, got: %v", err)
-				marker, err := test.Options.K8sClient.CoreV1().ConfigMaps(appNamespace).Get(ctx, "directmodule-bicep-locked-resource-lock", metav1.GetOptions{})
+				marker, err := test.Options.K8sClient.CoreV1().ConfigMaps(lockedNamespace).Get(ctx, "directmodule-bicep-locked-resource-lock", metav1.GetOptions{})
 				require.NoError(t, err)
 				require.Equal(t, "CanNotDelete", marker.Data["kind"])
 			},
 		},
 	})
 
-	// Delete the namespace created in the first step. This runs in the test-level
+	// Delete the namespaces created in the first step. This runs in the test-level
 	// PostDeleteVerify, which executes after the RP cleanup phase, so the namespace is not
 	// torn down while an in-flight delete still needs it.
 	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, ct rp.RPTest) {
-		err := ct.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, appNamespace, metav1.DeleteOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			t.Logf("Warning: Failed to delete namespace %s: %v", appNamespace, err)
+		for _, namespace := range []string{appNamespace, lockedNamespace} {
+			err := ct.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+			if err != nil && !apierrors.IsNotFound(err) {
+				t.Logf("Warning: Failed to delete namespace %s: %v", namespace, err)
+			}
 		}
 	}
 
