@@ -44,21 +44,34 @@ if args[0] == "get":
             print(json.dumps(match) if match else "", flush=True)
             (root / (name + ".checked")).touch()
         else:
-            print((root / "inventory").read_text())
+            # kubectl get pods -o json rebuilds a generic List without the
+            # server's resourceVersion, unlike the raw PodList response.
+            inventory = json.loads((root / "inventory").read_text())
+            inventory["metadata"] = {"resourceVersion": ""}
+            print(json.dumps(inventory))
     else:
         url = urllib.parse.urlparse(args[args.index("--raw") + 1])
         assert url.path == "/api/v1/namespaces/radius-system/pods"
-        assert urllib.parse.parse_qs(url.query)["resourceVersion"] == ["123"]
-        if (root / "watch-error").exists():
-            sys.exit("watch unavailable")
-        (root / "watch-started").touch()
-        with (root / "events").open() as f:
-            while True:
-                line = f.readline()
-                if line:
-                    print(line, end="", flush=True)
-                else:
-                    time.sleep(.02)
+        query = urllib.parse.parse_qs(url.query)
+        if query.get("watch") == ["true"]:
+            assert query["resourceVersion"] == ["123"]
+            if (root / "watch-error").exists():
+                sys.exit("watch unavailable")
+            (root / "watch-started").touch()
+            with (root / "events").open() as f:
+                while True:
+                    line = f.readline()
+                    if line:
+                        print(line, end="", flush=True)
+                    else:
+                        time.sleep(.02)
+        else:
+            assert not query
+            if (root / "list-error").exists():
+                sys.exit("inventory unavailable")
+            print((root / "inventory").read_text())
+            with (root / "raw-inventories").open("a") as f:
+                f.write(url.path + "\n")
 elif args[0] == "logs":
     pod = args[1]
     container = args[args.index("--container") + 1]
@@ -173,6 +186,23 @@ class CollectorTests(unittest.TestCase):
         self.run_collector('wait_for("ucp-initial.ucp.started")\n')
         self.assertTrue((self.output / "complete").is_file())
         self.assertIn("startup", "".join(f.read_text() for f in self.output.glob("*.log")))
+
+    def test_inventory_preserves_server_resource_version(self):
+        self.run_collector('wait_for("watch-started")\n')
+        self.assertEqual(
+            (self.root / "raw-inventories").read_text().splitlines(),
+            ["/api/v1/namespaces/radius-system/pods"] * 2)
+        self.assertTrue((self.output / "complete").is_file())
+
+    def test_missing_inventory_resource_version_fails_before_command(self):
+        inventory = json.loads((self.root / "inventory").read_text())
+        inventory["metadata"]["resourceVersion"] = ""
+        (self.root / "inventory").write_text(json.dumps(inventory))
+        result = self.run_collector(
+            '(root / "command-started").touch()\n', expected=2)
+        self.assertIn("missing a nonempty resourceVersion", result)
+        self.assertFalse((self.root / "command-started").exists())
+        self.assertFalse((self.output / "complete").exists())
 
     def test_command_arguments_are_not_reinterpreted_by_shell(self):
         argument = 'spaces; $(touch should-not-exist) "quotes"'

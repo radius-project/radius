@@ -104,8 +104,9 @@ trap 'die "command failed at line ${LINENO}"' ERR
 set -E
 
 inventory() {
-    run_bounded kubectl get pods --namespace "${NAMESPACE}" \
-        --request-timeout=20s -o json >"${WORK_DIR}/inventory.json"
+    # kubectl's generic JSON list drops the API list's resourceVersion.
+    run_bounded kubectl get --raw "${PODS_URL}" \
+        --request-timeout=20s >"${WORK_DIR}/inventory.json"
     jq -e '.items | type == "array"' \
         "${WORK_DIR}/inventory.json" >/dev/null
 }
@@ -398,15 +399,17 @@ done
 mkdir -p "$(dirname "${OUTPUT}")"
 mkdir "${OUTPUT}"
 WORK_DIR="$(mktemp -d)"
+NAMESPACE_URI="$(jq -rn --arg namespace "${NAMESPACE}" \
+    '$namespace | @uri')"
+PODS_URL="/api/v1/namespaces/${NAMESPACE_URI}/pods"
 inventory
 jq -e '.items | length > 0' "${WORK_DIR}/inventory.json" >/dev/null ||
     die "no pods in ${NAMESPACE}"
 VERSION="$(jq -er '.metadata.resourceVersion |
     select(type == "string" and length > 0) | @uri' \
-    "${WORK_DIR}/inventory.json")"
-NAMESPACE_URI="$(jq -rn --arg namespace "${NAMESPACE}" \
-    '$namespace | @uri')"
-WATCH_URL="/api/v1/namespaces/${NAMESPACE_URI}/pods"
+    "${WORK_DIR}/inventory.json")" ||
+    die "pod inventory is missing a nonempty resourceVersion"
+WATCH_URL="${PODS_URL}"
 WATCH_URL+="?watch=true&resourceVersion=${VERSION}&timeoutSeconds=5400"
 touch "${WORK_DIR}/events"
 mkfifo "${WORK_DIR}/watch-pipe" "${WORK_DIR}/parse-pipe"
