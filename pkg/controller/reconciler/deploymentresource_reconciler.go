@@ -275,6 +275,11 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	if owner.UID != ownerRef.UID {
 		return ctrl.Result{}, &sourceHold{"ResourceOwnerChanged", "Resource owner changed before dependency checks"}
 	}
+	if owner.DeletionTimestamp != nil && owner.Status.Operation != nil {
+		// Namespace garbage collection can reach trackers before their owner.
+		// Wait until completion has persisted all outputs, including missing children.
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+	}
 	deploymentResourceList = appendPendingCleanup(deploymentResourceList, owner.Status.PendingCleanup)
 
 	// Check if the resource is being used by another resource

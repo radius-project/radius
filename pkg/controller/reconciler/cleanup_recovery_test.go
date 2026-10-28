@@ -147,6 +147,18 @@ func Test_DeploymentTemplateReconciler_TerminatingNamespace(t *testing.T) {
 			require.True(t, apierrors.IsForbidden(c.Create(t.Context(), output)), "real NamespaceLifecycle admission must reject creates")
 			policy, err := NewFluxSourcePolicy(hostoptions.FluxOptions{}, c)
 			require.NoError(t, err)
+			resources := &DeploymentResourceReconciler{Client: c, SourcePolicy: policy,
+				EventRecorder: record.NewFakeRecorder(20), ResourceDeploymentsClient: backend}
+			// Namespace garbage collection can mark existing trackers for deletion
+			// before the owner has accounted for its completed PUT outputs.
+			for _, object := range []*radappiov1alpha3.DeploymentResource{parent, output} {
+				if err := c.Delete(t.Context(), object); !apierrors.IsNotFound(err) {
+					require.NoError(t, err)
+				}
+				_, err = resources.Reconcile(t.Context(), ctrl.Request{NamespacedName: client.ObjectKeyFromObject(object)})
+				require.NoError(t, err)
+			}
+			require.Empty(t, backend.deleted, "wait for the owner's complete inventory before starting cleanup")
 			r := &DeploymentTemplateReconciler{Client: c, Scheme: scheme, SourcePolicy: policy,
 				EventRecorder: record.NewFakeRecorder(10), ResourceDeploymentsClient: backend}
 			_, err = r.reconcileOperation(t.Context(), template)
@@ -162,8 +174,6 @@ func Test_DeploymentTemplateReconciler_TerminatingNamespace(t *testing.T) {
 				expectedPending--
 			}
 			require.Len(t, template.Status.PendingCleanup, expectedPending, "missing outputs must survive API serialization")
-			resources := &DeploymentResourceReconciler{Client: c, SourcePolicy: policy,
-				EventRecorder: record.NewFakeRecorder(20), ResourceDeploymentsClient: backend}
 			for attempt := 0; attempt < 12; attempt++ {
 				// Reconstruct the controller each time so progress depends on stored
 				// state rather than a remembered operation or in-memory inventory.
