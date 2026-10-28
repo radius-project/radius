@@ -27,12 +27,14 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 const (
@@ -51,66 +53,68 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 		return controller.(*DynamicResourceController)
 	}
 
-	t.Run("inert PUT", func(t *testing.T) {
+	selectController := func(t *testing.T, request *ctrl.Request) (ctrl.Controller, error) {
 		controller := setup()
+		operationType, resourceTypeDetails, err := controller.extractOperationAndResourceTypeDetails(t.Context(), request)
+		require.NoError(t, err)
+		return controller.selectController(operationType, resourceTypeDetails)
+	}
+
+	t.Run("inert PUT", func(t *testing.T) {
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationPut}.String(),
 		}
 
-		selected, err := controller.selectController(t.Context(), request)
+		selected, err := selectController(t, request)
 		require.NoError(t, err)
 
 		require.IsType(t, &InertPutController{}, selected)
 	})
 
 	t.Run("inert DELETE", func(t *testing.T) {
-		controller := setup()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationDelete}.String(),
 		}
 
-		selected, err := controller.selectController(t.Context(), request)
+		selected, err := selectController(t, request)
 		require.NoError(t, err)
 
 		require.IsType(t, &InertDeleteController{}, selected)
 	})
 
 	t.Run("recipe PUT", func(t *testing.T) {
-		controller := setup()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + recipeResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: recipeResourceType, Method: v1.OperationPut}.String(),
 		}
 
-		selected, err := controller.selectController(t.Context(), request)
+		selected, err := selectController(t, request)
 		require.NoError(t, err)
 
 		require.IsType(t, &RecipePutController{}, selected)
 	})
 
 	t.Run("recipe DELETE", func(t *testing.T) {
-		controller := setup()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + recipeResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: recipeResourceType, Method: v1.OperationDelete}.String(),
 		}
 
-		selected, err := controller.selectController(t.Context(), request)
+		selected, err := selectController(t, request)
 		require.NoError(t, err)
 
 		require.IsType(t, &RecipeDeleteController{}, selected)
 	})
 
 	t.Run("unknown operation", func(t *testing.T) {
-		controller := setup()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationGet}.String(),
 		}
 
-		selected, err := controller.selectController(t.Context(), request)
+		selected, err := selectController(t, request)
 		require.Error(t, err)
 		require.Equal(t, "unsupported operation type: \"APPLICATIONS.TEST/TESTINERTRESOURCES|GET\"", err.Error())
 		require.Nil(t, selected)
@@ -279,19 +283,69 @@ func TestDynamicResourceController_validateRequestSchema(t *testing.T) {
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationDelete}.String(),
 		}
 
-		err := controller.validateRequestSchema(t.Context(), request)
+		operationType, resourceTypeDetails, err := controller.extractOperationAndResourceTypeDetails(t.Context(), request)
+		require.NoError(t, err)
+
+		err = controller.validateRequestSchema(t.Context(), request, operationType, resourceTypeDetails)
 		require.NoError(t, err) // Should skip validation for DELETE
 	})
+}
 
-	t.Run("error - invalid resource ID", func(t *testing.T) {
-		controller := setup()
+func Test_DynamicResourceController_Run(t *testing.T) {
+	t.Run("fetches the resource type once", func(t *testing.T) {
+		gets := 0
+		resourceTypesServer := fake.ResourceTypesServer{
+			Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, options *v20231001preview.ResourceTypesClientGetOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder) {
+				gets++
+				resp.SetResponse(http.StatusOK, v20231001preview.ResourceTypesClientGetResponse{
+					ResourceTypeResource: v20231001preview.ResourceTypeResource{
+						Name: new(resourceTypeName),
+						Properties: &v20231001preview.ResourceTypeProperties{
+							Capabilities: []*string{to.Ptr(datamodel.CapabilityManualResourceProvisioning)},
+						},
+					},
+				}, nil)
+				return
+			},
+		}
+		ucp, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
+			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{ResourceTypesServer: resourceTypesServer}),
+		})
+		require.NoError(t, err)
+
+		databaseClient := database.NewMockClient(gomock.NewController(t))
+		controller, err := NewDynamicResourceController(ctrl.Options{DatabaseClient: databaseClient}, ucp, nil, nil, nil)
+		require.NoError(t, err)
+
+		request := &ctrl.Request{
+			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
+			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationDelete}.String(),
+		}
+		databaseClient.EXPECT().Delete(gomock.Any(), request.ResourceID).Return(nil).Times(1)
+
+		result, err := controller.Run(t.Context(), request)
+		require.NoError(t, err)
+		require.Equal(t, ctrl.Result{}, result)
+		require.Equal(t, 1, gets, "Run() resource type GETs")
+	})
+
+	t.Run("invalid resource ID", func(t *testing.T) {
+		ucp, err := testUCPClientFactory()
+		require.NoError(t, err)
+
+		controller, err := NewDynamicResourceController(ctrl.Options{}, ucp, nil, nil, nil)
+		require.NoError(t, err)
+
 		request := &ctrl.Request{
 			ResourceID:    "invalid-resource-id",
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationPut}.String(),
 		}
 
-		err := controller.validateRequestSchema(t.Context(), request)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid resource ID")
+		result, err := controller.Run(t.Context(), request)
+		require.NoError(t, err)
+		require.Equal(t, ctrl.NewFailedResult(v1.ErrorDetails{
+			Code:    v1.CodeInvalidRequestContent,
+			Message: `invalid resource ID: "invalid-resource-id"`,
+		}), result)
 	})
 }
