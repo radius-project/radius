@@ -42,7 +42,21 @@ The controller owns Kubernetes reconciliation for template deployment and Flux G
 The root command builds shared host options, creates the logger, and starts a
 single `controller.Service` through shared hosting.
 
-Inside [pkg/controller/service.go](../../pkg/controller/service.go), the service creates a controller-runtime manager, registers API schemes, configures metrics and health probes, then registers `DeploymentTemplateReconciler`, `DeploymentResourceReconciler`, and `FluxController`. The shared operation types in [operation_types.go](../../pkg/controller/api/radapp.io/v1alpha3/operation_types.go) preserve asynchronous operation tracking for both deployment CRDs.
+Inside [pkg/controller/service.go](../../pkg/controller/service.go), the service creates a controller-runtime manager, registers API schemes, configures metrics and health probes, then registers `DeploymentTemplateReconciler` and `DeploymentResourceReconciler`. `FluxController` is registered only when `controller.flux.enabled` is true and explicit source identities are selected. The shared operation types in [operation_types.go](../../pkg/controller/api/radapp.io/v1alpha3/operation_types.go) preserve asynchronous operation tracking for both deployment CRDs.
+
+[FluxSourcePolicy](../../pkg/controller/reconciler/flux_source_policy.go) copies startup settings and uses the uncached API reader to check source identity and current-generation readiness. Flux preflights all resolved targets before compilation or target mutation, stores namespace/name/UID/generation and artifact attribution in `spec.sourceRef`, and uses complete source identity plus target namespace/name for update and pruning. `spec.repository` alone is legacy attribution, not a source-selection decision.
+
+Preflight holds a same-template namespace move that retains its old deployment scope until the previous target and its cleanup are gone. When a current-generation source removes a target, pruning starts deletion before refreshing that target's source attribution. This permits current-generation cleanup without authorizing the obsolete content for a new deployment.
+
+Both deployment reconcilers apply the same policy before new effects, including output-resource creation/deletion after a poll completes and resource cleanup. A source hold retains finalizers and operation state, reports `Held`, and requeues at a bounded interval. Polling previously accepted work does not cancel it; follow-on effects wait for a valid source. The submitted spec hash is kept separately while an operation runs so that its completion cannot mark a newer desired spec as executed. Source attribution is checked separately from that hash, so an attribution-only change does not redeploy unchanged content.
+
+The template reconciler checks live output cleanup before submitting a new deployment. Independently draining or submitted deletes block newer deployments. A parent waiting on live same-owner children permits changed desired content, because its dependencies may need that update before cleanup can progress. Both reconcilers use uncached dependency reads. If a completed deployment restores such a parent before backend deletion starts, a resource-version-guarded update retires only its terminating tracker; reconciliation recreates the tracker without deleting the parent or retained children. A concurrent deletion-start status update prevents that retirement.
+
+Other terminating desired outputs keep the template `ReadyPendingCleanup`, invalidate its settled hash when necessary, and require reapplication after deletion finishes. Completion ensures every output has a live same-owner tracker, including outputs recorded before cleanup. A resource without the controller's cleanup finalizer cannot submit another backend delete.
+
+If the owning template enters deletion during output tracking, completion recovers missing trackers for cleanup before clearing the saved operation. It no longer retires trackers for restoration or waits on update-only cleanup dependencies. Owner deletion lists owned resources through the uncached reader and removes the template finalizer only after that inventory is empty. Recovery failures and source holds retain the operation until cleanup tracking is established.
+
+Direct templates with no source attribution retain the installation-trusted Kubernetes-writer workflow. Operators must protect writes to source inputs and deployment CRDs; this policy is not a tenant execution sandbox. The [chart guide](../../deploy/Chart/README.md#flux-source-selection) documents the opt-in, non-overlapping restart, legacy association, and recovery contract.
 
 Some reconcilers call back into Radius APIs using SDK clients configured with
 the current UCP connection. That is the main architectural bridge between the
@@ -125,6 +139,7 @@ sequenceDiagram
     Rec->>Out: create/delete DeploymentResource objects
   else update path
     Rec->>Status: ensure finalizer + observed generation
+    Rec->>Out: check draining deletes and blocked parent dependencies
     Rec->>Deploy: create deployment if desired state changed
     Deploy-->>Rec: poller + resume token
     Rec->>Status: mark Updating and store token

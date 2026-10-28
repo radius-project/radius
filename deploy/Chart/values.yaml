@@ -118,6 +118,13 @@ global:
 
 controller:
   image: controller
+  # Sources and their accepted publishers must be installation-trusted.
+  flux:
+    enabled: false
+    sources: []
+    # - namespace: flux-system
+    #   name: applications
+    #   uid: <GitRepository metadata.uid>
   # Default tag uses Chart AppVersion.
   # tag: latest
   resources:

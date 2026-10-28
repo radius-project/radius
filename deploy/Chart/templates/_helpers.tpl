@@ -2,6 +2,49 @@
 {{- .Chart.AppVersion -}}
 {{- end -}}
 
+{{/* Validate the startup-loaded Flux settings before changing the controller. */}}
+{{- define "radius.controller.flux" -}}
+{{- if and (hasKey .Values.controller "flux") (not (kindIs "map" .Values.controller.flux)) -}}
+  {{- fail "controller.flux must be an object" -}}
+{{- end -}}
+{{- $flux := .Values.controller.flux | default dict -}}
+{{- if not (kindIs "map" $flux) -}}{{ fail "controller.flux must be an object" }}{{- end -}}
+{{- range $key, $_ := $flux -}}
+  {{- if not (has $key (list "enabled" "sources")) -}}{{ fail (printf "unknown controller.flux field %s" $key) }}{{- end -}}
+{{- end -}}
+{{- if and (hasKey $flux "enabled") (not (kindIs "bool" $flux.enabled)) -}}
+  {{- fail "controller.flux.enabled must be a boolean" -}}
+{{- end -}}
+{{- if and (hasKey $flux "sources") (not (kindIs "slice" $flux.sources)) -}}
+  {{- fail "controller.flux.sources must be a list" -}}
+{{- end -}}
+{{- $sources := $flux.sources | default list -}}
+{{- if not (kindIs "slice" $sources) -}}{{ fail "controller.flux.sources must be a list" }}{{- end -}}
+{{- $seen := dict -}}
+{{- range $i, $source := $sources -}}
+  {{- if not (kindIs "map" $source) -}}{{ fail "controller.flux.sources entries must be objects" }}{{- end -}}
+  {{- range $key, $_ := $source -}}
+    {{- if not (has $key (list "namespace" "name" "uid")) -}}{{ fail (printf "unknown controller.flux.sources field %s" $key) }}{{- end -}}
+  {{- end -}}
+  {{- if not (kindIs "string" $source.namespace) -}}{{ fail "controller.flux.sources namespace must be a string" }}{{- end -}}
+  {{- if or (gt (len $source.namespace) 63) (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" $source.namespace)) -}}
+    {{- fail "controller.flux.sources namespace must be a Kubernetes namespace" -}}
+  {{- end -}}
+  {{- if not (kindIs "string" $source.name) -}}{{ fail "controller.flux.sources name must be a string" }}{{- end -}}
+  {{- if or (gt (len $source.name) 253) (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" $source.name)) -}}
+    {{- fail "controller.flux.sources name must be a Kubernetes object name" -}}
+  {{- end -}}
+  {{- if not (kindIs "string" $source.uid) -}}{{ fail "controller.flux.sources uid must be a string" }}{{- end -}}
+  {{- if or (eq $source.uid "") (regexMatch "[\\s*/\\\\]" $source.uid) -}}
+    {{- fail "controller.flux.sources uid must be a nonempty exact UID" -}}
+  {{- end -}}
+  {{- $key := printf "%s/%s" $source.namespace $source.name -}}
+  {{- if hasKey $seen $key -}}{{ fail (printf "controller.flux.sources contains duplicate source %s" $key) }}{{- end -}}
+  {{- $_ := set $seen $key true -}}
+{{- end -}}
+{{- toYaml (dict "enabled" ($flux.enabled | default false) "sources" $sources) -}}
+{{- end -}}
+
 {{/* External images retain their independently published latest tag for edge charts. */}}
 {{- define "radius.externalversiontag" -}}
 {{- $version := . | toString -}}

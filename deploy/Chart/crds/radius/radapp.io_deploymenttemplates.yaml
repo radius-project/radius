@@ -61,6 +61,41 @@ spec:
                 description: Repository is the git repository that the Bicep manifests
                   are stored in.
                 type: string
+              sourceRef:
+                description: SourceRef identifies the Flux source and artifact used
+                  to produce this template.
+                properties:
+                  digest:
+                    description: Digest is the accepted artifact's content digest.
+                    type: string
+                  generation:
+                    description: Generation is the source specification generation
+                      accepted for this template.
+                    format: int64
+                    minimum: 1
+                    type: integer
+                  name:
+                    description: Name is the GitRepository name.
+                    minLength: 1
+                    type: string
+                  namespace:
+                    description: Namespace is the GitRepository namespace.
+                    minLength: 1
+                    type: string
+                  revision:
+                    description: Revision is the accepted artifact's revision.
+                    type: string
+                  uid:
+                    description: UID distinguishes a source from a replacement with
+                      the same name.
+                    minLength: 1
+                    type: string
+                required:
+                - generation
+                - name
+                - namespace
+                - uid
+                type: object
               template:
                 description: Template is the ARM JSON manifest that defines the resources
                   to deploy.
@@ -87,6 +122,10 @@ spec:
                       an in-progress provisioning operation.
                     type: string
                 type: object
+              operationSpecHash:
+                description: OperationSpecHash identifies the desired spec submitted
+                  by the in-progress operation.
+                type: string
               outputResources:
                 description: OutputResources is a list of the resourceIDs that were
                   created by the template on the last deployment.
