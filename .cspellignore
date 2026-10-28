@@ -1168,6 +1168,7 @@ sql
 sqlDatabases
 sqldatabases
 sqlite
+squote
 src
 sslPassthrough
 stateStores
