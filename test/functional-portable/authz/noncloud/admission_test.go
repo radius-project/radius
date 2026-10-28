@@ -19,10 +19,12 @@ package authz
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -31,9 +33,11 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/azure/tokencredentials"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	radiuscore "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/test/rp"
 )
@@ -104,19 +108,20 @@ func Test_AdmissionPolicy_Rules(t *testing.T) {
 	}
 }
 
-// Expected: an application workload that references a control-plane Secret is rejected
-// by admission with AdmissionPolicyDenied (403).
+// Expected: an environment or application whose Kubernetes namespace is the Radius control-plane
+// namespace is rejected with AdmissionPolicyDenied (403) naming rule control-plane-namespace.
 //
-// The container's base manifest mounts a control-plane Secret, and its application deploys
-// into the control-plane namespace. Runs only in enforce: in other modes the Deployment
-// would be created with access to the Secret.
-func Test_Boundary_ControlPlaneSecretReferenceDenied(t *testing.T) {
+// Runs only in enforce. In dryRun the requests succeed and log a would-deny, which the CI
+// would-deny check treats as a failure, and in off mode they create resources in the control-plane
+// namespace. Workloads in the control-plane namespace that use a control-plane service account or
+// Secret are covered at the admission layer by Test_AdmissionPolicy_Rules; the applications-rp
+// provider check for them is covered by unit tests and manual testing.
+func Test_Boundary_ControlPlaneNamespaceDenied(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 	ctx := t.Context()
 	if mode := expectedInstalledMode(t); mode != authz.ModeEnforce {
 		t.Skipf("requires enforce mode, installed mode is %s", mode)
 	}
-	skipWithoutAdmissionPolicyAPI(t, options.K8sClient)
 
 	name := fmt.Sprintf("authz-adm-%d", time.Now().UnixNano())
 	scope := strings.TrimPrefix(options.Workspace.Scope, "/")
@@ -125,61 +130,61 @@ func Test_Boundary_ControlPlaneSecretReferenceDenied(t *testing.T) {
 	clientOptions := sdk.NewClientOptions(connection)
 	envClient, err := corerp.NewEnvironmentsClient(&tokencredentials.AnonymousCredential{}, clientOptions)
 	require.NoError(t, err)
+	radiusEnvClient, err := radiuscore.NewEnvironmentsClient(&tokencredentials.AnonymousCredential{}, clientOptions)
+	require.NoError(t, err)
 	appClient, err := corerp.NewApplicationsClient(&tokencredentials.AnonymousCredential{}, clientOptions)
 	require.NoError(t, err)
-	containerClient, err := corerp.NewContainersClient(&tokencredentials.AnonymousCredential{}, clientOptions)
-	require.NoError(t, err)
 
+	// Never delete the control-plane namespace here; only resources this test created.
 	t.Cleanup(func() {
 		ctx := context.Background() //nolint:usetesting // t.Context() is cancelled before cleanup runs.
-		if poller, err := containerClient.BeginDelete(ctx, scope, name, nil); err == nil {
-			_, _ = poller.PollUntilDone(ctx, nil)
-		}
 		_, _ = appClient.Delete(ctx, scope, name, nil)
 		_, _ = envClient.Delete(ctx, scope, name, nil)
+		_, _ = envClient.Delete(ctx, scope, name+"-cp", nil)
+		_, _ = radiusEnvClient.Delete(ctx, scope, name+"-cp", nil)
 		_ = options.K8sClient.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
-		_ = options.K8sClient.CoreV1().ServiceAccounts(radiusNamespace).Delete(ctx, name, metav1.DeleteOptions{})
 	})
 
-	env, err := envClient.CreateOrUpdate(ctx, scope, name, corerp.EnvironmentResource{
-		Location:   new("global"),
-		Properties: &corerp.EnvironmentProperties{Compute: &corerp.KubernetesCompute{Kind: new("kubernetes"), Namespace: new(name)}},
-	}, nil)
-	require.NoError(t, err)
-	app, err := appClient.CreateOrUpdate(ctx, scope, name, corerp.ApplicationResource{
-		Location: new("global"),
-		Properties: &corerp.ApplicationProperties{
-			Environment: env.ID,
-			Extensions:  []corerp.ExtensionClassification{&corerp.KubernetesNamespaceExtension{Kind: new("kubernetesNamespace"), Namespace: new(radiusNamespace)}},
-		},
-	}, nil)
-	require.NoError(t, err)
-
-	base := fmt.Sprintf(`apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: %s
-spec:
-  template:
-    spec:
-      volumes:
-      - name: control-plane-secret
-        secret:
-          secretName: database-secret
-`, name)
-	poller, err := containerClient.BeginCreateOrUpdate(ctx, scope, name, corerp.ContainerResource{
-		Location: new("global"),
-		Properties: &corerp.ContainerProperties{
-			Application: app.ID,
-			Container:   &corerp.Container{Image: new("busybox")},
-			Runtimes:    &corerp.RuntimesProperties{Kubernetes: &corerp.KubernetesRuntimeProperties{Base: new(base)}},
-		},
-	}, nil)
-	if err == nil {
-		_, err = poller.PollUntilDone(ctx, nil)
+	requireNamespaceDenied := func(t *testing.T, err error) {
+		t.Helper()
+		var respErr *azcore.ResponseError
+		require.ErrorAs(t, err, &respErr)
+		require.Equal(t, http.StatusForbidden, respErr.StatusCode)
+		require.Equal(t, v1.CodeAdmissionPolicyDenied, respErr.ErrorCode)
+		require.Contains(t, err.Error(), "admission rule '"+authz.RuleControlPlaneNamespace+"'")
 	}
-	require.Error(t, err, "expected admission to reject the container")
-	require.Contains(t, err.Error(), "AdmissionPolicyDenied: control-plane-secret")
+
+	t.Run("Applications.Core environment", func(t *testing.T) {
+		_, err := envClient.CreateOrUpdate(ctx, scope, name+"-cp", corerp.EnvironmentResource{
+			Location:   new("global"),
+			Properties: &corerp.EnvironmentProperties{Compute: &corerp.KubernetesCompute{Kind: new("kubernetes"), Namespace: new(radiusNamespace)}},
+		}, nil)
+		requireNamespaceDenied(t, err)
+	})
+
+	t.Run("Radius.Core environment", func(t *testing.T) {
+		_, err := radiusEnvClient.CreateOrUpdate(ctx, scope, name+"-cp", radiuscore.EnvironmentResource{
+			Location:   new("global"),
+			Properties: &radiuscore.EnvironmentProperties{Providers: &radiuscore.Providers{Kubernetes: &radiuscore.ProvidersKubernetes{Namespace: new(radiusNamespace)}}},
+		}, nil)
+		requireNamespaceDenied(t, err)
+	})
+
+	t.Run("application namespace", func(t *testing.T) {
+		env, err := envClient.CreateOrUpdate(ctx, scope, name, corerp.EnvironmentResource{
+			Location:   new("global"),
+			Properties: &corerp.EnvironmentProperties{Compute: &corerp.KubernetesCompute{Kind: new("kubernetes"), Namespace: new(name)}},
+		}, nil)
+		require.NoError(t, err)
+		_, err = appClient.CreateOrUpdate(ctx, scope, name, corerp.ApplicationResource{
+			Location: new("global"),
+			Properties: &corerp.ApplicationProperties{
+				Environment: env.ID,
+				Extensions:  []corerp.ExtensionClassification{&corerp.KubernetesNamespaceExtension{Kind: new("kubernetesNamespace"), Namespace: new(radiusNamespace)}},
+			},
+		}, nil)
+		requireNamespaceDenied(t, err)
+	})
 }
 
 func skipWithoutAdmissionPolicyAPI(t *testing.T, client k8s.Interface) {

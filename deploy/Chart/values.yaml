@@ -107,8 +107,8 @@ global:
   #   enabled=true                -> enforce (denials will be rejected)
   # Setting both enabled=true and dryRun=true fails installation: the dry run is a
   # preflight check for an installation that is not yet enforcing.
-  # NOTE: no authorization checks are implemented yet. The only runtime effects are admission
-  # controls. Pod Security Admission labels on environment and application namespaces:
+  # NOTE: no component authorization checks are implemented yet. The only runtime effects are
+  # admission controls. Pod Security Admission labels on environment and application namespaces:
   #   off     -> no labels (default)
   #   dryRun  -> pod-security.kubernetes.io/warn and /audit (violations warned, not rejected)
   #   enforce -> pod-security.kubernetes.io/enforce, /warn and /audit (violations rejected)
@@ -118,6 +118,8 @@ global:
   # application workloads in the namespace Radius is installed in: using a control-plane
   # service account or Secret, or running there at all, is warned and audited (dryRun) or
   # rejected with AdmissionPolicyDenied (enforce). Not rendered when the mode is off.
+  # Applications RP also rejects environments and applications in that namespace, and output
+  # resources there that reference a control-plane Secret (dryRun: logged; enforce: rejected).
   # Example: rad install kubernetes --set global.rbac.dryRun=true
   rbac:
     # Enforce internal component authorization (only Pod Security labels so far).
