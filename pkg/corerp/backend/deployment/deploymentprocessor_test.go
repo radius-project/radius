@@ -306,7 +306,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("verify render success", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -364,7 +364,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("verify render success lowercase resourcetype", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getLowerCaseTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -404,7 +404,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("verify render success uppercase resourcetype", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getUpperCaseTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -444,7 +444,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("verify render error", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
@@ -482,7 +482,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("Resource not found in data store", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
@@ -497,7 +497,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("Data store access error", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
@@ -511,7 +511,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("Invalid resource type", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testInvalidResourceID := "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.foo/foo/foo"
 		testResource := getTestResource()
@@ -523,7 +523,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("Invalid application id", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
@@ -543,7 +543,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("Missing application id", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
@@ -562,7 +562,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("Invalid application resource type", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
@@ -582,7 +582,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("Missing output resource provider", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -623,7 +623,7 @@ func Test_Render(t *testing.T) {
 
 	t.Run("Unsupported output resource provider", func(t *testing.T) {
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -716,7 +716,7 @@ func Test_Deploy(t *testing.T) {
 	t.Run("Verify deploy success", func(t *testing.T) {
 		ctx := t.Context()
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -756,7 +756,7 @@ func Test_Deploy(t *testing.T) {
 	t.Run("Verify deploy success with simulated env", func(t *testing.T) {
 		ctx := t.Context()
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -775,7 +775,7 @@ func Test_Deploy(t *testing.T) {
 		ctx := t.Context()
 		mocks := setup(t)
 		opts := authz.Options{Mode: authz.ModeEnforce, ControlPlaneSecrets: []string{"database-secret"}}
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, opts}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: opts}
 
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -796,7 +796,7 @@ func Test_Deploy(t *testing.T) {
 	t.Run("Verify deploy failure", func(t *testing.T) {
 		ctx := t.Context()
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -813,7 +813,7 @@ func Test_Deploy(t *testing.T) {
 	t.Run("Output resource dependency missing local ID", func(t *testing.T) {
 		ctx := t.Context()
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -831,7 +831,7 @@ func Test_Deploy(t *testing.T) {
 	t.Run("Invalid output resource type", func(t *testing.T) {
 		ctx := t.Context()
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -849,7 +849,7 @@ func Test_Deploy(t *testing.T) {
 	t.Run("Missing output resource identity", func(t *testing.T) {
 		ctx := t.Context()
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
@@ -875,7 +875,7 @@ func Test_Delete(t *testing.T) {
 	t.Run("Verify delete success", func(t *testing.T) {
 		ctx := t.Context()
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
@@ -889,7 +889,7 @@ func Test_Delete(t *testing.T) {
 	t.Run("Verify delete failure", func(t *testing.T) {
 		ctx := t.Context()
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
@@ -903,7 +903,7 @@ func Test_Delete(t *testing.T) {
 	t.Run("Verify delete with no output resources", func(t *testing.T) {
 		ctx := t.Context()
 		mocks := setup(t)
-		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+		dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
@@ -919,7 +919,7 @@ func Test_Delete(t *testing.T) {
 func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 	ctx := t.Context()
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, nil, nil, nil, authz.Options{}}
+	dp := deploymentProcessor{appmodel: mocks.model, databaseClient: nil, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 	env := &datamodel.Environment{
 		ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
@@ -980,7 +980,7 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 func Test_getResourceDataByID(t *testing.T) {
 	ctx := t.Context()
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil, authz.Options{}}
+	dp := deploymentProcessor{appmodel: mocks.model, databaseClient: mocks.databaseClient, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 	t.Run("Get recipe data from connected mongoDB resources", func(t *testing.T) {
 		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo")
@@ -1020,7 +1020,7 @@ func Test_fetchSecrets(t *testing.T) {
 	ctx := t.Context()
 
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, nil, nil, nil, authz.Options{}}
+	dp := deploymentProcessor{appmodel: mocks.model, databaseClient: nil, k8sClient: nil, k8sClientSet: nil, authorization: authz.Options{}}
 
 	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
 		mongoResource := buildMongoDBResourceDataWithRecipeAndSecrets()

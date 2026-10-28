@@ -38,6 +38,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/test/k8sutil"
 )
 
@@ -58,6 +59,9 @@ func TestCreateOrUpdateEnvironment_ControlPlaneNamespace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Legacy environments still create namespaces on the control-plane client.
+			// A configured external target must not exempt these local operations.
+			t.Setenv(kubeutil.TargetKubeconfigEnvVar, "external-kubeconfig-not-used-for-legacy-environment")
 			mctrl := gomock.NewController(t)
 			databaseClient := database.NewMockClient(mctrl)
 

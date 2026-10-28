@@ -18,6 +18,7 @@ package deployment
 
 import (
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -29,15 +30,70 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/resourcemodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/test/k8sutil"
 )
 
 const controlPlaneSecret = "database-secret"
+
+func Test_deploymentProcessor_admitOutputResources_ClusterScope(t *testing.T) {
+	t.Setenv(kubeutil.TargetKubeconfigEnvVar, "configured-target")
+	id := resources.MustParse("/planes/radius/local/resourceGroups/rg/providers/Applications.Core/containers/web")
+	for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
+		for _, targetUID := range []types.UID{"control-plane", "external"} {
+			for _, secret := range []bool{false, true} {
+				t.Run(string(mode)+"/"+string(targetUID)+"/secret="+strconv.FormatBool(secret), func(t *testing.T) {
+					controlPlane := k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", UID: "control-plane"}})
+					target := k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", UID: targetUID}})
+					dp := &deploymentProcessor{
+						controlPlaneClient: controlPlane,
+						k8sClient:          target,
+						authorization:      authz.Options{Mode: mode, ControlPlaneSecrets: []string{controlPlaneSecret}},
+					}
+					output := deploymentWith("radius-system", nil)
+					rule := authz.RuleControlPlaneNamespace
+					if secret {
+						output.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: "unused", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: controlPlaneSecret}}}}
+						rule = authz.RuleControlPlaneSecret
+					}
+					core, logs := observer.New(zap.DebugLevel)
+					ctx := logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core)))
+					err := dp.admitOutputResources(ctx, id, []rpv1.OutputResource{kubeOutputFor(output)})
+					if mode == authz.ModeEnforce && targetUID == "control-plane" {
+						denied, ok := errors.AsType[*authz.DeniedError](err)
+						require.True(t, ok, "expected denial, got %v", err)
+						require.Equal(t, rule, denied.Rule)
+					} else {
+						require.NoError(t, err)
+					}
+					wouldDeny := logs.FilterField(zap.Bool(authz.LogFieldWouldDeny, true)).FilterField(zap.String(authz.LogFieldRule, rule))
+					require.Equal(t, mode == authz.ModeDryRun && targetUID == "control-plane", wouldDeny.Len() == 1)
+					if targetUID == "external" || mode == authz.ModeOff {
+						require.Zero(t, logs.Len())
+					}
+				})
+			}
+		}
+	}
+	t.Run("identity read error does not allow outputs", func(t *testing.T) {
+		for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+			dp := &deploymentProcessor{
+				controlPlaneClient: k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", UID: "control-plane"}}),
+				k8sClient:          k8sutil.NewFakeKubeClient(nil),
+				authorization:      authz.Options{Mode: mode},
+			}
+			err := dp.admitOutputResources(t.Context(), id, []rpv1.OutputResource{kubeOutputFor(deploymentWith("radius-system", nil))})
+			require.ErrorContains(t, err, "failed to identify deployment-target cluster")
+		}
+	})
+}
 
 func deploymentWith(namespace string, mutate func(*corev1.PodSpec)) *appsv1.Deployment {
 	d := &appsv1.Deployment{

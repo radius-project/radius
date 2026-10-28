@@ -21,6 +21,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/resourcemodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -28,6 +29,29 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func (dp *deploymentProcessor) admitOutputResources(ctx context.Context, id resources.ID, outputs []rpv1.OutputResource) error {
+	opts := dp.authorization
+	if opts.EffectiveMode() == authz.ModeOff {
+		return nil
+	}
+	for _, output := range outputs {
+		if output.CreateResource == nil || output.GetResourceType().Provider != resourcemodel.ProviderKubernetes {
+			continue
+		}
+		obj, ok := output.CreateResource.Data.(metav1.Object)
+		if !ok || !opts.IsControlPlaneNamespace(obj.GetNamespace()) {
+			continue
+		}
+		var err error
+		opts, err = kubeutil.DeploymentTargetAuthorization(ctx, opts, dp.controlPlaneClient, dp.k8sClient, obj.GetNamespace())
+		if err != nil {
+			return err
+		}
+		break
+	}
+	return admitOutputResources(ctx, opts, id, outputs)
+}
 
 // admitOutputResources applies the control-plane admission rules to the Kubernetes output
 // resources of id before any of them is applied. Secrets are namespace-scoped, so only objects in

@@ -98,7 +98,7 @@ func (o Options) PodSecurityLabels(namespace string) map[string]string {
 		return nil
 	}
 
-	if namespace == o.EffectiveControlPlaneNamespace() || protectedNamespaces[namespace] {
+	if o.IsControlPlaneNamespace(namespace) || protectedNamespaces[namespace] {
 		return nil
 	}
 

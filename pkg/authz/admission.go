@@ -45,9 +45,10 @@ func (o Options) EffectiveControlPlaneNamespace() string {
 	return o.ControlPlaneNamespace
 }
 
-// IsControlPlaneNamespace reports whether namespace is the Radius control-plane namespace.
+// IsControlPlaneNamespace reports whether namespace is the Radius control-plane namespace
+// on the cluster these options apply to.
 func (o Options) IsControlPlaneNamespace(namespace string) bool {
-	return strings.EqualFold(namespace, o.EffectiveControlPlaneNamespace())
+	return !o.TargetClusterIsDistinct && strings.EqualFold(namespace, o.EffectiveControlPlaneNamespace())
 }
 
 // IsControlPlaneSecret reports whether name is one of the configured control-plane Secrets.

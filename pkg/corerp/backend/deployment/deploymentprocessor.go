@@ -62,8 +62,8 @@ type DeploymentProcessor interface {
 }
 
 // NewDeploymentProcessor creates a new instance of the DeploymentProcessor struct with the given parameters.
-func NewDeploymentProcessor(appmodel model.ApplicationModel, databaseClient database.Client, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface, authorization authz.Options) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel, databaseClient: databaseClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet, authorization: authorization}
+func NewDeploymentProcessor(appmodel model.ApplicationModel, databaseClient database.Client, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface, controlPlaneClient controller_runtime.Client, authorization authz.Options) DeploymentProcessor {
+	return &deploymentProcessor{appmodel: appmodel, databaseClient: databaseClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet, controlPlaneClient: controlPlaneClient, authorization: authorization}
 }
 
 // NewFailedDeploymentProcessor returns a DeploymentProcessor whose operations all
@@ -106,6 +106,8 @@ type deploymentProcessor struct {
 	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
 	k8sClientSet kubernetes.Interface
+	// controlPlaneClient identifies the cluster hosting Radius, independently of the deployment target.
+	controlPlaneClient controller_runtime.Client
 	// authorization selects the admission checks applied to output resources before they are deployed.
 	authorization authz.Options
 }
@@ -304,7 +306,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	}
 
 	// Check every output resource before applying any of them.
-	if err := admitOutputResources(ctx, dp.authorization, id, rendererOutput.Resources); err != nil {
+	if err := dp.admitOutputResources(ctx, id, rendererOutput.Resources); err != nil {
 		return rpv1.DeploymentOutput{}, err
 	}
 

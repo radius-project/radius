@@ -1,7 +1,7 @@
 {{- $appversion := include "radius.versiontag" . }}
 {{- $authzConfig := include "radius.authz.mode" . }}
 {{- if ne $authzConfig "off" }}
-{{- $authzConfig = printf "%s:%s" $authzConfig (include "radius.authz.podSecurityLevel" .) }}
+{{- $authzConfig = printf "%s:%s:%s:%s" $authzConfig (include "radius.authz.podSecurityLevel" .) .Release.Namespace (include "radius.authz.controlPlaneSecrets" .) }}
 {{- end }}
 {{- if ne .Values.rp.terraform.path "/terraform" }}
 {{- fail "rp.terraform.path must be \"/terraform\" -- the runtime configmap (deploy/Chart/templates/rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching." }}

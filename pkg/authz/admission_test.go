@@ -46,6 +46,8 @@ func Test_Options_AdmitNamespace(t *testing.T) {
 		{name: "enforce configured namespace", opts: Options{Mode: ModeEnforce, ControlPlaneNamespace: "radius"}, namespace: "radius", wantCode: v1.CodeAdmissionPolicyDenied},
 		{name: "enforce default not control plane when configured", opts: Options{Mode: ModeEnforce, ControlPlaneNamespace: "radius"}, namespace: "radius-system"},
 		{name: "enforce other namespace", opts: Options{Mode: ModeEnforce}, namespace: "default"},
+		{name: "dryRun distinct cluster", opts: Options{Mode: ModeDryRun, TargetClusterIsDistinct: true}, namespace: "radius-system"},
+		{name: "enforce distinct cluster", opts: Options{Mode: ModeEnforce, TargetClusterIsDistinct: true}, namespace: "radius-system"},
 	}
 
 	for _, tt := range tests {
@@ -104,4 +106,11 @@ func Test_Options_UnmarshalControlPlaneSecrets(t *testing.T) {
 	err := yaml.Unmarshal([]byte("mode: enforce\ncontrolPlaneSecrets: [\"ucp-cert\",\"database-secret\"]\n"), &opts)
 	require.NoError(t, err)
 	require.Equal(t, []string{"ucp-cert", "database-secret"}, opts.ControlPlaneSecrets)
+}
+
+func Test_Options_ClusterScopeCannotBeConfigured(t *testing.T) {
+	var opts Options
+	require.NoError(t, yaml.Unmarshal([]byte("mode: enforce\ntargetClusterIsDistinct: true\n"), &opts))
+	require.False(t, opts.TargetClusterIsDistinct)
+	require.True(t, opts.IsControlPlaneNamespace("radius-system"))
 }

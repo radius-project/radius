@@ -33,7 +33,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 86d32c0e6ec2eb26313aa8b15a2ddac94ffe2f998b4f88676fa8261d5303ba6e
+          value: 305aa1d4fdc85ac68d48cf6ccb5f5ef0af975904c83afa070c5927fc2839d47a
 
   - it: changes the dryRun checksum for a level-only upgrade to restricted
     set:
@@ -42,7 +42,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: a491b66d5f88ef4d7a6478cae48203abb404bf641e29ec12b0daa1f80cb7a30c
+          value: 4290daf03fca8a16db81ae59eed629e7c8863d37e4c07355f52ac69ac8c06551
 
   - it: hashes enforce with the default baseline level
     set:
@@ -50,7 +50,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 02bd2443288b8a73dcbf482f013000d9f90e5862c560c4f69fdb0fef40f20a37
+          value: 4d56e508115ffd19f4554b472b76a241607153368112b5a4e29846cd93ee5eb5
 
   - it: changes the enforce checksum for a level-only upgrade to restricted
     set:
@@ -59,7 +59,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 7a4de98a79960451d668b0fbb69b4a35a2f25fe37e4534584768b3937ad3fc2b
+          value: 12d02f10d38b5a79258be2a4778ec281861539e8210d6ae401202a11a253f610
 
   - it: hashes an empty level as baseline
     set:
@@ -68,7 +68,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 02bd2443288b8a73dcbf482f013000d9f90e5862c560c4f69fdb0fef40f20a37
+          value: 4d56e508115ffd19f4554b472b76a241607153368112b5a4e29846cd93ee5eb5
 
   - it: keeps the checksum when prometheus is disabled
     set:
@@ -85,3 +85,40 @@ tests:
       - equal:
           path: spec.template.metadata.annotations["prometheus.io/scrape"]
           value: "true"
+
+  - it: changes the checksum when the protected root CA Secret changes
+    set:
+      global.rbac.enabled: true
+      global.rootCA.secretName: custom-ca
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b1137e167cc6118e25aa3ee6a4e10d9245561b04752e945814ca75f94053a898
+
+  - it: changes the checksum when the protected target kubeconfig Secret changes
+    set:
+      global.rbac.enabled: true
+      global.targetCluster.secretName: custom-kubeconfig
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b928f009523950421dd9ac1577884a907633e98989d8f2070938a3e283cf4abf
+
+  - it: changes the checksum when the control-plane namespace changes
+    release:
+      namespace: custom-radius
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: 8e4cbf6b63e9a2923bb98b81d420ff5ff3fb47e855f6a5593fbaaac39e383ca2
+
+  - it: ignores protected Secret changes when authorization is off
+    set:
+      global.rootCA.secretName: custom-ca
+      global.targetCluster.secretName: custom-kubeconfig
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467

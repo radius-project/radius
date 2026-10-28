@@ -26,6 +26,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
@@ -76,6 +77,7 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 	// The namespace to add Pod Security labels to after validation, and the client for its cluster.
 	var podSecurityNamespace *corev1.Namespace
 	var podSecurityClient client.Client
+	authorization := e.Options().Authorization
 
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
 	if newResource.Properties.Providers != nil && newResource.Properties.Providers.Kubernetes != nil {
@@ -91,10 +93,6 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 			newResource.Properties.Providers.Kubernetes.Namespace = namespace
 		}
 
-		if resp, err := e.validateNamespace(ctx, serviceCtx, namespace, old); resp != nil || err != nil {
-			return resp, err
-		}
-
 		// Validate the namespace exists on the cluster the application's resources
 		// will deploy to. In multi-cluster mode that is the external cluster named by
 		// RADIUS_TARGET_KUBECONFIG, not the control-plane cluster Radius runs on, so
@@ -102,6 +100,13 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 		namespaceClient, err := kubeutil.DeploymentTargetRuntimeClient(e.Options().KubeClient)
 		if err != nil {
 			return nil, err
+		}
+		authorization, err = kubeutil.DeploymentTargetAuthorization(ctx, authorization, e.Options().KubeClient, namespaceClient, namespace)
+		if err != nil {
+			return nil, err
+		}
+		if resp, err := e.validateNamespace(ctx, serviceCtx, namespace, old, authorization); resp != nil || err != nil {
+			return resp, err
 		}
 
 		ns := &corev1.Namespace{}
@@ -112,7 +117,7 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 			}
 			return nil, err
 		}
-		if e.Options().Authorization.PodSecurityLabels(namespace) != nil {
+		if authorization.PodSecurityLabels(namespace) != nil {
 			podSecurityNamespace, podSecurityClient = ns, namespaceClient
 		}
 	} else if old != nil {
@@ -147,7 +152,7 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 	// Radius.Core environments use a namespace the user created, so Radius adds only the Pod Security
 	// labels that are not already set and never changes labels an operator set.
 	if podSecurityNamespace != nil {
-		labels := e.Options().Authorization.PodSecurityLabels(podSecurityNamespace.Name)
+		labels := authorization.PodSecurityLabels(podSecurityNamespace.Name)
 		added, err := kubeutil.AddMissingNamespaceLabels(ctx, podSecurityClient, podSecurityNamespace, labels)
 		if err != nil {
 			return nil, err
@@ -325,10 +330,11 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) validateNamespace(
 	serviceCtx *v1.ARMRequestContext,
 	namespace string,
 	old *datamodel.Environment_v20250801preview,
+	authorization authz.Options,
 ) (rest.Response, error) {
 	// Runs before the namespace checks below so that an environment already pinned to the
 	// control-plane namespace is also rejected on update.
-	if err := e.Options().Authorization.AdmitNamespace(ctx, serviceCtx.ResourceID.Type()+"/write", serviceCtx.ResourceID.String(), namespace); err != nil {
+	if err := authorization.AdmitNamespace(ctx, serviceCtx.ResourceID.Type()+"/write", serviceCtx.ResourceID.String(), namespace); err != nil {
 		return nil, err
 	}
 
