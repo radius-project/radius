@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -43,7 +44,7 @@ const (
 	applicationsRPUser  = "system:serviceaccount:" + radiusNamespace + ":applications-rp"
 )
 
-// Test_AdmissionPolicy_Rules sends server-side dry-run Deployments to the API server, mostly as
+// Test_AdmissionPolicy_Rules sends server-side dry-run Pods and Deployments to the API server, mostly as
 // the applications-rp identity, and checks which admission rule each one triggers.
 func Test_AdmissionPolicy_Rules(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
@@ -78,27 +79,38 @@ func Test_AdmissionPolicy_Rules(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			warnings := &warningRecorder{}
-			cfg := rest.CopyConfig(options.K8sConfig)
-			cfg.WarningHandler = warnings
-			cfg.Impersonate = rest.ImpersonationConfig{UserName: tt.user}
-			client, err := k8s.NewForConfig(cfg)
-			require.NoError(t, err)
+			for _, kind := range []string{"Pod", "Deployment"} {
+				t.Run(kind, func(t *testing.T) {
+					warnings := &warningRecorder{}
+					cfg := rest.CopyConfig(options.K8sConfig)
+					cfg.WarningHandler = warnings
+					cfg.Impersonate = rest.ImpersonationConfig{UserName: tt.user}
+					client, err := k8s.NewForConfig(cfg)
+					require.NoError(t, err)
 
-			deployment := admissionTestDeployment(tt.spec, !tt.unlabeled)
-			_, err = client.AppsV1().Deployments(tt.namespace).Create(ctx, deployment, metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}})
-			admissionWarnings := strings.Join(warnings.matching("AdmissionPolicyDenied"), "\n")
+					deployment := admissionTestDeployment(tt.spec, !tt.unlabeled)
+					createOptions := metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}
+					switch kind {
+					case "Pod":
+						pod := &corev1.Pod{ObjectMeta: deployment.ObjectMeta, Spec: deployment.Spec.Template.Spec}
+						_, err = client.CoreV1().Pods(tt.namespace).Create(ctx, pod, createOptions)
+					case "Deployment":
+						_, err = client.AppsV1().Deployments(tt.namespace).Create(ctx, deployment, createOptions)
+					}
+					admissionWarnings := strings.Join(warnings.matching("AdmissionPolicyDenied"), "\n")
 
-			switch {
-			case tt.rule == "":
-				require.NoError(t, err)
-				require.Empty(t, admissionWarnings)
-			case mode == authz.ModeDryRun:
-				require.NoError(t, err, "dryRun must not reject")
-				require.Contains(t, admissionWarnings, "AdmissionPolicyDenied: "+tt.rule)
-			default:
-				require.True(t, apierrors.IsForbidden(err), "expected Forbidden, got %v", err)
-				require.Contains(t, err.Error(), "AdmissionPolicyDenied: "+tt.rule)
+					switch {
+					case tt.rule == "":
+						require.NoError(t, err)
+						require.Empty(t, admissionWarnings)
+					case mode == authz.ModeDryRun:
+						require.NoError(t, err, "dryRun must not reject")
+						require.Contains(t, admissionWarnings, "AdmissionPolicyDenied: "+tt.rule)
+					default:
+						require.True(t, apierrors.IsForbidden(err), "expected Forbidden, got %v", err)
+						require.Contains(t, err.Error(), "AdmissionPolicyDenied: "+tt.rule)
+					}
+				})
 			}
 		})
 	}
@@ -108,8 +120,8 @@ func Test_AdmissionPolicy_Rules(t *testing.T) {
 // by admission with AdmissionPolicyDenied (403).
 //
 // The container's base manifest mounts a control-plane Secret, and its application deploys
-// into the control-plane namespace. Runs only in enforce: in other modes the Deployment
-// would be created with access to the Secret.
+// into the control-plane namespace. Runs only in enforce and uses zero replicas so an
+// admission regression cannot start a Pod with access to the Secret.
 func Test_Boundary_ControlPlaneSecretReferenceDenied(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 	ctx := t.Context()
@@ -139,6 +151,13 @@ func Test_Boundary_ControlPlaneSecretReferenceDenied(t *testing.T) {
 		_, _ = envClient.Delete(ctx, scope, name, nil)
 		_ = options.K8sClient.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
 		_ = options.K8sClient.CoreV1().ServiceAccounts(radiusNamespace).Delete(ctx, name, metav1.DeleteOptions{})
+		// Failed deployments may have no output inventory, so remove partially applied resources explicitly.
+		err := options.K8sClient.RbacV1().RoleBindings(radiusNamespace).Delete(ctx, name, metav1.DeleteOptions{})
+		assert.True(t, err == nil || apierrors.IsNotFound(err), "delete generated RoleBinding: %v", err)
+		err = options.K8sClient.RbacV1().Roles(radiusNamespace).Delete(ctx, name, metav1.DeleteOptions{})
+		assert.True(t, err == nil || apierrors.IsNotFound(err), "delete generated Role: %v", err)
+		err = options.K8sClient.AppsV1().Deployments(radiusNamespace).Delete(ctx, name, metav1.DeleteOptions{})
+		assert.True(t, err == nil || apierrors.IsNotFound(err), "delete generated Deployment: %v", err)
 	})
 
 	env, err := envClient.CreateOrUpdate(ctx, scope, name, corerp.EnvironmentResource{
@@ -160,6 +179,7 @@ kind: Deployment
 metadata:
   name: %s
 spec:
+  replicas: 0
   template:
     spec:
       volumes:
