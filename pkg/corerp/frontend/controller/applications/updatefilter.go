@@ -124,6 +124,10 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is an invalid namespace name: %s. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.", kubeNamespace, msg)), nil
 	}
 
+	if err := opt.Authorization.AdmitNamespace(ctx, serviceCtx.ResourceID.Type()+"/write", serviceCtx.ResourceID.String(), kubeNamespace); err != nil {
+		return nil, err
+	}
+
 	if oldResource != nil {
 		c := oldResource.Properties.Status.Compute
 		if c != nil && c.Kind == rpv1.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {

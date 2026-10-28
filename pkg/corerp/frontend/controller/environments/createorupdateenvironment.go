@@ -81,6 +81,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	// existing installs that already have duplicate namespaces across resource groups. Plane-wide
 	// uniqueness is enforced on Radius.Core/environments instead, which is where users migrate to.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
+	if newResource.Properties.Compute.Kind == rpv1.KubernetesComputeKind {
+		if err := e.Options().Authorization.AdmitNamespace(ctx, serviceCtx.ResourceID.Type()+"/write", serviceCtx.ResourceID.String(), namespace); err != nil {
+			return nil, err
+		}
+	}
+
 	result, err := util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.compute.kubernetes.namespace", namespace, e.DatabaseClient())
 	if err != nil {
 		return nil, err

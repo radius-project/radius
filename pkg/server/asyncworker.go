@@ -160,7 +160,7 @@ func (w *AsyncWorker) Run(ctx context.Context) error {
 					// silently deploying to the control-plane cluster.
 					return deployment.NewFailedDeploymentProcessor(err)
 				}
-				return deployment.NewDeploymentProcessor(appModel, w.DatabaseClient, clients.RuntimeClient, clients.ClientSet)
+				return deployment.NewDeploymentProcessor(appModel, w.DatabaseClient, clients.RuntimeClient, clients.ClientSet, w.options.Config.Authorization)
 			},
 		}
 
