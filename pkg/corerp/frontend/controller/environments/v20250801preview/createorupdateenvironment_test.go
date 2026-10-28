@@ -29,6 +29,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -37,6 +38,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // testRecipePackID is the recipe pack referenced by the shared environment test
@@ -1089,6 +1091,71 @@ func TestCreateOrUpdateEnvironment_NamespaceImmutability(t *testing.T) {
 			require.NoError(t, json.Unmarshal(w.Body.Bytes(), errorResponse))
 			require.Equal(t, tt.expectedErrorCode, errorResponse.Error.Code)
 			require.Contains(t, errorResponse.Error.Message, tt.storedNamespace)
+		})
+	}
+}
+
+func TestCreateOrUpdateEnvironment_PodSecurityLabels(t *testing.T) {
+	testCases := []struct {
+		desc       string
+		opts       authz.Options
+		existing   map[string]string
+		wantLabels map[string]string
+	}{
+		{desc: "off leaves the namespace unlabeled", opts: authz.Options{}, existing: map[string]string{"team": "a"}, wantLabels: map[string]string{"team": "a"}},
+		{
+			desc: "dryRun adds warn and audit", opts: authz.Options{Mode: authz.ModeDryRun},
+			wantLabels: map[string]string{authz.PodSecurityLabelWarn: "baseline", authz.PodSecurityLabelAudit: "baseline"},
+		},
+		{
+			desc: "enforce keeps operator labels", opts: authz.Options{Mode: authz.ModeEnforce, PodSecurityLevel: authz.PodSecurityLevelRestricted},
+			existing:   map[string]string{authz.PodSecurityLabelEnforce: "privileged"},
+			wantLabels: map[string]string{authz.PodSecurityLabelEnforce: "privileged", authz.PodSecurityLabelWarn: "restricted", authz.PodSecurityLabelAudit: "restricted"},
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			mctrl := gomock.NewController(t)
+			databaseClient := database.NewMockClient(mctrl)
+
+			envInput, envDataModel, _ := getTestModelsv20250801preview()
+			w := httptest.NewRecorder()
+			req, err := rpctest.NewHTTPRequestFromJSON(t.Context(), http.MethodPut, testHeaderfilev20250801preview, envInput)
+			require.NoError(t, err)
+			ctx := rpctest.NewARMRequestContext(req)
+
+			databaseClient.EXPECT().Get(gomock.Any(), testRecipePackID).Return(testRecipePackObject(), nil).AnyTimes()
+			databaseClient.EXPECT().
+				Get(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+					return nil, &database.ErrNotFound{ID: id}
+				}).AnyTimes()
+			databaseClient.EXPECT().Query(gomock.Any(), gomock.Any()).Return(&database.ObjectQueryResult{}, nil).AnyTimes()
+			databaseClient.EXPECT().
+				Save(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, obj *database.Object, opts ...database.SaveOptions) error {
+					obj.ETag = "new-resource-etag"
+					obj.Data = envDataModel
+					return nil
+				}).Times(1)
+
+			kubeClient := k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{Name: "default", Labels: tt.existing})
+			ctl, err := NewCreateOrUpdateEnvironmentv20250801preview(ctrl.Options{
+				DatabaseClient: databaseClient,
+				KubeClient:     kubeClient,
+				Authorization:  tt.opts,
+			})
+			require.NoError(t, err)
+
+			resp, err := ctl.Run(ctx, w, req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Apply(ctx, w, req))
+			require.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+			ns := &corev1.Namespace{}
+			require.NoError(t, kubeClient.Get(ctx, client.ObjectKey{Name: "default"}, ns))
+			require.Equal(t, tt.wantLabels, ns.Labels)
 		})
 	}
 }

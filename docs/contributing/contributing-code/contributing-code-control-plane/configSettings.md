@@ -37,7 +37,7 @@ The development files combine shared host options with service-specific settings
 | `secretProvider`                | [`secretprovider.SecretProviderOptions`](../../../../pkg/components/secret/secretprovider/options.go) | Provider is `kubernetes` or `inmemory`                                     |
 | `metricsProvider`               | [`metricsservice.Options`](../../../../pkg/components/metrics/metricsservice/options.go)              | `enabled`, `serviceName`, and nested `prometheus.path` / `prometheus.port` |
 | `server`, `workerServer`, `ucp` | [`pkg/armrpc/hostoptions`](../../../../pkg/armrpc/hostoptions/)                                       | HTTP listener, async worker, and UCP connection settings                   |
-| `authorization`                 | [`authz.Options`](../../../../pkg/authz/mode.go)                                                      | `mode` is `off` (default), `dryRun`, or `enforce`                          |
+| `authorization`                 | [`authz.Options`](../../../../pkg/authz/mode.go)                                                      | `mode` is `off` (default), `dryRun`, or `enforce`; also `podSecurityLevel` |
 
 For example, local services commonly use Kubernetes API server storage and expose Prometheus settings in this shape:
 
@@ -80,7 +80,9 @@ Kubernetes deployments use the chart-rendered UCP connection instead of the loca
 The `authorization.mode` setting is read by UCP, Applications RP, Dynamic RP, and the controller, and each logs `authz mode=<mode>` at startup. The chart renders it from `global.rbac.enabled` and `global.rbac.dryRun`: `dryRun=true` renders `dryRun`, `enabled=true` renders `enforce`, and setting both fails rendering. In `off` mode the chart omits the section so older service binaries can still load the config.
 
 > [!NOTE]
-> Services only read and log this setting for now. No authorization checks use it yet, so selecting `enforce` does not block requests.
+> No authorization checks use this setting yet, so selecting `enforce` does not block Radius API requests. Its only runtime effect is Pod Security Admission labels on the environment and application namespaces that Applications RP creates or is pointed at.
+
+When the mode is not `off`, the chart also renders `podSecurityLevel` (from `global.rbac.podSecurityLevel`, `baseline` by default or `restricted`) and `controlPlaneNamespace` (the release namespace, which is never labeled). `dryRun` adds the `pod-security.kubernetes.io/warn` and `audit` labels; `enforce` also adds `enforce`. Labels that an operator already set on a namespace are never overwritten.
 
 ### 3. Configure supported environment overrides
 

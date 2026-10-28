@@ -69,6 +69,14 @@ func (m *Mode) UnmarshalYAML(value *yaml.Node) error {
 type Options struct {
 	// Mode is the authorization mode. Defaults to ModeOff when unset.
 	Mode Mode `yaml:"mode,omitempty"`
+
+	// PodSecurityLevel is the Pod Security level applied to environment namespaces when the mode is
+	// not off. Defaults to PodSecurityLevelBaseline when unset.
+	PodSecurityLevel PodSecurityLevel `yaml:"podSecurityLevel,omitempty"`
+
+	// ControlPlaneNamespace is the namespace Radius is installed in. Radius never applies Pod Security
+	// labels to it. Defaults to "radius-system" when unset.
+	ControlPlaneNamespace string `yaml:"controlPlaneNamespace,omitempty"`
 }
 
 // EffectiveMode returns the configured mode, or ModeOff when it is unset.
