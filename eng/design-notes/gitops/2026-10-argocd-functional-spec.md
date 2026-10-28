@@ -530,7 +530,7 @@ sequenceDiagram
 
 **Proposed Option:** create no `DeploymentResource` for `Radius.Core` types. They stay in `status.outputResources`, and when the `DeploymentTemplate` is deleted, the controller deletes them itself after every tracked resource is gone: applications first, then environments, then Recipe packs. Removing a lone application or environment from a Bicep file while the file stays is rare, because every other resource in the file depends on it; the docs state that it is left in place. Prototyped: the tree shows only `db`, `result` and `vote`, and deleting the template deleted the application resource and kept the Environment from the other template.
 
-**Found while prototyping: delete API version.** The `DeploymentResource` controller deleted every resource with API version `2023-10-01-preview`, which `Radius.*` types reject, so deleting a template left its resources `Failed` and the template stuck in Deleting. The prototype deletes each resource with the API version its template deployed it with (for example `Radius.Compute/containers@2025-08-01-preview`), falling back to the old default. This is a Phase 1 fix that Flux needs too.
+**Found while prototyping: delete API version.** The `DeploymentResource` controller deleted every resource with API version `2023-10-01-preview`, which `Radius.*` types reject, so deleting a template left its resources `Failed` and the template stuck in Deleting. The prototype deletes each resource with the API version its template deployed it with (for example `Radius.Compute/containers@2025-08-01-preview`), falling back to the old default. This is a Phase 1 fix that Flux needs too. Tracked in [#13136](https://github.com/radius-project/radius/issues/13136), which also covers the same bug in recipe-output cleanup; we fix both as part of this work.
 
 #### Health mapping
 
@@ -610,7 +610,7 @@ Lua scripts for `DeploymentTemplate` and `DeploymentResource` implementing [Heal
 The deploying annotation and display labels in Phase 1, richer status and typed parameters in Phase 2, and observation after provisioning in Phase 4; deploy logic unchanged.
 
 - Packages: [`pkg/controller/api/radapp.io/v1alpha3`](../../../pkg/controller/api/radapp.io/v1alpha3/), [`pkg/controller/reconciler`](../../../pkg/controller/reconciler/).
-- (Phase 1) Create no `DeploymentResource` for `Radius.Core` types and delete them when the template is deleted; delete each resource with the API version its template deployed it with.
+- (Phase 1) Create no `DeploymentResource` for `Radius.Core` types and delete them when the template is deleted; delete each resource with the API version its template deployed it with ([#13136](https://github.com/radius-project/radius/issues/13136)).
 - (Phase 1) Set `radapp.io/resource-type` and `radapp.io/phrase` labels on each `DeploymentResource`, and the `radapp.io/deploying-generation` annotation while its template deploys. See [What plain Argo CD can show](#health-mapping).
 - Set conditions on every phrase transition, with redacted messages.
 - Read the typed parameters field and convert it with a helper shared by the Flux path.
