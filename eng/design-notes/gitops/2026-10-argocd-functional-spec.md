@@ -721,7 +721,7 @@ No Recipes changes. Recipe failures are surfaced through the new status conditio
 | Argo CD UI extension: read-only Radius graph from the application graph API, and diagnostics, behind a proxy that enforces Argo CD scope                             | L    | 3     |
 | Runtime and dependency health after provisioning, and stale health (required by the feature spec; design in Open Questions 6 and 7)                                  | L    | 4     |
 
-Estimates include unit and functional tests.
+Estimates include unit and functional tests. Staffing, ordering and duration are in [Engineering plan and estimate](#engineering-plan-and-estimate).
 
 ## Open Questions
 
@@ -827,3 +827,89 @@ return hs
 ## Design Review Notes
 
 Not yet reviewed.
+
+## Engineering plan and estimate
+
+This plan turns the [Development plan](#development-plan) into workstreams, staffing and a timeline. It covers all four [delivery phases](#delivery-phases).
+
+### Assumptions
+
+- Engineers already know Go and the Radius controller; one engineer on Phase 3 knows React, or ramps up for about a week.
+- Durations are calendar weeks of focused work, including unit tests, functional tests, code review and docs. They do not include holidays or on-call.
+- Engineers use AI coding agents (for example Copilot coding agent and Copilot CLI) every day. The "AI help" column says where that saves the most time; the durations already assume it. Without AI help, expect roughly 25–35% more time, mostly on tests, docs, CI workflows and UI code.
+- The Phase 1 prototype on branch `nithyatsu-argocd-prototype` is the starting point: the plugin script, Lua health checks, display labels, deploying annotation, `Radius.Core` skip and delete API-version fix already work end to end on a kind cluster. Phase 1 work hardens and ships them; it does not start from zero.
+- Open questions are answered before the phase that needs them starts: 12 for Phase 1, 11 for Phase 2, 13 for Phase 3, 6 and 7 for Phase 4.
+
+### Workstreams
+
+| Phase | Workstream                                                                                                                                                                                                                                                                                                                                   | Engineers | Duration | Can run in parallel with                     | Depends on                            | AI help                                                                                 |
+|-------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------|----------------------------------------------|---------------------------------------|-----------------------------------------------------------------------------------------|
+| 1     | **1A. Sidecar image and plugin:** production image, `plugin.yaml`, signing, SBOM, scanning, release pipeline, Helm values                                                                                                                                                                                                                    | 1         | 3 weeks  | 1B, 1C, 1E                                   | Prototype                             | Dockerfile hardening, release workflow YAML, determinism tests                          |
+| 1     | **1B. Controller and CLI fixes:** `Radius.Core` skip, delete API version for controller and Recipe cleanup ([#13136](https://github.com/radius-project/radius/issues/13136)), labels, deploying annotation, `.bicepparam`, stdout, revision annotation, empty `parameters` ([#13436](https://github.com/radius-project/radius/issues/13436)) | 1         | 3 weeks  | 1A, 1C, 1E                                   | Prototype                             | Port prototype code, table-driven unit tests, edge cases in the API-version lookup      |
+| 1     | **1C. Health checks:** Lua scripts with Argo CD test fixtures; upstream pull request to `argoproj/argo-cd`; `argocd-cm` snippet                                                                                                                                                                                                              | 0.5       | 2 weeks  | 1A, 1B, 1E                                   | Labels and annotation from 1B         | Generate Lua fixtures for every phrase; draft the upstream pull request                 |
+| 1     | **1D. Functional test:** kind cluster with Argo CD and the sidecar; scenarios 1, 3, 4; CI fallback path                                                                                                                                                                                                                                      | 1         | 3 weeks  | 1E; starts once 1A and 1B have a first build | 1A, 1B                                | Test scaffolding, CI workflow, debugging flaky waits from logs                          |
+| 1     | **1E. Documentation:** install, environment and application Applications, CI fallback, limits                                                                                                                                                                                                                                                | 0.5       | 2 weeks  | 1A, 1B, 1C                                   | Decisions in this note                | First drafts from this note and the prototype README; markdown lint                     |
+| 2     | **2A. Richer status:** conditions, redacted reason, attempted revision, last-observed time, pending-cleanup list; health checks read them                                                                                                                                                                                                    | 1         | 3 weeks  | 2B, Phase 3 front end                        | 1B                                    | CRD and deepcopy generation, condition-transition tests, redaction patterns             |
+| 2     | **2B. Typed parameters:** new CRD field shared by CLI, plugin and Flux paths                                                                                                                                                                                                                                                                 | 1         | 3 weeks  | 2A                                           | 1A, 1B                                | Conversion helper and tests for every Bicep type; Flux regression tests                 |
+| 2     | **2C. Secure parameters:** design (open question 11), then implementation                                                                                                                                                                                                                                                                    | 1         | 4 weeks  | 2A after design is agreed                    | 2B; answer to open question 11        | Compare designs; threat-model checklist; tests that secrets never reach `spec` or logs  |
+| 3     | **3A. UI extension front end:** "Radius" resource tab, graph app view, status panel; build and install through the extension installer                                                                                                                                                                                                       | 1         | 4 weeks  | 3B, Phase 2                                  | 1A for packaging                      | React components from the mockups, styling, extension registration, UI tests            |
+| 3     | **3B. Proxy backend:** reads the Radius application graph API; enforces Argo CD project and Application scope; Argo CD proxy extension config and RBAC                                                                                                                                                                                       | 1         | 4 weeks  | 3A, Phase 2                                  | Answer to open question 13            | API client and handlers, authorization tests for every route, security review checklist |
+| 3     | **3C. Diagnostics in the tab:** failure reason, pending cleanup, revision                                                                                                                                                                                                                                                                    | 0.5       | 2 weeks  | Phase 4                                      | 2A, 3A, 3B                            | Map condition fields to UI states                                                       |
+| 4     | **4A. Health after provisioning:** Radius observes what it created and writes the result to `DeploymentTemplate` status                                                                                                                                                                                                                      | 1.5       | 6 weeks  | 3C                                           | 2A; answers to open questions 6 and 7 | Prototype observers per resource type, tests for each failure mode                      |
+| 4     | **4B. Stale health:** heartbeat or equivalent, so a stopped controller does not look Healthy                                                                                                                                                                                                                                                 | 0.5       | 3 weeks  | 4A                                           | 2A; answer to open question 6         | Failure-injection tests                                                                 |
+
+### What can run in parallel
+
+- **Inside Phase 1:** 1A, 1B, 1C and 1E start on day one, because the prototype already fixed the interfaces between them: the plugin output, the labels and the annotation. 1D starts when 1A and 1B have a first build.
+- **Phases 2 and 3:** run side by side. The Phase 3 front end and proxy need only Phase 1. Only 3C, the diagnostics, waits for 2A's conditions.
+- **Phase 4:** can start design during Phase 2, but implementation needs 2A's status fields. It overlaps with the end of Phase 3.
+- **Not parallel:** 2C waits for 2B and for the secure-parameters design; 4A and 4B wait for answers to open questions 6 and 7.
+
+### Timeline
+
+```mermaid
+gantt
+    title Argo CD support: indicative timeline (weeks from start)
+    dateFormat  X
+    axisFormat  %s
+    section Phase 1
+    1A Sidecar image and plugin     :p1a, 0, 3
+    1B Controller and CLI fixes     :p1b, 0, 3
+    1C Health checks                :p1c, 0, 2
+    1E Documentation                :p1e, 1, 3
+    1D Functional test              :p1d, 2, 5
+    Phase 1 release                 :milestone, m1, 6, 6
+    section Phase 2
+    2A Richer status                :p2a, 5, 8
+    2B Typed parameters             :p2b, 5, 8
+    2C Secure parameters            :p2c, 8, 12
+    section Phase 3
+    3A UI front end                 :p3a, 6, 10
+    3B Proxy backend                :p3b, 6, 10
+    3C Diagnostics in the tab       :p3c, 10, 12
+    section Phase 4
+    4A Health after provisioning    :p4a, 11, 17
+    4B Stale health                 :p4b, 13, 16
+```
+
+### Overall estimate
+
+| Phase                             | Engineers at peak | Calendar duration     | Effort (engineer-weeks) |
+|-----------------------------------|-------------------|-----------------------|-------------------------|
+| 1. Deploy and provisioning health | 3                 | 5–6 weeks             | 11                      |
+| 2. Why it failed                  | 2                 | 7 weeks (weeks 5–12)  | 10                      |
+| 3. Radius view inside Argo CD     | 2                 | 6 weeks (weeks 6–12)  | 9                       |
+| 4. Health after provisioning      | 2                 | 6 weeks (weeks 11–17) | 10.5                    |
+| **Total**                         | **4**             | **about 17 weeks**    | **about 40**            |
+
+- **Team:** 3 engineers for Phase 1, then 4 while Phases 2 and 3 overlap (2 on Phase 2, 2 on Phase 3, one of them comfortable with React), then 2 for Phase 4.
+- **Calendar:** about 17 weeks of work, or about 4–5 months with a 20% buffer for design reviews, upstream Argo CD review of the health checks, security review of the sidecar and proxy, and CI flakiness.
+- **Phase 1 alone:** 2–3 engineers, about 6 weeks. This is the shortest path to something users can try.
+- **Effort without AI help:** about 50–55 engineer-weeks.
+
+### Risks to the estimate
+
+- **Upstream review of the health checks:** acceptance in `argoproj/argo-cd` can take weeks. The `argocd-cm` snippet ships first, so this does not block a Radius release.
+- **Open questions 6, 7 and 13:** Phase 4 and the Phase 3 access model can grow if the answers need new Radius APIs.
+- **Functional tests:** Argo CD, the sidecar and Bicep extension downloads make tests slower and flakier than the Flux tests. Budget time for a registry mirror.
+- **Shared CRDs:** Phase 2 changes affect Flux too, so it needs Flux regression tests and review from Flux users.
