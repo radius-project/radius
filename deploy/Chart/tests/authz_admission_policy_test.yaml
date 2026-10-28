@@ -1,0 +1,114 @@
+suite: test admission policy
+templates:
+  - global/admission-policy.yaml
+release:
+  name: radius
+  namespace: radius-system
+capabilities:
+  apiVersions:
+    - admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy
+tests:
+  - it: renders nothing when authorization is off
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders nothing when the cluster has no ValidatingAdmissionPolicy API
+    capabilities:
+      apiVersions: []
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: warns and audits in dryRun
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: spec.validationActions
+          value: [Warn, Audit]
+        documentIndex: 1
+
+  - it: denies in enforce
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - isKind:
+          of: ValidatingAdmissionPolicy
+        documentIndex: 0
+      - equal:
+          path: spec.failurePolicy
+          value: Fail
+        documentIndex: 0
+      - equal:
+          path: spec.matchConditions[0].expression
+          value: 'request.userInfo.username in ["system:serviceaccount:radius-system:applications-rp"]'
+        documentIndex: 0
+      - isKind:
+          of: ValidatingAdmissionPolicyBinding
+        documentIndex: 1
+      - equal:
+          path: spec.policyName
+          value: radius-control-plane-isolation
+        documentIndex: 1
+      - equal:
+          path: spec.validationActions
+          value: [Deny]
+        documentIndex: 1
+
+  - it: names each rule in its message
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - matchRegex:
+          path: spec.validations[0].message
+          pattern: '^AdmissionPolicyDenied: control-plane-service-account: '
+        documentIndex: 0
+      - matchRegex:
+          path: spec.validations[1].message
+          pattern: '^AdmissionPolicyDenied: control-plane-secret: '
+        documentIndex: 0
+      - matchRegex:
+          path: spec.validations[2].message
+          pattern: '^AdmissionPolicyDenied: control-plane-namespace: '
+        documentIndex: 0
+
+  - it: bakes the control-plane names from chart values
+    set:
+      global.rbac.enabled: true
+      global.rootCA.secretName: my-root-ca
+    asserts:
+      - contains:
+          path: spec.variables
+          content:
+            name: controlPlaneNamespace
+            expression: '"radius-system"'
+        documentIndex: 0
+      - contains:
+          path: spec.variables
+          content:
+            name: controlPlaneServiceAccounts
+            expression: '["ucp","applications-rp","dynamic-rp","bicep-de","controller","dashboard","database","radius-api-readiness","pre-upgrade"]'
+        documentIndex: 0
+      - contains:
+          path: spec.variables
+          content:
+            name: controlPlaneSecrets
+            expression: '["database-secret","radius-encryption-key","ucp-cert","my-root-ca","target-kubeconfig"]'
+        documentIndex: 0
+
+  - it: uses custom application identities
+    set:
+      global.rbac.dryRun: true
+      global.rbac.admission.applicationIdentities:
+        - system:serviceaccount:apps:template
+        - alice
+    asserts:
+      - equal:
+          path: spec.matchConditions[0].expression
+          value: 'request.userInfo.username in ["system:serviceaccount:apps:template","alice"]'
+        documentIndex: 0
