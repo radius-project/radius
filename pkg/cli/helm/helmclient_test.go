@@ -28,10 +28,12 @@ import (
 	"github.com/stretchr/testify/require"
 	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -202,25 +204,87 @@ func newHistoryTestConfiguration(releases []release.Releaser, err error) *helm.C
 }
 
 func TestHelmClientImpl_RunHelmRollback(t *testing.T) {
-	client := &HelmClientImpl{}
-
-	// Since RunHelmRollback uses real Helm internals that require a configured cluster,
-	// we test the method exists and has the correct signature.
-	// The actual functionality is tested through integration tests in cluster_test.go
-	require.NotNil(t, client.RunHelmRollback)
-
-	// Test with nil configuration - should handle gracefully or panic predictably
-	defer func() {
-		if r := recover(); r != nil {
-			// Expected behavior when configuration is nil
-			t.Log("Expected panic when configuration is nil")
+	t.Parallel()
+	newChart := func(version string) *chart.Chart {
+		return &chart.Chart{
+			Metadata: &chart.Metadata{APIVersion: chart.APIVersionV2, Name: "radius", Version: version, AppVersion: version},
+			Values:   map[string]any{"setting": "default"},
+			Templates: []*common.File{{
+				Name: "templates/configmap.yaml",
+				Data: []byte("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: rollback\ndata:\n  setting: {{ .Values.setting | quote }}\n"),
+			}},
 		}
-	}()
+	}
+	setup := func(t *testing.T) *helm.Configuration {
+		configuration := &helm.Configuration{
+			Releases:     storage.Init(driver.NewMemory()),
+			KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
+			Capabilities: common.DefaultCapabilities,
+		}
+		client := NewHelmClient()
+		_, err := client.RunHelmInstall(configuration, newChart("0.61.0"), map[string]any{"setting": "first"}, "radius", "radius-system", false, time.Minute)
+		require.NoError(t, err)
+		_, err = client.RunHelmUpgrade(configuration, newChart("0.62.0"), map[string]any{"setting": "second"}, "radius", "radius-system", false, false, time.Minute)
+		require.NoError(t, err)
+		return configuration
+	}
 
-	// This will panic or error, which is expected behavior
-	err := client.RunHelmRollback(nil, "test-release", 1, true)
-	if err == nil {
-		t.Error("Expected error when configuration is nil, but got nil")
+	tests := []struct {
+		name     string
+		revision int
+	}{
+		{name: "explicit revision", revision: 1},
+		{name: "revision 0 means the previous revision", revision: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			configuration := setup(t)
+			require.NoError(t, NewHelmClient().RunHelmRollback(configuration, "radius", tt.revision, false))
+
+			latest, err := NewHelmClient().RunHelmGet(configuration, "radius")
+			require.NoError(t, err)
+			require.Equal(t, 3, latest.Version)
+			require.Equal(t, releasecommon.StatusDeployed, latest.Info.Status)
+			require.Equal(t, "Rollback to 1", latest.Info.Description)
+			require.Equal(t, "0.61.0", latest.Chart.Metadata.Version)
+			require.Equal(t, map[string]any{"setting": "first"}, latest.Config)
+			require.Contains(t, latest.Manifest, `setting: "first"`)
+		})
+	}
+
+	t.Run("errors", func(t *testing.T) {
+		t.Parallel()
+		client := NewHelmClient()
+		require.ErrorContains(t, client.RunHelmRollback(nil, "radius", 1, false), "not initialized")
+		configuration := setup(t)
+		require.ErrorContains(t, client.RunHelmRollback(configuration, "radius", -1, false), "invalid revision")
+		require.ErrorContains(t, client.RunHelmRollback(configuration, "radius", 9, false), "failed to get revision 9")
+
+		installedOnly := &helm.Configuration{
+			Releases:     storage.Init(driver.NewMemory()),
+			KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
+			Capabilities: common.DefaultCapabilities,
+		}
+		_, err := client.RunHelmInstall(installedOnly, newChart("0.61.0"), nil, "radius", "radius-system", false, time.Minute)
+		require.NoError(t, err)
+		require.ErrorContains(t, client.RunHelmRollback(installedOnly, "radius", 0, false), "no previous revision")
+	})
+}
+
+func Test_newRollbackClient_Configuration(t *testing.T) {
+	t.Parallel()
+	for _, serverSideApply := range []bool{true, false} {
+		rollbackClient := newRollbackClient(&helm.Configuration{}, "test-namespace", 4, true, serverSideApply)
+
+		require.Equal(t, "test-namespace", rollbackClient.Namespace)
+		require.Equal(t, "Rollback to 4", rollbackClient.Description)
+		require.Equal(t, rollbackTimeout, rollbackClient.Timeout)
+		require.Equal(t, kube.LegacyStrategy, rollbackClient.WaitStrategy)
+		require.True(t, rollbackClient.ResetValues)
+		require.False(t, rollbackClient.ResetThenReuseValues)
+		require.True(t, rollbackClient.DisableHooks)
+		require.Equal(t, serverSideApply, rollbackClient.ForceConflicts)
 	}
 }
 
@@ -233,6 +297,11 @@ func TestHelmClient_Constants(t *testing.T) {
 	// pulls on a cold cluster, so they get a longer budget than the other operations.
 	// See https://github.com/radius-project/radius/issues/10236.
 	require.Equal(t, time.Duration(10)*time.Minute, DefaultInstallTimeout)
+}
+
+func TestHelmClient_FieldManager(t *testing.T) {
+	require.Equal(t, "rad", FieldManager)
+	require.Equal(t, FieldManager, kube.ManagedFieldsManager)
 }
 
 // Test_waitStrategy verifies that we wait using Helm's legacy poller rather than the v4
@@ -378,13 +447,15 @@ func Test_newInstallClient_Configuration(t *testing.T) {
 }
 
 // Test_newUpgradeClient_Configuration asserts that the upgrade action is actually configured with
-// the legacy wait strategy, an effective timeout, and the expected value-reuse semantics.
+// the legacy wait strategy, an effective timeout, the expected value-reuse semantics, and forced
+// conflicts whenever the upgrade uses server-side apply.
 func Test_newUpgradeClient_Configuration(t *testing.T) {
 	tests := []struct {
 		name            string
 		wait            bool
 		reuseValues     bool
 		timeout         time.Duration
+		serverSideApply bool
 		expectedWait    kube.WaitStrategy
 		expectedTimeout time.Duration
 	}{
@@ -393,6 +464,7 @@ func Test_newUpgradeClient_Configuration(t *testing.T) {
 			wait:            true,
 			reuseValues:     true,
 			timeout:         20 * time.Minute,
+			serverSideApply: true,
 			expectedWait:    kube.LegacyStrategy,
 			expectedTimeout: 20 * time.Minute,
 		},
@@ -401,6 +473,7 @@ func Test_newUpgradeClient_Configuration(t *testing.T) {
 			wait:            true,
 			reuseValues:     false,
 			timeout:         0,
+			serverSideApply: true,
 			expectedWait:    kube.LegacyStrategy,
 			expectedTimeout: DefaultInstallTimeout,
 		},
@@ -418,13 +491,46 @@ func Test_newUpgradeClient_Configuration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			upgradeClient := newUpgradeClient(&helm.Configuration{}, "test-namespace", tt.wait, tt.reuseValues, tt.timeout)
+			upgradeClient := newUpgradeClient(&helm.Configuration{}, "test-namespace", tt.wait, tt.reuseValues, tt.timeout, tt.serverSideApply)
 
 			require.Equal(t, tt.expectedWait, upgradeClient.WaitStrategy)
 			require.Equal(t, tt.expectedTimeout, upgradeClient.Timeout)
 			require.Equal(t, "test-namespace", upgradeClient.Namespace)
 			require.Equal(t, tt.reuseValues, upgradeClient.ResetThenReuseValues)
 			require.Equal(t, !tt.reuseValues, upgradeClient.ResetValues)
+			require.Equal(t, tt.serverSideApply, upgradeClient.ForceConflicts)
+			require.Equal(t, "auto", upgradeClient.ServerSideApply)
+		})
+	}
+}
+
+func Test_usesServerSideApply(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		applyMethod string
+		noRelease   bool
+		expected    bool
+	}{
+		{name: "server-side apply release", applyMethod: "ssa", expected: true},
+		{name: "client-side apply release", applyMethod: "csa", expected: false},
+		{name: "release from Helm 3", applyMethod: "", expected: false},
+		{name: "no release", noRelease: true, expected: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			configuration := &helm.Configuration{Releases: storage.Init(driver.NewMemory())}
+			if !tt.noRelease {
+				require.NoError(t, configuration.Releases.Create(&releasev1.Release{
+					Name:        "radius",
+					Version:     1,
+					Namespace:   "radius-system",
+					ApplyMethod: tt.applyMethod,
+					Info:        &releasev1.Info{Status: releasecommon.StatusDeployed},
+				}))
+			}
+			require.Equal(t, tt.expected, usesServerSideApply(configuration, "radius"))
 		})
 	}
 }
