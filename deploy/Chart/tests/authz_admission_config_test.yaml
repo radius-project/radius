@@ -1,0 +1,30 @@
+suite: test admission settings in the applications-rp configuration
+templates:
+  - rp/configmaps.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: omits control-plane Secrets when authorization is off
+    asserts:
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'controlPlaneSecrets'
+
+  - it: renders control-plane Secrets in dryRun
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^  controlPlaneSecrets: \["database-secret","radius-encryption-key","ucp-cert","root-ca-cert","target-kubeconfig"\]$'
+
+  - it: renders configured Secret names in enforce
+    set:
+      global.rbac.enabled: true
+      global.rootCA.secretName: custom-ca
+      global.targetCluster.secretName: custom-kubeconfig
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^  controlPlaneSecrets: \["database-secret","radius-encryption-key","ucp-cert","custom-ca","custom-kubeconfig"\]$'
