@@ -113,8 +113,9 @@ func Test_AdmissionPolicy_Rules(t *testing.T) {
 //
 // Runs only in enforce. In dryRun the requests succeed and log a would-deny, which the CI
 // would-deny check treats as a failure, and in off mode they create resources in the control-plane
-// namespace. The applications-rp provider check for control-plane Secret references runs after
-// these checks, so it is covered by unit tests and manual testing.
+// namespace. Workloads in the control-plane namespace that use a control-plane service account or
+// Secret are covered at the admission layer by Test_AdmissionPolicy_Rules; the applications-rp
+// provider check for them is covered by unit tests and manual testing.
 func Test_Boundary_ControlPlaneNamespaceDenied(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 	ctx := t.Context()
