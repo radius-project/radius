@@ -840,15 +840,30 @@ This plan estimates the [delivery phases](#delivery-phases) for **one engineer**
 
 ### Phases
 
-Each phase delivers user stories from the [feature spec](https://github.com/radius-project/radius/pull/13284), shortened here.
+| Phase                             | Feature-spec user stories it completes                | Weeks  |
+|-----------------------------------|-------------------------------------------------------|--------|
+| 1. Deploy and provisioning health | Scenario 1                                            | 3      |
+| 2. Failure details and parameters | Scenarios 3 and 4                                     | 3      |
+| 3. Radius view inside Argo CD     | Scenarios 2 and 5                                     | 4      |
+| 4. Health after provisioning      | No scenario of its own; the health requirements below | 3      |
+| **Total**                         |                                                       | **13** |
 
-| Phase                             | User stories it delivers                                                                                                                                                                                                                                                         | What we build                                                                                                       | Weeks  |
-|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|--------|
-| 1. Deploy and provisioning health | **Connect (scenario 1):** as an operator, I point Argo CD at Bicep in Git and it deploys through Radius, without Flux; compile errors block the sync with a clear message. **Recover (scenario 4):** I revert in Git, and removed resources are cleaned up.                      | Plugin sidecar, controller fixes from the prototype, health checks that show Progressing, Healthy or Degraded, docs | 3      |
-| 2. Failure details and parameters | **Diagnose (scenario 3):** as an SRE, when a deploy fails I see a safe error summary, which Git revision was tried and which resources are still being cleaned up, even if a Recipe failed before anything was created. **Connect:** non-string and secret parameters work.      | Status conditions on `DeploymentTemplate` that the health checks read; typed and secure parameters                  | 3      |
-| 3. Radius view inside Argo CD     | **Navigate (scenario 2):** as a developer, I open a Radius graph from my Argo CD application and follow its dependencies, including cloud resources the Kubernetes tree cannot show. **Scope (scenario 5):** I only see applications in my Argo CD project.                      | Argo CD UI extension (Radius tab and graph) and a proxy that checks the viewer's Argo CD scope                      | 4      |
-| 4. Health after provisioning      | **Diagnose (scenario 3):** if a dependency Radius can observe fails after the app deployed, the Argo CD application shows a health problem instead of the earlier success; what Radius cannot observe, or has stopped observing, is labelled unobserved or stale, never Healthy. | Radius watches what it created and writes the result to `DeploymentTemplate` status                                 | 3      |
-| **Total**                         |                                                                                                                                                                                                                                                                                  |                                                                                                                     | **13** |
+The user stories, quoted from the [feature spec](https://github.com/radius-project/radius/pull/13284):
+
+- **Scenario 1: Connect Radius definitions to Argo CD (Phase 1).**
+  > As an operator with Radius installed, I configure an Argo CD Application to consume generated `DeploymentTemplate` manifests or the proposed Radius Bicep source integration. Definition and parameter changes use the same Radius deployment semantics as the Flux path. I can identify the input revision and destination, and compilation or input errors prevent deployment with an actionable message. I do not need to install Flux.
+- **Scenario 3: Diagnose convergence and Recipe failures through Argo CD (Phase 2).**
+  > As an SRE, I open an application that is synchronized but still provisioning or degraded. I locate the blocked dependency and see a safe error summary, attempted revision, operation context, and last-observed state. A Terraform failure is visible even if it occurs before any child resource is created. After an authorized correction and reconciliation, the view shows the new attempt and outcome without presenting the previous attempt's success as current.
+- **Scenario 4: Review changes and recover through Argo CD (Phase 2; deploy and revert already work after Phase 1).**
+  > As a developer or SRE, I inspect the desired-input diff and deployment history for an application or parameter change. I can connect a failed attempt to its input revision and correct or revert that input in Git. Requested logical resource removals and pending cleanup are visible; Argo CD's manifest diff and rollback history do not imply a complete cloud-resource plan or restoration of deleted data.
+- **Scenario 2: Navigate Radius resources and dependencies inside Argo CD (Phase 3).**
+  > As a developer, I open an Argo CD application's resource tree and inspect its Radius deployment and discoverable Kubernetes resources. From that context, I open the proposed Radius graph view to follow application dependencies, including external or shared resources and custom resource types. The view identifies each relationship and its source; resources with no live observation are explicitly shown as unobserved rather than healthy.
+- **Scenario 5: Find and inspect only the applications within my scope (Phase 3).**
+  > As a developer or SRE, I enter through my existing Argo CD project and select an application and environment without browsing the organization's entire resource inventory. Searches, graph expansion, diagnostics, and direct links enforce the same effective access boundaries. Missing permission, unavailable data, and an empty authorized result have distinct, actionable states without revealing protected resource details.
+- **Health requirements (Phase 4),** two rows of the feature spec's health table:
+  > A supported dependency observation reports a failure after provisioning: Show the affected node and an application-visible health problem; do not hide it behind the successful deployment result.
+  >
+  > Observations are unavailable, stale, incomplete, or unsupported: Mark the affected observation as unavailable or stale and show its last-observed time. Do not invent a healthy state; keep the last known result distinct from current confidence.
 
 Phase 1 alone, about 3 weeks, is the shortest path to something users can try. Phase 3 needs only Phase 1, so it can come before Phase 2 if the Radius tab matters more to users than failure details.
 
