@@ -99,7 +99,7 @@ git)
     *) echo "Unexpected git command: $*" >&2; exit 1 ;;
     esac
     ;;
-go | helm | python3 | flux | envsubst | update-ca-certificates | dapr) ;;
+go | helm | zip | flux | envsubst | update-ca-certificates | dapr) ;;
 rad)
     if [[ "${1:-} ${2:-}" == "install kubernetes" ]]; then
         touch "${gateway_discovery_pending}"
@@ -275,7 +275,7 @@ make)
 esac
 EOF
 chmod +x "${work_dir}/bin/mock"
-for tool in git go docker make k3d kubectl helm openssl jq yq python3 sleep \
+for tool in git go docker make k3d kubectl helm openssl jq yq zip sleep \
     flux curl envsubst sudo update-ca-certificates bicep dapr rad; do
     ln -s mock "${work_dir}/bin/${tool}"
 done
@@ -306,7 +306,7 @@ for platform in linux/arm windows/amd64 windows/arm64; do
     assert_not_contains "${calls}" "make "
 done
 export LOCAL_FUNCTIONAL_HOST_OS=linux LOCAL_FUNCTIONAL_HOST_ARCH=amd64
-for tool in envsubst update-ca-certificates yq; do
+for tool in envsubst update-ca-certificates yq zip; do
     rm "${work_dir}/bin/${tool}"
     run_runner 1 setup
     assert_contains "${output}" "${tool}"
