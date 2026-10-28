@@ -20,21 +20,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
-readonly VALIDATOR="${SCRIPT_DIR}/validate_semver.py"
 readonly TAG_PARSER="${SCRIPT_DIR}/release-version.sh"
 readonly RUNBOOK="${SCRIPT_DIR}/../../docs/contributing/contributing-releases/README.md"
 readonly VERSION_MAKEFILE="${SCRIPT_DIR}/../../build/version.mk"
 # shellcheck source=.github/scripts/release-version.sh
 source "${SCRIPT_DIR}/release-version.sh"
-
-if [[ -z "${PYTHON:-}" ]]; then
-    if command -v python3 > /dev/null; then
-        PYTHON="python3"
-    else
-        PYTHON="python"
-    fi
-fi
-readonly PYTHON
 
 TEMP_DIR=""
 
@@ -48,22 +38,6 @@ trap cleanup EXIT
 fail_test() {
     echo "FAIL: $*" >&2
     exit 1
-}
-
-assert_valid() {
-    local version="$1"
-
-    if ! "${PYTHON}" "${VALIDATOR}" "${version}" > /dev/null; then
-        fail_test "expected valid SemVer: ${version}"
-    fi
-}
-
-assert_invalid() {
-    local version="$1"
-
-    if "${PYTHON}" "${VALIDATOR}" "${version}" > /dev/null 2>&1; then
-        fail_test "expected invalid SemVer: ${version}"
-    fi
 }
 
 assert_tag_parser() {
@@ -211,17 +185,6 @@ assert_runbook_uses_dotted_rc() {
 main() {
     TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/release-version-format-test-XXXXXX")"
 
-    assert_valid "0.61.0"
-    assert_valid "0.61.0-rc.1"
-    assert_valid "0.61.0-rc1"
-    assert_valid "0.61.0-beta.1"
-    assert_valid "0.61.0-rc.0"
-    assert_valid "0.61.0-rc.2+build.7"
-    assert_invalid "v0.61.0-rc.1"
-    assert_invalid "0.61.0-rc.01"
-    assert_invalid "0.61.0-rc..1"
-    assert_invalid "0.61.0-rc_1"
-
     assert_tag_parser "0.61.0-rc.1"
     assert_tag_parser "0.60.0-rc3"
     assert_workflow_environment
@@ -235,6 +198,9 @@ main() {
     assert_radius_invalid "0.61.0-rc.0"
     assert_radius_invalid "0.61.0-rc0"
     assert_radius_invalid "0.61.0-rc.01"
+    assert_radius_invalid "0.61.0-rc..1"
+    assert_radius_invalid "0.61.0-rc_1"
+    assert_radius_invalid "0.61.0-rc.2+build.7"
     if [[ "$(canonical_radius_rc_version "0.60.0-rc3")" != "0.60.0-rc.3" ]]; then
         fail_test "legacy RC canonicalization failed"
     fi

@@ -72,8 +72,9 @@ test-local-functional-runner: ## Tests local functional runner safety without in
 test: test-local-functional-runner
 
 .PHONY: test-publish-recipes
-test-publish-recipes: ## Tests bounded recipe publishing without a registry
+test-publish-recipes: ## Tests recipe publishing without a registry or cluster
 	@bash ./.github/scripts/publish-recipes_test.sh
+	@bash ./.github/scripts/publish-test-terraform-recipes_test.sh
 
 test: test-publish-recipes
 

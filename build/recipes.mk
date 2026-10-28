@@ -38,7 +38,7 @@ publish-test-terraform-recipes: ## Publishes test terraform recipes to the curre
 	kubectl create namespace $(TERRAFORM_MODULE_SERVER_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
 
 	@echo "$(ARROW) Publishing Terraform test recipes from ./test/testrecipes/test-terraform-recipes..."
-	./.github/scripts/publish-test-terraform-recipes.py \
+	bash ./.github/scripts/publish-test-terraform-recipes.sh \
 		./test/testrecipes/test-terraform-recipes \
 		$(TERRAFORM_MODULE_SERVER_NAMESPACE) \
 		$(TERRAFORM_MODULE_CONFIGMAP_NAME)
