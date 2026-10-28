@@ -154,11 +154,12 @@ class CollectorTests(unittest.TestCase):
             "metadata": {"resourceVersion": "123"}, "items": pods,
         }))
 
-    def run_collector(self, command="", expected=0, timeout=25):
+    def run_collector(self, command="", expected=0, timeout=25,
+                      bash="bash", cwd=None):
         result = subprocess.run(
-            ["bash", str(SCRIPT), sys.executable, "-c",
+            [bash, str(SCRIPT), sys.executable, "-c",
              COMMAND_HELPERS + command],
-            env=self.env, text=True, stdout=subprocess.PIPE,
+            env=self.env, cwd=cwd, text=True, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, timeout=timeout,
         )
         self.assertEqual(result.returncode, expected, result.stdout)
@@ -190,6 +191,32 @@ class CollectorTests(unittest.TestCase):
         self.env["AUTHZ_LOG_DIR"] = str(self.output) + "/"
         self.run_collector()
         self.assertTrue((self.output / "complete").is_file())
+
+    def test_output_path_beginning_with_dash(self):
+        for relative in ("-authz", "-parent/logs"):
+            with self.subTest(path=relative):
+                self.output = self.root / relative
+                self.env["AUTHZ_LOG_DIR"] = relative
+                self.run_collector(cwd=self.root)
+                self.assertTrue((self.output / "complete").is_file())
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS default Bash")
+    def test_macos_default_bash_handles_empty_arrays(self):
+        output = self.run_collector(
+            '(root / "command-started").touch()\n', bash="/bin/bash")
+        self.assertNotIn("unbound variable", output)
+        self.assertTrue((self.root / "command-started").is_file())
+        self.assertTrue((self.output / "complete").is_file())
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS default Bash")
+    def test_macos_default_bash_cleans_up_before_spawning(self):
+        self.env["AUTHZ_LOG_DIR"] = ""
+        output = self.run_collector(
+            '(root / "command-started").touch()\n', expected=2,
+            bash="/bin/bash")
+        self.assertIn("AUTHZ_LOG_DIR must not be empty", output)
+        self.assertNotIn("unbound variable", output)
+        self.assertFalse((self.root / "command-started").exists())
 
     def test_kubectl_timeout_stops_collection_and_cleans_up(self):
         (self.root / "hang").touch()
@@ -254,6 +281,50 @@ with (root / "events").open("a") as f:
     f.write(json.dumps({{"type": "MODIFIED", "object": {self.initial!r}}},
                        indent=2) + "\\n")
 time.sleep(.3)
+'''
+        self.run_collector(command)
+        self.assertTrue((self.output / "complete").is_file())
+
+    def test_oversized_incomplete_watch_object_stops_command(self):
+        command = '''
+wait_for("watch-started")
+(root / "command-pid").write_text(str(os.getpid()))
+with (root / "events").open("a") as f:
+    f.write('{"type":"MODIFIED","object":{"unfinished":"' + "x" * (17 * 1024 * 1024))
+time.sleep(60)
+'''
+        started = time.monotonic()
+        result = self.run_collector(command, expected=2, timeout=20)
+        self.assertIn("pod watch object exceeded 16 MiB", result)
+        self.assertLess(time.monotonic() - started, 15)
+        self.assertFalse((self.output / "complete").exists())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(int((self.root / "command-pid").read_text()), 0)
+
+    def test_raw_watch_limit_counts_bytes_before_parsing(self):
+        command = '''
+wait_for("watch-started")
+with (root / "events").open("a", encoding="utf-8") as f:
+    f.write('{"unfinished":"' + "\\u00e9" * (9 * 1024 * 1024))
+time.sleep(60)
+'''
+        result = self.run_collector(command, expected=2, timeout=20)
+        self.assertIn("pod watch object exceeded 16 MiB", result)
+        self.assertFalse((self.output / "complete").exists())
+
+    def test_raw_watch_limit_resets_for_each_object(self):
+        replacement = pod("ucp-replacement")
+        replacement["metadata"]["annotations"] = {
+            "escaped": 'braces } { [ ] and quotes " and backslash \\',
+        }
+        command = f'''
+wait_for("watch-started")
+(root / "ucp-replacement.ucp.log").write_text("replacement\\n")
+with (root / "events").open("a") as f:
+    for current in ({self.initial!r}, {replacement!r}):
+        encoded = json.dumps({{"type": "ADDED", "object": current}})
+        f.write(encoded[:-1] + " " * (9 * 1024 * 1024) + "}}\\n")
+wait_for("ucp-replacement.ucp.read")
 '''
         self.run_collector(command)
         self.assertTrue((self.output / "complete").is_file())

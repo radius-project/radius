@@ -5,7 +5,7 @@
 # You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
 # Run a command while collecting every observed Radius container incarnation.
-# Requires Bash, jq, and kubectl. AUTHZ_LOG_DIR must be a new directory.
+# Requires Bash, jq, kubectl, and Perl. AUTHZ_LOG_DIR must be a new directory.
 
 set -euo pipefail
 
@@ -85,9 +85,12 @@ stop() {
 cleanup() {
     local status=$? i
     trap - EXIT INT TERM
-    for ((i = ${#PIDS[@]} - 1; i >= 0; i--)); do
-        stop "${PIDS[i]}"
-    done
+    # Bash 3.2 treats empty arrays as unset under nounset.
+    if [[ -n "${PIDS[*]:-}" ]]; then
+        for ((i = ${#PIDS[@]} - 1; i >= 0; i--)); do
+            stop "${PIDS[i]}"
+        done
+    fi
     if [[ -n "${WORK_DIR}" ]]; then
         rm -rf "${WORK_DIR}"
     fi
@@ -115,7 +118,7 @@ snapshot() {
 
 observe() {
     local pod="$1" deleted="${2:-false}"
-    local name uid rows container restart state key path i index
+    local name uid rows container restart state key path i index key_count
     name="$(jq -er '.metadata.name |
         select(test("^[a-z0-9][a-z0-9.-]*$"))' <<<"${pod}")"
     uid="$(jq -er '.metadata.uid |
@@ -151,14 +154,18 @@ observe() {
             touch "${WORK_DIR}/previous.${key}"
         fi
         [[ "${state}" != waiting ]] || continue
-        index="${#KEYS[@]}"
+        key_count=0
+        if [[ -n "${KEYS[*]:-}" ]]; then
+            key_count="${#KEYS[@]}"
+        fi
+        index="${key_count}"
         for i in "${!KEYS[@]}"; do
             if [[ "${KEYS[i]}" == "${key}" ]]; then
                 index="${i}"
                 break
             fi
         done
-        if [[ "${index}" -eq "${#KEYS[@]}" ]]; then
+        if [[ "${index}" -eq "${key_count}" ]]; then
             snapshot "${path}" "${args[@]}"
             spawn kubectl "${args[@]}" --follow >>"${path}"
             KEYS+=("${key}")
@@ -173,15 +180,52 @@ observe() {
     done <<<"${rows}"
 }
 
+# Bound raw input before jq can buffer an unfinished object or string.
+# shellcheck disable=SC2329 # Invoked in the background by watch_pods.
+limit_watch_input() {
+    LC_ALL=C perl -e '
+        use strict;
+        use warnings;
+        $| = 1;
+        my ($size, $depth, $string, $escape) = (0, 0, 0, 0);
+        while (1) {
+            my $read = sysread(STDIN, my $chunk, 65536);
+            defined($read) or die "cannot read pod watch: $!\n";
+            last if $read == 0;
+            for my $char (split //, $chunk) {
+                next if !$size && $char =~ /[ \t\r\n]/;
+                ++$size <= 16777216
+                    or die "pod watch object exceeded 16 MiB\n";
+                if ($string) {
+                    if ($escape) { $escape = 0; }
+                    elsif ($char eq "\\") { $escape = 1; }
+                    elsif ($char eq "\"") { $string = 0; }
+                } elsif ($char eq "\"") {
+                    $string = 1;
+                } elsif ($char eq "{" || $char eq "[") {
+                    ++$depth;
+                } elsif ($char eq "}" || $char eq "]") {
+                    --$depth;
+                    $size = 0 if $depth == 0;
+                }
+            }
+            print $chunk or die "cannot forward pod watch: $!\n";
+        }
+    '
+}
+
 # shellcheck disable=SC2329 # Invoked as a background job by spawn.
 watch_pods() {
     set +m
     trap - ERR EXIT INT TERM
-    local source parser status=0 source_status=0
+    local source limiter parser status=0 source_status=0 limit_status=0
     kubectl get --raw "$1" --request-timeout=0 \
         >"${WORK_DIR}/watch-pipe" &
     source=$!
-    jq --unbuffered -c . <"${WORK_DIR}/watch-pipe" &
+    limit_watch_input <"${WORK_DIR}/watch-pipe" \
+        >"${WORK_DIR}/parse-pipe" &
+    limiter=$!
+    jq --unbuffered -c . <"${WORK_DIR}/parse-pipe" &
     parser=$!
     # Stop only the source first. jq must consume EOF and reject truncated
     # JSON before final collection can be marked complete.
@@ -193,6 +237,7 @@ watch_pods() {
             kill -TERM "${source}" || ! kill -0 "${source}" 2>/dev/null
         fi
         wait "${source}" || :
+        wait "${limiter}" || status=$?
         wait "${parser}" || status=$?
         exit "${status}"
     ' TERM
@@ -201,6 +246,8 @@ watch_pods() {
         kill -TERM "${source}" || ! kill -0 "${source}" 2>/dev/null
     fi
     wait "${source}" || source_status=$?
+    wait "${limiter}" || limit_status=$?
+    [[ "${status}" -ne 0 ]] || status="${limit_status}"
     [[ "${status}" -ne 0 ]] || status="${source_status}"
     return "${status}"
 }
@@ -339,7 +386,7 @@ finish() {
 }
 
 [[ $# -gt 0 ]] || die "Usage: $0 command [args...]"
-for tool in jq kubectl; do
+for tool in jq kubectl perl; do
     command -v "${tool}" >/dev/null || die "${tool} is required"
 done
 [[ -n "${NAMESPACE}" ]] || die "AUTHZ_NAMESPACE must not be empty"
@@ -347,6 +394,7 @@ done
 while [[ "${OUTPUT}" == */ && "${OUTPUT}" != / ]]; do
     OUTPUT="${OUTPUT%/}"
 done
+[[ "${OUTPUT}" == /* ]] || OUTPUT="./${OUTPUT}"
 mkdir -p "$(dirname "${OUTPUT}")"
 mkdir "${OUTPUT}"
 WORK_DIR="$(mktemp -d)"
@@ -361,7 +409,7 @@ NAMESPACE_URI="$(jq -rn --arg namespace "${NAMESPACE}" \
 WATCH_URL="/api/v1/namespaces/${NAMESPACE_URI}/pods"
 WATCH_URL+="?watch=true&resourceVersion=${VERSION}&timeoutSeconds=5400"
 touch "${WORK_DIR}/events"
-mkfifo "${WORK_DIR}/watch-pipe"
+mkfifo "${WORK_DIR}/watch-pipe" "${WORK_DIR}/parse-pipe"
 exec 3<"${WORK_DIR}/events"
 spawn watch_pods "${WATCH_URL}" >"${WORK_DIR}/events"
 WATCH_PID="${SPAWN_PID}"
