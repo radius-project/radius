@@ -19,8 +19,12 @@ package kubeutil
 import (
 	"context"
 	"fmt"
+	"maps"
 
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/kubernetes"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -51,4 +55,53 @@ func PatchNamespace(ctx context.Context, client runtime_client.Client, namespace
 	}
 
 	return nil
+}
+
+// CreateNamespace creates a namespace for an environment or application with the Pod Security labels
+// selected by opts. When the namespace already exists, it adds only the Pod Security labels that are
+// not already set, so labels an operator set are never changed. In off mode it creates the namespace
+// without labels and does not read or change an existing namespace. It returns whether the namespace
+// was created and the labels Radius added.
+func CreateNamespace(ctx context.Context, client runtime_client.Client, name string, opts authz.Options) (bool, map[string]string, error) {
+	labels := opts.PodSecurityLabels(name)
+	err := client.Create(ctx, &corev1.Namespace{Name: name, Labels: labels})
+	if err == nil {
+		return true, labels, nil
+	}
+	if !apierrors.IsAlreadyExists(err) {
+		return false, nil, err
+	}
+	if len(labels) == 0 {
+		return false, nil, nil
+	}
+
+	ns := &corev1.Namespace{}
+	if err := client.Get(ctx, runtime_client.ObjectKey{Name: name}, ns); err != nil {
+		return false, nil, err
+	}
+
+	added, err := AddMissingNamespaceLabels(ctx, client, ns, labels)
+	return false, added, err
+}
+
+// AddMissingNamespaceLabels adds the entries of labels whose keys are not already set on ns and
+// returns the labels it added. The patch fails on a concurrent change rather than overwriting it.
+func AddMissingNamespaceLabels(ctx context.Context, client runtime_client.Client, ns *corev1.Namespace, labels map[string]string) (map[string]string, error) {
+	missing := authz.MissingLabels(ns.Labels, labels)
+	if len(missing) == 0 {
+		return nil, nil
+	}
+
+	base := ns.DeepCopy()
+	if ns.Labels == nil {
+		ns.Labels = map[string]string{}
+	}
+	maps.Copy(ns.Labels, missing)
+
+	patch := runtime_client.MergeFromWithOptions(base, runtime_client.MergeFromWithOptimisticLock{})
+	if err := client.Patch(ctx, ns, patch); err != nil {
+		return nil, fmt.Errorf("failed to add Pod Security labels to namespace %q: %w", ns.Name, err)
+	}
+
+	return missing, nil
 }

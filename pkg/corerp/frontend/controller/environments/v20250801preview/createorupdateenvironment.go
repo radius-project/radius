@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/frontend/controller/util"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -72,6 +73,10 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 		return resp, err
 	}
 
+	// The namespace to add Pod Security labels to after validation, and the client for its cluster.
+	var podSecurityNamespace *corev1.Namespace
+	var podSecurityClient client.Client
+
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
 	if newResource.Properties.Providers != nil && newResource.Properties.Providers.Kubernetes != nil {
 		namespace := newResource.Properties.Providers.Kubernetes.Namespace
@@ -107,6 +112,9 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 			}
 			return nil, err
 		}
+		if e.Options().Authorization.PodSecurityLabels(namespace) != nil {
+			podSecurityNamespace, podSecurityClient = ns, namespaceClient
+		}
 	} else if old != nil {
 		// The environment is dropping its Kubernetes provider entirely. That releases a namespace
 		// claim, which is not permitted once one has been established -- see validateNamespace.
@@ -133,6 +141,19 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 	if newResource.Properties.BicepSettings != "" {
 		if resp := validateConfigRef(ctx, e, newResource.Properties.BicepSettings, datamodel.BicepSettingsResourceType, "bicepSettings"); resp != nil {
 			return resp, nil
+		}
+	}
+
+	// Radius.Core environments use a namespace the user created, so Radius adds only the Pod Security
+	// labels that are not already set and never changes labels an operator set.
+	if podSecurityNamespace != nil {
+		labels := e.Options().Authorization.PodSecurityLabels(podSecurityNamespace.Name)
+		added, err := kubeutil.AddMissingNamespaceLabels(ctx, podSecurityClient, podSecurityNamespace, labels)
+		if err != nil {
+			return nil, err
+		}
+		if len(added) > 0 {
+			ucplog.FromContextOrDiscard(ctx).Info("Added Pod Security labels to the namespace", "namespace", podSecurityNamespace.Name, "labels", added)
 		}
 	}
 
