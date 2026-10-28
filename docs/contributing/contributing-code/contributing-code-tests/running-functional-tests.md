@@ -351,11 +351,11 @@ make authz-would-deny-check
 
 The check reads current and previous container logs from every pod in `radius-system`. Set `AUTHZ_NAMESPACE` to read another namespace, or pass extra arguments with `AUTHZ_WOULD_DENY_ARGS`, such as `AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/authz-logs"` to also scan saved logs. Known would-deny lines that are tracked by an issue can be listed in [`.github/scripts/authz-would-deny-allowlist.txt`](../../../../.github/scripts/authz-would-deny-allowlist.txt); each entry must start with the issue reference.
 
-CI wraps the entire functional-test command with [`.github/scripts/run-with-authz-logs.py`](../../../../.github/scripts/run-with-authz-logs.py), which requires Python 3.9+ and `kubectl`. It watches pods from the initial inventory's resource version, follows each container incarnation, and retains logs for replaced pods until the command finishes. The collector uses a separate directory containing only `radius-system` logs; the test-owned `dist/container_logs` streams can stop when their first test ends and are not reliable gate evidence. Collection failures, including an interrupted watch, fail the job. CI requires the collector's `complete` marker before scanning its files and uploads the files even on failure. To collect the same evidence locally, use a new directory for each run:
+CI wraps the entire functional-test command with [`.github/scripts/run-with-authz-logs.sh`](../../../../.github/scripts/run-with-authz-logs.sh), which requires Bash (including macOS Bash 3.2), `jq`, `kubectl`, and Perl. It watches pods from the initial inventory's resource version, follows each container incarnation, and retains logs for replaced pods until the command finishes. Perl bounds each raw watch object to 16 MiB before `jq` parses it, including incomplete objects. The collector uses a separate directory containing only `radius-system` logs; the test-owned `dist/container_logs` streams can stop when their first test ends and are not reliable gate evidence. Collection failures, including an interrupted watch, fail the job. CI requires the collector's `complete` marker before scanning its files and uploads the files even on failure. The collector's process-level tests remain in Python and run alongside the gate's shell tests with `make test-authz-would-deny-check`. To collect the same evidence locally, use a new directory for each run:
 
 ```bash
 AUTHZ_LOG_DIR=./dist/authz-logs-run1 \
-  python3 .github/scripts/run-with-authz-logs.py make test-functional-corerp-noncloud
+  bash .github/scripts/run-with-authz-logs.sh make test-functional-corerp-noncloud
 make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--collector-dir ./dist/authz-logs-run1"
 ```
 
