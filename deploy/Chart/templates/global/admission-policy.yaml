@@ -1,0 +1,97 @@
+{{- /*
+Keeps application workloads away from the Radius control plane: rejects (enforce) or warns and
+audits (dryRun) workloads in the control-plane namespace, naming the rule in the message.
+Rendered only when authorization is not off and the cluster serves ValidatingAdmissionPolicy
+(Kubernetes 1.30+).
+*/ -}}
+{{- $mode := include "radius.authz.mode" . -}}
+{{- if and (ne $mode "off") (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") }}
+{{- $name := "radius-control-plane-isolation" }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/part-of: radius
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments"]
+  # Only Applications.Core workloads that applications-rp renders: it labels them with the
+  # reserved radapp.io/resource-type label, which kubernetesMetadata extensions cannot override.
+  # Recipe outputs, Bicep Kubernetes resources and Radius's own install are not matched.
+  # TODO(D7): match the application-template identity and drop the label condition.
+  matchConditions:
+    - name: application-identity
+      expression: 'request.userInfo.username in {{ include "radius.authz.applicationIdentities" . }}'
+    - name: rendered-by-radius
+      expression: "has(object.metadata.labels) && 'radapp.io/resource-type' in object.metadata.labels"
+  variables:
+    - name: controlPlaneNamespace
+      expression: {{ .Release.Namespace | toJson | squote }}
+    - name: controlPlaneServiceAccounts
+      expression: {{ include "radius.authz.controlPlaneServiceAccounts" . | squote }}
+    - name: controlPlaneSecrets
+      expression: {{ include "radius.authz.controlPlaneSecrets" . | squote }}
+    - name: inControlPlaneNamespace
+      expression: "request.namespace == variables.controlPlaneNamespace"
+    - name: podSpec
+      expression: "object.kind == 'Pod' ? object.spec : dyn(object.spec).template.spec"
+    - name: containers
+      expression: >-
+        (has(variables.podSpec.containers) ? variables.podSpec.containers : []) +
+        (has(variables.podSpec.initContainers) ? variables.podSpec.initContainers : [])
+    - name: usesControlPlaneServiceAccount
+      expression: >-
+        (has(variables.podSpec.serviceAccountName) && variables.podSpec.serviceAccountName in variables.controlPlaneServiceAccounts) ||
+        (has(variables.podSpec.serviceAccount) && variables.podSpec.serviceAccount in variables.controlPlaneServiceAccounts)
+    - name: referencesControlPlaneSecret
+      expression: >-
+        (has(variables.podSpec.volumes) && variables.podSpec.volumes.exists(v,
+          (has(v.secret) && has(v.secret.secretName) && v.secret.secretName in variables.controlPlaneSecrets) ||
+          (has(v.projected) && has(v.projected.sources) && v.projected.sources.exists(s,
+            has(s.secret) && has(s.secret.name) && s.secret.name in variables.controlPlaneSecrets)))) ||
+        (has(variables.podSpec.imagePullSecrets) && variables.podSpec.imagePullSecrets.exists(r,
+          has(r.name) && r.name in variables.controlPlaneSecrets)) ||
+        variables.containers.exists(c,
+          (has(c.envFrom) && c.envFrom.exists(e, has(e.secretRef) && has(e.secretRef.name) && e.secretRef.name in variables.controlPlaneSecrets)) ||
+          (has(c.env) && c.env.exists(e, has(e.valueFrom) && has(e.valueFrom.secretKeyRef) &&
+            has(e.valueFrom.secretKeyRef.name) && e.valueFrom.secretKeyRef.name in variables.controlPlaneSecrets)))
+  validations:
+    - expression: "!variables.inControlPlaneNamespace || !variables.usesControlPlaneServiceAccount"
+      reason: Forbidden
+      message: "AdmissionPolicyDenied: control-plane-service-account: application workloads must not use a Radius control-plane service account in namespace {{ .Release.Namespace }}"
+    - expression: "!variables.inControlPlaneNamespace || !variables.referencesControlPlaneSecret"
+      reason: Forbidden
+      message: "AdmissionPolicyDenied: control-plane-secret: application workloads must not reference a Radius control-plane Secret in namespace {{ .Release.Namespace }}"
+    # Reported only when neither rule above applies, so each workload names one rule.
+    - expression: "!variables.inControlPlaneNamespace || variables.usesControlPlaneServiceAccount || variables.referencesControlPlaneSecret"
+      reason: Forbidden
+      message: "AdmissionPolicyDenied: control-plane-namespace: application workloads must not run in the Radius control-plane namespace {{ .Release.Namespace }}"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/part-of: radius
+spec:
+  policyName: {{ $name }}
+  validationActions:
+  {{- if eq $mode "enforce" }}
+    - Deny
+  {{- else }}
+    - Warn
+    - Audit
+  {{- end }}
+{{- end }}

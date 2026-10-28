@@ -107,13 +107,17 @@ global:
   #   enabled=true                -> enforce (denials will be rejected)
   # Setting both enabled=true and dryRun=true fails installation: the dry run is a
   # preflight check for an installation that is not yet enforcing.
-  # NOTE: no authorization checks are implemented yet. The only runtime effect is
-  # Pod Security Admission labels on environment and application namespaces:
+  # NOTE: no authorization checks are implemented yet. The only runtime effects are admission
+  # controls. Pod Security Admission labels on environment and application namespaces:
   #   off     -> no labels (default)
   #   dryRun  -> pod-security.kubernetes.io/warn and /audit (violations warned, not rejected)
   #   enforce -> pod-security.kubernetes.io/enforce, /warn and /audit (violations rejected)
   # Radius never overwrites a pod-security label that is already set on a namespace and
   # never labels the namespace Radius is installed in.
+  # On Kubernetes 1.30+, a ValidatingAdmissionPolicy (radius-control-plane-isolation) checks
+  # application workloads in the namespace Radius is installed in: using a control-plane
+  # service account or Secret, or running there at all, is warned and audited (dryRun) or
+  # rejected with AdmissionPolicyDenied (enforce). Not rendered when the mode is off.
   # Example: rad install kubernetes --set global.rbac.dryRun=true
   rbac:
     # Enforce internal component authorization (only Pod Security labels so far).
@@ -122,6 +126,12 @@ global:
     dryRun: false
     # Pod Security Standards level for the labels: "baseline" or "restricted".
     podSecurityLevel: baseline
+    admission:
+      # Usernames whose requests the admission policy checks. Empty defaults to
+      # ["system:serviceaccount:<release namespace>:applications-rp"], which renders
+      # Applications.Core containers; only objects with the radapp.io/resource-type label match.
+      # TODO(D7): default to the application-template identity once the broker issues it.
+      applicationIdentities: []
 
 controller:
   image: controller

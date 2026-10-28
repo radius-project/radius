@@ -84,6 +84,8 @@ The `authorization.mode` setting is read by UCP, Applications RP, Dynamic RP, an
 
 When the mode is not `off`, the chart also renders `podSecurityLevel` (from `global.rbac.podSecurityLevel`, `baseline` by default or `restricted`) and `controlPlaneNamespace` (the release namespace, which is never labeled). `dryRun` adds the `pod-security.kubernetes.io/warn` and `audit` labels; `enforce` also adds `enforce`. Labels that an operator already set on a namespace are never overwritten.
 
+The chart also installs the `radius-control-plane-isolation` ValidatingAdmissionPolicy when the mode is not `off` and the cluster serves the `admissionregistration.k8s.io/v1` ValidatingAdmissionPolicy API (Kubernetes 1.30+). It checks Deployments and Pods that the identities in `global.rbac.admission.applicationIdentities` (default: the `applications-rp` service account) create with the `radapp.io/resource-type` label, and flags workloads in the control-plane namespace that use a control-plane service account (`control-plane-service-account`), reference a control-plane Secret (`control-plane-secret`), or run there at all (`control-plane-namespace`). `dryRun` binds it with `Warn` and `Audit`; `enforce` with `Deny`, and the message starts with `AdmissionPolicyDenied: <rule>`. The service account and Secret names come from the `radius.authz.controlPlaneServiceAccounts` and `radius.authz.controlPlaneSecrets` chart helpers.
+
 ### 3. Configure supported environment overrides
 
 Some behavior is read directly from the process environment:
