@@ -326,6 +326,12 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) validateNamespace(
 	namespace string,
 	old *datamodel.Environment_v20250801preview,
 ) (rest.Response, error) {
+	// Runs before the namespace checks below so that an environment already pinned to the
+	// control-plane namespace is also rejected on update.
+	if err := e.Options().Authorization.AdmitNamespace(ctx, serviceCtx.ResourceID.Type()+"/write", serviceCtx.ResourceID.String(), namespace); err != nil {
+		return nil, err
+	}
+
 	if existing := existingNamespace(old); existing != "" {
 		if !strings.EqualFold(existing, namespace) {
 			return rest.NewBadRequestResponseWithCode(v1.CodeNamespaceImmutable, util.NamespaceImmutableMessage(existing, namespace)), nil

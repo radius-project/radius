@@ -63,6 +63,7 @@ data:
       mode: {{ $authzMode | quote }}
       podSecurityLevel: {{ $podSecurityLevel | quote }}
       controlPlaneNamespace: {{ .Release.Namespace | quote }}
+      controlPlaneSecrets: {{ include "radius.authz.controlPlaneSecrets" . }}
     {{- end }}
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:

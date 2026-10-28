@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/authz"
 	rp_util "github.com/radius-project/radius/pkg/rp/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 
@@ -61,8 +62,8 @@ type DeploymentProcessor interface {
 }
 
 // NewDeploymentProcessor creates a new instance of the DeploymentProcessor struct with the given parameters.
-func NewDeploymentProcessor(appmodel model.ApplicationModel, databaseClient database.Client, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel, databaseClient: databaseClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
+func NewDeploymentProcessor(appmodel model.ApplicationModel, databaseClient database.Client, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface, authorization authz.Options) DeploymentProcessor {
+	return &deploymentProcessor{appmodel: appmodel, databaseClient: databaseClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet, authorization: authorization}
 }
 
 // NewFailedDeploymentProcessor returns a DeploymentProcessor whose operations all
@@ -105,6 +106,8 @@ type deploymentProcessor struct {
 	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
 	k8sClientSet kubernetes.Interface
+	// authorization selects the admission checks applied to output resources before they are deployed.
+	authorization authz.Options
 }
 
 type ResourceData struct {
@@ -298,6 +301,11 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 			SecretValues:            rendererOutput.SecretValues,
 			DeployedOutputResources: rendererOutput.Resources,
 		}, nil
+	}
+
+	// Check every output resource before applying any of them.
+	if err := admitOutputResources(ctx, dp.authorization, id, rendererOutput.Resources); err != nil {
+		return rpv1.DeploymentOutput{}, err
 	}
 
 	// Deploy

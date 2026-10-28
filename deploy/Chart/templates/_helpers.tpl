@@ -174,7 +174,8 @@ An empty value defaults to baseline. Fails rendering for any other value.
 
 {{/*
 Control-plane service accounts and Secrets in the release namespace, as JSON lists that are
-also valid CEL list literals. Used by the admission policy; keep in sync with the
+also valid CEL list literals. Used by the admission policy and, for the Secrets, the
+applications-rp configuration (authorization.controlPlaneSecrets); keep in sync with the
 serviceaccount.yaml templates and the Secrets the chart creates.
 */}}
 {{- define "radius.authz.controlPlaneServiceAccounts" -}}
