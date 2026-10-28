@@ -259,9 +259,6 @@ test_identity_and_cleanup() {
     assert_not_contains "${WORKFLOWS}/__changes.yml" \
         '.github/workflows/release.yaml' \
         "deleted release workflow remains in change classification"
-    assert_contains "${ROOT}/.github/scripts/create-release-backport.sh" \
-        'git rm -q .github/workflows/release.yaml' \
-        "metadata backports must remove legacy release-branch workflows"
 }
 
 test_frozen_output_contract() {

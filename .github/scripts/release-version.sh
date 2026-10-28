@@ -89,7 +89,12 @@ radius_release_environment() {
             chart_version="0.42.42-pr-${pull_number}"
             ;;
     esac
-    git_version="${git_version:-$(git describe --always --abbrev=7 --dirty --tags)}"
+    if [[ -z "${git_version:-}" ]]; then
+        # Release tags are created on release branches, so the nearest tag
+        # reachable from main is an older RC. Identify these builds by commit.
+        git_version="${version}-$(git describe --always --abbrev=7 --dirty \
+            --exclude='*')"
+    fi
     printf '%s\n' "REL_VERSION=${version}" "REL_CHANNEL=${channel}" \
         "CHART_VERSION=${chart_version}" "GIT_VERSION=${git_version}" \
         "UPDATE_RELEASE=${update_release}"

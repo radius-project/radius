@@ -214,6 +214,26 @@ function fixture() {
       run.conclusion = "success";
       return {};
     }
+    if (route.endsWith("/rerun")) {
+      run.run_attempt++;
+      step.started_at = new Date(
+        Date.parse(step.started_at) + 60000
+      ).toISOString();
+      step.completed_at = new Date(
+        Date.parse(step.completed_at) + 60000
+      ).toISOString();
+      const number = pulls.at(-1).number + 1;
+      pulls.push({
+        number,
+        html_url: `https://github.com/radius-project/docs/pull/${number}`,
+        created_at: step.started_at,
+        state: "open",
+        merged: false,
+        base: { ref: "edge" },
+        head: { ref: `upmerge/${run.id}-${run.run_attempt}` }
+      });
+      return {};
+    }
     if (route.endsWith("/{run_id}")) return { data: { ...run } };
     if (route.endsWith("/{run_id}/jobs"))
       return { data: { jobs: [{ steps: [{ ...step }] }] } };
@@ -242,6 +262,312 @@ function fixture() {
     pulls
   };
 }
+
+function sampleFixture(releaseType = "rc", version = "v0.61.0-rc.1") {
+  const state = fixture();
+  state.task = coordinationTasks(releaseType, version).at(-1);
+  state.version = version;
+  state.samplesHead = "b".repeat(40);
+  state.nextRunStatus = "completed";
+  state.nextRunConclusion = "failure";
+  state.runs = [];
+  const remote = state.remote;
+  state.remote = async (route, request) => {
+    if (route.endsWith("/dispatches")) {
+      state.calls.push({ route, request });
+      assert.equal(state.statuses.at(-1).state, "queued");
+      assert.equal(state.statuses.at(-1).log_url, "");
+      assert.equal(request.workflow_id, "test.yaml");
+      assert.equal(request.ref, "edge");
+      assert.deepEqual(request.inputs, { version: version.slice(1) });
+      assert.equal(request.request.retries, 0);
+      const id = 77 + state.runs.length;
+      state.runs.push({
+        ...state.run,
+        id,
+        head_branch: "edge",
+        head_sha: state.samplesHead,
+        status: state.nextRunStatus,
+        conclusion: state.nextRunConclusion,
+        html_url: `https://github.com/radius-project/samples/actions/runs/${id}`
+      });
+      return { data: { workflow_run_id: id } };
+    }
+    if (route.endsWith("/{run_id}")) {
+      state.calls.push({ route, request });
+      const run = state.runs.find((entry) => entry.id === request.run_id);
+      assert.ok(run, `unknown sample-test run ${request.run_id}`);
+      return { data: { ...run } };
+    }
+    assert.ok(
+      !route.endsWith("/rerun") && !route.endsWith("/rerun-failed-jobs"),
+      "sample-test retries must dispatch a new complete workflow"
+    );
+    return remote(route, request);
+  };
+  return state;
+}
+
+for (const [releaseType, version] of [
+  ["rc", "v0.61.0-rc.1"],
+  ["final", "v0.61.0"],
+  ["patch", "v0.61.1"]
+]) {
+  test(`${releaseType} sample-test retries dispatch current edge on the same receipt`, async () => {
+    for (const conclusion of ["failure", "cancelled", "timed_out"]) {
+      const state = sampleFixture(releaseType, version);
+      state.nextRunConclusion = conclusion;
+      await assert.rejects(() => coordinateTask(state), /sample-tests failed/);
+      assert.equal(state.runs.length, 1, "initial failure must not loop");
+      const receipt = structuredClone(state.deployments[0]);
+      const originalRun = { ...state.runs[0] };
+      state.samplesHead = "c".repeat(40);
+      state.nextRunConclusion = "success";
+
+      const result = await coordinateTask(state);
+
+      assert.equal(result.runId, 78);
+      assert.equal(result.samplesCommit, state.samplesHead);
+      assert.deepEqual(state.runs[0], originalRun);
+      assert.equal(state.runs[1].run_attempt, 1);
+      assert.deepEqual(state.deployments, [receipt]);
+      assert.equal(receipt.sha, state.sourceSha);
+      assert.equal(receipt.payload.version, version);
+      assert.equal(state.statuses.at(-1).state, "success");
+      assert.equal(state.statuses.at(-1).log_url, state.runs[1].html_url);
+      assert.equal(result.deploymentId, receipt.id);
+      assert.equal(
+        state.calls.filter(({ route }) => route.endsWith("/dispatches")).length,
+        2
+      );
+      assert.ok(
+        state.statuses.some(
+          (status) =>
+            status.state === "failure" &&
+            status.log_url === originalRun.html_url
+        )
+      );
+    }
+  });
+}
+
+test("a fresh sample-test failure waits for the next resume before redispatching", async () => {
+  const state = sampleFixture();
+  for (const runCount of [1, 2, 3]) {
+    await assert.rejects(() => coordinateTask(state), /sample-tests failed/);
+    assert.equal(state.runs.length, runCount);
+    assert.equal(state.statuses.at(-1).log_url, state.runs.at(-1).html_url);
+  }
+});
+
+test("pending and successful sample-test runs are reused even when edge advances", async () => {
+  for (const status of ["queued", "in_progress"]) {
+    const state = sampleFixture();
+    state.nextRunStatus = status;
+    state.nextRunConclusion = null;
+    let clock = 0;
+    state.now = () => clock;
+    state.deadline = 10;
+    state.sleep = async (milliseconds) => {
+      clock += milliseconds;
+    };
+    await assert.rejects(() => coordinateTask(state), /Timed out monitoring/);
+    state.samplesHead = "c".repeat(40);
+    clock = 0;
+    await assert.rejects(() => coordinateTask(state), /Timed out monitoring/);
+    assert.equal(state.runs.length, 1);
+
+    state.runs[0].status = "completed";
+    state.runs[0].conclusion = "success";
+    const result = await coordinateTask(state);
+    assert.equal(result.runId, 77);
+    assert.equal(result.samplesCommit, "b".repeat(40));
+    await coordinateTask(state);
+    assert.equal(state.runs.length, 1, "a completed gate must not be repeated");
+  }
+});
+
+test("a timed-out replacement remains bound for the next resume", async () => {
+  const state = sampleFixture();
+  await assert.rejects(() => coordinateTask(state), /sample-tests failed/);
+  state.samplesHead = "c".repeat(40);
+  state.nextRunStatus = "in_progress";
+  state.nextRunConclusion = null;
+  let clock = 0;
+  state.now = () => clock;
+  state.deadline = 10;
+  state.sleep = async (milliseconds) => {
+    clock += milliseconds;
+  };
+  await assert.rejects(() => coordinateTask(state), /Timed out monitoring/);
+  assert.equal(state.statuses.at(-1).log_url, state.runs[1].html_url);
+  state.runs[1].status = "completed";
+  state.runs[1].conclusion = "success";
+  const result = await coordinateTask(state);
+  assert.equal(result.runId, 78);
+  assert.equal(result.samplesCommit, "c".repeat(40));
+  assert.equal(state.runs.length, 2);
+});
+
+test("an explicitly rejected sample-test replacement can be dispatched on resume", async () => {
+  for (const status of [403, 429]) {
+    const state = sampleFixture();
+    await assert.rejects(() => coordinateTask(state), /sample-tests failed/);
+    const remote = state.remote;
+    state.remote = async (route, request) => {
+      if (route.endsWith("/dispatches")) {
+        state.calls.push({ route, request });
+        throw Object.assign(new Error("replacement rejected"), { status });
+      }
+      return remote(route, request);
+    };
+    await assert.rejects(() => coordinateTask(state), /replacement rejected/);
+    assert.equal(state.statuses.at(-1).state, "failure");
+    assert.equal(state.statuses.at(-1).log_url, "");
+    assert.match(
+      state.statuses.at(-1).description,
+      /Dispatch rejected with HTTP/
+    );
+    assert.equal(state.runs.length, 1);
+
+    state.remote = remote;
+    state.samplesHead = "c".repeat(40);
+    state.nextRunConclusion = "success";
+    const result = await coordinateTask(state);
+    assert.equal(result.runId, 78);
+    assert.equal(result.samplesCommit, "c".repeat(40));
+    assert.equal(state.deployments.length, 1);
+    assert.equal(
+      state.calls.filter(({ route }) => route.endsWith("/dispatches")).length,
+      3
+    );
+  }
+});
+
+test("uncertain sample-test replacement outcomes stop without another dispatch", async () => {
+  for (const mode of [
+    "lost-response",
+    "server-error",
+    "missing-run-id",
+    "receipt-write"
+  ]) {
+    const state = sampleFixture();
+    await assert.rejects(() => coordinateTask(state), /sample-tests failed/);
+    const remote = state.remote;
+    const record = state.github.rest.repos.createDeploymentStatus;
+    state.nextRunConclusion = "success";
+    state.remote = async (route, request) => {
+      const result = await remote(route, request);
+      if (route.endsWith("/dispatches")) {
+        if (mode === "lost-response") throw new Error("lost dispatch response");
+        if (mode === "server-error")
+          throw Object.assign(new Error("dispatch server error"), {
+            status: 500
+          });
+        if (mode === "missing-run-id") return { data: {} };
+      }
+      return result;
+    };
+    if (mode === "receipt-write") {
+      state.github.rest.repos.createDeploymentStatus = async (request) => {
+        if (request.log_url?.endsWith("/78"))
+          throw new Error("receipt unavailable");
+        return record(request);
+      };
+    }
+    await assert.rejects(
+      () => coordinateTask(state),
+      /lost dispatch response|dispatch server error|no run ID|receipt unavailable/
+    );
+    assert.equal(state.runs.length, 2, mode);
+    assert.equal(state.statuses.at(-1).state, "queued");
+    assert.equal(state.statuses.at(-1).log_url, "");
+    state.remote = remote;
+    state.github.rest.repos.createDeploymentStatus = record;
+    await assert.rejects(
+      () => coordinateTask(state),
+      /Dispatch outcome unknown/
+    );
+    assert.equal(state.runs.length, 2, mode);
+  }
+});
+
+test("an unresolved legacy sample-test rerun marker is not replaced blindly", async () => {
+  const state = sampleFixture();
+  await assert.rejects(() => coordinateTask(state), /sample-tests failed/);
+  state.statuses.push({
+    id: state.statuses.length + 1,
+    deployment_id: state.deployments[0].id,
+    state: "queued",
+    log_url: state.runs[0].html_url,
+    description: "Retry after attempt 1"
+  });
+  let clock = 0;
+  state.now = () => clock;
+  state.deadline = 10;
+  state.sleep = async (milliseconds) => {
+    clock += milliseconds;
+  };
+  await assert.rejects(() => coordinateTask(state), /Timed out monitoring/);
+  assert.equal(state.runs.length, 1);
+
+  state.runs[0].run_attempt = 2;
+  state.samplesHead = "c".repeat(40);
+  state.nextRunConclusion = "success";
+  const result = await coordinateTask(state);
+  assert.equal(result.runId, 78);
+  assert.equal(result.samplesCommit, "c".repeat(40));
+});
+
+test("replacement sample tests require the recorded workflow, event, ref and a commit", async () => {
+  for (const mismatch of [
+    { workflow_id: 99 },
+    { event: "push" },
+    { head_branch: "v0.61" },
+    { head_sha: "edge" },
+    { head_sha: null }
+  ]) {
+    const state = sampleFixture();
+    await assert.rejects(() => coordinateTask(state), /sample-tests failed/);
+    state.nextRunConclusion = "success";
+    const remote = state.remote;
+    state.remote = async (route, request) => {
+      const result = await remote(route, request);
+      if (route.endsWith("/{run_id}") && request.run_id === 78)
+        Object.assign(result.data, mismatch);
+      return result;
+    };
+    await assert.rejects(
+      () => coordinateTask(state),
+      Object.hasOwn(mismatch, "head_sha") ?
+        /no valid source commit/
+      : /does not match/
+    );
+    assert.notEqual(state.statuses.at(-1).state, "success");
+    assert.equal(state.runs.length, 2);
+  }
+});
+
+test("an accepted replacement receipt is reused after its response is lost", async () => {
+  const state = sampleFixture();
+  await assert.rejects(() => coordinateTask(state), /sample-tests failed/);
+  state.samplesHead = "c".repeat(40);
+  state.nextRunConclusion = "success";
+  const record = state.github.rest.repos.createDeploymentStatus;
+  state.github.rest.repos.createDeploymentStatus = async (request) => {
+    const result = await record(request);
+    if (request.log_url?.endsWith("/78"))
+      throw new Error("lost receipt response");
+    return result;
+  };
+  await assert.rejects(() => coordinateTask(state), /lost receipt response/);
+  state.github.rest.repos.createDeploymentStatus = record;
+  const result = await coordinateTask(state);
+  assert.equal(result.runId, 78);
+  assert.equal(result.samplesCommit, "c".repeat(40));
+  assert.equal(state.runs.length, 2);
+  assert.equal(state.deployments.length, 1);
+});
 
 test("uses native dispatch run IDs and resumes without duplicate work", async () => {
   const state = fixture();
@@ -370,9 +696,217 @@ test("an upmerge pull request that cannot be bound exactly stops for reconciliat
   });
   const result = await coordinateTask(state);
   assert.equal(result.pullRequest, state.pulls[1].html_url);
+});
+
+test("a closed unmerged upmerge reruns all jobs and binds the replacement PR", async () => {
+  const state = fixture();
+  state.pulls[1].state = "open";
   state.pulls[1].merged = false;
+  await assert.rejects(
+    () => coordinateTask(state),
+    /Merge the docs upmerge PR/
+  );
+  const original = state.pulls[1];
+  original.state = "closed";
+
+  await assert.rejects(() => coordinateTask(state), /upmerge PR .*\/pull\/7/);
+  const replacement = state.pulls.at(-1);
+  assert.equal(original.state, "closed");
+  assert.equal(original.merged, false);
+  assert.equal(state.run.run_attempt, 2);
+  assert.equal(state.deployments.length, 1);
+  assert.equal(state.statuses.at(-1).state, "in_progress");
+  assert.equal(state.statuses.at(-1).environment_url, replacement.html_url);
+  assert.equal(
+    state.statuses.find(
+      (status) => status.description === "Retry after attempt 1"
+    ).environment_url,
+    ""
+  );
+  replacement.state = "closed";
+  replacement.merged = true;
+  const result = await coordinateTask(state);
+  assert.equal(result.pullRequest, replacement.html_url);
+  assert.equal(state.statuses.at(-1).state, "success");
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/dispatches")).length,
+    1
+  );
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/rerun")).length,
+    1
+  );
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/rerun-failed-jobs"))
+      .length,
+    0
+  );
+});
+
+test("a replacement upmerge with no changes clears the closed PR binding", async () => {
+  const state = fixture();
+  state.pulls[1].state = "open";
+  state.pulls[1].merged = false;
+  await assert.rejects(
+    () => coordinateTask(state),
+    /Merge the docs upmerge PR/
+  );
   state.pulls[1].state = "closed";
-  await assert.rejects(() => coordinateTask(state), /closed without merging/);
+  const remote = state.remote;
+  state.remote = async (route, request) => {
+    const result = await remote(route, request);
+    if (route.endsWith("/rerun")) state.step.conclusion = "skipped";
+    return result;
+  };
+  const result = await coordinateTask(state);
+  assert.equal(result.state, "success");
+  assert.equal(result.pullRequest, undefined);
+  assert.equal(state.statuses.at(-1).environment_url, "");
+});
+
+test("rejected replacements preserve bound PRs and retry without redispatching", async () => {
+  for (const [status, manuallyBound] of [
+    [403, true],
+    [429, true],
+    [403, false],
+    [429, false]
+  ]) {
+    const state = fixture();
+    state.pulls[1].state = "open";
+    state.pulls[1].merged = false;
+    if (manuallyBound) {
+      state.pulls[0].created_at = state.pulls[1].created_at;
+      await assert.rejects(
+        () => coordinateTask(state),
+        /2 upmerge pull requests match/
+      );
+      state.statuses.push({
+        id: state.statuses.length + 1,
+        deployment_id: state.deployments[0].id,
+        state: "in_progress",
+        log_url: state.run.html_url,
+        environment_url: state.pulls[1].html_url
+      });
+    }
+    await assert.rejects(
+      () => coordinateTask(state),
+      /Merge the docs upmerge PR/
+    );
+    state.pulls[1].state = "closed";
+    const remote = state.remote;
+    state.remote = async (route, request) => {
+      if (route.endsWith("/rerun")) {
+        state.calls.push({ route, request });
+        throw Object.assign(new Error("replacement rejected"), { status });
+      }
+      return remote(route, request);
+    };
+    await assert.rejects(() => coordinateTask(state), /replacement rejected/);
+    const rejection = state.statuses.at(-1);
+    assert.equal(state.run.run_attempt, 1);
+    assert.equal(
+      state.statuses.find(
+        (entry) => entry.description === "Retry after attempt 1"
+      ).environment_url,
+      ""
+    );
+    state.remote = remote;
+    await assert.rejects(() => coordinateTask(state), /upmerge PR .*\/pull\/7/);
+    assert.equal(rejection.state, "failure");
+    assert.equal(rejection.environment_url, state.pulls[1].html_url);
+    assert.equal(state.run.run_attempt, 2);
+    assert.equal(
+      state.statuses.at(-1).environment_url,
+      state.pulls[2].html_url
+    );
+    assert.equal(
+      state.calls.filter(({ route }) => route.endsWith("/pulls")).length,
+      2,
+      "resume must not rediscover the original bound PR"
+    );
+    assert.equal(
+      state.calls.filter(({ route }) => route.endsWith("/dispatches")).length,
+      1
+    );
+    assert.equal(
+      state.calls.filter(({ route }) => route.endsWith("/rerun")).length,
+      2
+    );
+  }
+});
+
+test("an uncertain replacement request is not repeated on resume", async () => {
+  const state = fixture();
+  state.pulls[1].state = "open";
+  state.pulls[1].merged = false;
+  await assert.rejects(
+    () => coordinateTask(state),
+    /Merge the docs upmerge PR/
+  );
+  state.pulls[0].created_at = state.pulls[1].created_at;
+  state.pulls[1].state = "closed";
+  const remote = state.remote;
+  state.remote = async (route, request) => {
+    if (route.endsWith("/rerun")) {
+      state.calls.push({ route, request });
+      throw new Error("lost replacement response");
+    }
+    return remote(route, request);
+  };
+  await assert.rejects(
+    () => coordinateTask(state),
+    /lost replacement response/
+  );
+  assert.equal(state.statuses.at(-1).description, "Retry after attempt 1");
+  assert.equal(state.statuses.at(-1).environment_url, "");
+  let clock = 0;
+  state.now = () => clock;
+  state.deadline = 10;
+  state.sleep = async () => {
+    clock += 10;
+  };
+  await assert.rejects(() => coordinateTask(state), /Timed out monitoring/);
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/rerun")).length,
+    1
+  );
+
+  state.step.started_at = "2026-09-10T10:01:00Z";
+  state.step.completed_at = "2026-09-10T10:01:03Z";
+  state.run.run_attempt = 2;
+  state.pulls.push({
+    ...state.pulls[1],
+    number: 7,
+    html_url: "https://github.com/radius-project/docs/pull/7",
+    created_at: "2026-09-10T10:01:01Z",
+    state: "open",
+    head: { ref: "upmerge/77-2" }
+  });
+  await assert.rejects(() => coordinateTask(state), /upmerge PR .*\/pull\/7/);
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/rerun")).length,
+    1
+  );
+});
+
+test("a replacement closed immediately requires another resume rather than a loop", async () => {
+  const state = fixture();
+  state.pulls[1].state = "closed";
+  state.pulls[1].merged = false;
+  const remote = state.remote;
+  state.remote = async (route, request) => {
+    const result = await remote(route, request);
+    if (route.endsWith("/rerun")) state.pulls.at(-1).state = "closed";
+    return result;
+  };
+  await assert.rejects(
+    () => coordinateTask(state),
+    /replacement upmerge PR closed/
+  );
+  assert.equal(
+    state.calls.filter(({ route }) => route.endsWith("/rerun")).length,
+    1
+  );
   assert.equal(state.statuses.at(-1).state, "failure");
 });
 

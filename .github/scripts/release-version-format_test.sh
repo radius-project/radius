@@ -23,6 +23,7 @@ readonly SCRIPT_DIR
 readonly VALIDATOR="${SCRIPT_DIR}/validate_semver.py"
 readonly TAG_PARSER="${SCRIPT_DIR}/release-version.sh"
 readonly RUNBOOK="${SCRIPT_DIR}/../../docs/contributing/contributing-releases/README.md"
+readonly VERSION_MAKEFILE="${SCRIPT_DIR}/../../build/version.mk"
 # shellcheck source=.github/scripts/release-version.sh
 source "${SCRIPT_DIR}/release-version.sh"
 
@@ -135,6 +136,61 @@ EOF
     fi
 }
 
+# Newer RCs are tagged on release branches, so main can still reach an older
+# RC tag. Builds without a release tag must report their commit instead.
+assert_build_version() {
+    local repository="${TEMP_DIR}/repository"
+    local environment_file="${TEMP_DIR}/build-env"
+    local makefile="${TEMP_DIR}/print-version.mk"
+    local commit reference expected actual
+
+    git init --quiet --initial-branch=main "${repository}"
+    git -C "${repository}" config user.name "Radius Test"
+    git -C "${repository}" config user.email "test@example.com"
+    git -C "${repository}" config commit.gpgsign false
+    git -C "${repository}" config tag.gpgsign false
+    printf 'rc\n' > "${repository}/version.txt"
+    git -C "${repository}" add version.txt
+    git -C "${repository}" commit --quiet --message "prepare rc"
+    git -C "${repository}" tag v0.62.0-rc.1
+    printf 'main\n' > "${repository}/version.txt"
+    git -C "${repository}" commit --quiet --all --message "advance main"
+    commit="$(git -C "${repository}" rev-parse --short=7 HEAD)"
+
+    while IFS='|' read -r reference expected; do
+        (cd "${repository}" && GITHUB_REF="${reference}" bash "${TAG_PARSER}") \
+            > "${environment_file}"
+        if ! grep -Fxq "GIT_VERSION=${expected}" "${environment_file}"; then
+            fail_test "build for '${reference}' does not report ${expected}"
+        fi
+    done <<EOF
+refs/heads/main|edge-${commit}
+refs/pull/123/merge|pr-123-${commit}
+refs/tags/v0.62.0-rc.5|v0.62.0-rc.5
+|edge-${commit}
+EOF
+
+    printf 'local\n' > "${repository}/version.txt"
+    (cd "${repository}" && GITHUB_REF="" bash "${TAG_PARSER}") \
+        > "${environment_file}"
+    if ! grep -Fxq "GIT_VERSION=edge-${commit}-dirty" "${environment_file}"; then
+        fail_test "build with local changes does not report them"
+    fi
+
+    cat > "${makefile}" <<EOF
+include ${VERSION_MAKEFILE}
+print-git-version: ; @echo \$(GIT_VERSION)
+EOF
+    actual="$(
+        unset GIT_VERSION MAKEFLAGS REL_VERSION
+        make --no-print-directory -s -C "${repository}" -f "${makefile}" \
+            print-git-version
+    )"
+    if [[ "${actual}" != "edge-${commit}-dirty" ]]; then
+        fail_test "build/version.mk reports ${actual}, not edge-${commit}-dirty"
+    fi
+}
+
 assert_runbook_uses_dotted_rc() {
     local legacy_lines
     local version
@@ -169,6 +225,7 @@ main() {
     assert_tag_parser "0.61.0-rc.1"
     assert_tag_parser "0.60.0-rc3"
     assert_workflow_environment
+    assert_build_version
 
     assert_radius_valid "0.61.0"
     assert_radius_valid "0.61.0-rc.1"
