@@ -332,8 +332,9 @@ type RoleAssignmentProperties struct {
 	// REQUIRED; The immutable full role definition ID. The assignment scope must be covered by the role's assignableScopes.
 	RoleDefinitionID *string
 
-	// READ-ONLY; Server-owned canonical scope derived from the assignment ID, including / for installation assignments.
-	Scope *string
+	// READ-ONLY; Server-owned provenance. Only the same GitOps source may modify its assignments unless an authorized deletion
+	// explicitly takes ownership. Bootstrap assignments are managed through installation settings.
+	ManagedBy *AssignmentManagement
 
 	// An optional description of why access was granted.
 	Description *string
@@ -342,9 +343,8 @@ type RoleAssignmentProperties struct {
 	// identity.
 	CreatedBy *string
 
-	// READ-ONLY; Server-owned provenance. Only the same GitOps source may modify its assignments unless an authorized deletion
-	// explicitly takes ownership. Bootstrap assignments are managed through installation settings.
-	ManagedBy *AssignmentManagement
+	// READ-ONLY; Server-owned canonical scope derived from the assignment ID, including / for installation assignments.
+	Scope *string
 }
 
 // RoleAssignmentResource - An ARM-style extension assignment whose ID ends with /providers/Radius.Core/roleAssignments/<name>.
