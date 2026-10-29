@@ -19,7 +19,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4 v4.0.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions/v2 v2.0.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v2 v2.0.0-beta.4
-	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage/v4 v4.2.0
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage/v4 v4.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.8.2
 	github.com/Azure/bicep-types/src/bicep-types-go v0.0.0-20260614201630-7ee0136a7be7
 	github.com/Azure/secrets-store-csi-driver-provider-azure v1.8.2
@@ -27,23 +27,23 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.47.3
 	github.com/aws/aws-sdk-go-v2/config v1.33.9
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.9
-	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.4
+	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.5
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.82.1
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.339.0
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.66.4
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.3
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.340.0
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.66.5
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.4
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.4
-	github.com/aws/smithy-go v1.28.5
+	github.com/aws/smithy-go v1.28.6
 	github.com/charmbracelet/x/ansi v0.11.9
 	github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260615092313-b57e5e6d29bb
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/distribution/reference v0.6.0
 	github.com/fatih/color v1.19.0
-	github.com/fluxcd/pkg/apis/meta v1.35.0
+	github.com/fluxcd/pkg/apis/meta v1.36.0
 	github.com/fluxcd/pkg/http/fetch v0.28.0
 	github.com/fluxcd/pkg/tar v1.3.0
 	github.com/fluxcd/source-controller/api v1.9.6
-	github.com/getkin/kin-openapi v0.150.0
+	github.com/getkin/kin-openapi v0.151.0
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/go-git/go-git/v5 v5.19.3
 	github.com/go-logr/logr v1.4.4
@@ -53,7 +53,7 @@ require (
 	github.com/go-openapi/loads v0.25.3
 	github.com/go-openapi/runtime v0.33.3
 	github.com/go-openapi/spec v1.0.1
-	github.com/go-openapi/strfmt v0.27.3
+	github.com/go-openapi/strfmt v0.27.4
 	github.com/go-openapi/swag/loading v0.29.2
 	github.com/go-playground/locales v0.14.2
 	github.com/go-playground/universal-translator v0.18.2
@@ -108,7 +108,7 @@ require (
 	k8s.io/cli-runtime v0.37.1
 	k8s.io/client-go v0.37.1
 	k8s.io/kubectl v0.37.1
-	oras.land/oras-go/v2 v2.6.3
+	oras.land/oras-go/v2 v2.6.4
 	sigs.k8s.io/controller-runtime v0.25.2
 	sigs.k8s.io/secrets-store-csi-driver v1.6.1
 	sigs.k8s.io/yaml v1.6.0
@@ -132,7 +132,7 @@ require (
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.22 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.23 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.6 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.6 // indirect
