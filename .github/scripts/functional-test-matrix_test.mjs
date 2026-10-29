@@ -220,7 +220,7 @@ for (const profile of [undefined, "pr"]) {
     assert.ok(build.indexOf(checkout) > build.indexOf(sourceCheckout));
     assert.ok(build.indexOf(selection) > build.indexOf(checkout));
 
-    const root = mkdtempSync(join(tmpdir(), "functional-matrix-checkout-"));
+    const root = mkdtempSync(join(tmpdir(), "functional matrix #checkout-"));
     t.after(() => rmSync(root, { recursive: true, force: true }));
     const selectorPath = ".github/scripts/functional-test-matrix.mjs";
     assert.equal(existsSync(join(root, selectorPath)), false);

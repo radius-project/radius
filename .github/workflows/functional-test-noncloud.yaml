@@ -198,7 +198,8 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const { selectNonCloudTests } = await import(`${process.env.GITHUB_WORKSPACE}/.workflow-functional-tests/.github/scripts/functional-test-matrix.mjs`);
+            const { pathToFileURL } = await import('node:url');
+            const { selectNonCloudTests } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.workflow-functional-tests/.github/scripts/functional-test-matrix.mjs`).href);
             const { profile, matrix } = selectNonCloudTests(context);
             core.setOutput('matrix', matrix);
             core.info(`Functional test profile: ${profile} (${matrix.include.length} jobs)`);
