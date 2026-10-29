@@ -160,6 +160,8 @@ func Test_ResolveReadIdentifier_List(t *testing.T) {
 		hydrated      *cloudcontrol.GetResourceOutput
 		hydrationErr  error
 		listErr       error
+		noListOutput  bool
+		hydrate       bool
 		status        int
 		errorContains string
 	}{
@@ -216,6 +218,19 @@ func Test_ResolveReadIdentifier_List(t *testing.T) {
 			errorContains: "decoding Cloud Control read properties",
 		},
 		{name: "list error", pages: []cloudcontrol.ListResourcesOutput{{}}, listErr: errors.New("list denied"), errorContains: "list denied"},
+		{name: "missing list response", pages: []cloudcontrol.ListResourcesOutput{{}}, noListOutput: true, errorContains: "ListResources returned no response"},
+		{
+			name: "missing read response", pages: []cloudcontrol.ListResourcesOutput{{ResourceDescriptions: []types.ResourceDescription{{Identifier: matching.Identifier}}}},
+			hydrate: true, errorContains: "GetResource returned no properties",
+		},
+		{
+			name: "missing resource description", pages: []cloudcontrol.ListResourcesOutput{{ResourceDescriptions: []types.ResourceDescription{{Identifier: matching.Identifier}}}},
+			hydrated: &cloudcontrol.GetResourceOutput{}, errorContains: "GetResource returned no properties",
+		},
+		{
+			name: "missing read properties", pages: []cloudcontrol.ListResourcesOutput{{ResourceDescriptions: []types.ResourceDescription{{Identifier: matching.Identifier}}}},
+			hydrated: &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{Identifier: matching.Identifier}}, errorContains: "GetResource returned no properties",
+		},
 		{name: "invalid list JSON", pages: []cloudcontrol.ListResourcesOutput{{ResourceDescriptions: []types.ResourceDescription{{Identifier: matching.Identifier, Properties: aws.String(`{`)}}}}, errorContains: "decoding"},
 		{name: "empty list identifier", pages: []cloudcontrol.ListResourcesOutput{{ResourceDescriptions: []types.ResourceDescription{{Properties: matching.Properties}}}}, errorContains: "empty identifier"},
 		{
@@ -245,10 +260,13 @@ func Test_ResolveReadIdentifier_List(t *testing.T) {
 							opt(&o)
 						}
 						require.Equal(t, "us-west-2", o.Region)
+						if tt.noListOutput {
+							return nil, tt.listErr
+						}
 						return &page, tt.listErr
 					})
 			}
-			if tt.hydrated != nil || tt.hydrationErr != nil {
+			if tt.hydrate || tt.hydrated != nil || tt.hydrationErr != nil {
 				options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(_ context.Context, input *cloudcontrol.GetResourceInput, _ ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 						require.Equal(t, arn, aws.ToString(input.Identifier))
@@ -326,4 +344,73 @@ func Test_IdentifierValues(t *testing.T) {
 	require.Equal(t, []string{"value"}, values)
 	_, err = identifierValues(map[string]any{}, []string{"invalid"})
 	require.Error(t, err)
+}
+
+func Test_ResolveReadIdentifier_NonObjectParent(t *testing.T) {
+	t.Parallel()
+	controller := &GetAWSResourceWithPost{}
+	schema := `{"primaryIdentifier":["/properties/Parent/Name"]}`
+	id, response, err := controller.resolveReadIdentifier(t.Context(), map[string]any{"Parent": "not-an-object"}, schema, "AWS::Example::Resource", "us-west-2")
+	require.NoError(t, err)
+	require.Empty(t, id)
+	require.NotNil(t, response)
+	w := httptest.NewRecorder()
+	require.NoError(t, response.Apply(t.Context(), w, httptest.NewRequest(http.MethodPost, "/", nil)))
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	require.Contains(t, w.Body.String(), "Parent/Name")
+}
+
+func Test_ResolveReadIdentifier_UnencodableProperties(t *testing.T) {
+	t.Parallel()
+	options := setupTest(t)
+	controller := &GetAWSResourceWithPost{awsClients: ucpaws.Clients{CloudControl: options.AWSCloudControlClient}}
+	id, response, err := controller.resolveReadIdentifier(t.Context(), map[string]any{
+		"ModelId": "model", "Invalid": make(chan string),
+	}, modelReadSchema, "AWS::Bedrock::FoundationModel", "us-west-2")
+	var unsupported *json.UnsupportedTypeError
+	require.ErrorAs(t, err, &unsupported)
+	require.Empty(t, id)
+	require.Nil(t, response)
+}
+
+func Test_GetAWSResourceWithPost_IdentifierResolutionErrors(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name          string
+		output        *cloudformation.DescribeTypeOutput
+		listErr       error
+		status        int
+		errorContains string
+	}{
+		{name: "missing describe response", errorContains: "DescribeType returned no schema"},
+		{name: "missing schema", output: &cloudformation.DescribeTypeOutput{}, errorContains: "DescribeType returned no schema"},
+		{name: "missing identifier", output: &cloudformation.DescribeTypeOutput{Schema: aws.String(imageReadSchema)}, status: http.StatusBadRequest},
+		{name: "list failure", output: &cloudformation.DescribeTypeOutput{Schema: aws.String(modelReadSchema)}, listErr: errors.New("list denied"), errorContains: "list denied"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			options := setupTest(t)
+			options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.output, nil)
+			if tt.listErr != nil {
+				options.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, tt.listErr)
+			}
+			controller, err := NewGetAWSResourceWithPost(armrpc_controller.Options{}, ucpaws.Clients{
+				CloudFormation: options.AWSCloudFormationClient, CloudControl: options.AWSCloudControlClient,
+			}, retry.NewNoOpRetryer())
+			require.NoError(t, err)
+			req := httptest.NewRequest(http.MethodPost, "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Bedrock/FoundationModel/:get", bytes.NewBufferString(`{"properties":{"ModelId":"model"}}`))
+			ctx := rpctest.NewARMRequestContext(req)
+			response, err := controller.Run(ctx, nil, req)
+			if tt.errorContains != "" {
+				require.ErrorContains(t, err, tt.errorContains)
+				require.Nil(t, response)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, response)
+			w := httptest.NewRecorder()
+			require.NoError(t, response.Apply(ctx, w, req))
+			require.Equal(t, tt.status, w.Code)
+		})
+	}
 }
