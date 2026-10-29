@@ -18,14 +18,17 @@ package helm
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/downloader"
 	"helm.sh/helm/v4/pkg/getter"
 	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/kube"
@@ -268,32 +271,37 @@ func (client *HelmClientImpl) RunHelmHistory(helmConf *helm.Configuration, relea
 }
 
 // RunHelmPull downloads a Helm chart from a repository to the local filesystem.
-// It returns the path to the downloaded chart archive.
+// It returns the output of the pull.
 //
 // When the pull options set a repository URL, RunHelmPull looks up the chart in the repository index and
-// pulls the chart by its URL. Helm would download that index to the user's Helm cache, and fail when the
-// cache isn't writable, so RunHelmPull downloads it to the pull's repository cache instead.
+// downloads the chart archive itself. Helm would download that index to the user's Helm cache, and fail when
+// the cache isn't writable, so RunHelmPull downloads it to the pull's repository cache instead. Each request
+// times out after chartPullRequestTimeout rather than Helm's default of two minutes.
 func (client *HelmClientImpl) RunHelmPull(pullopts []helm.PullOpt, chartRef string) (string, error) {
 	pullClient := helm.NewPull(
 		pullopts...,
 	)
 
-	if pullClient.RepoURL != "" {
-		chartURL, err := findChartInRepoURL(pullClient, chartRef)
-		if err != nil {
-			return "", err
-		}
-		pullClient.RepoURL = ""
-		chartRef = chartURL
+	if pullClient.RepoURL == "" {
+		return pullClient.Run(chartRef)
 	}
 
-	return pullClient.Run(chartRef)
+	if pullClient.Verify || pullClient.VerifyLater || pullClient.Untar {
+		return "", errors.New("verifying or unpacking a chart from a repository URL is not supported")
+	}
+
+	getters := getter.All(pullClient.Settings, getter.WithTimeout(chartPullRequestTimeout))
+	chartURL, err := findChartInRepoURL(pullClient, chartRef, getters)
+	if err != nil {
+		return "", err
+	}
+	return downloadChart(pullClient, chartURL, getters)
 }
 
 // findChartInRepoURL returns the URL of the named chart in the pull's chart repository. It matches
 // repo.FindChartInRepoURL, which Pull.Run uses for a repository URL, except that the repository index is
-// downloaded to the pull's repository cache.
-func findChartInRepoURL(pull *helm.Pull, chartName string) (string, error) {
+// downloaded to the pull's repository cache with the given getters.
+func findChartInRepoURL(pull *helm.Pull, chartName string, getters getter.Providers) (string, error) {
 	entry := &repo.Entry{
 		Name:                  rand.Text(),
 		URL:                   pull.RepoURL,
@@ -305,7 +313,7 @@ func findChartInRepoURL(pull *helm.Pull, chartName string) (string, error) {
 		CAFile:                pull.CaFile,
 		InsecureSkipTLSVerify: pull.InsecureSkipTLSVerify,
 	}
-	chartRepo, err := repo.NewChartRepository(entry, getter.All(pull.Settings))
+	chartRepo, err := repo.NewChartRepository(entry, getters)
 	if err != nil {
 		return "", err
 	}
@@ -341,6 +349,29 @@ func findChartInRepoURL(pull *helm.Pull, chartName string) (string, error) {
 		return "", fmt.Errorf("failed to make chart URL absolute: %w", err)
 	}
 	return chartURL, nil
+}
+
+// downloadChart downloads the chart archive at chartURL to the pull's destination directory with the given
+// getters. It matches what Pull.Run does for a chart URL when the chart isn't verified or unpacked.
+func downloadChart(pull *helm.Pull, chartURL string, getters getter.Providers) (string, error) {
+	var out strings.Builder
+	chartDownloader := downloader.ChartDownloader{
+		Out:     &out,
+		Verify:  downloader.VerifyNever,
+		Getters: getters,
+		Options: []getter.Option{
+			getter.WithBasicAuth(pull.Username, pull.Password),
+			getter.WithPassCredentialsAll(pull.PassCredentialsAll),
+			getter.WithTLSClientConfig(pull.CertFile, pull.KeyFile, pull.CaFile),
+			getter.WithInsecureSkipVerifyTLS(pull.InsecureSkipTLSVerify),
+			getter.WithPlainHTTP(pull.PlainHTTP),
+		},
+		RepositoryConfig: pull.Settings.RepositoryConfig,
+		RepositoryCache:  pull.Settings.RepositoryCache,
+		ContentCache:     pull.Settings.ContentCache,
+	}
+	_, _, err := chartDownloader.DownloadTo(chartURL, pull.Version, pull.DestDir)
+	return out.String(), err
 }
 
 // RunHelmRollback rolls back a Helm release to a previous revision. Revision 0 means the revision before the

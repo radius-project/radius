@@ -608,3 +608,20 @@ func TestHelmClientImpl_RunHelmPull_RepoURL(t *testing.T) {
 		})
 	}
 }
+
+func TestHelmClientImpl_RunHelmPull_RepoURLUnsupportedOptions(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]helm.PullOpt{
+		"verify":       func(p *helm.Pull) { p.Verify = true },
+		"verify later": func(p *helm.Pull) { p.VerifyLater = true },
+		"untar":        func(p *helm.Pull) { p.Untar = true },
+	}
+	for name, option := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, err := NewHelmClient().RunHelmPull([]helm.PullOpt{func(p *helm.Pull) { p.RepoURL = "https://example.com" }, option}, "contour")
+			require.EqualError(t, err, "verifying or unpacking a chart from a repository URL is not supported")
+		})
+	}
+}

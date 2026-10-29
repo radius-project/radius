@@ -304,10 +304,12 @@ func Test_HelmChartFromContainerRegistry_PrivatePullState(t *testing.T) {
 			want := &chart.Chart{}
 			client.EXPECT().LoadChart(gomock.Any()).Return(want, nil).Times(1)
 
-			got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, tt.repoURL, tt.release)
+			config := &helm.Configuration{}
+			got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", config, tt.repoURL, tt.release)
 			require.NoError(t, err)
 			assert.Same(t, want, got)
 			assert.NoDirExists(t, pullRoot, "private pull state must be removed after the pull")
+			assert.Nil(t, config.RegistryClient, "a pull must not leave its registry client in the caller's configuration")
 			env.assertUnchanged(t)
 		})
 	}
@@ -331,8 +333,8 @@ type fakeChartRegistry struct {
 	authorizedRequests atomic.Int32
 }
 
-// newFakeChartRegistry serves the registry from http.DefaultTransport, which Helm's registry client
-// uses, so OCI pulls work without a network or TLS.
+// newFakeChartRegistry returns the fake registry. Install it with setDefaultTransport, so that OCI pulls reach
+// it without a network or TLS.
 func newFakeChartRegistry(t *testing.T) *fakeChartRegistry {
 	t.Helper()
 	config := []byte(`{"apiVersion":"v2","name":"radius","version":"0.1.0"}`)
@@ -342,16 +344,29 @@ func newFakeChartRegistry(t *testing.T) *fakeChartRegistry {
 		registry.ConfigMediaType, digest.FromBytes(config), len(config),
 		registry.ChartLayerMediaType, digest.FromBytes(chartBytes), len(chartBytes))
 	repository := fakeChartRegistryHost + "/v2/charts/radius"
-	f := &fakeChartRegistry{content: map[string]registryContent{
+	return &fakeChartRegistry{content: map[string]registryContent{
 		repository + "/manifests/0.1.0":                                  {ocispec.MediaTypeImageManifest, manifest},
 		repository + "/manifests/" + digest.FromBytes(manifest).String(): {ocispec.MediaTypeImageManifest, manifest},
 		repository + "/blobs/" + digest.FromBytes(config).String():       {registry.ConfigMediaType, config},
 		repository + "/blobs/" + digest.FromBytes(chartBytes).String():   {registry.ChartLayerMediaType, chartBytes},
 	}}
+}
+
+// setDefaultTransport makes http.DefaultTransport, which Helm's registry client uses, send requests to rt for
+// the rest of the test.
+func setDefaultTransport(t *testing.T, rt http.RoundTripper) {
+	t.Helper()
 	original := http.DefaultTransport
-	http.DefaultTransport = f
+	http.DefaultTransport = rt
 	t.Cleanup(func() { http.DefaultTransport = original })
-	return f
+}
+
+// registryCredentials returns a user Helm registry configuration with credentials for the fake registry.
+func registryCredentials(password string) map[string]string {
+	auth := base64.StdEncoding.EncodeToString([]byte(fakeChartRegistryUser + ":" + password))
+	return map[string]string{
+		"config/registry/config.json": fmt.Sprintf(`{"auths":{%q:{"auth":%q}}}`, fakeChartRegistryHost, auth),
+	}
 }
 
 func (f *fakeChartRegistry) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -396,12 +411,9 @@ func Test_HelmChartFromContainerRegistry_OCICredentials(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			auth := base64.StdEncoding.EncodeToString([]byte(fakeChartRegistryUser + ":" + tt.password))
-			credentials := map[string]string{
-				"config/registry/config.json": fmt.Sprintf(`{"auths":{%q:{"auth":%q}}}`, fakeChartRegistryHost, auth),
-			}
-			env := setUserHelmEnv(t, missingRepositoryIndex, unwritableUserCache, credentials)
+			env := setUserHelmEnv(t, missingRepositoryIndex, unwritableUserCache, registryCredentials(tt.password))
 			chartRegistry := newFakeChartRegistry(t)
+			setDefaultTransport(t, chartRegistry)
 
 			got, err := NewHelmAction(NewHelmClient()).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, "oci://"+fakeChartRegistryHost+"/charts", "radius")
 			if tt.wantErr {
@@ -505,6 +517,221 @@ func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 				assert.Equal(t, "contour", got.Metadata.Name)
 			}
 			assert.EqualValues(t, tt.wantRequests, requests.Load())
+			env.assertUnchanged(t)
+		})
+	}
+}
+
+// recordingHelmClient records each attempt to pull a chart.
+type recordingHelmClient struct {
+	HelmClient
+	pulls []recordedPull
+}
+
+type recordedPull struct {
+	duration time.Duration
+	err      error
+}
+
+func (c *recordingHelmClient) RunHelmPull(pullopts []helm.PullOpt, chartRef string) (string, error) {
+	start := time.Now()
+	out, err := c.HelmClient.RunHelmPull(pullopts, chartRef)
+	c.pulls = append(c.pulls, recordedPull{duration: time.Since(start), err: err})
+	return out, err
+}
+
+// slowTransport answers each request after a delay, unless the request ends first.
+type slowTransport struct {
+	next  http.RoundTripper
+	delay time.Duration
+}
+
+func (s *slowTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	select {
+	case <-req.Context().Done():
+		return nil, req.Context().Err()
+	case <-time.After(s.delay):
+		return s.next.RoundTrip(req)
+	}
+}
+
+// requireTimeout requires err to come from a request that timed out.
+func requireTimeout(t *testing.T, err error) {
+	t.Helper()
+	netErr, ok := errors.AsType[net.Error](err)
+	require.True(t, ok && netErr.Timeout(), "expected a request timeout, got: %v", err)
+	require.True(t, isTransientHelmChartError(err), "a request timeout must be retried: %v", err)
+}
+
+// Test_HelmChartFromContainerRegistry_RetriesTimedOutAttempts checks that the production retry window fits three
+// attempts that each take the whole attempt timeout and then fail because a request timed out. Before, a request
+// could take Helm's two-minute timeout, longer than the whole retry window, so it was never retried.
+func Test_HelmChartFromContainerRegistry_RetriesTimedOutAttempts(t *testing.T) {
+	tests := []struct {
+		name     string
+		repoURL  string
+		release  string
+		chartRef string
+	}{
+		{"HTTP repository", "https://projectcontour.github.io/helm-charts", "contour", "contour"},
+		{"OCI registry", "oci://ghcr.io/radius-project/helm-chart", "radius", "oci://ghcr.io/radius-project/helm-chart/radius"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setUserHelmEnv(t)
+			synctest.Test(t, func(t *testing.T) {
+				attempts := 0
+				client := NewMockHelmClient(gomock.NewController(t))
+				client.EXPECT().RunHelmPull(gomock.Any(), tt.chartRef).
+					DoAndReturn(func([]helm.PullOpt, string) (string, error) {
+						attempts++
+						time.Sleep(chartPullAttemptTimeout())
+						return "", &url.Error{Op: "Get", URL: "https://example.com/chart.tgz", Err: context.DeadlineExceeded}
+					}).AnyTimes()
+
+				start := time.Now()
+				got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, tt.repoURL, tt.release)
+				assert.Nil(t, got)
+				requireTimeout(t, err)
+				assert.GreaterOrEqual(t, attempts, 3, "the retry window must fit three attempts that time out")
+				assert.LessOrEqual(t, time.Since(start), chartPullRetryWindow+chartPullAttemptTimeout(), "a pull must end within the retry window and one more attempt")
+			})
+		})
+	}
+}
+
+// Test_HelmChartFromContainerRegistry_RequestTimeout checks that a request to a chart repository that doesn't
+// answer times out, and that the pull then succeeds on another attempt.
+func Test_HelmChartFromContainerRegistry_RequestTimeout(t *testing.T) {
+	originalBackoff, originalTimeout := helmChartPullBackoff, chartPullRequestTimeout
+	helmChartPullBackoff = func() goretry.Backoff {
+		return goretry.WithMaxRetries(2, goretry.NewConstant(time.Millisecond))
+	}
+	chartPullRequestTimeout = time.Second
+	t.Cleanup(func() { helmChartPullBackoff, chartPullRequestTimeout = originalBackoff, originalTimeout })
+	chartBytes := chartArchive(t, "contour")
+
+	tests := []struct {
+		name         string
+		stallPath    string
+		wantRequests int
+	}{
+		{"no request times out", "", chartRepositoryPullRequests},
+		{"index request times out", "/index.yaml", 1 + chartRepositoryPullRequests},
+		{"archive request times out", "/contour-0.1.0.tgz", 2 * chartRepositoryPullRequests},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setUserHelmEnv(t, missingRepositoryIndex)
+			var requests atomic.Int32
+			var stalled atomic.Bool
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
+				if r.URL.Path == tt.stallPath && stalled.CompareAndSwap(false, true) {
+					// Answer the first request only long after the client should have given up.
+					select {
+					case <-r.Context().Done():
+						return
+					case <-time.After(5 * chartPullRequestTimeout):
+					}
+				}
+				switch r.URL.Path {
+				case "/index.yaml":
+					_, _ = fmt.Fprint(w, contourIndexYAML)
+				case "/contour-0.1.0.tgz":
+					_, _ = w.Write(chartBytes)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer server.Close()
+
+			client := &recordingHelmClient{HelmClient: NewHelmClient()}
+			got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, server.URL, "contour")
+			require.NoError(t, err)
+			require.NotNil(t, got)
+			assert.Equal(t, "contour", got.Metadata.Name)
+			assert.EqualValues(t, tt.wantRequests, requests.Load(), "each attempt makes %d requests", chartRepositoryPullRequests)
+			if tt.stallPath == "" {
+				require.Len(t, client.pulls, 1)
+			} else {
+				require.Len(t, client.pulls, 2, "a pull whose request timed out must be retried")
+				requireTimeout(t, client.pulls[0].err)
+			}
+			assert.NoError(t, client.pulls[len(client.pulls)-1].err)
+			env.assertUnchanged(t)
+		})
+	}
+}
+
+// Test_HelmChartFromContainerRegistry_UnresponsiveRepository checks that a pull from a chart repository that never
+// answers retries the attempts that timed out, and gives up within the retry window and one more attempt.
+func Test_HelmChartFromContainerRegistry_UnresponsiveRepository(t *testing.T) {
+	originalTimeout, originalWindow := chartPullRequestTimeout, chartPullRetryWindow
+	chartPullRequestTimeout, chartPullRetryWindow = 250*time.Millisecond, 2*time.Second
+	t.Cleanup(func() { chartPullRequestTimeout, chartPullRetryWindow = originalTimeout, originalWindow })
+	env := setUserHelmEnv(t, missingRepositoryIndex)
+
+	// A pull that times out its requests gives up long before the repository answers.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+		case <-time.After(10 * time.Second):
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := &recordingHelmClient{HelmClient: NewHelmClient()}
+	start := time.Now()
+	got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, server.URL, "contour")
+	elapsed := time.Since(start)
+	assert.Nil(t, got)
+	requireTimeout(t, err)
+	assert.GreaterOrEqual(t, len(client.pulls), 2, "a pull whose request timed out must be retried")
+	// Scheduling can delay the end of a pull, but not by seconds.
+	assert.Less(t, elapsed, chartPullRetryWindow+chartPullAttemptTimeout()+2*time.Second, "a pull must end within the retry window and one more attempt")
+	env.assertUnchanged(t)
+}
+
+// Test_HelmChartFromContainerRegistry_OCITimeout checks that requests to an OCI registry time out, that a registry
+// that answers each request just in time can't make an attempt take longer than the attempt timeout, and that the
+// pull gives up within the retry window and one more attempt.
+func Test_HelmChartFromContainerRegistry_OCITimeout(t *testing.T) {
+	pullChart := func(ctx context.Context, client HelmClient) error {
+		_, err := NewHelmAction(client).HelmChartFromContainerRegistry(ctx, "0.1.0", &helm.Configuration{}, "oci://"+fakeChartRegistryHost+"/charts", "radius")
+		return err
+	}
+	// A registry that answers only after an hour stands in for one that stopped answering. Unlike a registry that
+	// never answers, it doesn't deadlock the test if the requests don't time out.
+	tests := []struct {
+		name  string
+		delay time.Duration
+		pull  func(context.Context, HelmClient) error
+	}{
+		{"registry answers after an hour", time.Hour, pullChart},
+		{"registry answers each request just within the request timeout", chartPullRequestTimeout - time.Second, pullChart},
+		{"latest Radius version", time.Hour, func(ctx context.Context, client HelmClient) error {
+			_, err := (&Impl{Helm: client}).GetLatestRadiusVersion(ctx)
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setUserHelmEnv(t, missingRepositoryIndex, unwritableUserCache, registryCredentials(fakeChartRegistryPassword))
+			setDefaultTransport(t, &slowTransport{next: newFakeChartRegistry(t), delay: tt.delay})
+
+			// Fake time lets the test use the production timeouts and retry window.
+			synctest.Test(t, func(t *testing.T) {
+				client := &recordingHelmClient{HelmClient: NewHelmClient()}
+				start := time.Now()
+				requireTimeout(t, tt.pull(t.Context(), client))
+				assert.GreaterOrEqual(t, len(client.pulls), 3, "the retry window must fit three attempts that time out")
+				for _, pull := range client.pulls {
+					assert.LessOrEqual(t, pull.duration, chartPullAttemptTimeout(), "an attempt must end at its timeout")
+				}
+				assert.LessOrEqual(t, time.Since(start), chartPullRetryWindow+chartPullAttemptTimeout(), "a pull must end within the retry window and one more attempt")
+			})
 			env.assertUnchanged(t)
 		})
 	}

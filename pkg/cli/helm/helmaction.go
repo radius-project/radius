@@ -32,6 +32,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/retry"
+	goretry "github.com/sethvargo/go-retry"
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli"
@@ -44,10 +45,46 @@ import (
 
 const (
 	helmDriverSecret = "secret"
+
+	// chartRepositoryPullRequests is the number of requests that one attempt to pull a chart from a chart
+	// repository makes, one after the other: one for the repository index and one for the chart archive.
+	chartRepositoryPullRequests = 2
 )
 
-// Each pull needs a fresh, stateful backoff. Tests can replace the delays.
-var helmChartPullBackoff = retry.DefaultBackoffStrategy
+// A chart pull retries transient failures, including requests that time out. Each request and each attempt
+// has a timeout, and attempts start only within the retry window, so a pull ends within chartPullRetryWindow
+// plus chartPullAttemptTimeout. Tests can shorten the timeouts and the window.
+var (
+	// chartPullRequestTimeout bounds each request of a chart pull, including redirects and reading the
+	// response. It is much shorter than Helm's default of two minutes, so that the retry window fits several
+	// attempts that end with a request timeout.
+	chartPullRequestTimeout = 30 * time.Second
+
+	// chartPullRetryWindow is how long after its first attempt a chart pull can start another attempt. It fits
+	// three attempts that each take the whole attempt timeout.
+	chartPullRetryWindow = 3 * time.Minute
+
+	// helmChartPullBackoff returns the backoff for one chart pull. Each pull needs a new backoff because the
+	// retry window starts when the backoff is created. Tests can replace it.
+	helmChartPullBackoff = newChartPullBackoff
+)
+
+// chartPullAttemptTimeout returns how long one attempt to pull a chart can take. An attempt to pull from a
+// chart repository makes chartRepositoryPullRequests requests. An attempt to pull from an OCI registry makes
+// a varying number of token, tag, manifest, and blob requests, so its requests share this deadline.
+func chartPullAttemptTimeout() time.Duration {
+	return chartRepositoryPullRequests * chartPullRequestTimeout
+}
+
+// newChartPullBackoff waits one second before the first retry and doubles the delay up to ten seconds, with
+// 10% jitter. It allows at most ten retries, and only within chartPullRetryWindow.
+func newChartPullBackoff() goretry.Backoff {
+	b := goretry.NewExponential(time.Second)
+	b = goretry.WithCappedDuration(10*time.Second, b)
+	b = goretry.WithJitterPercent(10, b)
+	b = goretry.WithMaxRetries(10, b)
+	return goretry.WithMaxDuration(chartPullRetryWindow, b)
+}
 
 // Helm's HTTP getter returns status failures as plain errors, not typed errors.
 var transientHelmHTTPError = regexp.MustCompile(`^failed to fetch https?://\S+ : (408|429|500|502|503|504)( .*)?$`)
@@ -160,7 +197,8 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Con
 
 	var chartRef string
 
-	if !registry.IsOCI(repoUrl) {
+	oci := registry.IsOCI(repoUrl)
+	if !oci {
 		// For non-OCI registries (like contour), we need to set the repo URL
 		// to the registry URL. The chartRef is the release name.
 		// ex.
@@ -176,21 +214,22 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Con
 		// ex.
 		// pull.Run("oci://ghcr.io/radius-project/helm-chart/radius")
 		chartRef = fmt.Sprintf("%s/%s", repoUrl, releaseName)
-
-		// Since we are using an OCI registry, we need to set the registry client
-		registryClient, err := registry.NewClient()
-		if err != nil {
-			return nil, err
-		}
-
-		pullopts = append(pullopts, func(p *helm.Pull) {
-			p.SetRegistryClient(registryClient)
-		})
 	}
 
 	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: helmChartPullBackoff()})
 	err = retryer.RetryFunc(ctx, func(context.Context) error {
-		_, err := helmAction.HelmClient.RunHelmPull(pullopts, chartRef)
+		attemptOpts := pullopts
+		if oci {
+			// Each attempt needs a registry client with its own deadline. The pull gets a configuration of
+			// its own, so that config doesn't keep the client after its deadline.
+			registryClient, err := newChartPullRegistryClient()
+			if err != nil {
+				return err
+			}
+			attemptOpts = append(slices.Clip(pullopts), helm.WithConfig(&helm.Configuration{RegistryClient: registryClient}))
+		}
+
+		_, err := helmAction.HelmClient.RunHelmPull(attemptOpts, chartRef)
 		if err != nil && isTransientHelmChartError(err) {
 			return retry.RetryableError(err)
 		}
@@ -375,6 +414,48 @@ func newChartPullSettings(stateDir string) *cli.EnvSettings {
 	settings.RepositoryCache = filepath.Join(stateDir, "repository")
 	settings.ContentCache = filepath.Join(stateDir, "content")
 	return settings
+}
+
+// newChartPullRegistryClient returns a registry client for one attempt to pull a chart from an OCI registry.
+// Each of its requests times out after chartPullRequestTimeout, and all of them end at the attempt's deadline.
+// It keeps Helm's default transport, which retries some failed requests, and Helm's credential handling.
+func newChartPullRegistryClient() (*registry.Client, error) {
+	return registry.NewClient(registry.ClientOptHTTPClient(&http.Client{
+		Transport: &deadlineTransport{
+			next:     registry.NewTransport(false),
+			deadline: time.Now().Add(chartPullAttemptTimeout()),
+		},
+		Timeout: chartPullRequestTimeout,
+	}))
+}
+
+// deadlineTransport ends requests, including reading their responses, at a deadline.
+type deadlineTransport struct {
+	next     http.RoundTripper
+	deadline time.Time
+}
+
+func (t *deadlineTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	ctx, cancel := context.WithDeadline(req.Context(), t.deadline)
+	resp, err := t.next.RoundTrip(req.WithContext(ctx))
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	// The response body is read after RoundTrip returns, so the context ends when the body is closed.
+	resp.Body = &cancelOnCloseBody{ReadCloser: resp.Body, cancel: cancel}
+	return resp, nil
+}
+
+type cancelOnCloseBody struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+}
+
+func (b *cancelOnCloseBody) Close() error {
+	defer b.cancel()
+	return b.ReadCloser.Close()
 }
 
 // createTempDir creates a temporary directory for the helm chart and returns the path to the directory.
