@@ -2,12 +2,6 @@
 {{- .Chart.AppVersion -}}
 {{- end -}}
 
-{{/* External images retain their independently published latest tag for edge charts. */}}
-{{- define "radius.externalversiontag" -}}
-{{- $version := . | toString -}}
-{{- if eq $version "edge" -}}latest{{- else -}}{{ $version }}{{- end -}}
-{{- end -}}
-
 {{/*
 Reuses the value from an existing secret, otherwise sets its value to a default value.
 

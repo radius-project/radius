@@ -65,7 +65,7 @@ configure_environment() {
     export GIT_HTTP_EMAIL="testuser@radapp.io"
     export GIT_HTTP_PASSWORD="not-a-secret-password"
     export DE_IMAGE="ghcr.io/radius-project/deployment-engine"
-    export DE_TAG="latest"
+    export DE_TAG="edge"
     export RADIUS_TEST_FAST_CLEANUP=false
     export TEST_TIMEOUT="${TEST_TIMEOUT:-1h}"
 }
@@ -125,7 +125,7 @@ install_radius() {
         --set "global.imageTag=${TAG}" \
         --set "de.image=${DE_IMAGE},de.tag=${DE_TAG}" \
         --set dashboard.image=ghcr.io/radius-project/dashboard \
-        --set dashboard.tag=latest \
+        --set dashboard.tag=edge \
         --set-file "global.rootCA.cert=${CA_FILE}" "$@"
     local gateway_resources attempt
     for attempt in {1..36}; do
@@ -198,7 +198,7 @@ setup() {
         exit 1
         ;;
     esac
-    for tool in docker git go make k3d kubectl helm openssl jq yq python3 \
+    for tool in docker git go make k3d kubectl helm openssl jq yq zip \
         flux curl envsubst sudo; do
         command -v "${tool}" || {
             echo "Missing required tool: ${tool}. See running-functional-tests.md." >&2

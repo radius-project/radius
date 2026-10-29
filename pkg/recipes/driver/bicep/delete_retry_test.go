@@ -149,17 +149,22 @@ func Test_Bicep_Delete_CanceledBeforeFirstAttempt(t *testing.T) {
 	require.ErrorContains(t, err, "after 0 attempt(s)")
 }
 
-func Test_Bicep_Delete_PermanentFailureCancelsOtherRetries(t *testing.T) {
+// Test_Bicep_Delete_PermanentFailureDoesNotStopOtherRetries checks that a permanent failure on one resource does not
+// stop another resource from using its own retries.
+func Test_Bicep_Delete_PermanentFailureDoesNotStopOtherRetries(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		d, client, _, _ := setupDeleteInputs(t)
 		d.options = BicepOptions{DeleteRetryCount: 20, DeleteRetryDelaySeconds: 60}
 		parent := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/test-account"
 		lock := parent + "/providers/Microsoft.Authorization/locks/test-lock"
 		conflictSeen := make(chan struct{})
-		client.EXPECT().Delete(gomock.Any(), parent).DoAndReturn(func(context.Context, string) error {
-			close(conflictSeen)
-			return &azcore.ResponseError{StatusCode: http.StatusConflict}
-		}).Times(1)
+		gomock.InOrder(
+			client.EXPECT().Delete(gomock.Any(), parent).DoAndReturn(func(context.Context, string) error {
+				close(conflictSeen)
+				return &azcore.ResponseError{StatusCode: http.StatusConflict}
+			}),
+			client.EXPECT().Delete(gomock.Any(), parent).Return(nil),
+		)
 		client.EXPECT().Delete(gomock.Any(), lock).DoAndReturn(func(context.Context, string) error {
 			<-conflictSeen
 			time.Sleep(time.Second)
@@ -172,6 +177,8 @@ func Test_Bicep_Delete_PermanentFailureCancelsOtherRetries(t *testing.T) {
 			{ID: resources.MustParse(lock), RadiusManaged: new(true)},
 		}})
 		require.ErrorContains(t, err, "AuthorizationFailed")
-		require.Equal(t, time.Second, time.Since(start))
+		require.ErrorContains(t, err, fmt.Sprintf("failed to delete resource %q after 1 attempt(s)", lock))
+		require.NotContains(t, err.Error(), fmt.Sprintf("%q after", parent))
+		require.Equal(t, time.Minute, time.Since(start))
 	})
 }

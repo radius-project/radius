@@ -18,7 +18,6 @@ package awsproxy
 import (
 	"context"
 	"encoding/json"
-	"maps"
 	http "net/http"
 
 	"uuid"
@@ -63,6 +62,9 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	if errResponse != nil {
 		return errResponse, nil
 	}
+	if errResponse := unsupportedTypeResponse(serviceCtx.ResourceTypeInAWSFormat()); errResponse != nil {
+		return errResponse, nil
+	}
 
 	body := map[string]any{}
 	err := decoder.Decode(&body)
@@ -90,6 +92,20 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationRegionOption(region)}
 
+	// Get resource type schema
+	describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+		Type:     types.RegistryTypeResource,
+		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
+	}, cloudFormationOpts...)
+	if err != nil {
+		return ucp_aws.HandleAWSError(ctx, err)
+	}
+	if errResponse, err := putErrorResponse(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput); err != nil {
+		return nil, err
+	} else if errResponse != nil {
+		return errResponse, nil
+	}
+
 	// Create and update work differently for AWS - we need to know if the resource
 	// we're working on exists already.
 	existing := true
@@ -109,35 +125,41 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
+	secrets, err := secretProperties(serviceCtx.ResourceTypeInAWSFormat(), aws.ToString(describeTypeOutput.Schema))
+	if err != nil {
+		return ucp_aws.HandleAWSError(ctx, err)
+	}
+
 	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
 	// simulate that here.
-	responseProperties := map[string]any{}
+	currentProperties := map[string]any{}
 	if getResponse != nil {
-		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
+		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &currentProperties)
 		if err != nil {
 			return ucp_aws.HandleAWSError(ctx, err)
 		}
 	}
 
-	// Properties specified by users take precedence
-	maps.Copy(responseProperties, properties)
+	// Properties specified by users take precedence, except secrets, which are never echoed back.
+	responseProperties := buildResponseProperties(currentProperties, properties, secrets)
 
 	if existing {
-		// Get resource type schema
-		describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
-			Type:     types.RegistryTypeResource,
-			TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
-		}, cloudFormationOpts...)
-		if err != nil {
-			return nil, err
-		}
-
 		// Generate patch
 		currentState := []byte(*getResponse.ResourceDescription.Properties)
 		resourceTypeSchema := []byte(*describeTypeOutput.Schema)
 		patch, err := awsoperations.GeneratePatch(currentState, desiredState, resourceTypeSchema)
 		if err != nil {
 			return ucp_aws.HandleAWSError(ctx, err)
+		}
+
+		if len(patch) > 0 {
+			var errResponse armrpc_rest.Response
+			patch, errResponse, err = checkPatch(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput, patch)
+			if err != nil {
+				return nil, err
+			} else if errResponse != nil {
+				return errResponse, nil
+			}
 		}
 
 		// Call update only if the patch is not empty

@@ -17,17 +17,23 @@ limitations under the License.
 package resource_test
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"os"
 
 	"uuid"
 
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
@@ -44,6 +50,8 @@ func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
 	appName := "corerp-resources-extenders-aws-logs-recipe-app"
 	logGroupName := "radiusfunctionaltest-" + uuid.New().String()
 	logGroupID := fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s/providers/AWS.Logs/LogGroup/%s", awsAccountID, awsRegion, logGroupName)
+	// Cloud Control returns the log group ARN with a trailing ":*", which Radius stores without the suffix.
+	logGroupARN := fmt.Sprintf("arn:aws:logs:%s:%s:log-group:%s", awsRegion, awsAccountID, logGroupName)
 	creationTimestamp := testutil.GetCreationTimestamp()
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
@@ -73,7 +81,8 @@ func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
 						App:  appName,
 						OutputResources: []validation.OutputResourceResponse{
 							{
-								ID: logGroupID,
+								ID:                 logGroupID,
+								ProviderResourceID: logGroupARN,
 							},
 						},
 					},
@@ -99,6 +108,36 @@ func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
 				},
 			},
 			SkipObjectValidation: true,
+			// Verify that the app graph links the log group to the CloudWatch log groups page in the AWS console.
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+				client, ok := ct.Options.ManagementClient.(*clients.UCPApplicationsManagementClient)
+				require.True(t, ok, "expected UCPApplicationsManagementClient")
+
+				appGraphClient, err := v20231001preview.NewApplicationsClient(&aztoken.AnonymousCredential{}, client.ClientOptions)
+				require.NoError(t, err)
+
+				res, err := appGraphClient.GetGraph(ctx, client.RootScope, appName, v20231001preview.GetGraphRequest{}, nil)
+				require.NoError(t, err)
+
+				var portalURL *string
+				found := false
+				for _, r := range res.Resources {
+					if r == nil || r.Type == nil || !strings.EqualFold(*r.Type, "Applications.Core/extenders") {
+						continue
+					}
+					for _, or := range r.OutputResources {
+						if or != nil && or.ID != nil && strings.EqualFold(*or.ID, logGroupID) {
+							portalURL = or.PortalURL
+							found = true
+						}
+					}
+				}
+
+				require.True(t, found, "expected the extender in the graph to have the log group output resource %s", logGroupID)
+				require.NotNil(t, portalURL, "expected the log group output resource to carry a portalUrl")
+				expectedPortalURL := fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logsV2:log-groups", awsRegion, awsRegion)
+				require.Equal(t, expectedPortalURL, *portalURL)
+			},
 		},
 	})
 

@@ -263,9 +263,14 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			}
 		}
 
-		hash, err := computeHash(deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
+		// ObservedGeneration is the generation this operation submitted. If the spec changed since,
+		// leave the hash empty so the next reconcile deploys the current spec.
+		var hash string
+		if deploymentTemplate.Generation == deploymentTemplate.Status.ObservedGeneration {
+			hash, err = computeHash(deploymentTemplate)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 
 		// If any owned DR has a Spec.Id not in the new outputResources set, it

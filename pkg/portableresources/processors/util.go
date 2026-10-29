@@ -57,8 +57,9 @@ func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputRe
 		}
 
 		result := rpv1.OutputResource{
-			ID:            id,
-			RadiusManaged: new(true),
+			ID:                 id,
+			RadiusManaged:      new(true),
+			ProviderResourceID: output.ProviderResourceID(resource),
 		}
 
 		results = append(results, result)
