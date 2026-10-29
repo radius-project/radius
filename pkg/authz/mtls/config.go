@@ -74,9 +74,15 @@ func (s *Source) ServerConfig(namespace string) *tls.Config {
 // rotating the CA requires a CA bundle that trusts both the old and new CA until every
 // component has reloaded.
 func (s *Source) ClientConfig(namespace string) (*tls.Config, error) {
+	config, _, err := s.clientConfig(namespace)
+	return config, err
+}
+
+// clientConfig is ClientConfig that also returns the certificate the config presents.
+func (s *Source) clientConfig(namespace string) (*tls.Config, *x509.Certificate, error) {
 	m, err := s.load()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &tls.Config{
@@ -99,7 +105,7 @@ func (s *Source) ClientConfig(namespace string) (*tls.Config, error) {
 			_, err := identityFromChains(cs.VerifiedChains, namespace)
 			return err
 		},
-	}, nil
+	}, m.cert.Leaf, nil
 }
 
 // verifyClient checks a client's certificate chain against pool, the CA bundle of the

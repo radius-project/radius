@@ -161,7 +161,7 @@ Path where a component's mTLS Secret (<component>-mtls) is mounted.
 {{- end -}}
 
 {{/*
-Renders the authorization config block for a server component. Renders nothing when
+Renders the authorization config block for a component. Renders nothing when
 the authorization mode is off, so a default install is unchanged.
 */}}
 {{- define "radius.authz.serverConfig" -}}
@@ -175,7 +175,24 @@ authorization:
 {{- end -}}
 
 {{/*
-Renders the mTLS volume mount for a server container when the authorization mode is not off.
+Renders the ucp connection block for a component that calls UCP. When the authorization
+mode is not off, the component calls UCP's internal mTLS port directly instead of going
+through the Kubernetes API server.
+*/}}
+{{- define "radius.authz.ucpConnection" -}}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+ucp:
+  kind: direct
+  direct:
+    endpoint: "https://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3"
+{{- else }}
+ucp:
+  kind: kubernetes
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders the mTLS volume mount for a component container when the authorization mode is not off.
 */}}
 {{- define "radius.authz.mtls.volumeMount" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
