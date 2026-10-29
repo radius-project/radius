@@ -112,7 +112,8 @@ jobs:
   build-summary:
     if: always()
     name: Build Summary
-    needs: [changes, build-check, build-and-push-images, build-and-push-bicep-types]
+    needs:
+      [changes, build-check, build-and-push-images, build-and-push-bicep-types]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
