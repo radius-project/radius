@@ -233,7 +233,7 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Con
 		if oci {
 			// Each attempt needs a registry client with its own deadline. The pull gets a configuration of
 			// its own, so that config doesn't keep the client after its deadline.
-			registryClient, err := newChartPullRegistryClient()
+			registryClient, err := newChartPullRegistryClient(chartPullRequestTimeout, time.Now().Add(chartPullAttemptTimeout()))
 			if err != nil {
 				return err
 			}
@@ -441,18 +441,18 @@ func reportRetries(b goretry.Backoff, report func()) goretry.Backoff {
 }
 
 // newChartPullRegistryClient returns a registry client for one attempt to pull a chart from an OCI registry.
-// Each of its requests times out after chartPullRequestTimeout, and all of them end at the attempt's deadline.
+// Each of its requests times out after requestTimeout, and all of them end at the attempt's deadline.
 // It keeps Helm's default transport, which retries some failed requests, and Helm's credential handling. Like
 // Helm's CLI, it caches registry tokens, so an attempt fetches a token once rather than for each request.
-func newChartPullRegistryClient() (*registry.Client, error) {
+func newChartPullRegistryClient(requestTimeout time.Duration, deadline time.Time) (*registry.Client, error) {
 	return registry.NewClient(
 		registry.ClientOptEnableCache(true),
 		registry.ClientOptHTTPClient(&http.Client{
 			Transport: &deadlineTransport{
 				next:     registry.NewTransport(false),
-				deadline: time.Now().Add(chartPullAttemptTimeout()),
+				deadline: deadline,
 			},
-			Timeout: chartPullRequestTimeout,
+			Timeout: requestTimeout,
 		}),
 	)
 }
@@ -471,7 +471,8 @@ func (t *deadlineTransport) RoundTrip(req *http.Request) (*http.Response, error)
 		return nil, err
 	}
 
-	// The response body is read after RoundTrip returns, so the context ends when the body is closed.
+	// The caller reads the response body after RoundTrip returns, so the request must stay open until the body is
+	// closed or the deadline passes. Closing the body ends the request and releases its timer.
 	resp.Body = &cancelOnCloseBody{ReadCloser: resp.Body, cancel: cancel}
 	return resp, nil
 }

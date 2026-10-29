@@ -54,10 +54,12 @@ On a network that can't reach the chart hosts, download the charts on a machine 
 
 ```bash
 helm pull contour --repo https://projectcontour.github.io/helm-charts --version <version>
-rad install kubernetes --contour-chart ./contour-<version>.tgz
+rad install kubernetes --reinstall --contour-chart ./contour-<version>.tgz
 ```
 
-To install Radius from a local chart as well, add `--chart` with the path of the Radius chart, such as `deploy/Chart` in your clone.
+An earlier attempt may have installed Radius before the Contour download failed, and without `--reinstall` the command then stops at `Found existing Radius installation` instead of installing Contour. `--reinstall` upgrades Radius, keeping the values you set before, and installs Contour, and on a cluster without Radius it installs as usual.
+
+The command still downloads the Radius chart. To install Radius from a local chart as well, add `--chart` to it with the path of the Radius chart, such as `deploy/Chart` in your clone.
 
 ## The installation times out
 

@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -54,6 +55,7 @@ import (
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
@@ -82,6 +84,8 @@ func Test_isTransientHelmChartError(t *testing.T) {
 		{"permanent DNS", &net.DNSError{IsNotFound: true}, false},
 		{"temporary DNS", &net.DNSError{IsTemporary: true}, true},
 		{"timeout", &url.Error{Op: "Get", URL: "https://example.com", Err: context.DeadlineExceeded}, true},
+		{"timeout reading a chart archive", &oras.CopyError{Op: "Push", Origin: oras.CopyErrorOriginDestination, Err: fmt.Errorf("read failed: %w", context.DeadlineExceeded)}, true},
+		{"canceled reading a chart archive", &oras.CopyError{Op: "Push", Origin: oras.CopyErrorOriginDestination, Err: fmt.Errorf("read failed: %w", context.Canceled)}, false},
 		{"reset", fmt.Errorf("read: %w", syscall.ECONNRESET), true},
 		{"refused", fmt.Errorf("dial: %w", syscall.ECONNREFUSED), true},
 		{"broken pipe", fmt.Errorf("read: %w", syscall.EPIPE), true},
@@ -331,12 +335,18 @@ type registryContent struct {
 	data      []byte
 }
 
-// fakeChartRegistry is an in-process OCI registry that serves a radius 0.1.0 chart from one repository. Like
-// ghcr.io, it requires a bearer token, which its token endpoint issues for the user's credentials.
+// fakeChartRegistry is an OCI registry that serves a radius 0.1.0 chart from one repository. Like ghcr.io, it requires a
+// bearer token, which its token endpoint issues for the user's credentials.
 type fakeChartRegistry struct {
 	host       string
 	repository string
 	content    map[string]registryContent
+	chartPath  string // the path of the chart archive
+
+	// stallChart, when set, reports whether to stall a request for the chart archive. The registry then sends half of
+	// the archive and stops answering until the request ends, stopStalls is closed, or stalledResponseFallback passes.
+	stallChart func() bool
+	stopStalls chan struct{}
 
 	tokenRequests      atomic.Int32 // requests for a token
 	challengedRequests atomic.Int32 // requests without a token
@@ -344,8 +354,13 @@ type fakeChartRegistry struct {
 	tagListRequests    atomic.Int32 // requests with a token for the tag list
 }
 
-// newFakeChartRegistry returns a fake registry for the repository on the host. Install it with
-// setDefaultTransport, so that OCI pulls reach it without a network or TLS.
+// stalledResponseFallback is how long a test server that stopped answering waits for the client to give up. It ends
+// a stalled response when a regression keeps the client waiting, so that the test fails instead of hanging. It is
+// longer than the longest timeout that the tests try.
+const stalledResponseFallback = 30 * time.Second
+
+// newFakeChartRegistry returns a fake registry for the repository on the host. Install it with setDefaultTransport,
+// so that OCI pulls reach it in-process without a network or TLS, or serve it with serveChartRegistry.
 func newFakeChartRegistry(t *testing.T, host, repository string) *fakeChartRegistry {
 	t.Helper()
 	config := []byte(`{"apiVersion":"v2","name":"radius","version":"0.1.0"}`)
@@ -356,13 +371,37 @@ func newFakeChartRegistry(t *testing.T, host, repository string) *fakeChartRegis
 		registry.ChartLayerMediaType, digest.FromBytes(chartBytes), len(chartBytes))
 	tags := fmt.Appendf(nil, `{"name":%q,"tags":["0.0.9","0.1.0"]}`, repository)
 	prefix := "/v2/" + repository
-	return &fakeChartRegistry{host: host, repository: repository, content: map[string]registryContent{
+	chartPath := prefix + "/blobs/" + digest.FromBytes(chartBytes).String()
+	return &fakeChartRegistry{host: host, repository: repository, chartPath: chartPath, content: map[string]registryContent{
 		prefix + "/tags/list":       {"application/json", tags},
 		prefix + "/manifests/0.1.0": {ocispec.MediaTypeImageManifest, manifest},
 		prefix + "/manifests/" + digest.FromBytes(manifest).String(): {ocispec.MediaTypeImageManifest, manifest},
 		prefix + "/blobs/" + digest.FromBytes(config).String():       {registry.ConfigMediaType, config},
-		prefix + "/blobs/" + digest.FromBytes(chartBytes).String():   {registry.ChartLayerMediaType, chartBytes},
+		chartPath: {registry.ChartLayerMediaType, chartBytes},
 	}}
+}
+
+// serveChartRegistry serves a fake registry for fakeChartRegistryRepository from a TLS server that speaks HTTP/2 or
+// HTTP/1.1, and makes Helm's registry client trust the server for the rest of the test. Unlike the in-process
+// registry, the server streams its responses over the network, so a response that stalls behaves as it does with a
+// real registry. stallChart reports whether to stall a request for the chart archive. It returns the registry's host.
+func serveChartRegistry(t *testing.T, http2 bool, stallChart func() bool) string {
+	t.Helper()
+	server := httptest.NewUnstartedServer(nil)
+	host := server.Listener.Addr().String()
+	chartRegistry := newFakeChartRegistry(t, host, fakeChartRegistryRepository)
+	chartRegistry.stallChart = stallChart
+	chartRegistry.stopStalls = make(chan struct{})
+	server.Config.Handler = http.HandlerFunc(chartRegistry.serve)
+	server.EnableHTTP2 = http2
+	server.StartTLS()
+	t.Cleanup(server.Close)
+	// Closing the server waits for the stalled responses, so they end first.
+	t.Cleanup(func() { close(chartRegistry.stopStalls) })
+
+	// The registry client of each attempt copies http.DefaultTransport, which then trusts the server's certificate.
+	setDefaultTransport(t, server.Client().Transport)
+	return host
 }
 
 // setDefaultTransport makes http.DefaultTransport, which Helm's registry client uses, send requests to rt for
@@ -391,7 +430,12 @@ func (f *fakeChartRegistry) RoundTrip(req *http.Request) (*http.Response, error)
 }
 
 func (f *fakeChartRegistry) serve(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Host != f.host {
+	// A request that a server receives has its host in r.Host rather than in its URL.
+	host := r.URL.Host
+	if host == "" {
+		host = r.Host
+	}
+	if host != f.host {
 		http.NotFound(w, r)
 		return
 	}
@@ -426,9 +470,20 @@ func (f *fakeChartRegistry) serve(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", content.mediaType)
 	w.Header().Set("Content-Length", strconv.Itoa(len(content.data)))
 	w.Header().Set("Docker-Content-Digest", digest.FromBytes(content.data).String())
-	if r.Method != http.MethodHead {
-		_, _ = w.Write(content.data)
+	if r.Method == http.MethodHead {
+		return
 	}
+	if r.URL.Path == f.chartPath && f.stallChart != nil && f.stallChart() {
+		_, _ = w.Write(content.data[:len(content.data)/2])
+		_ = http.NewResponseController(w).Flush()
+		select {
+		case <-r.Context().Done():
+		case <-f.stopStalls:
+		case <-time.After(stalledResponseFallback):
+		}
+		return
+	}
+	_, _ = w.Write(content.data)
 }
 
 // Test_HelmChartFromContainerRegistry_OCICredentials checks that OCI pulls still authenticate with the
@@ -656,8 +711,7 @@ func recordChartPullLog(t *testing.T) *chartPullLog {
 // requireTimeout requires err to come from a request that timed out.
 func requireTimeout(t *testing.T, err error) {
 	t.Helper()
-	netErr, ok := errors.AsType[net.Error](err)
-	require.True(t, ok && netErr.Timeout(), "expected a request timeout, got: %v", err)
+	require.True(t, isTimeout(err), "expected a request timeout, got: %v", err)
 	require.True(t, isTransientHelmChartError(err), "a request timeout must be retried: %v", err)
 }
 
@@ -971,6 +1025,303 @@ func Test_HelmChartFromContainerRegistry_OCITimeout(t *testing.T) {
 				assert.Len(t, logged.lines, len(client.pulls)-1, "each retry must be shown, and only retries")
 			})
 			env.assertUnchanged(t)
+		})
+	}
+}
+
+// testProtocols are the HTTP versions that the real servers of the tests speak. Helm's registry client prefers HTTP/2,
+// which ghcr.io serves, and falls back to HTTP/1.1.
+var testProtocols = []struct {
+	name  string
+	http2 bool
+	proto string // the protocol of the responses
+}{
+	{"HTTP 1.1", false, "HTTP/1.1"},
+	{"HTTP 2", true, "HTTP/2.0"},
+}
+
+// isTimeout reports whether err comes from a request that timed out.
+func isTimeout(err error) bool {
+	netErr, ok := errors.AsType[net.Error](err)
+	return ok && netErr.Timeout()
+}
+
+// isChartStall reports whether err comes from a request for a chart archive that timed out while the archive was read.
+// oras reads the archive while it stores it in memory, so it reports that it failed to push the archive.
+func isChartStall(err error) bool {
+	copyErr, ok := errors.AsType[*oras.CopyError](err)
+	return ok && copyErr.Op == "Push" && isTimeout(err)
+}
+
+// requireStalledChart requires err to come from a request for a chart archive that timed out while the archive was
+// read, and requires a chart pull to retry it.
+func requireStalledChart(t *testing.T, err error) {
+	t.Helper()
+	requireTimeout(t, err)
+	require.True(t, isChartStall(err), "the request must time out while the chart archive is read: %v", err)
+}
+
+// runTimeSensitive runs test with each timeout in turn until test returns nil, like the time-sensitive tests of
+// net/http. test returns an error when a request that it didn't stall timed out, because a machine under load, or
+// one that runs the race detector, can be too slow for a short timeout. test fails the test for any other problem.
+func runTimeSensitive(t *testing.T, timeouts []time.Duration, test func(t *testing.T, timeout time.Duration) error) {
+	t.Helper()
+	for _, timeout := range timeouts {
+		err := test(t, timeout)
+		if err == nil {
+			return
+		}
+		t.Logf("the timeout of %v was too short for this machine: %v", timeout, err)
+	}
+	require.Fail(t, "every timeout was too short for this machine")
+}
+
+// Test_HelmChartFromContainerRegistry_OCIChartStall checks pulls from a registry server whose chart archive stops after
+// half of it, over HTTP/1.1 and HTTP/2. The request timeout must end the stalled request with an error that the pull
+// retries, and the pull must show the retry and succeed on the next attempt, or give up in bounded time.
+func Test_HelmChartFromContainerRegistry_OCIChartStall(t *testing.T) {
+	originalBackoff, originalTimeout := helmChartPullBackoff, chartPullRequestTimeout
+	helmChartPullBackoff = func() goretry.Backoff {
+		return goretry.WithMaxRetries(1, goretry.NewConstant(time.Millisecond))
+	}
+	t.Cleanup(func() { helmChartPullBackoff, chartPullRequestTimeout = originalBackoff, originalTimeout })
+
+	tests := []struct {
+		name    string
+		stalls  int32 // how many requests for the chart archive stall
+		wantErr bool
+	}{
+		{"chart stalls once", 1, false},
+		{"chart stalls on every attempt", 2, true},
+	}
+	for _, protocol := range testProtocols {
+		for _, tt := range tests {
+			t.Run(protocol.name+" "+tt.name, func(t *testing.T) {
+				// The requests before the chart archive must end within the attempt timeout.
+				runTimeSensitive(t, []time.Duration{500 * time.Millisecond, time.Second, 2 * time.Second, 5 * time.Second}, func(t *testing.T, timeout time.Duration) error {
+					chartPullRequestTimeout = timeout
+					var chartRequests atomic.Int32
+					host := serveChartRegistry(t, protocol.http2, func() bool { return chartRequests.Add(1) <= tt.stalls })
+					env := setUserHelmEnv(t, missingRepositoryIndex, unwritableUserCache, registryCredentials(host, fakeChartRegistryPassword))
+					logged := recordChartPullLog(t)
+
+					client := &recordingHelmClient{HelmClient: NewHelmClient()}
+					start := time.Now()
+					got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, "oci://"+host+"/charts", "radius")
+					elapsed := time.Since(start)
+					for _, pull := range client.pulls {
+						if isTimeout(pull.err) && !isChartStall(pull.err) {
+							return pull.err
+						}
+					}
+
+					require.Len(t, client.pulls, 2, "a pull whose chart archive stalled must be retried")
+					requireStalledChart(t, client.pulls[0].err)
+					assert.Equal(t, []string{fmt.Sprintf("Downloading the radius chart failed (attempt 1), retrying: %v", client.pulls[0].err)}, logged.lines)
+					assert.EqualValues(t, 2, chartRequests.Load(), "each attempt must request the chart archive once")
+					if tt.wantErr {
+						assert.Nil(t, got)
+						requireStalledChart(t, err)
+					} else {
+						require.NoError(t, err)
+						require.NotNil(t, got)
+						assert.Equal(t, "0.1.0", got.Metadata.Version)
+					}
+					// Scheduling can delay the end of a pull, but not by seconds.
+					assert.Less(t, elapsed, 2*chartPullAttemptTimeout()+2*time.Second, "each attempt must end by its timeout")
+					env.assertUnchanged(t)
+					return nil
+				})
+			})
+		}
+	}
+}
+
+// Test_newChartPullRegistryClient_DeadlineEndsStalledChart checks that the attempt deadline of a registry client ends a
+// request for a chart archive that stops after half of it, over HTTP/1.1 and HTTP/2, with an error that a chart pull
+// retries. In a pull, the request timeout usually ends such a request before the attempt deadline, so this test gives
+// the client a request timeout that is longer than the attempt.
+func Test_newChartPullRegistryClient_DeadlineEndsStalledChart(t *testing.T) {
+	for _, protocol := range testProtocols {
+		t.Run(protocol.name, func(t *testing.T) {
+			// The requests before the chart archive must end before the attempt deadline. With the race detector, they
+			// take about half a second.
+			runTimeSensitive(t, []time.Duration{time.Second, 3 * time.Second, 9 * time.Second}, func(t *testing.T, attempt time.Duration) error {
+				host := serveChartRegistry(t, protocol.http2, func() bool { return true })
+				env := setUserHelmEnv(t, missingRepositoryIndex, unwritableUserCache, registryCredentials(host, fakeChartRegistryPassword))
+
+				start := time.Now()
+				registryClient, err := newChartPullRegistryClient(time.Minute, start.Add(attempt))
+				require.NoError(t, err)
+				_, err = NewHelmClient().RunHelmPull([]helm.PullOpt{
+					helm.WithConfig(&helm.Configuration{RegistryClient: registryClient}),
+					func(p *helm.Pull) {
+						p.Settings = newChartPullSettings(t.TempDir())
+						p.DestDir = t.TempDir()
+						p.Version = "0.1.0"
+					},
+				}, "oci://"+host+"/"+fakeChartRegistryRepository)
+				elapsed := time.Since(start)
+				if isTimeout(err) && !isChartStall(err) {
+					return err
+				}
+
+				requireStalledChart(t, err)
+				assert.ErrorIs(t, err, context.DeadlineExceeded, "the attempt deadline must end the request")
+				assert.GreaterOrEqual(t, elapsed, attempt, "the request must stay open until the attempt deadline")
+				assert.Less(t, elapsed, stalledResponseFallback, "the attempt deadline, not the server, must end the stalled request")
+				env.assertUnchanged(t)
+				return nil
+			})
+		})
+	}
+}
+
+// contextRecorder records the context of the last request that it sends.
+type contextRecorder struct {
+	next http.RoundTripper
+	ctx  context.Context
+}
+
+func (r *contextRecorder) RoundTrip(req *http.Request) (*http.Response, error) {
+	r.ctx = req.Context()
+	return r.next.RoundTrip(req)
+}
+
+// startTLSServer starts a TLS server for the handler that speaks HTTP/2 or HTTP/1.1, and that its Client trusts.
+func startTLSServer(t *testing.T, http2 bool, handler http.HandlerFunc) *httptest.Server {
+	t.Helper()
+	server := httptest.NewUnstartedServer(handler)
+	server.EnableHTTP2 = http2
+	server.StartTLS()
+	t.Cleanup(server.Close)
+	return server
+}
+
+// Test_deadlineTransport checks deadlineTransport with a real server, over HTTP/1.1 and HTTP/2: a response body streams
+// after RoundTrip returns, a body that stalls ends at the deadline with an error that a chart pull retries, and closing
+// a body ends its request. The in-process registry of the other tests answers from memory, so those tests can't tell
+// whether a body ends when RoundTrip returns, or outlives the deadline.
+func Test_deadlineTransport(t *testing.T) {
+	t.Parallel()
+	body := bytes.Repeat([]byte("0123456789abcdef"), 16<<10)
+
+	// stall sends the headers and half of the body, and then stops answering. ended receives why it stopped.
+	stall := func(stop <-chan struct{}, ended chan<- string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(body[:len(body)/2])
+			_ = http.NewResponseController(w).Flush()
+			reason := "fallback"
+			select {
+			case <-r.Context().Done():
+				reason = "request ended"
+			case <-stop:
+				reason = "test ended"
+			case <-time.After(stalledResponseFallback):
+			}
+			select {
+			case ended <- reason:
+			default:
+			}
+		}
+	}
+	// requireServerSawEnd requires the server to see that the client ended the stalled request, so neither side keeps
+	// the request, its connection, or its stream.
+	requireServerSawEnd := func(t *testing.T, ended <-chan string) {
+		t.Helper()
+		select {
+		case reason := <-ended:
+			require.Equal(t, "request ended", reason, "the server must see the request end")
+		case <-time.After(2 * stalledResponseFallback):
+			require.Fail(t, "the stalled response didn't end")
+		}
+	}
+	// get sends a GET request for url with transport.
+	get := func(t *testing.T, transport http.RoundTripper, url string) (*http.Response, error) {
+		t.Helper()
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, http.NoBody)
+		require.NoError(t, err)
+		return transport.RoundTrip(req)
+	}
+
+	for _, protocol := range testProtocols {
+		t.Run(protocol.name, func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("body streams after RoundTrip returns", func(t *testing.T) {
+				t.Parallel()
+				release, stop := make(chan struct{}), make(chan struct{})
+				server := startTLSServer(t, protocol.http2, func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+					w.WriteHeader(http.StatusOK)
+					_ = http.NewResponseController(w).Flush()
+					select {
+					case <-release:
+						_, _ = w.Write(body)
+					case <-r.Context().Done():
+					case <-stop:
+					}
+				})
+				t.Cleanup(func() { close(stop) })
+
+				sent := &contextRecorder{next: server.Client().Transport}
+				resp, err := get(t, &deadlineTransport{next: sent, deadline: time.Now().Add(time.Minute)}, server.URL)
+				require.NoError(t, err)
+				assert.Equal(t, protocol.proto, resp.Proto)
+				require.NoError(t, sent.ctx.Err(), "the request must stay open after RoundTrip returns")
+
+				// The server sends the body only after RoundTrip returned.
+				close(release)
+				got, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+				assert.True(t, bytes.Equal(body, got), "the body must arrive intact")
+				require.NoError(t, resp.Body.Close())
+				assert.ErrorIs(t, sent.ctx.Err(), context.Canceled, "closing the body must end the request")
+			})
+
+			t.Run("stalled body ends at the deadline", func(t *testing.T) {
+				t.Parallel()
+				// The response headers must arrive before the deadline.
+				runTimeSensitive(t, []time.Duration{300 * time.Millisecond, time.Second, 3 * time.Second, 9 * time.Second}, func(t *testing.T, deadline time.Duration) error {
+					stop, ended := make(chan struct{}), make(chan string, 1)
+					server := startTLSServer(t, protocol.http2, stall(stop, ended))
+					t.Cleanup(func() { close(stop) })
+
+					start := time.Now()
+					resp, err := get(t, &deadlineTransport{next: server.Client().Transport, deadline: start.Add(deadline)}, server.URL)
+					if isTimeout(err) {
+						return err
+					}
+					require.NoError(t, err)
+					assert.Equal(t, protocol.proto, resp.Proto)
+					_, err = io.ReadAll(resp.Body)
+					elapsed := time.Since(start)
+					requireTimeout(t, err)
+					assert.GreaterOrEqual(t, elapsed, deadline, "the body must stay open until the deadline")
+					assert.Less(t, elapsed, stalledResponseFallback, "the deadline, not the server, must end the stalled body")
+					_ = resp.Body.Close()
+					requireServerSawEnd(t, ended)
+					return nil
+				})
+			})
+
+			t.Run("closing the body ends the request", func(t *testing.T) {
+				t.Parallel()
+				stop, ended := make(chan struct{}), make(chan string, 1)
+				server := startTLSServer(t, protocol.http2, stall(stop, ended))
+				t.Cleanup(func() { close(stop) })
+
+				sent := &contextRecorder{next: server.Client().Transport}
+				resp, err := get(t, &deadlineTransport{next: sent, deadline: time.Now().Add(time.Minute)}, server.URL)
+				require.NoError(t, err)
+				_, err = io.ReadFull(resp.Body, make([]byte, 1024))
+				require.NoError(t, err)
+				_ = resp.Body.Close()
+				assert.ErrorIs(t, sent.ctx.Err(), context.Canceled, "closing the body must end the request")
+				requireServerSawEnd(t, ended)
+			})
 		})
 	}
 }
