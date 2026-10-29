@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -231,6 +232,29 @@ users:
 			})
 		}
 	})
+}
+
+// Test_NewClientConfigFromLocal_IgnoresKUBECONFIG pins the server contract: server code reads ~/.kube/config even when
+// KUBECONFIG is set, so Terraform state writes and state checks use the same cluster.
+func Test_NewClientConfigFromLocal_IgnoresKUBECONFIG(t *testing.T) {
+	const homeServer = "https://home.example.com"
+
+	k8sutil.WriteKubeconfig(t, k8sutil.IsolateKubeconfig(t), "home-context", map[string]string{
+		"home-context": homeServer,
+	})
+	envPath := filepath.Join(t.TempDir(), "env.yaml")
+	k8sutil.WriteKubeconfig(t, envPath, "env-context", map[string]string{
+		"env-context": "https://env.example.com",
+	})
+	t.Setenv(clientcmd.RecommendedConfigPathEnvVar, envPath)
+
+	config, err := NewClientConfigFromLocal(&ConfigOptions{})
+	require.NoError(t, err)
+	require.Equal(t, homeServer, config.Host)
+
+	raw, err := LoadConfigFile("")
+	require.NoError(t, err)
+	require.Equal(t, "home-context", raw.CurrentContext)
 }
 
 func TestTargetClusterDefaultNamespace(t *testing.T) {

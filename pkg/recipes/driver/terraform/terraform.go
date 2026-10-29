@@ -122,6 +122,8 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 		if _, ok := errors.AsType[*recipes_util.OutputMappingError](err); ok {
 			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
 		}
+		// Unresolvable parameter expressions are reported as execution errors, not setup errors, so a
+		// later delete still cleans up resources from an earlier successful deployment.
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
