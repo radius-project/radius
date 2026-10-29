@@ -642,7 +642,7 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 				renderConfiguration: testRenderConfiguration(tt.capabilities),
 			}
 			values := copyValues(tt.values)
-			warning, err := check.run(t.Context(), helmChart, values, baseline, !tt.resetValues)
+			warning, err := check.run(t.Context(), helmChart, values, upgradeFrom(baseline, !tt.resetValues))
 
 			require.Equal(t, tt.wantManageCRDs, nestedValue(values, "gatewayAPI", "manageCRDs"))
 			_, valuesDecide := tt.values["gatewayAPI"]
@@ -772,7 +772,7 @@ func Test_gatewayAPICRDCheck_SuggestedFlagTurnsOffFeatures(t *testing.T) {
 				}
 			}
 			values := copyValues(tt.values)
-			_, err := newCheck().run(t.Context(), newTestContourChart(), values, baseline, true)
+			_, err := newCheck().run(t.Context(), newTestContourChart(), values, upgradeFrom(baseline, true))
 			require.Error(t, err)
 
 			match := regexp.MustCompile(`Add this flag to the (rad [a-z]+ kubernetes) command:\n +--contour-set ("[^"]*"|'[^']*')`).FindStringSubmatch(err.Error())
@@ -788,7 +788,7 @@ func Test_gatewayAPICRDCheck_SuggestedFlagTurnsOffFeatures(t *testing.T) {
 			// Like --contour-set, the suggested value overrides the values of the invocation and makes the check pass.
 			values = copyValues(tt.values)
 			require.NoError(t, strvals.ParseInto(suggestedValue, values))
-			_, err = newCheck().run(t.Context(), newTestContourChart(), values, baseline, true)
+			_, err = newCheck().run(t.Context(), newTestContourChart(), values, upgradeFrom(baseline, true))
 			require.NoError(t, err)
 		})
 	}
@@ -826,7 +826,7 @@ func Test_gatewayAPICRDCheck_RemedyForContourValuesFromFlags(t *testing.T) {
 					setFileArgs:         setFileArgs,
 					getCRDs:             crdLookup(traefikGatewayAPICRDs()),
 					renderConfiguration: testRenderConfiguration(nil),
-				}).run(t.Context(), helmChart, values, baseline, true)
+				}).run(t.Context(), helmChart, values, upgradeFrom(baseline, true))
 				if err != nil {
 					require.True(t, clierrors.IsFriendlyError(err), "%v", err)
 					return nil, err
@@ -1210,7 +1210,7 @@ func Test_gatewayAPICRDCheck_SkipContourInstall(t *testing.T) {
 					command:             command,
 					getCRDs:             crdLookup(tt.crds),
 					renderConfiguration: testRenderConfiguration(nil),
-				}).run(t.Context(), newTestContourChart(), copyValues(tt.values), baseline, true)
+				}).run(t.Context(), newTestContourChart(), copyValues(tt.values), upgradeFrom(baseline, true))
 				require.Error(t, err)
 				require.True(t, clierrors.IsFriendlyError(err), "%v", err)
 				if command == installCommand {
@@ -1453,7 +1453,7 @@ func Test_gatewayAPICRDCheck_ReadsOnlyInvolvedCRDs(t *testing.T) {
 				},
 				renderConfiguration: testRenderConfiguration(nil),
 			}
-			_, _ = check.run(t.Context(), newTestContourChart(), map[string]any{}, tt.baseline, true)
+			_, _ = check.run(t.Context(), newTestContourChart(), map[string]any{}, upgradeFrom(tt.baseline, true))
 
 			// The CRDs that the chart renders with the final values are the ones that it renders with
 			// gatewayAPI.manageCRDs=true, which the first request already read.
@@ -1462,6 +1462,78 @@ func Test_gatewayAPICRDCheck_ReadsOnlyInvolvedCRDs(t *testing.T) {
 		})
 	}
 }
+
+// Test_gatewayAPICRDCheck_RendersTheNextRevision verifies that the check renders an upgrade with the revision that
+// Helm's upgrade renders, the one after the latest revision, so it sees that Helm would delete a CRD that the chart
+// renders only in some revisions.
+func Test_gatewayAPICRDCheck_RendersTheNextRevision(t *testing.T) {
+	t.Parallel()
+
+	httpProxies := crdInfo{
+		name:           "httpproxies.projectcontour.io",
+		group:          "projectcontour.io",
+		servedVersions: []string{"v1"},
+		labels:         map[string]string{helmManagedByLabel: helmManagedByValue},
+		annotations:    map[string]string{helmReleaseNameAnnotation: contourReleaseName, helmReleaseNamespaceAnnotation: RadiusSystemNamespace},
+	}
+	newCheck := func(command string, clusterCRDs ...crdInfo) *gatewayAPICRDCheck {
+		return &gatewayAPICRDCheck{
+			releaseName:         contourReleaseName,
+			releaseNamespace:    RadiusSystemNamespace,
+			kubeContext:         "test-context",
+			command:             command,
+			getCRDs:             crdLookup(clusterCRDs),
+			renderConfiguration: testRenderConfiguration(nil),
+		}
+	}
+
+	tests := []struct {
+		name    string
+		history []*releasev1.Release
+	}{
+		{
+			name:    "deployed revision 1",
+			history: []*releasev1.Release{contourRevision(1, releasecommon.StatusDeployed, httpProxies)},
+		},
+		{
+			// Helm starts from revision 1 and renders revision 3.
+			name:    "failed revision 2 on top of deployed revision 1",
+			history: []*releasev1.Release{contourRevision(1, releasecommon.StatusDeployed, httpProxies), contourRevision(2, releasecommon.StatusFailed, httpProxies)},
+		},
+		{
+			name: "failed revision 3 on top of deployed revision 2",
+			history: []*releasev1.Release{
+				contourRevision(1, releasecommon.StatusSuperseded, httpProxies),
+				contourRevision(2, releasecommon.StatusDeployed, httpProxies),
+				contourRevision(3, releasecommon.StatusFailed, httpProxies),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			for _, reuseValues := range []bool{true, false} {
+				_, err := newCheck(upgradeCommand, httpProxies).run(t.Context(), newRevisionGatedCRDChart(), map[string]any{}, upgradeOf(t, tt.history, reuseValues))
+				require.True(t, clierrors.IsFriendlyError(err), "reuseValues=%t: %v", reuseValues, err)
+				require.ErrorContains(t, err, "the Contour chart no longer includes these CRDs")
+				require.ErrorContains(t, err, "  - httpproxies.projectcontour.io\n")
+				require.ErrorContains(t, err, `kubectl --context "test-context" annotate crd httpproxies.projectcontour.io helm.sh/resource-policy=keep`)
+			}
+		})
+	}
+
+	t.Run("install", func(t *testing.T) {
+		t.Parallel()
+
+		check := newCheck(installCommand)
+		warning, err := check.run(t.Context(), newRevisionGatedCRDChart(), map[string]any{}, nil)
+		require.NoError(t, err)
+		require.Contains(t, warning, "Contour 1.33.0")
+		require.Equal(t, []string{"httpproxies.projectcontour.io"}, crdNames(check.renderedCRDs), "Helm installs revision 1")
+	})
+}
+
 func Test_renderChartCRDs(t *testing.T) {
 	t.Parallel()
 
@@ -1470,7 +1542,7 @@ func Test_renderChartCRDs(t *testing.T) {
 
 		helmChart := newTestContourChart()
 		for _, manageCRDs := range []bool{true, false} {
-			rendered, directory, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), helmChart, contourReleaseName, RadiusSystemNamespace, false,
+			rendered, directory, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), helmChart, contourReleaseName, RadiusSystemNamespace, nil,
 				map[string]any{"gatewayAPI": map[string]any{"manageCRDs": manageCRDs}})
 			require.NoError(t, err)
 			require.Empty(t, directory)
@@ -1516,13 +1588,13 @@ func Test_renderChartCRDs(t *testing.T) {
 		}
 		parent.AddDependency(subchart)
 
-		rendered, directory, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), parent, contourReleaseName, RadiusSystemNamespace, false, nil)
+		rendered, directory, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), parent, contourReleaseName, RadiusSystemNamespace, nil, nil)
 		require.NoError(t, err)
 		require.ElementsMatch(t, []string{"gateways." + gatewayAPIGroup, "grpcroutes." + gatewayAPIGroup}, crdNames(rendered))
 		require.ElementsMatch(t, []string{"tcproutes." + gatewayAPIGroup, "tlsroutes." + gatewayAPIGroup}, crdNames(directory))
 
 		// Helm removes a disabled subchart from the chart that it renders, but not from the original chart.
-		rendered, directory, err = renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), parent, contourReleaseName, RadiusSystemNamespace, false,
+		rendered, directory, err = renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), parent, contourReleaseName, RadiusSystemNamespace, nil,
 			map[string]any{"gateway": map[string]any{"enabled": false}})
 		require.NoError(t, err)
 		require.Equal(t, []string{"gateways." + gatewayAPIGroup}, crdNames(rendered))
@@ -1541,7 +1613,7 @@ func Test_renderChartCRDs(t *testing.T) {
 
 		broken := newTestContourChart()
 		broken.Templates = append(broken.Templates, &common.File{Name: "templates/broken.yaml", Data: []byte(`{{ fail "the values are not supported" }}`)})
-		_, _, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), broken, contourReleaseName, RadiusSystemNamespace, false, nil)
+		_, _, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), broken, contourReleaseName, RadiusSystemNamespace, nil, nil)
 		require.ErrorContains(t, err, "the values are not supported")
 	})
 
@@ -1549,11 +1621,12 @@ func Test_renderChartCRDs(t *testing.T) {
 		t.Parallel()
 
 		helmChart := newCapabilitiesGatedCRDChart()
-		rendered, _, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), helmChart, contourReleaseName, RadiusSystemNamespace, true, nil)
+		upgrade := upgradeFrom(contourRevision(1, releasecommon.StatusDeployed), true)
+		rendered, _, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), helmChart, contourReleaseName, RadiusSystemNamespace, upgrade, nil)
 		require.NoError(t, err)
 		require.Equal(t, []string{"httpproxies.projectcontour.io"}, crdNames(rendered))
 
-		rendered, _, err = renderChartCRDs(t.Context(), newTestRenderConfiguration(capabilitiesWith("gateway.networking.k8s.io/v1")), helmChart, contourReleaseName, RadiusSystemNamespace, true, nil)
+		rendered, _, err = renderChartCRDs(t.Context(), newTestRenderConfiguration(capabilitiesWith("gateway.networking.k8s.io/v1")), helmChart, contourReleaseName, RadiusSystemNamespace, upgrade, nil)
 		require.NoError(t, err)
 		require.Empty(t, rendered)
 	})
@@ -1566,15 +1639,109 @@ func Test_renderChartCRDs(t *testing.T) {
 			Name: "templates/upgrade-only.yaml",
 			Data: []byte("{{- if .Release.IsUpgrade }}\n" + crdManifest(newUnmanagedCRD("tcproutes", "v1alpha2")) + "{{- end }}\n"),
 		})
-		for _, upgrade := range []bool{false, true} {
+		for _, upgrade := range []*contourUpgrade{nil, upgradeFrom(contourRevision(1, releasecommon.StatusDeployed), true)} {
 			rendered, _, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), helmChart, contourReleaseName, RadiusSystemNamespace, upgrade, nil)
 			require.NoError(t, err)
 			want := []string{"listenersets.gateway.networking.k8s.io"}
-			if upgrade {
+			if upgrade != nil {
 				want = []string{"tcproutes.gateway.networking.k8s.io"}
 			}
-			require.Equal(t, want, crdNames(rendered), "upgrade=%t", upgrade)
+			require.Equal(t, want, crdNames(rendered), "upgrade=%t", upgrade != nil)
 		}
+	})
+
+	t.Run("the revision that Helm renders", func(t *testing.T) {
+		t.Parallel()
+
+		// The chart names a CRD after the revision that its templates see.
+		helmChart := newStubContourChart("1.33.0", nil)
+		helmChart.Templates = append(helmChart.Templates, &common.File{
+			Name: "templates/revision.yaml",
+			Data: []byte("apiVersion: apiextensions.k8s.io/v1\nkind: CustomResourceDefinition\nmetadata:\n  name: revision{{ .Release.Revision }}s.example.com\nspec:\n  group: example.com\n"),
+		})
+		tests := []struct {
+			name         string
+			history      []*releasev1.Release
+			wantRevision int
+		}{
+			{name: "install", wantRevision: 1},
+			{
+				name:         "deployed revision",
+				history:      []*releasev1.Release{contourRevision(1, releasecommon.StatusDeployed)},
+				wantRevision: 2,
+			},
+			{
+				name:         "failed revision on top of a deployed revision",
+				history:      []*releasev1.Release{contourRevision(1, releasecommon.StatusDeployed), contourRevision(2, releasecommon.StatusFailed)},
+				wantRevision: 3,
+			},
+			{
+				name: "failed revision on top of a deployed and a superseded revision",
+				history: []*releasev1.Release{
+					contourRevision(1, releasecommon.StatusSuperseded),
+					contourRevision(2, releasecommon.StatusDeployed),
+					contourRevision(3, releasecommon.StatusFailed),
+				},
+				wantRevision: 4,
+			},
+			{
+				name: "history out of order",
+				history: []*releasev1.Release{
+					contourRevision(10, releasecommon.StatusFailed),
+					contourRevision(9, releasecommon.StatusDeployed),
+					contourRevision(8, releasecommon.StatusSuperseded),
+				},
+				wantRevision: 11,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+
+				var upgrade *contourUpgrade
+				if tt.history != nil {
+					upgrade = upgradeOf(t, tt.history, true)
+				}
+				rendered, _, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), helmChart, contourReleaseName, RadiusSystemNamespace, upgrade, nil)
+				require.NoError(t, err)
+				require.Equal(t, []string{fmt.Sprintf("revision%ds.example.com", tt.wantRevision)}, crdNames(rendered))
+			})
+		}
+	})
+
+	t.Run("upgrade that Helm starts from another revision than the check", func(t *testing.T) {
+		t.Parallel()
+
+		// Helm starts from revision 2, the latest deployed revision.
+		history := []*releasev1.Release{contourRevision(1, releasecommon.StatusDeployed), contourRevision(2, releasecommon.StatusDeployed)}
+		_, _, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), newTestContourChart(), contourReleaseName, RadiusSystemNamespace,
+			&contourUpgrade{history: history, baseline: history[0], reuseValues: true}, nil)
+		require.ErrorContains(t, err, `the upgrade that Helm renders starts from revision 2 of Contour release "contour", but Radius checked revision 1`)
+	})
+
+	t.Run("upgrade that changes neither the history nor the release storage", func(t *testing.T) {
+		t.Parallel()
+
+		newHistory := func() []*releasev1.Release {
+			deployed := contourRevision(1, releasecommon.StatusDeployed)
+			deployed.Config = map[string]any{"envoy": map[string]any{"hostNetwork": true}, "gatewayAPI": map[string]any{"manageCRDs": true}}
+			deployed.Labels = map[string]string{"team": "contour"}
+			return []*releasev1.Release{deployed, contourRevision(2, releasecommon.StatusFailed)}
+		}
+		history := newHistory()
+		configuration := newTestRenderConfiguration(nil)
+		// Helm's merge removes a value that the new values set to null from the stored values.
+		rendered, _, err := renderChartCRDs(t.Context(), configuration, newTestContourChart(), contourReleaseName, RadiusSystemNamespace,
+			upgradeOf(t, history, true), map[string]any{"envoy": nil})
+		require.NoError(t, err)
+		require.Equal(t, crdNames(unmanagedCRDs(contourBundleCRDs())), crdNames(rendered), "Helm merges the stored values")
+		require.Equal(t, newHistory(), history, "the dry run must not change the history")
+
+		// The dry run read copies of the history, and recorded no revision.
+		stored, err := configuration.Releases.History(contourReleaseName)
+		require.NoError(t, err)
+		require.Len(t, stored, len(history))
+		require.IsType(t, &kubefake.PrintingKubeClient{}, configuration.KubeClient)
 	})
 }
 
@@ -1598,6 +1765,49 @@ func testRenderConfiguration(capabilities *common.Capabilities) func() (*helm.Co
 	return func() (*helm.Configuration, error) {
 		return newTestRenderConfiguration(capabilities), nil
 	}
+}
+
+// upgradeFrom returns the upgrade of a Contour release whose only revision is baseline, or nil, for an install, when
+// baseline is nil.
+func upgradeFrom(baseline *releasev1.Release, reuseValues bool) *contourUpgrade {
+	if baseline == nil {
+		return nil
+	}
+
+	return &contourUpgrade{history: []*releasev1.Release{baseline}, baseline: baseline, reuseValues: reuseValues}
+}
+
+// upgradeOf returns the upgrade of a Contour release with history, from the revision that Helm's upgrade starts from.
+func upgradeOf(t *testing.T, history []*releasev1.Release, reuseValues bool) *contourUpgrade {
+	t.Helper()
+
+	baseline, err := contourUpgradeBaseline(history, contourReleaseName, RadiusSystemNamespace, "")
+	require.NoError(t, err)
+
+	return &contourUpgrade{history: history, baseline: baseline, reuseValues: reuseValues}
+}
+
+// contourRevision returns a revision of the Contour release with status, whose manifest has crds.
+func contourRevision(version int, status releasecommon.Status, crds ...crdInfo) *releasev1.Release {
+	return &releasev1.Release{
+		Name:      contourReleaseName,
+		Namespace: RadiusSystemNamespace,
+		Version:   version,
+		Info:      &releasev1.Info{Status: status},
+		Manifest:  crdManifest(crds...),
+	}
+}
+
+// newRevisionGatedCRDChart returns a Contour chart that renders the HTTPProxy CRD only in the first revision of the
+// release, and no Gateway API CRDs.
+func newRevisionGatedCRDChart() *chart.Chart {
+	helmChart := newStubContourChart("1.33.0", nil)
+	helmChart.Templates = append(helmChart.Templates, &common.File{
+		Name: "templates/httpproxies.yaml",
+		Data: []byte("{{- if eq (int .Release.Revision) 1 }}\n" +
+			crdManifest(crdInfo{name: "httpproxies.projectcontour.io", group: "projectcontour.io", servedVersions: []string{"v1"}}) + "{{- end }}\n"),
+	})
+	return helmChart
 }
 
 // capabilitiesWith returns Helm's default capabilities with apiVersions added.

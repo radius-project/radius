@@ -26,6 +26,7 @@ import (
 	"slices"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
@@ -333,27 +334,41 @@ func crdFromObject(object map[string]any) (crdInfo, error) {
 	return crd, nil
 }
 
-// renderChartCRDs renders a chart with configuration as Helm renders it when it installs or upgrades the chart, and
-// returns the CRDs that Helm applies with the release, and the CRDs in the crds/ directories of the chart and of the
-// subcharts that the values enable. It renders with a server-side dry run, so that templates see the capabilities and
-// the lookup results that the real install or upgrade sees, and .Release.IsUpgrade and .Release.IsInstall match it.
-// configuration decides where those come from, and its Kubernetes client and release storage keep the dry run from
-// changing the cluster. It does not change helmChart.
-//
-// One difference remains: the dry run is an install, so templates see .Release.Revision 1, while an upgrade renders
-// the revision after the latest one. A chart that renders a CRD only for some revisions could still lose the CRD in an
-// upgrade that the check allows. Charts tell an install from an upgrade with .Release.IsUpgrade or .Release.IsInstall
-// rather than with the revision, so the check accepts this difference instead of rendering with Helm's upgrade action,
-// which needs the release history in the configuration.
-func renderChartCRDs(ctx context.Context, configuration *helm.Configuration, helmChart *chart.Chart, releaseName string, namespace string, upgrade bool, values map[string]any) ([]crdInfo, []crdInfo, error) {
+// contourUpgrade is an upgrade of the installed Contour release.
+type contourUpgrade struct {
+	// history is the revision history of the release.
+	history []*releasev1.Release
+
+	// baseline is the revision in history that Helm's upgrade starts from. Helm reuses its values and deletes the
+	// resources in its manifest that the chart no longer renders.
+	baseline *releasev1.Release
+
+	// reuseValues is true when Helm merges the values stored on baseline beneath the new values.
+	reuseValues bool
+}
+
+// renderChartCRDs renders a chart as Helm renders it when it installs the chart, or, when upgrade is not nil, when it
+// makes that upgrade. It returns the CRDs that Helm applies with the release, and the CRDs in the crds/ directories of
+// the chart and of the subcharts that the values enable. It runs a server-side dry run of Helm's own install or upgrade
+// action with configuration, so templates see the capabilities, the lookup results, and the release information, such
+// as .Release.Revision, that the real install or upgrade sees. configuration decides where the capabilities and the
+// lookup results come from, and its Kubernetes client keeps the dry run from changing the cluster. For an upgrade,
+// values are the new values, which Helm merges with the stored values, and renderChartCRDs replaces the release storage
+// of configuration with in-memory storage that holds copies of upgrade.history. It does not change helmChart.
+func renderChartCRDs(ctx context.Context, configuration *helm.Configuration, helmChart *chart.Chart, releaseName string, namespace string, upgrade *contourUpgrade, values map[string]any) ([]crdInfo, []crdInfo, error) {
 	renderedChart := cloneChart(helmChart)
 
-	install := helm.NewInstall(configuration)
-	install.DryRunStrategy = helm.DryRunServer
-	install.ReleaseName = releaseName
-	install.Namespace = namespace
-	install.IsUpgrade = upgrade
-	rendered, err := install.RunWithContext(ctx, renderedChart, copyValues(values))
+	var rendered release.Releaser
+	var err error
+	if upgrade == nil {
+		install := helm.NewInstall(configuration)
+		install.DryRunStrategy = helm.DryRunServer
+		install.ReleaseName = releaseName
+		install.Namespace = namespace
+		rendered, err = install.RunWithContext(ctx, renderedChart, copyValues(values))
+	} else {
+		rendered, err = dryRunContourUpgrade(ctx, configuration, renderedChart, releaseName, namespace, upgrade, values)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -379,6 +394,75 @@ func renderChartCRDs(ctx context.Context, configuration *helm.Configuration, hel
 	}
 
 	return manifestCRDs, directoryCRDs, nil
+}
+
+// dryRunContourUpgrade runs Helm's upgrade action as RunHelmUpgrade builds it, as a server-side dry run, against
+// in-memory release storage with copies of upgrade.history. Helm then chooses the revision that it starts from, numbers
+// the new revision, and merges the stored values as the real upgrade does. The dry run returns before Helm applies
+// resources or records the release. It returns an error when Helm starts from another revision than upgrade.baseline,
+// whose manifest the check compares with the chart.
+func dryRunContourUpgrade(ctx context.Context, configuration *helm.Configuration, helmChart *chart.Chart, releaseName string, namespace string, upgrade *contourUpgrade, values map[string]any) (*releasev1.Release, error) {
+	releases, err := releaseHistoryStorage(upgrade.history)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy the history of the Contour release: %w", err)
+	}
+	configuration.Releases = releases
+
+	client := newUpgradeClient(configuration, namespace, false, upgrade.reuseValues, 0, usesServerSideApply(configuration, releaseName))
+	client.DryRunStrategy = helm.DryRunServer
+	upgraded, err := client.RunWithContext(ctx, releaseName, helmChart, copyValues(values))
+	if err != nil {
+		return nil, err
+	}
+	rendered, err := asRelease(upgraded)
+	if err != nil {
+		return nil, err
+	}
+
+	if rendered.Info == nil {
+		return nil, fmt.Errorf("the upgrade of Contour release %q that Helm renders has no release information", releaseName)
+	}
+	if started := copiedRevision(rendered.Info); started != upgrade.baseline.Version {
+		return nil, fmt.Errorf("the upgrade that Helm renders starts from revision %d of Contour release %q, but Radius checked revision %d", started, releaseName, upgrade.baseline.Version)
+	}
+
+	return rendered, nil
+}
+
+// releaseHistoryStorage returns in-memory release storage with copies of history, so that a dry run reads the
+// revisions that the real operation reads and cannot change history. Helm's upgrade can change the values of the
+// revision that it starts from when it merges them, so each copy has its own values. Each copy records its revision
+// in Info.FirstDeployed, which templates do not see, and which Helm's upgrade copies from the revision that it starts
+// from to the new revision. copiedRevision reads it.
+func releaseHistoryStorage(history []*releasev1.Release) (*storage.Storage, error) {
+	releases := storage.Init(driver.NewMemory())
+	for _, revision := range history {
+		if revision == nil {
+			continue
+		}
+
+		copied := *revision
+		info := releasev1.Info{}
+		if revision.Info != nil {
+			info = *revision.Info
+		}
+		info.FirstDeployed = time.Unix(int64(revision.Version), 0)
+		copied.Info = &info
+		if revision.Config != nil {
+			copied.Config = copyValues(revision.Config)
+		}
+		copied.Labels = maps.Clone(revision.Labels)
+		if err := releases.Create(&copied); err != nil {
+			return nil, err
+		}
+	}
+
+	return releases, nil
+}
+
+// copiedRevision returns the revision that releaseHistoryStorage recorded in info.
+func copiedRevision(info *releasev1.Info) int {
+	return int(info.FirstDeployed.Unix())
 }
 
 // RenderConfiguration returns the Helm configuration with which the Contour checks render a chart for the cluster
@@ -551,38 +635,38 @@ type gatewayAPICRDCheck struct {
 	manageCRDsFromValues bool
 }
 
-// run checks installing helmChart, or upgrading baseline to it, with values, which are the Contour values of this
-// invocation. It sets the Radius default for gatewayAPI.manageCRDs in values unless they already decide it. baseline is
-// the release revision that the upgrade starts from, or nil for an install. reuseValues is true when Helm merges the
-// values stored on baseline beneath values. It returns a warning when it cannot check whether Contour can use the
-// Gateway API CRDs.
-func (c *gatewayAPICRDCheck) run(ctx context.Context, helmChart *chart.Chart, values map[string]any, baseline *releasev1.Release, reuseValues bool) (string, error) {
+// run checks installing helmChart, or upgrading the installed release to it, with values, which are the Contour values
+// of this invocation. It sets the Radius default for gatewayAPI.manageCRDs in values unless they already decide it.
+// upgrade is the upgrade of the installed release, or nil for an install. It returns a warning when it cannot check
+// whether Contour can use the Gateway API CRDs.
+func (c *gatewayAPICRDCheck) run(ctx context.Context, helmChart *chart.Chart, values map[string]any, upgrade *contourUpgrade) (string, error) {
 	c.contourVersion = strings.TrimPrefix(helmChart.Metadata.AppVersion, "v")
 	c.requirements = contourGatewayAPIRequirements[c.contourVersion]
-	c.upgrade = baseline != nil
-	c.resetValues = c.upgrade && !reuseValues
+	c.upgrade = upgrade != nil
+	c.resetValues = c.upgrade && !upgrade.reuseValues
 
 	var reusedValues map[string]any
-	if baseline != nil {
-		releaseCRDs, err := crdsInManifest(baseline.Manifest)
+	if upgrade != nil {
+		releaseCRDs, err := crdsInManifest(upgrade.baseline.Manifest)
 		if err != nil {
 			return "", fmt.Errorf("failed to read the Contour release manifest, err: %w", err)
 		}
 		c.releaseCRDs = releaseCRDs
 
-		if reuseValues {
-			reusedValues = baseline.Config
+		if upgrade.reuseValues {
+			reusedValues = upgrade.baseline.Config
 		}
 	}
 
-	manageable := helmValues(values, reusedValues)
+	// Helm's upgrade merges the stored values beneath the new values, so this value decides the render.
+	manageable := copyValues(values)
 	setValue(manageable, true, "gatewayAPI", "manageCRDs")
 	// One configuration for both renders discovers the capabilities of the cluster once.
 	configuration, err := c.renderConfiguration()
 	if err != nil {
 		return "", fmt.Errorf("failed to prepare the render of the Contour Helm chart, err: %w", err)
 	}
-	manageableCRDs, _, err := renderChartCRDs(ctx, configuration, helmChart, c.releaseName, c.releaseNamespace, c.upgrade, manageable)
+	manageableCRDs, _, err := renderChartCRDs(ctx, configuration, helmChart, c.releaseName, c.releaseNamespace, upgrade, manageable)
 	if err != nil {
 		return "", fmt.Errorf("failed to render the Contour Helm chart, err: %w", err)
 	}
@@ -599,7 +683,7 @@ func (c *gatewayAPICRDCheck) run(ctx context.Context, helmChart *chart.Chart, va
 	// The user's --contour-set and --contour-set-file values take precedence over this default.
 	c.manageCRDsFromValues = !setDefaultValue(values, c.defaultManageCRDs(), "gatewayAPI", "manageCRDs")
 
-	c.renderedCRDs, c.directoryCRDs, err = renderChartCRDs(ctx, configuration, helmChart, c.releaseName, c.releaseNamespace, c.upgrade, helmValues(values, reusedValues))
+	c.renderedCRDs, c.directoryCRDs, err = renderChartCRDs(ctx, configuration, helmChart, c.releaseName, c.releaseNamespace, upgrade, values)
 	if err != nil {
 		return "", fmt.Errorf("failed to render the Contour Helm chart, err: %w", err)
 	}

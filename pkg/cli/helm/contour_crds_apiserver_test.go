@@ -555,6 +555,12 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 				template:          crdListManifest(httpProxiesCRD()),
 				upgradeWithoutCRD: true,
 			},
+			{
+				// The chart renders the HTTPProxy CRD only in the first revision of the release. After the failed revision 2,
+				// Helm's upgrade renders revision 3.
+				name:     "revision",
+				template: "{{- if eq (int .Release.Revision) 1 }}\n" + crdManifest(httpProxiesCRD()) + "{{- end }}\n",
+			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
