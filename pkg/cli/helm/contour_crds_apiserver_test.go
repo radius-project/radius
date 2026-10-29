@@ -42,6 +42,7 @@ import (
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -269,7 +270,7 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		err = impl.UpgradeRadius(t.Context(), options, testKubeContext)
 		require.True(t, clierrors.IsFriendlyError(err), "%v", err)
 		require.ErrorContains(t, err, "revision 2 is pending-upgrade")
-		require.ErrorContains(t, err, "helm -n radius-system rollback contour 1")
+		require.ErrorContains(t, err, `helm --kube-context "test" -n radius-system rollback contour 1`)
 		require.Equal(t, 1, getTestRelease(t, kubeconfig, radiusReleaseName).Version)
 
 		// The rollback that the error suggests makes the upgrade succeed.
@@ -412,7 +413,7 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		err := impl.InstallRadius(t.Context(), stubClusterOptions(radiusChart, contourChart), testKubeContext)
 		require.True(t, clierrors.IsFriendlyError(err), "%v", err)
 		require.ErrorContains(t, err, "have more than one owner")
-		match := regexp.MustCompile(`kubectl annotate crd ([^\n]+) helm\.sh/resource-policy=keep$`).FindStringSubmatch(err.Error())
+		match := regexp.MustCompile(`kubectl --context "test" annotate crd ([^\n]+) helm\.sh/resource-policy=keep$`).FindStringSubmatch(err.Error())
 		require.Len(t, match, 2, "the message must end with the kubectl command: %v", err)
 		require.ElementsMatch(t, crdNames(contourBundleCRDs()), strings.Fields(match[1]))
 		requireNoRelease(t, kubeconfig, radiusReleaseName)
@@ -442,6 +443,111 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		require.Equal(t, 3, getTestRelease(t, kubeconfig, contourReleaseName).Version)
 		requireCRDsUnchanged(t, crdClient, leftCRDs)
 	})
+
+	// v0.62.0 could install Contour, with its Gateway API CRDs, before k3s installed the Traefik CRDs. Helm then rejects
+	// every attempt of k3s before it records the traefik-crd release, so Radius must not wait for that release.
+	t.Run("Contour owns the Gateway API CRDs and k3s cannot install the Traefik CRDs", func(t *testing.T) {
+		for _, command := range []string{"upgrade", "install --reinstall"} {
+			t.Run(command, func(t *testing.T) {
+				kubeconfig, crdClient := startGatewayAPITestServer(t)
+				radiusChart, contourChart := writeStubCharts(t)
+				options := stubClusterOptions(radiusChart, contourChart)
+				require.NoError(t, (&Impl{Helm: NewHelmClient()}).InstallRadius(t.Context(), options, testKubeContext))
+
+				k3s := newK3sTraefikCRDInstall(t, kubeconfig, crdClient)
+				k3s.start()
+				require.ErrorContains(t, k3s.wait(t), `key "meta.helm.sh/release-name" must equal "traefik-crd": current value is "contour"`)
+				requireNoReleaseIn(t, kubeconfig, "kube-system", "traefik-crd")
+				// The job of k3s restarts the failing install in the same Pod.
+				createHelmControllerJob(t, kubeconfig, batchv1.JobStatus{Active: 1, StartTime: new(metav1.Now())})
+				useShortK3sWait(t)
+
+				var logs []string
+				impl := &Impl{Helm: NewHelmClient(), logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }}
+				switch command {
+				case "upgrade":
+					require.NoError(t, impl.UpgradeRadius(t.Context(), options, testKubeContext))
+					require.Equal(t, 2, getTestRelease(t, kubeconfig, contourReleaseName).Version)
+				case "install --reinstall":
+					// rad install kubernetes --reinstall leaves a working Contour release unchanged, so an earlier failed
+					// upgrade makes it repair Contour, which waits for k3s.
+					addContourRevision(t, kubeconfig, releasecommon.StatusFailed, func(*releasev1.Release) {})
+					options.Radius.Reinstall = true
+					require.NoError(t, impl.InstallRadius(t.Context(), options, testKubeContext))
+					release := getTestRelease(t, kubeconfig, contourReleaseName)
+					require.Equal(t, 3, release.Version)
+					require.Equal(t, releasecommon.StatusDeployed, release.Info.Status)
+				}
+				require.Equal(t, 2, getTestRelease(t, kubeconfig, radiusReleaseName).Version)
+				requireCRDsUnchanged(t, crdClient, contourBundleCRDs())
+				require.Len(t, logs, 1, "%q", logs)
+				require.Contains(t, logs[0], `Warning: k3s cannot install the Traefik CRDs of HelmChart kube-system/traefik-crd because CRD backendtlspolicies.gateway.networking.k8s.io belongs to Helm release "contour" in namespace "radius-system"`)
+				require.Contains(t, logs[0], `kubectl --context "test" -n kube-system logs job/helm-install-traefik-crd`)
+			})
+		}
+	})
+
+	// helm uninstall traefik-crd keeps the CRDs of the chart, with their ownership metadata, and k3s does not run the
+	// job that installed the chart again.
+	t.Run("k3s installed the Traefik CRDs and their release was uninstalled", func(t *testing.T) {
+		kubeconfig, crdClient := startGatewayAPITestServer(t)
+		k3s := newK3sTraefikCRDInstall(t, kubeconfig, crdClient)
+		k3s.start()
+		require.NoError(t, k3s.wait(t))
+		started := metav1.Now()
+		createHelmControllerJob(t, kubeconfig, batchv1.JobStatus{Succeeded: 1, StartTime: &started, CompletionTime: &started})
+		_, err := NewHelmClient().RunHelmUninstall(newTestHelmConfiguration(t, kubeconfig, "kube-system"), "traefik-crd", "kube-system", false)
+		require.NoError(t, err)
+		requireNoReleaseIn(t, kubeconfig, "kube-system", "traefik-crd")
+		requireCRDsUnchanged(t, crdClient, traefikGatewayAPICRDs())
+		useShortK3sWait(t)
+
+		var logs []string
+		impl := &Impl{Helm: NewHelmClient(), logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }}
+		radiusChart, contourChart := writeStubCharts(t)
+		options := stubClusterOptions(radiusChart, contourChart)
+		options.Contour.SetArgs = []string{turnOffFeaturesForTraefikCRDs}
+		require.NoError(t, impl.InstallRadius(t.Context(), options, testKubeContext))
+		requireRenderedContourValues(t, getTestRelease(t, kubeconfig, contourReleaseName), "false",
+			`["--disable-feature=tlsroutes","--disable-feature=tcproutes","--disable-feature=backendtlspolicies"]`)
+		requireCRDsUnchanged(t, crdClient, traefikGatewayAPICRDs())
+		require.Len(t, logs, 1, "%q", logs)
+		require.Contains(t, logs[0], `Warning: k3s does not install the Traefik CRDs of HelmChart kube-system/traefik-crd again: job helm-install-traefik-crd finished, but Helm release "traefik-crd" in namespace "kube-system" does not exist.`)
+	})
+}
+
+// useShortK3sWait shortens the wait for k3s, so that a test fails quickly instead of waiting for minutes when Radius
+// waits for k3s although it should not.
+func useShortK3sWait(t *testing.T) {
+	t.Helper()
+
+	interval, timeout := k3sCRDWaitInterval, k3sCRDWaitTimeout
+	k3sCRDWaitInterval, k3sCRDWaitTimeout = 100*time.Millisecond, 3*time.Second
+	t.Cleanup(func() { k3sCRDWaitInterval, k3sCRDWaitTimeout = interval, timeout })
+}
+
+// createHelmControllerJob creates the job with which the k3s helm-controller installs HelmChart traefik-crd, with the
+// given status. The API server of the tests runs no job controller, so the status does not change.
+func createHelmControllerJob(t *testing.T, kubeconfig string, status batchv1.JobStatus) {
+	t.Helper()
+
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	require.NoError(t, err)
+	client, err := kubernetes.NewForConfig(config)
+	require.NoError(t, err)
+	created, err := client.BatchV1().Jobs("kube-system").Create(t.Context(), newHelmControllerJob(batchv1.JobStatus{}), metav1.CreateOptions{})
+	require.NoError(t, err)
+	created.Status = status
+	_, err = client.BatchV1().Jobs("kube-system").UpdateStatus(t.Context(), created, metav1.UpdateOptions{})
+	require.NoError(t, err)
+}
+
+// requireNoReleaseIn verifies that namespace has no Helm release with the given name.
+func requireNoReleaseIn(t *testing.T, kubeconfig string, namespace string, releaseName string) {
+	t.Helper()
+
+	_, err := NewHelmClient().RunHelmGet(newTestHelmConfiguration(t, kubeconfig, namespace), releaseName)
+	require.ErrorIs(t, err, driver.ErrReleaseNotFound)
 }
 
 // hookedHelmClient runs hooks around Helm operations to change the cluster while Radius installs.
@@ -554,8 +660,9 @@ func newK3sTraefikCRDInstall(t *testing.T, kubeconfig string, crdClient apiexten
 
 	traefikChart := filepath.Join(t.TempDir(), "traefik-crd")
 	writeTestFile(t, filepath.Join(traefikChart, "Chart.yaml"), "apiVersion: v2\nname: traefik-crd\nversion: 0.1.0\n")
+	// Like the CRDs of the k3s chart, these have the keep annotation, so Helm keeps them when it uninstalls the chart.
 	writeTestFile(t, filepath.Join(traefikChart, "templates", "crds.yaml"),
-		crdManifest(append(unmanagedCRDs(traefikGatewayAPICRDs()), crdInfo{name: "ingressroutes.traefik.io", group: "traefik.io", servedVersions: []string{"v1alpha1"}})...))
+		crdManifest(keptCRDs(append(unmanagedCRDs(traefikGatewayAPICRDs()), crdInfo{name: "ingressroutes.traefik.io", group: "traefik.io", servedVersions: []string{"v1alpha1"}}))...))
 	configuration := newTestHelmConfiguration(t, kubeconfig, "kube-system")
 
 	k3s := &k3sTraefikCRDInstall{begin: make(chan struct{}), finished: make(chan struct{})}

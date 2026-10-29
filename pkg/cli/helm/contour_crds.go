@@ -329,8 +329,8 @@ func cloneChart(original *chart.Chart) *chart.Chart {
 // upgrade action chooses this way: the latest revision when it is deployed, otherwise the latest deployed revision,
 // otherwise the latest revision when it failed or was superseded. Helm reuses the values of that revision and deletes
 // the resources in its manifest that the new chart no longer renders. Like Helm, it refuses a release with a pending
-// operation.
-func contourUpgradeBaseline(history []*releasev1.Release, releaseName string, releaseNamespace string) (*releasev1.Release, error) {
+// operation, and its error suggests commands for the cluster that kubeContext selects.
+func contourUpgradeBaseline(history []*releasev1.Release, releaseName string, releaseNamespace string, kubeContext string) (*releasev1.Release, error) {
 	var latest, deployed *releasev1.Release
 	for _, revision := range history {
 		if revision == nil {
@@ -352,15 +352,16 @@ func contourUpgradeBaseline(history []*releasev1.Release, releaseName string, re
 	case status.IsPending():
 		// Without a deployed revision there is nothing to roll back to. Helm stores each revision in a Secret, and
 		// deleting the Secret of the pending revision makes Helm forget it without changing the cluster.
-		recovery := fmt.Sprintf("delete the record of the pending revision with kubectl -n %s delete secret sh.helm.release.v1.%s.v%d, which does not change the resources in the cluster",
-			releaseNamespace, releaseName, latest.Version)
+		recovery := fmt.Sprintf("delete the record of the pending revision with %s, which does not change the resources in the cluster",
+			kubectlCommand(kubeContext, releaseNamespace, fmt.Sprintf("delete secret sh.helm.release.v1.%s.v%d", releaseName, latest.Version)))
 		if deployed != nil {
-			recovery = fmt.Sprintf("roll the release back to the last revision that worked, for example with helm -n %s rollback %s %d", releaseNamespace, releaseName, deployed.Version)
+			recovery = fmt.Sprintf("roll the release back to the last revision that worked, for example with %s",
+				helmCommand(kubeContext, releaseNamespace, fmt.Sprintf("rollback %s %d", releaseName, deployed.Version)))
 		}
 		return nil, clierrors.Message("Radius stopped before changing the cluster because another operation is in progress on Contour release %q in namespace %q: revision %d is %s. "+
 			"Wait for that operation to finish, and then run the command again. If no operation is running, for example because an earlier command was interrupted, "+
-			"list the revisions with helm -n %s history %s, %s, and then run the command again.",
-			releaseName, releaseNamespace, latest.Version, status, releaseNamespace, releaseName, recovery)
+			"list the revisions with %s, %s, and then run the command again.",
+			releaseName, releaseNamespace, latest.Version, status, helmCommand(kubeContext, releaseNamespace, "history "+releaseName), recovery)
 	case status == releasecommon.StatusDeployed:
 		return latest, nil
 	case deployed != nil:
@@ -387,6 +388,9 @@ func revisionStatus(revision *releasev1.Release) releasecommon.Status {
 type gatewayAPICRDCheck struct {
 	releaseName      string
 	releaseNamespace string
+
+	// kubeContext selects the cluster that the commands in the errors act on.
+	kubeContext string
 
 	// command is the rad command that installs or upgrades Contour, which the errors tell the user to run again.
 	command string
@@ -733,7 +737,7 @@ func (c gatewayAPICRDCheck) deleteError(deleted []crdInfo, manageCRDs bool) erro
 	} else {
 		message.WriteString("  - Change the Contour chart or values so that the chart still includes these CRDs.\n")
 	}
-	fmt.Fprintf(&message, "  - Keep these CRDs when Helm stops managing them by annotating them first:\n      kubectl annotate crd %s %s=%s", strings.Join(names, " "), kube.ResourcePolicyAnno, kube.KeepPolicy)
+	fmt.Fprintf(&message, "  - Keep these CRDs when Helm stops managing them by annotating them first:\n      %s", c.keepCRDsCommand(names))
 
 	return clierrors.Message("%s", message.String())
 }
@@ -783,9 +787,14 @@ func (c gatewayAPICRDCheck) conflictError(conflicts []crdInfo, manageCRDs bool) 
 		}
 	}
 	message.WriteString("Radius neither takes over CRDs that belong to something else nor lets Helm delete the CRDs that the Contour release installed.\n")
-	fmt.Fprintf(&message, "To continue, keep the CRDs that the Contour release installed when Helm stops managing them, and then run the command again. Contour then uses the Gateway API CRDs in the cluster instead of managing them:\n      kubectl annotate crd %s %s=%s", strings.Join(names, " "), kube.ResourcePolicyAnno, kube.KeepPolicy)
+	fmt.Fprintf(&message, "To continue, keep the CRDs that the Contour release installed when Helm stops managing them, and then run the command again. Contour then uses the Gateway API CRDs in the cluster instead of managing them:\n      %s", c.keepCRDsCommand(names))
 
 	return clierrors.Message("%s", message.String())
+}
+
+// keepCRDsCommand returns the kubectl command that annotates the CRDs with the given names so that Helm keeps them.
+func (c gatewayAPICRDCheck) keepCRDsCommand(names []string) string {
+	return kubectlCommand(c.kubeContext, "", fmt.Sprintf("annotate crd %s %s=%s", strings.Join(names, " "), kube.ResourcePolicyAnno, kube.KeepPolicy))
 }
 
 func (c gatewayAPICRDCheck) requirementsError(unmet []unmetRequirement, args contourArgs, manageCRDs bool) error {

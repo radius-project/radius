@@ -30,3 +30,28 @@ func QuoteFlagValue(value string) string {
 
 	return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
 }
+
+// kubectlCommand returns a kubectl command for the cluster that kubeContext selects. It omits the namespace flag when
+// namespace is empty, for example for cluster-scoped resources.
+func kubectlCommand(kubeContext string, namespace string, arguments string) string {
+	return clusterCommand("kubectl", "--context", kubeContext, namespace, arguments)
+}
+
+// helmCommand returns a helm command for the cluster that kubeContext selects.
+func helmCommand(kubeContext string, namespace string, arguments string) string {
+	return clusterCommand("helm", "--kube-context", kubeContext, namespace, arguments)
+}
+
+// clusterCommand returns a command that passes kubeContext with contextFlag, so that the command acts on the cluster
+// that Radius checked rather than on the current context of the kubeconfig.
+func clusterCommand(program string, contextFlag string, kubeContext string, namespace string, arguments string) string {
+	command := program
+	if kubeContext != "" {
+		command += " " + contextFlag + " " + QuoteFlagValue(kubeContext)
+	}
+	if namespace != "" {
+		command += " -n " + namespace
+	}
+
+	return command + " " + arguments
+}

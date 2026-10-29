@@ -94,7 +94,7 @@ func (i *Impl) getContourBaseline(options ContourChartOptions, kubeContext strin
 		return nil, fmt.Errorf("failed to get the history of the Contour release, err: %w", err)
 	}
 
-	return contourUpgradeBaseline(history, options.ReleaseName, options.Namespace)
+	return contourUpgradeBaseline(history, options.ReleaseName, options.Namespace, kubeContext)
 }
 
 // planContourInstall plans the Contour install for InstallRadius. It returns nil when a working Contour release is
@@ -176,6 +176,7 @@ func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options C
 	check := gatewayAPICRDCheck{
 		releaseName:      options.ReleaseName,
 		releaseNamespace: options.Namespace,
+		kubeContext:      kubeContext,
 		command:          command,
 		getCRDs: func(ctx context.Context, names []string) ([]crdInfo, error) {
 			return i.cluster().CRDs(ctx, kubeContext, names)

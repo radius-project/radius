@@ -282,10 +282,10 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 					`  - backendtlspolicies.gateway.networking.k8s.io (now owned by Helm release "traefik-crd" in namespace "kube-system")` + "\n",
 				"  - udproutes.gateway.networking.k8s.io\n",
 				"Radius neither takes over CRDs that belong to something else nor lets Helm delete the CRDs that the Contour release installed.",
-				"kubectl annotate crd backendlbpolicies.gateway.networking.k8s.io backendtlspolicies.gateway.networking.k8s.io gatewayclasses.gateway.networking.k8s.io",
+				`kubectl --context "test-context" annotate crd backendlbpolicies.gateway.networking.k8s.io backendtlspolicies.gateway.networking.k8s.io gatewayclasses.gateway.networking.k8s.io`,
 				"udproutes.gateway.networking.k8s.io helm.sh/resource-policy=keep",
 			},
-			wantNotErr: []string{"These CRDs belong to something else", "helm -n radius-system uninstall"},
+			wantNotErr: []string{"These CRDs belong to something else", "uninstall"},
 		},
 		{
 			// The remedy of the case above: with all of these CRDs kept, Contour reuses them.
@@ -307,7 +307,7 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			wantErr: []string{
 				"have more than one owner",
 				`  - gateways.gateway.networking.k8s.io (now owned by Helm release "traefik-crd" in namespace "kube-system")` + "\n",
-				"kubectl annotate crd backendtlspolicies.gateway.networking.k8s.io gatewayclasses.gateway.networking.k8s.io",
+				`kubectl --context "test-context" annotate crd backendtlspolicies.gateway.networking.k8s.io gatewayclasses.gateway.networking.k8s.io`,
 			},
 		},
 		{
@@ -364,7 +364,7 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 				"  - gateways.gateway.networking.k8s.io\n",
 				"Helm would delete these CRDs, and every resource of these kinds in the cluster with them.",
 				"  - Remove the Contour value that sets gatewayAPI.manageCRDs to false.",
-				"kubectl annotate crd backendlbpolicies.gateway.networking.k8s.io backendtlspolicies.gateway.networking.k8s.io",
+				`kubectl --context "test-context" annotate crd backendlbpolicies.gateway.networking.k8s.io backendtlspolicies.gateway.networking.k8s.io`,
 				"udproutes.gateway.networking.k8s.io helm.sh/resource-policy=keep",
 			},
 			wantNotErr: []string{"Change the Contour chart"},
@@ -378,7 +378,7 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 				"the Contour chart no longer includes these CRDs",
 				"  - listenersets.gateway.networking.k8s.io\n",
 				"  - Change the Contour chart or values so that the chart still includes these CRDs.",
-				"kubectl annotate crd listenersets.gateway.networking.k8s.io helm.sh/resource-policy=keep",
+				`kubectl --context "test-context" annotate crd listenersets.gateway.networking.k8s.io helm.sh/resource-policy=keep`,
 			},
 			wantNotErr: []string{"gateways.gateway.networking.k8s.io", "Remove the Contour value"},
 		},
@@ -582,6 +582,7 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			check := gatewayAPICRDCheck{
 				releaseName:      contourReleaseName,
 				releaseNamespace: RadiusSystemNamespace,
+				kubeContext:      "test-context",
 				command:          command,
 				getCRDs:          crdLookup(tt.crds),
 			}
@@ -747,6 +748,7 @@ func Test_contourUpgradeBaseline(t *testing.T) {
 	tests := []struct {
 		name         string
 		history      []*releasev1.Release
+		kubeContext  string
 		wantRevision int
 		wantErr      []string
 		wantFriendly bool
@@ -799,6 +801,20 @@ func Test_contourUpgradeBaseline(t *testing.T) {
 			wantFriendly: true,
 		},
 		{
+			name:         "pending upgrade in the cluster of a context",
+			history:      []*releasev1.Release{revision(1, releasecommon.StatusDeployed), revision(2, releasecommon.StatusPendingUpgrade)},
+			kubeContext:  "k3d-radius-demo",
+			wantErr:      []string{`list the revisions with helm --kube-context "k3d-radius-demo" -n radius-system history contour, roll the release back to the last revision that worked, for example with helm --kube-context "k3d-radius-demo" -n radius-system rollback contour 1, and then run the command again.`},
+			wantFriendly: true,
+		},
+		{
+			name:         "pending install in the cluster of a context that needs single quotes",
+			history:      []*releasev1.Release{revision(1, releasecommon.StatusPendingInstall)},
+			kubeContext:  "it's $prod",
+			wantErr:      []string{`list the revisions with helm --kube-context 'it'\''s $prod' -n radius-system history contour, delete the record of the pending revision with kubectl --context 'it'\''s $prod' -n radius-system delete secret sh.helm.release.v1.contour.v1, which does not change`},
+			wantFriendly: true,
+		},
+		{
 			name:         "pending rollback",
 			history:      []*releasev1.Release{revision(1, releasecommon.StatusDeployed), revision(2, releasecommon.StatusPendingRollback)},
 			wantErr:      []string{"revision 2 is pending-rollback"},
@@ -824,7 +840,7 @@ func Test_contourUpgradeBaseline(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			baseline, err := contourUpgradeBaseline(tt.history, contourReleaseName, RadiusSystemNamespace)
+			baseline, err := contourUpgradeBaseline(tt.history, contourReleaseName, RadiusSystemNamespace, tt.kubeContext)
 
 			// Helm cannot store a revision without a status, so only Radius handles that history.
 			if !slices.ContainsFunc(tt.history, func(revision *releasev1.Release) bool { return revision != nil && revision.Info == nil }) {

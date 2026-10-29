@@ -251,6 +251,14 @@ type Impl struct {
 	// context selects.
 	contourCluster contourClusterReader
 
+	// logger logs the messages of the Contour checks for the user. Nil logs them with output.LogInfo.
+	logger func(format string, v ...any)
+
+	// k3sWaited holds the Kubernetes contexts for which the wait for k3s finished, so that a command that checks
+	// Contour twice, such as rad upgrade kubernetes with its preflight check, waits and warns once.
+	k3sWaitedLock sync.Mutex
+	k3sWaited     map[string]bool
+
 	// contourCharts are the Contour charts that the Impl loaded, by source.
 	contourChartsLock sync.Mutex
 	contourCharts     map[contourChartSource]*chart.Chart
@@ -280,6 +288,15 @@ func (i *Impl) cluster() contourClusterReader {
 		return liveContourCluster{}
 	}
 	return i.contourCluster
+}
+
+// logInfo logs a message of the Contour checks for the user.
+func (i *Impl) logInfo(format string, v ...any) {
+	if i.logger == nil {
+		output.LogInfo(format, v...)
+		return
+	}
+	i.logger(format, v...)
 }
 
 // InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options. It prepares

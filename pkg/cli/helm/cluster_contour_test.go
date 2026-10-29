@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -39,6 +40,8 @@ import (
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // turnOffFeaturesForTraefikCRDs turns off the Contour 1.32.0 features that need CRD versions that k3s Traefik lacks.
@@ -495,7 +498,7 @@ func Test_Helm_UpgradeRadius_RefusesToDeleteCRDs(t *testing.T) {
 	require.True(t, clierrors.IsFriendlyError(err))
 	require.Contains(t, err.Error(), "the Contour chart no longer includes these CRDs")
 	require.Contains(t, err.Error(), "  - listenersets.gateway.networking.k8s.io\n")
-	require.Contains(t, err.Error(), "kubectl annotate crd listenersets.gateway.networking.k8s.io helm.sh/resource-policy=keep")
+	require.Contains(t, err.Error(), `kubectl --context "test-context" annotate crd listenersets.gateway.networking.k8s.io helm.sh/resource-policy=keep`)
 }
 
 func Test_Helm_CheckContourUpgrade(t *testing.T) {
@@ -687,6 +690,57 @@ func Test_Helm_UpgradeRadius_DownloadsContourChartOnce(t *testing.T) {
 	require.Equal(t, 2, checks, "the upgrade checks Contour again")
 }
 
+// Test_Helm_UpgradeRadius_WaitsForK3sOnce reproduces rad upgrade kubernetes on a k3s cluster where Contour owns the
+// Gateway API CRDs, as v0.62.0 could leave it. k3s cannot install its Traefik CRDs, so their release never appears.
+// Radius does not wait for it, and warns once although the preflight check and the upgrade both check Contour.
+func Test_Helm_UpgradeRadius_WaitsForK3sOnce(t *testing.T) {
+	t.Parallel()
+
+	synctest.Test(t, func(t *testing.T) {
+		client := NewMockHelmClient(gomock.NewController(t))
+		options := NewDefaultClusterOptions()
+		// The Contour release of v0.62.0 manages the Gateway API CRDs.
+		contourRelease := &releasev1.Release{
+			Name:     options.Contour.ReleaseName,
+			Version:  1,
+			Chart:    newTestContourChart(),
+			Info:     &releasev1.Info{Status: releasecommon.StatusDeployed},
+			Config:   map[string]any{"gatewayAPI": map[string]any{"manageCRDs": true}},
+			Manifest: crdManifest(contourBundleCRDs()...),
+		}
+		expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
+		expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
+		client.EXPECT().RunHelmGet(gomock.Any(), "traefik-crd").Return(nil, driver.ErrReleaseNotFound).Times(1)
+		client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(contourRelease, nil).Times(2)
+		client.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return([]*releasev1.Release{contourRelease}, nil).Times(2)
+		client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(&releasev1.Release{}, nil).Times(1)
+		client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(&releasev1.Release{}, nil).Times(1)
+
+		var logs []string
+		impl := &Impl{
+			Helm:                           client,
+			configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
+			contourCluster: &fakeContourCluster{
+				crds:       contourBundleCRDs(),
+				helmCharts: []helmControllerChart{{name: "traefik-crd", namespace: "kube-system", releaseNamespace: "kube-system", jobName: "helm-install-traefik-crd"}},
+				jobs:       map[string]helmControllerJob{"kube-system/helm-install-traefik-crd": {}},
+			},
+			logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
+		}
+
+		start := time.Now()
+		upgrade, err := impl.CheckContourUpgrade(t.Context(), options, "test-context")
+		require.NoError(t, err)
+		require.True(t, upgrade)
+		require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
+		require.Zero(t, time.Since(start), "Radius must not wait for an install that k3s cannot do")
+		require.Len(t, logs, 1, "%q", logs)
+		require.Contains(t, logs[0], `Warning: k3s cannot install the Traefik CRDs of HelmChart kube-system/traefik-crd because CRD backendtlspolicies.gateway.networking.k8s.io belongs to Helm release "contour" in namespace "radius-system"`)
+	})
+}
+
 // Test_Helm_InstallRadius_WaitsForK3sTraefikCRDs reproduces rad install kubernetes right after k3d cluster create: k3s
 // installs its Traefik CRDs while Radius checks the cluster. Radius waits for k3s, so that it decides with the CRDs of
 // Traefik instead of letting Contour install its own CRDs at the same time.
@@ -828,12 +882,12 @@ func Test_Helm_InstallRadius_ExistingContourRelease(t *testing.T) {
 		{
 			name:    "pending install",
 			history: []*releasev1.Release{revision(1, releasecommon.StatusPendingInstall)},
-			wantErr: "kubectl -n radius-system delete secret sh.helm.release.v1.contour.v1",
+			wantErr: `kubectl --context "test-context" -n radius-system delete secret sh.helm.release.v1.contour.v1`,
 		},
 		{
 			name:    "pending upgrade on top of a deployed revision",
 			history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed), revision(2, releasecommon.StatusPendingUpgrade)},
-			wantErr: "helm -n radius-system rollback contour 1",
+			wantErr: `helm --kube-context "test-context" -n radius-system rollback contour 1`,
 		},
 	}
 
@@ -1048,11 +1102,22 @@ type fakeContourCluster struct {
 	// readCRDs reads the CRDs instead of crds when it is set.
 	readCRDs func(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error)
 
+	// crdReads counts the reads of CRDs.
+	crdReads atomic.Int32
+
 	helmCharts    []helmControllerChart
 	helmChartsErr error
+
+	// jobs and jobPods are the Jobs and their Pods by namespace/name. A Job that is not in jobs does not exist. jobErr
+	// and jobPodsErr make the reads fail instead.
+	jobs       map[string]helmControllerJob
+	jobErr     error
+	jobPods    map[string]helmControllerPods
+	jobPodsErr error
 }
 
 func (f *fakeContourCluster) CRDs(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error) {
+	f.crdReads.Add(1)
 	if f.readCRDs != nil {
 		return f.readCRDs(ctx, kubeContext, names)
 	}
@@ -1070,6 +1135,24 @@ func (f *fakeContourCluster) HelmCharts(_ context.Context, _ string, namespace s
 		}
 	}
 	return charts, nil
+}
+
+func (f *fakeContourCluster) Job(_ context.Context, _ string, namespace string, name string) (helmControllerJob, error) {
+	if f.jobErr != nil {
+		return helmControllerJob{}, f.jobErr
+	}
+	job, found := f.jobs[namespace+"/"+name]
+	if !found {
+		return helmControllerJob{}, apierrors.NewNotFound(schema.GroupResource{Group: "batch", Resource: "jobs"}, name)
+	}
+	return job, nil
+}
+
+func (f *fakeContourCluster) JobPods(_ context.Context, _ string, namespace string, job string) (helmControllerPods, error) {
+	if f.jobPodsErr != nil {
+		return helmControllerPods{}, f.jobPodsErr
+	}
+	return f.jobPods[namespace+"/"+job], nil
 }
 
 // staticCRDs returns the state of a cluster without k3s HelmCharts that has crds.

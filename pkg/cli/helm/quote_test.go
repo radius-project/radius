@@ -63,6 +63,68 @@ func Test_QuoteFlagValue(t *testing.T) {
 	}
 }
 
+// Test_clusterCommands verifies that the kubectl and helm commands that Radius suggests act on the cluster of the
+// Kubernetes context that Radius checked, not on the current context of the kubeconfig.
+func Test_clusterCommands(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		kubeContext string
+		namespace   string
+		wantKubectl string
+		wantHelm    string
+	}{
+		{
+			name:        "current context",
+			namespace:   "radius-system",
+			wantKubectl: "kubectl -n radius-system history",
+			wantHelm:    "helm -n radius-system history",
+		},
+		{
+			name:        "context",
+			kubeContext: "k3d-radius-demo",
+			namespace:   "radius-system",
+			wantKubectl: `kubectl --context "k3d-radius-demo" -n radius-system history`,
+			wantHelm:    `helm --kube-context "k3d-radius-demo" -n radius-system history`,
+		},
+		{
+			name:        "context of an EKS cluster",
+			kubeContext: "arn:aws:eks:us-west-2:123456789012:cluster/radius demo",
+			namespace:   "radius-system",
+			wantKubectl: `kubectl --context "arn:aws:eks:us-west-2:123456789012:cluster/radius demo" -n radius-system history`,
+			wantHelm:    `helm --kube-context "arn:aws:eks:us-west-2:123456789012:cluster/radius demo" -n radius-system history`,
+		},
+		{
+			name:        "context that needs single quotes",
+			kubeContext: "it's $prod",
+			namespace:   "radius-system",
+			wantKubectl: `kubectl --context 'it'\''s $prod' -n radius-system history`,
+			wantHelm:    `helm --kube-context 'it'\''s $prod' -n radius-system history`,
+		},
+		{
+			name:        "cluster-scoped resources",
+			kubeContext: "k3d-radius-demo",
+			wantKubectl: `kubectl --context "k3d-radius-demo" history`,
+			wantHelm:    `helm --kube-context "k3d-radius-demo" history`,
+		},
+		{
+			name:        "cluster-scoped resources of the current context",
+			wantKubectl: "kubectl history",
+			wantHelm:    "helm history",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.wantKubectl, kubectlCommand(tt.kubeContext, tt.namespace, "history"))
+			require.Equal(t, tt.wantHelm, helmCommand(tt.kubeContext, tt.namespace, "history"))
+		})
+	}
+}
+
 // unquoteFlagValue reads a value that QuoteFlagValue quoted the way bash does.
 func unquoteFlagValue(t *testing.T, quoted string) string {
 	t.Helper()
