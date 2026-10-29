@@ -19,6 +19,7 @@ package awsproxy
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -45,8 +46,8 @@ const secretValue = "do-not-echo-this-value"
 
 type controllerFactory func(armrpc_controller.Options, ucp_aws.Clients) (armrpc_controller.Controller, error)
 
-// runController runs a controller for a request to path and returns the status code and the error message.
-func runController(t *testing.T, factory controllerFactory, clients ucp_aws.Clients, method string, path string, body map[string]any) (int, string, string) {
+// runTypeCheckRequest runs a controller for a request to path and returns the status code and the error message.
+func runTypeCheckRequest(t *testing.T, factory controllerFactory, clients ucp_aws.Clients, method string, path string, body map[string]any) (int, string, string) {
 	t.Helper()
 	var reader io.Reader
 	if body != nil {
@@ -124,7 +125,7 @@ func Test_UnsupportedTypes_FailWithoutCallingAWS(t *testing.T) {
 			t.Run(tt.resourceType+" "+op.name, func(t *testing.T) {
 				options := setupTest(t)
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/" + tt.resourceType + op.suffix
-				status, message, raw := runController(t, op.factory, clientsFor(options), op.method, path, op.body)
+				status, message, raw := runTypeCheckRequest(t, op.factory, clientsFor(options), op.method, path, op.body)
 				require.Equal(t, http.StatusBadRequest, status)
 				require.Equal(t, tt.want, message)
 				require.NotContains(t, raw, secretValue)
@@ -186,7 +187,7 @@ func Test_Put_NonProvisionableTypes(t *testing.T) {
 
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Image" + op.suffix
 				body := map[string]any{"properties": map[string]any{"Name": "name", "Secret": secretValue}}
-				status, message, raw := runController(t, op.factory, clientsFor(options), op.method, path, body)
+				status, message, raw := runTypeCheckRequest(t, op.factory, clientsFor(options), op.method, path, body)
 				require.Equal(t, http.StatusBadRequest, status)
 				require.Equal(t, tt.want, message)
 				require.NotContains(t, raw, secretValue)
@@ -195,17 +196,18 @@ func Test_Put_NonProvisionableTypes(t *testing.T) {
 	}
 }
 
-// immutableSchema is the schema of a create-and-delete-only type with a write-only Password property.
+// immutableSchema is the schema of a create-and-delete-only type with write-only properties at the top level, inside
+// an object, and inside array items.
 const immutableSchema = `{
 	"primaryIdentifier": ["/properties/Name"],
 	"readOnlyProperties": ["/properties/Arn"],
 	"createOnlyProperties": ["/properties/Name", "/properties/Size", "/properties/Settings", "/properties/Password"],
-	"writeOnlyProperties": ["/properties/Password"],
+	"writeOnlyProperties": ["/properties/Password", "/properties/Auth/Token", "/properties/Users/*/Secret"],
 	"handlers": {"create": {}, "read": {}, "delete": {}, "list": {}}
 }`
 
 func Test_Update_ImmutableType(t *testing.T) {
-	current := `{"Name": "name", "Arn": "arn:aws:x:us-west-2:1:y/name", "Size": 1, "Settings": {"Mode": "a"}}`
+	current := `{"Name": "name", "Arn": "arn:aws:x:us-west-2:1:y/name", "Size": 1, "Settings": {"Mode": "a"}, "Users": [{"Name": "u"}]}`
 	tests := []struct {
 		name       string
 		properties map[string]any
@@ -224,6 +226,20 @@ func Test_Update_ImmutableType(t *testing.T) {
 		{
 			name:       "only write-only properties",
 			properties: map[string]any{"Name": "name", "Size": 1, "Password": secretValue},
+		},
+		{
+			// AWS omits Auth because its only property is write-only, so the patch adds the whole object.
+			name:       "write-only property in an absent parent",
+			properties: map[string]any{"Name": "name", "Size": 1, "Auth": map[string]any{"Token": secretValue}},
+		},
+		{
+			name:       "readable property next to a write-only property in an absent parent",
+			properties: map[string]any{"Name": "name", "Size": 1, "Auth": map[string]any{"Token": secretValue, "Type": secretValue}},
+			want:       "The AWS resource type AWS::Test::Immutable can only be created and deleted, so these properties of the existing resource cannot change: Auth. To change them, delete the resource and deploy again.",
+		},
+		{
+			name:       "write-only property in array items",
+			properties: map[string]any{"Name": "name", "Size": 1, "Users": []any{map[string]any{"Name": "u", "Secret": secretValue}}},
 		},
 	}
 	updates := []struct {
@@ -248,7 +264,7 @@ func Test_Update_ImmutableType(t *testing.T) {
 				}, nil)
 
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Immutable" + op.suffix
-				status, message, raw := runController(t, op.factory, clientsFor(options), op.method, path, map[string]any{"properties": tt.properties})
+				status, message, raw := runTypeCheckRequest(t, op.factory, clientsFor(options), op.method, path, map[string]any{"properties": tt.properties})
 				if tt.want == "" {
 					require.Equal(t, http.StatusOK, status, raw)
 					return
@@ -274,7 +290,7 @@ func Test_Create_ImmutableType(t *testing.T) {
 	}, nil)
 
 	path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Immutable"
-	status, _, raw := runController(t, NewCreateOrUpdateAWSResourceWithPost, clientsFor(options), http.MethodPost, path, map[string]any{"properties": map[string]any{"Name": "name", "Size": 1}})
+	status, _, raw := runTypeCheckRequest(t, NewCreateOrUpdateAWSResourceWithPost, clientsFor(options), http.MethodPost, path, map[string]any{"properties": map[string]any{"Name": "name", "Size": 1}})
 	require.Equal(t, http.StatusCreated, status, raw)
 }
 
@@ -303,4 +319,115 @@ func Test_IsWriteOnly(t *testing.T) {
 	require.False(t, schema.isWriteOnly("/PasswordLength"))
 	require.False(t, schema.isWriteOnly("/Auth"))
 	require.False(t, schema.isWriteOnly("/Auth/Type"))
+
+	schema = &typeSchema{WriteOnlyProperties: []string{"/properties/Users/*/Secret"}}
+	require.True(t, schema.isWriteOnly("/Users/0/Secret"))
+	require.True(t, schema.isWriteOnly("/Users/12/Secret/Value"))
+	require.False(t, schema.isWriteOnly("/Users/0/Name"))
+	require.False(t, schema.isWriteOnly("/Users/0"))
+}
+
+func Test_OnlyWriteOnly(t *testing.T) {
+	schema := &typeSchema{WriteOnlyProperties: []string{"/properties/Auth/Token", "/properties/Users/*/Secret"}}
+	tests := []struct {
+		name string
+		op   jsondiff.Operation
+		want bool
+	}{
+		{"write-only path", jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Auth/Token", Value: "x"}, true},
+		{"object of write-only properties", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{"Token": "x"}}, true},
+		{"object with a readable property", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{"Token": "x", "Type": "y"}}, false},
+		{"empty object", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{}}, false},
+		{"array item of write-only properties", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Users/0", Value: map[string]any{"Secret": "x"}}, true},
+		{"array item with a readable property", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Users/0", Value: map[string]any{"Secret": "x", "Name": "y"}}, false},
+		{"readable scalar", jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}, false},
+		{"remove of a parent", jsondiff.Operation{Type: jsondiff.OperationRemove, Path: "/Auth"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, schema.onlyWriteOnly(tt.op))
+		})
+	}
+}
+
+func Test_LeafPaths(t *testing.T) {
+	got := leafPaths("/Auth", map[string]any{
+		"Token":   "x",
+		"a/b~c":   1,
+		"Empty":   map[string]any{},
+		"List":    []any{"y", map[string]any{"Secret": "z"}},
+		"NoItems": []any{},
+	})
+	require.ElementsMatch(t, []string{"/Auth/Token", "/Auth/a~1b~0c", "/Auth/Empty", "/Auth/List/0", "/Auth/List/1/Secret", "/Auth/NoItems"}, got)
+	require.Equal(t, []string{"/Size"}, leafPaths("/Size", 2))
+}
+
+// Test_InvalidSchema checks that a schema UCP cannot read fails the request instead of letting it through.
+func Test_InvalidSchema(t *testing.T) {
+	t.Run("PUT of a NON_PROVISIONABLE type", func(t *testing.T) {
+		options := setupTest(t)
+		options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
+			ProvisioningType: cftypes.ProvisioningTypeNonProvisionable,
+			Schema:           aws.String("not json"),
+		}, nil)
+
+		path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Type/name"
+		request, err := http.NewRequest(http.MethodPut, path, bytes.NewBufferString(`{"properties": {"Name": "name"}}`))
+		require.NoError(t, err)
+		controller, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{}, clientsFor(options))
+		require.NoError(t, err)
+		_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
+		require.ErrorContains(t, err, "failed to read the CloudFormation schema")
+	})
+
+	t.Run("patch of an IMMUTABLE type", func(t *testing.T) {
+		patch := jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}}
+		_, errResponse, err := checkPatch(t.Context(), "AWS::Test::Type", &cloudformation.DescribeTypeOutput{
+			ProvisioningType: cftypes.ProvisioningTypeImmutable,
+			Schema:           aws.String("not json"),
+		}, patch)
+		require.ErrorContains(t, err, "failed to read the CloudFormation schema")
+		require.Nil(t, errResponse)
+	})
+}
+
+// Test_Put_DescribeTypeError checks that PUT stops before it reads the resource when DescribeType fails.
+func Test_Put_DescribeTypeError(t *testing.T) {
+	describeErr := errors.New("describe failed")
+	puts := []struct {
+		name    string
+		factory controllerFactory
+		method  string
+		suffix  string
+	}{
+		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name"},
+		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
+	}
+	for _, op := range puts {
+		t.Run(op.name, func(t *testing.T) {
+			options := setupTest(t)
+			options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, describeErr)
+
+			path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Type" + op.suffix
+			request, err := http.NewRequest(op.method, path, bytes.NewBufferString(`{"properties": {"Name": "name"}}`))
+			require.NoError(t, err)
+			controller, err := op.factory(armrpc_controller.Options{}, clientsFor(options))
+			require.NoError(t, err)
+			_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
+			require.ErrorIs(t, err, describeErr)
+		})
+	}
+}
+
+// Test_ReadOnlyType_GetCallsCloudControl checks that read-only types are only blocked on PUT. A GET still reads from
+// Cloud Control, which is how `existing` references them.
+func Test_ReadOnlyType_GetCallsCloudControl(t *testing.T) {
+	options := setupTest(t)
+	options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudcontrol.GetResourceOutput{
+		ResourceDescription: &cctypes.ResourceDescription{Identifier: aws.String("ami-1"), Properties: aws.String(`{"ImageId": "ami-1"}`)},
+	}, nil)
+
+	path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Image/ami-1"
+	status, _, raw := runTypeCheckRequest(t, NewGetAWSResource, clientsFor(options), http.MethodGet, path, nil)
+	require.Equal(t, http.StatusOK, status, raw)
 }

@@ -76,10 +76,29 @@ func Test_ToUCPResourceID(t *testing.T) {
 }
 
 func Test_IsAWSResource(t *testing.T) {
-	require.True(t, IsAWSResource(resources.MustParse("/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket/b")))
-	require.False(t, IsAWSResource(resources.MustParse("/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket")))
-	require.False(t, IsAWSResource(resources.MustParse("/planes/radius/local/resourceGroups/g/providers/Applications.Core/containers/c")))
-	require.False(t, IsAWSResource(resources.MustParse("/subscriptions/s/resourceGroups/g/providers/Microsoft.Storage/storageAccounts/a")))
+	t.Parallel()
+
+	tests := []struct {
+		id   string
+		want bool
+	}{
+		{id: "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/b", want: true},
+		{id: "/planes/AWS/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.S3/Bucket/b", want: true},
+		{id: "/planes/aws/aws/accounts/123456789012/regions/us-west-2", want: false},
+		{id: "/planes", want: false},
+		{id: "/planes/aws", want: false},
+		{id: "/planes/radius/local/resourceGroups/g/providers/Applications.Core/containers/c", want: false},
+		{id: "/subscriptions/s/resourceGroups/g/providers/Microsoft.Storage/storageAccounts/a", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			t.Parallel()
+			id, err := resources.Parse(tt.id)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, IsAWSResource(id))
+		})
+	}
 }
 
 func Test_IsReadOnlyResource(t *testing.T) {

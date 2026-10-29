@@ -67,10 +67,12 @@ func ToUCPResourceID(arn string) (string, error) {
 	return ucpID, nil
 }
 
-// IsAWSResource reports whether id is a UCP-qualified AWS resource ID, such as
-// /planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket/b.
+// IsAWSResource reports whether id is a resource (not a scope) in the AWS plane.
 func IsAWSResource(id resources.ID) bool {
-	return id.IsResource() && strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), PlaneTypeAWS+"/")
+	if !id.IsUCPQualified() || !id.IsResource() || len(id.ScopeSegments()) == 0 {
+		return false
+	}
+	return strings.EqualFold(id.ScopeSegments()[0].Type, PlaneTypeAWS)
 }
 
 // IsReadOnlyResource reports whether id is an AWS resource of a type that AWS creates on its own, such as

@@ -26,6 +26,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
@@ -35,11 +36,11 @@ import (
 )
 
 func Test_CreateAWSResource(t *testing.T) {
-	ucp, cloudcontrolClient, cloudformationClient := initializeAWSTest(t)
+	ucp, cloudcontrolClient, cloudFormationClient := initializeAWSTest(t)
 
-	cloudformationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
-		TypeName: new("AWS::Kinesis::Stream"),
-		Schema:   new(`{"primaryIdentifier": ["/properties/Name"]}`),
+	cloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
+		TypeName: aws.String("AWS::Kinesis::Stream"),
+		Schema:   aws.String(`{"primaryIdentifier": ["/properties/Name"], "readOnlyProperties": ["/properties/Arn"], "createOnlyProperties": ["/properties/Name"]}`),
 	}, nil)
 
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {

@@ -350,7 +350,9 @@ human-readable text representation:
    - `Connections:` — each connection shown as `source -> destination` with
      direction indicated by the `Direction` field.
    - `Resources:` — each output resource shown as `{name} ({type})`. Azure
-     resources are rendered as clickable console hyperlinks to the Azure Portal.
+     resources are rendered as clickable console hyperlinks to the Azure Portal,
+     and AWS resources of a known type to their service's list page in the AWS
+     console.
 
 Example output:
 
@@ -694,6 +696,12 @@ The CLI uses `GITHUB_HEAD_REF`, falling back to `GITHUB_REF_NAME`, as the source
   UCP for the default API version (or falls back to the first available) to
   ensure queries succeed even when resource types use different API versions.
 
-- **Azure Portal hyperlinks**: The text display generates console escape
-  sequences (`\x1b]8;;`) for clickable hyperlinks to Azure Portal resources.
-  Currently only Azure resources receive links.
+- **Cloud portal hyperlinks**: The text display generates console escape
+  sequences (`\x1b]8;;`) for clickable hyperlinks from each output resource's
+  `portalUrl`. Azure resources link to the resource in the Azure Portal. AWS
+  resources link to their service's list page in the AWS console, in the
+  resource's region, because AWS has no link format to a single resource that
+  works for every type. The mapping lives in `pkg/ucp/resources/aws/console.go`
+  and covers both `AWS.*` types and `Terraform.AWS/*` types from Terraform
+  recipes. Resources in the `global` region link only when their console page
+  is global (S3 and IAM). Types with no mapping get no link.

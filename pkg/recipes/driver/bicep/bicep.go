@@ -20,16 +20,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	reflect "reflect"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/go-logr/logr"
-	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2/registry/remote"
 
 	"github.com/radius-project/radius/pkg/components/metrics"
@@ -51,6 +53,7 @@ import (
 	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/rest"
 )
 
@@ -99,10 +102,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
-	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
-	if err != nil {
-		return nil, err
-	}
+	secrets := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
 
 	registryClient := d.RegistryClient
 	// Get ORAS authentication client if secrets are found for the registry.
@@ -115,7 +115,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		registryClient = authClient
 	}
 
-	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
+	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, recipes.RecipeDownloadFailed))
@@ -149,7 +149,12 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		// Direct module — resolve {{context.*}} expressions, merge parameters, and wrap as ARM parameters.
 		// Resource (developer) parameters take precedence over environment (operator) parameters.
 		mergedParams := recipes_util.ShallowMergeParameters(opts.Definition.Parameters, opts.Recipe.Parameters)
-		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipeContext)
+		resolvedParams, err := paramresolver.ResolveParameterExpressions(mergedParams, recipeContext)
+		if err != nil {
+			// Report an execution error rather than a setup error so a later delete still cleans up
+			// resources from an earlier successful deployment.
+			return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+		}
 		parameters = wrapARMParameters(resolvedParams)
 	}
 
@@ -267,8 +272,10 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 		return nil
 	}
 
-	// Create a waitgroup to track the deletion of each output resource
-	g, groupCtx := errgroup.WithContext(ctx)
+	// Each output resource gets its own delete attempts, so one failure does not stop the others.
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	failures := []error{}
 
 	for i := range opts.OutputResources {
 		outputResource := opts.OutputResources[i]
@@ -280,48 +287,101 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 		}
 
 		// Create a goroutine that handles the deletion of one resource
-		g.Go(func() error {
+		wg.Go(func() {
 			id := outputResource.ID.String()
 			logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.ID, outputResource.LocalID, outputResource.GetResourceType()))
 
 			// If the resource is not managed by Radius, skip the deletion
 			if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
 				logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", id))
-				return nil
+				return
 			}
 
 			var err error
-			for attempt := 0; attempt <= d.options.DeleteRetryCount; attempt++ {
-				logger.WithValues("attempt", attempt)
-				ctx := logr.NewContext(groupCtx, logger)
-				logger.V(ucplog.LevelDebug).Info("beginning attempt")
+			attempts := 0
+			for {
+				if err = ctx.Err(); err != nil {
+					break
+				}
+				attempts++
+				attemptLogger := logger.WithValues("attempt", attempts, "resourceID", id)
+				attemptCtx := logr.NewContext(ctx, attemptLogger)
+				attemptLogger.V(ucplog.LevelDebug).Info("beginning attempt")
 
-				err = resourceClient.Delete(ctx, id)
-				if err != nil {
-					if attempt <= d.options.DeleteRetryCount {
-						logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
-						time.Sleep(time.Duration(d.options.DeleteRetryDelaySeconds) * time.Second)
-						continue
-					}
-
-					return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+				err = resourceClient.Delete(attemptCtx, id)
+				if err == nil {
+					attemptLogger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
+					return
+				}
+				if attempts > d.options.DeleteRetryCount || !isRetryableDeleteError(err) {
+					break
 				}
 
-				// If the err is nil, then the resource is deleted successfully
-				logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
-				return nil
+				attemptLogger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
+				timer := time.NewTimer(time.Duration(d.options.DeleteRetryDelaySeconds) * time.Second)
+				select {
+				case <-ctx.Done():
+					err = ctx.Err()
+				case <-timer.C:
+				}
+				timer.Stop()
+				if ctx.Err() != nil {
+					break
+				}
 			}
 
-			deletionErr := fmt.Errorf("failed to delete resource after %d attempt(s), last error: %s", d.options.DeleteRetryCount+1, err.Error())
-			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, deletionErr.Error(), "", recipes.GetErrorDetails(deletionErr))
+			mu.Lock()
+			defer mu.Unlock()
+			failures = append(failures, fmt.Errorf("failed to delete resource %q after %d attempt(s), last error: %w", id, attempts, err))
 		})
 	}
+	wg.Wait()
 
-	if err := g.Wait(); err != nil {
-		return err
+	if len(failures) == 0 {
+		return nil
 	}
 
-	return nil
+	// Sort so the error is the same no matter which delete finished first.
+	slices.SortFunc(failures, func(a, b error) int { return strings.Compare(a.Error(), b.Error()) })
+	deletionErr := errors.Join(failures...)
+	return recipes.NewRecipeError(recipes.RecipeDeletionFailed, deletionErr.Error(), "", recipes.GetErrorDetails(deletionErr))
+}
+
+// permanentDeleteErrorCodes are ARM error codes that a later attempt cannot fix.
+var permanentDeleteErrorCodes = map[string]struct{}{
+	"authenticationfailed":             {},
+	"authorizationfailed":              {},
+	"invalidauthenticationtoken":       {},
+	"invalidauthenticationtokentenant": {},
+	"linkedauthorizationfailed":        {},
+}
+
+// isRetryableDeleteError reports whether another delete attempt can succeed.
+// Deletes run in parallel without dependency ordering, and dependency failures
+// arrive with many status codes (for example 400 for Azure "in use" errors, or 200
+// for a failed long-running operation). Only errors that are known to be permanent stop retries.
+func isRetryableDeleteError(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+
+	if responseError, ok := errors.AsType[*azcore.ResponseError](err); ok {
+		if _, permanent := permanentDeleteErrorCodes[strings.ToLower(responseError.ErrorCode)]; permanent {
+			return false
+		}
+		return !isAuthStatus(responseError.StatusCode)
+	}
+
+	var statusError apierrors.APIStatus
+	if errors.As(err, &statusError) {
+		return !isAuthStatus(int(statusError.Status().Code))
+	}
+
+	return true
+}
+
+func isAuthStatus(statusCode int) bool {
+	return statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden
 }
 
 func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResource) bool {
@@ -427,10 +487,7 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOpt
 	//		}
 	//	}
 	recipeData := make(map[string]any)
-	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
-	if err != nil {
-		return nil, err
-	}
+	secrets := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
 
 	registryClient := d.RegistryClient
 	// Get ORAS authentication client if secrets are found for the registry.
@@ -443,7 +500,7 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOpt
 		registryClient = authClient
 	}
 
-	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
+	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
 		return nil, err
 	}

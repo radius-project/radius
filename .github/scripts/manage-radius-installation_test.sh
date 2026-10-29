@@ -24,16 +24,20 @@ assert_required_values() {
         global.aws.irsa.enabled=true \
         database.enabled=false \
         de.resources.requests.memory=256Mi \
-        de.resources.limits.memory=512Mi; do
+        de.resources.limits.memory=512Mi \
+        dynamicrp.resources.limits.memory=1Gi; do
         assert_contains " $1 " " --set ${value} "
     done
 }
 
 run_matching_version_case() (
     local initial_irsa_state="$1"
-    local expect_upgrade="$2"
+    local initial_memory_limit="$2"
+    local expect_upgrade="$3"
+    local failure_mode="${4:-}"
+    local expected_error="${5:-}"
     local irsa_enabled="${initial_irsa_state}"
-    local upgrade_args=""
+    local configured_memory_limit="${initial_memory_limit}"
     local work_dir
     work_dir="$(mktemp -d)"
     trap 'rm -rf "${work_dir}"' EXIT
@@ -51,8 +55,16 @@ run_matching_version_case() (
         elif [[ "$1 $2" == "resource-provider list" ]]; then
             echo "Applications.Core"
         elif [[ "$1 $2" == "upgrade kubernetes" ]]; then
-            upgrade_args="$*"
-            irsa_enabled="true"
+            printf '%s\n' "$*" >> "${work_dir}/upgrade-args.txt"
+            if [[ "${failure_mode}" == "upgrade-fails" ]]; then
+                return 1
+            fi
+            if [[ "${failure_mode}" != "irsa-unreconciled" ]]; then
+                irsa_enabled="true"
+            fi
+            if [[ "${failure_mode}" != "memory-unreconciled" ]]; then
+                configured_memory_limit="1Gi"
+            fi
         else
             fail "unexpected rad invocation: $*"
         fi
@@ -61,11 +73,16 @@ run_matching_version_case() (
     # shellcheck disable=SC2329 # Invoked indirectly by the sourced script.
     kubectl() {
         if [[ "$1 $2" == "get deployment" ]]; then
-            if [[ "${irsa_enabled}" == "error" ]]; then
-                return 1
-            fi
-            if [[ "${irsa_enabled}" == "true" ]]; then
-                printf 'aws-iam-token'
+            if [[ "$*" == *".resources.limits.memory"* ]]; then
+                [[ "${configured_memory_limit}" != "error" ]] || return 1
+                printf '%s' "${configured_memory_limit}"
+            else
+                if [[ "${irsa_enabled}" == "error" ]]; then
+                    return 1
+                fi
+                if [[ "${irsa_enabled}" == "true" ]]; then
+                    printf 'aws-iam-token'
+                fi
             fi
         elif [[ "$1 $2" == "get resources.ucp.dev" ]]; then
             echo "resource-id"
@@ -76,24 +93,31 @@ run_matching_version_case() (
 
     cd "${work_dir}"
 
-    if [[ "${irsa_enabled}" == "error" ]]; then
-        if (main); then
-            fail "expected deployment inspection failure to stop reconciliation"
+    if [[ -n "${expected_error}" ]]; then
+        if (main) > output.log 2>&1; then
+            fail "expected reconciliation failure: ${expected_error}"
         fi
-        return 0
+        if grep -q '^FAIL:' output.log; then
+            cat output.log >&2
+            fail "unexpected mock invocation"
+        fi
+        assert_contains "$(cat output.log)" "${expected_error}"
+        [[ ! -e skip-delete-resources-list.txt ]] || fail "saved skip-resources list after failure"
+    else
+        main
+        [[ -s skip-delete-resources-list.txt ]] || fail "expected the skip-resources list to be saved"
     fi
-
-    main
 
     if [[ "${expect_upgrade}" == "true" ]]; then
-        [[ -n "${upgrade_args}" ]] || fail "expected matching-version reconciliation to run"
+        [[ -s upgrade-args.txt ]] || fail "expected matching-version reconciliation to run"
+        local upgrade_args
+        upgrade_args="$(cat upgrade-args.txt)"
         assert_contains "${upgrade_args}" "--skip-preflight"
         assert_required_values "${upgrade_args}"
-    elif [[ -n "${upgrade_args}" ]]; then
-        fail "did not expect an upgrade when IRSA was already enabled: ${upgrade_args}"
+        [[ "$(wc -l < upgrade-args.txt)" -eq 1 ]] || fail "expected exactly one reconciliation"
+    elif [[ -e upgrade-args.txt ]]; then
+        fail "did not expect an upgrade: $(cat upgrade-args.txt)"
     fi
-
-    [[ -s skip-delete-resources-list.txt ]] || fail "expected the skip-resources list to be saved"
 )
 
 run_install_or_upgrade_case() (
@@ -126,9 +150,21 @@ run_install_or_upgrade_case() (
     [[ "${calls}" -eq 1 ]] || fail "expected exactly one ${operation}"
 )
 
-run_matching_version_case "false" "true"
-run_matching_version_case "true" "false"
-run_matching_version_case "error" "false"
+run_matching_version_case "false" "500Mi" "true"
+run_matching_version_case "false" "1Gi" "true"
+run_matching_version_case "true" "500Mi" "true"
+run_matching_version_case "true" "" "true"
+run_matching_version_case "true" "1Gi" "false"
+run_matching_version_case "error" "1Gi" "false" "" \
+    "Failed to inspect deployment ucp for AWS IRSA configuration."
+run_matching_version_case "true" "error" "false" "" \
+    "Failed to inspect dynamic-rp memory limit."
+run_matching_version_case "true" "500Mi" "true" "upgrade-fails" \
+    "Failed to reconcile required Radius chart values."
+run_matching_version_case "false" "1Gi" "true" "irsa-unreconciled" \
+    "AWS IRSA token volumes are still missing after reconciliation."
+run_matching_version_case "true" "500Mi" "true" "memory-unreconciled" \
+    "dynamic-rp memory limit is still not 1Gi after reconciliation."
 run_install_or_upgrade_case "install"
 run_install_or_upgrade_case "upgrade"
 
