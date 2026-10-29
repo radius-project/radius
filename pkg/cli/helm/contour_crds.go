@@ -27,23 +27,31 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
+	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/kube"
+	"helm.sh/helm/v4/pkg/release"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 const (
-	gatewayAPIGroup = "gateway.networking.k8s.io"
+	// gatewayAPIGroup and gatewayAPIExperimentalGroup are the API groups of the Gateway API CRDs. The Contour chart
+	// installs CRDs of these groups when gatewayAPI.manageCRDs is true.
+	gatewayAPIGroup             = "gateway.networking.k8s.io"
+	gatewayAPIExperimentalGroup = "gateway.networking.x-k8s.io"
 
 	// Helm adopts an existing resource into a release only when it has this ownership metadata.
 	helmManagedByLabel             = "app.kubernetes.io/managed-by"
 	helmManagedByValue             = "Helm"
 	helmReleaseNameAnnotation      = "meta.helm.sh/release-name"
 	helmReleaseNamespaceAnnotation = "meta.helm.sh/release-namespace"
-
-	crdListPageSize = 100
 
 	// installCommand and upgradeCommand are the rad commands that install and upgrade Contour.
 	installCommand = "rad install kubernetes"
@@ -63,67 +71,56 @@ type gatewayAPIRequirement struct {
 	feature string
 }
 
-// contourGatewayAPISupport describes how a Contour version uses Gateway API CRDs.
-type contourGatewayAPISupport struct {
-	// bundledCRDs are the Gateway API CRDs that the Contour chart installs when gatewayAPI.manageCRDs is true.
-	bundledCRDs []string
-	// requirements are the resources that Contour watches when a Gateway is configured. Contour exits when one of
-	// them is missing.
-	requirements []gatewayAPIRequirement
-}
-
-// contourGatewayAPISupportByVersion is keyed by Contour version, which is the Contour chart's appVersion. When a new
-// Contour version is added, take bundledCRDs from
-// https://github.com/projectcontour/contour/blob/v<version>/examples/gateway/00-crds.yaml, which the chart installs,
-// and requirements from setupGatewayAPI in
+// contourGatewayAPIRequirements lists, by Contour version, the Gateway API resources that Contour watches when a
+// Gateway is configured. Contour exits when one of them is missing. The key is the Contour chart's appVersion. When a
+// new Contour version is added, take its requirements from setupGatewayAPI in
 // https://github.com/projectcontour/contour/blob/v<version>/cmd/contour/serve.go.
-var contourGatewayAPISupportByVersion = map[string]contourGatewayAPISupport{
-	// Contour 1.32.0 bundles the experimental channel of Gateway API v1.2.1.
+var contourGatewayAPIRequirements = map[string][]gatewayAPIRequirement{
 	"1.32.0": {
-		bundledCRDs: []string{
-			"backendlbpolicies.gateway.networking.k8s.io",
-			"backendtlspolicies.gateway.networking.k8s.io",
-			"gatewayclasses.gateway.networking.k8s.io",
-			"gateways.gateway.networking.k8s.io",
-			"grpcroutes.gateway.networking.k8s.io",
-			"httproutes.gateway.networking.k8s.io",
-			"referencegrants.gateway.networking.k8s.io",
-			"tcproutes.gateway.networking.k8s.io",
-			"tlsroutes.gateway.networking.k8s.io",
-			"udproutes.gateway.networking.k8s.io",
-		},
-		requirements: []gatewayAPIRequirement{
-			{crd: "gatewayclasses.gateway.networking.k8s.io", version: "v1", kind: "GatewayClass"},
-			{crd: "gateways.gateway.networking.k8s.io", version: "v1", kind: "Gateway"},
-			{crd: "httproutes.gateway.networking.k8s.io", version: "v1", kind: "HTTPRoute"},
-			{crd: "referencegrants.gateway.networking.k8s.io", version: "v1beta1", kind: "ReferenceGrant"},
-			{crd: "grpcroutes.gateway.networking.k8s.io", version: "v1", kind: "GRPCRoute", feature: "grpcroutes"},
-			{crd: "tlsroutes.gateway.networking.k8s.io", version: "v1alpha2", kind: "TLSRoute", feature: "tlsroutes"},
-			{crd: "tcproutes.gateway.networking.k8s.io", version: "v1alpha2", kind: "TCPRoute", feature: "tcproutes"},
-			{crd: "backendtlspolicies.gateway.networking.k8s.io", version: "v1alpha3", kind: "BackendTLSPolicy", feature: "backendtlspolicies"},
-		},
+		{crd: "gatewayclasses.gateway.networking.k8s.io", version: "v1", kind: "GatewayClass"},
+		{crd: "gateways.gateway.networking.k8s.io", version: "v1", kind: "Gateway"},
+		{crd: "httproutes.gateway.networking.k8s.io", version: "v1", kind: "HTTPRoute"},
+		{crd: "referencegrants.gateway.networking.k8s.io", version: "v1beta1", kind: "ReferenceGrant"},
+		{crd: "grpcroutes.gateway.networking.k8s.io", version: "v1", kind: "GRPCRoute", feature: "grpcroutes"},
+		{crd: "tlsroutes.gateway.networking.k8s.io", version: "v1alpha2", kind: "TLSRoute", feature: "tlsroutes"},
+		{crd: "tcproutes.gateway.networking.k8s.io", version: "v1alpha2", kind: "TCPRoute", feature: "tcproutes"},
+		{crd: "backendtlspolicies.gateway.networking.k8s.io", version: "v1alpha3", kind: "BackendTLSPolicy", feature: "backendtlspolicies"},
 	},
 }
 
-// gatewayAPICRD is a Gateway API CRD in the cluster.
-type gatewayAPICRD struct {
-	name           string
-	labels         map[string]string
-	annotations    map[string]string
+// crdInfo describes a CRD in the cluster or in a chart.
+type crdInfo struct {
+	name  string
+	group string
+
+	// versions are the names of all the versions of the CRD, and servedVersions are the ones that the API serves.
+	versions       []string
 	servedVersions []string
+
+	// storedVersions are the versions that a CRD in the cluster has stored objects in.
+	storedVersions []string
+
+	// labels and annotations hold only the Helm ownership and resource policy metadata of a CRD in the cluster.
+	labels      map[string]string
+	annotations map[string]string
+}
+
+// isGatewayAPI reports whether the CRD belongs to the Gateway API.
+func (c crdInfo) isGatewayAPI() bool {
+	return c.group == gatewayAPIGroup || c.group == gatewayAPIExperimentalGroup
 }
 
 // ownedBy reports whether Helm can adopt the CRD into the given release.
-func (c gatewayAPICRD) ownedBy(releaseName string, releaseNamespace string) bool {
+func (c crdInfo) ownedBy(releaseName string, releaseNamespace string) bool {
 	return c.labels[helmManagedByLabel] == helmManagedByValue &&
 		c.annotations[helmReleaseNameAnnotation] == releaseName &&
 		c.annotations[helmReleaseNamespaceAnnotation] == releaseNamespace
 }
 
 // owner describes who manages the CRD.
-func (c gatewayAPICRD) owner() string {
-	if release := c.annotations[helmReleaseNameAnnotation]; release != "" {
-		return fmt.Sprintf("Helm release %q in namespace %q", release, c.annotations[helmReleaseNamespaceAnnotation])
+func (c crdInfo) owner() string {
+	if releaseName := c.annotations[helmReleaseNameAnnotation]; releaseName != "" {
+		return fmt.Sprintf("Helm release %q in namespace %q", releaseName, c.annotations[helmReleaseNamespaceAnnotation])
 	}
 	if managedBy := c.labels[helmManagedByLabel]; managedBy != "" {
 		return fmt.Sprintf("%q", managedBy)
@@ -132,8 +129,24 @@ func (c gatewayAPICRD) owner() string {
 	return "an installer other than Helm"
 }
 
-// listClusterGatewayAPICRDs lists the Gateway API CRDs in the cluster that kubeContext selects.
-func listClusterGatewayAPICRDs(ctx context.Context, kubeContext string) ([]gatewayAPICRD, error) {
+// kept reports whether Helm keeps the CRD when a release that installed it no longer renders it.
+func (c crdInfo) kept() bool {
+	return c.annotations[kube.ResourcePolicyAnno] == kube.KeepPolicy
+}
+
+// findCRD returns the CRD with the given name.
+func findCRD(crds []crdInfo, name string) (crdInfo, bool) {
+	index := slices.IndexFunc(crds, func(crd crdInfo) bool { return crd.name == name })
+	if index < 0 {
+		return crdInfo{}, false
+	}
+
+	return crds[index], true
+}
+
+// getClusterCRDs reads the CRDs with the given names from the cluster that kubeContext selects. It skips the names of
+// CRDs that do not exist.
+func getClusterCRDs(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error) {
 	config, err := clikubernetes.NewCLIClientConfig(kubeContext)
 	if err != nil {
 		return nil, err
@@ -144,43 +157,68 @@ func listClusterGatewayAPICRDs(ctx context.Context, kubeContext string) ([]gatew
 		return nil, err
 	}
 
-	return listGatewayAPICRDsWithClient(ctx, client)
+	return getCRDsWithClient(ctx, client, names)
 }
 
-// listGatewayAPICRDsWithClient lists CRDs in pages so that clusters with many large CRDs are not loaded at once.
-func listGatewayAPICRDsWithClient(ctx context.Context, client apiextensionsclient.Interface) ([]gatewayAPICRD, error) {
-	var crds []gatewayAPICRD
-	options := metav1.ListOptions{Limit: crdListPageSize}
-	for {
-		list, err := client.ApiextensionsV1().CustomResourceDefinitions().List(ctx, options)
-		if err != nil {
+// getCRDsWithClient reads the CRDs with the given names, skipping the ones that do not exist. It reads only these CRDs
+// because a cluster can have many large CRDs, and it keeps only the data that the Contour checks use.
+func getCRDsWithClient(ctx context.Context, client apiextensionsclient.Interface, names []string) ([]crdInfo, error) {
+	var crds []crdInfo
+	for _, name := range names {
+		item, err := client.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			continue
+		} else if err != nil {
 			return nil, err
 		}
 
-		for _, item := range list.Items {
-			if item.Spec.Group != gatewayAPIGroup {
-				continue
-			}
-
-			crd := gatewayAPICRD{name: item.Name, labels: item.Labels, annotations: item.Annotations}
-			for _, version := range item.Spec.Versions {
-				if version.Served {
-					crd.servedVersions = append(crd.servedVersions, version.Name)
-				}
-			}
-			crds = append(crds, crd)
+		crd := crdInfo{
+			name:           item.Name,
+			group:          item.Spec.Group,
+			storedVersions: item.Status.StoredVersions,
+			labels:         pickKeys(item.Labels, helmManagedByLabel),
+			annotations:    pickKeys(item.Annotations, helmReleaseNameAnnotation, helmReleaseNamespaceAnnotation, kube.ResourcePolicyAnno),
 		}
-
-		if list.Continue == "" {
-			return crds, nil
+		for _, version := range item.Spec.Versions {
+			crd.versions = append(crd.versions, version.Name)
+			if version.Served {
+				crd.servedVersions = append(crd.servedVersions, version.Name)
+			}
 		}
-		options.Continue = list.Continue
+		crds = append(crds, crd)
 	}
+
+	return crds, nil
 }
 
-// gatewayAPICRDsInManifest returns the Gateway API CRDs in a Helm release manifest.
-func gatewayAPICRDsInManifest(manifest string) ([]string, error) {
-	var names []string
+// crdNames returns the names of crds.
+func crdNames(crds []crdInfo) []string {
+	names := make([]string, 0, len(crds))
+	for _, crd := range crds {
+		names = append(names, crd.name)
+	}
+
+	return names
+}
+
+// pickKeys returns the entries of values with the given keys, or nil when it has none of them.
+func pickKeys(values map[string]string, keys ...string) map[string]string {
+	var picked map[string]string
+	for _, key := range keys {
+		if value, found := values[key]; found {
+			if picked == nil {
+				picked = map[string]string{}
+			}
+			picked[key] = value
+		}
+	}
+
+	return picked
+}
+
+// crdsInManifest returns the CRDs in a manifest of YAML documents.
+func crdsInManifest(manifest string) ([]crdInfo, error) {
+	var crds []crdInfo
 	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
 	for {
 		var object struct {
@@ -189,62 +227,301 @@ func gatewayAPICRDsInManifest(manifest string) ([]string, error) {
 				Name string `json:"name"`
 			} `json:"metadata"`
 			Spec struct {
-				Group string `json:"group"`
+				Group    string `json:"group"`
+				Versions []struct {
+					Name   string `json:"name"`
+					Served bool   `json:"served"`
+				} `json:"versions"`
 			} `json:"spec"`
 		}
 		err := decoder.Decode(&object)
 		if errors.Is(err, io.EOF) {
-			return names, nil
+			return crds, nil
 		}
 		if err != nil {
 			return nil, err
 		}
 
-		if object.Kind == "CustomResourceDefinition" && object.Spec.Group == gatewayAPIGroup {
-			names = append(names, object.Metadata.Name)
+		if object.Kind != "CustomResourceDefinition" {
+			continue
 		}
+
+		crd := crdInfo{name: object.Metadata.Name, group: object.Spec.Group}
+		for _, version := range object.Spec.Versions {
+			crd.versions = append(crd.versions, version.Name)
+			if version.Served {
+				crd.servedVersions = append(crd.servedVersions, version.Name)
+			}
+		}
+		crds = append(crds, crd)
 	}
 }
 
-// gatewayAPICRDCheck decides whether a Contour install or upgrade may manage the Gateway API CRDs in a cluster.
+// renderChartCRDs renders a chart as helm template does and returns the CRDs that Helm applies with the release, and
+// the CRDs in the crds/ directories of the chart and of the subcharts that the values enable. The render uses its own
+// Helm configuration with Helm's default capabilities, so it never contacts the cluster and template lookups find
+// nothing. It does not change helmChart.
+func renderChartCRDs(ctx context.Context, helmChart *chart.Chart, releaseName string, namespace string, upgrade bool, values map[string]any) ([]crdInfo, []crdInfo, error) {
+	renderedChart := cloneChart(helmChart)
+
+	install := helm.NewInstall(&helm.Configuration{})
+	install.DryRunStrategy = helm.DryRunClient
+	install.ReleaseName = releaseName
+	install.Namespace = namespace
+	install.IsUpgrade = upgrade
+	rendered, err := install.RunWithContext(ctx, renderedChart, copyValues(values))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	accessor, err := release.NewAccessor(rendered)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	manifestCRDs, err := crdsInManifest(accessor.Manifest())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read the rendered manifest: %w", err)
+	}
+
+	// The render removed the subcharts that the values disable, as Helm does before it installs CRDs.
+	var directoryCRDs []crdInfo
+	for _, object := range renderedChart.CRDObjects() {
+		crds, err := crdsInManifest(string(object.File.Data))
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read %s: %w", object.Filename, err)
+		}
+		directoryCRDs = append(directoryCRDs, crds...)
+	}
+
+	return manifestCRDs, directoryCRDs, nil
+}
+
+// cloneChart copies a chart and its subcharts so that rendering the copy does not change the original. Helm changes
+// the chart that it renders: it removes the subcharts that the values disable and rewrites the dependency metadata
+// and the values.
+func cloneChart(original *chart.Chart) *chart.Chart {
+	copied := *original
+	if original.Metadata != nil {
+		metadata := *original.Metadata
+		if original.Metadata.Dependencies != nil {
+			metadata.Dependencies = make([]*chart.Dependency, len(original.Metadata.Dependencies))
+			for i, dependency := range original.Metadata.Dependencies {
+				if dependency != nil {
+					copiedDependency := *dependency
+					metadata.Dependencies[i] = &copiedDependency
+				}
+			}
+		}
+		copied.Metadata = &metadata
+	}
+
+	subcharts := make([]*chart.Chart, 0, len(original.Dependencies()))
+	for _, subchart := range original.Dependencies() {
+		subcharts = append(subcharts, cloneChart(subchart))
+	}
+	copied.SetDependencies(subcharts...)
+
+	return &copied
+}
+
+// contourUpgradeBaseline returns the revision of the Contour release that a Helm upgrade starts from, which Helm's
+// upgrade action chooses this way: the latest revision when it is deployed, otherwise the latest deployed revision,
+// otherwise the latest revision when it failed or was superseded. Helm reuses the values of that revision and deletes
+// the resources in its manifest that the new chart no longer renders. Like Helm, it refuses a release with a pending
+// operation.
+func contourUpgradeBaseline(history []*releasev1.Release, releaseName string, releaseNamespace string) (*releasev1.Release, error) {
+	var latest, deployed *releasev1.Release
+	for _, revision := range history {
+		if revision == nil {
+			continue
+		}
+		if latest == nil || revision.Version > latest.Version {
+			latest = revision
+		}
+		if revisionStatus(revision) == releasecommon.StatusDeployed && (deployed == nil || revision.Version > deployed.Version) {
+			deployed = revision
+		}
+	}
+	if latest == nil {
+		return nil, driver.NewErrNoDeployedReleases(releaseName)
+	}
+
+	status := revisionStatus(latest)
+	switch {
+	case status.IsPending():
+		rollback := fmt.Sprintf("helm -n %s rollback %s <revision>", releaseNamespace, releaseName)
+		if deployed != nil {
+			rollback = fmt.Sprintf("helm -n %s rollback %s %d", releaseNamespace, releaseName, deployed.Version)
+		}
+		return nil, clierrors.Message("Radius stopped before changing the cluster because another operation is in progress on Contour release %q in namespace %q: revision %d is %s. "+
+			"Wait for that operation to finish, and then run the command again. If no operation is running, for example because an earlier command was interrupted, "+
+			"list the revisions with helm -n %s history %s, roll the release back to the last revision that worked, for example with %s, and then run the command again.",
+			releaseName, releaseNamespace, latest.Version, status, releaseNamespace, releaseName, rollback)
+	case status == releasecommon.StatusDeployed:
+		return latest, nil
+	case deployed != nil:
+		return deployed, nil
+	case status == releasecommon.StatusFailed || status == releasecommon.StatusSuperseded:
+		return latest, nil
+	}
+
+	return nil, driver.NewErrNoDeployedReleases(releaseName)
+}
+
+// revisionStatus returns the status of a release revision.
+func revisionStatus(revision *releasev1.Release) releasecommon.Status {
+	if revision.Info == nil {
+		return ""
+	}
+
+	return revision.Info.Status
+}
+
+// gatewayAPICRDCheck decides how a Contour install or upgrade treats the Gateway API CRDs in a cluster. It checks
+// that the change neither deletes CRDs nor takes over Gateway API CRDs that belong to something else, and that
+// Contour can use the Gateway API CRDs that the cluster has afterwards.
 type gatewayAPICRDCheck struct {
 	releaseName      string
 	releaseNamespace string
 
-	// contourVersion is the version of Contour that the chart deploys.
-	contourVersion string
-
-	// support is nil when Radius does not know how contourVersion uses Gateway API CRDs.
-	support *contourGatewayAPISupport
-
-	// crds are the Gateway API CRDs in the cluster.
-	crds []gatewayAPICRD
-
-	// releaseCRDs are the Gateway API CRDs in the manifest of the existing Contour release. Helm deletes them when an
-	// upgrade stops rendering them.
-	releaseCRDs []string
-
 	// command is the rad command that installs or upgrades Contour, which the errors tell the user to run again.
 	command string
 
-	// resetValues is true when an upgrade discards the values stored on the Contour release.
+	// getCRDs reads the CRDs with the given names from the cluster. It skips the names of CRDs that do not exist.
+	getCRDs func(ctx context.Context, names []string) ([]crdInfo, error)
+
+	// The fields below describe the change. run sets them.
+
+	// clusterCRDs are the CRDs in the cluster that the change involves: the CRDs in the manifest of the release, the
+	// CRDs that the chart renders, and the Gateway API CRDs that Contour watches. readNames are the names of the CRDs
+	// that run read, including the ones that do not exist.
+	clusterCRDs []crdInfo
+	readNames   []string
+
+	// contourVersion is the version of Contour that the chart deploys.
+	contourVersion string
+
+	// requirements are the Gateway API resources that contourVersion watches, or nil when Radius does not know them.
+	requirements []gatewayAPIRequirement
+
+	// upgrade is true when Helm upgrades an existing Contour release instead of installing one.
+	upgrade bool
+
+	// resetValues is true when the upgrade discards the values stored on the Contour release.
 	resetValues bool
+
+	// releaseCRDs are the CRDs in the manifest of the release revision that the upgrade starts from. Helm deletes the
+	// ones that the chart no longer renders.
+	releaseCRDs []crdInfo
+
+	// manageableCRDs are the CRDs that the chart renders when gatewayAPI.manageCRDs is true.
+	manageableCRDs []crdInfo
+
+	// renderedCRDs are the CRDs that the chart renders with the final values. Helm creates or updates them.
+	renderedCRDs []crdInfo
+
+	// directoryCRDs are the CRDs in the crds/ directories of the chart and its enabled subcharts. Helm creates the
+	// missing ones when it installs the chart, and never updates or deletes them.
+	directoryCRDs []crdInfo
 
 	// manageCRDsFromValues is true when the Contour values, not Radius, decide gatewayAPI.manageCRDs.
 	manageCRDsFromValues bool
 }
 
-// setManageCRDsDefault sets gatewayAPI.manageCRDs in values to the Radius default unless the Contour values already
-// decide it, and records which of them decides.
-func (c *gatewayAPICRDCheck) setManageCRDsDefault(values map[string]any) {
+// run checks installing helmChart, or upgrading baseline to it, with values, which are the Contour values of this
+// invocation. It sets the Radius default for gatewayAPI.manageCRDs in values unless they already decide it. baseline is
+// the release revision that the upgrade starts from, or nil for an install. reuseValues is true when Helm merges the
+// values stored on baseline beneath values. It returns a warning when it cannot check whether Contour can use the
+// Gateway API CRDs.
+func (c *gatewayAPICRDCheck) run(ctx context.Context, helmChart *chart.Chart, values map[string]any, baseline *releasev1.Release, reuseValues bool) (string, error) {
+	c.contourVersion = strings.TrimPrefix(helmChart.Metadata.AppVersion, "v")
+	c.requirements = contourGatewayAPIRequirements[c.contourVersion]
+	c.upgrade = baseline != nil
+	c.resetValues = c.upgrade && !reuseValues
+
+	var reusedValues map[string]any
+	if baseline != nil {
+		releaseCRDs, err := crdsInManifest(baseline.Manifest)
+		if err != nil {
+			return "", fmt.Errorf("failed to read the Contour release manifest, err: %w", err)
+		}
+		c.releaseCRDs = releaseCRDs
+
+		if reuseValues {
+			reusedValues = baseline.Config
+		}
+	}
+
+	manageable := helmValues(values, reusedValues)
+	setValue(manageable, true, "gatewayAPI", "manageCRDs")
+	manageableCRDs, _, err := renderChartCRDs(ctx, helmChart, c.releaseName, c.releaseNamespace, c.upgrade, manageable)
+	if err != nil {
+		return "", fmt.Errorf("failed to render the Contour Helm chart, err: %w", err)
+	}
+	c.manageableCRDs = manageableCRDs
+
+	requiredCRDs := make([]string, 0, len(c.requirements))
+	for _, requirement := range c.requirements {
+		requiredCRDs = append(requiredCRDs, requirement.crd)
+	}
+	if err := c.readCRDs(ctx, crdNames(c.releaseCRDs), crdNames(c.manageableCRDs), requiredCRDs); err != nil {
+		return "", err
+	}
+
+	// The user's --contour-set and --contour-set-file values take precedence over this default.
 	c.manageCRDsFromValues = !setDefaultValue(values, c.defaultManageCRDs(), "gatewayAPI", "manageCRDs")
+
+	c.renderedCRDs, c.directoryCRDs, err = renderChartCRDs(ctx, helmChart, c.releaseName, c.releaseNamespace, c.upgrade, helmValues(values, reusedValues))
+	if err != nil {
+		return "", fmt.Errorf("failed to render the Contour Helm chart, err: %w", err)
+	}
+	if err := c.readCRDs(ctx, crdNames(c.renderedCRDs)); err != nil {
+		return "", err
+	}
+
+	effectiveValues, err := effectiveContourValues(helmChart, values, reusedValues)
+	if err != nil {
+		return "", fmt.Errorf("failed to compute Contour values, err: %w", err)
+	}
+
+	return c.validate(effectiveValues)
+}
+
+// readCRDs reads the CRDs with the given names from the cluster, except the ones that it read already.
+func (c *gatewayAPICRDCheck) readCRDs(ctx context.Context, nameLists ...[]string) error {
+	var names []string
+	for _, list := range nameLists {
+		for _, name := range list {
+			if !slices.Contains(c.readNames, name) && !slices.Contains(names, name) {
+				names = append(names, name)
+			}
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+
+	crds, err := c.getCRDs(ctx, names)
+	if err != nil {
+		return fmt.Errorf("failed to read CRDs, err: %w", err)
+	}
+	c.readNames = append(c.readNames, names...)
+	c.clusterCRDs = append(c.clusterCRDs, crds...)
+
+	return nil
 }
 
 // contourCRDs returns the Gateway API CRDs that the Contour release installed or that Helm can adopt into it.
 func (c gatewayAPICRDCheck) contourCRDs() []string {
-	names := slices.Clone(c.releaseCRDs)
-	for _, crd := range c.crds {
-		if crd.ownedBy(c.releaseName, c.releaseNamespace) && !slices.Contains(names, crd.name) {
+	var names []string
+	for _, crd := range c.releaseCRDs {
+		if crd.isGatewayAPI() && !slices.Contains(names, crd.name) {
+			names = append(names, crd.name)
+		}
+	}
+	for _, crd := range c.clusterCRDs {
+		if crd.isGatewayAPI() && crd.ownedBy(c.releaseName, c.releaseNamespace) && !slices.Contains(names, crd.name) {
 			names = append(names, crd.name)
 		}
 	}
@@ -253,48 +530,119 @@ func (c gatewayAPICRDCheck) contourCRDs() []string {
 	return names
 }
 
-// conflicts returns the Gateway API CRDs that the chart would install or update but that belong to something else.
-// Helm leaves other Gateway API CRDs alone.
-func (c gatewayAPICRDCheck) conflicts() []gatewayAPICRD {
-	var conflicts []gatewayAPICRD
-	for _, crd := range c.crds {
-		if crd.ownedBy(c.releaseName, c.releaseNamespace) {
+// foreignCRDs returns the Gateway API CRDs in the cluster that the chart CRDs would replace but that belong to
+// something else than the Contour release.
+func (c gatewayAPICRDCheck) foreignCRDs(chartCRDs []crdInfo) []crdInfo {
+	var foreign []crdInfo
+	for _, crd := range c.clusterCRDs {
+		if !crd.isGatewayAPI() || crd.ownedBy(c.releaseName, c.releaseNamespace) {
 			continue
 		}
-
-		// Without the list of CRDs that the chart installs, any Gateway API CRD could conflict.
-		if c.support == nil || slices.Contains(c.support.bundledCRDs, crd.name) || slices.Contains(c.releaseCRDs, crd.name) {
-			conflicts = append(conflicts, crd)
+		if _, found := findCRD(chartCRDs, crd.name); found {
+			foreign = append(foreign, crd)
 		}
 	}
 
-	return conflicts
+	return foreign
 }
 
 // defaultManageCRDs returns the gatewayAPI.manageCRDs value to use when the user does not set it. Contour keeps
-// managing the CRDs that it manages, reuses CRDs that belong to something else, and installs them in clusters that have
-// none.
+// managing the Gateway API CRDs that it manages, reuses CRDs that belong to something else, and installs them in
+// clusters that have none.
 func (c gatewayAPICRDCheck) defaultManageCRDs() bool {
-	return len(c.contourCRDs()) > 0 || len(c.conflicts()) == 0
+	return len(c.contourCRDs()) > 0 || len(c.foreignCRDs(c.manageableCRDs)) == 0
 }
 
-// validate returns an error when installing or upgrading Contour with values would take over or delete Gateway API
-// CRDs, or when Contour cannot use the Gateway API CRDs that it does not install. Callers validate before they change
-// the cluster, and the errors say so.
-func (c gatewayAPICRDCheck) validate(values map[string]any) (warning string, err error) {
-	if isTrue(nestedValue(values, "gatewayAPI", "manageCRDs")) {
-		if conflicts := c.conflicts(); len(conflicts) > 0 {
-			return "", c.conflictError(conflicts)
+// deletedCRDs returns the CRDs that Helm would delete because the release installed them and the chart no longer
+// renders them. Like Helm, it skips CRDs that no longer exist and CRDs with the helm.sh/resource-policy: keep
+// annotation.
+func (c gatewayAPICRDCheck) deletedCRDs() []crdInfo {
+	var deleted []crdInfo
+	for _, releaseCRD := range c.releaseCRDs {
+		if _, rendered := findCRD(c.renderedCRDs, releaseCRD.name); rendered {
+			continue
+		}
+		clusterCRD, found := findCRD(c.clusterCRDs, releaseCRD.name)
+		if found && !clusterCRD.kept() && !slices.ContainsFunc(deleted, func(crd crdInfo) bool { return crd.name == clusterCRD.name }) {
+			deleted = append(deleted, clusterCRD)
+		}
+	}
+
+	return deleted
+}
+
+// storedVersionRemoval is a CRD that Helm would update to a definition without versions that the cluster stores
+// objects of the CRD in.
+type storedVersionRemoval struct {
+	name string
+
+	// removed are the stored versions that the chart's definition lacks, and versions are the versions that it has.
+	removed  []string
+	versions []string
+}
+
+// removedStoredVersions returns the CRDs that Helm would update to remove versions that the cluster stores objects in.
+// The API server rejects such an update, so Helm would fail partway through applying the chart.
+func (c gatewayAPICRDCheck) removedStoredVersions() []storedVersionRemoval {
+	var removals []storedVersionRemoval
+	for _, rendered := range c.renderedCRDs {
+		clusterCRD, found := findCRD(c.clusterCRDs, rendered.name)
+		if !found {
+			continue
 		}
 
-		return "", nil
+		var removed []string
+		for _, version := range clusterCRD.storedVersions {
+			if !slices.Contains(rendered.versions, version) {
+				removed = append(removed, version)
+			}
+		}
+		if len(removed) > 0 {
+			removals = append(removals, storedVersionRemoval{name: rendered.name, removed: removed, versions: rendered.versions})
+		}
 	}
 
-	if len(c.releaseCRDs) > 0 {
-		return "", c.deleteError()
+	return removals
+}
+
+func storedVersionsError(removals []storedVersionRemoval) error {
+	var message strings.Builder
+	message.WriteString("Radius stopped before changing the cluster because the Contour chart removes versions of these CRDs that the cluster stores objects in:\n")
+	for _, removal := range removals {
+		versions := "no versions"
+		if len(removal.versions) > 0 {
+			versions = strings.Join(removal.versions, ", ")
+		}
+		fmt.Fprintf(&message, "  - %s stores objects in %s, but the chart's definition has %s\n", removal.name, strings.Join(removal.removed, ", "), versions)
+	}
+	message.WriteString("The Kubernetes API server rejects a CRD update that removes a stored version, so Helm would fail to apply the Contour chart.\n")
+	message.WriteString("To continue, do one of the following:\n")
+	message.WriteString("  - Use a Contour chart whose CRDs keep these versions.\n")
+	message.WriteString("  - Migrate the stored objects to a version that the chart keeps, and then remove the old versions from status.storedVersions of these CRDs. " +
+		"See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#upgrade-existing-objects-to-a-new-stored-version.")
+
+	return clierrors.Message("%s", message.String())
+}
+
+// validate returns an error when the change would delete CRDs, take over Gateway API CRDs that belong to something
+// else, or remove CRD versions that the cluster stores objects in, or when Contour cannot use the Gateway API CRDs that
+// the cluster has afterwards. values are the values that Helm renders the chart with. Callers validate before they
+// change the cluster, and the errors say so.
+func (c gatewayAPICRDCheck) validate(values map[string]any) (string, error) {
+	manageCRDs := isTrue(nestedValue(values, "gatewayAPI", "manageCRDs"))
+	if deleted := c.deletedCRDs(); len(deleted) > 0 {
+		return "", c.deleteError(deleted, manageCRDs)
 	}
 
-	if c.support == nil {
+	if conflicts := c.foreignCRDs(c.renderedCRDs); len(conflicts) > 0 {
+		return "", c.conflictError(conflicts, manageCRDs)
+	}
+
+	if removals := c.removedStoredVersions(); len(removals) > 0 {
+		return "", storedVersionsError(removals)
+	}
+
+	if c.requirements == nil {
 		if c.contourVersion == "" {
 			return "The Contour chart does not set appVersion, so Radius did not check that Contour can use the Gateway API CRDs in the cluster.", nil
 		}
@@ -302,90 +650,136 @@ func (c gatewayAPICRDCheck) validate(values map[string]any) (warning string, err
 	}
 
 	args := contourArgsFromValues(values)
-	if unmet := c.unmetRequirements(args.disabledFeatures()); len(unmet) > 0 {
-		return "", c.requirementsError(unmet, args)
+	if unmet := c.unmetRequirements(c.renderedCRDs, args.disabledFeatures()); len(unmet) > 0 {
+		return "", c.requirementsError(unmet, args, manageCRDs)
 	}
 
 	return "", nil
 }
 
-// unmetRequirement is a resource version that Contour watches but that no CRD in the cluster serves.
+// unmetRequirement is a resource version that Contour watches but that no CRD serves after the change.
 type unmetRequirement struct {
 	gatewayAPIRequirement
 
-	// installed is the CRD that defines the resource, or nil when the CRD is not installed.
-	installed *gatewayAPICRD
+	// definition is the CRD that defines the resource after the change, or nil when there is none.
+	definition *crdInfo
+
+	// fromChart is true when the Contour chart provides definition.
+	fromChart bool
 }
 
-func (c gatewayAPICRDCheck) unmetRequirements(disabledFeatures []string) []unmetRequirement {
+// unmetRequirements returns the requirements that the Gateway API CRDs do not meet after Helm applies chartCRDs,
+// skipping the features that Contour's arguments turn off.
+func (c gatewayAPICRDCheck) unmetRequirements(chartCRDs []crdInfo, disabledFeatures []string) []unmetRequirement {
 	var unmet []unmetRequirement
-	for _, requirement := range c.support.requirements {
+	for _, requirement := range c.requirements {
 		if requirement.feature != "" && slices.Contains(disabledFeatures, requirement.feature) {
 			continue
 		}
 
-		index := slices.IndexFunc(c.crds, func(crd gatewayAPICRD) bool { return crd.name == requirement.crd })
-		if index < 0 {
+		crd, fromChart, found := c.crdAfterChange(chartCRDs, requirement.crd)
+		if !found {
 			unmet = append(unmet, unmetRequirement{gatewayAPIRequirement: requirement})
-			continue
-		}
-
-		if !slices.Contains(c.crds[index].servedVersions, requirement.version) {
-			unmet = append(unmet, unmetRequirement{gatewayAPIRequirement: requirement, installed: &c.crds[index]})
+		} else if !slices.Contains(crd.servedVersions, requirement.version) {
+			unmet = append(unmet, unmetRequirement{gatewayAPIRequirement: requirement, definition: &crd, fromChart: fromChart})
 		}
 	}
 
 	return unmet
 }
 
-func (c gatewayAPICRDCheck) conflictError(conflicts []gatewayAPICRD) error {
+// crdAfterChange returns the CRD with the given name that the cluster has after Helm applies chartCRDs, and whether
+// the chart provides it. Helm creates or updates the CRDs that the chart renders. When it installs the chart, it also
+// creates the CRDs in the chart's crds/ directories that do not exist yet.
+func (c gatewayAPICRDCheck) crdAfterChange(chartCRDs []crdInfo, name string) (crdInfo, bool, bool) {
+	if crd, found := findCRD(chartCRDs, name); found {
+		return crd, true, true
+	}
+	if crd, found := findCRD(c.clusterCRDs, name); found {
+		return crd, false, true
+	}
+	if !c.upgrade {
+		if crd, found := findCRD(c.directoryCRDs, name); found {
+			return crd, true, true
+		}
+	}
+
+	return crdInfo{}, false, false
+}
+
+func (c gatewayAPICRDCheck) deleteError(deleted []crdInfo, manageCRDs bool) error {
+	var message strings.Builder
+	fmt.Fprintf(&message, "Radius stopped before changing the cluster because the Contour chart no longer includes these CRDs, which Contour release %q in namespace %q installed:\n", c.releaseName, c.releaseNamespace)
+	names := make([]string, 0, len(deleted))
+	gatewayAPI := false
+	for _, crd := range deleted {
+		fmt.Fprintf(&message, "  - %s", crd.name)
+		if !crd.ownedBy(c.releaseName, c.releaseNamespace) {
+			fmt.Fprintf(&message, " (now owned by %s)", crd.owner())
+		}
+		message.WriteString("\n")
+		names = append(names, crd.name)
+		gatewayAPI = gatewayAPI || crd.isGatewayAPI()
+	}
+	message.WriteString("Helm would delete these CRDs, and every resource of these kinds in the cluster with them.\nTo continue, do one of the following:\n")
+
+	if gatewayAPI && !manageCRDs && c.manageCRDsFromValues {
+		message.WriteString("  - Remove the Contour value that sets gatewayAPI.manageCRDs to false.\n")
+	} else {
+		message.WriteString("  - Change the Contour chart or values so that the chart still includes these CRDs.\n")
+	}
+	fmt.Fprintf(&message, "  - Keep these CRDs when Helm stops managing them by annotating them first:\n      kubectl annotate crd %s %s=%s", strings.Join(names, " "), kube.ResourcePolicyAnno, kube.KeepPolicy)
+
+	return clierrors.Message("%s", message.String())
+}
+
+func (c gatewayAPICRDCheck) conflictError(conflicts []crdInfo, manageCRDs bool) error {
 	var message strings.Builder
 	contourCRDs := c.contourCRDs()
 	if len(contourCRDs) > 0 {
-		fmt.Fprintf(&message, "Radius stopped before changing the cluster because the Gateway API CRDs in this cluster have more than one owner.\n")
+		message.WriteString("Radius stopped before changing the cluster because the Gateway API CRDs in this cluster have more than one owner.\n")
 		fmt.Fprintf(&message, "Contour release %q in namespace %q manages these CRDs:\n", c.releaseName, c.releaseNamespace)
 		for _, name := range contourCRDs {
 			fmt.Fprintf(&message, "  - %s\n", name)
 		}
-		fmt.Fprintf(&message, "These CRDs belong to something else:\n")
+		message.WriteString("These CRDs belong to something else:\n")
 	} else {
-		fmt.Fprintf(&message, "Radius stopped before changing the cluster because these Gateway API CRDs already exist and belong to something else, so Contour cannot install them:\n")
+		message.WriteString("Radius stopped before changing the cluster because these Gateway API CRDs already exist and belong to something else, so Contour cannot install them:\n")
 	}
 
 	for _, crd := range conflicts {
 		fmt.Fprintf(&message, "  - %s (owned by %s)\n", crd.name, crd.owner())
 	}
 
-	if len(contourCRDs) > 0 {
-		message.WriteString("Radius does not take over CRDs that belong to something else, and it does not stop managing the CRDs that Contour installed because Helm would delete them. Make a single installer responsible for these CRDs, then run the command again.")
-	} else {
-		message.WriteString("Radius does not take over CRDs that belong to something else. Remove the gatewayAPI.manageCRDs=true Contour value so that Contour uses the existing CRDs.")
+	message.WriteString("Radius does not take over CRDs that belong to something else")
+	switch {
+	case len(contourCRDs) > 0:
+		message.WriteString(", and it does not stop managing the CRDs that Contour installed because Helm would delete them. Make a single installer responsible for these CRDs, then run the command again.")
+	case manageCRDs && c.manageCRDsFromValues:
+		message.WriteString(". Remove the gatewayAPI.manageCRDs=true Contour value so that Contour uses the existing CRDs.")
+	case !manageCRDs:
+		message.WriteString(". The Contour chart includes these CRDs even though gatewayAPI.manageCRDs is false, so use a Contour chart that does not.")
+	default:
+		message.WriteString(".")
 	}
 
 	return clierrors.Message("%s", message.String())
 }
 
-func (c gatewayAPICRDCheck) deleteError() error {
-	var message strings.Builder
-	fmt.Fprintf(&message, "Radius stopped before changing the cluster because Contour release %q in namespace %q installed these Gateway API CRDs:\n", c.releaseName, c.releaseNamespace)
-	for _, name := range c.releaseCRDs {
-		fmt.Fprintf(&message, "  - %s\n", name)
-	}
-	message.WriteString("Setting gatewayAPI.manageCRDs to false would make Helm delete these CRDs, and every Gateway API resource in the cluster with them. Remove the gatewayAPI.manageCRDs=false Contour value.")
-
-	return clierrors.Message("%s", message.String())
-}
-
-func (c gatewayAPICRDCheck) requirementsError(unmet []unmetRequirement, args contourArgs) error {
+func (c gatewayAPICRDCheck) requirementsError(unmet []unmetRequirement, args contourArgs, manageCRDs bool) error {
 	var message strings.Builder
 	fmt.Fprintf(&message, "Radius stopped before changing the cluster because Contour %s cannot use the Gateway API CRDs in this cluster. Contour needs these resource versions:\n", c.contourVersion)
 	var features, kinds []string
 	for _, requirement := range unmet {
 		status := "the CRD is not installed"
-		if requirement.installed != nil {
-			status = "the installed CRD serves no versions"
-			if served := requirement.installed.servedVersions; len(served) > 0 {
-				status = "the installed CRD serves " + strings.Join(served, ", ")
+		if requirement.definition != nil {
+			subject := "the installed CRD"
+			if requirement.fromChart {
+				subject = "the CRD that the Contour chart installs"
+			}
+			status = subject + " serves no versions"
+			if served := requirement.definition.servedVersions; len(served) > 0 {
+				status = subject + " serves " + strings.Join(served, ", ")
 			}
 		}
 		fmt.Fprintf(&message, "  - %s %s (%s)\n", requirement.crd, requirement.version, status)
@@ -396,26 +790,35 @@ func (c gatewayAPICRDCheck) requirementsError(unmet []unmetRequirement, args con
 		}
 	}
 
-	// When Radius chose not to install the CRDs, other CRDs are in the way. Otherwise the Contour values chose it.
 	owners := c.foreignOwners()
-	if c.manageCRDsFromValues {
+	switch {
+	case manageCRDs:
+		message.WriteString("The Contour chart does not install Gateway API CRDs that serve all of these versions.\n")
+	case c.manageCRDsFromValues:
 		message.WriteString("Contour does not install Gateway API CRDs because the Contour values set gatewayAPI.manageCRDs to false.\n")
 		if len(owners) > 0 {
 			fmt.Fprintf(&message, "The Gateway API CRDs in this cluster belong to %s.\n", joinWords(owners))
 		}
-	} else {
+	default:
+		// Radius chose to reuse the Gateway API CRDs because some of them belong to something else.
 		fmt.Fprintf(&message, "The Gateway API CRDs in this cluster belong to %s, so Contour uses them instead of installing its own.\n", joinWords(owners))
 	}
 
 	var remedies []string
-	if c.manageCRDsFromValues && c.defaultManageCRDs() {
-		remedies = append(remedies, "Remove the Contour value that sets gatewayAPI.manageCRDs to false, so that Contour installs the Gateway API CRDs that it needs.")
+	switch {
+	case manageCRDs:
+		remedies = append(remedies, "Use a Contour chart that installs Gateway API CRDs that serve these versions.")
+	case c.manageCRDsFromValues && c.canManageCRDs(args.disabledFeatures()):
+		remedies = append(remedies,
+			"Remove the Contour value that sets gatewayAPI.manageCRDs to false, so that Contour installs the Gateway API CRDs that it needs.",
+			"Install Gateway API CRDs that serve these versions.")
+	default:
+		remedies = append(remedies, "Install Gateway API CRDs that serve these versions.")
 	}
-	remedies = append(remedies, "Install Gateway API CRDs that serve these versions.")
 	if len(features) == len(unmet) {
 		remedies = append(remedies, c.turnOffFeaturesRemedy(features, kinds, args))
 	}
-	if !c.manageCRDsFromValues {
+	if !manageCRDs && !c.manageCRDsFromValues {
 		remedies = append(remedies, `Use a cluster without preinstalled Gateway API CRDs. For example, create the k3d cluster with --k3s-arg "--disable=traefik@server:*".`)
 	}
 
@@ -425,6 +828,12 @@ func (c gatewayAPICRDCheck) requirementsError(unmet []unmetRequirement, args con
 	}
 
 	return clierrors.Message("%s", message.String())
+}
+
+// canManageCRDs reports whether Contour could install the Gateway API CRDs that it needs if gatewayAPI.manageCRDs
+// were true: the chart would take over no CRDs, and its CRDs would meet the requirements.
+func (c gatewayAPICRDCheck) canManageCRDs(disabledFeatures []string) bool {
+	return len(c.foreignCRDs(c.manageableCRDs)) == 0 && len(c.unmetRequirements(c.manageableCRDs, disabledFeatures)) == 0
 }
 
 // turnOffFeaturesRemedy explains how to turn off the Contour features that use resources without a matching CRD.
@@ -442,7 +851,7 @@ func (c gatewayAPICRDCheck) turnOffFeaturesRemedy(features []string, kinds []str
 		return remedy.String()
 	}
 
-	fmt.Fprintf(&remedy, " Add this flag to the %s command:\n      --contour-set '%s'", c.command, args.withDisabledFeatures(features))
+	fmt.Fprintf(&remedy, " Add this flag to the %s command:\n      --contour-set %s", c.command, QuoteFlagValue(args.withDisabledFeatures(features)))
 	if c.resetValues {
 		remedy.WriteString("\n    This upgrade uses --reset-values, which discards the values stored on the Contour release. If you set this value when you installed Radius, you can instead run the upgrade without --reset-values.")
 	}
@@ -453,11 +862,15 @@ func (c gatewayAPICRDCheck) turnOffFeaturesRemedy(features []string, kinds []str
 	return remedy.String()
 }
 
-// foreignOwners describes who owns the Gateway API CRDs that do not belong to the Contour release.
+// foreignOwners describes who owns the Gateway API CRDs that the change involves and that do not belong to the Contour
+// release.
 func (c gatewayAPICRDCheck) foreignOwners() []string {
 	var owners []string
-	for _, crd := range c.crds {
-		if owner := crd.owner(); !crd.ownedBy(c.releaseName, c.releaseNamespace) && !slices.Contains(owners, owner) {
+	for _, crd := range c.clusterCRDs {
+		if !crd.isGatewayAPI() || crd.ownedBy(c.releaseName, c.releaseNamespace) {
+			continue
+		}
+		if owner := crd.owner(); !slices.Contains(owners, owner) {
 			owners = append(owners, owner)
 		}
 	}
@@ -543,16 +956,22 @@ func (a contourArgs) withDisabledFeatures(features []string) string {
 // setListItemEscaper escapes the characters that end an item of a list in --set syntax.
 var setListItemEscaper = strings.NewReplacer(`\`, `\\`, `,`, `\,`, `}`, `\}`)
 
-// effectiveContourValues returns the values that Helm renders the chart with. reusedValues are the values stored on
-// the existing release when Helm reuses them, or nil.
-func effectiveContourValues(helmChart *chart.Chart, values map[string]any, reusedValues map[string]any) (map[string]any, error) {
+// helmValues returns the values that Helm renders the chart with on top of the chart's defaults: the values of this
+// invocation, merged over the values stored on the release when Helm reuses them. reusedValues is nil otherwise.
+func helmValues(values map[string]any, reusedValues map[string]any) map[string]any {
 	merged := copyValues(values)
 	if reusedValues != nil {
 		// Helm's upgrade merges the stored values beneath the new values this way for ResetThenReuseValues.
 		merged = util.CoalesceTables(merged, copyValues(reusedValues))
 	}
 
-	return util.CoalesceValues(helmChart, merged)
+	return merged
+}
+
+// effectiveContourValues returns the values that the chart's templates see, including the chart's defaults.
+// reusedValues are the values stored on the existing release when Helm reuses them, or nil.
+func effectiveContourValues(helmChart *chart.Chart, values map[string]any, reusedValues map[string]any) (map[string]any, error) {
+	return util.CoalesceValues(helmChart, helmValues(values, reusedValues))
 }
 
 // copyValues deep-copies values, because Helm's CoalesceTables modifies both of its arguments.
@@ -606,6 +1025,21 @@ func setDefaultValue(values map[string]any, value any, path ...string) bool {
 
 	parent[path[len(path)-1]] = value
 	return true
+}
+
+// setValue sets the value at path, replacing any value on the way that is not a table.
+func setValue(values map[string]any, value any, path ...string) {
+	parent := values
+	for _, key := range path[:len(path)-1] {
+		child, ok := parent[key].(map[string]any)
+		if !ok {
+			child = map[string]any{}
+			parent[key] = child
+		}
+		parent = child
+	}
+
+	parent[path[len(path)-1]] = value
 }
 
 // nestedValue returns the value at path, or nil when it is not set.

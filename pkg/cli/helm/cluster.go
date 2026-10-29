@@ -21,7 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"sync"
 
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
@@ -205,6 +207,10 @@ type Interface interface {
 	// UpgradeRadius upgrades the Radius installation on the cluster, based on the specified Kubernetes context.
 	UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
+	// CheckContourUpgrade runs the Contour checks of UpgradeRadius without changing the cluster. It reports whether
+	// UpgradeRadius would upgrade Contour, which it does only when Contour is installed and not disabled.
+	CheckContourUpgrade(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error)
+
 	// CheckRadiusInstall checks whether Radius is installed on the cluster, based on the specified Kubernetes context.
 	CheckRadiusInstall(kubeContext string) (InstallState, error)
 
@@ -227,7 +233,11 @@ type Impl struct {
 
 	configureDefaultContourGateway func(ctx context.Context, kubeContext string) error
 	removeDefaultContourGateway    func(ctx context.Context, kubeContext string) error
-	listGatewayAPICRDs             func(ctx context.Context, kubeContext string) ([]gatewayAPICRD, error)
+	getCRDs                        func(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error)
+
+	// contourCharts are the Contour charts that the Impl loaded, by source.
+	contourChartsLock sync.Mutex
+	contourCharts     map[contourChartSource]*chart.Chart
 }
 
 var _ Interface = &Impl{}
@@ -248,15 +258,18 @@ func (i *Impl) removeContourGateway(ctx context.Context, kubeContext string) err
 	return remove(ctx, kubeContext)
 }
 
-func (i *Impl) gatewayAPICRDs(ctx context.Context, kubeContext string) ([]gatewayAPICRD, error) {
-	list := i.listGatewayAPICRDs
-	if list == nil {
-		list = listClusterGatewayAPICRDs
+// crds reads the CRDs with the given names from the cluster, skipping the ones that do not exist.
+func (i *Impl) crds(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error) {
+	get := i.getCRDs
+	if get == nil {
+		get = getClusterCRDs
 	}
-	return list(ctx, kubeContext)
+	return get(ctx, kubeContext, names)
 }
 
-// InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options.
+// InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options. It prepares
+// and checks both charts before it changes the cluster, and then installs Contour, Radius, and the Radius Contour
+// Gateway in that order.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
@@ -280,6 +293,20 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
+	// Install Contour before Radius. The Contour checks then see the cluster seconds before Contour is installed
+	// rather than after the wait for Radius, during which a k3s cluster that just started can install the Gateway API
+	// CRDs of Traefik. If the Radius install fails afterwards, running the command again installs Radius and leaves the
+	// installed Contour release unchanged.
+	if clusterOptions.Contour.Disabled {
+		output.LogInfo("Contour is disabled, skipping installation")
+	} else if contour != nil {
+		output.LogInfo("Installing Contour...")
+		err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, clusterOptions.Contour.ChartOptions, contour.values)
+		if err != nil {
+			return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
+		}
+	}
+
 	// Install Radius
 	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
 	if err != nil {
@@ -287,17 +314,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	if clusterOptions.Contour.Disabled {
-		output.LogInfo("Contour is disabled, skipping installation")
 		return nil
-	}
-
-	// Install Contour
-	if contour != nil {
-		output.LogInfo("Installing Contour...")
-		err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, clusterOptions.Contour.ChartOptions, contour.values)
-		if err != nil {
-			return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
-		}
 	}
 
 	output.LogInfo("Configuring Radius Contour Gateway...")
@@ -453,6 +470,21 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	return nil
+}
+
+// CheckContourUpgrade runs the Contour checks of UpgradeRadius without changing the cluster. It reports whether
+// UpgradeRadius would upgrade Contour.
+func (i *Impl) CheckContourUpgrade(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
+	if clusterOptions.Contour.Disabled {
+		return false, nil
+	}
+
+	contour, err := i.planContourUpgrade(ctx, NewHelmAction(i.Helm), clusterOptions.Contour, kubeContext, !clusterOptions.ResetValues)
+	if err != nil {
+		return false, err
+	}
+
+	return contour != nil, nil
 }
 
 // GetLatestRadiusVersion gets the latest available version of the Radius chart from the Helm repository.

@@ -43,7 +43,7 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	impl := &Impl{
 		Helm:                           mockHelmClient,
 		configureDefaultContourGateway: gatewayCalls.configure,
-		listGatewayAPICRDs:             staticGatewayAPICRDs(),
+		getCRDs:                        staticCRDs(),
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -337,7 +337,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	impl := &Impl{
 		Helm:                           mockHelmClient,
 		configureDefaultContourGateway: gatewayCalls.configure,
-		listGatewayAPICRDs:             staticGatewayAPICRDs(contourBundleCRDs()...),
+		getCRDs:                        staticCRDs(contourBundleCRDs()...),
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -377,10 +377,13 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 
 	// Contour is installed, and its release installed the Gateway API CRDs.
 	contourRelease := newRel(options.Contour.ReleaseName, "0.1.0")
-	contourRelease.Manifest = gatewayAPICRDManifest(contourBundleCRDNames()...)
+	contourRelease.Manifest = crdManifest(contourBundleCRDs()...)
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(contourRelease, nil).Times(1)
+	mockHelmClient.EXPECT().
+		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
+		Return([]*releasev1.Release{contourRelease}, nil).Times(1)
 
 	// Mock Helm Pull for Contour
 	mockHelmClient.EXPECT().
@@ -615,7 +618,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient, listGatewayAPICRDs: staticGatewayAPICRDs()}
+	impl := &Impl{Helm: mockHelmClient, getCRDs: staticCRDs()}
 	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -653,6 +656,9 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(contourRelease, nil).Times(1)
+	mockHelmClient.EXPECT().
+		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
+		Return([]*releasev1.Release{contourRelease}, nil).Times(1)
 
 	// Mock Helm Pull for Contour
 	mockHelmClient.EXPECT().

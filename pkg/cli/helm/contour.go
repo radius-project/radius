@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/output"
 	helm "helm.sh/helm/v4/pkg/action"
@@ -51,7 +50,8 @@ type contourPlan struct {
 	values map[string]any
 }
 
-// getContourRelease returns the Contour release, or nil when Contour is not installed.
+// getContourRelease returns the latest revision of the Contour release, or nil when Contour is not installed. Like
+// ApplyHelmChart, it treats the release as installed whatever the status of that revision.
 func (i *Impl) getContourRelease(options ContourChartOptions, kubeContext string) (*releasev1.Release, error) {
 	flags := genericclioptions.ConfigFlags{
 		Namespace: &options.Namespace,
@@ -73,6 +73,26 @@ func (i *Impl) getContourRelease(options ContourChartOptions, kubeContext string
 	return release, nil
 }
 
+// getContourBaseline returns the revision of the installed Contour release that a Helm upgrade starts from.
+func (i *Impl) getContourBaseline(options ContourChartOptions, kubeContext string) (*releasev1.Release, error) {
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &options.Namespace,
+		Context:   &kubeContext,
+	}
+
+	helmConf, err := initHelmConfig(&flags)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Helm config, err: %w", err)
+	}
+
+	history, err := i.Helm.RunHelmHistory(helmConf, options.ReleaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the history of the Contour release, err: %w", err)
+	}
+
+	return contourUpgradeBaseline(history, options.ReleaseName, options.Namespace)
+}
+
 // planContourInstall plans the Contour install for InstallRadius. It returns nil when Contour is already installed and
 // options.Reinstall is false, because ApplyHelmChart leaves such a release unchanged.
 func (i *Impl) planContourInstall(ctx context.Context, helmAction HelmAction, options ContourChartOptions, kubeContext string) (*contourPlan, error) {
@@ -81,15 +101,24 @@ func (i *Impl) planContourInstall(ctx context.Context, helmAction HelmAction, op
 		return nil, fmt.Errorf("failed to check Contour installation status: %w", err)
 	}
 
-	if existing != nil && !options.Reinstall {
+	if existing == nil {
+		return i.planContour(ctx, helmAction, options, kubeContext, installCommand, nil, false)
+	}
+
+	if !options.Reinstall {
 		if len(options.SetArgs) > 0 || len(options.SetFileArgs) > 0 {
 			output.LogInfo("Contour is already installed, so Radius does not change it or apply the Contour values.")
 		}
 		return nil, nil
 	}
 
-	// ApplyHelmChart reinstalls an existing release with Helm's ResetThenReuseValues semantics.
-	return i.planContour(ctx, helmAction, options, kubeContext, installCommand, existing, true)
+	baseline, err := i.getContourBaseline(options, kubeContext)
+	if err != nil {
+		return nil, err
+	}
+
+	// ApplyHelmChart upgrades an existing release with Helm's ResetThenReuseValues semantics.
+	return i.planContour(ctx, helmAction, options, kubeContext, installCommand, baseline, true)
 }
 
 // planContourUpgrade plans the Contour upgrade for UpgradeRadius. It returns nil when Contour is not installed, because
@@ -107,15 +136,21 @@ func (i *Impl) planContourUpgrade(ctx context.Context, helmAction HelmAction, op
 		return nil, nil
 	}
 
-	return i.planContour(ctx, helmAction, options, kubeContext, upgradeCommand, existing, reuseValues)
+	baseline, err := i.getContourBaseline(options, kubeContext)
+	if err != nil {
+		return nil, err
+	}
+
+	return i.planContour(ctx, helmAction, options, kubeContext, upgradeCommand, baseline, reuseValues)
 }
 
-// planContour prepares the Contour chart and its values, and checks that installing or upgrading Contour neither takes
-// over nor deletes Gateway API CRDs and that Contour can use the CRDs it does not install. command is the rad command
-// that the errors tell the user to run again. existing is the Contour release to upgrade, or nil to install Contour.
-// reuseValues is true when Helm merges the values stored on existing beneath the new values.
-func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options ContourChartOptions, kubeContext string, command string, existing *releasev1.Release, reuseValues bool) (*contourPlan, error) {
-	helmChart, helmConf, values, err := prepareContourChart(ctx, helmAction, options, kubeContext)
+// planContour prepares the Contour chart and its values, and checks that installing or upgrading Contour neither
+// deletes CRDs nor takes over Gateway API CRDs, and that Contour can use the Gateway API CRDs afterwards. command is
+// the rad command that the errors tell the user to run again. baseline is the release revision that the upgrade
+// starts from, or nil to install Contour. reuseValues is true when Helm merges the values stored on baseline beneath
+// the new values.
+func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options ContourChartOptions, kubeContext string, command string, baseline *releasev1.Release, reuseValues bool) (*contourPlan, error) {
+	helmChart, helmConf, values, err := prepareContourChart(ctx, &contourChartCache{HelmAction: helmAction, impl: i}, options, kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
 	}
@@ -123,44 +158,15 @@ func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options C
 		return nil, errors.New("failed to prepare Contour Helm chart, err: the chart has no metadata")
 	}
 
-	crds, err := i.gatewayAPICRDs(ctx, kubeContext)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list Gateway API CRDs, err: %w", err)
-	}
-
 	check := gatewayAPICRDCheck{
 		releaseName:      options.ReleaseName,
 		releaseNamespace: options.Namespace,
-		contourVersion:   strings.TrimPrefix(helmChart.Metadata.AppVersion, "v"),
-		crds:             crds,
 		command:          command,
-		resetValues:      existing != nil && !reuseValues,
+		getCRDs: func(ctx context.Context, names []string) ([]crdInfo, error) {
+			return i.crds(ctx, kubeContext, names)
+		},
 	}
-	if support, found := contourGatewayAPISupportByVersion[check.contourVersion]; found {
-		check.support = &support
-	}
-
-	var reusedValues map[string]any
-	if existing != nil {
-		check.releaseCRDs, err = gatewayAPICRDsInManifest(existing.Manifest)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read the Contour release manifest, err: %w", err)
-		}
-
-		if reuseValues {
-			reusedValues = existing.Config
-		}
-	}
-
-	// The user's --contour-set and --contour-set-file values take precedence over this default.
-	check.setManageCRDsDefault(values)
-
-	effectiveValues, err := effectiveContourValues(helmChart, values, reusedValues)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compute Contour values, err: %w", err)
-	}
-
-	warning, err := check.validate(effectiveValues)
+	warning, err := check.run(ctx, helmChart, values, baseline, reuseValues)
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +175,58 @@ func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options C
 	}
 
 	return &contourPlan{chart: helmChart, conf: helmConf, values: values}, nil
+}
+
+// contourChartSource identifies where a Contour chart comes from.
+type contourChartSource struct {
+	path    string
+	repo    string
+	version string
+	name    string
+}
+
+// contourChartCache loads each Contour chart once for an Impl, so that rad upgrade kubernetes downloads the chart once
+// for its preflight check and for the upgrade.
+type contourChartCache struct {
+	HelmAction
+	impl *Impl
+}
+
+func (c *contourChartCache) HelmChartFromContainerRegistry(ctx context.Context, version string, config *helm.Configuration, repoURL string, releaseName string) (*chart.Chart, error) {
+	return c.impl.cachedContourChart(contourChartSource{repo: repoURL, version: version, name: releaseName}, func() (*chart.Chart, error) {
+		return c.HelmAction.HelmChartFromContainerRegistry(ctx, version, config, repoURL, releaseName)
+	})
+}
+
+func (c *contourChartCache) LoadChart(chartPath string) (*chart.Chart, error) {
+	return c.impl.cachedContourChart(contourChartSource{path: chartPath}, func() (*chart.Chart, error) {
+		return c.HelmAction.LoadChart(chartPath)
+	})
+}
+
+// cachedContourChart returns a copy of the chart from source, and loads the chart only the first time. Callers get a
+// copy because Helm changes the chart that it installs.
+func (i *Impl) cachedContourChart(source contourChartSource, load func() (*chart.Chart, error)) (*chart.Chart, error) {
+	i.contourChartsLock.Lock()
+	defer i.contourChartsLock.Unlock()
+
+	loaded, found := i.contourCharts[source]
+	if !found {
+		var err error
+		loaded, err = load()
+		if err != nil {
+			return nil, err
+		}
+		if i.contourCharts == nil {
+			i.contourCharts = map[contourChartSource]*chart.Chart{}
+		}
+		i.contourCharts[source] = loaded
+	}
+	if loaded == nil {
+		return nil, nil
+	}
+
+	return cloneChart(loaded), nil
 }
 
 // prepareContourChart prepares the Helm chart for Contour and returns the user-supplied

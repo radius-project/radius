@@ -40,6 +40,45 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
+// CheckContourUpgrade mocks base method.
+func (m *MockInterface) CheckContourUpgrade(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckContourUpgrade", ctx, clusterOptions, kubeContext)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckContourUpgrade indicates an expected call of CheckContourUpgrade.
+func (mr *MockInterfaceMockRecorder) CheckContourUpgrade(ctx, clusterOptions, kubeContext any) *MockInterfaceCheckContourUpgradeCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckContourUpgrade", reflect.TypeOf((*MockInterface)(nil).CheckContourUpgrade), ctx, clusterOptions, kubeContext)
+	return &MockInterfaceCheckContourUpgradeCall{Call: call}
+}
+
+// MockInterfaceCheckContourUpgradeCall wrap *gomock.Call
+type MockInterfaceCheckContourUpgradeCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceCheckContourUpgradeCall) Return(arg0 bool, arg1 error) *MockInterfaceCheckContourUpgradeCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceCheckContourUpgradeCall) Do(f func(context.Context, ClusterOptions, string) (bool, error)) *MockInterfaceCheckContourUpgradeCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceCheckContourUpgradeCall) DoAndReturn(f func(context.Context, ClusterOptions, string) (bool, error)) *MockInterfaceCheckContourUpgradeCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CheckRadiusInstall mocks base method.
 func (m *MockInterface) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	m.ctrl.T.Helper()
