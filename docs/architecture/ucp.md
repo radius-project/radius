@@ -64,6 +64,17 @@ For UCP-native or ARM-like targets, forwarding can be relatively direct. For
 non-ARM targets such as AWS, UCP also performs protocol adaptation rather than
 simple proxying.
 
+### Internal mTLS endpoint
+
+The Kubernetes APIService endpoint (Service port 443 to container port 9443,
+using the `ucp-cert` certificate) is unchanged by internal authorization. When
+the authorization mode is `dryRun` or `enforce`, UCP also serves the same routes
+on a separate internal port, 9444 (Service port name `internal`, config
+`server.internalPort`), for traffic from other Radius components. That endpoint
+uses `mtls.ListenAndServe` with the mounted `ucp-mtls` certificate, accepts any
+Radius component identity, and reloads certificates without a restart. See
+[Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization-mtls).
+
 ## Invariants And Constraints
 
 - UCP should stay focused on routing, identity of targets, and translation.

@@ -9,3 +9,7 @@
 # Keep entries narrow (match authzCode, authzAction, and authzTarget) and remove
 # them when the tracking issue is fixed. Example:
 #   radius-project/radius#12345 "authzCode":[[:space:]]*"AuthorizationFailed".*"authzAction":[[:space:]]*"Applications[.]Core/containers/write".*"authzTarget":[[:space:]]*"/planes/radius/local/resourceGroups/test"
+
+# UCP still calls applications-rp and dynamic-rp over plain HTTP. In dryRun, A4 logs each
+# plain connection as a would-deny. Removed by A5 (clients present certificates).
+radius-project/radius#13230 "authzReason":[[:space:]]*"PeerCertificateInvalid: no client certificate: plain HTTP connection".*"authzCode":[[:space:]]*"PeerCertificateInvalid"

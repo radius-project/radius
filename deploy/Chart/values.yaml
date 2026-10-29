@@ -107,13 +107,15 @@ global:
   #   enabled=true                -> enforce (denials will be rejected)
   # Setting both enabled=true and dryRun=true fails installation: the dry run is a
   # preflight check for an installation that is not yet enforcing.
-  # NOTE: these settings are reserved. Services read and log the mode, but no
-  # authorization checks are implemented yet, so no mode changes runtime behavior.
+  # In dryRun and enforce, ucp, applications-rp, and dynamic-rp mount their "<component>-mtls"
+  # Secret and serve mTLS (UCP on a separate internal port 9444). Probes and metrics stay plain.
   # Example: rad install kubernetes --set global.rbac.dryRun=true
   rbac:
-    # Enforce internal component authorization (reserved; no checks yet).
+    # Enforce internal component authorization: require a client certificate from the Radius CA
+    # and reject unauthorized callers. Until clients present certificates, this breaks UCP->RP calls.
     enabled: false
-    # Log what authorization checks would deny without rejecting requests (reserved; no checks yet).
+    # Log what authorization checks would deny without rejecting requests. Servers accept both
+    # TLS and plain HTTP, and need the mounted certificate files.
     dryRun: false
     # Service certificates for mTLS between Radius components. Rendered only when the
     # authorization mode is not off, and require cert-manager (rad install installs it).

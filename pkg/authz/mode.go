@@ -69,6 +69,14 @@ func (m *Mode) UnmarshalYAML(value *yaml.Node) error {
 type Options struct {
 	// Mode is the authorization mode. Defaults to ModeOff when unset.
 	Mode Mode `yaml:"mode,omitempty"`
+
+	// CertificateDirectory is the directory that holds the component's mTLS certificate
+	// (tls.crt, tls.key, and ca.crt). It is required when the mode is not off.
+	CertificateDirectory string `yaml:"certificateDirectory,omitempty"`
+
+	// Namespace is the Radius namespace used to check peer certificate identities.
+	// It is required when the mode is not off.
+	Namespace string `yaml:"namespace,omitempty"`
 }
 
 // EffectiveMode returns the configured mode, or ModeOff when it is unset.

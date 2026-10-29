@@ -254,6 +254,7 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
+        {{- with include "radius.authz.mtls.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token
           mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
@@ -365,6 +366,7 @@ spec:
         - name: config-volume
           configMap:
             name: dynamic-rp-config
+        {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "dynamic-rp") | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token
           projected:

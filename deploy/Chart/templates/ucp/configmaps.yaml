@@ -17,6 +17,9 @@ data:
       port: 9443
       pathBase: /apis/api.ucp.dev/v1alpha3
       tlsCertificateDirectory: /var/tls/cert
+      {{- if ne (include "radius.authz.mode" .) "off" }}
+      internalPort: 9444
+      {{- end }}
     databaseProvider:
     {{- if .Values.database.enabled }}
       provider: "postgresql"
@@ -84,11 +87,7 @@ data:
       level: "info"
       json: true
 
-    {{- $authzMode := include "radius.authz.mode" . }}
-    {{- if ne $authzMode "off" }}
-    authorization:
-      mode: {{ $authzMode | quote }}
-    {{- end }}
+    {{- with include "radius.authz.serverConfig" . | trim }}{{ . | nindent 4 }}{{- end }}
 
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:

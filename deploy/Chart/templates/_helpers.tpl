@@ -152,3 +152,47 @@ enforce
 off
 {{- end -}}
 {{- end -}}
+
+{{/*
+Path where a component's mTLS Secret (<component>-mtls) is mounted.
+*/}}
+{{- define "radius.authz.mtls.mountPath" -}}
+/var/run/radius/mtls
+{{- end -}}
+
+{{/*
+Renders the authorization config block for a server component. Renders nothing when
+the authorization mode is off, so a default install is unchanged.
+*/}}
+{{- define "radius.authz.serverConfig" -}}
+{{- $mode := include "radius.authz.mode" . -}}
+{{- if ne $mode "off" }}
+authorization:
+  mode: {{ $mode | quote }}
+  certificateDirectory: {{ include "radius.authz.mtls.mountPath" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders the mTLS volume mount for a server container when the authorization mode is not off.
+*/}}
+{{- define "radius.authz.mtls.volumeMount" -}}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+- name: mtls
+  mountPath: {{ include "radius.authz.mtls.mountPath" . }}
+  readOnly: true
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders the mTLS Secret volume for a component when the authorization mode is not off.
+Call with (dict "root" $ "component" "<component>").
+*/}}
+{{- define "radius.authz.mtls.volume" -}}
+{{- if ne (include "radius.authz.mode" .root) "off" }}
+- name: mtls
+  secret:
+    secretName: {{ .component }}-mtls
+{{- end }}
+{{- end -}}
