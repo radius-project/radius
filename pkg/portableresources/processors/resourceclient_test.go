@@ -558,6 +558,75 @@ func Test_Delete_UCP(t *testing.T) {
 	})
 }
 
+func Test_GetProperties(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(AWSResourceID, func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			handleJSONResponse(t, map[string]any{
+				"id":         AWSResourceID,
+				"name":       "test-stream",
+				"type":       "AWS.Kinesis/Streams",
+				"properties": map[string]any{"Arn": "arn:aws:kinesis:us-east-1:0000:stream/test-stream", "Name": "test-stream"},
+			}, 200)(w, r)
+		})
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		connection, err := sdk.NewDirectConnection(server.URL)
+		require.NoError(t, err)
+
+		c := NewResourceClient(nil, connection, nil)
+
+		properties, err := c.GetProperties(t.Context(), AWSResourceID)
+		require.NoError(t, err)
+		require.Equal(t, map[string]any{"Arn": "arn:aws:kinesis:us-east-1:0000:stream/test-stream", "Name": "test-stream"}, properties)
+	})
+
+	t.Run("failure - resource not found", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(AWSResourceID, handleNotFound(t))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		connection, err := sdk.NewDirectConnection(server.URL)
+		require.NoError(t, err)
+
+		c := NewResourceClient(nil, connection, nil)
+
+		properties, err := c.GetProperties(t.Context(), AWSResourceID)
+		require.Nil(t, properties)
+		require.IsType(t, &ResourceError{}, err)
+		require.Contains(t, err.Error(), AWSResourceID)
+	})
+
+	t.Run("failure - not a UCP resource", func(t *testing.T) {
+		c := NewResourceClient(nil, nil, nil)
+
+		properties, err := c.GetProperties(t.Context(), "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/account")
+		require.Nil(t, properties)
+		require.EqualError(t, err, "resource \"/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/account\" is not a UCP resource")
+	})
+
+	t.Run("failure - connection has no endpoint", func(t *testing.T) {
+		c := NewResourceClient(nil, noEndpointConnection{}, nil)
+
+		properties, err := c.GetProperties(t.Context(), AWSResourceID)
+		require.Nil(t, properties)
+		require.ErrorContains(t, err, "missing Azure Resource Manager configuration")
+	})
+
+	t.Run("failure - invalid resource ID", func(t *testing.T) {
+		c := NewResourceClient(nil, nil, nil)
+
+		properties, err := c.GetProperties(t.Context(), "invalid")
+		require.Nil(t, properties)
+		require.Error(t, err)
+	})
+}
+
 func newArmOptions(url string) *armauth.ArmConfig {
 	return &armauth.ArmConfig{
 		ClientOptions: clientv2.Options{
@@ -629,3 +698,10 @@ type wrapper struct {
 func (w *wrapper) Do(req *http.Request) (*http.Response, error) {
 	return w.Client.Do(req)
 }
+
+// noEndpointConnection is a UCP connection with no endpoint, which the generated UCP clients reject.
+type noEndpointConnection struct{}
+
+func (noEndpointConnection) Client() *http.Client { return http.DefaultClient }
+
+func (noEndpointConnection) Endpoint() string { return "" }
