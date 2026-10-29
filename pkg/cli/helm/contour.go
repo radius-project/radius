@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -48,6 +49,9 @@ type contourPlan struct {
 	chart  *chart.Chart
 	conf   *helm.Configuration
 	values map[string]any
+
+	// upgrade is true when the plan upgrades an installed Contour release.
+	upgrade bool
 }
 
 // getContourRelease returns the latest revision of the Contour release, or nil when Contour is not installed. Like
@@ -93,8 +97,9 @@ func (i *Impl) getContourBaseline(options ContourChartOptions, kubeContext strin
 	return contourUpgradeBaseline(history, options.ReleaseName, options.Namespace)
 }
 
-// planContourInstall plans the Contour install for InstallRadius. It returns nil when Contour is already installed and
-// options.Reinstall is false, because ApplyHelmChart leaves such a release unchanged.
+// planContourInstall plans the Contour install for InstallRadius. It returns nil when a working Contour release is
+// already installed and options.Reinstall is false, because ApplyHelmChart leaves such a release unchanged. It plans
+// an upgrade of a release whose latest revision failed, which repairs it.
 func (i *Impl) planContourInstall(ctx context.Context, helmAction HelmAction, options ContourChartOptions, kubeContext string) (*contourPlan, error) {
 	existing, err := i.getContourRelease(options, kubeContext)
 	if err != nil {
@@ -105,7 +110,13 @@ func (i *Impl) planContourInstall(ctx context.Context, helmAction HelmAction, op
 		return i.planContour(ctx, helmAction, options, kubeContext, installCommand, nil, false)
 	}
 
-	if !options.Reinstall {
+	switch status := revisionStatus(existing); {
+	case options.Reinstall:
+	case status == releasecommon.StatusFailed:
+		output.LogInfo("The Contour release failed, so Radius upgrades it.")
+	case status.IsPending():
+		// getContourBaseline explains how to recover the release.
+	default:
 		if len(options.SetArgs) > 0 || len(options.SetFileArgs) > 0 {
 			output.LogInfo("Contour is already installed, so Radius does not change it or apply the Contour values.")
 		}
@@ -158,12 +169,16 @@ func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options C
 		return nil, errors.New("failed to prepare Contour Helm chart, err: the chart has no metadata")
 	}
 
+	if err := i.waitForK3sGatewayAPICRDs(ctx, kubeContext); err != nil {
+		return nil, err
+	}
+
 	check := gatewayAPICRDCheck{
 		releaseName:      options.ReleaseName,
 		releaseNamespace: options.Namespace,
 		command:          command,
 		getCRDs: func(ctx context.Context, names []string) ([]crdInfo, error) {
-			return i.crds(ctx, kubeContext, names)
+			return i.cluster().CRDs(ctx, kubeContext, names)
 		},
 	}
 	warning, err := check.run(ctx, helmChart, values, baseline, reuseValues)
@@ -174,7 +189,7 @@ func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options C
 		output.LogInfo("Warning: %s", warning)
 	}
 
-	return &contourPlan{chart: helmChart, conf: helmConf, values: values}, nil
+	return &contourPlan{chart: helmChart, conf: helmConf, values: values, upgrade: baseline != nil}, nil
 }
 
 // contourChartSource identifies where a Contour chart comes from.

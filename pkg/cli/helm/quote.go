@@ -18,11 +18,13 @@ package helm
 
 import "strings"
 
-// QuoteFlagValue quotes a flag value for a command that Radius suggests. Double quotes work the same in bash, zsh,
-// PowerShell, and cmd.exe for values without the characters that those shells treat specially inside double quotes.
-// Other values get single quotes, which only POSIX shells understand.
+// QuoteFlagValue quotes a flag value for a command that Radius suggests. It uses double quotes, which bash, zsh,
+// PowerShell, and cmd.exe all remove without changing the value, unless the value has a character that one of them
+// treats specially inside double quotes. bash changes a backslash only before $, `, ", \, or a newline, so a value
+// such as C:\charts\contour keeps its double quotes. Other values get single quotes, which only POSIX shells
+// understand.
 func QuoteFlagValue(value string) string {
-	if !strings.ContainsAny(value, "$`\"!\\") {
+	if !strings.ContainsAny(value, "$`\"!\n") && !strings.Contains(value, `\\`) && !strings.HasSuffix(value, `\`) {
 		return `"` + value + `"`
 	}
 

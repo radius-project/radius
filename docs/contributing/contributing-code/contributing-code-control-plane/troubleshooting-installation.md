@@ -62,3 +62,30 @@ rad install kubernetes --reinstall --timeout 30m
 ```
 
 If the install still times out, check whether the pods are actually healthy using the steps above. Pods that are `Running` and `Ready` while the install reports a resource as `InProgress` point at the readiness watcher rather than your cluster — see [radius-project/radius#12975](https://github.com/radius-project/radius/issues/12975).
+
+## Contour cannot use the Gateway API CRDs in the cluster
+
+`rad install kubernetes` also installs Contour, which needs the Gateway API CRDs. When the cluster already has Gateway API CRDs from another installer, such as the Traefik chart that k3s and k3d install by default, Radius reuses them instead of letting Contour take them over. Before it changes the cluster, Radius checks that they serve the resource versions that Contour watches. The CRDs of k3s Traefik do not, so the command stops with a message like this one, and nothing is installed:
+
+```text
+Radius stopped before changing the cluster because Contour 1.32.0 cannot use the Gateway API CRDs in this cluster. Contour needs these resource versions:
+  - tlsroutes.gateway.networking.k8s.io v1alpha2 (the CRD is not installed)
+  - tcproutes.gateway.networking.k8s.io v1alpha2 (the CRD is not installed)
+  - backendtlspolicies.gateway.networking.k8s.io v1alpha3 (the installed CRD serves v1)
+```
+
+Contour exits when it cannot watch one of these resources. To continue, either turn off the Contour features that use them, with the `--contour-set` value that the message suggests. Contour then ignores TLSRoute, TCPRoute, and BackendTLSPolicy resources, and `rad upgrade kubernetes` accepts the same value:
+
+```bash
+rad install kubernetes --contour-set "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}"
+```
+
+Or use a cluster without preinstalled Gateway API CRDs. For example, create the k3d cluster without Traefik:
+
+```bash
+k3d cluster create --k3s-arg "--disable=traefik@server:*"
+```
+
+k3s installs the Traefik CRDs in the background after the cluster starts. When `rad install kubernetes` runs right after the cluster is created, Radius logs `Waiting for k3s to finish installing the Traefik CRDs...` and waits up to three minutes, so that it checks the CRDs that the cluster ends up with. If k3s does not finish in time, the message names the k3s job to wait for.
+
+If an earlier attempt failed while Helm installed Contour, the `contour` release in `radius-system` has a failed revision. Run `rad install kubernetes` again: after the same checks, Radius upgrades the failed release before it installs Radius. When Radius is already installed, the command prints the `rad install kubernetes --reinstall` command that repairs Contour. If the message instead says that the Gateway API CRDs have more than one owner, run the `kubectl annotate` command that it shows, and then run `rad install kubernetes` again.

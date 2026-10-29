@@ -24,8 +24,10 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -116,7 +118,7 @@ func Test_Helm_InstallRadius_ContourValues(t *testing.T) {
 			impl := &Impl{
 				Helm:                           client,
 				configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-				getCRDs:                        staticCRDs(tt.crds...),
+				contourCluster:                 staticCRDs(tt.crds...),
 			}
 			require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 
@@ -143,7 +145,7 @@ func Test_Helm_InstallRadius_ContourPreflightFailureInstallsNothing(t *testing.T
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: gatewayCalls.configure,
-		getCRDs:                        staticCRDs(traefikGatewayAPICRDs()...),
+		contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...),
 	}
 
 	err := impl.InstallRadius(t.Context(), options, "test-context")
@@ -184,10 +186,10 @@ func Test_Helm_InstallRadius_ExistingContourIsNotChecked(t *testing.T) {
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: gatewayCalls.configure,
-		getCRDs: func(context.Context, string, []string) ([]crdInfo, error) {
+		contourCluster: &fakeContourCluster{readCRDs: func(context.Context, string, []string) ([]crdInfo, error) {
 			t.Error("the CRDs must not be checked when Contour does not change")
 			return traefikGatewayAPICRDs(), nil
-		},
+		}},
 	}
 
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
@@ -205,9 +207,9 @@ func Test_Helm_InstallRadius_ListCRDsError(t *testing.T) {
 
 	impl := &Impl{
 		Helm: client,
-		getCRDs: func(context.Context, string, []string) ([]crdInfo, error) {
+		contourCluster: &fakeContourCluster{readCRDs: func(context.Context, string, []string) ([]crdInfo, error) {
 			return nil, errors.New("customresourcedefinitions is forbidden")
-		},
+		}},
 	}
 
 	err := impl.InstallRadius(t.Context(), options, "test-context")
@@ -239,7 +241,7 @@ func Test_Helm_UpgradeRadius_ReusesStoredContourValues(t *testing.T) {
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-		getCRDs:                        staticCRDs(traefikGatewayAPICRDs()...),
+		contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...),
 	}
 
 	require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
@@ -262,8 +264,8 @@ func Test_Helm_UpgradeRadius_ResetValuesWithoutContourValuesFails(t *testing.T) 
 	// No upgrade is expected.
 
 	impl := &Impl{
-		Helm:    client,
-		getCRDs: staticCRDs(traefikGatewayAPICRDs()...),
+		Helm:           client,
+		contourCluster: staticCRDs(traefikGatewayAPICRDs()...),
 	}
 
 	err := impl.UpgradeRadius(t.Context(), options, "test-context")
@@ -310,7 +312,7 @@ func Test_Helm_UpgradeRadius_ContourValuesFromFlags(t *testing.T) {
 			impl := &Impl{
 				Helm:                           client,
 				configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-				getCRDs:                        staticCRDs(traefikGatewayAPICRDs()...),
+				contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...),
 			}
 
 			require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
@@ -411,7 +413,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeBaseline(t *testing.T) {
 			impl := &Impl{
 				Helm:                           client,
 				configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-				getCRDs:                        staticCRDs(tt.crds...),
+				contourCluster:                 staticCRDs(tt.crds...),
 			}
 
 			err := impl.UpgradeRadius(t.Context(), options, "test-context")
@@ -457,7 +459,7 @@ func Test_Helm_InstallRadius_ReinstallContourUsesUpgradeBaseline(t *testing.T) {
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-		getCRDs:                        staticCRDs(traefikGatewayAPICRDs()...),
+		contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...),
 	}
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 }
@@ -484,8 +486,8 @@ func Test_Helm_UpgradeRadius_RefusesToDeleteCRDs(t *testing.T) {
 	// No upgrade is expected.
 
 	impl := &Impl{
-		Helm:    client,
-		getCRDs: staticCRDs(append(contourBundleCRDs(), listenerSets)...),
+		Helm:           client,
+		contourCluster: staticCRDs(append(contourBundleCRDs(), listenerSets)...),
 	}
 
 	err := impl.UpgradeRadius(t.Context(), options, "test-context")
@@ -545,7 +547,7 @@ func Test_Helm_CheckContourUpgrade(t *testing.T) {
 			}
 			// No install or upgrade is expected.
 
-			impl := &Impl{Helm: client, getCRDs: staticCRDs(traefikGatewayAPICRDs()...)}
+			impl := &Impl{Helm: client, contourCluster: staticCRDs(traefikGatewayAPICRDs()...)}
 			upgrade, err := impl.CheckContourUpgrade(t.Context(), options, "test-context")
 			if tt.wantErr != "" {
 				require.True(t, clierrors.IsFriendlyError(err), "the CLI shows the message as is: %v", err)
@@ -585,7 +587,7 @@ func Test_Helm_InstallRadius_InstallsContourBeforeRadius(t *testing.T) {
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: gatewayCalls.configure,
-		getCRDs:                        staticCRDs(),
+		contourCluster:                 staticCRDs(),
 	}
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 	require.Equal(t, 1, gatewayCalls.configureCalls)
@@ -610,7 +612,7 @@ func Test_Helm_InstallRadius_ContourInstallFailureInstallsNoRadius(t *testing.T)
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: gatewayCalls.configure,
-		getCRDs:                        staticCRDs(),
+		contourCluster:                 staticCRDs(),
 	}
 	err := impl.InstallRadius(t.Context(), options, "test-context")
 	require.ErrorContains(t, err, "failed to apply Contour Helm chart")
@@ -641,7 +643,7 @@ func Test_Helm_InstallRadius_ContourInstallUsesClusterConfiguration(t *testing.T
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-		getCRDs:                        staticCRDs(),
+		contourCluster:                 staticCRDs(),
 	}
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 
@@ -672,10 +674,10 @@ func Test_Helm_UpgradeRadius_DownloadsContourChartOnce(t *testing.T) {
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-		getCRDs: func(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error) {
+		contourCluster: &fakeContourCluster{readCRDs: func(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error) {
 			checks++
-			return staticCRDs(traefikGatewayAPICRDs()...)(ctx, kubeContext, names)
-		},
+			return staticCRDs(traefikGatewayAPICRDs()...).CRDs(ctx, kubeContext, names)
+		}},
 	}
 
 	upgrade, err := impl.CheckContourUpgrade(t.Context(), options, "test-context")
@@ -683,6 +685,218 @@ func Test_Helm_UpgradeRadius_DownloadsContourChartOnce(t *testing.T) {
 	require.True(t, upgrade)
 	require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
 	require.Equal(t, 2, checks, "the upgrade checks Contour again")
+}
+
+// Test_Helm_InstallRadius_WaitsForK3sTraefikCRDs reproduces rad install kubernetes right after k3d cluster create: k3s
+// installs its Traefik CRDs while Radius checks the cluster. Radius waits for k3s, so that it decides with the CRDs of
+// Traefik instead of letting Contour install its own CRDs at the same time.
+func Test_Helm_InstallRadius_WaitsForK3sTraefikCRDs(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		withFlag bool
+		// k3sDeploys is false when k3s never finishes installing its CRDs.
+		k3sDeploys bool
+	}{
+		{name: "k3s installs its CRDs while Radius waits", k3sDeploys: true},
+		{name: "k3s installs its CRDs while Radius waits, with the suggested flag", withFlag: true, k3sDeploys: true},
+		{name: "k3s does not finish"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			synctest.Test(t, func(t *testing.T) {
+				client := NewMockHelmClient(gomock.NewController(t))
+				options := NewDefaultClusterOptions()
+				if tt.withFlag {
+					options.Contour.SetArgs = []string{turnOffFeaturesForTraefikCRDs}
+				}
+				expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
+				expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
+
+				// k3s deploys its traefik-crd release, with the Traefik CRDs, between the first and the second look.
+				k3sLooks := 0
+				k3sCall := client.EXPECT().RunHelmGet(gomock.Any(), "traefik-crd").
+					DoAndReturn(func(*helm.Configuration, string) (*releasev1.Release, error) {
+						k3sLooks++
+						if k3sLooks == 1 || !tt.k3sDeploys {
+							return nil, driver.ErrReleaseNotFound
+						}
+						return &releasev1.Release{Name: "traefik-crd", Version: 1, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}, nil
+					})
+				if tt.k3sDeploys {
+					k3sCall.Times(2)
+				} else {
+					k3sCall.MinTimes(2)
+				}
+				cluster := &fakeContourCluster{
+					helmCharts: []helmControllerChart{{name: "traefik-crd", namespace: "kube-system", releaseNamespace: "kube-system"}},
+					readCRDs: func(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error) {
+						if k3sLooks < 2 {
+							return nil, nil
+						}
+						return staticCRDs(traefikGatewayAPICRDs()...).CRDs(ctx, kubeContext, names)
+					},
+				}
+
+				var contourValues map[string]any
+				if tt.withFlag {
+					client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(2)
+					client.EXPECT().RunHelmGet(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
+					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
+						DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, _ string, _ string, _ bool, _ time.Duration) (*releasev1.Release, error) {
+							contourValues = vals
+							return &releasev1.Release{}, nil
+						}).Times(1)
+					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(&releasev1.Release{}, nil).Times(1)
+				} else {
+					client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
+					// Nothing is installed.
+				}
+
+				impl := &Impl{
+					Helm:                           client,
+					configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
+					contourCluster:                 cluster,
+				}
+				start := time.Now()
+				err := impl.InstallRadius(t.Context(), options, "test-context")
+
+				if !tt.k3sDeploys {
+					require.Equal(t, k3sCRDWaitTimeout, time.Since(start))
+					require.True(t, clierrors.IsFriendlyError(err), "%v", err)
+					require.ErrorContains(t, err, "k3s has not finished installing the Traefik CRDs after 3m0s")
+					return
+				}
+				require.Equal(t, k3sCRDWaitInterval, time.Since(start), "Radius waits for k3s once")
+				if tt.withFlag {
+					require.NoError(t, err)
+					require.Equal(t, false, nestedValue(contourValues, "gatewayAPI", "manageCRDs"))
+					return
+				}
+				require.True(t, clierrors.IsFriendlyError(err), "%v", err)
+				require.ErrorContains(t, err, "tlsroutes.gateway.networking.k8s.io v1alpha2 (the CRD is not installed)")
+				require.ErrorContains(t, err, `belong to Helm release "traefik-crd" in namespace "kube-system"`)
+			})
+		})
+	}
+}
+
+// Test_Helm_InstallRadius_ExistingContourRelease verifies how rad install kubernetes treats the Contour release that
+// an earlier command left. It repairs a failed release before it installs Radius, explains how to recover a release
+// with a pending operation, and leaves a working release unchanged.
+func Test_Helm_InstallRadius_ExistingContourRelease(t *testing.T) {
+	t.Parallel()
+
+	revision := func(version int, status releasecommon.Status) *releasev1.Release {
+		return &releasev1.Release{
+			Name:     contourReleaseName,
+			Version:  version,
+			Chart:    newTestContourChart(),
+			Info:     &releasev1.Info{Status: status},
+			Config:   map[string]any{"gatewayAPI": map[string]any{"manageCRDs": true}},
+			Manifest: crdManifest(contourBundleCRDs()...),
+		}
+	}
+
+	tests := []struct {
+		name    string
+		history []*releasev1.Release
+		// wantRepair is true when Radius upgrades the Contour release before it installs Radius.
+		wantRepair bool
+		// wantErr is the friendly error, or empty when Radius is installed.
+		wantErr string
+	}{
+		{
+			name:    "deployed release",
+			history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed)},
+		},
+		{
+			name:       "failed install",
+			history:    []*releasev1.Release{revision(1, releasecommon.StatusFailed)},
+			wantRepair: true,
+		},
+		{
+			name:       "failed upgrade on top of a deployed revision",
+			history:    []*releasev1.Release{revision(1, releasecommon.StatusDeployed), revision(2, releasecommon.StatusFailed)},
+			wantRepair: true,
+		},
+		{
+			name:    "pending install",
+			history: []*releasev1.Release{revision(1, releasecommon.StatusPendingInstall)},
+			wantErr: "kubectl -n radius-system delete secret sh.helm.release.v1.contour.v1",
+		},
+		{
+			name:    "pending upgrade on top of a deployed revision",
+			history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed), revision(2, releasecommon.StatusPendingUpgrade)},
+			wantErr: "helm -n radius-system rollback contour 1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			client := NewMockHelmClient(gomock.NewController(t))
+			options := NewDefaultClusterOptions()
+			latest := tt.history[len(tt.history)-1]
+			expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
+			gatewayCalls := &defaultContourGatewayCalls{}
+			var contourValues map[string]any
+			switch {
+			case tt.wantErr != "":
+				client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(latest, nil).Times(1)
+				client.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return(tt.history, nil).Times(1)
+				// Nothing is installed.
+			case tt.wantRepair:
+				// Radius plans the repair, and ApplyHelmChart checks the release again.
+				client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(latest, nil).Times(2)
+				client.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return(tt.history, nil).Times(1)
+				expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
+				client.EXPECT().RunHelmGet(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
+				gomock.InOrder(
+					client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, false, true, gomock.Any()).
+						DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, _ string, _ string, _ bool, _ bool, _ time.Duration) (*releasev1.Release, error) {
+							contourValues = vals
+							return &releasev1.Release{}, nil
+						}).Times(1),
+					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(&releasev1.Release{}, nil).Times(1),
+				)
+			default:
+				client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(latest, nil).Times(1)
+				client.EXPECT().RunHelmGet(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
+				client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(&releasev1.Release{}, nil).Times(1)
+				// The Contour release is neither read nor changed.
+			}
+
+			impl := &Impl{
+				Helm:                           client,
+				configureDefaultContourGateway: gatewayCalls.configure,
+				contourCluster:                 staticCRDs(contourBundleCRDs()...),
+			}
+			err := impl.InstallRadius(t.Context(), options, "test-context")
+			if tt.wantErr != "" {
+				require.True(t, clierrors.IsFriendlyError(err), "%v", err)
+				require.ErrorContains(t, err, "another operation is in progress on Contour release")
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Zero(t, gatewayCalls.configureCalls)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, 1, gatewayCalls.configureCalls)
+			if tt.wantRepair {
+				// Contour keeps managing the CRDs that the release installed.
+				require.Equal(t, true, nestedValue(contourValues, "gatewayAPI", "manageCRDs"))
+			}
+		})
+	}
 }
 
 // Test_Helm_ContourOptionsReachHelm fails when rad install kubernetes or rad upgrade kubernetes passes a Contour option
@@ -791,7 +1005,7 @@ func recordHelmCalls(t *testing.T, options ClusterOptions, upgrade bool) []strin
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-		getCRDs:                        staticCRDs(),
+		contourCluster:                 staticCRDs(),
 	}
 	if upgrade {
 		require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
@@ -827,12 +1041,40 @@ func expectContourHistory(client *MockHelmClient, options ClusterOptions, histor
 	client.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return(history, nil).Times(1)
 }
 
-// staticCRDs returns a CRD reader for Impl that reads crds without contacting a cluster.
-func staticCRDs(crds ...crdInfo) func(context.Context, string, []string) ([]crdInfo, error) {
-	lookup := crdLookup(crds)
-	return func(ctx context.Context, _ string, names []string) ([]crdInfo, error) {
-		return lookup(ctx, names)
+// fakeContourCluster is the cluster state that the Contour checks read, without a cluster.
+type fakeContourCluster struct {
+	crds []crdInfo
+
+	// readCRDs reads the CRDs instead of crds when it is set.
+	readCRDs func(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error)
+
+	helmCharts    []helmControllerChart
+	helmChartsErr error
+}
+
+func (f *fakeContourCluster) CRDs(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error) {
+	if f.readCRDs != nil {
+		return f.readCRDs(ctx, kubeContext, names)
 	}
+	return crdLookup(f.crds)(ctx, names)
+}
+
+func (f *fakeContourCluster) HelmCharts(_ context.Context, _ string, namespace string, names []string) ([]helmControllerChart, error) {
+	if f.helmChartsErr != nil {
+		return nil, f.helmChartsErr
+	}
+	var charts []helmControllerChart
+	for _, chart := range f.helmCharts {
+		if chart.namespace == namespace && slices.Contains(names, chart.name) {
+			charts = append(charts, chart)
+		}
+	}
+	return charts, nil
+}
+
+// staticCRDs returns the state of a cluster without k3s HelmCharts that has crds.
+func staticCRDs(crds ...crdInfo) *fakeContourCluster {
+	return &fakeContourCluster{crds: crds}
 }
 
 func radiusChartRef(options ClusterOptions) string {

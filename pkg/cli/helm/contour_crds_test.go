@@ -261,22 +261,67 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			wantNotErr:     []string{"Turn off the Contour features"},
 		},
 		{
-			name: "CRDs with more than one owner",
+			// Helm never deletes CRDs that are not in the release manifest, so Contour reuses the CRDs of the other owner.
+			name: "CRDs that only carry the ownership metadata of the Contour release, and CRDs that belong to something else",
 			crds: append(contourBundleCRDs()[:2],
 				newHelmOwnedCRD("traefik-crd", "kube-system", "gateways", "v1")),
-			wantManageCRDs: true,
-			wantErr: []string{
-				"have more than one owner",
-				`Contour release "contour" in namespace "radius-system" manages these CRDs:`,
-				`gateways.gateway.networking.k8s.io (owned by Helm release "traefik-crd" in namespace "kube-system")`,
-			},
+			wantManageCRDs: false,
+			wantErr:        []string{"gatewayclasses.gateway.networking.k8s.io v1 (the CRD is not installed)"},
+			wantNotErr:     []string{"more than one owner", "backendtlspolicies"},
 		},
 		{
-			name:           "CRDs installed by the Contour release and then taken over by another release",
+			// k3s installed its Traefik CRDs while Contour installed its own, so the failed release installed some CRDs
+			// and k3s took over the others.
+			name:           "CRDs installed by the Contour release, some of which another release took over",
+			crds:           append(withoutCRDs(contourBundleCRDs(), crdNames(traefikGatewayAPICRDs())...), traefikGatewayAPICRDs()...),
+			release:        contourBundleCRDs(),
+			wantManageCRDs: true,
+			wantErr: []string{
+				`have more than one owner. Contour release "contour" in namespace "radius-system" installed these CRDs, so Helm would delete them if Contour stopped managing them:` + "\n" +
+					"  - backendlbpolicies.gateway.networking.k8s.io\n" +
+					`  - backendtlspolicies.gateway.networking.k8s.io (now owned by Helm release "traefik-crd" in namespace "kube-system")` + "\n",
+				"  - udproutes.gateway.networking.k8s.io\n",
+				"Radius neither takes over CRDs that belong to something else nor lets Helm delete the CRDs that the Contour release installed.",
+				"kubectl annotate crd backendlbpolicies.gateway.networking.k8s.io backendtlspolicies.gateway.networking.k8s.io gatewayclasses.gateway.networking.k8s.io",
+				"udproutes.gateway.networking.k8s.io helm.sh/resource-policy=keep",
+			},
+			wantNotErr: []string{"These CRDs belong to something else", "helm -n radius-system uninstall"},
+		},
+		{
+			// The remedy of the case above: with all of these CRDs kept, Contour reuses them.
+			name:           "CRDs installed by the Contour release and kept, some of which another release took over",
+			crds:           keptCRDs(append(withoutCRDs(contourBundleCRDs(), crdNames(traefikGatewayAPICRDs())...), traefikGatewayAPICRDs()...)),
+			release:        contourBundleCRDs(),
+			wantManageCRDs: false,
+			wantErr: []string{
+				"backendtlspolicies.gateway.networking.k8s.io v1alpha3 (the installed CRD serves v1)",
+				`--contour-set "contour.extraArgs={--disable-feature=backendtlspolicies}"`,
+			},
+			wantNotErr: []string{"tlsroutes", "tcproutes", "more than one owner", "Helm would delete"},
+		},
+		{
+			name:           "CRDs installed by the Contour release, all of which another release took over",
 			crds:           traefikGatewayAPICRDs(),
 			release:        contourBundleCRDs(),
 			wantManageCRDs: true,
-			wantErr:        []string{"have more than one owner"},
+			wantErr: []string{
+				"have more than one owner",
+				`  - gateways.gateway.networking.k8s.io (now owned by Helm release "traefik-crd" in namespace "kube-system")` + "\n",
+				"kubectl annotate crd backendtlspolicies.gateway.networking.k8s.io gatewayclasses.gateway.networking.k8s.io",
+			},
+		},
+		{
+			name:           "CRDs installed by the Contour release, and a CRD of another owner that a new chart installs",
+			chart:          newStubContourChart("1.32.0", append(contourBundleCRDs(), experimentalListenerSets)),
+			crds:           append(contourBundleCRDs(), experimentalListenerSets),
+			release:        contourBundleCRDs(),
+			wantManageCRDs: true,
+			wantErr: []string{
+				"  - backendlbpolicies.gateway.networking.k8s.io\n",
+				"These CRDs belong to something else:\n" +
+					`  - xlistenersets.gateway.networking.x-k8s.io (owned by Helm release "traefik-crd" in namespace "kube-system")` + "\n",
+			},
+			wantNotErr: []string{"now owned by"},
 		},
 		{
 			name:           "foreign CRD that the chart does not install",
@@ -336,6 +381,15 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 				"kubectl annotate crd listenersets.gateway.networking.k8s.io helm.sh/resource-policy=keep",
 			},
 			wantNotErr: []string{"gateways.gateway.networking.k8s.io", "Remove the Contour value"},
+		},
+		{
+			name:           "a CRD that the chart renders only when Helm installs it",
+			chart:          newInstallOnlyCRDChart(),
+			crds:           []crdInfo{listenerSets},
+			release:        []crdInfo{listenerSets},
+			values:         turnOffUnsupportedFeatures,
+			wantManageCRDs: true,
+			wantErr:        []string{"the Contour chart no longer includes these CRDs", "  - listenersets.gateway.networking.k8s.io\n"},
 		},
 		{
 			name:           "a CRD that the release installed and the chart no longer renders, with the keep annotation",
@@ -741,7 +795,7 @@ func Test_contourUpgradeBaseline(t *testing.T) {
 		{
 			name:         "pending install",
 			history:      []*releasev1.Release{revision(1, releasecommon.StatusPendingInstall)},
-			wantErr:      []string{"revision 1 is pending-install", "for example with helm -n radius-system rollback contour <revision>,"},
+			wantErr:      []string{"revision 1 is pending-install", "delete the record of the pending revision with kubectl -n radius-system delete secret sh.helm.release.v1.contour.v1, which does not change the resources in the cluster, and then run the command again."},
 			wantFriendly: true,
 		},
 		{
@@ -970,6 +1024,36 @@ func Test_renderChartCRDs(t *testing.T) {
 		_, _, err := renderChartCRDs(t.Context(), broken, contourReleaseName, RadiusSystemNamespace, false, nil)
 		require.ErrorContains(t, err, "the values are not supported")
 	})
+
+	t.Run("CRDs that the chart renders only on install or only on upgrade", func(t *testing.T) {
+		t.Parallel()
+
+		helmChart := newInstallOnlyCRDChart()
+		helmChart.Templates = append(helmChart.Templates, &common.File{
+			Name: "templates/upgrade-only.yaml",
+			Data: []byte("{{- if .Release.IsUpgrade }}\n" + crdManifest(newUnmanagedCRD("tcproutes", "v1alpha2")) + "{{- end }}\n"),
+		})
+		for _, upgrade := range []bool{false, true} {
+			rendered, _, err := renderChartCRDs(t.Context(), helmChart, contourReleaseName, RadiusSystemNamespace, upgrade, nil)
+			require.NoError(t, err)
+			want := []string{"listenersets.gateway.networking.k8s.io"}
+			if upgrade {
+				want = []string{"tcproutes.gateway.networking.k8s.io"}
+			}
+			require.Equal(t, want, crdNames(rendered), "upgrade=%t", upgrade)
+		}
+	})
+}
+
+// newInstallOnlyCRDChart returns a Contour chart that renders a Gateway API CRD only when Helm installs it, and no
+// other Gateway API CRDs.
+func newInstallOnlyCRDChart() *chart.Chart {
+	helmChart := newStubContourChart("1.32.0", nil)
+	helmChart.Templates = append(helmChart.Templates, &common.File{
+		Name: "templates/install-only.yaml",
+		Data: []byte("{{- if not .Release.IsUpgrade }}\n" + crdManifest(newUnmanagedCRD("listenersets", "v1")) + "{{- end }}\n"),
+	})
+	return helmChart
 }
 
 func Test_contourArgsFromValues(t *testing.T) {
@@ -1443,6 +1527,25 @@ func contourBundleCRDs() []crdInfo {
 	}
 }
 
+// withoutCRDs returns crds without the CRDs with the given names.
+func withoutCRDs(crds []crdInfo, names ...string) []crdInfo {
+	return slices.DeleteFunc(slices.Clone(crds), func(crd crdInfo) bool { return slices.Contains(names, crd.name) })
+}
+
+// keptCRDs returns crds with the helm.sh/resource-policy: keep annotation.
+func keptCRDs(crds []crdInfo) []crdInfo {
+	kept := make([]crdInfo, 0, len(crds))
+	for _, crd := range crds {
+		annotations := map[string]string{kube.ResourcePolicyAnno: kube.KeepPolicy}
+		for key, value := range crd.annotations {
+			annotations[key] = value
+		}
+		crd.annotations = annotations
+		kept = append(kept, crd)
+	}
+	return kept
+}
+
 // unmanagedCRDs returns crds without ownership metadata, as kubectl apply installs them.
 func unmanagedCRDs(crds []crdInfo) []crdInfo {
 	for i := range crds {
@@ -1541,8 +1644,10 @@ var testCRDKinds = map[string]string{
 	"gatewayclasses":     "GatewayClass",
 	"gateways":           "Gateway",
 	"grpcroutes":         "GRPCRoute",
+	"helmcharts":         "HelmChart",
 	"httpproxies":        "HTTPProxy",
 	"httproutes":         "HTTPRoute",
+	"ingressroutes":      "IngressRoute",
 	"listenersets":       "ListenerSet",
 	"referencegrants":    "ReferenceGrant",
 	"tcproutes":          "TCPRoute",

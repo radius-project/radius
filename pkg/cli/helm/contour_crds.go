@@ -350,14 +350,17 @@ func contourUpgradeBaseline(history []*releasev1.Release, releaseName string, re
 	status := revisionStatus(latest)
 	switch {
 	case status.IsPending():
-		rollback := fmt.Sprintf("helm -n %s rollback %s <revision>", releaseNamespace, releaseName)
+		// Without a deployed revision there is nothing to roll back to. Helm stores each revision in a Secret, and
+		// deleting the Secret of the pending revision makes Helm forget it without changing the cluster.
+		recovery := fmt.Sprintf("delete the record of the pending revision with kubectl -n %s delete secret sh.helm.release.v1.%s.v%d, which does not change the resources in the cluster",
+			releaseNamespace, releaseName, latest.Version)
 		if deployed != nil {
-			rollback = fmt.Sprintf("helm -n %s rollback %s %d", releaseNamespace, releaseName, deployed.Version)
+			recovery = fmt.Sprintf("roll the release back to the last revision that worked, for example with helm -n %s rollback %s %d", releaseNamespace, releaseName, deployed.Version)
 		}
 		return nil, clierrors.Message("Radius stopped before changing the cluster because another operation is in progress on Contour release %q in namespace %q: revision %d is %s. "+
 			"Wait for that operation to finish, and then run the command again. If no operation is running, for example because an earlier command was interrupted, "+
-			"list the revisions with helm -n %s history %s, roll the release back to the last revision that worked, for example with %s, and then run the command again.",
-			releaseName, releaseNamespace, latest.Version, status, releaseNamespace, releaseName, rollback)
+			"list the revisions with helm -n %s history %s, %s, and then run the command again.",
+			releaseName, releaseNamespace, latest.Version, status, releaseNamespace, releaseName, recovery)
 	case status == releasecommon.StatusDeployed:
 		return latest, nil
 	case deployed != nil:
@@ -512,22 +515,22 @@ func (c *gatewayAPICRDCheck) readCRDs(ctx context.Context, nameLists ...[]string
 	return nil
 }
 
-// contourCRDs returns the Gateway API CRDs that the Contour release installed or that Helm can adopt into it.
-func (c gatewayAPICRDCheck) contourCRDs() []string {
-	var names []string
-	for _, crd := range c.releaseCRDs {
-		if crd.isGatewayAPI() && !slices.Contains(names, crd.name) {
-			names = append(names, crd.name)
+// installedGatewayAPICRDs returns the Gateway API CRDs that Helm would delete if the Contour release stopped rendering
+// them: the ones in the manifest of the release that exist and lack the helm.sh/resource-policy: keep annotation.
+func (c gatewayAPICRDCheck) installedGatewayAPICRDs() []crdInfo {
+	var installed []crdInfo
+	for _, releaseCRD := range c.releaseCRDs {
+		if !releaseCRD.isGatewayAPI() {
+			continue
+		}
+		clusterCRD, found := findCRD(c.clusterCRDs, releaseCRD.name)
+		if found && !clusterCRD.kept() && !slices.ContainsFunc(installed, func(crd crdInfo) bool { return crd.name == clusterCRD.name }) {
+			installed = append(installed, clusterCRD)
 		}
 	}
-	for _, crd := range c.clusterCRDs {
-		if crd.isGatewayAPI() && crd.ownedBy(c.releaseName, c.releaseNamespace) && !slices.Contains(names, crd.name) {
-			names = append(names, crd.name)
-		}
-	}
-	slices.Sort(names)
+	slices.SortFunc(installed, func(a, b crdInfo) int { return strings.Compare(a.name, b.name) })
 
-	return names
+	return installed
 }
 
 // foreignCRDs returns the Gateway API CRDs in the cluster that the chart CRDs would replace but that belong to
@@ -547,10 +550,12 @@ func (c gatewayAPICRDCheck) foreignCRDs(chartCRDs []crdInfo) []crdInfo {
 }
 
 // defaultManageCRDs returns the gatewayAPI.manageCRDs value to use when the user does not set it. Contour keeps
-// managing the Gateway API CRDs that it manages, reuses CRDs that belong to something else, and installs them in
-// clusters that have none.
+// managing the Gateway API CRDs that Helm would otherwise delete, reuses CRDs that belong to something else, and
+// installs them in clusters that have none. CRDs that only carry the ownership metadata of the Contour release, for
+// example because they were kept when the release stopped managing them, do not count, because Helm never deletes
+// them.
 func (c gatewayAPICRDCheck) defaultManageCRDs() bool {
-	return len(c.contourCRDs()) > 0 || len(c.foreignCRDs(c.manageableCRDs)) == 0
+	return len(c.installedGatewayAPICRDs()) > 0 || len(c.foreignCRDs(c.manageableCRDs)) == 0
 }
 
 // deletedCRDs returns the CRDs that Helm would delete because the release installed them and the chart no longer
@@ -735,33 +740,50 @@ func (c gatewayAPICRDCheck) deleteError(deleted []crdInfo, manageCRDs bool) erro
 
 func (c gatewayAPICRDCheck) conflictError(conflicts []crdInfo, manageCRDs bool) error {
 	var message strings.Builder
-	contourCRDs := c.contourCRDs()
-	if len(contourCRDs) > 0 {
-		message.WriteString("Radius stopped before changing the cluster because the Gateway API CRDs in this cluster have more than one owner.\n")
-		fmt.Fprintf(&message, "Contour release %q in namespace %q manages these CRDs:\n", c.releaseName, c.releaseNamespace)
-		for _, name := range contourCRDs {
-			fmt.Fprintf(&message, "  - %s\n", name)
-		}
-		message.WriteString("These CRDs belong to something else:\n")
-	} else {
+	installed := c.installedGatewayAPICRDs()
+	if !manageCRDs || len(installed) == 0 {
 		message.WriteString("Radius stopped before changing the cluster because these Gateway API CRDs already exist and belong to something else, so Contour cannot install them:\n")
+		for _, crd := range conflicts {
+			fmt.Fprintf(&message, "  - %s (owned by %s)\n", crd.name, crd.owner())
+		}
+		message.WriteString("Radius does not take over CRDs that belong to something else")
+		switch {
+		case !manageCRDs:
+			message.WriteString(". The Contour chart includes these CRDs even though gatewayAPI.manageCRDs is false, so use a Contour chart that does not.")
+		case c.manageCRDsFromValues:
+			message.WriteString(". Remove the gatewayAPI.manageCRDs=true Contour value so that Contour uses the existing CRDs.")
+		default:
+			message.WriteString(".")
+		}
+		return clierrors.Message("%s", message.String())
 	}
 
+	// Contour cannot manage the Gateway API CRDs, because some belong to something else, and it cannot stop managing
+	// them, because Helm would delete the ones that the release installed.
+	fmt.Fprintf(&message, "Radius stopped before changing the cluster because the Gateway API CRDs in this cluster have more than one owner. Contour release %q in namespace %q installed these CRDs, so Helm would delete them if Contour stopped managing them:\n", c.releaseName, c.releaseNamespace)
+	names := make([]string, 0, len(installed))
+	for _, crd := range installed {
+		fmt.Fprintf(&message, "  - %s", crd.name)
+		if !crd.ownedBy(c.releaseName, c.releaseNamespace) {
+			fmt.Fprintf(&message, " (now owned by %s)", crd.owner())
+		}
+		message.WriteString("\n")
+		names = append(names, crd.name)
+	}
+	var others []crdInfo
 	for _, crd := range conflicts {
-		fmt.Fprintf(&message, "  - %s (owned by %s)\n", crd.name, crd.owner())
+		if !slices.Contains(names, crd.name) {
+			others = append(others, crd)
+		}
 	}
-
-	message.WriteString("Radius does not take over CRDs that belong to something else")
-	switch {
-	case len(contourCRDs) > 0:
-		message.WriteString(", and it does not stop managing the CRDs that Contour installed because Helm would delete them. Make a single installer responsible for these CRDs, then run the command again.")
-	case manageCRDs && c.manageCRDsFromValues:
-		message.WriteString(". Remove the gatewayAPI.manageCRDs=true Contour value so that Contour uses the existing CRDs.")
-	case !manageCRDs:
-		message.WriteString(". The Contour chart includes these CRDs even though gatewayAPI.manageCRDs is false, so use a Contour chart that does not.")
-	default:
-		message.WriteString(".")
+	if len(others) > 0 {
+		message.WriteString("These CRDs belong to something else:\n")
+		for _, crd := range others {
+			fmt.Fprintf(&message, "  - %s (owned by %s)\n", crd.name, crd.owner())
+		}
 	}
+	message.WriteString("Radius neither takes over CRDs that belong to something else nor lets Helm delete the CRDs that the Contour release installed.\n")
+	fmt.Fprintf(&message, "To continue, keep the CRDs that the Contour release installed when Helm stops managing them, and then run the command again. Contour then uses the Gateway API CRDs in the cluster instead of managing them:\n      kubectl annotate crd %s %s=%s", strings.Join(names, " "), kube.ResourcePolicyAnno, kube.KeepPolicy)
 
 	return clierrors.Message("%s", message.String())
 }

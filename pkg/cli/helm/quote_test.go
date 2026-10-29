@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -37,12 +38,17 @@ func Test_QuoteFlagValue(t *testing.T) {
 			value: "envoy.service.annotations.example=it's here",
 			want:  `"envoy.service.annotations.example=it's here"`,
 		},
+		// bash keeps a backslash inside double quotes unless a $, `, ", \, or newline follows it.
+		{value: `C:\charts\contour`, want: `"C:\charts\contour"`},
+		{value: `contour.extraArgs={--root-namespaces=a\,b}`, want: `"contour.extraArgs={--root-namespaces=a\,b}"`},
 		{value: "key=$HOME", want: `'key=$HOME'`},
 		{value: "key=`date`", want: "'key=`date`'"},
 		{value: `key="quoted"`, want: `'key="quoted"'`},
 		{value: "key=hello!", want: `'key=hello!'`},
-		// bash keeps \, inside double quotes but turns \\ into \, so escaped --set values need single quotes.
+		{value: "key=two\nlines", want: "'key=two\nlines'"},
+		// bash turns \\ into \ inside double quotes, and a trailing \ would escape the closing quote.
 		{value: `contour.extraArgs={--a=x\,y,--b=\\}`, want: `'contour.extraArgs={--a=x\,y,--b=\\}'`},
+		{value: `C:\charts\`, want: `'C:\charts\'`},
 		{value: `key=it's $1`, want: `'key=it'\''s $1'`},
 	}
 
@@ -66,10 +72,18 @@ func unquoteFlagValue(t *testing.T, quoted string) string {
 		// QuoteFlagValue uses double quotes only for values in which bash expands nothing.
 		require.NotContains(t, inner, "$")
 		require.NotContains(t, inner, "`")
-		require.NotContains(t, inner, `\`)
 		require.NotContains(t, inner, "!")
-		require.NotContains(t, inner, `"`)
-		return inner
+		var value strings.Builder
+		for i := 0; i < len(inner); i++ {
+			// Inside double quotes, bash removes a backslash only before $, `, ", \, or a newline.
+			if inner[i] == '\\' {
+				require.Less(t, i+1, len(inner), "a trailing backslash escapes the closing quote: %s", quoted)
+				require.NotContains(t, "$`\"\\\n", string(inner[i+1]), "bash would remove the backslash in %s", quoted)
+			}
+			require.NotEqual(t, byte('"'), inner[i], "%s ends the double quotes early", quoted)
+			value.WriteByte(inner[i])
+		}
+		return value.String()
 	}
 
 	var value []byte

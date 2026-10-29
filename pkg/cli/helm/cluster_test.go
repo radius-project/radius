@@ -43,7 +43,7 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	impl := &Impl{
 		Helm:                           mockHelmClient,
 		configureDefaultContourGateway: gatewayCalls.configure,
-		getCRDs:                        staticCRDs(),
+		contourCluster:                 staticCRDs(),
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -216,6 +216,65 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	require.Equal(t, "", state.ContourVersion)
 }
 
+// Test_Helm_CheckRadiusInstall_ContourStatus verifies that CheckRadiusInstall reports the status of the Contour release,
+// so that rad install kubernetes can tell the user how to repair a release that is not deployed.
+func Test_Helm_CheckRadiusInstall_ContourStatus(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		status          releasecommon.Status
+		chart           *chart.Chart
+		wantNeedsRepair bool
+		wantErr         string
+	}{
+		{name: "deployed", status: releasecommon.StatusDeployed},
+		{name: "failed", status: releasecommon.StatusFailed, wantNeedsRepair: true},
+		{name: "pending install", status: releasecommon.StatusPendingInstall, wantNeedsRepair: true},
+		{name: "pending upgrade", status: releasecommon.StatusPendingUpgrade, wantNeedsRepair: true},
+		{name: "superseded", status: releasecommon.StatusSuperseded},
+		{name: "release without chart metadata", status: releasecommon.StatusDeployed, chart: &chart.Chart{}, wantErr: "failed to get chart version for release: contour (chart or metadata is nil)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockHelmClient := NewMockHelmClient(gomock.NewController(t))
+			options := NewDefaultClusterOptions()
+			mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
+			contourChart := tt.chart
+			if contourChart == nil {
+				contourChart = &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0", AppVersion: "1.32.0"}}
+			}
+			mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).
+				Return(&releasev1.Release{Name: options.Contour.ReleaseName, Version: 1, Chart: contourChart, Info: &releasev1.Info{Status: tt.status}}, nil).
+				Times(1)
+
+			state, err := (&Impl{Helm: mockHelmClient}).CheckRadiusInstall("test-context")
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, "failed to check Contour installation (release: contour, namespace: radius-system, context: test-context)")
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.True(t, state.ContourInstalled)
+			require.Equal(t, "1.32.0", state.ContourVersion)
+			require.Equal(t, string(tt.status), state.ContourStatus)
+			require.Equal(t, tt.wantNeedsRepair, state.ContourNeedsRepair())
+		})
+	}
+}
+
+func Test_InstallState_ContourNeedsRepair(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, InstallState{}.ContourNeedsRepair(), "Contour is not installed")
+	require.False(t, InstallState{ContourInstalled: true}.ContourNeedsRepair(), "the status is unknown")
+	require.True(t, InstallState{ContourInstalled: true, ContourStatus: "failed"}.ContourNeedsRepair())
+	require.True(t, InstallState{ContourInstalled: true, ContourStatus: "pending-rollback"}.ContourNeedsRepair())
+}
+
 func Test_Helm_HistoryConsumers_RevisionOrder(t *testing.T) {
 	t.Parallel()
 
@@ -337,7 +396,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	impl := &Impl{
 		Helm:                           mockHelmClient,
 		configureDefaultContourGateway: gatewayCalls.configure,
-		getCRDs:                        staticCRDs(contourBundleCRDs()...),
+		contourCluster:                 staticCRDs(contourBundleCRDs()...),
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -618,7 +677,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient, getCRDs: staticCRDs()}
+	impl := &Impl{Helm: mockHelmClient, contourCluster: staticCRDs()}
 	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()

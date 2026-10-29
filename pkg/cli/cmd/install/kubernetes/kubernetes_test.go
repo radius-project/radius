@@ -232,19 +232,58 @@ func Test_Run_ContourFlags(t *testing.T) {
 	}
 }
 
-// Test_Run_RadiusInstalledWithoutContour verifies that rad install kubernetes tells the user how to install Contour
-// when an earlier install stopped after Radius, because it does not change an existing installation.
+// Test_Run_RadiusInstalledWithoutContour verifies that rad install kubernetes tells the user how to install or repair
+// Contour when an earlier install stopped after Radius or left a failed Contour release, because it does not change an
+// existing installation.
 func Test_Run_RadiusInstalledWithoutContour(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name   string
 		runner Runner
-		// wantCommand is the suggested command, or empty when Radius suggests none.
+		state  helm.InstallState
+		// wantHint is the first line of the hint, and wantCommand is the suggested command. Both are empty when Radius
+		// suggests nothing.
+		wantHint    string
 		wantCommand string
 	}{
 		{
 			name:        "no flags",
+			wantHint:    "Contour is not installed. To install Contour, run:",
+			wantCommand: "rad install kubernetes --reinstall",
+		},
+		{
+			name:        "failed Contour release",
+			state:       helm.InstallState{ContourInstalled: true, ContourVersion: "1.32.0", ContourStatus: "failed"},
+			wantHint:    "The latest revision of the Contour release has the status failed. To repair Contour, run:",
+			wantCommand: "rad install kubernetes --reinstall",
+		},
+		{
+			name:        "Contour release with an operation in progress",
+			state:       helm.InstallState{ContourInstalled: true, ContourVersion: "1.32.0", ContourStatus: "pending-install"},
+			wantHint:    "The latest revision of the Contour release has the status pending-install. To repair Contour, run:",
+			wantCommand: "rad install kubernetes --reinstall",
+		},
+		{
+			name:  "working Contour release",
+			state: helm.InstallState{ContourInstalled: true, ContourVersion: "1.32.0", ContourStatus: "deployed"},
+		},
+		{
+			name: "Radius flags",
+			runner: Runner{
+				Chart:   `C:\charts\radius`,
+				Set:     []string{"global.imageTag=0.62", "database.enabled=true"},
+				SetFile: []string{"global.rootCA.cert=/path/to/rootCA.crt"},
+				Timeout: 15 * time.Minute,
+			},
+			wantHint: "Contour is not installed. To install Contour, run:",
+			wantCommand: `rad install kubernetes --reinstall --chart "C:\charts\radius" --set "global.imageTag=0.62" --set "database.enabled=true" ` +
+				`--set-file "global.rootCA.cert=/path/to/rootCA.crt" --timeout 15m0s`,
+		},
+		{
+			name:        "default timeout",
+			runner:      Runner{Timeout: helm.DefaultInstallTimeout},
+			wantHint:    "Contour is not installed. To install Contour, run:",
 			wantCommand: "rad install kubernetes --reinstall",
 		},
 		{
@@ -255,6 +294,7 @@ func Test_Run_RadiusInstalledWithoutContour(t *testing.T) {
 				ContourSet:     []string{"contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes}"},
 				ContourSetFile: []string{"envoy.service.annotations.example=/path/to/value.txt"},
 			},
+			wantHint: "Contour is not installed. To install Contour, run:",
 			wantCommand: `rad install kubernetes --reinstall --kubecontext "k3d-demo" --contour-chart "/charts/contour" ` +
 				`--contour-set "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes}" ` +
 				`--contour-set-file "envoy.service.annotations.example=/path/to/value.txt"`,
@@ -274,9 +314,10 @@ func Test_Run_RadiusInstalledWithoutContour(t *testing.T) {
 			runner := tt.runner
 			runner.Helm = helmMock
 			runner.Output = outputMock
-			helmMock.EXPECT().CheckRadiusInstall(runner.KubeContext).
-				Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.62.0"}, nil).
-				Times(1)
+			state := tt.state
+			state.RadiusInstalled = true
+			state.RadiusVersion = "0.62.0"
+			helmMock.EXPECT().CheckRadiusInstall(runner.KubeContext).Return(state, nil).Times(1)
 			// Nothing is installed.
 
 			require.NoError(t, runner.Run(t.Context()))
@@ -293,11 +334,12 @@ func Test_Run_RadiusInstalledWithoutContour(t *testing.T) {
 				return
 			}
 			require.Len(t, logs, 2)
-			require.Contains(t, logs[1], "Contour is not installed. To install Contour, run:\n    "+tt.wantCommand+"\n")
+			require.Contains(t, logs[1], tt.wantHint+"\n    "+tt.wantCommand+"\n")
 			require.Contains(t, logs[1], "suggests the --contour-set values to add.")
 		})
 	}
 }
+
 func Test_Run(t *testing.T) {
 	t.Parallel()
 	t.Run("Success: Install", func(t *testing.T) {

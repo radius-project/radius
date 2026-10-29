@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
@@ -174,6 +175,18 @@ type InstallState struct {
 
 	// ContourVersion is the version of the Contour helm chart installed on the cluster. Will be blank if Contour is not installed.
 	ContourVersion string
+
+	// ContourStatus is the status of the latest revision of the Contour helm chart, such as deployed or failed. Will be
+	// blank if Contour is not installed.
+	ContourStatus string
+}
+
+// ContourNeedsRepair reports whether the latest revision of the Contour release failed or still has an operation in
+// progress, for example because an earlier install stopped partway. rad install kubernetes --reinstall repairs a failed
+// release and explains how to recover the other.
+func (s InstallState) ContourNeedsRepair() bool {
+	status := releasecommon.Status(s.ContourStatus)
+	return s.ContourInstalled && (status == releasecommon.StatusFailed || status.IsPending())
 }
 
 // RevisionInfo contains information about a specific Helm release revision.
@@ -233,7 +246,10 @@ type Impl struct {
 
 	configureDefaultContourGateway func(ctx context.Context, kubeContext string) error
 	removeDefaultContourGateway    func(ctx context.Context, kubeContext string) error
-	getCRDs                        func(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error)
+
+	// contourCluster reads the cluster state that the Contour checks use. Nil reads the cluster that the Kubernetes
+	// context selects.
+	contourCluster contourClusterReader
 
 	// contourCharts are the Contour charts that the Impl loaded, by source.
 	contourChartsLock sync.Mutex
@@ -258,13 +274,12 @@ func (i *Impl) removeContourGateway(ctx context.Context, kubeContext string) err
 	return remove(ctx, kubeContext)
 }
 
-// crds reads the CRDs with the given names from the cluster, skipping the ones that do not exist.
-func (i *Impl) crds(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error) {
-	get := i.getCRDs
-	if get == nil {
-		get = getClusterCRDs
+// cluster returns the reader of the cluster state that the Contour checks use.
+func (i *Impl) cluster() contourClusterReader {
+	if i.contourCluster == nil {
+		return liveContourCluster{}
 	}
-	return get(ctx, kubeContext, names)
+	return i.contourCluster
 }
 
 // InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options. It prepares
@@ -300,8 +315,15 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if clusterOptions.Contour.Disabled {
 		output.LogInfo("Contour is disabled, skipping installation")
 	} else if contour != nil {
-		output.LogInfo("Installing Contour...")
-		err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, clusterOptions.Contour.ChartOptions, contour.values)
+		// ApplyHelmChart upgrades an installed release only when Reinstall is set.
+		contourOptions := clusterOptions.Contour.ChartOptions
+		contourOptions.Reinstall = contour.upgrade
+		if contour.upgrade {
+			output.LogInfo("Upgrading Contour...")
+		} else {
+			output.LogInfo("Installing Contour...")
+		}
+		err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, contourOptions, contour.values)
 		if err != nil {
 			return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
 		}
@@ -398,18 +420,25 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 		}
 	}
 
-	// Check if Contour is installed
-	contourInstalled, contourVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace)
+	// Check if Contour is installed. Like QueryRelease, this reads the latest revision of the release, and it also
+	// reports the status of that revision.
+	contourRelease, err := i.getContourRelease(clusterOptions.Contour, kubeContext)
+	if err == nil && contourRelease != nil && (contourRelease.Chart == nil || contourRelease.Chart.Metadata == nil) {
+		err = fmt.Errorf("failed to get chart version for release: %s (chart or metadata is nil)", clusterOptions.Contour.ReleaseName)
+	}
 	if err != nil {
 		return InstallState{}, fmt.Errorf("failed to check Contour installation (release: %s, namespace: %s, context: %s): %w",
 			clusterOptions.Contour.ReleaseName, clusterOptions.Contour.Namespace, kubeContext, err)
 	}
 
 	state := InstallState{
-		RadiusInstalled:  radiusInstalled,
-		RadiusVersion:    radiusVersion,
-		ContourInstalled: contourInstalled,
-		ContourVersion:   contourVersion,
+		RadiusInstalled: radiusInstalled,
+		RadiusVersion:   radiusVersion,
+	}
+	if contourRelease != nil {
+		state.ContourInstalled = true
+		state.ContourVersion = contourRelease.Chart.Metadata.AppVersion
+		state.ContourStatus = string(revisionStatus(contourRelease))
 	}
 
 	return state, nil
