@@ -435,6 +435,8 @@ The Bicep driver deletes tracked recipe resources on resource deletion and remov
 
 The parent match uses ARM-form paths, so a plain ARM ID can match an Azure UCP-qualified ID for the same resource. Only Azure plane prefixes are removed; subscription and resource group scopes remain part of the match. This rule does not apply if the vault remains in the current recipe output, is unmanaged, or is absent from the deletion batch. It does not ignore HTTP 405 errors, change secret values, or transfer resource ownership. Removing a tracked secret while retaining its vault still uses the existing direct deletion path.
 
+AWS creates some resource types on its own, such as `AWS::EC2::Image` and `AWS::Bedrock::FoundationModel`. These read-only types are listed in [`pkg/aws/awstypes`](../../pkg/aws/awstypes/). When a recipe returns an output resource of a listed read-only type, Radius still tracks it as an output resource but marks it as not managed by Radius. The type match ignores case. Radius therefore leaves the resource in AWS on resource deletion, and also when a redeploy drops it from the recipe output. Other AWS types and non-AWS resources are unchanged.
+
 ### Recipe Secret Outputs
 
 Recipe **secret** outputs (`RecipeOutput.Secrets`) are handled separately from
