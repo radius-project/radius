@@ -3102,3 +3102,126 @@ func Test_isResourceInEnvironmentOrApplications(t *testing.T) {
 func testCapture(ctx context.Context, capture **http.Response) context.Context {
 	return context.WithValue(ctx, holder{}, &holder{capture})
 }
+
+func Test_ListResourcesInPlane(t *testing.T) {
+	t.Parallel()
+
+	setup := func(t *testing.T, rootScope string) (*UCPApplicationsManagementClient, *MockgenericResourceClient, *MockresourceProviderClient, *[]string) {
+		ctrl := gomock.NewController(t)
+		genericClient := NewMockgenericResourceClient(ctrl)
+		rpClient := NewMockresourceProviderClient(ctrl)
+		listedTypes := &[]string{}
+
+		client := &UCPApplicationsManagementClient{
+			RootScope: rootScope,
+			genericResourceClientFactory: func(scope string, resourceType string) (genericResourceClient, error) {
+				require.Equal(t, "/planes/radius/local", scope)
+				*listedTypes = append(*listedTypes, resourceType)
+				return genericClient, nil
+			},
+			resourceProviderClientFactory: func() (resourceProviderClient, error) {
+				return rpClient, nil
+			},
+			capture: testCapture,
+		}
+
+		return client, genericClient, rpClient, listedTypes
+	}
+
+	for _, rootScope := range []string{testScope, "/planes/radius/local"} {
+		t.Run("lists every inventory type at plane scope from "+rootScope, func(t *testing.T) {
+			t.Parallel()
+			client, mockGeneric, mockRP, listedTypes := setup(t, rootScope)
+
+			resource1 := createResource("resource1", "Applications.Test1/resourceType1")
+			resource2 := createResource("resource2", "Applications.Test2/resourceType2")
+			mockListProviders(mockRP, "local")
+			mockProviderSummaries(mockRP, "local", inventoryResourceTypeCount)
+			mockGeneric.EXPECT().
+				NewListByRootScopePager(gomock.Any()).
+				DoAndReturn(func(*generated.GenericResourcesClientListByRootScopeOptions) *runtime.Pager[generated.GenericResourcesClientListByRootScopeResponse] {
+					return pager(createResourceList(resource1, resource2))
+				}).Times(inventoryResourceTypeCount)
+
+			resources, err := client.ListResourcesInPlane(t.Context())
+			require.NoError(t, err)
+			require.Len(t, resources, 2*inventoryResourceTypeCount)
+			require.Len(t, *listedTypes, inventoryResourceTypeCount)
+			require.NotContains(t, *listedTypes, "Radius.Core/environments")
+		})
+	}
+
+	t.Run("returns list errors", func(t *testing.T) {
+		t.Parallel()
+		client, mockGeneric, mockRP, _ := setup(t, testScope)
+
+		mockListProviders(mockRP, "local")
+		mockProviderSummaries(mockRP, "local", 1)
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			Return(runtime.NewPager(runtime.PagingHandler[generated.GenericResourcesClientListByRootScopeResponse]{
+				More: func(generated.GenericResourcesClientListByRootScopeResponse) bool { return true },
+				Fetcher: func(context.Context, *generated.GenericResourcesClientListByRootScopeResponse) (generated.GenericResourcesClientListByRootScopeResponse, error) {
+					return generated.GenericResourcesClientListByRootScopeResponse{}, errors.New("list failed")
+				},
+			})).Times(1)
+
+		_, err := client.ListResourcesInPlane(t.Context())
+		require.ErrorContains(t, err, "list failed")
+	})
+
+	t.Run("rejects a configured scope that is not a scope", func(t *testing.T) {
+		t.Parallel()
+		// The mocks fail the test on any call, so this also checks that nothing is listed.
+		client, _, _, _ := setup(t, testScope+"/providers/Applications.Test1/resourceType1/resource1")
+
+		_, err := client.ListResourcesInPlane(t.Context())
+		require.ErrorContains(t, err, "does not refer to a scope")
+	})
+
+	t.Run("returns resource type discovery errors", func(t *testing.T) {
+		t.Parallel()
+		client, _, mockRP, _ := setup(t, testScope)
+
+		mockRP.EXPECT().
+			NewListProviderSummariesPager("local", gomock.Any()).
+			Return(runtime.NewPager(runtime.PagingHandler[ucp.ResourceProvidersClientListProviderSummariesResponse]{
+				More: func(ucp.ResourceProvidersClientListProviderSummariesResponse) bool { return true },
+				Fetcher: func(context.Context, *ucp.ResourceProvidersClientListProviderSummariesResponse) (ucp.ResourceProvidersClientListProviderSummariesResponse, error) {
+					return ucp.ResourceProvidersClientListProviderSummariesResponse{}, errors.New("summaries failed")
+				},
+			}))
+
+		_, err := client.ListResourcesInPlane(t.Context())
+		require.ErrorContains(t, err, "summaries failed")
+	})
+
+	t.Run("returns API version lookup errors", func(t *testing.T) {
+		t.Parallel()
+		client, _, mockRP, _ := setup(t, testScope)
+
+		mockListProviders(mockRP, "local")
+		mockRP.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", gomock.Any(), gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{}, errors.New("summary failed")).
+			Times(1)
+
+		_, err := client.ListResourcesInPlane(t.Context())
+		require.ErrorContains(t, err, "failed to get API versions for resource type")
+		require.ErrorContains(t, err, "summary failed")
+	})
+
+	t.Run("returns client creation errors", func(t *testing.T) {
+		t.Parallel()
+		client, _, mockRP, _ := setup(t, testScope)
+		client.genericResourceClientFactory = func(scope string, resourceType string) (genericResourceClient, error) {
+			return nil, errors.New("client failed")
+		}
+
+		mockListProviders(mockRP, "local")
+		mockProviderSummaries(mockRP, "local", 1)
+
+		_, err := client.ListResourcesInPlane(t.Context())
+		require.ErrorContains(t, err, "client failed")
+	})
+}

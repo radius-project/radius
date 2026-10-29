@@ -62,6 +62,9 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	if errResponse != nil {
 		return errResponse, nil
 	}
+	if errResponse := unsupportedTypeResponse(serviceCtx.ResourceTypeInAWSFormat()); errResponse != nil {
+		return errResponse, nil
+	}
 
 	body := map[string]any{}
 	err := decoder.Decode(&body)
@@ -89,6 +92,20 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationRegionOption(region)}
 
+	// Get resource type schema
+	describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+		Type:     types.RegistryTypeResource,
+		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
+	}, cloudFormationOpts...)
+	if err != nil {
+		return ucp_aws.HandleAWSError(ctx, err)
+	}
+	if errResponse, err := putErrorResponse(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput); err != nil {
+		return nil, err
+	} else if errResponse != nil {
+		return errResponse, nil
+	}
+
 	// Create and update work differently for AWS - we need to know if the resource
 	// we're working on exists already.
 	existing := true
@@ -104,15 +121,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	var operation uuid.UUID
 	desiredState, err := json.Marshal(properties)
-	if err != nil {
-		return ucp_aws.HandleAWSError(ctx, err)
-	}
-
-	// Get resource type schema
-	describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
-		Type:     types.RegistryTypeResource,
-		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
-	}, cloudFormationOpts...)
 	if err != nil {
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
@@ -142,6 +150,16 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		patch, err := awsoperations.GeneratePatch(currentState, desiredState, resourceTypeSchema)
 		if err != nil {
 			return ucp_aws.HandleAWSError(ctx, err)
+		}
+
+		if len(patch) > 0 {
+			var errResponse armrpc_rest.Response
+			patch, errResponse, err = checkPatch(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput, patch)
+			if err != nil {
+				return nil, err
+			} else if errResponse != nil {
+				return errResponse, nil
+			}
 		}
 
 		// Call update only if the patch is not empty

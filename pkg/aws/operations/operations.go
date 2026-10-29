@@ -19,6 +19,7 @@ package operations
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 
@@ -118,6 +119,11 @@ func UnflattenProperties(state map[string]any) map[string]any {
 
 // GeneratePatch takes in the current state, desired state and type schema of a resource and returns a JSON patch to update the
 // current state to the desired state, taking into account read-only, create-only and conditional-create-only properties.
+//
+// A value AWS reports in a different form than the template set it counts as unchanged, using the schema's rules: an
+// array the schema marks "insertionOrder": false is compared ignoring order, and a property with a supported
+// "propertyTransform" is compared through it. An empty object AWS reports is kept unless the template sets values
+// inside it.
 func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jsondiff.Patch, error) {
 	// See: https://github.com/radius-project/radius/blob/main/docs/adr/ucp/001-aws-resource-updating.md
 
@@ -136,6 +142,12 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 		return nil, err
 	}
 	flattenedCurrentStateObject := FlattenProperties(currentStateObject)
+	// FlattenProperties drops an empty object, so a property AWS reports as {}, such as DataProtectionPolicy on a log
+	// group, would look removed and every redeploy would send a remove. Keep it as AWS reports it.
+	emptyObjectPaths := emptyObjects(currentStateObject, "")
+	for path := range emptyObjectPaths {
+		flattenedCurrentStateObject[path] = map[string]any{}
+	}
 
 	// Get the desired state of the resource
 	var desiredStateObject map[string]any
@@ -145,8 +157,23 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 	}
 	flattenedDesiredStateObject := FlattenProperties(desiredStateObject)
 
+	rules := parseSchemaRules(schema)
+
+	// A value AWS reports in a different form, such as reordered subnets or a fuller engine version, is unchanged:
+	// use AWS's value so the patch leaves it alone.
+	for k, v := range flattenedDesiredStateObject {
+		if current, ok := flattenedCurrentStateObject[k]; ok && rules.equivalentAt(k, v, current, desiredStateObject) {
+			flattenedDesiredStateObject[k] = current
+		}
+	}
+
 	// Add read-only and create-only properties from current state to the desired state
 	for k, v := range flattenedCurrentStateObject {
+		if emptyObjectPaths[k] && hasPathUnder(flattenedDesiredStateObject, k) {
+			// The template sets values inside an object AWS reports as empty; copying {} would overwrite them.
+			continue
+		}
+
 		property := fmt.Sprintf("/properties/%s", k)
 
 		isCreateOnlyProperty := slices.Contains(resourceTypeSchema.CreateOnlyProperties, property)
@@ -179,6 +206,33 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 
 	// Calculate the patch based on the current state and the updated desired state
 	return jsondiff.CompareJSON(currentState, updatedDesiredState)
+}
+
+// emptyObjects returns the flattened paths of the empty objects in state, which FlattenProperties leaves out.
+func emptyObjects(state map[string]any, prefix string) map[string]bool {
+	out := map[string]bool{}
+	for k, v := range state {
+		m, ok := v.(map[string]any)
+		if !ok {
+			continue
+		}
+		if len(m) == 0 {
+			out[prefix+k] = true
+			continue
+		}
+		maps.Copy(out, emptyObjects(m, prefix+k+"/"))
+	}
+	return out
+}
+
+// hasPathUnder reports whether flattened has a key inside the object at path.
+func hasPathUnder(flattened map[string]any, path string) bool {
+	for k := range flattened {
+		if strings.HasPrefix(k, path+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // ParsePropertyName transforms a propertyIdentifer of the form /properties/<propertyName> to <propertyName>.
