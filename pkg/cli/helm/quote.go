@@ -42,8 +42,9 @@ func helmCommand(kubeContext string, namespace string, arguments string) string 
 	return clusterCommand("helm", "--kube-context", kubeContext, namespace, arguments)
 }
 
-// clusterCommand returns a command that passes kubeContext with contextFlag, so that the command acts on the cluster
-// that Radius checked rather than on the current context of the kubeconfig.
+// clusterCommand returns a command for the cluster that Radius checked. With a kubeContext, the command names it with
+// contextFlag, so it acts on that cluster even if the current context of the kubeconfig changes. Without one, the
+// command omits contextFlag and uses the current context of the kubeconfig, as Radius did.
 func clusterCommand(program string, contextFlag string, kubeContext string, namespace string, arguments string) string {
 	command := program
 	if kubeContext != "" {
