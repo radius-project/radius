@@ -109,6 +109,27 @@ main() {
         [[ "${contract}" != legacy ]] || use_legacy_contract
         expect pass "${contract} pipeline requires gated sibling publication" HEAD --require-sibling-releases
         for mutation in \
+            'del(.jobs."attest-release")' \
+            '.jobs."attest-release".needs = []' \
+            '.jobs."attest-release".if = "always()"' \
+            '.jobs."attest-release"."continue-on-error" = true' \
+            '.jobs."attest-release".permissions."id-token" = "none"' \
+            '.jobs."goreleaser-release".permissions.attestations = "write"' \
+            '.jobs."verify-release".needs |= map(select(. != "attest-release"))' \
+            '.jobs."verify-release".if += " || true"' \
+            '.jobs."verify-release".permissions.attestations = "none"' \
+            '.jobs."finalize-release".permissions.attestations = "none"' \
+            '.jobs."finalize-release".needs |= map(select(. != "attest-release"))' \
+            '.jobs."build-summary".needs |= map(select(. != "attest-release"))' \
+            '(.jobs."attest-release".steps[] | select(.name == "Attest release provenance")).if = "false"' \
+            '(.jobs."attest-release".steps[] | select(.name == "Attest release provenance"))."continue-on-error" = true'; do
+            write_pipeline
+            [[ "${contract}" != legacy ]] || use_legacy_contract
+            yq -i "${mutation}" "${WORKFLOWS}/build-release.yaml"
+            expect "does not enforce the attestation gate" \
+                "${contract} weakened attestation gate: ${mutation}" HEAD --require-sibling-releases
+        done
+        for mutation in \
             '.jobs."publish-sibling-releases".if = "always()"' \
             '.jobs."publish-sibling-releases".if += " || true"' \
             '.jobs."publish-sibling-releases".needs = []' \

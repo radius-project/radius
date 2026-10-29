@@ -17,6 +17,7 @@ import {
   promotionTargets
 } from "./promote-release-bicep.mjs";
 import { recoveryInputs, verifyPair } from "./stage-release-bicep.mjs";
+import { selectAliases } from "./publish-draft-release.mjs";
 
 const hash = (bytes) =>
   `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -152,6 +153,52 @@ test("channel and latest follow existing independent eligibility decisions", asy
   assert.ok(f.copies.every((args) => args[3].endsWith(":0.62")));
   await f.promote("false", "false");
   assert.equal(f.copies.length, 4);
+});
+
+test("shared release eligibility drives GHCR latest while preserving development aliases", async (t) => {
+  for (const [version, published, expectedCopies, expectedLatest] of [
+    ["v0.62.1", [], 6, 2],
+    ["v0.62.1", ["v0.63.0"], 4, 0],
+    ["v0.62.1", ["v0.62.2"], 0, 0],
+    ["v0.62.0-rc.1", [], 2, 0]
+  ]) {
+    const f = await fixture(t, version);
+    const policy = selectAliases(
+      published.map((tag_name) => ({
+        tag_name,
+        draft: false,
+        prerelease: false
+      })),
+      version
+    );
+    const protectedRefs = [
+      "biceptypes.azurecr.io/aws:latest",
+      "biceptypes.azurecr.io/radius:latest",
+      "ghcr.io/radius-project/bicep-types-aws:edge",
+      "ghcr.io/radius-project/bicep-types-radius:edge"
+    ];
+    for (const ref of protectedRefs) f.store.set(ref, "development-bytes");
+    await f.promote(String(policy.channel), String(policy.latest));
+    assert.equal(f.copies.length, expectedCopies);
+    assert.equal(
+      f.copies.filter((args) => args[3].endsWith(":latest")).length,
+      expectedLatest
+    );
+    for (const ref of protectedRefs)
+      assert.equal(f.store.get(ref), "development-bytes");
+  }
+  const workflow = JSON.parse(
+    await tool(["yq", "-o=json", ".", ".github/workflows/build-release.yaml"])
+  );
+  const steps = workflow.jobs["finalize-release"].steps;
+  for (const name of [
+    "Promote stable aliases",
+    "Promote and mirror locked Bicep extensions"
+  ])
+    assert.equal(
+      steps.find((step) => step.name === name).env.RELEASE_PROMOTE_LATEST,
+      "${{ steps.alias-policy.outputs.promote_latest }}"
+    );
 });
 
 test("partially finalized newer release prevents pair-wide channel/latest downgrade", async (t) => {
