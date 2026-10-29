@@ -82,6 +82,10 @@ recipePacks:
     repo: github.com/radius-project/resource-types-contrib
     ref: 0c3eaf14e7acc074420e78fda4d66c51541a8145
     tag: "recipe-pack/azure-aci/v0.1.0"
+  - name: aws-eks
+    repo: github.com/radius-project/resource-types-contrib
+    ref: b81d0e9a59f20ea5c22fd8bb1338dad40eb4d473
+    tag: "recipe-pack/aws-eks/v0.1.0"
   - name: kubernetes
     repo: github.com/radius-project/resource-types-contrib
     ref: 0c3eaf14e7acc074420e78fda4d66c51541a8145
