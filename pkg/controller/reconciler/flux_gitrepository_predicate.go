@@ -14,6 +14,8 @@ limitations under the License.
 package reconciler
 
 import (
+	"reflect"
+
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -46,14 +48,21 @@ func (*GitRepositoryRevisionChangePredicate) Update(e event.UpdateEvent) bool {
 		return false
 	}
 
-	oldSource, ok := e.ObjectOld.(sourcev1.Source)
+	oldSource, ok := e.ObjectOld.(*sourcev1.GitRepository)
 	if !ok {
 		return false
 	}
 
-	newSource, ok := e.ObjectNew.(sourcev1.Source)
+	newSource, ok := e.ObjectNew.(*sourcev1.GitRepository)
 	if !ok {
 		return false
+	}
+	if oldSource.UID != newSource.UID || oldSource.Generation != newSource.Generation ||
+		oldSource.Spec.Suspend != newSource.Spec.Suspend ||
+		!reflect.DeepEqual(oldSource.DeletionTimestamp, newSource.DeletionTimestamp) ||
+		oldSource.Status.ObservedGeneration != newSource.Status.ObservedGeneration ||
+		!reflect.DeepEqual(oldSource.Status.Conditions, newSource.Status.Conditions) {
+		return true
 	}
 
 	if oldSource.GetArtifact() == nil && newSource.GetArtifact() != nil {
@@ -61,7 +70,11 @@ func (*GitRepositoryRevisionChangePredicate) Update(e event.UpdateEvent) bool {
 	}
 
 	if oldSource.GetArtifact() != nil && newSource.GetArtifact() != nil &&
-		oldSource.GetArtifact().Revision != newSource.GetArtifact().Revision {
+		(oldSource.GetArtifact().Revision != newSource.GetArtifact().Revision ||
+			oldSource.GetArtifact().Digest != newSource.GetArtifact().Digest) {
+		return true
+	}
+	if oldSource.GetArtifact() != nil && newSource.GetArtifact() == nil {
 		return true
 	}
 

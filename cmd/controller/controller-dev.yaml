@@ -1,6 +1,10 @@
 environment:
   name: "dev"
   roleLocation: "global"
+controller:
+  flux:
+    enabled: false
+    sources: []
 profilerProvider:
   enabled: true
   port: 6063

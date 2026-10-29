@@ -109,6 +109,10 @@ Each setup refreshes the retained samples checkout from its `edge` branch and ar
 
 Do not start another local functional test run at the same time. Fixture publication and test execution each hold the shared Bicep fixture lock and temporarily configure Bicep to use the extensions published from your checkout. Both phases drain their workers before restoring the original files and releasing the lock, including on failure or interruption.
 
+Flux tests explicitly select their API-assigned GitRepository UID after creating the source. These tests run serially because their fixture updates `controller-config` and triggers a non-overlapping controller rollout; a ConfigMap update alone does not reload startup settings. The fixture restores the previous configuration and pod annotation during cleanup. Keep controller-dependent tests out of that restart window and do not run competing test-runner invocations.
+
+Source-selection cases belong to the Kubernetes group. Legacy association/schema-upgrade cases belong to the separately isolated upgrade group, not the shared standard cluster. A successful command with no matching tests or skipped envtest setup is not evidence for these cases; check the executed test names and results.
+
 ### 3. Clean up
 
 After reviewing the results, remove the clusters, registry, trusted certificate, and `/etc/hosts` entry:

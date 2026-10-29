@@ -19,6 +19,7 @@ package v1alpha3
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // DeploymentTemplateSpec defines the desired state of a DeploymentTemplate resource.
@@ -34,6 +35,30 @@ type DeploymentTemplateSpec struct {
 
 	// Repository is the git repository that the Bicep manifests are stored in.
 	Repository string `json:"repository,omitempty"`
+
+	// SourceRef identifies the Flux source and artifact used to produce this template.
+	SourceRef *DeploymentTemplateSourceReference `json:"sourceRef,omitempty"`
+}
+
+// DeploymentTemplateSourceReference records a generated template's source.
+type DeploymentTemplateSourceReference struct {
+	// Namespace is the GitRepository namespace.
+	// +kubebuilder:validation:MinLength=1
+	Namespace string `json:"namespace"`
+	// Name is the GitRepository name.
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+	// UID distinguishes a source from a replacement with the same name.
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:MinLength=1
+	UID types.UID `json:"uid"`
+	// Generation is the source specification generation accepted for this template.
+	// +kubebuilder:validation:Minimum=1
+	Generation int64 `json:"generation"`
+	// Revision is the accepted artifact's revision.
+	Revision string `json:"revision,omitempty"`
+	// Digest is the accepted artifact's content digest.
+	Digest string `json:"digest,omitempty"`
 }
 
 // DeploymentTemplateStatus defines the observed state of a DeploymentTemplate resource.
@@ -48,11 +73,25 @@ type DeploymentTemplateStatus struct {
 	// OutputResources is a list of the resourceIDs that were created by the template on the last deployment.
 	OutputResources []string `json:"outputResources,omitempty"`
 
+	// PendingCleanup retains outputs that cannot have trackers in a terminating namespace.
+	PendingCleanup []OutputResourceCleanup `json:"pendingCleanup,omitempty"`
+
 	// Operation tracks the status of an in-progress provisioning operation.
 	Operation *ResourceOperation `json:"operation,omitempty"`
 
+	// OperationSpecHash identifies the desired spec submitted by the in-progress operation.
+	OperationSpecHash string `json:"operationSpecHash,omitempty"`
+
 	// Phrase indicates the current status of the Deployment Template.
 	Phrase DeploymentTemplatePhrase `json:"phrase,omitempty"`
+}
+
+// OutputResourceCleanup persists deletion progress for an output without a tracker.
+type OutputResourceCleanup struct {
+	// ID is the output resource ID returned by a completed deployment.
+	ID string `json:"id"`
+	// Operation is the accepted DELETE operation, if any.
+	Operation *ResourceOperation `json:"operation,omitempty"`
 }
 
 // DeploymentTemplatePhrase is a string representation of the current status of a Deployment Template.
@@ -69,6 +108,9 @@ const (
 	// succeeded but residual DeploymentResources removed from the previous generation
 	// are still draining. The reconciler transitions to Ready once they are gone.
 	DeploymentTemplatePhraseReadyPendingCleanup DeploymentTemplatePhrase = "ReadyPendingCleanup"
+
+	// DeploymentTemplatePhraseHeld indicates that source state must be resolved before new effects.
+	DeploymentTemplatePhraseHeld DeploymentTemplatePhrase = "Held"
 
 	// DeploymentTemplatePhraseFailed indicates that the Deployment Template has failed.
 	DeploymentTemplatePhraseFailed DeploymentTemplatePhrase = "Failed"
