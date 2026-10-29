@@ -121,7 +121,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	kubeContextList, err := r.KubernetesInterface.GetKubeContext()
 	if err != nil {
-		return clierrors.Message("Failed to read Kubernetes configuration. Ensure you have a valid Kubeconfig file and try again.")
+		return clierrors.MessageWithCause(err, "Failed to read Kubernetes configuration. Ensure you have a valid Kubeconfig file and try again.")
 	}
 	context, err := cli.RequireKubeContext(cmd, kubeContextList.CurrentContext)
 	if err != nil {

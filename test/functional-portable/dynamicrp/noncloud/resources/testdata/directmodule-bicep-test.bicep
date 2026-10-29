@@ -86,7 +86,8 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
   }
 }
 
-// Uses the same Kubernetes namespace as `env`, so both resources deploy to one namespace.
+// Radius rejects two environments that claim the same Kubernetes namespace, so the locked
+// environment uses its own.
 resource lockedEnv 'Radius.Core/environments@2025-08-01-preview' = {
   name: 'directmodule-bicep-locked-env'
   location: 'global'
@@ -96,7 +97,7 @@ resource lockedEnv 'Radius.Core/environments@2025-08-01-preview' = {
     ]
     providers: {
       kubernetes: {
-        namespace: 'directmodule-bicep-ns'
+        namespace: 'directmodule-bicep-locked-ns'
       }
     }
   }

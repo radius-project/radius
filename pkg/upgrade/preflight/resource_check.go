@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/radius-project/radius/pkg/kubeutil"
+	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -122,16 +122,7 @@ func (k *KubernetesResourceCheck) getClientset() (kubernetes.Interface, error) {
 		return k.clientset, nil
 	}
 
-	config, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
-		ContextName: k.kubeContext,
-		QPS:         kubeutil.DefaultCLIQPS,
-		Burst:       kubeutil.DefaultCLIBurst,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Kubernetes client config: %w", err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
+	clientset, _, err := clikubernetes.NewClientset(k.kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}

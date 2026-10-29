@@ -198,7 +198,7 @@ setup() {
         exit 1
         ;;
     esac
-    for tool in docker git go make k3d kubectl helm openssl jq yq python3 \
+    for tool in docker git go make k3d kubectl helm openssl jq yq zip \
         flux curl envsubst sudo; do
         command -v "${tool}" || {
             echo "Missing required tool: ${tool}. See running-functional-tests.md." >&2
