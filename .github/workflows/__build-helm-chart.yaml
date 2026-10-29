@@ -20,6 +20,10 @@ name: __build-helm-chart
 
 on:
   workflow_call:
+    outputs:
+      chart-digest:
+        description: Digest of the published release chart; empty for edge builds
+        value: ${{ jobs.build-and-push-helm-chart.outputs.chart-digest }}
 
 permissions: {}
 
@@ -31,6 +35,8 @@ jobs:
     permissions:
       packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
+    outputs:
+      chart-digest: ${{ steps.chart-digest.outputs.digest }}
     env:
       ARTIFACT_DIR: ./dist/Charts
       HELM_PACKAGE_DIR: helm
@@ -105,3 +111,10 @@ jobs:
             --repository "oci://${OCI_REGISTRY}/${OCI_REPOSITORY}" \
             --name radius \
             --version "${CHART_VERSION}"
+
+      - name: Resolve published chart digest
+        id: chart-digest
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          digest="$(oras resolve "${OCI_REGISTRY}/${OCI_REPOSITORY}/radius:${CHART_VERSION}")"
+          echo "digest=${digest}" >>"${GITHUB_OUTPUT}"

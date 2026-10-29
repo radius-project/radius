@@ -38,6 +38,29 @@ kubectl logs -n radius-system -l app.kubernetes.io/part-of=radius --all-containe
 
 See the [observability documentation](https://docs.radapp.io/guides/operations/control-plane/logs/) for more logging guidance.
 
+## A chart download fails
+
+`rad install kubernetes` and `rad upgrade kubernetes` download the Radius chart from `oci://ghcr.io/radius-project/helm-chart` and the Contour chart from `https://projectcontour.github.io/helm-charts`, unless you install from local charts. These downloads don't use the Helm repositories you added with `helm repo add` or their cached indexes, so you don't need to run `helm repo update` first, and a missing or broken repository in your Helm configuration doesn't affect them. The Radius chart download still uses your registry credentials from `helm registry login` or `docker login`.
+
+Each request times out after 30 seconds. A download that fails with a temporary error, such as a timeout, a dropped connection, or an HTTP 408, 429, 500, 502, 503, or 504 response, is retried for up to 3 minutes, so it gives up within about 4 minutes. Each retry prints the error that caused it:
+
+```text
+Downloading the contour chart failed (attempt 1), retrying: Get "https://...": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+```
+
+When the retries run out, or the error isn't temporary, the command stops with `error downloading helm chart from the registry` followed by the last error. A timeout or connection error means that the machine can't reach the chart host, so check its network, proxy, and firewall settings. A `401` or `403` response points at the registry credentials. For a `403` from `ghcr.io`, the command reports `received 403 unauthorized` instead and suggests running `docker logout ghcr.io`.
+
+On a network that can't reach the chart hosts, download the charts on a machine that can, copy them over, and install from the local files. For the Contour chart, use the version that `ContourChartDefaultVersion` sets in [`pkg/cli/helm/contour.go`](../../../../pkg/cli/helm/contour.go):
+
+```bash
+helm pull contour --repo https://projectcontour.github.io/helm-charts --version <version>
+rad install kubernetes --reinstall --contour-chart ./contour-<version>.tgz
+```
+
+An earlier attempt may have installed Radius before the Contour download failed, and without `--reinstall` the command then stops at `Found existing Radius installation` instead of installing Contour. `--reinstall` upgrades Radius, keeping the values you set before, and installs Contour, and on a cluster without Radius it installs as usual.
+
+The command still downloads the Radius chart. To install Radius from a local chart as well, add `--chart` to it with the path of the Radius chart, such as `deploy/Chart` in your clone.
+
 ## The installation times out
 
 `rad install kubernetes` waits for the control-plane resources to become ready and fails with an error like this if they do not:
