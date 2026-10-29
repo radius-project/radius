@@ -87,10 +87,11 @@ func testContext() *recipecontext.Context {
 
 func Test_ResolveParameterExpressions(t *testing.T) {
 	tests := []struct {
-		name     string
-		params   map[string]any
-		ctx      *recipecontext.Context
-		expected map[string]any
+		name        string
+		params      map[string]any
+		ctx         *recipecontext.Context
+		expected    map[string]any
+		expectedErr string
 	}{
 		{
 			name:     "nil params returns nil",
@@ -145,13 +146,27 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 			},
 		},
 		{
-			name: "unrecognized expression left as-is",
+			name: "unknown context path fails",
 			params: map[string]any{
 				"value": "{{context.unknown.field}}",
 			},
+			ctx:         testContext(),
+			expectedErr: `parameter "value": unresolved expression {{context.unknown.field}}: unknown context path "context.unknown.field"`,
+		},
+		{
+			name: "non-context template expressions pass through unchanged",
+			params: map[string]any{
+				"helm":   "{{ .Values.name }}",
+				"nested": "{{ .Values.context.name }}-{{context.resource.name}}",
+				"plain":  "{{unknown}}",
+				"open":   "prefix-{{ not closed",
+			},
 			ctx: testContext(),
 			expected: map[string]any{
-				"value": "{{context.unknown.field}}",
+				"helm":   "{{ .Values.name }}",
+				"nested": "{{ .Values.context.name }}-my-resource",
+				"plain":  "{{unknown}}",
+				"open":   "prefix-{{ not closed",
 			},
 		},
 		{
@@ -195,14 +210,12 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 			},
 		},
 		{
-			name: "nil context returns expressions as-is",
+			name: "nil context fails",
 			params: map[string]any{
 				"name": "{{context.resource.name}}",
 			},
-			ctx: nil,
-			expected: map[string]any{
-				"name": "{{context.resource.name}}",
-			},
+			ctx:         nil,
+			expectedErr: `unknown context path "context.resource.name": recipe context is not available`,
 		},
 		{
 			name: "kubernetes runtime fields resolve",
@@ -275,14 +288,12 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 			},
 		},
 		{
-			name: "context.resource.properties missing property left as-is",
+			name: "context.resource.properties missing property fails",
 			params: map[string]any{
 				"missing": "{{context.resource.properties.nonexistent}}",
 			},
-			ctx: testContext(),
-			expected: map[string]any{
-				"missing": "{{context.resource.properties.nonexistent}}",
-			},
+			ctx:         testContext(),
+			expectedErr: `parameter "missing": unresolved expression {{context.resource.properties.nonexistent}}: expression evaluated to null`,
 		},
 		{
 			name: "multiple property expressions in one string",
@@ -318,7 +329,14 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ResolveParameterExpressions(tt.params, tt.ctx)
+			t.Parallel()
+			result, err := ResolveParameterExpressions(tt.params, tt.ctx)
+			if tt.expectedErr != "" {
+				require.ErrorContains(t, err, tt.expectedErr)
+				require.Nil(t, result)
+				return
+			}
+			require.NoError(t, err)
 			if tt.expected == nil {
 				assert.Nil(t, result)
 			} else {
@@ -344,10 +362,11 @@ func Test_ResolveParameterExpressions_GeneratedAzureResourceNameHash(t *testing.
 	)
 	require.NoError(t, err)
 
-	result := ResolveParameterExpressions(
+	result, err := ResolveParameterExpressions(
 		map[string]any{"name": "redis-{{context.azure.resourceNameHash}}"},
 		ctx,
 	)
+	require.NoError(t, err)
 
 	// Assert against the context's own hash rather than a literal. What this test
 	// owns is that the expression resolves to that field; whether the field itself
@@ -357,10 +376,11 @@ func Test_ResolveParameterExpressions_GeneratedAzureResourceNameHash(t *testing.
 
 func Test_TernaryExpressions(t *testing.T) {
 	tests := []struct {
-		name     string
-		params   map[string]any
-		ctx      *recipecontext.Context
-		expected map[string]any
+		name        string
+		params      map[string]any
+		ctx         *recipecontext.Context
+		expected    map[string]any
+		expectedErr string
 	}{
 		{
 			name: "ternary true branch",
@@ -393,14 +413,12 @@ func Test_TernaryExpressions(t *testing.T) {
 			},
 		},
 		{
-			name: "ternary with unresolvable condition left as-is",
+			name: "ternary with unresolvable condition fails",
 			params: map[string]any{
 				"value": `{{context.unknown.path == "x" ? "yes" : "no"}}`,
 			},
-			ctx: testContext(),
-			expected: map[string]any{
-				"value": `{{context.unknown.path == "x" ? "yes" : "no"}}`,
-			},
+			ctx:         testContext(),
+			expectedErr: `unknown context path "context.unknown.path"`,
 		},
 		{
 			name: "mixed ternary and literal text",
@@ -453,120 +471,159 @@ func Test_TernaryExpressions(t *testing.T) {
 			},
 		},
 		{
-			name: "chained ternary with unresolvable condition on chosen branch left as-is",
+			name: "chained ternary with unresolvable condition on chosen branch fails",
 			params: map[string]any{
 				"value": `{{context.environment.name == "prod" ? "Premium" : context.unknown.path == "x" ? "Standard" : "Basic"}}`,
 			},
+			ctx:         testContext(),
+			expectedErr: `unknown context path "context.unknown.path"`,
+		},
+		{
+			name: "chained ternary with unresolvable condition on branch not taken resolves",
+			params: map[string]any{
+				"value": `{{context.environment.name == "my-env" ? "Premium" : context.unknown.path == "x" ? "Standard" : "Basic"}}`,
+			},
 			ctx: testContext(),
 			expected: map[string]any{
-				"value": `{{context.environment.name == "prod" ? "Premium" : context.unknown.path == "x" ? "Standard" : "Basic"}}`,
+				"value": "Premium",
 			},
 		},
 		{
-			name: "brace-wrapped nested ternary left as-is (outer scanner stops at first brace)",
+			name: "brace-wrapped nested ternary fails",
 			params: map[string]any{
-				// The inner arm wraps a ternary in its own {{...}}; the outer expressionPattern
-				// stops at the first "}", capturing a malformed fragment that is left unchanged.
-				// Real chained ternaries use no inner braces (see cases above).
+				// Nested ternaries must not be wrapped in their own {{...}}; the quotes no longer
+				// balance, so the expression is malformed.
 				"value": `{{context.environment.name == "a" ? "{{context.resource.name == "b" ? "c" : "d"}}" : "e"}}`,
 			},
-			ctx: testContext(),
+			ctx:         testContext(),
+			expectedErr: `unsupported identifier "b"`,
+		},
+		{
+			name: "three-way size mapping",
+			params: map[string]any{
+				"small":  `{{context.resource.properties.size == "S" ? "Standard_B1ms" : context.resource.properties.size == "M" ? "Standard_D2ds_v5" : "Standard_D4ds_v5"}}`,
+				"medium": `{{context.resource.properties.tier == "S" ? "Standard_B1ms" : context.resource.properties.tier == "M" ? "Standard_D2ds_v5" : "Standard_D4ds_v5"}}`,
+				"large":  `{{context.resource.properties.big == "S" ? "Standard_B1ms" : context.resource.properties.big == "M" ? "Standard_D2ds_v5" : "Standard_D4ds_v5"}}`,
+			},
+			ctx: func() *recipecontext.Context {
+				ctx := testContext()
+				ctx.Resource.Properties["size"] = "S"
+				ctx.Resource.Properties["tier"] = "M"
+				ctx.Resource.Properties["big"] = "L"
+				return ctx
+			}(),
 			expected: map[string]any{
-				"value": `{{context.environment.name == "a" ? "{{context.resource.name == "b" ? "c" : "d"}}" : "e"}}`,
+				"small":  "Standard_B1ms",
+				"medium": "Standard_D2ds_v5",
+				"large":  "Standard_D4ds_v5",
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ResolveParameterExpressions(tt.params, tt.ctx)
+			t.Parallel()
+			result, err := ResolveParameterExpressions(tt.params, tt.ctx)
+			if tt.expectedErr != "" {
+				require.ErrorContains(t, err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
 			require.Equal(t, tt.expected, result)
 		})
 	}
 }
 
-func Test_buildContextLookup(t *testing.T) {
-	t.Run("nil context returns empty map", func(t *testing.T) {
-		lookup := buildContextLookup(nil)
-		assert.Empty(t, lookup)
+func Test_contextResolver(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil context rejects every path", func(t *testing.T) {
+		t.Parallel()
+		_, err := newContextResolver(nil).resolve("context.resource.properties.host")
+		require.ErrorContains(t, err, "recipe context is not available")
 	})
 
-	t.Run("populates all expected keys", func(t *testing.T) {
-		ctx := testContext()
-		lookup := buildContextLookup(ctx)
-
-		assert.Equal(t, "my-resource", lookup["context.resource.name"])
-		assert.Equal(t, "b9f5a1471dadc792", lookup["context.azure.resourceNameHash"])
-		assert.Equal(t, "my-app", lookup["context.application.name"])
-		assert.Equal(t, "my-env", lookup["context.environment.name"])
-		assert.Equal(t, "my-namespace", lookup["context.runtime.kubernetes.namespace"])
-		assert.Equal(t, "my-rg", lookup["context.azure.resourceGroup.name"])
-		assert.Equal(t, "us-east-1", lookup["context.aws.region"])
-		assert.Equal(t, "myhost.example.com", lookup["context.resource.properties.host"])
-		assert.Equal(t, "5432", lookup["context.resource.properties.port"])
-		assert.Equal(t, "my-db", lookup["context.resource.connections.db.name"])
-		assert.Equal(t, "postgres://myhost:5432/mydb", lookup["context.resource.connections.db.properties.connectionString"])
+	t.Run("resolves all expected paths", func(t *testing.T) {
+		t.Parallel()
+		r := newContextResolver(testContext())
+		expected := map[string]any{
+			"context.resource.name":                                       "my-resource",
+			"context.resource.type":                                       "Applications.Core/extenders",
+			"context.azure.resourceNameHash":                              "b9f5a1471dadc792",
+			"context.application.name":                                    "my-app",
+			"context.environment.name":                                    "my-env",
+			"context.runtime.kubernetes.namespace":                        "my-namespace",
+			"context.runtime.kubernetes.environmentNamespace":             "my-env-namespace",
+			"context.azure.resourceGroup.name":                            "my-rg",
+			"context.azure.subscription.subscriptionId":                   "sub-id",
+			"context.aws.region":                                          "us-east-1",
+			"context.aws.account":                                         "123456789",
+			"context.resource.properties.host":                            "myhost.example.com",
+			"context.resource.properties.port":                            5432,
+			"context.resource.properties.enabled":                         true,
+			"context.resource.connections.db.name":                        "my-db",
+			"context.resource.connections.db.type":                        "Applications.Core/extenders",
+			"context.resource.connections.db.properties.connectionString": "postgres://myhost:5432/mydb",
+		}
+		for path, want := range expected {
+			got, err := r.resolve(path)
+			require.NoError(t, err, path)
+			assert.Equal(t, want, got, path)
+		}
 	})
 
-	t.Run("Azure resource name hash is exposed when present", func(t *testing.T) {
-		ctx := testContext()
-		lookup := buildContextLookup(ctx)
-		assert.Equal(t, ctx.Azure.ResourceNameHash, lookup["context.azure.resourceNameHash"])
+	t.Run("absent properties and connections resolve to null", func(t *testing.T) {
+		t.Parallel()
+		r := newContextResolver(testContext())
+		for _, path := range []string{
+			"context.resource.properties.nonexistent",
+			"context.resource.connections.db.properties.nonexistent",
+			"context.resource.connections.missing.properties.host",
+			"context.resource.connections.missing.name",
+		} {
+			got, err := r.resolve(path)
+			require.NoError(t, err, path)
+			assert.Nil(t, got, path)
+		}
+	})
+
+	t.Run("unknown paths fail", func(t *testing.T) {
+		t.Parallel()
+		r := newContextResolver(testContext())
+		for _, path := range []string{
+			"context.unknown.field",
+			"context.resource",
+			"context.resource.connections.db",
+			"context.resource.connections.db.unknown",
+			"context.resource.connections.missing.unknown",
+		} {
+			_, err := r.resolve(path)
+			require.ErrorContains(t, err, "unknown context path", path)
+		}
 	})
 
 	t.Run("omits Azure resource name hash when not set", func(t *testing.T) {
+		t.Parallel()
 		ctx := testContext()
 		ctx.Azure.ResourceNameHash = ""
-
-		lookup := buildContextLookup(ctx)
-		_, ok := lookup["context.azure.resourceNameHash"]
-		assert.False(t, ok)
+		_, err := newContextResolver(ctx).resolve("context.azure.resourceNameHash")
+		require.ErrorContains(t, err, "unknown context path")
 	})
 
-	t.Run("handles nil kubernetes runtime", func(t *testing.T) {
+	t.Run("omits providers and runtime that are not configured", func(t *testing.T) {
+		t.Parallel()
 		ctx := testContext()
 		ctx.Runtime.Kubernetes = nil
-		lookup := buildContextLookup(ctx)
-		_, ok := lookup["context.runtime.kubernetes.namespace"]
-		assert.False(t, ok)
-	})
-
-	t.Run("handles nil azure provider", func(t *testing.T) {
-		ctx := testContext()
 		ctx.Azure = nil
-		lookup := buildContextLookup(ctx)
-		_, ok := lookup["context.azure.resourceGroup.name"]
-		assert.False(t, ok)
-	})
-
-	t.Run("handles nil aws provider", func(t *testing.T) {
-		ctx := testContext()
 		ctx.AWS = nil
-		lookup := buildContextLookup(ctx)
-		_, ok := lookup["context.aws.region"]
-		assert.False(t, ok)
-	})
-}
-
-func Test_buildTypedContextLookup(t *testing.T) {
-	t.Run("nil context returns empty map", func(t *testing.T) {
-		typed := buildTypedContextLookup(nil)
-		assert.Empty(t, typed)
-	})
-
-	t.Run("preserves original property and connection-property types", func(t *testing.T) {
-		ctx := testContext()
-		typed := buildTypedContextLookup(ctx)
-
-		assert.Equal(t, "myhost.example.com", typed["context.resource.properties.host"])
-		assert.Equal(t, 5432, typed["context.resource.properties.port"])
-		assert.Equal(t, true, typed["context.resource.properties.enabled"])
-		assert.Equal(t, "postgres://myhost:5432/mydb", typed["context.resource.connections.db.properties.connectionString"])
-
-		// Non-property context fields are resolved through the string lookup, not the typed lookup.
-		_, ok := typed["context.resource.name"]
-		assert.False(t, ok)
-		_, ok = typed["context.resource.connections.db.name"]
-		assert.False(t, ok)
+		r := newContextResolver(ctx)
+		for _, path := range []string{
+			"context.runtime.kubernetes.namespace",
+			"context.azure.resourceGroup.name",
+			"context.aws.region",
+		} {
+			_, err := r.resolve(path)
+			require.ErrorContains(t, err, "unknown context path", path)
+		}
 	})
 }

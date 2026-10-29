@@ -112,6 +112,28 @@ jobs:
       - name: Install plan validation tools
         run: make install-yq install-jq install-git-cliff
 
+      - name: Read planned release channel
+        id: channel
+        run: |
+          plan="$(
+            jq -er '[.[] | select(test("^\\.github/release-plans/v[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[1-9][0-9]*)?\\.yaml$"))] |
+              if length == 1 then .[0] else error("Expected one release plan") end' \
+              "${RUNNER_TEMP}/release-pr-files.json"
+          )"
+          channel="$(yq -r '.channel' "${RUNNER_TEMP}/release-pr-head/${plan}")"
+          [[ "${channel}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo "::error::Planned channel must use X.Y format."
+            exit 1
+          }
+          echo "channel=${channel}" >> "${GITHUB_OUTPUT}"
+
+      - name: Collect live backport records
+        uses: radius-project/.github/.github/actions/release-backport@7ac45fd6568840927049680d60bb5e9853e67838
+        with:
+          operation: collect
+          channel: ${{ steps.channel.outputs.channel }}
+          output-file: ${{ runner.temp }}/release-backports.json
+
       - name: Validate release plan
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -124,7 +146,8 @@ jobs:
             --files-file "${RUNNER_TEMP}/release-pr-files.json" \
             --base-sha "${BASE_SHA}" \
             --head-dir "${RUNNER_TEMP}/release-pr-head" \
-            --repository "${GITHUB_REPOSITORY}"
+            --repository "${GITHUB_REPOSITORY}" \
+            --backports-file "${RUNNER_TEMP}/release-backports.json"
 
   validate-merge-group:
     name: Validate release plan
@@ -299,6 +322,30 @@ jobs:
           git fetch origin \
             '+refs/heads/release/*:refs/remotes/origin/release/*'
 
+      - name: Read planned release channel
+        if: steps.select.outputs.number != ''
+        id: channel
+        run: |
+          plan="$(
+            jq -er '[.[] | select(test("^\\.github/release-plans/v[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[1-9][0-9]*)?\\.yaml$"))] |
+              if length == 1 then .[0] else error("Expected one release plan") end' \
+              "${RUNNER_TEMP}/release-pr-files.json"
+          )"
+          channel="$(yq -r '.channel' "${RUNNER_TEMP}/release-pr-head/${plan}")"
+          [[ "${channel}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+            echo "::error::Planned channel must use X.Y format."
+            exit 1
+          }
+          echo "channel=${channel}" >> "${GITHUB_OUTPUT}"
+
+      - name: Collect live backport records
+        if: steps.select.outputs.number != ''
+        uses: radius-project/.github/.github/actions/release-backport@7ac45fd6568840927049680d60bb5e9853e67838
+        with:
+          operation: collect
+          channel: ${{ steps.channel.outputs.channel }}
+          output-file: ${{ runner.temp }}/release-backports.json
+
       - name: Revalidate queued release plan and live state
         if: steps.select.outputs.number != ''
         env:
@@ -312,4 +359,5 @@ jobs:
             --files-file "${RUNNER_TEMP}/release-pr-files.json" \
             --base-sha "${BASE_SHA}" \
             --head-dir "${RUNNER_TEMP}/release-pr-head" \
-            --repository "${GITHUB_REPOSITORY}"
+            --repository "${GITHUB_REPOSITORY}" \
+            --backports-file "${RUNNER_TEMP}/release-backports.json"
