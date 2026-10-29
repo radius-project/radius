@@ -362,33 +362,56 @@ func Test_LeafPaths(t *testing.T) {
 	require.Equal(t, []string{"/Size"}, leafPaths("/Size", 2))
 }
 
-// Test_InvalidSchema checks that a schema UCP cannot read fails the request instead of letting it through.
+// Test_InvalidSchema checks that a schema UCP cannot read fails the request on both PUT routes instead of letting it
+// through. For an IMMUTABLE type, "handlers" that is not an object passes the patch generator but not the type check.
 func Test_InvalidSchema(t *testing.T) {
-	t.Run("PUT of a NON_PROVISIONABLE type", func(t *testing.T) {
-		options := setupTest(t)
-		options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
-			ProvisioningType: cftypes.ProvisioningTypeNonProvisionable,
-			Schema:           aws.String("not json"),
-		}, nil)
+	tests := []struct {
+		name             string
+		provisioningType cftypes.ProvisioningType
+		schema           string
+		existing         bool
+	}{
+		{name: "NON_PROVISIONABLE", provisioningType: cftypes.ProvisioningTypeNonProvisionable, schema: "not json"},
+		{
+			name:             "IMMUTABLE update",
+			provisioningType: cftypes.ProvisioningTypeImmutable,
+			schema:           `{"primaryIdentifier": ["/properties/Name"], "handlers": ["create"]}`,
+			existing:         true,
+		},
+	}
+	puts := []struct {
+		name    string
+		factory controllerFactory
+		method  string
+		suffix  string
+	}{
+		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name"},
+		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
+	}
+	for _, tt := range tests {
+		for _, op := range puts {
+			t.Run(tt.name+" "+op.name, func(t *testing.T) {
+				options := setupTest(t)
+				options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
+					ProvisioningType: tt.provisioningType,
+					Schema:           aws.String(tt.schema),
+				}, nil)
+				if tt.existing {
+					options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudcontrol.GetResourceOutput{
+						ResourceDescription: &cctypes.ResourceDescription{Identifier: aws.String("name"), Properties: aws.String(`{"Name": "name", "Size": 1}`)},
+					}, nil)
+				}
 
-		path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Type/name"
-		request, err := http.NewRequest(http.MethodPut, path, bytes.NewBufferString(`{"properties": {"Name": "name"}}`))
-		require.NoError(t, err)
-		controller, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{}, clientsFor(options))
-		require.NoError(t, err)
-		_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
-		require.ErrorContains(t, err, "failed to read the CloudFormation schema")
-	})
-
-	t.Run("patch of an IMMUTABLE type", func(t *testing.T) {
-		patch := jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}}
-		_, errResponse, err := checkPatch(t.Context(), "AWS::Test::Type", &cloudformation.DescribeTypeOutput{
-			ProvisioningType: cftypes.ProvisioningTypeImmutable,
-			Schema:           aws.String("not json"),
-		}, patch)
-		require.ErrorContains(t, err, "failed to read the CloudFormation schema")
-		require.Nil(t, errResponse)
-	})
+				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Type" + op.suffix
+				request, err := http.NewRequest(op.method, path, bytes.NewBufferString(`{"properties": {"Name": "name", "Size": 2}}`))
+				require.NoError(t, err)
+				controller, err := op.factory(armrpc_controller.Options{}, clientsFor(options))
+				require.NoError(t, err)
+				_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
+				require.ErrorContains(t, err, "failed to read the CloudFormation schema")
+			})
+		}
+	}
 }
 
 // Test_Put_DescribeTypeError checks that PUT stops before it reads the resource when DescribeType fails.
