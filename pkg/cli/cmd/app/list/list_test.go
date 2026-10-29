@@ -17,6 +17,7 @@ limitations under the License.
 package list
 
 import (
+	"bytes"
 	"net/http"
 	"testing"
 
@@ -119,7 +120,7 @@ func Test_Run(t *testing.T) {
 			expectedOutput: []any{
 				output.FormattedOutput{
 					Format:  "table",
-					Obj:     []*corerpv20250801.ApplicationResource(nil),
+					Obj:     []*corerpv20250801.ApplicationResource{},
 					Options: objectformats.GetResourceTableFormat(),
 				},
 			},
@@ -186,6 +187,51 @@ func Test_Run(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Equal(t, tc.expectedOutput, outputSink.Writes)
+		})
+	}
+}
+
+func Test_Run_EmptyJSON(t *testing.T) {
+	t.Parallel()
+
+	testcases := []struct {
+		name         string
+		applications []*corerpv20250801.ApplicationResource
+	}{
+		{name: "nil value"},
+		{name: "empty value", applications: []*corerpv20250801.ApplicationResource{}},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			workspace := &workspaces.Workspace{
+				Scope: "/planes/radius/local/resourceGroups/test-group",
+			}
+			serverFactory := func() fake.ApplicationsServer {
+				return fake.ApplicationsServer{
+					NewListByScopePager: func(rootScope string, _ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
+						resp.AddPage(http.StatusOK, corerpv20250801.ApplicationsClientListByScopeResponse{
+							Value: tc.applications,
+						}, nil)
+						return
+					},
+				}
+			}
+			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, serverFactory)
+			require.NoError(t, err)
+
+			var stdout bytes.Buffer
+			runner := &Runner{
+				RadiusCoreClientFactory: factory,
+				Workspace:               workspace,
+				Format:                  output.FormatJson,
+				Output:                  &output.OutputWriter{Writer: &stdout},
+			}
+
+			require.NoError(t, runner.Run(t.Context()))
+			require.Equal(t, "[]\n", stdout.String())
 		})
 	}
 }

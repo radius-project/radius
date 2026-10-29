@@ -35,7 +35,7 @@ docker run -d \
   -e KUBECONFIG=/root/.kube/config \
   -v "$TEMP_KUBECONFIG:/root/.kube/config:ro" \
   -p 5017:8080 \
-  ghcr.io/radius-project/deployment-engine:latest
+  ghcr.io/radius-project/deployment-engine:edge
 
 echo "✅ Deployment engine started on port 5017"
 

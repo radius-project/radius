@@ -76,7 +76,8 @@ spec:
             name: deployment-engine-config
       containers:
       - name: deployment-engine
-        image: ghcr.io/radius-project/deployment-engine:latest
+        image: ghcr.io/radius-project/deployment-engine:edge
+        imagePullPolicy: Always
         args:
         - --local
         volumeMounts:
