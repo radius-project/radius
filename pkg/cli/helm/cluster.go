@@ -24,6 +24,7 @@ import (
 
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/dynamic"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -43,11 +44,17 @@ type CLIClusterOptions struct {
 }
 
 type ClusterOptions struct {
-	Radius  RadiusChartOptions
-	Contour ContourChartOptions
+	Radius      RadiusChartOptions
+	Contour     ContourChartOptions
+	CertManager CertManagerChartOptions
 
 	// ResetValues mirrors CLIClusterOptions.ResetValues. See its documentation.
 	ResetValues bool
+
+	// RadiusReleaseValues are the user-supplied values stored on the installed Radius release, if any.
+	// Install (with Reinstall) and upgrade (without ResetValues) reuse them, so they count toward the
+	// authorization mode that decides whether cert-manager is required.
+	RadiusReleaseValues map[string]any
 }
 
 // NewDefaultClusterOptions sets the default values for the ClusterOptions struct, using the chart version that matches
@@ -86,6 +93,16 @@ func NewDefaultClusterOptions() ClusterOptions {
 				Wait:         false,
 			},
 			HostNetwork: false,
+		},
+		CertManager: CertManagerChartOptions{
+			ChartOptions: ChartOptions{
+				ChartVersion: CertManagerChartDefaultVersion,
+				Namespace:    CertManagerNamespace,
+				ReleaseName:  certManagerReleaseName,
+				ChartRepo:    certManagerHelmRepo,
+				Wait:         true,
+				Timeout:      DefaultInstallTimeout,
+			},
 		},
 	}
 }
@@ -172,6 +189,9 @@ type InstallState struct {
 
 	// ContourVersion is the version of the Contour helm chart installed on the cluster. Will be blank if Contour is not installed.
 	ContourVersion string
+
+	// RadiusValues are the user-supplied values stored on the Radius release. Will be nil if Radius is not installed.
+	RadiusValues map[string]any
 }
 
 // RevisionInfo contains information about a specific Helm release revision.
@@ -211,6 +231,12 @@ type Interface interface {
 	// GetLatestRadiusVersion gets the latest available version of the Radius chart from the Helm repository.
 	GetLatestRadiusVersion(ctx context.Context) (string, error)
 
+	// CertManagerInstalledByRad reports whether the cluster has a cert-manager release that rad installed.
+	CertManagerInstalledByRad(kubeContext string) (bool, error)
+
+	// UninstallCertManager uninstalls cert-manager only when rad installed it and no other workload uses it.
+	UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
+
 	// RollbackRadius rolls back the Radius installation to the previous revision.
 	RollbackRadius(ctx context.Context, kubeContext string) error
 
@@ -227,6 +253,9 @@ type Impl struct {
 
 	configureDefaultContourGateway func(ctx context.Context, kubeContext string) error
 	removeDefaultContourGateway    func(ctx context.Context, kubeContext string) error
+	newCertManagerClients          certManagerClientsFunc
+	newCertManagerDynamicClient    func(kubeContext string) (dynamic.Interface, error)
+	logInfo                        func(format string, v ...any)
 }
 
 var _ Interface = &Impl{}
@@ -247,7 +276,7 @@ func (i *Impl) removeContourGateway(ctx context.Context, kubeContext string) err
 	return remove(ctx, kubeContext)
 }
 
-// InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options.
+// InstallRadius installs Radius and its dependencies (Contour, and cert-manager when authorization is enabled) on the cluster using the provided options.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
@@ -256,6 +285,10 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	// where pods/services/deployments will be put for rad deploy.
 
 	helmAction := NewHelmAction(i.Helm)
+
+	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
+		return err
+	}
 
 	// Install Radius
 	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(ctx, helmAction, clusterOptions.Radius, kubeContext)
@@ -292,7 +325,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	return nil
 }
 
-// UninstallRadius uninstalls Radius and its dependencies (Contour) from the cluster using the provided options.
+// UninstallRadius uninstalls Radius and its dependencies (Contour, and cert-manager if rad installed it) from the cluster using the provided options.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Uninstall Radius
 	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
@@ -309,7 +342,8 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 		return err
 	}
 
-	return nil
+	// Uninstall cert-manager only if rad installed it.
+	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
 }
 
 func (i *Impl) uninstallHelmRelease(componentName, releaseName, namespace, kubeContext string) error {
@@ -344,7 +378,7 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	helmAction := NewHelmAction(i.Helm)
 
 	// Check if Radius is installed
-	radiusInstalled, radiusVersion, err := helmAction.QueryRelease(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
+	radiusInstalled, radiusVersion, radiusValues, err := helmAction.queryReleaseValues(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
 	if err != nil {
 		return InstallState{}, fmt.Errorf("failed to check Radius installation (release: %s, namespace: %s, context: %s): %w",
 			clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, kubeContext, err)
@@ -377,6 +411,7 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 		RadiusVersion:    radiusVersion,
 		ContourInstalled: contourInstalled,
 		ContourVersion:   contourVersion,
+		RadiusValues:     radiusValues,
 	}
 
 	return state, nil
@@ -397,6 +432,14 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	// reuse previously stored user overrides so settings like
 	// `global.azureWorkloadIdentity.enabled=true` don't silently revert on upgrade.
 	reuseValues := !clusterOptions.ResetValues
+
+	storedValues := clusterOptions.RadiusReleaseValues
+	if !reuseValues {
+		storedValues = nil
+	}
+	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
+		return err
+	}
 
 	output.LogInfo("Upgrading Radius...")
 	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(ctx, helmAction, clusterOptions.Radius, kubeContext)

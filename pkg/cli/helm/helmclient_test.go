@@ -18,6 +18,8 @@ package helm
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"slices"
@@ -26,6 +28,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -38,7 +41,9 @@ import (
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
+	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/kubernetes"
 )
 
 func TestHelmClientImpl_UpgradeImmutableImageDefaults(t *testing.T) {
@@ -82,7 +87,7 @@ func TestHelmClientImpl_UpgradeImmutableImageDefaults(t *testing.T) {
 			if testCase.storedTag != "" {
 				values["global"] = map[string]any{"imageTag": testCase.storedTag}
 			}
-			installed, err := client.RunHelmInstall(configuration, previousChart, values, "radius", "radius-system", false, DefaultInstallTimeout)
+			installed, err := client.RunHelmInstall(configuration, previousChart, values, "radius", "radius-system", false, DefaultInstallTimeout, nil)
 			require.NoError(t, err)
 			require.Contains(t, helmWorkloadImages(t, installed.Manifest), "ghcr.io/radius-project/controller:0.61")
 
@@ -222,7 +227,7 @@ func TestHelmClientImpl_RunHelmRollback(t *testing.T) {
 			Capabilities: common.DefaultCapabilities,
 		}
 		client := NewHelmClient()
-		_, err := client.RunHelmInstall(configuration, newChart("0.61.0"), map[string]any{"setting": "first"}, "radius", "radius-system", false, time.Minute)
+		_, err := client.RunHelmInstall(configuration, newChart("0.61.0"), map[string]any{"setting": "first"}, "radius", "radius-system", false, time.Minute, nil)
 		require.NoError(t, err)
 		_, err = client.RunHelmUpgrade(configuration, newChart("0.62.0"), map[string]any{"setting": "second"}, "radius", "radius-system", false, false, time.Minute)
 		require.NoError(t, err)
@@ -266,7 +271,7 @@ func TestHelmClientImpl_RunHelmRollback(t *testing.T) {
 			KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
 			Capabilities: common.DefaultCapabilities,
 		}
-		_, err := client.RunHelmInstall(installedOnly, newChart("0.61.0"), nil, "radius", "radius-system", false, time.Minute)
+		_, err := client.RunHelmInstall(installedOnly, newChart("0.61.0"), nil, "radius", "radius-system", false, time.Minute, nil)
 		require.NoError(t, err)
 		require.ErrorContains(t, client.RunHelmRollback(installedOnly, "radius", 0, false), "no previous revision")
 	})
@@ -532,5 +537,109 @@ func Test_usesServerSideApply(t *testing.T) {
 			}
 			require.Equal(t, tt.expected, usesServerSideApply(configuration, "radius"))
 		})
+	}
+}
+
+// Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm runs rad upgrade and rad install --reinstall against real
+// Helm storage and checks that the cert-manager decision matches the authorization mode Helm renders.
+func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
+	t.Parallel()
+
+	dryRun := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+	tests := []struct {
+		name     string
+		deployed map[string]any
+		failed   map[string]any
+		setArgs  []string
+		want     string
+	}{
+		{name: "deployed dry run with failed off", deployed: dryRun, failed: map[string]any{}, want: "dryRun"},
+		{name: "deployed off with failed dry run", deployed: map[string]any{}, failed: dryRun, want: "off"},
+		{name: "--set global.rbac=false clears stored dry run", deployed: dryRun, setArgs: []string{"global.rbac=false"}, want: "off"},
+		{name: "--set global.rbac=0 clears stored dry run", deployed: dryRun, setArgs: []string{"global.rbac=0"}, want: "off"},
+		{name: "--set global.rbac= clears stored dry run", deployed: dryRun, setArgs: []string{"global.rbac="}, want: "off"},
+	}
+
+	loadChart := func(t *testing.T) *chart.Chart {
+		c, err := loader.Load("../../../deploy/Chart")
+		require.NoError(t, err)
+		c.Files = slices.DeleteFunc(c.Files, func(file *common.File) bool {
+			return strings.HasPrefix(file.Name, "crds/")
+		})
+		return c
+	}
+
+	for _, tt := range tests {
+		for _, command := range []string{"upgrade", "install --reinstall"} {
+			t.Run(tt.name+"/"+command, func(t *testing.T) {
+				t.Parallel()
+
+				configuration := &helm.Configuration{
+					Releases:     storage.Init(driver.NewMemory()),
+					KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
+					Capabilities: common.DefaultCapabilities,
+				}
+				helmClient := NewHelmClient()
+				installed, err := helmClient.RunHelmInstall(configuration, loadChart(t), tt.deployed, "radius", "radius-system", false, DefaultInstallTimeout, nil)
+				require.NoError(t, err)
+				if tt.failed != nil {
+					failed := *installed
+					failed.Version = 2
+					failed.Info = &releasev1.Info{Status: releasecommon.StatusFailed}
+					failed.Config = tt.failed
+					require.NoError(t, configuration.Releases.Create(&failed))
+				}
+
+				client := NewMockHelmClient(gomock.NewController(t))
+				client.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().
+					DoAndReturn(func(_ *helm.Configuration, name string) (*releasev1.Release, error) {
+						return helmClient.RunHelmGet(configuration, name)
+					})
+				client.EXPECT().RunHelmHistory(gomock.Any(), gomock.Any()).AnyTimes().
+					DoAndReturn(func(_ *helm.Configuration, name string) ([]*releasev1.Release, error) {
+						return helmClient.RunHelmHistory(configuration, name)
+					})
+				client.EXPECT().LoadChart(gomock.Any()).AnyTimes().
+					DoAndReturn(func(string) (*chart.Chart, error) { return loadChart(t), nil })
+				client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", gomock.Any(), gomock.Any(), true, gomock.Any()).
+					DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, wait, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
+						return helmClient.RunHelmUpgrade(configuration, c, vals, name, namespace, false, reuse, timeout)
+					})
+
+				detectCalls := 0
+				impl := &Impl{
+					Helm: client,
+					newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+						detectCalls++
+						kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
+						return kubeClient, apiextClient, nil
+					},
+				}
+
+				state, err := impl.CheckRadiusInstall("test-context")
+				require.NoError(t, err)
+				options := NewDefaultClusterOptions()
+				options.Radius.ChartPath = "chart"
+				options.Radius.SetArgs = tt.setArgs
+				options.Contour.Disabled = true
+				options.RadiusReleaseValues = state.RadiusValues
+				if command == "upgrade" {
+					require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
+				} else {
+					options.Radius.Reinstall = true
+					require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
+				}
+
+				upgraded, err := helmClient.RunHelmGet(configuration, "radius")
+				require.NoError(t, err)
+				sum := sha256.Sum256([]byte(tt.want))
+				require.Contains(t, upgraded.Manifest, "checksum/authz-config: "+hex.EncodeToString(sum[:]))
+				if tt.want == "off" {
+					require.Zero(t, detectCalls)
+				} else {
+					require.Equal(t, 1, detectCalls)
+				}
+			})
+		}
 	}
 }

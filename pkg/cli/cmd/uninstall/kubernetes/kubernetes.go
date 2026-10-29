@@ -130,15 +130,15 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 //
 
 // Run checks if Radius is installed on the Kubernetes cluster, and if so, uninstalls it, logging a success message
-// if successful. It returns an error if an error occurs during the uninstallation.
+// if successful. When Radius is not installed, it only removes a cert-manager that rad installed, after confirmation.
+// It returns an error if an error occurs during the uninstallation.
 func (r *Runner) Run(ctx context.Context) error {
 	state, err := r.Helm.CheckRadiusInstall(r.KubeContext)
 	if err != nil {
 		return err
 	}
 	if !state.RadiusInstalled {
-		r.Output.LogInfo("Radius is not installed on the Kubernetes cluster")
-		return nil
+		return r.uninstallCertManagerOnly(ctx)
 	}
 
 	plan, err := r.buildCleanupPlan(ctx, state)
@@ -147,17 +147,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.describeCleanupPlan(plan)
-	confirmed := true
-	if !r.AssumeYes {
-		if r.Prompter == nil {
-			return fmt.Errorf("confirmation prompt unavailable; rerun with --yes to proceed non-interactively")
-		}
-		confirmed, err = prompt.YesOrNoPrompt("Continue uninstalling Radius?", prompt.ConfirmNo, r.Prompter)
-		if err != nil {
-			return err
-		}
-	} else {
-		r.Output.LogInfo("Skipping confirmation because --yes flag was provided.")
+	confirmed, err := r.confirm("Continue uninstalling Radius?")
+	if err != nil {
+		return err
 	}
 	if !confirmed {
 		r.Output.LogInfo("Uninstall cancelled.")
@@ -210,11 +202,65 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
+// uninstallCertManagerOnly handles a cluster without Radius. It removes a cert-manager that rad installed, which
+// can remain when a Radius install fails after cert-manager is installed or a previous cert-manager removal failed.
+// It never touches the Radius or Contour releases or any Radius data.
+func (r *Runner) uninstallCertManagerOnly(ctx context.Context) error {
+	r.Output.LogInfo("Radius is not installed on the Kubernetes cluster")
+
+	owned, err := r.Helm.CertManagerInstalledByRad(r.KubeContext)
+	if err != nil {
+		r.Output.LogInfo("%s: unable to check for a cert-manager installed by rad: %v", logWarningPrefix, err)
+		return nil
+	}
+	if !owned {
+		return nil
+	}
+
+	r.Output.LogInfo("Found a cert-manager installed by rad. This will remove only:")
+	r.Output.LogInfo("- Helm releases: %s", "cert-manager")
+	confirmed, err := r.confirm("Continue removing cert-manager?")
+	if err != nil {
+		return err
+	}
+	if !confirmed {
+		r.Output.LogInfo("Uninstall cancelled.")
+		return nil
+	}
+
+	// UninstallCertManager re-checks ownership and keeps cert-manager when other workloads use it.
+	if err := r.Helm.UninstallCertManager(ctx, helm.NewDefaultClusterOptions(), r.KubeContext); err != nil {
+		return err
+	}
+	r.Output.LogInfo("cert-manager cleanup finished.")
+	return nil
+}
+
+// confirm asks the user to confirm an uninstall step, or skips the prompt when --yes was provided.
+func (r *Runner) confirm(message string) (bool, error) {
+	if r.AssumeYes {
+		r.Output.LogInfo("Skipping confirmation because --yes flag was provided.")
+		return true, nil
+	}
+	if r.Prompter == nil {
+		return false, fmt.Errorf("confirmation prompt unavailable; rerun with --yes to proceed non-interactively")
+	}
+	return prompt.YesOrNoPrompt(message, prompt.ConfirmNo, r.Prompter)
+}
+
 func (r *Runner) buildCleanupPlan(ctx context.Context, state helm.InstallState) (cleanupPlan, error) {
 	plan := cleanupPlan{}
 	plan.HelmReleases = append(plan.HelmReleases, "radius")
 	if state.ContourInstalled {
 		plan.HelmReleases = append(plan.HelmReleases, "contour")
+	}
+	// The uninstall re-checks cert-manager ownership itself, so a failed lookup only affects this plan.
+	certManagerOwned, err := r.Helm.CertManagerInstalledByRad(r.KubeContext)
+	if err != nil {
+		r.Output.LogInfo("%s: unable to check for a cert-manager installed by rad: %v", logWarningPrefix, err)
+	}
+	if certManagerOwned {
+		plan.HelmReleases = append(plan.HelmReleases, "cert-manager")
 	}
 
 	if !r.Purge {
