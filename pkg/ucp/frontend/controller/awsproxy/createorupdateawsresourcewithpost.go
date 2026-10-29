@@ -153,7 +153,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 
 		if len(patch) > 0 {
 			var errResponse armrpc_rest.Response
-			patch, errResponse, err = checkPatch(ctx, serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput, patch)
+			patch, errResponse, err = checkPatch(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput, patch)
 			if err != nil {
 				return nil, err
 			} else if errResponse != nil {

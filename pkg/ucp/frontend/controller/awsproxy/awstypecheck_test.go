@@ -211,7 +211,8 @@ func Test_Update_ImmutableType(t *testing.T) {
 	tests := []struct {
 		name       string
 		properties map[string]any
-		// want is the error message, or "" when the deploy succeeds without calling AWS.
+		// want is the error message, or "" when the deploy succeeds without calling AWS. No case calls UpdateResource,
+		// and the mock fails the test if one does.
 		want string
 	}{
 		{
@@ -224,13 +225,16 @@ func Test_Update_ImmutableType(t *testing.T) {
 			properties: map[string]any{"Name": "name", "Size": 1},
 		},
 		{
-			name:       "only write-only properties",
+			// A changed write-only value must not be reported as applied. UCP cannot tell it from an unchanged one.
+			name:       "changed write-only property",
 			properties: map[string]any{"Name": "name", "Size": 1, "Password": secretValue},
+			want:       "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Password. To change them, delete the resource and deploy again.",
 		},
 		{
 			// AWS omits Auth because its only property is write-only, so the patch adds the whole object.
 			name:       "write-only property in an absent parent",
 			properties: map[string]any{"Name": "name", "Size": 1, "Auth": map[string]any{"Token": secretValue}},
+			want:       "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Auth. To change them, delete the resource and deploy again.",
 		},
 		{
 			name:       "readable property next to a write-only property in an absent parent",
@@ -240,6 +244,12 @@ func Test_Update_ImmutableType(t *testing.T) {
 		{
 			name:       "write-only property in array items",
 			properties: map[string]any{"Name": "name", "Size": 1, "Users": []any{map[string]any{"Name": "u", "Secret": secretValue}}},
+			want:       "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Users. To change them, delete the resource and deploy again.",
+		},
+		{
+			name:       "several write-only properties",
+			properties: map[string]any{"Name": "name", "Size": 1, "Users": []any{map[string]any{"Name": "u", "Secret": secretValue}}, "Password": secretValue},
+			want:       "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Password, Users. To change them, delete the resource and deploy again.",
 		},
 	}
 	updates := []struct {
@@ -297,7 +307,7 @@ func Test_Create_ImmutableType(t *testing.T) {
 func Test_CheckPatch_FullyMutable(t *testing.T) {
 	patch := jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}}
 	for _, provisioningType := range []cftypes.ProvisioningType{cftypes.ProvisioningTypeFullyMutable, ""} {
-		got, errResponse, err := checkPatch(t.Context(), "AWS::Test::Mutable", &cloudformation.DescribeTypeOutput{ProvisioningType: provisioningType}, patch)
+		got, errResponse, err := checkPatch("AWS::Test::Mutable", &cloudformation.DescribeTypeOutput{ProvisioningType: provisioningType}, patch)
 		require.NoError(t, err)
 		require.Nil(t, errResponse)
 		require.Equal(t, patch, got)
