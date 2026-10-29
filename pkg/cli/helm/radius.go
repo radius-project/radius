@@ -99,19 +99,25 @@ func parseSetValuesInto(values map[string]any, setArgs []string, setFileArgs []s
 	}
 
 	for _, arg := range setFileArgs {
-		if runtime.GOOS == "windows" {
-			arg = filepath.ToSlash(arg)
-		}
-
 		reader := func(rs []rune) (any, error) {
 			data, err := os.ReadFile(string(rs))
 			return string(data), err
 		}
 
-		if err := strvals.ParseIntoFile(arg, values, reader); err != nil {
+		if err := strvals.ParseIntoFile(setFileArg(arg), values, reader); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// setFileArg returns a --set-file style argument as strvals parses it. strvals reads a backslash as an escape
+// character, so the argument uses forward slashes in Windows paths.
+func setFileArg(arg string) string {
+	if runtime.GOOS == "windows" {
+		return filepath.ToSlash(arg)
+	}
+
+	return arg
 }

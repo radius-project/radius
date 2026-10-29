@@ -31,14 +31,18 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/kube"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/strvals"
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 const (
@@ -257,15 +261,16 @@ func crdsInManifest(manifest string) ([]crdInfo, error) {
 	}
 }
 
-// renderChartCRDs renders a chart as helm template does and returns the CRDs that Helm applies with the release, and
-// the CRDs in the crds/ directories of the chart and of the subcharts that the values enable. The render uses its own
-// Helm configuration with Helm's default capabilities, so it never contacts the cluster and template lookups find
-// nothing. It does not change helmChart.
-func renderChartCRDs(ctx context.Context, helmChart *chart.Chart, releaseName string, namespace string, upgrade bool, values map[string]any) ([]crdInfo, []crdInfo, error) {
+// renderChartCRDs renders a chart as Helm does when it installs or upgrades the chart with configuration, and returns
+// the CRDs that Helm applies with the release, and the CRDs in the crds/ directories of the chart and of the subcharts
+// that the values enable. It renders with a server-side dry run, so that templates see the capabilities and the lookup
+// results that the real install or upgrade sees. configuration decides where those come from, and its Kubernetes
+// client and release storage keep the dry run from changing the cluster. It does not change helmChart.
+func renderChartCRDs(ctx context.Context, configuration *helm.Configuration, helmChart *chart.Chart, releaseName string, namespace string, upgrade bool, values map[string]any) ([]crdInfo, []crdInfo, error) {
 	renderedChart := cloneChart(helmChart)
 
-	install := helm.NewInstall(&helm.Configuration{})
-	install.DryRunStrategy = helm.DryRunClient
+	install := helm.NewInstall(configuration)
+	install.DryRunStrategy = helm.DryRunServer
 	install.ReleaseName = releaseName
 	install.Namespace = namespace
 	install.IsUpgrade = upgrade
@@ -295,6 +300,28 @@ func renderChartCRDs(ctx context.Context, helmChart *chart.Chart, releaseName st
 	}
 
 	return manifestCRDs, directoryCRDs, nil
+}
+
+// RenderConfiguration returns the Helm configuration with which the Contour checks render a chart for the cluster
+// that kubeContext selects. Like the configuration of the real install or upgrade, it reads the capabilities of that
+// cluster and lets template lookups read it. Its Kubernetes client applies nothing, and its release storage is in
+// memory, so a dry run with it never changes the cluster.
+func (liveContourCluster) RenderConfiguration(kubeContext string, namespace string) (*helm.Configuration, error) {
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+		Context:   &kubeContext,
+	}
+	configuration, err := initHelmConfig(&flags)
+	if err != nil {
+		return nil, err
+	}
+
+	configuration.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
+	memory := driver.NewMemory()
+	memory.SetNamespace(namespace)
+	configuration.Releases = storage.Init(memory)
+
+	return configuration, nil
 }
 
 // cloneChart copies a chart and its subcharts so that rendering the copy does not change the original. Helm changes
@@ -395,8 +422,17 @@ type gatewayAPICRDCheck struct {
 	// command is the rad command that installs or upgrades Contour, which the errors tell the user to run again.
 	command string
 
+	// setArgs and setFileArgs are the --contour-set and --contour-set-file values of this invocation, which the
+	// remedies tell the user how to change.
+	setArgs     []string
+	setFileArgs []string
+
 	// getCRDs reads the CRDs with the given names from the cluster. It skips the names of CRDs that do not exist.
 	getCRDs func(ctx context.Context, names []string) ([]crdInfo, error)
+
+	// renderConfiguration returns the Helm configuration with which the check renders the chart as Helm renders it in
+	// the cluster.
+	renderConfiguration func() (*helm.Configuration, error)
 
 	// The fields below describe the change. run sets them.
 
@@ -462,7 +498,12 @@ func (c *gatewayAPICRDCheck) run(ctx context.Context, helmChart *chart.Chart, va
 
 	manageable := helmValues(values, reusedValues)
 	setValue(manageable, true, "gatewayAPI", "manageCRDs")
-	manageableCRDs, _, err := renderChartCRDs(ctx, helmChart, c.releaseName, c.releaseNamespace, c.upgrade, manageable)
+	// One configuration for both renders discovers the capabilities of the cluster once.
+	configuration, err := c.renderConfiguration()
+	if err != nil {
+		return "", fmt.Errorf("failed to prepare the render of the Contour Helm chart, err: %w", err)
+	}
+	manageableCRDs, _, err := renderChartCRDs(ctx, configuration, helmChart, c.releaseName, c.releaseNamespace, c.upgrade, manageable)
 	if err != nil {
 		return "", fmt.Errorf("failed to render the Contour Helm chart, err: %w", err)
 	}
@@ -479,7 +520,7 @@ func (c *gatewayAPICRDCheck) run(ctx context.Context, helmChart *chart.Chart, va
 	// The user's --contour-set and --contour-set-file values take precedence over this default.
 	c.manageCRDsFromValues = !setDefaultValue(values, c.defaultManageCRDs(), "gatewayAPI", "manageCRDs")
 
-	c.renderedCRDs, c.directoryCRDs, err = renderChartCRDs(ctx, helmChart, c.releaseName, c.releaseNamespace, c.upgrade, helmValues(values, reusedValues))
+	c.renderedCRDs, c.directoryCRDs, err = renderChartCRDs(ctx, configuration, helmChart, c.releaseName, c.releaseNamespace, c.upgrade, helmValues(values, reusedValues))
 	if err != nil {
 		return "", fmt.Errorf("failed to render the Contour Helm chart, err: %w", err)
 	}
@@ -759,6 +800,9 @@ func (c gatewayAPICRDCheck) conflictError(conflicts []crdInfo, manageCRDs bool) 
 		default:
 			message.WriteString(".")
 		}
+		if remedy, ok := c.skipContourInstall("To continue without Contour, install Radius", " "); ok {
+			message.WriteString("\n" + remedy)
+		}
 		return clierrors.Message("%s", message.String())
 	}
 
@@ -788,6 +832,9 @@ func (c gatewayAPICRDCheck) conflictError(conflicts []crdInfo, manageCRDs bool) 
 	}
 	message.WriteString("Radius neither takes over CRDs that belong to something else nor lets Helm delete the CRDs that the Contour release installed.\n")
 	fmt.Fprintf(&message, "To continue, keep the CRDs that the Contour release installed when Helm stops managing them, and then run the command again. Contour then uses the Gateway API CRDs in the cluster instead of managing them:\n      %s", c.keepCRDsCommand(names))
+	if remedy, ok := c.skipContourInstall("To continue without Contour, install Radius", " "); ok {
+		message.WriteString("\n" + remedy)
+	}
 
 	return clierrors.Message("%s", message.String())
 }
@@ -852,6 +899,9 @@ func (c gatewayAPICRDCheck) requirementsError(unmet []unmetRequirement, args con
 	if !manageCRDs && !c.manageCRDsFromValues {
 		remedies = append(remedies, `Use a cluster without preinstalled Gateway API CRDs. For example, create the k3d cluster with --k3s-arg "--disable=traefik@server:*".`)
 	}
+	if remedy, ok := c.skipContourInstall("Install Radius without Contour", "\n    "); ok {
+		remedies = append(remedies, remedy)
+	}
 
 	message.WriteString("To continue, do one of the following:")
 	for _, remedy := range remedies {
@@ -882,15 +932,127 @@ func (c gatewayAPICRDCheck) turnOffFeaturesRemedy(features []string, kinds []str
 		return remedy.String()
 	}
 
-	fmt.Fprintf(&remedy, " Add this flag to the %s command:\n      --contour-set %s", c.command, QuoteFlagValue(args.withDisabledFeatures(features)))
-	if c.resetValues {
-		remedy.WriteString("\n    This upgrade uses --reset-values, which discards the values stored on the Contour release. If you set this value when you installed Radius, you can instead run the upgrade without --reset-values.")
-	}
-	if c.command == installCommand {
-		remedy.WriteString("\n    If you used rad init, run rad install kubernetes with this flag first, and then run rad init again.")
+	flag := "--contour-set " + QuoteFlagValue(args.withDisabledFeatures(features))
+	source, found := c.valueSource(args.key)
+	switch {
+	case !found:
+		fmt.Fprintf(&remedy, " Add this flag to the %s command:\n      %s", c.command, flag)
+		if c.resetValues {
+			remedy.WriteString("\n    This upgrade uses --reset-values, which discards the values stored on the Contour release. If you set this value when you installed Radius, you can instead run the upgrade without --reset-values.")
+		}
+		if c.command == installCommand {
+			remedy.WriteString("\n    If you used rad init, run rad install kubernetes with this flag first, and then run rad init again.")
+		}
+	case source.fromFile:
+		fmt.Fprintf(&remedy, " The %s value comes from --contour-set-file %s, and Radius applies --contour-set-file values after --contour-set values, so another --contour-set flag does not change it.", args.key, QuoteFlagValue(source.value))
+		if source.file != "" {
+			fmt.Fprintf(&remedy, " Add these entries to the list in %s:", source.file)
+		} else {
+			fmt.Fprintf(&remedy, " Add these entries to the %s list in that file:", args.key)
+		}
+		for _, feature := range features {
+			remedy.WriteString("\n      - --disable-feature=" + feature)
+		}
+		if source.file != "" && !source.otherValues {
+			fmt.Fprintf(&remedy, "\n    Or replace --contour-set-file %s in the %s command with this flag, which keeps the arguments in the file:\n      %s", QuoteFlagValue(source.value), c.command, flag)
+		}
+	case source.otherValues:
+		fmt.Fprintf(&remedy, " The %s value comes from --contour-set %s, which also sets other values. Add this flag to the %s command after that flag, so that it replaces the %s value and keeps its arguments:\n      %s", args.key, QuoteFlagValue(source.value), c.command, args.key, flag)
+	default:
+		fmt.Fprintf(&remedy, " Replace --contour-set %s in the %s command with this flag, which keeps its arguments:\n      %s", QuoteFlagValue(source.value), c.command, flag)
 	}
 
 	return remedy.String()
+}
+
+// contourValueSource is the --contour-set or --contour-set-file flag of this invocation that decides a Contour value.
+type contourValueSource struct {
+	// fromFile is true for a --contour-set-file flag, and value is the value of the flag.
+	fromFile bool
+	value    string
+
+	// file is the file of a --contour-set-file flag that sets the value itself, or empty when the flag sets a value
+	// that contains it, or part of it.
+	file string
+
+	// otherValues is true when the flag sets other values too.
+	otherValues bool
+}
+
+// valueSource returns the flag of this invocation that decides the Contour value at key, or a value that contains it.
+// Like Helm, Radius applies every --contour-set flag in order and then every --contour-set-file flag, so that is the
+// last --contour-set-file flag that sets the value, or else the last --contour-set flag. It returns false when no flag
+// of this invocation sets the value.
+func (c gatewayAPICRDCheck) valueSource(key string) (contourValueSource, bool) {
+	path := strings.Split(key, ".")
+	var source contourValueSource
+	found := false
+	for _, arg := range c.setArgs {
+		parsed := map[string]any{}
+		if strvals.ParseInto(arg, parsed) != nil || !setsValue(parsed, path) {
+			continue
+		}
+		source, found = contourValueSource{value: arg, otherValues: setsOtherValues(parsed, path)}, true
+	}
+	for _, arg := range c.setFileArgs {
+		// Read the names of the files instead of the files.
+		parsed := map[string]any{}
+		readName := func(name []rune) (any, error) { return string(name), nil }
+		if strvals.ParseIntoFile(setFileArg(arg), parsed, readName) != nil || !setsValue(parsed, path) {
+			continue
+		}
+		file, _ := nestedValue(parsed, path...).(string)
+		source, found = contourValueSource{fromFile: true, value: arg, file: file, otherValues: setsOtherValues(parsed, path)}, true
+	}
+
+	return source, found
+}
+
+// setsValue reports whether values, which a --set style flag sets, include the value at path, part of it, or a value
+// that contains it.
+func setsValue(values map[string]any, path []string) bool {
+	var current any = values
+	for _, key := range path {
+		table, ok := current.(map[string]any)
+		if !ok {
+			// The flag replaces a value that contains path.
+			return true
+		}
+		if current, ok = table[key]; !ok {
+			return false
+		}
+	}
+
+	return true
+}
+
+// setsOtherValues reports whether values, which a --set style flag sets, include values outside path.
+func setsOtherValues(values map[string]any, path []string) bool {
+	table := values
+	for _, key := range path {
+		if len(table) != 1 {
+			return true
+		}
+		next, ok := table[key].(map[string]any)
+		if !ok {
+			return false
+		}
+		table = next
+	}
+
+	return false
+}
+
+// skipContourInstall explains, for rad install kubernetes, how to install Radius without Contour. The explanation
+// starts with lead, and noteSeparator comes before the note for rad init. It returns false for commands that cannot
+// skip Contour.
+func (c gatewayAPICRDCheck) skipContourInstall(lead string, noteSeparator string) (string, bool) {
+	if c.command != installCommand {
+		return "", false
+	}
+
+	return lead + " with --skip-contour-install, for example when Traefik is your ingress controller. Radius gateways use Contour, so they do not work without it." +
+		noteSeparator + "If you used rad init, run rad install kubernetes --skip-contour-install first, and then run rad init again.", true
 }
 
 // foreignOwners describes who owns the Gateway API CRDs that the change involves and that do not belong to the Contour

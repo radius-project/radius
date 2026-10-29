@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/kube"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
@@ -1114,6 +1115,9 @@ type fakeContourCluster struct {
 	jobErr     error
 	jobPods    map[string]helmControllerPods
 	jobPodsErr error
+
+	// capabilities are the capabilities of the cluster, or nil for Helm's default capabilities.
+	capabilities *common.Capabilities
 }
 
 func (f *fakeContourCluster) CRDs(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error) {
@@ -1153,6 +1157,10 @@ func (f *fakeContourCluster) JobPods(_ context.Context, _ string, namespace stri
 		return helmControllerPods{}, f.jobPodsErr
 	}
 	return f.jobPods[namespace+"/"+job], nil
+}
+
+func (f *fakeContourCluster) RenderConfiguration(string, string) (*helm.Configuration, error) {
+	return newTestRenderConfiguration(f.capabilities), nil
 }
 
 // staticCRDs returns the state of a cluster without k3s HelmCharts that has crds.

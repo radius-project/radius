@@ -48,8 +48,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -409,12 +411,13 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		}
 		storeFailedContourInstall(t, kubeconfig, contourChart)
 
-		// The message lists the CRDs and how to keep them.
+		// The message lists the CRDs and how to keep them, or to install Radius without Contour.
 		err := impl.InstallRadius(t.Context(), stubClusterOptions(radiusChart, contourChart), testKubeContext)
 		require.True(t, clierrors.IsFriendlyError(err), "%v", err)
 		require.ErrorContains(t, err, "have more than one owner")
-		match := regexp.MustCompile(`kubectl --context "test" annotate crd ([^\n]+) helm\.sh/resource-policy=keep$`).FindStringSubmatch(err.Error())
-		require.Len(t, match, 2, "the message must end with the kubectl command: %v", err)
+		require.ErrorContains(t, err, "To continue without Contour, install Radius with --skip-contour-install")
+		match := regexp.MustCompile(`(?m)^ +kubectl --context "test" annotate crd ([^\n]+) helm\.sh/resource-policy=keep$`).FindStringSubmatch(err.Error())
+		require.Len(t, match, 2, "the message must show the kubectl command on a line of its own: %v", err)
 		require.ElementsMatch(t, crdNames(contourBundleCRDs()), strings.Fields(match[1]))
 		requireNoRelease(t, kubeconfig, radiusReleaseName)
 
@@ -514,6 +517,134 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		require.Len(t, logs, 1, "%q", logs)
 		require.Contains(t, logs[0], `Warning: k3s does not install the Traefik CRDs of HelmChart kube-system/traefik-crd again: job helm-install-traefik-crd finished, but Helm release "traefik-crd" in namespace "kube-system" does not exist.`)
 	})
+
+	// A custom Contour chart can render a CRD only in some clusters. Radius renders the chart as Helm's install or upgrade
+	// does, so it sees that the upgrade would make Helm delete the CRD, and every object of its kind.
+	t.Run("custom Contour chart that renders a CRD only in some clusters", func(t *testing.T) {
+		tests := []struct {
+			name string
+			// condition starts the template that renders the HTTPProxy CRD.
+			condition string
+			// change changes the cluster after Contour installed the CRD, so that the chart no longer renders it.
+			change func(t *testing.T, kubeconfig string, crdClient apiextensionsclient.Interface)
+		}{
+			{
+				// The chart prefers the Gateway API, so it renders the HTTPProxy CRD only in clusters without it.
+				name:      "capabilities",
+				condition: `{{- if not (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1") }}`,
+				change: func(t *testing.T, kubeconfig string, crdClient apiextensionsclient.Interface) {
+					for _, err := range createCRDs(t, crdClient, []crdInfo{newUnmanagedCRD("gatewayclasses", "v1")}) {
+						require.NoError(t, err)
+					}
+					requireServedGroupVersion(t, kubeconfig, "gateway.networking.k8s.io/v1")
+				},
+			},
+			{
+				// The chart renders the HTTPProxy CRD only when it does not exist yet, so only when Helm installs it.
+				name:      "lookup",
+				condition: `{{- if not (lookup "apiextensions.k8s.io/v1" "CustomResourceDefinition" "" "httpproxies.projectcontour.io") }}`,
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				kubeconfig, crdClient := startGatewayAPITestServer(t)
+				contourChart := writeStubContourChart(t, "1.33.0", nil)
+				writeTestFile(t, filepath.Join(contourChart, "templates", "httpproxies.yaml"), tt.condition+"\n"+crdManifest(httpProxiesCRD())+"{{- end }}\n")
+				options := stubClusterOptions(writeStubRadiusChart(t), contourChart)
+				// The cluster has no Gateway API CRDs for the Radius Contour Gateway, which this test does not need.
+				impl := &Impl{Helm: NewHelmClient(), configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure}
+				require.NoError(t, impl.InstallRadius(t.Context(), options, testKubeContext))
+				createTestHTTPProxy(t, kubeconfig)
+				if tt.change != nil {
+					tt.change(t, kubeconfig, crdClient)
+				}
+
+				// An upgrade failed, so rad install kubernetes --reinstall repairs the Contour release.
+				addContourRevision(t, kubeconfig, releasecommon.StatusFailed, func(*releasev1.Release) {})
+				reinstall := options
+				reinstall.Radius.Reinstall = true
+				for _, command := range []struct {
+					name string
+					run  func() error
+				}{
+					{name: "rad install kubernetes --reinstall", run: func() error { return impl.InstallRadius(t.Context(), reinstall, testKubeContext) }},
+					{name: "rad upgrade kubernetes", run: func() error { return impl.UpgradeRadius(t.Context(), options, testKubeContext) }},
+				} {
+					err := command.run()
+					requireHTTPProxyKept(t, kubeconfig, crdClient)
+					require.True(t, clierrors.IsFriendlyError(err), "%s must stop before Helm deletes the CRD: %v", command.name, err)
+					require.ErrorContains(t, err, "the Contour chart no longer includes these CRDs")
+					require.ErrorContains(t, err, "  - httpproxies.projectcontour.io\n")
+					require.ErrorContains(t, err, `kubectl --context "test" annotate crd httpproxies.projectcontour.io helm.sh/resource-policy=keep`)
+				}
+				require.Equal(t, 1, getTestRelease(t, kubeconfig, radiusReleaseName).Version)
+				require.Equal(t, 2, getTestRelease(t, kubeconfig, contourReleaseName).Version)
+			})
+		}
+	})
+}
+
+// httpProxyGVR is the resource of the HTTPProxy objects of Contour.
+var httpProxyGVR = schema.GroupVersionResource{Group: "projectcontour.io", Version: "v1", Resource: "httpproxies"}
+
+// httpProxiesCRD returns the HTTPProxy CRD of Contour, without ownership metadata.
+func httpProxiesCRD() crdInfo {
+	return crdInfo{name: "httpproxies.projectcontour.io", group: "projectcontour.io", servedVersions: []string{"v1"}}
+}
+
+// createTestHTTPProxy creates HTTPProxy radius-system/app once its CRD serves HTTPProxy objects.
+func createTestHTTPProxy(t *testing.T, kubeconfig string) {
+	t.Helper()
+
+	client := newTestDynamicClient(t, kubeconfig)
+	httpProxy := &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "projectcontour.io/v1",
+		"kind":       "HTTPProxy",
+		"metadata":   map[string]any{"name": "app", "namespace": RadiusSystemNamespace},
+		"spec":       map[string]any{"virtualhost": map[string]any{"fqdn": "app.example.com"}},
+	}}
+	require.Eventually(t, func() bool {
+		_, err := client.Resource(httpProxyGVR).Namespace(RadiusSystemNamespace).Create(t.Context(), httpProxy, metav1.CreateOptions{})
+		return err == nil
+	}, 30*time.Second, 100*time.Millisecond)
+}
+
+// requireHTTPProxyKept verifies that neither the HTTPProxy CRD nor HTTPProxy radius-system/app is deleted or being
+// deleted.
+func requireHTTPProxyKept(t *testing.T, kubeconfig string, crdClient apiextensionsclient.Interface) {
+	t.Helper()
+
+	crd, crdErr := crdClient.ApiextensionsV1().CustomResourceDefinitions().Get(t.Context(), httpProxiesCRD().name, metav1.GetOptions{})
+	crdKept := crdErr == nil && crd.DeletionTimestamp == nil
+	httpProxy, httpProxyErr := newTestDynamicClient(t, kubeconfig).Resource(httpProxyGVR).Namespace(RadiusSystemNamespace).Get(t.Context(), "app", metav1.GetOptions{})
+	httpProxyKept := httpProxyErr == nil && httpProxy.GetDeletionTimestamp() == nil
+	require.True(t, crdKept && httpProxyKept, "Helm deleted the HTTPProxy CRD or object: CRD kept=%t (%v), HTTPProxy kept=%t (%v)",
+		crdKept, crdErr, httpProxyKept, httpProxyErr)
+}
+
+// requireServedGroupVersion waits until the API server serves groupVersion.
+func requireServedGroupVersion(t *testing.T, kubeconfig string, groupVersion string) {
+	t.Helper()
+
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	require.NoError(t, err)
+	client, err := discovery.NewDiscoveryClientForConfig(config)
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		_, err := client.ServerResourcesForGroupVersion(groupVersion)
+		return err == nil
+	}, 30*time.Second, 100*time.Millisecond)
+}
+
+func newTestDynamicClient(t *testing.T, kubeconfig string) dynamic.Interface {
+	t.Helper()
+
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	require.NoError(t, err)
+	client, err := dynamic.NewForConfig(config)
+	require.NoError(t, err)
+
+	return client
 }
 
 // useShortK3sWait shortens the wait for k3s, so that a test fails quickly instead of waiting for minutes when Radius

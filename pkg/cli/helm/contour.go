@@ -178,8 +178,13 @@ func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options C
 		releaseNamespace: options.Namespace,
 		kubeContext:      kubeContext,
 		command:          command,
+		setArgs:          options.SetArgs,
+		setFileArgs:      options.SetFileArgs,
 		getCRDs: func(ctx context.Context, names []string) ([]crdInfo, error) {
 			return i.cluster().CRDs(ctx, kubeContext, names)
+		},
+		renderConfiguration: func() (*helm.Configuration, error) {
+			return i.cluster().RenderConfiguration(kubeContext, options.Namespace)
 		},
 	}
 	warning, err := check.run(ctx, helmChart, values, baseline, reuseValues)

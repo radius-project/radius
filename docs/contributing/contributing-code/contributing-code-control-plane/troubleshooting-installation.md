@@ -80,10 +80,18 @@ Contour exits when it cannot watch one of these resources. To continue, either t
 rad install kubernetes --contour-set "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}"
 ```
 
+If you set the Contour arguments with `--contour-set-file`, Radius applies the file after every `--contour-set` value, so the message instead lists the `--disable-feature` entries to add to the list in the file, or tells you to replace the `--contour-set-file` flag with the suggested `--contour-set` value.
+
 Or use a cluster without preinstalled Gateway API CRDs. For example, create the k3d cluster without Traefik:
 
 ```bash
 k3d cluster create --k3s-arg "--disable=traefik@server:*"
+```
+
+Or keep Traefik as your ingress controller and install Radius without Contour. Radius gateways use Contour, so they do not work without it. If you use `rad init`, run this command first, and then run `rad init` again:
+
+```bash
+rad install kubernetes --skip-contour-install
 ```
 
 k3s installs the Traefik CRDs in the background after the cluster starts. When `rad install kubernetes` runs right after the cluster is created, Radius logs `Waiting for k3s to finish installing the Traefik CRDs...` and waits up to three minutes, so that it checks the CRDs that the cluster ends up with. If k3s does not finish in time, the message says what Radius observed, for example that the pod of the k3s job restarted several times and is in `CrashLoopBackOff`, and shows the `kubectl` commands that list the pods of the job and show its logs. Radius does not wait, and logs a warning instead, when k3s cannot install the Traefik CRDs because a Gateway API CRD that they include belongs to something else, such as a `contour` release that an earlier Radius version installed, or when the k3s job finished but the `traefik-crd` release no longer exists, for example after `helm uninstall traefik-crd`.

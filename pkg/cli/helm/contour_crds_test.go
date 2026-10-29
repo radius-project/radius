@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -42,6 +44,7 @@ import (
 	apiextensionsfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	k8stesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/yaml"
 )
@@ -109,8 +112,10 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 	}
 
 	tests := []struct {
-		name            string
-		chart           *chart.Chart
+		name  string
+		chart *chart.Chart
+		// capabilities are the capabilities of the cluster, or nil for Helm's default capabilities.
+		capabilities    *common.Capabilities
 		crds            []crdInfo
 		release         []crdInfo
 		upgrade         bool
@@ -205,7 +210,7 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			wantErr: []string{
 				"Radius cannot read your contour.extraArgs value as a list, so add these arguments to it:\n      --disable-feature=tlsroutes\n      --disable-feature=tcproutes\n      --disable-feature=backendtlspolicies",
 			},
-			wantNotErr: []string{"--contour-set", "rad init"},
+			wantNotErr: []string{"--contour-set", "rad install kubernetes with this flag first"},
 		},
 		{
 			name: "contour.args that is not a list",
@@ -390,6 +395,29 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			values:         turnOffUnsupportedFeatures,
 			wantManageCRDs: true,
 			wantErr:        []string{"the Contour chart no longer includes these CRDs", "  - listenersets.gateway.networking.k8s.io\n"},
+		},
+		{
+			// Radius renders the chart with the capabilities of the cluster, as Helm's upgrade does. Helm's default
+			// capabilities lack Gateway API v1, so a render with them would include the CRD that Helm then deletes.
+			name:           "a CRD that the chart renders only without Gateway API v1, in a cluster that serves it",
+			chart:          newCapabilitiesGatedCRDChart(),
+			capabilities:   capabilitiesWith("gateway.networking.k8s.io/v1"),
+			crds:           []crdInfo{httpProxies},
+			release:        []crdInfo{httpProxies},
+			wantManageCRDs: true,
+			wantErr: []string{
+				"the Contour chart no longer includes these CRDs",
+				"  - httpproxies.projectcontour.io\n",
+				`kubectl --context "test-context" annotate crd httpproxies.projectcontour.io helm.sh/resource-policy=keep`,
+			},
+		},
+		{
+			name:           "a CRD that the chart renders only without Gateway API v1, in a cluster that does not serve it",
+			chart:          newCapabilitiesGatedCRDChart(),
+			crds:           []crdInfo{httpProxies},
+			release:        []crdInfo{httpProxies},
+			wantManageCRDs: true,
+			wantWarning:    true,
 		},
 		{
 			name:           "a CRD that the release installed and the chart no longer renders, with the keep annotation",
@@ -580,11 +608,12 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			}
 
 			check := gatewayAPICRDCheck{
-				releaseName:      contourReleaseName,
-				releaseNamespace: RadiusSystemNamespace,
-				kubeContext:      "test-context",
-				command:          command,
-				getCRDs:          crdLookup(tt.crds),
+				releaseName:         contourReleaseName,
+				releaseNamespace:    RadiusSystemNamespace,
+				kubeContext:         "test-context",
+				command:             command,
+				getCRDs:             crdLookup(tt.crds),
+				renderConfiguration: testRenderConfiguration(tt.capabilities),
 			}
 			values := copyValues(tt.values)
 			warning, err := check.run(t.Context(), helmChart, values, baseline, !tt.resetValues)
@@ -709,10 +738,11 @@ func Test_gatewayAPICRDCheck_SuggestedFlagTurnsOffFeatures(t *testing.T) {
 			}
 			newCheck := func() *gatewayAPICRDCheck {
 				return &gatewayAPICRDCheck{
-					releaseName:      contourReleaseName,
-					releaseNamespace: RadiusSystemNamespace,
-					command:          tt.command,
-					getCRDs:          crdLookup(traefikGatewayAPICRDs()),
+					releaseName:         contourReleaseName,
+					releaseNamespace:    RadiusSystemNamespace,
+					command:             tt.command,
+					getCRDs:             crdLookup(traefikGatewayAPICRDs()),
+					renderConfiguration: testRenderConfiguration(nil),
 				}
 			}
 			values := copyValues(tt.values)
@@ -736,6 +766,296 @@ func Test_gatewayAPICRDCheck_SuggestedFlagTurnsOffFeatures(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+// Test_gatewayAPICRDCheck_RemedyForContourValuesFromFlags follows the remedy that the check prints when this invocation
+// sets the Contour arguments with --contour-set-file or --contour-set. Radius applies every --contour-set flag before
+// every --contour-set-file flag, as Helm does, so the remedy must change the flag that sets the arguments.
+func Test_gatewayAPICRDCheck_RemedyForContourValuesFromFlags(t *testing.T) {
+	t.Parallel()
+
+	for _, command := range []string{installCommand, upgradeCommand} {
+		t.Run(command, func(t *testing.T) {
+			t.Parallel()
+
+			// check runs the check of command for a k3s cluster with Traefik, with the Contour values that the flags build
+			// as buildContourValues builds them. It returns the values that Helm would render the chart with.
+			check := func(t *testing.T, setArgs []string, setFileArgs []string) (map[string]any, error) {
+				t.Helper()
+
+				values, err := buildContourValues(ContourChartOptions{ChartOptions: ChartOptions{SetArgs: setArgs, SetFileArgs: setFileArgs}})
+				require.NoError(t, err)
+				var baseline *releasev1.Release
+				var reused map[string]any
+				if command == upgradeCommand {
+					reused = map[string]any{"gatewayAPI": map[string]any{"manageCRDs": false}}
+					baseline = &releasev1.Release{Name: contourReleaseName, Version: 1, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Config: reused}
+				}
+				helmChart := newTestContourChart()
+				_, err = (&gatewayAPICRDCheck{
+					releaseName:         contourReleaseName,
+					releaseNamespace:    RadiusSystemNamespace,
+					command:             command,
+					setArgs:             setArgs,
+					setFileArgs:         setFileArgs,
+					getCRDs:             crdLookup(traefikGatewayAPICRDs()),
+					renderConfiguration: testRenderConfiguration(nil),
+				}).run(t.Context(), helmChart, values, baseline, true)
+				if err != nil {
+					require.True(t, clierrors.IsFriendlyError(err), "%v", err)
+					return nil, err
+				}
+
+				effective, err := effectiveContourValues(helmChart, values, reused)
+				require.NoError(t, err)
+				return effective, nil
+			}
+			// requireFeaturesTurnedOff verifies that the values turn off the features that the Traefik CRDs lack, and
+			// keep the arguments args.
+			requireFeaturesTurnedOff := func(t *testing.T, values map[string]any, args ...string) {
+				t.Helper()
+
+				contourArgs := contourArgsFromValues(values)
+				require.Subset(t, contourArgs.disabledFeatures(), []string{"tlsroutes", "tcproutes", "backendtlspolicies"})
+				for _, arg := range args {
+					require.Contains(t, contourArgs.args, arg)
+				}
+			}
+			// printedFlag returns the value of the --contour-set flag that err prints on a line of its own.
+			printedFlag := func(t *testing.T, err error) string {
+				t.Helper()
+
+				match := regexp.MustCompile(`(?m)^ +--contour-set ("[^"\n]*")$`).FindAllStringSubmatch(err.Error(), -1)
+				require.Len(t, match, 1, "the error must print one --contour-set flag: %v", err)
+				return unquoteFlagValue(t, match[0][1])
+			}
+
+			t.Run("arguments from --contour-set-file", func(t *testing.T) {
+				t.Parallel()
+
+				file := filepath.Join(t.TempDir(), "args.yaml")
+				require.NoError(t, os.WriteFile(file, []byte("- --debug\n"), 0600))
+				setFile := "contour.extraArgs=" + file
+				_, err := check(t, nil, []string{setFile})
+				require.Error(t, err)
+				readFile := strings.TrimPrefix(setFileArg(setFile), "contour.extraArgs=")
+				require.Contains(t, err.Error(), "The contour.extraArgs value comes from --contour-set-file "+QuoteFlagValue(setFile)+", and Radius applies --contour-set-file values after --contour-set values")
+				require.Contains(t, err.Error(), "Add these entries to the list in "+readFile+":\n"+
+					"      - --disable-feature=tlsroutes\n      - --disable-feature=tcproutes\n      - --disable-feature=backendtlspolicies\n")
+				require.Contains(t, err.Error(), "Or replace --contour-set-file "+QuoteFlagValue(setFile)+" in the "+command+" command with this flag")
+				require.NotContains(t, err.Error(), "Add this flag")
+				flag := printedFlag(t, err)
+				entries := regexp.MustCompile(`(?m)^ +(- --disable-feature=[a-z]+)$`).FindAllStringSubmatch(err.Error(), -1)
+				require.Len(t, entries, 3)
+
+				// Adding the printed flag and keeping --contour-set-file does not work: the file overrides the flag.
+				_, err = check(t, []string{flag}, []string{setFile})
+				require.ErrorContains(t, err, "Contour 1.32.0 cannot use the Gateway API CRDs in this cluster")
+
+				// Replacing --contour-set-file with the printed flag works.
+				values, err := check(t, []string{flag}, nil)
+				require.NoError(t, err)
+				requireFeaturesTurnedOff(t, values, "--debug")
+
+				// Adding the printed entries to the file works too.
+				content := "- --debug\n"
+				for _, entry := range entries {
+					content += entry[1] + "\n"
+				}
+				require.NoError(t, os.WriteFile(file, []byte(content), 0600))
+				values, err = check(t, nil, []string{setFile})
+				require.NoError(t, err)
+				requireFeaturesTurnedOff(t, values, "--debug")
+			})
+
+			t.Run("arguments from --contour-set", func(t *testing.T) {
+				t.Parallel()
+
+				set := "contour.extraArgs={--debug}"
+				_, err := check(t, []string{set}, nil)
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "Replace --contour-set "+QuoteFlagValue(set)+" in the "+command+" command with this flag, which keeps its arguments:")
+				require.NotContains(t, err.Error(), "Add this flag")
+				flag := printedFlag(t, err)
+
+				// Before the original flag, the printed flag does not work: the original flag overrides it.
+				_, err = check(t, []string{flag, set}, nil)
+				require.ErrorContains(t, err, "Contour 1.32.0 cannot use the Gateway API CRDs in this cluster")
+
+				values, err := check(t, []string{flag}, nil)
+				require.NoError(t, err)
+				requireFeaturesTurnedOff(t, values, "--debug")
+			})
+
+			t.Run("arguments from --contour-set that sets other values too", func(t *testing.T) {
+				t.Parallel()
+
+				set := "contour.extraArgs={--debug},contour.replicas=3"
+				_, err := check(t, []string{set}, nil)
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "The contour.extraArgs value comes from --contour-set "+QuoteFlagValue(set)+", which also sets other values. Add this flag to the "+command+" command after that flag")
+				flag := printedFlag(t, err)
+
+				values, err := check(t, []string{set, flag}, nil)
+				require.NoError(t, err)
+				requireFeaturesTurnedOff(t, values, "--debug")
+				require.EqualValues(t, 3, nestedValue(values, "contour", "replicas"))
+			})
+		})
+	}
+}
+
+func Test_gatewayAPICRDCheck_valueSource(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		setArgs     []string
+		setFileArgs []string
+		want        contourValueSource
+		wantFound   bool
+	}{
+		{
+			name: "no flags",
+		},
+		{
+			name:    "flags for other values",
+			setArgs: []string{"contour.replicas=3", "contour.extraArgsFoo=x"},
+		},
+		{
+			name:      "--contour-set",
+			setArgs:   []string{"contour.extraArgs={--debug}"},
+			want:      contourValueSource{value: "contour.extraArgs={--debug}"},
+			wantFound: true,
+		},
+		{
+			name:      "--contour-set of one argument",
+			setArgs:   []string{"contour.extraArgs[1]=--debug"},
+			want:      contourValueSource{value: "contour.extraArgs[1]=--debug"},
+			wantFound: true,
+		},
+		{
+			name:      "the last --contour-set decides",
+			setArgs:   []string{"contour.extraArgs={--debug}", "contour.replicas=3", "contour.extraArgs={--incluster},contour.replicas=2"},
+			want:      contourValueSource{value: "contour.extraArgs={--incluster},contour.replicas=2", otherValues: true},
+			wantFound: true,
+		},
+		{
+			name:        "--contour-set-file",
+			setArgs:     []string{"contour.extraArgs={--debug}"},
+			setFileArgs: []string{"contour.extraArgs=args.yaml"},
+			want:        contourValueSource{fromFile: true, value: "contour.extraArgs=args.yaml", file: "args.yaml"},
+			wantFound:   true,
+		},
+		{
+			name:        "--contour-set-file of a value that contains the arguments",
+			setFileArgs: []string{"contour=contour.yaml"},
+			want:        contourValueSource{fromFile: true, value: "contour=contour.yaml"},
+			wantFound:   true,
+		},
+		{
+			name:        "--contour-set-file that sets other values too",
+			setFileArgs: []string{"contour.extraArgs=args.yaml,envoy.service.annotations=annotations.yaml"},
+			want:        contourValueSource{fromFile: true, value: "contour.extraArgs=args.yaml,envoy.service.annotations=annotations.yaml", file: "args.yaml", otherValues: true},
+			wantFound:   true,
+		},
+		{
+			name:        "--contour-set-file for other values",
+			setArgs:     []string{"contour.extraArgs={--debug}"},
+			setFileArgs: []string{"envoy.service.annotations=annotations.yaml"},
+			want:        contourValueSource{value: "contour.extraArgs={--debug}"},
+			wantFound:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			source, found := gatewayAPICRDCheck{setArgs: tt.setArgs, setFileArgs: tt.setFileArgs}.valueSource("contour.extraArgs")
+			require.Equal(t, tt.wantFound, found)
+			require.Equal(t, tt.want, source)
+		})
+	}
+}
+
+// Test_gatewayAPICRDCheck_SkipContourInstall verifies that the Gateway API compatibility and conflict errors of rad
+// install kubernetes suggest installing Radius without Contour, and that the errors of rad upgrade kubernetes do not.
+func Test_gatewayAPICRDCheck_SkipContourInstall(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		crds     []crdInfo
+		release  []crdInfo
+		values   map[string]any
+		wantLine string
+	}{
+		{
+			name: "Gateway API CRDs that Contour cannot use",
+			crds: traefikGatewayAPICRDs(),
+			wantLine: "\n  - Install Radius without Contour with --skip-contour-install, for example when Traefik is your ingress controller. Radius gateways use Contour, so they do not work without it." +
+				"\n    If you used rad init, run rad install kubernetes --skip-contour-install first, and then run rad init again.",
+		},
+		{
+			name:   "Gateway API CRDs that belong to something else",
+			crds:   traefikGatewayAPICRDs(),
+			values: map[string]any{"gatewayAPI": map[string]any{"manageCRDs": true}},
+			wantLine: "\nTo continue without Contour, install Radius with --skip-contour-install, for example when Traefik is your ingress controller. Radius gateways use Contour, so they do not work without it." +
+				" If you used rad init, run rad install kubernetes --skip-contour-install first, and then run rad init again.",
+		},
+		{
+			name:     "Gateway API CRDs with more than one owner",
+			crds:     append(withoutCRDs(contourBundleCRDs(), crdNames(traefikGatewayAPICRDs())...), traefikGatewayAPICRDs()...),
+			release:  contourBundleCRDs(),
+			wantLine: "\nTo continue without Contour, install Radius with --skip-contour-install, for example when Traefik is your ingress controller.",
+		},
+	}
+
+	for _, tt := range tests {
+		for _, command := range []string{installCommand, upgradeCommand} {
+			t.Run(tt.name+"/"+command, func(t *testing.T) {
+				t.Parallel()
+
+				var baseline *releasev1.Release
+				if tt.release != nil || command == upgradeCommand {
+					baseline = &releasev1.Release{Name: contourReleaseName, Version: 1, Info: &releasev1.Info{Status: releasecommon.StatusFailed}, Manifest: crdManifest(tt.release...)}
+				}
+				_, err := (&gatewayAPICRDCheck{
+					releaseName:         contourReleaseName,
+					releaseNamespace:    RadiusSystemNamespace,
+					command:             command,
+					getCRDs:             crdLookup(tt.crds),
+					renderConfiguration: testRenderConfiguration(nil),
+				}).run(t.Context(), newTestContourChart(), copyValues(tt.values), baseline, true)
+				require.Error(t, err)
+				require.True(t, clierrors.IsFriendlyError(err), "%v", err)
+				if command == installCommand {
+					require.Contains(t, err.Error(), tt.wantLine)
+				} else {
+					require.NotContains(t, err.Error(), "--skip-contour-install")
+				}
+			})
+		}
+	}
+}
+
+// Test_liveContourCluster_RenderConfiguration verifies that the configuration with which the Contour checks render the
+// chart reads the cluster that the Kubernetes context selects, as the real install or upgrade does, and that a dry run
+// with it can neither apply resources nor record a release.
+func Test_liveContourCluster_RenderConfiguration(t *testing.T) {
+	t.Parallel()
+
+	configuration, err := liveContourCluster{}.RenderConfiguration("k3d-radius-demo", RadiusSystemNamespace)
+	require.NoError(t, err)
+
+	flags, ok := configuration.RESTClientGetter.(*genericclioptions.ConfigFlags)
+	require.True(t, ok, "templates must see the capabilities and lookups of the cluster: %T", configuration.RESTClientGetter)
+	require.Equal(t, "k3d-radius-demo", *flags.Context)
+	require.Equal(t, RadiusSystemNamespace, *flags.Namespace)
+	require.Nil(t, configuration.Capabilities, "Helm must discover the capabilities of the cluster")
+	require.IsType(t, &kubefake.PrintingKubeClient{}, configuration.KubeClient, "the dry run must not apply resources")
+	require.IsType(t, &driver.Memory{}, configuration.Releases.Driver, "the dry run must not record a release in the cluster")
 }
 
 func Test_contourUpgradeBaseline(t *testing.T) {
@@ -948,6 +1268,7 @@ func Test_gatewayAPICRDCheck_ReadsOnlyInvolvedCRDs(t *testing.T) {
 					requests = append(requests, names)
 					return crdLookup(clusterCRDs)(ctx, names)
 				},
+				renderConfiguration: testRenderConfiguration(nil),
 			}
 			_, _ = check.run(t.Context(), newTestContourChart(), map[string]any{}, tt.baseline, true)
 
@@ -966,7 +1287,7 @@ func Test_renderChartCRDs(t *testing.T) {
 
 		helmChart := newTestContourChart()
 		for _, manageCRDs := range []bool{true, false} {
-			rendered, directory, err := renderChartCRDs(t.Context(), helmChart, contourReleaseName, RadiusSystemNamespace, false,
+			rendered, directory, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), helmChart, contourReleaseName, RadiusSystemNamespace, false,
 				map[string]any{"gatewayAPI": map[string]any{"manageCRDs": manageCRDs}})
 			require.NoError(t, err)
 			require.Empty(t, directory)
@@ -1012,13 +1333,13 @@ func Test_renderChartCRDs(t *testing.T) {
 		}
 		parent.AddDependency(subchart)
 
-		rendered, directory, err := renderChartCRDs(t.Context(), parent, contourReleaseName, RadiusSystemNamespace, false, nil)
+		rendered, directory, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), parent, contourReleaseName, RadiusSystemNamespace, false, nil)
 		require.NoError(t, err)
 		require.ElementsMatch(t, []string{"gateways." + gatewayAPIGroup, "grpcroutes." + gatewayAPIGroup}, crdNames(rendered))
 		require.ElementsMatch(t, []string{"tcproutes." + gatewayAPIGroup, "tlsroutes." + gatewayAPIGroup}, crdNames(directory))
 
 		// Helm removes a disabled subchart from the chart that it renders, but not from the original chart.
-		rendered, directory, err = renderChartCRDs(t.Context(), parent, contourReleaseName, RadiusSystemNamespace, false,
+		rendered, directory, err = renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), parent, contourReleaseName, RadiusSystemNamespace, false,
 			map[string]any{"gateway": map[string]any{"enabled": false}})
 		require.NoError(t, err)
 		require.Equal(t, []string{"gateways." + gatewayAPIGroup}, crdNames(rendered))
@@ -1037,8 +1358,21 @@ func Test_renderChartCRDs(t *testing.T) {
 
 		broken := newTestContourChart()
 		broken.Templates = append(broken.Templates, &common.File{Name: "templates/broken.yaml", Data: []byte(`{{ fail "the values are not supported" }}`)})
-		_, _, err := renderChartCRDs(t.Context(), broken, contourReleaseName, RadiusSystemNamespace, false, nil)
+		_, _, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), broken, contourReleaseName, RadiusSystemNamespace, false, nil)
 		require.ErrorContains(t, err, "the values are not supported")
+	})
+
+	t.Run("CRDs that the chart renders only with some capabilities of the cluster", func(t *testing.T) {
+		t.Parallel()
+
+		helmChart := newCapabilitiesGatedCRDChart()
+		rendered, _, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), helmChart, contourReleaseName, RadiusSystemNamespace, true, nil)
+		require.NoError(t, err)
+		require.Equal(t, []string{"httpproxies.projectcontour.io"}, crdNames(rendered))
+
+		rendered, _, err = renderChartCRDs(t.Context(), newTestRenderConfiguration(capabilitiesWith("gateway.networking.k8s.io/v1")), helmChart, contourReleaseName, RadiusSystemNamespace, true, nil)
+		require.NoError(t, err)
+		require.Empty(t, rendered)
 	})
 
 	t.Run("CRDs that the chart renders only on install or only on upgrade", func(t *testing.T) {
@@ -1050,7 +1384,7 @@ func Test_renderChartCRDs(t *testing.T) {
 			Data: []byte("{{- if .Release.IsUpgrade }}\n" + crdManifest(newUnmanagedCRD("tcproutes", "v1alpha2")) + "{{- end }}\n"),
 		})
 		for _, upgrade := range []bool{false, true} {
-			rendered, _, err := renderChartCRDs(t.Context(), helmChart, contourReleaseName, RadiusSystemNamespace, upgrade, nil)
+			rendered, _, err := renderChartCRDs(t.Context(), newTestRenderConfiguration(nil), helmChart, contourReleaseName, RadiusSystemNamespace, upgrade, nil)
 			require.NoError(t, err)
 			want := []string{"listenersets.gateway.networking.k8s.io"}
 			if upgrade {
@@ -1059,6 +1393,47 @@ func Test_renderChartCRDs(t *testing.T) {
 			require.Equal(t, want, crdNames(rendered), "upgrade=%t", upgrade)
 		}
 	})
+}
+
+// newTestRenderConfiguration returns a Helm configuration that renders charts with capabilities, or with Helm's default
+// capabilities when capabilities is nil. Without a RESTClientGetter, it never contacts a cluster, and template lookups
+// find nothing.
+func newTestRenderConfiguration(capabilities *common.Capabilities) *helm.Configuration {
+	if capabilities == nil {
+		capabilities = common.DefaultCapabilities.Copy()
+	}
+
+	return &helm.Configuration{
+		Capabilities: capabilities,
+		KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
+		Releases:     storage.Init(driver.NewMemory()),
+	}
+}
+
+// testRenderConfiguration returns the render configuration of a gatewayAPICRDCheck that renders with capabilities.
+func testRenderConfiguration(capabilities *common.Capabilities) func() (*helm.Configuration, error) {
+	return func() (*helm.Configuration, error) {
+		return newTestRenderConfiguration(capabilities), nil
+	}
+}
+
+// capabilitiesWith returns Helm's default capabilities with apiVersions added.
+func capabilitiesWith(apiVersions ...string) *common.Capabilities {
+	capabilities := common.DefaultCapabilities.Copy()
+	capabilities.APIVersions = append(capabilities.APIVersions, apiVersions...)
+	return capabilities
+}
+
+// newCapabilitiesGatedCRDChart returns a Contour chart that renders the HTTPProxy CRD only when the cluster does not
+// serve Gateway API v1, and no Gateway API CRDs.
+func newCapabilitiesGatedCRDChart() *chart.Chart {
+	helmChart := newStubContourChart("1.33.0", nil)
+	helmChart.Templates = append(helmChart.Templates, &common.File{
+		Name: "templates/httpproxies.yaml",
+		Data: []byte(`{{- if not (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1") }}` + "\n" +
+			crdManifest(crdInfo{name: "httpproxies.projectcontour.io", group: "projectcontour.io", servedVersions: []string{"v1"}}) + "{{- end }}\n"),
+	})
+	return helmChart
 }
 
 // newInstallOnlyCRDChart returns a Contour chart that renders a Gateway API CRD only when Helm installs it, and no

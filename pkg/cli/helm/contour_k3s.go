@@ -26,6 +26,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
+	helm "helm.sh/helm/v4/pkg/action"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -123,6 +124,11 @@ type contourClusterReader interface {
 
 	// JobPods reads the Pods of the Job with the given name in namespace.
 	JobPods(ctx context.Context, kubeContext string, namespace string, job string) (helmControllerPods, error)
+
+	// RenderConfiguration returns the Helm configuration with which the Contour checks render a chart as Helm renders
+	// it in the cluster: with the capabilities of the cluster, and with template lookups that read it. A dry run with
+	// the configuration never changes the cluster.
+	RenderConfiguration(kubeContext string, namespace string) (*helm.Configuration, error)
 }
 
 // liveContourCluster reads the cluster that kubeContext selects.
