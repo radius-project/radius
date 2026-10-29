@@ -102,11 +102,6 @@ func FindSharedOutputResources(deleting []generated.GenericResource, others []ge
 				continue
 			}
 
-			name := deleted.name()
-			if slices.ContainsFunc(shared.OutputResources, func(s SharedOutputResource) bool { return s.Name == name }) {
-				continue
-			}
-
 			usedBy := []string{}
 			for _, candidate := range candidates {
 				if slices.ContainsFunc(candidate.outputResources, deleted.matches) {
@@ -114,8 +109,23 @@ func FindSharedOutputResources(deleting []generated.GenericResource, others []ge
 				}
 			}
 
-			if len(usedBy) > 0 {
+			if len(usedBy) == 0 {
+				continue
+			}
+
+			// The same provider resource can appear under several output resource IDs, and each ID
+			// can match different owners, so owners are merged into one row per name.
+			name := deleted.name()
+			index := slices.IndexFunc(shared.OutputResources, func(s SharedOutputResource) bool { return s.Name == name })
+			if index < 0 {
 				shared.OutputResources = append(shared.OutputResources, SharedOutputResource{Name: name, UsedBy: usedBy})
+				continue
+			}
+
+			for _, id := range usedBy {
+				if !slices.Contains(shared.OutputResources[index].UsedBy, id) {
+					shared.OutputResources[index].UsedBy = append(shared.OutputResources[index].UsedBy, id)
+				}
 			}
 		}
 

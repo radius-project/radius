@@ -169,6 +169,21 @@ func Test_FindSharedOutputResources(t *testing.T) {
 			expected: []SharedOutputResources{},
 		},
 		{
+			// One provider resource appears twice under different producer IDs. Each producer ID
+			// is shared with a different resource that has no provider resource ID, so both
+			// owners must be named on the single warning row.
+			name: "owners matched through different producer IDs of the same provider resource are merged",
+			deleting: []generated.GenericResource{testResourceWithOutputResources(deletingResourceID,
+				testOutputResource(sharedBucketBicepID, sharedBucketARN, true),
+				testOutputResource(sharedBucketTFID, sharedBucketARN, true),
+			)},
+			others: []generated.GenericResource{
+				testResourceWithOutputResources(otherResourceID, testOutputResource(sharedBucketBicepID, "", false)),
+				testResourceWithOutputResources(secondOtherResourceID, testOutputResource(sharedBucketTFID, "", false)),
+			},
+			expected: []SharedOutputResources{{ResourceID: deletingResourceID, OutputResources: []SharedOutputResource{{Name: sharedBucketARN, UsedBy: []string{otherResourceID, secondOtherResourceID}}}}},
+		},
+		{
 			name: "a repeated output resource is reported once",
 			deleting: []generated.GenericResource{testResourceWithOutputResources(deletingResourceID,
 				testOutputResource(sharedBucketTFID, sharedBucketARN, true),

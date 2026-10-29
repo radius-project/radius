@@ -705,6 +705,67 @@ func Test_Run(t *testing.T) {
 			})
 		}
 
+		t.Run("Success: names every owner of a provider resource listed under two output resource IDs", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			const bucketARN = "arn:aws:s3:::shared-bucket"
+			bicepID := "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/shared-bucket"
+			terraformID := "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket"
+			resourceID := "/planes/radius/local/resourceGroups/team-a/providers/Radius.Storage/buckets/data"
+			teamB := "/planes/radius/local/resourceGroups/team-b/providers/Radius.Storage/buckets/data"
+			teamC := "/planes/radius/local/resourceGroups/team-c/providers/Radius.Storage/buckets/data"
+			resource := generated.GenericResource{
+				ID: &resourceID,
+				Properties: map[string]any{"status": map[string]any{"outputResources": []any{
+					map[string]any{"id": bicepID, "providerResourceId": bucketARN, "radiusManaged": true},
+					map[string]any{"id": terraformID, "providerResourceId": bucketARN, "radiusManaged": true},
+				}}},
+			}
+			// Older references without provider resource IDs, one for each output resource ID.
+			reference := func(id string, outputResourceID string) generated.GenericResource {
+				return generated.GenericResource{
+					ID: new(id),
+					Properties: map[string]any{"status": map[string]any{"outputResources": []any{
+						map[string]any{"id": outputResourceID, "radiusManaged": false},
+					}}},
+				}
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetResource(gomock.Any(), "Radius.Storage/buckets", "data").
+				Return(resource, nil).
+				Times(1)
+			appManagementClient.EXPECT().
+				ListResourcesInPlane(gomock.Any()).
+				Return([]generated.GenericResource{resource, reference(teamB, bicepID), reference(teamC, terraformID)}, nil).
+				Times(1)
+			appManagementClient.EXPECT().
+				DeleteResource(gomock.Any(), "Radius.Storage/buckets", "data", false).
+				Return(true, nil).
+				Times(1)
+
+			outputSink := &output.MockOutput{}
+			runner := &Runner{
+				ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                         outputSink,
+				Workspace:                      &workspaces.Workspace{},
+				FullyQualifiedResourceTypeName: "Radius.Storage/buckets",
+				ResourceName:                   "data",
+				Format:                         "table",
+				Confirm:                        true,
+			}
+
+			err := runner.Run(t.Context())
+			require.NoError(t, err)
+
+			require.Equal(t, []any{
+				output.LogOutput{Format: "WARNING: Deleting %s also deletes output resources that other Radius resources use:", Params: []any{"Radius.Storage/buckets/data"}},
+				output.LogOutput{Format: "  - %s, also used by %s", Params: []any{bucketARN, teamB + ", " + teamC}},
+				output.LogOutput{Format: "%s/%s deleted", Params: []any{"Radius.Storage/buckets", "data"}},
+			}, outputSink.Writes)
+		})
+
 		t.Run("Failure: an environment that is not a resource ID stops the delete", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
