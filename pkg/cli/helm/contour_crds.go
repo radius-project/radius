@@ -18,9 +18,11 @@ package helm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"slices"
 	"strings"
 	"text/template"
@@ -220,25 +222,15 @@ func pickKeys(values map[string]string, keys ...string) map[string]string {
 	return picked
 }
 
-// crdsInManifest returns the CRDs in a manifest of YAML documents.
+// crdsInManifest returns the CRDs in a manifest of YAML documents. Helm applies the items of a list instead of the
+// list, so crdsInManifest reads lists the way that Helm's Kubernetes client reads them: a document with items is a
+// list, whatever its kind, for example a List or a CustomResourceDefinitionList. See appendObjectCRDs.
 func crdsInManifest(manifest string) ([]crdInfo, error) {
 	var crds []crdInfo
 	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
 	for {
-		var object struct {
-			Kind     string `json:"kind"`
-			Metadata struct {
-				Name string `json:"name"`
-			} `json:"metadata"`
-			Spec struct {
-				Group    string `json:"group"`
-				Versions []struct {
-					Name   string `json:"name"`
-					Served bool   `json:"served"`
-				} `json:"versions"`
-			} `json:"spec"`
-		}
-		err := decoder.Decode(&object)
+		var document map[string]any
+		err := decoder.Decode(&document)
 		if errors.Is(err, io.EOF) {
 			return crds, nil
 		}
@@ -246,19 +238,99 @@ func crdsInManifest(manifest string) ([]crdInfo, error) {
 			return nil, err
 		}
 
-		if object.Kind != "CustomResourceDefinition" {
-			continue
+		crds, err = appendObjectCRDs(crds, document, true)
+		if err != nil {
+			return nil, err
+		}
+	}
+}
+
+// appendObjectCRDs appends the CRDs in object, a document of a manifest or an item of a list, to crds. Helm's
+// Kubernetes client decodes a document with items as a list, and an item of a list as a list only when its items are
+// a list, and it applies the items of every list instead of the list. An item without kind and apiVersion gets the
+// kind of its list without the List suffix and the apiVersion of the list, so the items of a
+// CustomResourceDefinitionList are CRDs even without a kind.
+func appendObjectCRDs(crds []crdInfo, object map[string]any, document bool) ([]crdInfo, error) {
+	items, hasItems := object["items"]
+	list, isList := items.([]any)
+	if document && hasItems && items != nil && !isList {
+		return nil, fmt.Errorf("the items of a %s are not a list", kindOf(object))
+	}
+	if !isList && !(document && hasItems) {
+		if kindOf(object) != "CustomResourceDefinition" {
+			return crds, nil
+		}
+		crd, err := crdFromObject(object)
+		if err != nil {
+			return nil, err
+		}
+		return append(crds, crd), nil
+	}
+
+	for _, item := range list {
+		itemObject, ok := item.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("an item of a %s is not an object", kindOf(object))
+		}
+		if kindOf(itemObject) == "" && apiVersionOf(itemObject) == "" {
+			itemObject = maps.Clone(itemObject)
+			itemObject["kind"] = strings.TrimSuffix(kindOf(object), "List")
+			itemObject["apiVersion"] = apiVersionOf(object)
 		}
 
-		crd := crdInfo{name: object.Metadata.Name, group: object.Spec.Group}
-		for _, version := range object.Spec.Versions {
-			crd.versions = append(crd.versions, version.Name)
-			if version.Served {
-				crd.servedVersions = append(crd.servedVersions, version.Name)
-			}
+		var err error
+		crds, err = appendObjectCRDs(crds, itemObject, false)
+		if err != nil {
+			return nil, err
 		}
-		crds = append(crds, crd)
 	}
+
+	return crds, nil
+}
+
+// kindOf and apiVersionOf return the kind and the apiVersion of a Kubernetes object, or empty strings when they are
+// not set to strings.
+func kindOf(object map[string]any) string {
+	kind, _ := object["kind"].(string)
+	return kind
+}
+
+func apiVersionOf(object map[string]any) string {
+	apiVersion, _ := object["apiVersion"].(string)
+	return apiVersion
+}
+
+// crdFromObject reads the name, the group, and the versions of a CustomResourceDefinition object.
+func crdFromObject(object map[string]any) (crdInfo, error) {
+	data, err := json.Marshal(object)
+	if err != nil {
+		return crdInfo{}, err
+	}
+	var definition struct {
+		Metadata struct {
+			Name string `json:"name"`
+		} `json:"metadata"`
+		Spec struct {
+			Group    string `json:"group"`
+			Versions []struct {
+				Name   string `json:"name"`
+				Served bool   `json:"served"`
+			} `json:"versions"`
+		} `json:"spec"`
+	}
+	if err := json.Unmarshal(data, &definition); err != nil {
+		return crdInfo{}, err
+	}
+
+	crd := crdInfo{name: definition.Metadata.Name, group: definition.Spec.Group}
+	for _, version := range definition.Spec.Versions {
+		crd.versions = append(crd.versions, version.Name)
+		if version.Served {
+			crd.servedVersions = append(crd.servedVersions, version.Name)
+		}
+	}
+
+	return crd, nil
 }
 
 // renderChartCRDs renders a chart with configuration as Helm renders it when it installs or upgrades the chart, and

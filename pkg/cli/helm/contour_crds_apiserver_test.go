@@ -518,20 +518,23 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		require.Contains(t, logs[0], `Warning: k3s does not install the Traefik CRDs of HelmChart kube-system/traefik-crd again: job helm-install-traefik-crd finished, but Helm release "traefik-crd" in namespace "kube-system" does not exist.`)
 	})
 
-	// A custom Contour chart can render a CRD only in some clusters. Radius renders the chart as Helm's install or upgrade
-	// does, so it sees that the upgrade would make Helm delete the CRD, and every object of its kind.
-	t.Run("custom Contour chart that renders a CRD only in some clusters", func(t *testing.T) {
+	// A custom Contour chart can stop rendering a CRD that the Contour release installed. Radius reads the manifest of the
+	// release and renders the chart as Helm's upgrade reads and renders them, so it sees that the upgrade would make Helm
+	// delete the CRD, and every object of its kind.
+	t.Run("custom Contour chart that stops rendering a CRD", func(t *testing.T) {
 		tests := []struct {
 			name string
-			// condition starts the template that renders the HTTPProxy CRD.
-			condition string
+			// template renders the HTTPProxy CRD when Radius installs Contour.
+			template string
 			// change changes the cluster after Contour installed the CRD, so that the chart no longer renders it.
 			change func(t *testing.T, kubeconfig string, crdClient apiextensionsclient.Interface)
+			// upgradeWithoutCRD is true when the commands after the install use a new chart that does not render the CRD.
+			upgradeWithoutCRD bool
 		}{
 			{
 				// The chart prefers the Gateway API, so it renders the HTTPProxy CRD only in clusters without it.
-				name:      "capabilities",
-				condition: `{{- if not (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1") }}`,
+				name:     "capabilities",
+				template: `{{- if not (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1") }}` + "\n" + crdManifest(httpProxiesCRD()) + "{{- end }}\n",
 				change: func(t *testing.T, kubeconfig string, crdClient apiextensionsclient.Interface) {
 					for _, err := range createCRDs(t, crdClient, []crdInfo{newUnmanagedCRD("gatewayclasses", "v1")}) {
 						require.NoError(t, err)
@@ -541,15 +544,23 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 			},
 			{
 				// The chart renders the HTTPProxy CRD only when it does not exist yet, so only when Helm installs it.
-				name:      "lookup",
-				condition: `{{- if not (lookup "apiextensions.k8s.io/v1" "CustomResourceDefinition" "" "httpproxies.projectcontour.io") }}`,
+				name: "lookup",
+				template: `{{- if not (lookup "apiextensions.k8s.io/v1" "CustomResourceDefinition" "" "httpproxies.projectcontour.io") }}` + "\n" +
+					crdManifest(httpProxiesCRD()) + "{{- end }}\n",
+			},
+			{
+				// The chart renders the HTTPProxy CRD in a List, whose items Helm applies, and its next version does not
+				// render the CRD.
+				name:              "list",
+				template:          crdListManifest(httpProxiesCRD()),
+				upgradeWithoutCRD: true,
 			},
 		}
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				kubeconfig, crdClient := startGatewayAPITestServer(t)
 				contourChart := writeStubContourChart(t, "1.33.0", nil)
-				writeTestFile(t, filepath.Join(contourChart, "templates", "httpproxies.yaml"), tt.condition+"\n"+crdManifest(httpProxiesCRD())+"{{- end }}\n")
+				writeTestFile(t, filepath.Join(contourChart, "templates", "httpproxies.yaml"), tt.template)
 				options := stubClusterOptions(writeStubRadiusChart(t), contourChart)
 				// The cluster has no Gateway API CRDs for the Radius Contour Gateway, which this test does not need.
 				impl := &Impl{Helm: NewHelmClient(), configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure}
@@ -557,6 +568,9 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 				createTestHTTPProxy(t, kubeconfig)
 				if tt.change != nil {
 					tt.change(t, kubeconfig, crdClient)
+				}
+				if tt.upgradeWithoutCRD {
+					options.Contour.ChartPath = writeStubContourChart(t, "1.33.0", nil)
 				}
 
 				// An upgrade failed, so rad install kubernetes --reinstall repairs the Contour release.
@@ -586,6 +600,40 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 
 // httpProxyGVR is the resource of the HTTPProxy objects of Contour.
 var httpProxyGVR = schema.GroupVersionResource{Group: "projectcontour.io", Version: "v1", Resource: "httpproxies"}
+
+// TestCRDsInManifestMatchHelmBuild verifies that crdsInManifest finds the CRDs in lists that Helm's Kubernetes client
+// builds from a manifest. Helm creates, updates, and deletes those CRDs with a release.
+func TestCRDsInManifestMatchHelmBuild(t *testing.T) {
+	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
+		t.Skip("Run make test or set KUBEBUILDER_ASSETS to run the isolated API-server regression.")
+	}
+	runtimelog.SetLogger(logr.Discard())
+
+	kubeconfig, _ := startGatewayAPITestServer(t)
+	flags := genericclioptions.NewConfigFlags(false)
+	flags.KubeConfig = &kubeconfig
+	client := kube.New(flags)
+	for _, tt := range crdListManifestTests {
+		t.Run(tt.name, func(t *testing.T) {
+			resources, err := client.Build(strings.NewReader(tt.manifest), false)
+			if tt.helmCannotBuild {
+				require.Error(t, err, "Helm built %v", resources)
+				return
+			}
+			require.NoError(t, err)
+
+			var helmCRDs []string
+			for _, resource := range resources {
+				if resource.Object.GetObjectKind().GroupVersionKind().Kind == "CustomResourceDefinition" {
+					helmCRDs = append(helmCRDs, resource.Name)
+				}
+			}
+			crds, err := crdsInManifest(tt.manifest)
+			require.NoError(t, err)
+			require.True(t, slices.Equal(helmCRDs, crdNames(crds)), "Helm builds CRDs %v, and crdsInManifest finds %v", helmCRDs, crdNames(crds))
+		})
+	}
+}
 
 // httpProxiesCRD returns the HTTPProxy CRD of Contour, without ownership metadata.
 func httpProxiesCRD() crdInfo {

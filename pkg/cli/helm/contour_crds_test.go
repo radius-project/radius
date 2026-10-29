@@ -115,9 +115,11 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 		name  string
 		chart *chart.Chart
 		// capabilities are the capabilities of the cluster, or nil for Helm's default capabilities.
-		capabilities    *common.Capabilities
-		crds            []crdInfo
-		release         []crdInfo
+		capabilities *common.Capabilities
+		crds         []crdInfo
+		release      []crdInfo
+		// releaseManifest is the manifest of the release instead of a manifest of the release CRDs, when it is set.
+		releaseManifest string
 		upgrade         bool
 		stored          map[string]any
 		resetValues     bool
@@ -446,6 +448,27 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			wantErr:        []string{"  - httpproxies.projectcontour.io\n", "Change the Contour chart or values"},
 		},
 		{
+			// Helm applies the items of a List instead of the List, so the release installed the CRD in the List.
+			name:            "a CRD that the release installed in a List and the chart no longer renders",
+			chart:           newStubContourChart("1.33.0", nil),
+			crds:            []crdInfo{httpProxies},
+			releaseManifest: crdListManifest(httpProxies),
+			wantManageCRDs:  true,
+			wantErr: []string{
+				"the Contour chart no longer includes these CRDs",
+				"  - httpproxies.projectcontour.io\n",
+				`kubectl --context "test-context" annotate crd httpproxies.projectcontour.io helm.sh/resource-policy=keep`,
+			},
+		},
+		{
+			name:           "a CRD that the release installed and the chart renders in a List",
+			chart:          newListCRDChart(httpProxies),
+			crds:           []crdInfo{httpProxies},
+			release:        []crdInfo{httpProxies},
+			wantManageCRDs: true,
+			wantWarning:    true,
+		},
+		{
 			name:           "a CRD that the chart updates without a version that the cluster stores objects in",
 			chart:          newStubContourChart("1.32.0", replaceCRD(contourBundleCRDs(), storedIn(udpRoutes, []string{"v1"}))),
 			crds:           replaceCRD(contourBundleCRDs(), storedIn(udpRoutes, []string{"v1alpha2"}, "v1alpha2")),
@@ -590,13 +613,16 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 				helmChart = newTestContourChart()
 			}
 			var baseline *releasev1.Release
-			if tt.release != nil || tt.upgrade {
+			if tt.release != nil || tt.releaseManifest != "" || tt.upgrade {
 				baseline = &releasev1.Release{
 					Name:     contourReleaseName,
 					Version:  1,
 					Info:     &releasev1.Info{Status: releasecommon.StatusDeployed},
 					Manifest: crdManifest(tt.release...),
 					Config:   copyValues(tt.stored),
+				}
+				if tt.releaseManifest != "" {
+					baseline.Manifest = tt.releaseManifest
 				}
 			}
 			command := tt.command
@@ -1913,6 +1939,220 @@ spec:
 	require.Error(t, err)
 }
 
+// Test_crdsInManifest_Lists verifies that crdsInManifest reads the CRDs in lists as Helm applies them: Helm's
+// Kubernetes client applies the items of every document with items instead of the document.
+// TestCRDsInManifestMatchHelmBuild compares the results with Helm's client in an API server.
+func Test_crdsInManifest_Lists(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range crdListManifestTests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			crds, err := crdsInManifest(tt.manifest)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, crds)
+		})
+	}
+}
+
+// crdListManifestTests are manifests with lists, and the CRDs that Helm applies with them.
+var crdListManifestTests = []struct {
+	name     string
+	manifest string
+	want     []crdInfo
+	wantErr  string
+
+	// helmCannotBuild is true when Helm's Kubernetes client cannot build the resources of the manifest, so Helm applies
+	// none of them, and crdsInManifest can find more CRDs than Helm or fail.
+	helmCannotBuild bool
+}{
+	{
+		name: "List",
+		manifest: `apiVersion: v1
+kind: List
+items:
+- apiVersion: apiextensions.k8s.io/v1
+  kind: CustomResourceDefinition
+  metadata:
+    name: httpproxies.projectcontour.io
+  spec:
+    group: projectcontour.io
+    versions:
+    - name: v1
+      served: true
+    - name: v1alpha1
+      served: false
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: contour
+`,
+		want: []crdInfo{{name: "httpproxies.projectcontour.io", group: "projectcontour.io", versions: []string{"v1", "v1alpha1"}, servedVersions: []string{"v1"}}},
+	},
+	{
+		name: "List in a List",
+		manifest: `apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: List
+  items:
+  - apiVersion: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    metadata:
+      name: httpproxies.projectcontour.io
+    spec:
+      group: projectcontour.io
+`,
+		want: []crdInfo{listedHTTPProxies},
+		// Helm's client fails on a list in a list, and crdsInManifest reads it.
+		helmCannotBuild: true,
+	},
+	{
+		// The decoder gives an item without kind and apiVersion the kind of the list without the List suffix.
+		name: "CustomResourceDefinitionList with items without kind",
+		manifest: `apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinitionList
+items:
+- metadata:
+    name: httpproxies.projectcontour.io
+  spec:
+    group: projectcontour.io
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: contour
+`,
+		want: []crdInfo{listedHTTPProxies},
+	},
+	{
+		// The decoder gives an item the kind and apiVersion of its list only when it has neither.
+		name: "CustomResourceDefinitionList with an item with apiVersion but without kind",
+		manifest: `apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinitionList
+items:
+- apiVersion: apiextensions.k8s.io/v1
+  metadata:
+    name: httpproxies.projectcontour.io
+  spec:
+    group: projectcontour.io
+`,
+		helmCannotBuild: true,
+	},
+	{
+		name: "lists and other documents",
+		manifest: `---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: gateways.gateway.networking.k8s.io
+spec:
+  group: gateway.networking.k8s.io
+---
+apiVersion: v1
+kind: List
+items:
+- apiVersion: apiextensions.k8s.io/v1
+  kind: CustomResourceDefinition
+  metadata:
+    name: httpproxies.projectcontour.io
+  spec:
+    group: projectcontour.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contour
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinitionList
+items:
+- metadata:
+    name: tlsroutes.gateway.networking.k8s.io
+  spec:
+    group: gateway.networking.k8s.io
+`,
+		want: []crdInfo{
+			{name: "gateways.gateway.networking.k8s.io", group: gatewayAPIGroup},
+			listedHTTPProxies,
+			{name: "tlsroutes.gateway.networking.k8s.io", group: gatewayAPIGroup},
+		},
+	},
+	{
+		name:     "List in JSON",
+		manifest: `{"apiVersion":"v1","kind":"List","items":[{"apiVersion":"apiextensions.k8s.io/v1","kind":"CustomResourceDefinition","metadata":{"name":"httpproxies.projectcontour.io"},"spec":{"group":"projectcontour.io"}}]}`,
+		want:     []crdInfo{listedHTTPProxies},
+	},
+	{
+		name: "document of another kind with items",
+		manifest: `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contour
+items:
+- apiVersion: apiextensions.k8s.io/v1
+  kind: CustomResourceDefinition
+  metadata:
+    name: httpproxies.projectcontour.io
+  spec:
+    group: projectcontour.io
+`,
+		want: []crdInfo{listedHTTPProxies},
+	},
+	{
+		// Helm applies the items of the CRD, of which there are none, instead of the CRD.
+		name: "CRD with items",
+		manifest: `apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: httpproxies.projectcontour.io
+spec:
+  group: projectcontour.io
+items: []
+`,
+	},
+	{
+		name:     "List with null items",
+		manifest: "apiVersion: v1\nkind: List\nitems: null\n",
+	},
+	{
+		// Only a document is a list whatever its items are. An item is a list only when its items are a list.
+		name: "item with null items",
+		manifest: `apiVersion: v1
+kind: List
+items:
+- apiVersion: apiextensions.k8s.io/v1
+  kind: CustomResourceDefinition
+  metadata:
+    name: httpproxies.projectcontour.io
+  spec:
+    group: projectcontour.io
+  items: null
+`,
+		want: []crdInfo{listedHTTPProxies},
+	},
+	{
+		name:            "List with items that are not a list",
+		manifest:        "apiVersion: v1\nkind: List\nitems:\n  name: contour\n",
+		wantErr:         "the items of a List are not a list",
+		helmCannotBuild: true,
+	},
+	{
+		name:            "List with an item that is not an object",
+		manifest:        "apiVersion: v1\nkind: List\nitems:\n- contour\n",
+		wantErr:         "an item of a List is not an object",
+		helmCannotBuild: true,
+	},
+}
+
+// listedHTTPProxies is the CRD that crdListManifestTests list.
+var listedHTTPProxies = crdInfo{name: "httpproxies.projectcontour.io", group: "projectcontour.io"}
+
 func Test_getCRDsWithClient(t *testing.T) {
 	t.Parallel()
 
@@ -2183,6 +2423,34 @@ func crdManifest(crds ...crdInfo) string {
 	}
 
 	return manifest.String()
+}
+
+// crdListManifest returns a manifest with a List whose items are a CRD for each of crds.
+func crdListManifest(crds ...crdInfo) string {
+	items := make([]any, 0, len(crds))
+	for _, crd := range crds {
+		items = append(items, newTestCRD(crd))
+	}
+	document, err := yaml.Marshal(map[string]any{"apiVersion": "v1", "kind": "List", "items": items})
+	if err != nil {
+		panic(err)
+	}
+
+	return "---\n" + string(document)
+}
+
+// newListCRDChart returns a Contour chart that renders crds in a List, and no Gateway API CRDs.
+func newListCRDChart(crds ...crdInfo) *chart.Chart {
+	unowned := make([]crdInfo, 0, len(crds))
+	for _, crd := range crds {
+		crd.labels = nil
+		crd.annotations = nil
+		unowned = append(unowned, crd)
+	}
+
+	helmChart := newStubContourChart("1.33.0", nil)
+	helmChart.Templates = append(helmChart.Templates, &common.File{Name: "templates/crd-list.yaml", Data: []byte(crdListManifest(unowned...))})
+	return helmChart
 }
 
 // testCRDKinds are the kinds of the CRDs that the tests create, by plural name.
