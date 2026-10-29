@@ -37,6 +37,7 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -502,6 +503,7 @@ func getResourceTypeSpecificProperties(properties map[string]any) map[string]any
 
 // outputResourceEntryFromID creates a outputResourceEntry from a resource ID. When tenantID
 // is non-empty and the ID is an Azure ARM resource, the entry is decorated with a portal URL.
+// An AWS resource of a known type is decorated with a link to the AWS console.
 func outputResourceEntryFromID(id resources.ID, tenantID string) corerpv20231001preview.ApplicationGraphOutputResource {
 	entry := corerpv20231001preview.ApplicationGraphOutputResource{
 		ID:   new(id.String()),
@@ -510,6 +512,8 @@ func outputResourceEntryFromID(id resources.ID, tenantID string) corerpv20231001
 	}
 
 	if url := azurePortalURL(id, tenantID); url != "" {
+		entry.PortalURL = new(url)
+	} else if url := resources_aws.ConsoleURL(id); url != "" {
 		entry.PortalURL = new(url)
 	}
 
