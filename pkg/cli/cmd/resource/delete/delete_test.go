@@ -704,6 +704,30 @@ func Test_Run(t *testing.T) {
 				require.Equal(t, expected, outputSink.Writes)
 			})
 		}
+
+		t.Run("Failure: an environment that is not a resource ID stops the delete", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			// No DeleteResource or ListResourcesInPlane expectation: the mock fails the test if either is called.
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetResource(gomock.Any(), "Radius.Storage/buckets", "data").
+				Return(generated.GenericResource{Properties: map[string]any{"environment": 42}}, nil).
+				Times(1)
+
+			runner := &Runner{
+				ConnectionFactory:              &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:                         &output.MockOutput{},
+				Workspace:                      &workspaces.Workspace{},
+				FullyQualifiedResourceTypeName: "Radius.Storage/buckets",
+				ResourceName:                   "data",
+				Format:                         "table",
+				Confirm:                        true,
+			}
+
+			err := runner.Run(t.Context())
+			require.EqualError(t, err, "resource ID is not a string")
+		})
 	})
 
 }

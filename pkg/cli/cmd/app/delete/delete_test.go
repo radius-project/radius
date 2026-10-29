@@ -759,4 +759,33 @@ func Test_Run(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("Failure: a prompt error stops the delete", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		promptErr := fmt.Errorf("prompt failed")
+		promptMock := prompt.NewMockInterface(ctrl)
+		promptMock.EXPECT().
+			GetListInput(gomock.Any(), gomock.Any()).
+			Return("", promptErr).
+			Times(1)
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+		require.NoError(t, err)
+
+		// No DeleteResource expectation: the mock fails the test if anything is deleted.
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockManagementClientNoResources(ctrl)},
+			Workspace:               workspace,
+			Output:                  &output.MockOutput{},
+			InputPrompter:           promptMock,
+			ApplicationName:         "test-app",
+			Confirm:                 false,
+		}
+
+		err = runner.Run(t.Context())
+		require.ErrorIs(t, err, promptErr)
+	})
 }

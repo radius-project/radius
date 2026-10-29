@@ -3169,4 +3169,59 @@ func Test_ListResourcesInPlane(t *testing.T) {
 		_, err := client.ListResourcesInPlane(t.Context())
 		require.ErrorContains(t, err, "list failed")
 	})
+
+	t.Run("rejects a configured scope that is not a scope", func(t *testing.T) {
+		t.Parallel()
+		// The mocks fail the test on any call, so this also checks that nothing is listed.
+		client, _, _, _ := setup(t, testScope+"/providers/Applications.Test1/resourceType1/resource1")
+
+		_, err := client.ListResourcesInPlane(t.Context())
+		require.ErrorContains(t, err, "does not refer to a scope")
+	})
+
+	t.Run("returns resource type discovery errors", func(t *testing.T) {
+		t.Parallel()
+		client, _, mockRP, _ := setup(t, testScope)
+
+		mockRP.EXPECT().
+			NewListProviderSummariesPager("local", gomock.Any()).
+			Return(runtime.NewPager(runtime.PagingHandler[ucp.ResourceProvidersClientListProviderSummariesResponse]{
+				More: func(ucp.ResourceProvidersClientListProviderSummariesResponse) bool { return true },
+				Fetcher: func(context.Context, *ucp.ResourceProvidersClientListProviderSummariesResponse) (ucp.ResourceProvidersClientListProviderSummariesResponse, error) {
+					return ucp.ResourceProvidersClientListProviderSummariesResponse{}, errors.New("summaries failed")
+				},
+			}))
+
+		_, err := client.ListResourcesInPlane(t.Context())
+		require.ErrorContains(t, err, "summaries failed")
+	})
+
+	t.Run("returns API version lookup errors", func(t *testing.T) {
+		t.Parallel()
+		client, _, mockRP, _ := setup(t, testScope)
+
+		mockListProviders(mockRP, "local")
+		mockRP.EXPECT().
+			GetProviderSummary(gomock.Any(), "local", gomock.Any(), gomock.Any()).
+			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{}, errors.New("summary failed")).
+			Times(1)
+
+		_, err := client.ListResourcesInPlane(t.Context())
+		require.ErrorContains(t, err, "failed to get API versions for resource type")
+		require.ErrorContains(t, err, "summary failed")
+	})
+
+	t.Run("returns client creation errors", func(t *testing.T) {
+		t.Parallel()
+		client, _, mockRP, _ := setup(t, testScope)
+		client.genericResourceClientFactory = func(scope string, resourceType string) (genericResourceClient, error) {
+			return nil, errors.New("client failed")
+		}
+
+		mockListProviders(mockRP, "local")
+		mockProviderSummaries(mockRP, "local", 1)
+
+		_, err := client.ListResourcesInPlane(t.Context())
+		require.ErrorContains(t, err, "client failed")
+	})
 }

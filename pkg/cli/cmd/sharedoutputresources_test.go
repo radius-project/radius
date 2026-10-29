@@ -139,6 +139,36 @@ func Test_FindSharedOutputResources(t *testing.T) {
 			expected: []SharedOutputResources{},
 		},
 		{
+			name: "resources without an ID are skipped",
+			deleting: []generated.GenericResource{
+				{Properties: testResourceWithOutputResources(deletingResourceID, testOutputResource(sharedBucketTFID, sharedBucketARN, true)).Properties},
+			},
+			others: []generated.GenericResource{
+				testResourceWithOutputResources(otherResourceID, testOutputResource(sharedBucketBicepID, sharedBucketARN, true)),
+				{Properties: testResourceWithOutputResources(otherResourceID, testOutputResource(sharedBucketBicepID, sharedBucketARN, true)).Properties},
+			},
+			expected: []SharedOutputResources{},
+		},
+		{
+			name: "malformed output resource entries are skipped",
+			deleting: []generated.GenericResource{{
+				ID: new(deletingResourceID),
+				Properties: map[string]any{"status": map[string]any{"outputResources": []any{
+					"not-an-object",
+					map[string]any{"radiusManaged": true},
+					testOutputResource(sharedBucketTFID, sharedBucketARN, true),
+				}}},
+			}},
+			others:   []generated.GenericResource{testResourceWithOutputResources(otherResourceID, testOutputResource(sharedBucketBicepID, sharedBucketARN, true))},
+			expected: []SharedOutputResources{{ResourceID: deletingResourceID, OutputResources: []SharedOutputResource{{Name: sharedBucketARN, UsedBy: []string{otherResourceID}}}}},
+		},
+		{
+			name:     "an output resources field that is not a list is ignored",
+			deleting: []generated.GenericResource{{ID: new(deletingResourceID), Properties: map[string]any{"status": map[string]any{"outputResources": "not-a-list"}}}},
+			others:   []generated.GenericResource{testResourceWithOutputResources(otherResourceID, testOutputResource(sharedBucketBicepID, sharedBucketARN, true))},
+			expected: []SharedOutputResources{},
+		},
+		{
 			name: "a repeated output resource is reported once",
 			deleting: []generated.GenericResource{testResourceWithOutputResources(deletingResourceID,
 				testOutputResource(sharedBucketTFID, sharedBucketARN, true),
@@ -190,6 +220,24 @@ func Test_WarnSharedOutputResources(t *testing.T) {
 
 		require.Equal(t, []any{
 			output.LogOutput{Format: msgSharedOutputResources, Params: []any{"Radius.Storage/buckets/data"}},
+			output.LogOutput{Format: msgSharedOutputResource, Params: []any{sharedBucketARN, otherResourceID}},
+		}, outputSink.Writes)
+	})
+
+	t.Run("names the resource by its ID when the ID cannot be parsed", func(t *testing.T) {
+		t.Parallel()
+		const unparsedID = "not-a-resource-id"
+		unparsed := []generated.GenericResource{testResourceWithOutputResources(unparsedID, testOutputResource(sharedBucketTFID, sharedBucketARN, true))}
+		client := clients.NewMockApplicationsManagementClient(gomock.NewController(t))
+		client.EXPECT().ListResourcesInPlane(gomock.Any()).Return([]generated.GenericResource{
+			testResourceWithOutputResources(otherResourceID, testOutputResource(sharedBucketBicepID, sharedBucketARN, true)),
+		}, nil)
+
+		outputSink := &output.MockOutput{}
+		WarnSharedOutputResources(t.Context(), client, outputSink, unparsedID, unparsed)
+
+		require.Equal(t, []any{
+			output.LogOutput{Format: msgSharedOutputResources, Params: []any{unparsedID}},
 			output.LogOutput{Format: msgSharedOutputResource, Params: []any{sharedBucketARN, otherResourceID}},
 		}, outputSink.Writes)
 	})
