@@ -28,7 +28,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/go-logr/logr"
@@ -543,7 +545,7 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	recipeError := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.RecipeDeletionFailed,
-			Message: fmt.Sprintf("failed to delete resource after 1 attempt(s), last error: could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type),
+			Message: fmt.Sprintf("failed to delete resource %q after 1 attempt(s), last error: could not find API version for type %q, no supported API versions", outputResources[0].ID.String(), outputResources[0].GetResourceType().Type),
 		},
 	}
 	client.EXPECT().
@@ -556,6 +558,180 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
+}
+
+func Test_Bicep_Delete_MultipleOutputResources(t *testing.T) {
+	ids := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/a",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/b",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/c",
+	}
+
+	tests := []struct {
+		name            string
+		deleteErrors    map[string]error
+		expectedMessage string
+	}{
+		{
+			name: "every delete succeeds",
+		},
+		{
+			name:         "one delete fails",
+			deleteErrors: map[string]error{ids[1]: errors.New("b is locked")},
+			expectedMessage: fmt.Sprintf("failed to delete resource %q after 1 attempt(s), last error: b is locked",
+				ids[1]),
+		},
+		{
+			name: "several deletes fail",
+			deleteErrors: map[string]error{
+				ids[2]: errors.New("c is locked"),
+				ids[0]: errors.New("a is locked"),
+			},
+			expectedMessage: fmt.Sprintf("failed to delete resource %q after 1 attempt(s), last error: a is locked\n"+
+				"failed to delete resource %q after 1 attempt(s), last error: c is locked",
+				ids[0], ids[2]),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			driverBicep, client, _, _ := setupDeleteInputs(t)
+			outputResources := []rpv1.OutputResource{}
+			for _, id := range ids {
+				outputResources = append(outputResources, rpv1.OutputResource{ID: resources.MustParse(id), RadiusManaged: new(true)})
+				client.EXPECT().Delete(gomock.Any(), id).Return(tc.deleteErrors[id]).Times(1)
+			}
+
+			err := driverBicep.Delete(t.Context(), driver.DeleteOptions{OutputResources: outputResources})
+			if tc.expectedMessage == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.Equal(t, &recipes.RecipeError{
+				ErrorDetails: v1.ErrorDetails{
+					Code:    recipes.RecipeDeletionFailed,
+					Message: tc.expectedMessage,
+				},
+			}, err)
+		})
+	}
+}
+
+// Test_Bicep_Delete_RetriesEachResource checks that each output resource gets its own retries.
+func Test_Bicep_Delete_RetriesEachResource(t *testing.T) {
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	driverBicep.options.DeleteRetryCount = 2
+	driverBicep.options.DeleteRetryDelaySeconds = 0
+
+	alwaysFails := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/always-fails"
+	failsOnce := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/fails-once"
+	succeeds := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/succeeds"
+	outputResources := []rpv1.OutputResource{
+		{ID: resources.MustParse(alwaysFails), RadiusManaged: new(true)},
+		{ID: resources.MustParse(failsOnce), RadiusManaged: new(true)},
+		{ID: resources.MustParse(succeeds), RadiusManaged: new(true)},
+	}
+
+	client.EXPECT().Delete(gomock.Any(), alwaysFails).Return(errors.New("always-fails is locked")).Times(3)
+	gomock.InOrder(
+		client.EXPECT().Delete(gomock.Any(), failsOnce).Return(errors.New("fails-once is busy")),
+		client.EXPECT().Delete(gomock.Any(), failsOnce).Return(nil),
+	)
+	client.EXPECT().Delete(gomock.Any(), succeeds).Return(nil).Times(1)
+
+	err := driverBicep.Delete(t.Context(), driver.DeleteOptions{OutputResources: outputResources})
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeletionFailed,
+			Message: fmt.Sprintf("failed to delete resource %q after 3 attempt(s), last error: always-fails is locked", alwaysFails),
+		},
+	}, err)
+}
+
+// Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource checks that when a redeploy drops output resources,
+// one failed delete does not stop the other stale resources from being deleted.
+func Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	driverBicep.DeploymentClient = &deploymentClientSpy{
+		response: &clients.ClientCreateOrUpdateResponse{
+			Properties: &armdeployments.DeploymentPropertiesExtended{},
+		},
+	}
+	driverBicep.RegistryClient = ts.TestServer.Client()
+
+	failing := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/failing"
+	stale := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/stale"
+	client.EXPECT().Delete(gomock.Any(), failing).Return(errors.New("failing is locked")).Times(1)
+	client.EXPECT().Delete(gomock.Any(), stale).Return(nil).Times(1)
+
+	_, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Recipe: recipes.ResourceMetadata{
+				Name:          "test-resource",
+				ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+			},
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "direct-module",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: ts.TestImageURL,
+			},
+		},
+		PrevState: []string{failing, stale},
+	})
+	recipeErr := &recipes.RecipeError{}
+	require.ErrorAs(t, err, &recipeErr)
+	require.Equal(t, recipes.RecipeGarbageCollectionFailed, recipeErr.ErrorDetails.Code)
+	require.Equal(t, fmt.Sprintf("code RecipeDeletionFailed: err failed to delete resource %q after 1 attempt(s), last error: failing is locked", failing), recipeErr.ErrorDetails.Message)
+}
+
+// Test_Bicep_Delete_FailureDoesNotCancelOtherDeletes checks that a delete still running when another delete runs out
+// of retries keeps a live context and finishes.
+func Test_Bicep_Delete_FailureDoesNotCancelOtherDeletes(t *testing.T) {
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	driverBicep.options.DeleteRetryCount = 1
+	driverBicep.options.DeleteRetryDelaySeconds = 0
+
+	failing := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/failing"
+	slow := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/slow"
+	outputResources := []rpv1.OutputResource{
+		{ID: resources.MustParse(failing), RadiusManaged: new(true)},
+		{ID: resources.MustParse(slow), RadiusManaged: new(true)},
+	}
+
+	failingAttempts := atomic.Int32{}
+	failingDone := make(chan struct{})
+	client.EXPECT().Delete(gomock.Any(), failing).Times(2).DoAndReturn(func(context.Context, string) error {
+		if failingAttempts.Add(1) == 2 {
+			close(failingDone)
+		}
+		return errors.New("failing is locked")
+	})
+
+	slowDeleted := atomic.Bool{}
+	client.EXPECT().Delete(gomock.Any(), slow).Times(1).DoAndReturn(func(ctx context.Context, _ string) error {
+		<-failingDone
+		// Give a canceled context time to show up before finishing the delete.
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(200 * time.Millisecond):
+		}
+		slowDeleted.Store(true)
+		return nil
+	})
+
+	err := driverBicep.Delete(t.Context(), driver.DeleteOptions{OutputResources: outputResources})
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeletionFailed,
+			Message: fmt.Sprintf("failed to delete resource %q after 2 attempt(s), last error: failing is locked", failing),
+		},
+	}, err)
+	require.True(t, slowDeleted.Load())
 }
 
 func Test_Bicep_Delete_TargetClusterResolutionError(t *testing.T) {

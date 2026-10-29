@@ -25,13 +25,13 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/go-logr/logr"
-	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2/registry/remote"
 
 	"github.com/radius-project/radius/pkg/components/metrics"
@@ -271,8 +271,10 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 		return nil
 	}
 
-	// Create a waitgroup to track the deletion of each output resource
-	g, groupCtx := errgroup.WithContext(ctx)
+	// Each output resource gets its own delete attempts, so one failure does not stop the others.
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	failures := []error{}
 
 	for i := range opts.OutputResources {
 		outputResource := opts.OutputResources[i]
@@ -284,31 +286,31 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 		}
 
 		// Create a goroutine that handles the deletion of one resource
-		g.Go(func() error {
+		wg.Go(func() {
 			id := outputResource.ID.String()
 			logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.ID, outputResource.LocalID, outputResource.GetResourceType()))
 
 			// If the resource is not managed by Radius, skip the deletion
 			if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
 				logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", id))
-				return nil
+				return
 			}
 
 			var err error
 			attempts := 0
 			for {
-				if err = groupCtx.Err(); err != nil {
+				if err = ctx.Err(); err != nil {
 					break
 				}
 				attempts++
 				attemptLogger := logger.WithValues("attempt", attempts, "resourceID", id)
-				ctx := logr.NewContext(groupCtx, attemptLogger)
+				attemptCtx := logr.NewContext(ctx, attemptLogger)
 				attemptLogger.V(ucplog.LevelDebug).Info("beginning attempt")
 
-				err = resourceClient.Delete(ctx, id)
+				err = resourceClient.Delete(attemptCtx, id)
 				if err == nil {
 					attemptLogger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
-					return nil
+					return
 				}
 				if attempts > d.options.DeleteRetryCount || !isRetryableDeleteError(err) {
 					break
@@ -317,26 +319,31 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 				attemptLogger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
 				timer := time.NewTimer(time.Duration(d.options.DeleteRetryDelaySeconds) * time.Second)
 				select {
-				case <-groupCtx.Done():
-					err = groupCtx.Err()
+				case <-ctx.Done():
+					err = ctx.Err()
 				case <-timer.C:
 				}
 				timer.Stop()
-				if groupCtx.Err() != nil {
+				if ctx.Err() != nil {
 					break
 				}
 			}
 
-			deletionErr := fmt.Errorf("failed to delete resource after %d attempt(s), last error: %w", attempts, err)
-			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, deletionErr.Error(), "", recipes.GetErrorDetails(deletionErr))
+			mu.Lock()
+			defer mu.Unlock()
+			failures = append(failures, fmt.Errorf("failed to delete resource %q after %d attempt(s), last error: %w", id, attempts, err))
 		})
 	}
+	wg.Wait()
 
-	if err := g.Wait(); err != nil {
-		return err
+	if len(failures) == 0 {
+		return nil
 	}
 
-	return nil
+	// Sort so the error is the same no matter which delete finished first.
+	slices.SortFunc(failures, func(a, b error) int { return strings.Compare(a.Error(), b.Error()) })
+	deletionErr := errors.Join(failures...)
+	return recipes.NewRecipeError(recipes.RecipeDeletionFailed, deletionErr.Error(), "", recipes.GetErrorDetails(deletionErr))
 }
 
 // permanentDeleteErrorCodes are ARM error codes that a later attempt cannot fix.
