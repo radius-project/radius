@@ -181,6 +181,47 @@ verify_sibling_publication_gate() {
                      || reject "does not enforce the sibling publication gate"
 }
 
+verify_attestation_gate() {
+    if ! yq_true "${BUILD_WORKFLOW}" '.jobs | has("attest-release")'; then
+        [[ "${BICEP_DUAL_PIPELINE}" == false ]] ||
+            reject "does not enforce the attestation gate"
+        return 0
+    fi
+    git show "${COMMIT}:${BUILD_WORKFLOW}" | yq -o=json '.' | jq -e '
+        def normalized: gsub("\\s"; "");
+        .jobs as $jobs |
+        $jobs."attest-release" as $attest |
+        ($attest.needs | sort) == ["build-and-push-helm-chart",
+            "build-and-push-remaining-images", "goreleaser-release", "release-preflight"] and
+        ($attest.if | normalized) == ("github.repository == '\''radius-project/radius'\'' &&
+            startsWith(github.ref, '\''refs/tags/v'\'') &&
+            needs.release-preflight.outputs.release-state != '\''published'\''" | normalized) and
+        ($attest."continue-on-error" // false) == false and
+        $attest.permissions."id-token" == "write" and
+        $attest.permissions.attestations == "write" and
+        ([$attest.steps[] | select(.name == "Attest release provenance")] |
+            length == 1 and all(.[]; .if == null and
+            (."continue-on-error" // false) == false and
+            (.uses | test("^actions/attest@[a-f0-9]{40}$")) and
+            .with."subject-checksums" == "dist/attestation/subjects.txt")) and
+        ($jobs."verify-release".needs | index("attest-release") != null) and
+        ($jobs."finalize-release".needs | index("attest-release") != null) and
+        ($jobs."build-summary".needs | index("attest-release") != null) and
+        $jobs."verify-release".permissions.attestations == "read" and
+        $jobs."finalize-release".permissions.attestations == "read" and
+        ($jobs."verify-release".if | normalized) == ("!cancelled() &&
+            needs.release-preflight.result == '\''success'\'' &&
+            (needs.release-preflight.outputs.release-state == '\''published'\'' ||
+            (needs.goreleaser-release.result == '\''success'\'' &&
+            needs.build-and-push-remaining-images.result == '\''success'\'' &&
+            needs.build-and-push-helm-chart.result == '\''success'\'' &&
+            needs.build-and-push-bicep-types.result == '\''success'\'' &&
+            needs.attest-release.result == '\''success'\''))" | normalized) and
+        ([$jobs | to_entries[] | select(.key != "attest-release") |
+            .value.permissions.attestations] | all(. != "write"))
+    ' >/dev/null || reject "does not enforce the attestation gate"
+}
+
 verify_bicep_contract() {
     local targets=".github/release-parity/targets.json"
     local ghcr=false
@@ -303,6 +344,7 @@ main() {
     verify_bicep_contract
     verify_publication_gate
     verify_sibling_publication_gate
+    verify_attestation_gate
 
     # Path-only push triggers also run for tags; only a tag filter marks a publisher.
     while IFS= read -r name; do
