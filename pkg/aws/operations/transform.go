@@ -163,9 +163,6 @@ type pathNode struct{ segments []string }
 
 func (n pathNode) eval(parent map[string]any, root map[string]any) (value, bool) {
 	for _, obj := range []map[string]any{parent, root} {
-		if obj == nil {
-			continue
-		}
 		var current any = obj
 		found := true
 		for _, s := range n.segments {
@@ -249,7 +246,8 @@ func (n callNode) eval(parent map[string]any, root map[string]any) (value, bool)
 			return pattern{{text: strconv.FormatBool(v)}}, true
 		}
 		return nil, false
-	case "$join":
+	default:
+		// $join, the only other function the parser accepts.
 		items, ok := args[0].([]value)
 		if !ok {
 			// JSONata treats a single string as an array of one.
@@ -278,7 +276,6 @@ func (n callNode) eval(parent map[string]any, root map[string]any) (value, bool)
 		}
 		return out, true
 	}
-	return nil, false
 }
 
 // parser reads the supported subset of JSONata.

@@ -195,6 +195,14 @@ func Test_ParseTransform(t *testing.T) {
 		`$join([])`,
 		`"vpc" $OR Domain`,
 		`"arn:aws[-a-z]*:kms:[a-z0-9-]+:[0-9]{12}:key/[a-zA-Z0-9-]+"`,
+		`Name)`,
+		`Name, Other`,
+		`Name $ORDER`,
+		`$lowercase(Name]`,
+		`$lowercase(Name`,
+		`[Name $OR Other]`,
+		`"ends in a backslash\`,
+		`"\uZZZZ"`,
 	}
 	for _, expression := range unsupported {
 		_, err := parseTransform(expression)
@@ -208,6 +216,7 @@ func Test_Transform_Matches(t *testing.T) {
 		expression string
 		properties map[string]any
 		parentPath []string
+		noParent   bool
 		current    any
 		want       bool
 	}{
@@ -238,6 +247,12 @@ func Test_Transform_Matches(t *testing.T) {
 		{name: "join of a number", expression: `$join(Sep)`, properties: map[string]any{"Sep": 1.0}, current: "1", want: false},
 		{name: "current is not a string", expression: `$lowercase(Name)`, properties: map[string]any{"Name": "A"}, current: 1.0, want: false},
 		{name: "result is not a string", expression: `[Name]`, properties: map[string]any{"Name": "a"}, current: "a", want: false},
+		{name: "key material with the newline AWS adds", expression: `$join([PublicKeyMaterial, "\n"])`, properties: map[string]any{"PublicKeyMaterial": "ssh-rsa AAA"}, current: "ssh-rsa AAA\n", want: true},
+		{name: "control character escapes", expression: `$join([Name, "\t\r\b\f"])`, properties: map[string]any{"Name": "a"}, current: "a\t\r\b\f", want: true},
+		{name: "missing reference in a list", expression: `$join([Missing, "-x"])`, properties: map[string]any{"Name": "a"}, current: "a-x", want: false},
+		{name: "reference through a value that is not an object", expression: `$lowercase(Outer.Name)`, properties: map[string]any{"Outer": "AB"}, current: "ab", want: false},
+		{name: "string of a list", expression: `$string([Name])`, properties: map[string]any{"Name": "a"}, current: "a", want: false},
+		{name: "no parent object resolves from the root", expression: `$lowercase(Name)`, properties: map[string]any{"Name": "AB"}, noParent: true, current: "ab", want: true},
 		{name: "invalid regular expression", expression: `$join(["(", Name])`, properties: map[string]any{"Name": "a"}, current: "(a", want: false},
 	}
 	for _, tt := range tests {
@@ -245,6 +260,9 @@ func Test_Transform_Matches(t *testing.T) {
 			tr, err := parseTransform(tt.expression)
 			require.NoError(t, err)
 			parent := tt.properties
+			if tt.noParent {
+				parent = nil
+			}
 			if tt.parentPath != nil {
 				v, _ := valueAt(tt.properties, tt.parentPath)
 				parent = v.(map[string]any)
@@ -275,7 +293,7 @@ func Test_SchemaRules_EquivalentAt(t *testing.T) {
 		return rules.equivalentAt(path, desired, current, map[string]any{path: desired})
 	}
 	require.True(t, eq("Ids", []any{"b", "a"}, []any{"a", "b"}), "reordered")
-	require.True(t, eq("Ids", []string{"b", "a", "a"}, []any{"a", "b", "a"}), "duplicates as a multiset")
+	require.True(t, eq("Ids", []any{"b", "a", "a"}, []any{"a", "b", "a"}), "duplicates as a multiset")
 	require.False(t, eq("Ids", []any{"a", "a", "b"}, []any{"a", "b", "b"}), "different counts")
 	require.False(t, eq("Ids", []any{"a", "b"}, []any{"a", "c"}), "different item")
 	require.False(t, eq("Ids", []any{"a"}, []any{"a", "b"}), "different length")
@@ -300,6 +318,11 @@ func Test_SchemaRules_EquivalentAt(t *testing.T) {
 	}
 	require.False(t, eq("Rules", rulesValue, extra), "a field AWS reports and the template does not set differs")
 	require.False(t, eq("Rules", []any{map[string]any{"Name": "a"}}, []any{"a"}), "an item that is not an object")
+
+	// A key that contains "/" splits into a parent path the template does not have, so there is no parent to read.
+	labels := map[string]any{"Labels": map[string]any{"app/name": "B"}}
+	require.False(t, rules.equivalentAt("Labels/app/name", "B", "b", labels))
+	require.False(t, rules.equivalentAt("Name/x", "B", "b", map[string]any{"Name": "B"}), "a parent that is not an object")
 
 	// An object compares field by field. A null field AWS reports equals an unset one.
 	require.True(t, rules.equivalentAt("Rules/*", map[string]any{"Name": "A"}, map[string]any{"Name": "a", "Ports": nil}, nil))
@@ -384,6 +407,24 @@ func Test_GeneratePatch_SchemaRules(t *testing.T) {
 		current := map[string]any{"Pair": []any{"a"}, "Name": "x"}
 		desired := map[string]any{"Pair": []any{"a"}, "Name": "y"}
 		require.Equal(t, []op{{Type: jsondiff.OperationReplace, Path: "/Name", Value: "y"}}, ops(patchFor(t, schema, current, desired)))
+	})
+
+	t.Run("an ordered array whose items match by their own rules sends nothing", func(t *testing.T) {
+		// From AWS::Cassandra::Table: the key columns keep their order, and each type is compared in lowercase.
+		schema := `{
+			"properties": {"PartitionKeyColumns": {"type": "array", "insertionOrder": true, "items": {"$ref": "#/definitions/Column"}}},
+			"definitions": {"Column": {"type": "object", "properties": {"ColumnName": {"type": "string"}, "ColumnType": {"type": "string"}}}},
+			"propertyTransform": {"/properties/PartitionKeyColumns/*/ColumnType": "$lowercase(ColumnType)"}
+		}`
+		current := map[string]any{"PartitionKeyColumns": []any{
+			map[string]any{"ColumnName": "id", "ColumnType": "uuid"},
+			map[string]any{"ColumnName": "day", "ColumnType": "date"},
+		}}
+		desired := map[string]any{"PartitionKeyColumns": []any{
+			map[string]any{"ColumnName": "id", "ColumnType": "UUID"},
+			map[string]any{"ColumnName": "day", "ColumnType": "DATE"},
+		}}
+		require.Empty(t, patchFor(t, schema, current, desired))
 	})
 
 	t.Run("an ordered array keeps comparing item by item", func(t *testing.T) {

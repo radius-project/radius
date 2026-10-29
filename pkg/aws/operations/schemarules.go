@@ -117,24 +117,23 @@ func (r *schemaRules) walk(definitions map[string]schemaNode, node schemaNode, p
 }
 
 // equivalentAt reports whether the template's value of the property at path and the value AWS reports mean the same
-// thing. desiredRoot is the template's whole properties object, which property transforms read.
+// thing. Values are JSON decoded into any, as GeneratePatch reads them. desiredRoot is the template's whole properties
+// object, which property transforms read.
 func (r *schemaRules) equivalentAt(path string, desired any, current any, desiredRoot map[string]any) bool {
-	if jsonEqual(desired, current) {
+	if reflect.DeepEqual(desired, current) {
 		return true
 	}
 	if r == nil || (len(r.unordered) == 0 && len(r.transforms) == 0) {
 		return false
 	}
-	d, c, root := normalize(desired), normalize(current), normalize(desiredRoot)
-	rootMap, _ := root.(map[string]any)
 	segments := strings.Split(path, "/")
-	parent, _ := valueAt(rootMap, segments[:len(segments)-1])
+	parent, _ := valueAt(desiredRoot, segments[:len(segments)-1])
 	parentMap, _ := parent.(map[string]any)
-	return r.equivalent(segments, d, c, parentMap, rootMap)
+	return r.equivalent(segments, desired, current, parentMap, desiredRoot)
 }
 
 func (r *schemaRules) equivalent(segments []string, desired any, current any, parent map[string]any, root map[string]any) bool {
-	if jsonEqual(desired, current) {
+	if reflect.DeepEqual(desired, current) {
 		return true
 	}
 	path := strings.Join(segments, "/")
@@ -211,39 +210,13 @@ func perfectMatching(matches [][]bool) bool {
 	return true
 }
 
-func normalize(v any) any {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return v
-	}
-	var out any
-	if err := json.Unmarshal(b, &out); err != nil {
-		return v
-	}
-	return out
-}
-
-// jsonEqual reports whether a and b are the same JSON value.
-func jsonEqual(a, b any) bool {
-	ab, err1 := json.Marshal(a)
-	bb, err2 := json.Marshal(b)
-	if err1 != nil || err2 != nil {
-		return reflect.DeepEqual(a, b)
-	}
-	var an, bn any
-	_ = json.Unmarshal(ab, &an)
-	_ = json.Unmarshal(bb, &bn)
-	return reflect.DeepEqual(an, bn)
-}
-
 // valueAt returns the value at the path given by segments inside obj.
 func valueAt(obj any, segments []string) (any, bool) {
 	current := obj
 	for _, segment := range segments {
-		m, ok := current.(map[string]any)
-		if !ok {
-			return nil, false
-		}
+		// A value that is not an object has no fields: the lookup on a nil map finds nothing.
+		m, _ := current.(map[string]any)
+		var ok bool
 		if current, ok = m[segment]; !ok {
 			return nil, false
 		}
