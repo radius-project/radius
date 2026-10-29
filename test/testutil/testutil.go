@@ -86,6 +86,20 @@ func SetDefault() (string, string) {
 	return dockerRegistry, imageTag
 }
 
+// LocalFunctionalDashboardValues returns optional dashboard Helm values shared by
+// test-owned installs and upgrades. Empty inputs preserve the caller's defaults.
+func LocalFunctionalDashboardValues() ([]string, error) {
+	image := os.Getenv("LOCAL_FUNCTIONAL_DASHBOARD_IMAGE")
+	tag := os.Getenv("LOCAL_FUNCTIONAL_DASHBOARD_TAG")
+	if (image == "") != (tag == "") {
+		return nil, errors.New("LOCAL_FUNCTIONAL_DASHBOARD_IMAGE and LOCAL_FUNCTIONAL_DASHBOARD_TAG must both be set or both be empty")
+	}
+	if image == "" {
+		return nil, nil
+	}
+	return []string{"dashboard.image=" + image, "dashboard.tag=" + tag}, nil
+}
+
 type ProxyMetadata struct {
 	Hostname string
 	Status   string

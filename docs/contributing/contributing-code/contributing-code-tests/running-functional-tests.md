@@ -105,7 +105,7 @@ This target:
 4. Runs the UCP group first, preserving the custom-provider discovery coverage in Core RP, then runs the other seven standard groups through three concurrent, sequential worker lanes. Each group has its own HOME, Radius configuration, Bicep extension cache, and container-log directory. Core RP retains ten parallel test slots; other standard groups use five.
 5. Concurrently runs Dynamic RP, database, multicluster, statestore, and upgrade groups in separate clusters. Dynamic RP uses five parallel test slots and serializes shared provider/type registration; the other isolated groups retain one slot each. Dynamic RP's custom provider metadata is kept out of the standard cluster so it cannot interfere with provider-discovery tests.
 
-Each setup refreshes the retained samples checkout from its `edge` branch and archives previous test reports and container logs before starting a new run. The full lifecycle controls concurrency independently of Make's parallel settings. Manually selected groups still run sequentially, even when your Make settings request parallel execution. All deletion and post-delete checks remain enabled.
+By default, each setup refreshes the retained samples checkout from its `edge` branch and archives previous test reports and container logs before starting a new run. To select fixed samples and external images, use the [optional pinned inputs](#optional-pinned-inputs). The full lifecycle controls concurrency independently of Make's parallel settings. Manually selected groups still run sequentially, even when your Make settings request parallel execution. All deletion and post-delete checks remain enabled.
 
 Do not start another local functional test run at the same time. Fixture publication and test execution each hold the shared Bicep fixture lock and temporarily configure Bicep to use the extensions published from your checkout. Both phases drain their workers before restoring the original files and releasing the lock, including on failure or interruption.
 
@@ -151,6 +151,38 @@ bash build/scripts/local-functional.sh isolated database
 
 Replace `database` with `multicluster`, `statestore`, `upgrade`, or `dynamicrp` as needed. Manually selected isolated groups are serialized; do not launch separate runner commands concurrently.
 
+### Optional pinned inputs
+
+Export the same inputs for every command in a run, including `setup`, `fixtures`, `test`, `install`, `isolated`, `prepare-isolated`, and `exec`. Inputs are not saved between invocations. Defaults are unchanged when these variables are empty or unset.
+
+| Input                                                                | Behavior                                                                                                                                                                                                                                                                                                                    |
+|----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DE_IMAGE`, `DE_TAG`                                                 | Override the Deployment Engine image repository and tag together. The runner defaults to `ghcr.io/radius-project/deployment-engine:latest`.                                                                                                                                                                                 |
+| `LOCAL_FUNCTIONAL_DASHBOARD_IMAGE`, `LOCAL_FUNCTIONAL_DASHBOARD_TAG` | Override the dashboard image repository and tag together. The runner defaults to `ghcr.io/radius-project/dashboard:latest`.                                                                                                                                                                                                 |
+| `LOCAL_FUNCTIONAL_SAMPLES_REVISION`                                  | Require an exact, full lowercase 40-character Git commit SHA. Branch names, tag names, abbreviated hashes, and tag object hashes are not accepted. The runner fetches the commit if absent and checks it out detached in `dist/local-functional/samples`. Repeat setup reuses an already available commit without fetching. |
+| `RADIUS_SAMPLES_REPO_ROOT`                                           | Use an existing samples checkout instead of the managed directory. Requires an absolute path and `LOCAL_FUNCTIONAL_SAMPLES_REVISION`. Its HEAD must already match the requested commit. Git worktrees are supported. The runner never fetches, pulls, checks out, or deletes this external checkout.                        |
+
+Each image pair must have both values nonempty or both empty. The image overrides also reach test-owned upgrade installs, Helm upgrades, `rad upgrade --reset-values`, and statestore reinstalls. Direct test invocations outside this runner retain their existing defaults when the override pairs are absent.
+
+For digest pins, use a fully qualified image such as `DE_IMAGE=registry.example/deployment-engine@sha256:<64-hex-manifest-digest>` with `DE_TAG=unused`. Similarly, set `LOCAL_FUNCTIONAL_DASHBOARD_IMAGE=registry.example/dashboard@sha256:<64-hex-manifest-digest>` with `LOCAL_FUNCTIONAL_DASHBOARD_TAG=unused`. Replace the digest placeholders with actual pullable registry manifest digests, not Docker config IDs. The Radius chart's existing full-image handling preserves these references verbatim and ignores the separate tag; the nonempty tag is still required by pair validation. This is the Radius chart's behavior, not a guarantee about standalone charts in other repositories. Tags alone can be moved by a registry publisher; use manifest digests for immutable image selection.
+
+For example, to reuse a checkout that you have already pinned to the intended samples commit:
+
+```bash
+export RADIUS_SAMPLES_REPO_ROOT=/absolute/path/to/pinned-samples
+export LOCAL_FUNCTIONAL_SAMPLES_REVISION="$(git -C "${RADIUS_SAMPLES_REPO_ROOT}" rev-parse HEAD)"
+export DE_IMAGE=registry.example/deployment-engine
+export DE_TAG=candidate-commit
+export LOCAL_FUNCTIONAL_DASHBOARD_IMAGE=registry.example/dashboard
+export LOCAL_FUNCTIONAL_DASHBOARD_TAG=baseline-commit
+bash build/scripts/local-functional.sh setup
+bash build/scripts/local-functional.sh test test-functional-samples-noncloud
+```
+
+Replace the example image locations and tags with images your clusters can pull. Omit `RADIUS_SAMPLES_REPO_ROOT` to let the runner manage the samples checkout at the requested SHA instead. Pinned checkouts must be clean, including staged, unstaged, untracked, and ignored files. A failed fetch, checkout, or revision check stops the command; it never falls back to `edge`. Tests recheck the selected revision before running. Cleanup retains both managed and external samples and remains available even with invalid input pairs or a dirty checkout.
+
+These inputs do not make the entire suite hermetic: pin the Radius checkout and toolchain separately, and account for other fixture images and downloads used by the selected tests. The runner still uses its existing registry image (`registry:2`), k3d defaults, and AWS Bicep extension (`latest`); those defaults are not changed by these overrides.
+
 ## Verification
 
 The complete test run succeeds when `make test-functional-local-noncloud` exits with status 0.
@@ -173,13 +205,17 @@ Infrastructure removed; logs and isolated CLI configuration remain in dist/local
 
 For manually selected groups, each package prints `ok` or a successful `gotestsum` summary. A successful end-to-end group creates its expected Radius resources, verifies their state, and removes them according to the selected cleanup mode.
 
-Run `make test-local-functional-runner` to check the runner's amd64/arm64 platform and emulation preflight, image architecture selection, bounded Gateway API discovery readiness, explicit legacy environment deployment and selection, fixture locking/restoration, diagnostics rotation, bounded full-lifecycle concurrency, worker failure propagation, serial selected-group execution, and cleanup using mocked infrastructure commands. These regression checks also run as part of `make test` and do not require Docker, Kubernetes, or sudo access.
+Run `make test-local-functional-runner` to check the runner's amd64/arm64 platform and emulation preflight, image architecture selection and overrides, pinned samples validation and failure handling, bounded Gateway API discovery readiness, explicit legacy environment deployment and selection, fixture locking/restoration, diagnostics rotation, bounded full-lifecycle concurrency, worker failure propagation, serial selected-group execution, and cleanup using mocked infrastructure commands. Samples pinning checks use temporary local Git repositories, without network access. These regression checks also run as part of `make test` and do not require Docker, Kubernetes, or sudo access.
 
 Run `make test-docker-build` to verify the default amd64 and explicit amd64/arm64 Make image recipes without Docker or Go builds. These checks also run as part of `make test`.
 
 Run `make test-publish-recipes` to check serial and bounded concurrent recipe publishing, module-file exclusion, failure propagation, and worker draining without a registry. These checks also run as part of `make test`.
 
 ## Troubleshooting
+
+### Pinned inputs are rejected
+
+Set both members of each image pair, or unset both to use defaults. For samples, use a full commit SHA rather than a branch, tag, or short hash. An external checkout must already be at that SHA; the runner will not move it for you. Preserve your edits before cleaning a dirty checkout, including ignored files. Do not remove the revision variable to bypass a pin failure: without pinning, the managed checkout follows `edge`. After correcting a fetch or checkout failure, rerun setup (after infrastructure cleanup if needed) or fixtures with the same intended inputs.
 
 ### Arm64 setup fails its amd64 compatibility check
 
