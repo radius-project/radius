@@ -349,9 +349,9 @@ assert_status 0
 assert_output "global.imageRegistry=localhost:5001
 global.imageTag=authz-abc
 de.image=ghcr.io/radius-project/deployment-engine
-de.tag=latest
+de.tag=edge
 dashboard.image=ghcr.io/radius-project/dashboard
-dashboard.tag=latest
+dashboard.tag=edge
 global.rbac.enabled=true
 global.rbac.dryRun=false"
 

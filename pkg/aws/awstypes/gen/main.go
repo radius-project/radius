@@ -54,42 +54,79 @@ const (
 )
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(context.Background(), os.Args[1:], os.Stdout, newRegistryClient); err != nil {
 		log.Fatal(err) //nolint:forbidigo // main reports the error and exits.
 	}
 }
 
-func run() error {
-	snapshotPath := flag.String("snapshot", defaultSnapshot, "snapshot of NON_PROVISIONABLE types and their handlers")
-	out := flag.String("out", defaultOut, "output Go file")
-	refresh := flag.Bool("refresh", false, "rewrite the snapshot from the CloudFormation registry before rendering (needs AWS credentials)")
-	flag.Parse()
+// registryClient is the part of the CloudFormation API that -refresh uses.
+type registryClient interface {
+	cloudformation.ListTypesAPIClient
+	DescribeType(ctx context.Context, params *cloudformation.DescribeTypeInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeTypeOutput, error)
+}
+
+// newRegistryClient returns a CloudFormation client for region with the default AWS credentials.
+func newRegistryClient(ctx context.Context, region string) (registryClient, error) {
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	if err != nil {
+		return nil, err
+	}
+	return cloudformation.NewFromConfig(cfg), nil
+}
+
+// run parses args, refreshes the snapshot when -refresh is set, and renders the output file.
+func run(ctx context.Context, args []string, stdout io.Writer, newClient func(context.Context, string) (registryClient, error)) error {
+	flags := flag.NewFlagSet("gen", flag.ContinueOnError)
+	snapshotPath := flags.String("snapshot", defaultSnapshot, "snapshot of NON_PROVISIONABLE types and their handlers")
+	out := flags.String("out", defaultOut, "output Go file")
+	refresh := flags.Bool("refresh", false, "rewrite the snapshot from the CloudFormation registry before rendering (needs AWS credentials)")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
 
 	if *refresh {
-		if err := refreshSnapshot(context.Background(), *snapshotPath); err != nil {
+		region := os.Getenv("AWS_REGION")
+		if region == "" {
+			region = "us-west-2"
+		}
+		client, err := newClient(ctx, region)
+		if err != nil {
+			return err
+		}
+		if err := refreshSnapshot(ctx, client, region, *snapshotPath, time.Now()); err != nil {
 			return err
 		}
 	}
 
-	f, err := os.Open(*snapshotPath)
+	count, err := generate(*snapshotPath, *out)
 	if err != nil {
 		return err
+	}
+	fmt.Fprintf(stdout, "wrote %d read-only types to %s\n", count, *out)
+	return nil
+}
+
+// generate renders the read-only types in the snapshot at snapshotPath to out, and returns how many it wrote.
+func generate(snapshotPath string, out string) (int, error) {
+	f, err := os.Open(snapshotPath)
+	if err != nil {
+		return 0, err
 	}
 	defer f.Close()
 	entries, err := parseSnapshot(f)
 	if err != nil {
-		return fmt.Errorf("%s: %w", *snapshotPath, err)
+		return 0, fmt.Errorf("%s: %w", snapshotPath, err)
 	}
 
-	src, err := render(readOnlyTypes(entries))
+	names := readOnlyTypes(entries)
+	src, err := render(names)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	if err := os.WriteFile(*out, src, 0o644); err != nil {
-		return err
+	if err := os.WriteFile(out, src, 0o644); err != nil {
+		return 0, err
 	}
-	fmt.Printf("wrote %d read-only types to %s\n", len(readOnlyTypes(entries)), *out)
-	return nil
+	return len(names), nil
 }
 
 // entry is one NON_PROVISIONABLE type and the handlers its CloudFormation schema declares.
@@ -150,17 +187,7 @@ func render(names []string) ([]byte, error) {
 
 // refreshSnapshot lists the public NON_PROVISIONABLE AWS types in the CloudFormation registry, reads the handlers of
 // each from its schema, and writes the snapshot to path.
-func refreshSnapshot(ctx context.Context, path string) error {
-	region := os.Getenv("AWS_REGION")
-	if region == "" {
-		region = "us-west-2"
-	}
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
-	if err != nil {
-		return err
-	}
-	client := cloudformation.NewFromConfig(cfg)
-
+func refreshSnapshot(ctx context.Context, client registryClient, region string, path string, now time.Time) error {
 	names := []string{}
 	paginator := cloudformation.NewListTypesPaginator(client, &cloudformation.ListTypesInput{
 		Type:             types.RegistryTypeResource,
@@ -180,7 +207,7 @@ func refreshSnapshot(ctx context.Context, path string) error {
 	slices.Sort(names)
 
 	var b bytes.Buffer
-	fmt.Fprintf(&b, "# Public NON_PROVISIONABLE AWS resource types in the CloudFormation registry (%s, %s) and the handlers\n", region, time.Now().UTC().Format("January 2006"))
+	fmt.Fprintf(&b, "# Public NON_PROVISIONABLE AWS resource types in the CloudFormation registry (%s, %s) and the handlers\n", region, now.UTC().Format("January 2006"))
 	b.WriteString("# their schema declares. Refresh with `go run ./gen -refresh` from pkg/aws/awstypes.\n")
 	for _, name := range names {
 		handlers, err := describeHandlers(ctx, client, name)
@@ -196,16 +223,24 @@ func refreshSnapshot(ctx context.Context, path string) error {
 	return os.WriteFile(path, b.Bytes(), 0o644)
 }
 
+// maxDescribeAttempts is how many times describeHandlers calls DescribeType before it gives up.
+const maxDescribeAttempts = 6
+
+// sleep waits between DescribeType attempts. Tests replace it.
+var sleep = time.Sleep
+
 // describeHandlers returns the sorted handler names in the schema of a type, retrying when AWS throttles.
-func describeHandlers(ctx context.Context, client *cloudformation.Client, name string) ([]string, error) {
+func describeHandlers(ctx context.Context, client registryClient, name string) ([]string, error) {
 	var desc *cloudformation.DescribeTypeOutput
 	var err error
-	for attempt := 0; ; attempt++ {
+	for attempt := range maxDescribeAttempts {
 		desc, err = client.DescribeType(ctx, &cloudformation.DescribeTypeInput{Type: types.RegistryTypeResource, TypeName: aws.String(name)})
-		if err == nil || attempt >= 5 {
+		if err == nil {
 			break
 		}
-		time.Sleep(time.Second << attempt)
+		if attempt < maxDescribeAttempts-1 {
+			sleep(time.Second << attempt)
+		}
 	}
 	if err != nil {
 		return nil, err

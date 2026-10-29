@@ -17,7 +17,6 @@ limitations under the License.
 package awsproxy
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -31,7 +30,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/aws/awstypes"
-	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // Error messages name the type and properties, never property values, because values can hold secrets.
@@ -67,10 +65,10 @@ func putErrorResponse(typeName string, typeInfo *cloudformation.DescribeTypeOutp
 // checkPatch checks a non-empty patch to an existing resource. It returns the patch to send to Cloud Control, or a
 // 400 response when a create-and-delete-only (IMMUTABLE) type would change.
 //
-// AWS never returns write-only properties, so they are always in the patch even when they did not change. For an
-// IMMUTABLE type they are left out of the check and of the returned patch, so a deploy that changes nothing else
-// succeeds without calling AWS. UCP cannot tell whether a write-only value changed, so a changed value is not applied.
-func checkPatch(ctx context.Context, typeName string, typeInfo *cloudformation.DescribeTypeOutput, patch jsondiff.Patch) (jsondiff.Patch, armrpc_rest.Response, error) {
+// AWS never returns write-only properties, so they are always in the patch, even when they did not change. UCP cannot
+// tell whether a write-only value changed, so a patch to an IMMUTABLE type that sets only write-only properties also
+// fails, rather than succeeding without applying a changed value.
+func checkPatch(typeName string, typeInfo *cloudformation.DescribeTypeOutput, patch jsondiff.Patch) (jsondiff.Patch, armrpc_rest.Response, error) {
 	if typeInfo.ProvisioningType != types.ProvisioningTypeImmutable {
 		return patch, nil, nil
 	}
@@ -92,8 +90,8 @@ func checkPatch(ctx context.Context, typeName string, typeInfo *cloudformation.D
 		}
 	}
 	if len(changed) == 0 {
-		ucplog.FromContextOrDiscard(ctx).Info("Skipping write-only properties of a create-and-delete-only AWS resource type because AWS does not return their values", "resourceType", typeName, "properties", writeOnly)
-		return nil, nil, nil
+		slices.Sort(writeOnly)
+		return nil, badRequest(fmt.Sprintf("The AWS resource type %s can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: %s. To change them, delete the resource and deploy again.", typeName, strings.Join(writeOnly, ", "))), nil
 	}
 	slices.Sort(changed)
 	return nil, badRequest(fmt.Sprintf("The AWS resource type %s can only be created and deleted, so these properties of the existing resource cannot change: %s. To change them, delete the resource and deploy again.", typeName, strings.Join(changed, ", "))), nil

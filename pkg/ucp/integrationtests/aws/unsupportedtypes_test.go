@@ -141,3 +141,34 @@ func Test_ImmutableAWSType_ChangeReturns400(t *testing.T) {
 	require.Equal(t, "The AWS resource type AWS::Test::Immutable can only be created and deleted, so these properties of the existing resource cannot change: Size. To change them, delete the resource and deploy again.", message)
 	require.NotContains(t, raw, secretValue)
 }
+
+// Test_ImmutableAWSType_WriteOnlyChangeReturns400 sends a changed write-only value for an existing resource of a
+// create-and-delete-only type through both write routes. AWS never returns write-only values, so UCP cannot confirm
+// the value is unchanged and must not report success without applying it. UpdateResource is never called.
+func Test_ImmutableAWSType_WriteOnlyChangeReturns400(t *testing.T) {
+	requests := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodPut, "AWS.Test/Immutable/name"},
+		{http.MethodPost, "AWS.Test/Immutable/:put"},
+	}
+	for _, r := range requests {
+		t.Run(r.method+" "+r.path, func(t *testing.T) {
+			ucp, cloudcontrolClient, cloudformationClient := initializeAWSTest(t)
+			cloudformationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
+				ProvisioningType: cftypes.ProvisioningTypeImmutable,
+				Schema:           new(`{"primaryIdentifier": ["/properties/Name"], "createOnlyProperties": ["/properties/Name", "/properties/Password"], "writeOnlyProperties": ["/properties/Password"], "handlers": {"create": {}, "read": {}, "delete": {}}}`),
+			}, nil)
+			cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudcontrol.GetResourceOutput{
+				ResourceDescription: &cctypes.ResourceDescription{Identifier: new("name"), Properties: new(`{"Name": "name"}`)},
+			}, nil)
+
+			body := map[string]any{"properties": map[string]any{"Name": "name", "Password": secretValue}}
+			status, message, raw := sendUCPRequest(t, ucp, r.method, awsProvidersPath+r.path, body)
+			require.Equal(t, http.StatusBadRequest, status, raw)
+			require.Equal(t, "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Password. To change them, delete the resource and deploy again.", message)
+			require.NotContains(t, raw, secretValue)
+		})
+	}
+}

@@ -31,7 +31,9 @@ import (
 	"time"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/retry"
+	goretry "github.com/sethvargo/go-retry"
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/cli"
@@ -44,10 +46,49 @@ import (
 
 const (
 	helmDriverSecret = "secret"
+
+	// chartRepositoryPullRequests is the number of requests that one attempt to pull a chart from a chart
+	// repository makes, one after the other: one for the repository index and one for the chart archive.
+	chartRepositoryPullRequests = 2
 )
 
-// Each pull needs a fresh, stateful backoff. Tests can replace the delays.
-var helmChartPullBackoff = retry.DefaultBackoffStrategy
+// A chart pull retries transient failures, including requests that time out. Each request and each attempt
+// has a timeout, and attempts start only within the retry window, so a pull ends within chartPullRetryWindow
+// plus chartPullAttemptTimeout. Tests can shorten the timeouts and the window.
+var (
+	// chartPullRequestTimeout bounds each request of a chart pull, including redirects and reading the
+	// response. It is much shorter than Helm's default of two minutes, so that the retry window fits several
+	// attempts that end with a request timeout.
+	chartPullRequestTimeout = 30 * time.Second
+
+	// chartPullRetryWindow is how long after its first attempt a chart pull can start another attempt. It fits
+	// three attempts that each take the whole attempt timeout.
+	chartPullRetryWindow = 3 * time.Minute
+
+	// helmChartPullBackoff returns the backoff for one chart pull. Each pull needs a new backoff because the
+	// retry window starts when the backoff is created. Tests can replace it.
+	helmChartPullBackoff = newChartPullBackoff
+
+	// logChartPull shows the user that a chart pull is retrying. Tests can replace it.
+	logChartPull = output.LogInfo
+)
+
+// chartPullAttemptTimeout returns how long one attempt to pull a chart can take. An attempt to pull from a
+// chart repository makes chartRepositoryPullRequests requests. An attempt to pull from an OCI registry makes
+// a varying number of token, tag, manifest, and blob requests, so its requests share this deadline.
+func chartPullAttemptTimeout() time.Duration {
+	return chartRepositoryPullRequests * chartPullRequestTimeout
+}
+
+// newChartPullBackoff waits one second before the first retry and doubles the delay up to ten seconds, with
+// 10% jitter. It allows at most ten retries, and only within chartPullRetryWindow.
+func newChartPullBackoff() goretry.Backoff {
+	b := goretry.NewExponential(time.Second)
+	b = goretry.WithCappedDuration(10*time.Second, b)
+	b = goretry.WithJitterPercent(10, b)
+	b = goretry.WithMaxRetries(10, b)
+	return goretry.WithMaxDuration(chartPullRetryWindow, b)
+}
 
 // Helm's HTTP getter returns status failures as plain errors, not typed errors.
 var transientHelmHTTPError = regexp.MustCompile(`^failed to fetch https?://\S+ : (408|429|500|502|503|504)( .*)?$`)
@@ -123,13 +164,25 @@ func NewHelmAction(helmClient HelmClient) *HelmActionImpl {
 }
 
 func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Context, version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
+	root, err := createTempDir()
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(root)
+
+	// The download directory must contain only the pulled chart (see locateChartFile), so the
+	// pull's private Helm state lives in a sibling directory.
+	dir := filepath.Join(root, "chart")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		return nil, fmt.Errorf("error creating chart download dir: %w", err)
+	}
+	stateDir := filepath.Join(root, "helm")
+
 	pullopts := []helm.PullOpt{
 		helm.WithConfig(config),
 		func(p *helm.Pull) {
-			// Helm v4 requires a populated content cache (Settings.ContentCache) to download
-			// charts; an empty EnvSettings leaves it unset and Pull fails with
-			// "content cache must be set". cli.New() initializes the default cache/config paths.
-			p.Settings = cli.New()
+			p.Settings = newChartPullSettings(stateDir)
+			p.DestDir = dir
 		},
 	}
 
@@ -146,19 +199,10 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Con
 		})
 	}
 
-	dir, err := createTempDir()
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(dir)
-
-	pullopts = append(pullopts, func(p *helm.Pull) {
-		p.DestDir = dir
-	})
-
 	var chartRef string
 
-	if !registry.IsOCI(repoUrl) {
+	oci := registry.IsOCI(repoUrl)
+	if !oci {
 		// For non-OCI registries (like contour), we need to set the repo URL
 		// to the registry URL. The chartRef is the release name.
 		// ex.
@@ -174,22 +218,31 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Con
 		// ex.
 		// pull.Run("oci://ghcr.io/radius-project/helm-chart/radius")
 		chartRef = fmt.Sprintf("%s/%s", repoUrl, releaseName)
-
-		// Since we are using an OCI registry, we need to set the registry client
-		registryClient, err := registry.NewClient()
-		if err != nil {
-			return nil, err
-		}
-
-		pullopts = append(pullopts, func(p *helm.Pull) {
-			p.SetRegistryClient(registryClient)
-		})
 	}
 
-	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: helmChartPullBackoff()})
+	// A pull can take minutes when it retries, so each retry tells the user why the previous attempt failed.
+	var attempt int
+	var attemptErr error
+	backoff := reportRetries(helmChartPullBackoff(), func() {
+		logChartPull("Downloading the %s chart failed (attempt %d), retrying: %v", releaseName, attempt, attemptErr)
+	})
+	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: backoff})
 	err = retryer.RetryFunc(ctx, func(context.Context) error {
-		_, err := helmAction.HelmClient.RunHelmPull(pullopts, chartRef)
+		attempt++
+		attemptOpts := pullopts
+		if oci {
+			// Each attempt needs a registry client with its own deadline. The pull gets a configuration of
+			// its own, so that config doesn't keep the client after its deadline.
+			registryClient, err := newChartPullRegistryClient(chartPullRequestTimeout, time.Now().Add(chartPullAttemptTimeout()))
+			if err != nil {
+				return err
+			}
+			attemptOpts = append(slices.Clip(pullopts), helm.WithConfig(&helm.Configuration{RegistryClient: registryClient}))
+		}
+
+		_, err := helmAction.HelmClient.RunHelmPull(attemptOpts, chartRef)
 		if err != nil && isTransientHelmChartError(err) {
+			attemptErr = err
 			return retry.RetryableError(err)
 		}
 		return err
@@ -358,6 +411,80 @@ func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, 
 	err := hc.Init(flags, *flags.Namespace, helmDriverSecret)
 
 	return &hc, err
+}
+
+// newChartPullSettings returns Helm settings for a single chart pull. They keep the other cli.New()
+// defaults, such as the plugins directory, but point repository registrations, the repository index
+// cache, and the content cache at the private stateDir. Helm may read all of them while downloading a
+// chart, so an unrelated repository the user registered with a missing or corrupt cached index would
+// otherwise fail the pull. RunHelmPull also downloads repository indexes to the repository cache. The
+// repository file is never created, so the pull sees no registered repositories. The content cache
+// starts empty, but Helm v4 requires it to be set.
+func newChartPullSettings(stateDir string) *cli.EnvSettings {
+	settings := cli.New()
+	settings.RepositoryConfig = filepath.Join(stateDir, "repositories.yaml")
+	settings.RepositoryCache = filepath.Join(stateDir, "repository")
+	settings.ContentCache = filepath.Join(stateDir, "content")
+	return settings
+}
+
+// reportRetries returns a backoff that calls report before each retry. A retryer asks its backoff for a delay only
+// after an attempt fails with a retryable error, and it retries unless the backoff stops it.
+func reportRetries(b goretry.Backoff, report func()) goretry.Backoff {
+	return goretry.BackoffFunc(func() (time.Duration, bool) {
+		delay, stop := b.Next()
+		if !stop {
+			report()
+		}
+		return delay, stop
+	})
+}
+
+// newChartPullRegistryClient returns a registry client for one attempt to pull a chart from an OCI registry.
+// Each of its requests times out after requestTimeout, and all of them end at the attempt's deadline.
+// It keeps Helm's default transport, which retries some failed requests, and Helm's credential handling. Like
+// Helm's CLI, it caches registry tokens, so an attempt fetches a token once rather than for each request.
+func newChartPullRegistryClient(requestTimeout time.Duration, deadline time.Time) (*registry.Client, error) {
+	return registry.NewClient(
+		registry.ClientOptEnableCache(true),
+		registry.ClientOptHTTPClient(&http.Client{
+			Transport: &deadlineTransport{
+				next:     registry.NewTransport(false),
+				deadline: deadline,
+			},
+			Timeout: requestTimeout,
+		}),
+	)
+}
+
+// deadlineTransport ends requests, including reading their responses, at a deadline.
+type deadlineTransport struct {
+	next     http.RoundTripper
+	deadline time.Time
+}
+
+func (t *deadlineTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	ctx, cancel := context.WithDeadline(req.Context(), t.deadline)
+	resp, err := t.next.RoundTrip(req.WithContext(ctx))
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	// The caller reads the response body after RoundTrip returns, so the request must stay open until the body is
+	// closed or the deadline passes. Closing the body ends the request and releases its timer.
+	resp.Body = &cancelOnCloseBody{ReadCloser: resp.Body, cancel: cancel}
+	return resp, nil
+}
+
+type cancelOnCloseBody struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+}
+
+func (b *cancelOnCloseBody) Close() error {
+	defer b.cancel()
+	return b.ReadCloser.Close()
 }
 
 // createTempDir creates a temporary directory for the helm chart and returns the path to the directory.

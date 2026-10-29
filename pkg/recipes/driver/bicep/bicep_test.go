@@ -1478,6 +1478,173 @@ func Test_WrapARMParameters(t *testing.T) {
 	}
 }
 
+func Test_Bicep_Execute_AddsAWSProviderResourceIDs(t *testing.T) {
+	const bucketID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/my-bucket"
+	const queueID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SQS/Queue/my-queue"
+
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+	deploymentClient := &deploymentClientSpy{
+		response: &clients.ClientCreateOrUpdateResponse{
+			Properties: &armdeployments.DeploymentPropertiesExtended{
+				// The recipe deploys the bucket and returns an existing queue in result.resources.
+				OutputResources: []*armdeployments.ResourceReference{{ID: new(bucketID)}},
+				Outputs: map[string]any{
+					recipes.ResultPropertyName: map[string]any{
+						"type":  "object",
+						"value": map[string]any{"resources": []any{queueID}},
+					},
+				},
+			},
+		},
+	}
+
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	client.EXPECT().GetProperties(gomock.Any(), bucketID).Return(map[string]any{"Arn": "arn:aws:s3:::my-bucket", "BucketName": "my-bucket"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), queueID).Return(map[string]any{"Arn": "arn:aws:sqs:us-west-2:123456789012:my-queue"}, nil)
+
+	d := &bicepDriver{
+		DeploymentClient:      deploymentClient,
+		RegistryClient:        ts.TestServer.Client(),
+		resourceClientFactory: func(*rest.Config) processors.ResourceClient { return client },
+	}
+
+	result, err := d.Execute(t.Context(), driver.ExecuteOptions{
+		Recipe: recipes.ResourceMetadata{
+			Name:          "test-resource",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+		},
+		Definition: recipes.EnvironmentDefinition{
+			Name:         "aws-recipe",
+			Driver:       recipes.TemplateKindBicep,
+			TemplatePath: ts.TestImageURL,
+		},
+	})
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{bucketID, queueID}, result.Resources)
+	require.Equal(t, "arn:aws:s3:::my-bucket", result.ProviderResourceID(bucketID))
+	require.Equal(t, "arn:aws:sqs:us-west-2:123456789012:my-queue", result.ProviderResourceID(queueID))
+}
+
+func Test_Bicep_AddAWSProviderResourceIDs(t *testing.T) {
+	const (
+		prefix = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/"
+		// AWS::S3::Bucket keeps its ARN in Arn.
+		bucketID = prefix + "AWS.S3/Bucket/my-bucket"
+		// AWS::SNS::Topic keeps its ARN in TopicArn, a <ResourceName>Arn property.
+		topicID = prefix + "AWS.SNS/Topic/arn:aws:sns:us-west-2:123456789012:my-topic"
+		// AWS::IAM::ManagedPolicy keeps its ARN in PolicyArn, its read-only primary identifier.
+		policyID = prefix + "AWS.IAM/ManagedPolicy/my-policy"
+		// AWS::GameLift::ContainerFleet keeps its ARN in FleetArn, a hand-reviewed decision. Its other *Arn
+		// properties are container group definitions.
+		fleetID = prefix + "AWS.GameLift/ContainerFleet/fleet-1"
+		// AWS::EC2::VPC has no ARN property, so it isn't read.
+		vpcID = prefix + "AWS.EC2/VPC/vpc-0123456789abcdef0"
+		// AWS::Redshift::Cluster only has unrelated *Arn properties, so it isn't read.
+		clusterID = prefix + "AWS.Redshift/Cluster/my-cluster"
+		// AWS::SNS::TopicInlinePolicy is identified by its topic's ARN, which isn't its own ARN.
+		topicPolicyID = prefix + "AWS.SNS/TopicInlinePolicy/arn:aws:sns:us-west-2:123456789012:my-topic"
+		// AWS::Example::Thing isn't in the catalog, so the Arn, ARN, or arn property is used.
+		unknownID = prefix + "AWS.Example/Thing/thing-1"
+		// The mapped property isn't an ARN.
+		invalidID = prefix + "AWS.S3/Bucket/invalid"
+		// The read fails.
+		failedID = prefix + "AWS.S3/Bucket/failed"
+		azureID  = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/account"
+		k8sID    = "/planes/kubernetes/local/namespaces/default/providers/core/Secret/my-secret"
+	)
+
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	client.EXPECT().GetProperties(gomock.Any(), bucketID).Return(map[string]any{"Arn": "arn:aws:s3:::my-bucket"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), topicID).Return(map[string]any{"TopicArn": "arn:aws:sns:us-west-2:123456789012:my-topic"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), policyID).Return(map[string]any{"PolicyArn": "arn:aws:iam::123456789012:policy/my-policy"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), fleetID).Return(map[string]any{
+		"GameServerContainerGroupDefinitionArn": "arn:aws:gamelift:us-west-2:123456789012:containergroupdefinition/game:1",
+		"FleetArn":                              "arn:aws:gamelift:us-west-2:123456789012:containerfleet/fleet-1",
+		"Arn":                                   "arn:aws:gamelift:us-west-2:123456789012:not-the-mapped-property",
+	}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), unknownID).Return(map[string]any{"ARN": "arn:aws:example:us-west-2:123456789012:thing/thing-1"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), invalidID).Return(map[string]any{"Arn": "not-an-arn"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), failedID).Return(nil, errors.New("access denied"))
+
+	factoryCalls := 0
+	d := &bicepDriver{resourceClientFactory: func(config *rest.Config) processors.ResourceClient {
+		require.Nil(t, config)
+		factoryCalls++
+		return client
+	}}
+
+	output := &recipes.RecipeOutput{Resources: []string{
+		bucketID, topicID, policyID, fleetID, vpcID, clusterID, topicPolicyID, unknownID, invalidID, failedID, azureID, k8sID, "not-a-resource-id",
+	}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Equal(t, 1, factoryCalls)
+	require.Equal(t, map[string]string{
+		bucketID:  "arn:aws:s3:::my-bucket",
+		topicID:   "arn:aws:sns:us-west-2:123456789012:my-topic",
+		policyID:  "arn:aws:iam::123456789012:policy/my-policy",
+		fleetID:   "arn:aws:gamelift:us-west-2:123456789012:containerfleet/fleet-1",
+		unknownID: "arn:aws:example:us-west-2:123456789012:thing/thing-1",
+	}, output.ProviderResourceIDs)
+}
+
+func Test_Bicep_AddAWSProviderResourceIDs_NoResourceClient(t *testing.T) {
+	const bucketID = "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+
+	d := &bicepDriver{}
+	output := &recipes.RecipeOutput{Resources: []string{bucketID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Empty(t, output.ProviderResourceIDs)
+}
+
+func Test_Bicep_AddAWSProviderResourceIDs_FactoryReturnsNil(t *testing.T) {
+	const bucketID = "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+
+	d := &bicepDriver{resourceClientFactory: func(*rest.Config) processors.ResourceClient { return nil }}
+	output := &recipes.RecipeOutput{Resources: []string{bucketID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Empty(t, output.ProviderResourceIDs)
+}
+
+// Cloud Control returns a log group ARN with a trailing ":*". The driver stores it without the suffix, the same value
+// the Terraform driver stores for the same log group.
+func Test_Bicep_AddAWSProviderResourceIDs_LogGroup(t *testing.T) {
+	const logGroupID = "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.Logs/LogGroup/orders"
+
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	client.EXPECT().GetProperties(gomock.Any(), logGroupID).Return(map[string]any{"Arn": "arn:aws:logs:us-east-2:179022619019:log-group:orders:*"}, nil)
+
+	d := &bicepDriver{resourceClientFactory: func(*rest.Config) processors.ResourceClient { return client }}
+	output := &recipes.RecipeOutput{Resources: []string{logGroupID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Equal(t, "arn:aws:logs:us-east-2:179022619019:log-group:orders", output.ProviderResourceID(logGroupID))
+}
+
+func Test_Bicep_AddAWSProviderResourceIDs_IDsDifferingByCase(t *testing.T) {
+	const lowerID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/arn:aws:sns:us-west-2:123456789012:orders"
+	const upperID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/arn:aws:sns:us-west-2:123456789012:Orders"
+
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	client.EXPECT().GetProperties(gomock.Any(), lowerID).Return(map[string]any{"TopicArn": "arn:aws:sns:us-west-2:123456789012:orders"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), upperID).Return(map[string]any{"TopicArn": "arn:aws:sns:us-west-2:123456789012:Orders"}, nil)
+
+	d := &bicepDriver{resourceClientFactory: func(*rest.Config) processors.ResourceClient { return client }}
+	output := &recipes.RecipeOutput{Resources: []string{lowerID, upperID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Equal(t, "arn:aws:sns:us-west-2:123456789012:orders", output.ProviderResourceID(lowerID))
+	require.Equal(t, "arn:aws:sns:us-west-2:123456789012:Orders", output.ProviderResourceID(upperID))
+}
+
 const (
 	fakeRegistryUser     = "user"
 	fakeRegistryPassword = "pass"

@@ -211,7 +211,8 @@ func Test_Update_ImmutableType(t *testing.T) {
 	tests := []struct {
 		name       string
 		properties map[string]any
-		// want is the error message, or "" when the deploy succeeds without calling AWS.
+		// want is the error message, or "" when the deploy succeeds without calling AWS. No case calls UpdateResource,
+		// and the mock fails the test if one does.
 		want string
 	}{
 		{
@@ -224,13 +225,16 @@ func Test_Update_ImmutableType(t *testing.T) {
 			properties: map[string]any{"Name": "name", "Size": 1},
 		},
 		{
-			name:       "only write-only properties",
+			// A changed write-only value must not be reported as applied. UCP cannot tell it from an unchanged one.
+			name:       "changed write-only property",
 			properties: map[string]any{"Name": "name", "Size": 1, "Password": secretValue},
+			want:       "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Password. To change them, delete the resource and deploy again.",
 		},
 		{
 			// AWS omits Auth because its only property is write-only, so the patch adds the whole object.
 			name:       "write-only property in an absent parent",
 			properties: map[string]any{"Name": "name", "Size": 1, "Auth": map[string]any{"Token": secretValue}},
+			want:       "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Auth. To change them, delete the resource and deploy again.",
 		},
 		{
 			name:       "readable property next to a write-only property in an absent parent",
@@ -240,6 +244,12 @@ func Test_Update_ImmutableType(t *testing.T) {
 		{
 			name:       "write-only property in array items",
 			properties: map[string]any{"Name": "name", "Size": 1, "Users": []any{map[string]any{"Name": "u", "Secret": secretValue}}},
+			want:       "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Users. To change them, delete the resource and deploy again.",
+		},
+		{
+			name:       "several write-only properties",
+			properties: map[string]any{"Name": "name", "Size": 1, "Users": []any{map[string]any{"Name": "u", "Secret": secretValue}}, "Password": secretValue},
+			want:       "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Password, Users. To change them, delete the resource and deploy again.",
 		},
 	}
 	updates := []struct {
@@ -297,7 +307,7 @@ func Test_Create_ImmutableType(t *testing.T) {
 func Test_CheckPatch_FullyMutable(t *testing.T) {
 	patch := jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}}
 	for _, provisioningType := range []cftypes.ProvisioningType{cftypes.ProvisioningTypeFullyMutable, ""} {
-		got, errResponse, err := checkPatch(t.Context(), "AWS::Test::Mutable", &cloudformation.DescribeTypeOutput{ProvisioningType: provisioningType}, patch)
+		got, errResponse, err := checkPatch("AWS::Test::Mutable", &cloudformation.DescribeTypeOutput{ProvisioningType: provisioningType}, patch)
 		require.NoError(t, err)
 		require.Nil(t, errResponse)
 		require.Equal(t, patch, got)
@@ -362,33 +372,56 @@ func Test_LeafPaths(t *testing.T) {
 	require.Equal(t, []string{"/Size"}, leafPaths("/Size", 2))
 }
 
-// Test_InvalidSchema checks that a schema UCP cannot read fails the request instead of letting it through.
+// Test_InvalidSchema checks that a schema UCP cannot read fails the request on both PUT routes instead of letting it
+// through. For an IMMUTABLE type, "handlers" that is not an object passes the patch generator but not the type check.
 func Test_InvalidSchema(t *testing.T) {
-	t.Run("PUT of a NON_PROVISIONABLE type", func(t *testing.T) {
-		options := setupTest(t)
-		options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
-			ProvisioningType: cftypes.ProvisioningTypeNonProvisionable,
-			Schema:           aws.String("not json"),
-		}, nil)
+	tests := []struct {
+		name             string
+		provisioningType cftypes.ProvisioningType
+		schema           string
+		existing         bool
+	}{
+		{name: "NON_PROVISIONABLE", provisioningType: cftypes.ProvisioningTypeNonProvisionable, schema: "not json"},
+		{
+			name:             "IMMUTABLE update",
+			provisioningType: cftypes.ProvisioningTypeImmutable,
+			schema:           `{"primaryIdentifier": ["/properties/Name"], "handlers": ["create"]}`,
+			existing:         true,
+		},
+	}
+	puts := []struct {
+		name    string
+		factory controllerFactory
+		method  string
+		suffix  string
+	}{
+		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name"},
+		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
+	}
+	for _, tt := range tests {
+		for _, op := range puts {
+			t.Run(tt.name+" "+op.name, func(t *testing.T) {
+				options := setupTest(t)
+				options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
+					ProvisioningType: tt.provisioningType,
+					Schema:           aws.String(tt.schema),
+				}, nil)
+				if tt.existing {
+					options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudcontrol.GetResourceOutput{
+						ResourceDescription: &cctypes.ResourceDescription{Identifier: aws.String("name"), Properties: aws.String(`{"Name": "name", "Size": 1}`)},
+					}, nil)
+				}
 
-		path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Type/name"
-		request, err := http.NewRequest(http.MethodPut, path, bytes.NewBufferString(`{"properties": {"Name": "name"}}`))
-		require.NoError(t, err)
-		controller, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{}, clientsFor(options))
-		require.NoError(t, err)
-		_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
-		require.ErrorContains(t, err, "failed to read the CloudFormation schema")
-	})
-
-	t.Run("patch of an IMMUTABLE type", func(t *testing.T) {
-		patch := jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}}
-		_, errResponse, err := checkPatch(t.Context(), "AWS::Test::Type", &cloudformation.DescribeTypeOutput{
-			ProvisioningType: cftypes.ProvisioningTypeImmutable,
-			Schema:           aws.String("not json"),
-		}, patch)
-		require.ErrorContains(t, err, "failed to read the CloudFormation schema")
-		require.Nil(t, errResponse)
-	})
+				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Type" + op.suffix
+				request, err := http.NewRequest(op.method, path, bytes.NewBufferString(`{"properties": {"Name": "name", "Size": 2}}`))
+				require.NoError(t, err)
+				controller, err := op.factory(armrpc_controller.Options{}, clientsFor(options))
+				require.NoError(t, err)
+				_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
+				require.ErrorContains(t, err, "failed to read the CloudFormation schema")
+			})
+		}
+	}
 }
 
 // Test_Put_DescribeTypeError checks that PUT stops before it reads the resource when DescribeType fails.

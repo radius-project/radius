@@ -63,9 +63,9 @@ rad install kubernetes \
   --set global.imageRegistry=${DOCKER_REGISTRY} \
   --set global.imageTag=${DOCKER_TAG_VERSION} \
   --set de.image=ghcr.io/radius-project/deployment-engine \
-  --set de.tag=latest \
+  --set de.tag=edge \
   --set dashboard.image=ghcr.io/radius-project/dashboard \
-  --set dashboard.tag=latest
+  --set dashboard.tag=edge
 ```
 
 For a **reinstall** over an existing installation, add `--reinstall`:
@@ -76,9 +76,9 @@ rad install kubernetes \
   --set global.imageRegistry=${DOCKER_REGISTRY} \
   --set global.imageTag=${DOCKER_TAG_VERSION} \
   --set de.image=ghcr.io/radius-project/deployment-engine \
-  --set de.tag=latest \
+  --set de.tag=edge \
   --set dashboard.image=ghcr.io/radius-project/dashboard \
-  --set dashboard.tag=latest \
+  --set dashboard.tag=edge \
   --reinstall
 ```
 
@@ -97,9 +97,9 @@ rad install kubernetes \
   --set global.imageRegistry=${DOCKER_REGISTRY} \
   --set global.imageTag=${DOCKER_TAG_VERSION} \
   --set de.image=ghcr.io/radius-project/deployment-engine \
-  --set de.tag=latest \
+  --set de.tag=edge \
   --set dashboard.image=ghcr.io/radius-project/dashboard \
-  --set dashboard.tag=latest \
+  --set dashboard.tag=edge \
   --set-string 'global.imagePullSecrets[0].name=regcred'
 ```
 
@@ -139,21 +139,21 @@ rad init
 
 ## Quick Reference
 
-| Goal                   | Command                                                                                                                                                                                                                                                                                                |
-|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Set registry           | `export DOCKER_REGISTRY=ghcr.io/<your-registry> && export DOCKER_TAG_VERSION=latest`                                                                                                                                                                                                                   |
-| Fresh install          | `rad install kubernetes --chart deploy/Chart/ --set global.imageRegistry=${DOCKER_REGISTRY} --set global.imageTag=${DOCKER_TAG_VERSION} --set de.image=ghcr.io/radius-project/deployment-engine --set de.tag=latest --set dashboard.image=ghcr.io/radius-project/dashboard --set dashboard.tag=latest` |
-| Reinstall              | Add `--reinstall` to the above                                                                                                                                                                                                                                                                         |
-| Check status           | `rad version`                                                                                                                                                                                                                                                                                          |
-| Check pods             | `kubectl get pods -n radius-system`                                                                                                                                                                                                                                                                    |
-| Uninstall              | `rad uninstall kubernetes --yes`                                                                                                                                                                                                                                                                       |
-| Initialize environment | `rad init`                                                                                                                                                                                                                                                                                             |
+| Goal                   | Command                                                                                                                                                                                                                                                                                            |
+|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Set registry           | `export DOCKER_REGISTRY=ghcr.io/<your-registry> && export DOCKER_TAG_VERSION=latest`                                                                                                                                                                                                               |
+| Fresh install          | `rad install kubernetes --chart deploy/Chart/ --set global.imageRegistry=${DOCKER_REGISTRY} --set global.imageTag=${DOCKER_TAG_VERSION} --set de.image=ghcr.io/radius-project/deployment-engine --set de.tag=edge --set dashboard.image=ghcr.io/radius-project/dashboard --set dashboard.tag=edge` |
+| Reinstall              | Add `--reinstall` to the above                                                                                                                                                                                                                                                                     |
+| Check status           | `rad version`                                                                                                                                                                                                                                                                                      |
+| Check pods             | `kubectl get pods -n radius-system`                                                                                                                                                                                                                                                                |
+| Uninstall              | `rad uninstall kubernetes --yes`                                                                                                                                                                                                                                                                   |
+| Initialize environment | `rad init`                                                                                                                                                                                                                                                                                         |
 
 ## Troubleshooting
 
-| Symptom                                                  | Cause                                                              | Fix                                                                                                                                                                            |
-|----------------------------------------------------------|--------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ImagePullBackOff` on deployment-engine or dashboard     | `global.imageRegistry` redirected external images to your registry | Ensure `--set de.image=ghcr.io/radius-project/deployment-engine --set de.tag=latest --set dashboard.image=ghcr.io/radius-project/dashboard --set dashboard.tag=latest` are set |
-| `ImagePullBackOff` on Radius images                      | Cluster cannot pull from the registry                              | Verify images were pushed (`docker images`), the cluster can reach the registry, and authentication is configured if needed                                                    |
-| `rad install` fails with "another operation in progress" | Helm release stuck in `pending-upgrade` or `pending-install`       | `helm rollback radius <last-good-revision> -n radius-system`, then retry                                                                                                       |
-| Pods crash with `exec format error`                      | Image architecture doesn't match node architecture                 | Build and publish a core GoReleaser snapshot plus Bicep for the node platform; see the `radius-build-images` skill.                                                            |
+| Symptom                                                  | Cause                                                              | Fix                                                                                                                                                                        |
+|----------------------------------------------------------|--------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ImagePullBackOff` on deployment-engine or dashboard     | `global.imageRegistry` redirected external images to your registry | Ensure `--set de.image=ghcr.io/radius-project/deployment-engine --set de.tag=edge --set dashboard.image=ghcr.io/radius-project/dashboard --set dashboard.tag=edge` are set |
+| `ImagePullBackOff` on Radius images                      | Cluster cannot pull from the registry                              | Verify images were pushed (`docker images`), the cluster can reach the registry, and authentication is configured if needed                                                |
+| `rad install` fails with "another operation in progress" | Helm release stuck in `pending-upgrade` or `pending-install`       | `helm rollback radius <last-good-revision> -n radius-system`, then retry                                                                                                   |
+| Pods crash with `exec format error`                      | Image architecture doesn't match node architecture                 | Build and publish a core GoReleaser snapshot plus Bicep for the node platform; see the `radius-build-images` skill.                                                        |

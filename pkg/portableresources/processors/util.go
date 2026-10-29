@@ -59,8 +59,9 @@ func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputRe
 
 		// AWS creates read-only resources on its own, so deleting the recipe must not delete them.
 		result := rpv1.OutputResource{
-			ID:            id,
-			RadiusManaged: new(!resources_aws.IsReadOnlyResource(id)),
+			ID:                 id,
+			RadiusManaged:      new(!resources_aws.IsReadOnlyResource(id)),
+			ProviderResourceID: output.ProviderResourceID(resource),
 		}
 
 		results = append(results, result)
