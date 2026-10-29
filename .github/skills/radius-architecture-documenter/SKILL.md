@@ -148,7 +148,7 @@ This skill is tailored for the Radius project. Key architectural knowledge:
 
 ### Design Notes
 
-Architecture design documents are available in the `design-notes/architecture/` directory of the `radius-project/design-notes` repository. Reference these for historical context on architectural decisions.
+Design documents are in `eng/design-notes/` within the Radius repository, organized by topic. System-level architecture decisions are in `eng/design-notes/architecture/`. Reference these for historical context on architectural decisions.
 
 ### Output Directory
 

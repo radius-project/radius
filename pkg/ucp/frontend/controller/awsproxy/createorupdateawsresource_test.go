@@ -29,7 +29,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
+	armrpc_v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/stretchr/testify/require"
@@ -346,4 +350,43 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, expectedResponseObject, actualResponseObject)
+}
+
+func Test_CreateAWSResource_DescribeTypeError(t *testing.T) {
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
+
+	testOptions := setupTest(t)
+	// DescribeType runs before UCP reads the resource, so its error stops the request before any Cloud Control call.
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
+		Err: &smithyhttp.ResponseError{
+			Err: &smithy.GenericAPIError{
+				Code:    "AccessDeniedException",
+				Message: "not authorized to perform cloudformation:DescribeType",
+				Fault:   smithy.FaultClient,
+			},
+		},
+	})
+
+	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, ucp_aws.Clients{
+		CloudControl:   testOptions.AWSCloudControlClient,
+		CloudFormation: testOptions.AWSCloudFormationClient,
+	})
+	require.NoError(t, err)
+
+	requestBody, err := json.Marshal(map[string]any{"properties": map[string]any{"ShardCount": 3}})
+	require.NoError(t, err)
+	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBody))
+	require.NoError(t, err)
+
+	ctx := rpctest.NewARMRequestContext(request)
+	actualResponse, err := awsController.Run(ctx, nil, request)
+	require.NoError(t, err)
+
+	expectedResponse := armrpc_rest.NewBadRequestARMResponse(armrpc_v1.ErrorResponse{
+		Error: &armrpc_v1.ErrorDetails{
+			Code:    "AccessDeniedException",
+			Message: "not authorized to perform cloudformation:DescribeType",
+		},
+	})
+	require.Equal(t, expectedResponse, actualResponse)
 }

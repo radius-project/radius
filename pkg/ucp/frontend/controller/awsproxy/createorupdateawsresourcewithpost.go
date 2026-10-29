@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	http "net/http"
 
 	"uuid"
@@ -101,10 +100,15 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
+	secrets, err := secretProperties(serviceCtx.ResourceTypeInAWSFormat(), aws.ToString(describeTypeOutput.Schema))
+	if err != nil {
+		return ucp_aws.HandleAWSError(ctx, err)
+	}
+
 	existing := true
 	var getResponse *cloudcontrol.GetResourceOutput = nil
 	computedResourceID := ""
-	responseProperties := map[string]any{}
+	currentProperties := map[string]any{}
 
 	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(properties, *describeTypeOutput.Schema)
 	if errors.Is(&ucp_aws.AWSMissingPropertyError{}, err) {
@@ -126,15 +130,15 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		} else if err != nil {
 			return ucp_aws.HandleAWSError(ctx, err)
 		} else {
-			err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
+			err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &currentProperties)
 			if err != nil {
 				return ucp_aws.HandleAWSError(ctx, err)
 			}
 		}
 	}
 
-	// Properties specified by users take precedence
-	maps.Copy(responseProperties, properties)
+	// Properties specified by users take precedence, except secrets, which are never echoed back.
+	responseProperties := buildResponseProperties(currentProperties, properties, secrets)
 
 	if existing {
 		logger.Info(fmt.Sprintf("Updating resource : resourceType %q resourceID %q", serviceCtx.ResourceTypeInAWSFormat(), awsResourceIdentifier))

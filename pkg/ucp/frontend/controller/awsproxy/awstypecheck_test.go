@@ -46,8 +46,8 @@ const secretValue = "do-not-echo-this-value"
 
 type controllerFactory func(armrpc_controller.Options, ucp_aws.Clients) (armrpc_controller.Controller, error)
 
-// runController runs a controller for a request to path and returns the status code and the error message.
-func runController(t *testing.T, factory controllerFactory, clients ucp_aws.Clients, method string, path string, body map[string]any) (int, string, string) {
+// runTypeCheckRequest runs a controller for a request to path and returns the status code and the error message.
+func runTypeCheckRequest(t *testing.T, factory controllerFactory, clients ucp_aws.Clients, method string, path string, body map[string]any) (int, string, string) {
 	t.Helper()
 	var reader io.Reader
 	if body != nil {
@@ -125,7 +125,7 @@ func Test_UnsupportedTypes_FailWithoutCallingAWS(t *testing.T) {
 			t.Run(tt.resourceType+" "+op.name, func(t *testing.T) {
 				options := setupTest(t)
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/" + tt.resourceType + op.suffix
-				status, message, raw := runController(t, op.factory, clientsFor(options), op.method, path, op.body)
+				status, message, raw := runTypeCheckRequest(t, op.factory, clientsFor(options), op.method, path, op.body)
 				require.Equal(t, http.StatusBadRequest, status)
 				require.Equal(t, tt.want, message)
 				require.NotContains(t, raw, secretValue)
@@ -187,7 +187,7 @@ func Test_Put_NonProvisionableTypes(t *testing.T) {
 
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Image" + op.suffix
 				body := map[string]any{"properties": map[string]any{"Name": "name", "Secret": secretValue}}
-				status, message, raw := runController(t, op.factory, clientsFor(options), op.method, path, body)
+				status, message, raw := runTypeCheckRequest(t, op.factory, clientsFor(options), op.method, path, body)
 				require.Equal(t, http.StatusBadRequest, status)
 				require.Equal(t, tt.want, message)
 				require.NotContains(t, raw, secretValue)
@@ -264,7 +264,7 @@ func Test_Update_ImmutableType(t *testing.T) {
 				}, nil)
 
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Immutable" + op.suffix
-				status, message, raw := runController(t, op.factory, clientsFor(options), op.method, path, map[string]any{"properties": tt.properties})
+				status, message, raw := runTypeCheckRequest(t, op.factory, clientsFor(options), op.method, path, map[string]any{"properties": tt.properties})
 				if tt.want == "" {
 					require.Equal(t, http.StatusOK, status, raw)
 					return
@@ -290,7 +290,7 @@ func Test_Create_ImmutableType(t *testing.T) {
 	}, nil)
 
 	path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Immutable"
-	status, _, raw := runController(t, NewCreateOrUpdateAWSResourceWithPost, clientsFor(options), http.MethodPost, path, map[string]any{"properties": map[string]any{"Name": "name", "Size": 1}})
+	status, _, raw := runTypeCheckRequest(t, NewCreateOrUpdateAWSResourceWithPost, clientsFor(options), http.MethodPost, path, map[string]any{"properties": map[string]any{"Name": "name", "Size": 1}})
 	require.Equal(t, http.StatusCreated, status, raw)
 }
 
@@ -428,6 +428,6 @@ func Test_ReadOnlyType_GetCallsCloudControl(t *testing.T) {
 	}, nil)
 
 	path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Image/ami-1"
-	status, _, raw := runController(t, NewGetAWSResource, clientsFor(options), http.MethodGet, path, nil)
+	status, _, raw := runTypeCheckRequest(t, NewGetAWSResource, clientsFor(options), http.MethodGet, path, nil)
 	require.Equal(t, http.StatusOK, status, raw)
 }

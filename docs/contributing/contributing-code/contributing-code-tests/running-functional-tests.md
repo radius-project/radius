@@ -24,7 +24,7 @@ Install these tools and make sure each command is available on `PATH`:
 - Helm
 - OpenSSL 1.1.1 or later
 - jq
-- Python 3
+- zip
 - envsubst (provided by gettext)
 - curl 7.71.0 or later
 - Flux CLI 2.6.4
@@ -280,6 +280,8 @@ To run functional tests against an existing environment:
    make publish-test-terraform-recipes
    ```
 
+   The publisher uses Bash, `zip`, and `kubectl`; Python is not required for recipe publishing. Run `make test-publish-recipes` to check both recipe publishers without a registry or cluster (`zip` and `unzip` are required).
+
    Set `TF_RECIPE_MODULE_SERVER_URL` to the URL that test deployments can reach. CI and the local runner use `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local`; direct local tests default to `http://localhost:8999`.
 
 7. Make packages published for the tests publicly readable.
@@ -349,11 +351,11 @@ make authz-would-deny-check
 
 The check reads current and previous container logs from every pod in `radius-system`. Set `AUTHZ_NAMESPACE` to read another namespace, or pass extra arguments with `AUTHZ_WOULD_DENY_ARGS`, such as `AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/authz-logs"` to also scan saved logs. Known would-deny lines that are tracked by an issue can be listed in [`.github/scripts/authz-would-deny-allowlist.txt`](../../../../.github/scripts/authz-would-deny-allowlist.txt); each entry must start with the issue reference.
 
-CI wraps the entire functional-test command with [`.github/scripts/run-with-authz-logs.py`](../../../../.github/scripts/run-with-authz-logs.py), which requires Python 3.9+ and `kubectl`. It watches pods from the initial inventory's resource version, follows each container incarnation, and retains logs for replaced pods until the command finishes. The collector uses a separate directory containing only `radius-system` logs; the test-owned `dist/container_logs` streams can stop when their first test ends and are not reliable gate evidence. Collection failures, including an interrupted watch, fail the job. CI requires the collector's `complete` marker before scanning its files and uploads the files even on failure. To collect the same evidence locally, use a new directory for each run:
+CI wraps the entire functional-test command with [`.github/scripts/run-with-authz-logs.sh`](../../../../.github/scripts/run-with-authz-logs.sh), which requires Bash (including macOS Bash 3.2), `jq`, `kubectl`, and Perl. It watches pods from the initial inventory's resource version, follows each container incarnation, and retains logs for replaced pods until the command finishes. Perl bounds each raw watch object to 16 MiB before `jq` parses it, including incomplete objects. The collector uses a separate directory containing only `radius-system` logs; the test-owned `dist/container_logs` streams can stop when their first test ends and are not reliable gate evidence. Collection failures, including an interrupted watch, fail the job. CI requires the collector's `complete` marker before scanning its files and uploads the files even on failure. The collector's process-level tests remain in Python and run alongside the gate's shell tests with `make test-authz-would-deny-check`. To collect the same evidence locally, use a new directory for each run:
 
 ```bash
 AUTHZ_LOG_DIR=./dist/authz-logs-run1 \
-  python3 .github/scripts/run-with-authz-logs.py make test-functional-corerp-noncloud
+  bash .github/scripts/run-with-authz-logs.sh make test-functional-corerp-noncloud
 make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--collector-dir ./dist/authz-logs-run1"
 ```
 
@@ -412,7 +414,7 @@ To collect the same summary locally, use a Linux host with Bash, `kubectl`, `jq`
 
 The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Releases do not publish test images, so the workflow builds the Magpie test image from that test source and pushes it to the functional-test registry under a run-specific `test-` tag. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
 
-The LRT setup script [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) defines the required Helm overrides in `REQUIRED_CHART_VALUES`, shared by fresh installs, upgrades, and existing same-version IRSA reconciliation. Keep LRT-specific configuration in that array rather than changing global chart defaults or using `kubectl set resources`, which can cause field-ownership conflicts on later upgrades.
+The LRT setup script [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) defines the required Helm overrides in `REQUIRED_CHART_VALUES`, shared by fresh installs, upgrades, and existing same-version reconciliation. These include a `1Gi` memory limit for `dynamic-rp` to avoid Terraform AWS provider startup stalls caused by memory reclaim. For matching versions, setup checks both AWS IRSA token volumes and the `dynamic-rp` memory limit, reconciles missing or outdated settings through a Helm upgrade, and verifies both settings afterward. Keep LRT-specific configuration in that array rather than changing global chart defaults or using `kubectl set resources`, which can cause field-ownership conflicts on later upgrades.
 
 Download the `all_container_logs` artifact from a successful or failed run. Alongside the released test harness's logs, it contains:
 

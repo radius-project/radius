@@ -19,6 +19,7 @@ package kubernetes
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/radius-project/radius/test/k8sutil"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 func TestEnsureNamespace(t *testing.T) {
@@ -167,4 +169,54 @@ users:
 			}
 		})
 	}
+}
+
+// Test_GetKubeContext_UsesKUBECONFIG verifies that GetKubeContext reads the kubeconfig that KUBECONFIG selects
+// instead of ~/.kube/config, as Helm does.
+func Test_GetKubeContext_UsesKUBECONFIG(t *testing.T) {
+	useEnvKubeconfig(t)
+
+	config, err := (&Impl{}).GetKubeContext()
+	require.NoError(t, err)
+	require.Equal(t, "env-context", config.CurrentContext)
+	require.NotContains(t, config.Contexts, "home-context")
+}
+
+// Test_GetContextFromConfigFileIfExists_UsesKUBECONFIG verifies that GetContextFromConfigFileIfExists reads the
+// kubeconfig that KUBECONFIG selects when no path is given.
+func Test_GetContextFromConfigFileIfExists_UsesKUBECONFIG(t *testing.T) {
+	explicitPath := useEnvKubeconfig(t)
+
+	t.Run("default kubeconfig", func(t *testing.T) {
+		contextName, err := GetContextFromConfigFileIfExists("", "")
+		require.NoError(t, err)
+		require.Equal(t, "env-context", contextName)
+
+		_, err = GetContextFromConfigFileIfExists("", "home-context")
+		require.ErrorContains(t, err, "kubernetes context 'home-context' could not be found")
+	})
+
+	t.Run("explicit path ignores KUBECONFIG", func(t *testing.T) {
+		contextName, err := GetContextFromConfigFileIfExists(explicitPath, "")
+		require.NoError(t, err)
+		require.Equal(t, "explicit-context", contextName)
+	})
+}
+
+// useEnvKubeconfig writes a home kubeconfig with home-context and points KUBECONFIG at a file with env-context. It
+// returns the path of a third kubeconfig, with explicit-context, that KUBECONFIG does not list.
+func useEnvKubeconfig(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	k8sutil.WriteKubeconfig(t, k8sutil.IsolateKubeconfig(t), "home-context", map[string]string{
+		"home-context": "https://home.example.com",
+	})
+	envPath := filepath.Join(dir, "env.yaml")
+	k8sutil.WriteKubeconfig(t, envPath, "env-context", map[string]string{"env-context": "https://env.example.com"})
+	explicitPath := filepath.Join(dir, "explicit.yaml")
+	k8sutil.WriteKubeconfig(t, explicitPath, "explicit-context", map[string]string{
+		"explicit-context": "https://explicit.example.com",
+	})
+	t.Setenv(clientcmd.RecommendedConfigPathEnvVar, envPath)
+	return explicitPath
 }
