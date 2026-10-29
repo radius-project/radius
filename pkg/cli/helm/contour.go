@@ -18,10 +18,15 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/radius-project/radius/pkg/cli/output"
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -39,10 +44,136 @@ type ContourChartOptions struct {
 	Wait bool
 }
 
+// contourPlan is a Contour chart and the values to install or upgrade it with, after the Gateway API CRD checks.
+type contourPlan struct {
+	chart  *chart.Chart
+	conf   *helm.Configuration
+	values map[string]any
+}
+
+// getContourRelease returns the Contour release, or nil when Contour is not installed.
+func (i *Impl) getContourRelease(options ContourChartOptions, kubeContext string) (*releasev1.Release, error) {
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &options.Namespace,
+		Context:   &kubeContext,
+	}
+
+	helmConf, err := initHelmConfig(&flags)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Helm config, err: %w", err)
+	}
+
+	release, err := i.Helm.RunHelmGet(helmConf, options.ReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return release, nil
+}
+
+// planContourInstall plans the Contour install for InstallRadius. It returns nil when Contour is already installed and
+// options.Reinstall is false, because ApplyHelmChart leaves such a release unchanged.
+func (i *Impl) planContourInstall(ctx context.Context, helmAction HelmAction, options ContourChartOptions, kubeContext string) (*contourPlan, error) {
+	existing, err := i.getContourRelease(options, kubeContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check Contour installation status: %w", err)
+	}
+
+	if existing != nil && !options.Reinstall {
+		if len(options.SetArgs) > 0 || len(options.SetFileArgs) > 0 {
+			output.LogInfo("Contour is already installed, so Radius does not change it or apply the Contour values.")
+		}
+		return nil, nil
+	}
+
+	// ApplyHelmChart reinstalls an existing release with Helm's ResetThenReuseValues semantics.
+	return i.planContour(ctx, helmAction, options, kubeContext, existing, true)
+}
+
+// planContourUpgrade plans the Contour upgrade for UpgradeRadius. It returns nil when Contour is not installed, because
+// UpgradeRadius upgrades only an installed Contour release.
+func (i *Impl) planContourUpgrade(ctx context.Context, helmAction HelmAction, options ContourChartOptions, kubeContext string, reuseValues bool) (*contourPlan, error) {
+	existing, err := i.getContourRelease(options, kubeContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check Contour installation status: %w", err)
+	}
+
+	if existing == nil {
+		return nil, nil
+	}
+
+	return i.planContour(ctx, helmAction, options, kubeContext, existing, reuseValues)
+}
+
+// planContour prepares the Contour chart and its values, and checks that installing or upgrading Contour neither takes
+// over nor deletes Gateway API CRDs and that Contour can use the CRDs it does not install. existing is the Contour
+// release to upgrade, or nil to install Contour. reuseValues is true when Helm merges the values stored on existing
+// beneath the new values.
+func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options ContourChartOptions, kubeContext string, existing *releasev1.Release, reuseValues bool) (*contourPlan, error) {
+	helmChart, helmConf, values, err := prepareContourChart(ctx, helmAction, options, kubeContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
+	}
+	if helmChart.Metadata == nil {
+		return nil, errors.New("failed to prepare Contour Helm chart, err: the chart has no metadata")
+	}
+
+	crds, err := i.gatewayAPICRDs(ctx, kubeContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list Gateway API CRDs, err: %w", err)
+	}
+
+	check := gatewayAPICRDCheck{
+		releaseName:      options.ReleaseName,
+		releaseNamespace: options.Namespace,
+		contourVersion:   strings.TrimPrefix(helmChart.Metadata.AppVersion, "v"),
+		crds:             crds,
+		upgrade:          existing != nil,
+		resetValues:      existing != nil && !reuseValues,
+	}
+	if support, found := contourGatewayAPISupportByVersion[check.contourVersion]; found {
+		check.support = &support
+	}
+
+	var reusedValues map[string]any
+	if existing != nil {
+		check.releaseCRDs, err = gatewayAPICRDsInManifest(existing.Manifest)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read the Contour release manifest, err: %w", err)
+		}
+
+		if reuseValues {
+			reusedValues = existing.Config
+		}
+	}
+
+	// The user's --contour-set and --contour-set-file values take precedence over this default.
+	setDefaultValue(values, check.defaultManageCRDs(), "gatewayAPI", "manageCRDs")
+
+	effectiveValues, err := effectiveContourValues(helmChart, values, reusedValues)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute Contour values, err: %w", err)
+	}
+
+	warning, err := check.validate(effectiveValues)
+	if err != nil {
+		return nil, err
+	}
+	if warning != "" {
+		output.LogInfo("Warning: %s", warning)
+	}
+
+	return &contourPlan{chart: helmChart, conf: helmConf, values: values}, nil
+}
+
 // prepareContourChart prepares the Helm chart for Contour and returns the user-supplied
 // values for this invocation. The returned values map is separate from helmChart.Values
 // so that Helm's release storage records only the overrides we explicitly want to apply,
-// allowing ResetThenReuseValues semantics to work correctly on upgrade.
+// allowing ResetThenReuseValues semantics to work correctly on upgrade. The values do not
+// yet include the Gateway API CRD management default, which depends on the cluster; see
+// planContour.
 func prepareContourChart(ctx context.Context, helmAction HelmAction, options ContourChartOptions, kubeContext string) (*chart.Chart, *helm.Configuration, map[string]any, error) {
 	var helmChart *chart.Chart
 
@@ -74,11 +205,12 @@ func prepareContourChart(ctx context.Context, helmAction HelmAction, options Con
 }
 
 // buildContourValues builds a fresh user-values map for the Contour Helm chart based on
-// the supplied ContourChartOptions. It always sets the gateway configuration and Gateway API
-// CRD management. When HostNetwork is enabled, it also returns overrides to enable host
-// networking on the Envoy pod and remaps the LoadBalancer service ports to 8080/8443 so
-// they don't conflict with Envoy. The returned map contains ONLY the overrides; it does
-// not mutate the chart's default values.
+// the supplied ContourChartOptions. It always sets the gateway configuration. When HostNetwork
+// is enabled, it also returns overrides to enable host networking on the Envoy pod and remaps
+// the LoadBalancer service ports to 8080/8443 so they don't conflict with Envoy. It then applies
+// the user's --contour-set and --contour-set-file values, which take precedence over these
+// defaults. The returned map contains ONLY the overrides; it does not mutate the chart's
+// default values.
 //
 // References:
 //
@@ -95,11 +227,6 @@ func buildContourValues(options ContourChartOptions) (map[string]any, error) {
 				"namespace": DefaultContourGatewayNamespace,
 			},
 		},
-	}
-
-	// Enable Gateway API CRD management.
-	values["gatewayAPI"] = map[string]any{
-		"manageCRDs": true,
 	}
 
 	if options.HostNetwork {
@@ -121,6 +248,10 @@ func buildContourValues(options ContourChartOptions) (map[string]any, error) {
 				},
 			},
 		}
+	}
+
+	if err := parseSetValuesInto(values, options.SetArgs, options.SetFileArgs); err != nil {
+		return nil, err
 	}
 
 	return values, nil

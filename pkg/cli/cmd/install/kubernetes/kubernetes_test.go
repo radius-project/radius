@@ -17,6 +17,7 @@ limitations under the License.
 package kubernetes
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/test/radcli"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -150,6 +152,83 @@ func Test_Run_TimeoutPropagation(t *testing.T) {
 		Times(1)
 
 	require.NoError(t, runner.Run(ctx))
+}
+
+// Test_Run_ContourFlags verifies that every Contour flag reaches the options passed to InstallRadius, so that a
+// Contour flag cannot be accepted and then dropped.
+func Test_Run_ContourFlags(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		flag string
+		args []string
+		want func(options *helm.ClusterOptions)
+	}{
+		{
+			flag: "contour-set",
+			args: []string{
+				"--contour-set", "envoy.service.type=NodePort",
+				"--contour-set", "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes}",
+			},
+			want: func(options *helm.ClusterOptions) {
+				options.Contour.SetArgs = []string{"envoy.service.type=NodePort", "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes}"}
+			},
+		},
+		{
+			flag: "contour-set-file",
+			args: []string{"--contour-set-file", "envoy.service.annotations.example=/path/to/value.txt"},
+			want: func(options *helm.ClusterOptions) {
+				options.Contour.SetFileArgs = []string{"envoy.service.annotations.example=/path/to/value.txt"}
+			},
+		},
+		{
+			flag: "contour-chart",
+			args: []string{"--contour-chart", "/path/to/contour"},
+			want: func(options *helm.ClusterOptions) {
+				options.Contour.ChartPath = "/path/to/contour"
+			},
+		},
+		{
+			flag: "skip-contour-install",
+			args: []string{"--skip-contour-install"},
+			want: func(options *helm.ClusterOptions) {
+				options.Contour.Disabled = true
+			},
+		},
+	}
+
+	covered := map[string]bool{}
+	for _, tt := range tests {
+		covered[tt.flag] = true
+	}
+	cmd, _ := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		if strings.Contains(flag.Name, "contour") {
+			require.True(t, covered[flag.Name], "add a test case for --%s", flag.Name)
+		}
+	})
+
+	for _, tt := range tests {
+		t.Run(tt.flag, func(t *testing.T) {
+			t.Parallel()
+
+			cmd, r := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+			runner, ok := r.(*Runner)
+			require.True(t, ok)
+			require.NoError(t, cmd.ParseFlags(tt.args))
+
+			helmMock := helm.NewMockInterface(gomock.NewController(t))
+			runner.Helm = helmMock
+
+			expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{})
+			tt.want(&expectedOptions)
+
+			helmMock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{}, nil).Times(1)
+			helmMock.EXPECT().InstallRadius(gomock.Any(), expectedOptions, "").Return(nil).Times(1)
+
+			require.NoError(t, runner.Run(t.Context()))
+		})
+	}
 }
 
 func Test_Run(t *testing.T) {

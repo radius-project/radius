@@ -50,6 +50,10 @@ an environment, or any recipes. Use 'rad init' to install Radius and set up a de
 resource group, environment, and recipe pack for deploying applications.
 
 Overrides can be set by specifying Helm chart values with the '--set' flag. For more information visit https://docs.radapp.io/guides/operations/kubernetes/install/.
+
+Contour chart values can be set with '--contour-set' and '--contour-set-file'. They take precedence over the values that Radius sets.
+When the cluster already has Gateway API CRDs from another installer, such as the Traefik chart in k3s, Radius uses them
+instead of letting Contour take them over. Before it installs anything, Radius checks that they serve the versions that Contour needs.
 `,
 		Example: `# Install Radius with default settings in current Kubernetes context
 rad install kubernetes
@@ -59,6 +63,10 @@ rad install kubernetes --kubecontext mycluster
 
 # Install Radius without Contour ingress controller
 rad install kubernetes --skip-contour-install
+
+# Install Radius on a k3s cluster with Traefik, whose Gateway API CRDs lack TLSRoute, TCPRoute, and
+# BackendTLSPolicy v1alpha3, by turning off the Contour features that use them
+rad install kubernetes --contour-set 'contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}'
 
 # Install Radius with overrides in the current Kubernetes context
 rad install kubernetes --set key=value
@@ -115,8 +123,8 @@ rad install kubernetes --timeout 15m
 
 	cmd.Flags().BoolVar(&runner.ContourDisabled, "skip-contour-install", false, "Install Contour ingress controller (enabled by default)")
 	cmd.Flags().StringVar(&runner.ContourChart, "contour-chart", "", "Specify a local file path to a helm chart to install Contour from")
-	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
+	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set Contour chart values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set Contour chart values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 
 	cmd.Flags().DurationVar(&runner.Timeout, "timeout", helm.DefaultInstallTimeout, "Specify how long to wait for the Radius control plane to become ready (for example 15m, 1h)")
 
