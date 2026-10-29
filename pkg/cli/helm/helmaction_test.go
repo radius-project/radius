@@ -18,21 +18,27 @@ package helm
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync/atomic"
 	"syscall"
 	"testing"
 	"testing/synctest"
 	"time"
 
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	goretry "github.com/sethvargo/go-retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,6 +47,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/registry"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -99,24 +106,329 @@ func Test_isTransientHelmChartError(t *testing.T) {
 	}
 }
 
+// Broken user Helm states that chart pulls must ignore. Paths are relative to the root of the
+// environment created by setUserHelmEnv.
+var (
+	// missingRepositoryIndex reproduces https://github.com/radius-project/radius/issues/13546. On
+	// Windows, repositories.yaml persists under %APPDATA% while cached indexes under %TEMP% can be
+	// cleaned up.
+	missingRepositoryIndex = map[string]string{
+		"config/repositories.yaml": "repositories:\n- name: kedacore\n  url: https://kedacore.github.io/charts\n",
+	}
+	corruptRepositoryIndex = map[string]string{
+		"config/repositories.yaml":            "repositories:\n- name: bitnami\n  url: https://charts.bitnami.com/bitnami\n",
+		"cache/repository/bitnami-index.yaml": "apiVersion: v1\nentries: [truncated",
+	}
+	corruptRepositoryConfig = map[string]string{
+		"config/repositories.yaml": "repositories:\n- name: kedacore\n  url: [truncated",
+	}
+	// unwritableUserCache replaces the Helm cache directory with a regular file, so that writing to the
+	// user's Helm cache fails on every OS, as it does in a read-only home directory or container.
+	unwritableUserCache = map[string]string{
+		"cache": "not a directory",
+	}
+)
+
+// userHelmEnv simulates the Helm environment of the user running rad. Chart pulls must neither
+// depend on nor modify it.
+type userHelmEnv struct {
+	root    string
+	entries map[string]string
+}
+
+// setUserHelmEnv points every Helm state location at a temporary directory seeded with the files of
+// the given states, and snapshots it. Tests that use it can't run in parallel.
+func setUserHelmEnv(t *testing.T, states ...map[string]string) *userHelmEnv {
+	t.Helper()
+	root := t.TempDir()
+	for name, value := range map[string]string{
+		"HELM_CONFIG_HOME":       filepath.Join(root, "config"),
+		"HELM_CACHE_HOME":        filepath.Join(root, "cache"),
+		"HELM_DATA_HOME":         filepath.Join(root, "data"),
+		"HELM_REPOSITORY_CONFIG": filepath.Join(root, "config", "repositories.yaml"),
+		"HELM_REPOSITORY_CACHE":  filepath.Join(root, "cache", "repository"),
+		"HELM_CONTENT_CACHE":     filepath.Join(root, "cache", "content"),
+		"HELM_REGISTRY_CONFIG":   filepath.Join(root, "config", "registry", "config.json"),
+		"HELM_PLUGINS":           filepath.Join(root, "data", "plugins"),
+		"DOCKER_CONFIG":          filepath.Join(root, "docker"),
+	} {
+		t.Setenv(name, value)
+	}
+
+	files := map[string]string{"config/registry/config.json": `{"auths":{}}`}
+	for _, state := range states {
+		maps.Copy(files, state)
+	}
+	for name, content := range files {
+		path := filepath.Join(root, filepath.FromSlash(name))
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+	}
+	return &userHelmEnv{root: root, entries: snapshot(t, root)}
+}
+
+// assertUnchanged asserts that no file or directory in the user's Helm environment was added, removed,
+// or modified.
+func (e *userHelmEnv) assertUnchanged(t *testing.T) {
+	t.Helper()
+	assert.Equal(t, e.entries, snapshot(t, e.root), "chart pulls must not change the user's Helm state")
+}
+
+// snapshot maps the slash-separated path of each file and directory under root to the file's content.
+// Directory paths end with a slash.
+func snapshot(t *testing.T, root string) map[string]string {
+	t.Helper()
+	entries := map[string]string{}
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || path == root {
+			return err
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			entries[filepath.ToSlash(rel)+"/"] = ""
+			return nil
+		}
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		entries[filepath.ToSlash(rel)] = string(content)
+		return nil
+	})
+	require.NoError(t, err)
+	return entries
+}
+
+// pathWithin reports whether path is parent or is inside it.
+func pathWithin(parent, path string) bool {
+	rel, err := filepath.Rel(parent, path)
+	return err == nil && filepath.IsLocal(rel)
+}
+
+const contourIndexYAML = "apiVersion: v1\nentries:\n  contour:\n  - name: contour\n    version: 0.1.0\n    apiVersion: v2\n    urls:\n    - contour-0.1.0.tgz\n"
+
+// chartArchive returns the archive of an empty chart with the given name and version 0.1.0.
+func chartArchive(t *testing.T, name string) []byte {
+	t.Helper()
+	archive, err := chartutil.Save(&chart.Chart{Metadata: &chart.Metadata{
+		APIVersion: "v2",
+		Name:       name,
+		Version:    "0.1.0",
+	}}, t.TempDir())
+	require.NoError(t, err)
+	content, err := os.ReadFile(archive)
+	require.NoError(t, err)
+	return content
+}
+
+func Test_HelmChartFromContainerRegistry_BrokenUserHelmState(t *testing.T) {
+	chartBytes := chartArchive(t, "contour")
+
+	tests := []struct {
+		name  string
+		files map[string]string
+	}{
+		{"registered repository index missing", missingRepositoryIndex},
+		{"registered repository index corrupt", corruptRepositoryIndex},
+		{"repositories file corrupt", corruptRepositoryConfig},
+		{"user cache unwritable", unwritableUserCache},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := setUserHelmEnv(t, tt.files)
+			var archiveRequests atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/index.yaml":
+					_, _ = fmt.Fprint(w, contourIndexYAML)
+				case "/contour-0.1.0.tgz":
+					archiveRequests.Add(1)
+					_, _ = w.Write(chartBytes)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer server.Close()
+
+			got, err := NewHelmAction(NewHelmClient()).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, server.URL, "contour")
+			require.NoError(t, err)
+			require.NotNil(t, got)
+			assert.Equal(t, "contour", got.Metadata.Name)
+			assert.Equal(t, "0.1.0", got.Metadata.Version)
+			assert.EqualValues(t, 1, archiveRequests.Load())
+			env.assertUnchanged(t)
+		})
+	}
+}
+
+// Test_HelmChartFromContainerRegistry_PrivatePullState checks the Helm settings that each pull receives,
+// so a pull that uses the user's Helm repository state fails here even if none of the broken states
+// above triggers a failure.
+func Test_HelmChartFromContainerRegistry_PrivatePullState(t *testing.T) {
+	env := setUserHelmEnv(t, missingRepositoryIndex)
+
+	tests := []struct {
+		name     string
+		repoURL  string
+		release  string
+		chartRef string
+	}{
+		{"HTTP repository", "https://projectcontour.github.io/helm-charts", "contour", "contour"},
+		{"OCI registry", "oci://ghcr.io/radius-project/helm-chart", "radius", "oci://ghcr.io/radius-project/helm-chart/radius"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var pullRoot string
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().RunHelmPull(gomock.Any(), tt.chartRef).
+				DoAndReturn(func(opts []helm.PullOpt, _ string) (string, error) {
+					pull := helm.NewPull(opts...)
+					require.NotNil(t, pull.Settings)
+					pullRoot = filepath.Dir(pull.DestDir)
+					for name, path := range map[string]string{
+						"repository config": pull.Settings.RepositoryConfig,
+						"repository cache":  pull.Settings.RepositoryCache,
+						"content cache":     pull.Settings.ContentCache,
+					} {
+						require.NotEmpty(t, path, name)
+						assert.False(t, pathWithin(env.root, path), "%s must not be the user's: %s", name, path)
+						assert.True(t, pathWithin(pullRoot, path), "%s must be private to the pull: %s", name, path)
+						assert.False(t, pathWithin(pull.DestDir, path), "%s must be outside the download directory: %s", name, path)
+					}
+					assert.NoFileExists(t, pull.Settings.RepositoryConfig, "chart pulls must not see any registered repositories")
+					return "", os.WriteFile(filepath.Join(pull.DestDir, "chart.tgz"), []byte("chart"), 0o600)
+				}).Times(1)
+			want := &chart.Chart{}
+			client.EXPECT().LoadChart(gomock.Any()).Return(want, nil).Times(1)
+
+			got, err := NewHelmAction(client).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, tt.repoURL, tt.release)
+			require.NoError(t, err)
+			assert.Same(t, want, got)
+			assert.NoDirExists(t, pullRoot, "private pull state must be removed after the pull")
+			env.assertUnchanged(t)
+		})
+	}
+}
+
+const (
+	fakeChartRegistryHost     = "charts.radius.test"
+	fakeChartRegistryUser     = "radius"
+	fakeChartRegistryPassword = "password"
+)
+
+type registryContent struct {
+	mediaType string
+	data      []byte
+}
+
+// fakeChartRegistry is an in-process OCI registry that serves a radius 0.1.0 chart only to requests
+// with basic authentication.
+type fakeChartRegistry struct {
+	content            map[string]registryContent
+	authorizedRequests atomic.Int32
+}
+
+// newFakeChartRegistry serves the registry from http.DefaultTransport, which Helm's registry client
+// uses, so OCI pulls work without a network or TLS.
+func newFakeChartRegistry(t *testing.T) *fakeChartRegistry {
+	t.Helper()
+	config := []byte(`{"apiVersion":"v2","name":"radius","version":"0.1.0"}`)
+	chartBytes := chartArchive(t, "radius")
+	manifest := fmt.Appendf(nil, `{"schemaVersion":2,"mediaType":%q,"config":{"mediaType":%q,"digest":%q,"size":%d},"layers":[{"mediaType":%q,"digest":%q,"size":%d}]}`,
+		ocispec.MediaTypeImageManifest,
+		registry.ConfigMediaType, digest.FromBytes(config), len(config),
+		registry.ChartLayerMediaType, digest.FromBytes(chartBytes), len(chartBytes))
+	repository := fakeChartRegistryHost + "/v2/charts/radius"
+	f := &fakeChartRegistry{content: map[string]registryContent{
+		repository + "/manifests/0.1.0":                                  {ocispec.MediaTypeImageManifest, manifest},
+		repository + "/manifests/" + digest.FromBytes(manifest).String(): {ocispec.MediaTypeImageManifest, manifest},
+		repository + "/blobs/" + digest.FromBytes(config).String():       {registry.ConfigMediaType, config},
+		repository + "/blobs/" + digest.FromBytes(chartBytes).String():   {registry.ChartLayerMediaType, chartBytes},
+	}}
+	original := http.DefaultTransport
+	http.DefaultTransport = f
+	t.Cleanup(func() { http.DefaultTransport = original })
+	return f
+}
+
+func (f *fakeChartRegistry) RoundTrip(req *http.Request) (*http.Response, error) {
+	recorder := httptest.NewRecorder()
+	f.serve(recorder, req)
+	resp := recorder.Result()
+	resp.Request = req
+	return resp, nil
+}
+
+func (f *fakeChartRegistry) serve(w http.ResponseWriter, r *http.Request) {
+	if user, password, ok := r.BasicAuth(); !ok || user != fakeChartRegistryUser || password != fakeChartRegistryPassword {
+		w.Header().Set("WWW-Authenticate", `Basic realm="charts"`)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	f.authorizedRequests.Add(1)
+
+	content, ok := f.content[r.URL.Host+r.URL.Path]
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", content.mediaType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(content.data)))
+	w.Header().Set("Docker-Content-Digest", digest.FromBytes(content.data).String())
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(content.data)
+	}
+}
+
+// Test_HelmChartFromContainerRegistry_OCICredentials checks that OCI pulls still authenticate with the
+// credentials in the user's Helm registry configuration, while ignoring the user's broken Helm state.
+func Test_HelmChartFromContainerRegistry_OCICredentials(t *testing.T) {
+	tests := []struct {
+		name     string
+		password string
+		wantErr  bool
+	}{
+		{"user credentials", fakeChartRegistryPassword, false},
+		{"wrong user credentials", "wrong", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			auth := base64.StdEncoding.EncodeToString([]byte(fakeChartRegistryUser + ":" + tt.password))
+			credentials := map[string]string{
+				"config/registry/config.json": fmt.Sprintf(`{"auths":{%q:{"auth":%q}}}`, fakeChartRegistryHost, auth),
+			}
+			env := setUserHelmEnv(t, missingRepositoryIndex, unwritableUserCache, credentials)
+			chartRegistry := newFakeChartRegistry(t)
+
+			got, err := NewHelmAction(NewHelmClient()).HelmChartFromContainerRegistry(t.Context(), "0.1.0", &helm.Configuration{}, "oci://"+fakeChartRegistryHost+"/charts", "radius")
+			if tt.wantErr {
+				respErr, ok := errors.AsType[*errcode.ErrorResponse](err)
+				require.True(t, ok, "expected a registry error response, got: %v", err)
+				assert.Equal(t, http.StatusUnauthorized, respErr.StatusCode)
+				assert.Nil(t, got)
+				assert.Zero(t, chartRegistry.authorizedRequests.Load())
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				assert.Equal(t, "radius", got.Metadata.Name)
+				assert.Equal(t, "0.1.0", got.Metadata.Version)
+				assert.Positive(t, chartRegistry.authorizedRequests.Load())
+			}
+			env.assertUnchanged(t)
+		})
+	}
+}
+
 func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 	originalBackoff := helmChartPullBackoff
 	helmChartPullBackoff = func() goretry.Backoff {
 		return goretry.WithMaxRetries(2, goretry.NewConstant(time.Millisecond))
 	}
 	t.Cleanup(func() { helmChartPullBackoff = originalBackoff })
-	t.Setenv("HELM_CACHE_HOME", t.TempDir())
-	t.Setenv("HELM_CONFIG_HOME", t.TempDir())
-	t.Setenv("HELM_DATA_HOME", t.TempDir())
-
-	archive, err := chartutil.Save(&chart.Chart{Metadata: &chart.Metadata{
-		APIVersion: "v2",
-		Name:       "contour",
-		Version:    "0.1.0",
-	}}, t.TempDir())
-	require.NoError(t, err)
-	chartBytes, err := os.ReadFile(archive)
-	require.NoError(t, err)
+	chartBytes := chartArchive(t, "contour")
 
 	tests := []struct {
 		name         string
@@ -140,6 +452,8 @@ func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Use broken rather than pristine user Helm state, so pulls that depend on it fail here.
+			env := setUserHelmEnv(t, missingRepositoryIndex)
 			var requests atomic.Int32
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == tt.failPath {
@@ -169,7 +483,7 @@ func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 				}
 				switch r.URL.Path {
 				case "/index.yaml":
-					_, _ = fmt.Fprint(w, "apiVersion: v1\nentries:\n  contour:\n  - name: contour\n    version: 0.1.0\n    apiVersion: v2\n    urls:\n    - contour-0.1.0.tgz\n")
+					_, _ = fmt.Fprint(w, contourIndexYAML)
 				case "/contour-0.1.0.tgz":
 					_, _ = w.Write(chartBytes)
 				default:
@@ -191,6 +505,7 @@ func Test_HelmChartFromContainerRegistry_HTTPRetry(t *testing.T) {
 				assert.Equal(t, "contour", got.Metadata.Name)
 			}
 			assert.EqualValues(t, tt.wantRequests, requests.Load())
+			env.assertUnchanged(t)
 		})
 	}
 }

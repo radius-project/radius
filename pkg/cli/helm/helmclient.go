@@ -17,16 +17,22 @@ limitations under the License.
 package helm
 
 import (
+	"crypto/rand"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/getter"
+	"helm.sh/helm/v4/pkg/helmpath"
 	"helm.sh/helm/v4/pkg/kube"
 	"helm.sh/helm/v4/pkg/release"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	releaseutil "helm.sh/helm/v4/pkg/release/v1/util"
+	repo "helm.sh/helm/v4/pkg/repo/v1"
 )
 
 const (
@@ -263,12 +269,78 @@ func (client *HelmClientImpl) RunHelmHistory(helmConf *helm.Configuration, relea
 
 // RunHelmPull downloads a Helm chart from a repository to the local filesystem.
 // It returns the path to the downloaded chart archive.
+//
+// When the pull options set a repository URL, RunHelmPull looks up the chart in the repository index and
+// pulls the chart by its URL. Helm would download that index to the user's Helm cache, and fail when the
+// cache isn't writable, so RunHelmPull downloads it to the pull's repository cache instead.
 func (client *HelmClientImpl) RunHelmPull(pullopts []helm.PullOpt, chartRef string) (string, error) {
 	pullClient := helm.NewPull(
 		pullopts...,
 	)
 
+	if pullClient.RepoURL != "" {
+		chartURL, err := findChartInRepoURL(pullClient, chartRef)
+		if err != nil {
+			return "", err
+		}
+		pullClient.RepoURL = ""
+		chartRef = chartURL
+	}
+
 	return pullClient.Run(chartRef)
+}
+
+// findChartInRepoURL returns the URL of the named chart in the pull's chart repository. It matches
+// repo.FindChartInRepoURL, which Pull.Run uses for a repository URL, except that the repository index is
+// downloaded to the pull's repository cache.
+func findChartInRepoURL(pull *helm.Pull, chartName string) (string, error) {
+	entry := &repo.Entry{
+		Name:                  rand.Text(),
+		URL:                   pull.RepoURL,
+		Username:              pull.Username,
+		Password:              pull.Password,
+		PassCredentialsAll:    pull.PassCredentialsAll,
+		CertFile:              pull.CertFile,
+		KeyFile:               pull.KeyFile,
+		CAFile:                pull.CaFile,
+		InsecureSkipTLSVerify: pull.InsecureSkipTLSVerify,
+	}
+	chartRepo, err := repo.NewChartRepository(entry, getter.All(pull.Settings))
+	if err != nil {
+		return "", err
+	}
+	chartRepo.CachePath = pull.Settings.RepositoryCache
+	defer func() {
+		os.RemoveAll(filepath.Join(chartRepo.CachePath, helmpath.CacheChartsFile(entry.Name)))
+		os.RemoveAll(filepath.Join(chartRepo.CachePath, helmpath.CacheIndexFile(entry.Name)))
+	}()
+
+	indexPath, err := chartRepo.DownloadIndexFile()
+	if err != nil {
+		return "", fmt.Errorf("looks like %q is not a valid chart repository or cannot be reached: %w", pull.RepoURL, err)
+	}
+	index, err := repo.LoadIndexFile(indexPath)
+	if err != nil {
+		return "", err
+	}
+
+	chartDescription := fmt.Sprintf("chart %q", chartName)
+	if pull.Version != "" {
+		chartDescription = fmt.Sprintf("%s version %q", chartDescription, pull.Version)
+	}
+	chartVersion, err := index.Get(chartName, pull.Version)
+	if err != nil {
+		return "", repo.ChartNotFoundError{Chart: chartDescription, RepoURL: pull.RepoURL}
+	}
+	if len(chartVersion.URLs) == 0 {
+		return "", fmt.Errorf("%s has no downloadable URLs", chartDescription)
+	}
+
+	chartURL, err := repo.ResolveReferenceURL(pull.RepoURL, chartVersion.URLs[0])
+	if err != nil {
+		return "", fmt.Errorf("failed to make chart URL absolute: %w", err)
+	}
+	return chartURL, nil
 }
 
 // RunHelmRollback rolls back a Helm release to a previous revision. Revision 0 means the revision before the

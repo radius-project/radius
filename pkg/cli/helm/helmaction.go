@@ -123,13 +123,25 @@ func NewHelmAction(helmClient HelmClient) *HelmActionImpl {
 }
 
 func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Context, version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error) {
+	root, err := createTempDir()
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(root)
+
+	// The download directory must contain only the pulled chart (see locateChartFile), so the
+	// pull's private Helm state lives in a sibling directory.
+	dir := filepath.Join(root, "chart")
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		return nil, fmt.Errorf("error creating chart download dir: %w", err)
+	}
+	stateDir := filepath.Join(root, "helm")
+
 	pullopts := []helm.PullOpt{
 		helm.WithConfig(config),
 		func(p *helm.Pull) {
-			// Helm v4 requires a populated content cache (Settings.ContentCache) to download
-			// charts; an empty EnvSettings leaves it unset and Pull fails with
-			// "content cache must be set". cli.New() initializes the default cache/config paths.
-			p.Settings = cli.New()
+			p.Settings = newChartPullSettings(stateDir)
+			p.DestDir = dir
 		},
 	}
 
@@ -145,16 +157,6 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Con
 			p.Devel = true
 		})
 	}
-
-	dir, err := createTempDir()
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(dir)
-
-	pullopts = append(pullopts, func(p *helm.Pull) {
-		p.DestDir = dir
-	})
 
 	var chartRef string
 
@@ -358,6 +360,21 @@ func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, 
 	err := hc.Init(flags, *flags.Namespace, helmDriverSecret)
 
 	return &hc, err
+}
+
+// newChartPullSettings returns Helm settings for a single chart pull. They keep the other cli.New()
+// defaults, such as the plugins directory, but point repository registrations, the repository index
+// cache, and the content cache at the private stateDir. Helm may read all of them while downloading a
+// chart, so an unrelated repository the user registered with a missing or corrupt cached index would
+// otherwise fail the pull. RunHelmPull also downloads repository indexes to the repository cache. The
+// repository file is never created, so the pull sees no registered repositories. The content cache
+// starts empty, but Helm v4 requires it to be set.
+func newChartPullSettings(stateDir string) *cli.EnvSettings {
+	settings := cli.New()
+	settings.RepositoryConfig = filepath.Join(stateDir, "repositories.yaml")
+	settings.RepositoryCache = filepath.Join(stateDir, "repository")
+	settings.ContentCache = filepath.Join(stateDir, "content")
+	return settings
 }
 
 // createTempDir creates a temporary directory for the helm chart and returns the path to the directory.
