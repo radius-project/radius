@@ -1114,6 +1114,114 @@ func Test_CreateOrUpdateResource_APIVersion(t *testing.T) {
 	}
 }
 
+func Test_ListResourcesInventory_APIVersion(t *testing.T) {
+	t.Parallel()
+
+	summaries := []ucp.ResourceProvidersClientListProviderSummariesResponse{
+		{
+			Value: []*ucp.ResourceProviderSummary{
+				{
+					Name: new("Applications.Test"),
+					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+						"withDefault": {
+							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+								"2023-05-01": {},
+								"2024-01-01": {},
+								"2025-01-01": {},
+							},
+							DefaultAPIVersion: new("2024-01-01"),
+						},
+						"withoutDefault": {
+							APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{
+								"2025-08-01-preview": {},
+								"2024-01-01":         {},
+								"2023-05-01":         {},
+							},
+						},
+						"withoutVersions": {},
+						"withoutSummary":  nil,
+					},
+				},
+			},
+			NextLink: new("0"),
+		},
+	}
+
+	// The generic client sends 2023-10-01-preview when no API version is resolved.
+	expected := map[string]string{
+		"Applications.Test/withDefault":     "2024-01-01",
+		"Applications.Test/withoutDefault":  "2023-05-01",
+		"Applications.Test/withoutVersions": "2023-10-01-preview",
+		"Applications.Test/withoutSummary":  "2023-10-01-preview",
+	}
+
+	tests := []struct {
+		name string
+		list func(context.Context, *UCPApplicationsManagementClient) ([]generated.GenericResource, error)
+	}{
+		{
+			name: "ListResourcesInApplication",
+			list: func(ctx context.Context, client *UCPApplicationsManagementClient) ([]generated.GenericResource, error) {
+				return client.ListResourcesInApplication(ctx, "test-application")
+			},
+		},
+		{
+			name: "ListResourcesInEnvironment",
+			list: func(ctx context.Context, client *UCPApplicationsManagementClient) ([]generated.GenericResource, error) {
+				return client.ListResourcesInEnvironment(ctx, "test-environment")
+			},
+		},
+		{
+			name: "ListResourcesInEnvironmentOrApplications",
+			list: func(ctx context.Context, client *UCPApplicationsManagementClient) ([]generated.GenericResource, error) {
+				return client.ListResourcesInEnvironmentOrApplications(ctx, "test-environment", []string{"test-application"})
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			listAPIVersions := map[string]string{}
+			transport := &mockTransport{
+				do: func(req *http.Request) (*http.Response, error) {
+					_, resourceType, _ := strings.Cut(req.URL.Path, "/providers/")
+					listAPIVersions[resourceType] = req.URL.Query().Get("api-version")
+					header := http.Header{}
+					header.Set("Content-Type", "application/json")
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     header,
+						Body:       io.NopCloser(strings.NewReader(`{"value": []}`)),
+						Request:    req,
+					}, nil
+				},
+			}
+
+			ctrl := gomock.NewController(t)
+			rpClient := NewMockresourceProviderClient(ctrl)
+			rpClient.EXPECT().
+				NewListProviderSummariesPager(gomock.Any(), gomock.Any()).
+				Return(pager(summaries))
+
+			client := &UCPApplicationsManagementClient{
+				RootScope: testScope,
+				ClientOptions: &arm.ClientOptions{
+					Transport: transport,
+				},
+				resourceProviderClientFactory: func() (resourceProviderClient, error) {
+					return rpClient, nil
+				},
+			}
+
+			_, err := tt.list(t.Context(), client)
+			require.NoError(t, err)
+			require.Equal(t, expected, listAPIVersions)
+		})
+	}
+}
+
 func Test_DeleteResource_ForceQueryParameter(t *testing.T) {
 	t.Parallel()
 

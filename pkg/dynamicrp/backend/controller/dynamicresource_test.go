@@ -292,42 +292,127 @@ func TestDynamicResourceController_validateRequestSchema(t *testing.T) {
 }
 
 func Test_DynamicResourceController_Run(t *testing.T) {
-	t.Run("fetches the resource type once", func(t *testing.T) {
-		gets := 0
-		resourceTypesServer := fake.ResourceTypesServer{
-			Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, options *v20231001preview.ResourceTypesClientGetOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder) {
-				gets++
-				resp.SetResponse(http.StatusOK, v20231001preview.ResourceTypesClientGetResponse{
-					ResourceTypeResource: v20231001preview.ResourceTypeResource{
-						Name: new(resourceTypeName),
-						Properties: &v20231001preview.ResourceTypeProperties{
-							Capabilities: []*string{to.Ptr(datamodel.CapabilityManualResourceProvisioning)},
-						},
-					},
-				}, nil)
-				return
+	resourceWithSize := func(size any) *database.Object {
+		return &database.Object{Data: map[string]any{"properties": map[string]any{"size": size}}}
+	}
+
+	tests := []struct {
+		name         string
+		resourceType string
+		method       v1.OperationMethod
+		setupDB      func(db *database.MockClient, resourceID string)
+		want         ctrl.Result
+	}{
+		{
+			name:         "inert DELETE",
+			resourceType: inertResourceType,
+			method:       v1.OperationDelete,
+			setupDB: func(db *database.MockClient, resourceID string) {
+				db.EXPECT().Delete(gomock.Any(), resourceID).Return(nil)
 			},
-		}
-		ucp, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
-			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{ResourceTypesServer: resourceTypesServer}),
+			want: ctrl.Result{},
+		},
+		{
+			name:         "inert PUT with valid properties",
+			resourceType: inertResourceType,
+			method:       v1.OperationPut,
+			setupDB: func(db *database.MockClient, resourceID string) {
+				db.EXPECT().Get(gomock.Any(), resourceID).Return(resourceWithSize("small"), nil)
+			},
+			want: ctrl.Result{},
+		},
+		{
+			// The recipe PUT controller reads the resource again, so the mock fails if it runs.
+			name:         "schema validation failure",
+			resourceType: recipeResourceType,
+			method:       v1.OperationPut,
+			setupDB: func(db *database.MockClient, resourceID string) {
+				db.EXPECT().Get(gomock.Any(), resourceID).Return(resourceWithSize(3), nil)
+			},
+			want: ctrl.NewFailedResult(v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Message: `code InvalidRequestContent: err Schema validation failed: resource data validation failed: Error at "size": value must be a string`,
+			}),
+		},
+		{
+			name:         "resource type lookup failure",
+			resourceType: "Applications.Test/unknownType",
+			method:       v1.OperationPut,
+			want: ctrl.NewFailedResult(v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Message: "failed to fetch resource type details: resource type Applications.Test/unknownType not recognized",
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gets := 0
+			resourceTypesServer := fake.ResourceTypesServer{
+				Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, options *v20231001preview.ResourceTypesClientGetOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder) {
+					gets++
+					properties := &v20231001preview.ResourceTypeProperties{}
+					switch resourceProviderName + resources.SegmentSeparator + resourceTypeName {
+					case inertResourceType:
+						properties.Capabilities = []*string{to.Ptr(datamodel.CapabilityManualResourceProvisioning)}
+					case recipeResourceType:
+					default:
+						errResp.SetError(fmt.Errorf("resource type %s/%s not recognized", resourceProviderName, resourceTypeName))
+						return
+					}
+					resp.SetResponse(http.StatusOK, v20231001preview.ResourceTypesClientGetResponse{
+						ResourceTypeResource: v20231001preview.ResourceTypeResource{
+							Name:       new(resourceTypeName),
+							Properties: properties,
+						},
+					}, nil)
+					return
+				},
+			}
+			apiVersionsServer := fake.APIVersionsServer{
+				Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
+					resp.SetResponse(http.StatusOK, v20231001preview.APIVersionsClientGetResponse{
+						APIVersionResource: v20231001preview.APIVersionResource{
+							Properties: &v20231001preview.APIVersionProperties{
+								Schema: map[string]any{
+									"type": "object",
+									"properties": map[string]any{
+										"size": map[string]any{"type": "string"},
+									},
+								},
+							},
+						},
+					}, nil)
+					return
+				},
+			}
+			ucp, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
+				Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+					APIVersionsServer:   apiVersionsServer,
+					ResourceTypesServer: resourceTypesServer,
+				}),
+			})
+			require.NoError(t, err)
+
+			databaseClient := database.NewMockClient(gomock.NewController(t))
+			controller, err := NewDynamicResourceController(ctrl.Options{DatabaseClient: databaseClient}, ucp, nil, nil, nil)
+			require.NoError(t, err)
+
+			request := &ctrl.Request{
+				ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + tt.resourceType + "/test-resource",
+				OperationType: v1.OperationType{Type: tt.resourceType, Method: tt.method}.String(),
+				APIVersion:    "2025-01-01-preview",
+			}
+			if tt.setupDB != nil {
+				tt.setupDB(databaseClient, request.ResourceID)
+			}
+
+			result, err := controller.Run(t.Context(), request)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, result)
+			require.Equal(t, 1, gets, "Run() resource type GETs")
 		})
-		require.NoError(t, err)
-
-		databaseClient := database.NewMockClient(gomock.NewController(t))
-		controller, err := NewDynamicResourceController(ctrl.Options{DatabaseClient: databaseClient}, ucp, nil, nil, nil)
-		require.NoError(t, err)
-
-		request := &ctrl.Request{
-			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
-			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationDelete}.String(),
-		}
-		databaseClient.EXPECT().Delete(gomock.Any(), request.ResourceID).Return(nil).Times(1)
-
-		result, err := controller.Run(t.Context(), request)
-		require.NoError(t, err)
-		require.Equal(t, ctrl.Result{}, result)
-		require.Equal(t, 1, gets, "Run() resource type GETs")
-	})
+	}
 
 	t.Run("invalid resource ID", func(t *testing.T) {
 		ucp, err := testUCPClientFactory()
