@@ -24,14 +24,14 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-// consoleRegion matches commercial and GovCloud region names such as us-west-2 and us-gov-west-1. China regions match
-// the pattern too but are excluded by ConsoleURL because they use a different console.
+// consoleRegion matches commercial, GovCloud, and China region names such as us-west-2, us-gov-west-1, and cn-north-1.
 var consoleRegion = regexp.MustCompile(`^[a-z]{2}(-gov)?-[a-z]+-\d$`)
 
 const (
 	commercialConsoleHostFormat = "%s.console.aws.amazon.com"
 	commercialGlobalConsoleHost = "console.aws.amazon.com"
 	govCloudConsoleHost         = "console.amazonaws-us-gov.com"
+	chinaConsoleHost            = "console.amazonaws.cn"
 
 	// globalRegion is the region Radius uses for AWS resources whose ARN has no region, such as S3 buckets.
 	globalRegion = "global"
@@ -42,6 +42,7 @@ const (
 var globalConsoleHosts = map[string]string{
 	"aws":        commercialGlobalConsoleHost,
 	"aws-us-gov": govCloudConsoleHost,
+	"aws-cn":     chinaConsoleHost,
 }
 
 type consolePage struct {
@@ -76,6 +77,8 @@ var (
 	elastiCacheClusters   = consolePage{path: "/elasticache/home"}
 	emrClusters           = consolePage{path: "/emr/home", hash: "#/clusters"}
 	fsxFileSystems        = consolePage{path: "/fsx/home", hash: "#file-systems"}
+	iamPolicies           = consolePage{path: "/iam/home", hash: "#/policies", global: true}
+	iamRoles              = consolePage{path: "/iam/home", hash: "#/roles", global: true}
 	iamUsers              = consolePage{path: "/iam/home", hash: "#/users", global: true}
 	lambdaFunctions       = consolePage{path: "/lambda/home", hash: "#/functions"}
 	mediaLiveChannels     = consolePage{path: "/medialive/home", hash: "#/channels"}
@@ -122,19 +125,23 @@ var consolePages = map[string]consolePage{
 	"aws.emr/cluster":                           emrClusters,
 	"aws.fsx/filesystem":                        fsxFileSystems,
 	"aws.iam/accesskey":                         iamUsers,
-	"aws.lambda/function":                       lambdaFunctions,
-	"aws.medialive/channel":                     mediaLiveChannels,
-	"aws.logs/loggroup":                         cloudWatchLogGroups,
-	"aws.memorydb/cluster":                      memoryDBClusters,
-	"aws.msk/cluster":                           mskClusters,
-	"aws.msk/serverlesscluster":                 mskClusters,
-	"aws.opensearchservice/domain":              openSearchDomains,
-	"aws.rds/dbcluster":                         rdsDatabases,
-	"aws.rds/dbinstance":                        rdsDatabases,
-	"aws.s3/bucket":                             s3Buckets,
-	"aws.secretsmanager/secret":                 secretsManagerSecrets,
-	"aws.sns/topic":                             snsTopics,
-	"aws.sqs/queue":                             sqsQueues,
+	// The IAM console has no instance profile list. Instance profiles are shown on the role they hold.
+	"aws.iam/instanceprofile":      iamRoles,
+	"aws.iam/managedpolicy":        iamPolicies,
+	"aws.iam/role":                 iamRoles,
+	"aws.lambda/function":          lambdaFunctions,
+	"aws.medialive/channel":        mediaLiveChannels,
+	"aws.logs/loggroup":            cloudWatchLogGroups,
+	"aws.memorydb/cluster":         memoryDBClusters,
+	"aws.msk/cluster":              mskClusters,
+	"aws.msk/serverlesscluster":    mskClusters,
+	"aws.opensearchservice/domain": openSearchDomains,
+	"aws.rds/dbcluster":            rdsDatabases,
+	"aws.rds/dbinstance":           rdsDatabases,
+	"aws.s3/bucket":                s3Buckets,
+	"aws.secretsmanager/secret":    secretsManagerSecrets,
+	"aws.sns/topic":                snsTopics,
+	"aws.sqs/queue":                sqsQueues,
 
 	"terraform.aws/aws_alb":                           ec2LoadBalancers,
 	"terraform.aws/aws_alb_listener":                  ec2LoadBalancers,
@@ -164,6 +171,9 @@ var consolePages = map[string]consolePage{
 	"terraform.aws/aws_fsx_ontap_file_system":         fsxFileSystems,
 	"terraform.aws/aws_fsx_openzfs_file_system":       fsxFileSystems,
 	"terraform.aws/aws_fsx_windows_file_system":       fsxFileSystems,
+	"terraform.aws/aws_iam_instance_profile":          iamRoles,
+	"terraform.aws/aws_iam_policy":                    iamPolicies,
+	"terraform.aws/aws_iam_role":                      iamRoles,
 	"terraform.aws/aws_lambda_function":               lambdaFunctions,
 	"terraform.aws/aws_lb":                            ec2LoadBalancers,
 	"terraform.aws/aws_lb_listener":                   ec2LoadBalancers,
@@ -185,9 +195,9 @@ var consolePages = map[string]consolePage{
 }
 
 // ConsoleURL returns a link to the AWS console list page of the service that owns the resource id, in the region the
-// ID names. GovCloud regions use the GovCloud console. A resource in the global region links only when its console page
-// is global, such as S3 buckets, using the console of the partition the AWS plane names. It returns "" when id is not
-// an AWS resource, its type has no known page, or its region is missing or not a commercial or GovCloud region, so a
+// ID names. GovCloud and China regions use their own consoles. A resource in the global region links only when its
+// console page is global, such as S3 buckets, using the console of the partition the AWS plane names. It returns "" when
+// id is not an AWS resource, its type has no known page, or its region is missing or not a valid region name, so a
 // caller never shows a made-up link.
 func ConsoleURL(id resources.ID) string {
 	if !IsAWSResource(id) {
@@ -208,13 +218,16 @@ func ConsoleURL(id resources.ID) string {
 		return fmt.Sprintf("https://%s%s%s", host, page.path, page.hash)
 	}
 
-	if !consoleRegion.MatchString(region) || strings.HasPrefix(region, "cn-") {
+	if !consoleRegion.MatchString(region) {
 		return ""
 	}
 
 	host := fmt.Sprintf(commercialConsoleHostFormat, region)
-	if strings.Contains(region, "-gov-") {
+	switch {
+	case strings.Contains(region, "-gov-"):
 		host = govCloudConsoleHost
+	case strings.HasPrefix(region, "cn-"):
+		host = chinaConsoleHost
 	}
 
 	return fmt.Sprintf("https://%s%s?region=%s%s", host, page.path, region, page.hash)

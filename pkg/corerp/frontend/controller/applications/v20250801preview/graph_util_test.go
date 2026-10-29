@@ -226,6 +226,8 @@ func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
 		awsGovQueueID  = "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.SQS/Queue/myqueue"
 		awsUnknownID   = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/mything"
 		tfBucketID     = "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/mybucket"
+		awsChinaRDSID  = "/planes/aws/aws-cn/accounts/123456789012/regions/cn-north-1/providers/AWS.RDS/DBInstance/mychinadb"
+		tfIAMRoleID    = "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_role/myrole"
 		tfSubnetID     = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_subnet/mysubnet"
 		kubernetesID   = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/mydeployment"
 	)
@@ -244,6 +246,8 @@ func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
 				awsGovQueueID:  "https://console.amazonaws-us-gov.com/sqs/v3/home?region=us-gov-west-1#/queues",
 				awsUnknownID:   "",
 				tfBucketID:     "https://console.aws.amazon.com/s3/buckets",
+				awsChinaRDSID:  "https://console.amazonaws.cn/rds/home?region=cn-north-1#databases:",
+				tfIAMRoleID:    "https://console.aws.amazon.com/iam/home#/roles",
 				tfSubnetID:     "",
 				kubernetesID:   "",
 			},
@@ -256,6 +260,8 @@ func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
 				awsGovQueueID:  "https://console.amazonaws-us-gov.com/sqs/v3/home?region=us-gov-west-1#/queues",
 				awsUnknownID:   "",
 				tfBucketID:     "https://console.aws.amazon.com/s3/buckets",
+				awsChinaRDSID:  "https://console.amazonaws.cn/rds/home?region=cn-north-1#databases:",
+				tfIAMRoleID:    "https://console.aws.amazon.com/iam/home#/roles",
 				tfSubnetID:     "",
 				kubernetesID:   "",
 			},

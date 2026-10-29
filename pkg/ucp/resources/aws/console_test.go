@@ -113,8 +113,44 @@ func Test_ConsoleURL(t *testing.T) {
 			want: "https://console.aws.amazon.com/iam/home#/users",
 		},
 		{
-			name: "global console page in the China partition has no link",
+			name: "global console page in the China partition",
 			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket",
+			want: "https://console.amazonaws.cn/s3/buckets",
+		},
+		{
+			name: "AWS IAM role",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.IAM/Role/my-role",
+			want: "https://us-west-2.console.aws.amazon.com/iam/home?region=us-west-2#/roles",
+		},
+		{
+			name: "AWS IAM managed policy",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.IAM/ManagedPolicy/my-policy",
+			want: "https://us-west-2.console.aws.amazon.com/iam/home?region=us-west-2#/policies",
+		},
+		{
+			name: "AWS IAM instance profile links to roles",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.IAM/InstanceProfile/my-profile",
+			want: "https://us-west-2.console.aws.amazon.com/iam/home?region=us-west-2#/roles",
+		},
+		{
+			name: "Terraform IAM role in the global region",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_role/my-role",
+			want: "https://console.aws.amazon.com/iam/home#/roles",
+		},
+		{
+			name: "Terraform IAM policy in the global region",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_policy/my-policy",
+			want: "https://console.aws.amazon.com/iam/home#/policies",
+		},
+		{
+			name: "Terraform IAM instance profile in the GovCloud global region",
+			id:   "/planes/aws/aws-us-gov/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_instance_profile/my-profile",
+			want: "https://console.amazonaws-us-gov.com/iam/home#/roles",
+		},
+		{
+			name: "Terraform IAM role in the China global region",
+			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_role/my-role",
+			want: "https://console.amazonaws.cn/iam/home#/roles",
 		},
 		{
 			name: "regional console page in the global region has no link",
@@ -133,8 +169,14 @@ func Test_ConsoleURL(t *testing.T) {
 			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2.evil.com/providers/AWS.S3/Bucket/b",
 		},
 		{
-			name: "China region has no link",
-			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/cn-north-1/providers/AWS.S3/Bucket/b",
+			name: "China region uses the China console",
+			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/cn-north-1/providers/AWS.RDS/DBInstance/db",
+			want: "https://console.amazonaws.cn/rds/home?region=cn-north-1#databases:",
+		},
+		{
+			name: "Terraform type in a China region",
+			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/cn-northwest-1/providers/Terraform.AWS/aws_lambda_function/f",
+			want: "https://console.amazonaws.cn/lambda/home?region=cn-northwest-1#/functions",
 		},
 		{
 			name: "AWS scope has no link",
