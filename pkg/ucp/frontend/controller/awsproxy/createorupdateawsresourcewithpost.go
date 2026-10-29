@@ -63,6 +63,9 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	if errResponse != nil {
 		return errResponse, nil
 	}
+	if errResponse := unsupportedTypeResponse(serviceCtx.ResourceTypeInAWSFormat()); errResponse != nil {
+		return errResponse, nil
+	}
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
@@ -84,6 +87,11 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	}, cloudFormationOpts...)
 	if err != nil {
 		return ucp_aws.HandleAWSError(ctx, err)
+	}
+	if errResponse, err := putErrorResponse(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput); err != nil {
+		return nil, err
+	} else if errResponse != nil {
+		return errResponse, nil
 	}
 
 	var operation uuid.UUID
@@ -141,6 +149,16 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		patch, err := awsoperations.GeneratePatch(currentState, desiredState, resourceTypeSchema)
 		if err != nil {
 			return ucp_aws.HandleAWSError(ctx, err)
+		}
+
+		if len(patch) > 0 {
+			var errResponse armrpc_rest.Response
+			patch, errResponse, err = checkPatch(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput, patch)
+			if err != nil {
+				return nil, err
+			} else if errResponse != nil {
+				return errResponse, nil
+			}
 		}
 
 		// Call update only if the patch is not empty
