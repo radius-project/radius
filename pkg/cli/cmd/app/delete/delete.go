@@ -167,21 +167,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.Output.LogInfo("WARNING: Force deleting an application. Resources in non-terminal states may leave orphaned external resources that require manual cleanup.")
 	}
 
-	if !r.Confirm {
-		promptMsg := fmt.Sprintf("Are you sure you want to delete application '%s'?", r.ApplicationName)
-		confirmed, err := prompt.YesOrNoPrompt(promptMsg, prompt.ConfirmNo, r.InputPrompter)
-		if err != nil {
-			return err
-		}
-		if !confirmed {
-			r.Output.LogInfo("Application %q NOT deleted", r.ApplicationName)
-			return nil
-		}
-	}
-
 	// Use the management client to discover and delete owned resources.
 	// This uses ownership-based filtering (properties.application matches our app ID)
 	// rather than GetGraph which returns a connectivity graph that may include shared resources.
+	// Discovery runs before the confirmation prompt so the shared output resource warning shows first.
 	managementClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -193,6 +182,20 @@ func (r *Runner) Run(ctx context.Context) error {
 	resourcesList, err := managementClient.ListResourcesInApplication(ctx, applicationID)
 	if err != nil && !clients.Is404Error(err) {
 		return err
+	}
+
+	cmd.WarnSharedOutputResources(ctx, managementClient, r.Output, fmt.Sprintf("application '%s'", r.ApplicationName), resourcesList)
+
+	if !r.Confirm {
+		promptMsg := fmt.Sprintf("Are you sure you want to delete application '%s'?", r.ApplicationName)
+		confirmed, err := prompt.YesOrNoPrompt(promptMsg, prompt.ConfirmNo, r.InputPrompter)
+		if err != nil {
+			return err
+		}
+		if !confirmed {
+			r.Output.LogInfo("Application %q NOT deleted", r.ApplicationName)
+			return nil
+		}
 	}
 
 	// Delete associated resources in parallel
