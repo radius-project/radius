@@ -215,12 +215,15 @@ func Test_Run_Errors(t *testing.T) {
 		name      string
 		args      []string
 		newClient func(context.Context, string) (registryClient, error)
-		want      string
+		// want is a substring of the error, for errors whose text this code controls.
+		want string
+		// wantErr is matched with errors.Is, for errors whose text depends on the OS.
+		wantErr error
 	}{
 		{name: "unknown flag", args: []string{"-unknown"}, want: "flag provided but not defined"},
-		{name: "missing snapshot", args: []string{"-snapshot", filepath.Join(dir, "missing.txt"), "-out", filepath.Join(dir, "o.go")}, want: "no such file"},
+		{name: "missing snapshot", args: []string{"-snapshot", filepath.Join(dir, "missing.txt"), "-out", filepath.Join(dir, "o.go")}, wantErr: os.ErrNotExist},
 		{name: "invalid snapshot", args: []string{"-snapshot", invalid, "-out", filepath.Join(dir, "o.go")}, want: "invalid.txt: line 1"},
-		{name: "unwritable output", args: []string{"-snapshot", valid, "-out", filepath.Join(dir, "missing-dir", "o.go")}, want: "no such file"},
+		{name: "unwritable output", args: []string{"-snapshot", valid, "-out", filepath.Join(dir, "missing-dir", "o.go")}, wantErr: os.ErrNotExist},
 		{
 			name:      "client error",
 			args:      []string{"-refresh", "-snapshot", filepath.Join(dir, "s1.txt")},
@@ -263,6 +266,10 @@ func Test_Run_Errors(t *testing.T) {
 				newClient = func(context.Context, string) (registryClient, error) { return newFakeRegistry(), nil }
 			}
 			err := run(t.Context(), tt.args, &bytes.Buffer{}, newClient)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				return
+			}
 			require.ErrorContains(t, err, tt.want)
 		})
 	}
