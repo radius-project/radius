@@ -1,6 +1,8 @@
 package reconciler
 
 import (
+	"context"
+
 	"github.com/fluxcd/pkg/http/fetch"
 	"github.com/fluxcd/pkg/tar"
 )
@@ -29,5 +31,5 @@ type ArchiveFetcherImpl struct {
 }
 
 func (a *ArchiveFetcherImpl) Fetch(archiveURL string, digest string, dir string) error {
-	return a.inner.Fetch(archiveURL, digest, dir)
+	return a.inner.FetchWithContext(context.Background(), archiveURL, digest, dir)
 }
