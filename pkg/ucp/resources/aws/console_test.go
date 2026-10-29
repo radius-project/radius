@@ -179,6 +179,41 @@ func Test_ConsoleURL(t *testing.T) {
 			want: "https://console.amazonaws.cn/lambda/home?region=cn-northwest-1#/functions",
 		},
 		{
+			name: "European Sovereign Cloud region uses its console",
+			id:   "/planes/aws/aws-eusc/accounts/123456789012/regions/eusc-de-east-1/providers/AWS.RDS/DBInstance/db",
+			want: "https://console.amazonaws-eusc.eu/rds/home?region=eusc-de-east-1#databases:",
+		},
+		{
+			name: "global console page in the European Sovereign Cloud partition",
+			id:   "/planes/aws/aws-eusc/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_role/my-role",
+			want: "https://console.amazonaws-eusc.eu/iam/home#/roles",
+		},
+		{
+			name: "region number with two digits",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/ap-southeast-10/providers/AWS.S3/Bucket/b",
+			want: "https://ap-southeast-10.console.aws.amazon.com/s3/buckets?region=ap-southeast-10",
+		},
+		{
+			name: "US ISO region has no link",
+			id:   "/planes/aws/aws-iso/accounts/123456789012/regions/us-iso-east-1/providers/AWS.S3/Bucket/b",
+		},
+		{
+			name: "US ISOB region has no link",
+			id:   "/planes/aws/aws-iso-b/accounts/123456789012/regions/us-isob-east-1/providers/AWS.S3/Bucket/b",
+		},
+		{
+			name: "EU ISOE region has no link",
+			id:   "/planes/aws/aws-iso-e/accounts/123456789012/regions/eu-isoe-west-1/providers/AWS.S3/Bucket/b",
+		},
+		{
+			name: "US ISOF region has no link",
+			id:   "/planes/aws/aws-iso-f/accounts/123456789012/regions/us-isof-south-1/providers/AWS.S3/Bucket/b",
+		},
+		{
+			name: "global console page in an ISO partition has no link",
+			id:   "/planes/aws/aws-iso/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/b",
+		},
+		{
 			name: "AWS scope has no link",
 			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2",
 		},

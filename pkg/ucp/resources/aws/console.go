@@ -24,14 +24,12 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-// consoleRegion matches commercial, GovCloud, and China region names such as us-west-2, us-gov-west-1, and cn-north-1.
-var consoleRegion = regexp.MustCompile(`^[a-z]{2}(-gov)?-[a-z]+-\d$`)
-
 const (
-	commercialConsoleHostFormat = "%s.console.aws.amazon.com"
-	commercialGlobalConsoleHost = "console.aws.amazon.com"
-	govCloudConsoleHost         = "console.amazonaws-us-gov.com"
-	chinaConsoleHost            = "console.amazonaws.cn"
+	commercialConsoleHostFormat  = "%s.console.aws.amazon.com"
+	commercialGlobalConsoleHost  = "console.aws.amazon.com"
+	govCloudConsoleHost          = "console.amazonaws-us-gov.com"
+	chinaConsoleHost             = "console.amazonaws.cn"
+	europeanSovereignConsoleHost = "console.amazonaws-eusc.eu"
 
 	// globalRegion is the region Radius uses for AWS resources whose ARN has no region, such as S3 buckets.
 	globalRegion = "global"
@@ -43,6 +41,23 @@ var globalConsoleHosts = map[string]string{
 	"aws":        commercialGlobalConsoleHost,
 	"aws-us-gov": govCloudConsoleHost,
 	"aws-cn":     chinaConsoleHost,
+	"aws-eusc":   europeanSovereignConsoleHost,
+}
+
+// regionConsoles maps the region names of each AWS partition to the console host for that partition, checked in order.
+// The patterns follow the partition region patterns of the AWS SDKs. The ISO partitions are left out because their
+// consoles are only reachable from private networks.
+var regionConsoles = []struct {
+	region *regexp.Regexp
+	host   string
+
+	// regional is true when host is a format string that takes the region, because the console has a host per region.
+	regional bool
+}{
+	{region: regexp.MustCompile(`^us-gov-[a-z]+-\d+$`), host: govCloudConsoleHost},
+	{region: regexp.MustCompile(`^cn-[a-z]+-\d+$`), host: chinaConsoleHost},
+	{region: regexp.MustCompile(`^eusc-[a-z]+-[a-z]+-\d+$`), host: europeanSovereignConsoleHost},
+	{region: regexp.MustCompile(`^[a-z]{2}-[a-z]+-\d+$`), host: commercialConsoleHostFormat, regional: true},
 }
 
 type consolePage struct {
@@ -195,7 +210,7 @@ var consolePages = map[string]consolePage{
 }
 
 // ConsoleURL returns a link to the AWS console list page of the service that owns the resource id, in the region the
-// ID names. GovCloud and China regions use their own consoles. A resource in the global region links only when its
+// ID names. GovCloud, China, and European Sovereign Cloud regions use the console of their partition. A resource in the global region links only when its
 // console page is global, such as S3 buckets, using the console of the partition the AWS plane names. It returns "" when
 // id is not an AWS resource, its type has no known page, or its region is missing or not a valid region name, so a
 // caller never shows a made-up link.
@@ -218,17 +233,16 @@ func ConsoleURL(id resources.ID) string {
 		return fmt.Sprintf("https://%s%s%s", host, page.path, page.hash)
 	}
 
-	if !consoleRegion.MatchString(region) {
-		return ""
+	for _, console := range regionConsoles {
+		if !console.region.MatchString(region) {
+			continue
+		}
+		host := console.host
+		if console.regional {
+			host = fmt.Sprintf(commercialConsoleHostFormat, region)
+		}
+		return fmt.Sprintf("https://%s%s?region=%s%s", host, page.path, region, page.hash)
 	}
 
-	host := fmt.Sprintf(commercialConsoleHostFormat, region)
-	switch {
-	case strings.Contains(region, "-gov-"):
-		host = govCloudConsoleHost
-	case strings.HasPrefix(region, "cn-"):
-		host = chinaConsoleHost
-	}
-
-	return fmt.Sprintf("https://%s%s?region=%s%s", host, page.path, region, page.hash)
+	return ""
 }

@@ -704,5 +704,6 @@ The CLI uses `GITHUB_HEAD_REF`, falling back to `GITHUB_REF_NAME`, as the source
   works for every type. The mapping lives in `pkg/ucp/resources/aws/console.go`
   and covers both `AWS.*` types and `Terraform.AWS/*` types from Terraform
   recipes. Resources in the `global` region link only when their console page
-  is global (S3 and IAM). GovCloud and China resources link to their own
-  partition's console. Types with no mapping get no link.
+  is global (S3 and IAM). GovCloud, China, and European Sovereign Cloud
+  resources link to their own partition's console. Resources in the ISO
+  partitions, and types with no mapping, get no link.
