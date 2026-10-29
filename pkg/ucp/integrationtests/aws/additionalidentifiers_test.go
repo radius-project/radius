@@ -52,7 +52,7 @@ func Test_GetAWSResourceWithPost_ImageID(t *testing.T) {
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, input *cloudcontrol.GetResourceInput, opts ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 			require.Equal(t, "AWS::EC2::Image", aws.ToString(input.TypeName))
-			require.Equal(t, arn, aws.ToString(input.Identifier))
+			require.JSONEq(t, `{"ImageId":"`+imageID+`"}`, aws.ToString(input.Identifier))
 			options := cloudcontrol.Options{}
 			for _, opt := range opts {
 				opt(&options)
@@ -120,7 +120,11 @@ func Test_GetAWSResourceWithPost_AdditionalIdentifierList(t *testing.T) {
 					"primaryIdentifier":["/properties/ModelArn"],
 					"additionalIdentifiers":[["/properties/ModelId"]]
 				}`)}, nil)
-			var calls []any
+			calls := []any{cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *cloudcontrol.GetResourceInput, _ ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
+					require.JSONEq(t, `{"ModelId":"`+modelID+`"}`, aws.ToString(input.Identifier))
+					return nil, &types.UnsupportedActionException{}
+				}).Call}
 			for i := range tt.pages {
 				calls = append(calls, cloudcontrolClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(_ context.Context, input *cloudcontrol.ListResourcesInput, opts ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourcesOutput, error) {

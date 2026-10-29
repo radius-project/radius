@@ -64,7 +64,7 @@ func Test_GetAWSResourceWithPost_ImageID(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, input *cloudcontrol.GetResourceInput, opts ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 			require.Equal(t, "AWS::EC2::Image", aws.ToString(input.TypeName))
-			require.Equal(t, identifier, aws.ToString(input.Identifier))
+			require.JSONEq(t, `{"ImageId":"ami-0829b74b2a8c619b7"}`, aws.ToString(input.Identifier))
 			options := cloudcontrol.Options{}
 			for _, opt := range opts {
 				opt(&options)
@@ -115,14 +115,6 @@ func Test_ResolveReadIdentifier(t *testing.T) {
 			name: "legacy primary without additional metadata", schema: `{"primaryIdentifier":["/properties/Name"]}`,
 			properties: map[string]any{"Name": "existing-name"}, identifier: "existing-name",
 		},
-		{
-			name: "China partition", schema: imageReadSchema, resourceType: "AWS::EC2::Image", region: "cn-north-1",
-			properties: map[string]any{"ImageId": "ami-123"}, identifier: "arn:aws-cn:ec2:cn-north-1::image/ami-123",
-		},
-		{
-			name: "GovCloud partition", schema: imageReadSchema, resourceType: "AWS::EC2::Image", region: "us-gov-west-1",
-			properties: map[string]any{"ImageId": "ami-123"}, identifier: "arn:aws-us-gov:ec2:us-gov-west-1::image/ami-123",
-		},
 		{name: "missing identifiers", schema: imageReadSchema, properties: map[string]any{}, status: http.StatusBadRequest},
 		{name: "incomplete additional set", schema: sessionReadSchema, properties: map[string]any{"SessionId": "session"}, status: http.StatusBadRequest},
 		{name: "null primary", schema: imageReadSchema, properties: map[string]any{"Arn": nil}, status: http.StatusBadRequest},
@@ -134,8 +126,9 @@ func Test_ResolveReadIdentifier(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			controller := &GetAWSResourceWithPost{}
-			id, response, err := controller.resolveReadIdentifier(t.Context(), tt.properties, tt.schema, tt.resourceType, tt.region)
+			id, resource, response, err := controller.resolveReadIdentifier(t.Context(), tt.properties, tt.schema, tt.resourceType, tt.region)
 			require.NoError(t, err)
+			require.Nil(t, resource)
 			require.Equal(t, tt.identifier, id)
 			if tt.status == 0 {
 				require.Nil(t, response)
@@ -274,7 +267,7 @@ func Test_ResolveReadIdentifier_List(t *testing.T) {
 					})
 			}
 			controller := &GetAWSResourceWithPost{awsClients: ucpaws.Clients{CloudControl: options.AWSCloudControlClient}}
-			id, response, err := controller.resolveReadIdentifier(t.Context(), map[string]any{"ModelId": "amazon.titan-embed-text-v2:0"}, modelReadSchema, "AWS::Bedrock::FoundationModel", "us-west-2")
+			id, response, err := controller.findReadIdentifier(t.Context(), map[string]any{"ModelId": "amazon.titan-embed-text-v2:0"}, []string{"/properties/ModelId"}, []string{"amazon.titan-embed-text-v2:0"}, "AWS::Bedrock::FoundationModel", "us-west-2")
 			if tt.errorContains != "" {
 				require.ErrorContains(t, err, tt.errorContains)
 				require.Empty(t, id)
@@ -308,7 +301,7 @@ func Test_ResolveReadIdentifier_CompositeAdditionalIdentifier(t *testing.T) {
 			}}, nil
 		})
 	controller := &GetAWSResourceWithPost{awsClients: ucpaws.Clients{CloudControl: options.AWSCloudControlClient}}
-	id, response, err := controller.resolveReadIdentifier(t.Context(), map[string]any{"WorkGroup": "workgroup", "SessionId": "session"}, sessionReadSchema, "AWS::Athena::Session", "us-west-2")
+	id, response, err := controller.findReadIdentifier(t.Context(), map[string]any{"WorkGroup": "workgroup", "SessionId": "session"}, []string{"/properties/WorkGroup", "/properties/SessionId"}, []string{"workgroup", "session"}, "AWS::Athena::Session", "us-west-2")
 	require.NoError(t, err)
 	require.Nil(t, response)
 	require.Equal(t, "matching", id)
@@ -322,17 +315,25 @@ func Test_ResolveReadIdentifier_AlternativeIdentifierSets(t *testing.T) {
 			{Identifier: aws.String("unrelated"), Properties: aws.String(`{"Parent":"parent","Child":"child"}`)},
 			{Identifier: aws.String("matching"), Properties: aws.String(`{"Name":"name"}`)},
 		}}, nil)
-	options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).
+	options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), &cloudcontrol.GetResourceInput{
+		TypeName: aws.String("AWS::Example::Resource"), Identifier: aws.String("unrelated"),
+	}, gomock.Any()).
 		DoAndReturn(func(_ context.Context, input *cloudcontrol.GetResourceInput, _ ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 			require.Equal(t, "unrelated", aws.ToString(input.Identifier))
 			return &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{
 				Identifier: aws.String("unrelated"), Properties: aws.String(`{"Parent":"parent","Child":"child"}`),
 			}}, nil
 		})
-	controller := &GetAWSResourceWithPost{awsClients: ucpaws.Clients{CloudControl: options.AWSCloudControlClient}}
+	options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, input *cloudcontrol.GetResourceInput, _ ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
+			require.JSONEq(t, `{"Name":"name"}`, aws.ToString(input.Identifier))
+			return nil, &types.UnsupportedActionException{}
+		})
+	controller := &GetAWSResourceWithPost{awsClients: ucpaws.Clients{CloudControl: options.AWSCloudControlClient}, retryer: retry.NewNoOpRetryer()}
 	schema := `{"primaryIdentifier":["/properties/Arn"],"additionalIdentifiers":[["/properties/Parent","/properties/Child"],["/properties/Name"]]}`
-	id, response, err := controller.resolveReadIdentifier(t.Context(), map[string]any{"Name": "name", "Parent": "parent"}, schema, "AWS::Example::Resource", "us-west-2")
+	id, resource, response, err := controller.resolveReadIdentifier(t.Context(), map[string]any{"Name": "name", "Parent": "parent"}, schema, "AWS::Example::Resource", "us-west-2")
 	require.NoError(t, err)
+	require.Nil(t, resource)
 	require.Nil(t, response)
 	require.Equal(t, "matching", id)
 }
@@ -346,11 +347,88 @@ func Test_IdentifierValues(t *testing.T) {
 	require.Error(t, err)
 }
 
+func Test_ResolveReadIdentifier_Native(t *testing.T) {
+	t.Parallel()
+	const arn = "arn:aws:bedrock:us-west-2::foundation-model/model"
+	for _, tt := range []struct {
+		name, schema, identifier, errorContains string
+		properties                              map[string]any
+		output                                  *cloudcontrol.GetResourceOutput
+		err                                     error
+		status                                  int
+	}{
+		{
+			name: "secondary ignores unrelated properties", schema: modelReadSchema,
+			properties: map[string]any{"ModelId": "model", "Other": "ignored"}, identifier: `{"ModelId":"model"}`,
+			output: &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{Identifier: aws.String(arn)}},
+		},
+		{
+			name: "composite secondary", schema: sessionReadSchema,
+			properties: map[string]any{"WorkGroup": "group", "SessionId": "session"}, identifier: `{"WorkGroup":"group","SessionId":"session"}`,
+			output: &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{Identifier: aws.String(arn)}},
+		},
+		{
+			name: "nested escaped properties", schema: `{"primaryIdentifier":["/properties/Arn"],"additionalIdentifiers":[["/properties/Parent/a~1b~0c","/properties/Parent/Other"]]}`,
+			properties: map[string]any{"Parent": map[string]any{"a/b~c": "value", "Other": "other", "Ignored": "ignored"}},
+			identifier: `{"Parent":{"a/b~c":"value","Other":"other"}}`,
+			output:     &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{Identifier: aws.String(arn)}},
+		},
+		{name: "not found does not list", err: &types.ResourceNotFoundException{}, status: http.StatusNotFound},
+		{name: "invalid request does not list", err: &types.InvalidRequestException{Message: aws.String("invalid secondary")}, errorContains: "invalid secondary"},
+		{name: "access error does not list", err: errors.New("access denied"), errorContains: "access denied"},
+		{name: "nil output", errorContains: "no primary identifier"},
+		{name: "nil description", output: &cloudcontrol.GetResourceOutput{}, errorContains: "no primary identifier"},
+		{name: "missing canonical identifier", output: &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{}}, errorContains: "no primary identifier"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if tt.schema == "" {
+				tt.schema = modelReadSchema
+				tt.properties = map[string]any{"ModelId": "model"}
+				tt.identifier = `{"ModelId":"model"}`
+			}
+			options := setupTest(t)
+			options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *cloudcontrol.GetResourceInput, opts ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
+					require.Equal(t, "AWS::Example::Resource", aws.ToString(input.TypeName))
+					require.JSONEq(t, tt.identifier, aws.ToString(input.Identifier))
+					config := cloudcontrol.Options{}
+					for _, opt := range opts {
+						opt(&config)
+					}
+					require.Equal(t, "us-west-2", config.Region)
+					return tt.output, tt.err
+				})
+			controller := &GetAWSResourceWithPost{awsClients: ucpaws.Clients{CloudControl: options.AWSCloudControlClient}, retryer: retry.NewNoOpRetryer()}
+			id, resource, response, err := controller.resolveReadIdentifier(t.Context(), tt.properties, tt.schema, "AWS::Example::Resource", "us-west-2")
+			if tt.errorContains != "" {
+				require.ErrorContains(t, err, tt.errorContains)
+				require.Empty(t, id)
+				require.Nil(t, resource)
+				require.Nil(t, response)
+			} else if tt.status != 0 {
+				require.NoError(t, err)
+				require.Empty(t, id)
+				require.Nil(t, resource)
+				require.NotNil(t, response)
+				w := httptest.NewRecorder()
+				require.NoError(t, response.Apply(t.Context(), w, httptest.NewRequest(http.MethodPost, "/", nil)))
+				require.Equal(t, tt.status, w.Code)
+			} else {
+				require.NoError(t, err)
+				require.Nil(t, response)
+				require.Equal(t, arn, id)
+				require.Same(t, tt.output, resource)
+			}
+		})
+	}
+}
+
 func Test_ResolveReadIdentifier_NonObjectParent(t *testing.T) {
 	t.Parallel()
 	controller := &GetAWSResourceWithPost{}
 	schema := `{"primaryIdentifier":["/properties/Parent/Name"]}`
-	id, response, err := controller.resolveReadIdentifier(t.Context(), map[string]any{"Parent": "not-an-object"}, schema, "AWS::Example::Resource", "us-west-2")
+	id, _, response, err := controller.resolveReadIdentifier(t.Context(), map[string]any{"Parent": "not-an-object"}, schema, "AWS::Example::Resource", "us-west-2")
 	require.NoError(t, err)
 	require.Empty(t, id)
 	require.NotNil(t, response)
@@ -360,13 +438,30 @@ func Test_ResolveReadIdentifier_NonObjectParent(t *testing.T) {
 	require.Contains(t, w.Body.String(), "Parent/Name")
 }
 
+func Test_ResolveReadIdentifier_NativeRetry(t *testing.T) {
+	t.Parallel()
+	options := setupTest(t)
+	const arn = "arn:aws:bedrock:us-west-2::foundation-model/model"
+	output := &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{Identifier: aws.String(arn)}}
+	gomock.InOrder(
+		options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &types.ResourceNotFoundException{}),
+		options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(output, nil),
+	)
+	controller := &GetAWSResourceWithPost{awsClients: ucpaws.Clients{CloudControl: options.AWSCloudControlClient}, retryer: retry.NewDefaultRetryer()}
+	id, resource, response, err := controller.resolveReadIdentifier(t.Context(), map[string]any{"ModelId": "model"}, modelReadSchema, "AWS::Bedrock::FoundationModel", "us-west-2")
+	require.NoError(t, err)
+	require.Nil(t, response)
+	require.Equal(t, arn, id)
+	require.Same(t, output, resource)
+}
+
 func Test_ResolveReadIdentifier_UnencodableProperties(t *testing.T) {
 	t.Parallel()
 	options := setupTest(t)
 	controller := &GetAWSResourceWithPost{awsClients: ucpaws.Clients{CloudControl: options.AWSCloudControlClient}}
-	id, response, err := controller.resolveReadIdentifier(t.Context(), map[string]any{
+	id, response, err := controller.findReadIdentifier(t.Context(), map[string]any{
 		"ModelId": "model", "Invalid": make(chan string),
-	}, modelReadSchema, "AWS::Bedrock::FoundationModel", "us-west-2")
+	}, []string{"/properties/ModelId"}, []string{"model"}, "AWS::Bedrock::FoundationModel", "us-west-2")
 	var unsupported *json.UnsupportedTypeError
 	require.ErrorAs(t, err, &unsupported)
 	require.Empty(t, id)
@@ -392,6 +487,7 @@ func Test_GetAWSResourceWithPost_IdentifierResolutionErrors(t *testing.T) {
 			options := setupTest(t)
 			options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.output, nil)
 			if tt.listErr != nil {
+				options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &types.UnsupportedActionException{})
 				options.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, tt.listErr)
 			}
 			controller, err := NewGetAWSResourceWithPost(armrpc_controller.Options{}, ucpaws.Clients{

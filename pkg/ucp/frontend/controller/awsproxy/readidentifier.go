@@ -26,8 +26,10 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
+	"github.com/radius-project/radius/pkg/retry"
 	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
 )
 
@@ -67,18 +69,18 @@ func identifierValues(properties map[string]any, identifiers []string) ([]string
 	return values, nil
 }
 
-func (p *GetAWSResourceWithPost) resolveReadIdentifier(ctx context.Context, properties map[string]any, schema, resourceType, region string) (string, armrpc_rest.Response, error) {
+func (p *GetAWSResourceWithPost) resolveReadIdentifier(ctx context.Context, properties map[string]any, schema, resourceType, region string) (string, *cloudcontrol.GetResourceOutput, armrpc_rest.Response, error) {
 	var identifiers readIdentifierSchema
 	if err := json.Unmarshal([]byte(schema), &identifiers); err != nil {
-		return "", armrpc_rest.NewBadRequestResponse(err.Error()), nil
+		return "", nil, armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 	primary, primaryErr := identifierValues(properties, identifiers.PrimaryIdentifier)
 	if primaryErr == nil {
-		return strings.Join(primary, "|"), nil, nil
+		return strings.Join(primary, "|"), nil, nil, nil
 	}
 	var missing *ucpaws.AWSMissingPropertyError
 	if !errors.As(primaryErr, &missing) {
-		return "", armrpc_rest.NewBadRequestResponse(primaryErr.Error()), nil
+		return "", nil, armrpc_rest.NewBadRequestResponse(primaryErr.Error()), nil
 	}
 
 	for _, additional := range identifiers.AdditionalIdentifiers {
@@ -86,32 +88,58 @@ func (p *GetAWSResourceWithPost) resolveReadIdentifier(ctx context.Context, prop
 		if err != nil {
 			continue
 		}
-		if resourceType == "AWS::EC2::Image" && len(identifiers.PrimaryIdentifier) == 1 &&
-			identifiers.PrimaryIdentifier[0] == "/properties/Arn" &&
-			len(additional) == 1 && additional[0] == "/properties/ImageId" {
-			// Verified with Cloud Control GetResource. The schema supplies neither a template nor a pattern.
-			return fmt.Sprintf("arn:%s:ec2:%s::image/%s", partitionForRegion(region), region, values[0]), nil, nil
+		secondary := map[string]any{}
+		for i, path := range additional {
+			parts := strings.Split(strings.TrimPrefix(path, "/properties/"), "/")
+			object := secondary
+			for j, part := range parts {
+				part = strings.ReplaceAll(strings.ReplaceAll(part, "~1", "/"), "~0", "~")
+				if j == len(parts)-1 {
+					object[part] = values[i]
+					break
+				}
+				if object[part] == nil {
+					object[part] = map[string]any{}
+				}
+				object = object[part].(map[string]any)
+			}
 		}
-		return p.findReadIdentifier(ctx, properties, additional, values, resourceType, region)
-	}
-	return "", armrpc_rest.NewBadRequestResponse(primaryErr.Error()), nil
-}
-
-func partitionForRegion(region string) string {
-	for _, partition := range []struct{ prefix, name string }{
-		{"cn-", "aws-cn"},
-		{"us-gov-", "aws-us-gov"},
-		{"us-iso-", "aws-iso"},
-		{"us-isob-", "aws-iso-b"},
-		{"eu-isoe-", "aws-iso-e"},
-		{"us-isof-", "aws-iso-f"},
-		{"eusc-", "aws-eusc"},
-	} {
-		if strings.HasPrefix(region, partition.prefix) {
-			return partition.name
+		identifier, err := json.Marshal(secondary)
+		if err != nil {
+			return "", nil, nil, err
 		}
+		var output *cloudcontrol.GetResourceOutput
+		err = p.retryer.RetryFunc(ctx, func(ctx context.Context) error {
+			var err error
+			output, err = p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
+				TypeName: aws.String(resourceType), Identifier: aws.String(string(identifier)),
+			}, CloudControlRegionOption(region))
+			if ucpaws.IsAWSResourceNotFoundError(err) {
+				return retry.RetryableError(err)
+			}
+			return err
+		})
+		var unsupported *types.UnsupportedActionException
+		if errors.As(err, &unsupported) {
+			// JSON secondary identifiers work for Image, FoundationModel, and VpnConnectionDeviceType
+			// in us-west-2. Only explicit unsupported-operation responses enable list fallback;
+			// authorization, validation, and not-found errors must not trigger a scan.
+			id, response, err := p.findReadIdentifier(ctx, properties, additional, values, resourceType, region)
+			return id, nil, response, err
+		}
+		if ucpaws.IsAWSResourceNotFoundError(err) {
+			return "", nil, armrpc_rest.NewNotFoundMessageResponse("No AWS resource matches the additional identifiers."), nil
+		}
+		if err != nil {
+			response, err := ucpaws.HandleAWSError(ctx, err)
+			return "", nil, response, err
+		}
+		if output == nil || output.ResourceDescription == nil || aws.ToString(output.ResourceDescription.Identifier) == "" {
+			return "", nil, nil, fmt.Errorf("Cloud Control GetResource returned no primary identifier for %s", resourceType)
+		}
+		return *output.ResourceDescription.Identifier, output, nil, nil
 	}
-	return "aws"
+	return "", nil, armrpc_rest.NewBadRequestResponse(primaryErr.Error()), nil
 }
 
 func (p *GetAWSResourceWithPost) findReadIdentifier(ctx context.Context, properties map[string]any, identifiers, values []string, resourceType, region string) (string, armrpc_rest.Response, error) {
