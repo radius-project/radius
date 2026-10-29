@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/retry"
 	goretry "github.com/sethvargo/go-retry"
 	helm "helm.sh/helm/v4/pkg/action"
@@ -67,6 +68,9 @@ var (
 	// helmChartPullBackoff returns the backoff for one chart pull. Each pull needs a new backoff because the
 	// retry window starts when the backoff is created. Tests can replace it.
 	helmChartPullBackoff = newChartPullBackoff
+
+	// logChartPull shows the user that a chart pull is retrying. Tests can replace it.
+	logChartPull = output.LogInfo
 )
 
 // chartPullAttemptTimeout returns how long one attempt to pull a chart can take. An attempt to pull from a
@@ -216,8 +220,15 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Con
 		chartRef = fmt.Sprintf("%s/%s", repoUrl, releaseName)
 	}
 
-	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: helmChartPullBackoff()})
+	// A pull can take minutes when it retries, so each retry tells the user why the previous attempt failed.
+	var attempt int
+	var attemptErr error
+	backoff := reportRetries(helmChartPullBackoff(), func() {
+		logChartPull("Downloading the %s chart failed (attempt %d), retrying: %v", releaseName, attempt, attemptErr)
+	})
+	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: backoff})
 	err = retryer.RetryFunc(ctx, func(context.Context) error {
+		attempt++
 		attemptOpts := pullopts
 		if oci {
 			// Each attempt needs a registry client with its own deadline. The pull gets a configuration of
@@ -231,6 +242,7 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(ctx context.Con
 
 		_, err := helmAction.HelmClient.RunHelmPull(attemptOpts, chartRef)
 		if err != nil && isTransientHelmChartError(err) {
+			attemptErr = err
 			return retry.RetryableError(err)
 		}
 		return err
@@ -416,17 +428,33 @@ func newChartPullSettings(stateDir string) *cli.EnvSettings {
 	return settings
 }
 
+// reportRetries returns a backoff that calls report before each retry. A retryer asks its backoff for a delay only
+// after an attempt fails with a retryable error, and it retries unless the backoff stops it.
+func reportRetries(b goretry.Backoff, report func()) goretry.Backoff {
+	return goretry.BackoffFunc(func() (time.Duration, bool) {
+		delay, stop := b.Next()
+		if !stop {
+			report()
+		}
+		return delay, stop
+	})
+}
+
 // newChartPullRegistryClient returns a registry client for one attempt to pull a chart from an OCI registry.
 // Each of its requests times out after chartPullRequestTimeout, and all of them end at the attempt's deadline.
-// It keeps Helm's default transport, which retries some failed requests, and Helm's credential handling.
+// It keeps Helm's default transport, which retries some failed requests, and Helm's credential handling. Like
+// Helm's CLI, it caches registry tokens, so an attempt fetches a token once rather than for each request.
 func newChartPullRegistryClient() (*registry.Client, error) {
-	return registry.NewClient(registry.ClientOptHTTPClient(&http.Client{
-		Transport: &deadlineTransport{
-			next:     registry.NewTransport(false),
-			deadline: time.Now().Add(chartPullAttemptTimeout()),
-		},
-		Timeout: chartPullRequestTimeout,
-	}))
+	return registry.NewClient(
+		registry.ClientOptEnableCache(true),
+		registry.ClientOptHTTPClient(&http.Client{
+			Transport: &deadlineTransport{
+				next:     registry.NewTransport(false),
+				deadline: time.Now().Add(chartPullAttemptTimeout()),
+			},
+			Timeout: chartPullRequestTimeout,
+		}),
+	)
 }
 
 // deadlineTransport ends requests, including reading their responses, at a deadline.
