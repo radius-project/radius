@@ -94,7 +94,7 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		requireRenderedContourValues(t, release, "false", `["--disable-feature=tlsroutes","--disable-feature=tcproutes","--disable-feature=backendtlspolicies"]`)
 		requireCRDsUnchanged(t, crdClient, traefikCRDs)
 
-		// rad upgrade kubernetes has no --contour-set flag. The upgrade keeps the values stored on the release.
+		// An upgrade without --contour-set keeps the values stored on the release.
 		require.NoError(t, impl.UpgradeRadius(t.Context(), stubClusterOptions(radiusChart, contourChart), testKubeContext))
 		release = getTestRelease(t, kubeconfig, contourReleaseName)
 		require.Equal(t, 2, release.Version)
@@ -105,9 +105,18 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		resetOptions := stubClusterOptions(radiusChart, contourChart)
 		resetOptions.ResetValues = true
 		err = impl.UpgradeRadius(t.Context(), resetOptions, testKubeContext)
-		require.ErrorContains(t, err, "run the upgrade without --reset-values")
+		require.ErrorContains(t, err, "Add this flag to the rad upgrade kubernetes command:\n      --contour-set '"+turnOffFeaturesForTraefikCRDs+"'")
+		require.ErrorContains(t, err, "you can instead run the upgrade without --reset-values")
 		require.Equal(t, 2, getTestRelease(t, kubeconfig, radiusReleaseName).Version)
 		require.Equal(t, 2, getTestRelease(t, kubeconfig, contourReleaseName).Version)
+
+		// The suggested rad upgrade kubernetes flag makes the same upgrade succeed.
+		resetOptions.Contour.SetArgs = []string{turnOffFeaturesForTraefikCRDs}
+		require.NoError(t, impl.UpgradeRadius(t.Context(), resetOptions, testKubeContext))
+		release = getTestRelease(t, kubeconfig, contourReleaseName)
+		require.Equal(t, 3, release.Version)
+		requireRenderedContourValues(t, release, "false", `["--disable-feature=tlsroutes","--disable-feature=tcproutes","--disable-feature=backendtlspolicies"]`)
+		requireCRDsUnchanged(t, crdClient, traefikCRDs)
 	})
 
 	t.Run("cluster without Gateway API CRDs", func(t *testing.T) {

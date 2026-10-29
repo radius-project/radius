@@ -89,7 +89,7 @@ func (i *Impl) planContourInstall(ctx context.Context, helmAction HelmAction, op
 	}
 
 	// ApplyHelmChart reinstalls an existing release with Helm's ResetThenReuseValues semantics.
-	return i.planContour(ctx, helmAction, options, kubeContext, existing, true)
+	return i.planContour(ctx, helmAction, options, kubeContext, installCommand, existing, true)
 }
 
 // planContourUpgrade plans the Contour upgrade for UpgradeRadius. It returns nil when Contour is not installed, because
@@ -101,17 +101,20 @@ func (i *Impl) planContourUpgrade(ctx context.Context, helmAction HelmAction, op
 	}
 
 	if existing == nil {
+		if len(options.SetArgs) > 0 || len(options.SetFileArgs) > 0 {
+			output.LogInfo("Contour is not installed, so Radius does not apply the Contour values.")
+		}
 		return nil, nil
 	}
 
-	return i.planContour(ctx, helmAction, options, kubeContext, existing, reuseValues)
+	return i.planContour(ctx, helmAction, options, kubeContext, upgradeCommand, existing, reuseValues)
 }
 
 // planContour prepares the Contour chart and its values, and checks that installing or upgrading Contour neither takes
-// over nor deletes Gateway API CRDs and that Contour can use the CRDs it does not install. existing is the Contour
-// release to upgrade, or nil to install Contour. reuseValues is true when Helm merges the values stored on existing
-// beneath the new values.
-func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options ContourChartOptions, kubeContext string, existing *releasev1.Release, reuseValues bool) (*contourPlan, error) {
+// over nor deletes Gateway API CRDs and that Contour can use the CRDs it does not install. command is the rad command
+// that the errors tell the user to run again. existing is the Contour release to upgrade, or nil to install Contour.
+// reuseValues is true when Helm merges the values stored on existing beneath the new values.
+func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options ContourChartOptions, kubeContext string, command string, existing *releasev1.Release, reuseValues bool) (*contourPlan, error) {
 	helmChart, helmConf, values, err := prepareContourChart(ctx, helmAction, options, kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare Contour Helm chart, err: %w", err)
@@ -130,7 +133,7 @@ func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options C
 		releaseNamespace: options.Namespace,
 		contourVersion:   strings.TrimPrefix(helmChart.Metadata.AppVersion, "v"),
 		crds:             crds,
-		upgrade:          existing != nil,
+		command:          command,
 		resetValues:      existing != nil && !reuseValues,
 	}
 	if support, found := contourGatewayAPISupportByVersion[check.contourVersion]; found {
@@ -150,7 +153,7 @@ func (i *Impl) planContour(ctx context.Context, helmAction HelmAction, options C
 	}
 
 	// The user's --contour-set and --contour-set-file values take precedence over this default.
-	setDefaultValue(values, check.defaultManageCRDs(), "gatewayAPI", "manageCRDs")
+	check.setManageCRDsDefault(values)
 
 	effectiveValues, err := effectiveContourValues(helmChart, values, reusedValues)
 	if err != nil {

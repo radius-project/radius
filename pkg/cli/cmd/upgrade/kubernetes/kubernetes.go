@@ -49,6 +49,11 @@ stored user-supplied values, and then overlays any --set / --set-file values pro
 current invocation. Pass --reset-values to opt out and use only the current --set flags plus
 the new chart's defaults (this mirrors 'helm upgrade --reset-values').
 
+When Contour is installed, the upgrade also upgrades it. Contour chart values can be set with
+'--contour-set' and '--contour-set-file'. They take precedence over the values stored on the Contour
+release and over the values that Radius sets, and --reset-values discards the stored Contour values too.
+Before it upgrades anything, Radius checks that Contour can use the Gateway API CRDs in the cluster.
+
 The upgrade process includes preflight checks to ensure the cluster is ready for upgrade.
 Preflight checks include:
 - Kubernetes connectivity and permissions
@@ -112,6 +117,10 @@ rad upgrade kubernetes --chart /root/radius/deploy/Chart
 # Discard previously-stored Helm values and upgrade using only the current --set flags
 # plus the new chart's defaults (mirrors 'helm upgrade --reset-values').
 rad upgrade kubernetes --reset-values
+
+# Upgrade Radius and Contour on a k3s cluster with Traefik, whose Gateway API CRDs lack TLSRoute,
+# TCPRoute, and BackendTLSPolicy v1alpha3, by turning off the Contour features that use them
+rad upgrade kubernetes --contour-set 'contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}'
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -124,7 +133,9 @@ rad upgrade kubernetes --reset-values
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 	cmd.Flags().BoolVar(&runner.SkipPreflight, "skip-preflight", false, "Skip preflight checks before upgrade (not recommended)")
 	cmd.Flags().BoolVar(&runner.PreflightOnly, "preflight-only", false, "Run only preflight checks without performing the upgrade")
-	cmd.Flags().BoolVar(&runner.ResetValues, "reset-values", false, "Discard values previously stored on the Helm release and use only the current --set / --set-file flags plus the new chart's defaults")
+	cmd.Flags().BoolVar(&runner.ResetValues, "reset-values", false, "Discard values previously stored on the Helm releases and use only the current --set / --set-file and --contour-set / --contour-set-file flags plus the new charts' defaults")
+	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set Contour chart values on the command line when Contour is installed (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set Contour chart values from files on the command line when Contour is installed (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 
 	return cmd, runner
 }
@@ -134,14 +145,16 @@ type Runner struct {
 	Helm   helm.Interface
 	Output output.Interface
 
-	KubeContext   string
-	Chart         string
-	Version       string
-	Set           []string
-	SetFile       []string
-	SkipPreflight bool
-	PreflightOnly bool
-	ResetValues   bool
+	KubeContext    string
+	Chart          string
+	Version        string
+	Set            []string
+	SetFile        []string
+	SkipPreflight  bool
+	PreflightOnly  bool
+	ResetValues    bool
+	ContourSet     []string
+	ContourSetFile []string
 }
 
 // NewRunner creates an instance of the runner for the `rad upgrade kubernetes` command.
@@ -208,6 +221,10 @@ func (r *Runner) Run(ctx context.Context) error {
 			ChartVersion: targetVersion,
 			SetArgs:      r.Set,
 			SetFileArgs:  r.SetFile,
+		},
+		Contour: helm.ChartOptions{
+			SetArgs:     r.ContourSet,
+			SetFileArgs: r.ContourSetFile,
 		},
 		ResetValues: r.ResetValues,
 	}

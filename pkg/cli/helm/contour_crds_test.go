@@ -20,6 +20,7 @@ import (
 	"errors"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -75,10 +76,10 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 		crds           []gatewayAPICRD
 		releaseCRDs    []string
 		unknownVersion bool
-		upgrade        bool
+		command        string
 		resetValues    bool
 		values         map[string]any
-		wantManageCRDs bool
+		wantManageCRDs any
 		wantErr        []string
 		wantNotErr     []string
 		wantWarning    bool
@@ -91,7 +92,7 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			name:           "CRDs installed by the Contour release",
 			crds:           contourBundleCRDs(),
 			releaseCRDs:    contourBundleCRDNames(),
-			upgrade:        true,
+			command:        upgradeCommand,
 			wantManageCRDs: true,
 		},
 		{
@@ -108,13 +109,14 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 				"tlsroutes.gateway.networking.k8s.io v1alpha2 (the CRD is not installed)",
 				"tcproutes.gateway.networking.k8s.io v1alpha2 (the CRD is not installed)",
 				"backendtlspolicies.gateway.networking.k8s.io v1alpha3 (the installed CRD serves v1)",
-				`belong to Helm release "traefik-crd" in namespace "kube-system"`,
+				`belong to Helm release "traefik-crd" in namespace "kube-system", so Contour uses them instead of installing its own.`,
 				"Contour then ignores TLSRoute, TCPRoute, and BackendTLSPolicy resources.",
 				"Add this flag to the rad install kubernetes command:",
 				"--contour-set 'contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}'",
+				"If you used rad init, run rad install kubernetes with this flag first, and then run rad init again.",
 				`--k3s-arg "--disable=traefik@server:*"`,
 			},
-			wantNotErr: []string{"grpcroutes", "gatewayclasses"},
+			wantNotErr: []string{"grpcroutes", "gatewayclasses", "Contour values set gatewayAPI.manageCRDs", "Remove the Contour value", "--reset-values"},
 		},
 		{
 			name:           "CRDs from the k3s Traefik chart with the unsupported features turned off",
@@ -133,23 +135,70 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			wantManageCRDs: false,
 		},
 		{
-			name:           "upgrade with CRDs from the k3s Traefik chart",
-			crds:           traefikGatewayAPICRDs(),
-			upgrade:        true,
+			name: "CRDs from the k3s Traefik chart with features turned off by a YAML string",
+			crds: traefikGatewayAPICRDs(),
+			values: map[string]any{
+				"contour": map[string]any{
+					"extraArgs": "- --disable-feature=tlsroutes\n- --disable-feature=tcproutes\n- --disable-feature=backendtlspolicies\n",
+				},
+			},
+			wantManageCRDs: false,
+		},
+		{
+			name: "contour.args as a YAML string keeps its arguments in the suggestion",
+			crds: traefikGatewayAPICRDs(),
+			values: map[string]any{
+				"contour": map[string]any{"args": "- serve\n- --incluster\n- --disable-feature=tlsroutes\n"},
+			},
 			wantManageCRDs: false,
 			wantErr: []string{
-				"Set this value on the Contour release:",
-				"contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}",
+				"--contour-set 'contour.args={serve,--incluster,--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}'",
 			},
-			wantNotErr: []string{"--contour-set", "--reset-values"},
+			wantNotErr: []string{"tlsroutes.gateway.networking.k8s.io v1alpha2"},
+		},
+		{
+			name: "contour.extraArgs that is not a list",
+			crds: traefikGatewayAPICRDs(),
+			values: map[string]any{
+				"contour": map[string]any{"extraArgs": "--disable-feature=tlsroutes"},
+			},
+			wantManageCRDs: false,
+			wantErr: []string{
+				"Radius cannot read your contour.extraArgs value as a list, so add these arguments to it:\n      --disable-feature=tlsroutes\n      --disable-feature=tcproutes\n      --disable-feature=backendtlspolicies",
+			},
+			wantNotErr: []string{"--contour-set", "rad init"},
+		},
+		{
+			name: "contour.args that is not a list",
+			crds: traefikGatewayAPICRDs(),
+			values: map[string]any{
+				"contour": map[string]any{"args": "serve --incluster"},
+			},
+			wantManageCRDs: false,
+			wantErr:        []string{"Radius cannot read your contour.args value as a list, so add these arguments to it:"},
+			wantNotErr:     []string{"--contour-set", "contour.args={"},
+		},
+		{
+			name:           "upgrade with CRDs from the k3s Traefik chart",
+			crds:           traefikGatewayAPICRDs(),
+			command:        upgradeCommand,
+			wantManageCRDs: false,
+			wantErr: []string{
+				"Add this flag to the rad upgrade kubernetes command:",
+				"--contour-set 'contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}'",
+			},
+			wantNotErr: []string{"--reset-values", "rad init", "rad install kubernetes"},
 		},
 		{
 			name:           "upgrade with --reset-values and CRDs from the k3s Traefik chart",
 			crds:           traefikGatewayAPICRDs(),
-			upgrade:        true,
+			command:        upgradeCommand,
 			resetValues:    true,
 			wantManageCRDs: false,
-			wantErr:        []string{"run the upgrade without --reset-values"},
+			wantErr: []string{
+				"Add this flag to the rad upgrade kubernetes command:",
+				"If you set this value when you installed Radius, you can instead run the upgrade without --reset-values.",
+			},
 		},
 		{
 			name:           "compatible CRDs installed without Helm",
@@ -179,7 +228,7 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			name:           "CRDs installed by the Contour release and then taken over by another release",
 			crds:           traefikGatewayAPICRDs(),
 			releaseCRDs:    contourBundleCRDNames(),
-			upgrade:        true,
+			command:        upgradeCommand,
 			wantManageCRDs: true,
 			wantErr:        []string{"have more than one owner"},
 		},
@@ -192,7 +241,7 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			name:           "CRDs installed by the Contour release and a foreign CRD that the chart does not install",
 			crds:           append(contourBundleCRDs(), newUnmanagedCRD("listenersets", "v1")),
 			releaseCRDs:    contourBundleCRDNames(),
-			upgrade:        true,
+			command:        upgradeCommand,
 			wantManageCRDs: true,
 		},
 		{
@@ -210,7 +259,7 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			name:           "gatewayAPI.manageCRDs=false set by the user with CRDs installed by the Contour release",
 			crds:           contourBundleCRDs(),
 			releaseCRDs:    contourBundleCRDNames(),
-			upgrade:        true,
+			command:        upgradeCommand,
 			values:         map[string]any{"gatewayAPI": map[string]any{"manageCRDs": false}},
 			wantManageCRDs: false,
 			wantErr:        []string{"make Helm delete these CRDs", "gateways.gateway.networking.k8s.io"},
@@ -225,7 +274,43 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			name:           "gatewayAPI.manageCRDs=false set by the user on a fresh cluster",
 			values:         map[string]any{"gatewayAPI": map[string]any{"manageCRDs": false}},
 			wantManageCRDs: false,
-			wantErr:        []string{"Contour does not install Gateway API CRDs because gatewayAPI.manageCRDs is false."},
+			wantErr: []string{
+				"Contour does not install Gateway API CRDs because the Contour values set gatewayAPI.manageCRDs to false.\nTo continue",
+				"\n  - Remove the Contour value that sets gatewayAPI.manageCRDs to false, so that Contour installs the Gateway API CRDs that it needs.",
+				"\n  - Install Gateway API CRDs that serve these versions.",
+			},
+			wantNotErr: []string{"k3s-arg", "instead of installing its own", "belong to", "Turn off the Contour features"},
+		},
+		{
+			name:           "gatewayAPI set to null by the user on a fresh cluster",
+			values:         map[string]any{"gatewayAPI": nil},
+			wantManageCRDs: nil,
+			wantErr:        []string{"Remove the Contour value that sets gatewayAPI.manageCRDs to false"},
+			wantNotErr:     []string{"k3s-arg"},
+		},
+		{
+			name:           "gatewayAPI.manageCRDs=false set by the user with CRDs from the k3s Traefik chart",
+			crds:           traefikGatewayAPICRDs(),
+			values:         map[string]any{"gatewayAPI": map[string]any{"manageCRDs": false}},
+			wantManageCRDs: false,
+			wantErr: []string{
+				"the Contour values set gatewayAPI.manageCRDs to false.",
+				`The Gateway API CRDs in this cluster belong to Helm release "traefik-crd" in namespace "kube-system".`,
+				"--contour-set 'contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}'",
+			},
+			// Radius would also reuse these CRDs, so removing the value does not help.
+			wantNotErr: []string{"Remove the Contour value", "k3s-arg", "instead of installing its own"},
+		},
+		{
+			name:           "gatewayAPI.manageCRDs=false set by the user with a foreign CRD that the chart does not install",
+			crds:           []gatewayAPICRD{newUnmanagedCRD("listenersets", "v1")},
+			values:         map[string]any{"gatewayAPI": map[string]any{"manageCRDs": false}},
+			wantManageCRDs: false,
+			wantErr: []string{
+				"The Gateway API CRDs in this cluster belong to an installer other than Helm.",
+				"Remove the Contour value that sets gatewayAPI.manageCRDs to false",
+			},
+			wantNotErr: []string{"k3s-arg"},
 		},
 		{
 			name:           "unknown Contour version with foreign CRDs",
@@ -253,8 +338,11 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 				contourVersion:   "1.32.0",
 				crds:             tt.crds,
 				releaseCRDs:      tt.releaseCRDs,
-				upgrade:          tt.upgrade,
+				command:          tt.command,
 				resetValues:      tt.resetValues,
+			}
+			if check.command == "" {
+				check.command = installCommand
 			}
 			if tt.unknownVersion {
 				check.contourVersion = "9.9.9"
@@ -264,8 +352,10 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			}
 
 			values := copyValues(tt.values)
-			setDefaultValue(values, check.defaultManageCRDs(), "gatewayAPI", "manageCRDs")
+			check.setManageCRDsDefault(values)
 			require.Equal(t, tt.wantManageCRDs, nestedValue(values, "gatewayAPI", "manageCRDs"))
+			_, valuesDecide := tt.values["gatewayAPI"]
+			require.Equal(t, valuesDecide, check.manageCRDsFromValues, "whether the Contour values decide gatewayAPI.manageCRDs")
 
 			warning, err := check.validate(values)
 			require.Equal(t, tt.wantWarning, warning != "", "warning: %q", warning)
@@ -287,17 +377,21 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 }
 
 // Test_gatewayAPICRDCheck_SuggestedFlagTurnsOffFeatures verifies that the flag the error suggests parses into the
-// Contour arguments that make the check pass.
+// Contour arguments that make the check pass, and that it keeps the existing arguments.
 func Test_gatewayAPICRDCheck_SuggestedFlagTurnsOffFeatures(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name     string
+		command  string
 		values   map[string]any
+		wantKey  string
 		wantArgs []any
 	}{
 		{
-			name: "no Contour arguments",
+			name:    "no Contour arguments",
+			command: installCommand,
+			wantKey: "contour.extraArgs",
 			wantArgs: []any{
 				"--disable-feature=tlsroutes",
 				"--disable-feature=tcproutes",
@@ -305,15 +399,57 @@ func Test_gatewayAPICRDCheck_SuggestedFlagTurnsOffFeatures(t *testing.T) {
 			},
 		},
 		{
-			name: "existing Contour arguments are kept",
+			name:    "no Contour arguments on upgrade",
+			command: upgradeCommand,
+			wantKey: "contour.extraArgs",
+			wantArgs: []any{
+				"--disable-feature=tlsroutes",
+				"--disable-feature=tcproutes",
+				"--disable-feature=backendtlspolicies",
+			},
+		},
+		{
+			name:    "existing Contour arguments are kept",
+			command: installCommand,
 			values: map[string]any{
 				"contour": map[string]any{
 					"extraArgs": []any{`--root-namespaces=team-a,team-b`, `--debug={x}\y`, "--disable-feature=tlsroutes"},
 				},
 			},
+			wantKey: "contour.extraArgs",
 			wantArgs: []any{
 				`--root-namespaces=team-a,team-b`,
 				`--debug={x}\y`,
+				"--disable-feature=tlsroutes",
+				"--disable-feature=tcproutes",
+				"--disable-feature=backendtlspolicies",
+			},
+		},
+		{
+			name:    "arguments from a YAML string are kept",
+			command: upgradeCommand,
+			values: map[string]any{
+				"contour": map[string]any{"extraArgs": "- --debug\n- --disable-feature=tcproutes\n"},
+			},
+			wantKey: "contour.extraArgs",
+			wantArgs: []any{
+				"--debug",
+				"--disable-feature=tcproutes",
+				"--disable-feature=tlsroutes",
+				"--disable-feature=backendtlspolicies",
+			},
+		},
+		{
+			name:    "contour.args keeps the serve argument",
+			command: installCommand,
+			values: map[string]any{
+				"contour": map[string]any{"args": []any{"serve", "--incluster", "--xds-port=8001"}},
+			},
+			wantKey: "contour.args",
+			wantArgs: []any{
+				"serve",
+				"--incluster",
+				"--xds-port=8001",
 				"--disable-feature=tlsroutes",
 				"--disable-feature=tcproutes",
 				"--disable-feature=backendtlspolicies",
@@ -332,35 +468,38 @@ func Test_gatewayAPICRDCheck_SuggestedFlagTurnsOffFeatures(t *testing.T) {
 				contourVersion:   "1.32.0",
 				support:          &support,
 				crds:             traefikGatewayAPICRDs(),
+				command:          tt.command,
 			}
 			values := copyValues(tt.values)
-			setDefaultValue(values, check.defaultManageCRDs(), "gatewayAPI", "manageCRDs")
+			check.setManageCRDsDefault(values)
 			_, err := check.validate(values)
 			require.Error(t, err)
 
-			match := regexp.MustCompile(`--contour-set '([^']*)'`).FindStringSubmatch(err.Error())
-			require.Len(t, match, 2, "the error must suggest a --contour-set flag: %s", err)
+			match := regexp.MustCompile(`Add this flag to the (rad [a-z]+ kubernetes) command:\n +--contour-set '([^']*)'`).FindStringSubmatch(err.Error())
+			require.Len(t, match, 3, "the error must suggest a --contour-set flag: %s", err)
+			require.Equal(t, tt.command, match[1])
 
 			suggested := map[string]any{}
-			require.NoError(t, strvals.ParseInto(match[1], suggested))
-			require.Equal(t, tt.wantArgs, nestedValue(suggested, "contour", "extraArgs"))
+			require.NoError(t, strvals.ParseInto(match[2], suggested))
+			require.Equal(t, tt.wantArgs, nestedValue(suggested, strings.Split(tt.wantKey, ".")...))
 
 			// Like --contour-set, the suggested value overrides the existing values and makes the check pass.
-			require.NoError(t, strvals.ParseInto(match[1], values))
+			require.NoError(t, strvals.ParseInto(match[2], values))
 			_, err = check.validate(values)
 			require.NoError(t, err)
 		})
 	}
 }
-
 func Test_contourArgsFromValues(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		values       map[string]any
-		wantKey      string
-		wantFeatures []string
+		name           string
+		values         map[string]any
+		wantKey        string
+		wantArgs       []any
+		wantFeatures   []string
+		wantUnreadable bool
 	}{
 		{
 			name:    "no arguments",
@@ -371,7 +510,10 @@ func Test_contourArgsFromValues(t *testing.T) {
 			values: map[string]any{"contour": map[string]any{"extraArgs": []any{
 				"--disable-feature=tlsroutes", "--debug", int64(5), "--disable-feature", "tcproutes", "--disable-feature",
 			}}},
-			wantKey:      "contour.extraArgs",
+			wantKey: "contour.extraArgs",
+			wantArgs: []any{
+				"--disable-feature=tlsroutes", "--debug", int64(5), "--disable-feature", "tcproutes", "--disable-feature",
+			},
 			wantFeatures: []string{"tlsroutes", "tcproutes"},
 		},
 		{
@@ -381,6 +523,7 @@ func Test_contourArgsFromValues(t *testing.T) {
 				"extraArgs": []any{"--disable-feature=tlsroutes"},
 			}},
 			wantKey:      "contour.args",
+			wantArgs:     []any{"serve", "--disable-feature=grpcroutes"},
 			wantFeatures: []string{"grpcroutes"},
 		},
 		{
@@ -390,12 +533,45 @@ func Test_contourArgsFromValues(t *testing.T) {
 				"extraArgs": []any{"--disable-feature=tlsroutes"},
 			}},
 			wantKey:      "contour.extraArgs",
+			wantArgs:     []any{"--disable-feature=tlsroutes"},
 			wantFeatures: []string{"tlsroutes"},
 		},
 		{
-			name:    "extraArgs that is not a list",
-			values:  map[string]any{"contour": map[string]any{"extraArgs": "--disable-feature=tlsroutes"}},
+			name:         "extraArgs as a YAML block list in a string",
+			values:       map[string]any{"contour": map[string]any{"extraArgs": "- --disable-feature=tlsroutes\n- --log-level=7\n- 5\n"}},
+			wantKey:      "contour.extraArgs",
+			wantArgs:     []any{"--disable-feature=tlsroutes", "--log-level=7", int64(5)},
+			wantFeatures: []string{"tlsroutes"},
+		},
+		{
+			name:         "args as a YAML flow list in a string",
+			values:       map[string]any{"contour": map[string]any{"args": "[serve, --disable-feature, tcproutes]"}},
+			wantKey:      "contour.args",
+			wantArgs:     []any{"serve", "--disable-feature", "tcproutes"},
+			wantFeatures: []string{"tcproutes"},
+		},
+		{
+			name:    "empty string",
+			values:  map[string]any{"contour": map[string]any{"extraArgs": " "}},
 			wantKey: "contour.extraArgs",
+		},
+		{
+			name:           "extraArgs that is a single argument instead of a list",
+			values:         map[string]any{"contour": map[string]any{"extraArgs": "--disable-feature=tlsroutes"}},
+			wantKey:        "contour.extraArgs",
+			wantUnreadable: true,
+		},
+		{
+			name:           "args in a string that is not YAML",
+			values:         map[string]any{"contour": map[string]any{"args": "[serve, --incluster"}},
+			wantKey:        "contour.args",
+			wantUnreadable: true,
+		},
+		{
+			name:           "extraArgs that is a table",
+			values:         map[string]any{"contour": map[string]any{"extraArgs": map[string]any{"debug": true}}},
+			wantKey:        "contour.extraArgs",
+			wantUnreadable: true,
 		},
 	}
 
@@ -405,7 +581,9 @@ func Test_contourArgsFromValues(t *testing.T) {
 
 			args := contourArgsFromValues(tt.values)
 			require.Equal(t, tt.wantKey, args.key)
+			require.Equal(t, tt.wantArgs, args.args)
 			require.Equal(t, tt.wantFeatures, args.disabledFeatures())
+			require.Equal(t, tt.wantUnreadable, args.unreadable)
 		})
 	}
 }
@@ -496,19 +674,22 @@ func Test_setDefaultValue(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name   string
-		values map[string]any
-		want   map[string]any
+		name    string
+		values  map[string]any
+		want    map[string]any
+		wantSet bool
 	}{
 		{
-			name:   "not set",
-			values: map[string]any{},
-			want:   map[string]any{"gatewayAPI": map[string]any{"manageCRDs": true}},
+			name:    "not set",
+			values:  map[string]any{},
+			want:    map[string]any{"gatewayAPI": map[string]any{"manageCRDs": true}},
+			wantSet: true,
 		},
 		{
-			name:   "parent table without the value",
-			values: map[string]any{"gatewayAPI": map[string]any{"other": "x"}},
-			want:   map[string]any{"gatewayAPI": map[string]any{"other": "x", "manageCRDs": true}},
+			name:    "parent table without the value",
+			values:  map[string]any{"gatewayAPI": map[string]any{"other": "x"}},
+			want:    map[string]any{"gatewayAPI": map[string]any{"other": "x", "manageCRDs": true}},
+			wantSet: true,
 		},
 		{
 			name:   "set to false",
@@ -531,7 +712,7 @@ func Test_setDefaultValue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			setDefaultValue(tt.values, true, "gatewayAPI", "manageCRDs")
+			require.Equal(t, tt.wantSet, setDefaultValue(tt.values, true, "gatewayAPI", "manageCRDs"))
 			require.Equal(t, tt.want, tt.values)
 		})
 	}

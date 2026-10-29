@@ -148,6 +148,7 @@ func Test_Helm_InstallRadius_ContourPreflightFailureInstallsNothing(t *testing.T
 	err := impl.InstallRadius(t.Context(), options, "test-context")
 	require.Error(t, err)
 	require.True(t, clierrors.IsFriendlyError(err), "rad install kubernetes must show the message as is: %v", err)
+	require.Contains(t, err.Error(), "If you used rad init, run rad install kubernetes with this flag first, and then run rad init again.")
 	require.Contains(t, err.Error(), "tlsroutes.gateway.networking.k8s.io v1alpha2 (the CRD is not installed)")
 	require.Contains(t, err.Error(), "--contour-set '"+turnOffFeaturesForTraefikCRDs+"'")
 	require.NotContains(t, err.Error(), "invalid ownership metadata")
@@ -214,7 +215,7 @@ func Test_Helm_InstallRadius_ListGatewayAPICRDsError(t *testing.T) {
 }
 
 // Test_Helm_UpgradeRadius_ReusesStoredContourValues verifies that the check uses the Contour values that Helm keeps
-// from the release, because rad upgrade kubernetes has no flag to set them again.
+// from the release, so an upgrade without --contour-set keeps the Contour features that the install turned off.
 func Test_Helm_UpgradeRadius_ReusesStoredContourValues(t *testing.T) {
 	t.Parallel()
 
@@ -268,12 +269,60 @@ func Test_Helm_UpgradeRadius_ResetValuesWithoutContourValuesFails(t *testing.T) 
 	require.Error(t, err)
 	require.True(t, clierrors.IsFriendlyError(err))
 	require.Contains(t, err.Error(), "tcproutes.gateway.networking.k8s.io v1alpha2 (the CRD is not installed)")
-	require.Contains(t, err.Error(), "run the upgrade without --reset-values")
+	require.Contains(t, err.Error(), "Add this flag to the rad upgrade kubernetes command:\n      --contour-set '"+turnOffFeaturesForTraefikCRDs+"'")
+	require.Contains(t, err.Error(), "you can instead run the upgrade without --reset-values")
 }
 
-// Test_Helm_InstallRadius_ContourOptionsReachHelm fails when rad install kubernetes passes a Contour option to
-// InstallRadius and InstallRadius ignores it, as it ignored --contour-set and --contour-set-file.
-func Test_Helm_InstallRadius_ContourOptionsReachHelm(t *testing.T) {
+// Test_Helm_UpgradeRadius_ContourValuesFromFlags verifies that rad upgrade kubernetes --contour-set values reach Helm
+// and pass the check, whether or not the upgrade reuses the values stored on the Contour release.
+func Test_Helm_UpgradeRadius_ContourValuesFromFlags(t *testing.T) {
+	t.Parallel()
+
+	for _, resetValues := range []bool{false, true} {
+		t.Run(fmt.Sprintf("resetValues=%t", resetValues), func(t *testing.T) {
+			t.Parallel()
+
+			client := NewMockHelmClient(gomock.NewController(t))
+			options := NewDefaultClusterOptions()
+			options.ResetValues = resetValues
+			options.Contour.SetArgs = []string{turnOffFeaturesForTraefikCRDs}
+			// The release has no stored Contour values, like one that a Radius version without the check installed.
+			contourRelease := &releasev1.Release{
+				Name:  options.Contour.ReleaseName,
+				Chart: newTestContourChart(),
+				Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
+			}
+
+			expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
+			client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(contourRelease, nil).Times(1)
+			expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
+			client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true, !resetValues, gomock.Any()).
+				Return(&releasev1.Release{}, nil).Times(1)
+			var contourValues map[string]any
+			client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, false, !resetValues, gomock.Any()).
+				DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, _ string, _ string, _ bool, _ bool, _ time.Duration) (*releasev1.Release, error) {
+					contourValues = vals
+					return &releasev1.Release{}, nil
+				}).Times(1)
+
+			impl := &Impl{
+				Helm:                           client,
+				configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
+				listGatewayAPICRDs:             staticGatewayAPICRDs(traefikGatewayAPICRDs()...),
+			}
+
+			require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
+			require.Equal(t, false, nestedValue(contourValues, "gatewayAPI", "manageCRDs"))
+			require.Equal(t, []any{"--disable-feature=tlsroutes", "--disable-feature=tcproutes", "--disable-feature=backendtlspolicies"},
+				nestedValue(contourValues, "contour", "extraArgs"))
+		})
+	}
+}
+
+// Test_Helm_ContourOptionsReachHelm fails when rad install kubernetes or rad upgrade kubernetes passes a Contour option
+// to InstallRadius or UpgradeRadius and the option does not change what Radius asks Helm to do, as InstallRadius
+// ignored --contour-set and --contour-set-file.
+func Test_Helm_ContourOptionsReachHelm(t *testing.T) {
 	t.Parallel()
 
 	setFile := filepath.Join(t.TempDir(), "value.txt")
@@ -286,42 +335,54 @@ func Test_Helm_InstallRadius_ContourOptionsReachHelm(t *testing.T) {
 		"SetFileArgs":  []string{"envoy.service.annotations.example=" + setFile},
 	}
 
-	defaults := PopulateDefaultClusterOptions(CLIClusterOptions{})
-	baseline := recordInstallRadius(t, defaults)
+	for _, upgrade := range []bool{false, true} {
+		operation := "InstallRadius"
+		if upgrade {
+			operation = "UpgradeRadius"
+		}
 
-	for _, field := range reflect.VisibleFields(reflect.TypeFor[ChartOptions]()) {
-		t.Run(field.Name, func(t *testing.T) {
+		t.Run(operation, func(t *testing.T) {
 			t.Parallel()
 
-			cliOptions := CLIClusterOptions{}
-			value := reflect.ValueOf(&cliOptions.Contour).Elem().FieldByIndex(field.Index)
-			if sample, found := samples[field.Name]; found {
-				value.Set(reflect.ValueOf(sample))
-			} else {
-				switch value.Kind() {
-				case reflect.Bool:
-					value.SetBool(true)
-				case reflect.String:
-					value.SetString("sample")
-				case reflect.Int64:
-					value.SetInt(int64(time.Minute))
-				default:
-					t.Fatalf("add a sample value for ChartOptions.%s", field.Name)
-				}
-			}
+			defaults := PopulateDefaultClusterOptions(CLIClusterOptions{})
+			baseline := recordHelmCalls(t, defaults, upgrade)
 
-			options := PopulateDefaultClusterOptions(cliOptions)
-			if reflect.DeepEqual(defaults, options) {
-				t.Skipf("PopulateDefaultClusterOptions does not pass ChartOptions.%s for Contour", field.Name)
-			}
+			for _, field := range reflect.VisibleFields(reflect.TypeFor[ChartOptions]()) {
+				t.Run(field.Name, func(t *testing.T) {
+					t.Parallel()
 
-			require.NotEqual(t, baseline, recordInstallRadius(t, options), "InstallRadius ignores the Contour option %s", field.Name)
+					cliOptions := CLIClusterOptions{}
+					value := reflect.ValueOf(&cliOptions.Contour).Elem().FieldByIndex(field.Index)
+					if sample, found := samples[field.Name]; found {
+						value.Set(reflect.ValueOf(sample))
+					} else {
+						switch value.Kind() {
+						case reflect.Bool:
+							value.SetBool(true)
+						case reflect.String:
+							value.SetString("sample")
+						case reflect.Int64:
+							value.SetInt(int64(time.Minute))
+						default:
+							t.Fatalf("add a sample value for ChartOptions.%s", field.Name)
+						}
+					}
+
+					options := PopulateDefaultClusterOptions(cliOptions)
+					if reflect.DeepEqual(defaults, options) {
+						t.Skipf("PopulateDefaultClusterOptions does not pass ChartOptions.%s for Contour", field.Name)
+					}
+
+					require.NotEqual(t, baseline, recordHelmCalls(t, options, upgrade), "%s ignores the Contour option %s", operation, field.Name)
+				})
+			}
 		})
 	}
 }
 
-// recordInstallRadius runs InstallRadius on a fresh cluster and records what it asks Helm to do.
-func recordInstallRadius(t *testing.T, options ClusterOptions) []string {
+// recordHelmCalls runs InstallRadius on a fresh cluster, or UpgradeRadius on a cluster with Contour installed, and
+// records what it asks Helm to do.
+func recordHelmCalls(t *testing.T, options ClusterOptions, upgrade bool) []string {
 	t.Helper()
 
 	var calls []string
@@ -341,10 +402,21 @@ func recordInstallRadius(t *testing.T, options ClusterOptions) []string {
 			calls = append(calls, "load "+chartPath)
 			return newTestContourChart(), nil
 		}).AnyTimes()
-	client.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).Return(nil, driver.ErrReleaseNotFound).AnyTimes()
+	client.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ *helm.Configuration, releaseName string) (*releasev1.Release, error) {
+			if upgrade && releaseName == contourReleaseName {
+				return &releasev1.Release{Name: releaseName, Chart: newTestContourChart(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}, nil
+			}
+			return nil, driver.ErrReleaseNotFound
+		}).AnyTimes()
 	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, releaseName string, namespace string, wait bool, timeout time.Duration) (*releasev1.Release, error) {
 			calls = append(calls, fmt.Sprintf("install %s namespace=%s wait=%t timeout=%s values=%v", releaseName, namespace, wait, timeout, vals))
+			return &releasev1.Release{}, nil
+		}).AnyTimes()
+	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, releaseName string, namespace string, wait bool, reuseValues bool, timeout time.Duration) (*releasev1.Release, error) {
+			calls = append(calls, fmt.Sprintf("upgrade %s namespace=%s wait=%t reuse=%t timeout=%s values=%v", releaseName, namespace, wait, reuseValues, timeout, vals))
 			return &releasev1.Release{}, nil
 		}).AnyTimes()
 
@@ -353,7 +425,11 @@ func recordInstallRadius(t *testing.T, options ClusterOptions) []string {
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
 		listGatewayAPICRDs:             staticGatewayAPICRDs(),
 	}
-	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
+	if upgrade {
+		require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
+	} else {
+		require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
+	}
 
 	return calls
 }

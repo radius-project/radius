@@ -44,6 +44,10 @@ const (
 	helmReleaseNamespaceAnnotation = "meta.helm.sh/release-namespace"
 
 	crdListPageSize = 100
+
+	// installCommand and upgradeCommand are the rad commands that install and upgrade Contour.
+	installCommand = "rad install kubernetes"
+	upgradeCommand = "rad upgrade kubernetes"
 )
 
 // gatewayAPIRequirement is a Gateway API resource version that Contour watches.
@@ -220,11 +224,20 @@ type gatewayAPICRDCheck struct {
 	// upgrade stops rendering them.
 	releaseCRDs []string
 
-	// upgrade is true when the existing Contour release is upgraded instead of installed.
-	upgrade bool
+	// command is the rad command that installs or upgrades Contour, which the errors tell the user to run again.
+	command string
 
 	// resetValues is true when an upgrade discards the values stored on the Contour release.
 	resetValues bool
+
+	// manageCRDsFromValues is true when the Contour values, not Radius, decide gatewayAPI.manageCRDs.
+	manageCRDsFromValues bool
+}
+
+// setManageCRDsDefault sets gatewayAPI.manageCRDs in values to the Radius default unless the Contour values already
+// decide it, and records which of them decides.
+func (c *gatewayAPICRDCheck) setManageCRDsDefault(values map[string]any) {
+	c.manageCRDsFromValues = !setDefaultValue(values, c.defaultManageCRDs(), "gatewayAPI", "manageCRDs")
 }
 
 // contourCRDs returns the Gateway API CRDs that the Contour release installed or that Helm can adopt into it.
@@ -383,28 +396,61 @@ func (c gatewayAPICRDCheck) requirementsError(unmet []unmetRequirement, args con
 		}
 	}
 
-	if owners := c.foreignOwners(); len(owners) > 0 {
-		fmt.Fprintf(&message, "The Gateway API CRDs in this cluster belong to %s, so Contour uses them instead of installing its own.\n", joinWords(owners))
+	// When Radius chose not to install the CRDs, other CRDs are in the way. Otherwise the Contour values chose it.
+	owners := c.foreignOwners()
+	if c.manageCRDsFromValues {
+		message.WriteString("Contour does not install Gateway API CRDs because the Contour values set gatewayAPI.manageCRDs to false.\n")
+		if len(owners) > 0 {
+			fmt.Fprintf(&message, "The Gateway API CRDs in this cluster belong to %s.\n", joinWords(owners))
+		}
 	} else {
-		message.WriteString("Contour does not install Gateway API CRDs because gatewayAPI.manageCRDs is false.\n")
+		fmt.Fprintf(&message, "The Gateway API CRDs in this cluster belong to %s, so Contour uses them instead of installing its own.\n", joinWords(owners))
 	}
 
-	message.WriteString("To continue, do one of the following:\n")
-	message.WriteString("  - Install Gateway API CRDs that serve these versions.\n")
-	if len(features) == len(unmet) {
-		fmt.Fprintf(&message, "  - Turn off the Contour features that use these resources. Contour then ignores %s resources.", joinWords(kinds))
-		if c.upgrade {
-			fmt.Fprintf(&message, " Set this value on the Contour release:\n      %s\n", args.withDisabledFeatures(features))
-			if c.resetValues {
-				message.WriteString("    This upgrade uses --reset-values, which discards the values stored on the Contour release. If you set this value when you installed Radius, run the upgrade without --reset-values.\n")
-			}
-		} else {
-			fmt.Fprintf(&message, " Add this flag to the rad install kubernetes command:\n      --contour-set '%s'\n", args.withDisabledFeatures(features))
-		}
+	var remedies []string
+	if c.manageCRDsFromValues && c.defaultManageCRDs() {
+		remedies = append(remedies, "Remove the Contour value that sets gatewayAPI.manageCRDs to false, so that Contour installs the Gateway API CRDs that it needs.")
 	}
-	message.WriteString(`  - Use a cluster without preinstalled Gateway API CRDs. For example, create the k3d cluster with --k3s-arg "--disable=traefik@server:*".`)
+	remedies = append(remedies, "Install Gateway API CRDs that serve these versions.")
+	if len(features) == len(unmet) {
+		remedies = append(remedies, c.turnOffFeaturesRemedy(features, kinds, args))
+	}
+	if !c.manageCRDsFromValues {
+		remedies = append(remedies, `Use a cluster without preinstalled Gateway API CRDs. For example, create the k3d cluster with --k3s-arg "--disable=traefik@server:*".`)
+	}
+
+	message.WriteString("To continue, do one of the following:")
+	for _, remedy := range remedies {
+		message.WriteString("\n  - " + remedy)
+	}
 
 	return clierrors.Message("%s", message.String())
+}
+
+// turnOffFeaturesRemedy explains how to turn off the Contour features that use resources without a matching CRD.
+func (c gatewayAPICRDCheck) turnOffFeaturesRemedy(features []string, kinds []string, args contourArgs) string {
+	var remedy strings.Builder
+	fmt.Fprintf(&remedy, "Turn off the Contour features that use these resources. Contour then ignores %s resources.", joinWords(kinds))
+
+	// A value that Radius cannot read as a list cannot be extended safely, for example without dropping the serve
+	// argument from contour.args.
+	if args.unreadable {
+		fmt.Fprintf(&remedy, " Radius cannot read your %s value as a list, so add these arguments to it:", args.key)
+		for _, feature := range features {
+			remedy.WriteString("\n      --disable-feature=" + feature)
+		}
+		return remedy.String()
+	}
+
+	fmt.Fprintf(&remedy, " Add this flag to the %s command:\n      --contour-set '%s'", c.command, args.withDisabledFeatures(features))
+	if c.resetValues {
+		remedy.WriteString("\n    This upgrade uses --reset-values, which discards the values stored on the Contour release. If you set this value when you installed Radius, you can instead run the upgrade without --reset-values.")
+	}
+	if c.command == installCommand {
+		remedy.WriteString("\n    If you used rad init, run rad install kubernetes with this flag first, and then run rad init again.")
+	}
+
+	return remedy.String()
 }
 
 // foreignOwners describes who owns the Gateway API CRDs that do not belong to the Contour release.
@@ -424,18 +470,44 @@ type contourArgs struct {
 	// key is the chart value that holds args.
 	key  string
 	args []any
+
+	// unreadable is true when the value is set but Radius cannot read it as a list of arguments.
+	unreadable bool
 }
 
 // contourArgsFromValues returns the Contour arguments that the chart renders. The chart uses contour.args instead of
 // its default arguments when contour.args is set, and otherwise appends contour.extraArgs to the default arguments.
 func contourArgsFromValues(values map[string]any) contourArgs {
+	key, value := "contour.extraArgs", nestedValue(values, "contour", "extraArgs")
 	if args := nestedValue(values, "contour", "args"); isTrue(args) {
-		list, _ := args.([]any)
-		return contourArgs{key: "contour.args", args: list}
+		key, value = "contour.args", args
 	}
 
-	list, _ := nestedValue(values, "contour", "extraArgs").([]any)
-	return contourArgs{key: "contour.extraArgs", args: list}
+	list, ok := argumentList(value)
+	return contourArgs{key: key, args: list, unreadable: !ok}
+}
+
+// argumentList returns the list of arguments in value. The chart renders a string value as YAML, so a string that
+// holds a YAML list is a list of arguments too. It returns false when value is set but is not a list.
+func argumentList(value any) ([]any, bool) {
+	switch typed := value.(type) {
+	case nil:
+		return nil, true
+	case []any:
+		return typed, true
+	case string:
+		if strings.TrimSpace(typed) == "" {
+			return nil, true
+		}
+
+		var list []any
+		if err := yaml.Unmarshal([]byte(typed), &list); err != nil {
+			return nil, false
+		}
+		return list, true
+	default:
+		return nil, false
+	}
 }
 
 // disabledFeatures returns the features that --disable-feature=<name> or --disable-feature <name> turns off.
@@ -509,8 +581,8 @@ func copyValue(value any) any {
 }
 
 // setDefaultValue sets the value at path unless values already set it or replaced one of its parent tables, for
-// example with null.
-func setDefaultValue(values map[string]any, value any, path ...string) {
+// example with null. It reports whether it set the value.
+func setDefaultValue(values map[string]any, value any, path ...string) bool {
 	parent := values
 	for _, key := range path[:len(path)-1] {
 		child, found := parent[key]
@@ -523,14 +595,17 @@ func setDefaultValue(values map[string]any, value any, path ...string) {
 
 		table, ok := child.(map[string]any)
 		if !ok {
-			return
+			return false
 		}
 		parent = table
 	}
 
-	if _, found := parent[path[len(path)-1]]; !found {
-		parent[path[len(path)-1]] = value
+	if _, found := parent[path[len(path)-1]]; found {
+		return false
 	}
+
+	parent[path[len(path)-1]] = value
+	return true
 }
 
 // nestedValue returns the value at path, or nil when it is not set.
