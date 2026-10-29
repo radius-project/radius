@@ -17,6 +17,7 @@ limitations under the License.
 package kubernetes
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -231,6 +232,72 @@ func Test_Run_ContourFlags(t *testing.T) {
 	}
 }
 
+// Test_Run_RadiusInstalledWithoutContour verifies that rad install kubernetes tells the user how to install Contour
+// when an earlier install stopped after Radius, because it does not change an existing installation.
+func Test_Run_RadiusInstalledWithoutContour(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		runner Runner
+		// wantCommand is the suggested command, or empty when Radius suggests none.
+		wantCommand string
+	}{
+		{
+			name:        "no flags",
+			wantCommand: "rad install kubernetes --reinstall",
+		},
+		{
+			name: "Contour flags",
+			runner: Runner{
+				KubeContext:    "k3d-demo",
+				ContourChart:   "/charts/contour",
+				ContourSet:     []string{"contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes}"},
+				ContourSetFile: []string{"envoy.service.annotations.example=/path/to/value.txt"},
+			},
+			wantCommand: `rad install kubernetes --reinstall --kubecontext "k3d-demo" --contour-chart "/charts/contour" ` +
+				`--contour-set "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes}" ` +
+				`--contour-set-file "envoy.service.annotations.example=/path/to/value.txt"`,
+		},
+		{
+			name:   "Contour skipped",
+			runner: Runner{ContourDisabled: true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			helmMock := helm.NewMockInterface(gomock.NewController(t))
+			outputMock := &output.MockOutput{}
+			runner := tt.runner
+			runner.Helm = helmMock
+			runner.Output = outputMock
+			helmMock.EXPECT().CheckRadiusInstall(runner.KubeContext).
+				Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.62.0"}, nil).
+				Times(1)
+			// Nothing is installed.
+
+			require.NoError(t, runner.Run(t.Context()))
+
+			var logs []string
+			for _, write := range outputMock.Writes {
+				log, ok := write.(output.LogOutput)
+				require.True(t, ok)
+				logs = append(logs, fmt.Sprintf(log.Format, log.Params...))
+			}
+			require.Equal(t, "Found existing Radius installation. Use '--reinstall' to force reinstallation.", logs[0])
+			if tt.wantCommand == "" {
+				require.Len(t, logs, 1)
+				return
+			}
+			require.Len(t, logs, 2)
+			require.Contains(t, logs[1], "Contour is not installed. To install Contour, run:\n    "+tt.wantCommand+"\n")
+			require.Contains(t, logs[1], "suggests the --contour-set values to add.")
+		})
+	}
+}
 func Test_Run(t *testing.T) {
 	t.Parallel()
 	t.Run("Success: Install", func(t *testing.T) {
@@ -291,7 +358,7 @@ func Test_Run(t *testing.T) {
 		}
 
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
-			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
+			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", ContourInstalled: true}, nil).
 			Times(1)
 
 		err := runner.Run(ctx)
