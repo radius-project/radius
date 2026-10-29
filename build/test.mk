@@ -71,6 +71,16 @@ test-local-functional-runner: ## Tests local functional runner safety without in
 
 test: test-local-functional-runner
 
+.PHONY: test-contour-coexistence
+test-contour-coexistence: build-rad ## Verify Contour and Traefik HTTP ingress in a disposable k3d cluster (opt-in).
+	@bash ./build/scripts/contour-coexistence.sh "$(BINS_OUT_DIR_$(GOOS)_$(GOARCH))/rad"
+
+.PHONY: test-contour-coexistence-runner
+test-contour-coexistence-runner: ## Test coexistence runner safety and assertions without infrastructure.
+	@bash ./build/scripts/contour-coexistence_test.sh
+
+test: test-contour-coexistence-runner
+
 .PHONY: test-publish-recipes
 test-publish-recipes: ## Tests recipe publishing without a registry or cluster
 	@bash ./.github/scripts/publish-recipes_test.sh

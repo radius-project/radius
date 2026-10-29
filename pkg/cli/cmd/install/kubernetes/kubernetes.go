@@ -69,9 +69,13 @@ rad install kubernetes --kubecontext mycluster
 # Install Radius without Contour ingress controller
 rad install kubernetes --skip-contour-install
 
-# Install Radius on a k3s cluster with Traefik, whose Gateway API CRDs lack TLSRoute, TCPRoute, and
-# BackendTLSPolicy v1alpha3, by turning off the Contour features that use them
-rad install kubernetes --contour-set "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}"
+# Install Radius alongside k3s Traefik: disable features unsupported by its Gateway API CRDs
+# and avoid ServiceLB's host-port conflict with Traefik on 80/443.
+# For k3d, also publish node ports 8080/8443 to the host; changing only the host port is insufficient.
+# These settings do not enable TLSRoute, TCPRoute, or BackendTLSPolicy support.
+rad install kubernetes \
+  --contour-set "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}" \
+  --contour-set envoy.hostNetwork=false,envoy.service.ports.http=8080,envoy.service.ports.https=8443
 
 # Install Radius with overrides in the current Kubernetes context
 rad install kubernetes --set key=value
