@@ -44,9 +44,12 @@ var globalConsoleHosts = map[string]string{
 	"aws-eusc":   europeanSovereignConsoleHost,
 }
 
-// regionConsoles maps the region names of each AWS partition to the console host for that partition, checked in order.
-// The patterns follow the partition region patterns of the AWS SDKs. The ISO partitions are left out because their
-// consoles are only reachable from private networks.
+// regionConsoles maps the region names of each AWS partition to the console host for that partition. The patterns
+// follow the partition region patterns of the AWS SDKs. The ISO partitions are left out because their consoles are only
+// reachable from private networks.
+//
+// The first matching entry wins, so the commercial entry must stay last: China regions such as cn-north-1 also match
+// the commercial pattern and would otherwise link to the commercial console.
 var regionConsoles = []struct {
 	region *regexp.Regexp
 	host   string
@@ -210,10 +213,10 @@ var consolePages = map[string]consolePage{
 }
 
 // ConsoleURL returns a link to the AWS console list page of the service that owns the resource id, in the region the
-// ID names. GovCloud, China, and European Sovereign Cloud regions use the console of their partition. A resource in the global region links only when its
-// console page is global, such as S3 buckets, using the console of the partition the AWS plane names. It returns "" when
-// id is not an AWS resource, its type has no known page, or its region is missing or not a valid region name, so a
-// caller never shows a made-up link.
+// ID names. GovCloud, China, and European Sovereign Cloud regions use the console of their partition. A resource in the
+// global region links only when its console page is global, such as S3 buckets, using the console of the partition
+// the AWS plane names. It returns "" when id is not an AWS resource, its type has no known page, or its region is
+// missing or not a valid region name, so a caller never shows a made-up link.
 func ConsoleURL(id resources.ID) string {
 	if !IsAWSResource(id) {
 		return ""
@@ -239,7 +242,7 @@ func ConsoleURL(id resources.ID) string {
 		}
 		host := console.host
 		if console.regional {
-			host = fmt.Sprintf(commercialConsoleHostFormat, region)
+			host = fmt.Sprintf(console.host, region)
 		}
 		return fmt.Sprintf("https://%s%s?region=%s%s", host, page.path, region, page.hash)
 	}
