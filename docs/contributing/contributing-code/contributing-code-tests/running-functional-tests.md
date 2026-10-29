@@ -79,32 +79,6 @@ Check `make --version`, `openssl version`, `curl --version`, and `envsubst --ver
 
 ## Steps
 
-### Test Contour and Traefik coexistence
-
-For a focused ingress installation check, run this opt-in target independently of the full functional suite:
-
-```bash
-make test-contour-coexistence
-```
-
-It needs Go, GNU Make, Bash, a local Docker daemon running Linux containers, k3d, kubectl, Helm, jq, curl, and network access to the public chart/image registries. It does **not** need the Bicep extension, locally built service images, cloud credentials, a registry certificate, or `sudo` setup from the full-suite workflow. On arm64, Docker must support any amd64-only images in the released Radius chart.
-
-The target builds this checkout's `rad` CLI and uses it to install the pinned released Radius chart `0.62.0` and Contour chart `0.1.0` (Contour 1.32.0). It creates a uniquely named disposable k3d cluster using `rancher/k3s:v1.35.5-k3s1`, leaving bundled Traefik enabled. A private kubeconfig, Radius home, and Helm configuration prevent changes to your current context/workspace. Docker chooses unused loopback HTTP host ports, printed by the script, that map to node port 80 for Traefik and 8080 for Contour.
-
-The test proves Traefik Ingress HTTP works before and after the **actual CLI installation**, and checks that Contour's Envoy Service uses ports 8080/8443 with host networking disabled and a LoadBalancer address. It attaches an HTTPRoute to the CLI-created `radius-system/radius` Contour Gateway, requires current `Accepted=True` and `ResolvedRefs=True` conditions, checks an expected backend response through the host-published Contour port, and compares shared Gateway API CRD identities and Helm ownership before/after installation. `Programmed=True` alone is not a pass.
-
-The script has bounded readiness/HTTP retries and prints pods, Services, events, routes, and Contour logs on failure. On success, failure, or interruption it deletes only its own cluster and temporary configuration, including credentials. A cleanup error fails the run and prints the exact cluster name to remove. It does not retain a cluster for debugging or change Traefik's values.
-
-This is an HTTP networking smoke test, not the full application suite or proof of TLS/TCP parity. The explicit compatibility settings disable Contour's TLSRoute, TCPRoute, and BackendTLSPolicy support on this CRD set. See [installation troubleshooting](../contributing-code-control-plane/troubleshooting-installation.md#contour-is-ready-but-external-http-reaches-traefik-or-times-out) for fresh-install/upgrade commands and the distinction between shared-CRD failures and ServiceLB port contention.
-
-Run the infrastructure-free runner checks separately:
-
-```bash
-make test-contour-coexistence-runner
-```
-
-These mock commands exercise isolation, override propagation, external-response and route assertions, failure handling, and cleanup. Only the mock checks run under `make test`; the real cluster test has no scheduled CI workflow.
-
 ### 1. Generate the Radius Bicep extension
 
 From the repository root, run:

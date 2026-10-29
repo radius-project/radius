@@ -143,7 +143,7 @@ Traefik remains reachable on host ports 18080/18443; Contour is exposed on 18081
 
 Radius still creates the Contour `GatewayClass` and the `radius-system/radius` Gateway; default HTTPRoutes, including those emitted by the `Radius.Compute/routes` recipe, remain attached to Contour, not Traefik. Legacy `Applications.Core/gateways` uses Contour HTTPProxy instead of HTTPRoute; the Gateway API feature-disable flags do not describe HTTPProxy's TLS capabilities. This workaround is not a switch to Traefik for either API.
 
-Verify a known application response through each published HTTP port with the appropriate Host header, for example `curl --fail -H 'Host: radius.test' http://127.0.0.1:18081/` for an HTTPRoute with that hostname. Require `Accepted=True` and `ResolvedRefs=True` on the route's Contour parent, a populated Envoy LoadBalancer address, and the expected response body. The [opt-in coexistence smoke test](../contributing-code-tests/running-functional-tests.md#test-contour-and-traefik-coexistence) creates both routes and checks them before cleaning up.
+Verify a known application response through each published HTTP port with the appropriate Host header, for example `curl --fail -H 'Host: radius.test' http://127.0.0.1:18081/` for an HTTPRoute with that hostname. Require `Accepted=True` and `ResolvedRefs=True` on the route's Contour parent, a populated Envoy LoadBalancer address, and the expected response body. Also verify that an existing Traefik Ingress still returns its expected response through host port 18080.
 
 Delete only this disposable cluster and its temporary kubeconfig when finished:
 
