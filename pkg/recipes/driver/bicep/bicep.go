@@ -714,7 +714,7 @@ func (d *bicepDriver) addAWSProviderResourceIDs(ctx context.Context, output *rec
 		}
 
 		if arn := arnFromProperties(properties, property); arn != "" {
-			output.SetProviderResourceID(resource, arn)
+			output.SetProviderResourceID(resource, arnproperties.ProviderResourceID(arn))
 		}
 	}
 }

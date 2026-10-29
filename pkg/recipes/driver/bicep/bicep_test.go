@@ -1566,6 +1566,22 @@ func Test_Bicep_AddAWSProviderResourceIDs_FactoryReturnsNil(t *testing.T) {
 	require.Empty(t, output.ProviderResourceIDs)
 }
 
+// Cloud Control returns a log group ARN with a trailing ":*". The driver stores it without the suffix, the same value
+// the Terraform driver stores for the same log group.
+func Test_Bicep_AddAWSProviderResourceIDs_LogGroup(t *testing.T) {
+	const logGroupID = "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.Logs/LogGroup/orders"
+
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	client.EXPECT().GetProperties(gomock.Any(), logGroupID).Return(map[string]any{"Arn": "arn:aws:logs:us-east-2:179022619019:log-group:orders:*"}, nil)
+
+	d := &bicepDriver{resourceClientFactory: func(*rest.Config) processors.ResourceClient { return client }}
+	output := &recipes.RecipeOutput{Resources: []string{logGroupID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Equal(t, "arn:aws:logs:us-east-2:179022619019:log-group:orders", output.ProviderResourceID(logGroupID))
+}
+
 func Test_Bicep_AddAWSProviderResourceIDs_IDsDifferingByCase(t *testing.T) {
 	const lowerID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/arn:aws:sns:us-west-2:123456789012:orders"
 	const upperID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/arn:aws:sns:us-west-2:123456789012:Orders"

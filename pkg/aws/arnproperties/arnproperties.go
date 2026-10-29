@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package arnproperties knows which property of an AWS resource holds the ARN of the resource itself.
+// Package arnproperties knows which property of an AWS resource holds the ARN of the resource itself, and how to
+// store that ARN so every recipe driver records the same value for the same resource.
 package arnproperties
 
 //go:generate go run ./gen
@@ -22,6 +23,8 @@ package arnproperties
 import (
 	"strings"
 	"sync"
+
+	awsarn "github.com/aws/aws-sdk-go-v2/aws/arn"
 )
 
 var arnPropertiesByLowerType = sync.OnceValue(func() map[string]string {
@@ -40,4 +43,27 @@ var arnPropertiesByLowerType = sync.OnceValue(func() map[string]string {
 func Lookup(resourceType string) (property string, known bool) {
 	property, known = arnPropertiesByLowerType()[strings.ToLower(resourceType)]
 	return property, known
+}
+
+// ProviderResourceID returns the provider resource ID to store for an AWS resource with the given ARN.
+//
+// It is the ARN, except for a CloudWatch Logs log group ARN in the form "arn:<partition>:logs:<region>:<account>:
+// log-group:<name>:*". Cloud Control returns that form, but the Terraform AWS provider removes the trailing ":*", so
+// both are stored without it. No other ARN is changed, because other qualifiers can tell distinct resources apart.
+func ProviderResourceID(arn string) string {
+	parsed, err := awsarn.Parse(arn)
+	if err != nil || parsed.Service != "logs" {
+		return arn
+	}
+
+	name, ok := strings.CutPrefix(parsed.Resource, "log-group:")
+	if !ok {
+		return arn
+	}
+	name, ok = strings.CutSuffix(name, ":*")
+	if !ok || name == "" || strings.Contains(name, ":") {
+		return arn
+	}
+
+	return strings.TrimSuffix(arn, ":*")
 }

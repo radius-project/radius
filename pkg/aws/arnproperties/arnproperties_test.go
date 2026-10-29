@@ -49,3 +49,35 @@ func Test_Lookup(t *testing.T) {
 		})
 	}
 }
+
+func Test_ProviderResourceID(t *testing.T) {
+	tests := []struct {
+		name string
+		arn  string
+		want string
+	}{
+		{name: "log group from Cloud Control", arn: "arn:aws:logs:us-east-2:179022619019:log-group:orders:*", want: "arn:aws:logs:us-east-2:179022619019:log-group:orders"},
+		{name: "log group from Terraform", arn: "arn:aws:logs:us-east-2:179022619019:log-group:orders", want: "arn:aws:logs:us-east-2:179022619019:log-group:orders"},
+		{name: "log group with a path name", arn: "arn:aws-us-gov:logs:us-gov-west-1:179022619019:log-group:/aws/lambda/orders:*", want: "arn:aws-us-gov:logs:us-gov-west-1:179022619019:log-group:/aws/lambda/orders"},
+		{name: "log stream keeps its qualifier", arn: "arn:aws:logs:us-east-2:179022619019:log-group:orders:log-stream:*", want: "arn:aws:logs:us-east-2:179022619019:log-group:orders:log-stream:*"},
+		{name: "log group with no name", arn: "arn:aws:logs:us-east-2:179022619019:log-group::*", want: "arn:aws:logs:us-east-2:179022619019:log-group::*"},
+		{name: "other logs resource", arn: "arn:aws:logs:us-east-2:179022619019:destination:orders", want: "arn:aws:logs:us-east-2:179022619019:destination:orders"},
+		{name: "other service with a qualifier", arn: "arn:aws:lambda:us-east-2:179022619019:function:orders:*", want: "arn:aws:lambda:us-east-2:179022619019:function:orders:*"},
+		{name: "not an ARN", arn: "orders:*", want: "orders:*"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, ProviderResourceID(tt.arn))
+		})
+	}
+}
+
+// Test_ProviderResourceID_LogGroupMatchesAcrossDrivers pins that the Bicep driver, which reads the ARN from Cloud
+// Control, and the Terraform driver, which reads it from Terraform state, store the same value for one log group.
+func Test_ProviderResourceID_LogGroupMatchesAcrossDrivers(t *testing.T) {
+	cloudControlARN := "arn:aws:logs:us-east-2:179022619019:log-group:orders:*"
+	terraformARN := "arn:aws:logs:us-east-2:179022619019:log-group:orders"
+
+	require.Equal(t, ProviderResourceID(terraformARN), ProviderResourceID(cloudControlARN))
+	require.NotEqual(t, ProviderResourceID(terraformARN), ProviderResourceID("arn:aws:logs:us-east-2:179022619019:log-group:Orders:*"), "log group names are case-sensitive")
+}

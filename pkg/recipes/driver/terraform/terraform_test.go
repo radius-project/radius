@@ -767,6 +767,103 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			expectedErr:      errors.New("\"arn:aws:ec2:us-east-2:179022619019\" is not a valid ARN"),
 		},
 		{
+			desc: "AWS ARN is not moved to a result resource whose name differs by case",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"resources": []any{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_sns_topic/Orders"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_sns_topic",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"arn": "arn:aws:sns:us-east-2:179022619019:orders",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_sns_topic/Orders"},
+				// The deployed "orders" topic is a different topic, so its ARN is not stored for "Orders".
+				ProviderResourceIDs: map[string]string{},
+				Secrets:             map[string]any{},
+				Values:              map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS log group ARN is stored without a trailing wildcard",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_cloudwatch_log_group",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "orders",
+									"arn": "arn:aws:logs:us-east-2:179022619019:log-group:orders:*",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_cloudwatch_log_group/orders"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_cloudwatch_log_group/orders": "arn:aws:logs:us-east-2:179022619019:log-group:orders",
+				},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS log group ARN from the Terraform AWS provider is stored unchanged",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_cloudwatch_log_group",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "orders",
+									"arn": "arn:aws:logs:us-east-2:179022619019:log-group:orders",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_cloudwatch_log_group/orders"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_cloudwatch_log_group/orders": "arn:aws:logs:us-east-2:179022619019:log-group:orders",
+				},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
 			desc: "AWS ARN is kept under the result resource ID when it differs only by case",
 			state: &tfjson.State{
 				Values: &tfjson.StateValues{
@@ -1525,5 +1622,26 @@ func createTerraformConfigWithEnvSecrets() recipes.Configuration {
 				},
 			},
 		},
+	}
+}
+
+func Test_SameResourceName(t *testing.T) {
+	const prefix = "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/"
+	tests := []struct {
+		name string
+		x, y string
+		want bool
+	}{
+		{name: "namespace case differs", x: prefix + "Terraform.AWS/aws_sns_topic/orders", y: "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/terraform.aws/aws_sns_topic/orders", want: true},
+		{name: "name case differs", x: prefix + "Terraform.AWS/aws_sns_topic/Orders", y: prefix + "Terraform.AWS/aws_sns_topic/orders", want: false},
+		{name: "nested name case differs", x: prefix + "AWS.Example/Parent/p/Child/Orders", y: prefix + "AWS.Example/Parent/p/Child/orders", want: false},
+		{name: "different nesting", x: prefix + "AWS.Example/Parent/p/Child/c", y: prefix + "AWS.Example/Parent/p", want: false},
+		{name: "invalid first ID", x: "not-an-id", y: prefix + "Terraform.AWS/aws_sns_topic/orders", want: false},
+		{name: "invalid second ID", x: prefix + "Terraform.AWS/aws_sns_topic/orders", y: "not-an-id", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, sameResourceName(tt.x, tt.y))
+		})
 	}
 }

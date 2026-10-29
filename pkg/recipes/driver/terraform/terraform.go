@@ -29,6 +29,7 @@ import (
 	"uuid"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/aws/arnproperties"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -255,7 +256,8 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 	}
 
 	// Resources the recipe returns in result.resources take precedence over deployed resources with the same ID,
-	// compared case-insensitively. Keep the provider resource ID under the ID that is kept.
+	// compared case-insensitively. Move the provider resource ID to the ID that is kept only when both IDs name the
+	// same resource: AWS resource names are case-sensitive, so "orders" and "Orders" are different topics.
 	resultResourceIDs := map[string]string{}
 	for _, val := range recipeResponse.Resources {
 		resultResourceIDs[strings.ToLower(val)] = val
@@ -268,13 +270,40 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 			continue
 		}
 		providerResourceID := recipeResponse.ProviderResourceID(val)
-		if kept != val && providerResourceID != "" && recipeResponse.ProviderResourceID(kept) == "" {
-			recipeResponse.SetProviderResourceID(kept, providerResourceID)
-			delete(recipeResponse.ProviderResourceIDs, val)
+		if kept == val || providerResourceID == "" {
+			continue
 		}
+		if recipeResponse.ProviderResourceID(kept) == "" && sameResourceName(kept, val) {
+			recipeResponse.SetProviderResourceID(kept, providerResourceID)
+		}
+		delete(recipeResponse.ProviderResourceIDs, val)
 	}
 
 	return recipeResponse, nil
+}
+
+// sameResourceName reports whether two resource IDs that are equal ignoring case also have the same resource names,
+// compared case-sensitively. Scopes and resource types are compared ignoring case.
+func sameResourceName(x string, y string) bool {
+	xID, err := resources.ParseResource(x)
+	if err != nil {
+		return false
+	}
+	yID, err := resources.ParseResource(y)
+	if err != nil {
+		return false
+	}
+
+	xTypes, yTypes := xID.TypeSegments(), yID.TypeSegments()
+	if len(xTypes) != len(yTypes) {
+		return false
+	}
+	for i := range xTypes {
+		if xTypes[i].Name != yTypes[i].Name {
+			return false
+		}
+	}
+	return true
 }
 
 // createExecutionDirectory creates a unique directory for each execution of terraform.
@@ -484,7 +513,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 						return []string{}, err
 					}
 					recipeResources = append(recipeResources, awsResourceID)
-					output.SetProviderResourceID(awsResourceID, arn)
+					output.SetProviderResourceID(awsResourceID, arnproperties.ProviderResourceID(arn))
 				}
 			}
 		default:
