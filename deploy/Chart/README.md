@@ -66,7 +66,7 @@ You can specify a custom tag for all Radius images using the `global.imageTag` p
 
 Main-branch Radius images use the mutable `edge` tag. The `latest` tag points to the most recent stable release. Use `edge` when you need builds from `main`.
 
-The Deployment Engine and dashboard are published from separate repositories. Edge charts continue to use their existing `latest` tags until those publishers adopt the `edge` convention.
+The Deployment Engine and dashboard follow the same convention: edge charts use `edge`, and the Radius release finalizer promotes their `latest` aliases to the newest stable release. The Deployment Engine explicitly uses `imagePullPolicy: Always` for resolved `:edge` images so pod restarts do not reuse a stale main build; release-tag and digest-pinned pull behavior is unchanged.
 
 #### Using a Custom Registry
 
