@@ -17,8 +17,11 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -236,4 +239,81 @@ func Test_RefreshSnapshot_Errors(t *testing.T) {
 	require.ErrorContains(t, err, "AWS::A::Missing: type not found")
 	require.ErrorContains(t, err, "AWS::A::NoIdentifier: schema has no primary identifier")
 	require.NoFileExists(t, path)
+}
+
+func Test_Run(t *testing.T) {
+	dir := t.TempDir()
+	snapshot := filepath.Join(dir, "snapshot.txt")
+	reviewed := filepath.Join(dir, "reviewed.txt")
+	out := filepath.Join(dir, "out.go")
+	require.NoError(t, os.WriteFile(snapshot, []byte("AWS::SNS::Topic TopicArn TopicArn\nAWS::EC2::VPC VpcId none\n"), 0o600))
+	require.NoError(t, os.WriteFile(reviewed, []byte("# nothing reviewed\n"), 0o600))
+
+	var stdout bytes.Buffer
+	err := run(t.Context(), []string{"-snapshot", snapshot, "-reviewed", reviewed, "-out", out}, &stdout)
+	require.NoError(t, err)
+	require.Equal(t, "wrote 2 types to "+out+", 1 with an ARN property\n", stdout.String())
+
+	got, err := os.ReadFile(out)
+	require.NoError(t, err)
+	require.Contains(t, string(got), `"AWS::SNS::Topic": "TopicArn",`)
+	require.Contains(t, string(got), `"AWS::EC2::VPC":   "",`)
+}
+
+func Test_Run_Errors(t *testing.T) {
+	dir := t.TempDir()
+	snapshot := filepath.Join(dir, "snapshot.txt")
+	reviewed := filepath.Join(dir, "reviewed.txt")
+	require.NoError(t, os.WriteFile(snapshot, []byte("AWS::SNS::Topic TopicArn TopicArn\n"), 0o600))
+	require.NoError(t, os.WriteFile(reviewed, []byte("# nothing reviewed\n"), 0o600))
+
+	err := run(t.Context(), []string{"-unknown"}, &bytes.Buffer{})
+	require.ErrorContains(t, err, "flag provided but not defined: -unknown")
+
+	err = run(t.Context(), []string{"-snapshot", filepath.Join(dir, "missing.txt"), "-reviewed", reviewed}, &bytes.Buffer{})
+	require.ErrorIs(t, err, os.ErrNotExist)
+
+	err = run(t.Context(), []string{"-snapshot", snapshot, "-reviewed", reviewed, "-out", filepath.Join(dir, "missing", "out.go")}, &bytes.Buffer{})
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+// isolateAWSConfig points the AWS SDK at empty config files and static credentials, so a test never reads the
+// developer's AWS profile or reaches AWS.
+func isolateAWSConfig(t *testing.T) {
+	empty := filepath.Join(t.TempDir(), "empty")
+	require.NoError(t, os.WriteFile(empty, nil, 0o600))
+	t.Setenv("AWS_CONFIG_FILE", empty)
+	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", empty)
+	t.Setenv("AWS_PROFILE", "")
+	t.Setenv("AWS_ACCESS_KEY_ID", "test")
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "test")
+	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
+	t.Setenv("AWS_REGION", "")
+}
+
+func Test_Run_RefreshFromAWS(t *testing.T) {
+	isolateAWSConfig(t)
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		require.Contains(t, r.Header.Get("Authorization"), "/us-west-2/cloudformation/", "the default region is us-west-2")
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("AWS_ENDPOINT_URL_CLOUDFORMATION", server.URL)
+
+	snapshot := filepath.Join(t.TempDir(), defaultSnapshot)
+	err := run(t.Context(), []string{"-refresh", "-snapshot", snapshot}, &bytes.Buffer{})
+	require.ErrorContains(t, err, "ListTypes")
+	require.Equal(t, 1, requests, "a non-throttling error is not retried")
+	require.NoFileExists(t, snapshot)
+}
+
+func Test_RefreshFromAWS_InvalidProfile(t *testing.T) {
+	isolateAWSConfig(t)
+	t.Setenv("AWS_PROFILE", "missing-profile")
+	t.Setenv("AWS_REGION", "us-east-1")
+
+	err := refreshFromAWS(t.Context(), filepath.Join(t.TempDir(), defaultSnapshot))
+	require.ErrorContains(t, err, "missing-profile")
 }

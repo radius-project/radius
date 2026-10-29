@@ -610,6 +610,14 @@ func Test_GetProperties(t *testing.T) {
 		require.EqualError(t, err, "resource \"/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/account\" is not a UCP resource")
 	})
 
+	t.Run("failure - connection has no endpoint", func(t *testing.T) {
+		c := NewResourceClient(nil, noEndpointConnection{}, nil)
+
+		properties, err := c.GetProperties(t.Context(), AWSResourceID)
+		require.Nil(t, properties)
+		require.ErrorContains(t, err, "missing Azure Resource Manager configuration")
+	})
+
 	t.Run("failure - invalid resource ID", func(t *testing.T) {
 		c := NewResourceClient(nil, nil, nil)
 
@@ -690,3 +698,10 @@ type wrapper struct {
 func (w *wrapper) Do(req *http.Request) (*http.Response, error) {
 	return w.Client.Do(req)
 }
+
+// noEndpointConnection is a UCP connection with no endpoint, which the generated UCP clients reject.
+type noEndpointConnection struct{}
+
+func (noEndpointConnection) Client() *http.Client { return http.DefaultClient }
+
+func (noEndpointConnection) Endpoint() string { return "" }

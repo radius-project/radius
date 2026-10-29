@@ -77,20 +77,23 @@ const (
 )
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(context.Background(), os.Args[1:], os.Stdout); err != nil {
 		log.Fatal(err) //nolint:forbidigo // main reports the error and exits.
 	}
 }
 
-func run() error {
-	snapshotPath := flag.String("snapshot", defaultSnapshot, "snapshot of AWS resource types and their ARN candidates")
-	reviewedPath := flag.String("reviewed", defaultReviewed, "hand-reviewed ARN property decisions")
-	out := flag.String("out", defaultOut, "output Go file")
-	refresh := flag.Bool("refresh", false, "rewrite the snapshot from the CloudFormation registry before rendering (needs AWS credentials)")
-	flag.Parse()
+func run(ctx context.Context, args []string, stdout io.Writer) error {
+	flags := flag.NewFlagSet("gen", flag.ContinueOnError)
+	snapshotPath := flags.String("snapshot", defaultSnapshot, "snapshot of AWS resource types and their ARN candidates")
+	reviewedPath := flags.String("reviewed", defaultReviewed, "hand-reviewed ARN property decisions")
+	out := flags.String("out", defaultOut, "output Go file")
+	refresh := flags.Bool("refresh", false, "rewrite the snapshot from the CloudFormation registry before rendering (needs AWS credentials)")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
 
 	if *refresh {
-		if err := refreshFromAWS(context.Background(), *snapshotPath); err != nil {
+		if err := refreshFromAWS(ctx, *snapshotPath); err != nil {
 			return err
 		}
 	}
@@ -109,8 +112,8 @@ func run() error {
 			withARN++
 		}
 	}
-	fmt.Printf("wrote %d types to %s, %d with an ARN property\n", len(properties), *out, withARN)
-	return nil
+	_, err = fmt.Fprintf(stdout, "wrote %d types to %s, %d with an ARN property\n", len(properties), *out, withARN)
+	return err
 }
 
 // generate reads the snapshot and the reviewed decisions and renders the generated Go file.
