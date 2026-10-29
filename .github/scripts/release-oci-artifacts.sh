@@ -1088,8 +1088,7 @@ verify_locks() {
             if [[ "${VERIFY_ALIASES}" == "true" ]]; then
                 repository="${immutable_reference%@*}"
                 verify_image_alias "${repository}:${CHANNEL}" "${digest}"
-                if [[ "${PROMOTE_LATEST}" == "true" &&
-                    "${radius_build}" == "true" ]]; then
+                if [[ "${PROMOTE_LATEST}" == "true" ]]; then
                     verify_image_alias "${repository}:latest" "${digest}"
                 fi
             fi
@@ -1181,9 +1180,10 @@ promote_aliases() {
             promote_image_aliases "${repository}" "${CHANNEL}" "${digest}" \
                 "${immutable_reference}"
         else
-            # ORAS preserves a single-manifest dashboard digest. External
-            # latest tags remain owned by those repositories' edge builds.
-            PROMOTE_LATEST=false promote_cli_aliases \
+            # ORAS preserves a single-manifest dashboard digest. Like Radius
+            # images, external latest names the newest stable release; their
+            # main builds publish only edge.
+            promote_cli_aliases \
                 "${repository}" "${CHANNEL}" "${digest}" \
                 "${immutable_reference}"
         fi

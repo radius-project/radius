@@ -266,6 +266,9 @@ tests:
           path: spec.template.spec.containers[0].image
           value: ghcr.io/radius-project/deployment-engine:0.61.0
         template: de/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].imagePullPolicy
+        template: de/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
           value: ghcr.io/radius-project/dashboard:0.61.0
@@ -303,32 +306,42 @@ tests:
           value: custom.registry.io/controller:edge
         template: controller/deployment.yaml
 
-  - it: should retain latest for externally published images on edge charts
-    asserts:
-      - equal:
-          path: spec.template.spec.containers[0].image
-          value: ghcr.io/radius-project/deployment-engine:latest
-        template: de/deployment.yaml
-      - equal:
-          path: spec.template.spec.containers[0].image
-          value: ghcr.io/radius-project/dashboard:latest
-        template: dashboard/deployment.yaml
-
-  - it: should honor explicit edge tags for externally published images
-    set:
-      de.tag: edge
-      dashboard.tag: edge
+  - it: should use edge for externally published images on edge charts
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
           value: ghcr.io/radius-project/deployment-engine:edge
         template: de/deployment.yaml
       - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+        template: de/deployment.yaml
+      - equal:
           path: spec.template.spec.containers[0].image
           value: ghcr.io/radius-project/dashboard:edge
         template: dashboard/deployment.yaml
 
+  - it: should honor explicit latest tags for externally published images
+    set:
+      de.tag: latest
+      dashboard.tag: latest
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:latest
+        template: de/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].imagePullPolicy
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:latest
+        template: dashboard/deployment.yaml
+
   - it: should honor a global edge tag for externally published images
+    chart:
+      appVersion: 0.61.0
+      version: 0.61.0
     set:
       global.imageTag: edge
     asserts:
@@ -337,9 +350,85 @@ tests:
           value: ghcr.io/radius-project/deployment-engine:edge
         template: de/deployment.yaml
       - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+        template: de/deployment.yaml
+      - equal:
           path: spec.template.spec.containers[0].image
           value: ghcr.io/radius-project/dashboard:edge
         template: dashboard/deployment.yaml
+
+  - it: should always pull an explicit Deployment Engine edge tag on release charts
+    chart:
+      appVersion: 0.61.0
+      version: 0.61.0
+    set:
+      global.imageTag: 0.61.1
+      de.tag: edge
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:edge
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+        template: de/deployment.yaml
+
+  - it: should always pull a fully qualified Deployment Engine edge image
+    chart:
+      appVersion: 0.61.0
+      version: 0.61.0
+    set:
+      de.image: custom.registry.io:5000/deployment-engine:edge
+      de.tag: 0.61.2
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: custom.registry.io:5000/deployment-engine:edge
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+        template: de/deployment.yaml
+
+  - it: should retain the default pull policy for a Deployment Engine release tag
+    set:
+      global.imageTag: edge
+      de.tag: 0.61.2
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:0.61.2
+        template: de/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].imagePullPolicy
+        template: de/deployment.yaml
+
+  - it: should retain the default pull policy for a fully qualified Deployment Engine release image
+    set:
+      de.image: custom.registry.io:5000/deployment-engine:0.61.2
+      de.tag: edge
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: custom.registry.io:5000/deployment-engine:0.61.2
+        template: de/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].imagePullPolicy
+        template: de/deployment.yaml
+
+  - it: should retain the default pull policy for a digest-pinned Deployment Engine edge image
+    set:
+      de.image: ghcr.io/radius-project/deployment-engine:edge@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:edge@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        template: de/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].imagePullPolicy
+        template: de/deployment.yaml
 
   - it: should apply to all deployments with custom registry
     set:
