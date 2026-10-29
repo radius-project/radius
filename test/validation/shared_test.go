@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -211,5 +212,63 @@ func Test_DeleteRPResource_Applications(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func Test_MatchOutputResources(t *testing.T) {
+	t.Parallel()
+
+	const bucketID = "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+	const queueID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SQS/Queue/my-queue"
+	actual := []OutputResourceResponse{
+		{ID: bucketID, ProviderResourceID: "arn:aws:s3:::my-bucket"},
+		{ID: queueID},
+	}
+
+	tests := []struct {
+		name     string
+		expected []OutputResourceResponse
+		err      string
+	}{
+		{
+			name:     "IDs match case-insensitively",
+			expected: []OutputResourceResponse{{ID: strings.ToUpper(queueID)}, {ID: bucketID}},
+		},
+		{
+			name:     "provider resource ID matches",
+			expected: []OutputResourceResponse{{ID: bucketID, ProviderResourceID: "arn:aws:s3:::my-bucket"}, {ID: queueID}},
+		},
+		{
+			name:     "provider resource ID differs",
+			expected: []OutputResourceResponse{{ID: bucketID, ProviderResourceID: "arn:aws:s3:::other-bucket"}, {ID: queueID}},
+			err:      `providerResourceId of output resource ` + bucketID + `: expected "arn:aws:s3:::other-bucket", actual "arn:aws:s3:::my-bucket"`,
+		},
+		{
+			name:     "provider resource ID missing",
+			expected: []OutputResourceResponse{{ID: bucketID}, {ID: queueID, ProviderResourceID: "arn:aws:sqs:us-west-2:123456789012:my-queue"}},
+			err:      `expected "arn:aws:sqs:us-west-2:123456789012:my-queue", actual ""`,
+		},
+		{
+			name:     "output resource not found",
+			expected: []OutputResourceResponse{{ID: bucketID}, {ID: bucketID + "-other"}},
+			err:      "wasn't found",
+		},
+		{
+			name:     "different number of output resources",
+			expected: []OutputResourceResponse{{ID: bucketID}},
+			err:      "expected output resources",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := matchOutputResources(tt.expected, actual)
+			if tt.err == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.err)
+			}
+		})
 	}
 }

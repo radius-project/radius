@@ -191,6 +191,9 @@ func toOutputResources(outputResources []rpv1.OutputResource) []*OutputResource 
 		if or.RadiusManaged != nil {
 			r.RadiusManaged = or.RadiusManaged
 		}
+		if or.ProviderResourceID != "" {
+			r.ProviderResourceID = new(or.ProviderResourceID)
+		}
 
 		outResources = append(outResources, r)
 	}
