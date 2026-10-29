@@ -261,11 +261,18 @@ func crdsInManifest(manifest string) ([]crdInfo, error) {
 	}
 }
 
-// renderChartCRDs renders a chart as Helm does when it installs or upgrades the chart with configuration, and returns
-// the CRDs that Helm applies with the release, and the CRDs in the crds/ directories of the chart and of the subcharts
-// that the values enable. It renders with a server-side dry run, so that templates see the capabilities and the lookup
-// results that the real install or upgrade sees. configuration decides where those come from, and its Kubernetes
-// client and release storage keep the dry run from changing the cluster. It does not change helmChart.
+// renderChartCRDs renders a chart with configuration as Helm renders it when it installs or upgrades the chart, and
+// returns the CRDs that Helm applies with the release, and the CRDs in the crds/ directories of the chart and of the
+// subcharts that the values enable. It renders with a server-side dry run, so that templates see the capabilities and
+// the lookup results that the real install or upgrade sees, and .Release.IsUpgrade and .Release.IsInstall match it.
+// configuration decides where those come from, and its Kubernetes client and release storage keep the dry run from
+// changing the cluster. It does not change helmChart.
+//
+// One difference remains: the dry run is an install, so templates see .Release.Revision 1, while an upgrade renders
+// the revision after the latest one. A chart that renders a CRD only for some revisions could still lose the CRD in an
+// upgrade that the check allows. Charts tell an install from an upgrade with .Release.IsUpgrade or .Release.IsInstall
+// rather than with the revision, so the check accepts this difference instead of rendering with Helm's upgrade action,
+// which needs the release history in the configuration.
 func renderChartCRDs(ctx context.Context, configuration *helm.Configuration, helmChart *chart.Chart, releaseName string, namespace string, upgrade bool, values map[string]any) ([]crdInfo, []crdInfo, error) {
 	renderedChart := cloneChart(helmChart)
 
@@ -945,16 +952,23 @@ func (c gatewayAPICRDCheck) turnOffFeaturesRemedy(features []string, kinds []str
 		}
 	case source.fromFile:
 		fmt.Fprintf(&remedy, " The %s value comes from --contour-set-file %s, and Radius applies --contour-set-file values after --contour-set values, so another --contour-set flag does not change it.", args.key, QuoteFlagValue(source.value))
-		if source.file != "" {
+		fileFlags := make([]string, 0, len(source.fileFlags))
+		for _, fileFlag := range source.fileFlags {
+			fileFlags = append(fileFlags, "--contour-set-file "+QuoteFlagValue(fileFlag))
+		}
+		switch {
+		case source.file != "":
 			fmt.Fprintf(&remedy, " Add these entries to the list in %s:", source.file)
-		} else {
-			fmt.Fprintf(&remedy, " Add these entries to the %s list in that file:", args.key)
-		}
-		for _, feature := range features {
-			remedy.WriteString("\n      - --disable-feature=" + feature)
-		}
-		if source.file != "" && !source.otherValues {
-			fmt.Fprintf(&remedy, "\n    Or replace --contour-set-file %s in the %s command with this flag, which keeps the arguments in the file:\n      %s", QuoteFlagValue(source.value), c.command, flag)
+			for _, feature := range features {
+				remedy.WriteString("\n      - --disable-feature=" + feature)
+			}
+			if !source.otherValues {
+				fmt.Fprintf(&remedy, "\n    Or replace %s in the %s command with this flag, which keeps the current arguments:\n      %s", joinWords(fileFlags), c.command, flag)
+			}
+		case !source.otherValues:
+			fmt.Fprintf(&remedy, " Replace %s in the %s command with this flag, which keeps the current arguments:\n      %s", joinWords(fileFlags), c.command, flag)
+		default:
+			fmt.Fprintf(&remedy, " Remove the %s value from %s, and add this flag to the %s command:\n      %s", args.key, joinWords(fileFlags), c.command, flag)
 		}
 	case source.otherValues:
 		fmt.Fprintf(&remedy, " The %s value comes from --contour-set %s, which also sets other values. Add this flag to the %s command after that flag, so that it replaces the %s value and keeps its arguments:\n      %s", args.key, QuoteFlagValue(source.value), c.command, args.key, flag)
@@ -965,24 +979,30 @@ func (c gatewayAPICRDCheck) turnOffFeaturesRemedy(features []string, kinds []str
 	return remedy.String()
 }
 
-// contourValueSource is the --contour-set or --contour-set-file flag of this invocation that decides a Contour value.
+// contourValueSource is how the --contour-set and --contour-set-file flags of this invocation set a Contour value.
 type contourValueSource struct {
-	// fromFile is true for a --contour-set-file flag, and value is the value of the flag.
+	// fromFile is true when --contour-set-file flags set the value as a whole. value is the flag that decides the
+	// value: the last --contour-set-file flag that sets it as a whole, or else the last --contour-set flag that sets it.
 	fromFile bool
 	value    string
 
-	// file is the file of a --contour-set-file flag that sets the value itself, or empty when the flag sets a value
-	// that contains it, or part of it.
+	// file is the file from which the deciding --contour-set-file flag reads the whole value, or empty when the flag
+	// reads it from several files or sets a value that contains it.
 	file string
 
-	// otherValues is true when the flag sets other values too.
+	// fileFlags are the --contour-set-file flags that set the value as a whole, in order. Radius applies every one of
+	// them after the --contour-set flags, so a remedy that replaces the deciding flag must replace all of them.
+	fileFlags []string
+
+	// otherValues is true when a flag that a remedy would replace sets other values too.
 	otherValues bool
 }
 
-// valueSource returns the flag of this invocation that decides the Contour value at key, or a value that contains it.
-// Like Helm, Radius applies every --contour-set flag in order and then every --contour-set-file flag, so that is the
-// last --contour-set-file flag that sets the value, or else the last --contour-set flag. It returns false when no flag
-// of this invocation sets the value.
+// valueSource returns how the flags of this invocation set the Contour value at key. Like Helm, Radius applies every
+// --contour-set flag in order and then every --contour-set-file flag, so the last --contour-set-file flag that sets the
+// value as a whole decides it, or else the last --contour-set flag that sets the value or part of it. A
+// --contour-set-file flag that sets only items of the list keeps the other items, so it does not decide the list. It
+// returns false when no flag of this invocation decides the value.
 func (c gatewayAPICRDCheck) valueSource(key string) (contourValueSource, bool) {
 	path := strings.Split(key, ".")
 	var source contourValueSource
@@ -994,18 +1014,63 @@ func (c gatewayAPICRDCheck) valueSource(key string) (contourValueSource, bool) {
 		}
 		source, found = contourValueSource{value: arg, otherValues: setsOtherValues(parsed, path)}, true
 	}
+
+	fileSource := contourValueSource{fromFile: true}
 	for _, arg := range c.setFileArgs {
-		// Read the names of the files instead of the files.
-		parsed := map[string]any{}
-		readName := func(name []rune) (any, error) { return string(name), nil }
-		if strvals.ParseIntoFile(setFileArg(arg), parsed, readName) != nil || !setsValue(parsed, path) {
+		file, whole, otherValues := fileFlagSetting(arg, path)
+		if !whole {
 			continue
 		}
-		file, _ := nestedValue(parsed, path...).(string)
-		source, found = contourValueSource{fromFile: true, value: arg, file: file, otherValues: setsOtherValues(parsed, path)}, true
+		fileSource.value, fileSource.file = arg, file
+		fileSource.fileFlags = append(fileSource.fileFlags, arg)
+		fileSource.otherValues = fileSource.otherValues || otherValues
+	}
+	if len(fileSource.fileFlags) > 0 {
+		return fileSource, true
 	}
 
 	return source, found
+}
+
+// fileFlagSetting reports how a --set-file style flag sets the list at path. whole is true when the flag sets the
+// list as a whole, or a value that contains it, and false when it sets only items of the list, or nothing there. file
+// is the file from which the flag reads the whole list, or empty when it reads the list from several files, item by
+// item, or sets a value that contains it. otherValues is true when the flag sets other values too.
+func fileFlagSetting(arg string, path []string) (file string, whole bool, otherValues bool) {
+	// Parse the flag over a list of placeholder items, as earlier flags or defaults can set a list there, so that a flag
+	// that sets items of the list keeps some placeholders, and a flag that replaces the list keeps none. The names of the
+	// files stand for their contents.
+	placeholders := make([]any, 16)
+	for i := range placeholders {
+		placeholders[i] = fmt.Sprintf("\x00item %d", i)
+	}
+	values := map[string]any{}
+	setValue(values, slices.Clone(placeholders), path...)
+	readName := func(name []rune) (any, error) { return string(name), nil }
+	if strvals.ParseIntoFile(setFileArg(arg), values, readName) != nil {
+		return "", false, false
+	}
+	otherValues = setsOtherValues(values, path)
+
+	value := nestedValue(values, path...)
+	list, ok := value.([]any)
+	if !ok {
+		// The flag reads the list from one file, or replaces a value that contains it.
+		file, _ = value.(string)
+		return file, true, otherValues
+	}
+
+	kept := 0
+	for i, placeholder := range placeholders {
+		if i < len(list) && list[i] == placeholder {
+			kept++
+		}
+	}
+	if kept == len(placeholders) && len(list) == len(placeholders) {
+		return "", false, otherValues
+	}
+
+	return "", kept == 0, otherValues
 }
 
 // setsValue reports whether values, which a --set style flag sets, include the value at path, part of it, or a value

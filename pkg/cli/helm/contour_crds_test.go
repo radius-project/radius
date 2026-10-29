@@ -829,6 +829,34 @@ func Test_gatewayAPICRDCheck_RemedyForContourValuesFromFlags(t *testing.T) {
 				require.Len(t, match, 1, "the error must print one --contour-set flag: %v", err)
 				return unquoteFlagValue(t, match[0][1])
 			}
+			// replacedFileFlags returns the values of the --contour-set-file flags that the error says to replace.
+			replacedFileFlags := func(t *testing.T, err error) []string {
+				t.Helper()
+
+				phrase := regexp.MustCompile(`[Rr]eplace (--contour-set-file .*?) in the rad [a-z]+ kubernetes command with this flag`).FindStringSubmatch(err.Error())
+				require.Len(t, phrase, 2, "the error must say which --contour-set-file flags to replace: %v", err)
+				var values []string
+				for _, match := range regexp.MustCompile(`--contour-set-file ("[^"]*"|'[^']*')`).FindAllStringSubmatch(phrase[1], -1) {
+					values = append(values, unquoteFlagValue(t, match[1]))
+				}
+				return values
+			}
+			// without returns flags without the ones in removed.
+			without := func(flags []string, removed []string) []string {
+				return slices.DeleteFunc(slices.Clone(flags), func(flag string) bool { return slices.Contains(removed, flag) })
+			}
+			// disabledFeatureEntries returns the YAML list entries that the error says to add to a file.
+			disabledFeatureEntries := func(t *testing.T, err error) string {
+				t.Helper()
+
+				entries := regexp.MustCompile(`(?m)^ +(- --disable-feature=[a-z]+)$`).FindAllStringSubmatch(err.Error(), -1)
+				require.Len(t, entries, 3, "the error must list the entries to add: %v", err)
+				var content string
+				for _, entry := range entries {
+					content += entry[1] + "\n"
+				}
+				return content
+			}
 
 			t.Run("arguments from --contour-set-file", func(t *testing.T) {
 				t.Parallel()
@@ -864,6 +892,90 @@ func Test_gatewayAPICRDCheck_RemedyForContourValuesFromFlags(t *testing.T) {
 				}
 				require.NoError(t, os.WriteFile(file, []byte(content), 0600))
 				values, err = check(t, nil, []string{setFile})
+				require.NoError(t, err)
+				requireFeaturesTurnedOff(t, values, "--debug")
+			})
+
+			t.Run("one argument from --contour-set-file", func(t *testing.T) {
+				t.Parallel()
+
+				file := filepath.Join(t.TempDir(), "arg.txt")
+				require.NoError(t, os.WriteFile(file, []byte("--debug"), 0600))
+				setFile := "contour.extraArgs[0]=" + file
+				_, err := check(t, nil, []string{setFile})
+				require.Error(t, err)
+				// The flag sets only the first argument, so a --contour-set flag still decides the list.
+				require.Contains(t, err.Error(), "Add this flag to the "+command+" command:")
+				require.NotContains(t, err.Error(), "--contour-set-file")
+				flag := printedFlag(t, err)
+				printed := map[string]any{}
+				require.NoError(t, strvals.ParseInto(flag, printed))
+				printedArgs, _ := argumentList(nestedValue(printed, "contour", "extraArgs"))
+				require.Equal(t, "--debug", printedArgs[0], "the printed list keeps the argument from the file")
+
+				// The flag still sets the first argument after the printed flag, to the same value.
+				values, err := check(t, []string{flag}, []string{setFile})
+				require.NoError(t, err)
+				requireFeaturesTurnedOff(t, values, "--debug")
+				require.Equal(t, "--debug", contourArgsFromValues(values).args[0])
+			})
+
+			t.Run("arguments from a --contour-set-file list of files", func(t *testing.T) {
+				t.Parallel()
+
+				dir := t.TempDir()
+				first, second := filepath.Join(dir, "first.txt"), filepath.Join(dir, "second.txt")
+				require.NoError(t, os.WriteFile(first, []byte("--debug"), 0600))
+				require.NoError(t, os.WriteFile(second, []byte("--incluster"), 0600))
+				setFile := "contour.extraArgs={" + first + "," + second + "}"
+				_, err := check(t, nil, []string{setFile})
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "Replace --contour-set-file "+QuoteFlagValue(setFile)+" in the "+command+" command with this flag, which keeps the current arguments:")
+				require.NotContains(t, err.Error(), "Add these entries")
+				require.NotContains(t, err.Error(), "Add this flag")
+				flag := printedFlag(t, err)
+				replaced := replacedFileFlags(t, err)
+				require.Equal(t, []string{setFile}, replaced)
+
+				// Adding the printed flag and keeping the list of files does not work: the files override the flag.
+				_, err = check(t, []string{flag}, []string{setFile})
+				require.ErrorContains(t, err, "Contour 1.32.0 cannot use the Gateway API CRDs in this cluster")
+
+				values, err := check(t, []string{flag}, without([]string{setFile}, replaced))
+				require.NoError(t, err)
+				requireFeaturesTurnedOff(t, values, "--debug", "--incluster")
+			})
+
+			t.Run("arguments from two --contour-set-file flags", func(t *testing.T) {
+				t.Parallel()
+
+				dir := t.TempDir()
+				base, env := filepath.Join(dir, "base.yaml"), filepath.Join(dir, "env.yaml")
+				require.NoError(t, os.WriteFile(base, []byte("- --incluster\n"), 0600))
+				require.NoError(t, os.WriteFile(env, []byte("- --debug\n"), 0600))
+				baseFlag, envFlag := "contour.extraArgs="+base, "contour.extraArgs="+env
+				fileFlags := []string{baseFlag, envFlag}
+				_, err := check(t, nil, fileFlags)
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "The contour.extraArgs value comes from --contour-set-file "+QuoteFlagValue(envFlag)+", and Radius applies --contour-set-file values after --contour-set values")
+				require.Contains(t, err.Error(), "Add these entries to the list in "+strings.TrimPrefix(setFileArg(envFlag), "contour.extraArgs=")+":")
+				require.Contains(t, err.Error(), "Or replace --contour-set-file "+QuoteFlagValue(baseFlag)+" and --contour-set-file "+QuoteFlagValue(envFlag)+" in the "+command+" command")
+				flag := printedFlag(t, err)
+				entries := disabledFeatureEntries(t, err)
+				replaced := replacedFileFlags(t, err)
+				require.ElementsMatch(t, fileFlags, replaced)
+
+				// Replacing only the flag that decides the value does not work: the other file overrides the printed flag.
+				_, err = check(t, []string{flag}, []string{baseFlag})
+				require.ErrorContains(t, err, "Contour 1.32.0 cannot use the Gateway API CRDs in this cluster")
+
+				values, err := check(t, []string{flag}, without(fileFlags, replaced))
+				require.NoError(t, err)
+				requireFeaturesTurnedOff(t, values, "--debug")
+
+				// Adding the printed entries to the file that decides the value works too.
+				require.NoError(t, os.WriteFile(env, []byte("- --debug\n"+entries), 0600))
+				values, err = check(t, nil, fileFlags)
 				require.NoError(t, err)
 				requireFeaturesTurnedOff(t, values, "--debug")
 			})
@@ -944,20 +1056,26 @@ func Test_gatewayAPICRDCheck_valueSource(t *testing.T) {
 			name:        "--contour-set-file",
 			setArgs:     []string{"contour.extraArgs={--debug}"},
 			setFileArgs: []string{"contour.extraArgs=args.yaml"},
-			want:        contourValueSource{fromFile: true, value: "contour.extraArgs=args.yaml", file: "args.yaml"},
+			want:        contourValueSource{fromFile: true, value: "contour.extraArgs=args.yaml", file: "args.yaml", fileFlags: []string{"contour.extraArgs=args.yaml"}},
 			wantFound:   true,
 		},
 		{
 			name:        "--contour-set-file of a value that contains the arguments",
 			setFileArgs: []string{"contour=contour.yaml"},
-			want:        contourValueSource{fromFile: true, value: "contour=contour.yaml"},
+			want:        contourValueSource{fromFile: true, value: "contour=contour.yaml", fileFlags: []string{"contour=contour.yaml"}},
 			wantFound:   true,
 		},
 		{
 			name:        "--contour-set-file that sets other values too",
 			setFileArgs: []string{"contour.extraArgs=args.yaml,envoy.service.annotations=annotations.yaml"},
-			want:        contourValueSource{fromFile: true, value: "contour.extraArgs=args.yaml,envoy.service.annotations=annotations.yaml", file: "args.yaml", otherValues: true},
-			wantFound:   true,
+			want: contourValueSource{
+				fromFile:    true,
+				value:       "contour.extraArgs=args.yaml,envoy.service.annotations=annotations.yaml",
+				file:        "args.yaml",
+				fileFlags:   []string{"contour.extraArgs=args.yaml,envoy.service.annotations=annotations.yaml"},
+				otherValues: true,
+			},
+			wantFound: true,
 		},
 		{
 			name:        "--contour-set-file for other values",
@@ -965,6 +1083,45 @@ func Test_gatewayAPICRDCheck_valueSource(t *testing.T) {
 			setFileArgs: []string{"envoy.service.annotations=annotations.yaml"},
 			want:        contourValueSource{value: "contour.extraArgs={--debug}"},
 			wantFound:   true,
+		},
+		{
+			// The flag sets one argument and keeps the others, so it does not decide the list.
+			name:        "--contour-set-file of one argument",
+			setFileArgs: []string{"contour.extraArgs[0]=arg.txt"},
+		},
+		{
+			name:        "--contour-set-file of one argument of a list from --contour-set",
+			setArgs:     []string{"contour.extraArgs={--debug,--incluster}"},
+			setFileArgs: []string{"contour.extraArgs[0]=arg.txt"},
+			want:        contourValueSource{value: "contour.extraArgs={--debug,--incluster}"},
+			wantFound:   true,
+		},
+		{
+			name:        "--contour-set-file of a list of files",
+			setFileArgs: []string{"contour.extraArgs={a.txt,b.txt}"},
+			want:        contourValueSource{fromFile: true, value: "contour.extraArgs={a.txt,b.txt}", fileFlags: []string{"contour.extraArgs={a.txt,b.txt}"}},
+			wantFound:   true,
+		},
+		{
+			name:        "two --contour-set-file flags",
+			setFileArgs: []string{"contour.extraArgs=base.yaml", "contour.extraArgs=env.yaml"},
+			want: contourValueSource{
+				fromFile:  true,
+				value:     "contour.extraArgs=env.yaml",
+				file:      "env.yaml",
+				fileFlags: []string{"contour.extraArgs=base.yaml", "contour.extraArgs=env.yaml"},
+			},
+			wantFound: true,
+		},
+		{
+			name:        "a list of files after a file",
+			setFileArgs: []string{"contour.extraArgs=base.yaml", "contour.extraArgs={a.txt,b.txt}", "contour.extraArgs[0]=c.txt"},
+			want: contourValueSource{
+				fromFile:  true,
+				value:     "contour.extraArgs={a.txt,b.txt}",
+				fileFlags: []string{"contour.extraArgs=base.yaml", "contour.extraArgs={a.txt,b.txt}"},
+			},
+			wantFound: true,
 		},
 	}
 
