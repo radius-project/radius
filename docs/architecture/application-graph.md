@@ -34,9 +34,11 @@ sequenceDiagram
     UCP->>UCP: Resolve downstream for<br/>Radius.Core
     UCP->>RP: Proxy POST getGraph
     RP->>DB: Get Application resource
-    RP->>DB: List all resource type names
-    RP->>DB: List resources by application
-    RP->>DB: List resources by environment
+    RP->>DB: List resource types and API versions
+    RP->>DB: List resources in the application scope
+    opt Environment in a different root scope
+        RP->>DB: List resources in the environment scope
+    end
     RP->>RP: computeGraph() + icon enrichment
     RP-->>UCP: 200 ApplicationGraphResponse
     UCP-->>K8s: Forward response
@@ -137,6 +139,8 @@ provider registry for every registered resource type (e.g.,
 excludes internal types like `Microsoft.Resources/deployments`,
 `Radius.Core/environments`, and `Radius.Core/applications`.
 
+The Radius.Core preview controller calls `ListAllResourceTypesAPIVersions()` instead. It reads the same provider list and also returns the API version to use for each type, so it does not send a request for each type to find its API version.
+
 ### Step 3: List Resources by Application and Environment
 
 For each discovered resource type, the controller lists resources using the
@@ -147,6 +151,8 @@ are filtered:
   the target application name.
 - **Environment resources**: resources whose `properties.environment` matches
   the linked environment name.
+
+The Applications.Core controller lists each resource type two times: one time in the application's root scope and one time in the environment's root scope. The Radius.Core preview controller lists each type one time in the application's root scope. It lists the environment's root scope only if that scope is different, with a case-insensitive comparison. If the scopes are the same, both filters use the same list.
 
 ### Step 4: Compute the Graph
 
@@ -692,9 +698,7 @@ The CLI uses `GITHUB_HEAD_REF`, falling back to `GITHUB_REF_NAME`, as the source
   registry to enumerate all known types, rather than hard-coding a list.
   This allows user-defined types (UDTs) to appear in the graph automatically.
 
-- **API version resolution**: For each resource type, the controller queries
-  UCP for the default API version (or falls back to the first available) to
-  ensure queries succeed even when resource types use different API versions.
+- **API version resolution**: Each resource type is listed with its own API version, so queries succeed even when resource types use different API versions. The Applications.Core controller gets the provider summary of each resource type from UCP and uses the default API version, or the first available version. The Radius.Core preview controller reads the versions from the provider list that it already has and uses the default API version, or the lowest version in sorted order.
 
 - **Cloud portal hyperlinks**: The text display generates console escape
   sequences (`\x1b]8;;`) for clickable hyperlinks from each output resource's

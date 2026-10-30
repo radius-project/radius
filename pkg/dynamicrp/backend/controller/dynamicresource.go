@@ -60,8 +60,16 @@ func NewDynamicResourceController(opts ctrl.Options, ucp *v20231001preview.Clien
 
 // Run implements the async controller interface.
 func (c *DynamicResourceController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
+	operationType, resourceTypeDetails, err := c.extractOperationAndResourceTypeDetails(ctx, request)
+	if err != nil {
+		return ctrl.NewFailedResult(v1.ErrorDetails{
+			Code:    v1.CodeInvalidRequestContent,
+			Message: err.Error(),
+		}), nil
+	}
+
 	// Validate request body against schema if available
-	if err := c.validateRequestSchema(ctx, request); err != nil {
+	if err := c.validateRequestSchema(ctx, request, operationType, resourceTypeDetails); err != nil {
 		return ctrl.NewFailedResult(v1.ErrorDetails{
 			Code:    v1.CodeInvalidRequestContent,
 			Message: err.Error(),
@@ -71,7 +79,7 @@ func (c *DynamicResourceController) Run(ctx context.Context, request *ctrl.Reque
 	// This is where we have the opportunity to branch out to different controllers based on:
 	// - The operation type. (eg: PUT, DELETE, etc)
 	// - The capabilities of the resource type. (eg: Does it support recipes?)
-	controller, err := c.selectController(ctx, request)
+	controller, err := c.selectController(operationType, resourceTypeDetails)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create controller: %w", err)
 	}
@@ -81,12 +89,7 @@ func (c *DynamicResourceController) Run(ctx context.Context, request *ctrl.Reque
 }
 
 // selectController determines which controller to use based on the operation and resource capabilities
-func (c *DynamicResourceController) selectController(ctx context.Context, request *ctrl.Request) (ctrl.Controller, error) {
-	operationType, resourceTypeDetails, err := c.extractOperationAndResourceTypeDetails(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-
+func (c *DynamicResourceController) selectController(operationType v1.OperationType, resourceTypeDetails *v20231001preview.ResourceTypeResource) (ctrl.Controller, error) {
 	if resourceTypeDetails.Name == nil {
 		return nil, fmt.Errorf("resource type name is missing in response")
 	}
@@ -112,18 +115,13 @@ func (c *DynamicResourceController) selectController(ctx context.Context, reques
 		return NewRecipePutController(options, c.engine, c.configurationLoader, c.secretMaterializer)
 
 	default:
-		return nil, fmt.Errorf("unsupported operation type: %q", request.OperationType)
+		return nil, fmt.Errorf("unsupported operation type: %q", operationType)
 	}
 }
 
 // validateRequestSchema validates the request body against the resource type's schema
-func (c *DynamicResourceController) validateRequestSchema(ctx context.Context, request *ctrl.Request) error {
-	operationContext, resourceTypeDetails, err := c.extractOperationAndResourceTypeDetails(ctx, request)
-	if err != nil {
-		return err
-	}
-
-	if operationContext.Method != v1.OperationPut {
+func (c *DynamicResourceController) validateRequestSchema(ctx context.Context, request *ctrl.Request, operationType v1.OperationType, resourceTypeDetails *v20231001preview.ResourceTypeResource) error {
+	if operationType.Method != v1.OperationPut {
 		return nil
 	}
 
@@ -173,7 +171,6 @@ func (c *DynamicResourceController) fetchResourceTypeDetails(ctx context.Context
 
 // extractOperationAndResourceTypeDetails parses the operation type and fetches resource type details.
 // Returns the parsed operation type, resource type details from UCP, and any error encountered.
-// This function is shared by both selectController and validateRequestSchema for consistency.
 func (c *DynamicResourceController) extractOperationAndResourceTypeDetails(ctx context.Context, request *ctrl.Request) (v1.OperationType, *v20231001preview.ResourceTypeResource, error) {
 	parsedOperationType, ok := v1.ParseOperationType(request.OperationType)
 	if !ok {
