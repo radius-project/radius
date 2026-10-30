@@ -325,6 +325,9 @@ func (p *PostgresClient) Save(ctx context.Context, obj *database.Object, options
 	}
 
 	config := database.NewSaveConfig(options...)
+	if config.CreateOnly && config.ETag != "" {
+		return &database.ErrInvalid{Message: "invalid argument. 'CreateOnly' cannot be combined with an ETag"}
+	}
 
 	// Compute ETag for the current state of the object.
 	raw, err := json.Marshal(obj.Data)
@@ -364,7 +367,21 @@ END AS result;`
 		obj.Data,
 	}
 
-	if config.ETag != "" {
+	if config.CreateOnly {
+		// This query only inserts. An existing row is left unchanged and reported as ErrConcurrency.
+		sql = `
+WITH inserted AS (
+	INSERT INTO resources (id, original_id, resource_type, root_scope, routing_scope, etag, resource_data)
+	VALUES ($1, $2, $3, $4, $5, $6, $7)
+	ON CONFLICT (id) DO NOTHING
+	RETURNING id
+)
+SELECT
+CASE
+	WHEN EXISTS (SELECT 1 FROM inserted) THEN 'Success'
+	ELSE 'ErrConcurrency'
+END AS result;`
+	} else if config.ETag != "" {
 		// This is the simpler query that only performs updates. It requires an etag.
 		// NOTE: we want to report ErrConcurrency for all failure cases here. This is what the tests do.
 		sql = `
