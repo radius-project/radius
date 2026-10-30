@@ -79,8 +79,9 @@ func testContext() *recipecontext.Context {
 			ResourceNameHash: "b9f5a1471dadc792",
 		},
 		AWS: &recipecontext.ProviderAWS{
-			Region:  "us-east-1",
-			Account: "123456789",
+			Region:           "us-east-1",
+			Account:          "123456789",
+			ResourceNameHash: "4c1e0f2a9b7d3e56",
 		},
 	}
 }
@@ -485,6 +486,31 @@ func Test_TernaryExpressions(t *testing.T) {
 	}
 }
 
+func Test_ResolveParameterExpressions_GeneratedAWSResourceNameHash(t *testing.T) {
+	ctx, err := recipecontext.New(
+		&recipes.ResourceMetadata{
+			ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+		},
+		&recipes.Configuration{
+			Providers: coredm.Providers{
+				AWS: coredm.ProvidersAWS{
+					Scope: "/planes/aws/aws/accounts/123456789012/regions/us-west-2",
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	require.NotEmpty(t, ctx.AWS.ResourceNameHash)
+
+	result := ResolveParameterExpressions(
+		map[string]any{"alias": "vpc-{{context.aws.resourceNameHash}}"},
+		ctx,
+	)
+
+	require.Equal(t, map[string]any{"alias": "vpc-" + ctx.AWS.ResourceNameHash}, result)
+}
+
 func Test_buildContextLookup(t *testing.T) {
 	t.Run("nil context returns empty map", func(t *testing.T) {
 		lookup := buildContextLookup(nil)
@@ -502,6 +528,7 @@ func Test_buildContextLookup(t *testing.T) {
 		assert.Equal(t, "my-namespace", lookup["context.runtime.kubernetes.namespace"])
 		assert.Equal(t, "my-rg", lookup["context.azure.resourceGroup.name"])
 		assert.Equal(t, "us-east-1", lookup["context.aws.region"])
+		assert.Equal(t, "4c1e0f2a9b7d3e56", lookup["context.aws.resourceNameHash"])
 		assert.Equal(t, "myhost.example.com", lookup["context.resource.properties.host"])
 		assert.Equal(t, "5432", lookup["context.resource.properties.port"])
 		assert.Equal(t, "my-db", lookup["context.resource.connections.db.name"])
@@ -520,6 +547,15 @@ func Test_buildContextLookup(t *testing.T) {
 
 		lookup := buildContextLookup(ctx)
 		_, ok := lookup["context.azure.resourceNameHash"]
+		assert.False(t, ok)
+	})
+
+	t.Run("omits AWS resource name hash when not set", func(t *testing.T) {
+		ctx := testContext()
+		ctx.AWS.ResourceNameHash = ""
+
+		lookup := buildContextLookup(ctx)
+		_, ok := lookup["context.aws.resourceNameHash"]
 		assert.False(t, ok)
 	})
 

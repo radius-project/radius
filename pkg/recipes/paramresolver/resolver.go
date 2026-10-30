@@ -264,6 +264,9 @@ func buildContextLookup(ctx *recipecontext.Context) map[string]string {
 	if ctx.AWS != nil {
 		lookup["context.aws.region"] = ctx.AWS.Region
 		lookup["context.aws.account"] = ctx.AWS.Account
+		if ctx.AWS.ResourceNameHash != "" {
+			lookup["context.aws.resourceNameHash"] = ctx.AWS.ResourceNameHash
+		}
 	}
 
 	// Add dynamic resource properties (context.resource.properties.*).
