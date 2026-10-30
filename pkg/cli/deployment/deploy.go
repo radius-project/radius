@@ -150,10 +150,16 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs(options clients.Deploymen
 	}
 
 	if options.Providers.AWS != nil && options.Providers.AWS.Scope != "" {
+		applicationID, environmentID := "", ""
+		if options.Providers.Radius != nil {
+			applicationID = options.Providers.Radius.ApplicationID
+			environmentID = options.Providers.Radius.EnvironmentID
+		}
 		providerConfig.AWS = &sdkclients.AWS{
 			Type: sdkclients.ProviderTypeAWS,
 			Value: sdkclients.Value{
 				Scope: options.Providers.AWS.Scope,
+				Owner: sdkclients.AWSDeploymentOwner(dc.RadiusResourceGroup, applicationID, environmentID),
 			},
 		}
 	}

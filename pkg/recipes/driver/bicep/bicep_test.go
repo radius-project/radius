@@ -297,7 +297,7 @@ func Test_createDeploymentID(t *testing.T) {
 
 func Test_createProviderConfig_defaults(t *testing.T) {
 	expected := clients.NewDefaultProviderConfig("test-rg")
-	actual := newProviderConfig("test-rg", corerp_datamodel.Providers{})
+	actual := newProviderConfig("test-rg", corerp_datamodel.Providers{}, "owner")
 	require.Equal(t, expected, actual)
 }
 
@@ -316,10 +316,64 @@ func Test_createProviderConfig_hasProviders(t *testing.T) {
 	}
 	expected.AWS = &clients.AWS{
 		Type:  clients.ProviderTypeAWS,
-		Value: clients.Value{Scope: aws},
+		Value: clients.Value{Scope: aws, Owner: "owner"},
 	}
-	actual := newProviderConfig("test-rg", providers)
+	actual := newProviderConfig("test-rg", providers, "owner")
 	require.Equal(t, expected, actual)
+}
+
+const (
+	testAWSOwnerAppID      = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/applications/app"
+	testAWSOwnerEnvID      = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env"
+	testAWSOwnerResourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/extenders/e"
+	testAWSOwner           = "recipe;" + testAWSOwnerAppID + ";" + testAWSOwnerEnvID + ";" + testAWSOwnerResourceID
+)
+
+func testAWSOwnerRecipe() recipes.ResourceMetadata {
+	return recipes.ResourceMetadata{
+		Name:          "test-resource",
+		ApplicationID: testAWSOwnerAppID,
+		EnvironmentID: testAWSOwnerEnvID,
+		ResourceID:    testAWSOwnerResourceID,
+	}
+}
+
+func Test_awsOwner(t *testing.T) {
+	require.Equal(t, testAWSOwner, awsOwner(testAWSOwnerRecipe()))
+}
+
+func Test_Bicep_Execute_SetsAWSOwnerInProviderConfig(t *testing.T) {
+	const awsScope = "/planes/aws/aws/accounts/123456789012/regions/us-west-2"
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	deploymentClient := &deploymentClientSpy{}
+	d := &bicepDriver{DeploymentClient: deploymentClient, RegistryClient: ts.TestServer.Client()}
+
+	_, err := d.Execute(t.Context(), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Configuration: recipes.Configuration{
+				Providers: corerp_datamodel.Providers{AWS: corerp_datamodel.ProvidersAWS{Scope: awsScope}},
+			},
+			Recipe: testAWSOwnerRecipe(),
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "aws-recipe",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: ts.TestImageURL,
+			},
+		},
+	})
+
+	// Stop at the deployment boundary and inspect the serialized provider config.
+	require.Error(t, err)
+	require.Equal(t, 1, deploymentClient.createOrUpdateCalls)
+	payload, err := json.Marshal(deploymentClient.deployment.Properties.ProviderConfig)
+	require.NoError(t, err)
+	require.JSONEq(t, fmt.Sprintf(`{
+		"aws": {"type": "AWS", "value": {"scope": %q, "owner": %q}},
+		"radius": {"type": "Radius", "value": {"scope": "/planes/radius/local/resourceGroups/test-rg"}},
+		"deployments": {"type": "Microsoft.Resources", "value": {"scope": "/planes/radius/local/resourceGroups/test-rg"}}
+	}`, awsScope, testAWSOwner), string(payload))
 }
 
 func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
@@ -686,6 +740,57 @@ func Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource(t *testing.T)
 	require.ErrorAs(t, err, &recipeErr)
 	require.Equal(t, recipes.RecipeGarbageCollectionFailed, recipeErr.ErrorDetails.Code)
 	require.Equal(t, fmt.Sprintf("code RecipeDeletionFailed: err failed to delete resource %q after 1 attempt(s), last error: failing is locked", failing), recipeErr.ErrorDetails.Message)
+}
+
+// Test_Bicep_Delete_SendsAWSOwner checks that the recipe's owner reaches the resource client, which sends it to UCP
+// on each AWS DELETE.
+func Test_Bicep_Delete_SendsAWSOwner(t *testing.T) {
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	id := "/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket/b"
+	client.EXPECT().Delete(gomock.Any(), id).DoAndReturn(func(ctx context.Context, _ string) error {
+		require.Equal(t, testAWSOwner, processors.AWSOwnerFromContext(ctx))
+		return nil
+	})
+
+	err := driverBicep.Delete(t.Context(), driver.DeleteOptions{
+		BaseOptions:     driver.BaseOptions{Recipe: testAWSOwnerRecipe()},
+		OutputResources: []rpv1.OutputResource{{ID: resources.MustParse(id), RadiusManaged: new(true)}},
+	})
+	require.NoError(t, err)
+}
+
+// Test_Bicep_Execute_GarbageCollectionSendsAWSOwner checks that deleting stale output resources after a deploy sends
+// the same owner the deploy used.
+func Test_Bicep_Execute_GarbageCollectionSendsAWSOwner(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	driverBicep.DeploymentClient = &deploymentClientSpy{
+		response: &clients.ClientCreateOrUpdateResponse{
+			Properties: &armdeployments.DeploymentPropertiesExtended{},
+		},
+	}
+	driverBicep.RegistryClient = ts.TestServer.Client()
+
+	stale := "/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket/stale"
+	client.EXPECT().Delete(gomock.Any(), stale).DoAndReturn(func(ctx context.Context, _ string) error {
+		require.Equal(t, testAWSOwner, processors.AWSOwnerFromContext(ctx))
+		return nil
+	})
+
+	_, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Recipe: testAWSOwnerRecipe(),
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "aws-recipe",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: ts.TestImageURL,
+			},
+		},
+		PrevState: []string{stale},
+	})
+	require.NoError(t, err)
 }
 
 // Test_Bicep_Delete_FailureDoesNotCancelOtherDeletes checks that a delete still running when another delete runs out

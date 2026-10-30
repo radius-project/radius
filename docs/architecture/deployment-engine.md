@@ -503,12 +503,17 @@ There are three places where a `ProviderConfig` is constructed:
    [pkg/cli/deployment/deploy.go](../../pkg/cli/deployment/deploy.go) calls
    `NewDefaultProviderConfig()` to set the Radius and deployments scopes, then
    optionally adds Azure and AWS scopes based on the user's workspace
-   configuration.
+   configuration. The AWS provider also gets an `owner`
+   (`deploy;<resource group ID>;<application ID>;<environment ID>`), which UCP
+   uses to check that only the owner of an AWS alias changes it.
 
 2. **Bicep recipe driver** — `newProviderConfig()` in
    [pkg/recipes/driver/bicep/bicep.go](../../pkg/recipes/driver/bicep/bicep.go)
    builds a config using the recipe's environment provider settings (Azure
-   subscription/resource group, AWS account/region).
+   subscription/resource group, AWS account/region). The AWS provider also
+   gets an `owner` (`recipe;<application ID>;<environment ID>;<resource ID>`).
+   The driver sends the same owner in the `X-Radius-Resource-Owner` header when
+   it deletes the recipe's AWS output resources.
 
 3. **DeploymentTemplate reconciler** —
    [pkg/controller/reconciler/deploymenttemplate_reconciler.go](../../pkg/controller/reconciler/deploymenttemplate_reconciler.go)

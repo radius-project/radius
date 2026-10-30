@@ -64,6 +64,10 @@ type DeploymentProperties struct {
 
 type Value struct {
 	Scope string `json:"scope,omitempty"`
+
+	// Owner identifies who deploys the AWS resources, for the AWS provider only. UCP uses it to check that only the
+	// owner of an alias changes it. See AWSRecipeOwner and AWSDeploymentOwner.
+	Owner string `json:"owner,omitempty"`
 }
 
 type Radius struct {
