@@ -46,6 +46,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/pkg/components/queue"
 	queueinmemory "github.com/radius-project/radius/pkg/components/queue/inmemory"
+	"github.com/radius-project/radius/pkg/retry"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -1322,5 +1323,98 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {})
 		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
 		require.Empty(t, h.cc.Calls())
+	})
+}
+
+// Test_EngineEdgeCases covers inputs and failures the main flows do not reach.
+func Test_EngineEdgeCases(t *testing.T) {
+	t.Run("a schema that is not JSON", func(t *testing.T) {
+		h := newHarness(t)
+		harnessSchemas["AWS::Test::BadSchema"] = `not json`
+		defer delete(harnessSchemas, "AWS::Test::BadSchema")
+		require.Equal(t, http.StatusInternalServerError, h.put(providers+"AWS.Test/BadSchema/x", map[string]any{}).status)
+		require.Empty(t, h.cc.Calls())
+	})
+
+	t.Run("a schema without a primary identifier on a create retry", func(t *testing.T) {
+		h := newHarness(t)
+		harnessSchemas["AWS::Test::NoIdentifier"] = `{}`
+		defer delete(harnessSchemas, "AWS::Test::NoIdentifier")
+		path := providers + "AWS.Test/NoIdentifier/x"
+		h.saveRecord(path, func(rec *datamodel.AWSResource) {
+			rec.Properties.ClientToken = "6f1d1b8b-6a29-4d47-8f0b-5ad7c1d3e111"
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		})
+		resp := h.put(path, map[string]any{})
+		require.Equal(t, http.StatusInternalServerError, resp.status)
+		require.Contains(t, resp.raw, "primaryIdentifier")
+	})
+
+	t.Run("AWS returns properties that are not JSON", func(t *testing.T) {
+		options := setupTest(t)
+		saveTestRecord(t, options, vpcPath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = "vpc-1" })
+		options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			&cloudformation.DescribeTypeOutput{Schema: aws.String(harnessSchemas[vpcType])}, nil).AnyTimes()
+		options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			&cloudcontrol.GetResourceOutput{ResourceDescription: &cctypes.ResourceDescription{Identifier: aws.String("vpc-1"), Properties: aws.String("not json")}}, nil).Times(2)
+
+		for _, run := range []struct {
+			factory controllerFactory
+			method  string
+		}{{NewCreateOrUpdateAWSResource, http.MethodPut}, {NewGetAWSResource, http.MethodGet}} {
+			request, err := http.NewRequest(run.method, vpcPath, strings.NewReader(`{"properties": {}}`))
+			require.NoError(t, err)
+			withOwner(request)
+			controller, err := run.factory(options.ControllerOptions(), options.Clients())
+			require.NoError(t, err)
+			_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
+			require.Error(t, err, run.method)
+		}
+	})
+
+	t.Run("removing the record fails after AWS rejected a create", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.Errors["CreateResource"] = awsError(&smithy.GenericAPIError{Code: "ValidationException", Message: "bad", Fault: smithy.FaultClient})
+		h.failSavesAfter(1, errors.New("database is down"))
+		require.Equal(t, http.StatusBadRequest, h.put(vpcPath, map[string]any{}).status)
+	})
+
+	t.Run("recovering a create with no pending values", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.ClientToken = "6f1d1b8b-6a29-4d47-8f0b-5ad7c1d3e111"
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		})
+		require.Equal(t, http.StatusAccepted, h.delete(vpcPath, testOwner).status)
+		require.Equal(t, `{}`, h.cc.Calls()[0].Document)
+	})
+
+	t.Run("saving a recovered create fails", func(t *testing.T) {
+		for name, pending := range map[string]int{"after it succeeded": 0, "while it runs": 1} {
+			t.Run(name, func(t *testing.T) {
+				h := newHarness(t)
+				h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+					rec.Properties.ClientToken = "6f1d1b8b-6a29-4d47-8f0b-5ad7c1d3e111"
+					rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+				})
+				h.cc.PendingReads = pending
+				// The reservation saves; the next save fails.
+				h.failSavesAfter(1, errors.New("database is down"))
+				require.Equal(t, http.StatusInternalServerError, h.delete(vpcPath, testOwner).status)
+			})
+		}
+	})
+
+	t.Run("POST /:get with a body that is not JSON", func(t *testing.T) {
+		h := newHarness(t)
+		req, err := http.NewRequest(http.MethodPost, providers+"AWS.EC2/VPC/:get", strings.NewReader("{"))
+		require.NoError(t, err)
+		controller, err := NewGetAWSResourceWithPost(h.options(), h.clients(), retry.NewNoOpRetryer())
+		require.NoError(t, err)
+		resp, err := controller.Run(rpctest.NewARMRequestContext(req), nil, req)
+		require.NoError(t, err)
+		w := httptest.NewRecorder()
+		require.NoError(t, resp.Apply(t.Context(), w, req))
+		require.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

@@ -412,3 +412,55 @@ func (b brokenDB) Save(ctx context.Context, obj *database.Object, options ...dat
 	}
 	return b.Client.Save(ctx, obj, options...)
 }
+
+// Test_Await_SupersededWhileWaiting covers a newer operation that starts on the alias while the worker polls AWS for
+// an older one. The worker cancels the older operation and leaves the newer one's record alone.
+func Test_Await_SupersededWhileWaiting(t *testing.T) {
+	cases := map[string]func(f *fixture){
+		"succeeded":        func(f *fixture) {},
+		"failed":           func(f *fixture) { f.cc.FailNext = "InternalFailure" },
+		"no longer in AWS": func(f *fixture) {},
+	}
+	for name, setup := range cases {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			setup(f)
+			f.accept(records.OperationUpdate)
+			if name == "no longer in AWS" {
+				f.saveWith(func(rec *datamodel.AWSResource) { rec.Properties.RequestToken = "00000000-0000-0000-0000-000000000000" })
+				f.op = uuid.UUID{}
+			}
+			newer := "11111111-1111-1111-1111-111111111111"
+			f.cc.Before["GetResourceRequestStatus"] = func() {
+				f.saveWith(func(rec *datamodel.AWSResource) { rec.Properties.RequestToken = newer })
+			}
+			result := f.run(v1.OperationPut)
+			require.Equal(t, v1.ProvisioningStateCanceled, result.ProvisioningState())
+			require.Equal(t, newer, f.record().Properties.RequestToken)
+		})
+	}
+}
+
+func Test_Update_ReadFails(t *testing.T) {
+	f := newFixture(t)
+	f.accept(records.OperationUpdate)
+	err := update(t.Context(), records.NewStore(brokenDB{Client: f.db, failGet: true}), f.id, f.op, func(rec *datamodel.AWSResource) bool { return false })
+	require.Error(t, err)
+}
+
+func Test_Await_SaveFailsAfterAWSForgotTheRequest(t *testing.T) {
+	f := newFixture(t)
+	f.accept(records.OperationUpdate)
+	f.saveWith(func(rec *datamodel.AWSResource) { rec.Properties.RequestToken = "00000000-0000-0000-0000-000000000000" })
+	f.op = uuid.UUID{}
+	result := f.runWith(t.Context(), v1.OperationPut, brokenDB{Client: f.db, failSave: true})
+	require.True(t, result.Requeue)
+}
+
+func Test_Update_RecordGone(t *testing.T) {
+	f := newFixture(t)
+	require.NoError(t, update(t.Context(), f.store, f.id, uuid.New(), func(rec *datamodel.AWSResource) bool {
+		require.Fail(t, "there is no record to change")
+		return false
+	}))
+}

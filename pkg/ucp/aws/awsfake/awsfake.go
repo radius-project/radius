@@ -290,6 +290,7 @@ func (c *CloudControl) DeleteResource(ctx context.Context, params *cloudcontrol.
 
 // GetResourceRequestStatus reports a request as finished.
 func (c *CloudControl) GetResourceRequestStatus(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
+	c.before("GetResourceRequestStatus")
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if err := c.record(Call{Operation: "GetResourceRequestStatus"}); err != nil {

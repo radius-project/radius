@@ -144,6 +144,14 @@ func Test_InitializeClients(t *testing.T) {
 		require.Same(t, cc, options.AWSClients.CloudControl)
 		require.Same(t, cf, options.AWSClients.CloudFormation)
 	})
+	t.Run("fails when the AWS configuration cannot be loaded", func(t *testing.T) {
+		t.Setenv("AWS_PROFILE", "radius-test-profile-that-does-not-exist")
+		require.Error(t, InitializeClients(t.Context(), &ucp.Options{Config: &ucp.Config{}}))
+
+		_, err := NewModule(newTestOptions(t)).Initialize(t.Context())
+		require.Error(t, err)
+	})
+
 	t.Run("uses the UCP credential API", func(t *testing.T) {
 		t.Setenv("AWS_REGION", "us-west-2")
 		connection, err := sdk.NewDirectConnection("http://localhost:9443")
