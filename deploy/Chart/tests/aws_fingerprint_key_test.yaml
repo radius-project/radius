@@ -29,6 +29,9 @@ tests:
           pattern: '^[A-Za-z0-9+/]{43}=$'
       - notExists:
           path: metadata.resourceVersion
+      - equal:
+          path: immutable
+          value: true
 
   - it: should keep the existing key across upgrades
     template: ucp/aws-fingerprint-key.yaml

@@ -24,5 +24,11 @@ metadata:
     app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
 type: Opaque
+{{- /*
+Immutable, so no write can change the key in place. A standalone helm rollback replays a stored manifest without
+lookup, and would otherwise restore a retired key; the API server rejects it instead. To replace the key, delete the
+Secret and upgrade.
+*/}}
+immutable: true
 data:
   key: {{ $key | quote }}

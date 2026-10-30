@@ -95,18 +95,76 @@ func TestAWSFingerprintKeySecretUpgrade(t *testing.T) {
 				return
 			}
 
-			upgraded, err := radiusClient.RunHelmUpgrade(configuration, chart, nil, "radius", namespace, false, true, time.Minute)
+			_, err = radiusClient.RunHelmUpgrade(configuration, chart, nil, "radius", namespace, false, true, time.Minute)
 			require.NoError(t, err)
 			requireKeptKey("Upgrade")
 			require.NoError(t, radiusClient.RunHelmRollback(configuration, "radius", 1, false))
 			requireKeptKey("Rollback")
-
-			// The upgrade revision stored the Secret's resourceVersion. After the key is replaced, a rollback to that
-			// revision renders against the live Secret, so it succeeds and keeps the replaced key.
-			replaced := replaceFingerprintKey(t, secrets)
-			require.NoError(t, radiusClient.RunHelmRollback(configuration, "radius", upgraded.Version, false))
-			requireFingerprintKey(t, secrets, replaced, "Rollback must keep the live key.")
 		})
+	}
+}
+
+// TestAWSFingerprintKeySecretRollbackAfterReplace replaces the key the documented way, by deleting the Secret and
+// upgrading, then rolls back to the install revision, which stored the old key. A standalone helm rollback replays
+// that manifest without lookup, so it must fail; rad renders against the live Secret, so it succeeds. Both must keep
+// the replaced key, with client-side and server-side apply.
+func TestAWSFingerprintKeySecretRollbackAfterReplace(t *testing.T) {
+	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
+		t.Skip("Run make test or set KUBEBUILDER_ASSETS to run the isolated API-server regression.")
+	}
+	runtimelog.SetLogger(logr.Discard())
+	helmBinary, err := exec.LookPath("helm")
+	require.NoError(t, err)
+	kubeconfig, client := startTestAPIServer(t)
+	_, chart := shippingTemplatesChart(t, "ucp/aws-fingerprint-key.yaml")
+
+	for _, rollbacker := range []string{"helm", "rad"} {
+		for _, serverSideApply := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/serverSideApply=%t", rollbacker, serverSideApply), func(t *testing.T) {
+				namespace := fmt.Sprintf("aws-fingerprint-key-replace-%s-%t", rollbacker, serverSideApply)
+				flags := genericclioptions.NewConfigFlags(false)
+				flags.KubeConfig = &kubeconfig
+				flags.Namespace = &namespace
+				configuration := &helm.Configuration{}
+				require.NoError(t, configuration.Init(flags, namespace, helmDriverSecret))
+				installClient := newInstallClient(configuration, "radius", namespace, false, time.Minute)
+				installClient.ServerSideApply = serverSideApply
+				_, err := installClient.Run(chart, map[string]any{})
+				require.NoError(t, err)
+				_, err = newUpgradeClient(configuration, namespace, false, true, time.Minute, serverSideApply).Run("radius", chart, map[string]any{})
+				require.NoError(t, err)
+
+				secrets := client.CoreV1().Secrets(namespace)
+				installed, err := secrets.Get(t.Context(), ucp_aws.FingerprintKeySecretName, metav1.GetOptions{})
+				require.NoError(t, err)
+
+				// The key cannot be changed in place.
+				patch, err := json.Marshal(corev1.Secret{Data: map[string][]byte{"key": make([]byte, ucp_aws.MinFingerprintKeyLength)}})
+				require.NoError(t, err)
+				_, err = secrets.Patch(t.Context(), installed.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+				require.ErrorContains(t, err, "field is immutable")
+
+				require.NoError(t, secrets.Delete(t.Context(), installed.Name, metav1.DeleteOptions{}))
+				radiusClient := NewHelmClient()
+				_, err = radiusClient.RunHelmUpgrade(configuration, chart, nil, "radius", namespace, false, true, time.Minute)
+				require.NoError(t, err)
+				replaced, err := secrets.Get(t.Context(), installed.Name, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.NotEqual(t, installed.Data["key"], replaced.Data["key"], "The upgrade must generate a new key.")
+
+				if rollbacker == "helm" {
+					command := exec.CommandContext(t.Context(), helmBinary, "rollback", "radius", "1",
+						"--kubeconfig", kubeconfig, "--kube-context", "test", "--namespace", namespace, "--timeout", "1m")
+					command.Env = append(os.Environ(), "HELM_DRIVER=secret")
+					output, err := command.CombinedOutput()
+					require.Error(t, err, "A standalone rollback to a revision with an earlier key must fail: %s", output)
+				} else {
+					require.NoError(t, radiusClient.RunHelmRollback(configuration, "radius", 1, false))
+				}
+
+				requireFingerprintKey(t, secrets, replaced.Data["key"], "Rollback must keep the replaced key.")
+			})
+		}
 	}
 }
 
@@ -163,16 +221,20 @@ func TestAWSFingerprintKeySecretReplaceRace(t *testing.T) {
 	}
 }
 
-// replaceFingerprintKey replaces the key with kubectl patch, the way an operator would, and returns the new key.
+// replaceFingerprintKey replaces the Secret with a new key, the way an operator would restore one, and returns the
+// new key. The Secret is immutable, so it is deleted and created again.
 func replaceFingerprintKey(t *testing.T, secrets typedcorev1.SecretInterface) []byte {
 	t.Helper()
 	key := make([]byte, ucp_aws.MinFingerprintKeyLength)
 	_, err := rand.Read(key)
 	require.NoError(t, err)
-	patch, err := json.Marshal(corev1.Secret{Data: map[string][]byte{"key": key}})
-	require.NoError(t, err)
-	_, err = secrets.Patch(t.Context(), ucp_aws.FingerprintKeySecretName, types.MergePatchType, patch,
-		metav1.PatchOptions{FieldManager: "kubectl-patch"})
+	require.NoError(t, secrets.Delete(t.Context(), ucp_aws.FingerprintKeySecretName, metav1.DeleteOptions{}))
+	immutable := true
+	_, err = secrets.Create(t.Context(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: ucp_aws.FingerprintKeySecretName},
+		Immutable:  &immutable,
+		Data:       map[string][]byte{"key": key},
+	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 	return key
 }
