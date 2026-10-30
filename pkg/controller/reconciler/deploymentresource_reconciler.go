@@ -124,6 +124,10 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	if err := syncDisplayLabels(ctx, r.Client, &deploymentResource); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	r.EventRecorder.Event(&deploymentResource, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
 	return ctrl.Result{}, nil
 }
@@ -256,6 +260,9 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	if err := syncDisplayLabels(ctx, r.Client, deploymentResource); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	deletePoller, err := r.startDeleteOperation(ctx, deploymentResource)
 	if err != nil {
@@ -317,9 +324,15 @@ func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context,
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceId := deploymentResource.Spec.Id
-	radiusAPIVersion := "2023-10-01-preview"
+	radiusAPIVersion := defaultDeleteAPIVersion
+	if ownerRef := metav1.GetControllerOf(deploymentResource); ownerRef != nil {
+		owner := &radappiov1alpha3.DeploymentTemplate{}
+		if err := r.Client.Get(ctx, client.ObjectKey{Namespace: deploymentResource.Namespace, Name: ownerRef.Name}, owner); err == nil {
+			radiusAPIVersion = deleteAPIVersion(owner.Spec.Template, resourceId)
+		}
+	}
 
-	logger.Info("Starting DELETE operation.")
+	logger.Info("Starting DELETE operation.", "apiVersion", radiusAPIVersion)
 	poller, err := r.ResourceDeploymentsClient.Delete(ctx, resourceId, radiusAPIVersion)
 	if err != nil {
 		return nil, err
@@ -432,7 +445,10 @@ func (r *DeploymentResourceReconciler) completeDeleteOperation(ctx context.Conte
 func (r *DeploymentResourceReconciler) updateFailedStatus(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) error {
 	deploymentResource.Status.Operation = nil
 	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseFailed
-	return r.Client.Status().Update(ctx, deploymentResource)
+	if err := r.Client.Status().Update(ctx, deploymentResource); err != nil {
+		return err
+	}
+	return syncDisplayLabels(ctx, r.Client, deploymentResource)
 }
 
 // SetupWithManager sets up the controller with the Manager.

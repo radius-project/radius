@@ -211,6 +211,9 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		}
 
 		for _, outputResourceId := range outputResources {
+			if !isTrackedOutputResource(outputResourceId) {
+				continue
+			}
 			if _, ok := existingOutputResources[outputResourceId]; !ok {
 				// Resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
 
@@ -246,6 +249,11 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		for _, resource := range deploymentTemplate.Status.OutputResources {
 			if _, ok := newOutputResources[resource]; !ok {
 				// Resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
+				if !isTrackedOutputResource(resource) {
+					// Untracked resources are deleted only with the whole template.
+					logger.Info("Leaving untracked resource removed from the template in place.", "resourceId", resource)
+					continue
+				}
 
 				logger.Info("Deleting resource.", "resourceId", resource)
 				resourceName, err := generateDeploymentResourceName(resource)
@@ -297,6 +305,10 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			return ctrl.Result{}, err
 		}
 
+		if err := clearOwnedResourcesDeploying(ctx, r.Client, deploymentTemplate); err != nil {
+			return ctrl.Result{}, err
+		}
+
 		if residualsPresent {
 			// Requeue as a backstop; the Owns(&DeploymentResource{}) watch also
 			// wakes us up when DRs are removed.
@@ -311,10 +323,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 	errorMessage := fmt.Errorf("unknown operation kind: %s", deploymentTemplate.Status.Operation.OperationKind)
 	logger.Error(errorMessage, "Unknown operation kind.")
 
-	deploymentTemplate.Status.Operation = nil
-	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-	err := r.Client.Status().Update(ctx, deploymentTemplate)
-	if err != nil {
+	if err := r.updateFailedStatus(ctx, deploymentTemplate); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -363,6 +372,10 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseUpdating
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		if err := markOwnedResourcesDeploying(ctx, r.Client, deploymentTemplate); err != nil {
 			return ctrl.Result{}, err
 		}
 
@@ -440,6 +453,10 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 		}
 
 		return ctrl.Result{}, fmt.Errorf("Requeuing to wait for owned resources to be deleted, %d remaining", len(ownedResources))
+	}
+
+	if err := r.deleteUntrackedOutputResources(ctx, deploymentTemplate); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	logger.Info("Resource is deleted.")
@@ -630,7 +647,10 @@ func isUpToDate(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) bool {
 func (r *DeploymentTemplateReconciler) updateFailedStatus(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) error {
 	deploymentTemplate.Status.Operation = nil
 	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-	return r.Client.Status().Update(ctx, deploymentTemplate)
+	if err := r.Client.Status().Update(ctx, deploymentTemplate); err != nil {
+		return err
+	}
+	return clearOwnedResourcesDeploying(ctx, r.Client, deploymentTemplate)
 }
 
 // SetupWithManager sets up the controller with the Manager.
