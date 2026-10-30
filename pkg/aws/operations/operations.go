@@ -197,7 +197,7 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 		isWriteOnlyProperty := slices.Contains(resourceTypeSchema.WriteOnlyProperties, property)
 
 		if _, exists := flattenedDesiredStateObject[k]; !exists && underAny(k, opts.Removed) &&
-			!underAny(k, PropertyPaths(resourceTypeSchema.ReadOnlyProperties)) && !underAny(k, PropertyPaths(resourceTypeSchema.CreateOnlyProperties)) {
+			!overlapsAny(k, PropertyPaths(resourceTypeSchema.ReadOnlyProperties)) && !overlapsAny(k, PropertyPaths(resourceTypeSchema.CreateOnlyProperties)) {
 			// Radius set this property in the last deploy and the template no longer sets it: leave it out, so the
 			// patch clears it.
 			continue
@@ -288,7 +288,7 @@ func RemovedCreateOnly(currentState map[string]any, schema []byte, removed []str
 	current := FlattenProperties(currentState)
 	out := []string{}
 	for _, r := range removed {
-		if !underAny(r, createOnly) || underAny(r, readOnly) || slices.Contains(out, r) {
+		if !overlapsAny(r, createOnly) || underAny(r, readOnly) || slices.Contains(out, r) {
 			continue
 		}
 		if _, ok := current[r]; ok || hasPathUnder(current, r) {
@@ -309,6 +309,28 @@ func PropertyPaths(schemaPaths []string) []string {
 		}
 	}
 	return out
+}
+
+// overlapsAny reports whether removing the flattened path k removes one of paths or a value inside one: k is one of
+// paths, inside one, or holds one. Arrays are one value, so removing an array such as "Members" also removes a
+// property inside its items, such as "Members/*/Name". A "*" segment matches any segment.
+func overlapsAny(k string, paths []string) bool {
+	segments := strings.Split(k, "/")
+	for _, p := range paths {
+		pattern := strings.Split(p, "/")
+		n := min(len(segments), len(pattern))
+		match := true
+		for i := range n {
+			if pattern[i] != "*" && pattern[i] != segments[i] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
 }
 
 // underAny reports whether the flattened path k is one of paths or inside one of them.

@@ -26,7 +26,7 @@ import (
 var removalSchema = []byte(`{
 	"properties": {},
 	"readOnlyProperties": ["/properties/Arn"],
-	"createOnlyProperties": ["/properties/BucketName", "/properties/Encryption/KmsKeyId"]
+	"createOnlyProperties": ["/properties/BucketName", "/properties/Encryption/KmsKeyId", "/properties/Members/*/Name"]
 }`)
 
 func Test_GeneratePatchWithOptions_Removed(t *testing.T) {
@@ -39,6 +39,7 @@ func Test_GeneratePatchWithOptions_Removed(t *testing.T) {
 		"VersioningConfiguration": map[string]any{"Status": "Enabled"},
 		"Logging":                 map[string]any{"Prefix": "p", "Bucket": "logs"},
 		"SetByAWS":                "default",
+		"Members":                 []any{map[string]any{"Name": "m", "Role": "r"}},
 	}
 
 	tests := []struct {
@@ -74,6 +75,12 @@ func Test_GeneratePatchWithOptions_Removed(t *testing.T) {
 			name:    "read-only and create-only properties are never cleared",
 			desired: map[string]any{},
 			removed: []string{"Arn", "BucketName"},
+			want:    nil,
+		},
+		{
+			name:    "an array holding a create-only property is never cleared",
+			desired: map[string]any{"BucketName": "b"},
+			removed: []string{"Members"},
 			want:    nil,
 		},
 		{
@@ -131,11 +138,12 @@ func Test_RemovedCreateOnly(t *testing.T) {
 		"Arn":        "arn",
 		"Encryption": map[string]any{"KmsKeyId": "key"},
 		"Other":      "x",
+		"Members":    []any{map[string]any{"Name": "m"}},
 	}
 
-	got, err := RemovedCreateOnly(current, removalSchema, []string{"Other", "Encryption/KmsKeyId", "BucketName", "Arn"})
+	got, err := RemovedCreateOnly(current, removalSchema, []string{"Other", "Encryption/KmsKeyId", "BucketName", "Arn", "Members"})
 	require.NoError(t, err)
-	require.Equal(t, []string{"BucketName", "Encryption/KmsKeyId"}, got)
+	require.Equal(t, []string{"BucketName", "Encryption/KmsKeyId", "Members"}, got)
 
 	// AWS no longer reports it, so there is nothing to clear.
 	got, err = RemovedCreateOnly(map[string]any{}, removalSchema, []string{"BucketName"})
@@ -149,4 +157,21 @@ func Test_RemovedCreateOnly(t *testing.T) {
 func Test_FlattenProperties_Null(t *testing.T) {
 	t.Parallel()
 	require.Equal(t, map[string]any{"A": nil, "B/C": "d"}, FlattenProperties(map[string]any{"A": nil, "B": map[string]any{"C": "d"}}))
+}
+
+func Test_OverlapsAny(t *testing.T) {
+	t.Parallel()
+	paths := []string{"A/B", "Members/*/Name"}
+	for k, want := range map[string]bool{
+		"A":              true,
+		"A/B":            true,
+		"A/B/C":          true,
+		"A/C":            false,
+		"Members":        true,
+		"Members/0/Name": true,
+		"Members/0/Role": false,
+		"Other":          false,
+	} {
+		require.Equal(t, want, overlapsAny(k, paths), k)
+	}
 }
