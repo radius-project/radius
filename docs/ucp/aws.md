@@ -36,14 +36,20 @@ The record (`datamodel.AWSResource`, read and written by `pkg/ucp/aws/records`) 
 
 - **PUT** reads the record. With no AWS identifier yet, UCP takes over a resource AWS already has, found by the top-level `name` or by the identifier in the properties, or creates one. Before it creates anything, UCP saves the record with a client token, and sends that token with every attempt to create the resource, so a retry never creates a second one. With a record, UCP compares the template with AWS and with the last-applied properties: a property the last deploy set and the template no longer sets is cleared, and a removed create-only property fails with `400`.
 - **GET** reads the record, then AWS by the identifier in the record. `404` when there is no record.
-- **DELETE** reads the record and deletes the resource by its identifier. No record returns `204` without calling AWS.
-- **POST `/:get`** reads a resource Radius may not have created, for an `existing` block that sets `name` or `properties`. It reads AWS by the top-level `name` in the body when it is set, and otherwise by the primary or additional identifiers in the properties. It never saves a record. POST `/:put` and `/:delete` no longer exist.
+- **DELETE** reads the record and deletes the resource by its identifier. With no record, UCP deletes the resource in AWS by the URL's last segment, and returns `204` when AWS does not have it (transitional, see below).
+- **POST `/:get`** reads a resource Radius may not have created, for an `existing` block that sets `name` or `properties`. It reads AWS by the top-level `name` in the body when it is set, and otherwise by the primary or additional identifiers in the properties. It never saves a record.
 
-PUT and DELETE require the `X-Radius-Resource-Owner` header, and fail with `400` without it. A PUT or DELETE from a different owner than the record's fails with `409`, and so does a PUT that would manage an AWS resource another alias's record already has. Owners are compared ignoring case.
+PUT, and a DELETE that finds a record, require the `X-Radius-Resource-Owner` header, and fail with `400` without it. A PUT or DELETE from a different owner than the record's fails with `409`, and so does a PUT that would manage an AWS resource another alias's record already has. Owners are compared ignoring case.
 
-UCP owns every create, update, and delete. It saves the new last-applied properties on the record as pending values before it calls AWS, saves the Cloud Control request token, and queues an operation. The backend controller in `pkg/ucp/backend/controller/awsresources` polls Cloud Control, then moves the pending values to last-applied on success, or drops them on failure so the previous ones stay. A failed create removes the record. The operation status and result routes read UCP's data store. A second PUT or DELETE while an operation is running gets `409`. One that finds an operation nothing has polled for 10 minutes, or one AWS accepted but UCP never queued, resumes it.
+UCP owns every create, update, and delete. It saves the new last-applied properties on the record as pending values before it calls AWS, saves the Cloud Control request token, and queues an operation. The backend controller in `pkg/ucp/backend/controller/awsresources` polls Cloud Control, then moves the pending values to last-applied on success, or drops them on failure so the previous ones stay. A failed create removes the record. The operation status and result routes read UCP's data store, and fall back to Cloud Control for an operation UCP does not have (transitional, see below). A second PUT or DELETE while an operation is running gets `409`. One that finds an operation nothing has polled for 10 minutes, or one AWS accepted but UCP never queued, resumes it.
 
 Write-only values are never stored: not in the last-applied or pending properties, and not in operations.
+
+Until the Deployment Engine deploys AWS resources by alias, UCP keeps three transitional behaviors from before records, for Deployment Engine releases that still deploy with POST `/:put` and `/:delete`. They are removed once the Deployment Engine deploys by alias:
+
+- POST `/:put` and `/:delete` work as before: no owner header and no record.
+- The operation status and result routes ask Cloud Control by request token when UCP has no operation with that ID.
+- A DELETE of a URL with no record deletes the resource in AWS by the URL's last segment, with or without the owner header. A header that is sent must not be blank. Recipe deletes rely on this, because the IDs of resources created with POST `/:put` end in the AWS identifier.
 
 <br/><br/>
 

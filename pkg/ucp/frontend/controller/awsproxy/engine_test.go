@@ -24,6 +24,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -447,13 +448,16 @@ func Test_Owner(t *testing.T) {
 	resp := h.putBody(vpcPath, "", map[string]any{"properties": map[string]any{}})
 	require.Equal(t, http.StatusBadRequest, resp.status)
 	require.Contains(t, resp.message(), sdkclients.AWSResourceOwnerHeader)
-	resp = h.delete(vpcPath, "")
-	require.Equal(t, http.StatusBadRequest, resp.status)
-	require.Empty(t, h.cc.Calls())
 
 	require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
 	h.finish()
 	h.cc.Calls()
+
+	// A DELETE of a record requires the owner.
+	resp = h.delete(vpcPath, "")
+	require.Equal(t, http.StatusBadRequest, resp.status)
+	require.Contains(t, resp.message(), sdkclients.AWSResourceOwnerHeader)
+	require.Empty(t, h.cc.Calls())
 
 	// Another owner, such as the same app deployed to another environment, cannot change or delete it.
 	resp = h.putBody(vpcPath, otherOwner, map[string]any{"properties": map[string]any{"CidrBlock": "10.0.0.0/16"}})
@@ -731,10 +735,40 @@ func Test_Create_FailurePaths(t *testing.T) {
 }
 
 func Test_Delete(t *testing.T) {
-	t.Run("no record", func(t *testing.T) {
+	// TRANSITIONAL: a URL with no record is deleted in AWS by its last segment, with or without the owner header.
+	for _, owner := range []string{testOwner, ""} {
+		t.Run("no record deletes by the URL, owner "+strconv.Quote(owner), func(t *testing.T) {
+			h := newHarness(t)
+			h.cc.Put(vpcType, "app-vpc", map[string]any{"CidrBlock": "10.0.0.0/16"})
+			resp := h.delete(vpcPath, owner)
+			require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+			calls := h.cc.Calls()
+			require.Equal(t, []string{"DeleteResource"}, operations(calls))
+			require.Equal(t, "app-vpc", calls[0].Identifier)
+			require.Zero(t, h.cc.Count(vpcType))
+			require.Nil(t, h.record(vpcPath))
+			require.Empty(t, h.finish(), "UCP tracks no operation for a delete with no record")
+		})
+
+		t.Run("no record and nothing in AWS, owner "+strconv.Quote(owner), func(t *testing.T) {
+			h := newHarness(t)
+			require.Equal(t, http.StatusNoContent, h.delete(vpcPath, owner).status)
+			require.Equal(t, []string{"DeleteResource"}, operations(h.cc.Calls()))
+		})
+	}
+
+	t.Run("no record and a blank owner header", func(t *testing.T) {
 		h := newHarness(t)
-		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
+		resp := h.delete(vpcPath, " ")
+		require.Equal(t, http.StatusBadRequest, resp.status)
+		require.Contains(t, resp.message(), sdkclients.AWSResourceOwnerHeader)
 		require.Empty(t, h.cc.Calls())
+	})
+
+	t.Run("no record and an AWS error", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.Errors["DeleteResource"] = awsError(&smithy.GenericAPIError{Code: "AccessDenied", Message: "no", Fault: smithy.FaultClient})
+		require.Equal(t, http.StatusBadRequest, h.delete(vpcPath, testOwner).status)
 	})
 
 	t.Run("record without an identifier", func(t *testing.T) {

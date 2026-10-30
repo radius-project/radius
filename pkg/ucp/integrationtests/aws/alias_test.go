@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -195,4 +196,29 @@ func Test_AWSResource_TransitionalPostRoutes(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
 	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
 	require.Zero(t, cc.Count("AWS::S3::Bucket"))
+}
+
+// Test_AWSResource_TransitionalDeleteWithoutRecord checks that a DELETE of a URL with no record, such as a recipe
+// deleting a resource the Deployment Engine created with POST /:put, deletes the resource in AWS by the URL's last
+// segment, with or without the owner header. This is transitional, like the POST routes.
+func Test_AWSResource_TransitionalDeleteWithoutRecord(t *testing.T) {
+	for _, owner := range []string{"", testOwner} {
+		t.Run("owner "+strconv.Quote(owner), func(t *testing.T) {
+			ucp, cc := initializeFakeAWSTest(t, aliasSchemas)
+			cc.Identifiers["AWS::S3::Bucket"] = "BucketName"
+			collection := awsProvidersPath + "AWS.S3/Bucket"
+
+			resp := send(t, ucp, http.MethodPost, collection+"/:put", "", map[string]any{"properties": map[string]any{"BucketName": "legacy"}})
+			require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+			require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+
+			resp = send(t, ucp, http.MethodDelete, collection+"/legacy", owner, nil)
+			require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+			require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+			require.Zero(t, cc.Count("AWS::S3::Bucket"))
+
+			// AWS no longer has it, so a retry returns 204.
+			require.Equal(t, http.StatusNoContent, send(t, ucp, http.MethodDelete, collection+"/legacy", owner, nil).status)
+		})
+	}
 }

@@ -605,14 +605,10 @@ func (e *engine) asyncResponse(id resources.ID, body any, code int, operationID 
 }
 
 // delete deletes the AWS resource under the alias in the URL. It checks the owner and deletes the resource in AWS by
-// the record's identifier (see startDelete). An alias with no record returns 204 without calling AWS, so a retried
-// DELETE never deletes a different resource that happens to have the alias as its identifier.
+// the record's identifier (see startDelete). A URL with no record is deleted in AWS by its last segment (see
+// deleteWithoutRecord).
 func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest.Response, error) {
 	r, resp := e.begin(ctx, httpReq)
-	if resp != nil {
-		return resp, nil
-	}
-	owner, resp := ownerFromRequest(httpReq)
 	if resp != nil {
 		return resp, nil
 	}
@@ -622,13 +618,53 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 		return nil, err
 	}
 	if rec == nil {
-		return armrpc_rest.NewNoContentResponse(), nil
+		return e.deleteWithoutRecord(ctx, httpReq, r)
+	}
+	owner, resp := ownerFromRequest(httpReq)
+	if resp != nil {
+		return resp, nil
 	}
 	rec, etag, resp, err = e.checkRecord(ctx, r, rec, etag, owner, v1.OperationDelete)
 	if resp != nil || err != nil {
 		return resp, err
 	}
 	return e.startDelete(ctx, r, rec, etag)
+}
+
+// deleteWithoutRecord deletes a URL that has no record in AWS, using the URL's last segment as the AWS identifier, as
+// UCP did before records. It returns 204 when AWS does not have the resource. The owner header is optional, but a
+// header that is sent must not be blank.
+//
+// TRANSITIONAL: Deployment Engine releases before azure-octo/deployment-engine#705 deploy AWS resources with
+// POST /:put, which saves no record, so the IDs of those resources end in the AWS identifier. Recipe deletes send
+// those IDs with the owner header, so the header cannot tell old IDs from aliases. Remove this once the Deployment
+// Engine deploys AWS resources by alias; a URL with no record then returns 204 without calling AWS, so a retried
+// DELETE never deletes a different resource whose AWS identifier matches the alias.
+func (e *engine) deleteWithoutRecord(ctx context.Context, httpReq *http.Request, r *request) (armrpc_rest.Response, error) {
+	if len(httpReq.Header.Values(sdkclients.AWSResourceOwnerHeader)) > 0 {
+		if _, resp := ownerFromRequest(httpReq); resp != nil {
+			return resp, nil
+		}
+	}
+
+	identifier := r.id.Name()
+	ucplog.FromContextOrDiscard(ctx).Info("Deleting AWS resource with no record", "awsIdentifier", identifier)
+	response, err := e.clients.CloudControl.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
+		TypeName:   aws.String(r.typeName),
+		Identifier: aws.String(identifier),
+	}, CloudControlRegionOption(r.region))
+	if ucp_aws.IsAWSResourceNotFoundError(err) {
+		return armrpc_rest.NewNoContentResponse(), nil
+	} else if err != nil {
+		return ucp_aws.HandleAWSError(ctx, err)
+	}
+
+	// UCP saves no operation, so the operation routes read the status from Cloud Control by the request token.
+	operationID, err := uuid.Parse(aws.ToString(response.ProgressEvent.RequestToken))
+	if err != nil {
+		return nil, err
+	}
+	return e.asyncResponse(r.id, map[string]any{}, 202, operationID), nil
 }
 
 // startDelete reserves the record and deletes its AWS resource, and the worker removes the record when AWS finishes.
