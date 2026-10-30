@@ -46,6 +46,8 @@ type Context struct {
 // Resource contains the information needed to deploy a recipe.
 // In the case the resource is a portable resource, it represents the resource's id, name and type.
 type Resource struct {
+	// IncomingReferences contains desired inputs from resources bound to this owner.
+	IncomingReferences *[]recipes.IncomingReference `json:"incomingReferences,omitempty"`
 	// ResourceInfo represents name and id of the resource
 	ResourceInfo
 	// Type represents the resource type, this will be a namespace/type combo. Ex. Applications.Core/Environment

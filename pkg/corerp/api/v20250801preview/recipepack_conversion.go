@@ -89,10 +89,17 @@ func toRecipesDataModel(recipes map[string]*RecipeDefinition) map[string]*datamo
 	for key, recipe := range recipes {
 		if recipe != nil {
 			definition := &datamodel.RecipeDefinition{
-				Kind:       toRecipeKindDataModel(recipe.Kind),
-				Source:     to.String(recipe.Source),
-				Parameters: recipe.Parameters,
-				PlainHTTP:  to.Bool(recipe.PlainHTTP),
+				Kind:                  toRecipeKindDataModel(recipe.Kind),
+				Source:                to.String(recipe.Source),
+				Parameters:            recipe.Parameters,
+				PlainHTTP:             to.Bool(recipe.PlainHTTP),
+				AcceptsDelegationFrom: to.StringArray(recipe.AcceptsDelegationFrom),
+			}
+			if recipe.Target != nil {
+				definition.Target = &datamodel.DelegationTarget{
+					ResourceType: to.String(recipe.Target.ResourceType),
+					IDsFrom:      to.String(recipe.Target.IDsFrom),
+				}
 			}
 			if recipe.Outputs != nil {
 				definition.Outputs, definition.SecretOutputs = SplitRecipeOutputs(recipe.Outputs)
@@ -112,10 +119,17 @@ func fromRecipesDataModel(recipes map[string]*datamodel.RecipeDefinition) map[st
 	for key, recipe := range recipes {
 		if recipe != nil {
 			definition := &RecipeDefinition{
-				Kind:       fromRecipeKindDataModel(recipe.Kind),
-				Source:     new(recipe.Source),
-				Parameters: recipe.Parameters,
-				PlainHTTP:  new(recipe.PlainHTTP),
+				Kind:                  fromRecipeKindDataModel(recipe.Kind),
+				Source:                new(recipe.Source),
+				Parameters:            recipe.Parameters,
+				PlainHTTP:             new(recipe.PlainHTTP),
+				AcceptsDelegationFrom: to.ArrayofStringPtrs(recipe.AcceptsDelegationFrom),
+			}
+			if recipe.Target != nil {
+				definition.Target = &DelegationTarget{
+					ResourceType: new(recipe.Target.ResourceType),
+					IDsFrom:      new(recipe.Target.IDsFrom),
+				}
 			}
 			if outputs := mergeRecipeOutputs(recipe.Outputs, recipe.SecretOutputs); outputs != nil {
 				definition.Outputs = outputs

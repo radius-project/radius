@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -27,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/dynamicrp/backend/processor"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend/secret"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
+	"github.com/radius-project/radius/pkg/recipes/delegation"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/schema"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -60,6 +62,13 @@ func NewDynamicResourceController(opts ctrl.Options, ucp *v20231001preview.Clien
 
 // Run implements the async controller interface.
 func (c *DynamicResourceController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
+	if os.Getenv(delegation.EnabledVariable) == "true" {
+		return c.runWithDelegation(ctx, request)
+	}
+	return c.runStandard(ctx, request)
+}
+
+func (c *DynamicResourceController) runStandard(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	// Validate request body against schema if available
 	if err := c.validateRequestSchema(ctx, request); err != nil {
 		return ctrl.NewFailedResult(v1.ErrorDetails{

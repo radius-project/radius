@@ -67,6 +67,10 @@ type KubernetesRuntime struct {
 
 // EnvironmentDefinition represents the recipe configuration details.
 type EnvironmentDefinition struct {
+	// Target selects a provisioning owner instead of an execution driver.
+	Target *datamodel.DelegationTarget
+	// AcceptsDelegationFrom permits desired input aggregation from these types.
+	AcceptsDelegationFrom []string
 	// Name represents the name of the recipe within the environment
 	Name string
 	// Driver represents the kind of infrastructure language used to define recipe.
@@ -92,6 +96,8 @@ type EnvironmentDefinition struct {
 
 // ResourceMetadata represents recipe details provided while deploying a portable or a user-defined resource.
 type ResourceMetadata struct {
+	// IncomingReferences is a stable snapshot of desired delegate inputs.
+	IncomingReferences []IncomingReference
 	// Name represents the name of the recipe within the environment
 	Name string
 	// ApplicationID represents fully qualified resource ID for the application that the portable resource is consumed by
@@ -124,6 +130,8 @@ var (
 
 // RecipeOutput represents recipe deployment output.
 type RecipeOutput struct {
+	// DelegatedOutputs projects computed values onto the snapshot delegates.
+	DelegatedOutputs []DelegatedOutput
 	// Resources represents the list of output resources deployed recipe.
 	Resources []string
 
@@ -162,6 +170,8 @@ type RecipePackResource struct {
 
 // RecipeDefinition represents a recipe definition for a specific resource type in a recipe pack.
 type RecipeDefinition struct {
+	Target                *datamodel.DelegationTarget
+	AcceptsDelegationFrom []string
 	// Kind represents the type of recipe (e.g., terraform, bicep)
 	Kind string
 	// Source represents URL or path to the recipe source
@@ -176,6 +186,22 @@ type RecipeDefinition struct {
 	SecretOutputs map[string]string
 	// PlainHTTP connects to the source using HTTP (not-HTTPS)
 	PlainHTTP bool
+}
+
+// IncomingReference contains desired inputs, never status or computed outputs.
+type IncomingReference struct {
+	ID         string         `json:"id"`
+	Type       string         `json:"type"`
+	APIVersion string         `json:"apiVersion"`
+	Revision   string         `json:"revision"`
+	Properties map[string]any `json:"properties"`
+}
+
+// DelegatedOutput identifies the exact desired revision whose outputs were applied.
+type DelegatedOutput struct {
+	ID       string         `json:"id"`
+	Revision string         `json:"revision"`
+	Values   map[string]any `json:"values"`
 }
 
 // PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.

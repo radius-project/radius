@@ -197,6 +197,8 @@ type RecipeKind string
 const (
 	// RecipeKindBicep - Bicep recipe
 	RecipeKindBicep RecipeKind = "bicep"
+	// RecipeKindDelegated - Delegate provisioning to another Radius resource instance. Experimental.
+	RecipeKindDelegated RecipeKind = "delegated"
 	// RecipeKindTerraform - Terraform recipe
 	RecipeKindTerraform RecipeKind = "terraform"
 )
@@ -205,6 +207,7 @@ const (
 func PossibleRecipeKindValues() []RecipeKind {
 	return []RecipeKind{
 		RecipeKindBicep,
+		RecipeKindDelegated,
 		RecipeKindTerraform,
 	}
 }

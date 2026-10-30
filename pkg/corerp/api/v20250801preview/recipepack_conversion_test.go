@@ -26,6 +26,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDelegationRegistrationRoundTrip(t *testing.T) {
+	t.Parallel()
+	input := []byte(`{
+		"properties":{"recipes":{
+			"Radius.Compute/containers":{"kind":"terraform","source":"pinned","acceptsDelegationFrom":["Radius.Compute/routes"]},
+			"Radius.Compute/routes":{"kind":"delegated","target":{"resourceType":"Radius.Compute/containers","idsFrom":"$.rules[*].destinationContainer.resourceId"}}
+		}}
+	}`)
+	var resource RecipePackResource
+	require.NoError(t, json.Unmarshal(input, &resource))
+	model, err := resource.ConvertTo()
+	require.NoError(t, err)
+	converted := &RecipePackResource{}
+	require.NoError(t, converted.ConvertFrom(model))
+	encoded, err := json.Marshal(converted)
+	require.NoError(t, err)
+	var roundTrip RecipePackResource
+	require.NoError(t, json.Unmarshal(encoded, &roundTrip))
+	roundTripModel, err := roundTrip.ConvertTo()
+	require.NoError(t, err)
+	require.Equal(t, model, roundTripModel)
+}
+
 func TestRecipePackConvertVersionedToDataModel(t *testing.T) {
 	// Load test data
 	data := testutil.ReadFixture("recipepackresource.json")

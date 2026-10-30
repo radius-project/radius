@@ -31,6 +31,7 @@ import (
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/kube"
 	"github.com/radius-project/radius/pkg/rp/util"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
@@ -390,15 +391,17 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 		// TODO: For now, we can set "Name" to default as recipe packs don't have named recipes.
 		// We will remove this field from EnvironmentDefinition once we deprecate Applications.Core.
 		definition := &recipes.EnvironmentDefinition{
-			Name:            "default",
-			Driver:          recipeDefinition.Kind,
-			ResourceType:    resource.Type(),
-			Parameters:      parameters,
-			TemplatePath:    templatePath,
-			TemplateVersion: templateVersion,
-			PlainHTTP:       recipeDefinition.PlainHTTP,
-			Outputs:         recipeDefinition.Outputs,
-			SecretOutputs:   recipeDefinition.SecretOutputs,
+			Name:                  "default",
+			Driver:                recipeDefinition.Kind,
+			ResourceType:          resource.Type(),
+			Parameters:            parameters,
+			TemplatePath:          templatePath,
+			TemplateVersion:       templateVersion,
+			PlainHTTP:             recipeDefinition.PlainHTTP,
+			Outputs:               recipeDefinition.Outputs,
+			SecretOutputs:         recipeDefinition.SecretOutputs,
+			Target:                recipeDefinition.Target,
+			AcceptsDelegationFrom: recipeDefinition.AcceptsDelegationFrom,
 		}
 		return definition, nil
 	}
@@ -477,7 +480,7 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 				if definition.Kind == nil {
 					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing the required \"kind\" field", resourceType, recipePackID)
 				}
-				if definition.Source == nil {
+				if definition.Source == nil && *definition.Kind != v20250801preview.RecipeKindDelegated {
 					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing the required \"source\" field", resourceType, recipePackID)
 				}
 
@@ -486,14 +489,24 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 					plainHTTP = *definition.PlainHTTP
 				}
 				outputs, secretOutputs := v20250801preview.SplitRecipeOutputs(definition.Outputs)
-				return &recipes.RecipeDefinition{
-					Kind:          string(*definition.Kind),
-					Source:        string(*definition.Source),
-					Parameters:    definition.Parameters,
-					PlainHTTP:     plainHTTP,
-					Outputs:       outputs,
-					SecretOutputs: secretOutputs,
-				}, nil
+				result := &recipes.RecipeDefinition{
+					Kind:                  string(*definition.Kind),
+					Parameters:            definition.Parameters,
+					PlainHTTP:             plainHTTP,
+					Outputs:               outputs,
+					SecretOutputs:         secretOutputs,
+					AcceptsDelegationFrom: to.StringArray(definition.AcceptsDelegationFrom),
+				}
+				if definition.Source != nil {
+					result.Source = *definition.Source
+				}
+				if definition.Target != nil {
+					result.Target = &datamodel.DelegationTarget{
+						ResourceType: to.String(definition.Target.ResourceType),
+						IDsFrom:      to.String(definition.Target.IDsFrom),
+					}
+				}
+				return result, nil
 			}
 		}
 	}

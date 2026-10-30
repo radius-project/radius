@@ -1646,6 +1646,24 @@
         ]
       }
     },
+    "DelegationTarget": {
+      "type": "object",
+      "description": "Selects exactly one Radius provisioning target from desired properties.",
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "description": "Resource type of the provisioning target."
+        },
+        "idsFrom": {
+          "type": "string",
+          "description": "Selector starting with $. and containing field names and [*] only."
+        }
+      },
+      "required": [
+        "resourceType",
+        "idsFrom"
+      ]
+    },
     "Direction": {
       "type": "string",
       "description": "The direction of a connection.",
@@ -2062,6 +2080,17 @@
           "type": "string",
           "description": "(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes this is the module source such as a Git URL or a Terraform registry module."
         },
+        "acceptsDelegationFrom": {
+          "type": "array",
+          "description": "(Optional) Resource types permitted to contribute desired inputs to this recipe. Experimental delegated provisioning.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target": {
+          "$ref": "#/definitions/DelegationTarget",
+          "description": "(Optional) Target selection for a delegated registration. Mutually exclusive with source, parameters, and outputs."
+        },
         "parameters": {
           "type": "object",
           "description": "(Optional) Default parameter values passed to the Recipe when it runs. An Environment can override these per resource type through its `recipeParameters` property.",
@@ -2074,14 +2103,14 @@
         }
       },
       "required": [
-        "kind",
-        "source"
+        "kind"
       ]
     },
     "RecipeKind": {
       "type": "string",
       "description": "The type of recipe",
       "enum": [
+        "delegated",
         "terraform",
         "bicep"
       ],
@@ -2089,6 +2118,11 @@
         "name": "RecipeKind",
         "modelAsString": false,
         "values": [
+          {
+            "name": "delegated",
+            "value": "delegated",
+            "description": "Delegate provisioning to another Radius resource instance. Experimental."
+          },
           {
             "name": "terraform",
             "value": "terraform",

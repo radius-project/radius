@@ -60,11 +60,11 @@ func (s *Service) registerRoutes(
 	resourceOptions := controller.ResourceOptions[datamodel.DynamicResource]{
 		RequestConverter:  converter.DynamicResourceDataModelFromVersioned,
 		ResponseConverter: converter.DynamicResourceDataModelToVersioned,
-		UpdateFilters: makeUpdateFilters(
+		UpdateFilters: append(makeUpdateFilters(
 			defaultsFilter,
 			makeValidationFilter(ucpClient),
 			encryptionFilter,
-		),
+		), controller.UpdateFilter[datamodel.DynamicResource](makeDelegationStateFilter(ucpClient))),
 		AsyncOperationRetryAfter: time.Second * 5,
 		AsyncOperationTimeout:    time.Hour * 24,
 	}

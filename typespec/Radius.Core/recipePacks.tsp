@@ -153,7 +153,13 @@ model RecipeDefinition {
   plainHttp?: boolean;
 
   @doc("(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes this is the module source such as a Git URL or a Terraform registry module.")
-  source: string;
+  source?: string;
+
+  @doc("(Optional) Resource types permitted to contribute desired inputs to this recipe. Experimental delegated provisioning.")
+  acceptsDelegationFrom?: string[];
+
+  @doc("(Optional) Target selection for a delegated registration. Mutually exclusive with source, parameters, and outputs.")
+  target?: DelegationTarget;
 
   @doc("(Optional) Default parameter values passed to the Recipe when it runs. An Environment can override these per resource type through its `recipeParameters` property.")
   parameters?: Record<unknown>;
@@ -164,11 +170,22 @@ model RecipeDefinition {
 
 @doc("The type of recipe")
 enum RecipeKind {
+  @doc("Delegate provisioning to another Radius resource instance. Experimental.")
+  delegated: "delegated",
   @doc("Terraform recipe")
   terraform: "terraform",
 
   @doc("Bicep recipe")
   bicep: "bicep",
+}
+
+@doc("Selects exactly one Radius provisioning target from desired properties.")
+model DelegationTarget {
+  @doc("Resource type of the provisioning target.")
+  resourceType: string;
+
+  @doc("Selector starting with $. and containing field names and [*] only.")
+  idsFrom: string;
 }
 
 @armResourceOperations

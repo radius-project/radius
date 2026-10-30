@@ -49,6 +49,11 @@ type RecipePackProperties struct {
 
 // RecipeDefinition represents a recipe definition in the datamodel.
 type RecipeDefinition struct {
+	// Target selects the single provisioning owner for a delegated registration.
+	Target *DelegationTarget `json:"target,omitempty"`
+
+	// AcceptsDelegationFrom explicitly consents to incoming desired inputs.
+	AcceptsDelegationFrom []string `json:"acceptsDelegationFrom,omitempty"`
 	// Kind is the type of recipe (e.g., terraform, bicep).
 	Kind string `json:"kind"`
 
@@ -68,4 +73,10 @@ type RecipeDefinition struct {
 
 	// PlainHTTP connects to the source using HTTP (not-HTTPS).
 	PlainHTTP bool `json:"plainHTTP,omitempty"`
+}
+
+// DelegationTarget selects a provisioning owner from desired resource properties.
+type DelegationTarget struct {
+	ResourceType string `json:"resourceType"`
+	IDsFrom      string `json:"idsFrom"`
 }

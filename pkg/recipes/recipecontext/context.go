@@ -82,6 +82,9 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 	}
 
 	providers := config.Providers
+	if metadata.IncomingReferences != nil {
+		recipeContext.Resource.IncomingReferences = &metadata.IncomingReferences
+	}
 
 	if providers.Azure != (coredm.ProvidersAzure{}) {
 		p, err := resources.ParseScope(providers.Azure.Scope)

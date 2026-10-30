@@ -295,6 +295,15 @@ type BicepSettingsResourceListResult struct {
 	NextLink *string
 }
 
+// DelegationTarget - Selects exactly one Radius provisioning target from desired properties.
+type DelegationTarget struct {
+	// REQUIRED; Selector starting with $. and containing field names and [*] only.
+	IDsFrom *string
+
+	// REQUIRED; Resource type of the provisioning target.
+	ResourceType *string
+}
+
 // EnvironmentCompute - Represents backing compute resource
 type EnvironmentCompute struct {
 	// REQUIRED; Discriminator property for EnvironmentCompute.
@@ -627,9 +636,8 @@ type RecipeDefinition struct {
 	// REQUIRED; (Required) The kind of Recipe, which determines how Radius runs it.
 	Kind *RecipeKind
 
-	// REQUIRED; (Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes
-	// this is the module source such as a Git URL or a Terraform registry module.
-	Source *string
+	// (Optional) Resource types permitted to contribute desired inputs to this recipe. Experimental delegated provisioning.
+	AcceptsDelegationFrom []*string
 
 	// (Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep or Terraform
 	// module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object
@@ -643,6 +651,13 @@ type RecipeDefinition struct {
 	// (Optional) Connect to the source using HTTP instead of HTTPS. Use this only when the source does not support HTTPS such
 	// as a locally hosted registry for Bicep recipes. Defaults to `false` if not specified.
 	PlainHTTP *bool
+
+	// (Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes this is the
+	// module source such as a Git URL or a Terraform registry module.
+	Source *string
+
+	// (Optional) Target selection for a delegated registration. Mutually exclusive with source, parameters, and outputs.
+	Target *DelegationTarget
 }
 
 // RecipePackProperties - Recipe Pack properties

@@ -453,6 +453,37 @@ func (b *BicepSettingsResourceListResult) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type DelegationTarget.
+func (d DelegationTarget) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "idsFrom", d.IDsFrom)
+	populate(objectMap, "resourceType", d.ResourceType)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type DelegationTarget.
+func (d *DelegationTarget) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %s", d, err.Error())
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "idsFrom":
+			err = unpopulate(val, "IDsFrom", &d.IDsFrom)
+			delete(rawMsg, key)
+		case "resourceType":
+			err = unpopulate(val, "ResourceType", &d.ResourceType)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %s", d, err.Error())
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type EnvironmentCompute.
 func (e EnvironmentCompute) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
@@ -1013,11 +1044,13 @@ func (p *ProvidersKubernetes) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RecipeDefinition.
 func (r RecipeDefinition) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "acceptsDelegationFrom", r.AcceptsDelegationFrom)
 	populate(objectMap, "kind", r.Kind)
 	populate(objectMap, "outputs", r.Outputs)
 	populate(objectMap, "parameters", r.Parameters)
 	populate(objectMap, "plainHttp", r.PlainHTTP)
 	populate(objectMap, "source", r.Source)
+	populate(objectMap, "target", r.Target)
 	return json.Marshal(objectMap)
 }
 
@@ -1030,6 +1063,9 @@ func (r *RecipeDefinition) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "acceptsDelegationFrom":
+			err = unpopulate(val, "AcceptsDelegationFrom", &r.AcceptsDelegationFrom)
+			delete(rawMsg, key)
 		case "kind":
 			err = unpopulate(val, "Kind", &r.Kind)
 			delete(rawMsg, key)
@@ -1044,6 +1080,9 @@ func (r *RecipeDefinition) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "source":
 			err = unpopulate(val, "Source", &r.Source)
+			delete(rawMsg, key)
+		case "target":
+			err = unpopulate(val, "Target", &r.Target)
 			delete(rawMsg, key)
 		}
 		if err != nil {

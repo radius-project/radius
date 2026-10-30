@@ -19,12 +19,15 @@ package recipepacks
 import (
 	"context"
 	"net/http"
+	"os"
+	"reflect"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
+	"github.com/radius-project/radius/pkg/recipes/delegation"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -62,6 +65,19 @@ func (r *CreateOrUpdateRecipePack) Run(ctx context.Context, w http.ResponseWrite
 
 	if resp, err := r.PrepareResource(ctx, req, newResource, old, etag); resp != nil || err != nil {
 		return resp, err
+	}
+
+	if err := delegation.ValidatePack(newResource.Properties.Recipes, os.Getenv(delegation.EnabledVariable) == "true"); err != nil {
+		return rest.NewBadRequestResponseWithCode(v1.CodeInvalidRequestContent, err.Error()), nil
+	}
+	if old != nil && !reflect.DeepEqual(old.Properties.Recipes, newResource.Properties.Recipes) {
+		for _, definitions := range []map[string]*datamodel.RecipeDefinition{old.Properties.Recipes, newResource.Properties.Recipes} {
+			for _, definition := range definitions {
+				if definition != nil && (definition.Kind == delegation.Kind || len(definition.AcceptsDelegationFrom) > 0) {
+					return rest.NewConflictResponse("experimental delegation packs are immutable; create a new pack"), nil
+				}
+			}
+		}
 	}
 
 	logger.Info("Creating or updating recipe pack", "resourceID", serviceCtx.ResourceID.String())

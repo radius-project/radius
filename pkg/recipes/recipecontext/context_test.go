@@ -19,6 +19,7 @@ package recipecontext
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -37,6 +38,41 @@ const (
 	testResourceGroupID = "/subscriptions/testSub/resourceGroups/testGroup"
 	testSubscriptionID  = "/subscriptions/testSub"
 )
+
+func TestNewContextIncomingReferences(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name       string
+		references []recipes.IncomingReference
+		expected   string
+	}{
+		{"ordinary context unchanged", nil, ""},
+		{"accepting empty set", []recipes.IncomingReference{}, "[]"},
+		{"accepting snapshot", []recipes.IncomingReference{{ID: "route", Revision: "r1"}}, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			result, err := New(&recipes.ResourceMetadata{
+				ResourceID: testResourceID, EnvironmentID: testEnvironmentID,
+				IncomingReferences: test.references,
+			}, &recipes.Configuration{})
+			require.NoError(t, err)
+			data, err := json.Marshal(result)
+			require.NoError(t, err)
+			var encoded struct {
+				Resource map[string]json.RawMessage `json:"resource"`
+			}
+			require.NoError(t, json.Unmarshal(data, &encoded))
+			if test.references == nil {
+				require.NotContains(t, encoded.Resource, "incomingReferences")
+			} else if test.expected != "" {
+				require.JSONEq(t, test.expected, string(encoded.Resource["incomingReferences"]))
+			} else {
+				require.Equal(t, test.references, *result.Resource.IncomingReferences)
+			}
+		})
+	}
+}
 
 // expectedResourceNameHash computes the documented resourceNameHash rule: the
 // first resourceNameHashLength hex characters of SHA-256 over the lowercased
