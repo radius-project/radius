@@ -156,11 +156,17 @@ func TestEncryptionSecretUpgrade(t *testing.T) {
 // require a kubelet.
 func encryptionSecretChart(t *testing.T) (string, *chart.Chart) {
 	t.Helper()
+	return shippingTemplatesChart(t, "_helpers.tpl", "dynamic-rp/secret.yaml")
+}
+
+// shippingTemplatesChart returns a chart with the named templates from deploy/Chart/templates.
+func shippingTemplatesChart(t *testing.T, names ...string) (string, *chart.Chart) {
+	t.Helper()
 	chartPath := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(chartPath, "templates"), 0700))
 	require.NoError(t, os.WriteFile(filepath.Join(chartPath, "Chart.yaml"),
 		[]byte("apiVersion: v2\nname: radius\nversion: 0.1.0\n"), 0600))
-	for _, name := range []string{"_helpers.tpl", "dynamic-rp/secret.yaml"} {
+	for _, name := range names {
 		content, err := os.ReadFile(filepath.Join("..", "..", "..", "deploy", "Chart", "templates", filepath.FromSlash(name)))
 		require.NoError(t, err)
 		require.NoError(t, os.WriteFile(filepath.Join(chartPath, "templates", filepath.Base(name)), content, 0600))

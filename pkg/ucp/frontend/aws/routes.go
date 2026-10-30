@@ -81,6 +81,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		}
 	}
 
+	m.loadFingerprintKey(ctx)
+
 	baseRouter := server.NewSubrouter(m.router, m.options.Config.Server.PathBase+"/")
 
 	apiValidator := validator.APIValidator(validator.Options{
@@ -315,6 +317,24 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	}
 
 	return m.router, nil
+}
+
+// loadFingerprintKey loads the HMAC key for fingerprints of write-only values. A missing or invalid key does not stop
+// UCP from starting: the error is logged and kept for the requests that need the key.
+func (m *Module) loadFingerprintKey(ctx context.Context) {
+	path := m.options.Config.AWS.FingerprintKeyFile
+	if path == "" {
+		path = ucp_aws.DefaultFingerprintKeyFile
+	}
+
+	m.fingerprintKey, m.fingerprintKeyErr = ucp_aws.LoadFingerprintKey(path)
+	logger := ucplog.FromContextOrDiscard(ctx)
+	if m.fingerprintKeyErr != nil {
+		logger.Error(m.fingerprintKeyErr, "The AWS fingerprint key is not available; AWS resource PUTs that need a fingerprint of a write-only value will fail", "secret", ucp_aws.FingerprintKeySecretName)
+		return
+	}
+
+	logger.Info("Loaded the AWS fingerprint key", "keyID", m.fingerprintKey.ID())
 }
 
 func (m *Module) newAWSConfig(ctx context.Context) (aws.Config, error) {

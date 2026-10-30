@@ -36,6 +36,9 @@ import (
 //
 // For testability, all fields on this struct MUST be parsable from YAML without any further initialization required.
 type Config struct {
+	// AWS is the configuration for the AWS plane.
+	AWS AWSConfig `yaml:"aws"`
+
 	// Authorization is the configuration for internal component authorization.
 	Authorization authz.Options `yaml:"authorization"`
 
@@ -94,6 +97,14 @@ const (
 type IdentityConfig struct {
 	// AuthMethod represents the method of authentication for authenticating with external systems like Azure and AWS.
 	AuthMethod string `yaml:"authMethod"`
+}
+
+// AWSConfig provides configuration for the AWS plane.
+type AWSConfig struct {
+	// FingerprintKeyFile is the file that holds the HMAC key for fingerprints of write-only AWS property values.
+	// Defaults to the path where the Helm chart mounts the key. Set it to use a different key file, such as when
+	// running UCP as a local process.
+	FingerprintKeyFile string `yaml:"fingerprintKeyFile"`
 }
 
 // RoutingConfig provides configuration for UCP routing.

@@ -51,6 +51,15 @@ type Module struct {
 
 	// AWSClients provides access to AWS services. This field can be overridden by tests.
 	AWSClients ucp_aws.Clients
+
+	fingerprintKey    *ucp_aws.FingerprintKey
+	fingerprintKeyErr error
+}
+
+// FingerprintKey returns the HMAC key for fingerprints of write-only AWS property values, loaded by Initialize. It
+// returns an error naming the Kubernetes Secret when the key could not be loaded.
+func (m *Module) FingerprintKey() (*ucp_aws.FingerprintKey, error) {
+	return m.fingerprintKey, m.fingerprintKeyErr
 }
 
 // PlaneType returns the type of plane this module is for.
