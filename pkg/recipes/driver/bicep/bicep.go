@@ -815,7 +815,7 @@ func (d *bicepDriver) getGCOutputResources(current []string, previous []string) 
 
 			diff = append(diff, rpv1.OutputResource{
 				ID:            id,
-				RadiusManaged: new(true),
+				RadiusManaged: new(!resources_aws.IsReadOnlyResource(id)),
 			})
 		}
 	}
