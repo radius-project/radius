@@ -1147,6 +1147,52 @@ func Test_GetGCOutputResources(t *testing.T) {
 	require.Equal(t, exp, res)
 }
 
+func Test_GetGCOutputResources_AWSReadOnly(t *testing.T) {
+	d := &bicepDriver{}
+	image := "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.EC2/Image/ami-0123456789abcdef0"
+	bucket := "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.S3/Bucket/my-bucket"
+	exp := []rpv1.OutputResource{
+		{ID: resources.MustParse(image), RadiusManaged: new(false)},
+		{ID: resources.MustParse(bucket), RadiusManaged: new(true)},
+	}
+	res, err := d.getGCOutputResources(nil, []string{image, bucket})
+	require.NoError(t, err)
+	require.Equal(t, exp, res)
+}
+
+func Test_Bicep_Execute_GarbageCollectionSkipsAWSReadOnly(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	image := "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.EC2/Image/ami-0123456789abcdef0"
+	bucket := "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.S3/Bucket/my-bucket"
+	d, client, _, _ := setupDeleteInputs(t)
+	d.DeploymentClient = &deploymentClientSpy{
+		response: &clients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{}},
+	}
+	d.RegistryClient = ts.TestServer.Client()
+	// Only the bucket is deleted. The mock fails the test on a Delete call for the image.
+	client.EXPECT().Delete(gomock.Any(), bucket).Times(1).Return(nil)
+
+	result, err := d.Execute(t.Context(), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Recipe: recipes.ResourceMetadata{
+				Name:          "test-resource",
+				ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+			},
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "aws-recipe",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: ts.TestImageURL,
+			},
+		},
+		PrevState: []string{image, bucket},
+	})
+	require.NoError(t, err)
+	require.Empty(t, result.Resources)
+}
+
 func Test_GetGCOutputResources_NoDiff(t *testing.T) {
 	d := &bicepDriver{}
 	before := []string{

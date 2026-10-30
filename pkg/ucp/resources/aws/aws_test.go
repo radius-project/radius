@@ -100,3 +100,10 @@ func Test_IsAWSResource(t *testing.T) {
 		})
 	}
 }
+
+func Test_IsReadOnlyResource(t *testing.T) {
+	require.True(t, IsReadOnlyResource(resources.MustParse("/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.EC2/Image/ami-1")))
+	require.True(t, IsReadOnlyResource(resources.MustParse("/planes/aws/aws/accounts/1/regions/us-west-2/providers/aws.ec2/image/ami-1")))
+	require.False(t, IsReadOnlyResource(resources.MustParse("/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket/b")))
+	require.False(t, IsReadOnlyResource(resources.MustParse("/planes/radius/local/resourceGroups/g/providers/AWS.EC2/Image/ami-1")))
+}

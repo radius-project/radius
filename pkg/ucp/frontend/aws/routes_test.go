@@ -17,11 +17,18 @@ limitations under the License.
 package aws
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io/fs"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -106,24 +113,7 @@ func Test_Routes(t *testing.T) {
 		},
 	}
 
-	ctrl := gomock.NewController(t)
-
-	secretClient := secret.NewMockClient(ctrl)
-	secretProvider := secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{})
-	secretProvider.SetClient(secretClient)
-
-	options := &ucp.Options{
-		Config: &ucp.Config{
-			Server: hostoptions.ServerOptions{
-				Host:     "localhost",
-				Port:     8080,
-				PathBase: pathBase,
-			},
-		},
-		DatabaseProvider: databaseprovider.FromMemory(),
-		SecretProvider:   secretProvider,
-		StatusManager:    statusmanager.NewMockStatusManager(gomock.NewController(t)),
-	}
+	options := newTestOptions(t)
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
 		module := NewModule(options)
@@ -166,4 +156,107 @@ func Test_InitializeClients(t *testing.T) {
 		require.NoError(t, InitializeClients(t.Context(), options))
 		require.NotNil(t, options.AWSClients.CloudControl)
 	})
+}
+
+func Test_Initialize_FingerprintKey(t *testing.T) {
+	t.Run("loads the key from the configured file", func(t *testing.T) {
+		raw := bytes.Repeat([]byte{1}, ucp_aws.MinFingerprintKeyLength)
+		path := filepath.Join(t.TempDir(), "key")
+		require.NoError(t, os.WriteFile(path, raw, 0400))
+		want, err := ucp_aws.NewFingerprintKey(raw)
+		require.NoError(t, err)
+
+		options := newTestOptions(t)
+		options.Config.AWS.FingerprintKeyFile = path
+		module := NewModule(options)
+		ctx, logs := captureLogs(t)
+		_, err = module.Initialize(ctx)
+		require.NoError(t, err)
+
+		key, err := module.FingerprintKey()
+		require.NoError(t, err)
+		require.Equal(t, want.ID(), key.ID())
+
+		require.Contains(t, *logs, map[string]any{"logger": "", "level": float64(0), "msg": "Loaded the AWS fingerprint key", "keyID": want.ID()})
+		for _, entry := range *logs {
+			require.NotContains(t, entry, "error")
+		}
+	})
+
+	t.Run("starts without the key and keeps the error", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "missing")
+
+		options := newTestOptions(t)
+		options.Config.AWS.FingerprintKeyFile = path
+		module := NewModule(options)
+		ctx, logs := captureLogs(t)
+		handler, err := module.Initialize(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, handler)
+
+		// The error is logged when UCP starts, before any request needs the key.
+		key, err := module.FingerprintKey()
+		require.Nil(t, key)
+		var errorLogs []map[string]any
+		for _, entry := range *logs {
+			if _, ok := entry["error"]; ok {
+				errorLogs = append(errorLogs, entry)
+			}
+		}
+		require.Equal(t, []map[string]any{{
+			"logger": "",
+			"msg":    "The AWS fingerprint key is not available; AWS resource PUTs that need a fingerprint of a write-only value will fail",
+			"error":  err.Error(),
+			"secret": ucp_aws.FingerprintKeySecretName,
+		}}, errorLogs)
+		require.ErrorIs(t, err, fs.ErrNotExist)
+		require.ErrorContains(t, err, ucp_aws.FingerprintKeySecretName)
+		require.ErrorContains(t, err, path)
+	})
+
+	t.Run("defaults to the path the Helm chart mounts", func(t *testing.T) {
+		if _, err := os.Stat(ucp_aws.DefaultFingerprintKeyFile); err == nil {
+			t.Skip("The default key file exists on this machine.")
+		}
+
+		module := NewModule(newTestOptions(t))
+		_, err := module.Initialize(t.Context())
+		require.NoError(t, err)
+
+		_, err = module.FingerprintKey()
+		require.ErrorContains(t, err, ucp_aws.DefaultFingerprintKeyFile)
+	})
+}
+
+// captureLogs returns a context whose logger records the structured fields of each log entry.
+func captureLogs(t *testing.T) (context.Context, *[]map[string]any) {
+	t.Helper()
+	logs := &[]map[string]any{}
+	logger := funcr.NewJSON(func(obj string) {
+		var entry map[string]any
+		require.NoError(t, json.Unmarshal([]byte(obj), &entry))
+		*logs = append(*logs, entry)
+	}, funcr.Options{})
+	return logr.NewContext(t.Context(), logger), logs
+}
+
+func newTestOptions(t *testing.T) *ucp.Options {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+
+	secretProvider := secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{})
+	secretProvider.SetClient(secret.NewMockClient(ctrl))
+
+	return &ucp.Options{
+		Config: &ucp.Config{
+			Server: hostoptions.ServerOptions{
+				Host:     "localhost",
+				Port:     8080,
+				PathBase: pathBase,
+			},
+		},
+		DatabaseProvider: databaseprovider.FromMemory(),
+		SecretProvider:   secretProvider,
+		StatusManager:    statusmanager.NewMockStatusManager(ctrl),
+	}
 }

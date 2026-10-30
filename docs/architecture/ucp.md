@@ -64,6 +64,10 @@ For UCP-native or ARM-like targets, forwarding can be relatively direct. For
 non-ARM targets such as AWS, UCP also performs protocol adaptation rather than
 simple proxying.
 
+AWS POST `/:get` reads accept a top-level `name`, which is used as the primary identifier, or, without `name`, the schema's primary identifier or a complete set of `additionalIdentifiers` in the properties. [Read identifier resolution](../../pkg/ucp/frontend/controller/awsproxy/readidentifier.go) sends only the selected secondary identifier set as JSON to Cloud Control `GetResource` and uses the primary identifier returned by AWS for the Radius resource address. It does not construct ARNs or require list permissions for a successful direct read. Only an explicit `UnsupportedActionException` enables paginated `ListResources` fallback, reading candidates whose list properties are incomplete. This compatibility fallback needs list permissions in addition to read permissions and passes request properties as `ResourceModel` for types that require parent scope. No match returns 404; multiple matching resources return 409 and require the caller to supply the primary identifier. Access, validation, and not-found errors from the direct read do not trigger listing. Primary-identifier reads, creates, updates, and deletes do not use this fallback.
+
+GET `.../<alias>` reads UCP's record of the alias, then reads AWS by the identifier in the record. It returns 404 when there is no record. Use POST `/:get` with `name` or named properties to read a resource Radius did not create. See [AWS resource records](../ucp/aws.md#resource-records-and-alias-ids).
+
 ## Invariants And Constraints
 
 - UCP should stay focused on routing, identity of targets, and translation.

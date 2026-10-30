@@ -119,9 +119,16 @@ func Test_AWSResourceByAlias_EndToEnd(t *testing.T) {
 	require.Equal(t, "Succeeded", deploy(t, ucp, aliasVPCPath, vpc))
 	require.Equal(t, 1, cc.Count("AWS::EC2::VPC"))
 
+	cc.Calls()
 	resp := send(t, ucp, http.MethodGet, aliasVPCPath, "", nil)
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	require.Equal(t, "10.0.0.0/16", resp.body["properties"].(map[string]any)["CidrBlock"])
+	// GET by alias reads AWS by the identifier in the record, not by the alias in the URL.
+	calls := cc.Calls()
+	require.Len(t, calls, 1)
+	require.Equal(t, "GetResource", calls[0].Operation)
+	require.Equal(t, "AWS::EC2::VPC", calls[0].TypeName)
+	require.Equal(t, "id-1", calls[0].Identifier)
 
 	// Removing a property clears it.
 	require.Equal(t, "Succeeded", deploy(t, ucp, aliasBucketPath, map[string]any{"properties": map[string]any{"BucketName": "assets", "Tags": []any{"a"}}}))

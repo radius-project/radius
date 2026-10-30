@@ -19,6 +19,7 @@ package aws
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/radius-project/radius/pkg/ucp"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/validator"
 )
@@ -47,6 +48,15 @@ var _ modules.Initializer = &Module{}
 type Module struct {
 	options *ucp.Options
 	router  chi.Router
+
+	fingerprintKey    *ucp_aws.FingerprintKey
+	fingerprintKeyErr error
+}
+
+// FingerprintKey returns the HMAC key for fingerprints of write-only AWS property values, loaded by Initialize. It
+// returns an error naming the Kubernetes Secret when the key could not be loaded.
+func (m *Module) FingerprintKey() (*ucp_aws.FingerprintKey, error) {
+	return m.fingerprintKey, m.fingerprintKeyErr
 }
 
 // PlaneType returns the type of plane this module is for.

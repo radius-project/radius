@@ -470,7 +470,7 @@ func Test_GetAWSResourceWithPost_Name(t *testing.T) {
 			name:       "neither",
 			body:       map[string]any{"alias": "shared-vpc"},
 			wantStatus: http.StatusBadRequest,
-			wantError:  "Set name, or the identifier properties of the AWS resource type AWS::EC2::VPC: mandatory property VpcId is missing",
+			wantError:  "mandatory property VpcId is missing",
 		},
 		{
 			name:       "name that is not a string",

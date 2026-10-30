@@ -17,6 +17,8 @@ limitations under the License.
 package kubernetes
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -50,9 +52,24 @@ func TestNewCommand(t *testing.T) {
 
 func TestRunner_Validate(t *testing.T) {
 	t.Parallel()
-	runner := &Runner{}
-	err := runner.Validate(nil, nil)
-	require.NoError(t, err)
+	for _, format := range []string{"", "table", "json", " JSON ", "plain-text", "invalid"} {
+		t.Run(format, func(t *testing.T) {
+			t.Parallel()
+			cmd, runner := NewCommand(&framework.Impl{})
+			require.NoError(t, cmd.ParseFlags([]string{"--output", format}))
+			err := runner.Validate(cmd, nil)
+			if format == "invalid" {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			expected := output.FormatTable
+			if format == "json" || format == " JSON " {
+				expected = output.FormatJson
+			}
+			require.Equal(t, expected, runner.(*Runner).Format)
+		})
+	}
 }
 
 func TestRunner_Run(t *testing.T) {
@@ -304,6 +321,7 @@ func TestRunner_Run_ListRevisions(t *testing.T) {
 			runner: Runner{
 				KubeContext:   "test-context",
 				ListRevisions: true,
+				Format:        output.FormatTable,
 			},
 			mockSetup: func(helmMock *helm.MockInterface, outputMock *output.MockInterface) {
 				helmMock.EXPECT().
@@ -371,6 +389,49 @@ func TestRunner_Run_ListRevisions(t *testing.T) {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedError)
 			}
+		})
+	}
+}
+
+func TestRunner_ListRevisions_JSON(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name      string
+		revisions []helm.RevisionInfo
+		err       error
+	}{
+		{name: "empty", revisions: []helm.RevisionInfo{}},
+		{name: "populated", revisions: []helm.RevisionInfo{{Revision: 1, ChartVersion: "0.46.0", Status: "deployed"}}},
+		{name: "failure", err: errors.New("history unavailable")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			helmMock := helm.NewMockInterface(ctrl)
+			helmMock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.46.0"}, nil)
+			helmMock.EXPECT().GetRadiusRevisions(gomock.Any(), "").Return(tc.revisions, tc.err)
+
+			var stdout, stderr bytes.Buffer
+			cmd, _ := NewCommand(&framework.Impl{
+				HelmInterface: helmMock,
+				Output:        &output.OutputWriter{Writer: &stdout, LogWriter: &stderr},
+			})
+			cmd.SetOut(&stdout)
+			cmd.SetErr(&stderr)
+			cmd.SilenceUsage = true
+			cmd.SilenceErrors = true
+			cmd.SetArgs([]string{"--list-revisions", "--output", "json"})
+			err := cmd.ExecuteContext(t.Context())
+			if tc.err != nil {
+				require.ErrorIs(t, err, tc.err)
+				require.Empty(t, stdout.String())
+				return
+			}
+			require.NoError(t, err)
+			var actual []helm.RevisionInfo
+			require.NoError(t, json.Unmarshal(stdout.Bytes(), &actual))
+			require.Equal(t, tc.revisions, actual)
+			require.Contains(t, stderr.String(), "Current Radius version: 0.46.0")
 		})
 	}
 }
