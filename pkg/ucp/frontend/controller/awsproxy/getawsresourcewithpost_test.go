@@ -36,7 +36,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	armrpc_v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/retry"
@@ -76,7 +75,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -128,7 +127,7 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -167,7 +166,7 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -213,7 +212,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -289,7 +288,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
 
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -363,7 +362,7 @@ func Test_GetAWSResourceWithPost_RetryableError(t *testing.T) {
 	}
 
 	retryer := retry.NewDefaultRetryer()
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retryer)
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retryer)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -415,7 +414,7 @@ func Test_GetAWSResourceWithPost_NonRetryableError(t *testing.T) {
 	}
 
 	retryer := retry.NewDefaultRetryer()
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retryer)
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retryer)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{

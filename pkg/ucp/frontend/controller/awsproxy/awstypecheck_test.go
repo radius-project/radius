@@ -39,6 +39,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/retry"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 // secretValue is a property value that must never appear in an error.
@@ -47,7 +48,7 @@ const secretValue = "do-not-echo-this-value"
 type controllerFactory func(armrpc_controller.Options, ucp_aws.Clients) (armrpc_controller.Controller, error)
 
 // runTypeCheckRequest runs a controller for a request to path and returns the status code and the error message.
-func runTypeCheckRequest(t *testing.T, factory controllerFactory, clients ucp_aws.Clients, method string, path string, body map[string]any) (int, string, string) {
+func runTypeCheckRequest(t *testing.T, factory controllerFactory, options TestOptions, method string, path string, body map[string]any) (int, string, string) {
 	t.Helper()
 	var reader io.Reader
 	if body != nil {
@@ -60,8 +61,9 @@ func runTypeCheckRequest(t *testing.T, factory controllerFactory, clients ucp_aw
 	request.Host = testHost
 	request.URL.Host = testHost
 	request.URL.Scheme = testScheme
+	withOwner(request)
 
-	controller, err := factory(armrpc_controller.Options{}, clients)
+	controller, err := factory(options.ControllerOptions(), options.Clients())
 	require.NoError(t, err)
 	ctx := rpctest.NewARMRequestContext(request)
 	response, err := controller.Run(ctx, nil, request)
@@ -80,10 +82,6 @@ func runTypeCheckRequest(t *testing.T, factory controllerFactory, clients ucp_aw
 		message = errorResponse.Error.Message
 	}
 	return res.StatusCode, message, string(raw)
-}
-
-func clientsFor(options TestOptions) ucp_aws.Clients {
-	return ucp_aws.Clients{CloudControl: options.AWSCloudControlClient, CloudFormation: options.AWSCloudFormationClient}
 }
 
 // Test_UnsupportedTypes_FailWithoutCallingAWS checks every AWS resource operation for a legacy and a deprecated type.
@@ -111,13 +109,11 @@ func Test_UnsupportedTypes_FailWithoutCallingAWS(t *testing.T) {
 		body    map[string]any
 	}{
 		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name", body},
-		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, "", body},
 		{"GET", NewGetAWSResource, http.MethodGet, "/name", nil},
 		{"POST /:get", func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
 			return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
 		}, http.MethodPost, "", body},
 		{"DELETE", NewDeleteAWSResource, http.MethodDelete, "/name", nil},
-		{"POST /:delete", NewDeleteAWSResourceWithPost, http.MethodPost, "", body},
 		{"LIST", NewListAWSResources, http.MethodGet, "", nil},
 	}
 	for _, tt := range types {
@@ -125,7 +121,7 @@ func Test_UnsupportedTypes_FailWithoutCallingAWS(t *testing.T) {
 			t.Run(tt.resourceType+" "+op.name, func(t *testing.T) {
 				options := setupTest(t)
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/" + tt.resourceType + op.suffix
-				status, message, raw := runTypeCheckRequest(t, op.factory, clientsFor(options), op.method, path, op.body)
+				status, message, raw := runTypeCheckRequest(t, op.factory, options, op.method, path, op.body)
 				require.Equal(t, http.StatusBadRequest, status)
 				require.Equal(t, tt.want, message)
 				require.NotContains(t, raw, secretValue)
@@ -174,7 +170,6 @@ func Test_Put_NonProvisionableTypes(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name"},
-		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, tt := range tests {
 		for _, op := range puts {
@@ -187,7 +182,7 @@ func Test_Put_NonProvisionableTypes(t *testing.T) {
 
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Image" + op.suffix
 				body := map[string]any{"properties": map[string]any{"Name": "name", "Secret": secretValue}}
-				status, message, raw := runTypeCheckRequest(t, op.factory, clientsFor(options), op.method, path, body)
+				status, message, raw := runTypeCheckRequest(t, op.factory, options, op.method, path, body)
 				require.Equal(t, http.StatusBadRequest, status)
 				require.Equal(t, tt.want, message)
 				require.NotContains(t, raw, secretValue)
@@ -259,7 +254,6 @@ func Test_Update_ImmutableType(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name"},
-		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, tt := range tests {
 		for _, op := range updates {
@@ -274,7 +268,7 @@ func Test_Update_ImmutableType(t *testing.T) {
 				}, nil)
 
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Immutable" + op.suffix
-				status, message, raw := runTypeCheckRequest(t, op.factory, clientsFor(options), op.method, path, map[string]any{"properties": tt.properties})
+				status, message, raw := runTypeCheckRequest(t, op.factory, options, op.method, path, map[string]any{"properties": tt.properties})
 				if tt.want == "" {
 					require.Equal(t, http.StatusOK, status, raw)
 					return
@@ -299,8 +293,8 @@ func Test_Create_ImmutableType(t *testing.T) {
 		ProgressEvent: &cctypes.ProgressEvent{RequestToken: aws.String(testAWSRequestToken), Identifier: aws.String("name")},
 	}, nil)
 
-	path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Immutable"
-	status, _, raw := runTypeCheckRequest(t, NewCreateOrUpdateAWSResourceWithPost, clientsFor(options), http.MethodPost, path, map[string]any{"properties": map[string]any{"Name": "name", "Size": 1}})
+	path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Immutable/name"
+	status, _, raw := runTypeCheckRequest(t, NewCreateOrUpdateAWSResource, options, http.MethodPut, path, map[string]any{"properties": map[string]any{"Name": "name", "Size": 1}})
 	require.Equal(t, http.StatusCreated, status, raw)
 }
 
@@ -396,7 +390,6 @@ func Test_InvalidSchema(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name"},
-		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, tt := range tests {
 		for _, op := range puts {
@@ -415,7 +408,8 @@ func Test_InvalidSchema(t *testing.T) {
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Type" + op.suffix
 				request, err := http.NewRequest(op.method, path, bytes.NewBufferString(`{"properties": {"Name": "name", "Size": 2}}`))
 				require.NoError(t, err)
-				controller, err := op.factory(armrpc_controller.Options{}, clientsFor(options))
+				controller, err := op.factory(options.ControllerOptions(), options.Clients())
+				withOwner(request)
 				require.NoError(t, err)
 				_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
 				require.ErrorContains(t, err, "failed to read the CloudFormation schema")
@@ -434,7 +428,6 @@ func Test_Put_DescribeTypeError(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name"},
-		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, op := range puts {
 		t.Run(op.name, func(t *testing.T) {
@@ -444,7 +437,8 @@ func Test_Put_DescribeTypeError(t *testing.T) {
 			path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Type" + op.suffix
 			request, err := http.NewRequest(op.method, path, bytes.NewBufferString(`{"properties": {"Name": "name"}}`))
 			require.NoError(t, err)
-			controller, err := op.factory(armrpc_controller.Options{}, clientsFor(options))
+			controller, err := op.factory(options.ControllerOptions(), options.Clients())
+			withOwner(request)
 			require.NoError(t, err)
 			_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
 			require.ErrorIs(t, err, describeErr)
@@ -456,11 +450,14 @@ func Test_Put_DescribeTypeError(t *testing.T) {
 // Cloud Control, which is how `existing` references them.
 func Test_ReadOnlyType_GetCallsCloudControl(t *testing.T) {
 	options := setupTest(t)
+	saveTestRecord(t, options, "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Image/ami-1", func(rec *datamodel.AWSResource) {
+		rec.Properties.AWSIdentifier = "ami-1"
+	})
 	options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudcontrol.GetResourceOutput{
 		ResourceDescription: &cctypes.ResourceDescription{Identifier: aws.String("ami-1"), Properties: aws.String(`{"ImageId": "ami-1"}`)},
 	}, nil)
 
 	path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Image/ami-1"
-	status, _, raw := runTypeCheckRequest(t, NewGetAWSResource, clientsFor(options), http.MethodGet, path, nil)
+	status, _, raw := runTypeCheckRequest(t, NewGetAWSResource, options, http.MethodGet, path, nil)
 	require.Equal(t, http.StatusOK, status, raw)
 }

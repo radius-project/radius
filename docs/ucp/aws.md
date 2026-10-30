@@ -24,54 +24,26 @@ AWS often reports a value in a different form than the template set it. `Generat
 
 <br/><br/>
 
-### Extension of ARM-RPC protocol in UCP
+### Resource records and alias IDs
 
-All Azure resources have a name where the name is used in the resource ID
-/subscriptions/…/providers/Microsoft.KeyVault/vaults/{name}. However, AWS resources don’t have a consistent name property but use PrimaryIdentifier(s) for resource name. More than one primary identifier may exist, which would be separated by ‘|’. For example, if the RestApiId = ‘my-id’ and StageName is ‘my-stage’, the name of the resource would be ‘my-id|my-stage’.
+UCP keeps a record of each AWS resource it deploys, so redeploying a template updates the same resource. Every AWS resource in Bicep has an `alias`, and the Deployment Engine addresses the resource by it:
 
-<br/><br/>
-
-Fundamentally, as part of the ARM API contract, name is required for GET, PUT, etc. operations. For example,
-```
-GET /subscriptions/…/providers/Microsoft.KeyVault/vaults/{name}
-````
-
-If we don’t have a name, either we need to calculate with additional information in the Deployment Engine, or we need to calculate it in the UCP-AWS provider and determine what it means for the API contract to not know the name prior to these calls.
-
-<br/><br/>
-
-To address this issue, we have extended the ARM-RPC protocol to add POST APIs to the UCP contract with a get/put/delete action and a request body.
-```
-POST http://127.0.0.1:8001/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/841861948707/regions/us-east-2/providers/AWS.ApiGateway/Stage/:get
-
-With Request Body:
-{
-  "properties": {
-    "RestApiId": "lfx3ec07zf",
-    "StageName": "canary"
-  }
-}
+```text
+/planes/aws/aws/accounts/{account}/regions/{region}/providers/AWS.EC2/VPC/app-vpc
 ```
 
-The pros and cons of this design are:-
+The record (`datamodel.AWSResource`, read and written by `pkg/ucp/aws/records`) is stored in UCP's data store under that ID. It holds the AWS identifier, the owner, the properties of the last successful deploy without write-only values, and the state of the operation in progress. The design is in [radius-project/radius#13462](https://github.com/radius-project/radius/pull/13462).
 
-Pros:-
-* Requires only UCP to have knowledge of AWS resources and primary identifiers
-* Same number of network calls as normal Azure resource deployment, no extra hop to calculate resource ID.
+- **PUT** reads the record. With no AWS identifier yet, UCP takes over a resource AWS already has, found by the top-level `name` or by the identifier in the properties, or creates one. Before it creates anything, UCP saves the record with a client token, and sends that token with every attempt to create the resource, so a retry never creates a second one. With a record, UCP compares the template with AWS and with the last-applied properties: a property the last deploy set and the template no longer sets is cleared, and a removed create-only property fails with `400`.
+- **GET** reads the record, then AWS by the identifier in the record. `404` when there is no record.
+- **DELETE** reads the record and deletes the resource by its identifier. No record returns `204` without calling AWS.
+- **POST `/:get`** reads a resource by its identifier properties, for an `existing` block that sets them. It reads AWS directly and never saves a record. POST `/:put` and `/:delete` no longer exist.
 
-Cons:-
-* Requires extending the ARM protocol
-* Full resource ID is not known prior to first resource operation
+PUT and DELETE require the `X-Radius-Resource-Owner` header, and fail with `400` without it. A PUT or DELETE from a different owner than the record's fails with `409`, and so does a PUT that would manage an AWS resource another alias's record already has. Owners are compared ignoring case.
 
-<br/><br/>
+UCP owns every create, update, and delete. It saves the new last-applied properties on the record as pending values before it calls AWS, saves the Cloud Control request token, and queues an operation. The backend controller in `pkg/ucp/backend/controller/awsresources` polls Cloud Control, then moves the pending values to last-applied on success, or drops them on failure so the previous ones stay. A failed create removes the record. The operation status and result routes read UCP's data store. A second PUT or DELETE while an operation is running gets `409`. One that finds an operation nothing has polled for 10 minutes, or one AWS accepted but UCP never queued, resumes it.
 
-### Handling non-idempotent AWS resources
-
-Many AWS resources have a generated name and the resource schema does not necessarily have any field which could uniquely identify the resource. As a result, every time the same template is deployed, it could result in creation of a new resource with a new generated name.
-
-To address this issue, we will introduce state storage in UCP. The user will specify a friendly name for the resource in the bicep file that is unique in the deployment scope (which will be the Radius resource group). UCP will create a mapping between the friendly name and the actual AWS resource deployed. After this point, UCP will use this mapping to determine if the resource with the particular friendly name is being created or updated.
-
-The details of this design can be found at: https://github.com/radius-project/design-notes/pull/21
+Write-only values are never stored: not in the last-applied or pending properties, and not in operations.
 
 <br/><br/>
 

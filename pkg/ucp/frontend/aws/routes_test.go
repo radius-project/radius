@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -31,8 +32,10 @@ import (
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/secret"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
@@ -93,14 +96,6 @@ func Test_Routes(t *testing.T) {
 			Method:        http.MethodPost,
 			Path:          "/planes/aws/aws/accounts/0000000/regions/some-region/providers/AWS.Kinesis/Stream/:get",
 		}, {
-			OperationType: v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationPutImperative},
-			Method:        http.MethodPost,
-			Path:          "/planes/aws/aws/accounts/0000000/regions/some-region/providers/AWS.Kinesis/Stream/:put",
-		}, {
-			OperationType: v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationDeleteImperative},
-			Method:        http.MethodPost,
-			Path:          "/planes/aws/aws/accounts/0000000/regions/some-region/providers/AWS.Kinesis/Stream/:delete",
-		}, {
 			OperationType: v1.OperationType{Type: OperationResultsResourceType, Method: v1.OperationGet},
 			Method:        http.MethodGet,
 			Path:          "/planes/aws/aws/accounts/0000000/regions/some-region/providers/AWS.Kinesis/locations/global/operationResults/00000000-0000-0000-0000-000000000000",
@@ -138,5 +133,37 @@ func Test_Routes(t *testing.T) {
 		}
 
 		return handler.(chi.Router), nil
+	})
+}
+
+func Test_InitializeClients(t *testing.T) {
+	t.Run("creates the clients that are not set", func(t *testing.T) {
+		t.Setenv("AWS_REGION", "us-west-2")
+		options := &ucp.Options{Config: &ucp.Config{}}
+		require.NoError(t, InitializeClients(t.Context(), options))
+		require.NotNil(t, options.AWSClients.CloudControl)
+		require.NotNil(t, options.AWSClients.CloudFormation)
+	})
+
+	t.Run("keeps clients that are set", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		cc := ucp_aws.NewMockAWSCloudControlClient(ctrl)
+		cf := ucp_aws.NewMockAWSCloudFormationClient(ctrl)
+		options := &ucp.Options{Config: &ucp.Config{}, AWSClients: ucp_aws.Clients{CloudControl: cc, CloudFormation: cf}}
+		require.NoError(t, InitializeClients(t.Context(), options))
+		require.Same(t, cc, options.AWSClients.CloudControl)
+		require.Same(t, cf, options.AWSClients.CloudFormation)
+	})
+	t.Run("uses the UCP credential API", func(t *testing.T) {
+		t.Setenv("AWS_REGION", "us-west-2")
+		connection, err := sdk.NewDirectConnection("http://localhost:9443")
+		require.NoError(t, err)
+		options := &ucp.Options{
+			Config:         &ucp.Config{Identity: ucp.IdentityConfig{AuthMethod: ucp.AuthUCPCredential}},
+			SecretProvider: secretprovider.NewSecretProvider(secretprovider.SecretProviderOptions{}),
+			UCP:            connection,
+		}
+		require.NoError(t, InitializeClients(t.Context(), options))
+		require.NotNil(t, options.AWSClients.CloudControl)
 	})
 }

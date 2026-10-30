@@ -18,38 +18,53 @@ package datamodel
 
 import v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 
-// AWSResource represents any AWS Resource.
-// AWSResource is not a tracked resource, so it does not implement ResourceDataModel.
-// However need to implement the methods to satisfy the interface.
+// AWSResource is UCP's record of one AWS resource it deploys. It is stored under the resource ID that ends in the
+// alias the template sets, for example /planes/aws/aws/accounts/{account}/regions/{region}/providers/AWS.EC2/VPC/app-vpc.
+//
+// The record is internal to UCP. A GET on the resource still reads the resource from AWS.
 type AWSResource struct {
+	// ID, name (the alias), type, and provisioningState. Provisioning, Updating, and Deleting mean an operation is in
+	// progress. Accepted means UCP saved the record before calling AWS, and nothing is polling the operation yet.
+	v1.BaseResource
+
+	// Properties are the properties of the record.
+	Properties AWSResourceProperties `json:"properties"`
 }
 
-// GetSystemData is not implemented for AWS proxy resource.
-func (a *AWSResource) GetSystemData() *v1.SystemData {
-	return nil
+// AWSResourceProperties are the properties of an AWS resource record.
+type AWSResourceProperties struct {
+	// AWSIdentifier is what Cloud Control finds the resource by, such as vpc-0a1b2c3d. It is saved before the create
+	// when the properties give it, such as BucketName, and when the create finishes otherwise.
+	AWSIdentifier string `json:"awsIdentifier,omitempty"`
+
+	// Owner is who deploys this alias. A PUT or DELETE from a different owner fails.
+	Owner string `json:"owner"`
+
+	// LastApplied is the properties from the last successful deploy, without write-only values. A property in it
+	// that the template no longer sets is cleared in AWS. It is nil until a deploy succeeds, including after UCP takes
+	// over a resource, and it is saved without omitempty so an empty map stays distinct from nil.
+	LastApplied map[string]any `json:"lastApplied"`
+
+	// PendingLastApplied holds the new last-applied properties, without write-only values, while an operation is in
+	// progress. UCP saves it before it calls AWS. It becomes LastApplied when AWS succeeds, and is dropped when AWS
+	// fails, so the previous LastApplied stays.
+	PendingLastApplied map[string]any `json:"pendingLastApplied"`
+
+	// PendingOperation is the operation in progress: CREATE, UPDATE, or DELETE. The async worker sets
+	// provisioningState to Updating for every operation, so the state alone cannot tell them apart.
+	PendingOperation string `json:"pendingOperation,omitempty"`
+
+	// ClientToken is a UUID that UCP generates before the first create and sends with every attempt to create the
+	// resource, so Cloud Control treats a retry as the same request. It is cleared when the create succeeds, so a
+	// record that has one has a first create that has not finished. A failed create removes the record.
+	ClientToken string `json:"clientToken,omitempty"`
+
+	// RequestToken is the token Cloud Control returns when it accepts a create, update, or delete. UCP polls the
+	// request with it, and uses it as the operation ID.
+	RequestToken string `json:"requestToken,omitempty"`
 }
 
-// GetBaseResource is not implemented for AWS proxy resource.
-func (a *AWSResource) GetBaseResource() *v1.BaseResource {
-	return nil
-}
-
-// ProvisioningState is not implemented for AWS proxy resource.
-func (a *AWSResource) ProvisioningState() v1.ProvisioningState {
-	return v1.ProvisioningState("")
-}
-
-// SetProvisioningState is not implemented for AWS proxy resource.
-func (a *AWSResource) SetProvisioningState(state v1.ProvisioningState) {
-
-}
-
-// UpdateMetadata is not implemented for AWS proxy resource.
-func (a *AWSResource) UpdateMetadata(ctx *v1.ARMRequestContext, oldResource *v1.BaseResource) {
-
-}
-
-// ResourceTypeName returns the resource type name.
+// ResourceTypeName returns the resource type of the record, such as AWS.EC2/VPC.
 func (a *AWSResource) ResourceTypeName() string {
-	return "UCP/AWSResource"
+	return a.Type
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/sdk"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/validator"
@@ -38,6 +39,11 @@ import (
 // For testability, all fields on this struct MUST be constructed from the NewOptions function without any
 // additional initialization required.
 type Options struct {
+	// AWSClients are the AWS clients that the AWS plane's frontend and backend share. NewOptions leaves them unset, and
+	// server.NewServer creates the ones that are still unset before the frontend and backend start. Tests set them
+	// first to use mocks.
+	AWSClients ucp_aws.Clients
+
 	// Config is the configuration for the server.
 	Config *Config
 

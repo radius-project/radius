@@ -33,6 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
@@ -55,8 +56,28 @@ const (
 	credentialCollectionPath = planeResourcePath + "/providers/System.AWS/credentials"
 
 	// OperationTypeAWSResource is the operation type for CRUDL operations on AWS resources.
-	OperationTypeAWSResource = "AWSRESOURCE"
+	OperationTypeAWSResource = records.OperationType
 )
+
+// InitializeClients creates the AWS clients in options that are not set yet. The server calls it before the frontend
+// and backend start, so both use the same clients. Tests set the clients first to use mocks.
+func InitializeClients(ctx context.Context, options *ucp.Options) error {
+	if options.AWSClients.CloudControl != nil && options.AWSClients.CloudFormation != nil {
+		return nil
+	}
+
+	awsConfig, err := newAWSConfig(ctx, options)
+	if err != nil {
+		return err
+	}
+	if options.AWSClients.CloudControl == nil {
+		options.AWSClients.CloudControl = cloudcontrol.NewFromConfig(awsConfig)
+	}
+	if options.AWSClients.CloudFormation == nil {
+		options.AWSClients.CloudFormation = ucp_aws.NewDescribeTypeCache(cloudformation.NewFromConfig(awsConfig), ucp_aws.DefaultDescribeTypeCacheTTL)
+	}
+	return nil
+}
 
 // Initialize initializes the AWS module.
 func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
@@ -65,21 +86,11 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		return nil, err
 	}
 
-	// Support override of AWS Clients for testing.
-	if m.AWSClients.CloudControl == nil || m.AWSClients.CloudFormation == nil {
-		awsConfig, err := m.newAWSConfig(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		if m.AWSClients.CloudControl == nil {
-			m.AWSClients.CloudControl = cloudcontrol.NewFromConfig(awsConfig)
-		}
-
-		if m.AWSClients.CloudFormation == nil {
-			m.AWSClients.CloudFormation = ucp_aws.NewDescribeTypeCache(cloudformation.NewFromConfig(awsConfig), ucp_aws.DefaultDescribeTypeCacheTTL)
-		}
+	// The server creates the clients before it starts. Create them here only when the module runs without the server.
+	if err := InitializeClients(ctx, m.options); err != nil {
+		return nil, err
 	}
+	awsClients := m.options.AWSClients
 
 	baseRouter := server.NewSubrouter(m.router, m.options.Config.Server.PathBase+"/")
 
@@ -144,7 +155,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationResultsResourceType, Method: v1.OperationGet},
 			ResourceType:  OperationResultsResourceType,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewGetAWSOperationResults(opt, m.AWSClients)
+				return awsproxy_ctrl.NewGetAWSOperationResults(opt)
 			},
 		},
 		{
@@ -154,7 +165,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationStatusResourceType, Method: v1.OperationGet},
 			ResourceType:  OperationStatusResourceType,
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewGetAWSOperationStatuses(opts, m.AWSClients)
+				return awsproxy_ctrl.NewGetAWSOperationStatuses(opts)
 			},
 		},
 	}
@@ -168,7 +179,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationList},
 			ResourceType:  OperationTypeAWSResource,
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewListAWSResources(opts, m.AWSClients)
+				return awsproxy_ctrl.NewListAWSResources(opts, awsClients)
 			},
 		},
 		{
@@ -178,7 +189,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationPut},
 			ResourceType:  OperationTypeAWSResource,
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewCreateOrUpdateAWSResource(opts, m.AWSClients)
+				return awsproxy_ctrl.NewCreateOrUpdateAWSResource(opts, awsClients)
 			},
 		},
 		{
@@ -188,7 +199,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationDelete},
 			ResourceType:  OperationTypeAWSResource,
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewDeleteAWSResource(opts, m.AWSClients)
+				return awsproxy_ctrl.NewDeleteAWSResource(opts, awsClients)
 			},
 		},
 		{
@@ -198,27 +209,14 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGet},
 			ResourceType:  OperationTypeAWSResource,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewGetAWSResource(opt, m.AWSClients)
+				return awsproxy_ctrl.NewGetAWSResource(opt, awsClients)
 			},
 		},
 	}...)
 
-	// URLs for "non-idempotent" resource lifecycle operations. These are extensions to the UCP spec that are needed when
-	// a resource has a non-idempotent lifecyle and a computed name.
-	//
-	// The normal UCP lifecycle operations have a user-specified resource name which must be part of the URL. These
-	// operations are structured so that the resource name is not part of the URL.
+	// POST /:get reads an AWS resource by its identifier properties, for an `existing` block that sets them. It reads
+	// AWS directly and never saves a record. Creates, updates, and deletes go by alias on the routes above.
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
-		{
-			ParentRouter:  resourceCollectionRouter,
-			Path:          "/:put",
-			Method:        v1.OperationPutImperative,
-			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationPutImperative},
-			ResourceType:  OperationTypeAWSResource,
-			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewCreateOrUpdateAWSResourceWithPost(opt, m.AWSClients)
-			},
-		},
 		{
 			ParentRouter:  resourceCollectionRouter,
 			Path:          "/:get",
@@ -226,17 +224,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationGetImperative},
 			ResourceType:  OperationTypeAWSResource,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewGetAWSResourceWithPost(opt, m.AWSClients, retry.NewDefaultRetryer())
-			},
-		},
-		{
-			ParentRouter:  resourceCollectionRouter,
-			Path:          "/:delete",
-			Method:        v1.OperationDeleteImperative,
-			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationDeleteImperative},
-			ResourceType:  OperationTypeAWSResource,
-			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewDeleteAWSResourceWithPost(opts, m.AWSClients)
+				return awsproxy_ctrl.NewGetAWSResourceWithPost(opt, awsClients, retry.NewDefaultRetryer())
 			},
 		},
 	}...)
@@ -317,13 +305,13 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	return m.router, nil
 }
 
-func (m *Module) newAWSConfig(ctx context.Context) (aws.Config, error) {
+func newAWSConfig(ctx context.Context, options *ucp.Options) (aws.Config, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	credProviders := []func(*config.LoadOptions) error{}
 
-	switch m.options.Config.Identity.AuthMethod {
+	switch options.Config.Identity.AuthMethod {
 	case ucp.AuthUCPCredential:
-		provider, err := sdk_cred.NewAWSCredentialProvider(m.options.SecretProvider, m.options.UCP, &aztoken.AnonymousCredential{})
+		provider, err := sdk_cred.NewAWSCredentialProvider(options.SecretProvider, options.UCP, &aztoken.AnonymousCredential{})
 		if err != nil {
 			return aws.Config{}, err
 		}

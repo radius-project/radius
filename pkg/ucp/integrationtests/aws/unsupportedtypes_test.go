@@ -31,6 +31,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/testhost"
 )
 
@@ -52,6 +53,7 @@ func sendUCPRequest(t *testing.T, ucp *testhost.TestHost, method string, path st
 	request, err := rpctest.NewHTTPRequestWithContent(t.Context(), method, ucp.BaseURL()+path, content)
 	require.NoError(t, err)
 	request = request.WithContext(rpctest.NewARMRequestContext(request))
+	request.Header.Set(sdkclients.AWSResourceOwnerHeader, testOwner)
 
 	response, err := ucp.Client().Do(request)
 	require.NoError(t, err)
@@ -82,9 +84,7 @@ func Test_LegacyAWSType_Returns400WithoutCallingAWS(t *testing.T) {
 		{http.MethodGet, "AWS.IAM/Policy/p", nil},
 		{http.MethodDelete, "AWS.IAM/Policy/p", nil},
 		{http.MethodGet, "AWS.IAM/Policy", nil},
-		{http.MethodPost, "AWS.IAM/Policy/:put", body},
 		{http.MethodPost, "AWS.IAM/Policy/:get", body},
-		{http.MethodPost, "AWS.IAM/Policy/:delete", body},
 	}
 	for _, r := range requests {
 		t.Run(r.method+" "+r.path, func(t *testing.T) {
@@ -104,7 +104,6 @@ func Test_ReadOnlyAWSType_CreateReturns400(t *testing.T) {
 		path   string
 	}{
 		{http.MethodPut, "AWS.EC2/Image/ami-1"},
-		{http.MethodPost, "AWS.EC2/Image/:put"},
 	}
 	for _, r := range requests {
 		t.Run(r.method+" "+r.path, func(t *testing.T) {
@@ -136,7 +135,7 @@ func Test_ImmutableAWSType_ChangeReturns400(t *testing.T) {
 	}, nil)
 
 	body := map[string]any{"properties": map[string]any{"Name": "name", "Size": secretValue}}
-	status, message, raw := sendUCPRequest(t, ucp, http.MethodPost, awsProvidersPath+"AWS.Test/Immutable/:put", body)
+	status, message, raw := sendUCPRequest(t, ucp, http.MethodPut, awsProvidersPath+"AWS.Test/Immutable/name", body)
 	require.Equal(t, http.StatusBadRequest, status, raw)
 	require.Equal(t, "The AWS resource type AWS::Test::Immutable can only be created and deleted, so these properties of the existing resource cannot change: Size. To change them, delete the resource and deploy again.", message)
 	require.NotContains(t, raw, secretValue)
@@ -151,7 +150,6 @@ func Test_ImmutableAWSType_WriteOnlyChangeReturns400(t *testing.T) {
 		path   string
 	}{
 		{http.MethodPut, "AWS.Test/Immutable/name"},
-		{http.MethodPost, "AWS.Test/Immutable/:put"},
 	}
 	for _, r := range requests {
 		t.Run(r.method+" "+r.path, func(t *testing.T) {

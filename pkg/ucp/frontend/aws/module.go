@@ -19,7 +19,6 @@ package aws
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/radius-project/radius/pkg/ucp"
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/validator"
 )
@@ -48,9 +47,6 @@ var _ modules.Initializer = &Module{}
 type Module struct {
 	options *ucp.Options
 	router  chi.Router
-
-	// AWSClients provides access to AWS services. This field can be overridden by tests.
-	AWSClients ucp_aws.Clients
 }
 
 // PlaneType returns the type of plane this module is for.
