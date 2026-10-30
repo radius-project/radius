@@ -26,6 +26,7 @@ import (
 	"uuid"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -185,5 +186,34 @@ func Test_GetAWSOperation_StatusManagerFails(t *testing.T) {
 		require.NoError(t, err)
 		_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
 		require.ErrorContains(t, err, "database is down")
+	}
+}
+
+// Test_GetAsyncOperationStatus checks how the transitional Cloud Control fallback maps each request status.
+func Test_GetAsyncOperationStatus(t *testing.T) {
+	tests := []struct {
+		status cctypes.OperationStatus
+		want   v1.ProvisioningState
+	}{
+		{status: cctypes.OperationStatusSuccess, want: v1.ProvisioningStateSucceeded},
+		{status: cctypes.OperationStatusCancelComplete, want: v1.ProvisioningStateCanceled},
+		{status: cctypes.OperationStatusFailed, want: v1.ProvisioningStateFailed},
+		{status: cctypes.OperationStatusInProgress, want: v1.ProvisioningStateProvisioning},
+		{status: cctypes.OperationStatusPending, want: v1.ProvisioningStateProvisioning},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.status), func(t *testing.T) {
+			got := getAsyncOperationStatus(&cloudcontrol.GetResourceRequestStatusOutput{ProgressEvent: &cctypes.ProgressEvent{
+				OperationStatus: tt.status,
+				ErrorCode:       cctypes.HandlerErrorCodeInvalidRequest,
+				StatusMessage:   aws.String("bad request"),
+			}})
+			require.Equal(t, tt.want, got.Status)
+			if tt.status == cctypes.OperationStatusFailed {
+				require.Equal(t, &v1.ErrorDetails{Code: string(cctypes.HandlerErrorCodeInvalidRequest), Message: "bad request"}, got.Error)
+			} else {
+				require.Nil(t, got.Error)
+			}
+		})
 	}
 }
