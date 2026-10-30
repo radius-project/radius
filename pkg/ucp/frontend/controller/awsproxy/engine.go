@@ -251,6 +251,16 @@ func (e *engine) checkIdentifier(ctx context.Context, id resources.ID, identifie
 	return nil, nil
 }
 
+// checkUnmanaged returns a 409 when an alias's record manages the AWS identifier. id is the request's resource ID, and
+// gives the type and scope to search.
+//
+// TRANSITIONAL: POST /:put, POST /:delete, and a DELETE that finds no record act on an AWS identifier without a record.
+// This keeps them from changing or deleting a resource a record manages, which would skip that record's owner check.
+// Resources with no record behave as before records. Remove this with those paths.
+func checkUnmanaged(ctx context.Context, opts armrpc_controller.Options, id resources.ID, identifier string) (armrpc_rest.Response, error) {
+	return newEngine(opts, ucp_aws.Clients{}).checkIdentifier(ctx, id, identifier)
+}
+
 // readResource reads a resource from AWS by its identifier. It returns nil when AWS has no such resource.
 func (e *engine) readResource(ctx context.Context, r *request, identifier string) (*cloudcontrol.GetResourceOutput, error) {
 	out, err := e.clients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
@@ -632,8 +642,8 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 }
 
 // deleteWithoutRecord deletes a URL that has no record in AWS, using the URL's last segment as the AWS identifier, as
-// UCP did before records. It returns 204 when AWS does not have the resource. The owner header is optional, but a
-// header that is sent must not be blank.
+// UCP did before records. It returns 204 when AWS does not have the resource, and 409 when another alias's record
+// manages it. The owner header is optional, but a header that is sent must not be blank.
 //
 // TRANSITIONAL: Deployment Engine releases before azure-octo/deployment-engine#705 deploy AWS resources with
 // POST /:put, which saves no record, so the IDs of those resources end in the AWS identifier. Recipe deletes send
@@ -648,6 +658,9 @@ func (e *engine) deleteWithoutRecord(ctx context.Context, httpReq *http.Request,
 	}
 
 	identifier := r.id.Name()
+	if resp, err := e.checkIdentifier(ctx, r.id, identifier); resp != nil || err != nil {
+		return resp, err
+	}
 	ucplog.FromContextOrDiscard(ctx).Info("Deleting AWS resource with no record", "awsIdentifier", identifier)
 	response, err := e.clients.CloudControl.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   aws.String(r.typeName),

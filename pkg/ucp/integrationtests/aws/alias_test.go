@@ -222,3 +222,33 @@ func Test_AWSResource_TransitionalDeleteWithoutRecord(t *testing.T) {
 		})
 	}
 }
+
+// Test_AWSResource_TransitionalPathsSkipManagedResources checks that the transitional paths return 409 for a resource an
+// alias's record manages, so they never skip that record's owner check.
+func Test_AWSResource_TransitionalPathsSkipManagedResources(t *testing.T) {
+	ucp, cc := initializeFakeAWSTest(t, aliasSchemas)
+	cc.Identifiers["AWS::S3::Bucket"] = "BucketName"
+	collection := awsProvidersPath + "AWS.S3/Bucket"
+	body := map[string]any{"properties": map[string]any{"BucketName": "assets"}}
+
+	resp := send(t, ucp, http.MethodPut, collection+"/app-bucket", testOwner, body)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+
+	for _, r := range []struct{ method, path, owner string }{
+		{http.MethodPost, collection + "/:put", ""},
+		{http.MethodPost, collection + "/:delete", ""},
+		{http.MethodDelete, collection + "/assets", ""},
+		{http.MethodDelete, collection + "/assets", testOwner},
+	} {
+		var reqBody any
+		if r.method == http.MethodPost {
+			reqBody = body
+		}
+		resp := send(t, ucp, r.method, r.path, r.owner, reqBody)
+		require.Equal(t, http.StatusConflict, resp.status, "%s %s: %s", r.method, r.path, resp.raw)
+		require.Contains(t, resp.raw, "app-bucket")
+	}
+	require.Equal(t, 1, cc.Count("AWS::S3::Bucket"))
+	require.Equal(t, http.StatusOK, send(t, ucp, http.MethodGet, collection+"/app-bucket", "", nil).status)
+}

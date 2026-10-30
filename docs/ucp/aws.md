@@ -51,6 +51,8 @@ Until the Deployment Engine deploys AWS resources by alias, UCP keeps three tran
 - The operation status and result routes ask Cloud Control by request token when UCP has no operation with that ID.
 - A DELETE of a URL with no record deletes the resource in AWS by the URL's last segment, with or without the owner header. A header that is sent must not be blank. Recipe deletes rely on this, because the IDs of resources created with POST `/:put` end in the AWS identifier.
 
+POST `/:put`, POST `/:delete`, and a DELETE with no record return `409` for a resource an alias's record manages, so they never skip that record's owner check. Resources with no record behave as before records.
+
 <br/><br/>
 
 ### AWS types that Cloud Control cannot fully manage

@@ -41,8 +41,9 @@ import (
 var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResourceWithPost)(nil)
 
 // CreateOrUpdateAWSResourceWithPost is transitional: it keeps POST /:put working as it did before resource records, for the Deployment Engine
-// releases that do not deploy AWS resources by alias yet. It needs no owner header and saves no record. It is removed
-// once the Deployment Engine deploys by alias.
+// releases that do not deploy AWS resources by alias yet. It needs no owner header and saves no record. It returns 409
+// for a resource an alias's record manages (see checkUnmanaged). It is removed once the Deployment Engine deploys by
+// alias.
 //
 // CreateOrUpdateAWSResourceWithPost is the controller implementation to create/update an AWS resource.
 type CreateOrUpdateAWSResourceWithPost struct {
@@ -121,6 +122,9 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	} else if err != nil {
 		return ucp_aws.HandleAWSError(ctx, err)
 	} else {
+		if errResponse, err := checkUnmanaged(ctx, *p.Options(), serviceCtx.ResourceID, awsResourceIdentifier); errResponse != nil || err != nil {
+			return errResponse, err
+		}
 		computedResourceID = computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
 
 		// Create and update work differently for AWS - we need to know if the resource
