@@ -1,0 +1,24 @@
+{{- /*
+The HMAC key UCP uses to fingerprint write-only values of AWS resources, such as passwords, so a redeploy can tell
+whether a value changed without storing it. It is generated once and kept across upgrades. It is never written to
+UCP's data store.
+*/ -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace "radius-aws-fingerprint-key" -}}
+{{- $key := "" -}}
+{{- if $secret -}}
+  {{- $key = required "existing Secret radius-aws-fingerprint-key has no key; delete the Secret to generate a new key" (index ($secret.data | default dict) "key") -}}
+{{- else -}}
+  {{- /* randBytes returns the bytes base64-encoded, which is the form Secret data takes. */ -}}
+  {{- $key = randBytes 32 -}}
+{{- end }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: radius-aws-fingerprint-key
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+type: Opaque
+data:
+  key: {{ $key | quote }}
