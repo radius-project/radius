@@ -22,7 +22,6 @@ import (
 	http "net/http"
 	"strings"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/middleware"
@@ -57,8 +56,9 @@ func NewGetAWSResourceWithPost(opts armrpc_controller.Options, awsClients ucpaws
 	}, nil
 }
 
-// Run() reads the region from the request, reads properties from the body, fetches the resource
-// from AWS, computes the resource ID and returns an OK response with the resource details. If the resource is not found,
+// Run reads an AWS resource that Radius may not have created, for a Bicep `existing` block that sets name or
+// properties. It reads AWS by the top-level name in the body when it is set, and otherwise by the identifier in the
+// properties. It computes the resource ID and returns an OK response with the resource details. If the resource is not found,
 // it returns a NotFound response. If any other error occurs, it returns an error response.
 func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -71,16 +71,13 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return errResponse, nil
 	}
 
-	properties, err := readPropertiesFromBody(req)
+	body, err := readRequestBody(req)
 	if err != nil {
-		e := v1.ErrorResponse{
-			Error: &v1.ErrorDetails{
-				Code:    v1.CodeInvalid,
-				Message: err.Error(),
-			},
-		}
-
-		return armrpc_rest.NewBadRequestARMResponse(e), nil
+		return badRequest(err.Error()), nil
+	}
+	name, errResponse := body.nameString()
+	if errResponse != nil {
+		return errResponse, nil
 	}
 
 	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationRegionOption(region)}
@@ -92,16 +89,13 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return ucpaws.HandleAWSError(ctx, err)
 	}
 
-	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(properties, *describeTypeOutput.Schema)
-	if err != nil {
-		e := v1.ErrorResponse{
-			Error: &v1.ErrorDetails{
-				Code:    v1.CodeInvalid,
-				Message: err.Error(),
-			},
+	// A top-level name is the AWS identifier of the resource. Otherwise the identifier comes from the properties.
+	awsResourceIdentifier := name
+	if awsResourceIdentifier == "" {
+		awsResourceIdentifier, err = getPrimaryIdentifierFromMultiIdentifiers(body.Properties, aws.ToString(describeTypeOutput.Schema))
+		if err != nil {
+			return badRequest(fmt.Sprintf("Set name, or the identifier properties of the AWS resource type %s: %s", serviceCtx.ResourceTypeInAWSFormat(), err.Error())), nil
 		}
-
-		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
 	cloudcontrolOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
@@ -138,13 +132,13 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	}
 
 	computedResourceID := computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
-	body := map[string]any{
+	responseBody := map[string]any{
 		"id":         computedResourceID,
 		"name":       response.ResourceDescription.Identifier,
 		"type":       serviceCtx.ResourceID.Type(),
 		"properties": resourceProperties,
 	}
-	return armrpc_rest.NewOKResponse(body), nil
+	return armrpc_rest.NewOKResponse(responseBody), nil
 }
 
 func constructNotFoundResponseMessage(path string, resourceIDs string) string {
