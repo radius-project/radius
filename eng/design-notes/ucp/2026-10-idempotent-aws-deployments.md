@@ -319,12 +319,12 @@ Recipe authors make aliases unique by building them from `context.aws.resourceNa
 
 A GET by alias reads the record and then reads AWS by the AWS identifier. It always reads AWS, so the result shows changes made outside Radius.
 
-Every `existing` block has an alias, because Bicep requires one, so the Deployment Engine picks the route by whether the block sets `properties`. It does not read AWS schemas, so it cannot tell which properties are identifiers.
+Every `existing` block has an alias, because Bicep requires one, so the Deployment Engine picks the route by whether the block also sets `properties` or `name`. It does not read AWS schemas, so it cannot tell which properties are identifiers. GET by alias ignores `name`, so a block that sets `name` must use POST `/:get` to read a resource Radius did not create.
 
-| `existing` block                                          | Route                                                                                                                                               |
-|-----------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| Sets `properties`, such as `LogGroupName` for a log group | POST `/:get`, as today. UCP reads AWS by the identifier in the properties, for resources Radius did not create                                      |
-| Sets only an alias                                        | GET by alias. UCP reads the record and then AWS, so one template can reference a VPC that another created without its ID. 404 if there is no record |
+| `existing` block                                                    | Route                                                                                                                                                                       |
+|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Sets `properties` or `name`, such as `LogGroupName` for a log group | POST `/:get`, with `name` in the request body. UCP reads AWS by `name` if it is set, and otherwise by the identifier in the properties, for resources Radius did not create |
+| Sets neither, only an alias                                         | GET by alias. UCP reads the record and then AWS, so one template can reference a VPC that another created without its ID. 404 if there is no record                         |
 
 Neither route saves a record or checks the owner, because reading another owner's resource does not change it. A type whose Bicep `properties` field is required cannot use an alias-only `existing` block.
 
@@ -351,7 +351,7 @@ UCP queues AWS operations with a timeout longer than any Cloud Control request c
 
 - sends PUT by alias instead of POST `/:put`
 - sends `name`, when the template sets it, in the request body instead of the URL, because the URL now ends in the alias
-- copies `owner` from the deployment's `providerConfig` into a header on each PUT
+- copies `owner` from the deployment's `providerConfig` into a header on each AWS PUT and DELETE
 - reads an `existing` resource as described in [Reading and `existing`](#reading-and-existing)
 
 **Bicep recipe driver.** Sets a new `owner` field in the deployment's `providerConfig`, which the Deployment Engine already reads to find the AWS account and region. It also sends the owner in a header on each DELETE of a recipe's output resources, because it sends those DELETEs to UCP itself.
