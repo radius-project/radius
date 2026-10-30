@@ -168,15 +168,15 @@ type AWSResourceProperties struct {
     // write-only values.
     LastApplied map[string]any `json:"lastApplied,omitempty"`
 
-    // Fingerprints maps each write-only property to an HMAC-SHA-256 of its
-    // value, prefixed with the ID of the key that made it.
-    Fingerprints map[string]string `json:"fingerprints,omitempty"`
+    // Fingerprints holds a fingerprint of each write-only value, as described
+    // in "Write-only values".
+    Fingerprints *AWSFingerprints `json:"fingerprints,omitempty"`
 
     // PendingLastApplied and PendingFingerprints hold the new values while an
     // operation is in progress. The worker moves them to LastApplied and
     // Fingerprints when AWS succeeds, and clears them when it fails.
-    PendingLastApplied  map[string]any    `json:"pendingLastApplied,omitempty"`
-    PendingFingerprints map[string]string `json:"pendingFingerprints,omitempty"`
+    PendingLastApplied  map[string]any   `json:"pendingLastApplied,omitempty"`
+    PendingFingerprints *AWSFingerprints `json:"pendingFingerprints,omitempty"`
 
     // ClientToken is a UUID that UCP generates before the first create and
     // sends with every attempt to create the resource, so Cloud Control treats
@@ -186,6 +186,15 @@ type AWSResourceProperties struct {
     // RequestToken is the token Cloud Control returns when it accepts a
     // create, update, or delete. UCP also uses it as the operation ID.
     RequestToken string `json:"requestToken,omitempty"`
+}
+
+type AWSFingerprints struct {
+    // KeyID is the ID of the HMAC key that made every digest.
+    KeyID string `json:"keyId"`
+
+    // Digests maps each write-only property path, such as MasterUserPassword,
+    // to the HMAC-SHA-256 of its value.
+    Digests map[string]string `json:"digests"`
 }
 ```
 
@@ -267,9 +276,9 @@ Without these rules, an unchanged redeploy of an RDS instance sends `EngineVersi
 
 ### Write-only values
 
-A **write-only property** is one AWS accepts but never returns. The record never stores these values, and they are left out of the last-applied properties. Instead, the record stores a fingerprint of each one: an HMAC-SHA-256 of the value, made with a random key that lives in its own Kubernetes Secret, which UCP mounts read-only. The key is never in the data store, so someone who can read the data store cannot recover a short password by hashing guesses.
+A **write-only property** is one AWS accepts but never returns. The record never stores these values, and they are left out of the last-applied properties. Instead, the record stores a fingerprint of each one: an HMAC-SHA-256 of the value, made with a random key that lives in its own Kubernetes Secret, which UCP mounts read-only. The key is never in the data store, so someone who can read the data store cannot recover a short password by hashing guesses. The HMAC covers a version label, the resource ID in lowercase, the property path, and the value encoded as JSON, each prefixed with its length. So a fingerprint matches only the same value at the same path on the same resource, and a later change to this encoding cannot match an old fingerprint.
 
-A write-only value has no usable fingerprint in two cases: UCP just took the resource over, or the key was replaced. The key does not rotate on a schedule, but each fingerprint records the ID of its key, so UCP can tell which fingerprints an old key made. UCP handles a value with no usable fingerprint like this:
+A write-only value has no usable fingerprint in two cases: UCP just took the resource over, or the key was replaced. The key does not rotate on a schedule, but the record stores the ID of the key that made its fingerprints, apart from the digests, so UCP can tell when an old key made them. UCP handles a value with no usable fingerprint like this:
 
 - A value that can be updated, such as `MasterUserPassword`, is sent once.
 - A value that cannot change after create is not sent, and the deploy does not fail, because UCP cannot tell whether it changed.
@@ -330,7 +339,7 @@ Neither route saves a record or checks the owner, because reading another owner'
 
 ### Deleting a resource
 
-A DELETE by alias reads the record, checks the owner, deletes the resource in AWS by the record's identifier, and then removes the record. If the record has no AWS identifier yet, or AWS says the resource does not exist, UCP only removes the record. If there is no record, UCP returns 204 without calling AWS, so a retried DELETE never deletes a different resource that happens to have the alias as its identifier.
+A DELETE by alias reads the record, checks the owner, deletes the resource in AWS by the record's identifier, and then removes the record. If AWS says the resource does not exist, UCP only removes the record. If the record has no AWS identifier yet but has a client token, AWS may have accepted its first create. UCP sends the create again with that client token, gets the identifier from Cloud Control's original request, and deletes the resource. If AWS never received the first create, this creates the resource and then deletes it. Cloud Control only remembers a client token for 36 hours, so after that the resend can create a second resource. UCP removes the record without calling AWS only when it has neither an identifier nor a client token. If there is no record, UCP returns 204 without calling AWS, so a retried DELETE never deletes a different resource that happens to have the alias as its identifier.
 
 ### Operations
 
@@ -341,7 +350,14 @@ The Deployment Engine polls UCP for operation status, today and with this design
 
 This is the standard ARM-RPC pattern: the resource provider owns its async operations, and the client only polls. UCP already works this way for resource groups and resource providers.
 
-A second PUT or DELETE while an operation is in progress gets 409. An operation is in progress from when UCP queues it until it finishes, as long as the worker keeps polling it. The worker records each poll, and an operation that has not been polled for 10 minutes is stale. A create that UCP never queued, because UCP failed after saving the record, has no operation in progress. The next PUT resumes a stale or never-queued create instead of getting 409: with a request token, the worker polls the original request again, and without one, UCP sends the create again with the record's client token.
+A second PUT or DELETE while an operation is in progress gets 409. Before every create, update, and delete it sends to AWS, UCP saves the record marked as in progress, so a competing PUT or DELETE gets 409 from that moment, even before the operation is queued. The worker saves the record each time it polls. A record that nothing has saved for 10 minutes is stale, because UCP stopped before it queued the operation or the worker stopped polling. The next PUT or DELETE resumes a stale operation instead of getting 409:
+
+| Stale operation                   | What the next request does                                                                                                                                                                                        |
+|-----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Any, with a request token         | The worker polls the original request again                                                                                                                                                                       |
+| A create without a request token  | UCP sends the create again with the record's client token, so Cloud Control returns the original request if AWS received it                                                                                       |
+| An update without a request token | AWS may have applied it, so UCP keeps the pending properties as applied: it merges them into the last-applied properties, so Radius owns them and a later removal clears them. Then it continues with the request |
+| A delete without a request token  | UCP sends the delete again. If AWS says the resource does not exist, UCP removes the record                                                                                                                       |
 
 UCP queues AWS operations with a timeout longer than any Cloud Control request can run, instead of the async worker's default of 2 minutes, so UCP never gives up on a request that Cloud Control is still running. Cloud Control applies each type's own time limit. A long create, such as an RDS instance that takes 30 minutes, never looks stale while the worker is polling it.
 
@@ -391,7 +407,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
 - Saving a record or pending values fails before UCP calls AWS: 500, and AWS is not called.
 - Reading the resource from AWS fails for a reason other than "not found": the deploy fails, and nothing is created or changed.
 - UCP stops after AWS accepted a create, before it saved the request token: the retry sends the same client token, and Cloud Control returns the first request. Cloud Control only remembers a client token for 36 hours, so a retry after that creates a second resource.
-- UCP stops before it queues an operation, or the worker stops polling: the next PUT resumes the operation, as described in [Operations](#operations).
+- UCP stops before it queues an operation, or the worker stops polling: the record stays in progress, so other requests get 409. After 10 minutes the record is stale, and the next PUT or DELETE resumes the operation, as described in [Operations](#operations).
 - Saving the result fails after AWS finished: the worker retries, and the operation stays in progress until the result is saved.
 - Removing the record fails after AWS deleted the resource: the worker retries until it is removed.
 
@@ -417,15 +433,17 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
   - an RDS instance whose template sets `DBInstanceIdentifier` in mixed case: no 400 and no AWS call
   - a property whose `propertyTransform` uses an unsupported function: compared as it is
   - the client token on a retried create
-  - a stale operation that the next PUT resumes instead of returning 409, and a long operation that the worker keeps polling, which neither goes stale nor hits the async worker's timeout
-  - a retry after UCP failed between saving the record and queuing the create, which resumes the create with the same client token right away
+  - a record saved before an AWS call: a competing PUT or DELETE gets 409, even before the operation is queued
+  - a stale operation that the next request resumes: with a request token, a create without one (sent again with the same client token), an update without one (pending properties merged into last-applied), and a delete without one (sent again, and not-found removes the record)
+  - a long operation that the worker keeps polling, which neither goes stale nor hits the async worker's timeout
   - pending values moved to last-applied on success, cleared when an update fails, the record removed when a create fails, and a failed save retried
   - the no-op path saving last-applied properties, so a property the template starts setting is cleared when removed later
+  - fingerprints: the record stores the key ID once, apart from the digests, and a digest matches only the same value at the same path on the same resource
   - a taken-over resource with write-only values and no fingerprints: an updatable value is sent once, a create-only value is not sent and does not fail, and fingerprints are saved
   - `name` taking over an existing resource, `name` that differs from the record, `name` that matches nothing in AWS (400), and `name` that matches the identifier in the properties (create)
   - the owner: a missing header (400), a different owner on PUT and DELETE (409), owners that differ only by case (match), and one app deployed to two environments in one resource group (409)
   - another alias's record with the same AWS identifier (409), including one whose create is still in progress and a VPC taken over by `name` after another alias created it
-  - DELETE by an alias, by an alias whose record has no AWS identifier or whose resource AWS no longer has (record removed), and by an alias with no record (204, nothing sent to AWS)
+  - DELETE by an alias; by an alias whose resource AWS no longer has (record removed); by an alias whose record has a client token but no identifier (create sent again with that token, then the resource deleted); by one with neither (record removed, nothing sent to AWS); and by an alias with no record (204, nothing sent to AWS)
   - a missing HMAC key: UCP logs an error at startup, an AWS PUT that sets a write-only value fails with 500 before saving a record or calling AWS, and an AWS PUT without one, reads, and deletes still work
   - operation status from UCP's data store
 - **Functional tests through the Deployment Engine**
