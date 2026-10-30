@@ -382,7 +382,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
 - Another operation is in progress on the resource: 409.
 - A create-only property changed or was removed: 400 naming the property, without its value.
 - The alias contains `/`: 400, because the alias becomes the last part of the resource ID.
-- The HMAC key Secret is missing or unreadable: every AWS PUT fails with 500 naming the Secret, because UCP cannot tell a changed password from an unchanged one. Reads, deletes, and other UCP requests still work.
+- The HMAC key Secret is missing or unreadable: an AWS PUT whose template sets a write-only value, such as a password, fails with 500 naming the Secret before UCP calls AWS, because UCP needs the key to make or compare that value's fingerprint. Other AWS PUTs, reads, deletes, and other UCP requests still work.
 - AWS rejects a create, update, or delete: 400 with AWS's message.
 
 **Safe to retry.** A retry picks up where the last attempt stopped, and nothing is created twice.
@@ -402,6 +402,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
 ## Security
 
 - Write-only values are never stored. The record keeps only keyed fingerprints, and the key lives in its own Kubernetes Secret, not in the data store.
+- Helm also keeps the HMAC key in its release history, because the chart generates the Secret. Anyone who can read Helm release history or its backups can recover the key. The fingerprints protect against someone who can read only the data store, not against those readers.
 - Errors name properties but never include their values.
 - The owner check stops one app from changing another app's resource through a shared alias by accident. It is not access control: the caller sets the owner header, so anyone who can call UCP can send any owner.
 - UCP makes the same kinds of AWS calls with the same credential as today, so no new AWS permissions are needed.
@@ -425,7 +426,7 @@ One rule runs through every case: when UCP cannot tell whether a resource exists
   - the owner: a missing header (400), a different owner on PUT and DELETE (409), owners that differ only by case (match), and one app deployed to two environments in one resource group (409)
   - another alias's record with the same AWS identifier (409), including one whose create is still in progress and a VPC taken over by `name` after another alias created it
   - DELETE by an alias, by an alias whose record has no AWS identifier or whose resource AWS no longer has (record removed), and by an alias with no record (204, nothing sent to AWS)
-  - a missing HMAC key: AWS PUTs fail with 500, and reads still work
+  - a missing HMAC key: an AWS PUT that sets a write-only value fails with 500 before any AWS call, and an AWS PUT without one, reads, and deletes still work
   - operation status from UCP's data store
 - **Functional tests through the Deployment Engine**
   - deploy a VPC with only an alias twice, and check that one VPC exists
