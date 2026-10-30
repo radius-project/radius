@@ -62,45 +62,28 @@ func putErrorResponse(typeName string, typeInfo *cloudformation.DescribeTypeOutp
 	return badRequest(fmt.Sprintf("Radius cannot create or change the AWS resource type %s because AWS Cloud Control does not support it.", typeName)), nil
 }
 
-// checkPatch checks a non-empty patch to an existing resource. It returns the patch to send to Cloud Control, or a
-// 400 response when a create-and-delete-only (IMMUTABLE) type would change.
-//
-// AWS never returns write-only properties, so they are always in the patch, even when they did not change. UCP cannot
-// tell whether a write-only value changed, so a patch to an IMMUTABLE type that sets only write-only properties also
-// fails, rather than succeeding without applying a changed value.
-func checkPatch(typeName string, typeInfo *cloudformation.DescribeTypeOutput, patch jsondiff.Patch) (jsondiff.Patch, armrpc_rest.Response, error) {
+// checkPatch checks a non-empty patch to an existing resource. It returns a 400 response when the type is
+// create-and-delete-only (IMMUTABLE), and nil otherwise. Write-only values that UCP does not send, such as values whose
+// fingerprint shows they are unchanged, are already out of the patch, so a write-only value in it changed.
+func checkPatch(typeName string, typeInfo *cloudformation.DescribeTypeOutput, patch jsondiff.Patch) armrpc_rest.Response {
 	if typeInfo.ProvisioningType != types.ProvisioningTypeImmutable {
-		return patch, nil, nil
+		return nil
 	}
-	schema, err := parseTypeSchema(typeInfo)
-	if err != nil {
-		return nil, nil, err
-	}
-	changed, writeOnly := []string{}, []string{}
+	changed := []string{}
 	for _, op := range patch {
-		name := topLevelProperty(op.Path)
-		if schema.onlyWriteOnly(op) {
-			if !slices.Contains(writeOnly, name) {
-				writeOnly = append(writeOnly, name)
-			}
-			continue
-		}
-		if !slices.Contains(changed, name) {
+		if name := topLevelProperty(op.Path); !slices.Contains(changed, name) {
 			changed = append(changed, name)
 		}
 	}
-	if len(changed) == 0 {
-		slices.Sort(writeOnly)
-		return nil, badRequest(fmt.Sprintf("The AWS resource type %s can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: %s. To change them, delete the resource and deploy again.", typeName, strings.Join(writeOnly, ", "))), nil
-	}
 	slices.Sort(changed)
-	return nil, badRequest(fmt.Sprintf("The AWS resource type %s can only be created and deleted, so these properties of the existing resource cannot change: %s. To change them, delete the resource and deploy again.", typeName, strings.Join(changed, ", "))), nil
+	return badRequest(fmt.Sprintf("The AWS resource type %s can only be created and deleted, so these properties of the existing resource cannot change: %s. To change them, delete the resource and deploy again.", typeName, strings.Join(changed, ", ")))
 }
 
 // typeSchema is the part of a CloudFormation resource type schema that the type checks need.
 type typeSchema struct {
-	Handlers            map[string]json.RawMessage `json:"handlers"`
-	WriteOnlyProperties []string                   `json:"writeOnlyProperties"`
+	Handlers             map[string]json.RawMessage `json:"handlers"`
+	CreateOnlyProperties []string                   `json:"createOnlyProperties"`
+	WriteOnlyProperties  []string                   `json:"writeOnlyProperties"`
 }
 
 func parseTypeSchema(typeInfo *cloudformation.DescribeTypeOutput) (*typeSchema, error) {
@@ -118,35 +101,30 @@ func (s *typeSchema) isReadOnly() bool {
 	return read && !create
 }
 
-// isWriteOnly reports whether a JSON patch path is a write-only property or is inside one. A "*" segment in a
-// write-only property matches any array index.
-func (s *typeSchema) isWriteOnly(patchPath string) bool {
+// writeOnlyPattern returns the write-only property that a JSON patch path is or is inside, relative to the properties
+// object, such as Users/*/Secret. A "*" segment in a write-only property matches any array index.
+func (s *typeSchema) writeOnlyPattern(patchPath string) (string, bool) {
 	path := strings.Split(strings.TrimPrefix(patchPath, "/"), "/")
-	return slices.ContainsFunc(s.WriteOnlyProperties, func(w string) bool {
-		pattern := strings.Split(strings.TrimPrefix(w, "/properties/"), "/")
-		if len(path) < len(pattern) {
-			return false
+	for _, w := range s.WriteOnlyProperties {
+		pattern := strings.TrimPrefix(w, "/properties/")
+		if matchesPrefix(path, strings.Split(pattern, "/")) {
+			return pattern, true
 		}
-		for i, segment := range pattern {
-			if segment != "*" && segment != path[i] {
-				return false
-			}
-		}
-		return true
-	})
+	}
+	return "", false
 }
 
-// onlyWriteOnly reports whether a patch operation sets only write-only properties. When AWS omits an object because
-// all of its properties are write-only, the patch adds the whole object, so every leaf of the added value is checked.
-func (s *typeSchema) onlyWriteOnly(op jsondiff.Operation) bool {
-	if s.isWriteOnly(op.Path) {
-		return true
-	}
-	if op.Type != jsondiff.OperationAdd && op.Type != jsondiff.OperationReplace {
+// matchesPrefix reports whether pattern matches the first segments of path. A "*" segment matches any segment.
+func matchesPrefix(path []string, pattern []string) bool {
+	if len(path) < len(pattern) {
 		return false
 	}
-	leaves := leafPaths(op.Path, op.Value)
-	return !slices.ContainsFunc(leaves, func(p string) bool { return !s.isWriteOnly(p) })
+	for i, segment := range pattern {
+		if segment != "*" && segment != path[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // leafPaths returns the JSON patch paths of the values inside value, which is at path. An empty object or array is a

@@ -175,6 +175,8 @@ func Test_ApplyPendingAndFail(t *testing.T) {
 		rec := NewRecord(parse(t, vpcID), "owner")
 		rec.Properties.LastApplied = map[string]any{"A": "1"}
 		rec.Properties.PendingLastApplied = map[string]any{"A": "2"}
+		rec.Properties.Fingerprints = &datamodel.AWSFingerprints{KeyID: "k", Digests: map[string]string{"P": "old"}}
+		rec.Properties.PendingFingerprints = &datamodel.AWSFingerprints{KeyID: "k", Digests: map[string]string{"P": "new"}}
 		rec.Properties.PendingOperation = OperationUpdate
 		rec.Properties.ClientToken = "c"
 		rec.Properties.RequestToken = "r"
@@ -184,7 +186,9 @@ func Test_ApplyPendingAndFail(t *testing.T) {
 	rec := newRec()
 	ApplyPending(rec)
 	require.Equal(t, map[string]any{"A": "2"}, rec.Properties.LastApplied)
+	require.Equal(t, map[string]string{"P": "new"}, rec.Properties.Fingerprints.Digests)
 	require.Nil(t, rec.Properties.PendingLastApplied)
+	require.Nil(t, rec.Properties.PendingFingerprints)
 	require.Empty(t, rec.Properties.PendingOperation+rec.Properties.ClientToken+rec.Properties.RequestToken)
 	require.Equal(t, "r", rec.Properties.LastRequestToken)
 	require.Nil(t, rec.Properties.LastRequestError)
@@ -195,18 +199,28 @@ func Test_ApplyPendingAndFail(t *testing.T) {
 	failure := &v1.ErrorDetails{Code: "Invalid", Message: "bad"}
 	Fail(rec, failure)
 	require.Equal(t, map[string]any{"A": "1"}, rec.Properties.LastApplied)
+	require.Equal(t, map[string]string{"P": "old"}, rec.Properties.Fingerprints.Digests)
 	require.Nil(t, rec.Properties.PendingLastApplied)
+	require.Nil(t, rec.Properties.PendingFingerprints)
 	require.Empty(t, rec.Properties.RequestToken)
 	require.Equal(t, "r", rec.Properties.LastRequestToken)
 	require.Equal(t, failure, rec.Properties.LastRequestError)
 	require.Equal(t, "c", rec.Properties.ClientToken)
 	require.Equal(t, v1.ProvisioningStateFailed, rec.ProvisioningState())
 
-	// A successful operation without pending values, such as a resumed one, keeps the last-applied properties.
+	// A successful operation without pending values, such as a resumed one, keeps the last-applied properties and
+	// fingerprints.
 	rec = newRec()
 	rec.Properties.PendingLastApplied = nil
 	ApplyPending(rec)
 	require.Equal(t, map[string]any{"A": "1"}, rec.Properties.LastApplied)
+	require.Equal(t, map[string]string{"P": "old"}, rec.Properties.Fingerprints.Digests)
+
+	// A deploy that made no fingerprints drops the old ones, which are for values the template no longer sets.
+	rec = newRec()
+	rec.Properties.PendingFingerprints = nil
+	ApplyPending(rec)
+	require.Nil(t, rec.Properties.Fingerprints)
 }
 
 type failing struct{ database.Client }

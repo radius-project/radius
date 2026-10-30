@@ -129,7 +129,7 @@ func Test_UpdateAWSResource_ValuesAWSReportsDifferently(t *testing.T) {
 			body, err := json.Marshal(map[string]any{"properties": tt.desired})
 			require.NoError(t, err)
 
-			controller, err := NewCreateOrUpdateAWSResource(testOptions.ControllerOptions(), testOptions.Clients())
+			controller, err := newTestPutController(testOptions.ControllerOptions(), testOptions.Clients())
 			require.NoError(t, err)
 			request, err := http.NewRequest(http.MethodPut, collectionPath(tt.resourceType)+"/"+tt.resourceName, bytes.NewBuffer(body))
 			require.NoError(t, err)

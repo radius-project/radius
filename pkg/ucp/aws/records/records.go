@@ -244,18 +244,22 @@ func StateOf(op string) v1.ProvisioningState {
 	}
 }
 
-// ClearPending drops the values of the operation in progress, so the previous last-applied properties stay.
+// ClearPending drops the values of the operation in progress, so the previous last-applied properties and
+// fingerprints stay.
 func ClearPending(rec *datamodel.AWSResource) {
 	rec.Properties.PendingLastApplied = nil
+	rec.Properties.PendingFingerprints = nil
 	rec.Properties.PendingOperation = ""
 }
 
-// ApplyPending finishes a successful create or update: the pending last-applied properties become the last-applied
-// properties, and the operation, the tokens, and the pending values are cleared. Clearing the client token marks the
-// first create as finished. The request token moves to LastRequestToken, so a redelivered operation reports success.
+// ApplyPending finishes a successful create or update: the pending last-applied properties and fingerprints become
+// the last-applied ones, and the operation, the tokens, and the pending values are cleared. Clearing the client token
+// marks the first create as finished. The request token moves to LastRequestToken, so a redelivered operation reports
+// success.
 func ApplyPending(rec *datamodel.AWSResource) {
 	if rec.Properties.PendingLastApplied != nil {
 		rec.Properties.LastApplied = rec.Properties.PendingLastApplied
+		rec.Properties.Fingerprints = rec.Properties.PendingFingerprints
 	}
 	ClearPending(rec)
 	rec.Properties.ClientToken = ""
@@ -264,7 +268,8 @@ func ApplyPending(rec *datamodel.AWSResource) {
 }
 
 // Fail finishes a failed update or delete: the pending values are dropped, so the previous last-applied properties
-// stay. The request token moves to LastRequestToken with failure, so a redelivered operation reports the same error.
+// and fingerprints stay. The request token moves to LastRequestToken with failure, so a redelivered operation reports
+// the same error.
 func Fail(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 	ClearPending(rec)
 	finish(rec, failure)

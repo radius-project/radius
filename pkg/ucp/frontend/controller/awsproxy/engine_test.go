@@ -32,6 +32,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
@@ -60,12 +61,22 @@ const (
 	bucketType = "AWS::S3::Bucket"
 	dbType     = "AWS::Test::Database"
 
+	// clusterType has an updatable write-only property, MasterUserPassword, and a write-only property AWS cannot change
+	// after create, SnapshotIdentifier.
+	clusterType = "AWS::Test::Cluster"
+
+	// immutableType is create-and-delete-only, with a write-only Password.
+	immutableType = "AWS::Test::Immutable"
+
 	providers = "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/"
 	vpcPath   = providers + "AWS.EC2/VPC/app-vpc"
 	vpc2Path  = providers + "AWS.EC2/VPC/other-vpc"
 	bktPath   = providers + "AWS.S3/Bucket/app-bucket"
 	bkt2Path  = providers + "AWS.S3/Bucket/other-bucket"
 	dbPath    = providers + "AWS.Test/Database/app-db"
+
+	clusterPath   = providers + "AWS.Test/Cluster/app-cluster"
+	immutablePath = providers + "AWS.Test/Immutable/app-immutable"
 
 	otherOwner = "deploy;/planes/radius/local/resourceGroups/other;;"
 	password   = "p@ssw0rd-never-stored"
@@ -79,7 +90,20 @@ var harnessSchemas = map[string]string{
 		"createOnlyProperties": ["/properties/Name"],
 		"writeOnlyProperties": ["/properties/Password", "/properties/Auth/Token", "/properties/Users/*/Secret"]
 	}`,
+	clusterType: `{
+		"primaryIdentifier": ["/properties/Name"],
+		"createOnlyProperties": ["/properties/Name", "/properties/SnapshotIdentifier"],
+		"writeOnlyProperties": ["/properties/MasterUserPassword", "/properties/SnapshotIdentifier"]
+	}`,
+	immutableType: `{
+		"primaryIdentifier": ["/properties/Name"],
+		"createOnlyProperties": ["/properties/Name", "/properties/Size", "/properties/Password"],
+		"writeOnlyProperties": ["/properties/Password"],
+		"handlers": {"create": {}, "read": {}, "delete": {}}
+	}`,
 }
+
+var harnessProvisioningTypes = map[string]cftypes.ProvisioningType{immutableType: cftypes.ProvisioningTypeImmutable}
 
 // harness runs the AWS resource controllers and the backend worker against an in-memory data store, queue, and Cloud
 // Control.
@@ -89,6 +113,9 @@ type harness struct {
 	db    database.Client
 	queue *queueinmemory.Client
 	sm    statusmanager.StatusManager
+
+	// key returns the fingerprint key, like aws.Module.FingerprintKey. Tests replace it to change or remove the key.
+	key FingerprintKeyFunc
 }
 
 func newHarness(t *testing.T) *harness {
@@ -96,14 +123,23 @@ func newHarness(t *testing.T) *harness {
 	cc.Identifiers[bucketType] = "BucketName"
 	cc.Identifiers[dbType] = "Name"
 	cc.WriteOnly[dbType] = []string{"Password", "Auth/Token", "Users/*/Secret"}
+	cc.Identifiers[clusterType] = "Name"
+	cc.WriteOnly[clusterType] = []string{"MasterUserPassword", "SnapshotIdentifier"}
+	cc.Identifiers[immutableType] = "Name"
+	cc.WriteOnly[immutableType] = []string{"Password"}
 	db := inmemory.NewClient()
 	q := queueinmemory.New(queueinmemory.NewInMemQueue(time.Minute))
 	ucp_aws.MinPollInterval, ucp_aws.MaxPollInterval = time.Millisecond, time.Millisecond
-	return &harness{t: t, cc: cc, db: db, queue: q, sm: statusmanager.New(db, q, "global")}
+	return &harness{t: t, cc: cc, db: db, queue: q, sm: statusmanager.New(db, q, "global"), key: testFingerprintKey}
 }
 
 func (h *harness) clients() ucp_aws.Clients {
-	return ucp_aws.Clients{CloudControl: h.cc, CloudFormation: &awsfake.CloudFormation{Schemas: harnessSchemas}}
+	return ucp_aws.Clients{CloudControl: h.cc, CloudFormation: &awsfake.CloudFormation{Schemas: harnessSchemas, ProvisioningTypes: harnessProvisioningTypes}}
+}
+
+// putController creates the PUT controller with the harness's fingerprint key.
+func (h *harness) putController(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+	return NewCreateOrUpdateAWSResource(opts, clients, h.key)
 }
 
 func (h *harness) options() armrpc_controller.Options {
@@ -156,11 +192,11 @@ func (h *harness) do(factory controllerFactory, method string, path string, owne
 }
 
 func (h *harness) put(path string, properties map[string]any) response {
-	return h.do(NewCreateOrUpdateAWSResource, http.MethodPut, path, testOwner, map[string]any{"properties": properties})
+	return h.do(h.putController, http.MethodPut, path, testOwner, map[string]any{"properties": properties})
 }
 
 func (h *harness) putBody(path string, owner string, body map[string]any) response {
-	return h.do(NewCreateOrUpdateAWSResource, http.MethodPut, path, owner, body)
+	return h.do(h.putController, http.MethodPut, path, owner, body)
 }
 
 func (h *harness) delete(path string, owner string) response {
@@ -479,7 +515,7 @@ func Test_Put_InvalidBody(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut, vpcPath, strings.NewReader("{"))
 	require.NoError(t, err)
 	req.Header.Set(sdkclients.AWSResourceOwnerHeader, testOwner)
-	controller, err := NewCreateOrUpdateAWSResource(h.options(), h.clients())
+	controller, err := newTestPutController(h.options(), h.clients())
 	require.NoError(t, err)
 	resp, err := controller.Run(rpctest.NewARMRequestContext(req), nil, req)
 	require.NoError(t, err)
@@ -1024,7 +1060,7 @@ func Test_Put_RequestTokenNotUUID(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPut, vpcPath, strings.NewReader(`{"properties": {"CidrBlock": "10.0.0.0/16"}}`))
 	require.NoError(t, err)
 	withOwner(request)
-	controller, err := NewCreateOrUpdateAWSResource(options.ControllerOptions(), options.Clients())
+	controller, err := newTestPutController(options.ControllerOptions(), options.Clients())
 	require.NoError(t, err)
 	_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
 	require.ErrorContains(t, err, "not a UUID")

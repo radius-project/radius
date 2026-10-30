@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -172,6 +173,50 @@ func Test_AWSResourceByAlias_WriteOnlyValueIsSentButNotEchoed(t *testing.T) {
 	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
 	calls := cc.Calls()
 	require.Contains(t, calls[len(calls)-1].Document, testPassword, "the password must still be sent to AWS")
+}
+
+// Test_AWSResourceByAlias_UnchangedWriteOnlyValueIsNotSent redeploys an unchanged password through UCP, and then a
+// changed one.
+func Test_AWSResourceByAlias_UnchangedWriteOnlyValueIsNotSent(t *testing.T) {
+	ucp, cc := initializeFakeAWSTest(t, aliasSchemas)
+	cc.Identifiers["AWS::RDS::DBInstance"] = "DBInstanceIdentifier"
+	cc.WriteOnly["AWS::RDS::DBInstance"] = []string{"MasterUserPassword"}
+	body := func(password string) map[string]any {
+		return map[string]any{"properties": map[string]any{"DBInstanceIdentifier": "app-db", "MasterUserPassword": password}}
+	}
+	require.Equal(t, "Succeeded", deploy(t, ucp, aliasDBPath, body(testPassword)))
+	cc.Calls()
+
+	resp := send(t, ucp, http.MethodPut, aliasDBPath, testOwner, body(testPassword))
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	for _, call := range cc.Calls() {
+		require.Equal(t, "GetResource", call.Operation)
+	}
+
+	require.Equal(t, "Succeeded", deploy(t, ucp, aliasDBPath, body("changed-password")))
+	updates := 0
+	for _, call := range cc.Calls() {
+		if call.Operation == "UpdateResource" {
+			updates++
+			require.Contains(t, call.Document, "changed-password")
+		}
+	}
+	require.Equal(t, 1, updates)
+}
+
+// Test_AWSResourceByAlias_FingerprintKeyMissing starts UCP without the fingerprint key. A PUT that sets a write-only
+// value fails with 500 naming the Secret and calls nothing in AWS. Other PUTs work.
+func Test_AWSResourceByAlias_FingerprintKeyMissing(t *testing.T) {
+	ucp, cc := initializeFakeAWSTestWithKey(t, aliasSchemas, filepath.Join(t.TempDir(), "missing"))
+
+	resp := send(t, ucp, http.MethodPut, aliasDBPath, testOwner, map[string]any{"properties": map[string]any{"DBInstanceIdentifier": "app-db", "MasterUserPassword": testPassword}})
+	require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+	require.Contains(t, resp.raw, "radius-aws-fingerprint-key")
+	require.NotContains(t, resp.raw, testPassword)
+	require.Empty(t, cc.Calls())
+	require.Equal(t, http.StatusNotFound, send(t, ucp, http.MethodGet, aliasDBPath, "", nil).status)
+
+	require.Equal(t, "Succeeded", deploy(t, ucp, aliasVPCPath, map[string]any{"properties": map[string]any{"CidrBlock": "10.0.0.0/16"}}))
 }
 
 func Test_AWSResource_RemovedRoutes(t *testing.T) {
