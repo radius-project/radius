@@ -72,6 +72,13 @@ const (
 	// secretType has an identifier AWS assigns and a write-only SecretString.
 	secretType = "AWS::Test::Secret"
 
+	// mixedType has two write-only properties in one object: Auth/Password can be updated, and Auth/Token cannot
+	// change after create.
+	mixedType = "AWS::Test::Mixed"
+
+	// overlapType is create-and-delete-only, and its write-only properties overlap: Auth/Token is inside Auth.
+	overlapType = "AWS::Test::Overlap"
+
 	providers = "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/"
 	vpcPath   = providers + "AWS.EC2/VPC/app-vpc"
 	vpc2Path  = providers + "AWS.EC2/VPC/other-vpc"
@@ -82,6 +89,8 @@ const (
 	clusterPath   = providers + "AWS.Test/Cluster/app-cluster"
 	immutablePath = providers + "AWS.Test/Immutable/app-immutable"
 	secretPath    = providers + "AWS.Test/Secret/app-secret"
+	mixedPath     = providers + "AWS.Test/Mixed/app-mixed"
+	overlapPath   = providers + "AWS.Test/Overlap/app-overlap"
 
 	otherOwner = "deploy;/planes/radius/local/resourceGroups/other;;"
 	password   = "p@ssw0rd-never-stored"
@@ -111,9 +120,23 @@ var harnessSchemas = map[string]string{
 		"readOnlyProperties": ["/properties/Id"],
 		"writeOnlyProperties": ["/properties/SecretString"]
 	}`,
+	mixedType: `{
+		"primaryIdentifier": ["/properties/Name"],
+		"createOnlyProperties": ["/properties/Name", "/properties/Auth/Token"],
+		"writeOnlyProperties": ["/properties/Auth/Password", "/properties/Auth/Token"]
+	}`,
+	overlapType: `{
+		"primaryIdentifier": ["/properties/Name"],
+		"createOnlyProperties": ["/properties/Name", "/properties/Auth"],
+		"writeOnlyProperties": ["/properties/Auth/Token", "/properties/Auth"],
+		"handlers": {"create": {}, "read": {}, "delete": {}}
+	}`,
 }
 
-var harnessProvisioningTypes = map[string]cftypes.ProvisioningType{immutableType: cftypes.ProvisioningTypeImmutable}
+var harnessProvisioningTypes = map[string]cftypes.ProvisioningType{
+	immutableType: cftypes.ProvisioningTypeImmutable,
+	overlapType:   cftypes.ProvisioningTypeImmutable,
+}
 
 // harness runs the AWS resource controllers and the backend worker against an in-memory data store, queue, and Cloud
 // Control.
@@ -138,6 +161,10 @@ func newHarness(t *testing.T) *harness {
 	cc.Identifiers[immutableType] = "Name"
 	cc.WriteOnly[immutableType] = []string{"Password"}
 	cc.WriteOnly[secretType] = []string{"SecretString"}
+	cc.Identifiers[mixedType] = "Name"
+	cc.WriteOnly[mixedType] = []string{"Auth"}
+	cc.Identifiers[overlapType] = "Name"
+	cc.WriteOnly[overlapType] = []string{"Auth"}
 	db := inmemory.NewClient()
 	q := queueinmemory.New(queueinmemory.NewInMemQueue(time.Minute))
 	ucp_aws.MinPollInterval, ucp_aws.MaxPollInterval = time.Millisecond, time.Millisecond

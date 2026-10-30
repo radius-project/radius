@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -573,16 +574,18 @@ func Test_CompareFingerprints(t *testing.T) {
 	require.Empty(t, compareFingerprints(&datamodel.AWSFingerprints{KeyID: "k1"}, nil))
 }
 
-func Test_IsUnsentWriteOnly(t *testing.T) {
+func Test_WithoutUnsentWriteOnly(t *testing.T) {
 	schema := &typeSchema{
 		CreateOnlyProperties: []string{"/properties/Snapshot", "/properties/Settings"},
-		WriteOnlyProperties:  []string{"/properties/Password", "/properties/Snapshot", "/properties/Auth/Token", "/properties/Settings/Key", "/properties/Users/*/Secret"},
+		WriteOnlyProperties:  []string{"/properties/Password", "/properties/Snapshot", "/properties/Auth/Token", "/properties/Auth/Key", "/properties/Settings/Key", "/properties/Users/*/Secret", "/properties/Deep/Inner/Token"},
 	}
 	status := map[string]fingerprintStatus{
-		"Password":     fingerprintChanged,
-		"Snapshot":     fingerprintChanged,
-		"Auth/Token":   fingerprintUnchanged,
-		"Settings/Key": fingerprintUnknown,
+		"Password":         fingerprintChanged,
+		"Snapshot":         fingerprintChanged,
+		"Auth/Token":       fingerprintUnchanged,
+		"Auth/Key":         fingerprintChanged,
+		"Settings/Key":     fingerprintUnknown,
+		"Deep/Inner/Token": fingerprintUnchanged,
 	}
 	add := func(path string, value any) jsondiff.Operation {
 		return jsondiff.Operation{Type: jsondiff.OperationAdd, Path: path, Value: value}
@@ -591,23 +594,70 @@ func Test_IsUnsentWriteOnly(t *testing.T) {
 		name      string
 		op        jsondiff.Operation
 		immutable bool
-		want      bool
+		// want is the operation sent, or nil when it is dropped.
+		want *jsondiff.Operation
 	}{
-		{"unchanged", add("/Auth/Token", "x"), false, true},
-		{"unchanged, in an object AWS omits", add("/Auth", map[string]any{"Token": "x"}), false, true},
-		{"unchanged, next to a readable property", add("/Auth", map[string]any{"Token": "x", "Mode": "m"}), false, false},
-		{"changed", add("/Password", "x"), false, false},
-		{"changed create-only", add("/Snapshot", "x"), false, false},
-		{"unknown create-only", add("/Settings/Key", "x"), false, true},
-		{"unknown updatable", add("/Users/0/Secret", "x"), false, false},
-		{"unknown on a create-and-delete-only type", add("/Users/0/Secret", "x"), true, true},
-		{"readable", jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}, false, false},
-		{"remove", jsondiff.Operation{Type: jsondiff.OperationRemove, Path: "/Auth/Token"}, false, false},
+		{"unchanged", add("/Auth/Token", "x"), false, nil},
+		{"unchanged, in an object AWS omits", add("/Auth", map[string]any{"Token": "x"}), false, nil},
+		{"unchanged, next to a readable property", add("/Auth", map[string]any{"Token": "x", "Mode": "m"}), false, new(add("/Auth", map[string]any{"Mode": "m"}))},
+		{"unchanged, next to a changed one", add("/Auth", map[string]any{"Token": "x", "Key": "k"}), false, new(add("/Auth", map[string]any{"Key": "k"}))},
+		{"unchanged, next to an empty object", add("/Auth", map[string]any{"Token": "x", "Options": map[string]any{}}), false, new(add("/Auth", map[string]any{"Options": map[string]any{}}))},
+		{"unchanged, in an object left empty", add("/Deep", map[string]any{"Inner": map[string]any{"Token": "x"}, "Mode": "m"}), false, new(add("/Deep", map[string]any{"Mode": "m"}))},
+		{"changed", add("/Password", "x"), false, new(add("/Password", "x"))},
+		{"changed create-only", add("/Snapshot", "x"), false, new(add("/Snapshot", "x"))},
+		{"unknown create-only", add("/Settings/Key", "x"), false, nil},
+		{"unknown updatable", add("/Users/0/Secret", "x"), false, new(add("/Users/0/Secret", "x"))},
+		{"unknown on a create-and-delete-only type", add("/Users/0/Secret", "x"), true, nil},
+		{
+			"unknown in array items, next to readable values",
+			add("/Users", []any{map[string]any{"Secret": "x"}, map[string]any{"Name": "n", "Secret": "y"}, []any{}}),
+			true,
+			new(add("/Users", []any{map[string]any{}, map[string]any{"Name": "n"}, []any{}})),
+		},
+		{"readable", jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}, false, new(jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2})},
+		{"empty object", add("/Auth", map[string]any{}), false, new(add("/Auth", map[string]any{}))},
+		{"remove", jsondiff.Operation{Type: jsondiff.OperationRemove, Path: "/Auth/Token"}, false, new(jsondiff.Operation{Type: jsondiff.OperationRemove, Path: "/Auth/Token"})},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, schema.isUnsentWriteOnly(tt.op, tt.immutable, status))
+			got := withoutUnsentWriteOnly(jsondiff.Patch{tt.op}, schema, tt.immutable, status)
+			if tt.want == nil {
+				require.Empty(t, got)
+				return
+			}
+			require.Equal(t, jsondiff.Patch{*tt.want}, got)
 		})
+	}
+}
+
+func Test_CoveringPath(t *testing.T) {
+	paths := []string{"Auth", "Users"}
+	require.Equal(t, "Auth", coveringPath(paths, "Auth"))
+	require.Equal(t, "Auth", coveringPath(paths, "Auth/Token"))
+	require.Equal(t, "AuthKey", coveringPath(paths, "AuthKey"))
+}
+
+func Test_HasValueAt(t *testing.T) {
+	properties := map[string]any{
+		"Auth":  map[string]any{"Token": nil},
+		"Users": []any{map[string]any{"Name": "u"}, map[string]any{"Secret": "s"}},
+		"Empty": []any{},
+	}
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{"Auth", true},
+		{"Auth/Token", true},
+		{"Auth/Key", false},
+		{"Users/*/Secret", true},
+		{"Users/*/Missing", false},
+		{"Users/0/Secret", false},
+		{"Empty/*/Secret", false},
+		{"Auth/Token/Value", false},
+	}
+	for _, tt := range tests {
+		require.Equal(t, tt.want, hasValueAt(properties, strings.Split(tt.path, "/")), tt.path)
 	}
 }
 
@@ -745,4 +795,73 @@ func Test_WriteOnly_RecoverCreate(t *testing.T) {
 	require.Contains(t, h.record(secretPath).Properties.Fingerprints.Digests, "SecretString")
 	resp = h.put(secretPath, properties)
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+}
+
+// Test_WriteOnly_ContainerWithoutWriteOnlyValue checks a PUT whose template sets the array that holds a write-only
+// property, but no write-only value in it. It needs no fingerprint, so it works without the key, and it saves none.
+func Test_WriteOnly_ContainerWithoutWriteOnlyValue(t *testing.T) {
+	for name, users := range map[string]any{"items without the value": []any{map[string]any{"Name": "u"}}, "no items": []any{}} {
+		t.Run(name, func(t *testing.T) {
+			properties := map[string]any{"Name": "db", "Users": users}
+
+			h := newHarness(t)
+			h.key = keyFile(filepath.Join(t.TempDir(), "missing"))
+			resp := h.put(dbPath, properties)
+			require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+
+			h = newHarness(t)
+			require.Equal(t, http.StatusCreated, h.put(dbPath, properties).status)
+			h.finish()
+			require.Nil(t, h.record(dbPath).Properties.Fingerprints)
+		})
+	}
+}
+
+// Test_WriteOnly_ChangedAndUnchangedSiblings changes one write-only value in an object AWS omits, because all of its
+// properties are write-only, so the patch adds the whole object. Only the changed value is sent: the unchanged token
+// cannot change after create, and AWS would reject the update if it were sent.
+func Test_WriteOnly_ChangedAndUnchangedSiblings(t *testing.T) {
+	h := newHarness(t)
+	properties := map[string]any{"Name": "m1", "Mode": "a", "Auth": map[string]any{"Password": password, "Token": "token-1"}}
+	require.Equal(t, http.StatusCreated, h.put(mixedPath, properties).status)
+	h.finish()
+	// AWS omits Auth, because it holds only write-only values.
+	h.cc.Put(mixedType, "m1", map[string]any{"Name": "m1", "Mode": "a"})
+	h.cc.Calls()
+
+	resp := h.put(mixedPath, properties)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+
+	properties["Auth"] = map[string]any{"Password": newPassword, "Token": "token-1"}
+	resp = h.put(mixedPath, properties)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	calls := h.cc.Calls()
+	require.Equal(t, []string{"GetResource", "UpdateResource"}, operations(calls))
+	patch := jsondiff.Patch{}
+	require.NoError(t, json.Unmarshal([]byte(calls[1].Document), &patch))
+	require.Len(t, patch, 1)
+	require.Equal(t, "/Auth", patch[0].Path)
+	require.Equal(t, map[string]any{"Password": newPassword}, patch[0].Value)
+}
+
+// Test_WriteOnly_OverlappingPaths checks a type whose write-only properties overlap, Auth/Token inside Auth. The
+// fingerprint of Auth covers the token, so a changed token fails on a create-and-delete-only type, and an unchanged
+// one succeeds.
+func Test_WriteOnly_OverlappingPaths(t *testing.T) {
+	h := newHarness(t)
+	properties := map[string]any{"Name": "o1", "Auth": map[string]any{"Token": password}}
+	require.Equal(t, http.StatusCreated, h.put(overlapPath, properties).status)
+	h.finish()
+	require.Equal(t, []string{"Auth"}, slices.Collect(maps.Keys(h.record(overlapPath).Properties.Fingerprints.Digests)))
+	h.cc.Put(overlapType, "o1", map[string]any{"Name": "o1"})
+	h.cc.Calls()
+
+	resp := h.put(overlapPath, properties)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+
+	resp = h.put(overlapPath, map[string]any{"Name": "o1", "Auth": map[string]any{"Token": newPassword}})
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.Contains(t, resp.message(), "cannot change: Auth.")
+	require.Equal(t, []string{"GetResource", "GetResource"}, operations(h.cc.Calls()))
 }

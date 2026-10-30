@@ -58,19 +58,23 @@ const (
 )
 
 // fingerprints makes the fingerprints of the write-only values in properties with the current key. It returns nil
-// when the type has no write-only properties, or when the key is not available and properties set no write-only
-// value, so those requests work without the key. When properties set a write-only value and the key is not
-// available, it returns a 500 naming the Secret. put calls it before it saves anything or calls Cloud Control.
+// when properties set no write-only value, so those requests work without the key. When properties set a write-only
+// value and the key is not available, it returns a 500 naming the Secret. put calls it before it saves anything or
+// calls Cloud Control.
 func (e *engine) fingerprints(r *request, schema *typeSchema, properties map[string]any) (*datamodel.AWSFingerprints, armrpc_rest.Response, error) {
-	paths := fingerprintPaths(awsoperations.PropertyPaths(schema.WriteOnlyProperties))
-	if len(paths) == 0 {
-		return nil, nil, nil
-	}
+	writeOnly := awsoperations.PropertyPaths(schema.WriteOnlyProperties)
+	paths := fingerprintPaths(writeOnly)
 	values := map[string]any{}
-	for _, path := range paths {
-		if value, ok := valueAt(properties, path); ok {
-			values[path] = value
+	for _, w := range writeOnly {
+		// Only a write-only value the template sets needs a fingerprint, not the array or object that would hold it.
+		if !hasValueAt(properties, strings.Split(w, "/")) {
+			continue
 		}
+		path := coveringPath(paths, fingerprintPath(w))
+		values[path], _ = valueAt(properties, path)
+	}
+	if len(values) == 0 {
+		return nil, nil, nil
 	}
 
 	key, err := e.fingerprintKey()
@@ -78,9 +82,6 @@ func (e *engine) fingerprints(r *request, schema *typeSchema, properties map[str
 		err = errors.New("the AWS fingerprint key is not loaded")
 	}
 	if err != nil {
-		if len(values) == 0 {
-			return nil, nil, nil
-		}
 		return nil, fingerprintKeyUnavailable(r, slices.Sorted(maps.Keys(values)), err), nil
 	}
 
@@ -136,6 +137,34 @@ func fingerprintPath(writeOnly string) string {
 	return strings.Join(segments, "/")
 }
 
+// coveringPath returns the path in paths, the result of fingerprintPaths, whose fingerprint covers the fingerprint
+// path p: p itself, or a path p is inside.
+func coveringPath(paths []string, p string) string {
+	for _, c := range paths {
+		if p == c || strings.HasPrefix(p, c+"/") {
+			return c
+		}
+	}
+	return p
+}
+
+// hasValueAt reports whether value sets a value at the path segments of a write-only property. A "*" segment matches
+// every item of an array.
+func hasValueAt(value any, segments []string) bool {
+	if len(segments) == 0 {
+		return true
+	}
+	switch v := value.(type) {
+	case map[string]any:
+		child, ok := v[segments[0]]
+		return ok && hasValueAt(child, segments[1:])
+	case []any:
+		return segments[0] == "*" && slices.ContainsFunc(v, func(item any) bool { return hasValueAt(item, segments[1:]) })
+	default:
+		return false
+	}
+}
+
 // valueAt returns the value at a "/"-separated path of nested objects in properties.
 func valueAt(properties map[string]any, path string) (any, bool) {
 	var current any = properties
@@ -172,43 +201,95 @@ func compareFingerprints(previous *datamodel.AWSFingerprints, current *datamodel
 	return out
 }
 
-// withoutUnsentWriteOnly returns the patch without the operations that only set write-only values UCP does not send:
+// withoutUnsentWriteOnly returns the patch without the write-only values UCP does not send:
 //
 //   - a value whose fingerprint matches, because it did not change
 //   - a value with no usable fingerprint that cannot change after create, because UCP cannot tell whether it changed,
 //     and sending it would fail the update. Every value of a create-and-delete-only type cannot change after create.
 //
 // A value with no usable fingerprint that can change, such as a password, stays in the patch, so it is sent once.
+//
+// When AWS omits an object because all of its properties are write-only, the patch adds the whole object in one
+// operation. Its values that are not sent are removed from the operation, and the operation is dropped when nothing is
+// left.
 func withoutUnsentWriteOnly(patch jsondiff.Patch, schema *typeSchema, immutable bool, status map[string]fingerprintStatus) jsondiff.Patch {
+	paths := fingerprintPaths(awsoperations.PropertyPaths(schema.WriteOnlyProperties))
 	out := jsondiff.Patch{}
 	for _, op := range patch {
-		if !schema.isUnsentWriteOnly(op, immutable, status) {
+		if op.Type != jsondiff.OperationAdd && op.Type != jsondiff.OperationReplace {
+			out = append(out, op)
+			continue
+		}
+		unsent := map[string]bool{}
+		for _, leaf := range leafPaths(op.Path, op.Value) {
+			if schema.isUnsent(leaf, paths, immutable, status) {
+				unsent[leaf] = true
+			}
+		}
+		if len(unsent) == 0 {
+			out = append(out, op)
+			continue
+		}
+		if value, kept := withoutPaths(op.Value, op.Path, unsent); kept {
+			op.Value = value
 			out = append(out, op)
 		}
 	}
 	return out
 }
 
-func (s *typeSchema) isUnsentWriteOnly(op jsondiff.Operation, immutable bool, status map[string]fingerprintStatus) bool {
-	if op.Type != jsondiff.OperationAdd && op.Type != jsondiff.OperationReplace {
+// isUnsent reports whether the value at a JSON patch path is a write-only value UCP does not send. The status of a
+// write-only property is the status of the fingerprint in paths that covers it.
+func (s *typeSchema) isUnsent(patchPath string, paths []string, immutable bool, status map[string]fingerprintStatus) bool {
+	pattern, ok := s.writeOnlyPattern(patchPath)
+	if !ok {
 		return false
 	}
-	for _, leaf := range leafPaths(op.Path, op.Value) {
-		pattern, ok := s.writeOnlyPattern(leaf)
-		if !ok {
-			return false
-		}
-		switch status[fingerprintPath(pattern)] {
-		case fingerprintUnchanged:
-		case fingerprintUnknown:
-			if !immutable && !s.isCreateOnly(pattern) {
-				return false
-			}
-		default:
-			return false
-		}
+	switch status[coveringPath(paths, fingerprintPath(pattern))] {
+	case fingerprintUnchanged:
+		return true
+	case fingerprintUnknown:
+		return immutable || s.isCreateOnly(pattern)
+	default:
+		return false
 	}
-	return true
+}
+
+// withoutPaths returns value, which is at the JSON patch path path, without the values at the paths in remove, and
+// whether anything is left. An object left empty is removed too. Array items keep their place, so an object item left
+// with nothing stays as an empty object.
+func withoutPaths(value any, path string, remove map[string]bool) (any, bool) {
+	if remove[path] {
+		return value, false
+	}
+	switch v := value.(type) {
+	case map[string]any:
+		if len(v) == 0 {
+			return v, true
+		}
+		escape := strings.NewReplacer("~", "~0", "/", "~1")
+		out := map[string]any{}
+		for key, child := range v {
+			if pruned, kept := withoutPaths(child, path+"/"+escape.Replace(key), remove); kept {
+				out[key] = pruned
+			}
+		}
+		return out, len(out) > 0
+	case []any:
+		if len(v) == 0 {
+			return v, true
+		}
+		out := make([]any, len(v))
+		kept := false
+		for i, child := range v {
+			pruned, ok := withoutPaths(child, fmt.Sprintf("%s/%d", path, i), remove)
+			out[i] = pruned
+			kept = kept || ok
+		}
+		return out, kept
+	default:
+		return value, true
+	}
 }
 
 // isCreateOnly reports whether AWS cannot change a write-only property, such as Users/*/Secret, after create: it is
