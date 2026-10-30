@@ -929,13 +929,14 @@ func Test_SaveFailures(t *testing.T) {
 		require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
 	})
 
-	setup := func(t *testing.T) *harness {
+	setupAfter := func(t *testing.T, saves int) *harness {
 		h := newHarness(t)
 		require.Equal(t, http.StatusCreated, h.put(bktPath, map[string]any{"BucketName": "assets"}).status)
 		h.finish()
-		h.failSavesAfter(0, down)
+		h.failSavesAfter(saves, down)
 		return h
 	}
+	setup := func(t *testing.T) *harness { return setupAfter(t, 0) }
 
 	t.Run("saving the last-applied properties when nothing changed", func(t *testing.T) {
 		h := setup(t)
@@ -950,15 +951,23 @@ func Test_SaveFailures(t *testing.T) {
 	})
 
 	t.Run("removing the record of a resource AWS no longer has", func(t *testing.T) {
-		h := setup(t)
+		// The reservation saves; removing the record fails.
+		h := setupAfter(t, 1)
 		h.cc.Remove(bucketType, "assets")
 		resp := h.delete(bktPath, testOwner)
 		require.Equal(t, http.StatusInternalServerError, resp.status)
 		require.Contains(t, resp.raw, "Delete again")
 	})
 
-	t.Run("saving the delete AWS accepted", func(t *testing.T) {
+	t.Run("reserving the delete", func(t *testing.T) {
 		h := setup(t)
+		h.cc.Calls()
+		require.Equal(t, http.StatusInternalServerError, h.delete(bktPath, testOwner).status)
+		require.Empty(t, h.cc.Calls(), "AWS is not called before the reservation is saved")
+	})
+
+	t.Run("saving the delete AWS accepted", func(t *testing.T) {
+		h := setupAfter(t, 1)
 		require.Equal(t, http.StatusInternalServerError, h.delete(bktPath, testOwner).status)
 	})
 
@@ -1053,4 +1062,153 @@ func Test_Put_BodyWithoutProperties(t *testing.T) {
 	resp := h.putBody(vpcPath, testOwner, map[string]any{})
 	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
 	require.Equal(t, `{}`, h.cc.Calls()[0].Document)
+}
+
+// Test_Reservation_RejectsCompetingRequests interleaves a second request while UCP waits on AWS for the first one. The
+// record is reserved before every AWS call, so the second request gets 409 and the first one's values are kept.
+func Test_Reservation_RejectsCompetingRequests(t *testing.T) {
+	t.Run("a no-op PUT racing an update", func(t *testing.T) {
+		h := newHarness(t)
+		require.Equal(t, http.StatusCreated, h.put(bktPath, map[string]any{"BucketName": "assets"}).status)
+		h.finish()
+
+		var competing response
+		h.cc.Before["UpdateResource"] = func() {
+			competing = h.put(bktPath, map[string]any{"BucketName": "assets"})
+		}
+		resp := h.put(bktPath, map[string]any{"BucketName": "assets", "Tags": []any{"a"}})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		require.Equal(t, http.StatusConflict, competing.status, competing.raw)
+		require.Contains(t, competing.message(), "still running")
+
+		h.finish()
+		require.Equal(t, map[string]any{"BucketName": "assets", "Tags": []any{"a"}}, h.record(bktPath).Properties.LastApplied)
+
+		// A later deploy that omits the tags clears them in AWS.
+		require.Equal(t, http.StatusCreated, h.put(bktPath, map[string]any{"BucketName": "assets"}).status)
+		h.finish()
+		require.Equal(t, map[string]any{"BucketName": "assets"}, h.cc.Resource(bucketType, "assets"))
+	})
+
+	t.Run("a PUT racing a delete", func(t *testing.T) {
+		h := newHarness(t)
+		require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		h.finish()
+
+		var competing response
+		h.cc.Before["DeleteResource"] = func() {
+			competing = h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16", "EnableDnsSupport": true})
+		}
+		require.Equal(t, http.StatusAccepted, h.delete(vpcPath, testOwner).status)
+		require.Equal(t, http.StatusConflict, competing.status, competing.raw)
+
+		h.finish()
+		require.Nil(t, h.record(vpcPath))
+		require.Zero(t, h.cc.Count(vpcType))
+	})
+
+	t.Run("a DELETE racing a create", func(t *testing.T) {
+		h := newHarness(t)
+		var competing response
+		h.cc.Before["CreateResource"] = func() {
+			competing = h.delete(vpcPath, testOwner)
+		}
+		require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		require.Equal(t, http.StatusConflict, competing.status, competing.raw)
+		h.finish()
+		require.Equal(t, "id-1", h.record(vpcPath).Properties.AWSIdentifier)
+	})
+}
+
+// Test_Reservation_Recovery covers a reservation that UCP saved but never followed with a tracked request, for example
+// because UCP stopped while it called AWS. Once it is stale, the next request recovers it by operation.
+func Test_Reservation_Recovery(t *testing.T) {
+	stale := func(t *testing.T) {
+		records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+		t.Cleanup(func() { records.Now = time.Now })
+	}
+
+	t.Run("update: the pending properties count as applied", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.Put(bucketType, "assets", map[string]any{"BucketName": "assets", "Tags": []any{"a"}})
+		h.saveRecord(bktPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = "assets"
+			rec.Properties.LastApplied = map[string]any{"BucketName": "assets"}
+			rec.Properties.PendingLastApplied = map[string]any{"BucketName": "assets", "Tags": []any{"a"}}
+			rec.Properties.PendingOperation = records.OperationUpdate
+			rec.SetProvisioningState(v1.ProvisioningStateUpdating)
+		})
+		// While the reservation is fresh, a request waits.
+		require.Equal(t, http.StatusConflict, h.put(bktPath, map[string]any{"BucketName": "assets"}).status)
+
+		stale(t)
+		h.cc.Calls()
+		// The deploy omits the tags the interrupted update may have set, so they are cleared.
+		resp := h.put(bktPath, map[string]any{"BucketName": "assets"})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Contains(t, calls[len(calls)-1].Document, `"op":"remove","path":"/Tags"`)
+		records.Now = time.Now
+		h.finish()
+		require.Equal(t, map[string]any{"BucketName": "assets"}, h.cc.Resource(bucketType, "assets"))
+	})
+
+	t.Run("delete: the delete is sent again", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.Put(vpcType, "vpc-1", map[string]any{"VpcId": "vpc-1"})
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = "vpc-1"
+			rec.Properties.PendingOperation = records.OperationDelete
+			rec.SetProvisioningState(v1.ProvisioningStateDeleting)
+		})
+		stale(t)
+		resp := h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+		records.Now = time.Now
+		h.finish()
+		require.Nil(t, h.record(vpcPath))
+		require.Zero(t, h.cc.Count(vpcType))
+	})
+
+	t.Run("delete: a PUT resumes it and retries", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = "vpc-gone"
+			rec.Properties.PendingOperation = records.OperationDelete
+			rec.SetProvisioningState(v1.ProvisioningStateDeleting)
+		})
+		stale(t)
+		resp := h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"})
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "interrupted delete")
+		require.Nil(t, h.record(vpcPath), "AWS no longer had it, so the record is removed")
+	})
+
+	t.Run("delete: AWS fails, then the error is returned", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = "vpc-1"
+			rec.Properties.PendingOperation = records.OperationDelete
+			rec.SetProvisioningState(v1.ProvisioningStateDeleting)
+		})
+		h.cc.Errors["DeleteResource"] = awsError(&smithy.GenericAPIError{Code: "Throttling", Message: "slow", Fault: smithy.FaultServer})
+		stale(t)
+		require.Equal(t, http.StatusInternalServerError, h.put(vpcPath, map[string]any{}).status)
+		rec := h.record(vpcPath)
+		require.Empty(t, rec.Properties.PendingOperation)
+		require.False(t, records.IsRunning(rec), "the reservation is released, so the next request does not wait")
+	})
+
+	t.Run("create: the create is sent again with the client token", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.ClientToken = "6f1d1b8b-6a29-4d47-8f0b-5ad7c1d3e111"
+			rec.Properties.PendingOperation = records.OperationCreate
+			rec.SetProvisioningState(v1.ProvisioningStateProvisioning)
+		})
+		stale(t)
+		require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		calls := h.cc.Calls()
+		require.Equal(t, "6f1d1b8b-6a29-4d47-8f0b-5ad7c1d3e111", calls[len(calls)-1].ClientToken)
+	})
 }

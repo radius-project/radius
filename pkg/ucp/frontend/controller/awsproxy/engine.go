@@ -139,17 +139,33 @@ func (e *engine) checkRecord(ctx context.Context, r *request, rec *datamodel.AWS
 }
 
 // resume handles a stale or never-queued operation. With a request token, AWS accepted the operation: resume queues
-// it again so a worker polls the original request, and returns the response. Without one, AWS never accepted it:
-// resume clears it and the request continues. A first create keeps its client token, so the request sends the create
-// again with the same token.
+// it again so a worker polls the original request, and returns the response. Without one, UCP reserved the record
+// but may or may not have reached AWS, and resume recovers by operation:
+//
+//   - update: the properties of the interrupted update may now be in AWS, so they count as applied and Radius owns
+//     them. A later deploy that omits one clears it. The request continues.
+//   - delete: the delete is sent again. A DELETE gets its response; a PUT gets 409 and retries when it finishes.
+//   - create: the record keeps its client token and pending values, and the request continues. A PUT sends the create
+//     again with the same token.
 func (e *engine) resume(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, method v1.OperationMethod) (*datamodel.AWSResource, string, armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	op := records.PendingOperation(rec)
 
 	if rec.Properties.RequestToken == "" {
-		logger.Info("Clearing an AWS operation that never reached AWS", "alias", r.id.Name(), "operation", op)
-		records.ClearPending(rec)
-		rec.SetProvisioningState(v1.ProvisioningStateFailed)
+		logger.Info("Recovering an AWS operation that UCP reserved but did not track", "alias", r.id.Name(), "operation", op)
+		switch op {
+		case records.OperationDelete:
+			resp, err := e.startDelete(ctx, r, rec, etag)
+			if err != nil || method == v1.OperationDelete || !deleteStarted(resp) {
+				return nil, "", resp, err
+			}
+			return nil, "", conflict("An interrupted delete of the AWS resource %q was resumed. Retry when it finishes.", r.id.Name()), nil
+		case records.OperationCreate:
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		default:
+			records.KeepPending(rec)
+			rec.SetProvisioningState(v1.ProvisioningStateFailed)
+		}
 		etag, err := e.store.Save(ctx, rec, etag)
 		if err != nil {
 			resp, err := saveError(r.id, err)
@@ -177,6 +193,40 @@ func (e *engine) resume(ctx context.Context, r *request, rec *datamodel.AWSResou
 	}
 	body := map[string]any{"id": r.id.String(), "name": r.id.Name(), "type": r.id.Type(), "properties": map[string]any{"provisioningState": v1.ProvisioningStateProvisioning}}
 	return nil, "", e.asyncResponse(r.id, body, 201, operationID), nil
+}
+
+// deleteStarted reports whether startDelete deleted the resource or started its delete, rather than failing.
+func deleteStarted(resp armrpc_rest.Response) bool {
+	switch resp.(type) {
+	case *armrpc_rest.NoContentResponse, *armrpc_rest.AsyncOperationResponse:
+		return true
+	default:
+		return false
+	}
+}
+
+// reserve saves the record with operation op in progress before UCP calls AWS, so a competing PUT or DELETE gets 409
+// until the operation finishes, or until it goes stale and the next request recovers it (see resume). It returns the
+// new ETag, or a response that ends the request.
+func (e *engine) reserve(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, op string) (string, armrpc_rest.Response, error) {
+	rec.Properties.PendingOperation = op
+	rec.Properties.RequestToken = ""
+	rec.SetProvisioningState(records.StateOf(op))
+	etag, err := e.store.Save(ctx, rec, etag)
+	if err != nil {
+		resp, err := saveError(r.id, err)
+		return "", resp, err
+	}
+	return etag, nil, nil
+}
+
+// release undoes a reservation after AWS rejected the call, so the next request does not wait for it to go stale.
+// change sets the state to save. A failed save is logged: the reservation then goes stale and is recovered.
+func (e *engine) release(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, change func(rec *datamodel.AWSResource)) {
+	change(rec)
+	if _, err := e.store.Save(ctx, rec, etag); err != nil {
+		ucplog.FromContextOrDiscard(ctx).Error(err, "Failed to release an AWS operation that AWS did not accept", "alias", r.id.Name())
+	}
 }
 
 // saveError turns a failed record save into a response: a 409 when another request changed the record, and an error
@@ -398,13 +448,13 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 		return armrpc_rest.NewOKResponse(responseBody), nil
 	}
 
-	// Save the values this deploy applies before calling AWS. The worker makes them last-applied when AWS succeeds.
+	// Reserve the record with the values this deploy applies before calling AWS. The worker makes them last-applied
+	// when AWS succeeds.
+	prior := rec.ProvisioningState()
 	rec.Properties.PendingLastApplied = lastApplied
-	rec.Properties.PendingOperation = records.OperationUpdate
-	rec.Properties.RequestToken = ""
-	etag, err = e.store.Save(ctx, rec, etag)
-	if err != nil {
-		return saveError(r.id, err)
+	etag, resp, err := e.reserve(ctx, r, rec, etag, records.OperationUpdate)
+	if resp != nil || err != nil {
+		return resp, err
 	}
 
 	marshaled, err := json.Marshal(&patch)
@@ -419,10 +469,10 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	}, CloudControlRegionOption(r.region))
 	if err != nil {
 		// AWS changed nothing, so the previous last-applied properties stay.
-		records.ClearPending(rec)
-		if _, saveErr := e.store.Save(ctx, rec, etag); saveErr != nil {
-			logger.Error(saveErr, "Failed to clear the pending values after AWS rejected an update", "alias", r.id.Name())
-		}
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			records.ClearPending(rec)
+			rec.SetProvisioningState(prior)
+		})
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
@@ -458,13 +508,10 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	// Save the identifier the properties give before the create, so the identifier check also finds a create that is
 	// still running. AWS assigns the others, and the worker saves them when the create finishes.
 	rec.Properties.AWSIdentifier = known
-	rec.Properties.RequestToken = ""
 	rec.Properties.PendingLastApplied = lastApplied
-	rec.Properties.PendingOperation = records.OperationCreate
-	rec.SetProvisioningState(v1.ProvisioningStateAccepted)
-	etag, err = e.store.Save(ctx, rec, etag)
-	if err != nil {
-		return saveError(r.id, err)
+	etag, resp, err := e.reserve(ctx, r, rec, etag, records.OperationCreate)
+	if resp != nil || err != nil {
+		return resp, err
 	}
 
 	desiredState, err := json.Marshal(properties)
@@ -486,6 +533,9 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 		}
 		// Otherwise AWS may have accepted the create. The record keeps its client token, so the next deploy sends
 		// the create again with it and Cloud Control returns the first request instead of creating a second resource.
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		})
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
 	if id := aws.ToString(response.ProgressEvent.Identifier); id != "" {
@@ -503,9 +553,8 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	return e.asyncResponse(r.id, responseBody, 201, operationID), nil
 }
 
-// track saves the operation AWS accepted on the record, queues it, and then marks the record in progress. The request
-// token is saved before queuing, so a request that finds the operation never queued polls it instead of starting
-// over.
+// track saves the operation AWS accepted on the record, still in progress, and queues it. The request token is saved
+// before queuing, so a request that finds the operation never queued polls it instead of starting over.
 func (e *engine) track(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, method v1.OperationMethod, op string, requestToken string) (uuid.UUID, error) {
 	operationID, err := uuid.Parse(requestToken)
 	if err != nil {
@@ -514,21 +563,18 @@ func (e *engine) track(ctx context.Context, r *request, rec *datamodel.AWSResour
 
 	rec.Properties.RequestToken = requestToken
 	rec.Properties.PendingOperation = op
-	rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+	rec.SetProvisioningState(records.StateOf(op))
 	etag, err = e.store.Save(ctx, rec, etag)
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("AWS accepted the request for the alias %q, but UCP failed to save it. Deploy again to continue it: %w", r.id.Name(), err)
 	}
 
 	if err := e.queue(ctx, r.id, method, operationID); err != nil {
-		// Nothing polls the operation, so it is not in progress: the next request polls the request token.
+		// Nothing polls the operation, so it is not in progress: the next request polls the request token right away.
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		})
 		return uuid.UUID{}, err
-	}
-
-	rec.SetProvisioningState(records.StateOf(op))
-	if _, err := e.store.Save(ctx, rec, etag); err != nil && !errors.Is(err, &database.ErrConcurrency{}) {
-		// The worker marks the record in progress when it starts the operation, and a changed record means it did.
-		ucplog.FromContextOrDiscard(ctx).Error(err, "Failed to mark an AWS operation in progress", "alias", r.id.Name())
 	}
 	return operationID, nil
 }
@@ -558,13 +604,10 @@ func (e *engine) asyncResponse(id resources.ID, body any, code int, operationID 
 	return armrpc_rest.NewAsyncOperationResponse(body, v1.LocationGlobal, code, id, operationID, "", id.RootScope(), e.pathBase)
 }
 
-// delete deletes the AWS resource under the alias in the URL. It checks the owner, deletes the resource in AWS by the
-// record's identifier, and the worker removes the record when AWS finishes. When the record has no identifier yet, or
-// AWS says the resource does not exist, only the record is removed. An alias with no record returns 204 without
-// calling AWS, so a retried DELETE never deletes a different resource that happens to have the alias as its
-// identifier.
+// delete deletes the AWS resource under the alias in the URL. It checks the owner and deletes the resource in AWS by
+// the record's identifier (see startDelete). An alias with no record returns 204 without calling AWS, so a retried
+// DELETE never deletes a different resource that happens to have the alias as its identifier.
 func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest.Response, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
 	r, resp := e.begin(ctx, httpReq)
 	if resp != nil {
 		return resp, nil
@@ -585,13 +628,28 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 	if resp != nil || err != nil {
 		return resp, err
 	}
+	return e.startDelete(ctx, r, rec, etag)
+}
 
-	identifier := rec.Properties.AWSIdentifier
-	if identifier == "" {
+// startDelete reserves the record and deletes its AWS resource, and the worker removes the record when AWS finishes.
+// A record with no identifier has nothing in AWS UCP can find, so only the record is removed.
+func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	if rec.Properties.AWSIdentifier == "" {
 		// AWS has not assigned an identifier yet, so there is nothing in AWS UCP can find to delete.
 		return e.removeRecord(ctx, r.id)
 	}
 
+	// A resumed delete finds the record still marked in progress; if AWS rejects the delete, it is released as Failed.
+	prior := rec.ProvisioningState()
+	if records.IsRunning(rec) {
+		prior = v1.ProvisioningStateFailed
+	}
+	etag, resp, err := e.reserve(ctx, r, rec, etag, records.OperationDelete)
+	if resp != nil || err != nil {
+		return resp, err
+	}
+	identifier := rec.Properties.AWSIdentifier
 	logger.Info("Deleting AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier)
 	response, err := e.clients.CloudControl.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   aws.String(r.typeName),
@@ -600,10 +658,13 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 	if ucp_aws.IsAWSResourceNotFoundError(err) {
 		return e.removeRecord(ctx, r.id)
 	} else if err != nil {
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			records.ClearPending(rec)
+			rec.SetProvisioningState(prior)
+		})
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
-	records.ClearPending(rec)
 	operationID, err := e.track(ctx, r, rec, etag, v1.OperationDelete, records.OperationDelete, aws.ToString(response.ProgressEvent.RequestToken))
 	if err != nil {
 		return nil, err
