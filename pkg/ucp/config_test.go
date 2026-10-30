@@ -54,3 +54,18 @@ func Test_LoadConfig_AuthorizationMode(t *testing.T) {
 		})
 	}
 }
+
+func Test_LoadConfig_AWS(t *testing.T) {
+	t.Parallel()
+
+	config, err := LoadConfig([]byte("aws:\n  fingerprintKeyFile: /tmp/key\n"))
+	require.NoError(t, err)
+	require.Equal(t, "/tmp/key", config.AWS.FingerprintKeyFile)
+
+	config, err = LoadConfig([]byte("logging:\n  level: info\n"))
+	require.NoError(t, err)
+	require.Empty(t, config.AWS.FingerprintKeyFile)
+
+	_, err = LoadConfig([]byte("aws:\n  unknown: true\n"))
+	require.Error(t, err)
+}
