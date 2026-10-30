@@ -36,9 +36,10 @@ These specifications and implementation plans preserve the design history of imp
 
 1. Place the document in the appropriate topic directory
 2. Use the naming convention `YYYY-MM-description.md` (e.g., `2024-06-private-bicep-registries.md`)
-3. Update this README if adding a new topic directory
+3. Start from the matching template in `templates/` and follow the [design note writing guide](../../docs/contributing/contributing-code/contributing-code-design/README.md#writing-a-design-note)
+4. Update this README if adding a new topic directory
 
-Start from a template in [templates/](templates/). See [Working with design documents](../../docs/contributing/contributing-code/contributing-code-design/README.md) for the full authoring and review process.
+See [Working with design documents](../../docs/contributing/contributing-code/contributing-code-design/README.md) for the full authoring and review process.
 
 ## Migration Plan
 

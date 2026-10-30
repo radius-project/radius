@@ -17,6 +17,7 @@ Propose a focused patch to an existing doc so its prose matches the current code
 | **Fix** an existing doc that drifted from code                       | **this skill**                                                                   |
 | **Find** missing or stale docs, or assess a code change's doc impact | [radius-contributing-docs-updater](../radius-contributing-docs-updater/SKILL.md) |
 | **Diagram** a subsystem / write an architecture doc                  | [radius-architecture-documenter](../radius-architecture-documenter/SKILL.md)     |
+| **Propose** a technical design for review (design note)              | [radius-author-design-note](../radius-author-design-note/SKILL.md)               |
 
 Backing docs: [authoring-contributing-docs.md](../../../docs/contributing/authoring-contributing-docs.md) (the format the patched doc must keep) and the [code ↔ doc path map](../../../docs/contributing/contributing-agent-assets.md#code--doc-path-map) (which maps changed code globs to the doc that documents them). This skill is a convenience wrapper and adds no knowledge beyond those docs.
 
