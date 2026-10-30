@@ -16,12 +16,41 @@ limitations under the License.
 
 package output
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+	"os"
+	"sync"
+)
+
+var (
+	logWriter   io.Writer
+	logWriterMu sync.RWMutex
+)
+
+// SetLogWriter configures the destination for package-level status messages.
+// A nil writer restores the default of writing to the current os.Stdout.
+func SetLogWriter(writer io.Writer) {
+	logWriterMu.Lock()
+	defer logWriterMu.Unlock()
+	logWriter = writer
+}
+
+// LogWriter returns the destination for package-level status messages.
+func LogWriter() io.Writer {
+	logWriterMu.RLock()
+	defer logWriterMu.RUnlock()
+	if logWriter != nil {
+		return logWriter
+	}
+	return os.Stdout
+}
 
 // LogInfo logs a message that is displayed to the user by default.
 func LogInfo(format string, v ...any) {
-	fmt.Printf(format, v...)
-	fmt.Println()
+	writer := LogWriter()
+	fmt.Fprintf(writer, format, v...)
+	fmt.Fprintln(writer)
 }
 
 // BeginStep starts execution of a step

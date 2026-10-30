@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
@@ -78,6 +79,7 @@ rad rollback kubernetes --revision 2
 	}
 
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
+	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().IntVar(&runner.Revision, "revision", 0, "Specify the revision number to rollback to (0 or omitted = previous version)")
 	cmd.Flags().BoolVar(&runner.ListRevisions, "list-revisions", false, "List available revisions without performing rollback")
 
@@ -88,6 +90,7 @@ rad rollback kubernetes --revision 2
 type Runner struct {
 	Helm   helm.Interface
 	Output output.Interface
+	Format string
 
 	KubeContext   string
 	Revision      int
@@ -104,6 +107,11 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad rollback kubernetes` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
+	format, err := cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
+	r.Format = format
 	return nil
 }
 
@@ -153,7 +161,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-// displayRevisions displays the available revisions in a formatted table.
+// displayRevisions displays the available revisions in the requested format.
 func (r *Runner) displayRevisions(revisions []helm.RevisionInfo) error {
 	columns := []output.Column{
 		{
@@ -178,7 +186,7 @@ func (r *Runner) displayRevisions(revisions []helm.RevisionInfo) error {
 		},
 	}
 
-	err := r.Output.WriteFormatted("table", revisions, output.FormatterOptions{
+	err := r.Output.WriteFormatted(r.Format, revisions, output.FormatterOptions{
 		Columns: columns,
 	})
 	if err != nil {
