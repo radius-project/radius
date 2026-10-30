@@ -1,0 +1,2089 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Radius Authorization",
+    "version": "2025-08-01-preview",
+    "description": "Preview contracts for UCP-served Radius authorization. These contracts do not register management routes or enable enforcement.",
+    "x-typespec-generated": [
+      {
+        "emitter": "@azure-tools/typespec-autorest"
+      }
+    ]
+  },
+  "schemes": [
+    "https"
+  ],
+  "host": "management.azure.com",
+  "produces": [
+    "application/json"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "description": "Azure Active Directory OAuth2 Flow.",
+      "flow": "implicit",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "InstallationRoleDefinitions"
+    },
+    {
+      "name": "ScopedRoleDefinitions"
+    },
+    {
+      "name": "InstallationRoleAssignments"
+    },
+    {
+      "name": "ScopedRoleAssignments"
+    },
+    {
+      "name": "AuthorizationSettings"
+    },
+    {
+      "name": "AccessChanges"
+    }
+  ],
+  "paths": {
+    "/{scope}/providers/Radius.Core/checkAccess": {
+      "post": {
+        "operationId": "ScopedAccess_CheckAccess",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AuthorizationScopeParameter"
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AccessCheckRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/CheckAccessResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{scope}/providers/Radius.Core/effectiveAccess": {
+      "get": {
+        "operationId": "ScopedAccess_EffectiveAccess",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AuthorizationScopeParameter"
+          },
+          {
+            "$ref": "#/parameters/PrincipalQuery"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/EffectiveAccessResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{scope}/providers/Radius.Core/explainAccess": {
+      "post": {
+        "operationId": "ScopedAccess_ExplainAccess",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AuthorizationScopeParameter"
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AccessCheckRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExplainAccessResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{scope}/providers/Radius.Core/roleAssignments": {
+      "get": {
+        "operationId": "ScopedRoleAssignments_List",
+        "tags": [
+          "ScopedRoleAssignments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AuthorizationScopeParameter"
+          },
+          {
+            "$ref": "#/parameters/AssignmentListOptions"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "A paginated collection. nextLink is an opaque continuation URL, not a count of filtered or inaccessible items.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "The visible items.",
+                  "items": {
+                    "$ref": "#/definitions/RoleAssignmentResource"
+                  }
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "The next page, if present."
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{scope}/providers/Radius.Core/roleAssignments/{roleAssignmentName}": {
+      "get": {
+        "operationId": "ScopedRoleAssignments_Get",
+        "tags": [
+          "ScopedRoleAssignments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AuthorizationScopeParameter"
+          },
+          {
+            "name": "roleAssignmentName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RoleAssignmentResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "ScopedRoleAssignments_CreateOrUpdate",
+        "tags": [
+          "ScopedRoleAssignments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AuthorizationScopeParameter"
+          },
+          {
+            "name": "roleAssignmentName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RoleAssignmentResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'RoleAssignmentResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RoleAssignmentResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'RoleAssignmentResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RoleAssignmentResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Assign application developer to a group at resource-group scope": {
+            "$ref": "./examples/ScopedRoleAssignments_CreateOrUpdate_Group.json"
+          },
+          "Assign environment deployer on one environment only": {
+            "$ref": "./examples/ScopedRoleAssignments_CreateOrUpdate_Environment.json"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "ScopedRoleAssignments_Delete",
+        "tags": [
+          "ScopedRoleAssignments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AuthorizationScopeParameter"
+          },
+          {
+            "name": "roleAssignmentName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          },
+          {
+            "$ref": "#/parameters/AssignmentDeleteOptions"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource does not exist."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{scope}/providers/Radius.Core/roleDefinitions": {
+      "get": {
+        "operationId": "ScopedRoleDefinitions_List",
+        "tags": [
+          "ScopedRoleDefinitions"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RoleDefinitionScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "A paginated collection. nextLink is an opaque continuation URL, not a count of filtered or inaccessible items.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "The visible items.",
+                  "items": {
+                    "$ref": "#/definitions/RoleDefinitionResource"
+                  }
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "The next page, if present."
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{scope}/providers/Radius.Core/roleDefinitions/{roleDefinitionName}": {
+      "get": {
+        "operationId": "ScopedRoleDefinitions_Get",
+        "tags": [
+          "ScopedRoleDefinitions"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RoleDefinitionScopeParameter"
+          },
+          {
+            "name": "roleDefinitionName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RoleDefinitionResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "ScopedRoleDefinitions_CreateOrUpdate",
+        "tags": [
+          "ScopedRoleDefinitions"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RoleDefinitionScopeParameter"
+          },
+          {
+            "name": "roleDefinitionName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RoleDefinitionResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'RoleDefinitionResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RoleDefinitionResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'RoleDefinitionResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RoleDefinitionResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-examples": {
+          "Create a custom application operator role": {
+            "$ref": "./examples/ScopedRoleDefinitions_CreateOrUpdate.json"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "ScopedRoleDefinitions_Delete",
+        "tags": [
+          "ScopedRoleDefinitions"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RoleDefinitionScopeParameter"
+          },
+          {
+            "name": "roleDefinitionName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource does not exist."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/providers/Radius.Core/accessChanges": {
+      "get": {
+        "operationId": "AccessChanges_List",
+        "tags": [
+          "AccessChanges"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AccessChangeListOptions.principal"
+          },
+          {
+            "$ref": "#/parameters/AccessChangeListOptions.scope"
+          },
+          {
+            "$ref": "#/parameters/AccessChangeListOptions.since"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "A paginated collection. nextLink is an opaque continuation URL, not a count of filtered or inaccessible items.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "The visible items.",
+                  "items": {
+                    "$ref": "#/definitions/AccessChangeResource"
+                  }
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "The next page, if present."
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/providers/Radius.Core/accessChanges/{accessChangeName}": {
+      "get": {
+        "operationId": "AccessChanges_Get",
+        "tags": [
+          "AccessChanges"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "accessChangeName",
+            "in": "path",
+            "description": "The decimal generation identifying one applied policy change.",
+            "required": true,
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AccessChangeResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/providers/Radius.Core/authorizationSettings/default": {
+      "get": {
+        "operationId": "AuthorizationSettings_Get",
+        "tags": [
+          "AuthorizationSettings"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AuthorizationSettingsResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "AuthorizationSettings_CreateOrUpdate",
+        "tags": [
+          "AuthorizationSettings"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AuthorizationSettingsResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'AuthorizationSettingsResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/AuthorizationSettingsResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/providers/Radius.Core/checkAccess": {
+      "post": {
+        "operationId": "InstallationAccess_CheckAccess",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AccessCheckRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/CheckAccessResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/providers/Radius.Core/effectiveAccess": {
+      "get": {
+        "operationId": "InstallationAccess_EffectiveAccess",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/PrincipalQuery"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/EffectiveAccessResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/providers/Radius.Core/explainAccess": {
+      "post": {
+        "operationId": "InstallationAccess_ExplainAccess",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AccessCheckRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/ExplainAccessResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/providers/Radius.Core/permissions": {
+      "get": {
+        "operationId": "Permissions_List",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "A paginated collection. nextLink is an opaque continuation URL, not a count of filtered or inaccessible items.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "The visible items.",
+                  "items": {
+                    "$ref": "#/definitions/Permission"
+                  }
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "The next page, if present."
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/providers/Radius.Core/roleAssignments": {
+      "get": {
+        "operationId": "InstallationRoleAssignments_List",
+        "tags": [
+          "InstallationRoleAssignments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/AssignmentListOptions"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "A paginated collection. nextLink is an opaque continuation URL, not a count of filtered or inaccessible items.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "The visible items.",
+                  "items": {
+                    "$ref": "#/definitions/RoleAssignmentResource"
+                  }
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "The next page, if present."
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/providers/Radius.Core/roleAssignments/{roleAssignmentName}": {
+      "get": {
+        "operationId": "InstallationRoleAssignments_Get",
+        "tags": [
+          "InstallationRoleAssignments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "roleAssignmentName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RoleAssignmentResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "InstallationRoleAssignments_CreateOrUpdate",
+        "tags": [
+          "InstallationRoleAssignments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "roleAssignmentName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RoleAssignmentResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'RoleAssignmentResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RoleAssignmentResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'RoleAssignmentResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RoleAssignmentResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "InstallationRoleAssignments_Delete",
+        "tags": [
+          "InstallationRoleAssignments"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "roleAssignmentName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          },
+          {
+            "$ref": "#/parameters/AssignmentDeleteOptions"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource does not exist."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/providers/Radius.Core/roleDefinitions": {
+      "get": {
+        "operationId": "InstallationRoleDefinitions_List",
+        "tags": [
+          "InstallationRoleDefinitions"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "type": "object",
+              "description": "A paginated collection. nextLink is an opaque continuation URL, not a count of filtered or inaccessible items.",
+              "properties": {
+                "value": {
+                  "type": "array",
+                  "description": "The visible items.",
+                  "items": {
+                    "$ref": "#/definitions/RoleDefinitionResource"
+                  }
+                },
+                "nextLink": {
+                  "type": "string",
+                  "description": "The next page, if present."
+                }
+              },
+              "required": [
+                "value"
+              ]
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/providers/Radius.Core/roleDefinitions/{roleDefinitionName}": {
+      "get": {
+        "operationId": "InstallationRoleDefinitions_Get",
+        "tags": [
+          "InstallationRoleDefinitions"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "roleDefinitionName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RoleDefinitionResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "InstallationRoleDefinitions_CreateOrUpdate",
+        "tags": [
+          "InstallationRoleDefinitions"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "roleDefinitionName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RoleDefinitionResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource 'RoleDefinitionResource' update operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RoleDefinitionResource"
+            }
+          },
+          "201": {
+            "description": "Resource 'RoleDefinitionResource' create operation succeeded",
+            "schema": {
+              "$ref": "#/definitions/RoleDefinitionResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "InstallationRoleDefinitions_Delete",
+        "tags": [
+          "InstallationRoleDefinitions"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "roleDefinitionName",
+            "in": "path",
+            "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+            "required": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "204": {
+            "description": "Resource does not exist."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/providers/Radius.Core/whoAmI": {
+      "get": {
+        "operationId": "InstallationAccess_WhoAmI",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Azure operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/WhoAmIResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "AccessChangeProperties": {
+      "type": "object",
+      "description": "The committed access change, written atomically with the applied generation by the future policy store.",
+      "properties": {
+        "generation": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The generation identifying this change.",
+          "minimum": 1
+        },
+        "time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the change was applied."
+        },
+        "requestId": {
+          "type": "string",
+          "description": "The request identifier."
+        },
+        "correlationId": {
+          "type": "string",
+          "description": "The correlation identifier."
+        },
+        "principal": {
+          "$ref": "#/definitions/Principal",
+          "description": "The authenticated actor."
+        },
+        "mode": {
+          "$ref": "#/definitions/UserAuthorizationMode",
+          "description": "The user-facing mode at the time of the change."
+        },
+        "policyChange": {
+          "$ref": "#/definitions/PolicyChange",
+          "description": "The changed policy and its provenance. No request bodies, secrets, or credentials are included."
+        },
+        "highImpact": {
+          "type": "boolean",
+          "description": "Whether the change grants administrative access, includes the actor, or overrides an enablement safety check."
+        },
+        "recovery": {
+          "type": "boolean",
+          "description": "Whether the actor used temporary recovery access."
+        }
+      },
+      "required": [
+        "generation",
+        "time",
+        "requestId",
+        "principal",
+        "mode",
+        "policyChange",
+        "highImpact",
+        "recovery"
+      ]
+    },
+    "AccessChangeResource": {
+      "type": "object",
+      "description": "An immutable installation-scoped access change. One record exists per applied policy generation and is never deleted. Access decisions are not access-change records.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/AccessChangeProperties",
+          "description": "The resource-specific properties for this resource."
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ProxyResource"
+        }
+      ]
+    },
+    "AccessCheck": {
+      "type": "object",
+      "description": "A permission and concrete target to evaluate. A reference never implies access to its target.",
+      "properties": {
+        "permission": {
+          "$ref": "#/definitions/PermissionName",
+          "description": "The permission being evaluated."
+        },
+        "target": {
+          "type": "string",
+          "description": "The concrete target resource or scope ID."
+        }
+      },
+      "required": [
+        "permission",
+        "target"
+      ]
+    },
+    "AccessCheckRequest": {
+      "type": "object",
+      "description": "Access-check input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.",
+      "properties": {
+        "principal": {
+          "$ref": "#/definitions/Principal",
+          "description": "The principal to check, or the authenticated caller when omitted."
+        },
+        "checks": {
+          "type": "array",
+          "description": "The checks to evaluate.",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/AccessCheck"
+          }
+        }
+      },
+      "required": [
+        "checks"
+      ]
+    },
+    "AccessCheckResult": {
+      "type": "object",
+      "description": "The policy evaluation, independent of whether the current mode blocks requests.",
+      "properties": {
+        "allowed": {
+          "type": "boolean",
+          "description": "Whether the evaluated policy grants the permission."
+        }
+      },
+      "required": [
+        "allowed"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/AccessCheck"
+        }
+      ]
+    },
+    "AccessGrant": {
+      "type": "object",
+      "description": "A grant visible to the caller. Assignment identifiers and details must be omitted unless the caller can read assignments at the grant's scope.",
+      "properties": {
+        "assignmentId": {
+          "type": "string",
+          "description": "The assignment that grants access."
+        },
+        "roleDefinitionId": {
+          "type": "string",
+          "description": "The granting role definition."
+        },
+        "scope": {
+          "$ref": "#/definitions/AuthorizationScope",
+          "description": "The assignment's scope."
+        }
+      },
+      "required": [
+        "assignmentId",
+        "roleDefinitionId",
+        "scope"
+      ]
+    },
+    "AssignmentManagement": {
+      "type": "object",
+      "description": "Verified assignment provenance supplied by UCP, never trusted from a request body.",
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/AssignmentManagementKind",
+          "description": "How the assignment was created."
+        },
+        "source": {
+          "type": "string",
+          "description": "The verified Git source URL for GitOps assignments."
+        },
+        "revision": {
+          "type": "string",
+          "description": "The Git revision."
+        },
+        "path": {
+          "type": "string",
+          "description": "The template path within the source."
+        },
+        "principal": {
+          "type": "string",
+          "description": "The verified submitting principal, formatted for display."
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "AssignmentManagementKind": {
+      "type": "string",
+      "description": "The owner of an assignment.",
+      "enum": [
+        "Imperative",
+        "Deployment",
+        "GitOps",
+        "Bootstrap"
+      ],
+      "x-ms-enum": {
+        "name": "AssignmentManagementKind",
+        "modelAsString": false,
+        "values": [
+          {
+            "name": "Imperative",
+            "value": "Imperative"
+          },
+          {
+            "name": "Deployment",
+            "value": "Deployment"
+          },
+          {
+            "name": "GitOps",
+            "value": "GitOps"
+          },
+          {
+            "name": "Bootstrap",
+            "value": "Bootstrap"
+          }
+        ]
+      }
+    },
+    "AuthorizationParameters": {
+      "type": "object",
+      "description": "Shared API-version parameter.",
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "description": "The API version to use for this operation.",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "apiVersion"
+      ]
+    },
+    "AuthorizationResourceName": {
+      "type": "string",
+      "description": "An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+    },
+    "AuthorizationScope": {
+      "type": "string",
+      "description": "An installation, plane, resource group, or supported resource ID. Inheritance follows the ID hierarchy, never resource references. Supported resources are Radius.Core environments, recipePacks, applications and Applications.Core environments and applications. UCP validates the scope's topology and supported type using ARM's case-insensitive ID rules; the string constraint only validates path syntax.",
+      "pattern": "^(/|/[^/\\s*]+(/[^/\\s*]+)*)$"
+    },
+    "AuthorizationScopePath": {
+      "type": "string",
+      "description": "A scope ID as a URI path prefix, without the leading slash. Resource properties and IDs always retain their leading slash. Installation operations have separate paths.",
+      "pattern": "^[^/\\s*]+(/[^/\\s*]+)*$"
+    },
+    "AuthorizationSettingsProperties": {
+      "type": "object",
+      "description": "User-facing authorization configuration. Mode writes remain subject to bootstrap, history, last-administrator, and internal-protocol checks even when user checks do not block requests.",
+      "properties": {
+        "mode": {
+          "$ref": "#/definitions/UserAuthorizationMode",
+          "description": "Disabled performs no user authorization checks; DryRun evaluates and records would-be denials without blocking; Enforce blocks denied operations. This contract does not enable any mode."
+        },
+        "generation": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Server-owned generation of the applied policy. It increases once per applied access change.",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "mode",
+        "generation"
+      ]
+    },
+    "AuthorizationSettingsResource": {
+      "type": "object",
+      "description": "Installation-only user-facing authorization settings. Exactly one resource exists, named default. These settings do not control internal component authorization.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/AuthorizationSettingsProperties",
+          "description": "The resource-specific properties for this resource."
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ProxyResource"
+        }
+      ]
+    },
+    "CheckAccessResponse": {
+      "type": "object",
+      "description": "The results under one consistent policy generation.",
+      "properties": {
+        "principal": {
+          "$ref": "#/definitions/Principal",
+          "description": "The evaluated principal."
+        },
+        "generation": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The policy generation used."
+        },
+        "mode": {
+          "$ref": "#/definitions/UserAuthorizationMode",
+          "description": "The current mode. A denied evaluation in DryRun does not block the actual request."
+        },
+        "checks": {
+          "type": "array",
+          "description": "One result for each requested check, in request order.",
+          "items": {
+            "$ref": "#/definitions/AccessCheckResult"
+          }
+        }
+      },
+      "required": [
+        "principal",
+        "generation",
+        "mode",
+        "checks"
+      ]
+    },
+    "EffectiveAccessResponse": {
+      "type": "object",
+      "description": "The combined access of a principal at a scope. Requires roleAssignments/read. For a group, only the group's own assignments are included; group members cannot be enumerated.",
+      "properties": {
+        "principal": {
+          "$ref": "#/definitions/Principal",
+          "description": "The evaluated principal."
+        },
+        "scope": {
+          "$ref": "#/definitions/AuthorizationScope",
+          "description": "The scope being inspected."
+        },
+        "generation": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The policy generation used."
+        },
+        "assignments": {
+          "type": "array",
+          "description": "The contributing direct and inherited assignments.",
+          "items": {
+            "$ref": "#/definitions/EffectiveAssignment"
+          }
+        },
+        "permissions": {
+          "type": "array",
+          "description": "The union of explicit permissions at this scope.",
+          "items": {
+            "$ref": "#/definitions/PermissionName"
+          }
+        }
+      },
+      "required": [
+        "principal",
+        "scope",
+        "generation",
+        "assignments",
+        "permissions"
+      ]
+    },
+    "EffectiveAssignment": {
+      "type": "object",
+      "description": "A direct or inherited assignment used in effective access.",
+      "properties": {
+        "assignment": {
+          "$ref": "#/definitions/RoleAssignmentResource",
+          "description": "A readable assignment for the principal or one of its verified groups."
+        },
+        "inherited": {
+          "type": "boolean",
+          "description": "True if the assignment is inherited from an ancestor scope."
+        }
+      },
+      "required": [
+        "assignment",
+        "inherited"
+      ]
+    },
+    "ExplainAccessResponse": {
+      "type": "object",
+      "description": "Access-check explanations under one consistent policy generation.",
+      "properties": {
+        "principal": {
+          "$ref": "#/definitions/Principal",
+          "description": "The evaluated principal."
+        },
+        "generation": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The evaluated generation."
+        },
+        "mode": {
+          "$ref": "#/definitions/UserAuthorizationMode",
+          "description": "The user-facing mode."
+        },
+        "checks": {
+          "type": "array",
+          "description": "Explanations in request order.",
+          "items": {
+            "$ref": "#/definitions/ExplainedAccessCheck"
+          }
+        }
+      },
+      "required": [
+        "principal",
+        "generation",
+        "mode",
+        "checks"
+      ]
+    },
+    "ExplainedAccessCheck": {
+      "type": "object",
+      "description": "An explained evaluation, redacted according to the caller's assignment-read permissions.",
+      "properties": {
+        "grants": {
+          "type": "array",
+          "description": "Readable assignments and roles that granted the permission. Absence can mean that grant details are not readable.",
+          "items": {
+            "$ref": "#/definitions/AccessGrant"
+          }
+        },
+        "suggestedRoleDefinitionIds": {
+          "type": "array",
+          "description": "Roles that could grant a denied permission; suggestions are not themselves grants.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/AccessCheckResult"
+        }
+      ]
+    },
+    "Permission": {
+      "type": "object",
+      "description": "A catalog entry. The catalog is generated from API definitions, UCP routes, and registered resource types; this contract does not implement catalog generation.",
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/PermissionName",
+          "description": "The exact permission identifier."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The display name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The operation's meaning."
+        }
+      },
+      "required": [
+        "name",
+        "displayName",
+        "description"
+      ]
+    },
+    "PermissionName": {
+      "type": "string",
+      "description": "An explicit catalog permission such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.",
+      "pattern": "^[^*/\\s]+(/[^*/\\s]+){2,}$"
+    },
+    "PolicyChange": {
+      "type": "object",
+      "description": "The applied policy operation.",
+      "properties": {
+        "operation": {
+          "$ref": "#/definitions/PolicyChangeOperation",
+          "description": "The operation that changed policy."
+        },
+        "target": {
+          "type": "string",
+          "description": "The changed resource ID."
+        },
+        "before": {
+          "$ref": "#/definitions/PolicySnapshot",
+          "description": "The policy before the change, absent for creation."
+        },
+        "after": {
+          "$ref": "#/definitions/PolicySnapshot",
+          "description": "The policy after the change, absent for deletion."
+        },
+        "managedBy": {
+          "$ref": "#/definitions/AssignmentManagement",
+          "description": "The verified source of the change."
+        }
+      },
+      "required": [
+        "operation",
+        "target",
+        "managedBy"
+      ]
+    },
+    "PolicyChangeOperation": {
+      "type": "string",
+      "description": "An applied change operation.",
+      "enum": [
+        "Create",
+        "Update",
+        "Delete"
+      ],
+      "x-ms-enum": {
+        "name": "PolicyChangeOperation",
+        "modelAsString": false,
+        "values": [
+          {
+            "name": "Create",
+            "value": "Create"
+          },
+          {
+            "name": "Update",
+            "value": "Update"
+          },
+          {
+            "name": "Delete",
+            "value": "Delete"
+          }
+        ]
+      }
+    },
+    "PolicyGenerationName": {
+      "type": "string",
+      "description": "The decimal generation identifying one applied policy change.",
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "PolicySnapshot": {
+      "type": "object",
+      "description": "An access configuration snapshot. Exactly the property matching the target resource type is present.",
+      "properties": {
+        "roleDefinition": {
+          "$ref": "#/definitions/RoleDefinitionProperties",
+          "description": "A role definition snapshot."
+        },
+        "roleAssignment": {
+          "$ref": "#/definitions/RoleAssignmentProperties",
+          "description": "An assignment snapshot."
+        },
+        "authorizationSettings": {
+          "$ref": "#/definitions/AuthorizationSettingsProperties",
+          "description": "A settings snapshot."
+        }
+      }
+    },
+    "Principal": {
+      "type": "object",
+      "description": "A stable principal identity. Equality uses type, issuer, and subject, never displayName. Group membership is resolved by UCP, not supplied by an access-check caller.",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/PrincipalType",
+          "description": "The kind of principal.",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "description": "The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller.",
+          "minLength": 1,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "subject": {
+          "type": "string",
+          "description": "The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.",
+          "minLength": 1,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "displayName": {
+          "type": "string",
+          "description": "An optional mutable label that is never used to match principals."
+        }
+      },
+      "required": [
+        "type",
+        "issuer",
+        "subject"
+      ]
+    },
+    "PrincipalType": {
+      "type": "string",
+      "description": "User-facing principal kinds, distinct from internal component identities.",
+      "enum": [
+        "user",
+        "group",
+        "workload"
+      ],
+      "x-ms-enum": {
+        "name": "PrincipalType",
+        "modelAsString": false,
+        "values": [
+          {
+            "name": "user",
+            "value": "user"
+          },
+          {
+            "name": "group",
+            "value": "group"
+          },
+          {
+            "name": "workload",
+            "value": "workload"
+          }
+        ]
+      }
+    },
+    "RoleAssignmentProperties": {
+      "type": "object",
+      "description": "Role assignment properties. Only the description and principal display label may change; assignment ownership is checked independently.",
+      "properties": {
+        "roleDefinitionId": {
+          "type": "string",
+          "description": "The immutable full role definition ID. The assignment scope must be covered by the role's assignableScopes.",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "principal": {
+          "$ref": "#/definitions/Principal",
+          "description": "The principal. Its type, issuer, and subject cannot change."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional description of why access was granted."
+        },
+        "scope": {
+          "$ref": "#/definitions/AuthorizationScope",
+          "description": "Server-owned canonical scope derived from the assignment ID, including / for installation assignments.",
+          "readOnly": true
+        },
+        "managedBy": {
+          "$ref": "#/definitions/AssignmentManagement",
+          "description": "Server-owned provenance. Only the same GitOps source may modify its assignments unless an authorized deletion explicitly takes ownership. Bootstrap assignments are managed through installation settings.",
+          "readOnly": true
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Server-owned identity of the creator, formatted as type:issuer:subject for display, not parsed to establish identity.",
+          "readOnly": true
+        }
+      },
+      "required": [
+        "roleDefinitionId",
+        "principal",
+        "scope",
+        "managedBy",
+        "createdBy"
+      ]
+    },
+    "RoleAssignmentResource": {
+      "type": "object",
+      "description": "An ARM-style extension assignment whose ID ends with /providers/Radius.Core/roleAssignments/<name>. Supported resource scopes include a single environment. A repeated PUT with the same role, principal identity, and scope is a no-op; changing that tuple fails with RoleAssignmentImmutable.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RoleAssignmentProperties",
+          "description": "The resource-specific properties for this resource."
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ProxyResource"
+        }
+      ]
+    },
+    "RoleDefinitionProperties": {
+      "type": "object",
+      "description": "The role definition properties.",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "A human-readable role name."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the intended access."
+        },
+        "roleType": {
+          "$ref": "#/definitions/RoleType",
+          "description": "Server-owned distinction between immutable release-defined built-ins and custom roles.",
+          "readOnly": true
+        },
+        "permissions": {
+          "type": "array",
+          "description": "Explicit catalog permissions. Unknown permissions fail with UnknownPermission; custom wildcards and deny rules are not supported.",
+          "items": {
+            "$ref": "#/definitions/PermissionName"
+          }
+        },
+        "assignableScopes": {
+          "type": "array",
+          "description": "Scopes where the role may be assigned, including descendants. Defaults to the role definition's scope. Writers must be allowed to create roles at every listed scope.",
+          "items": {
+            "$ref": "#/definitions/AuthorizationScope"
+          }
+        }
+      },
+      "required": [
+        "roleType",
+        "permissions"
+      ]
+    },
+    "RoleDefinitionResource": {
+      "type": "object",
+      "description": "A role definition. Built-ins live at /providers/Radius.Core/roleDefinitions/<name> and cannot be changed or deleted. Custom roles can live at installation, plane, or resource-group scope.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/RoleDefinitionProperties",
+          "description": "The resource-specific properties for this resource."
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ProxyResource"
+        }
+      ]
+    },
+    "RoleDefinitionScope": {
+      "type": "string",
+      "description": "The installation, a plane, or a resource group. Role definitions cannot be created beneath individual resources.",
+      "pattern": "^(/|/[^/\\s*]+(/[^/\\s*]+)*)$"
+    },
+    "RoleType": {
+      "type": "string",
+      "description": "Who defines and maintains a role.",
+      "enum": [
+        "BuiltIn",
+        "Custom"
+      ],
+      "x-ms-enum": {
+        "name": "RoleType",
+        "modelAsString": false,
+        "values": [
+          {
+            "name": "BuiltIn",
+            "value": "BuiltIn"
+          },
+          {
+            "name": "Custom",
+            "value": "Custom"
+          }
+        ]
+      }
+    },
+    "UserAuthorizationMode": {
+      "type": "string",
+      "description": "User RBAC modes, deliberately separate from internal service security modes.",
+      "enum": [
+        "Disabled",
+        "DryRun",
+        "Enforce"
+      ],
+      "x-ms-enum": {
+        "name": "UserAuthorizationMode",
+        "modelAsString": false,
+        "values": [
+          {
+            "name": "Disabled",
+            "value": "Disabled"
+          },
+          {
+            "name": "DryRun",
+            "value": "DryRun"
+          },
+          {
+            "name": "Enforce",
+            "value": "Enforce"
+          }
+        ]
+      }
+    },
+    "WhoAmIResult": {
+      "type": "object",
+      "description": "The trusted identity UCP sees for the current authenticated caller.",
+      "properties": {
+        "principal": {
+          "$ref": "#/definitions/Principal",
+          "description": "The authenticated user or workload."
+        },
+        "groups": {
+          "type": "array",
+          "description": "Verified group principals. Anonymous groups are never accepted.",
+          "items": {
+            "$ref": "#/definitions/Principal"
+          }
+        },
+        "issuer": {
+          "type": "string",
+          "description": "The trusted issuer."
+        },
+        "mode": {
+          "$ref": "#/definitions/UserAuthorizationMode",
+          "description": "The current user-facing mode."
+        },
+        "isRadiusAdministrator": {
+          "type": "boolean",
+          "description": "Whether the caller has Radius Administrator access."
+        }
+      },
+      "required": [
+        "principal",
+        "groups",
+        "issuer",
+        "mode",
+        "isRadiusAdministrator"
+      ]
+    }
+  },
+  "parameters": {
+    "AccessChangeListOptions.principal": {
+      "name": "principal",
+      "in": "query",
+      "description": "Filter by the authenticated actor that made the change, encoded as a JSON object containing type, issuer, and subject, not a display-form principal string.",
+      "required": false,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "AccessChangeListOptions.scope": {
+      "name": "scope",
+      "in": "query",
+      "description": "Filter by the changed policy's scope.",
+      "required": false,
+      "type": "string",
+      "pattern": "^(/|/[^/\\s*]+(/[^/\\s*]+)*)$",
+      "x-ms-parameter-location": "method"
+    },
+    "AccessChangeListOptions.since": {
+      "name": "since",
+      "in": "query",
+      "description": "Include changes applied at or after this time.",
+      "required": false,
+      "type": "string",
+      "format": "date-time",
+      "x-ms-parameter-location": "method"
+    },
+    "AssignmentDeleteOptions": {
+      "name": "takeOwnership",
+      "in": "query",
+      "description": "Explicitly override GitOps ownership after authorization and safety checks. The override is recorded in access history. Does not bypass bootstrap ownership or authorization.",
+      "required": false,
+      "type": "boolean",
+      "x-ms-parameter-location": "method"
+    },
+    "AssignmentListOptions": {
+      "name": "$filter",
+      "in": "query",
+      "description": "Use atScopeAndBelow() to include assignments below the requested scope. Inherited assignments are obtained by separately checking each ancestor.",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "atScopeAndBelow()"
+      ],
+      "x-ms-enum": {
+        "modelAsString": false
+      },
+      "x-ms-parameter-location": "method",
+      "x-ms-client-name": "filter"
+    },
+    "AuthorizationScopeParameter": {
+      "name": "scope",
+      "in": "path",
+      "description": "The plane, resource-group, or supported-resource ID without a leading or trailing slash, for example planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging. Use the installation operations for scope /.",
+      "required": true,
+      "type": "string",
+      "pattern": "^[^/\\s*]+(/[^/\\s*]+)*$",
+      "x-ms-parameter-location": "method",
+      "x-ms-skip-url-encoding": true
+    },
+    "PrincipalQuery": {
+      "name": "principal",
+      "in": "query",
+      "description": "A principal encoded as a JSON object containing type, issuer, and subject, not a display-form principal string. Omit to inspect the caller. No group memberships may be asserted in this query.",
+      "required": false,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "RoleDefinitionScopeParameter": {
+      "name": "scope",
+      "in": "path",
+      "description": "The plane or resource-group ID without a leading or trailing slash, for example planes/radius/local/resourceGroups/team-a. Use the installation operations for scope /.",
+      "required": true,
+      "type": "string",
+      "pattern": "^[^/\\s*]+(/[^/\\s*]+)*$",
+      "x-ms-parameter-location": "method",
+      "x-ms-skip-url-encoding": true
+    }
+  }
+}
