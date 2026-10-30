@@ -153,7 +153,7 @@ func publishExtension(ctx context.Context, inputDirectoryPath string, target str
 	}
 
 	cmd := process.CommandContext(ctx, bicepFilePath, args...)
-	cmd.Stdout = os.Stdout
+	cmd.Stdout = output.LogWriter()
 	cmd.Stderr = os.Stderr
 
 	err = cmd.Run()

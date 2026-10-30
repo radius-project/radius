@@ -18,6 +18,8 @@ package output
 
 import (
 	"bytes"
+	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -45,4 +47,64 @@ func Test_Write(t *testing.T) {
 }
 `
 	require.Equal(t, expected, buffer.String())
+}
+
+func Test_OutputWriter_SeparateLogs(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	writer := &OutputWriter{Writer: &stdout, LogWriter: &stderr}
+	writer.LogInfo("Listing %s...", "resources")
+	step := writer.BeginStep("Loading %d resources", 1)
+
+	expected := writerInput{Size: "mega", IsCool: true}
+	require.NoError(t, writer.WriteFormatted(FormatJson, expected, FormatterOptions{}))
+	writer.CompleteStep(step)
+	writer.LogInfo("Done")
+
+	var actual writerInput
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &actual))
+	require.Equal(t, expected, actual)
+	require.Equal(t, "Listing resources...\nLoading 1 resources\nDone\n", stderr.String())
+}
+
+func Test_OutputWriter_DefaultLogs(t *testing.T) {
+	t.Parallel()
+
+	var stdout bytes.Buffer
+	writer := &OutputWriter{Writer: &stdout}
+	writer.LogInfo("Listing %s...", "resources")
+	step := writer.BeginStep("Loading %d resources", 1)
+	writer.CompleteStep(step)
+
+	require.Equal(t, "Listing resources...\nLoading 1 resources\n", stdout.String())
+}
+
+func Test_LogInfo_Destinations(t *testing.T) {
+	stdout, err := os.CreateTemp(t.TempDir(), "stdout")
+	require.NoError(t, err)
+	stderr, err := os.CreateTemp(t.TempDir(), "stderr")
+	require.NoError(t, err)
+	originalStdout, originalStderr := os.Stdout, os.Stderr
+	t.Cleanup(func() {
+		SetLogWriter(nil)
+		os.Stdout, os.Stderr = originalStdout, originalStderr
+		require.NoError(t, stdout.Close())
+		require.NoError(t, stderr.Close())
+	})
+	os.Stdout, os.Stderr = stdout, stderr
+
+	SetLogWriter(stderr)
+	LogInfo("Listing %s...", "resources")
+	step := BeginStep("Loading %d resources", 1)
+	CompleteStep(step)
+	SetLogWriter(nil)
+	LogInfo("Default stdout")
+
+	data, err := os.ReadFile(stdout.Name())
+	require.NoError(t, err)
+	require.Equal(t, "Default stdout\n", string(data))
+	data, err = os.ReadFile(stderr.Name())
+	require.NoError(t, err)
+	require.Equal(t, "Listing resources...\nLoading 1 resources\n", string(data))
 }
