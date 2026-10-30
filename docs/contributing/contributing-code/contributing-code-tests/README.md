@@ -2,98 +2,54 @@
 
 ## Purpose
 
-This is the authoritative overview of the Radius test suite. It names every test tier, gives the exact command to run it, and states who each tier is for, so you can pick the right tests for a change and find the detailed how-to. Radius applies the [testing pyramid](https://martinfowler.com/articles/practical-test-pyramid.html): many fast unit tests, fewer integration tests, and a small number of functional (end-to-end) tests. Every PR is expected to add or update tests.
+Run the tests relevant to your change and add coverage for new behavior or bug fixes.
 
 ## Prerequisites
 
-- The [basic prerequisites](../contributing-code-prerequisites/) (Go toolchain, `make`, Git). These cover the unit, integration, and CLI integration tiers. The Helm chart unit tests run as part of `make test`, so **Helm** must also be installed (listed under [additional tools](../contributing-code-prerequisites/#additional-tools)).
-- A Kubernetes cluster and extra setup are required only for the functional and local-iteration tiers — those prerequisites are listed on their own pages, linked below. The Bicep validation tier additionally needs Bicep downloaded (`rad bicep download`).
+- Install the [development prerequisites](../contributing-code-prerequisites/), including Helm and Node.js for `make test`.
+- For functional tests, follow the [cluster and tool setup](./running-functional-tests.md). Bicep validation requires `rad bicep download`.
 
 ## Steps
 
-### Test matrix
+### Run tests
 
-Each row is one tier. Run the unit tier on every change; run the higher tiers when your change affects their area.
+Run commands from the repository root. During development, run the affected Go package or test:
 
-| Tier                    | Command                               | Audience and scope                                                                                                                                                                         | Learn more                                                                                                      |
-|-------------------------|---------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| Unit                    | `make test`                           | Every contributor, every PR. Runs the Go unit tests under `./pkg/...` plus the Helm chart unit tests, so it needs the basic prerequisites and Helm.                                        | This page; [first-commit walkthrough](../contributing-code-first-commit/first-commit-05-running-tests/index.md) |
-| Integration             | `make test`                           | Contributors changing stateful subsystems. Integration tests live alongside the unit tests under `./pkg/...` and run as part of `make test` (see [Integration tests](#integration-tests)). | [Integration tests](#integration-tests)                                                                         |
-| CLI integration         | `make test-validate-cli`              | Contributors changing `rad` CLI commands. Runs `./pkg/cli/cmd/...` and `./cmd/rad/...`.                                                                                                    | [`pkg/cli/cmd/README.md`](../../../../pkg/cli/cmd/README.md)                                                    |
-| Helm chart unit         | `make test-helm`                      | Contributors changing the Helm chart under `deploy/Chart`.                                                                                                                                 | —                                                                                                               |
-| Bicep validation        | `make test-validate-bicep`            | Contributors changing `.bicep` files; validates they compile cleanly.                                                                                                                      | —                                                                                                               |
-| Functional (end-to-end) | `make test-functional-local-noncloud` | Contributors validating realistic user scenarios in isolated local clusters built from their checkout, including groups that need separate clusters.                                       | [Running functional tests](./running-functional-tests.md)                                                       |
-| Local iteration         | n/a (build, push, redeploy loop)      | Contributors iterating quickly on control-plane images against a running cluster.                                                                                                          | [Accelerating local verification](./testing-local.md)                                                           |
-
-### Unit tests
-
-Run the unit tests with:
-
-```sh
-make test
+```bash
+go test ./pkg/ucp/authorization/...
+go test ./pkg/ucp/authorization -run TestRoleBoundaries
 ```
 
-`make test` runs the Go unit tests under `./pkg/...` and the Helm chart unit tests. We require unit tests for new code and for fixes or refactors of existing code; as a rule, every PR should add or change some tests. Unit tests must run with only the [basic prerequisites](../contributing-code-prerequisites/) installed — do not add external dependencies for a unit test; write an integration test instead.
+Replace the package and test name with the ones you changed.
 
-To compile every test without running them, use `make test-compile`.
+| Change                                          | Command                               |
+|-------------------------------------------------|---------------------------------------|
+| Standard test suite: Go, Helm, and script tests | `make test`                           |
+| CLI commands                                    | `make test-validate-cli`              |
+| Helm chart                                      | `make test-helm`                      |
+| Bicep files                                     | `make test-validate-bicep`            |
+| End-to-end behavior in isolated local clusters  | `make test-functional-local-noncloud` |
+
+For functional-test selection and cleanup, use the [functional test guide](./running-functional-tests.md). For a faster build/push/redeploy loop against a running cluster, see [local verification](./testing-local.md).
+
+### Add or update tests
+
+- Put Go tests in `*_test.go` files beside the code. Cover success, failure, and relevant edge cases; add a regression test for each bug fix.
+- Follow nearby tests: use [testify](https://github.com/stretchr/testify) assertions and table-driven subtests where useful.
+- Keep unit tests self-contained. Tests requiring a deployed Radius instance or external services belong in the functional suite.
+- For functional tests, follow [writing functional tests](./writing-functional-tests.md), [naming](./tests-naming-conventions.md), [logging](./tests-logging.md), and [test images](./tests-images-pushtoghcr.md).
+- When adding a new script test suite, wire its target into [`build/test.mk`](../../../../build/test.mk) so CI runs it.
 
 ### Integration tests
 
-Integration tests exercise a feature together with its dependencies. In Radius they live alongside the unit tests under `./pkg/...` rather than in a separate tree, and they run as part of `make test`. They use in-memory servers and data stores instead of a deployed control plane, which keeps them fast and self-contained. Examples:
-
-- [`pkg/ucp/integrationtests`](../../../../pkg/ucp/integrationtests) runs UCP against an in-memory server and in-memory data stores.
-- [`pkg/dynamicrp/integrationtest`](../../../../pkg/dynamicrp/integrationtest) exercises the dynamic resource provider end to end in-process.
-- CLI integration tests under `./pkg/cli/cmd/...` and `./cmd/rad/...` run via `make test-validate-cli`.
-
-There is no separate `make test-integration` target today: because these tests need no external dependencies, they are part of the standard `make test` run. When a test needs an optional or external dependency, prefer the functional tier so that `make test` stays runnable with only the basic prerequisites.
-
-### CLI integration tests
-
-Run the CLI command tests with:
-
-```sh
-make test-validate-cli
-```
-
-This runs `./pkg/cli/cmd/...` and `./cmd/rad/...`. See [`pkg/cli/cmd/README.md`](../../../../pkg/cli/cmd/README.md) for the command and test layout.
-
-### Functional tests
-
-Functional tests (also called end-to-end tests) use Radius to deploy an application to a real hosting environment (Kubernetes) and then assert on its state. They have their own dedicated set of [instructions](./running-functional-tests.md), including prerequisites, the `make test-functional-*` targets, and cleanup modes. The recommended local entry point builds from your checkout, provisions isolated infrastructure, and runs all non-cloud groups:
-
-```sh
-make test-functional-local-noncloud
-```
-
-This runner includes Dynamic RP, multicluster, database, state-store lifecycle, and upgrade tests in separate clusters. To run fewer tests or clean up afterward, follow the [local functional-test guide](./running-functional-tests.md#steps).
-
-For an already configured environment, use `make test-functional-all-noncloud` or a per-group target instead. That existing-environment aggregate excludes groups with additional setup or isolation requirements; see [special test groups](./running-functional-tests.md#run-a-special-test-group).
-
-### Local-iteration loop
-
-When you are iterating on control-plane images (for example the applications resource provider) against a running cluster, the build/push/redeploy loop is faster than the full functional suite. See [Accelerating local verification](./testing-local.md).
-
-### Helm and Bicep validation
-
-- `make test-helm` runs the Helm chart unit tests in `deploy/Chart` using the `helm-unittest` plugin.
-- `make test-validate-bicep` validates that every `.bicep` file compiles cleanly.
-
-### Test conventions
-
-- We write unit tests in a straightforward style and use [testify](https://github.com/stretchr/testify) for assertions.
-- We favor [subtests](https://go.dev/blog/subtests) and [table-driven tests](https://dave.cheney.net/2019/05/07/prefer-table-driven-tests) and apply them where appropriate.
-- For functional tests specifically, see [writing functional tests](./writing-functional-tests.md), the [naming conventions](./tests-naming-conventions.md), [test logging](./tests-logging.md), and [using standard images in tests](./tests-images-pushtoghcr.md).
-- For the scheduled OCI state archive end-to-end test, see [Repo Radius GHCR state end-to-end test](./repo-radius-state-e2e.md).
-- For investigating a test reported as flaky, see [Investigating flaky tests](./investigating-flaky-tests.md).
+In-process integration tests under `pkg/`, such as [`pkg/ucp/integrationtests`](../../../../pkg/ucp/integrationtests), run with `make test`; no separate integration target is needed.
 
 ## Verification
 
-- A passing run prints `ok` for every package that has tests and `[no test files]` for those that don't; `go test` exits non-zero if any test fails, so a failure is obvious in the output.
-- We measure code coverage as part of the PR process because it shows whether the right tests are being added.
+Run the affected tests and check that the command exits successfully before submitting your PR.
 
 ## Troubleshooting
 
-- **`make test` fails setting up `KUBEBUILDER_ASSETS` / envtest.** The target uses `setup-envtest` (managed as a Go tool via the `tool` directive in `go.mod`) to download Kubernetes test binaries. Ensure you have network access on the first run; the assets are cached under `./bin` afterward.
-- **`make test-helm` cannot find the unittest plugin.** The target installs the `helm-unittest` plugin automatically; if installation is blocked, install it manually with `helm plugin install oci://ghcr.io/helm-unittest/helm-unittest/unittest:1.2.1 --verify=false`.
-- **A unit test needs an external dependency.** It belongs in the functional tier, not in `make test`. Move it so the unit suite keeps running with only the basic prerequisites.
-- **A functional test fails or leaves resources behind.** Follow the [functional test instructions](./running-functional-tests.md), which cover prerequisites, namespaces, and cleanup modes.
+- **Missing envtest binaries:** run `make test-get-envtools` and export the printed `KUBEBUILDER_ASSETS` value before running the Go test directly. The first download needs network access.
+- **Missing Helm plugin:** `make test-helm` installs `helm-unittest` automatically; check network access if installation fails.
+- **Functional failures or leftover resources:** use the [functional test guide](./running-functional-tests.md). For intermittent failures, see [investigating flaky tests](./investigating-flaky-tests.md).

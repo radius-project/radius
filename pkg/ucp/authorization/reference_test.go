@@ -1,0 +1,220 @@
+// Copyright 2026 The Radius Authors.
+// Licensed under the Apache License, Version 2.0.
+
+package authorization
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+
+	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
+	"github.com/radius-project/radius/pkg/ucp/authorization/internal/cataloggen"
+	"github.com/stretchr/testify/require"
+)
+
+func TestBuiltInReferences(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	targets := append(cataloggen.ApplicationTypes(), "Radius.Core/environments", "Applications.Core/environments")
+	for _, typ := range targets {
+		t.Run(typ, func(t *testing.T) {
+			body := map[string]any{"properties": map[string]any{
+				"environment": envA,
+				"application": appA,
+				"connections": map[string]any{"database": map[string]any{
+					"source": teamB + "/providers/Applications.Datastores/mongoDatabases/shared",
+				}},
+			}}
+			checks, err := catalog.ReferenceChecks("PUT", teamA+"/providers/"+typ+"/test", body, ReferenceOptions{})
+			require.NoError(t, err)
+			require.ElementsMatch(t, []Check{
+				{"Radius.Core/environments/use/action", lowerTarget(envA)},
+				{"Radius.Core/applications/write", lowerTarget(appA)},
+				{"Applications.Datastores/mongoDatabases/connect/action", lowerTarget(teamB + "/providers/Applications.Datastores/mongoDatabases/shared")},
+			}, checks)
+			again, err := catalog.ReferenceChecks("PATCH", teamA+"/providers/"+typ+"/test", body, ReferenceOptions{})
+			require.NoError(t, err)
+			require.Equal(t, checks, again, "unchanged references must still be checked")
+			for _, method := range []string{"GET", "DELETE"} {
+				checks, err := catalog.ReferenceChecks(method, "not-used", body, ReferenceOptions{})
+				require.NoError(t, err)
+				require.Empty(t, checks)
+			}
+			for _, property := range []string{"environment", "application"} {
+				for _, value := range []any{nil, "", 42, plane, teamA + "/providers/Team.Data/widgets/other"} {
+					_, err := catalog.ReferenceChecks("PUT", teamA+"/providers/"+typ+"/test",
+						map[string]any{"properties": map[string]any{property: value}}, ReferenceOptions{})
+					require.Error(t, err, "%s=%v", property, value)
+				}
+			}
+		})
+	}
+}
+
+func TestRegisteredResourceReferences(t *testing.T) {
+	for _, registration := range []Registration{
+		{Type: "Team.Data/widgets", PermissionSets: []string{ApplicationResources}},
+		{Type: "Team.Data/gadgets"},
+		{Type: "Applications.Custom/widgets"},
+		{Type: "Radius.Custom/widgets"},
+	} {
+		t.Run(registration.Type, func(t *testing.T) {
+			catalog, err := NewCatalog([]Registration{registration})
+			require.NoError(t, err)
+			target := teamA + "/providers/" + strings.ToUpper(registration.Type) + "/test"
+			body := map[string]any{"properties": map[string]any{
+				"environment": envA,
+				"application": appA,
+				"connections": []any{"custom-schema-value"},
+			}}
+			for _, method := range []string{"PUT", "PATCH"} {
+				for _, connections := range []any{
+					[]any{"custom-schema-value"},
+					map[string]any{"custom": map[string]any{"source": appA}},
+				} {
+					body["properties"].(map[string]any)["connections"] = connections
+					checks, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+					require.NoError(t, err)
+					require.ElementsMatch(t, []Check{
+						{"Radius.Core/environments/use/action", lowerTarget(envA)},
+						{"Radius.Core/applications/write", lowerTarget(appA)},
+					}, checks)
+				}
+			}
+			checks, err := catalog.ReferenceChecks("PUT", target, body, ReferenceOptions{
+				References: []ReferenceDescriptor{{
+					Path: []string{"properties", "connections", "*", "source"}, ResourceType: "Radius.Core/applications",
+				}},
+			})
+			require.NoError(t, err)
+			require.ElementsMatch(t, []Check{
+				{"Radius.Core/environments/use/action", lowerTarget(envA)},
+				{"Radius.Core/applications/write", lowerTarget(appA)},
+				{"Radius.Core/applications/read", lowerTarget(appA)},
+			}, checks)
+			for _, property := range []string{"environment", "application"} {
+				for _, value := range []any{nil, "", 42, plane, target} {
+					_, err := catalog.ReferenceChecks("PUT", target,
+						map[string]any{"properties": map[string]any{property: value}}, ReferenceOptions{})
+					require.Error(t, err, "%s=%v", property, value)
+				}
+			}
+		})
+	}
+}
+
+func TestReferenceChecksRejectPropertiesAliases(t *testing.T) {
+	catalog, err := NewCatalog([]Registration{{Type: "Team.Data/widgets"}})
+	require.NoError(t, err)
+	for _, alias := range []string{"Properties", "PROPERTIES", "pRoPeRtIeS"} {
+		for _, method := range []string{"PUT", "PATCH"} {
+			t.Run(method+"/"+alias, func(t *testing.T) {
+				raw := `{"properties":{"environment":"` + envA + `"},"` + alias +
+					`":{"environment":"` + teamB + `/providers/Radius.Core/environments/other"}}`
+				var backend struct {
+					Properties map[string]any `json:"properties"`
+				}
+				require.NoError(t, json.Unmarshal([]byte(raw), &backend))
+				require.Equal(t, teamB+"/providers/Radius.Core/environments/other", backend.Properties["environment"])
+				for _, target := range []string{appA, teamA + "/providers/Team.Data/widgets/test"} {
+					var body map[string]any
+					require.NoError(t, json.Unmarshal([]byte(raw), &body))
+					_, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+					require.ErrorContains(t, err, "noncanonical properties field")
+					delete(body, "properties")
+					_, err = catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+					require.ErrorContains(t, err, "noncanonical properties field")
+				}
+			})
+		}
+	}
+}
+
+func lowerTarget(target string) string {
+	return strings.ToLower(target)
+}
+
+func TestEnvironmentReferences(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	pack := plane + "/providers/Radius.Core/recipePacks/pack"
+	body := map[string]any{"properties": map[string]any{
+		"recipePacks": []any{pack},
+		"providers":   map[string]any{"azure": map[string]any{"scope": "/subscriptions/sub/resourceGroups/rg"}, "aws": map[string]any{}},
+	}}
+	checks, err := catalog.ReferenceChecks("PUT", envA, body, ReferenceOptions{CloudPlanes: map[string]string{"azure": "/planes/azure/production", "aws": "/planes/aws/local"}})
+	require.NoError(t, err)
+	require.ElementsMatch(t, []Check{
+		{"Radius.Core/recipePacks/use/action", lowerTarget(pack)},
+		{"System.Azure/credentials/use/action", "/planes/azure/production"},
+		{"System.AWS/credentials/use/action", "/planes/aws/local"},
+	}, checks)
+	_, err = catalog.ReferenceChecks("PUT", envA, body, ReferenceOptions{})
+	require.ErrorContains(t, err, "resolve azure credential plane")
+	_, err = catalog.ReferenceChecks("PUT", envA, body, ReferenceOptions{CloudPlanes: map[string]string{"azure": plane}})
+	require.ErrorContains(t, err, "invalid azure credential plane")
+}
+
+func TestResolvedSchemaReferences(t *testing.T) {
+	catalog, err := NewCatalog([]Registration{{Type: "Team.Data/widgets"}})
+	require.NoError(t, err)
+	descriptor := ReferenceDescriptor{Path: []string{"properties", "databases", "*", "source"}, ResourceType: "Applications.Datastores/mongoDatabases", Required: true}
+	source := teamB + "/providers/Applications.Datastores/mongoDatabases/shared"
+	for _, collection := range []any{
+		[]any{map[string]any{"source": source}, map[string]any{"source": source}},
+		map[string]any{"first": map[string]any{"source": source}},
+	} {
+		body := map[string]any{"properties": map[string]any{"databases": collection}}
+		checks, err := catalog.ReferenceChecks("PUT", teamA+"/providers/Team.Data/widgets/test", body, ReferenceOptions{References: []ReferenceDescriptor{descriptor}})
+		require.NoError(t, err)
+		require.Equal(t, []Check{{"Applications.Datastores/mongoDatabases/read", lowerTarget(source)}}, checks)
+	}
+	for _, body := range []map[string]any{
+		{}, {"properties": map[string]any{}},
+		{"properties": map[string]any{"databases": []any{}}},
+		{"properties": map[string]any{"databases": []any{map[string]any{"source": nil}}}},
+		{"properties": map[string]any{"databases": []any{map[string]any{"source": appA}}}},
+	} {
+		_, err := catalog.ReferenceChecks("PUT", teamA+"/providers/Team.Data/widgets/test", body, ReferenceOptions{References: []ReferenceDescriptor{descriptor}})
+		require.Error(t, err)
+	}
+	descriptor.Required = false
+	checks, err := catalog.ReferenceChecks("PUT", teamA+"/providers/Team.Data/widgets/test", map[string]any{}, ReferenceOptions{References: []ReferenceDescriptor{descriptor}})
+	require.NoError(t, err)
+	require.Empty(t, checks)
+}
+
+func TestReferenceBoundaryDecisions(t *testing.T) {
+	catalog, err := NewCatalog([]Registration{{Type: "Team.Data/widgets", PermissionSets: []string{ApplicationResources}}})
+	require.NoError(t, err)
+	identity := testIdentity()
+	evaluator, err := NewEvaluator(catalog, nil, []api.RoleAssignmentResource{testAssignment("developer", builtInID("application-developer"), teamA, identity.Principal)})
+	require.NoError(t, err)
+	for _, tt := range []struct{ typ, environment string }{
+		{"Radius.Core/applications", envA},
+		{"Team.Data/widgets", teamB + "/providers/Radius.Core/environments/other"},
+	} {
+		for _, method := range []string{"PUT", "PATCH"} {
+			t.Run(method+"/"+tt.typ, func(t *testing.T) {
+				target := teamA + "/providers/" + tt.typ + "/test"
+				body := map[string]any{"properties": map[string]any{
+					"environment": tt.environment,
+					"application": teamB + "/providers/Radius.Core/applications/other",
+				}}
+				checks, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+				require.NoError(t, err)
+				require.ElementsMatch(t, []Check{
+					{"Radius.Core/environments/use/action", lowerTarget(tt.environment)},
+					{"Radius.Core/applications/write", lowerTarget(teamB + "/providers/Radius.Core/applications/other")},
+				}, checks)
+				results, err := evaluator.Evaluate(identity, append([]Check{{tt.typ + "/write", target}}, checks...))
+				require.NoError(t, err)
+				require.True(t, results[0].Allowed)
+				for _, result := range results[1:] {
+					require.False(t, result.Allowed, result.Permission+" "+result.Target)
+				}
+			})
+		}
+	}
+}

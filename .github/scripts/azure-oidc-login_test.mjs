@@ -145,13 +145,17 @@ test("bounds the token request even when the server does not respond", async () 
 
 test("recovers from a real HTTP request timeout before Azure login", async (t) => {
   let calls = 0;
+  const timeout = new AbortController();
   const server = createServer((request, response) => {
     calls++;
     assert.equal(request.headers.authorization, "Bearer request-secret");
-    if (calls > 1) {
-      response.setHeader("Content-Type", "application/json");
-      response.end(JSON.stringify({ value: token }));
+    if (calls === 1) {
+      // Trigger the timeout after the server receives the request, independent of CI load.
+      timeout.abort(new DOMException("test timeout", "TimeoutError"));
+      return;
     }
+    response.setHeader("Content-Type", "application/json");
+    response.end(JSON.stringify({ value: token }));
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
@@ -162,9 +166,14 @@ test("recovers from a real HTTP request timeout before Azure login", async (t) =
   const result = await getIDToken(env, {
     request: (url, secret) =>
       requestIDToken(url, secret, {
-        timeoutMs: 100,
         fetch: (_url, options) =>
-          fetch(`http://127.0.0.1:${server.address().port}`, options)
+          fetch(`http://127.0.0.1:${server.address().port}`, {
+            ...options,
+            signal:
+              calls === 0 ?
+                AbortSignal.any([options.signal, timeout.signal])
+              : options.signal
+          })
       }),
     delay: async () => {},
     warn: () => {}
