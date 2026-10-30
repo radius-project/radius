@@ -43,6 +43,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -1603,4 +1604,17 @@ func getMockAWSRegions() []ec2_types.Region {
 
 func getMockAWSRegionsString() []string {
 	return []string{"test-region", "test-region-2"}
+}
+
+// Test_installError verifies that rad init shows a friendly install error as is, because it already says what to do,
+// including for rad init users.
+func Test_installError(t *testing.T) {
+	t.Parallel()
+
+	friendly := clierrors.Message("Radius stopped before changing the cluster. If you used rad init, run rad install kubernetes with this flag first, and then run rad init again.")
+	require.Same(t, friendly, installError(friendly))
+
+	err := installError(errors.New("failed to apply Radius Helm chart"))
+	require.True(t, clierrors.IsFriendlyError(err))
+	require.EqualError(t, err, "Failed to install Radius. Cause: failed to apply Radius Helm chart.")
 }

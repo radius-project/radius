@@ -18,14 +18,19 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/upgrade/preflight"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/radius-project/radius/test/radcli"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -52,6 +57,8 @@ func Test_Validate(t *testing.T) {
 				"--chart", "/path/to/chart",
 				"--set", "key=value",
 				"--set-file", "cert=/path/to/cert",
+				"--contour-set", "contour.replicaCount=3",
+				"--contour-set-file", "envoy.service.annotations.example=/path/to/value.txt",
 			},
 			ExpectedValid: true,
 		},
@@ -274,6 +281,231 @@ func TestRunner_Run(t *testing.T) {
 	}
 }
 
+// Test_Run_ContourFlags verifies that every Contour flag reaches the options passed to UpgradeRadius, so that a
+// Contour flag cannot be accepted and then dropped.
+func Test_Run_ContourFlags(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		flag string
+		args []string
+		want func(options *helm.ClusterOptions)
+	}{
+		{
+			flag: "contour-set",
+			args: []string{
+				"--contour-set", "envoy.service.type=NodePort",
+				"--contour-set", "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes}",
+			},
+			want: func(options *helm.ClusterOptions) {
+				options.Contour.SetArgs = []string{"envoy.service.type=NodePort", "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes}"}
+			},
+		},
+		{
+			flag: "contour-set-file",
+			args: []string{"--contour-set-file", "envoy.service.annotations.example=/path/to/value.txt"},
+			want: func(options *helm.ClusterOptions) {
+				options.Contour.SetFileArgs = []string{"envoy.service.annotations.example=/path/to/value.txt"}
+			},
+		},
+	}
+
+	covered := map[string]bool{}
+	for _, tt := range tests {
+		covered[tt.flag] = true
+	}
+	cmd, _ := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+	cmd.Flags().VisitAll(func(flag *pflag.Flag) {
+		if strings.Contains(flag.Name, "contour") {
+			require.True(t, covered[flag.Name], "add a test case for --%s", flag.Name)
+		}
+	})
+
+	for _, tt := range tests {
+		t.Run(tt.flag, func(t *testing.T) {
+			t.Parallel()
+
+			cmd, r := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+			runner, ok := r.(*Runner)
+			require.True(t, ok)
+			require.NoError(t, cmd.ParseFlags(append([]string{"--skip-preflight", "--version", "0.47.0"}, tt.args...)))
+
+			helmMock := helm.NewMockInterface(gomock.NewController(t))
+			runner.Helm = helmMock
+
+			expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
+				Radius: helm.ChartOptions{ChartVersion: "0.47.0"},
+			})
+			tt.want(&expectedOptions)
+
+			helmMock.EXPECT().CheckRadiusInstall("").
+				Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.46.0"}, nil).
+				Times(1)
+			helmMock.EXPECT().UpgradeRadius(gomock.Any(), expectedOptions, "").Return(nil).Times(1)
+
+			require.NoError(t, runner.Run(t.Context()))
+		})
+	}
+}
+
+// Test_Run_PreflightContourCheck verifies that the Contour preflight check uses the same options as the upgrade, so
+// that rad upgrade kubernetes --preflight-only reports what the upgrade would do with the Contour release.
+func Test_Run_PreflightContourCheck(t *testing.T) {
+	t.Parallel()
+
+	for _, preflightOnly := range []bool{false, true} {
+		t.Run(fmt.Sprintf("preflightOnly=%t", preflightOnly), func(t *testing.T) {
+			t.Parallel()
+
+			mockHelm := helm.NewMockInterface(gomock.NewController(t))
+			mockHelm.EXPECT().CheckRadiusInstall("my-context").
+				Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.46.0"}, nil).
+				Times(1)
+			var checked *helm.ClusterOptions
+			mockHelm.EXPECT().CheckContourUpgrade(gomock.Any(), gomock.Any(), "my-context").
+				DoAndReturn(func(_ context.Context, options helm.ClusterOptions, _ string) (bool, error) {
+					checked = &options
+					return true, nil
+				}).Times(1)
+			var upgraded *helm.ClusterOptions
+			if !preflightOnly {
+				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "my-context").
+					DoAndReturn(func(_ context.Context, options helm.ClusterOptions, _ string) error {
+						upgraded = &options
+						return nil
+					}).Times(1)
+			}
+
+			runner := &Runner{
+				Helm:           mockHelm,
+				Output:         &output.MockOutput{},
+				KubeContext:    "my-context",
+				Version:        "0.47.0",
+				PreflightOnly:  preflightOnly,
+				Chart:          "/path/to/chart",
+				Set:            []string{"key=value"},
+				SetFile:        []string{"global.rootCA.cert=/path/to/cert.crt"},
+				ResetValues:    true,
+				ContourSet:     []string{"contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes}"},
+				ContourSetFile: []string{"envoy.service.annotations.example=/path/to/value.txt"},
+				runChecks:      runContourCheckOnly(t),
+			}
+			require.NoError(t, runner.Run(t.Context()))
+
+			require.NotNil(t, checked)
+			require.Equal(t, helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
+				Radius: helm.ChartOptions{
+					ChartPath:    runner.Chart,
+					ChartVersion: runner.Version,
+					SetArgs:      runner.Set,
+					SetFileArgs:  runner.SetFile,
+				},
+				Contour: helm.ChartOptions{
+					SetArgs:     runner.ContourSet,
+					SetFileArgs: runner.ContourSetFile,
+				},
+				ResetValues: true,
+			}), *checked)
+			if !preflightOnly {
+				require.Equal(t, *checked, *upgraded)
+			}
+		})
+	}
+}
+
+// Test_Run_FriendlyErrors verifies that rad upgrade kubernetes returns the friendly errors of the Contour checks
+// unchanged, so that the CLI shows them as they are instead of as unexpected failures.
+func Test_Run_FriendlyErrors(t *testing.T) {
+	t.Parallel()
+
+	friendly := clierrors.Message("Radius stopped before changing the cluster because Contour 1.32.0 cannot use the Gateway API CRDs in this cluster.")
+	tests := []struct {
+		name          string
+		skipPreflight bool
+		checkErr      error
+		upgradeErr    error
+		// wantErr is the error that Run returns, or nil when Run returns another error with wantMessage.
+		wantErr     error
+		wantMessage string
+	}{
+		{
+			name:     "friendly error from the preflight check",
+			checkErr: friendly,
+			wantErr:  friendly,
+		},
+		{
+			name:        "other error from the preflight check",
+			checkErr:    errors.New("failed to list CRDs"),
+			wantMessage: "preflight checks failed: pre-flight check 'Contour Upgrade' failed: failed to list CRDs",
+		},
+		{
+			name:          "friendly error from the upgrade",
+			skipPreflight: true,
+			upgradeErr:    friendly,
+			wantErr:       friendly,
+		},
+		{
+			name:          "other error from the upgrade",
+			skipPreflight: true,
+			upgradeErr:    errors.New("connection refused"),
+			wantMessage:   "failed to upgrade Radius: connection refused",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockHelm := helm.NewMockInterface(gomock.NewController(t))
+			mockHelm.EXPECT().CheckRadiusInstall("").
+				Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.46.0"}, nil).
+				Times(1)
+			if tt.checkErr != nil {
+				mockHelm.EXPECT().CheckContourUpgrade(gomock.Any(), gomock.Any(), "").Return(false, tt.checkErr).Times(1)
+				// The upgrade must not run.
+			}
+			if tt.upgradeErr != nil {
+				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "").Return(tt.upgradeErr).Times(1)
+			}
+
+			runner := &Runner{
+				Helm:          mockHelm,
+				Output:        &output.MockOutput{},
+				Version:       "0.47.0",
+				SkipPreflight: tt.skipPreflight,
+				runChecks:     runContourCheckOnly(t),
+			}
+			err := runner.Run(t.Context())
+
+			if tt.wantErr != nil {
+				require.Same(t, tt.wantErr, err)
+				require.True(t, clierrors.IsFriendlyError(err))
+				return
+			}
+			require.False(t, clierrors.IsFriendlyError(err))
+			require.EqualError(t, err, tt.wantMessage)
+		})
+	}
+}
+
+// runContourCheckOnly runs only the Contour preflight check, through a registry like the command does, because the
+// other checks need a cluster.
+func runContourCheckOnly(t *testing.T) func(context.Context, []preflight.PreflightCheck) error {
+	return func(ctx context.Context, checks []preflight.PreflightCheck) error {
+		registry := preflight.NewRegistry(&output.MockOutput{})
+		contourChecks := 0
+		for _, check := range checks {
+			if _, ok := check.(*preflight.ContourUpgradeCheck); ok {
+				registry.AddCheck(check)
+				contourChecks++
+			}
+		}
+		require.Equal(t, 1, contourChecks, "the preflight checks must include the Contour upgrade check")
+
+		_, err := registry.RunChecks(ctx)
+		return err
+	}
+}
 func TestRunner_ResolveTargetVersion(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

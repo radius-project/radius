@@ -207,6 +207,16 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 }
 
+// installError describes a failed Radius installation. A friendly error already explains what happened and what to
+// do, so rad init shows it as is.
+func installError(err error) error {
+	if clierrors.IsFriendlyError(err) {
+		return err
+	}
+
+	return clierrors.MessageWithCause(err, "Failed to install Radius.")
+}
+
 // Run runs the `rad init` command.
 func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
@@ -244,7 +254,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		err := r.HelmInterface.InstallRadius(ctx, clusterOptions, r.Options.Cluster.Context)
 		if err != nil {
-			return clierrors.MessageWithCause(err, "Failed to install Radius.")
+			return installError(err)
 		}
 	}
 	progress.InstallComplete = true
