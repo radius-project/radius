@@ -189,8 +189,11 @@ func Test_AWSResource_TransitionalPostRoutes(t *testing.T) {
 	require.Equal(t, collection+"/legacy", resp.body["id"])
 	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
 	require.Equal(t, 1, cc.Count("AWS::S3::Bucket"))
-	// No record is saved, so GET by the identifier in the URL finds none.
-	require.Equal(t, http.StatusNotFound, send(t, ucp, http.MethodGet, collection+"/legacy", "", nil).status)
+	// No record is saved. GET by the ID reads AWS by the identifier in the URL, as the recipe driver does to find the
+	// ARN of an output resource.
+	get := send(t, ucp, http.MethodGet, collection+"/legacy", "", nil)
+	require.Equal(t, http.StatusOK, get.status, get.raw)
+	require.Equal(t, "legacy", get.body["properties"].(map[string]any)["BucketName"])
 
 	resp = send(t, ucp, http.MethodPost, collection+"/:delete", "", body)
 	require.Equal(t, http.StatusAccepted, resp.status, resp.raw)

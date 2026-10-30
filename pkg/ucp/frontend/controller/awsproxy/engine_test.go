@@ -828,11 +828,22 @@ func Test_Delete(t *testing.T) {
 
 func Test_Get(t *testing.T) {
 	h := newHarness(t)
+	// TRANSITIONAL: a URL with no record is read from AWS by its last segment.
 	require.Equal(t, http.StatusNotFound, h.get(vpcPath).status)
-	require.Empty(t, h.cc.Calls())
+	calls := h.cc.Calls()
+	require.Equal(t, []string{"GetResource"}, operations(calls))
+	require.Equal(t, "app-vpc", calls[0].Identifier)
+	h.cc.Put(vpcType, "app-vpc", map[string]any{"CidrBlock": "10.0.0.0/16"})
+	resp := h.get(vpcPath)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, "10.0.0.0/16", resp.body["properties"].(map[string]any)["CidrBlock"])
+	require.Nil(t, h.record(vpcPath), "a GET never saves a record")
 
+	// A record with no identifier yet has a create that has not finished, so AWS is not read.
+	h.cc.Calls()
 	h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {})
 	require.Equal(t, http.StatusNotFound, h.get(vpcPath).status)
+	require.Empty(t, h.cc.Calls())
 
 	h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = "vpc-1" })
 	require.Equal(t, http.StatusNotFound, h.get(vpcPath).status)

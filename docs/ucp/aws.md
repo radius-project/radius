@@ -35,7 +35,7 @@ UCP keeps a record of each AWS resource it deploys, so redeploying a template up
 The record (`datamodel.AWSResource`, read and written by `pkg/ucp/aws/records`) is stored in UCP's data store under that ID. It holds the AWS identifier, the owner, the properties of the last successful deploy without write-only values, and the state of the operation in progress. The design is in [radius-project/radius#13462](https://github.com/radius-project/radius/pull/13462).
 
 - **PUT** reads the record. With no AWS identifier yet, UCP takes over a resource AWS already has, found by the top-level `name` or by the identifier in the properties, or creates one. Before it creates anything, UCP saves the record with a client token, and sends that token with every attempt to create the resource, so a retry never creates a second one. With a record, UCP compares the template with AWS and with the last-applied properties: a property the last deploy set and the template no longer sets is cleared, and a removed create-only property fails with `400`.
-- **GET** reads the record, then AWS by the identifier in the record. `404` when there is no record.
+- **GET** reads the record, then AWS by the identifier in the record. With no record, UCP reads AWS by the URL's last segment, and returns `404` when AWS does not have it (transitional, see below).
 - **DELETE** reads the record and deletes the resource by its identifier. With no record, UCP deletes the resource in AWS by the URL's last segment, and returns `204` when AWS does not have it (transitional, see below).
 - **POST `/:get`** reads a resource Radius may not have created, for an `existing` block that sets `name` or `properties`. It reads AWS by the top-level `name` in the body when it is set, and otherwise by the primary or additional identifiers in the properties. It never saves a record.
 
@@ -45,11 +45,12 @@ UCP owns every create, update, and delete. It saves the new last-applied propert
 
 Write-only values are never stored: not in the last-applied or pending properties, and not in operations.
 
-Until the Deployment Engine deploys AWS resources by alias, UCP keeps three transitional behaviors from before records, for Deployment Engine releases that still deploy with POST `/:put` and `/:delete`. They are removed once the Deployment Engine deploys by alias:
+Until the Deployment Engine deploys AWS resources by alias, UCP keeps four transitional behaviors from before records, for Deployment Engine releases that still deploy with POST `/:put` and `/:delete`. They are removed once the Deployment Engine deploys by alias:
 
 - POST `/:put` and `/:delete` work as before: no owner header and no record.
 - The operation status and result routes ask Cloud Control by request token when UCP has no operation with that ID.
 - A DELETE of a URL with no record deletes the resource in AWS by the URL's last segment, with or without the owner header. A header that is sent must not be blank. Recipe deletes rely on this, because the IDs of resources created with POST `/:put` end in the AWS identifier.
+- A GET of a URL with no record reads the resource from AWS by the URL's last segment. The Bicep recipe driver relies on this to read the ARN of each AWS output resource.
 
 POST `/:put`, POST `/:delete`, and a DELETE with no record return `409` for a resource an alias's record manages, so they never skip that record's owner check. Resources with no record behave as before records.
 

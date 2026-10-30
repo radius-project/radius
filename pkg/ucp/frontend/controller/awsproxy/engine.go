@@ -809,8 +809,8 @@ func (e *engine) removeRecord(ctx context.Context, id resources.ID) (armrpc_rest
 }
 
 // get reads the AWS resource under the alias in the URL: the record, then AWS by the identifier in the record. It
-// always reads AWS, so the result shows changes made outside Radius. It does not check the owner, because reading
-// another owner's resource does not change it.
+// always reads AWS, so the result shows changes made outside Radius. A URL with no record is read from AWS by its last
+// segment for now (see below). It does not check the owner, because reading another owner's resource does not change it.
 func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Response, error) {
 	r, resp := e.begin(ctx, httpReq)
 	if resp != nil {
@@ -821,11 +821,20 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err != nil {
 		return nil, err
 	}
-	if rec == nil || rec.Properties.AWSIdentifier == "" {
+
+	// TRANSITIONAL: a URL with no record is read from AWS by its last segment, as UCP did before records. Resources the
+	// Deployment Engine created with POST /:put have no record, and their IDs end in the AWS identifier. The Bicep
+	// recipe driver reads each AWS output resource by that ID to find its ARN. Remove this with POST /:put; a URL with
+	// no record then returns 404.
+	identifier := r.id.Name()
+	if rec != nil {
+		identifier = rec.Properties.AWSIdentifier
+	}
+	if identifier == "" {
 		return armrpc_rest.NewNotFoundResponse(r.id), nil
 	}
 
-	current, err := e.readResource(ctx, r, rec.Properties.AWSIdentifier)
+	current, err := e.readResource(ctx, r, identifier)
 	if err != nil {
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
