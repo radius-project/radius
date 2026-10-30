@@ -536,6 +536,7 @@ The metadata view will show the kind, clientID/tenantID/accessKeyID, and the bac
 - **In the database:** The metadata copy is stripped of secret values before
   it is written. There is no plaintext secret in the database.
 - **`radius-encryption-key` secret:** *Not* used for UCP credentials. It is a per-install symmetric key consumed by [`pkg/crypto/encryption`](../../pkg/crypto/encryption) for sensitive-field encryption and decryption, with a separate key-rotation CronJob ([encryption-rotation-cronjob.yaml](../../deploy/Chart/templates/encryption-rotation-cronjob.yaml)).
+- **`radius-aws-fingerprint-key` secret:** *Not* used for UCP credentials. It is a per-install HMAC key for fingerprints of write-only AWS property values, such as passwords, so UCP can tell whether a value changed without storing it ([aws-fingerprint-key.yaml](../../deploy/Chart/templates/ucp/aws-fingerprint-key.yaml), [fingerprintkey.go](../../pkg/ucp/aws/fingerprintkey.go)). The chart generates it once, keeps it across upgrades, and mounts it read-only into UCP at `/var/secrets/aws-fingerprint/key`. It is never written to the database and is not rotated. The mount is optional, so UCP still starts when the Secret is missing and logs the error.
 
 ### "Why does WorkloadIdentity / IRSA still need a Secret?"
 

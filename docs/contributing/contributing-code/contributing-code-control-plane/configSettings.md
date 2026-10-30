@@ -82,6 +82,8 @@ The `authorization.mode` setting is read by UCP, Applications RP, Dynamic RP, an
 > [!NOTE]
 > Services only read and log this setting for now. No authorization checks use it yet, so selecting `enforce` does not block requests.
 
+UCP reads `aws.fingerprintKeyFile`, the file that holds the HMAC key for fingerprints of write-only AWS property values. It defaults to `/var/secrets/aws-fingerprint/key`, where the chart mounts the `radius-aws-fingerprint-key` Secret, so the chart does not render it. Set it when running UCP as a local process with a key file of at least 32 random bytes. When the file is missing or invalid, UCP still starts and logs an error naming the Secret.
+
 ### 3. Configure supported environment overrides
 
 Some behavior is read directly from the process environment:
