@@ -448,6 +448,22 @@ func Test_outputResourceEntryFromID(t *testing.T) {
 			wantPortalURL: "https://console.amazonaws-us-gov.com/rds/home?region=us-gov-west-1#databases:",
 		},
 		{
+			name:          "AWS ID in a China region sets the China console URL",
+			id:            "/planes/aws/aws-cn/accounts/123456789012/regions/cn-northwest-1/providers/AWS.RDS/DBInstance/db3",
+			tenantID:      tenantID,
+			wantName:      "db3",
+			wantType:      "AWS.RDS/DBInstance",
+			wantPortalURL: "https://console.amazonaws.cn/rds/home?region=cn-northwest-1#databases:",
+		},
+		{
+			name:          "AWS IAM role sets the IAM roles console URL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.IAM/Role/role1",
+			tenantID:      "",
+			wantName:      "role1",
+			wantType:      "AWS.IAM/Role",
+			wantPortalURL: "https://us-west-2.console.aws.amazon.com/iam/home?region=us-west-2#/roles",
+		},
+		{
 			name:          "AWS ID of an unknown type omits PortalURL",
 			id:            "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/t1",
 			tenantID:      tenantID,
