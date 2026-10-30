@@ -76,7 +76,10 @@ func Test_Store(t *testing.T) {
 	require.NoError(t, store.Touch(t.Context(), id))
 	require.NoError(t, store.Touch(t.Context(), parse(t, otherID)))
 
-	require.NoError(t, store.Delete(t.Context(), id))
+	_, etag, err = store.Get(t.Context(), id)
+	require.NoError(t, err)
+	require.ErrorIs(t, store.DeleteIfUnchanged(t.Context(), id, "stale"), &database.ErrConcurrency{})
+	require.NoError(t, store.DeleteIfUnchanged(t.Context(), id, etag))
 	require.NoError(t, store.Delete(t.Context(), id))
 }
 
@@ -183,14 +186,19 @@ func Test_ApplyPendingAndFail(t *testing.T) {
 	require.Equal(t, map[string]any{"A": "2"}, rec.Properties.LastApplied)
 	require.Nil(t, rec.Properties.PendingLastApplied)
 	require.Empty(t, rec.Properties.PendingOperation+rec.Properties.ClientToken+rec.Properties.RequestToken)
+	require.Equal(t, "r", rec.Properties.LastRequestToken)
+	require.Nil(t, rec.Properties.LastRequestError)
 	require.Equal(t, v1.ProvisioningStateSucceeded, rec.ProvisioningState())
 	require.True(t, HasApplied(rec))
 
 	rec = newRec()
-	Fail(rec)
+	failure := &v1.ErrorDetails{Code: "Invalid", Message: "bad"}
+	Fail(rec, failure)
 	require.Equal(t, map[string]any{"A": "1"}, rec.Properties.LastApplied)
 	require.Nil(t, rec.Properties.PendingLastApplied)
 	require.Empty(t, rec.Properties.RequestToken)
+	require.Equal(t, "r", rec.Properties.LastRequestToken)
+	require.Equal(t, failure, rec.Properties.LastRequestError)
 	require.Equal(t, "c", rec.Properties.ClientToken)
 	require.Equal(t, v1.ProvisioningStateFailed, rec.ProvisioningState())
 

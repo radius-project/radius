@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"uuid"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/stretchr/testify/require"
@@ -49,6 +51,8 @@ type fixture struct {
 	db    database.Client
 	store *records.Store
 	id    resources.ID
+	// op is the operation ID of the last accepted request: its Cloud Control request token.
+	op uuid.UUID
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -66,6 +70,7 @@ func (f *fixture) accept(op string) {
 	require.NoError(f.t, err)
 	rec := records.NewRecord(f.id, "owner")
 	rec.Properties.RequestToken = aws.ToString(out.ProgressEvent.RequestToken)
+	f.op = uuid.MustParse(rec.Properties.RequestToken)
 	rec.Properties.PendingOperation = op
 	rec.Properties.PendingLastApplied = map[string]any{"CidrBlock": "10.0.0.0/16"}
 	if op == records.OperationCreate {
@@ -75,7 +80,9 @@ func (f *fixture) accept(op string) {
 		rec.Properties.LastApplied = map[string]any{}
 	}
 	rec.SetProvisioningState(records.StateOf(op))
-	_, err = f.store.Save(f.t.Context(), rec, "")
+	_, etag, err := f.store.Get(f.t.Context(), f.id)
+	require.NoError(f.t, err)
+	_, err = f.store.Save(f.t.Context(), rec, etag)
 	require.NoError(f.t, err)
 }
 
@@ -88,7 +95,7 @@ func (f *fixture) runWith(ctx context.Context, method v1.OperationMethod, db dat
 	f.t.Helper()
 	c, err := NewAwaitController(ctrl.Options{DatabaseClient: db}, ucp_aws.Clients{CloudControl: f.cc}, method)
 	require.NoError(f.t, err)
-	result, _ := c.Run(ctx, &ctrl.Request{ResourceID: vpcID})
+	result, _ := c.Run(ctx, &ctrl.Request{ResourceID: vpcID, OperationID: f.op})
 	return result
 }
 
@@ -142,6 +149,7 @@ func Test_Await_Failures(t *testing.T) {
 		f := newFixture(t)
 		f.accept(records.OperationUpdate)
 		f.saveWith(func(rec *datamodel.AWSResource) { rec.Properties.RequestToken = "00000000-0000-0000-0000-000000000000" })
+		f.op = uuid.UUID{}
 		result := f.run(v1.OperationPut)
 		require.Contains(t, result.Error.Message, "no longer has the request")
 		require.Empty(t, f.record().Properties.RequestToken)
@@ -165,16 +173,8 @@ func Test_Await_Failures(t *testing.T) {
 		cancel()
 		c, err := NewAwaitController(ctrl.Options{DatabaseClient: f.db}, ucp_aws.Clients{CloudControl: f.cc}, v1.OperationPut)
 		require.NoError(t, err)
-		_, err = c.Run(ctx, &ctrl.Request{ResourceID: vpcID})
+		_, err = c.Run(ctx, &ctrl.Request{ResourceID: vpcID, OperationID: f.op})
 		require.Error(t, err)
-	})
-
-	t.Run("no request to wait for", func(t *testing.T) {
-		f := newFixture(t)
-		f.accept(records.OperationUpdate)
-		f.saveWith(func(rec *datamodel.AWSResource) { rec.Properties.RequestToken = "" })
-		result := f.run(v1.OperationPut)
-		require.Contains(t, result.Error.Message, "no AWS request")
 	})
 
 	t.Run("no record", func(t *testing.T) {
@@ -230,6 +230,7 @@ func Test_Await_Delete(t *testing.T) {
 		rec.Properties.RequestToken = aws.ToString(out.ProgressEvent.RequestToken)
 		rec.SetProvisioningState(v1.ProvisioningStateDeleting)
 	})
+	f.op = uuid.MustParse(aws.ToString(out.ProgressEvent.RequestToken))
 	require.Nil(t, f.run(v1.OperationDelete).Error)
 	require.Nil(t, f.record())
 }
@@ -238,7 +239,7 @@ func Test_Update_RetriesConcurrentSaves(t *testing.T) {
 	f := newFixture(t)
 	f.accept(records.OperationUpdate)
 	n := 0
-	err := update(t.Context(), f.store, f.id, func(rec *datamodel.AWSResource) bool {
+	err := update(t.Context(), f.store, f.id, f.op, func(rec *datamodel.AWSResource) bool {
 		n++
 		if n == 1 {
 			// Another writer, such as the heartbeat, saves the record first.
@@ -251,7 +252,7 @@ func Test_Update_RetriesConcurrentSaves(t *testing.T) {
 	require.Equal(t, 2, n)
 	require.Equal(t, "changed", f.record().Properties.Owner)
 
-	err = update(t.Context(), f.store, f.id, func(rec *datamodel.AWSResource) bool {
+	err = update(t.Context(), f.store, f.id, f.op, func(rec *datamodel.AWSResource) bool {
 		require.NoError(t, f.store.Touch(t.Context(), f.id))
 		return false
 	})
@@ -286,6 +287,80 @@ func Test_Register(t *testing.T) {
 		require.NoError(t, err)
 		require.IsType(t, &AwaitController{}, c)
 	}
+}
+
+// Test_Await_Redelivery covers a message the worker gets again after it already finished the operation, for example
+// because UCP stopped after saving the record and before saving the operation status.
+func Test_Await_Redelivery(t *testing.T) {
+	t.Run("after success", func(t *testing.T) {
+		f := newFixture(t)
+		f.accept(records.OperationCreate)
+		require.Nil(t, f.run(v1.OperationPut).Error)
+		before := f.record()
+
+		result := f.run(v1.OperationPut)
+		require.Nil(t, result.Error)
+		require.Equal(t, v1.ProvisioningStateSucceeded, result.ProvisioningState())
+		require.Equal(t, before.Properties, f.record().Properties)
+	})
+
+	t.Run("after a failed update", func(t *testing.T) {
+		f := newFixture(t)
+		f.cc.FailNext = "InvalidRequest"
+		f.accept(records.OperationUpdate)
+		first := f.run(v1.OperationPut)
+		require.Equal(t, v1.CodeInvalid, first.Error.Code)
+
+		again := f.run(v1.OperationPut)
+		require.Equal(t, first.Error, again.Error)
+		require.Equal(t, v1.ProvisioningStateFailed, again.ProvisioningState())
+	})
+
+	t.Run("an old delete after the alias was created again", func(t *testing.T) {
+		f := newFixture(t)
+		f.accept(records.OperationUpdate)
+		oldDelete := uuid.New()
+		// The delete finished and removed the record, then a new deploy created the alias again.
+		f.accept(records.OperationCreate)
+		creating := f.record()
+
+		f.op = oldDelete
+		// Polling the new create's request would fail the test.
+		f.cc.Errors["GetResourceRequestStatus"] = errors.New("must not poll")
+		result := f.run(v1.OperationDelete)
+		require.Equal(t, v1.ProvisioningStateCanceled, result.ProvisioningState())
+		require.Contains(t, result.Error.Message, "newer operation")
+		require.Equal(t, creating.Properties, f.record().Properties, "the old delete must not poll or finish the new create")
+	})
+}
+
+// Test_Update_Superseded checks that finishing an operation changes nothing once the record shows a newer one.
+func Test_Update_Superseded(t *testing.T) {
+	f := newFixture(t)
+	f.accept(records.OperationUpdate)
+	old := f.op
+	f.accept(records.OperationUpdate)
+	err := update(t.Context(), f.store, f.id, old, func(rec *datamodel.AWSResource) bool { return true })
+	require.ErrorIs(t, err, errSuperseded)
+	require.NotNil(t, f.record())
+}
+
+// Test_Update_DeleteRetriesConcurrentSaves checks that the record is removed only if nothing changed it since it was
+// read.
+func Test_Update_DeleteRetriesConcurrentSaves(t *testing.T) {
+	f := newFixture(t)
+	f.accept(records.OperationUpdate)
+	n := 0
+	err := update(t.Context(), f.store, f.id, f.op, func(rec *datamodel.AWSResource) bool {
+		n++
+		if n == 1 {
+			require.NoError(t, f.store.Touch(t.Context(), f.id))
+		}
+		return true
+	})
+	require.NoError(t, err)
+	require.Equal(t, 2, n)
+	require.Nil(t, f.record())
 }
 
 func (f *fixture) saveWith(change func(rec *datamodel.AWSResource)) {

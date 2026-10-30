@@ -62,6 +62,12 @@ type AWSResourceProperties struct {
 	// RequestToken is the token Cloud Control returns when it accepts a create, update, or delete. UCP polls the
 	// request with it, and uses it as the operation ID.
 	RequestToken string `json:"requestToken,omitempty"`
+
+	// LastRequestToken is the request token of the last operation that finished, and LastRequestError is its error,
+	// or nil when it succeeded. A redelivered operation that already finished reports this result instead of polling
+	// AWS again.
+	LastRequestToken string           `json:"lastRequestToken,omitempty"`
+	LastRequestError *v1.ErrorDetails `json:"lastRequestError,omitempty"`
 }
 
 // ResourceTypeName returns the resource type of the record, such as AWS.EC2/VPC.

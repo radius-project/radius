@@ -110,6 +110,16 @@ func (s *Store) Delete(ctx context.Context, id resources.ID) error {
 	return err
 }
 
+// DeleteIfUnchanged removes the record stored under id when its ETag is still etag. It fails with
+// database.ErrConcurrency when the record changed since it was read. A missing record is not an error.
+func (s *Store) DeleteIfUnchanged(ctx context.Context, id resources.ID, etag string) error {
+	err := s.db.Delete(ctx, id.String(), database.WithETag(etag))
+	if errors.Is(err, &database.ErrNotFound{}) {
+		return nil
+	}
+	return err
+}
+
 // Touch saves the record unchanged, so its lastModifiedAt moves forward. The worker calls it while it polls AWS, so
 // the operation does not look stale. A record that changed or was removed meanwhile is left alone.
 func (s *Store) Touch(ctx context.Context, id resources.ID) error {
@@ -242,23 +252,29 @@ func ClearPending(rec *datamodel.AWSResource) {
 
 // ApplyPending finishes a successful create or update: the pending last-applied properties become the last-applied
 // properties, and the operation, the tokens, and the pending values are cleared. Clearing the client token marks the
-// first create as finished.
+// first create as finished. The request token moves to LastRequestToken, so a redelivered operation reports success.
 func ApplyPending(rec *datamodel.AWSResource) {
 	if rec.Properties.PendingLastApplied != nil {
 		rec.Properties.LastApplied = rec.Properties.PendingLastApplied
 	}
 	ClearPending(rec)
 	rec.Properties.ClientToken = ""
-	rec.Properties.RequestToken = ""
+	finish(rec, nil)
 	rec.SetProvisioningState(v1.ProvisioningStateSucceeded)
 }
 
 // Fail finishes a failed update or delete: the pending values are dropped, so the previous last-applied properties
-// stay, and the request token is cleared.
-func Fail(rec *datamodel.AWSResource) {
+// stay. The request token moves to LastRequestToken with failure, so a redelivered operation reports the same error.
+func Fail(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 	ClearPending(rec)
-	rec.Properties.RequestToken = ""
+	finish(rec, failure)
 	rec.SetProvisioningState(v1.ProvisioningStateFailed)
+}
+
+func finish(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
+	rec.Properties.LastRequestToken = rec.Properties.RequestToken
+	rec.Properties.LastRequestError = failure
+	rec.Properties.RequestToken = ""
 }
 
 // AliasOf returns the alias, the last segment, of a record's resource ID.

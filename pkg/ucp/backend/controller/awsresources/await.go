@@ -26,6 +26,8 @@ import (
 	"strings"
 	"time"
 
+	"uuid"
+
 	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
@@ -108,18 +110,21 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 		}), nil
 	}
 
+	// The operation ID is the Cloud Control request token. A redelivered operation that already finished reports the
+	// result saved on the record. One the record no longer shows was replaced by a newer operation, and must not poll
+	// or finish that one.
+	if sameRequest(rec.Properties.LastRequestToken, request.OperationID) {
+		return finishedResult(rec), nil
+	}
+	if !sameRequest(rec.Properties.RequestToken, request.OperationID) {
+		return superseded(id), nil
+	}
+
 	op := records.PendingOperation(rec)
 	if c.method == v1.OperationDelete {
 		op = records.OperationDelete
 	}
 	requestToken := rec.Properties.RequestToken
-	if requestToken == "" {
-		return ctrl.NewFailedResult(v1.ErrorDetails{
-			Code:    v1.CodeInternal,
-			Message: fmt.Sprintf("The record of the AWS resource %q has no AWS request to wait for. Deploy again.", id.Name()),
-			Target:  request.ResourceID,
-		}), nil
-	}
 
 	// Save the record while waiting, so a request does not take the operation for a stale one.
 	if err := store.Touch(ctx, id); err != nil {
@@ -134,17 +139,20 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	if errors.As(err, &notFound) {
 		// Cloud Control no longer knows the request, so UCP cannot tell how it ended. Forget it: the next deploy reads
 		// the resource from AWS, or sends a first create again with the record's client token.
-		if saveErr := update(ctx, store, id, func(rec *datamodel.AWSResource) bool {
-			records.Fail(rec)
-			return false
-		}); saveErr != nil {
-			return requeue(ctx, saveErr), nil
-		}
-		return ctrl.NewFailedResult(v1.ErrorDetails{
+		failure := v1.ErrorDetails{
 			Code:    v1.CodeInternal,
 			Message: fmt.Sprintf("AWS Cloud Control no longer has the request for the AWS resource %q. Deploy again.", id.Name()),
 			Target:  request.ResourceID,
-		}), nil
+		}
+		if saveErr := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
+			records.Fail(rec, &failure)
+			return false
+		}); errors.Is(saveErr, errSuperseded) {
+			return superseded(id), nil
+		} else if saveErr != nil {
+			return requeue(ctx, saveErr), nil
+		}
+		return ctrl.NewFailedResult(failure), nil
 	}
 
 	var failed *ucp_aws.RequestStatus
@@ -158,24 +166,27 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	}
 
 	if failed != nil {
-		if saveErr := update(ctx, store, id, func(rec *datamodel.AWSResource) bool {
-			// A failed create removes the record, so the next deploy starts over.
-			if op == records.OperationCreate {
-				return true
-			}
-			records.Fail(rec)
-			return false
-		}); saveErr != nil {
-			return requeue(ctx, saveErr), nil
-		}
 		code := v1.CodeInternal
 		if failed.IsClientError() {
 			code = v1.CodeInvalid
 		}
-		return ctrl.NewFailedResult(v1.ErrorDetails{Code: code, Message: failed.Error(), Target: request.ResourceID}), nil
+		failure := v1.ErrorDetails{Code: code, Message: failed.Error(), Target: request.ResourceID}
+		if saveErr := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
+			// A failed create removes the record, so the next deploy starts over.
+			if op == records.OperationCreate {
+				return true
+			}
+			records.Fail(rec, &failure)
+			return false
+		}); errors.Is(saveErr, errSuperseded) {
+			return superseded(id), nil
+		} else if saveErr != nil {
+			return requeue(ctx, saveErr), nil
+		}
+		return ctrl.NewFailedResult(failure), nil
 	}
 
-	err = update(ctx, store, id, func(rec *datamodel.AWSResource) bool {
+	err = update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
 		if op == records.OperationDelete {
 			return true
 		}
@@ -185,15 +196,41 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 		records.ApplyPending(rec)
 		return false
 	})
-	if err != nil {
+	if errors.Is(err, errSuperseded) {
+		return superseded(id), nil
+	} else if err != nil {
 		return requeue(ctx, fmt.Errorf("AWS finished the %s of %q, but UCP failed to save the result: %w", strings.ToLower(op), id.Name(), err)), nil
 	}
 	return ctrl.Result{}, nil
 }
 
-// update reads the record, applies change, and saves it. When change returns true, it removes the record instead. A
-// save that loses a race with another write, such as the heartbeat, is tried again.
-func update(ctx context.Context, store *records.Store, id resources.ID, change func(rec *datamodel.AWSResource) bool) error {
+// errSuperseded means the record shows a different operation than the one being finished.
+var errSuperseded = errors.New("a newer operation replaced this one")
+
+// sameRequest reports whether a Cloud Control request token is the operation ID.
+func sameRequest(token string, operationID uuid.UUID) bool {
+	parsed, err := uuid.Parse(token)
+	return err == nil && parsed == operationID
+}
+
+// finishedResult returns the result saved on the record for an operation that already finished.
+func finishedResult(rec *datamodel.AWSResource) ctrl.Result {
+	if failure := rec.Properties.LastRequestError; failure != nil {
+		return ctrl.NewFailedResult(*failure)
+	}
+	return ctrl.Result{}
+}
+
+// superseded returns the result of an operation that a newer operation on the record replaced, so this one is no
+// longer tracked.
+func superseded(id resources.ID) ctrl.Result {
+	return ctrl.NewCanceledResult(fmt.Sprintf("A newer operation on the AWS resource %q replaced this one.", id.Name()))
+}
+
+// update reads the record, applies change, and saves it. When change returns true, it removes the record instead. It
+// returns errSuperseded, and changes nothing, when the record no longer shows the operation operationID. A save or
+// delete that loses a race with another write, such as the heartbeat, is tried again.
+func update(ctx context.Context, store *records.Store, id resources.ID, operationID uuid.UUID, change func(rec *datamodel.AWSResource) bool) error {
 	for range maxSaveAttempts {
 		rec, etag, err := store.Get(ctx, id)
 		if err != nil {
@@ -201,10 +238,14 @@ func update(ctx context.Context, store *records.Store, id resources.ID, change f
 		} else if rec == nil {
 			return nil
 		}
-		if change(rec) {
-			return store.Delete(ctx, id)
+		if !sameRequest(rec.Properties.RequestToken, operationID) {
+			return errSuperseded
 		}
-		_, err = store.Save(ctx, rec, etag)
+		if change(rec) {
+			err = store.DeleteIfUnchanged(ctx, id, etag)
+		} else {
+			_, err = store.Save(ctx, rec, etag)
+		}
 		if errors.Is(err, &database.ErrConcurrency{}) {
 			continue
 		}
