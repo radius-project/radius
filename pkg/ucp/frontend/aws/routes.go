@@ -330,7 +330,7 @@ func (m *Module) loadFingerprintKey(ctx context.Context) {
 	m.fingerprintKey, m.fingerprintKeyErr = ucp_aws.LoadFingerprintKey(path)
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if m.fingerprintKeyErr != nil {
-		logger.Error(m.fingerprintKeyErr, "The AWS fingerprint key is not available")
+		logger.Error(m.fingerprintKeyErr, "The AWS fingerprint key is not available; AWS resource PUTs that need a fingerprint of a write-only value will fail", "secret", ucp_aws.FingerprintKeySecretName)
 		return
 	}
 
