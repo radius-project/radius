@@ -109,11 +109,13 @@ func Test_UnsupportedTypes_FailWithoutCallingAWS(t *testing.T) {
 		body    map[string]any
 	}{
 		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name", body},
+		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, "", body},
 		{"GET", NewGetAWSResource, http.MethodGet, "/name", nil},
 		{"POST /:get", func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
 			return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
 		}, http.MethodPost, "", body},
 		{"DELETE", NewDeleteAWSResource, http.MethodDelete, "/name", nil},
+		{"POST /:delete", NewDeleteAWSResourceWithPost, http.MethodPost, "", body},
 		{"LIST", NewListAWSResources, http.MethodGet, "", nil},
 	}
 	for _, tt := range types {
@@ -170,6 +172,7 @@ func Test_Put_NonProvisionableTypes(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name"},
+		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, tt := range tests {
 		for _, op := range puts {
@@ -254,6 +257,7 @@ func Test_Update_ImmutableType(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name"},
+		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, tt := range tests {
 		for _, op := range updates {
@@ -390,6 +394,7 @@ func Test_InvalidSchema(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name"},
+		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, tt := range tests {
 		for _, op := range puts {
@@ -428,6 +433,7 @@ func Test_Put_DescribeTypeError(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", NewCreateOrUpdateAWSResource, http.MethodPut, "/name"},
+		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, op := range puts {
 		t.Run(op.name, func(t *testing.T) {

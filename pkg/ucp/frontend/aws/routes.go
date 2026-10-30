@@ -157,7 +157,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationResultsResourceType, Method: v1.OperationGet},
 			ResourceType:  OperationResultsResourceType,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewGetAWSOperationResults(opt)
+				return awsproxy_ctrl.NewGetAWSOperationResults(opt, awsClients)
 			},
 		},
 		{
@@ -167,7 +167,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationStatusResourceType, Method: v1.OperationGet},
 			ResourceType:  OperationStatusResourceType,
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewGetAWSOperationStatuses(opts)
+				return awsproxy_ctrl.NewGetAWSOperationStatuses(opts, awsClients)
 			},
 		},
 	}
@@ -217,8 +217,32 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	}...)
 
 	// POST /:get reads an AWS resource by its identifier properties, for an `existing` block that sets them. It reads
-	// AWS directly and never saves a record. Creates, updates, and deletes go by alias on the routes above.
+	// AWS directly and never saves a record.
+	//
+	// Transitional: POST /:put and /:delete keep their behavior from before resource records, for the Deployment
+	// Engine releases that do not deploy AWS resources by alias yet. They need no owner header and save no record.
+	// They are removed once the Deployment Engine deploys by alias.
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
+		{
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/:put",
+			Method:        v1.OperationPutImperative,
+			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationPutImperative},
+			ResourceType:  OperationTypeAWSResource,
+			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
+				return awsproxy_ctrl.NewCreateOrUpdateAWSResourceWithPost(opt, awsClients)
+			},
+		},
+		{
+			ParentRouter:  resourceCollectionRouter,
+			Path:          "/:delete",
+			Method:        v1.OperationDeleteImperative,
+			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationDeleteImperative},
+			ResourceType:  OperationTypeAWSResource,
+			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
+				return awsproxy_ctrl.NewDeleteAWSResourceWithPost(opts, awsClients)
+			},
+		},
 		{
 			ParentRouter:  resourceCollectionRouter,
 			Path:          "/:get",

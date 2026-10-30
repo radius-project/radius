@@ -25,6 +25,10 @@ import (
 
 	"uuid"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -32,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -52,11 +57,11 @@ func queueTestOperation(t *testing.T, options TestOptions) uuid.UUID {
 	return operationID
 }
 
-func runOperationRequest(t *testing.T, factory func(armrpc_controller.Options) (armrpc_controller.Controller, error), options TestOptions, path string) *http.Response {
+func runOperationRequest(t *testing.T, factory func(armrpc_controller.Options, ucp_aws.Clients) (armrpc_controller.Controller, error), options TestOptions, path string) *http.Response {
 	t.Helper()
 	request, err := http.NewRequest(http.MethodGet, path, nil)
 	require.NoError(t, err)
-	controller, err := factory(options.ControllerOptions())
+	controller, err := factory(options.ControllerOptions(), options.Clients())
 	require.NoError(t, err)
 	ctx := rpctest.NewARMRequestContext(request)
 	response, err := controller.Run(ctx, nil, request)
@@ -70,7 +75,7 @@ func operationPath(kind string, operationID string) string {
 	return "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Kinesis/locations/global/" + kind + "/" + operationID
 }
 
-func Test_GetAWSOperationStatuses(t *testing.T) {
+func Test_GetAWSOperationStatuses_FromUCP(t *testing.T) {
 	options := setupTest(t)
 	operationID := queueTestOperation(t, options)
 
@@ -93,7 +98,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 	require.Equal(t, "AWS rejected it", status.Error.Message)
 }
 
-func Test_GetAWSOperationResults(t *testing.T) {
+func Test_GetAWSOperationResults_FromUCP(t *testing.T) {
 	options := setupTest(t)
 	operationID := queueTestOperation(t, options)
 
@@ -111,18 +116,41 @@ func Test_GetAWSOperationResults(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, res.StatusCode)
 }
 
+// Test_GetAWSOperation_NotFound checks an operation UCP's data store does not have. It falls back to Cloud Control,
+// which does not know the request token either.
 func Test_GetAWSOperation_NotFound(t *testing.T) {
 	for _, operationID := range []string{uuid.New().String(), "not-a-uuid"} {
-		for kind, factory := range map[string]func(armrpc_controller.Options) (armrpc_controller.Controller, error){
+		for kind, factory := range map[string]func(armrpc_controller.Options, ucp_aws.Clients) (armrpc_controller.Controller, error){
 			"operationStatuses": NewGetAWSOperationStatuses,
 			"operationResults":  NewGetAWSOperationResults,
 		} {
 			t.Run(kind+" "+operationID, func(t *testing.T) {
-				res := runOperationRequest(t, factory, setupTest(t), operationPath(kind, operationID))
+				options := setupTest(t)
+				options.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+					nil, &cctypes.ResourceNotFoundException{Message: aws.String("unknown request")})
+				res := runOperationRequest(t, factory, options, operationPath(kind, operationID))
 				defer res.Body.Close()
 				require.Equal(t, http.StatusNotFound, res.StatusCode)
 			})
 		}
+	}
+}
+
+// Test_GetAWSOperation_FallbackErrors checks a Cloud Control error while falling back for an operation UCP's data
+// store does not have.
+func Test_GetAWSOperation_FallbackErrors(t *testing.T) {
+	for kind, factory := range map[string]func(armrpc_controller.Options, ucp_aws.Clients) (armrpc_controller.Controller, error){
+		"operationStatuses": NewGetAWSOperationStatuses,
+		"operationResults":  NewGetAWSOperationResults,
+	} {
+		t.Run(kind, func(t *testing.T) {
+			options := setupTest(t)
+			options.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				nil, &smithy.OperationError{Err: &smithyhttp.ResponseError{Err: &smithy.GenericAPIError{Code: "Throttling", Message: "slow", Fault: smithy.FaultServer}}})
+			res := runOperationRequest(t, factory, options, operationPath(kind, uuid.New().String()))
+			defer res.Body.Close()
+			require.Equal(t, http.StatusInternalServerError, res.StatusCode)
+		})
 	}
 }
 
@@ -141,7 +169,7 @@ func Test_GetAWSOperation_NoStatusManager(t *testing.T) {
 	options.StatusManager = nil
 	request, err := http.NewRequest(http.MethodGet, operationPath("operationStatuses", uuid.New().String()), nil)
 	require.NoError(t, err)
-	controller, err := NewGetAWSOperationStatuses(options.ControllerOptions())
+	controller, err := NewGetAWSOperationStatuses(options.ControllerOptions(), options.Clients())
 	require.NoError(t, err)
 	_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
 	require.ErrorContains(t, err, "status manager is not configured")
@@ -150,10 +178,10 @@ func Test_GetAWSOperation_NoStatusManager(t *testing.T) {
 func Test_GetAWSOperation_StatusManagerFails(t *testing.T) {
 	sm := statusmanager.NewMockStatusManager(gomock.NewController(t))
 	sm.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("database is down")).Times(2)
-	for _, factory := range []func(armrpc_controller.Options) (armrpc_controller.Controller, error){NewGetAWSOperationStatuses, NewGetAWSOperationResults} {
+	for _, factory := range []func(armrpc_controller.Options, ucp_aws.Clients) (armrpc_controller.Controller, error){NewGetAWSOperationStatuses, NewGetAWSOperationResults} {
 		request, err := http.NewRequest(http.MethodGet, operationPath("operationStatuses", uuid.New().String()), nil)
 		require.NoError(t, err)
-		controller, err := factory(armrpc_controller.Options{StatusManager: sm})
+		controller, err := factory(armrpc_controller.Options{StatusManager: sm}, ucp_aws.Clients{})
 		require.NoError(t, err)
 		_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
 		require.ErrorContains(t, err, "database is down")

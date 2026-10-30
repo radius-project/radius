@@ -254,6 +254,158 @@ func Test_CreateOrUpdateAWSResource_Secrets(t *testing.T) {
 	}
 }
 
+func Test_CreateOrUpdateAWSResourceWithPost_Secrets(t *testing.T) {
+	tests := []secretsTestCase{
+		{
+			name:     "create does not echo write-only value",
+			resource: newRDSDBInstanceTestResource(false),
+			request:  map[string]any{"DBInstanceIdentifier": "app-db", "MasterUsername": "admin", "MasterUserPassword": requestSecret},
+			lookup:   true,
+			write:    "create",
+
+			wantStatus:     http.StatusCreated,
+			wantProperties: map[string]any{"DBInstanceIdentifier": "app-db", "MasterUsername": "admin", "provisioningState": "Provisioning"},
+		},
+		{
+			name:     "update does not echo write-only value",
+			resource: newRDSDBInstanceTestResource(false),
+			current:  map[string]any{"DBInstanceIdentifier": "app-db", "MasterUsername": "admin"},
+			request:  map[string]any{"DBInstanceIdentifier": "app-db", "MasterUsername": "admin", "MasterUserPassword": requestSecret},
+			lookup:   true,
+			write:    "update",
+
+			wantStatus:     http.StatusCreated,
+			wantProperties: map[string]any{"DBInstanceIdentifier": "app-db", "MasterUsername": "admin", "provisioningState": "Provisioning"},
+		},
+		{
+			name:     "no change does not echo write-only value",
+			resource: newRDSDBInstanceTestResource(true),
+			current:  map[string]any{"DBInstanceIdentifier": "app-db", "MasterUserPassword": awsSecret},
+			request:  map[string]any{"DBInstanceIdentifier": "app-db", "MasterUserPassword": requestSecret},
+			lookup:   true,
+
+			wantStatus:     http.StatusOK,
+			wantProperties: map[string]any{"DBInstanceIdentifier": "app-db", "MasterUserPassword": awsSecret, "provisioningState": "Succeeded"},
+		},
+		{
+			name:     "create does not echo secret the schema does not mark",
+			resource: newVerifiedAccessTrustProviderTestResource(),
+			request:  map[string]any{"TrustProviderType": "user", "OidcOptions": map[string]any{"Issuer": "https://issuer", "ClientSecret": requestSecret}},
+			write:    "create",
+
+			wantStatus:     http.StatusCreated,
+			wantProperties: map[string]any{"TrustProviderType": "user", "OidcOptions": map[string]any{"Issuer": "https://issuer"}, "provisioningState": "Provisioning"},
+		},
+		{
+			name:     "update keeps the client secret AWS returns",
+			resource: newCognitoUserPoolClientTestResource(),
+			current:  map[string]any{"UserPoolId": "pool", "ClientId": "client", "ClientName": "old", "ClientSecret": awsSecret},
+			request:  map[string]any{"UserPoolId": "pool", "ClientId": "client", "ClientName": "new"},
+			lookup:   true,
+			write:    "update",
+
+			wantStatus: http.StatusCreated,
+			wantProperties: map[string]any{
+				"UserPoolId":        "pool",
+				"ClientId":          "client",
+				"ClientName":        "new",
+				"ClientSecret":      awsSecret,
+				"provisioningState": "Provisioning",
+			},
+		},
+		{
+			name:     "update does not echo secret the schema does not mark and keeps the AWS value",
+			resource: newVerifiedAccessTrustProviderTestResource(),
+			current:  map[string]any{"VerifiedAccessTrustProviderId": "vatp-123", "OidcOptions": map[string]any{"Issuer": "old", "ClientSecret": awsSecret}},
+			request:  map[string]any{"VerifiedAccessTrustProviderId": "vatp-123", "OidcOptions": map[string]any{"Issuer": "new", "ClientSecret": requestSecret}},
+			lookup:   true,
+			write:    "update",
+
+			wantStatus: http.StatusCreated,
+			wantProperties: map[string]any{
+				"VerifiedAccessTrustProviderId": "vatp-123",
+				"OidcOptions":                   map[string]any{"Issuer": "new", "ClientSecret": awsSecret},
+				"provisioningState":             "Provisioning",
+			},
+		},
+		{
+			name:     "no change keeps the client secret AWS returns",
+			resource: newCognitoUserPoolClientTestResource(),
+			current:  map[string]any{"UserPoolId": "pool", "ClientId": "client", "ClientName": "app", "ClientSecret": awsSecret},
+			request:  map[string]any{"UserPoolId": "pool", "ClientId": "client", "ClientName": "app"},
+			lookup:   true,
+
+			wantStatus: http.StatusOK,
+			wantProperties: map[string]any{
+				"UserPoolId":        "pool",
+				"ClientId":          "client",
+				"ClientName":        "app",
+				"ClientSecret":      awsSecret,
+				"provisioningState": "Succeeded",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runPostSecretsTestCase(t, tt)
+		})
+	}
+}
+
+// runPostSecretsTestCase runs a case through the transitional POST /:put, which saves no record.
+func runPostSecretsTestCase(t *testing.T, tt secretsTestCase) {
+	testOptions := setupTest(t)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudformation.DescribeTypeOutput{
+			TypeName: aws.String(tt.resource.AWSResourceType),
+			Schema:   aws.String(tt.resource.Schema),
+		}, nil)
+
+	if tt.lookup {
+		if tt.current == nil {
+			testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				nil, &types.ResourceNotFoundException{Message: aws.String("Resource not found")})
+		} else {
+			current, err := json.Marshal(tt.current)
+			require.NoError(t, err)
+			testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				&cloudcontrol.GetResourceOutput{
+					ResourceDescription: &types.ResourceDescription{Properties: aws.String(string(current))},
+				}, nil)
+		}
+	}
+
+	progressEvent := &types.ProgressEvent{
+		OperationStatus: types.OperationStatusInProgress,
+		RequestToken:    aws.String(testAWSRequestToken),
+		Identifier:      aws.String(tt.resource.ResourceName),
+	}
+	switch tt.write {
+	case "create":
+		testOptions.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			&cloudcontrol.CreateResourceOutput{ProgressEvent: progressEvent}, nil)
+	case "update":
+		testOptions.AWSCloudControlClient.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			&cloudcontrol.UpdateResourceOutput{ProgressEvent: progressEvent}, nil)
+	}
+
+	body, err := json.Marshal(map[string]any{"properties": tt.request})
+	require.NoError(t, err)
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(testOptions.ControllerOptions(), testOptions.Clients())
+	require.NoError(t, err)
+	request, err := http.NewRequest(http.MethodPost, tt.resource.CollectionPath, bytes.NewBuffer(body))
+	require.NoError(t, err)
+	request.Host = testHost
+	request.URL.Host = testHost
+	request.URL.Scheme = testScheme
+
+	status, got := runController(t, awsController, request)
+	require.Equal(t, tt.wantStatus, status)
+	require.Equal(t, tt.wantProperties, got)
+	require.Nil(t, getTestRecord(t, testOptions, tt.resource.SingleResourcePath), "POST /:put saves no record")
+}
+
 func Test_GetAWSResource_PassesThroughAWSSecrets(t *testing.T) {
 	testResource := newCognitoUserPoolClientTestResource()
 	properties := map[string]any{"UserPoolId": "pool", "ClientId": "client", "ClientSecret": awsSecret}

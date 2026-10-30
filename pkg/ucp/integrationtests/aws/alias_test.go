@@ -174,11 +174,25 @@ func Test_AWSResourceByAlias_WriteOnlyValueIsSentButNotEchoed(t *testing.T) {
 	require.Contains(t, calls[len(calls)-1].Document, testPassword, "the password must still be sent to AWS")
 }
 
-func Test_AWSResource_RemovedRoutes(t *testing.T) {
+// Test_AWSResource_TransitionalPostRoutes checks that POST /:put and /:delete still work as they did before resource
+// records, for Deployment Engine releases that do not deploy by alias: no owner header, no record, and an operation
+// whose status comes from Cloud Control.
+func Test_AWSResource_TransitionalPostRoutes(t *testing.T) {
 	ucp, cc := initializeFakeAWSTest(t, aliasSchemas)
-	for _, action := range []string{":put", ":delete"} {
-		resp := send(t, ucp, http.MethodPost, awsProvidersPath+"AWS.EC2/VPC/"+action, testOwner, map[string]any{"properties": map[string]any{}})
-		require.Contains(t, []int{http.StatusNotFound, http.StatusMethodNotAllowed}, resp.status, resp.raw)
-	}
-	require.Empty(t, cc.Calls())
+	cc.Identifiers["AWS::S3::Bucket"] = "BucketName"
+	collection := awsProvidersPath + "AWS.S3/Bucket"
+	body := map[string]any{"properties": map[string]any{"BucketName": "legacy"}}
+
+	resp := send(t, ucp, http.MethodPost, collection+"/:put", "", body)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	require.Equal(t, collection+"/legacy", resp.body["id"])
+	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+	require.Equal(t, 1, cc.Count("AWS::S3::Bucket"))
+	// No record is saved, so GET by the identifier in the URL finds none.
+	require.Equal(t, http.StatusNotFound, send(t, ucp, http.MethodGet, collection+"/legacy", "", nil).status)
+
+	resp = send(t, ucp, http.MethodPost, collection+"/:delete", "", body)
+	require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+	require.Zero(t, cc.Count("AWS::S3::Bucket"))
 }
