@@ -44,6 +44,20 @@ For functional-test selection and cleanup, use the [functional test guide](./run
 
 In-process integration tests under `pkg/`, such as [`pkg/ucp/integrationtests`](../../../../pkg/ucp/integrationtests), run with `make test`; no separate integration target is needed.
 
+#### RBAC policy storage
+
+Run fast policy checks with `go test -race ./pkg/ucp/authorization ./pkg/components/database/inmemory -short -count=1`. For the full 10,000-assignment/1,000-role capacity checks, run:
+
+```bash
+go test -race ./pkg/ucp/authorization -run '^(TestPolicyStoreManifestCapacity|TestPolicyCacheRateLimitedCapacity)$' -count=1 -v
+```
+
+Assignment metadata regressions cover description and principal display-label updates, clearing optional metadata, history and generation changes, identical-PUT idempotency, and preservation of identity and ownership. Only metadata is mutable; changing the assignment's role or principal identity still requires a different assignment.
+
+The manifest reports 86 index pages and an anchor smaller than 1 KiB. Cold-cache and changed-generation refreshes each use 174 GETs and must become ready within thirty seconds at 200 QPS/200 burst, including when the burst is exhausted. Immutable payload chunks split at 128 entries or 128 KiB; manifests validate their IDs, kinds, entry counts and generation. A root holds at most 128 chunks, so large entries can exhaust this bound before reaching the role/assignment count limits; oversized data fails explicitly with `PolicyCapacityExceeded`.
+
+For real backend recovery checks, omit `-short` and select `TestPolicyStoreAPIServer` (envtest setup below) or `TestPolicyStorePostgres` (requires a disposable database via `TEST_POSTGRES_URL`, as shown by `make db-init`). Missing Postgres configuration skips those checks rather than proving concurrency. These tests cover storage/readiness interfaces, not management APIs or runtime enforcement.
+
 ## Verification
 
 Run the affected tests and check that the command exits successfully before submitting your PR.
