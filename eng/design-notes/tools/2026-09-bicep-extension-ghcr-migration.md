@@ -84,7 +84,7 @@ Radius currently pins Bicep v0.42.1 in `build/tools.yaml` and `pkg/cli/bicep/too
 
 The newer Bicep trust model rejects unlisted local registries. Workflows that publish to `localhost` set `BICEP_TRUSTED_REGISTRIES` explicitly rather than disabling registry validation.
 
-`rad bicep publish-extension` enables `ociEnabled` in an isolated configuration for generic non-loopback registry targets without changing the user's configuration. Local-file and loopback targets retain the caller's working directory and configuration; this preserves HTTPS loopback behavior because Bicep's OCI loopback transport uses HTTP. Caller-relative output archives must survive temporary-directory cleanup. GHCR credentials continue to come from the Docker credential store.
+For generic OCI publishing, callers and CI explicitly enable `experimentalFeaturesEnabled.ociEnabled` in the effective `bicepconfig.json` discovered from the publishing working directory, preserving any existing settings. `rad bicep publish-extension` inherits the caller's working directory and environment without modifying configuration; caller-relative output archives survive temporary generation-directory cleanup. Existing HTTPS loopback publishing keeps OCI unset or false because Bicep's explicit OCI loopback transport uses HTTP. GHCR credentials continue to come from the Docker credential store.
 
 ### Consumer configuration
 
