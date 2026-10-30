@@ -63,7 +63,7 @@ wait_publish_workers() {
     done
     return "${status}"
 }
-trap 'trap "" INT TERM; wait_publish_workers || true' EXIT
+trap 'trap "" INT TERM; wait' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
