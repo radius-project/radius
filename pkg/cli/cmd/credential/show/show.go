@@ -113,7 +113,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run attempts to retrieve the credentials for a given cloud provider and prints them in a formatted table. It
 // returns an error if the cloud provider cannot be found or if there is an issue with writing the formatted table.
 func (r *Runner) Run(ctx context.Context) error {
-	r.Output.LogInfo("Showing credential for cloud provider %q for Radius installation %q...", r.Kind, r.Workspace.FmtConnection())
+	if r.Format != output.FormatJson {
+		r.Output.LogInfo("Showing credential for cloud provider %q for Radius installation %q...", r.Kind, r.Workspace.FmtConnection())
+	}
+
 	client, err := r.ConnectionFactory.CreateCredentialManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
