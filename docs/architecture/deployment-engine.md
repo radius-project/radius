@@ -519,7 +519,9 @@ There are three places where a `ProviderConfig` is constructed:
    [pkg/controller/reconciler/deploymenttemplate_reconciler.go](../../pkg/controller/reconciler/deploymenttemplate_reconciler.go)
    reads the provider config from the `DeploymentTemplate` CRD's
    `spec.providerConfig` field, which is populated by whoever creates the
-   Kubernetes custom resource.
+   Kubernetes custom resource. `rad bicep generate-kubernetes-manifest
+   --aws-scope` builds it with `GenerateProviderConfig()`, which gives the AWS
+   provider the owner `deploy;<resource group ID>;;`.
 
 In all cases the `ProviderConfig` travels as part of the PUT request body to
 the deployment engine, which reads it to determine the scope prefix for each
