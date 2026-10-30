@@ -242,3 +242,95 @@ func (paged) Query(ctx context.Context, query database.Query, options ...databas
 	}
 	return &database.ObjectQueryResult{Items: []database.Object{{Metadata: database.Metadata{ID: vpcID}}}}, nil
 }
+
+func Test_KeepPending(t *testing.T) {
+	rec := NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.LastApplied = map[string]any{"A": "1", "Nested": map[string]any{"B": "2", "C": "3"}, "List": []any{"x"}}
+	rec.Properties.PendingLastApplied = map[string]any{"Nested": map[string]any{"B": "changed", "D": "4"}, "List": []any{"y"}, "E": "5"}
+	rec.Properties.PendingOperation = OperationUpdate
+	KeepPending(rec)
+	require.Equal(t, map[string]any{
+		"A":      "1",
+		"Nested": map[string]any{"B": "changed", "C": "3", "D": "4"},
+		"List":   []any{"y"},
+		"E":      "5",
+	}, rec.Properties.LastApplied)
+	require.Nil(t, rec.Properties.PendingLastApplied)
+	require.Empty(t, rec.Properties.PendingOperation)
+
+	// A taken-over resource has no last-applied properties yet.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.PendingLastApplied = map[string]any{"A": "1"}
+	KeepPending(rec)
+	require.Equal(t, map[string]any{"A": "1"}, rec.Properties.LastApplied)
+
+	// Without pending values, nothing changes.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	KeepPending(rec)
+	require.Nil(t, rec.Properties.LastApplied)
+}
+
+func Test_KeepPending_Fingerprints(t *testing.T) {
+	fingerprints := func(keyID string, digests map[string]string) *datamodel.AWSFingerprints {
+		return &datamodel.AWSFingerprints{KeyID: keyID, Digests: digests}
+	}
+
+	// The update may or may not have reached AWS, so a fingerprint it changed or added is dropped, and the value is
+	// sent again. Fingerprints it did not change stay, and so do those of values it did not set.
+	rec := NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.Fingerprints = fingerprints("k", map[string]string{"Same": "a", "Changed": "b", "Other": "c"})
+	rec.Properties.PendingFingerprints = fingerprints("k", map[string]string{"Same": "a", "Changed": "x", "New": "y"})
+	KeepPending(rec)
+	require.Equal(t, fingerprints("k", map[string]string{"Same": "a", "Other": "c"}), rec.Properties.Fingerprints)
+	require.Nil(t, rec.Properties.PendingFingerprints)
+
+	// Fingerprints made with a different key, or none at all, are unusable already and stay as they are.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.Fingerprints = fingerprints("old", map[string]string{"Changed": "b"})
+	rec.Properties.PendingFingerprints = fingerprints("new", map[string]string{"Changed": "x"})
+	KeepPending(rec)
+	require.Equal(t, fingerprints("old", map[string]string{"Changed": "b"}), rec.Properties.Fingerprints)
+
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.PendingFingerprints = fingerprints("k", map[string]string{"Changed": "x"})
+	KeepPending(rec)
+	require.Nil(t, rec.Properties.Fingerprints)
+	require.Nil(t, rec.Properties.PendingFingerprints)
+}
+
+func Test_Store_DeleteAndTouchErrors(t *testing.T) {
+	store := NewStore(failingWrites{Client: inmemory.NewClient()})
+	require.Error(t, store.Delete(t.Context(), parse(t, vpcID)))
+	require.Error(t, store.DeleteIfUnchanged(t.Context(), parse(t, vpcID), "etag"))
+
+	// DeleteIfUnchanged of a record that is already gone succeeds.
+	require.NoError(t, NewStore(notFoundDB{Client: inmemory.NewClient()}).DeleteIfUnchanged(t.Context(), parse(t, vpcID), "etag"))
+
+	// Touch leaves alone a record another request saved meanwhile.
+	db := inmemory.NewClient()
+	rec := NewRecord(parse(t, vpcID), "owner")
+	_, err := NewStore(db).Save(t.Context(), rec, "")
+	require.NoError(t, err)
+	require.NoError(t, NewStore(concurrentSave{Client: db}).Touch(t.Context(), parse(t, vpcID)))
+}
+
+// failingWrites fails every delete.
+type failingWrites struct{ database.Client }
+
+func (failingWrites) Delete(ctx context.Context, id string, options ...database.DeleteOptions) error {
+	return errors.New("down")
+}
+
+// notFoundDB reports every delete as not found, as Postgres does for a missing record even with an ETag.
+type notFoundDB struct{ database.Client }
+
+func (notFoundDB) Delete(ctx context.Context, id string, options ...database.DeleteOptions) error {
+	return &database.ErrNotFound{ID: id}
+}
+
+// concurrentSave reports every save as losing a race.
+type concurrentSave struct{ database.Client }
+
+func (concurrentSave) Save(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
+	return &database.ErrConcurrency{}
+}

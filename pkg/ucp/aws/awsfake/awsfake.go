@@ -78,6 +78,13 @@ type CloudControl struct {
 	// Errors maps an operation name to an error the fake returns instead of running it.
 	Errors map[string]error
 
+	// Before maps an operation name to a function the fake runs when it receives that call, before it handles it and
+	// outside its lock. Tests use it to interleave another request while UCP waits on AWS.
+	Before map[string]func()
+
+	// PendingReads is how many status reads report a request as still in progress before it finishes.
+	PendingReads int
+
 	// FailNext, when set, makes the next accepted create, update, or delete fail with this error code when its status
 	// is read. AWS changes nothing for a failed request.
 	FailNext cctypes.HandlerErrorCode
@@ -92,6 +99,7 @@ func NewCloudControl() *CloudControl {
 		Identifiers: map[string]string{},
 		WriteOnly:   map[string][]string{},
 		Errors:      map[string]error{},
+		Before:      map[string]func(){},
 	}
 }
 
@@ -147,6 +155,17 @@ func (c *CloudControl) Calls() []Call {
 	return out
 }
 
+// before runs the Before hook for an operation once, outside the fake's lock.
+func (c *CloudControl) before(operation string) {
+	c.mu.Lock()
+	hook := c.Before[operation]
+	delete(c.Before, operation)
+	c.mu.Unlock()
+	if hook != nil {
+		hook()
+	}
+}
+
 func (c *CloudControl) record(call Call) error {
 	c.calls = append(c.calls, call)
 	return c.Errors[call.Operation]
@@ -165,6 +184,7 @@ func (c *CloudControl) accept(op cctypes.Operation, typeName string, identifier 
 
 // GetResource returns a resource, or ResourceNotFoundException.
 func (c *CloudControl) GetResource(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
+	c.before("GetResource")
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if err := c.record(Call{Operation: "GetResource", TypeName: aws.ToString(params.TypeName), Identifier: aws.ToString(params.Identifier)}); err != nil {
@@ -188,6 +208,7 @@ func (c *CloudControl) GetResource(ctx context.Context, params *cloudcontrol.Get
 // CreateResource accepts a create. A client token it has seen returns the first request instead of creating again.
 // The resource exists when the request's status is read and it succeeds.
 func (c *CloudControl) CreateResource(ctx context.Context, params *cloudcontrol.CreateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.CreateResourceOutput, error) {
+	c.before("CreateResource")
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	typeName := aws.ToString(params.TypeName)
@@ -220,6 +241,7 @@ func (c *CloudControl) CreateResource(ctx context.Context, params *cloudcontrol.
 
 // UpdateResource applies a JSON patch to a resource.
 func (c *CloudControl) UpdateResource(ctx context.Context, params *cloudcontrol.UpdateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.UpdateResourceOutput, error) {
+	c.before("UpdateResource")
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	typeName, identifier := aws.ToString(params.TypeName), aws.ToString(params.Identifier)
@@ -249,6 +271,7 @@ func (c *CloudControl) UpdateResource(ctx context.Context, params *cloudcontrol.
 
 // DeleteResource deletes a resource.
 func (c *CloudControl) DeleteResource(ctx context.Context, params *cloudcontrol.DeleteResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.DeleteResourceOutput, error) {
+	c.before("DeleteResource")
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	typeName, identifier := aws.ToString(params.TypeName), aws.ToString(params.Identifier)
@@ -267,6 +290,7 @@ func (c *CloudControl) DeleteResource(ctx context.Context, params *cloudcontrol.
 
 // GetResourceRequestStatus reports a request as finished.
 func (c *CloudControl) GetResourceRequestStatus(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
+	c.before("GetResourceRequestStatus")
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if err := c.record(Call{Operation: "GetResourceRequestStatus"}); err != nil {
@@ -275,6 +299,14 @@ func (c *CloudControl) GetResourceRequestStatus(ctx context.Context, params *clo
 	req, ok := c.requests[aws.ToString(params.RequestToken)]
 	if !ok {
 		return nil, &cctypes.RequestTokenNotFoundException{Message: aws.String("unknown request token")}
+	}
+	if c.PendingReads > 0 {
+		c.PendingReads--
+		return &cloudcontrol.GetResourceRequestStatusOutput{ProgressEvent: &cctypes.ProgressEvent{
+			Operation:       req.operation,
+			OperationStatus: cctypes.OperationStatusInProgress,
+			RequestToken:    params.RequestToken,
+		}}, nil
 	}
 	event := &cctypes.ProgressEvent{
 		Operation:       req.operation,

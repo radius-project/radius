@@ -47,6 +47,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/pkg/components/queue"
 	queueinmemory "github.com/radius-project/radius/pkg/components/queue/inmemory"
+	"github.com/radius-project/radius/pkg/retry"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -68,6 +69,9 @@ const (
 	// immutableType is create-and-delete-only, with a write-only Password.
 	immutableType = "AWS::Test::Immutable"
 
+	// secretType has an identifier AWS assigns and a write-only SecretString.
+	secretType = "AWS::Test::Secret"
+
 	providers = "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/"
 	vpcPath   = providers + "AWS.EC2/VPC/app-vpc"
 	vpc2Path  = providers + "AWS.EC2/VPC/other-vpc"
@@ -77,6 +81,7 @@ const (
 
 	clusterPath   = providers + "AWS.Test/Cluster/app-cluster"
 	immutablePath = providers + "AWS.Test/Immutable/app-immutable"
+	secretPath    = providers + "AWS.Test/Secret/app-secret"
 
 	otherOwner = "deploy;/planes/radius/local/resourceGroups/other;;"
 	password   = "p@ssw0rd-never-stored"
@@ -100,6 +105,11 @@ var harnessSchemas = map[string]string{
 		"createOnlyProperties": ["/properties/Name", "/properties/Size", "/properties/Password"],
 		"writeOnlyProperties": ["/properties/Password"],
 		"handlers": {"create": {}, "read": {}, "delete": {}}
+	}`,
+	secretType: `{
+		"primaryIdentifier": ["/properties/Id"],
+		"readOnlyProperties": ["/properties/Id"],
+		"writeOnlyProperties": ["/properties/SecretString"]
 	}`,
 }
 
@@ -127,6 +137,7 @@ func newHarness(t *testing.T) *harness {
 	cc.WriteOnly[clusterType] = []string{"MasterUserPassword", "SnapshotIdentifier"}
 	cc.Identifiers[immutableType] = "Name"
 	cc.WriteOnly[immutableType] = []string{"Password"}
+	cc.WriteOnly[secretType] = []string{"SecretString"}
 	db := inmemory.NewClient()
 	q := queueinmemory.New(queueinmemory.NewInMemQueue(time.Minute))
 	ucp_aws.MinPollInterval, ucp_aws.MaxPollInterval = time.Millisecond, time.Millisecond
@@ -965,13 +976,14 @@ func Test_SaveFailures(t *testing.T) {
 		require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
 	})
 
-	setup := func(t *testing.T) *harness {
+	setupAfter := func(t *testing.T, saves int) *harness {
 		h := newHarness(t)
 		require.Equal(t, http.StatusCreated, h.put(bktPath, map[string]any{"BucketName": "assets"}).status)
 		h.finish()
-		h.failSavesAfter(0, down)
+		h.failSavesAfter(saves, down)
 		return h
 	}
+	setup := func(t *testing.T) *harness { return setupAfter(t, 0) }
 
 	t.Run("saving the last-applied properties when nothing changed", func(t *testing.T) {
 		h := setup(t)
@@ -986,15 +998,23 @@ func Test_SaveFailures(t *testing.T) {
 	})
 
 	t.Run("removing the record of a resource AWS no longer has", func(t *testing.T) {
-		h := setup(t)
+		// The reservation saves; removing the record fails.
+		h := setupAfter(t, 1)
 		h.cc.Remove(bucketType, "assets")
 		resp := h.delete(bktPath, testOwner)
 		require.Equal(t, http.StatusInternalServerError, resp.status)
 		require.Contains(t, resp.raw, "Delete again")
 	})
 
-	t.Run("saving the delete AWS accepted", func(t *testing.T) {
+	t.Run("reserving the delete", func(t *testing.T) {
 		h := setup(t)
+		h.cc.Calls()
+		require.Equal(t, http.StatusInternalServerError, h.delete(bktPath, testOwner).status)
+		require.Empty(t, h.cc.Calls(), "AWS is not called before the reservation is saved")
+	})
+
+	t.Run("saving the delete AWS accepted", func(t *testing.T) {
+		h := setupAfter(t, 1)
 		require.Equal(t, http.StatusInternalServerError, h.delete(bktPath, testOwner).status)
 	})
 
@@ -1089,4 +1109,358 @@ func Test_Put_BodyWithoutProperties(t *testing.T) {
 	resp := h.putBody(vpcPath, testOwner, map[string]any{})
 	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
 	require.Equal(t, `{}`, h.cc.Calls()[0].Document)
+}
+
+// Test_Reservation_RejectsCompetingRequests interleaves a second request while UCP waits on AWS for the first one. The
+// record is reserved before every AWS call, so the second request gets 409 and the first one's values are kept.
+func Test_Reservation_RejectsCompetingRequests(t *testing.T) {
+	t.Run("a no-op PUT racing an update", func(t *testing.T) {
+		h := newHarness(t)
+		require.Equal(t, http.StatusCreated, h.put(bktPath, map[string]any{"BucketName": "assets"}).status)
+		h.finish()
+
+		var competing response
+		h.cc.Before["UpdateResource"] = func() {
+			competing = h.put(bktPath, map[string]any{"BucketName": "assets"})
+		}
+		resp := h.put(bktPath, map[string]any{"BucketName": "assets", "Tags": []any{"a"}})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		require.Equal(t, http.StatusConflict, competing.status, competing.raw)
+		require.Contains(t, competing.message(), "still running")
+
+		h.finish()
+		require.Equal(t, map[string]any{"BucketName": "assets", "Tags": []any{"a"}}, h.record(bktPath).Properties.LastApplied)
+
+		// A later deploy that omits the tags clears them in AWS.
+		require.Equal(t, http.StatusCreated, h.put(bktPath, map[string]any{"BucketName": "assets"}).status)
+		h.finish()
+		require.Equal(t, map[string]any{"BucketName": "assets"}, h.cc.Resource(bucketType, "assets"))
+	})
+
+	t.Run("a PUT racing a delete", func(t *testing.T) {
+		h := newHarness(t)
+		require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		h.finish()
+
+		var competing response
+		h.cc.Before["DeleteResource"] = func() {
+			competing = h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16", "EnableDnsSupport": true})
+		}
+		require.Equal(t, http.StatusAccepted, h.delete(vpcPath, testOwner).status)
+		require.Equal(t, http.StatusConflict, competing.status, competing.raw)
+
+		h.finish()
+		require.Nil(t, h.record(vpcPath))
+		require.Zero(t, h.cc.Count(vpcType))
+	})
+
+	t.Run("a DELETE racing a create", func(t *testing.T) {
+		h := newHarness(t)
+		var competing response
+		h.cc.Before["CreateResource"] = func() {
+			competing = h.delete(vpcPath, testOwner)
+		}
+		require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		require.Equal(t, http.StatusConflict, competing.status, competing.raw)
+		h.finish()
+		require.Equal(t, "id-1", h.record(vpcPath).Properties.AWSIdentifier)
+	})
+}
+
+// Test_Reservation_Recovery covers a reservation that UCP saved but never followed with a tracked request, for example
+// because UCP stopped while it called AWS. Once it is stale, the next request recovers it by operation.
+func Test_Reservation_Recovery(t *testing.T) {
+	stale := func(t *testing.T) {
+		records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+		t.Cleanup(func() { records.Now = time.Now })
+	}
+
+	t.Run("update: the pending properties count as applied", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.Put(bucketType, "assets", map[string]any{"BucketName": "assets", "Tags": []any{"a"}})
+		h.saveRecord(bktPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = "assets"
+			rec.Properties.LastApplied = map[string]any{"BucketName": "assets"}
+			rec.Properties.PendingLastApplied = map[string]any{"BucketName": "assets", "Tags": []any{"a"}}
+			rec.Properties.PendingOperation = records.OperationUpdate
+			rec.SetProvisioningState(v1.ProvisioningStateUpdating)
+		})
+		// While the reservation is fresh, a request waits.
+		require.Equal(t, http.StatusConflict, h.put(bktPath, map[string]any{"BucketName": "assets"}).status)
+
+		stale(t)
+		h.cc.Calls()
+		// The deploy omits the tags the interrupted update may have set, so they are cleared.
+		resp := h.put(bktPath, map[string]any{"BucketName": "assets"})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Contains(t, calls[len(calls)-1].Document, `"op":"remove","path":"/Tags"`)
+		records.Now = time.Now
+		h.finish()
+		require.Equal(t, map[string]any{"BucketName": "assets"}, h.cc.Resource(bucketType, "assets"))
+	})
+
+	t.Run("delete: the delete is sent again", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.Put(vpcType, "vpc-1", map[string]any{"VpcId": "vpc-1"})
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = "vpc-1"
+			rec.Properties.PendingOperation = records.OperationDelete
+			rec.SetProvisioningState(v1.ProvisioningStateDeleting)
+		})
+		stale(t)
+		resp := h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+		records.Now = time.Now
+		h.finish()
+		require.Nil(t, h.record(vpcPath))
+		require.Zero(t, h.cc.Count(vpcType))
+	})
+
+	t.Run("delete: a PUT resumes it and retries", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = "vpc-gone"
+			rec.Properties.PendingOperation = records.OperationDelete
+			rec.SetProvisioningState(v1.ProvisioningStateDeleting)
+		})
+		stale(t)
+		resp := h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"})
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "interrupted delete")
+		require.Nil(t, h.record(vpcPath), "AWS no longer had it, so the record is removed")
+	})
+
+	t.Run("delete: AWS fails, then the error is returned", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = "vpc-1"
+			rec.Properties.PendingOperation = records.OperationDelete
+			rec.SetProvisioningState(v1.ProvisioningStateDeleting)
+		})
+		h.cc.Errors["DeleteResource"] = awsError(&smithy.GenericAPIError{Code: "Throttling", Message: "slow", Fault: smithy.FaultServer})
+		stale(t)
+		require.Equal(t, http.StatusInternalServerError, h.put(vpcPath, map[string]any{}).status)
+		rec := h.record(vpcPath)
+		require.Empty(t, rec.Properties.PendingOperation)
+		require.False(t, records.IsRunning(rec), "the reservation is released, so the next request does not wait")
+	})
+
+	t.Run("create: the create is sent again with the client token", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.ClientToken = "6f1d1b8b-6a29-4d47-8f0b-5ad7c1d3e111"
+			rec.Properties.PendingOperation = records.OperationCreate
+			rec.SetProvisioningState(v1.ProvisioningStateProvisioning)
+		})
+		stale(t)
+		require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		calls := h.cc.Calls()
+		require.Equal(t, "6f1d1b8b-6a29-4d47-8f0b-5ad7c1d3e111", calls[len(calls)-1].ClientToken)
+	})
+}
+
+// Test_Delete_UncertainCreate covers a DELETE of a record whose first create may have reached AWS: it has a client
+// token but no identifier.
+func Test_Delete_UncertainCreate(t *testing.T) {
+	t.Run("create accepted, request token save fails, then DELETE", func(t *testing.T) {
+		h := newHarness(t)
+		// The reservation saves; saving the request AWS accepted fails.
+		allow := 1
+		inner := h.db
+		h.db = saveFailingDB{Client: inner, allow: &allow, err: errors.New("database is down")}
+		require.Equal(t, http.StatusInternalServerError, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		h.db = inner
+		require.Equal(t, 1, h.cc.Count(vpcType))
+		rec := h.record(vpcPath)
+		require.Empty(t, rec.Properties.AWSIdentifier)
+		require.NotEmpty(t, rec.Properties.ClientToken)
+
+		// The reservation is still fresh, so the DELETE does not remove the record.
+		resp := h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.NotNil(t, h.record(vpcPath))
+
+		// Once it is stale, the DELETE recovers the create from AWS and deletes the VPC.
+		records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+		t.Cleanup(func() { records.Now = time.Now })
+		h.cc.Calls()
+		resp = h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"CreateResource", "DeleteResource"}, operations(calls))
+		require.Equal(t, rec.Properties.ClientToken, calls[0].ClientToken)
+		require.Equal(t, "id-1", calls[1].Identifier)
+		records.Now = time.Now
+		h.finish()
+		require.Nil(t, h.record(vpcPath))
+		require.Zero(t, h.cc.Count(vpcType))
+	})
+
+	uncertain := func(t *testing.T) *harness {
+		h := newHarness(t)
+		h.cc.Errors["CreateResource"] = errors.New("connection reset")
+		require.Equal(t, http.StatusInternalServerError, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		delete(h.cc.Errors, "CreateResource")
+		h.cc.Calls()
+		return h
+	}
+
+	t.Run("AWS never had the create: it is created and then deleted", func(t *testing.T) {
+		h := uncertain(t)
+		require.Zero(t, h.cc.Count(vpcType))
+		resp := h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+		h.finish()
+		require.Nil(t, h.record(vpcPath))
+		require.Zero(t, h.cc.Count(vpcType))
+	})
+
+	t.Run("the create is still running: 409 and the create is tracked", func(t *testing.T) {
+		h := uncertain(t)
+		h.cc.PendingReads = 1
+		resp := h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "still running in AWS")
+		h.finish()
+		rec := h.record(vpcPath)
+		require.Equal(t, "id-1", rec.Properties.AWSIdentifier)
+		require.Empty(t, rec.Properties.ClientToken)
+
+		require.Equal(t, http.StatusAccepted, h.delete(vpcPath, testOwner).status)
+		h.finish()
+		require.Zero(t, h.cc.Count(vpcType))
+	})
+
+	t.Run("the create failed in AWS: only the record is removed", func(t *testing.T) {
+		h := uncertain(t)
+		h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest
+		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
+		require.Nil(t, h.record(vpcPath))
+	})
+
+	t.Run("AWS rejects the create: only the record is removed", func(t *testing.T) {
+		h := uncertain(t)
+		h.cc.Errors["CreateResource"] = awsError(&smithy.GenericAPIError{Code: "ValidationException", Message: "bad", Fault: smithy.FaultClient})
+		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
+		require.Nil(t, h.record(vpcPath))
+	})
+
+	t.Run("the create call fails: the record is kept", func(t *testing.T) {
+		h := uncertain(t)
+		h.cc.Errors["CreateResource"] = errors.New("connection reset")
+		require.Equal(t, http.StatusInternalServerError, h.delete(vpcPath, testOwner).status)
+		rec := h.record(vpcPath)
+		require.NotEmpty(t, rec.Properties.ClientToken)
+		require.False(t, records.IsRunning(rec))
+	})
+
+	t.Run("reading the create status fails: the record is kept", func(t *testing.T) {
+		h := uncertain(t)
+		h.cc.Errors["GetResourceRequestStatus"] = errors.New("throttled")
+		require.Equal(t, http.StatusInternalServerError, h.delete(vpcPath, testOwner).status)
+		rec := h.record(vpcPath)
+		require.NotEmpty(t, rec.Properties.ClientToken)
+		require.False(t, records.IsRunning(rec))
+	})
+
+	t.Run("a record with no client token has nothing in AWS", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {})
+		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
+		require.Empty(t, h.cc.Calls())
+	})
+}
+
+// Test_EngineEdgeCases covers inputs and failures the main flows do not reach.
+func Test_EngineEdgeCases(t *testing.T) {
+	t.Run("a schema that is not JSON", func(t *testing.T) {
+		h := newHarness(t)
+		harnessSchemas["AWS::Test::BadSchema"] = `not json`
+		defer delete(harnessSchemas, "AWS::Test::BadSchema")
+		require.Equal(t, http.StatusInternalServerError, h.put(providers+"AWS.Test/BadSchema/x", map[string]any{}).status)
+		require.Empty(t, h.cc.Calls())
+	})
+
+	t.Run("a schema without a primary identifier on a create retry", func(t *testing.T) {
+		h := newHarness(t)
+		harnessSchemas["AWS::Test::NoIdentifier"] = `{}`
+		defer delete(harnessSchemas, "AWS::Test::NoIdentifier")
+		path := providers + "AWS.Test/NoIdentifier/x"
+		h.saveRecord(path, func(rec *datamodel.AWSResource) {
+			rec.Properties.ClientToken = "6f1d1b8b-6a29-4d47-8f0b-5ad7c1d3e111"
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		})
+		resp := h.put(path, map[string]any{})
+		require.Equal(t, http.StatusInternalServerError, resp.status)
+		require.Contains(t, resp.raw, "primaryIdentifier")
+	})
+
+	t.Run("AWS returns properties that are not JSON", func(t *testing.T) {
+		options := setupTest(t)
+		saveTestRecord(t, options, vpcPath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = "vpc-1" })
+		options.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			&cloudformation.DescribeTypeOutput{Schema: aws.String(harnessSchemas[vpcType])}, nil).AnyTimes()
+		options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			&cloudcontrol.GetResourceOutput{ResourceDescription: &cctypes.ResourceDescription{Identifier: aws.String("vpc-1"), Properties: aws.String("not json")}}, nil).Times(2)
+
+		for _, run := range []struct {
+			factory controllerFactory
+			method  string
+		}{{newTestPutController, http.MethodPut}, {NewGetAWSResource, http.MethodGet}} {
+			request, err := http.NewRequest(run.method, vpcPath, strings.NewReader(`{"properties": {}}`))
+			require.NoError(t, err)
+			withOwner(request)
+			controller, err := run.factory(options.ControllerOptions(), options.Clients())
+			require.NoError(t, err)
+			_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
+			require.Error(t, err, run.method)
+		}
+	})
+
+	t.Run("removing the record fails after AWS rejected a create", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.Errors["CreateResource"] = awsError(&smithy.GenericAPIError{Code: "ValidationException", Message: "bad", Fault: smithy.FaultClient})
+		h.failSavesAfter(1, errors.New("database is down"))
+		require.Equal(t, http.StatusBadRequest, h.put(vpcPath, map[string]any{}).status)
+	})
+
+	t.Run("recovering a create with no pending values", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.ClientToken = "6f1d1b8b-6a29-4d47-8f0b-5ad7c1d3e111"
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		})
+		require.Equal(t, http.StatusAccepted, h.delete(vpcPath, testOwner).status)
+		require.Equal(t, `{}`, h.cc.Calls()[0].Document)
+	})
+
+	t.Run("saving a recovered create fails", func(t *testing.T) {
+		for name, pending := range map[string]int{"after it succeeded": 0, "while it runs": 1} {
+			t.Run(name, func(t *testing.T) {
+				h := newHarness(t)
+				h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {
+					rec.Properties.ClientToken = "6f1d1b8b-6a29-4d47-8f0b-5ad7c1d3e111"
+					rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+				})
+				h.cc.PendingReads = pending
+				// The reservation saves; the next save fails.
+				h.failSavesAfter(1, errors.New("database is down"))
+				require.Equal(t, http.StatusInternalServerError, h.delete(vpcPath, testOwner).status)
+			})
+		}
+	})
+
+	t.Run("POST /:get with a body that is not JSON", func(t *testing.T) {
+		h := newHarness(t)
+		req, err := http.NewRequest(http.MethodPost, providers+"AWS.EC2/VPC/:get", strings.NewReader("{"))
+		require.NoError(t, err)
+		controller, err := NewGetAWSResourceWithPost(h.options(), h.clients(), retry.NewNoOpRetryer())
+		require.NoError(t, err)
+		resp, err := controller.Run(rpctest.NewARMRequestContext(req), nil, req)
+		require.NoError(t, err)
+		w := httptest.NewRecorder()
+		require.NoError(t, resp.Apply(t.Context(), w, req))
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
 }

@@ -252,6 +252,43 @@ func ClearPending(rec *datamodel.AWSResource) {
 	rec.Properties.PendingOperation = ""
 }
 
+// KeepPending treats the values of an interrupted update as applied: the update may have reached AWS, so Radius owns
+// the pending properties, and a later deploy that omits one clears it. The pending values are then dropped.
+//
+// Whether AWS has a write-only value the update sent cannot be known, so its fingerprint is not kept as applied, and
+// the previous one is dropped too. The next deploy sends that value again. Fingerprints that the update did not change
+// stay.
+func KeepPending(rec *datamodel.AWSResource) {
+	if rec.Properties.PendingLastApplied != nil {
+		if rec.Properties.LastApplied == nil {
+			rec.Properties.LastApplied = map[string]any{}
+		}
+		merge(rec.Properties.LastApplied, rec.Properties.PendingLastApplied)
+	}
+	previous, pending := rec.Properties.Fingerprints, rec.Properties.PendingFingerprints
+	if previous != nil && pending != nil && previous.KeyID == pending.KeyID {
+		for path, digest := range pending.Digests {
+			if previous.Digests[path] != digest {
+				delete(previous.Digests, path)
+			}
+		}
+	}
+	ClearPending(rec)
+}
+
+// merge copies src into dst. When both hold an object under the same key, the objects are merged.
+func merge(dst map[string]any, src map[string]any) {
+	for k, v := range src {
+		srcMap, srcIsMap := v.(map[string]any)
+		dstMap, dstIsMap := dst[k].(map[string]any)
+		if srcIsMap && dstIsMap {
+			merge(dstMap, srcMap)
+			continue
+		}
+		dst[k] = v
+	}
+}
+
 // ApplyPending finishes a successful create or update: the pending last-applied properties and fingerprints become
 // the last-applied ones, and the operation, the tokens, and the pending values are cleared. Clearing the client token
 // marks the first create as finished. The request token moves to LastRequestToken, so a redelivered operation reports

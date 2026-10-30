@@ -18,6 +18,7 @@ package awsproxy
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,8 +26,10 @@ import (
 	"uuid"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -142,4 +145,17 @@ func Test_GetAWSOperation_NoStatusManager(t *testing.T) {
 	require.NoError(t, err)
 	_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
 	require.ErrorContains(t, err, "status manager is not configured")
+}
+
+func Test_GetAWSOperation_StatusManagerFails(t *testing.T) {
+	sm := statusmanager.NewMockStatusManager(gomock.NewController(t))
+	sm.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("database is down")).Times(2)
+	for _, factory := range []func(armrpc_controller.Options) (armrpc_controller.Controller, error){NewGetAWSOperationStatuses, NewGetAWSOperationResults} {
+		request, err := http.NewRequest(http.MethodGet, operationPath("operationStatuses", uuid.New().String()), nil)
+		require.NoError(t, err)
+		controller, err := factory(armrpc_controller.Options{StatusManager: sm})
+		require.NoError(t, err)
+		_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
+		require.ErrorContains(t, err, "database is down")
+	}
 }

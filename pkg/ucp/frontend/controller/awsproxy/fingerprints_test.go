@@ -19,6 +19,7 @@ package awsproxy
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"maps"
 	"math"
 	"net/http"
@@ -26,12 +27,14 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 
 	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -617,4 +620,129 @@ func Test_IsCreateOnly(t *testing.T) {
 	require.False(t, schema.isCreateOnly("Password"))
 	require.False(t, schema.isCreateOnly("SnapshotKey"))
 	require.False(t, schema.isCreateOnly("Users/*/Secret"))
+}
+
+// Test_WriteOnly_FingerprintsAreReserved checks that the new fingerprints are on the record that UCP reserves before
+// it calls AWS, for a create and an update.
+func Test_WriteOnly_FingerprintsAreReserved(t *testing.T) {
+	h := newHarness(t)
+	var reserved *datamodel.AWSResource
+	h.cc.Before["CreateResource"] = func() { reserved = h.record(dbPath) }
+	require.Equal(t, http.StatusCreated, h.put(dbPath, dbProperties(password)).status)
+	require.Equal(t, records.OperationCreate, reserved.Properties.PendingOperation)
+	require.Contains(t, reserved.Properties.PendingFingerprints.Digests, "Password")
+	created := reserved.Properties.PendingFingerprints
+	h.finish()
+
+	h.cc.Before["UpdateResource"] = func() { reserved = h.record(dbPath) }
+	require.Equal(t, http.StatusCreated, h.put(dbPath, dbProperties(newPassword)).status)
+	require.Equal(t, records.OperationUpdate, reserved.Properties.PendingOperation)
+	require.Equal(t, created, reserved.Properties.Fingerprints)
+	require.NotEqual(t, created.Digests["Password"], reserved.Properties.PendingFingerprints.Digests["Password"])
+}
+
+// Test_WriteOnly_InterruptedUpdate checks an update UCP reserved but never tracked. UCP cannot tell whether AWS has
+// the values it sent, so their fingerprints are dropped and the next deploy sends them again. Values the update did
+// not change are still not sent.
+func Test_WriteOnly_InterruptedUpdate(t *testing.T) {
+	stale := func(t *testing.T) {
+		records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+		t.Cleanup(func() { records.Now = time.Now })
+	}
+	// changed sets a new password at the top level only.
+	changed := dbProperties(password)
+	changed["Password"] = newPassword
+
+	requireResent := func(t *testing.T, h *harness) {
+		t.Helper()
+		h.cc.Calls()
+		resp := h.put(dbPath, changed)
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"add /Password"}, patchOps(t, calls[len(calls)-1].Document))
+		records.Now = time.Now
+		h.finish()
+		require.Equal(t, newPassword, h.cc.Resource(dbType, "db")["Password"])
+
+		resp = h.put(dbPath, changed)
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+	}
+
+	t.Run("AWS never got the update", func(t *testing.T) {
+		h := deployed(t, dbPath, dbProperties(password))
+		pending := h.restart(testFingerprintKey)
+		var fingerprints *datamodel.AWSFingerprints
+		pending.cc.Before["UpdateResource"] = func() {
+			fingerprints = h.record(dbPath).Properties.PendingFingerprints
+		}
+		require.Equal(t, http.StatusCreated, pending.put(dbPath, changed).status)
+		h.finish()
+		// Put the record back as if UCP stopped after the reservation and before it called AWS.
+		h.saveRecord(dbPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.Fingerprints.Digests["Password"] = "previous"
+			rec.Properties.PendingFingerprints = fingerprints
+			rec.Properties.PendingLastApplied = rec.Properties.LastApplied
+			rec.Properties.PendingOperation = records.OperationUpdate
+			rec.SetProvisioningState(v1.ProvisioningStateUpdating)
+		})
+		resource := h.cc.Resource(dbType, "db")
+		resource["Password"] = password
+		h.cc.Put(dbType, "db", resource)
+		stale(t)
+		requireResent(t, h)
+	})
+
+	t.Run("AWS applied the update and UCP failed to save it", func(t *testing.T) {
+		h := deployed(t, dbPath, dbProperties(password))
+		allow := 1
+		inner := h.db
+		h.db = saveFailingDB{Client: inner, allow: &allow, err: errors.New("database is down")}
+		require.Equal(t, http.StatusInternalServerError, h.put(dbPath, changed).status)
+		h.db = inner
+		require.Empty(t, h.record(dbPath).Properties.RequestToken)
+		require.NotNil(t, h.record(dbPath).Properties.PendingFingerprints)
+		h.finish()
+		stale(t)
+		requireResent(t, h)
+	})
+}
+
+// Test_WriteOnly_RecoverCreate checks the create a DELETE sends again to find an uncertain create. It never sends a
+// write-only value, and the fingerprints of the original PUT are not kept, because that resend may be what created
+// the resource.
+func Test_WriteOnly_RecoverCreate(t *testing.T) {
+	properties := map[string]any{"Description": "d", "SecretString": password}
+	h := newHarness(t)
+	h.cc.Errors["CreateResource"] = errors.New("connection reset")
+	require.Equal(t, http.StatusInternalServerError, h.put(secretPath, properties).status)
+	delete(h.cc.Errors, "CreateResource")
+	rec := h.record(secretPath)
+	require.Empty(t, rec.Properties.AWSIdentifier)
+	require.NotNil(t, rec.Properties.PendingFingerprints)
+	h.cc.Calls()
+
+	h.cc.PendingReads = 1
+	resp := h.delete(secretPath, testOwner)
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	calls := h.cc.Calls()
+	require.Equal(t, "CreateResource", calls[0].Operation)
+	require.Equal(t, rec.Properties.ClientToken, calls[0].ClientToken)
+	require.NotContains(t, calls[0].Document, password)
+	require.Nil(t, h.record(secretPath).Properties.PendingFingerprints)
+	h.finish()
+	rec = h.record(secretPath)
+	require.Equal(t, "id-1", rec.Properties.AWSIdentifier)
+	require.Nil(t, rec.Properties.Fingerprints)
+
+	// The next deploy has no usable fingerprint, so it sends the secret once and saves its fingerprint.
+	h.cc.Calls()
+	resp = h.put(secretPath, properties)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	calls = h.cc.Calls()
+	require.Equal(t, []string{"add /SecretString"}, patchOps(t, calls[len(calls)-1].Document))
+	h.finish()
+	require.Contains(t, h.record(secretPath).Properties.Fingerprints.Digests, "SecretString")
+	resp = h.put(secretPath, properties)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 }
