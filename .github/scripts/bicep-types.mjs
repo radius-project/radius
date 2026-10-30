@@ -242,6 +242,23 @@ export async function capture(source, directory, registry, run = tool) {
 
 /** Check the small Bicep data contract; artifact transfer and OCI operations stay with Actions/ORAS. */
 export async function prepare(archive, source, directory, run = tool) {
+  const bundle = await prepareBundle(archive, source, directory, {}, run);
+  return {
+    ...bundle,
+    publicationAttempt: source.generationAttempt,
+    status: "failed",
+    ghcr: { reference: targets.ghcr },
+    acr: { reference: targets.acr }
+  };
+}
+
+export async function prepareBundle(
+  archive,
+  source,
+  directory,
+  annotations = {},
+  run = tool
+) {
   const metadata = JSON.parse(
     await run(["tar", "-xOf", archive, "source.json"])
   );
@@ -315,6 +332,7 @@ export async function prepare(archive, source, directory, run = tool) {
   ]);
   manifest.annotations = {
     ...manifest.annotations,
+    ...annotations,
     "org.opencontainers.image.source": `https://github.com/${source.repository}`,
     "org.opencontainers.image.revision": source.commit
   };
@@ -330,11 +348,7 @@ export async function prepare(archive, source, directory, run = tool) {
   ]);
   return {
     source: metadata.source,
-    manifestDigest: sha256(stamped),
-    publicationAttempt: source.generationAttempt,
-    status: "failed",
-    ghcr: { reference: targets.ghcr },
-    acr: { reference: targets.acr }
+    manifestDigest: sha256(stamped)
   };
 }
 
