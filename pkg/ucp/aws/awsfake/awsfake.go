@@ -82,6 +82,9 @@ type CloudControl struct {
 	// outside its lock. Tests use it to interleave another request while UCP waits on AWS.
 	Before map[string]func()
 
+	// PendingReads is how many status reads report a request as still in progress before it finishes.
+	PendingReads int
+
 	// FailNext, when set, makes the next accepted create, update, or delete fail with this error code when its status
 	// is read. AWS changes nothing for a failed request.
 	FailNext cctypes.HandlerErrorCode
@@ -295,6 +298,14 @@ func (c *CloudControl) GetResourceRequestStatus(ctx context.Context, params *clo
 	req, ok := c.requests[aws.ToString(params.RequestToken)]
 	if !ok {
 		return nil, &cctypes.RequestTokenNotFoundException{Message: aws.String("unknown request token")}
+	}
+	if c.PendingReads > 0 {
+		c.PendingReads--
+		return &cloudcontrol.GetResourceRequestStatusOutput{ProgressEvent: &cctypes.ProgressEvent{
+			Operation:       req.operation,
+			OperationStatus: cctypes.OperationStatusInProgress,
+			RequestToken:    params.RequestToken,
+		}}, nil
 	}
 	event := &cctypes.ProgressEvent{
 		Operation:       req.operation,

@@ -146,7 +146,7 @@ func (e *engine) checkRecord(ctx context.Context, r *request, rec *datamodel.AWS
 //     them. A later deploy that omits one clears it. The request continues.
 //   - delete: the delete is sent again. A DELETE gets its response; a PUT gets 409 and retries when it finishes.
 //   - create: the record keeps its client token and pending values, and the request continues. A PUT sends the create
-//     again with the same token.
+//     again with the same token, and a DELETE recovers the create first (see recoverCreate).
 func (e *engine) resume(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, method v1.OperationMethod) (*datamodel.AWSResource, string, armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	op := records.PendingOperation(rec)
@@ -632,11 +632,11 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 }
 
 // startDelete reserves the record and deletes its AWS resource, and the worker removes the record when AWS finishes.
-// A record with no identifier has nothing in AWS UCP can find, so only the record is removed.
+// A record with no identifier and no client token has nothing in AWS, so only the record is removed. One with a client
+// token has a create that may have reached AWS, which recoverCreate finds first.
 func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	if rec.Properties.AWSIdentifier == "" {
-		// AWS has not assigned an identifier yet, so there is nothing in AWS UCP can find to delete.
+	if rec.Properties.AWSIdentifier == "" && !records.IsFirstCreate(rec) {
 		return e.removeRecord(ctx, r.id)
 	}
 
@@ -649,6 +649,13 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	if resp != nil || err != nil {
 		return resp, err
 	}
+	if rec.Properties.AWSIdentifier == "" {
+		etag, resp, err = e.recoverCreate(ctx, r, rec, etag)
+		if resp != nil || err != nil {
+			return resp, err
+		}
+	}
+
 	identifier := rec.Properties.AWSIdentifier
 	logger.Info("Deleting AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier)
 	response, err := e.clients.CloudControl.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
@@ -670,6 +677,77 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 		return nil, err
 	}
 	return e.asyncResponse(r.id, map[string]any{}, 202, operationID), nil
+}
+
+// recoverCreate finds the AWS resource of a first create that may have reached AWS, before a DELETE: the record has a
+// client token but no identifier, for example because UCP stopped after AWS accepted the create and before it saved
+// the request. It sends the create again with the record's client token, so Cloud Control returns the original
+// request when AWS accepted it, and reads that request's status:
+//
+//   - succeeded: the record gets the identifier, and the delete continues.
+//   - failed, or AWS rejects the create: nothing exists, so only the record is removed.
+//   - still running: UCP tracks the create and returns 409, and the caller deletes again when it finishes.
+//
+// When AWS never had the create, the resend creates the resource, and the delete then removes it. Cloud Control keeps a
+// client token for 36 hours, so after that a resend cannot find the original request and creates a second resource.
+// The resend sends the pending properties, which have no write-only values. Cloud Control does not need them to
+// return the original request.
+func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (string, armrpc_rest.Response, error) {
+	desired := rec.Properties.PendingLastApplied
+	if desired == nil {
+		desired = map[string]any{}
+	}
+	desiredState, err := json.Marshal(desired)
+	if err != nil {
+		return "", nil, err
+	}
+
+	response, err := e.clients.CloudControl.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
+		TypeName:     aws.String(r.typeName),
+		DesiredState: aws.String(string(desiredState)),
+		ClientToken:  aws.String(rec.Properties.ClientToken),
+	}, CloudControlRegionOption(r.region))
+	if ucp_aws.IsClientFault(err) {
+		resp, err := e.removeRecord(ctx, r.id)
+		return "", resp, err
+	} else if err != nil {
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			rec.Properties.PendingOperation = records.OperationCreate
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		})
+		resp, err := ucp_aws.HandleAWSError(ctx, err)
+		return "", resp, err
+	}
+
+	requestToken := aws.ToString(response.ProgressEvent.RequestToken)
+	status, err := ucp_aws.GetRequestStatus(ctx, e.clients.CloudControl, r.region, requestToken)
+	if err != nil {
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			rec.Properties.PendingOperation = records.OperationCreate
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		})
+		resp, err := ucp_aws.HandleAWSError(ctx, err)
+		return "", resp, err
+	}
+	switch {
+	case !status.Done:
+		if _, err := e.track(ctx, r, rec, etag, v1.OperationPut, records.OperationCreate, requestToken); err != nil {
+			return "", nil, err
+		}
+		return "", conflict("A create of the AWS resource %q is still running in AWS. Delete again when it finishes.", r.id.Name()), nil
+	case !status.Succeeded:
+		resp, err := e.removeRecord(ctx, r.id)
+		return "", resp, err
+	}
+
+	rec.Properties.AWSIdentifier = status.Identifier
+	rec.Properties.ClientToken = ""
+	etag, err = e.store.Save(ctx, rec, etag)
+	if err != nil {
+		resp, err := saveError(r.id, err)
+		return "", resp, err
+	}
+	return etag, nil, nil
 }
 
 // removeRecord removes the record when AWS has nothing to delete. When that fails, the request fails, and the caller

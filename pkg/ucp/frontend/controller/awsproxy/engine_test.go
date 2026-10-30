@@ -1212,3 +1212,115 @@ func Test_Reservation_Recovery(t *testing.T) {
 		require.Equal(t, "6f1d1b8b-6a29-4d47-8f0b-5ad7c1d3e111", calls[len(calls)-1].ClientToken)
 	})
 }
+
+// Test_Delete_UncertainCreate covers a DELETE of a record whose first create may have reached AWS: it has a client
+// token but no identifier.
+func Test_Delete_UncertainCreate(t *testing.T) {
+	t.Run("create accepted, request token save fails, then DELETE", func(t *testing.T) {
+		h := newHarness(t)
+		// The reservation saves; saving the request AWS accepted fails.
+		allow := 1
+		inner := h.db
+		h.db = saveFailingDB{Client: inner, allow: &allow, err: errors.New("database is down")}
+		require.Equal(t, http.StatusInternalServerError, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		h.db = inner
+		require.Equal(t, 1, h.cc.Count(vpcType))
+		rec := h.record(vpcPath)
+		require.Empty(t, rec.Properties.AWSIdentifier)
+		require.NotEmpty(t, rec.Properties.ClientToken)
+
+		// The reservation is still fresh, so the DELETE does not remove the record.
+		resp := h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.NotNil(t, h.record(vpcPath))
+
+		// Once it is stale, the DELETE recovers the create from AWS and deletes the VPC.
+		records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+		t.Cleanup(func() { records.Now = time.Now })
+		h.cc.Calls()
+		resp = h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"CreateResource", "DeleteResource"}, operations(calls))
+		require.Equal(t, rec.Properties.ClientToken, calls[0].ClientToken)
+		require.Equal(t, "id-1", calls[1].Identifier)
+		records.Now = time.Now
+		h.finish()
+		require.Nil(t, h.record(vpcPath))
+		require.Zero(t, h.cc.Count(vpcType))
+	})
+
+	uncertain := func(t *testing.T) *harness {
+		h := newHarness(t)
+		h.cc.Errors["CreateResource"] = errors.New("connection reset")
+		require.Equal(t, http.StatusInternalServerError, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		delete(h.cc.Errors, "CreateResource")
+		h.cc.Calls()
+		return h
+	}
+
+	t.Run("AWS never had the create: it is created and then deleted", func(t *testing.T) {
+		h := uncertain(t)
+		require.Zero(t, h.cc.Count(vpcType))
+		resp := h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+		h.finish()
+		require.Nil(t, h.record(vpcPath))
+		require.Zero(t, h.cc.Count(vpcType))
+	})
+
+	t.Run("the create is still running: 409 and the create is tracked", func(t *testing.T) {
+		h := uncertain(t)
+		h.cc.PendingReads = 1
+		resp := h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "still running in AWS")
+		h.finish()
+		rec := h.record(vpcPath)
+		require.Equal(t, "id-1", rec.Properties.AWSIdentifier)
+		require.Empty(t, rec.Properties.ClientToken)
+
+		require.Equal(t, http.StatusAccepted, h.delete(vpcPath, testOwner).status)
+		h.finish()
+		require.Zero(t, h.cc.Count(vpcType))
+	})
+
+	t.Run("the create failed in AWS: only the record is removed", func(t *testing.T) {
+		h := uncertain(t)
+		h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest
+		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
+		require.Nil(t, h.record(vpcPath))
+	})
+
+	t.Run("AWS rejects the create: only the record is removed", func(t *testing.T) {
+		h := uncertain(t)
+		h.cc.Errors["CreateResource"] = awsError(&smithy.GenericAPIError{Code: "ValidationException", Message: "bad", Fault: smithy.FaultClient})
+		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
+		require.Nil(t, h.record(vpcPath))
+	})
+
+	t.Run("the create call fails: the record is kept", func(t *testing.T) {
+		h := uncertain(t)
+		h.cc.Errors["CreateResource"] = errors.New("connection reset")
+		require.Equal(t, http.StatusInternalServerError, h.delete(vpcPath, testOwner).status)
+		rec := h.record(vpcPath)
+		require.NotEmpty(t, rec.Properties.ClientToken)
+		require.False(t, records.IsRunning(rec))
+	})
+
+	t.Run("reading the create status fails: the record is kept", func(t *testing.T) {
+		h := uncertain(t)
+		h.cc.Errors["GetResourceRequestStatus"] = errors.New("throttled")
+		require.Equal(t, http.StatusInternalServerError, h.delete(vpcPath, testOwner).status)
+		rec := h.record(vpcPath)
+		require.NotEmpty(t, rec.Properties.ClientToken)
+		require.False(t, records.IsRunning(rec))
+	})
+
+	t.Run("a record with no client token has nothing in AWS", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {})
+		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
+		require.Empty(t, h.cc.Calls())
+	})
+}
