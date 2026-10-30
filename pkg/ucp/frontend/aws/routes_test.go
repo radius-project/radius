@@ -19,11 +19,11 @@ package aws
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -152,9 +152,10 @@ func Test_Initialize_FingerprintKey(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, want.ID(), key.ID())
 
-		log := strings.Join(*logs, "\n")
-		require.Contains(t, log, `"msg"="Loaded the AWS fingerprint key" "keyID"="`+want.ID()+`"`)
-		require.NotContains(t, log, `"error"`)
+		require.Contains(t, *logs, map[string]any{"logger": "", "level": float64(0), "msg": "Loaded the AWS fingerprint key", "keyID": want.ID()})
+		for _, entry := range *logs {
+			require.NotContains(t, entry, "error")
+		}
 	})
 
 	t.Run("starts without the key and keeps the error", func(t *testing.T) {
@@ -169,19 +170,20 @@ func Test_Initialize_FingerprintKey(t *testing.T) {
 		require.NotNil(t, handler)
 
 		// The error is logged when UCP starts, before any request needs the key.
-		var errorLogs []string
-		for _, line := range *logs {
-			if strings.Contains(line, `"error"=`) {
-				errorLogs = append(errorLogs, line)
-			}
-		}
-		require.Len(t, errorLogs, 1)
-		require.Contains(t, errorLogs[0], `"msg"="The AWS fingerprint key is not available; AWS resource PUTs that need a fingerprint of a write-only value will fail"`)
-		require.Contains(t, errorLogs[0], `"error"="failed to read the AWS fingerprint key from the Kubernetes Secret radius-aws-fingerprint-key mounted at `+path)
-		require.Contains(t, errorLogs[0], `"secret"="radius-aws-fingerprint-key"`)
-
 		key, err := module.FingerprintKey()
 		require.Nil(t, key)
+		var errorLogs []map[string]any
+		for _, entry := range *logs {
+			if _, ok := entry["error"]; ok {
+				errorLogs = append(errorLogs, entry)
+			}
+		}
+		require.Equal(t, []map[string]any{{
+			"logger": "",
+			"msg":    "The AWS fingerprint key is not available; AWS resource PUTs that need a fingerprint of a write-only value will fail",
+			"error":  err.Error(),
+			"secret": ucp_aws.FingerprintKeySecretName,
+		}}, errorLogs)
 		require.ErrorIs(t, err, fs.ErrNotExist)
 		require.ErrorContains(t, err, ucp_aws.FingerprintKeySecretName)
 		require.ErrorContains(t, err, path)
@@ -201,12 +203,14 @@ func Test_Initialize_FingerprintKey(t *testing.T) {
 	})
 }
 
-// captureLogs returns a context whose logger records each log line.
-func captureLogs(t *testing.T) (context.Context, *[]string) {
+// captureLogs returns a context whose logger records the structured fields of each log entry.
+func captureLogs(t *testing.T) (context.Context, *[]map[string]any) {
 	t.Helper()
-	logs := &[]string{}
-	logger := funcr.New(func(prefix, args string) {
-		*logs = append(*logs, prefix+args)
+	logs := &[]map[string]any{}
+	logger := funcr.NewJSON(func(obj string) {
+		var entry map[string]any
+		require.NoError(t, json.Unmarshal([]byte(obj), &entry))
+		*logs = append(*logs, entry)
 	}, funcr.Options{})
 	return logr.NewContext(t.Context(), logger), logs
 }
