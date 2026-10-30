@@ -27,6 +27,8 @@ tests:
       - matchRegex:
           path: data.key
           pattern: '^[A-Za-z0-9+/]{43}=$'
+      - notExists:
+          path: metadata.resourceVersion
 
   - it: should keep the existing key across upgrades
     template: ucp/aws-fingerprint-key.yaml
@@ -43,6 +45,23 @@ tests:
       - equal:
           path: data.key
           value: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+
+  - it: should require the Secret to be unchanged since it was read
+    template: ucp/aws-fingerprint-key.yaml
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-aws-fingerprint-key
+            namespace: radius-system
+            resourceVersion: "42"
+          data:
+            key: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+    asserts:
+      - equal:
+          path: metadata.resourceVersion
+          value: "42"
 
   - it: should refuse to replace an existing Secret without a key
     template: ucp/aws-fingerprint-key.yaml

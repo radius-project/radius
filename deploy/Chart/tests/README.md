@@ -45,9 +45,9 @@ The test starts its own API server and etcd, uses a temporary kubeconfig, and in
 
 ### AWS fingerprint key
 
-`aws_fingerprint_key_test.yaml` covers the `radius-aws-fingerprint-key` Secret: a new install generates a 32-byte key, an upgrade keeps the existing key, an existing Secret with a missing or empty key fails rendering instead of being replaced, and UCP mounts the Secret read-only. The mount uses mode `0444` because UCP runs as a non-root user and Secret files are owned by root, and it is optional so UCP still starts when the Secret is missing.
+`aws_fingerprint_key_test.yaml` covers the `radius-aws-fingerprint-key` Secret: a new install generates a 32-byte key, an upgrade keeps the existing key, an existing Secret with a missing or empty key fails rendering instead of being replaced, the `resourceVersion` precondition is rendered only for an existing Secret, and UCP mounts the Secret read-only. The mount uses mode `0444` because UCP runs as a non-root user and Secret files are owned by root, and it is optional so UCP still starts when the Secret is missing.
 
-`TestAWSFingerprintKeySecretUpgrade` in `pkg/cli/helm` installs the shipping template on its own API server, then upgrades and rolls back with standalone Helm and with `rad`. Every step must keep the Secret's UID and key. Run it the same way as the encryption Secret regression:
+`TestAWSFingerprintKeySecretUpgrade` in `pkg/cli/helm` installs the shipping template on its own API server, then upgrades and rolls back with standalone Helm and with `rad`. Every step must keep the Secret's UID and key, and a `rad` rollback to an upgrade revision must keep a key replaced since that revision. `TestAWSFingerprintKeySecretReplaceRace` replaces the key after the template reads the Secret and before Helm applies it, for server-side and client-side apply. The upgrade and rollback must fail and keep the replaced key. Run them the same way as the encryption Secret regression:
 
 ```bash
 KUBEBUILDER_ASSETS="$(go tool setup-envtest use -p path '1.30.*')" \

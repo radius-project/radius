@@ -16,6 +16,10 @@ kind: Secret
 metadata:
   name: radius-aws-fingerprint-key
   namespace: {{ .Release.Namespace }}
+  {{- if $secret }}
+  {{- /* Fail the apply if the Secret changed after lookup, so a key replaced mid-upgrade is never overwritten. */}}
+  resourceVersion: {{ $secret.metadata.resourceVersion | quote }}
+  {{- end }}
   labels:
     app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
