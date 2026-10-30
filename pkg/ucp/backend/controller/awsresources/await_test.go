@@ -19,6 +19,8 @@ package awsresources
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -60,6 +62,7 @@ func newFixture(t *testing.T) *fixture {
 	db := inmemory.NewClient()
 	id, err := resources.ParseResource(vpcID)
 	require.NoError(t, err)
+	useClock(t)
 	return &fixture{t: t, cc: awsfake.NewCloudControl(), db: db, store: records.NewStore(db), id: id}
 }
 
@@ -235,6 +238,20 @@ func Test_Await_Delete(t *testing.T) {
 	require.Nil(t, f.record())
 }
 
+// useClock makes records.Now advance by a second on every read, so every save of a record changes its content and its
+// ETag. Otherwise two saves in the same clock tick write the same content and do not conflict.
+func useClock(t *testing.T) {
+	now := time.Date(2026, 10, 30, 0, 0, 0, 0, time.UTC)
+	var mu sync.Mutex
+	records.Now = func() time.Time {
+		mu.Lock()
+		defer mu.Unlock()
+		now = now.Add(time.Second)
+		return now
+	}
+	t.Cleanup(func() { records.Now = time.Now })
+}
+
 func Test_Update_RetriesConcurrentSaves(t *testing.T) {
 	f := newFixture(t)
 	f.accept(records.OperationUpdate)
@@ -263,14 +280,14 @@ func Test_Heartbeat(t *testing.T) {
 	f := newFixture(t)
 	f.accept(records.OperationUpdate)
 	before := records.LastModified(f.record())
-	time.Sleep(2 * time.Millisecond)
 	stop := heartbeat(t.Context(), f.store, f.id, time.Millisecond)
 	require.Eventually(t, func() bool { return records.LastModified(f.record()).After(before) }, time.Second, time.Millisecond)
 	stop()
 
 	// A failed save is logged and the heartbeat keeps going.
-	stop = heartbeat(t.Context(), records.NewStore(brokenDB{Client: f.db, failGet: true}), f.id, time.Millisecond)
-	time.Sleep(5 * time.Millisecond)
+	gets := &atomic.Int32{}
+	stop = heartbeat(t.Context(), records.NewStore(brokenDB{Client: f.db, failGet: true, gets: gets}), f.id, time.Millisecond)
+	require.Eventually(t, func() bool { return gets.Load() >= 2 }, time.Second, time.Millisecond)
 	stop()
 }
 
@@ -376,9 +393,13 @@ type brokenDB struct {
 	database.Client
 	failGet  bool
 	failSave bool
+	gets     *atomic.Int32
 }
 
 func (b brokenDB) Get(ctx context.Context, id string, options ...database.GetOptions) (*database.Object, error) {
+	if b.gets != nil {
+		b.gets.Add(1)
+	}
 	if b.failGet {
 		return nil, errors.New("database is down")
 	}
