@@ -167,7 +167,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	}
 
 	// Provider config will specify the Azure and AWS scopes (if provided).
-	providerConfig := newProviderConfig(deploymentID.FindScope(resources_radius.ScopeResourceGroups), opts.Configuration.Providers)
+	providerConfig := newProviderConfig(deploymentID.FindScope(resources_radius.ScopeResourceGroups), opts.Configuration.Providers, awsOwner(opts.Recipe))
 
 	logger.Info("deploying bicep template for recipe", "deploymentID", deploymentID)
 	if providerConfig.AWS != nil {
@@ -275,6 +275,9 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	if resourceClient == nil {
 		return nil
 	}
+
+	// UCP deletes an AWS resource only for the owner that deployed it.
+	ctx = processors.WithAWSOwner(ctx, awsOwner(opts.Recipe))
 
 	// Each output resource gets its own delete attempts, so one failure does not stop the others.
 	var wg sync.WaitGroup
@@ -589,7 +592,12 @@ func createDeploymentID(resourceID string, deploymentName string) (resources.ID,
 	return resources.ParseResource(fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName))
 }
 
-func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clients.ProviderConfig {
+// awsOwner returns the owner of the AWS resources a recipe deploys.
+func awsOwner(recipe recipes.ResourceMetadata) string {
+	return clients.AWSRecipeOwner(recipe.ApplicationID, recipe.EnvironmentID, recipe.ResourceID)
+}
+
+func newProviderConfig(resourceGroup string, envProviders coredm.Providers, owner string) clients.ProviderConfig {
 	config := clients.NewDefaultProviderConfig(resourceGroup)
 
 	if envProviders.Azure != (coredm.ProvidersAzure{}) {
@@ -606,6 +614,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 			Type: clients.ProviderTypeAWS,
 			Value: clients.Value{
 				Scope: envProviders.AWS.Scope,
+				Owner: owner,
 			},
 		}
 	}
