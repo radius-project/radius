@@ -152,3 +152,16 @@ enforce
 off
 {{- end -}}
 {{- end -}}
+
+{{/*
+Returns the Pod Security Admission level (baseline or restricted) from global.rbac.podSecurityLevel.
+An empty value defaults to baseline. Fails rendering for any other value.
+*/}}
+{{- define "radius.authz.podSecurityLevel" -}}
+{{- $rbac := .Values.global.rbac | default dict -}}
+{{- $level := $rbac.podSecurityLevel | default "baseline" -}}
+{{- if not (has $level (list "baseline" "restricted")) -}}
+{{- fail (printf "global.rbac.podSecurityLevel must be \"baseline\" or \"restricted\", got %q" $level) -}}
+{{- end -}}
+{{- $level -}}
+{{- end -}}

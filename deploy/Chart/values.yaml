@@ -107,14 +107,21 @@ global:
   #   enabled=true                -> enforce (denials will be rejected)
   # Setting both enabled=true and dryRun=true fails installation: the dry run is a
   # preflight check for an installation that is not yet enforcing.
-  # NOTE: these settings are reserved. Services read and log the mode, but no
-  # authorization checks are implemented yet, so no mode changes runtime behavior.
+  # NOTE: no authorization checks are implemented yet. The only runtime effect is
+  # Pod Security Admission labels on environment and application namespaces:
+  #   off     -> no labels (default)
+  #   dryRun  -> pod-security.kubernetes.io/warn and /audit (violations warned, not rejected)
+  #   enforce -> pod-security.kubernetes.io/enforce, /warn and /audit (violations rejected)
+  # Radius never overwrites a pod-security label that is already set on a namespace and
+  # never labels the namespace Radius is installed in.
   # Example: rad install kubernetes --set global.rbac.dryRun=true
   rbac:
-    # Enforce internal component authorization (reserved; no checks yet).
+    # Enforce internal component authorization (only Pod Security labels so far).
     enabled: false
-    # Log what authorization checks would deny without rejecting requests (reserved; no checks yet).
+    # Log what authorization checks would deny without rejecting requests (only Pod Security labels so far).
     dryRun: false
+    # Pod Security Standards level for the labels: "baseline" or "restricted".
+    podSecurityLevel: baseline
 
 controller:
   image: controller

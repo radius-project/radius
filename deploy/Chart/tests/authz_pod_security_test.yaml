@@ -1,0 +1,47 @@
+suite: test pod security level
+templates:
+  - rp/configmaps.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: omits pod security settings when authorization is off
+    set:
+      global.rbac.podSecurityLevel: restricted
+    asserts:
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'podSecurityLevel|controlPlaneNamespace'
+
+  - it: renders the baseline level and control-plane namespace in dryRun
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "dryRun"\n  podSecurityLevel: "baseline"\n  controlPlaneNamespace: "radius-system"$'
+
+  - it: renders the restricted level in enforce
+    set:
+      global.rbac.enabled: true
+      global.rbac.podSecurityLevel: restricted
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "enforce"\n  podSecurityLevel: "restricted"\n  controlPlaneNamespace: "radius-system"$'
+
+  - it: defaults to baseline when podSecurityLevel is empty
+    set:
+      global.rbac.enabled: true
+      global.rbac.podSecurityLevel: ""
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^  podSecurityLevel: "baseline"$'
+
+  - it: fails rendering for an unsupported level
+    set:
+      global.rbac.podSecurityLevel: privileged
+    asserts:
+      - failedTemplate:
+          errorMessage: 'global.rbac.podSecurityLevel must be "baseline" or "restricted", got "privileged"'
