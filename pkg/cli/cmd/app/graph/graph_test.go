@@ -6,6 +6,7 @@
 package graph
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -498,6 +499,62 @@ func Test_Run_EnrichedMode_CompileError_Wrapped(t *testing.T) {
 	err = runner.Run(t.Context())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "./bad.bicep")
+}
+
+func Test_Run_EnrichedMode_JSON(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name         string
+		compileError bool
+	}{
+		{name: "success"},
+		{name: "compile error", compileError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			workspace := &workspaces.Workspace{
+				Name:  "test-workspace",
+				Scope: "/planes/radius/local/resourceGroups/test-group",
+			}
+			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+			require.NoError(t, err)
+
+			var stdout, stderr bytes.Buffer
+			writer := &output.OutputWriter{Writer: &stdout, LogWriter: &stderr}
+			ctrl := gomock.NewController(t)
+			bicepMock := bicep.NewMockInterface(ctrl)
+			bicepMock.EXPECT().PrepareTemplate(gomock.Any(), "./app.bicep").
+				DoAndReturn(func(context.Context, string) (map[string]any, bicep.RadiusExtensionPin, error) {
+					writer.LogInfo("Downloading Bicep...")
+					if tc.compileError {
+						return nil, bicep.RadiusExtensionPin{}, errors.New("compilation failed")
+					}
+					return sampleTemplate(), bicep.RadiusExtensionPin{}, nil
+				})
+			runner := &Runner{
+				RadiusCoreClientFactory: factory,
+				Bicep:                   bicepMock,
+				Workspace:               workspace,
+				ApplicationName:         "test-app",
+				BicepFilePath:           "./app.bicep",
+				Format:                  output.FormatJson,
+				Output:                  writer,
+			}
+
+			err = runner.Run(t.Context())
+			require.Contains(t, stderr.String(), "Compiling ./app.bicep")
+			require.Contains(t, stderr.String(), "Downloading Bicep...")
+			if tc.compileError {
+				require.ErrorContains(t, err, "compilation failed")
+				require.Empty(t, stdout.String())
+				return
+			}
+			require.NoError(t, err)
+			var actual corerpv20250801preview.ApplicationGraphResponse
+			require.NoError(t, json.Unmarshal(stdout.Bytes(), &actual))
+			require.Empty(t, actual.Resources)
+		})
+	}
 }
 
 const sampleBicepPath = "/tmp/app.bicep"
