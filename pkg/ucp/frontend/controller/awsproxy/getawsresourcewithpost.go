@@ -92,40 +92,37 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return ucpaws.HandleAWSError(ctx, err)
 	}
 
-	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(properties, *describeTypeOutput.Schema)
-	if err != nil {
-		e := v1.ErrorResponse{
-			Error: &v1.ErrorDetails{
-				Code:    v1.CodeInvalid,
-				Message: err.Error(),
-			},
-		}
-
-		return armrpc_rest.NewBadRequestARMResponse(e), nil
+	if describeTypeOutput == nil || describeTypeOutput.Schema == nil {
+		return nil, fmt.Errorf("CloudFormation DescribeType returned no schema for %s", serviceCtx.ResourceTypeInAWSFormat())
+	}
+	awsResourceIdentifier, response, errResponse, err := p.resolveReadIdentifier(ctx, properties, *describeTypeOutput.Schema, serviceCtx.ResourceTypeInAWSFormat(), region)
+	if err != nil || errResponse != nil {
+		return errResponse, err
 	}
 
 	cloudcontrolOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	logger.Info("Fetching resource", "resourceType", serviceCtx.ResourceTypeInAWSFormat(), "resourceID", awsResourceIdentifier)
 
-	var response *cloudcontrol.GetResourceOutput
-	if err := p.retryer.RetryFunc(ctx, func(ctx context.Context) error {
-		response, err = p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
-			TypeName:   new(serviceCtx.ResourceTypeInAWSFormat()),
-			Identifier: aws.String(awsResourceIdentifier),
-		}, cloudcontrolOpts...)
+	if response == nil {
+		if err := p.retryer.RetryFunc(ctx, func(ctx context.Context) error {
+			response, err = p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
+				TypeName:   new(serviceCtx.ResourceTypeInAWSFormat()),
+				Identifier: aws.String(awsResourceIdentifier),
+			}, cloudcontrolOpts...)
 
-		// If the resource is not found, retry.
-		if ucpaws.IsAWSResourceNotFoundError(err) {
-			return retry.RetryableError(err)
-		}
+			// If the resource is not found, retry.
+			if ucpaws.IsAWSResourceNotFoundError(err) {
+				return retry.RetryableError(err)
+			}
 
-		// If any other error occurs, return the error.
-		return err
-	}); err != nil {
-		if ucpaws.IsAWSResourceNotFoundError(err) {
-			return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.Options().PathBase, req.URL.Path), awsResourceIdentifier)), nil
-		} else {
-			return ucpaws.HandleAWSError(ctx, err)
+			// If any other error occurs, return the error.
+			return err
+		}); err != nil {
+			if ucpaws.IsAWSResourceNotFoundError(err) {
+				return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.Options().PathBase, req.URL.Path), awsResourceIdentifier)), nil
+			} else {
+				return ucpaws.HandleAWSError(ctx, err)
+			}
 		}
 	}
 
