@@ -82,6 +82,9 @@ func newContextResolver(ctx *recipecontext.Context) *contextResolver {
 	if ctx.AWS != nil {
 		values["context.aws.region"] = ctx.AWS.Region
 		values["context.aws.account"] = ctx.AWS.Account
+		if ctx.AWS.ResourceNameHash != "" {
+			values["context.aws.resourceNameHash"] = ctx.AWS.ResourceNameHash
+		}
 	}
 
 	for name, conn := range ctx.Resource.Connections {
