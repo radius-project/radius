@@ -24,14 +24,12 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-// consoleRegion matches commercial and GovCloud region names such as us-west-2 and us-gov-west-1. China regions match
-// the pattern too but are excluded by ConsoleURL because they use a different console.
-var consoleRegion = regexp.MustCompile(`^[a-z]{2}(-gov)?-[a-z]+-\d$`)
-
 const (
-	commercialConsoleHostFormat = "%s.console.aws.amazon.com"
-	commercialGlobalConsoleHost = "console.aws.amazon.com"
-	govCloudConsoleHost         = "console.amazonaws-us-gov.com"
+	commercialConsoleHostFormat  = "%s.console.aws.amazon.com"
+	commercialGlobalConsoleHost  = "console.aws.amazon.com"
+	govCloudConsoleHost          = "console.amazonaws-us-gov.com"
+	chinaConsoleHost             = "console.amazonaws.cn"
+	europeanSovereignConsoleHost = "console.amazonaws-eusc.eu"
 
 	// globalRegion is the region Radius uses for AWS resources whose ARN has no region, such as S3 buckets.
 	globalRegion = "global"
@@ -42,6 +40,27 @@ const (
 var globalConsoleHosts = map[string]string{
 	"aws":        commercialGlobalConsoleHost,
 	"aws-us-gov": govCloudConsoleHost,
+	"aws-cn":     chinaConsoleHost,
+	"aws-eusc":   europeanSovereignConsoleHost,
+}
+
+// regionConsoles maps the region names of each AWS partition to the console host for that partition. The patterns
+// follow the partition region patterns of the AWS SDKs. The ISO partitions are left out because their consoles are only
+// reachable from private networks.
+//
+// The first matching entry wins, so the commercial entry must stay last: China regions such as cn-north-1 also match
+// the commercial pattern and would otherwise link to the commercial console.
+var regionConsoles = []struct {
+	region *regexp.Regexp
+	host   string
+
+	// regional is true when host is a format string that takes the region, because the console has a host per region.
+	regional bool
+}{
+	{region: regexp.MustCompile(`^us-gov-[a-z]+-\d+$`), host: govCloudConsoleHost},
+	{region: regexp.MustCompile(`^cn-[a-z]+-\d+$`), host: chinaConsoleHost},
+	{region: regexp.MustCompile(`^eusc-[a-z]+-[a-z]+-\d+$`), host: europeanSovereignConsoleHost},
+	{region: regexp.MustCompile(`^[a-z]{2}-[a-z]+-\d+$`), host: commercialConsoleHostFormat, regional: true},
 }
 
 type consolePage struct {
@@ -76,6 +95,8 @@ var (
 	elastiCacheClusters   = consolePage{path: "/elasticache/home"}
 	emrClusters           = consolePage{path: "/emr/home", hash: "#/clusters"}
 	fsxFileSystems        = consolePage{path: "/fsx/home", hash: "#file-systems"}
+	iamPolicies           = consolePage{path: "/iam/home", hash: "#/policies", global: true}
+	iamRoles              = consolePage{path: "/iam/home", hash: "#/roles", global: true}
 	iamUsers              = consolePage{path: "/iam/home", hash: "#/users", global: true}
 	lambdaFunctions       = consolePage{path: "/lambda/home", hash: "#/functions"}
 	mediaLiveChannels     = consolePage{path: "/medialive/home", hash: "#/channels"}
@@ -122,19 +143,23 @@ var consolePages = map[string]consolePage{
 	"aws.emr/cluster":                           emrClusters,
 	"aws.fsx/filesystem":                        fsxFileSystems,
 	"aws.iam/accesskey":                         iamUsers,
-	"aws.lambda/function":                       lambdaFunctions,
-	"aws.medialive/channel":                     mediaLiveChannels,
-	"aws.logs/loggroup":                         cloudWatchLogGroups,
-	"aws.memorydb/cluster":                      memoryDBClusters,
-	"aws.msk/cluster":                           mskClusters,
-	"aws.msk/serverlesscluster":                 mskClusters,
-	"aws.opensearchservice/domain":              openSearchDomains,
-	"aws.rds/dbcluster":                         rdsDatabases,
-	"aws.rds/dbinstance":                        rdsDatabases,
-	"aws.s3/bucket":                             s3Buckets,
-	"aws.secretsmanager/secret":                 secretsManagerSecrets,
-	"aws.sns/topic":                             snsTopics,
-	"aws.sqs/queue":                             sqsQueues,
+	// The IAM console has no instance profile list. Instance profiles are shown on the role they hold.
+	"aws.iam/instanceprofile":      iamRoles,
+	"aws.iam/managedpolicy":        iamPolicies,
+	"aws.iam/role":                 iamRoles,
+	"aws.lambda/function":          lambdaFunctions,
+	"aws.medialive/channel":        mediaLiveChannels,
+	"aws.logs/loggroup":            cloudWatchLogGroups,
+	"aws.memorydb/cluster":         memoryDBClusters,
+	"aws.msk/cluster":              mskClusters,
+	"aws.msk/serverlesscluster":    mskClusters,
+	"aws.opensearchservice/domain": openSearchDomains,
+	"aws.rds/dbcluster":            rdsDatabases,
+	"aws.rds/dbinstance":           rdsDatabases,
+	"aws.s3/bucket":                s3Buckets,
+	"aws.secretsmanager/secret":    secretsManagerSecrets,
+	"aws.sns/topic":                snsTopics,
+	"aws.sqs/queue":                sqsQueues,
 
 	"terraform.aws/aws_alb":                           ec2LoadBalancers,
 	"terraform.aws/aws_alb_listener":                  ec2LoadBalancers,
@@ -164,6 +189,9 @@ var consolePages = map[string]consolePage{
 	"terraform.aws/aws_fsx_ontap_file_system":         fsxFileSystems,
 	"terraform.aws/aws_fsx_openzfs_file_system":       fsxFileSystems,
 	"terraform.aws/aws_fsx_windows_file_system":       fsxFileSystems,
+	"terraform.aws/aws_iam_instance_profile":          iamRoles,
+	"terraform.aws/aws_iam_policy":                    iamPolicies,
+	"terraform.aws/aws_iam_role":                      iamRoles,
 	"terraform.aws/aws_lambda_function":               lambdaFunctions,
 	"terraform.aws/aws_lb":                            ec2LoadBalancers,
 	"terraform.aws/aws_lb_listener":                   ec2LoadBalancers,
@@ -185,10 +213,10 @@ var consolePages = map[string]consolePage{
 }
 
 // ConsoleURL returns a link to the AWS console list page of the service that owns the resource id, in the region the
-// ID names. GovCloud regions use the GovCloud console. A resource in the global region links only when its console page
-// is global, such as S3 buckets, using the console of the partition the AWS plane names. It returns "" when id is not
-// an AWS resource, its type has no known page, or its region is missing or not a commercial or GovCloud region, so a
-// caller never shows a made-up link.
+// ID names. GovCloud, China, and European Sovereign Cloud regions use the console of their partition. A resource in the
+// global region links only when its console page is global, such as S3 buckets, using the console of the partition
+// the AWS plane names. It returns "" when id is not an AWS resource, its type has no known page, or its region is
+// missing or not a valid region name, so a caller never shows a made-up link.
 func ConsoleURL(id resources.ID) string {
 	if !IsAWSResource(id) {
 		return ""
@@ -208,14 +236,16 @@ func ConsoleURL(id resources.ID) string {
 		return fmt.Sprintf("https://%s%s%s", host, page.path, page.hash)
 	}
 
-	if !consoleRegion.MatchString(region) || strings.HasPrefix(region, "cn-") {
-		return ""
+	for _, console := range regionConsoles {
+		if !console.region.MatchString(region) {
+			continue
+		}
+		host := console.host
+		if console.regional {
+			host = fmt.Sprintf(console.host, region)
+		}
+		return fmt.Sprintf("https://%s%s?region=%s%s", host, page.path, region, page.hash)
 	}
 
-	host := fmt.Sprintf(commercialConsoleHostFormat, region)
-	if strings.Contains(region, "-gov-") {
-		host = govCloudConsoleHost
-	}
-
-	return fmt.Sprintf("https://%s%s?region=%s%s", host, page.path, region, page.hash)
+	return ""
 }

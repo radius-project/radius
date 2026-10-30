@@ -120,7 +120,7 @@ tools:
 
   - name: dapr
     makePrefix: DAPR
-    version: v1.18.2
+    version: v1.19.1
     source:
       type: github-release
       repository: dapr/cli
@@ -129,16 +129,16 @@ tools:
     platforms:
       linux_amd64:
         asset: dapr_linux_amd64.tar.gz
-        checksum: ccfff008fd16f50096a9192ad56697ac7052e3add6fa0a07789d87b4c4df8c40
+        checksum: 6e9a339d261e430e5914909cc4443572573c197c174c3e14504c34116831de3b
       linux_arm64:
         asset: dapr_linux_arm64.tar.gz
-        checksum: 356e40cffc3ee4ebaa0396edde31a6e33bc0351162a6a9ea98550baebb8d039f
+        checksum: b28bfa9a6aa6748e082bfcf97534fef68cae32a05f19c0b5c0dba8a70182a3d7
       darwin_amd64:
         asset: dapr_darwin_amd64.tar.gz
-        checksum: 50f92e8fcaf6db561ac87c5d84d444e727de04a00004186cae3c97864814599f
+        checksum: d5490cb333e1dfd11d117d65a44f7ce3d13f83711f26d7f3cbac37457c561bc5
       darwin_arm64:
         asset: dapr_darwin_arm64.tar.gz
-        checksum: 597454b453e2a9242ee8638ff24d0ecf274e4ed59d3dd34ac1cc789c22af1f12
+        checksum: 1a66eea7cab81cfcf7131a5163f49307f3d480506b4822853d4b461fb1440f9b
     checksumSource:
       type: github-release-file
       fileTemplate: "{asset}.sha256"
@@ -224,7 +224,7 @@ tools:
 
   - name: goreleaser
     makePrefix: GORELEASER
-    version: v2.18.3
+    version: v2.19.0
     source:
       type: github-release
       repository: goreleaser/goreleaser
@@ -233,16 +233,16 @@ tools:
     platforms:
       linux_amd64:
         asset: goreleaser_Linux_x86_64.tar.gz
-        checksum: b8dee4728bca1aba0d71a832a17cd0a3799f75372878e7ffa36aef2343bce0bc
+        checksum: ebc3194ad1d1b1787614405285a0039665cd4c5bd3305215a1b201600f90630b
       linux_arm64:
         asset: goreleaser_Linux_arm64.tar.gz
-        checksum: fa7011a7f8de3b504326b8552cf21c708ed3089519b01d372da32ef4e8d298d7
+        checksum: ef33741b684c9f62d6a21e7a3c8b051f139ea7b1d301693b67cc819c46226d53
       darwin_amd64:
         asset: goreleaser_Darwin_x86_64.tar.gz
-        checksum: dbc39347d9ca25a2da9bcc03633f39130bb3a67c9f2a0da86ba15b8b00bf86ce
+        checksum: 164fce297e601ec00009e40d26858789b637335b5564bff2c99027b10d28bafe
       darwin_arm64:
         asset: goreleaser_Darwin_arm64.tar.gz
-        checksum: 821c58ab8c31d57bb331cab9f1a703eb3673bff4fce0db9cc3c4a038af14f76f
+        checksum: 713192b46698ac10ed9275abf25c922a152ab8280c71ae58dc0ff46a33f60004
     checksumSource:
       type: github-release-file
       fileTemplate: checksums.txt
@@ -250,7 +250,7 @@ tools:
 
   - name: syft
     makePrefix: SYFT
-    version: v1.54.1
+    version: v1.55.0
     source:
       type: github-release
       repository: anchore/syft
@@ -259,16 +259,16 @@ tools:
     platforms:
       linux_amd64:
         asset: syft_{version_no_v}_linux_amd64.tar.gz
-        checksum: c069905b391cc4c20a5ba65ad5c10be2a7ba074f8ea6ad203e24d14e303dad47
+        checksum: bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d
       linux_arm64:
         asset: syft_{version_no_v}_linux_arm64.tar.gz
-        checksum: dfdf0537610113edbefe1f1fc6548bc957b2d77439636ec824fcf0e10d46d054
+        checksum: 929bd163db2d7cd2255d3bcb8967208079813d7b46b0c952f7b794d8e2c7d304
       darwin_amd64:
         asset: syft_{version_no_v}_darwin_amd64.tar.gz
-        checksum: 2956322838b2f64e470eea474495f0cd96be4f222b1ac037258cdc47d965064e
+        checksum: e2e5831cbabaec9a36fe65c34755c1113982c842a685edce3ce0b54a0ded8003
       darwin_arm64:
         asset: syft_{version_no_v}_darwin_arm64.tar.gz
-        checksum: b4319c3abaa87a0170ab76ee83ea2260ca34b53aecfa3ab0dd5428d2319d744f
+        checksum: 1217c258bd5eb91ef3189cf22a82e02f9cac07e4ce934350f428e93aff674625
     checksumSource:
       type: github-release-file
       fileTemplate: syft_{version_no_v}_checksums.txt
@@ -337,7 +337,7 @@ tools:
 
   - name: stern
     makePrefix: STERN
-    version: v1.34.0
+    version: v1.35.0
     source:
       type: github-release
       repository: stern/stern
@@ -346,16 +346,16 @@ tools:
     platforms:
       linux_amd64:
         asset: stern_{version_no_v}_linux_amd64.tar.gz
-        checksum: 7754adfa653939240f7d20fff4ada9b69cda40c9e70732301f67bb8045f1ef3e
+        checksum: 03729b01a8fcfab25f6ea53389bd38bc37400ff86d90cd2dcda541f248cf843e
       linux_arm64:
         asset: stern_{version_no_v}_linux_arm64.tar.gz
-        checksum: e215cfc5e42d71e93b77d3fac8f0df7d736271f44b2d92a5b417eaa588edff3a
+        checksum: b12f5e2ee0d01f6f21e0759cced0be2d8df9cd4e93e6a3cf11393170ae0f43cf
       darwin_amd64:
         asset: stern_{version_no_v}_darwin_amd64.tar.gz
-        checksum: 153355317f21e565ea10bc710d4c2e3d98fd06f83cae5eb927e7031cc724a7a6
+        checksum: 6a0b9d99a73a70326fc30079d1b70f03c9593f1b1d441c64a93907e79baec815
       darwin_arm64:
         asset: stern_{version_no_v}_darwin_arm64.tar.gz
-        checksum: 4014d84096e1e603ee115864e03a1e15fb9bae9876647bf7bb8031eee278dcd3
+        checksum: 951ba00a33ea09b9e64c8ab7b71443b9be4d65f6f6c91b184fbec6d684d9dd0a
     checksumSource:
       type: github-release-file
       fileTemplate: checksums.txt
