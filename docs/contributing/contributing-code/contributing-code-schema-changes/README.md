@@ -54,6 +54,14 @@ You normally only need `make generate`. To regenerate one namespace by hand, run
 
    The emitter configuration lives in each namespace's `tspconfig.yaml` under the `@azure-tools/typespec-go` options block. Use the Make target instead of invoking the Go emitter directly because the target creates an external temporary output directory, copies the generated files into the configured package, formats them, and cleans up the temporary directory.
 
+#### UCP-served Radius authorization contracts
+
+The `Radius.Core` authorization contracts have a separate entry point at [`typespec/Radius.Core/authorization/`](../../../../typespec/Radius.Core/authorization/). Do not import `authorization.tsp` into `typespec/Radius.Core/main.tsp`: that entry point belongs to Applications RP. Generate the authorization Swagger and SDK with `make generate-rad-authorization-client`; their output belongs under `swagger/specification/authorization/` and `pkg/ucp/api/authorization/v20250801preview/`, not `pkg/corerp/`. The contracts alone do not register routes, implement authorization, or enable enforcement. UCP management handlers and their authorization checks must ship together in a later implementation layer.
+
+Bicep generation uses `typespec/Radius.Core/bicep/main.tsp`, which combines both sets of `Radius.Core` contracts in one compilation so they cannot overwrite each other's namespace output. Run `make generate-bicep-types-core` and `make rebuild-bicep-types-index` after changing these contracts. Read-only APIs such as access history are not emitted as deployable resources, and the settings name remains the literal `default`. Single-resource assignment IDs are represented in Swagger and the SDK; Bicep authoring with `scope:` on a Radius resource still requires separate Bicep extension and deployment-engine support.
+
+Run `make test-authorization-contracts` after generation to check the examples, route separation, scope syntax, generated Swagger, and Bicep types. Scoped SDK methods take a URI prefix without leading or trailing slashes, such as `planes/radius/local/resourceGroups/team-a`; resource IDs and body scope fields retain their leading slash. The JSON examples under `typespec/Radius.Core/authorization/examples/2025-08-01-preview/` show a custom role, a group assignment, and a single-environment extension assignment; they are artifact-review inputs, not working endpoint demonstrations.
+
 ### 3. Wire up and test the change
 
 1. Add any changes to the Radius resource provider needed to support the new or updated types.
