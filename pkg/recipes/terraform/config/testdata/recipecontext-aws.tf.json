@@ -1,0 +1,35 @@
+{
+  "terraform": null,
+  "module": {
+    "redis-azure": {
+      "context": {
+        "resource": {
+          "name": "mongo0",
+          "id": "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
+          "type": "applications.datastores/mongodatabases"
+        },
+        "application": {
+          "name": "testApplication",
+          "id": "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication"
+        },
+        "environment": {
+          "name": "env0",
+          "id": "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0"
+        },
+        "runtime": {
+          "kubernetes": {
+            "namespace": "radius-test-app",
+            "environmentNamespace": "radius-test-env"
+          }
+        },
+        "aws": {
+          "region": "us-west-2",
+          "account": "123456789012",
+          "resourceNameHash": "4c1e0f2a9b7d3e56"
+        }
+      },
+      "source": "Azure/redis/azurerm",
+      "version": "1.1.0"
+    }
+  }
+}

@@ -238,6 +238,28 @@ func Test_AddRecipeContext(t *testing.T) {
 			expectedConfigFile: "testdata/recipecontext-emptyrecipeparams.tf.json",
 		},
 		{
+			desc:       "recipe context with AWS provider",
+			moduleName: testRecipeName,
+			envdef: &recipes.EnvironmentDefinition{
+				Name:            testRecipeName,
+				TemplatePath:    testTemplatePath,
+				TemplateVersion: testTemplateVersion,
+			},
+			metadata: &recipes.ResourceMetadata{
+				Name: testRecipeName,
+			},
+			recipeContext: func() *recipecontext.Context {
+				recipeCtx := getTestRecipeContext()
+				recipeCtx.AWS = &recipecontext.ProviderAWS{
+					Region:           "us-west-2",
+					Account:          "123456789012",
+					ResourceNameHash: "4c1e0f2a9b7d3e56",
+				}
+				return recipeCtx
+			}(),
+			expectedConfigFile: "testdata/recipecontext-aws.tf.json",
+		},
+		{
 			desc:       "empty recipe context",
 			moduleName: testRecipeName,
 			envdef: &recipes.EnvironmentDefinition{
