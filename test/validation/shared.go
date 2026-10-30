@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -84,6 +85,10 @@ type RPResource struct {
 type OutputResourceResponse struct {
 	// ID is the resource ID of the output resource.
 	ID string
+
+	// ProviderResourceID is the provider-native ID of the output resource, such as an AWS ARN. When set on an
+	// expected output resource, the actual output resource must have the same value.
+	ProviderResourceID string `json:"providerResourceId,omitempty"`
 }
 
 type RPResourceSet struct {
@@ -306,21 +311,31 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 				for _, outputResource := range outputResources {
 					t.Logf("Found output resource: %+v", outputResource)
 				}
-				require.Equalf(t, len(expectedResource.OutputResources), len(outputResources), "expected output resources: %v, actual: %v", expectedResource.OutputResources, outputResources)
-				for _, expectedOutputResource := range expectedResource.OutputResources {
-					found := false
-					for _, actualOutputResource := range outputResources {
-						if strings.EqualFold(expectedOutputResource.ID, actualOutputResource.ID) {
-							found = true
-							break
-						}
-					}
-
-					require.Truef(t, found, "expected output resource %v wasn't found", expectedOutputResource)
-				}
+				require.NoError(t, matchOutputResources(expectedResource.OutputResources, outputResources))
 			}
 		}
 	}
+}
+
+// matchOutputResources returns an error unless actual has the same number of output resources as expected and each
+// expected output resource is in actual. IDs are compared case-insensitively. When an expected output resource sets
+// ProviderResourceID, the actual output resource must have the same value.
+func matchOutputResources(expected []OutputResourceResponse, actual []OutputResourceResponse) error {
+	if len(expected) != len(actual) {
+		return fmt.Errorf("expected output resources: %v, actual: %v", expected, actual)
+	}
+
+	for _, expectedOutputResource := range expected {
+		index := slices.IndexFunc(actual, func(a OutputResourceResponse) bool { return strings.EqualFold(expectedOutputResource.ID, a.ID) })
+		if index < 0 {
+			return fmt.Errorf("expected output resource %v wasn't found in %v", expectedOutputResource, actual)
+		}
+		if expectedOutputResource.ProviderResourceID != "" && expectedOutputResource.ProviderResourceID != actual[index].ProviderResourceID {
+			return fmt.Errorf("providerResourceId of output resource %s: expected %q, actual %q", actual[index].ID, expectedOutputResource.ProviderResourceID, actual[index].ProviderResourceID)
+		}
+	}
+
+	return nil
 }
 
 // AssertCredentialExists checks if the credential is registered in the workspace and returns a boolean value.

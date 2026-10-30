@@ -183,9 +183,10 @@ test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
 
 .PHONY: test-release-oci-artifacts
 .PHONY: test-release-publication
-test-release-publication: ## Tests mandatory publication gates, staged installation, coordination, and reporting
+test-release-publication: ## Tests mandatory publication gates, staged installation, provenance, coordination, and reporting
 	@node --test ./.github/scripts/verify-release-manifest_test.mjs ./.github/scripts/coordinate-release_test.mjs ./.github/scripts/release-status_test.mjs ./.github/scripts/promote-bicep-types_test.mjs ./.github/scripts/publish-sibling-releases_test.mjs
 	@bash ./.github/scripts/release-verification_test.sh
+	@bash ./.github/scripts/release-attestations_test.sh
 
 test-release-oci-artifacts: install-oras ## Tests immutable OCI staging and alias promotion
 	@bash ./.github/scripts/release-oci-artifacts_test.sh
@@ -211,6 +212,16 @@ test-workflow-changes: ## Tests reusable workflow change detection
 	@node --test ./.github/scripts/changes_test.mjs
 
 test: test-workflow-changes
+
+.PHONY: test-workflow-functional-matrix
+test-workflow-functional-matrix: ## Tests functional test selection without infrastructure
+	@node --test ./.github/scripts/functional-test-matrix_test.mjs
+
+test: test-workflow-functional-matrix
+
+.PHONY: test-dapr-helpers
+test-dapr-helpers: ## Runs Dapr test helper unit tests without a cluster
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/daprrp/noncloud/resources -run '^TestWaitForRedis' -timeout ${TEST_TIMEOUT} $(GOTEST_OPTS)
 
 .PHONY: test-docker-push
 test-docker-push: ## Tests image push recovery without Docker or a registry

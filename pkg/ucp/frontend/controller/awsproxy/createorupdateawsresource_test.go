@@ -44,16 +44,16 @@ func Test_CreateAWSResource(t *testing.T) {
 	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		nil, &types.ResourceNotFoundException{
-			Message: aws.String("Resource not found"),
-		})
-
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudformation.DescribeTypeOutput{
 			TypeName: aws.String(testResource.AWSResourceType),
 			Schema:   aws.String(testResource.Schema),
 		}, nil)
+
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		nil, &types.ResourceNotFoundException{
+			Message: aws.String("Resource not found"),
+		})
 
 	testOptions.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.CreateResourceOutput{
@@ -356,8 +356,7 @@ func Test_CreateAWSResource_DescribeTypeError(t *testing.T) {
 	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	testOptions := setupTest(t)
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		nil, &types.ResourceNotFoundException{Message: aws.String("Resource not found")})
+	// DescribeType runs before UCP reads the resource, so its error stops the request before any Cloud Control call.
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
 		Err: &smithyhttp.ResponseError{
 			Err: &smithy.GenericAPIError{

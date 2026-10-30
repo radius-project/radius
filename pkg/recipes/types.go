@@ -127,6 +127,11 @@ type RecipeOutput struct {
 	// Resources represents the list of output resources deployed recipe.
 	Resources []string
 
+	// ProviderResourceIDs maps output resource IDs in Resources to provider-native IDs, such as AWS ARNs.
+	// Recipe drivers set it when they can determine the provider-native ID. Recipe outputs can't set it.
+	// Use SetProviderResourceID and ProviderResourceID to access it.
+	ProviderResourceIDs map[string]string `json:"-"`
+
 	// Secrets represents the key/value pairs of secret values of the deployed resource.
 	Secrets map[string]any
 
@@ -201,4 +206,19 @@ func (ro *RecipeOutput) PrepareRecipeResponse(resultValue map[string]any) error 
 	}
 
 	return nil
+}
+
+// SetProviderResourceID records the provider-native ID, such as an AWS ARN, of the output resource with the given ID.
+func (ro *RecipeOutput) SetProviderResourceID(id string, providerResourceID string) {
+	if ro.ProviderResourceIDs == nil {
+		ro.ProviderResourceIDs = map[string]string{}
+	}
+	ro.ProviderResourceIDs[id] = providerResourceID
+}
+
+// ProviderResourceID returns the provider-native ID of the output resource with the given ID, or an empty string
+// when the driver could not determine it. IDs must match exactly: AWS resource names are case-sensitive, so IDs that
+// differ only by case can be different resources.
+func (ro *RecipeOutput) ProviderResourceID(id string) string {
+	return ro.ProviderResourceIDs[id]
 }

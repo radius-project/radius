@@ -40,7 +40,7 @@ func Test_CreateAWSResource(t *testing.T) {
 
 	cloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
 		TypeName: aws.String("AWS::Kinesis::Stream"),
-		Schema:   aws.String(`{"readOnlyProperties": ["/properties/Arn"], "createOnlyProperties": ["/properties/Name"]}`),
+		Schema:   aws.String(`{"primaryIdentifier": ["/properties/Name"], "readOnlyProperties": ["/properties/Arn"], "createOnlyProperties": ["/properties/Name"]}`),
 	}, nil)
 
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
