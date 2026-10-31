@@ -410,9 +410,38 @@ func azureCLIIdentity(data []byte) (string, string, error) {
 	return account.TenantID, account.User.Name, nil
 }
 
-// azureFederatedAssertion requests a fresh GitHub OIDC token. Diagnostics deliberately exclude the
-// response body and the token itself.
+// azureFederatedAssertionRetryable lists the GitHub OIDC statuses that clear on their own. It matches
+// .github/scripts/azure-oidc-login.mjs, which retries the same token request before Azure login.
+var azureFederatedAssertionRetryable = map[int]bool{
+	http.StatusRequestTimeout:      true,
+	http.StatusTooManyRequests:     true,
+	http.StatusInternalServerError: true,
+	http.StatusBadGateway:          true,
+	http.StatusServiceUnavailable:  true,
+	http.StatusGatewayTimeout:      true,
+}
+
+// azureFederatedAssertion requests a fresh GitHub OIDC token, retrying transient failures twice with
+// the same 2 and 4 second waits as azure-oidc-login.mjs.
 func azureFederatedAssertion(ctx context.Context, requestURL string, requestToken string) (string, error) {
+	return azureFederatedAssertionWithBackoff(ctx, requestURL, requestToken,
+		backoff.WithMaxRetries(2, backoff.NewExponential(2*time.Second)))
+}
+
+func azureFederatedAssertionWithBackoff(ctx context.Context, requestURL string, requestToken string, strategy backoff.Backoff) (string, error) {
+	var token string
+	retryer := retry.NewRetryer(&retry.RetryConfig{BackoffStrategy: strategy})
+	err := retryer.RetryFunc(ctx, func(ctx context.Context) error {
+		var err error
+		token, err = requestAzureFederatedAssertion(ctx, requestURL, requestToken)
+		return err
+	})
+	return token, err
+}
+
+// requestAzureFederatedAssertion makes one GitHub OIDC token request. Diagnostics deliberately exclude
+// the response body and the token itself.
+func requestAzureFederatedAssertion(ctx context.Context, requestURL string, requestToken string) (string, error) {
 	endpoint, err := url.Parse(requestURL)
 	if err != nil {
 		return "", errors.New("malformed GitHub OIDC token request URL")
@@ -429,12 +458,16 @@ func azureFederatedAssertion(ctx context.Context, requestURL string, requestToke
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
-		return "", errors.New("could not reach the GitHub OIDC token endpoint")
+		return "", retry.RetryableError(errors.New("could not reach the GitHub OIDC token endpoint"))
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GitHub OIDC token request returned HTTP %d", response.StatusCode)
+		err := fmt.Errorf("GitHub OIDC token request returned HTTP %d", response.StatusCode)
+		if azureFederatedAssertionRetryable[response.StatusCode] {
+			return "", retry.RetryableError(err)
+		}
+		return "", err
 	}
 	var payload struct {
 		Value string `json:"value"`
