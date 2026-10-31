@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -29,6 +30,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	"github.com/radius-project/radius/pkg/components/database"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/testhost"
 )
@@ -219,11 +221,101 @@ func Test_AWSResourceByAlias_FingerprintKeyMissing(t *testing.T) {
 	require.Equal(t, "Succeeded", deploy(t, ucp, aliasVPCPath, map[string]any{"properties": map[string]any{"CidrBlock": "10.0.0.0/16"}}))
 }
 
-func Test_AWSResource_RemovedRoutes(t *testing.T) {
+// Test_AWSResource_TransitionalPostRoutes checks that POST /:put and /:delete still work as they did before resource
+// records, for Deployment Engine releases that do not deploy by alias: no owner header, no record, and an operation
+// whose status comes from Cloud Control.
+// Test_AWSResource_TransitionalPostPutKeepsNoFingerprints sends a write-only value through POST /:put to a UCP that has
+// no fingerprint key. That route saves no record, so it needs no fingerprint: it works, and nothing is stored.
+func Test_AWSResource_TransitionalPostPutKeepsNoFingerprints(t *testing.T) {
+	ucp, cc := initializeFakeAWSTestWithKey(t, aliasSchemas, filepath.Join(t.TempDir(), "missing"))
+	cc.Identifiers["AWS::RDS::DBInstance"] = "DBInstanceIdentifier"
+	body := map[string]any{"properties": map[string]any{"DBInstanceIdentifier": "legacy-db", "MasterUserPassword": testPassword}}
+
+	resp := send(t, ucp, http.MethodPost, awsProvidersPath+"AWS.RDS/DBInstance/:put", "", body)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	require.NotContains(t, resp.raw, testPassword)
+	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+
+	db, err := ucp.Options().DatabaseProvider.GetClient(t.Context())
+	require.NoError(t, err)
+	_, err = db.Get(t.Context(), awsProvidersPath+"AWS.RDS/DBInstance/legacy-db")
+	require.ErrorIs(t, err, &database.ErrNotFound{})
+}
+
+func Test_AWSResource_TransitionalPostRoutes(t *testing.T) {
 	ucp, cc := initializeFakeAWSTest(t, aliasSchemas)
-	for _, action := range []string{":put", ":delete"} {
-		resp := send(t, ucp, http.MethodPost, awsProvidersPath+"AWS.EC2/VPC/"+action, testOwner, map[string]any{"properties": map[string]any{}})
-		require.Contains(t, []int{http.StatusNotFound, http.StatusMethodNotAllowed}, resp.status, resp.raw)
+	cc.Identifiers["AWS::S3::Bucket"] = "BucketName"
+	collection := awsProvidersPath + "AWS.S3/Bucket"
+	body := map[string]any{"properties": map[string]any{"BucketName": "legacy"}}
+
+	resp := send(t, ucp, http.MethodPost, collection+"/:put", "", body)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	require.Equal(t, collection+"/legacy", resp.body["id"])
+	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+	require.Equal(t, 1, cc.Count("AWS::S3::Bucket"))
+	// No record is saved. GET by the ID reads AWS by the identifier in the URL, as the recipe driver does to find the
+	// ARN of an output resource.
+	get := send(t, ucp, http.MethodGet, collection+"/legacy", "", nil)
+	require.Equal(t, http.StatusOK, get.status, get.raw)
+	require.Equal(t, "legacy", get.body["properties"].(map[string]any)["BucketName"])
+
+	resp = send(t, ucp, http.MethodPost, collection+"/:delete", "", body)
+	require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+	require.Zero(t, cc.Count("AWS::S3::Bucket"))
+}
+
+// Test_AWSResource_TransitionalDeleteWithoutRecord checks that a DELETE of a URL with no record, such as a recipe
+// deleting a resource the Deployment Engine created with POST /:put, deletes the resource in AWS by the URL's last
+// segment, with or without the owner header. This is transitional, like the POST routes.
+func Test_AWSResource_TransitionalDeleteWithoutRecord(t *testing.T) {
+	for _, owner := range []string{"", testOwner} {
+		t.Run("owner "+strconv.Quote(owner), func(t *testing.T) {
+			ucp, cc := initializeFakeAWSTest(t, aliasSchemas)
+			cc.Identifiers["AWS::S3::Bucket"] = "BucketName"
+			collection := awsProvidersPath + "AWS.S3/Bucket"
+
+			resp := send(t, ucp, http.MethodPost, collection+"/:put", "", map[string]any{"properties": map[string]any{"BucketName": "legacy"}})
+			require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+			require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+
+			resp = send(t, ucp, http.MethodDelete, collection+"/legacy", owner, nil)
+			require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+			require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+			require.Zero(t, cc.Count("AWS::S3::Bucket"))
+
+			// AWS no longer has it, so a retry returns 204.
+			require.Equal(t, http.StatusNoContent, send(t, ucp, http.MethodDelete, collection+"/legacy", owner, nil).status)
+		})
 	}
-	require.Empty(t, cc.Calls())
+}
+
+// Test_AWSResource_TransitionalPathsSkipManagedResources checks that the transitional paths return 409 for a resource an
+// alias's record manages, so they never skip that record's owner check.
+func Test_AWSResource_TransitionalPathsSkipManagedResources(t *testing.T) {
+	ucp, cc := initializeFakeAWSTest(t, aliasSchemas)
+	cc.Identifiers["AWS::S3::Bucket"] = "BucketName"
+	collection := awsProvidersPath + "AWS.S3/Bucket"
+	body := map[string]any{"properties": map[string]any{"BucketName": "assets"}}
+
+	resp := send(t, ucp, http.MethodPut, collection+"/app-bucket", testOwner, body)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+
+	for _, r := range []struct{ method, path, owner string }{
+		{http.MethodPost, collection + "/:put", ""},
+		{http.MethodPost, collection + "/:delete", ""},
+		{http.MethodDelete, collection + "/assets", ""},
+		{http.MethodDelete, collection + "/assets", testOwner},
+	} {
+		var reqBody any
+		if r.method == http.MethodPost {
+			reqBody = body
+		}
+		resp := send(t, ucp, r.method, r.path, r.owner, reqBody)
+		require.Equal(t, http.StatusConflict, resp.status, "%s %s: %s", r.method, r.path, resp.raw)
+		require.Contains(t, resp.raw, "app-bucket")
+	}
+	require.Equal(t, 1, cc.Count("AWS::S3::Bucket"))
+	require.Equal(t, http.StatusOK, send(t, ucp, http.MethodGet, collection+"/app-bucket", "", nil).status)
 }

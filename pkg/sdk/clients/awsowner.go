@@ -16,7 +16,23 @@ limitations under the License.
 
 package clients
 
+import "strings"
+
 // AWSResourceOwnerHeader carries the owner of an AWS resource on a PUT or DELETE to UCP's AWS plane. UCP stores the
 // owner of each alias and rejects a change from a different owner, so two applications that reuse an alias in one
 // account and region cannot change each other's resources.
 const AWSResourceOwnerHeader = "X-Radius-Resource-Owner"
+
+// AWSRecipeOwner returns the owner of the AWS resources a recipe deploys:
+// "recipe;<application ID>;<environment ID>;<Radius resource ID>". UCP compares owners ignoring case, because Radius
+// IDs are not case-sensitive.
+func AWSRecipeOwner(applicationID string, environmentID string, resourceID string) string {
+	return strings.Join([]string{"recipe", applicationID, environmentID, resourceID}, ";")
+}
+
+// AWSDeploymentOwner returns the owner of the AWS resources in a template deployed with rad deploy:
+// "deploy;<resource group ID>;<application ID>;<environment ID>", with an empty application ID when there is no
+// application. resourceGroup is the name of the Radius resource group.
+func AWSDeploymentOwner(resourceGroup string, applicationID string, environmentID string) string {
+	return strings.Join([]string{"deploy", constructRadiusDeploymentScope(resourceGroup), applicationID, environmentID}, ";")
+}

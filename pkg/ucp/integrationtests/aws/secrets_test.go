@@ -35,10 +35,69 @@ import (
 )
 
 const (
+	testDBInstanceCollectionPath = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.RDS/DBInstance"
+	testDBInstanceSchema         = `{
+		"primaryIdentifier": ["/properties/DBInstanceIdentifier"],
+		"createOnlyProperties": ["/properties/DBInstanceIdentifier"],
+		"writeOnlyProperties": ["/properties/MasterUserPassword"]
+	}`
 	testPassword = "request-password"
 
 	testUserPoolClientCollectionPath = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Cognito/UserPoolClient"
 )
+
+// Test_PutAWSResource_DoesNotEchoWriteOnlyValue checks through the transitional POST /:put route that a write-only
+// value from the request is sent to AWS but never returned in the response. PUT by alias is covered in alias_test.go.
+func Test_PutAWSResource_DoesNotEchoWriteOnlyValue(t *testing.T) {
+	tests := []struct {
+		name   string
+		method string
+		path   string
+	}{
+		{name: "POST /:put", method: http.MethodPost, path: testDBInstanceCollectionPath + "/:put"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ucp, cloudcontrolClient, cloudFormationClient := initializeAWSTest(t)
+
+			cloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
+				TypeName: aws.String("AWS::RDS::DBInstance"),
+				Schema:   aws.String(testDBInstanceSchema),
+			}, nil)
+
+			cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				nil, &types.ResourceNotFoundException{Message: aws.String("Resource not found")})
+
+			var sent map[string]any
+			cloudcontrolClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, params *cloudcontrol.CreateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.CreateResourceOutput, error) {
+					require.NoError(t, json.Unmarshal([]byte(aws.ToString(params.DesiredState)), &sent))
+					return &cloudcontrol.CreateResourceOutput{
+						ProgressEvent: &types.ProgressEvent{
+							OperationStatus: types.OperationStatusInProgress,
+							RequestToken:    aws.String(testAWSRequestToken),
+							Identifier:      aws.String("app-db"),
+						},
+					}, nil
+				})
+
+			status, properties := sendPut(t, ucp, tt.method, tt.path, map[string]any{
+				"DBInstanceIdentifier": "app-db",
+				"MasterUsername":       "admin",
+				"MasterUserPassword":   testPassword,
+			})
+
+			require.Equal(t, http.StatusCreated, status)
+			require.Equal(t, map[string]any{
+				"DBInstanceIdentifier": "app-db",
+				"MasterUsername":       "admin",
+				"provisioningState":    "Provisioning",
+			}, properties)
+			require.Equal(t, testPassword, sent["MasterUserPassword"], "the password must still be sent to AWS")
+		})
+	}
+}
 
 // Test_PutAWSResource_NoChange_KeepsAWSSecret checks the 200 UCP returns when nothing changed: the client secret AWS
 // generates for a Cognito user pool client is still returned.

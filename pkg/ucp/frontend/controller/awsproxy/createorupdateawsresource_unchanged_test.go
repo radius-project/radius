@@ -114,36 +114,47 @@ func Test_UpdateAWSResource_ValuesAWSReportsDifferently(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			testOptions := setupTest(t)
-			testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-				&cloudformation.DescribeTypeOutput{TypeName: aws.String(tt.awsType), Schema: aws.String(tt.schema)}, nil)
+		for _, withPost := range []bool{false, true} {
+			name := tt.name + " (PUT)"
+			if withPost {
+				name = tt.name + " (POST :put)"
+			}
+			t.Run(name, func(t *testing.T) {
+				testOptions := setupTest(t)
+				testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+					&cloudformation.DescribeTypeOutput{TypeName: aws.String(tt.awsType), Schema: aws.String(tt.schema)}, nil)
 
-			currentBytes, err := json.Marshal(tt.current)
-			require.NoError(t, err)
-			testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-				&cloudcontrol.GetResourceOutput{
-					ResourceDescription: &types.ResourceDescription{Properties: aws.String(string(currentBytes))},
-				}, nil)
+				currentBytes, err := json.Marshal(tt.current)
+				require.NoError(t, err)
+				testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+					&cloudcontrol.GetResourceOutput{
+						ResourceDescription: &types.ResourceDescription{Properties: aws.String(string(currentBytes))},
+					}, nil)
 
-			body, err := json.Marshal(map[string]any{"properties": tt.desired})
-			require.NoError(t, err)
+				body, err := json.Marshal(map[string]any{"properties": tt.desired})
+				require.NoError(t, err)
 
-			controller, err := newTestPutController(testOptions.ControllerOptions(), testOptions.Clients())
-			require.NoError(t, err)
-			request, err := http.NewRequest(http.MethodPut, collectionPath(tt.resourceType)+"/"+tt.resourceName, bytes.NewBuffer(body))
-			require.NoError(t, err)
-			withOwner(request)
+				controller, err := newTestPutController(testOptions.ControllerOptions(), testOptions.Clients())
+				require.NoError(t, err)
+				request, err := http.NewRequest(http.MethodPut, collectionPath(tt.resourceType)+"/"+tt.resourceName, bytes.NewBuffer(body))
+				if withPost {
+					controller, err = NewCreateOrUpdateAWSResourceWithPost(testOptions.ControllerOptions(), testOptions.Clients())
+					require.NoError(t, err)
+					request, err = http.NewRequest(http.MethodPost, collectionPath(tt.resourceType), bytes.NewBuffer(body))
+				}
+				require.NoError(t, err)
+				withOwner(request)
 
-			ctx := rpctest.NewARMRequestContext(request)
-			response, err := controller.Run(ctx, nil, request)
-			require.NoError(t, err)
+				ctx := rpctest.NewARMRequestContext(request)
+				response, err := controller.Run(ctx, nil, request)
+				require.NoError(t, err)
 
-			w := httptest.NewRecorder()
-			require.NoError(t, response.Apply(ctx, w, request))
-			res := w.Result()
-			defer res.Body.Close()
-			require.Equal(t, http.StatusOK, res.StatusCode)
-		})
+				w := httptest.NewRecorder()
+				require.NoError(t, response.Apply(ctx, w, request))
+				res := w.Result()
+				defer res.Body.Close()
+				require.Equal(t, http.StatusOK, res.StatusCode)
+			})
+		}
 	}
 }

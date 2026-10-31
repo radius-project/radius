@@ -84,7 +84,9 @@ func Test_LegacyAWSType_Returns400WithoutCallingAWS(t *testing.T) {
 		{http.MethodGet, "AWS.IAM/Policy/p", nil},
 		{http.MethodDelete, "AWS.IAM/Policy/p", nil},
 		{http.MethodGet, "AWS.IAM/Policy", nil},
+		{http.MethodPost, "AWS.IAM/Policy/:put", body},
 		{http.MethodPost, "AWS.IAM/Policy/:get", body},
+		{http.MethodPost, "AWS.IAM/Policy/:delete", body},
 	}
 	for _, r := range requests {
 		t.Run(r.method+" "+r.path, func(t *testing.T) {
@@ -104,6 +106,7 @@ func Test_ReadOnlyAWSType_CreateReturns400(t *testing.T) {
 		path   string
 	}{
 		{http.MethodPut, "AWS.EC2/Image/ami-1"},
+		{http.MethodPost, "AWS.EC2/Image/:put"},
 	}
 	for _, r := range requests {
 		t.Run(r.method+" "+r.path, func(t *testing.T) {
@@ -135,7 +138,7 @@ func Test_ImmutableAWSType_ChangeReturns400(t *testing.T) {
 	}, nil)
 
 	body := map[string]any{"properties": map[string]any{"Name": "name", "Size": secretValue}}
-	status, message, raw := sendUCPRequest(t, ucp, http.MethodPut, awsProvidersPath+"AWS.Test/Immutable/name", body)
+	status, message, raw := sendUCPRequest(t, ucp, http.MethodPost, awsProvidersPath+"AWS.Test/Immutable/:put", body)
 	require.Equal(t, http.StatusBadRequest, status, raw)
 	require.Equal(t, "The AWS resource type AWS::Test::Immutable can only be created and deleted, so these properties of the existing resource cannot change: Size. To change them, delete the resource and deploy again.", message)
 	require.NotContains(t, raw, secretValue)
@@ -166,5 +169,25 @@ func Test_ImmutableAWSType_WriteOnlyChangeReturns400(t *testing.T) {
 	status, message, raw := sendUCPRequest(t, ucp, http.MethodPut, path, body)
 	require.Equal(t, http.StatusBadRequest, status, raw)
 	require.Equal(t, "The AWS resource type AWS::Test::Immutable can only be created and deleted, so these properties of the existing resource cannot change: Password. To change them, delete the resource and deploy again.", message)
+	require.NotContains(t, raw, secretValue)
+}
+
+// Test_ImmutableAWSType_WriteOnlyValueByPostReturns400 sends a write-only value for an existing resource of a
+// create-and-delete-only type through POST /:put. That route keeps no record and so no fingerprints, so UCP cannot
+// confirm the value is unchanged and must not report success without applying it. UpdateResource is never called.
+func Test_ImmutableAWSType_WriteOnlyValueByPostReturns400(t *testing.T) {
+	ucp, cloudcontrolClient, cloudformationClient := initializeAWSTest(t)
+	cloudformationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
+		ProvisioningType: cftypes.ProvisioningTypeImmutable,
+		Schema:           new(`{"primaryIdentifier": ["/properties/Name"], "createOnlyProperties": ["/properties/Name", "/properties/Password"], "writeOnlyProperties": ["/properties/Password"], "handlers": {"create": {}, "read": {}, "delete": {}}}`),
+	}, nil)
+	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudcontrol.GetResourceOutput{
+		ResourceDescription: &cctypes.ResourceDescription{Identifier: new("name"), Properties: new(`{"Name": "name"}`)},
+	}, nil)
+
+	body := map[string]any{"properties": map[string]any{"Name": "name", "Password": secretValue}}
+	status, message, raw := sendUCPRequest(t, ucp, http.MethodPost, awsProvidersPath+"AWS.Test/Immutable/:put", body)
+	require.Equal(t, http.StatusBadRequest, status, raw)
+	require.Equal(t, "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Password. To change them, delete the resource and deploy again.", message)
 	require.NotContains(t, raw, secretValue)
 }

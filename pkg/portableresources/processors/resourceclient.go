@@ -26,6 +26,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
@@ -36,7 +37,9 @@ import (
 	"github.com/radius-project/radius/pkg/components/trace"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/sdk"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -314,6 +317,20 @@ func orderedAPIVersions(rt *armresources.ProviderResourceType) ([]string, error)
 	return versions, nil
 }
 
+type awsOwnerKey struct{}
+
+// WithAWSOwner returns a context whose AWS DELETEs through the resource client send owner in the
+// sdkclients.AWSResourceOwnerHeader header.
+func WithAWSOwner(ctx context.Context, owner string) context.Context {
+	return context.WithValue(ctx, awsOwnerKey{}, owner)
+}
+
+// AWSOwnerFromContext returns the owner set with WithAWSOwner, or "".
+func AWSOwnerFromContext(ctx context.Context) string {
+	owner, _ := ctx.Value(awsOwnerKey{}).(string)
+	return owner
+}
+
 func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID) error {
 	// NOTE: the API version passed in here is ignored.
 	//
@@ -325,6 +342,10 @@ func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID)
 	client, err := generated.NewGenericResourcesClient(id.Type(), id.RootScope(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
 	if err != nil {
 		return err
+	}
+
+	if owner := AWSOwnerFromContext(ctx); owner != "" && resources_aws.IsAWSResource(id) {
+		ctx = policy.WithHTTPHeader(ctx, http.Header{sdkclients.AWSResourceOwnerHeader: []string{owner}})
 	}
 
 	poller, err := client.BeginDelete(ctx, id.Name(), nil)
