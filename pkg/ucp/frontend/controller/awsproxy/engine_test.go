@@ -642,12 +642,48 @@ func (f failingQueue) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMReque
 func (h *harness) withFailingQueue() { h.sm = failingQueue{h.sm} }
 
 func Test_Create_FailurePaths(t *testing.T) {
-	t.Run("AWS rejects the create call", func(t *testing.T) {
+	// A client fault on the first attempt, with a client token this request generated, means AWS did nothing.
+	for name, rejection := range map[string]error{
+		"invalid":   awsError(&smithy.GenericAPIError{Code: "ValidationException", Message: "bad", Fault: smithy.FaultClient}),
+		"throttled": throttled(),
+	} {
+		t.Run("AWS rejects the first attempt: "+name, func(t *testing.T) {
+			h := newHarness(t)
+			h.cc.Errors["CreateResource"] = rejection
+			resp := h.put(vpcPath, map[string]any{"CidrBlock": "bad"})
+			require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+			require.Nil(t, h.record(vpcPath))
+		})
+	}
+
+	// A client fault on a replay, such as throttling, does not show that the original create failed, so the record and
+	// its client token are kept.
+	t.Run("AWS throttles a resumed create", func(t *testing.T) {
 		h := newHarness(t)
-		h.cc.Errors["CreateResource"] = awsError(&smithy.GenericAPIError{Code: "ValidationException", Message: "bad", Fault: smithy.FaultClient})
-		resp := h.put(vpcPath, map[string]any{"CidrBlock": "bad"})
+		h.cc.Errors["CreateResource"] = errors.New("connection reset")
+		require.Equal(t, http.StatusInternalServerError, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		token := h.record(vpcPath).Properties.ClientToken
+		require.NotEmpty(t, token)
+
+		h.cc.Errors["CreateResource"] = throttled()
+		h.cc.Calls()
+		resp := h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"})
 		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
-		require.Nil(t, h.record(vpcPath))
+		require.Contains(t, resp.message(), "Rate exceeded")
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"CreateResource"}, operations(calls))
+		require.Equal(t, token, calls[0].ClientToken)
+		rec := h.record(vpcPath)
+		require.NotNil(t, rec)
+		require.Equal(t, token, rec.Properties.ClientToken)
+		require.False(t, records.IsRunning(rec))
+
+		// The next deploy sends the create again with the same token.
+		delete(h.cc.Errors, "CreateResource")
+		require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
+		require.Equal(t, token, h.cc.Calls()[0].ClientToken)
+		h.finish()
+		require.Equal(t, 1, h.cc.Count(vpcType))
 	})
 
 	t.Run("AWS reports the create failed", func(t *testing.T) {
@@ -906,6 +942,11 @@ func Test_MustResume(t *testing.T) {
 	rec.SetProvisioningState(v1.ProvisioningStateUpdating)
 	rec.SystemData.LastModifiedAt = time.Now().UTC().Format(time.RFC3339Nano)
 	require.False(t, mustResume(rec))
+}
+
+// throttled returns the ThrottlingException Cloud Control returns, which the SDK models as a client fault.
+func throttled() error {
+	return &smithy.OperationError{ServiceID: "CloudControl", OperationName: "CreateResource", Err: &smithyhttp.ResponseError{Err: &cctypes.ThrottlingException{Message: aws.String("Rate exceeded")}}}
 }
 
 // awsError wraps an API error the way the AWS SDK returns it.
@@ -1338,11 +1379,27 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		require.Nil(t, h.record(vpcPath))
 	})
 
-	t.Run("AWS rejects the create: only the record is removed", func(t *testing.T) {
+	// A rejected replay does not show that the original create failed, so the record is kept and the error returned,
+	// never a 204 that leaves the resource in AWS untracked.
+	t.Run("AWS throttles the resend: the record is kept", func(t *testing.T) {
 		h := uncertain(t)
-		h.cc.Errors["CreateResource"] = awsError(&smithy.GenericAPIError{Code: "ValidationException", Message: "bad", Fault: smithy.FaultClient})
-		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
+		token := h.record(vpcPath).Properties.ClientToken
+		h.cc.Errors["CreateResource"] = throttled()
+		resp := h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "Rate exceeded")
+		require.Equal(t, []string{"CreateResource"}, operations(h.cc.Calls()))
+		rec := h.record(vpcPath)
+		require.NotNil(t, rec)
+		require.Equal(t, token, rec.Properties.ClientToken)
+		require.False(t, records.IsRunning(rec))
+
+		// The next DELETE recovers the create and deletes the VPC.
+		delete(h.cc.Errors, "CreateResource")
+		require.Equal(t, http.StatusAccepted, h.delete(vpcPath, testOwner).status)
+		h.finish()
 		require.Nil(t, h.record(vpcPath))
+		require.Zero(t, h.cc.Count(vpcType))
 	})
 
 	t.Run("the create call fails: the record is kept", func(t *testing.T) {
