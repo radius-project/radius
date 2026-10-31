@@ -134,7 +134,12 @@ list_expired_versions() {
             --argjson cutoff "${cutoff}" '
             .[] |
             select((.updated_at | fromdateiso8601) < $cutoff) |
-            select(any(.metadata.container.tags[]?; startswith($prefix))) |
+            # Deleting a version removes all of its tags. Identical content
+            # pushed under other tags reuses the same version, so skip any
+            # version that also has a tag this cleanup does not own.
+            select((.metadata.container.tags // []) as $tags |
+                ($tags | length) > 0 and
+                all($tags[]; startswith($prefix))) |
             .id
         ' "${response}" || return "$?"
         count="$(jq -er 'length' "${response}")" || return "$?"
