@@ -50,6 +50,13 @@ type AWSResourceProperties struct {
 	// fails, so the previous LastApplied stays.
 	PendingLastApplied map[string]any `json:"pendingLastApplied"`
 
+	// Fingerprints are the fingerprints of the write-only values of the last successful deploy. UCP compares them
+	// with the template's values, because AWS never returns write-only values, so an unchanged value is not sent.
+	Fingerprints *AWSFingerprints `json:"fingerprints,omitempty"`
+
+	// PendingFingerprints holds the new fingerprints while an operation is in progress, like PendingLastApplied.
+	PendingFingerprints *AWSFingerprints `json:"pendingFingerprints,omitempty"`
+
 	// PendingOperation is the operation in progress: CREATE, UPDATE, or DELETE. The async worker sets
 	// provisioningState to Updating for every operation, so the state alone cannot tell them apart.
 	PendingOperation string `json:"pendingOperation,omitempty"`
@@ -68,6 +75,18 @@ type AWSResourceProperties struct {
 	// AWS again.
 	LastRequestToken string           `json:"lastRequestToken,omitempty"`
 	LastRequestError *v1.ErrorDetails `json:"lastRequestError,omitempty"`
+}
+
+// AWSFingerprints are keyed fingerprints of write-only property values, such as passwords. The values themselves are
+// never stored.
+type AWSFingerprints struct {
+	// KeyID is the ID of the HMAC key that made every digest. A digest made with a different key cannot be checked.
+	KeyID string `json:"keyId"`
+
+	// Digests maps each write-only property path, such as MasterUserPassword, to the HMAC-SHA-256 of its value, made
+	// by ucp_aws.FingerprintKey.Fingerprint. A write-only property inside array items, such as Users/*/Password, is
+	// covered by a digest of the whole array, Users.
+	Digests map[string]string `json:"digests"`
 }
 
 // ResourceTypeName returns the resource type of the record, such as AWS.EC2/VPC.

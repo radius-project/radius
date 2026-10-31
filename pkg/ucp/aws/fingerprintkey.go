@@ -19,11 +19,15 @@ package aws
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"hash"
 	"os"
 	"slices"
+	"strings"
 )
 
 const (
@@ -36,6 +40,10 @@ const (
 
 	// MinFingerprintKeyLength is the shortest HMAC key accepted, in bytes.
 	MinFingerprintKeyLength = 32
+
+	// fingerprintDomain is the first input of every fingerprint. It keeps fingerprints apart from any other use of the
+	// key, and names the version of the encoding, so a later encoding cannot match a fingerprint made with this one.
+	fingerprintDomain = "radius-aws-write-only-fingerprint/v1"
 )
 
 // FingerprintKey is the HMAC key UCP uses to fingerprint write-only AWS property values, such as passwords, so a
@@ -80,4 +88,24 @@ func (k *FingerprintKey) ID() string {
 // NewHMAC returns a new HMAC-SHA-256 hash keyed with the key.
 func (k *FingerprintKey) NewHMAC() hash.Hash {
 	return hmac.New(sha256.New, k.key)
+}
+
+// Fingerprint returns the HMAC-SHA-256 of a write-only property value, base64-encoded. It is bound to the resource and
+// to the property path, so the same value under another resource or property has a different fingerprint.
+//
+// The value must be a value decoded from JSON. It is encoded as JSON, which sorts object keys and writes each number
+// in one form, so equal values always have the same fingerprint. Each input is prefixed with its length, so no two
+// different inputs encode the same. resourceID is compared ignoring case, like Radius IDs.
+func (k *FingerprintKey) Fingerprint(resourceID string, path string, value any) (string, error) {
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode the value of %s for its fingerprint: %w", path, err)
+	}
+
+	mac := k.NewHMAC()
+	for _, input := range [][]byte{[]byte(fingerprintDomain), []byte(strings.ToLower(resourceID)), []byte(path), encoded} {
+		mac.Write(binary.BigEndian.AppendUint64(nil, uint64(len(input))))
+		mac.Write(input)
+	}
+	return base64.RawStdEncoding.EncodeToString(mac.Sum(nil)), nil
 }

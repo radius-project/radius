@@ -175,6 +175,8 @@ func Test_ApplyPendingAndFail(t *testing.T) {
 		rec := NewRecord(parse(t, vpcID), "owner")
 		rec.Properties.LastApplied = map[string]any{"A": "1"}
 		rec.Properties.PendingLastApplied = map[string]any{"A": "2"}
+		rec.Properties.Fingerprints = &datamodel.AWSFingerprints{KeyID: "k", Digests: map[string]string{"P": "old"}}
+		rec.Properties.PendingFingerprints = &datamodel.AWSFingerprints{KeyID: "k", Digests: map[string]string{"P": "new"}}
 		rec.Properties.PendingOperation = OperationUpdate
 		rec.Properties.ClientToken = "c"
 		rec.Properties.RequestToken = "r"
@@ -184,7 +186,9 @@ func Test_ApplyPendingAndFail(t *testing.T) {
 	rec := newRec()
 	ApplyPending(rec)
 	require.Equal(t, map[string]any{"A": "2"}, rec.Properties.LastApplied)
+	require.Equal(t, map[string]string{"P": "new"}, rec.Properties.Fingerprints.Digests)
 	require.Nil(t, rec.Properties.PendingLastApplied)
+	require.Nil(t, rec.Properties.PendingFingerprints)
 	require.Empty(t, rec.Properties.PendingOperation+rec.Properties.ClientToken+rec.Properties.RequestToken)
 	require.Equal(t, "r", rec.Properties.LastRequestToken)
 	require.Nil(t, rec.Properties.LastRequestError)
@@ -195,18 +199,28 @@ func Test_ApplyPendingAndFail(t *testing.T) {
 	failure := &v1.ErrorDetails{Code: "Invalid", Message: "bad"}
 	Fail(rec, failure)
 	require.Equal(t, map[string]any{"A": "1"}, rec.Properties.LastApplied)
+	require.Equal(t, map[string]string{"P": "old"}, rec.Properties.Fingerprints.Digests)
 	require.Nil(t, rec.Properties.PendingLastApplied)
+	require.Nil(t, rec.Properties.PendingFingerprints)
 	require.Empty(t, rec.Properties.RequestToken)
 	require.Equal(t, "r", rec.Properties.LastRequestToken)
 	require.Equal(t, failure, rec.Properties.LastRequestError)
 	require.Equal(t, "c", rec.Properties.ClientToken)
 	require.Equal(t, v1.ProvisioningStateFailed, rec.ProvisioningState())
 
-	// A successful operation without pending values, such as a resumed one, keeps the last-applied properties.
+	// A successful operation without pending values, such as a resumed one, keeps the last-applied properties and
+	// fingerprints.
 	rec = newRec()
 	rec.Properties.PendingLastApplied = nil
 	ApplyPending(rec)
 	require.Equal(t, map[string]any{"A": "1"}, rec.Properties.LastApplied)
+	require.Equal(t, map[string]string{"P": "old"}, rec.Properties.Fingerprints.Digests)
+
+	// A deploy that made no fingerprints drops the old ones, which are for values the template no longer sets.
+	rec = newRec()
+	rec.Properties.PendingFingerprints = nil
+	ApplyPending(rec)
+	require.Nil(t, rec.Properties.Fingerprints)
 }
 
 type failing struct{ database.Client }
@@ -254,6 +268,34 @@ func Test_KeepPending(t *testing.T) {
 	rec = NewRecord(parse(t, vpcID), "owner")
 	KeepPending(rec)
 	require.Nil(t, rec.Properties.LastApplied)
+}
+
+func Test_KeepPending_Fingerprints(t *testing.T) {
+	fingerprints := func(keyID string, digests map[string]string) *datamodel.AWSFingerprints {
+		return &datamodel.AWSFingerprints{KeyID: keyID, Digests: digests}
+	}
+
+	// The update may or may not have reached AWS, so a fingerprint it changed or added is dropped, and the value is
+	// sent again. Fingerprints it did not change stay, and so do those of values it did not set.
+	rec := NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.Fingerprints = fingerprints("k", map[string]string{"Same": "a", "Changed": "b", "Other": "c"})
+	rec.Properties.PendingFingerprints = fingerprints("k", map[string]string{"Same": "a", "Changed": "x", "New": "y"})
+	KeepPending(rec)
+	require.Equal(t, fingerprints("k", map[string]string{"Same": "a", "Other": "c"}), rec.Properties.Fingerprints)
+	require.Nil(t, rec.Properties.PendingFingerprints)
+
+	// Fingerprints made with a different key, or none at all, are unusable already and stay as they are.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.Fingerprints = fingerprints("old", map[string]string{"Changed": "b"})
+	rec.Properties.PendingFingerprints = fingerprints("new", map[string]string{"Changed": "x"})
+	KeepPending(rec)
+	require.Equal(t, fingerprints("old", map[string]string{"Changed": "b"}), rec.Properties.Fingerprints)
+
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.PendingFingerprints = fingerprints("k", map[string]string{"Changed": "x"})
+	KeepPending(rec)
+	require.Nil(t, rec.Properties.Fingerprints)
+	require.Nil(t, rec.Properties.PendingFingerprints)
 }
 
 func Test_Store_DeleteAndTouchErrors(t *testing.T) {

@@ -477,7 +477,7 @@ func runSecretsTestCase(t *testing.T, tt secretsTestCase) {
 	body, err := json.Marshal(map[string]any{"properties": tt.request})
 	require.NoError(t, err)
 
-	awsController, err := NewCreateOrUpdateAWSResource(testOptions.ControllerOptions(), testOptions.Clients())
+	awsController, err := newTestPutController(testOptions.ControllerOptions(), testOptions.Clients())
 	require.NoError(t, err)
 	request, err := http.NewRequest(http.MethodPut, tt.resource.SingleResourcePath, bytes.NewBuffer(body))
 	require.NoError(t, err)

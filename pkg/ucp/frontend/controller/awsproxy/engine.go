@@ -53,10 +53,13 @@ type engine struct {
 	store    *records.Store
 	sm       statusmanager.StatusManager
 	pathBase string
+
+	// fingerprintKey returns the key for fingerprints of write-only values. Only PUT uses it.
+	fingerprintKey FingerprintKeyFunc
 }
 
-func newEngine(opts armrpc_controller.Options, clients ucp_aws.Clients) *engine {
-	return &engine{clients: clients, store: records.NewStore(opts.DatabaseClient), sm: opts.StatusManager, pathBase: opts.PathBase}
+func newEngine(opts armrpc_controller.Options, clients ucp_aws.Clients, fingerprintKey FingerprintKeyFunc) *engine {
+	return &engine{clients: clients, store: records.NewStore(opts.DatabaseClient), sm: opts.StatusManager, pathBase: opts.PathBase, fingerprintKey: fingerprintKey}
 }
 
 // request is an AWS resource request after the common checks.
@@ -258,7 +261,7 @@ func (e *engine) checkIdentifier(ctx context.Context, id resources.ID, identifie
 // This keeps them from changing or deleting a resource a record manages, which would skip that record's owner check.
 // Resources with no record behave as before records. Remove this with those paths.
 func checkUnmanaged(ctx context.Context, opts armrpc_controller.Options, id resources.ID, identifier string) (armrpc_rest.Response, error) {
-	return newEngine(opts, ucp_aws.Clients{}).checkIdentifier(ctx, id, identifier)
+	return newEngine(opts, ucp_aws.Clients{}, nil).checkIdentifier(ctx, id, identifier)
 }
 
 // readResource reads a resource from AWS by its identifier. It returns nil when AWS has no such resource.
@@ -289,10 +292,14 @@ func (e *engine) describeType(ctx context.Context, r *request) (*cloudformation.
 //     properties. If AWS has it, take it over. Otherwise save the record with a client token, and with the identifier
 //     when the properties give it, and create. Before taking over or creating a resource whose identifier is known,
 //     check that no other alias's record has it.
-//  3. With an AWS resource, compute the update from the template, the last-applied properties, and AWS. When nothing
-//     differs, save the new last-applied properties and return 200 without calling AWS.
-//  4. Save the new last-applied properties as pending values before calling AWS. Then save the operation on the
-//     record, queue it, and return 201. The worker waits for AWS and updates the record.
+//  3. With an AWS resource, compute the update from the template, the last-applied properties and fingerprints, and
+//     AWS. When nothing differs, save the new last-applied properties and fingerprints and return 200 without calling
+//     AWS.
+//  4. Save the new last-applied properties and fingerprints as pending values before calling AWS. Then save the
+//     operation on the record, queue it, and return 201. The worker waits for AWS and updates the record.
+//
+// The fingerprints of write-only values are made before step 1, so a request that needs the fingerprint key fails
+// without it before UCP saves anything or calls Cloud Control.
 func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	r, resp := e.begin(ctx, httpReq)
@@ -328,6 +335,14 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	secrets, err := secretProperties(r.typeName, schema)
 	if err != nil {
 		return nil, err
+	}
+	parsed, err := parseTypeSchema(typeInfo)
+	if err != nil {
+		return nil, err
+	}
+	fingerprints, resp, err := e.fingerprints(r, parsed, body.Properties)
+	if resp != nil || err != nil {
+		return resp, err
 	}
 
 	rec, etag, err := e.store.Get(ctx, r.id)
@@ -382,16 +397,23 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		}
 	}
 
-	lastApplied := withoutSecrets(properties, secrets)
+	applied := applied{properties: withoutSecrets(properties, secrets), fingerprints: fingerprints}
 	if current != nil {
-		return e.update(ctx, r, rec, etag, current, identifier, properties, lastApplied, typeInfo, secrets)
+		return e.update(ctx, r, rec, etag, current, identifier, properties, applied, typeInfo, parsed, secrets)
 	}
-	return e.create(ctx, r, rec, etag, name, properties, lastApplied, schema, secrets)
+	return e.create(ctx, r, rec, etag, name, properties, applied, schema, secrets)
+}
+
+// applied is what a successful deploy records: the properties without write-only and secret values, and the
+// fingerprints of the write-only values.
+type applied struct {
+	properties   map[string]any
+	fingerprints *datamodel.AWSFingerprints
 }
 
 // update updates the AWS resource current, which AWS has under identifier. It takes the resource over when the
 // record has no AWS identifier yet.
-func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, current *cloudcontrol.GetResourceOutput, identifier string, properties map[string]any, lastApplied map[string]any, typeInfo *cloudformation.DescribeTypeOutput, secrets []string) (armrpc_rest.Response, error) {
+func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, current *cloudcontrol.GetResourceOutput, identifier string, properties map[string]any, applied applied, typeInfo *cloudformation.DescribeTypeOutput, parsed *typeSchema, secrets []string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if found := aws.ToString(current.ResourceDescription.Identifier); found != "" {
 		identifier = found
@@ -431,12 +453,12 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	if err != nil {
 		return nil, err
 	}
+	// AWS never returns write-only values, so the patch sets every one the template sets. Leave out the ones the
+	// fingerprints show need not be sent.
+	immutable := typeInfo.ProvisioningType == cftypes.ProvisioningTypeImmutable
+	patch = withoutUnsentWriteOnly(patch, parsed, immutable, compareFingerprints(rec.Properties.Fingerprints, applied.fingerprints))
 	if len(patch) > 0 {
-		var errResponse armrpc_rest.Response
-		patch, errResponse, err = checkPatch(r.typeName, typeInfo, patch)
-		if err != nil {
-			return nil, err
-		} else if errResponse != nil {
+		if errResponse := checkRecordPatch(r.typeName, typeInfo, patch); errResponse != nil {
 			return errResponse, nil
 		}
 	}
@@ -447,7 +469,8 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	if len(patch) == 0 {
 		// Nothing to change in AWS, but the record takes this deploy's properties: a property the template now sets
 		// and later removes is then cleared.
-		rec.Properties.LastApplied = lastApplied
+		rec.Properties.LastApplied = applied.properties
+		rec.Properties.Fingerprints = applied.fingerprints
 		records.ClearPending(rec)
 		rec.Properties.RequestToken = ""
 		rec.SetProvisioningState(v1.ProvisioningStateSucceeded)
@@ -461,7 +484,8 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	// Reserve the record with the values this deploy applies before calling AWS. The worker makes them last-applied
 	// when AWS succeeds.
 	prior := rec.ProvisioningState()
-	rec.Properties.PendingLastApplied = lastApplied
+	rec.Properties.PendingLastApplied = applied.properties
+	rec.Properties.PendingFingerprints = applied.fingerprints
 	etag, resp, err := e.reserve(ctx, r, rec, etag, records.OperationUpdate)
 	if resp != nil || err != nil {
 		return resp, err
@@ -496,7 +520,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 
 // create creates the AWS resource. The record is saved with a client token before AWS is called, so a retry sends
 // the same token and Cloud Control does not create a second resource.
-func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, name string, properties map[string]any, lastApplied map[string]any, schema string, secrets []string) (armrpc_rest.Response, error) {
+func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, name string, properties map[string]any, applied applied, schema string, secrets []string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// name takes over a resource that already exists. When AWS has none, create one only if the identifier properties
@@ -518,7 +542,8 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	// Save the identifier the properties give before the create, so the identifier check also finds a create that is
 	// still running. AWS assigns the others, and the worker saves them when the create finishes.
 	rec.Properties.AWSIdentifier = known
-	rec.Properties.PendingLastApplied = lastApplied
+	rec.Properties.PendingLastApplied = applied.properties
+	rec.Properties.PendingFingerprints = applied.fingerprints
 	etag, resp, err := e.reserve(ctx, r, rec, etag, records.OperationCreate)
 	if resp != nil || err != nil {
 		return resp, err
@@ -740,8 +765,10 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 // When AWS never had the create, the resend creates the resource, and the delete then removes it. Cloud Control keeps a
 // client token for 36 hours, so after that a resend cannot find the original request and creates a second resource.
 // The resend sends the pending properties, which have no write-only values. Cloud Control does not need them to
-// return the original request.
+// return the original request. Because the resend may be what creates the resource, the pending fingerprints are
+// dropped: they describe values this create may not have set.
 func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (string, armrpc_rest.Response, error) {
+	rec.Properties.PendingFingerprints = nil
 	desired := rec.Properties.PendingLastApplied
 	if desired == nil {
 		desired = map[string]any{}

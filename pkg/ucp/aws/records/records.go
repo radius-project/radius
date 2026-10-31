@@ -244,20 +244,34 @@ func StateOf(op string) v1.ProvisioningState {
 	}
 }
 
-// ClearPending drops the values of the operation in progress, so the previous last-applied properties stay.
+// ClearPending drops the values of the operation in progress, so the previous last-applied properties and
+// fingerprints stay.
 func ClearPending(rec *datamodel.AWSResource) {
 	rec.Properties.PendingLastApplied = nil
+	rec.Properties.PendingFingerprints = nil
 	rec.Properties.PendingOperation = ""
 }
 
 // KeepPending treats the values of an interrupted update as applied: the update may have reached AWS, so Radius owns
 // the pending properties, and a later deploy that omits one clears it. The pending values are then dropped.
+//
+// Whether AWS has a write-only value the update sent cannot be known, so its fingerprint is not kept as applied, and
+// the previous one is dropped too. The next deploy sends that value again. Fingerprints that the update did not change
+// stay.
 func KeepPending(rec *datamodel.AWSResource) {
 	if rec.Properties.PendingLastApplied != nil {
 		if rec.Properties.LastApplied == nil {
 			rec.Properties.LastApplied = map[string]any{}
 		}
 		merge(rec.Properties.LastApplied, rec.Properties.PendingLastApplied)
+	}
+	previous, pending := rec.Properties.Fingerprints, rec.Properties.PendingFingerprints
+	if previous != nil && pending != nil && previous.KeyID == pending.KeyID {
+		for path, digest := range pending.Digests {
+			if previous.Digests[path] != digest {
+				delete(previous.Digests, path)
+			}
+		}
 	}
 	ClearPending(rec)
 }
@@ -275,12 +289,14 @@ func merge(dst map[string]any, src map[string]any) {
 	}
 }
 
-// ApplyPending finishes a successful create or update: the pending last-applied properties become the last-applied
-// properties, and the operation, the tokens, and the pending values are cleared. Clearing the client token marks the
-// first create as finished. The request token moves to LastRequestToken, so a redelivered operation reports success.
+// ApplyPending finishes a successful create or update: the pending last-applied properties and fingerprints become
+// the last-applied ones, and the operation, the tokens, and the pending values are cleared. Clearing the client token
+// marks the first create as finished. The request token moves to LastRequestToken, so a redelivered operation reports
+// success.
 func ApplyPending(rec *datamodel.AWSResource) {
 	if rec.Properties.PendingLastApplied != nil {
 		rec.Properties.LastApplied = rec.Properties.PendingLastApplied
+		rec.Properties.Fingerprints = rec.Properties.PendingFingerprints
 	}
 	ClearPending(rec)
 	rec.Properties.ClientToken = ""
@@ -289,7 +305,8 @@ func ApplyPending(rec *datamodel.AWSResource) {
 }
 
 // Fail finishes a failed update or delete: the pending values are dropped, so the previous last-applied properties
-// stay. The request token moves to LastRequestToken with failure, so a redelivered operation reports the same error.
+// and fingerprints stay. The request token moves to LastRequestToken with failure, so a redelivered operation reports
+// the same error.
 func Fail(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 	ClearPending(rec)
 	finish(rec, failure)
