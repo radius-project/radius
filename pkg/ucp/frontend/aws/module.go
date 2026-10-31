@@ -49,9 +49,6 @@ type Module struct {
 	options *ucp.Options
 	router  chi.Router
 
-	// AWSClients provides access to AWS services. This field can be overridden by tests.
-	AWSClients ucp_aws.Clients
-
 	fingerprintKey    *ucp_aws.FingerprintKey
 	fingerprintKeyErr error
 }

@@ -1,0 +1,219 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package awsproxy
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"uuid"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+)
+
+const testOperationResourceID = "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Kinesis/Stream/stream"
+
+// queueTestOperation queues an operation on testOperationResourceID and returns its ID.
+func queueTestOperation(t *testing.T, options TestOptions) uuid.UUID {
+	t.Helper()
+	id, err := resources.ParseResource(testOperationResourceID)
+	require.NoError(t, err)
+	operationID := uuid.New()
+	err = options.StatusManager.QueueAsyncOperation(t.Context(), &v1.ARMRequestContext{
+		ResourceID:    id,
+		OperationID:   operationID,
+		OperationType: v1.OperationType{Type: OperationTypeAWSResourceForTest, Method: v1.OperationPut},
+	}, statusmanagerOptions())
+	require.NoError(t, err)
+	return operationID
+}
+
+func runOperationRequest(t *testing.T, factory func(armrpc_controller.Options, ucp_aws.Clients) (armrpc_controller.Controller, error), options TestOptions, path string) *http.Response {
+	t.Helper()
+	request, err := http.NewRequest(http.MethodGet, path, nil)
+	require.NoError(t, err)
+	controller, err := factory(options.ControllerOptions(), options.Clients())
+	require.NoError(t, err)
+	ctx := rpctest.NewARMRequestContext(request)
+	response, err := controller.Run(ctx, nil, request)
+	require.NoError(t, err)
+	w := httptest.NewRecorder()
+	require.NoError(t, response.Apply(ctx, w, request))
+	return w.Result()
+}
+
+func operationPath(kind string, operationID string) string {
+	return "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Kinesis/locations/global/" + kind + "/" + operationID
+}
+
+func Test_GetAWSOperationStatuses_FromUCP(t *testing.T) {
+	options := setupTest(t)
+	operationID := queueTestOperation(t, options)
+
+	res := runOperationRequest(t, NewGetAWSOperationStatuses, options, operationPath("operationStatuses", operationID.String()))
+	defer res.Body.Close()
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	status := v1.AsyncOperationStatus{}
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&status))
+	require.Equal(t, v1.ProvisioningStateAccepted, status.Status)
+
+	id, err := resources.ParseResource(testOperationResourceID)
+	require.NoError(t, err)
+	require.NoError(t, options.StatusManager.Update(t.Context(), id, operationID, v1.ProvisioningStateFailed, nil, &v1.ErrorDetails{Code: v1.CodeInvalid, Message: "AWS rejected it"}))
+
+	res = runOperationRequest(t, NewGetAWSOperationStatuses, options, operationPath("operationStatuses", operationID.String()))
+	defer res.Body.Close()
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&status))
+	require.Equal(t, v1.ProvisioningStateFailed, status.Status)
+	require.Equal(t, "AWS rejected it", status.Error.Message)
+}
+
+func Test_GetAWSOperationResults_FromUCP(t *testing.T) {
+	options := setupTest(t)
+	operationID := queueTestOperation(t, options)
+
+	res := runOperationRequest(t, NewGetAWSOperationResults, options, operationPath("operationResults", operationID.String()))
+	defer res.Body.Close()
+	require.Equal(t, http.StatusAccepted, res.StatusCode)
+	require.NotEmpty(t, res.Header.Get("Location"))
+
+	id, err := resources.ParseResource(testOperationResourceID)
+	require.NoError(t, err)
+	require.NoError(t, options.StatusManager.Update(t.Context(), id, operationID, v1.ProvisioningStateSucceeded, nil, nil))
+
+	res = runOperationRequest(t, NewGetAWSOperationResults, options, operationPath("operationResults", operationID.String()))
+	defer res.Body.Close()
+	require.Equal(t, http.StatusNoContent, res.StatusCode)
+}
+
+// Test_GetAWSOperation_NotFound checks an operation UCP's data store does not have. It falls back to Cloud Control,
+// which does not know the request token either.
+func Test_GetAWSOperation_NotFound(t *testing.T) {
+	for _, operationID := range []string{uuid.New().String(), "not-a-uuid"} {
+		for kind, factory := range map[string]func(armrpc_controller.Options, ucp_aws.Clients) (armrpc_controller.Controller, error){
+			"operationStatuses": NewGetAWSOperationStatuses,
+			"operationResults":  NewGetAWSOperationResults,
+		} {
+			t.Run(kind+" "+operationID, func(t *testing.T) {
+				options := setupTest(t)
+				options.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+					nil, &cctypes.ResourceNotFoundException{Message: aws.String("unknown request")})
+				res := runOperationRequest(t, factory, options, operationPath(kind, operationID))
+				defer res.Body.Close()
+				require.Equal(t, http.StatusNotFound, res.StatusCode)
+			})
+		}
+	}
+}
+
+// Test_GetAWSOperation_FallbackErrors checks a Cloud Control error while falling back for an operation UCP's data
+// store does not have.
+func Test_GetAWSOperation_FallbackErrors(t *testing.T) {
+	for kind, factory := range map[string]func(armrpc_controller.Options, ucp_aws.Clients) (armrpc_controller.Controller, error){
+		"operationStatuses": NewGetAWSOperationStatuses,
+		"operationResults":  NewGetAWSOperationResults,
+	} {
+		t.Run(kind, func(t *testing.T) {
+			options := setupTest(t)
+			options.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+				nil, &smithy.OperationError{Err: &smithyhttp.ResponseError{Err: &smithy.GenericAPIError{Code: "Throttling", Message: "slow", Fault: smithy.FaultServer}}})
+			res := runOperationRequest(t, factory, options, operationPath(kind, uuid.New().String()))
+			defer res.Body.Close()
+			require.Equal(t, http.StatusInternalServerError, res.StatusCode)
+		})
+	}
+}
+
+func Test_GetAWSOperation_InvalidRegion(t *testing.T) {
+	path := "/planes/aws/aws/accounts/1234567/providers/AWS.Kinesis/locations/global/operationStatuses/" + uuid.New().String()
+	res := runOperationRequest(t, NewGetAWSOperationStatuses, setupTest(t), path)
+	defer res.Body.Close()
+	require.Equal(t, http.StatusBadRequest, res.StatusCode)
+	res = runOperationRequest(t, NewGetAWSOperationResults, setupTest(t), path)
+	defer res.Body.Close()
+	require.Equal(t, http.StatusBadRequest, res.StatusCode)
+}
+
+func Test_GetAWSOperation_NoStatusManager(t *testing.T) {
+	options := setupTest(t)
+	options.StatusManager = nil
+	request, err := http.NewRequest(http.MethodGet, operationPath("operationStatuses", uuid.New().String()), nil)
+	require.NoError(t, err)
+	controller, err := NewGetAWSOperationStatuses(options.ControllerOptions(), options.Clients())
+	require.NoError(t, err)
+	_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
+	require.ErrorContains(t, err, "status manager is not configured")
+}
+
+func Test_GetAWSOperation_StatusManagerFails(t *testing.T) {
+	sm := statusmanager.NewMockStatusManager(gomock.NewController(t))
+	sm.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("database is down")).Times(2)
+	for _, factory := range []func(armrpc_controller.Options, ucp_aws.Clients) (armrpc_controller.Controller, error){NewGetAWSOperationStatuses, NewGetAWSOperationResults} {
+		request, err := http.NewRequest(http.MethodGet, operationPath("operationStatuses", uuid.New().String()), nil)
+		require.NoError(t, err)
+		controller, err := factory(armrpc_controller.Options{StatusManager: sm}, ucp_aws.Clients{})
+		require.NoError(t, err)
+		_, err = controller.Run(rpctest.NewARMRequestContext(request), nil, request)
+		require.ErrorContains(t, err, "database is down")
+	}
+}
+
+// Test_GetAsyncOperationStatus checks how the transitional Cloud Control fallback maps each request status.
+func Test_GetAsyncOperationStatus(t *testing.T) {
+	tests := []struct {
+		status cctypes.OperationStatus
+		want   v1.ProvisioningState
+	}{
+		{status: cctypes.OperationStatusSuccess, want: v1.ProvisioningStateSucceeded},
+		{status: cctypes.OperationStatusCancelComplete, want: v1.ProvisioningStateCanceled},
+		{status: cctypes.OperationStatusFailed, want: v1.ProvisioningStateFailed},
+		{status: cctypes.OperationStatusInProgress, want: v1.ProvisioningStateProvisioning},
+		{status: cctypes.OperationStatusPending, want: v1.ProvisioningStateProvisioning},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.status), func(t *testing.T) {
+			got := getAsyncOperationStatus(&cloudcontrol.GetResourceRequestStatusOutput{ProgressEvent: &cctypes.ProgressEvent{
+				OperationStatus: tt.status,
+				ErrorCode:       cctypes.HandlerErrorCodeInvalidRequest,
+				StatusMessage:   aws.String("bad request"),
+			}})
+			require.Equal(t, tt.want, got.Status)
+			if tt.status == cctypes.OperationStatusFailed {
+				require.Equal(t, &v1.ErrorDetails{Code: string(cctypes.HandlerErrorCodeInvalidRequest), Message: "bad request"}, got.Error)
+			} else {
+				require.Nil(t, got.Error)
+			}
+		})
+	}
+}

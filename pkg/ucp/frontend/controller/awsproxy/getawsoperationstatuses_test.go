@@ -28,7 +28,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
@@ -53,7 +52,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSOperationStatuses(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewGetAWSOperationStatuses(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
@@ -94,7 +93,7 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSOperationStatuses(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewGetAWSOperationStatuses(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
@@ -136,7 +135,7 @@ func Test_GetAWSOperationStatuses_Delete_NotFound(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSOperationStatuses(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewGetAWSOperationStatuses(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)

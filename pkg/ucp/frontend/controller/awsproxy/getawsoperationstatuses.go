@@ -13,23 +13,30 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package awsproxy
 
 import (
 	"context"
-	http "net/http"
 
-	armrpcv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
-	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
-	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
-	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
-	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
-	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"errors"
+	http "net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
+	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
+
+	"uuid"
+
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 var _ armrpc_controller.Controller = (*GetAWSOperationStatuses)(nil)
@@ -48,9 +55,12 @@ func NewGetAWSOperationStatuses(opts armrpc_controller.Options, awsClients ucpaw
 	}, nil
 }
 
-// Run() reads the region from the request, uses the region to get the resource request status
-// from AWS CloudControl, and returns the async operation status. If the resource is not found, it returns a
-// NotFoundResponse, and if there is an error, it returns an error response.
+// Run returns the status of an AWS resource operation. UCP owns every create, update, and delete by alias, so their
+// status is in UCP's data store.
+//
+// Transitional: an operation that UCP's data store does not have was started by POST /:put or /:delete, which do not
+// track operations. Its ID is the Cloud Control request token, so Cloud Control is asked, as before resource records.
+// This fallback is removed with those routes.
 func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	serviceCtx := servicecontext.AWSRequestContextFromContext(ctx)
 	region, errResponse := readRegionFromRequest(req.URL.Path, p.Options().PathBase)
@@ -58,47 +68,69 @@ func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter
 		return errResponse, nil
 	}
 
-	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
-	response, err := p.awsClients.CloudControl.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
-		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
-	}, cloudControlOpts...)
-
-	// If the resource is not found and the operation is delete,
-	// return a 204 No Content response.
-	if response.ProgressEvent != nil &&
-		response.ProgressEvent.Operation == types.OperationDelete &&
-		response.ProgressEvent.ErrorCode == types.HandlerErrorCodeNotFound {
-		return armrpc_rest.NewNoContentResponse(), nil
+	status, err := getOperationStatus(ctx, p.Options().StatusManager, serviceCtx.ResourceID)
+	if err != nil {
+		return nil, err
+	} else if status != nil {
+		return armrpc_rest.NewOKResponse(status.AsyncOperationStatus), nil
 	}
 
+	response, err := p.awsClients.CloudControl.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+		RequestToken: aws.String(serviceCtx.ResourceID.Name()),
+	}, CloudControlRegionOption(region))
 	if ucpaws.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {
 		return ucpaws.HandleAWSError(ctx, err)
 	}
 
-	opStatus := getAsyncOperationStatus(response)
-	return armrpc_rest.NewOKResponse(opStatus), nil
+	// A delete of a resource that no longer exists is done.
+	if response.ProgressEvent != nil &&
+		response.ProgressEvent.Operation == cctypes.OperationDelete &&
+		response.ProgressEvent.ErrorCode == cctypes.HandlerErrorCodeNotFound {
+		return armrpc_rest.NewNoContentResponse(), nil
+	}
+	return armrpc_rest.NewOKResponse(getAsyncOperationStatus(response)), nil
 }
 
-func getAsyncOperationStatus(response *cloudcontrol.GetResourceRequestStatusOutput) armrpcv1.AsyncOperationStatus {
-	os := manager.Status{}
+func getAsyncOperationStatus(response *cloudcontrol.GetResourceRequestStatusOutput) v1.AsyncOperationStatus {
+	os := statusmanager.Status{}
 	switch response.ProgressEvent.OperationStatus {
-	case types.OperationStatusSuccess:
-		os.AsyncOperationStatus.Status = armrpcv1.ProvisioningStateSucceeded
-	case types.OperationStatusCancelComplete:
-		os.AsyncOperationStatus.Status = armrpcv1.ProvisioningStateCanceled
-	case types.OperationStatusFailed:
-		os.AsyncOperationStatus.Status = armrpcv1.ProvisioningStateFailed
+	case cctypes.OperationStatusSuccess:
+		os.AsyncOperationStatus.Status = v1.ProvisioningStateSucceeded
+	case cctypes.OperationStatusCancelComplete:
+		os.AsyncOperationStatus.Status = v1.ProvisioningStateCanceled
+	case cctypes.OperationStatusFailed:
+		os.AsyncOperationStatus.Status = v1.ProvisioningStateFailed
 	default:
-		os.AsyncOperationStatus.Status = armrpcv1.ProvisioningStateProvisioning
+		os.AsyncOperationStatus.Status = v1.ProvisioningStateProvisioning
 	}
-	os.AsyncOperationStatus.StartTime = *response.ProgressEvent.EventTime
-	if response.ProgressEvent.OperationStatus == types.OperationStatusFailed {
-		os.Error = &armrpcv1.ErrorDetails{
+	os.AsyncOperationStatus.StartTime = aws.ToTime(response.ProgressEvent.EventTime)
+	if response.ProgressEvent.OperationStatus == cctypes.OperationStatusFailed {
+		os.Error = &v1.ErrorDetails{
 			Code:    string(response.ProgressEvent.ErrorCode),
-			Message: *response.ProgressEvent.StatusMessage,
+			Message: aws.ToString(response.ProgressEvent.StatusMessage),
 		}
 	}
 	return os.AsyncOperationStatus
+}
+
+// getOperationStatus reads the status of the operation whose operationStatuses or operationResults ID is
+// operationStatusID. It returns nil when there is no such operation.
+func getOperationStatus(ctx context.Context, sm statusmanager.StatusManager, operationStatusID resources.ID) (*statusmanager.Status, error) {
+	operationID, err := uuid.Parse(operationStatusID.Name())
+	if err != nil {
+		return nil, nil
+	}
+	if sm == nil {
+		return nil, errors.New("async operations are not available: the status manager is not configured")
+	}
+
+	status, err := sm.Get(ctx, operationStatusID, operationID)
+	if errors.Is(err, &database.ErrNotFound{}) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	return status, nil
 }

@@ -32,7 +32,6 @@ import (
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"go.uber.org/mock/gomock"
 
-	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/stretchr/testify/require"
 )
@@ -60,7 +59,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewDeleteAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewDeleteAWSResourceWithPost(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -111,7 +110,7 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewDeleteAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewDeleteAWSResourceWithPost(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -184,7 +183,7 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewDeleteAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewDeleteAWSResourceWithPost(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)

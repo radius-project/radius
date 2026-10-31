@@ -27,7 +27,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"go.uber.org/mock/gomock"
 
-	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
@@ -50,7 +49,7 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSOperationResults(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewGetAWSOperationResults(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
@@ -81,7 +80,7 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSOperationResults(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewGetAWSOperationResults(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)

@@ -72,6 +72,10 @@ type DatabaseOptions struct {
 
 	// ETag represents the entity tag for optimistic consistency control.
 	ETag ETag
+
+	// CreateOnly makes Save fail with ErrConcurrency when the object already exists, like an HTTP If-None-Match: *
+	// precondition. It cannot be combined with ETag.
+	CreateOnly bool
 }
 
 // Query Options
@@ -145,6 +149,17 @@ func WithETag(etag ETag) MutatingOptions {
 	return &mutatingOptions{
 		fn: func(cfg DatabaseOptions) DatabaseOptions {
 			cfg.ETag = etag
+			return cfg
+		},
+	}
+}
+
+// WithCreateOnly makes Save create the object only if it does not exist yet. When it exists, Save returns
+// ErrConcurrency and leaves it unchanged. Callers use it to claim a key atomically.
+func WithCreateOnly() SaveOptions {
+	return &saveOptions{
+		fn: func(cfg DatabaseOptions) DatabaseOptions {
+			cfg.CreateOnly = true
 			return cfg
 		},
 	}
