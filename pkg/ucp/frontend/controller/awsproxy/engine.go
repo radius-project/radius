@@ -536,7 +536,9 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 		return resp, err
 	}
 
-	if !records.IsFirstCreate(rec) {
+	// A record that already has a client token resumes a create that AWS may have accepted, so this request is a replay.
+	replay := records.IsFirstCreate(rec)
+	if !replay {
 		rec.Properties.ClientToken = uuid.New().String()
 	}
 	// Save the identifier the properties give before the create, so the identifier check also finds a create that is
@@ -560,14 +562,18 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 		ClientToken:  aws.String(rec.Properties.ClientToken),
 	}, CloudControlRegionOption(r.region))
 	if err != nil {
-		if ucp_aws.IsClientFault(err) {
-			// AWS rejected the create, so nothing exists: remove the record, so the next deploy starts over.
-			if delErr := e.store.Delete(ctx, r.id); delErr != nil {
-				logger.Error(delErr, "Failed to remove the record after AWS rejected a create", "alias", r.id.Name())
+		if !replay && ucp_aws.IsClientFault(err) {
+			// AWS rejected the first attempt, so nothing exists: remove the record, so the next deploy starts over.
+			delErr := e.store.Delete(ctx, r.id)
+			if delErr == nil {
+				return ucp_aws.HandleAWSError(ctx, err)
 			}
+			logger.Error(delErr, "Failed to remove the record after AWS rejected a create", "alias", r.id.Name())
 		}
-		// Otherwise AWS may have accepted the create. The record keeps its client token, so the next deploy sends
-		// the create again with it and Cloud Control returns the first request instead of creating a second resource.
+		// Otherwise AWS may have accepted the create. A client fault on a replay, such as throttling or a client token
+		// conflict, does not show that the original create failed. The record keeps its client token, so the next
+		// deploy sends the create again with it and Cloud Control returns the first request instead of creating a
+		// second resource.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
 		})
@@ -759,14 +765,19 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 // request when AWS accepted it, and reads that request's status:
 //
 //   - succeeded: the record gets the identifier, and the delete continues.
-//   - failed, or AWS rejects the create: nothing exists, so only the record is removed.
+//   - failed: nothing exists, so only the record is removed.
+//   - AWS rejects the resend: the record is kept, and the DELETE returns the error, because a rejected replay does not
+//     show that the original create failed.
 //   - still running: UCP tracks the create and returns 409, and the caller deletes again when it finishes.
 //
 // When AWS never had the create, the resend creates the resource, and the delete then removes it. Cloud Control keeps a
 // client token for 36 hours, so after that a resend cannot find the original request and creates a second resource.
-// The resend sends the pending properties, which have no write-only values. Cloud Control does not need them to
-// return the original request. Because the resend may be what creates the resource, the pending fingerprints are
-// dropped: they describe values this create may not have set.
+// The resend sends the pending properties, which have no write-only values. Cloud Control returns the original request
+// only when the body matches it exactly, so for a type with write-only properties the resend gets
+// ClientTokenConflictException, and the DELETE fails with 400 until the client token expires. Deploying again recovers
+// it: a resumed PUT resends the full template, which matches, and saves the identifier, so the next DELETE works.
+// Because the resend may be what creates the resource, the pending fingerprints are dropped: they describe values this
+// create may not have set.
 func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (string, armrpc_rest.Response, error) {
 	rec.Properties.PendingFingerprints = nil
 	desired := rec.Properties.PendingLastApplied
@@ -783,10 +794,9 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 		DesiredState: aws.String(string(desiredState)),
 		ClientToken:  aws.String(rec.Properties.ClientToken),
 	}, CloudControlRegionOption(r.region))
-	if ucp_aws.IsClientFault(err) {
-		resp, err := e.removeRecord(ctx, r.id)
-		return "", resp, err
-	} else if err != nil {
+	if err != nil {
+		// The resend is a replay, so an error, even a client fault such as throttling or a client token conflict, does
+		// not show that the original create failed. Keep the record so the next DELETE tries again.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			rec.Properties.PendingOperation = records.OperationCreate
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)

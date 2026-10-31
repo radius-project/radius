@@ -865,3 +865,41 @@ func Test_WriteOnly_OverlappingPaths(t *testing.T) {
 	require.Contains(t, resp.message(), "cannot change: Auth.")
 	require.Equal(t, []string{"GetResource", "GetResource"}, operations(h.cc.Calls()))
 }
+
+// Test_WriteOnly_RecoverCreateRejected covers a DELETE whose resend Cloud Control rejects, as it does for a type with
+// write-only values, because the resend leaves them out and so does not match the original create. The resend sends no
+// write-only value, the record is kept without pending fingerprints, and the next PUT resends the full template and
+// saves the fingerprints.
+func Test_WriteOnly_RecoverCreateRejected(t *testing.T) {
+	properties := map[string]any{"Description": "d", "SecretString": password}
+	h := newHarness(t)
+	h.cc.Errors["CreateResource"] = errors.New("connection reset")
+	require.Equal(t, http.StatusInternalServerError, h.put(secretPath, properties).status)
+	clientToken := h.record(secretPath).Properties.ClientToken
+	h.cc.Calls()
+
+	h.cc.Errors["CreateResource"] = awsError(&smithy.GenericAPIError{Code: "ClientTokenConflictException", Message: "conflict", Fault: smithy.FaultClient})
+	resp := h.delete(secretPath, testOwner)
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	calls := h.cc.Calls()
+	require.Equal(t, []string{"CreateResource"}, operations(calls))
+	require.NotContains(t, calls[0].Document, password)
+	rec := h.record(secretPath)
+	require.Equal(t, clientToken, rec.Properties.ClientToken)
+	require.Nil(t, rec.Properties.PendingFingerprints)
+	require.NotContains(t, h.rawRecord(secretPath), password)
+	delete(h.cc.Errors, "CreateResource")
+
+	resp = h.put(secretPath, properties)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	calls = h.cc.Calls()
+	require.Equal(t, clientToken, calls[len(calls)-1].ClientToken)
+	require.Contains(t, calls[len(calls)-1].Document, password)
+	h.finish()
+	require.Contains(t, h.record(secretPath).Properties.Fingerprints.Digests, "SecretString")
+
+	h.cc.Calls()
+	resp = h.put(secretPath, properties)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+}
