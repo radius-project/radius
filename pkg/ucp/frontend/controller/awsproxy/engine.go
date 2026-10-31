@@ -747,8 +747,10 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 //
 // When AWS never had the create, the resend creates the resource, and the delete then removes it. Cloud Control keeps a
 // client token for 36 hours, so after that a resend cannot find the original request and creates a second resource.
-// The resend sends the pending properties, which have no write-only values. Cloud Control does not need them to
-// return the original request.
+// The resend sends the pending properties, which have no write-only values. Cloud Control returns the original request
+// only when the body matches it exactly, so for a type with write-only properties the resend gets
+// ClientTokenConflictException, and the DELETE fails with 400 until the client token expires. Deploying again recovers
+// it: a resumed PUT resends the full template, which matches, and saves the identifier, so the next DELETE works.
 func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (string, armrpc_rest.Response, error) {
 	desired := rec.Properties.PendingLastApplied
 	if desired == nil {
