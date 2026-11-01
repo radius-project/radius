@@ -2,8 +2,9 @@
 // Licensed under the Apache License, Version 2.0.
 
 import assert from "node:assert/strict";
+import { existsSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 export const bicepExtensionLockName = "bicep-extension-lock.json";
 const providerType = "application/vnd.ms.bicep.provider.";
@@ -187,9 +188,11 @@ export function verifyBicepExtensionOutputs(plan, sourceSha, lock, observed) {
   }
 }
 
+// Compare real paths: on macOS the temp directory is reached through a /var symlink.
 if (
   process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
+  existsSync(process.argv[1]) &&
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
 ) {
   const [mode, planFile, sourceSha, lockFile, observedFile] =
     process.argv.slice(2);
