@@ -338,7 +338,7 @@ Argo CD health:              Progressing ──────────► Healt
 
 1. **Argo CD plugin compiles (proposed).** A Radius sidecar in `argocd-repo-server` compiles the Bicep and returns the `DeploymentTemplate`. Argo CD diffs and applies it.
 2. **CI compiles and commits YAML (fallback).** A pipeline in each app repository runs `rad bicep generate-kubernetes-manifest` and commits the generated YAML. Argo CD deploys it as plain manifests.
-3. **Radius controller compiles (not pursued).** Each app repository also commits a `kustomization.yaml` and a hand-written Radius source resource. Kustomize packs the Bicep text into a ConfigMap, and Argo CD applies it with the source resource. The Radius controller compiles the Bicep and creates the `DeploymentTemplate`, so Argo CD only ever sees a ConfigMap change.
+3. **Radius controller compiles (not pursued).** Each app repository also commits a `kustomization.yaml` and a hand-written Radius source resource. Kustomize packs the Bicep text into a ConfigMap, and Argo CD applies it with the source resource. The Radius controller must be extended to watch the source resource, compile the Bicep from its ConfigMap into a `DeploymentTemplate`, and deploy it. Argo CD only ever sees a ConfigMap change.
 
 What each option changes in Radius:
 
