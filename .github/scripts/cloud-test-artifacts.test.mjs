@@ -725,6 +725,92 @@ test("real workflows preserve credential boundaries and require native digest ve
   );
 });
 
+test("Test ACR publishing requires a separate identity and protected environment after validation", () => {
+  const uploader = cloud["upload-test-types"];
+  const check = step(uploader, "Require dedicated Test ACR publisher identity");
+  const login = step(uploader, "Login to Test-tenant Azure");
+  assert.equal(uploader.environment, "cloud-test-types-publish");
+  assert.deepEqual(check.env, {
+    PUBLISHER_CLIENT_ID: "${{ secrets.AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID }}",
+    TEST_CLIENT_ID: "${{ secrets.AZURE_SP_TESTS_APPID }}"
+  });
+  assert.equal(check.if, undefined);
+  assert.equal(check["continue-on-error"], undefined);
+  assert.equal(
+    login.env.AZURE_CLIENT_ID,
+    "${{ secrets.AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID }}"
+  );
+  assert.equal(
+    login.env.AZURE_TENANT_ID,
+    "${{ secrets.AZURE_SP_TESTS_TENANTID }}"
+  );
+  assert.equal(
+    login.env.AZURE_SUBSCRIPTION_ID,
+    "${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}"
+  );
+  assert.equal(login.if, undefined);
+  assert.equal(login["continue-on-error"], undefined);
+  const ordered = [
+    "Select the exact producing artifact",
+    "Download immutable OCI data",
+    "Validate source and import OCI data",
+    "Require dedicated Test ACR publisher identity",
+    "Login to Test-tenant Azure",
+    "Login only to the private test registry",
+    "Copy validated Radius test types"
+  ].map((name) => uploader.steps.indexOf(step(uploader, name)));
+  assert.ok(
+    ordered.every(
+      (index, i) => index >= 0 && (i === 0 || index > ordered[i - 1])
+    )
+  );
+  assert.equal(
+    step(uploader, "Validate source and import OCI data").if,
+    undefined
+  );
+  assert.equal(
+    step(uploader, "Validate source and import OCI data")["continue-on-error"],
+    undefined
+  );
+  assert.equal(
+    step(uploader, "Login only to the private test registry").run,
+    "az acr login --name crradfunctest1b2s"
+  );
+  assert.equal(
+    step(cloud.tests, "Login to Azure").env.AZURE_CLIENT_ID,
+    "${{ secrets.AZURE_SP_TESTS_APPID }}"
+  );
+  assert.equal(cloud.tests.environment, undefined);
+  for (const [name, job] of Object.entries(cloud)) {
+    if (name !== "upload-test-types")
+      assert.doesNotMatch(
+        JSON.stringify(job),
+        /AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID|cloud-test-types-publish/
+      );
+  }
+  for (const [publisher, candidate, expected] of [
+    ["", "candidate", 1],
+    ["candidate", "candidate", 1],
+    ["CANDIDATE", "candidate", 1],
+    ["publisher", "candidate", 0]
+  ]) {
+    const result = spawnSync("bash", ["-e", "-c", check.run], {
+      env: {
+        ...process.env,
+        PUBLISHER_CLIENT_ID: publisher,
+        TEST_CLIENT_ID: candidate
+      },
+      encoding: "utf8"
+    });
+    assert.equal(result.status, expected);
+    if (expected)
+      assert.match(
+        result.stdout,
+        /::error::Configure AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID/
+      );
+  }
+});
+
 test("private-module App token is read-only, job-local and minted immediately before tests", () => {
   const steps = cloud.tests.steps;
   const token = step(cloud.tests, "Create private-module read token");
