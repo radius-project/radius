@@ -133,7 +133,6 @@ func Test_Flux_SourceMigration(t *testing.T) {
 		require.Equal(t, originalOutputs, dt.Status.OutputResources)
 		require.ElementsMatch(t, originalFinalizers, dt.Finalizers)
 		require.Equal(t, originalParameters, dt.Spec.Parameters)
-		require.Equal(t, originalTemplate, dt.Spec.Template)
 		require.Equal(t, originalProvider, dt.Spec.ProviderConfig)
 		for _, original := range originalTrackers.Items {
 			var tracker radappiov1alpha3.DeploymentResource
@@ -162,7 +161,10 @@ func Test_Flux_SourceMigration(t *testing.T) {
 	requireContainerImage(t, ctx, k8sClient, "controller", "controller", registry+"/controller:"+tag)
 	waitMigrationTemplate(t, ctx, opts.Client, key, radappiov1alpha3.DeploymentTemplatePhraseHeld, dt)
 	assertPreserved()
+	require.Equal(t, originalTemplate, dt.Spec.Template, "the disabled candidate must preserve the released controller's template")
 	associateMigrationTemplate(t, ctx, opts.Client, dt, source)
+	// Once enabled, the candidate may recompile with its own Bicep extension version.
+	// The output inventory and object identities must still survive that reconciliation.
 	require.NoError(t, helmUpgrade(ctx, registry, tag, deImage, migrationSourceValues(source)))
 	waitMigrationTemplate(t, ctx, opts.Client, key, radappiov1alpha3.DeploymentTemplatePhraseReady, dt)
 	assertPreserved()
