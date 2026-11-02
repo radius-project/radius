@@ -99,6 +99,12 @@ func Test_DeploymentTemplateReconciler_SourceState(t *testing.T) {
 		{name: "inconsistent", enabled: true, change: func(dt *radappiov1alpha3.DeploymentTemplate, _ *sourcev1.GitRepository) {
 			dt.Spec.Repository = "different"
 		}, reason: "TemplateSourceRequired"},
+		{name: "unsupported kind", enabled: true, change: func(dt *radappiov1alpha3.DeploymentTemplate, _ *sourcev1.GitRepository) {
+			dt.Spec.SourceRef.Kind = "OCIRepository"
+		}, reason: "TemplateSourceRequired"},
+		{name: "omitted kind", enabled: true, change: func(dt *radappiov1alpha3.DeploymentTemplate, _ *sourcev1.GitRepository) {
+			dt.Spec.SourceRef.Kind = ""
+		}},
 		{name: "trusted direct", change: func(dt *radappiov1alpha3.DeploymentTemplate, _ *sourcev1.GitRepository) {
 			dt.Spec.Repository = ""
 			dt.Spec.SourceRef = nil

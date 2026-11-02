@@ -253,7 +253,7 @@ func associateMigrationTemplate(t *testing.T, ctx context.Context, client contro
 		{"op": "test", "path": "/metadata/resourceVersion", "value": dt.ResourceVersion},
 		{"op": "add", "path": "/spec/repository", "value": source.Name},
 		{"op": "add", "path": "/spec/sourceRef", "value": radappiov1alpha3.DeploymentTemplateSourceReference{
-			Namespace: source.Namespace, Name: source.Name, UID: source.UID, Generation: source.Generation,
+			Kind: sourcev1.GitRepositoryKind, Namespace: source.Namespace, Name: source.Name, UID: source.UID, Generation: source.Generation,
 			Revision: source.Status.Artifact.Revision, Digest: source.Status.Artifact.Digest,
 		}},
 	})

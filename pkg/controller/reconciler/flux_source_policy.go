@@ -74,16 +74,19 @@ func (h *sourceHold) Error() string {
 	return h.reason + ": " + h.message
 }
 
+// sourceKey returns the identity of a complete, supported source reference.
+// An omitted kind is GitRepository, matching the schema default.
 func sourceKey(ref *radappiov1alpha3.DeploymentTemplateSourceReference) string {
-	if ref == nil || ref.Namespace == "" || ref.Name == "" || ref.UID == "" {
+	if ref == nil || (ref.Kind != "" && ref.Kind != sourcev1.GitRepositoryKind) ||
+		ref.Namespace == "" || ref.Name == "" || ref.UID == "" {
 		return ""
 	}
 	return ref.Namespace + "/" + ref.Name + "/" + string(ref.UID)
 }
 
 func sameSource(a, b *radappiov1alpha3.DeploymentTemplateSourceReference) bool {
-	return sourceKey(a) != "" && b != nil &&
-		a.Namespace == b.Namespace && a.Name == b.Name && a.UID == b.UID
+	key := sourceKey(a)
+	return key != "" && key == sourceKey(b)
 }
 
 func checkTemplateOwner(template *radappiov1alpha3.DeploymentTemplate, ref *radappiov1alpha3.DeploymentTemplateSourceReference) error {
@@ -193,7 +196,7 @@ func (p *FluxSourcePolicy) templateSchema(ctx context.Context) error {
 		if ref.Type != "object" {
 			break
 		}
-		for _, name := range []string{"namespace", "name", "uid", "revision", "digest"} {
+		for _, name := range []string{"kind", "namespace", "name", "uid", "revision", "digest"} {
 			if ref.Properties[name].Type != "string" {
 				return fmt.Errorf("deployment template schema is missing sourceRef.%s; apply the matching chart CRD before enabling Flux", name)
 			}
@@ -207,7 +210,7 @@ func (p *FluxSourcePolicy) templateSchema(ctx context.Context) error {
 
 func sourceReference(source *sourcev1.GitRepository) *radappiov1alpha3.DeploymentTemplateSourceReference {
 	return &radappiov1alpha3.DeploymentTemplateSourceReference{
-		Namespace: source.Namespace, Name: source.Name, UID: source.UID, Generation: source.Generation,
+		Kind: sourcev1.GitRepositoryKind, Namespace: source.Namespace, Name: source.Name, UID: source.UID, Generation: source.Generation,
 		Revision: source.Status.Artifact.Revision, Digest: source.Status.Artifact.Digest,
 	}
 }

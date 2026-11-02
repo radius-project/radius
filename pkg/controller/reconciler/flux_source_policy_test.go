@@ -80,6 +80,21 @@ func TestFluxSourcePolicySchemaRoundTrip(t *testing.T) {
 	require.Equal(t, "{}", dt.Spec.Template)
 	require.Equal(t, ref, dt.Spec.SourceRef)
 	require.NoError(t, policy.templateSchema(t.Context()))
+
+	defaulted := &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "schema-roundtrip", Name: "defaulted-kind"},
+		Spec:       radappiov1alpha3.DeploymentTemplateSpec{Template: "{}", Repository: ref.Name, SourceRef: ref.DeepCopy()},
+	}
+	defaulted.Spec.SourceRef.Kind = ""
+	require.NoError(t, c.Create(t.Context(), defaulted))
+	require.NoError(t, c.Get(t.Context(), client.ObjectKeyFromObject(defaulted), defaulted))
+	require.Equal(t, sourcev1.GitRepositoryKind, defaulted.Spec.SourceRef.Kind)
+	unsupported := &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "schema-roundtrip", Name: "unsupported-kind"},
+		Spec:       radappiov1alpha3.DeploymentTemplateSpec{Template: "{}", Repository: ref.Name, SourceRef: ref.DeepCopy()},
+	}
+	unsupported.Spec.SourceRef.Kind = "OCIRepository"
+	require.Error(t, c.Create(t.Context(), unsupported))
 }
 
 func TestFluxSourcePolicySelection(t *testing.T) {
@@ -201,15 +216,19 @@ func TestFluxSourcePolicyTemplateSchema(t *testing.T) {
 	require.NoError(t, err)
 	var current apiextensionsv1.CustomResourceDefinition
 	require.NoError(t, yaml.Unmarshal(data, &current))
-	for _, old := range []bool{false, true} {
-		name := "current"
-		if old {
-			name = "previous schema"
-		}
-		t.Run(name, func(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		remove  func(spec map[string]apiextensionsv1.JSONSchemaProps)
+		wantErr string
+	}{
+		{name: "current"},
+		{name: "previous schema", remove: func(spec map[string]apiextensionsv1.JSONSchemaProps) { delete(spec, "sourceRef") }, wantErr: "apply the matching chart CRD"},
+		{name: "missing kind", remove: func(spec map[string]apiextensionsv1.JSONSchemaProps) { delete(spec["sourceRef"].Properties, "kind") }, wantErr: "sourceRef.kind"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
 			crd := current.DeepCopy()
-			if old {
-				delete(crd.Spec.Versions[0].Schema.OpenAPIV3Schema.Properties["spec"].Properties, "sourceRef")
+			if tt.remove != nil {
+				tt.remove(crd.Spec.Versions[0].Schema.OpenAPIV3Schema.Properties["spec"].Properties)
 			}
 			s := runtime.NewScheme()
 			require.NoError(t, apiextensionsv1.AddToScheme(s))
@@ -217,8 +236,8 @@ func TestFluxSourcePolicyTemplateSchema(t *testing.T) {
 			policy, err := NewFluxSourcePolicy(hostoptions.FluxOptions{}, c)
 			require.NoError(t, err)
 			err = policy.templateSchema(t.Context())
-			if old {
-				require.ErrorContains(t, err, "apply the matching chart CRD")
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
 			}

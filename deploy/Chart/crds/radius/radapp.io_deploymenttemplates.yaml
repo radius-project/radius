@@ -58,8 +58,10 @@ spec:
                 description: ProviderConfig specifies the scopes for resources.
                 type: string
               repository:
-                description: Repository is the git repository that the Bicep manifests
-                  are stored in.
+                description: |-
+                  Repository is the name of the Flux GitRepository that produced this template.
+                  It is retained for compatibility and must match SourceRef.Name. A template with
+                  Repository but no SourceRef is held until it is associated with a selected source.
                 type: string
               sourceRef:
                 description: SourceRef identifies the Flux source and artifact used
@@ -74,6 +76,13 @@ spec:
                     format: int64
                     minimum: 1
                     type: integer
+                  kind:
+                    default: GitRepository
+                    description: Kind is the Flux source kind. Only GitRepository
+                      is supported.
+                    enum:
+                    - GitRepository
+                    type: string
                   name:
                     description: Name is the GitRepository name.
                     minLength: 1

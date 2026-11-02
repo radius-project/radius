@@ -35,6 +35,9 @@ import (
 )
 
 const (
+	// deploymentTemplateSourceField indexes templates by source namespace, name, and UID.
+	// spec.repository is still written, but a name alone can match another namespace's
+	// source or a recreated source.
 	deploymentTemplateSourceField = "spec.sourceRef"
 	radiusConfigFileName          = "radius-gitops-config.yaml"
 	armJSONParametersKeyName      = "parameters"

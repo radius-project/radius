@@ -49,6 +49,19 @@ The source must be active and Ready for its current generation with an artifact.
 
 Settings are read at process startup. The chart changes a pod checksum and uses `Recreate` for the single controller replica, avoiding overlap between old and new selections. This briefly pauses all controller reconcilers. A configuration change takes full effect only after the old controller has stopped and the new pod is ready.
 
+#### Changing selected sources
+
+Adding, removing, or replacing a source is a configuration upgrade of the existing release, not a reinstall. Templates, tracking objects, and deployed resources are retained. Helm replaces lists rather than merging them, so every change must supply the complete reviewed `controller.flux.sources` list. Read a new source's UID from the live object as shown above, add its entry to the reviewed values file, and upgrade the same chart version:
+
+```sh
+helm upgrade radius "$CHART" -n radius-system -f reviewed-selected-values.yaml --wait
+kubectl rollout status deployment/controller -n radius-system --timeout=180s
+```
+
+`rad upgrade kubernetes` changes the Radius version and rejects an upgrade to the installed version. For a `rad install kubernetes` installation, run `rad install kubernetes --reinstall` from a `rad` CLI that matches the installed version and pass `--set` values for every selected entry; each run replaces the whole list.
+
+Removing an entry holds that source's templates; it does not delete their resources. To retire a source's applications, remove their manifests from the source, wait for cleanup to finish, then remove the entry. A deleted and recreated source has a new UID: update its entry, then follow the reviewed in-place association in [Migrating existing templates](#migrating-existing-templates) for its existing templates.
+
 #### Target changes and cleanup
 
 Moving an existing entry to another namespace while retaining its template name and Radius deployment scope is held while the old DeploymentTemplate exists, including while it is deleting. First remove the entry and wait for its template and resources to finish deletion, then add it in the new namespace. This sequence deletes and recreates the workload; it is not a live transfer. Initial cross-namespace targets and moves to a different deployment scope remain supported.
@@ -102,6 +115,7 @@ The stop-and-upgrade steps also apply when no Flux templates exist: the controll
        {op: "test", path: "/metadata/resourceVersion", value: $t.metadata.resourceVersion},
        {op: "add", path: "/spec/repository", value: $s.metadata.name},
        {op: "add", path: "/spec/sourceRef", value: {
+         kind: "GitRepository",
          namespace: $s.metadata.namespace, name: $s.metadata.name,
          uid: $s.metadata.uid, generation: $s.metadata.generation,
          revision: $s.status.artifact.revision, digest: $s.status.artifact.digest

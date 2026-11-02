@@ -33,7 +33,9 @@ type DeploymentTemplateSpec struct {
 	// ProviderConfig specifies the scopes for resources.
 	ProviderConfig string `json:"providerConfig,omitempty"`
 
-	// Repository is the git repository that the Bicep manifests are stored in.
+	// Repository is the name of the Flux GitRepository that produced this template.
+	// It is retained for compatibility and must match SourceRef.Name. A template with
+	// Repository but no SourceRef is held until it is associated with a selected source.
 	Repository string `json:"repository,omitempty"`
 
 	// SourceRef identifies the Flux source and artifact used to produce this template.
@@ -41,7 +43,13 @@ type DeploymentTemplateSpec struct {
 }
 
 // DeploymentTemplateSourceReference records a generated template's source.
+// It follows the Flux source reference shape (kind, name, namespace) and adds the
+// source UID, generation, and artifact attribution.
 type DeploymentTemplateSourceReference struct {
+	// Kind is the Flux source kind. Only GitRepository is supported.
+	// +kubebuilder:validation:Enum=GitRepository
+	// +kubebuilder:default=GitRepository
+	Kind string `json:"kind,omitempty"`
 	// Namespace is the GitRepository namespace.
 	// +kubebuilder:validation:MinLength=1
 	Namespace string `json:"namespace"`
