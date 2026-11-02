@@ -395,8 +395,10 @@ assert_contains "${diag}/sampler.log" "Sampler stopped:"
 workflow="${SCRIPT_DIR}/../workflows/long-running-azure.yaml"
 assert_contains "${workflow}" \
     "bash \"\$GITHUB_WORKSPACE/.github/scripts/run-with-cluster-diagnostics.sh\""
-assert_contains "${workflow}" \
-    "bash -e -c 'make test-functional-all-cloud; make test-functional-all-noncloud'"
+# long-running-azure_test.sh executes the wrapped script and checks its order.
+assert_contains "${workflow}" "bash -e -o pipefail -c '"
+assert_contains "${workflow}" 'make test-functional-all-cloud'
+assert_contains "${workflow}" 'make test-functional-all-noncloud'
 assert_contains "${workflow}" 'DIAGNOSTICS_LOG_NAMESPACES: radius-system'
 
 assert_contains "${SCRIPT_DIR}/../workflows/unit-tests.yaml" \
