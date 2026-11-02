@@ -144,11 +144,11 @@ test("bounds the token request even when the server does not respond", async () 
 });
 
 test("recovers from a real HTTP request timeout before Azure login", async (t) => {
-  let calls = 0;
   const server = createServer((request, response) => {
-    calls++;
     assert.equal(request.headers.authorization, "Bearer request-secret");
-    if (calls > 1) {
+    // Never answer the first attempt, so the client hits a real timeout.
+    const { searchParams } = new URL(request.url, "http://127.0.0.1");
+    if (searchParams.get("attempt") !== "1") {
       response.setHeader("Content-Type", "application/json");
       response.end(JSON.stringify({ value: token }));
     }
@@ -159,18 +159,26 @@ test("recovers from a real HTTP request timeout before Azure login", async (t) =
     server.closeAllConnections();
     server.close();
   });
+  let attempts = 0;
   const result = await getIDToken(env, {
-    request: (url, secret) =>
-      requestIDToken(url, secret, {
-        timeoutMs: 100,
+    request: (url, secret) => {
+      const attempt = ++attempts;
+      return requestIDToken(url, secret, {
+        // Only the unanswered attempt uses a short timeout. A slow runner can
+        // take more than 100 ms to deliver the answer to the retry.
+        timeoutMs: attempt === 1 ? 100 : 10000,
         fetch: (_url, options) =>
-          fetch(`http://127.0.0.1:${server.address().port}`, options)
-      }),
+          fetch(
+            `http://127.0.0.1:${server.address().port}/?attempt=${attempt}`,
+            options
+          )
+      });
+    },
     delay: async () => {},
     warn: () => {}
   });
   assert.equal(result, token);
-  assert.equal(calls, 2);
+  assert.equal(attempts, 2);
 });
 
 for (const status of [400, 401, 403, 404]) {
