@@ -207,3 +207,17 @@ func Test_CloudFormation(t *testing.T) {
 	_, err = cf.DescribeType(t.Context(), &cloudformation.DescribeTypeInput{TypeName: aws.String("AWS::Missing::Type")})
 	require.Error(t, err)
 }
+
+func Test_LostResponse(t *testing.T) {
+	cc := NewCloudControl()
+	cc.Put("AWS::S3::Bucket", "assets", map[string]any{"BucketName": "assets"})
+	cc.LostResponses = map[string]error{"UpdateResource": errors.New("connection reset")}
+	patch := `[{"op":"add","path":"/Tags","value":["a"]}]`
+	_, err := cc.UpdateResource(t.Context(), &cloudcontrol.UpdateResourceInput{TypeName: aws.String("AWS::S3::Bucket"), Identifier: aws.String("assets"), PatchDocument: aws.String(patch)})
+	require.ErrorContains(t, err, "connection reset")
+	require.Equal(t, []any{"a"}, cc.Resource("AWS::S3::Bucket", "assets")["Tags"], "the update was applied")
+
+	// The response is lost once.
+	_, err = cc.UpdateResource(t.Context(), &cloudcontrol.UpdateResourceInput{TypeName: aws.String("AWS::S3::Bucket"), Identifier: aws.String("assets"), PatchDocument: aws.String(`[]`)})
+	require.NoError(t, err)
+}
