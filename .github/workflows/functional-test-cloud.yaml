@@ -566,6 +566,7 @@ jobs:
 
   upload-test-types:
     name: Upload private Test-tenant Bicep types
+    environment: cloud-test-types-publish
     needs: [setup, changes, build]
     if: always() && github.repository == 'radius-project/radius' && needs.setup.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.only_changed == 'false' && needs.build.result == 'success'
     runs-on: ubuntu-24.04
@@ -634,11 +635,21 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
+      - name: Require dedicated Test ACR publisher identity
+        env:
+          PUBLISHER_CLIENT_ID: ${{ secrets.AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID }}
+          TEST_CLIENT_ID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+        run: |
+          if [[ -z "${PUBLISHER_CLIENT_ID}" || "${PUBLISHER_CLIENT_ID,,}" == "${TEST_CLIENT_ID,,}" ]]; then
+            echo "::error::Configure AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID in the protected cloud-test-types-publish environment with an identity distinct from AZURE_SP_TESTS_APPID."
+            exit 1
+          fi
+
       - name: Login to Test-tenant Azure
         run: node "${AZURE_LOGIN_SCRIPT}"
         env:
           AZURE_LOGIN_SCRIPT: ${{ github.workspace }}/.workflow-azure-login/.github/scripts/azure-oidc-login.mjs
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
