@@ -18,7 +18,6 @@ package deployment
 
 import (
 	"errors"
-	"strconv"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -28,6 +27,7 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -48,8 +48,8 @@ func Test_deploymentProcessor_admitOutputResources_ClusterScope(t *testing.T) {
 	id := resources.MustParse("/planes/radius/local/resourceGroups/rg/providers/Applications.Core/containers/web")
 	for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
 		for _, targetUID := range []types.UID{"control-plane", "external"} {
-			for _, secret := range []bool{false, true} {
-				t.Run(string(mode)+"/"+string(targetUID)+"/secret="+strconv.FormatBool(secret), func(t *testing.T) {
+			for _, kind := range []string{"deployment", "secret reference", "namespace"} {
+				t.Run(string(mode)+"/"+string(targetUID)+"/"+kind, func(t *testing.T) {
 					controlPlane := k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", UID: "control-plane"}})
 					target := k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", UID: targetUID}})
 					dp := &deploymentProcessor{
@@ -57,11 +57,16 @@ func Test_deploymentProcessor_admitOutputResources_ClusterScope(t *testing.T) {
 						k8sClient:          target,
 						authorization:      authz.Options{Mode: mode, ControlPlaneSecrets: []string{controlPlaneSecret}},
 					}
-					output := deploymentWith("radius-system", nil)
+					var output runtime.Object = deploymentWith("radius-system", nil)
 					rule := authz.RuleControlPlaneNamespace
-					if secret {
-						output.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: "unused", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: controlPlaneSecret}}}}
+					switch kind {
+					case "secret reference":
+						output = deploymentWith("radius-system", func(spec *corev1.PodSpec) {
+							spec.Volumes = []corev1.Volume{{Name: "unused", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: controlPlaneSecret}}}}
+						})
 						rule = authz.RuleControlPlaneSecret
+					case "namespace":
+						output = &corev1.Namespace{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Namespace"}, ObjectMeta: metav1.ObjectMeta{Name: "radius-system"}}
 					}
 					core, logs := observer.New(zap.DebugLevel)
 					ctx := logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core)))
@@ -89,8 +94,13 @@ func Test_deploymentProcessor_admitOutputResources_ClusterScope(t *testing.T) {
 				k8sClient:          k8sutil.NewFakeKubeClient(nil),
 				authorization:      authz.Options{Mode: mode},
 			}
-			err := dp.admitOutputResources(t.Context(), id, []rpv1.OutputResource{kubeOutputFor(deploymentWith("radius-system", nil))})
-			require.ErrorContains(t, err, "failed to identify deployment-target cluster")
+			for _, output := range []runtime.Object{
+				deploymentWith("radius-system", nil),
+				&corev1.Namespace{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Namespace"}, ObjectMeta: metav1.ObjectMeta{Name: "radius-system"}},
+			} {
+				err := dp.admitOutputResources(t.Context(), id, []rpv1.OutputResource{kubeOutputFor(output)})
+				require.ErrorContains(t, err, "failed to identify deployment-target cluster")
+			}
 		}
 	})
 }
@@ -149,6 +159,18 @@ func Test_admitOutputResources(t *testing.T) {
 			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
 			ObjectMeta: metav1.ObjectMeta{Name: controlPlaneSecret, Namespace: "radius-system"},
 		}),
+		"control-plane Namespace object": kubeOutputFor(&corev1.Namespace{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Namespace"},
+			ObjectMeta: metav1.ObjectMeta{Name: "radius-system"},
+		}),
+		"application Namespace object": kubeOutputFor(&corev1.Namespace{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Namespace"},
+			ObjectMeta: metav1.ObjectMeta{Name: "app"},
+		}),
+		"same-named unrelated cluster-scoped object": kubeOutputFor(&rbacv1.ClusterRole{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRole"},
+			ObjectMeta: metav1.ObjectMeta{Name: "radius-system"},
+		}),
 		"app secret in control-plane namespace": kubeOutputFor(deploymentWith("radius-system", appSecret)),
 		"plain deployment in control-plane ns":  kubeOutputFor(deploymentWith("radius-system", nil)),
 		"secret volume in app namespace":        kubeOutputFor(deploymentWith("app", secretVolume)),
@@ -173,6 +195,9 @@ func Test_admitOutputResources(t *testing.T) {
 		{output: "imagePullSecrets", rule: authz.RuleControlPlaneSecret},
 		{output: "pod secret volume", rule: authz.RuleControlPlaneSecret},
 		{output: "control-plane Secret object", rule: authz.RuleControlPlaneSecret},
+		{output: "control-plane Namespace object", rule: authz.RuleControlPlaneNamespace},
+		{output: "application Namespace object"},
+		{output: "same-named unrelated cluster-scoped object"},
 		{output: "app secret in control-plane namespace", rule: authz.RuleControlPlaneNamespace},
 		{output: "plain deployment in control-plane ns", rule: authz.RuleControlPlaneNamespace},
 		{output: "secret volume in app namespace"},

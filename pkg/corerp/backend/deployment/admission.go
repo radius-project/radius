@@ -40,11 +40,11 @@ func (dp *deploymentProcessor) admitOutputResources(ctx context.Context, id reso
 			continue
 		}
 		obj, ok := output.CreateResource.Data.(metav1.Object)
-		if !ok || !opts.IsControlPlaneNamespace(obj.GetNamespace()) {
+		if !ok || !opts.IsControlPlaneNamespace(admissionNamespace(obj)) {
 			continue
 		}
 		var err error
-		opts, err = kubeutil.DeploymentTargetAuthorization(ctx, opts, dp.controlPlaneClient, dp.k8sClient, obj.GetNamespace())
+		opts, err = kubeutil.DeploymentTargetAuthorization(ctx, opts, dp.controlPlaneClient, dp.k8sClient, admissionNamespace(obj))
 		if err != nil {
 			return err
 		}
@@ -55,7 +55,7 @@ func (dp *deploymentProcessor) admitOutputResources(ctx context.Context, id reso
 
 // admitOutputResources applies the control-plane admission rules to the Kubernetes output
 // resources of id before any of them is applied. Secrets are namespace-scoped, so only objects in
-// the control-plane namespace are checked: one that is or references a control-plane Secret
+// the control-plane namespace, and the Namespace object itself, are checked: one that is or references a control-plane Secret
 // violates control-plane-secret, and any other violates control-plane-namespace. This mirrors the
 // chart's radius-control-plane-isolation admission policy.
 func admitOutputResources(ctx context.Context, opts authz.Options, id resources.ID, outputs []rpv1.OutputResource) error {
@@ -71,7 +71,7 @@ func admitOutputResources(ctx context.Context, opts authz.Options, id resources.
 			continue
 		}
 		obj, ok := output.CreateResource.Data.(metav1.Object)
-		if !ok || !opts.IsControlPlaneNamespace(obj.GetNamespace()) {
+		if !ok || !opts.IsControlPlaneNamespace(admissionNamespace(obj)) {
 			continue
 		}
 		if referencesControlPlaneSecret(obj, opts) {
@@ -90,6 +90,13 @@ func admitOutputResources(ctx context.Context, opts authz.Options, id resources.
 		Target: id.String(),
 		Rule:   rule,
 	})
+}
+
+func admissionNamespace(obj metav1.Object) string {
+	if ns, ok := obj.(*corev1.Namespace); ok {
+		return ns.Name
+	}
+	return obj.GetNamespace()
 }
 
 // referencesControlPlaneSecret reports whether obj is a control-plane Secret or a workload whose
