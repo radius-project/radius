@@ -58,6 +58,8 @@ Rerun `up.sh` with another mode to switch modes; add `--skip-build` to reuse the
 kind delete cluster --name radius-authz && docker rm --force radius-authz-registry
 ```
 
+Pod Security namespace labels are additive and are not rewritten or removed when switching modes or levels, even if Radius added them originally. Use fresh environment namespaces when comparing modes, or explicitly review and update the existing labels; switching to `off` does not remove an existing `enforce` label.
+
 ## Manual verification checklist
 
 Stack labels and check IDs are implementation roadmap identifiers used by this kit, not the three stages in the design's [development plan](../../eng/design-notes/security/2026-09-internal-component-authorization.md#development-plan):

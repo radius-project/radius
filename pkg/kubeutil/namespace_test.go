@@ -17,6 +17,8 @@ limitations under the License.
 package kubeutil
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/authz"
@@ -24,9 +26,14 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/util/retry"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 func Test_PatchNamespace(t *testing.T) {
@@ -58,6 +65,112 @@ func Test_PatchNamespace(t *testing.T) {
 	require.Equal(t, expected, ns)
 }
 
+func Test_AddMissingNamespaceLabels_ConcurrentChanges(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		concurrent  map[string]string
+		wantAdded   map[string]string
+		wantLabels  map[string]string
+		wantPatches int
+	}{
+		{
+			name:        "retries an unrelated change",
+			concurrent:  map[string]string{"team": "ops"},
+			wantAdded:   map[string]string{authz.PodSecurityLabelWarn: "baseline", authz.PodSecurityLabelAudit: "baseline"},
+			wantLabels:  map[string]string{"team": "ops", authz.PodSecurityLabelWarn: "baseline", authz.PodSecurityLabelAudit: "baseline"},
+			wantPatches: 2,
+		},
+		{
+			name:        "preserves a concurrent operator override",
+			concurrent:  map[string]string{authz.PodSecurityLabelWarn: "privileged"},
+			wantAdded:   map[string]string{authz.PodSecurityLabelAudit: "baseline"},
+			wantLabels:  map[string]string{authz.PodSecurityLabelWarn: "privileged", authz.PodSecurityLabelAudit: "baseline"},
+			wantPatches: 2,
+		},
+		{
+			name:        "does not patch labels another writer supplied",
+			concurrent:  map[string]string{authz.PodSecurityLabelWarn: "restricted", authz.PodSecurityLabelAudit: "restricted"},
+			wantLabels:  map[string]string{authz.PodSecurityLabelWarn: "restricted", authz.PodSecurityLabelAudit: "restricted"},
+			wantPatches: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			patches := 0
+			client := fake.NewClientBuilder().WithScheme(clientgoscheme.Scheme).
+				WithObjects(&corev1.Namespace{Name: "apps"}).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Patch: func(ctx context.Context, client runtime_client.WithWatch, obj runtime_client.Object, patch runtime_client.Patch, opts ...runtime_client.PatchOption) error {
+						patches++
+						if patches == 1 {
+							current := &corev1.Namespace{}
+							require.NoError(t, client.Get(ctx, runtime_client.ObjectKey{Name: obj.GetName()}, current))
+							current.Labels = tt.concurrent
+							require.NoError(t, client.Update(ctx, current))
+						}
+						return client.Patch(ctx, obj, patch, opts...)
+					},
+				}).Build()
+
+			added, err := AddMissingNamespaceLabels(t.Context(), client, &corev1.Namespace{Name: "apps"}, map[string]string{
+				authz.PodSecurityLabelWarn: "baseline", authz.PodSecurityLabelAudit: "baseline",
+			})
+			require.NoError(t, err)
+			require.Equal(t, tt.wantAdded, added)
+			require.Equal(t, tt.wantPatches, patches)
+			ns := &corev1.Namespace{}
+			require.NoError(t, client.Get(t.Context(), runtime_client.ObjectKey{Name: "apps"}, ns))
+			require.Equal(t, tt.wantLabels, ns.Labels)
+		})
+	}
+}
+
+func Test_AddMissingNamespaceLabels_Errors(t *testing.T) {
+	t.Parallel()
+
+	conflict := apierrors.NewConflict(schema.GroupResource{Resource: "namespaces"}, "apps", errors.New("concurrent update"))
+	for _, patchErr := range []error{conflict, errors.New("patch denied")} {
+		t.Run(patchErr.Error(), func(t *testing.T) {
+			t.Parallel()
+
+			patches := 0
+			client := fake.NewClientBuilder().WithScheme(clientgoscheme.Scheme).
+				WithObjects(&corev1.Namespace{Name: "apps"}).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Patch: func(context.Context, runtime_client.WithWatch, runtime_client.Object, runtime_client.Patch, ...runtime_client.PatchOption) error {
+						patches++
+						return patchErr
+					},
+				}).Build()
+
+			added, err := AddMissingNamespaceLabels(t.Context(), client, &corev1.Namespace{Name: "apps"}, map[string]string{authz.PodSecurityLabelWarn: "baseline"})
+			require.ErrorIs(t, err, patchErr)
+			require.Nil(t, added)
+			if apierrors.IsConflict(patchErr) {
+				require.Equal(t, retry.DefaultRetry.Steps, patches)
+			} else {
+				require.Equal(t, 1, patches)
+			}
+			ns := &corev1.Namespace{}
+			require.NoError(t, client.Get(t.Context(), runtime_client.ObjectKey{Name: "apps"}, ns))
+			require.Empty(t, ns.Labels)
+		})
+	}
+
+	t.Run("namespace read failure", func(t *testing.T) {
+		t.Parallel()
+		client := fake.NewClientBuilder().WithScheme(clientgoscheme.Scheme).Build()
+		added, err := AddMissingNamespaceLabels(t.Context(), client, &corev1.Namespace{Name: "missing"}, map[string]string{authz.PodSecurityLabelWarn: "baseline"})
+		require.True(t, apierrors.IsNotFound(err))
+		require.Nil(t, added)
+	})
+}
+
 func Test_CreateNamespace_PodSecurityLabels(t *testing.T) {
 	t.Parallel()
 
@@ -86,6 +199,20 @@ func Test_CreateNamespace_PodSecurityLabels(t *testing.T) {
 			name: "enforce keeps operator labels", opts: authz.Options{Mode: authz.ModeEnforce}, namespace: "apps", existing: operatorLabels,
 			wantAdded:  map[string]string{authz.PodSecurityLabelEnforce: "baseline", authz.PodSecurityLabelAudit: "baseline"},
 			wantLabels: map[string]string{"team": "a", authz.PodSecurityLabelWarn: "privileged", authz.PodSecurityLabelEnforce: "baseline", authz.PodSecurityLabelAudit: "baseline"},
+		},
+		{
+			name: "level change preserves existing labels", opts: authz.Options{Mode: authz.ModeDryRun, PodSecurityLevel: authz.PodSecurityLevelRestricted}, namespace: "apps", existing: baselineWarnAudit,
+			wantLabels: baselineWarnAudit,
+		},
+		{
+			name: "enabling enforce adds only the missing label", opts: authz.Options{Mode: authz.ModeEnforce, PodSecurityLevel: authz.PodSecurityLevelRestricted}, namespace: "apps", existing: baselineWarnAudit,
+			wantAdded:  map[string]string{authz.PodSecurityLabelEnforce: "restricted"},
+			wantLabels: map[string]string{authz.PodSecurityLabelWarn: "baseline", authz.PodSecurityLabelAudit: "baseline", authz.PodSecurityLabelEnforce: "restricted"},
+		},
+		{
+			name: "off preserves existing enforcement", opts: authz.Options{Mode: authz.ModeOff}, namespace: "apps",
+			existing:   map[string]string{authz.PodSecurityLabelEnforce: "baseline"},
+			wantLabels: map[string]string{authz.PodSecurityLabelEnforce: "baseline"},
 		},
 		{name: "enforce skips control-plane namespace", opts: authz.Options{Mode: authz.ModeEnforce}, namespace: "radius-system", existing: map[string]string{}, wantLabels: nil},
 	}

@@ -84,6 +84,8 @@ The `authorization.mode` setting is read by UCP, Applications RP, Dynamic RP, an
 
 When the mode is not `off`, the chart also renders `podSecurityLevel` (from `global.rbac.podSecurityLevel`, `baseline` by default or `restricted`) and `controlPlaneNamespace` (the release namespace, which is never labeled). `dryRun` adds the `pod-security.kubernetes.io/warn` and `audit` labels; `enforce` also adds `enforce`. Labels that an operator already set on a namespace are never overwritten.
 
+Labeling is additive: changing the mode or level does not rewrite or remove existing labels, including labels Radius previously added. The new setting applies to newly created namespaces and missing label keys when an environment or application is updated. To change the policy on an already labeled namespace, review and update its Pod Security labels explicitly; switching Radius to `off` does not disable existing namespace enforcement.
+
 UCP reads `aws.fingerprintKeyFile`, the file that holds the HMAC key for fingerprints of write-only AWS property values. It defaults to `/var/secrets/aws-fingerprint/key`, where the chart mounts the `radius-aws-fingerprint-key` Secret, so the chart does not render it. Set it when running UCP as a local process with a key file of at least 32 random bytes. When the file is missing or invalid, UCP still starts and logs an error naming the Secret.
 
 ### 3. Configure supported environment overrides
