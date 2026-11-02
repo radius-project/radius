@@ -219,6 +219,12 @@ test-workflow-functional-matrix: ## Tests functional test selection without infr
 
 test: test-workflow-functional-matrix
 
+.PHONY: test-long-running-azure
+test-long-running-azure: ## Tests persistent-cluster readiness and functional test selection without a cluster
+	@bash ./.github/scripts/long-running-azure_test.sh
+
+test: test-long-running-azure
+
 .PHONY: test-dapr-helpers
 test-dapr-helpers: ## Runs Dapr test helper unit tests without a cluster
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/daprrp/noncloud/resources -run '^TestWaitForRedis' -timeout ${TEST_TIMEOUT} $(GOTEST_OPTS)
