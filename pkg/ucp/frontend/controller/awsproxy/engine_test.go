@@ -567,6 +567,30 @@ func Test_Update_FailurePaths(t *testing.T) {
 		require.Nil(t, rec.Properties.PendingLastApplied)
 	})
 
+	// AWS applies the update, and the response is lost on the way back. The outcome is unknown, so Radius owns the
+	// pending properties, and a later deploy that omits Tags clears them.
+	t.Run("the update response is lost", func(t *testing.T) {
+		h := setup(t)
+		h.cc.LostResponses = map[string]error{"UpdateResource": errors.New("connection reset")}
+		tags := []any{map[string]any{"Key": "team", "Value": "a"}}
+		resp := h.put(bktPath, map[string]any{"BucketName": "assets", "A": "1", "Tags": tags})
+		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+		require.Equal(t, tags, h.cc.Resource(bucketType, "assets")["Tags"], "AWS applied the update")
+		rec := h.record(bktPath)
+		require.Equal(t, map[string]any{"BucketName": "assets", "A": "1", "Tags": tags}, rec.Properties.LastApplied)
+		require.Nil(t, rec.Properties.PendingLastApplied)
+		require.False(t, records.IsRunning(rec))
+
+		h.cc.Calls()
+		resp = h.put(bktPath, map[string]any{"BucketName": "assets", "A": "1"})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"GetResource", "UpdateResource"}, operations(calls))
+		require.Contains(t, calls[1].Document, `"op":"remove","path":"/Tags"`)
+		h.finish()
+		require.NotContains(t, h.cc.Resource(bucketType, "assets"), "Tags")
+	})
+
 	t.Run("AWS reports the update failed", func(t *testing.T) {
 		h := setup(t)
 		h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest

@@ -478,9 +478,17 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 		PatchDocument: aws.String(string(marshaled)),
 	}, CloudControlRegionOption(r.region))
 	if err != nil {
-		// AWS changed nothing, so the previous last-applied properties stay.
+		rejected := ucp_aws.IsClientFault(err)
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
-			records.ClearPending(rec)
+			if rejected {
+				// AWS rejected the update, so it changed nothing, and the previous last-applied properties stay.
+				records.ClearPending(rec)
+			} else {
+				// A transport or server error does not show that AWS changed nothing: AWS may have applied the update
+				// before the response was lost. Radius owns the pending properties, as when an interrupted update is
+				// recovered, so a later deploy that omits one clears it.
+				records.KeepPending(rec)
+			}
 			rec.SetProvisioningState(prior)
 		})
 		return ucp_aws.HandleAWSError(ctx, err)
