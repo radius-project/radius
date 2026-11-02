@@ -335,9 +335,7 @@ Argo CD health:              Progressing ──────────► Healt
 **Context:** Argo CD cannot read Bicep. Something must compile it into the `DeploymentTemplate` YAML that Radius deploys. All options end with the same `DeploymentTemplate` controller.
 
 - **Why Flux never faced this choice.** The Flux integration compiles in the cluster. Flux has no plugin mechanism for rendering: its renderers, Kustomize and Helm, are fixed, and its documented extension path is a separate controller that consumes source artifacts. Flux also has no built-in UI whose diff, tree or health depends on where compilation happens.
-- **Flux bypasses `Kustomization`.** The Radius Flux path does not use Flux's `Kustomization`, so `flux get kustomizations` does not report Radius deployments. Users check `kubectl get deploymenttemplates`.
 - **What Argo CD changes.** It has a supported plugin point, and its UI makes the location of compilation visible.
-- The Flux design does not record this rationale; this is the author's analysis.
 
 **Options:**
 
