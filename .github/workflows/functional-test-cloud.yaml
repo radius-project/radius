@@ -268,7 +268,7 @@ jobs:
       pull-requests: read
 
   announce:
-    name: Check prerequisites and announce functional tests
+    name: Announce functional tests
     needs: [setup, changes]
     if: always() && needs.setup.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.only_changed == 'false'
     runs-on: ubuntu-24.04
@@ -284,15 +284,6 @@ jobs:
       DAPR_VER: 1.14.4
       ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
-      - name: Require private-module read credential
-        env:
-          MODULE_TOKEN: ${{ secrets.FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN }}
-        run: |
-          if [[ -z "${MODULE_TOKEN}" ]]; then
-            echo "::error::Configure FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN with Contents:read for radius-project/terraform-private-modules only. Cloud tests cannot use the status App key."
-            exit 1
-          fi
-
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -748,15 +739,6 @@ jobs:
       DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
-      - name: Require private-module read credential
-        env:
-          MODULE_TOKEN: ${{ secrets.FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN }}
-        run: |
-          if [[ -z "${MODULE_TOKEN}" ]]; then
-            echo "::error::Configure FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN with Contents:read for radius-project/terraform-private-modules only. The status App key must not run with candidate code."
-            exit 1
-          fi
-
       - name: Checkout Radius repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1093,6 +1075,26 @@ jobs:
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep --force
           # Restore AWS Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-logs-loggroup.bicep --force
+      - name: Require private-module App credentials
+        env:
+          MODULE_CLIENT_ID: ${{ secrets.RADIUS_TERRAFORM_PRIVATE_MODULES_CLIENT_ID }}
+          MODULE_PRIVATE_KEY: ${{ secrets.RADIUS_TERRAFORM_PRIVATE_MODULES_PRIVATE_KEY }}
+        run: |
+          if [[ -z "${MODULE_CLIENT_ID}" || -z "${MODULE_PRIVATE_KEY}" ]]; then
+            echo "::error::Configure repository Actions secrets RADIUS_TERRAFORM_PRIVATE_MODULES_CLIENT_ID and RADIUS_TERRAFORM_PRIVATE_MODULES_PRIVATE_KEY for the dedicated read-only terraform-private-modules App."
+            exit 1
+          fi
+
+      - name: Create private-module read token
+        id: private-module-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_TERRAFORM_PRIVATE_MODULES_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_TERRAFORM_PRIVATE_MODULES_PRIVATE_KEY }}
+          owner: radius-project
+          repositories: terraform-private-modules
+          permission-contents: read
+
       - name: Run functional tests
         # A step-level timeout, unlike the job-level one, still lets the
         # `if: always()` steps below run - so a hung suite is followed by
@@ -1142,7 +1144,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
-          GH_TOKEN: ${{ secrets.FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN }}
+          GH_TOKEN: ${{ steps.private-module-token.outputs.token }}
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
           # Initiate resource deletion without blocking on completion (matches the
           # non-cloud suite). Test assertions for deploy/create still run in full;

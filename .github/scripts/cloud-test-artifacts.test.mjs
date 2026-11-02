@@ -675,10 +675,6 @@ test("real workflows preserve credential boundaries and require native digest ve
     step(cloud.tests, "Process Functional Test Results").uses,
     "./.github/actions/process-test-results"
   );
-  assert.match(
-    JSON.stringify(cloud.announce),
-    /FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN/
-  );
   for (const name of ["upload-ghcr", "upload-test-types"]) {
     assert.equal(
       cloud[name].steps[0].with.ref,
@@ -725,8 +721,95 @@ test("real workflows preserve credential boundaries and require native digest ve
   }
   assert.equal(
     step(cloud.tests, "Run functional tests").env.GH_TOKEN,
-    "${{ secrets.FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN }}"
+    "${{ steps.private-module-token.outputs.token }}"
   );
+});
+
+test("private-module App token is read-only, job-local and minted immediately before tests", () => {
+  const steps = cloud.tests.steps;
+  const token = step(cloud.tests, "Create private-module read token");
+  const check = step(cloud.tests, "Require private-module App credentials");
+  const run = step(cloud.tests, "Run functional tests");
+  assert.deepEqual(check.env, {
+    MODULE_CLIENT_ID:
+      "${{ secrets.RADIUS_TERRAFORM_PRIVATE_MODULES_CLIENT_ID }}",
+    MODULE_PRIVATE_KEY:
+      "${{ secrets.RADIUS_TERRAFORM_PRIVATE_MODULES_PRIVATE_KEY }}"
+  });
+  assert.equal(check.if, undefined);
+  assert.equal(check["continue-on-error"], undefined);
+  assert.equal(
+    token.uses,
+    "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510"
+  );
+  assert.deepEqual(token.with, {
+    "client-id": "${{ secrets.RADIUS_TERRAFORM_PRIVATE_MODULES_CLIENT_ID }}",
+    "private-key":
+      "${{ secrets.RADIUS_TERRAFORM_PRIVATE_MODULES_PRIVATE_KEY }}",
+    owner: "radius-project",
+    repositories: "terraform-private-modules",
+    "permission-contents": "read"
+  });
+  assert.equal(token.id, "private-module-token");
+  assert.equal(token.if, undefined);
+  assert.equal(token["continue-on-error"], undefined);
+  assert.equal(token.with["skip-token-revoke"], undefined);
+  assert.equal(steps.indexOf(check) + 1, steps.indexOf(token));
+  assert.equal(steps.indexOf(token) + 1, steps.indexOf(run));
+  assert.ok(
+    steps.indexOf(check) >
+      steps.indexOf(
+        step(
+          cloud.tests,
+          "Restore Bicep artifacts before running functional tests"
+        )
+      )
+  );
+  assert.equal(cloud.tests["timeout-minutes"], 60);
+  assert.equal(
+    run.env.GH_TOKEN,
+    "${{ steps.private-module-token.outputs.token }}"
+  );
+  assert.equal(cloud.tests.outputs, undefined);
+  assert.equal(cloud.tests.env.GH_TOKEN, undefined);
+  assert.doesNotMatch(
+    JSON.stringify(cloud),
+    /FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN/
+  );
+  for (const [name, job] of Object.entries(cloud)) {
+    if (name !== "tests")
+      assert.doesNotMatch(
+        JSON.stringify(job),
+        /RADIUS_TERRAFORM_PRIVATE_MODULES|private-module-token/
+      );
+  }
+  for (const item of steps.filter(
+    (item) => ![check, token, run].includes(item)
+  )) {
+    assert.doesNotMatch(
+      JSON.stringify(item),
+      /RADIUS_TERRAFORM_PRIVATE_MODULES|private-module-token/
+    );
+  }
+  for (const settings of [
+    { MODULE_CLIENT_ID: "", MODULE_PRIVATE_KEY: "" },
+    { MODULE_CLIENT_ID: "test-client", MODULE_PRIVATE_KEY: "" },
+    { MODULE_CLIENT_ID: "", MODULE_PRIVATE_KEY: "test-key" },
+    { MODULE_CLIENT_ID: "test-client", MODULE_PRIVATE_KEY: "test-key" }
+  ]) {
+    const result = spawnSync("bash", ["-e", "-c", check.run], {
+      env: { ...process.env, ...settings },
+      encoding: "utf8"
+    });
+    const complete = settings.MODULE_CLIENT_ID && settings.MODULE_PRIVATE_KEY;
+    assert.equal(result.status, complete ? 0 : 1);
+    if (!complete)
+      assert.match(
+        result.stdout,
+        /::error::Configure repository Actions secrets/
+      );
+    assert.doesNotMatch(result.stdout + result.stderr, /test-client|test-key/);
+  }
 });
 
 test("workflow consumers use producer outputs, not setup or the retry attempt", () => {
