@@ -789,7 +789,9 @@ test("Test ACR publishing requires a separate identity and protected environment
       );
   }
   for (const [publisher, candidate, expected] of [
+    ["", "", 1],
     ["", "candidate", 1],
+    ["publisher", "", 1],
     ["candidate", "candidate", 1],
     ["CANDIDATE", "candidate", 1],
     ["publisher", "candidate", 0]
@@ -809,6 +811,68 @@ test("Test ACR publishing requires a separate identity and protected environment
         /::error::Configure AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID/
       );
   }
+});
+
+test("merge-group Test ACR uploader executes the trusted helper, not the candidate revision", async () => {
+  const trustedSHA = "c".repeat(40);
+  const candidateSHA = "d".repeat(40);
+  const outputs = {};
+  await setup({
+    context: {
+      ...context,
+      eventName: "merge_group",
+      sha: candidateSHA,
+      ref: "refs/heads/gh-readonly-queue/main/pr-123",
+      payload: {
+        repository: { full_name: "radius-project/radius" },
+        merge_group: { base_ref: "refs/heads/main", head_sha: candidateSHA }
+      }
+    },
+    github: {
+      rest: {
+        repos: {
+          getBranch: async () => ({
+            data: { protected: true, commit: { sha: trustedSHA } }
+          })
+        }
+      }
+    },
+    core: {
+      setOutput: (name, value) => {
+        outputs[name] = value;
+      }
+    }
+  });
+  assert.equal(outputs.CHECKOUT_REF, candidateSHA);
+  assert.equal(outputs.TRUSTED_SHA, trustedSHA);
+  assert.notEqual(outputs.TRUSTED_SHA, outputs.CHECKOUT_REF);
+  const uploader = cloud["upload-test-types"];
+  const checkouts = uploader.steps.filter((item) =>
+    item.uses?.startsWith("actions/checkout@")
+  );
+  assert.equal(checkouts.length, 2);
+  for (const checkout of checkouts) {
+    assert.equal(checkout.with.ref, "${{ needs.setup.outputs.TRUSTED_SHA }}");
+    assert.equal(checkout.with["persist-credentials"], false);
+    assert.equal(checkout.with["allow-unsafe-pr-checkout"], undefined);
+  }
+  const helper = step(uploader, "Checkout workflow Azure login script");
+  assert.equal(helper.with.path, ".workflow-azure-login");
+  assert.equal(
+    helper.with["sparse-checkout"],
+    ".github/scripts/azure-oidc-login.mjs"
+  );
+  const login = step(uploader, "Login to Test-tenant Azure");
+  assert.equal(login.run, 'node "${AZURE_LOGIN_SCRIPT}"');
+  assert.equal(
+    login.env.AZURE_LOGIN_SCRIPT,
+    "${{ github.workspace }}/.workflow-azure-login/.github/scripts/azure-oidc-login.mjs"
+  );
+  assert.ok(uploader.steps.indexOf(helper) < uploader.steps.indexOf(login));
+  assert.equal(
+    step(cloud.tests, "Checkout workflow Azure login script").with.ref,
+    "${{ github.sha }}"
+  );
 });
 
 test("private-module App token is read-only, job-local and minted immediately before tests", () => {
