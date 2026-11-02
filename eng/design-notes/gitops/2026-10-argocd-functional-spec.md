@@ -339,9 +339,9 @@ Argo CD health:              Progressing ──────────► Healt
 
 **Options:**
 
-- **Radius controller compiles.** Radius compiles in the cluster. Argo CD applies the Bicep source in a ConfigMap (built by Kustomize's `configMapGenerator`) plus a small new Radius "source" custom resource. The Radius controller compiles with the compiler it already uses for Flux and creates the `DeploymentTemplate`. Needs a new CRD or new `DeploymentTemplate` fields.
 - **Argo CD plugin compiles.** A Radius CMP sidecar in `argocd-repo-server` returns the `DeploymentTemplate`; Argo CD diffs and applies it.
 - **CI compiles and commits YAML.** A pipeline runs `rad bicep generate-kubernetes-manifest` and commits the generated YAML. Argo CD deploys that directory as plain manifests. Works today with no new code.
+- **Radius controller compiles.** Radius compiles in the cluster. Argo CD applies the Bicep source in a ConfigMap (built by Kustomize's `configMapGenerator`) plus a small new Radius "source" custom resource. The Radius controller compiles with the compiler it already uses for Flux and creates the `DeploymentTemplate`. Needs a new CRD or new `DeploymentTemplate` fields.
 
 The steps each role takes under each option are in [Appendix: steps per role for each compile option](#steps-per-role-for-each-compile-option).
 
