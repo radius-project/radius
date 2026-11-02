@@ -32,15 +32,10 @@ import (
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	app_delete "github.com/radius-project/radius/pkg/cli/cmd/app/delete"
-	app_delete_preview "github.com/radius-project/radius/pkg/cli/cmd/app/delete/preview"
 	app_graph "github.com/radius-project/radius/pkg/cli/cmd/app/graph"
-	app_graph_preview "github.com/radius-project/radius/pkg/cli/cmd/app/graph/preview"
 	app_list "github.com/radius-project/radius/pkg/cli/cmd/app/list"
-	app_list_preview "github.com/radius-project/radius/pkg/cli/cmd/app/list/preview"
 	app_show "github.com/radius-project/radius/pkg/cli/cmd/app/show"
-	app_show_preview "github.com/radius-project/radius/pkg/cli/cmd/app/show/preview"
 	app_status "github.com/radius-project/radius/pkg/cli/cmd/app/status"
-	app_status_preview "github.com/radius-project/radius/pkg/cli/cmd/app/status/preview"
 	bicep_generate_kubernetes_manifest "github.com/radius-project/radius/pkg/cli/cmd/bicep/generatekubernetesmanifest"
 	bicep_publish "github.com/radius-project/radius/pkg/cli/cmd/bicep/publish"
 	bicep_publishextension "github.com/radius-project/radius/pkg/cli/cmd/bicep/publishextension"
@@ -57,7 +52,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/install"
 	install_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/install/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
-	radinit_preview "github.com/radius-project/radius/pkg/cli/cmd/radinit/preview"
 	recipe_pack_delete "github.com/radius-project/radius/pkg/cli/cmd/recipepack/delete"
 	recipe_pack_list "github.com/radius-project/radius/pkg/cli/cmd/recipepack/list"
 	recipe_pack_show "github.com/radius-project/radius/pkg/cli/cmd/recipepack/show"
@@ -84,7 +78,6 @@ import (
 	upgrade_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/upgrade/kubernetes"
 	version "github.com/radius-project/radius/pkg/cli/cmd/version"
 	workspace_create "github.com/radius-project/radius/pkg/cli/cmd/workspace/create"
-	workspace_create_preview "github.com/radius-project/radius/pkg/cli/cmd/workspace/create/preview"
 	workspace_delete "github.com/radius-project/radius/pkg/cli/cmd/workspace/delete"
 	workspace_list "github.com/radius-project/radius/pkg/cli/cmd/workspace/list"
 	workspace_show "github.com/radius-project/radius/pkg/cli/cmd/workspace/show"
@@ -162,10 +155,10 @@ func prettyPrintJSON(o any) (string, error) {
 // handlePanic is the global panic recovery handler that formats and displays panic information
 func handlePanic() {
 	if r := recover(); r != nil {
-		fmt.Printf("Error: An unexpected internal error occurred: %v\n\n", r)
-		fmt.Println(string(debug.Stack()))
-		fmt.Println("\nPlease report this issue at https://github.com/radius-project/radius/issues")
-		fmt.Println("") // Output an extra blank line for readability
+		fmt.Fprintf(RootCmd.ErrOrStderr(), "Error: An unexpected internal error occurred: %v\n\n", r)
+		fmt.Fprintln(RootCmd.ErrOrStderr(), string(debug.Stack()))
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "\nPlease report this issue at https://github.com/radius-project/radius/issues")
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "") // Output an extra blank line for readability
 	}
 }
 
@@ -179,7 +172,7 @@ func Execute() error {
 
 	shutdown, err := initTracer()
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "Error:", err)
 		return err
 	}
 
@@ -196,8 +189,8 @@ func Execute() error {
 	defer span.End()
 	err = RootCmd.ExecuteContext(ctx)
 	if clierrors.IsFriendlyError(err) {
-		fmt.Println(err.Error())
-		fmt.Println("") // Output an extra blank line for readability
+		fmt.Fprintln(RootCmd.ErrOrStderr(), err.Error())
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "") // Output an extra blank line for readability
 		return err
 	} else if err != nil {
 		errText := prettyPrintRPError(err)
@@ -207,9 +200,9 @@ func Execute() error {
 		// from potentially corrupting the terminal.
 		errText = ansi.Strip(errText)
 
-		fmt.Println("Error:", errText)
-		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
-		fmt.Println("") // Output an extra blank line for readability
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "Error:", errText)
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "\nTraceId: ", span.SpanContext().TraceID().String())
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "") // Output an extra blank line for readability
 		return err
 	}
 
@@ -247,6 +240,11 @@ func init() {
 }
 
 func initSubCommands() {
+	outputWriter := &output.OutputWriter{Writer: RootCmd.OutOrStdout()}
+	RootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		configureOutput(cmd, outputWriter)
+	}
+
 	graphStore, err := archive.NewStore(archive.Options{
 		Archive: factory.NewGraphArchive(os.Getenv(factory.GraphRegistryEnvVar)),
 	})
@@ -258,16 +256,14 @@ func initSubCommands() {
 	framework := &framework.Impl{
 		Bicep: &bicep.Impl{
 			FileSystem: filesystem.OSFileSystem{},
-			Output:     &output.OutputWriter{Writer: RootCmd.OutOrStdout()},
+			Output:     outputWriter,
 		},
-		ConnectionFactory: connections.DefaultFactory,
-		ConfigHolder:      ConfigHolder,
-		Deploy:            &deploy.Impl{},
-		Delete:            &delete.Impl{},
-		Logstream:         &logstream.Impl{},
-		Output: &output.OutputWriter{
-			Writer: RootCmd.OutOrStdout(),
-		},
+		ConnectionFactory:   connections.DefaultFactory,
+		ConfigHolder:        ConfigHolder,
+		Deploy:              &deploy.Impl{},
+		Delete:              &delete.Impl{},
+		Logstream:           &logstream.Impl{},
+		Output:              outputWriter,
 		Portforward:         &portforward.Impl{},
 		Prompter:            &prompt.Impl{},
 		ConfigFileInterface: &framework.ConfigFileInterfaceImpl{},
@@ -291,8 +287,6 @@ func initSubCommands() {
 	resourceCmd.AddCommand(resourceShowCmd)
 
 	resourceListCmd, _ := resource_list.NewCommand(framework)
-	previewResourceListCmd, _ := resource_list.NewPreviewCommand(framework)
-	wirePreviewSubcommand(resourceListCmd, previewResourceListCmd)
 	resourceCmd.AddCommand(resourceListCmd)
 
 	resourceCreateCmd, _ := resource_create.NewCommand(framework)
@@ -341,8 +335,6 @@ func initSubCommands() {
 	RootCmd.AddCommand(groupCmd)
 
 	initCmd, _ := radinit.NewCommand(framework)
-	previewInitCmd, _ := radinit_preview.NewCommand(framework)
-	wirePreviewSubcommand(initCmd, previewInitCmd)
 	RootCmd.AddCommand(initCmd)
 
 	startupCmd, _ := cmd_startup.NewCommand(framework)
@@ -367,8 +359,6 @@ func initSubCommands() {
 	envCmd.AddCommand(envUpdateCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
-	previewWorkspaceCreateCmd, _ := workspace_create_preview.NewCommand(framework)
-	wirePreviewSubcommand(workspaceCreateCmd, previewWorkspaceCreateCmd)
 	workspaceCmd.AddCommand(workspaceCreateCmd)
 
 	workspaceDeleteCmd, _ := workspace_delete.NewCommand(framework)
@@ -384,28 +374,18 @@ func initSubCommands() {
 	workspaceCmd.AddCommand(workspaceSwitchCmd)
 
 	appDeleteCmd, _ := app_delete.NewCommand(framework)
-	previewAppDeleteCmd, _ := app_delete_preview.NewCommand(framework)
-	wirePreviewSubcommand(appDeleteCmd, previewAppDeleteCmd)
 	applicationCmd.AddCommand(appDeleteCmd)
 
 	appListCmd, _ := app_list.NewCommand(framework)
-	previewAppListCmd, _ := app_list_preview.NewCommand(framework)
-	wirePreviewSubcommand(appListCmd, previewAppListCmd)
 	applicationCmd.AddCommand(appListCmd)
 
 	appShowCmd, _ := app_show.NewCommand(framework)
-	previewAppShowCmd, _ := app_show_preview.NewCommand(framework)
-	wirePreviewSubcommand(appShowCmd, previewAppShowCmd)
 	applicationCmd.AddCommand(appShowCmd)
 
 	appStatusCmd, _ := app_status.NewCommand(framework)
-	previewAppStatusCmd, _ := app_status_preview.NewCommand(framework)
-	wirePreviewSubcommand(appStatusCmd, previewAppStatusCmd)
 	applicationCmd.AddCommand(appStatusCmd)
 
 	appGraphCmd, _ := app_graph.NewCommand(framework)
-	previewAppGraphCmd, _ := app_graph_preview.NewCommand(framework)
-	wirePreviewSubcommand(appGraphCmd, previewAppGraphCmd)
 	applicationCmd.AddCommand(appGraphCmd)
 
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
@@ -448,6 +428,15 @@ func initSubCommands() {
 	RootCmd.AddCommand(versionCmd)
 }
 
+func configureOutput(cmd *cobra.Command, writer *output.OutputWriter) {
+	writer.Writer = cmd.OutOrStdout()
+	writer.LogWriter = nil
+	if flag := cmd.Flag("output"); flag != nil && strings.EqualFold(strings.TrimSpace(flag.Value.String()), output.FormatJson) {
+		writer.LogWriter = cmd.ErrOrStderr()
+	}
+	output.SetLogWriter(writer.LogWriter)
+}
+
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
 // from context. However we need to initialize the context before we can read the config (before argument parsing).
 //
@@ -457,7 +446,7 @@ func initSubCommands() {
 func initConfig() {
 	v, err := cli.LoadConfig(ConfigHolder.ConfigFilePath)
 	if err != nil {
-		fmt.Printf("Error: failed to load config: %v\n", err)
+		fmt.Fprintf(RootCmd.ErrOrStderr(), "Error: failed to load config: %v\n", err)
 		os.Exit(1) //nolint:forbidigo // this is OK inside the CLI startup.
 	}
 
@@ -481,54 +470,4 @@ func getRootSpanName() string {
 	} else {
 		return args[0]
 	}
-}
-
-// wirePreviewSubcommand adds a --preview flag and routes RunE to the preview command when set.
-// The preview behavior can also be activated by setting the RADIUS_PREVIEW environment variable to "true" (case-insensitive).
-// The --preview flag takes precedence over the environment variable.
-func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
-	cmd.Flags().Bool("preview", false, withPreviewEnvVarNote("Use the Radius.Core preview implementation"))
-
-	legacyRun := cmd.RunE
-	previewRun := previewCmd.RunE
-
-	cmd.RunE = func(c *cobra.Command, args []string) error {
-		usePreview, err := resolveUsePreview(c)
-		if err != nil {
-			return err
-		}
-		if usePreview {
-			return previewRun(c, args)
-		}
-		return legacyRun(c, args)
-	}
-}
-
-// resolveUsePreview reports whether a command should use its preview implementation.
-// It returns true when the --preview flag is explicitly set to true, or when the flag is
-// unset and the RADIUS_PREVIEW environment variable is "true" (case-insensitive). The
-// --preview flag takes precedence over the environment variable.
-func resolveUsePreview(cmd *cobra.Command) (bool, error) {
-	usePreview, err := cmd.Flags().GetBool("preview")
-	if err != nil {
-		return false, err
-	}
-	if !cmd.Flags().Changed("preview") {
-		usePreview = strings.EqualFold(os.Getenv("RADIUS_PREVIEW"), "true")
-	}
-	return usePreview, nil
-}
-
-// previewEnvVarNote documents that the RADIUS_PREVIEW environment variable also activates
-// preview mode. It is appended to --preview flag usage strings by withPreviewEnvVarNote.
-const previewEnvVarNote = "can also be set via RADIUS_PREVIEW=true"
-
-// withPreviewEnvVarNote ensures a --preview flag usage string mentions that RADIUS_PREVIEW
-// also activates preview, so --help stays accurate. The note is appended unless the usage
-// already references RADIUS_PREVIEW, avoiding a double-append when a caller includes it.
-func withPreviewEnvVarNote(usage string) string {
-	if strings.Contains(usage, "RADIUS_PREVIEW") {
-		return usage
-	}
-	return usage + " (" + previewEnvVarNote + ")"
 }

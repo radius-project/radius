@@ -14,6 +14,16 @@ With UCP, we want to support ARM-RPC protocol for clients even for systems such 
 
 <br/><br/>
 
+### Comparing values AWS reports in a different form
+
+AWS often reports a value in a different form than the template set it. `GeneratePatch` (`pkg/aws/operations`) uses the type's schema, already loaded with `DescribeType`, to count these as unchanged, so an unchanged redeploy sends nothing to AWS:
+
+- **Arrays where order does not matter.** The schema marks them `"insertionOrder": false`, such as `SubnetIds` on a DB subnet group and `Tags` on most types. They are compared ignoring order, as multisets, with each item compared by its own rules.
+- **Values AWS rewrites.** The schema's `propertyTransform` turns the template's value into a pattern AWS's value must match. For example, an RDS `EngineVersion` of `8.4` matches a running `8.4.11`, and `DBInstanceIdentifier` is compared in lowercase. `$lowercase`, `$uppercase`, `$join`, `$string`, and `$OR` are supported, with string literals, array literals, and property references. A reference resolves against the property's parent object first, then the root. Text from the template is matched literally, and string literals in the expression are regular expressions. A property whose transform uses any other function or operator, or has an alternative that reads no template property (such as a fixed KMS key ARN pattern), is compared as it is, so a real change is still sent.
+- **Empty objects.** An empty object AWS reports, such as `DataProtectionPolicy: {}` on a log group, is kept unless the template sets values inside it.
+
+<br/><br/>
+
 ### Extension of ARM-RPC protocol in UCP
 
 All Azure resources have a name where the name is used in the resource ID
@@ -62,3 +72,21 @@ Many AWS resources have a generated name and the resource schema does not necess
 To address this issue, we will introduce state storage in UCP. The user will specify a friendly name for the resource in the bicep file that is unique in the deployment scope (which will be the Radius resource group). UCP will create a mapping between the friendly name and the actual AWS resource deployed. After this point, UCP will use this mapping to determine if the resource with the particular friendly name is being created or updated.
 
 The details of this design can be found at: https://github.com/radius-project/design-notes/pull/21
+
+<br/><br/>
+
+### AWS types that Cloud Control cannot fully manage
+
+UCP returns a `400` for these AWS types instead of the error Cloud Control returns. Error messages name the type and properties, never property values.
+
+| Type                                                                                      | How UCP knows                                                                                       | What UCP returns                                                                                                                                                                                                            |
+|-------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Legacy type with a supported replacement, for example `AWS::IAM::Policy`                  | List in `pkg/aws/awstypes`                                                                          | `400` naming the replacement, on every operation. Nothing is called in AWS                                                                                                                                                  |
+| Deprecated service or CloudFormation template feature, for example `AWS::OpsWorks::Stack` | List in `pkg/aws/awstypes`                                                                          | `400` saying Radius does not support the type, on every operation. Nothing is called in AWS                                                                                                                                 |
+| Read-only type created by AWS, for example `AWS::EC2::Image`                              | `DescribeType` reports `NON_PROVISIONABLE`, and the schema has a read handler but no create handler | `400` on a PUT, before UCP reads the resource, saying the type can only be used with `existing`                                                                                                                             |
+| Other type Cloud Control cannot create                                                    | `DescribeType` reports `NON_PROVISIONABLE`                                                          | `400` on a PUT, before UCP reads the resource                                                                                                                                                                               |
+| Create-and-delete-only type                                                               | `DescribeType` reports `IMMUTABLE`                                                                  | Create works. A change to an existing resource fails with `400` naming the changed properties. AWS never returns write-only properties, so a request that sets only write-only properties also fails with `400` naming them |
+
+UCP reads the provisioning type from CloudFormation at run time, so a type starts working without a Radius release when AWS adds Cloud Control support for it.
+
+The read-only list in `pkg/aws/awstypes` is for callers that have no AWS access, such as the recipe engine. It is generated from a snapshot of the CloudFormation registry. To refresh it with AWS credentials, run `go run ./gen -refresh` from `pkg/aws/awstypes`.

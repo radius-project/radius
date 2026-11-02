@@ -113,7 +113,7 @@ func (client *PubSubBrokersClient) createOrUpdateCreateRequest(ctx context.Conte
 //     method.
 func (client *PubSubBrokersClient) BeginDelete(ctx context.Context, rootScope string, pubSubBrokerName string, options *PubSubBrokersClientBeginDeleteOptions) (*runtime.Poller[PubSubBrokersClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, pubSubBrokerName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, pubSubBrokerName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -126,9 +126,9 @@ func (client *PubSubBrokersClient) BeginDelete(ctx context.Context, rootScope st
 	}
 }
 
-// delete - Delete a DaprPubSubBrokerResource
+// deleteOperation - Delete a DaprPubSubBrokerResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *PubSubBrokersClient) delete(ctx context.Context, rootScope string, pubSubBrokerName string, options *PubSubBrokersClientBeginDeleteOptions) (*http.Response, error) {
+func (client *PubSubBrokersClient) deleteOperation(ctx context.Context, rootScope string, pubSubBrokerName string, options *PubSubBrokersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, pubSubBrokerName, options)
 	if err != nil {

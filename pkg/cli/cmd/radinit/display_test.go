@@ -17,143 +17,132 @@ limitations under the License.
 package radinit
 
 import (
-	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/charmbracelet/x/exp/teatest/v2"
-	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	// Set this to a big value when debugging.
-	waitTimeout = 5 * time.Second
-)
+func Test_redirectStdout(t *testing.T) {
+	original := os.Stdout
 
-func Test_summaryModel(t *testing.T) {
-	waitForRender := func(t *testing.T, reader io.Reader) string {
-		normalized := ""
-		teatest.WaitFor(t, reader, func(bts []byte) bool {
-			normalized = ansi.Strip(strings.ReplaceAll(string(bts), "\r\n", "\n"))
-			return strings.Contains(normalized, strings.Trim(common.SummaryFooter, "\n"))
-		}, teatest.WithDuration(waitTimeout))
+	out, restore := redirectStdout()
 
-		return normalized
+	// Restore the original stdout on failure, but only if the explicit restore
+	// below did not already run, so restore is called exactly once.
+	restored := false
+	defer func() {
+		if !restored {
+			restore()
+		}
+	}()
+
+	// The returned writer is the original stdout so the progress UI can keep
+	// rendering to the real terminal.
+	require.Same(t, original, out)
+
+	// The process's global stdout is redirected away from the terminal so stray
+	// writes during installation are discarded instead of corrupting the UI.
+	require.NotSame(t, original, os.Stdout)
+
+	// Restoring puts the original stdout back in place.
+	restore()
+	restored = true
+	require.Same(t, original, os.Stdout)
+}
+
+func Test_progressModel_Update_CtrlC(t *testing.T) {
+	model := newProgressModel(initOptions{})
+
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+
+	// Ctrl+C marks the model as interrupted so the caller can abort rad init.
+	pm, ok := updated.(*progressModel)
+	require.True(t, ok)
+	require.True(t, pm.interrupted)
+
+	// The returned command quits the Bubble Tea program.
+	require.NotNil(t, cmd)
+	require.IsType(t, tea.QuitMsg{}, cmd())
+}
+
+// testBicepConfigDirectory is built with filepath.Join because the views join config paths natively, so expectations hold on Windows.
+var testBicepConfigDirectory = filepath.Join("home", "user", "my-project")
+
+// renderedText strips styling and trailing padding from a rendered view so it can be compared as plain text.
+func renderedText(view tea.View) string {
+	lines := strings.Split(ansi.Strip(view.Content), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, " ")
 	}
+	return strings.Join(lines, "\n")
+}
 
-	resultTest := func(t *testing.T, expected common.SummaryResult, key tea.KeyPressMsg) {
-		options := initOptions{}
-		model := &common.SummaryModel{
-			Options: toDisplayOptions(&options),
-		}
-		tm := teatest.NewTestModel(t, model)
+func Test_summaryModel_View_ConfigFiles(t *testing.T) {
+	t.Run("lists config files under the configuration heading", func(t *testing.T) {
+		model := newSummaryModel(initOptions{BicepConfigDirectory: testBicepConfigDirectory})
 
-		waitForRender(t, tm.Output())
+		text := renderedText(model.View())
 
-		// Press the given key
-		tm.Send(key)
-
-		if err := tm.Quit(); err != nil {
-			t.Fatal(err)
-		}
-
-		// FinalModel only returns once the program has finished running or when it times out.
-		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
-		// That is why we call tm.Quit() before tm.FinalModel().
-		model = tm.FinalModel(t).(*common.SummaryModel)
-		require.Equal(t, expected, model.Result)
-	}
-
-	t.Run("Result: Confirm", func(t *testing.T) {
-		resultTest(t, common.ResultConfirmed, tea.KeyPressMsg{Code: tea.KeyEnter})
+		require.Contains(t, text, summaryConfigurationHeadingIcon+"Update local configuration\n"+
+			"   - "+filepath.Join(testBicepConfigDirectory, "bicepconfig.json")+"\n"+
+			"\n(press enter to confirm or esc to restart)")
 	})
 
-	t.Run("Result: Cancel", func(t *testing.T) {
-		resultTest(t, common.ResultCanceled, tea.KeyPressMsg{Code: tea.KeyEsc})
+	t.Run("lists no config files when empty", func(t *testing.T) {
+		model := newSummaryModel(initOptions{})
+
+		text := renderedText(model.View())
+
+		require.Contains(t, text, summaryConfigurationHeadingIcon+"Update local configuration\n"+
+			"\n(press enter to confirm or esc to restart)")
+	})
+}
+
+func Test_summaryModel_View_RecipePack(t *testing.T) {
+	t.Run("shows the default recipe pack for a new environment", func(t *testing.T) {
+		model := newSummaryModel(initOptions{
+			Environment: environmentOptions{Create: true, Name: "default", Namespace: "default"},
+			Recipes:     recipePackOptions{DefaultRecipePack: true},
+		})
+
+		require.Contains(t, renderedText(model.View()), "   - Recipe pack: default\n")
 	})
 
-	t.Run("Result: Quit", func(t *testing.T) {
-		resultTest(t, common.ResultQuit, tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	t.Run("omits the recipe pack when none is added", func(t *testing.T) {
+		model := newSummaryModel(initOptions{
+			Environment: environmentOptions{Create: true, Name: "default", Namespace: "default"},
+		})
+
+		require.NotContains(t, renderedText(model.View()), "Recipe pack")
+	})
+}
+
+func Test_progressModel_View_ConfigFiles(t *testing.T) {
+	complete := progressMsg{InstallComplete: true, EnvironmentComplete: true, ConfigComplete: true}
+
+	t.Run("lists config files under the configuration heading", func(t *testing.T) {
+		model := newProgressModel(initOptions{BicepConfigDirectory: testBicepConfigDirectory}).(*progressModel)
+		model.progress = complete
+
+		text := renderedText(model.View())
+
+		require.Contains(t, text, progressStepCompleteIcon+"Update local configuration\n"+
+			"   - "+filepath.Join(testBicepConfigDirectory, "bicepconfig.json")+"\n"+
+			"\nInitialization complete!")
 	})
 
-	viewTest := func(t *testing.T, options initOptions, expected string) {
-		model := &common.SummaryModel{
-			Options: toDisplayOptions(&options),
-		}
-		tm := teatest.NewTestModel(t, model)
+	t.Run("lists no config files when empty", func(t *testing.T) {
+		model := newProgressModel(initOptions{}).(*progressModel)
+		model.progress = complete
 
-		output := waitForRender(t, tm.Output())
-		assert.Equal(t, expected, output)
+		text := renderedText(model.View())
 
-		// Press ENTER
-		tm.Send(tea.KeyPressMsg{Code: tea.KeyEnter})
-
-		if err := tm.Quit(); err != nil {
-			t.Fatal(err)
-		}
-
-		// FinalModel only returns once the program has finished running or when it times out.
-		// Please see: https://github.com/charmbracelet/x/blob/20117e9c8cd5ad229645f1bca3422b7e4110c96c/exp/teatest/teatest.go#L220.
-		// That is why we call tm.Quit() before tm.FinalModel().
-		model = tm.FinalModel(t).(*common.SummaryModel)
-		assert.Equal(t, common.SummaryResult(common.ResultConfirmed), model.Result)
-	}
-
-	t.Run("View: existing options", func(t *testing.T) {
-		options := initOptions{
-			Cluster: clusterOptions{
-				Install: false,
-				Context: "test-context",
-				Version: "test-version",
-			},
-			Environment: environmentOptions{
-				Create: false,
-				Name:   "test-environment",
-			},
-		}
-
-		expected := "\rYou've selected the following:\n" +
-			"\n" +
-			"🔧 Use existing Radius test-version install on test-context\n" +
-			"🌏 Use existing environment test-environment\n" +
-			"📋 Update local configuration\n" +
-			"\n" +
-			"(press enter to confirm or esc to restart)"
-
-		viewTest(t, options, expected)
-	})
-
-	t.Run("View: full options", func(t *testing.T) {
-		options := initOptions{
-			Cluster: clusterOptions{
-				Install: true,
-				Context: "test-context",
-				Version: "test-version",
-			},
-			Environment: environmentOptions{
-				Create: false,
-				Name:   "test-environment",
-			},
-			CloudProviders: cloudProviderOptions{},
-			Recipes:        recipePackOptions{},
-			Application:    applicationOptions{},
-		}
-
-		expected := "\rYou've selected the following:\n" +
-			"\n" +
-			"🔧 Install Radius test-version\n" +
-			"   - Kubernetes cluster: test-context\n" +
-			"   - Kubernetes namespace:\n" +
-			"🌏 Use existing environment test-environment\n" +
-			"📋 Update local configuration\n" +
-			"\n" +
-			"(press enter to confirm or esc to restart)"
-
-		viewTest(t, options, expected)
+		require.Contains(t, text, progressStepCompleteIcon+"Update local configuration\n"+
+			"\nInitialization complete!")
 	})
 }

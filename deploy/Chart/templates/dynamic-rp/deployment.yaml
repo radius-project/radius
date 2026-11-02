@@ -25,8 +25,8 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if or (eq .Values.global.prometheus.enabled true) .Values.dynamicrp.buildkit.enabled }}
       annotations:
+        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
@@ -40,7 +40,6 @@ spec:
         # in v1.30. Older clusters use the (now deprecated) annotation.
         container.apparmor.security.beta.kubernetes.io/buildkitd: unconfined
         {{- end }}
-      {{- end }}
     spec:
       serviceAccountName: dynamic-rp
       {{- if .Values.global.imagePullSecrets }}

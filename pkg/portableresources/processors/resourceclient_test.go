@@ -17,14 +17,16 @@ limitations under the License.
 package processors
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
@@ -32,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/sdk"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -124,6 +127,7 @@ func Test_Delete_ARM(t *testing.T) {
 				{
 					ResourceType:      new("virtualMachines"),
 					DefaultAPIVersion: new(ARMAPIVersion),
+					APIVersions:       []*string{new(ARMAPIVersion)},
 				},
 			},
 		}, 200))
@@ -163,7 +167,13 @@ func Test_Delete_ARM(t *testing.T) {
 
 	t.Run("success - deletion returns 404", func(t *testing.T) {
 		mux := http.NewServeMux()
-		mux.HandleFunc(ARMResourceID, handleNotFound(t))
+		mux.HandleFunc(ARMResourceID, func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				handleDeleteSuccess()(w, r)
+				return
+			}
+			handleNotFound(t)(w, r)
+		})
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: new("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
@@ -174,6 +184,7 @@ func Test_Delete_ARM(t *testing.T) {
 				{
 					ResourceType:      new("virtualMachines"),
 					DefaultAPIVersion: new(ARMAPIVersion),
+					APIVersions:       []*string{new(ARMAPIVersion)},
 				},
 			},
 		}, 200))
@@ -255,6 +266,7 @@ func Test_Delete_ARM(t *testing.T) {
 				{
 					ResourceType:      new("locks"),
 					DefaultAPIVersion: new(ARMAPIVersion),
+					APIVersions:       []*string{new(ARMAPIVersion)},
 				},
 			},
 		}, 200))
@@ -268,6 +280,143 @@ func Test_Delete_ARM(t *testing.T) {
 		err := c.Delete(t.Context(), ARMExtensionResourceID)
 		require.NoError(t, err)
 	})
+}
+
+func Test_Delete_ARM_NestedChildTypeFallback(t *testing.T) {
+	const (
+		shareID          = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/account/fileServices/default/shares/share"
+		storagePath      = "/subscriptions/0000/providers/Microsoft.Storage"
+		mongoID          = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/account/mongodbDatabases/db"
+		documentDBPath   = "/subscriptions/0000/providers/Microsoft.DocumentDB"
+		extensionChildID = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/account/providers/Microsoft.Test/parents/parent/children/child"
+		testProviderPath = "/subscriptions/0000/providers/Microsoft.Test"
+	)
+
+	resourceType := func(name string, versions ...string) *armresources.ProviderResourceType {
+		rt := &armresources.ProviderResourceType{ResourceType: new(name)}
+		for _, version := range versions {
+			rt.APIVersions = append(rt.APIVersions, new(version))
+		}
+		return rt
+	}
+
+	tests := []struct {
+		name            string
+		id              string
+		providerPath    string
+		types           []*armresources.ProviderResourceType
+		rejectedVersion string
+		wantVersion     string
+		wantErr         string
+	}{
+		{
+			name:         "nested child absent from metadata uses top-level type",
+			id:           shareID,
+			providerPath: storagePath,
+			types:        []*armresources.ProviderResourceType{resourceType("storageAccounts", "top-level")},
+			wantVersion:  "top-level",
+		},
+		{
+			name:            "missing child type retries next parent version after read rejection",
+			id:              shareID,
+			providerPath:    storagePath,
+			types:           []*armresources.ProviderResourceType{resourceType("storageAccounts", "2026-10-01", "2025-08-01")},
+			rejectedVersion: "2026-10-01",
+			wantVersion:     "2025-08-01",
+		},
+		{
+			name:         "nearest listed parent is preferred",
+			id:           shareID,
+			providerPath: storagePath,
+			types: []*armresources.ProviderResourceType{
+				resourceType("storageAccounts", "top-level"),
+				resourceType("storageAccounts/fileServices", "parent"),
+			},
+			wantVersion: "parent",
+		},
+		{
+			name:         "exact child type is preferred",
+			id:           shareID,
+			providerPath: storagePath,
+			types: []*armresources.ProviderResourceType{
+				resourceType("storageAccounts", "top-level"),
+				resourceType("storageAccounts/fileServices/shares", "exact"),
+			},
+			wantVersion: "exact",
+		},
+		{
+			name:         "single-level child absent from metadata uses parent type",
+			id:           mongoID,
+			providerPath: documentDBPath,
+			types:        []*armresources.ProviderResourceType{resourceType("databaseAccounts", "top-level")},
+			wantVersion:  "top-level",
+		},
+		{
+			name:         "extension child absent from metadata uses extension parent type",
+			id:           extensionChildID,
+			providerPath: testProviderPath,
+			types:        []*armresources.ProviderResourceType{resourceType("parents", "extension-parent")},
+			wantVersion:  "extension-parent",
+		},
+		{
+			name:         "no listed type or parent",
+			id:           shareID,
+			providerPath: storagePath,
+			types:        []*armresources.ProviderResourceType{resourceType("blobServices", "unrelated")},
+			wantErr:      `could not find API version for type "Microsoft.Storage/storageAccounts/fileServices/shares", type was not found`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var calls []string
+			var mu sync.Mutex
+			mux := http.NewServeMux()
+			mux.HandleFunc(tt.providerPath, handleJSONResponse(t, armresources.Provider{ResourceTypes: tt.types}, http.StatusOK))
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				defer mu.Unlock()
+				version := r.URL.Query().Get("api-version")
+				calls = append(calls, r.Method+" "+r.URL.Path+" "+version)
+				if r.URL.Path != tt.id {
+					http.NotFound(w, r)
+					return
+				}
+				if r.Method == http.MethodGet && version == tt.rejectedVersion {
+					handleJSONResponse(t, v1.ErrorResponse{
+						Error: &v1.ErrorDetails{Code: "InvalidApiVersionParameter"},
+					}, http.StatusBadRequest)(w, r)
+					return
+				}
+				handleDeleteSuccess()(w, r)
+			})
+
+			server := httptest.NewServer(mux)
+			defer server.Close()
+
+			c := NewResourceClient(newArmOptions(server.URL), nil, nil)
+			c.armClientOptions = newClientOptions(server.Client(), server.URL)
+
+			err := c.Delete(t.Context(), tt.id)
+			mu.Lock()
+			defer mu.Unlock()
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Empty(t, calls)
+				return
+			}
+
+			require.NoError(t, err)
+			var want []string
+			if tt.rejectedVersion != "" {
+				want = append(want, "GET "+tt.id+" "+tt.rejectedVersion)
+			}
+			want = append(want, "GET "+tt.id+" "+tt.wantVersion, "DELETE "+tt.id+" "+tt.wantVersion)
+			require.Equal(t, want, calls)
+		})
+	}
 }
 
 func Test_Delete_Kubernetes(t *testing.T) {
@@ -411,6 +560,145 @@ func Test_Delete_UCP(t *testing.T) {
 	})
 }
 
+func Test_Delete_UCP_AWSOwnerHeader(t *testing.T) {
+	const radiusResourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container"
+	const owner = "recipe;app;env;resource"
+
+	tests := []struct {
+		name       string
+		id         string
+		ctx        func(context.Context) context.Context
+		wantHeader string
+	}{
+		{
+			name:       "AWS resource with an owner",
+			id:         AWSResourceID,
+			ctx:        func(ctx context.Context) context.Context { return WithAWSOwner(ctx, owner) },
+			wantHeader: owner,
+		},
+		{
+			name: "AWS resource without an owner",
+			id:   AWSResourceID,
+			ctx:  func(ctx context.Context) context.Context { return ctx },
+		},
+		{
+			name: "AWS resource with an empty owner",
+			id:   AWSResourceID,
+			ctx:  func(ctx context.Context) context.Context { return WithAWSOwner(ctx, "") },
+		},
+		{
+			name: "non-AWS UCP resource with an owner",
+			id:   radiusResourceID,
+			ctx:  func(ctx context.Context) context.Context { return WithAWSOwner(ctx, owner) },
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deletes := 0
+			var got []string
+			mux := http.NewServeMux()
+			mux.HandleFunc(tt.id, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method == http.MethodDelete {
+					deletes++
+					got = r.Header.Values(sdkclients.AWSResourceOwnerHeader)
+				}
+				handleDeleteSuccess()(w, r)
+			})
+
+			server := httptest.NewServer(mux)
+			defer server.Close()
+
+			connection, err := sdk.NewDirectConnection(server.URL)
+			require.NoError(t, err)
+
+			c := NewResourceClient(nil, connection, nil)
+
+			err = c.Delete(tt.ctx(t.Context()), tt.id)
+			require.NoError(t, err)
+			require.Equal(t, 1, deletes)
+			if tt.wantHeader == "" {
+				require.Empty(t, got)
+			} else {
+				require.Equal(t, []string{tt.wantHeader}, got)
+			}
+		})
+	}
+}
+
+func Test_AWSOwnerFromContext(t *testing.T) {
+	require.Empty(t, AWSOwnerFromContext(t.Context()))
+	require.Equal(t, "o", AWSOwnerFromContext(WithAWSOwner(t.Context(), "o")))
+}
+
+func Test_GetProperties(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(AWSResourceID, func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodGet, r.Method)
+			handleJSONResponse(t, map[string]any{
+				"id":         AWSResourceID,
+				"name":       "test-stream",
+				"type":       "AWS.Kinesis/Streams",
+				"properties": map[string]any{"Arn": "arn:aws:kinesis:us-east-1:0000:stream/test-stream", "Name": "test-stream"},
+			}, 200)(w, r)
+		})
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		connection, err := sdk.NewDirectConnection(server.URL)
+		require.NoError(t, err)
+
+		c := NewResourceClient(nil, connection, nil)
+
+		properties, err := c.GetProperties(t.Context(), AWSResourceID)
+		require.NoError(t, err)
+		require.Equal(t, map[string]any{"Arn": "arn:aws:kinesis:us-east-1:0000:stream/test-stream", "Name": "test-stream"}, properties)
+	})
+
+	t.Run("failure - resource not found", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(AWSResourceID, handleNotFound(t))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		connection, err := sdk.NewDirectConnection(server.URL)
+		require.NoError(t, err)
+
+		c := NewResourceClient(nil, connection, nil)
+
+		properties, err := c.GetProperties(t.Context(), AWSResourceID)
+		require.Nil(t, properties)
+		require.IsType(t, &ResourceError{}, err)
+		require.Contains(t, err.Error(), AWSResourceID)
+	})
+
+	t.Run("failure - not a UCP resource", func(t *testing.T) {
+		c := NewResourceClient(nil, nil, nil)
+
+		properties, err := c.GetProperties(t.Context(), "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/account")
+		require.Nil(t, properties)
+		require.EqualError(t, err, "resource \"/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/account\" is not a UCP resource")
+	})
+
+	t.Run("failure - connection has no endpoint", func(t *testing.T) {
+		c := NewResourceClient(nil, noEndpointConnection{}, nil)
+
+		properties, err := c.GetProperties(t.Context(), AWSResourceID)
+		require.Nil(t, properties)
+		require.ErrorContains(t, err, "missing Azure Resource Manager configuration")
+	})
+
+	t.Run("failure - invalid resource ID", func(t *testing.T) {
+		c := NewResourceClient(nil, nil, nil)
+
+		properties, err := c.GetProperties(t.Context(), "invalid")
+		require.Nil(t, properties)
+		require.Error(t, err)
+	})
+}
+
 func newArmOptions(url string) *armauth.ArmConfig {
 	return &armauth.ArmConfig{
 		ClientOptions: clientv2.Options{
@@ -443,6 +731,11 @@ func newClientOptions(c *http.Client, url string) *arm.ClientOptions {
 func handleDeleteSuccess() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{}`))
+			return
+		}
 		w.WriteHeader(204)
 	}
 }
@@ -477,3 +770,10 @@ type wrapper struct {
 func (w *wrapper) Do(req *http.Request) (*http.Response, error) {
 	return w.Client.Do(req)
 }
+
+// noEndpointConnection is a UCP connection with no endpoint, which the generated UCP clients reject.
+type noEndpointConnection struct{}
+
+func (noEndpointConnection) Client() *http.Client { return http.DefaultClient }
+
+func (noEndpointConnection) Endpoint() string { return "" }

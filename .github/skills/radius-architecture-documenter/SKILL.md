@@ -16,6 +16,7 @@ Expert skill for analyzing codebases, documenting application architectures, and
 | **Fix** an existing doc that drifted from code                       | [radius-update-doc](../radius-update-doc/SKILL.md)                               |
 | **Find** missing or stale docs, or assess a code change's doc impact | [radius-contributing-docs-updater](../radius-contributing-docs-updater/SKILL.md) |
 | **Diagram** a subsystem / write an architecture doc                  | **this skill**                                                                   |
+| **Propose** a technical design for review (design note)              | [radius-author-design-note](../radius-author-design-note/SKILL.md)               |
 
 ## When to Use
 
@@ -148,7 +149,7 @@ This skill is tailored for the Radius project. Key architectural knowledge:
 
 ### Design Notes
 
-Architecture design documents are available in the `design-notes/architecture/` directory of the `radius-project/design-notes` repository. Reference these for historical context on architectural decisions.
+Design documents are in `eng/design-notes/` within the Radius repository, organized by topic. System-level architecture decisions are in `eng/design-notes/architecture/`. Reference these for historical context on architectural decisions.
 
 ### Output Directory
 

@@ -16,6 +16,7 @@ limitations under the License.
 package aws
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -24,12 +25,14 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	armrpc_v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // HandleAWSError takes in an error and returns an ARMResponse and an error. It checks the error type and returns an
 // appropriate response based on the error code and message. If the error is a client fault, it returns a
-// BadRequestARMResponse, otherwise it returns an InternalServerErrorARMResponse.
-func HandleAWSError(err error) (armrpc_rest.Response, error) {
+// BadRequestARMResponse, otherwise it returns an InternalServerErrorARMResponse and logs the AWS service,
+// operation, and error code.
+func HandleAWSError(ctx context.Context, err error) (armrpc_rest.Response, error) {
 	operationErr := &smithy.OperationError{}
 	if !errors.As(err, &operationErr) {
 		return nil, err
@@ -66,6 +69,13 @@ func HandleAWSError(err error) (armrpc_rest.Response, error) {
 	if fault == smithy.FaultClient {
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
+
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Error(err, "AWS call failed",
+		"awsService", operationErr.Service(),
+		"awsOperation", operationErr.Operation(),
+		"awsErrorCode", apiErr.ErrorCode(),
+		"awsErrorMessage", apiErr.ErrorMessage())
 
 	return armrpc_rest.NewInternalServerErrorARMResponse(e), nil
 }

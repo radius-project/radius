@@ -25,12 +25,13 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
+        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
-      {{- end }}
+        {{- end }}
     spec:
       serviceAccountName: applications-rp
       {{- if .Values.global.imagePullSecrets }}

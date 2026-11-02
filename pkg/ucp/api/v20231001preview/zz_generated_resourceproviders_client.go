@@ -113,7 +113,7 @@ func (client *ResourceProvidersClient) createOrUpdateCreateRequest(ctx context.C
 //     method.
 func (client *ResourceProvidersClient) BeginDelete(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientBeginDeleteOptions) (*runtime.Poller[ResourceProvidersClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, planeName, resourceProviderName, options)
+		resp, err := client.deleteOperation(ctx, planeName, resourceProviderName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -126,9 +126,9 @@ func (client *ResourceProvidersClient) BeginDelete(ctx context.Context, planeNam
 	}
 }
 
-// delete - Delete a resource provider
+// deleteOperation - Delete a resource provider
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *ResourceProvidersClient) delete(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientBeginDeleteOptions) (*http.Response, error) {
+func (client *ResourceProvidersClient) deleteOperation(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceProvidersClient.BeginDelete")
 	req, err := client.deleteCreateRequest(ctx, planeName, resourceProviderName, options)

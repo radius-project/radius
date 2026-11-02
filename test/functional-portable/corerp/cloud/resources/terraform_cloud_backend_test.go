@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -180,9 +181,7 @@ func testTerraformCloudBackend(t *testing.T, backend string, setup func(context.
 
 			deploy := func(objectName, revision string, allocate bool) string {
 				parameters := map[string]any{"name": objectName, "revision": revision}
-				for key, value := range fixture.parameters {
-					parameters[key] = value
-				}
+				maps.Copy(parameters, fixture.parameters)
 				resource := put(cloudBackendResourceType, objectName, map[string]any{
 					"environment": *env.ID, "application": *app.ID,
 					"recipe": map[string]any{"name": "default", "parameters": parameters},

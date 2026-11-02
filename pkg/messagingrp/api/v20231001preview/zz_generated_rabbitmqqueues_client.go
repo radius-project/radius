@@ -113,7 +113,7 @@ func (client *RabbitMQQueuesClient) createOrUpdateCreateRequest(ctx context.Cont
 //     method.
 func (client *RabbitMQQueuesClient) BeginDelete(ctx context.Context, rootScope string, rabbitMQQueueName string, options *RabbitMQQueuesClientBeginDeleteOptions) (*runtime.Poller[RabbitMQQueuesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, rabbitMQQueueName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, rabbitMQQueueName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -126,9 +126,9 @@ func (client *RabbitMQQueuesClient) BeginDelete(ctx context.Context, rootScope s
 	}
 }
 
-// delete - Delete a RabbitMQQueueResource
+// deleteOperation - Delete a RabbitMQQueueResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *RabbitMQQueuesClient) delete(ctx context.Context, rootScope string, rabbitMQQueueName string, options *RabbitMQQueuesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *RabbitMQQueuesClient) deleteOperation(ctx context.Context, rootScope string, rabbitMQQueueName string, options *RabbitMQQueuesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, rabbitMQQueueName, options)
 	if err != nil {

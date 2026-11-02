@@ -172,30 +172,6 @@ type ApplicationResourceListResult struct {
 	NextLink *string
 }
 
-// AzureContainerInstanceCompute - The Azure container instance compute configuration
-type AzureContainerInstanceCompute struct {
-	// REQUIRED; The Azure container instance compute kind
-	Kind *string
-
-	// Configuration for supported external identity providers
-	Identity *IdentitySettings
-
-	// The resource group to use for the environment.
-	ResourceGroup *string
-
-	// The resource id of the compute resource for application environment.
-	ResourceID *string
-}
-
-// GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type AzureContainerInstanceCompute.
-func (a *AzureContainerInstanceCompute) GetEnvironmentCompute() *EnvironmentCompute {
-	return &EnvironmentCompute{
-		Identity:   a.Identity,
-		Kind:       a.Kind,
-		ResourceID: a.ResourceID,
-	}
-}
-
 // BicepRegistryAuthentication - Authentication configuration for a single private Bicep registry. Only `BasicAuth` is currently
 // supported, and it requires `basicAuthSecretId`; the controller rejects configs that omit it. `AzureWI` and `AwsIrsa` will
 // be supported in the future.
@@ -599,6 +575,10 @@ type OutputResource struct {
 	// The logical identifier scoped to the owning Radius resource. This is only needed or used when a resource has a dependency
 	// relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships.
 	LocalID *string
+
+	// The provider-native ID of the underlying resource, such as the ARN of an AWS resource. Set only when Radius can determine
+	// it. Output resources with different UCP resource IDs can refer to the same provider resource.
+	ProviderResourceID *string
 
 	// Determines whether Radius manages the lifecycle of the underlying resource.
 	RadiusManaged *bool

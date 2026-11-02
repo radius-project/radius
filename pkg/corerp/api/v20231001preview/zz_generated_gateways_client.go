@@ -178,7 +178,7 @@ func (client *GatewaysClient) createOrUpdateCreateRequest(ctx context.Context, r
 //   - options - GatewaysClientBeginDeleteOptions contains the optional parameters for the GatewaysClient.BeginDelete method.
 func (client *GatewaysClient) BeginDelete(ctx context.Context, rootScope string, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*runtime.Poller[GatewaysClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, gatewayName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, gatewayName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -191,9 +191,9 @@ func (client *GatewaysClient) BeginDelete(ctx context.Context, rootScope string,
 	}
 }
 
-// delete - Delete a GatewayResource
+// deleteOperation - Delete a GatewayResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *GatewaysClient) delete(ctx context.Context, rootScope string, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*http.Response, error) {
+func (client *GatewaysClient) deleteOperation(ctx context.Context, rootScope string, gatewayName string, options *GatewaysClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, gatewayName, options)
 	if err != nil {

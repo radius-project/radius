@@ -26,21 +26,18 @@ FILES_FILE=""
 BASE_SHA=""
 HEAD_DIR=""
 REPOSITORY=""
+BACKPORTS_FILE=""
 TEMP_DIR=""
 GENERATED_WORKTREE=""
 PREPARE_RELEASE_SCRIPT="${PREPARE_RELEASE_SCRIPT:-}"
-COLLECT_BACKPORTS_SCRIPT="${COLLECT_BACKPORTS_SCRIPT:-}"
 if [[ -z "${PREPARE_RELEASE_SCRIPT}" ]]; then
     PREPARE_RELEASE_SCRIPT="${SCRIPT_DIR}/prepare-release.sh"
-fi
-if [[ -z "${COLLECT_BACKPORTS_SCRIPT}" ]]; then
-    COLLECT_BACKPORTS_SCRIPT="${SCRIPT_DIR}/collect-release-backports.sh"
 fi
 
 cleanup() {
     if [[ -n "${GENERATED_WORKTREE}" && -d "${GENERATED_WORKTREE}" ]]; then
         git worktree remove --force "${GENERATED_WORKTREE}" \
-            >/dev/null 2>&1 || true
+            > /dev/null 2>&1 || true
     fi
     if [[ -n "${TEMP_DIR}" && -d "${TEMP_DIR}" ]]; then
         rm -rf "${TEMP_DIR}"
@@ -54,9 +51,10 @@ fail() {
 }
 
 usage() {
-    cat <<'EOF'
+    cat << 'EOF'
 Usage: validate-release-plan.sh --body-file <path> --files-file <path> \
-    --base-sha <commit> --head-dir <path> --repository <owner/repo>
+    --base-sha <commit> --head-dir <path> --repository <owner/repo> \
+    --backports-file <fresh shared-action collection>
 EOF
 }
 
@@ -80,8 +78,8 @@ extract_plan() {
         /<!-- radius-release-plan:end -->/ { active = 0; exit }
         active && /^```(yaml)?$/ { next }
         active { print }
-    ' "${BODY_FILE}" >"${TEMP_DIR}/release-plan.yaml"
-    if ! yq -e '.' "${TEMP_DIR}/release-plan.yaml" >/dev/null; then
+    ' "${BODY_FILE}" > "${TEMP_DIR}/release-plan.yaml"
+    if ! yq -e '.' "${TEMP_DIR}/release-plan.yaml" > /dev/null; then
         fail "release plan is not valid YAML"
     fi
 }
@@ -93,14 +91,16 @@ validate_files() {
     local actual="${TEMP_DIR}/actual-files.txt"
 
     {
-        echo 'CHANGELOG.md'
+        if [[ "$(plan_value '.releaseType')" != rc ]]; then
+            echo 'CHANGELOG.md'
+        fi
         echo "${plan_path}"
         echo "docs/release-notes/${version}.md"
         echo 'versions.yaml'
-    } | sort >"${expected}"
+    } | sort > "${expected}"
     jq -e 'type == "array" and all(.[]; type == "string")' \
-        "${FILES_FILE}" >/dev/null || fail "changed-files input is invalid"
-    jq -r '.[]' "${FILES_FILE}" | tr -d '\r' | sort >"${actual}"
+        "${FILES_FILE}" > /dev/null || fail "changed-files input is invalid"
+    jq -r '.[]' "${FILES_FILE}" | tr -d '\r' | sort > "${actual}"
     if ! diff -u "${expected}" "${actual}"; then
         fail "release PR changes files outside the generated contract"
     fi
@@ -111,20 +111,20 @@ canonical_json() {
     local expression="$2"
     local output="$3"
 
-    yq -o=json -I=0 "${expression}" "${input}" >"${output}.raw"
-    tr -d '\r' <"${output}.raw" | jq -S -c . >"${output}"
+    yq -o=json -I=0 "${expression}" "${input}" > "${output}.raw"
+    tr -d '\r' < "${output}.raw" | jq -S -c . > "${output}"
     rm "${output}.raw"
 }
 
 normalize_text() {
-    tr -d '\r' <"$1" >"$2"
+    tr -d '\r' < "$1" > "$2"
 }
 
 normalize_release_notes() {
     local input="$1"
     local output="$2"
 
-    tr -d '\r' <"${input}" | awk '
+    tr -d '\r' < "${input}" | awk '
         /^## Highlights$/ || /^## Upgrading to Radius / {
             print
             print "<!-- curated by maintainer -->"
@@ -134,20 +134,7 @@ normalize_release_notes() {
         curated && /^## / { curated = 0 }
         curated { next }
         { print }
-    ' >"${output}"
-}
-
-collect_expected_backports() {
-    local channel="$1"
-    local output="${TEMP_DIR}/expected-backports.json"
-
-    if [[ -n "${EXPECTED_BACKPORTS_FILE:-}" ]]; then
-        cp "${EXPECTED_BACKPORTS_FILE}" "${output}"
-    else
-        bash "${COLLECT_BACKPORTS_SCRIPT}" --repository "${REPOSITORY}" \
-            --channel "${channel}" --output "${output}"
-    fi
-    printf '%s\n' "${output}"
+    ' > "${output}"
 }
 
 sibling_repository_url() {
@@ -176,18 +163,18 @@ verify_planned_siblings() {
         all(.[].sourceCommit; test("^[0-9a-f]{40}$")) and
         all(.[].sourceRef; . == "main" or . == ("release/" + env.CHANNEL)) and
         all(.[]; .repository == ("radius-project/" + .name))
-    ' "${planned}" >/dev/null || fail "sibling repository state is invalid"
+    ' "${planned}" > /dev/null || fail "sibling repository state is invalid"
 
     git init -q "${scratch}"
     while IFS=$'\t' read -r name source_ref source_commit; do
         repository="$(sibling_repository_url "${name}")"
         git -C "${scratch}" fetch -q --no-tags "${repository}" \
-            "refs/heads/${source_ref}" ||
-            fail "could not fetch ${source_ref} from ${repository}"
+            "refs/heads/${source_ref}" \
+                                       || fail "could not fetch ${source_ref} from ${repository}"
         head="$(git -C "${scratch}" rev-parse FETCH_HEAD)"
         git -C "${scratch}" merge-base --is-ancestor "${source_commit}" \
-            "${head}" 2>/dev/null ||
-            fail "planned ${name} commit ${source_commit} is not reachable from ${source_ref} at ${head}"
+            "${head}" 2> /dev/null \
+                                  || fail "planned ${name} commit ${source_commit} is not reachable from ${source_ref} at ${head}"
     done < <(jq -r '.[] | [.name, .sourceRef, .sourceCommit] | @tsv' \
         "${planned}")
 }
@@ -202,15 +189,15 @@ regenerate_release() {
 
     GENERATED_WORKTREE="${TEMP_DIR}/generated-worktree"
     git worktree add --quiet --detach "${GENERATED_WORKTREE}" "${BASE_SHA}"
-    pushd "${GENERATED_WORKTREE}" >/dev/null
+    pushd "${GENERATED_WORKTREE}" > /dev/null
     GITHUB_TOKEN="${GITHUB_TOKEN:-}" GITHUB_REPO="${REPOSITORY}" \
         bash "${PREPARE_RELEASE_SCRIPT}" \
         --release-type "${release_type}" --channel "${channel}" \
         --release-date "${release_date}" \
         --backports-file "${backports_file}" \
         --sibling-repositories-file "${siblings_file}" \
-        --output-dir "${output_dir}" >/dev/null
-    popd >/dev/null
+        --output-dir "${output_dir}" > /dev/null
+    popd > /dev/null
 }
 
 validate_generated_contents() {
@@ -221,10 +208,10 @@ validate_generated_contents() {
     local plan_path="$5"
     local expected_backports planned_siblings expected_notes actual_notes
 
-    expected_backports="$(collect_expected_backports "${channel}")"
+    expected_backports="${BACKPORTS_FILE}"
     canonical_json "${TEMP_DIR}/release-plan.yaml" '.includedBackports' \
         "${TEMP_DIR}/planned-backports.json"
-    jq -S -c . "${expected_backports}" >"${TEMP_DIR}/live-backports.json"
+    jq -S -c . "${expected_backports}" > "${TEMP_DIR}/live-backports.json"
     if ! diff -u "${TEMP_DIR}/live-backports.json" \
         "${TEMP_DIR}/planned-backports.json"; then
         fail "included backports no longer match repository state"
@@ -332,8 +319,8 @@ validate_policy() {
 
     bash "${SCRIPT_DIR}/prepare-release.sh" \
         --release-type "${release_type}" --channel "${channel}" \
-        --output-dir "${policy_output}" --version-only >/dev/null
-    expected_version="$(<"${policy_output}/version.txt")"
+        --output-dir "${policy_output}" --version-only > /dev/null
+    expected_version="$(< "${policy_output}/version.txt")"
     if [[ "${version}" != "${expected_version}" ]]; then
         fail "planned version ${version} no longer matches ${expected_version}"
     fi
@@ -365,6 +352,10 @@ main() {
                 REPOSITORY="${2:-}"
                 shift 2
                 ;;
+            --backports-file)
+                BACKPORTS_FILE="${2:-}"
+                shift 2
+                ;;
             -h | --help)
                 usage
                 exit 0
@@ -380,17 +371,24 @@ main() {
         fail "repository must use owner/name format"
     fi
     if ! git rev-parse --verify --quiet \
-        "${BASE_SHA}^{commit}" >/dev/null; then
+        "${BASE_SHA}^{commit}" > /dev/null; then
         fail "base SHA is not a commit"
     fi
-    command -v jq >/dev/null || fail "required command not found: jq"
-    command -v yq >/dev/null || fail "required command not found: yq"
+    command -v jq > /dev/null || fail "required command not found: jq"
+    command -v yq > /dev/null || fail "required command not found: yq"
+    [[ -f "${BACKPORTS_FILE}" ]] \
+        || fail "fresh backports file from the shared action is required"
+    jq -e 'type == "array"' "${BACKPORTS_FILE}" > /dev/null \
+        || fail "backports file must contain a JSON array"
 
     TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/release-plan-test-XXXXXX")"
     extract_plan
 
     if [[ "$(plan_value '.schemaVersion')" != "2" ]]; then
         fail "unsupported release plan schema"
+    fi
+    if [[ "$(plan_value '.changelogPolicy')" != stable-only ]]; then
+        fail "release preparation must use the stable-only changelog policy; rerun Prepare Release"
     fi
     version="$(plan_value '.version')"
     release_type="$(plan_value '.releaseType')"

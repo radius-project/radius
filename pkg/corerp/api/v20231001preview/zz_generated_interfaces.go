@@ -6,7 +6,7 @@ package v20231001preview
 // EnvironmentComputeClassification provides polymorphic access to related types.
 // Call the interface's GetEnvironmentCompute() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *AzureContainerInstanceCompute, *EnvironmentCompute, *KubernetesCompute
+// - *EnvironmentCompute, *KubernetesCompute
 type EnvironmentComputeClassification interface {
 	// GetEnvironmentCompute returns the EnvironmentCompute content of the underlying type.
 	GetEnvironmentCompute() *EnvironmentCompute
@@ -15,8 +15,7 @@ type EnvironmentComputeClassification interface {
 // ExtensionClassification provides polymorphic access to related types.
 // Call the interface's GetExtension() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *AzureContainerInstanceExtension, *DaprSidecarExtension, *Extension, *KubernetesMetadataExtension, *KubernetesNamespaceExtension,
-// - *ManualScalingExtension
+// - *DaprSidecarExtension, *Extension, *KubernetesMetadataExtension, *KubernetesNamespaceExtension, *ManualScalingExtension
 type ExtensionClassification interface {
 	// GetExtension returns the Extension content of the underlying type.
 	GetExtension() *Extension

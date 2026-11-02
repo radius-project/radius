@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# shellcheck source=build/scripts/retry-curl.sh
+source "$(dirname "${BASH_SOURCE[0]}")/retry-curl.sh"
+
 # Installs the Bicep CLI into a user-owned directory (no sudo) for the current
 # platform. Works on linux and darwin, amd64 and arm64, for both CI and local
 # development; under GitHub Actions the install dir is added to the job PATH so
@@ -49,102 +52,13 @@ cleanup() {
     fi
 }
 
-# curl wrapper for GitHub requests: enforces HTTPS + TLS 1.2, sets a User-Agent,
-# and adds an Authorization header when GITHUB_TOKEN is set (raises API rate
-# limits and allows private repositories). curl drops the Authorization header on
-# cross-host redirects, so the token is not sent to the download CDN. The array is
-# seeded with the User-Agent so it is never empty -- expanding an empty array
-# under 'set -u' is an error on bash 3.2 (macOS).
-# Takes a URL and output file; prints the final URL only after success.
+# curl wrapper for authenticated GitHub requests.
 gh_curl() {
-    local url="$1" output="$2"
-    shift 2
-    local result status http_code remaining timeout metadata
-    local retry_after retry_time wait_time now
-    local deadline=$((SECONDS + 300)) attempt=0 delay=1
     local headers=(-H "User-Agent: ${REPO##*/}-installer")
-    if [ -n "${GITHUB_TOKEN:-}" ]; then
-        headers+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+        headers+=(-H "Authorization: ******")
     fi
-    # Keep one budget for HTTP failures and dropped connections. curl's
-    # --retry-all-errors also retries permanent HTTP and certificate errors.
-    while true; do
-        remaining=$((deadline - SECONDS))
-        if ((remaining <= 0)); then
-            log "GitHub request exceeded the 300-second retry budget"
-            return 28
-        fi
-        timeout=60
-        if ((remaining < timeout)); then timeout="$remaining"; fi
-        status=0
-        result="$(curl --proto '=https' --tlsv1.2 -fsSL \
-            --connect-timeout 15 --max-time "$timeout" \
-            "${headers[@]}" "$@" -o "$output" \
-            --dump-header - \
-            -w '%{http_code} %{url_effective}' "$url")" || status=$?
-        metadata="${result##*$'\n'}"
-        if ((status == 0)); then
-            printf '%s\n' "${metadata#* }"
-            return 0
-        fi
-        http_code="${metadata%% *}"
-        case "${status}:${http_code}" in
-            22:408 | 22:429 | 22:500 | 22:502 | 22:503 | 22:504) ;;
-            5:* | 6:* | 7:* | 18:* | 28:* | 52:* | 55:* | 56:* | 92:*) ;;
-            *) return "$status" ;;
-        esac
-        # Redirects can have their own Retry-After; use only the final response.
-        retry_after="$(awk '
-            /^HTTP\// { value = "" }
-            tolower($1) == "retry-after:" {
-                sub(/^[^:]*:[ \t]*/, "")
-                sub(/[ \t\r]*$/, "")
-                value = $0
-            }
-            END { print value }
-        ' <<< "$result")"
-        wait_time="$delay"
-        if [[ -n "$retry_after" ]]; then
-            retry_time=0
-            case "$retry_after" in
-                *[!0-9]*)
-                    now="$(LC_ALL=C date -u +%s)"
-                    if retry_time="$(LC_ALL=C date -u \
-                        -d "$retry_after" +%s 2>/dev/null)" \
-                        || retry_time="$(LC_ALL=C date -j -u \
-                            -f '%a, %d %b %Y %H:%M:%S GMT' \
-                            "$retry_after" +%s 2>/dev/null)"; then
-                        retry_time=$((retry_time - now))
-                    else
-                        log "ignoring invalid Retry-After header"
-                        retry_time=0
-                    fi
-                    ;;
-                *)
-                    while [[ "$retry_after" == 0* ]]; do
-                        retry_after="${retry_after#0}"
-                    done
-                    # Clamp before arithmetic to avoid overflow on large values.
-                    if ((${#retry_after} > 3)); then
-                        retry_time=300
-                    else
-                        retry_time=$((10#${retry_after:-0}))
-                    fi
-                    ;;
-            esac
-            if ((retry_time > wait_time)); then wait_time="$retry_time"; fi
-        fi
-        remaining=$((deadline - SECONDS))
-        if ((attempt >= 10 || remaining <= wait_time)); then
-            log "GitHub request exhausted its retry budget"
-            return "$status"
-        fi
-        log "request failed (curl ${status}, HTTP ${http_code}); retry in ${wait_time}s"
-        sleep "$wait_time"
-        attempt=$((attempt + 1))
-        delay=$((delay * 2))
-        if ((delay > 60)); then delay=60; fi
-    done
+    retry_curl "${headers[@]}" "$@"
 }
 
 detect_os() {
@@ -167,7 +81,7 @@ detect_arch() {
 # Avoids the GitHub API (no token, no rate limit).
 resolve_latest_version() {
     local effective_url
-    effective_url="$(gh_curl "${RELEASES_URL}/latest" /dev/null --head)" \
+    effective_url="$(gh_curl --head -o /dev/null -w '%{url_effective}' "${RELEASES_URL}/latest")" \
         || fail "could not resolve the latest bicep version"
     printf '%s\n' "${effective_url##*/tag/}"
 }
@@ -248,8 +162,8 @@ main() {
     WORKDIR="$(mktemp -d)"
 
     log "downloading ${asset} ${version}..."
-    gh_curl "${RELEASES_URL}/download/${version}/${asset}" \
-        "${WORKDIR}/bicep" >/dev/null \
+    gh_curl -o "${WORKDIR}/bicep" \
+        "${RELEASES_URL}/download/${version}/${asset}" \
         || fail "could not download ${asset} ${version}"
 
     # Azure/bicep does not publish checksums, so verification only happens when a

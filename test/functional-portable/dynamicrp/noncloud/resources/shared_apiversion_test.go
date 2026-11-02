@@ -176,6 +176,8 @@ func Test_DynamicRP_SharedAPIVersionDeletion(t *testing.T) {
 		},
 	})
 
+	// Deleting provider metadata must not race other tests registering types.
+	test.RunSerial = true
 	test.Test(t)
 }
 

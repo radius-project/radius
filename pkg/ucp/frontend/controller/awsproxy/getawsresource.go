@@ -55,6 +55,9 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 	if errResponse != nil {
 		return errResponse, nil
 	}
+	if errResponse := unsupportedTypeResponse(serviceCtx.ResourceTypeInAWSFormat()); errResponse != nil {
+		return errResponse, nil
+	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	response, err := p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
@@ -64,7 +67,7 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 	if ucpaws.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {
-		return ucpaws.HandleAWSError(err)
+		return ucpaws.HandleAWSError(ctx, err)
 	}
 
 	properties := map[string]any{}

@@ -112,7 +112,7 @@ func (client *ContainersClient) createOrUpdateCreateRequest(ctx context.Context,
 //   - options - ContainersClientBeginDeleteOptions contains the optional parameters for the ContainersClient.BeginDelete method.
 func (client *ContainersClient) BeginDelete(ctx context.Context, rootScope string, containerName string, options *ContainersClientBeginDeleteOptions) (*runtime.Poller[ContainersClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, containerName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, containerName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -125,9 +125,9 @@ func (client *ContainersClient) BeginDelete(ctx context.Context, rootScope strin
 	}
 }
 
-// delete - Delete a ContainerResource
+// deleteOperation - Delete a ContainerResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *ContainersClient) delete(ctx context.Context, rootScope string, containerName string, options *ContainersClientBeginDeleteOptions) (*http.Response, error) {
+func (client *ContainersClient) deleteOperation(ctx context.Context, rootScope string, containerName string, options *ContainersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, containerName, options)
 	if err != nil {

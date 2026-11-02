@@ -17,6 +17,9 @@ limitations under the License.
 package list
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -116,4 +119,64 @@ func Test_Run(t *testing.T) {
 			require.Equal(t, expected, outputSink.Writes)
 		})
 	})
+}
+
+func Test_Command_JSON(t *testing.T) {
+	t.Parallel()
+
+	listErr := errors.New("failed to list credentials")
+	testcases := []struct {
+		name      string
+		providers []cli_credential.CloudProviderStatus
+		err       error
+	}{
+		{
+			name:      "empty list",
+			providers: []cli_credential.CloudProviderStatus{},
+		},
+		{
+			name: "populated list",
+			providers: []cli_credential.CloudProviderStatus{
+				{Name: "azure", Enabled: true},
+				{Name: "aws", Enabled: true},
+			},
+		},
+		{
+			name: "client error",
+			err:  listErr,
+		},
+	}
+
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			client := cli_credential.NewMockCredentialManagementClient(ctrl)
+			client.EXPECT().List(gomock.Any()).Return(tt.providers, tt.err)
+
+			var stdout, stderr bytes.Buffer
+			cmd, _ := NewCommand(&framework.Impl{
+				ConfigHolder:      &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)},
+				ConnectionFactory: &connections.MockFactory{CredentialManagementClient: client},
+				Output:            &output.OutputWriter{Writer: &stdout},
+			})
+			cmd.SetOut(&stdout)
+			cmd.SetErr(&stderr)
+			cmd.SilenceUsage = true
+			cmd.SetArgs([]string{"--output", "json"})
+
+			err := cmd.ExecuteContext(t.Context())
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+				require.Empty(t, stdout.String())
+				return
+			}
+			require.NoError(t, err)
+
+			var actual []cli_credential.CloudProviderStatus
+			require.NoError(t, json.Unmarshal(stdout.Bytes(), &actual))
+			require.Equal(t, tt.providers, actual)
+		})
+	}
 }

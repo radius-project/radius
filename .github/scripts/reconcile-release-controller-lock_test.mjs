@@ -24,7 +24,10 @@ function fixture() {
   const github = {
     rest: {
       git: {
-        getRef: async () => {
+        getRef: async ({ ref }) => {
+          if (ref.startsWith("tags/")) {
+            return { data: { object: { type: "commit", sha: releaseSource } } };
+          }
           if (!state.ref) {
             throw Object.assign(new Error("not found"), { status: 404 });
           }
@@ -206,4 +209,83 @@ test("does not write a lock on a conflicting state branch", async () => {
   };
   await assert.rejects(() => reconcileLock(state), /is rooted at/);
   assert.equal(writes, 0);
+});
+
+function storeCandidateLock(state, overrides = {}) {
+  const candidate = "v0.61.0-rc.2";
+  Object.assign(state.inputs, {
+    MODE: "release-candidate",
+    VERSION: "v0.61.0",
+    RELEASE_CANDIDATE: candidate
+  });
+  const lock = canonicalLock(
+    {
+      version: candidate,
+      releaseSourceCommit: releaseSource,
+      signedTag: candidate,
+      deSourceCommit: deSource,
+      imageTag: candidate.slice(1),
+      ...overrides
+    },
+    digest
+  );
+  state.state.ref = { object: { sha: "d".repeat(40) } };
+  state.state.content = {
+    type: "file",
+    content: Buffer.from(JSON.stringify(lock)).toString("base64")
+  };
+}
+
+test("reads the Deployment Engine commit a release candidate locked", async () => {
+  const state = fixture();
+  storeCandidateLock(state);
+  await reconcileLock(state);
+  assert.deepEqual(state.outputs, { "de-source-commit": deSource });
+});
+
+test("requires the release candidate lock before a final", async () => {
+  const state = fixture();
+  storeCandidateLock(state);
+  state.state.ref = undefined;
+  await assert.rejects(
+    () => reconcileLock(state),
+    /v0\.61\.0-rc\.2 has no Deployment Engine lock/
+  );
+});
+
+test("rejects a release candidate lock for another Radius source", async () => {
+  const state = fixture();
+  storeCandidateLock(state, { releaseSourceCommit: "f".repeat(40) });
+  await assert.rejects(
+    () => reconcileLock(state),
+    /does not hold the v0\.61\.0-rc\.2 lock/
+  );
+});
+
+test("rejects a release candidate lock written outside the release App", async () => {
+  for (const data of [
+    { author: { login: "octocat", type: "User" }, verified: true },
+    { author: { type: "Bot" }, verified: false }
+  ]) {
+    const state = fixture();
+    storeCandidateLock(state);
+    state.github.rest.repos.getCommit = async () => ({
+      data: {
+        parents: [{ sha: releaseSource }],
+        author: data.author,
+        commit: { verification: { verified: data.verified } }
+      }
+    });
+    await assert.rejects(() => reconcileLock(state), /GitHub-verified App/);
+  }
+});
+
+test("rejects a release candidate of another release", async () => {
+  const state = fixture();
+  storeCandidateLock(state);
+  state.inputs.RELEASE_CANDIDATE = "v0.60.0-rc.2";
+  await assert.rejects(
+    () => reconcileLock(state),
+    /v0\.60\.0-rc\.2 is not a release candidate of v0\.61\.0/
+  );
 });

@@ -54,6 +54,9 @@ type destination struct {
 	host string
 	repo string
 	tag  string
+	// name is the registry and repository as written in the target. Unlike host, it
+	// keeps docker.io, so it can be printed as part of a recipe URL.
+	name string
 }
 
 // NewCommand creates an instance of the command and runner for the `rad bicep publish` command.
@@ -181,7 +184,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo("Successfully published Bicep file %q to %q", displayFile, r.Target)
-	r.Output.LogInfo("To immutably pin the artifact, use the following Recipe url: %s", computeImmutableRecipeUrl(r.Target, digest.String()))
+	r.Output.LogInfo("To immutably pin the artifact, use the following Recipe url: %s@%s", r.Destination.name, digest)
 
 	return nil
 }
@@ -226,7 +229,7 @@ func (r *Runner) publish(ctx context.Context) (digest.Digest, error) {
 		return "", err
 	}
 
-	r.Output.LogInfo("Pushed to %s:%s@%s\n", r.Destination.host, r.Destination.repo, desc.Digest)
+	r.Output.LogInfo("Pushed to %s@%s\n", r.Destination.name, desc.Digest)
 	return desc.Digest, nil
 }
 
@@ -317,7 +320,7 @@ func enhanceOCIError(target string, err error) error {
 	return err
 }
 
-// extractDestination extracts the host, repo, and tag from the target
+// extractDestination extracts the host, repo, tag, and name from the target
 func (r *Runner) extractDestination() (*destination, error) {
 	ref, err := registry.ParseReference(r.Target)
 	if err != nil {
@@ -340,9 +343,10 @@ func (r *Runner) extractDestination() (*destination, error) {
 	}
 
 	return &destination{
-		host,
-		repo,
-		tag,
+		host: host,
+		repo: repo,
+		tag:  tag,
+		name: ref.Registry + "/" + ref.Repository,
 	}, nil
 }
 
@@ -364,11 +368,4 @@ func generateManifestContent(config ocispec.Descriptor, layers ...ocispec.Descri
 		SchemaVersion: 2,
 	}
 	return json.Marshal(content)
-}
-
-// computeImmutableRecipeUrl builds an OCI URL using the registry/repo portion of the
-// target (no leading "br:" and without the tag) and replaces the tag with the digest.
-func computeImmutableRecipeUrl(target, hash string) string {
-	host, _, _ := strings.Cut(target, ":")
-	return fmt.Sprintf("%s@%s", host, hash)
 }

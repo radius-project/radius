@@ -82,12 +82,12 @@ main() {
         "${CANDIDATES_FILE}" >/dev/null || fail "candidate input is invalid"
 
     changed_files="$(mktemp "${TMPDIR:-/tmp}/release-changes-XXXXXX")"
-    git diff --name-only "${BASE_SHA}" "${MERGE_GROUP_SHA}" \
+    git diff --no-renames --name-only "${BASE_SHA}" "${MERGE_GROUP_SHA}" \
         >"${changed_files}.raw"
     sort "${changed_files}.raw" >"${changed_files}"
     rm "${changed_files}.raw"
     if grep -Eq \
-        '^(CHANGELOG\.md|versions\.yaml|docs/release-notes/v[0-9]+\.[0-9]+\.[0-9]+[^/]*\.md|\.github/release-plans/.+\.yaml)$' \
+        '^(versions\.yaml|docs/release-notes/v[0-9]+\.[0-9]+\.[0-9]+[^/]*\.md|\.github/release-plans/.+\.yaml)$' \
         "${changed_files}"; then
         touches_release=true
     fi

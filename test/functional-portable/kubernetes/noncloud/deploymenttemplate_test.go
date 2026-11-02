@@ -49,6 +49,7 @@ import (
 )
 
 func Test_DeploymentTemplate_Env(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 
@@ -129,6 +130,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 }
 
 func Test_DeploymentTemplate_Module(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 
@@ -204,6 +206,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 }
 
 func Test_DeploymentTemplate_Recipe(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 

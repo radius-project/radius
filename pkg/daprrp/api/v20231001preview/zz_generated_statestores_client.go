@@ -112,7 +112,7 @@ func (client *StateStoresClient) createOrUpdateCreateRequest(ctx context.Context
 //   - options - StateStoresClientBeginDeleteOptions contains the optional parameters for the StateStoresClient.BeginDelete method.
 func (client *StateStoresClient) BeginDelete(ctx context.Context, rootScope string, stateStoreName string, options *StateStoresClientBeginDeleteOptions) (*runtime.Poller[StateStoresClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, stateStoreName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, stateStoreName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -125,9 +125,9 @@ func (client *StateStoresClient) BeginDelete(ctx context.Context, rootScope stri
 	}
 }
 
-// delete - Delete a DaprStateStoreResource
+// deleteOperation - Delete a DaprStateStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *StateStoresClient) delete(ctx context.Context, rootScope string, stateStoreName string, options *StateStoresClientBeginDeleteOptions) (*http.Response, error) {
+func (client *StateStoresClient) deleteOperation(ctx context.Context, rootScope string, stateStoreName string, options *StateStoresClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, stateStoreName, options)
 	if err != nil {

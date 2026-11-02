@@ -13,6 +13,7 @@
 
 # log files
 *.log
+!.github/scripts/testdata/**/*.log
 
 # Auto-generated cli docs files
 docs/content/reference/cli/rad*

@@ -39,7 +39,7 @@ fail() {
 }
 
 usage() {
-    cat <<'EOF'
+    cat << 'EOF'
 Usage: validate-release-controller-plan.sh --plan-file <path> \
     --version <vX.Y.Z[-rc.N]> --source-pr-commit <sha> \
     --release-commit <sha> --trigger <release-pr|release-backport|dispatch> \
@@ -53,17 +53,17 @@ plan_value() {
 
 load_plan() {
     cp "${PLAN_FILE}" "${TEMP_DIR}/release-plan.yaml"
-    yq -e '.' "${TEMP_DIR}/release-plan.yaml" >/dev/null ||
-        fail "release plan is not valid YAML"
+    yq -e '.' "${TEMP_DIR}/release-plan.yaml" > /dev/null \
+                                                         || fail "release plan is not valid YAML"
 }
 
 commit_parent() {
     local commit="$1"
     local -a revision=()
 
-    read -r -a revision <<<"$(git rev-list --parents -n 1 "${commit}")"
-    ((${#revision[@]} == 2)) ||
-        fail "release metadata commit ${commit} must have one parent"
+    read -r -a revision <<< "$(git rev-list --parents -n 1 "${commit}")"
+    ((${#revision[@]} == 2)) \
+                             || fail "release metadata commit ${commit} must have one parent"
     printf '%s' "${revision[1]}"
 }
 
@@ -76,22 +76,25 @@ validate_changed_files() {
     local actual="${TEMP_DIR}/actual-files.txt"
 
     {
-        echo 'CHANGELOG.md'
+        if [[ "$(plan_value '.releaseType')" != rc ||
+            "$(plan_value '.changelogPolicy')" != stable-only ]]; then
+            echo 'CHANGELOG.md'
+        fi
         echo "${plan_path}"
         echo "docs/release-notes/${version}.md"
         echo 'versions.yaml'
-        if [[ "${require_legacy_cleanup}" == "true" ]] &&
-            git cat-file -e \
+        if [[ "${require_legacy_cleanup}" == "true" ]] \
+                                                       && git cat-file -e \
                 "${commit}^:.github/workflows/release.yaml" \
-                2>/dev/null; then
+                2> /dev/null; then
             echo '.github/workflows/release.yaml'
             if git cat-file -e \
-                "${commit}:.github/workflows/release.yaml" 2>/dev/null; then
+                "${commit}:.github/workflows/release.yaml" 2> /dev/null; then
                 fail "release metadata backport kept the legacy release workflow"
             fi
         fi
-    } | sort >"${expected}"
-    git diff --name-only "${commit}^" "${commit}" | sort >"${actual}"
+    } | sort > "${expected}"
+    git diff --name-only "${commit}^" "${commit}" | sort > "${actual}"
     if ! diff -u "${expected}" "${actual}"; then
         fail "release metadata commit changes files outside the plan contract"
     fi
@@ -105,8 +108,8 @@ validate_release_metadata() {
     local versions_file="${TEMP_DIR}/versions.yaml"
     local matches
 
-    git show "${commit}:versions.yaml" >"${versions_file}" ||
-        fail "release commit has no versions.yaml"
+    git show "${commit}:versions.yaml" > "${versions_file}" \
+                                                           || fail "release commit has no versions.yaml"
     matches="$(
         VERSION="${version}" CHANNEL="${channel}" yq -r '
             [.supported[] | select(
@@ -115,14 +118,14 @@ validate_release_metadata() {
             )] | length
         ' "${versions_file}"
     )"
-    [[ "${matches}" == "1" ]] ||
-        fail "versions.yaml does not contain ${version} for ${channel}"
-    git cat-file -e "${commit}:CHANGELOG.md" ||
-        fail "release commit has no CHANGELOG.md"
-    git cat-file -e "${commit}:docs/release-notes/${version}.md" ||
-        fail "release commit has no release notes for ${version}"
-    git cat-file -e "${commit}:${plan_path}" ||
-        fail "release commit has no immutable release plan"
+    [[ "${matches}" == "1" ]] \
+                              || fail "versions.yaml does not contain ${version} for ${channel}"
+    git cat-file -e "${commit}:CHANGELOG.md" \
+                                             || fail "release commit has no CHANGELOG.md"
+    git cat-file -e "${commit}:docs/release-notes/${version}.md" \
+                                                                 || fail "release commit has no release notes for ${version}"
+    git cat-file -e "${commit}:${plan_path}" \
+                                             || fail "release commit has no immutable release plan"
 }
 
 validate_committed_plan() {
@@ -130,7 +133,7 @@ validate_committed_plan() {
     local plan_path="$2"
     local committed="${TEMP_DIR}/committed-plan.yaml"
 
-    git show "${commit}:${plan_path}" >"${committed}"
+    git show "${commit}:${plan_path}" > "${committed}"
     if ! diff -u \
         <(yq -o=json -I=0 '.' "${TEMP_DIR}/release-plan.yaml" | jq -S .) \
         <(yq -o=json -I=0 '.' "${committed}" | jq -S .); then
@@ -151,7 +154,7 @@ remote_tag_commit() {
             "refs/tags/${tag}^{}") peeled="${sha}" ;;
             "refs/tags/${tag}") direct="${sha}" ;;
         esac
-    done <<<"${refs}"
+    done <<< "${refs}"
 
     printf '%s' "${peeled:-${direct}}"
 }
@@ -162,27 +165,28 @@ write_outputs() {
     local release_type="$3"
     local release_branch="$4"
     local de_image_tag="${VERSION#v}"
-    local recipes_commit dashboard_commit aws_commit
+    local de_source_tag="${VERSION#v}"
+    local recipes_commit dashboard_commit aws_commit previous_version
     local resolved_plan="${OUTPUT_DIR}/release-plan.yaml"
 
     mkdir -p "${OUTPUT_DIR}"
     if [[ "${ready}" == "true" ]]; then
         RELEASE_COMMIT="${RELEASE_COMMIT}" yq \
             '.source.releaseCommit = strenv(RELEASE_COMMIT)' \
-            "${TEMP_DIR}/release-plan.yaml" >"${resolved_plan}"
+            "${TEMP_DIR}/release-plan.yaml" > "${resolved_plan}"
     else
         cp "${TEMP_DIR}/release-plan.yaml" "${resolved_plan}"
     fi
     yq -o=json '.expectedOutputs' "${resolved_plan}" \
-        >"${OUTPUT_DIR}/release-targets.json"
-    printf '%s\n' "${ready}" >"${OUTPUT_DIR}/ready.txt"
-    printf '%s\n' "${VERSION}" >"${OUTPUT_DIR}/version.txt"
-    printf '%s\n' "${channel}" >"${OUTPUT_DIR}/channel.txt"
-    printf '%s\n' "${release_type}" >"${OUTPUT_DIR}/release-type.txt"
+        > "${OUTPUT_DIR}/release-targets.json"
+    printf '%s\n' "${ready}" > "${OUTPUT_DIR}/ready.txt"
+    printf '%s\n' "${VERSION}" > "${OUTPUT_DIR}/version.txt"
+    printf '%s\n' "${channel}" > "${OUTPUT_DIR}/channel.txt"
+    printf '%s\n' "${release_type}" > "${OUTPUT_DIR}/release-type.txt"
     printf '%s\n' "${release_branch}" \
-        >"${OUTPUT_DIR}/release-branch.txt"
+        > "${OUTPUT_DIR}/release-branch.txt"
     if [[ "${release_type}" != "rc" ]]; then
-        de_image_tag="${channel}"
+        de_source_tag="${channel}"
     fi
     recipes_commit="$(
         plan_value '.siblingRepositories[] | select(.name == "recipes") |
@@ -196,12 +200,17 @@ write_outputs() {
         plan_value '.siblingRepositories[] |
             select(.name == "bicep-types-aws") | .sourceCommit'
     )"
-    printf '%s\n' "${de_image_tag}" >"${OUTPUT_DIR}/de-image-tag.txt"
-    printf '%s\n' "${recipes_commit}" >"${OUTPUT_DIR}/recipes-commit.txt"
+    # A final promotes this release candidate.
+    previous_version="$(plan_value '.previousVersion')"
+    printf '%s\n' "${de_image_tag}" > "${OUTPUT_DIR}/de-image-tag.txt"
+    printf '%s\n' "${de_source_tag}" > "${OUTPUT_DIR}/de-source-tag.txt"
+    printf '%s\n' "${recipes_commit}" > "${OUTPUT_DIR}/recipes-commit.txt"
     printf '%s\n' "${dashboard_commit}" \
-        >"${OUTPUT_DIR}/dashboard-commit.txt"
+        > "${OUTPUT_DIR}/dashboard-commit.txt"
     printf '%s\n' "${aws_commit}" \
-        >"${OUTPUT_DIR}/bicep-types-aws-commit.txt"
+        > "${OUTPUT_DIR}/bicep-types-aws-commit.txt"
+    printf '%s\n' "${previous_version}" \
+        > "${OUTPUT_DIR}/previous-version.txt"
 
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
         {
@@ -212,10 +221,12 @@ write_outputs() {
             echo "release-branch=${release_branch}"
             echo "release-identifier=${VERSION}-${RELEASE_COMMIT}"
             echo "de-image-tag=${de_image_tag}"
+            echo "de-source-tag=${de_source_tag}"
             echo "recipes-commit=${recipes_commit}"
             echo "dashboard-commit=${dashboard_commit}"
             echo "bicep-types-aws-commit=${aws_commit}"
-        } >>"${GITHUB_OUTPUT}"
+            echo "previous-version=${previous_version}"
+        } >> "${GITHUB_OUTPUT}"
     fi
 }
 
@@ -227,47 +238,51 @@ validate_plan_fields() {
     local plan_path="$5"
     local canonical_version_pattern expected_repository expected_resolution
 
-    [[ "$(plan_value '.schemaVersion')" == "2" ]] ||
-        fail "unsupported release plan schema"
+    [[ "$(plan_value '.schemaVersion')" == "2" ]] \
+                                                  || fail "unsupported release plan schema"
+    case "$(plan_value '.changelogPolicy')" in
+        null | stable-only) ;;
+        *) fail "unsupported changelog policy" ;;
+    esac
     canonical_version_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
     canonical_version_pattern+='\.(0|[1-9][0-9]*)(-rc\.[1-9][0-9]*)?$'
-    [[ "${version}" =~ ${canonical_version_pattern} ]] ||
-        fail "planned version is not canonical"
-    [[ "${release_type}" =~ ^(rc|final|patch)$ ]] ||
-        fail "planned release type is invalid"
-    [[ "${channel}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] ||
-        fail "planned channel is invalid"
-    [[ "$(plan_value '.chartVersion')" == "${version#v}" ]] ||
-        fail "chart version does not match release version"
-    [[ "${release_branch}" == "release/${channel}" ]] ||
-        fail "release branch does not match the channel"
-    [[ "${plan_path}" == ".github/release-plans/${version}.yaml" ]] ||
-        fail "release plan path does not match the version"
+    [[ "${version}" =~ ${canonical_version_pattern} ]] \
+                                                       || fail "planned version is not canonical"
+    [[ "${release_type}" =~ ^(rc|final|patch)$ ]] \
+                                                  || fail "planned release type is invalid"
+    [[ "${channel}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] \
+                                                             || fail "planned channel is invalid"
+    [[ "$(plan_value '.chartVersion')" == "${version#v}" ]] \
+                                                            || fail "chart version does not match release version"
+    [[ "${release_branch}" == "release/${channel}" ]] \
+                                                      || fail "release branch does not match the channel"
+    [[ "${plan_path}" == ".github/release-plans/${version}.yaml" ]] \
+                                                                    || fail "release plan path does not match the version"
     expected_repository="$(plan_value '.expectedOutputs.repository')"
-    [[ "${expected_repository}" == "radius-project/radius" ]] ||
-        fail "expected output contract is invalid"
-    [[ "$(plan_value '.source.releaseCommit')" == "null" ]] ||
-        fail "approved plan already contains a release commit"
+    [[ "${expected_repository}" == "radius-project/radius" ]] \
+                                                              || fail "expected output contract is invalid"
+    [[ "$(plan_value '.source.releaseCommit')" == "null" ]] \
+                                                            || fail "approved plan already contains a release commit"
     if [[ "$(plan_value '.source.productRef')" == "HEAD" ]]; then
         expected_resolution="release PR squash commit on main"
     else
         expected_resolution="generated release backport commit on ${release_branch}"
     fi
     [[ "$(plan_value '.source.releaseCommitResolution')" == "${expected_resolution}" ]] || fail "release commit resolution is invalid"
-    [[ "$(plan_value '.siblingRepositories | type')" == "!!seq" ]] ||
-        fail "siblingRepositories must be an array"
-    yq -o=json -I=0 '.' "${TEMP_DIR}/release-plan.yaml" |
-        jq -e --arg channel "${channel}" '
+    [[ "$(plan_value '.siblingRepositories | type')" == "!!seq" ]] \
+                                                                   || fail "siblingRepositories must be an array"
+    yq -o=json -I=0 '.' "${TEMP_DIR}/release-plan.yaml" \
+                                                        | jq -e --arg channel "${channel}" '
         .siblingRepositories | type == "array" and
         map(.name) == ["recipes", "dashboard", "bicep-types-aws"] and
         all(.[].sourceCommit; test("^[0-9a-f]{40}$")) and
         all(.[].sourceRef;
             . == "main" or . == ("release/" + $channel)) and
         all(.[]; .repository == ("radius-project/" + .name))
-    ' >/dev/null ||
-        fail "sibling repository state is invalid"
-    [[ "$(plan_value '.includedBackports | type')" == "!!seq" ]] ||
-        fail "includedBackports must be an array"
+    ' > /dev/null \
+                 || fail "sibling repository state is invalid"
+    [[ "$(plan_value '.includedBackports | type')" == "!!seq" ]] \
+                                                                 || fail "includedBackports must be an array"
     [[ "$(plan_value '[.includedBackports[].backport_merged] | all')" == "true" ]] || fail "release plan contains an incomplete backport"
 }
 
@@ -277,18 +292,18 @@ validate_backport_commit() {
     local branch_ref="refs/remotes/origin/${release_branch}"
     local parent branch_commit message
 
-    git show-ref --verify --quiet "${branch_ref}" ||
-        fail "${release_branch} is not available"
+    git show-ref --verify --quiet "${branch_ref}" \
+                                                  || fail "${release_branch} is not available"
     branch_commit="$(git rev-parse "${branch_ref}^{commit}")"
-    git merge-base --is-ancestor "${RELEASE_COMMIT}" "${branch_commit}" ||
-        fail "approved release commit ${RELEASE_COMMIT} is not reachable from ${release_branch} at ${branch_commit}"
+    git merge-base --is-ancestor "${RELEASE_COMMIT}" "${branch_commit}" \
+                                                                        || fail "approved release commit ${RELEASE_COMMIT} is not reachable from ${release_branch} at ${branch_commit}"
     parent="$(commit_parent "${RELEASE_COMMIT}")"
-    [[ "${parent}" == "${product_commit}" ]] ||
-        fail "release branch advanced beyond approved commit ${product_commit}"
+    [[ "${parent}" == "${product_commit}" ]] \
+                                             || fail "release branch advanced beyond approved commit ${product_commit}"
     message="$(git show -s --format=%B "${RELEASE_COMMIT}")"
     grep -Fq "(cherry picked from commit ${SOURCE_PR_COMMIT})" \
-        <<<"${message}" ||
-        fail "release commit is not the approved release PR backport"
+        <<< "${message}" \
+                        || fail "release commit is not the approved release PR backport"
 }
 
 main() {
@@ -331,19 +346,19 @@ main() {
 
     [[ -f "${PLAN_FILE}" ]] || fail "release plan file not found"
     [[ -n "${OUTPUT_DIR}" ]] || fail "output directory is required"
-    [[ "${TRIGGER}" =~ ^(release-pr|release-backport|dispatch)$ ]] ||
-        fail "trigger is invalid"
-    [[ "${SOURCE_PR_COMMIT}" =~ ^[0-9a-f]{40}$ ]] ||
-        fail "source PR commit must be a full commit SHA"
-    [[ "${RELEASE_COMMIT}" =~ ^[0-9a-f]{40}$ ]] ||
-        fail "release commit must be a full commit SHA"
-    command -v yq >/dev/null || fail "required command not found: yq"
-    command -v jq >/dev/null || fail "required command not found: jq"
+    [[ "${TRIGGER}" =~ ^(release-pr|release-backport|dispatch)$ ]] \
+                                                                   || fail "trigger is invalid"
+    [[ "${SOURCE_PR_COMMIT}" =~ ^[0-9a-f]{40}$ ]] \
+                                                  || fail "source PR commit must be a full commit SHA"
+    [[ "${RELEASE_COMMIT}" =~ ^[0-9a-f]{40}$ ]] \
+                                                || fail "release commit must be a full commit SHA"
+    command -v yq > /dev/null || fail "required command not found: yq"
+    command -v jq > /dev/null || fail "required command not found: jq"
 
-    git cat-file -e "${SOURCE_PR_COMMIT}^{commit}" ||
-        fail "source PR commit does not exist: ${SOURCE_PR_COMMIT}"
-    git cat-file -e "${RELEASE_COMMIT}^{commit}" ||
-        fail "release commit does not exist: ${RELEASE_COMMIT}"
+    git cat-file -e "${SOURCE_PR_COMMIT}^{commit}" \
+                                                   || fail "source PR commit does not exist: ${SOURCE_PR_COMMIT}"
+    git cat-file -e "${RELEASE_COMMIT}^{commit}" \
+                                                 || fail "release commit does not exist: ${RELEASE_COMMIT}"
 
     TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/release-controller-XXXXXX")"
     load_plan
@@ -356,10 +371,10 @@ main() {
     product_ref="$(plan_value '.source.productRef')"
     product_commit="$(plan_value '.source.productCommit')"
 
-    [[ "${VERSION}" == "${version}" ]] ||
-        fail "requested version ${VERSION} does not match plan ${version}"
-    [[ "${product_commit}" =~ ^[0-9a-f]{40}$ ]] ||
-        fail "product commit must be a full commit SHA"
+    [[ "${VERSION}" == "${version}" ]] \
+                                       || fail "requested version ${VERSION} does not match plan ${version}"
+    [[ "${product_commit}" =~ ^[0-9a-f]{40}$ ]] \
+                                                || fail "product commit must be a full commit SHA"
     validate_plan_fields "${version}" "${release_type}" "${channel}" \
         "${release_branch}" "${plan_path}"
     validate_changed_files "${SOURCE_PR_COMMIT}" "${version}" \
@@ -370,21 +385,21 @@ main() {
 
     expected_ref="refs/remotes/origin/${release_branch}"
     if [[ "${product_ref}" == "HEAD" ]]; then
-        [[ "${release_type}" == "rc" && "${version}" == *-rc.1 ]] ||
-            fail "a new release branch must start with rc.1"
+        [[ "${release_type}" == "rc" && "${version}" == *-rc.1 ]] \
+                                                                  || fail "a new release branch must start with rc.1"
         source_parent="$(commit_parent "${SOURCE_PR_COMMIT}")"
-        [[ "${source_parent}" == "${product_commit}" ]] ||
-            fail "release PR was not merged on its approved product commit"
-        [[ "${RELEASE_COMMIT}" == "${SOURCE_PR_COMMIT}" ]] ||
-            fail "new-channel release commit must be the release PR commit"
-        [[ "${TRIGGER}" != "release-backport" ]] ||
-            fail "new-channel plans do not use a release backport"
+        [[ "${source_parent}" == "${product_commit}" ]] \
+                                                        || fail "release PR was not merged on its approved product commit"
+        [[ "${RELEASE_COMMIT}" == "${SOURCE_PR_COMMIT}" ]] \
+                                                           || fail "new-channel release commit must be the release PR commit"
+        [[ "${TRIGGER}" != "release-backport" ]] \
+                                                 || fail "new-channel plans do not use a release backport"
     else
-        [[ "${product_ref}" == "${expected_ref}" ]] ||
-            fail "productRef must be HEAD or ${expected_ref}"
+        [[ "${product_ref}" == "${expected_ref}" ]] \
+                                                    || fail "productRef must be HEAD or ${expected_ref}"
         if [[ "${TRIGGER}" == "release-pr" ]]; then
-            [[ "${RELEASE_COMMIT}" == "${SOURCE_PR_COMMIT}" ]] ||
-                fail "release PR trigger has an unexpected source commit"
+            [[ "${RELEASE_COMMIT}" == "${SOURCE_PR_COMMIT}" ]] \
+                                                               || fail "release PR trigger has an unexpected source commit"
             ready="false"
         else
             validate_backport_commit "${product_commit}" \

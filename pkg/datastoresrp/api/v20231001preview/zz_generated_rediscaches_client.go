@@ -112,7 +112,7 @@ func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context
 //   - options - RedisCachesClientBeginDeleteOptions contains the optional parameters for the RedisCachesClient.BeginDelete method.
 func (client *RedisCachesClient) BeginDelete(ctx context.Context, rootScope string, redisCacheName string, options *RedisCachesClientBeginDeleteOptions) (*runtime.Poller[RedisCachesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, redisCacheName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, redisCacheName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -125,9 +125,9 @@ func (client *RedisCachesClient) BeginDelete(ctx context.Context, rootScope stri
 	}
 }
 
-// delete - Delete a RedisCacheResource
+// deleteOperation - Delete a RedisCacheResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *RedisCachesClient) delete(ctx context.Context, rootScope string, redisCacheName string, options *RedisCachesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *RedisCachesClient) deleteOperation(ctx context.Context, rootScope string, redisCacheName string, options *RedisCachesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, redisCacheName, options)
 	if err != nil {

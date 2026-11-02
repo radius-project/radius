@@ -16,9 +16,18 @@
 
 // @ts-check
 
+import { tagCommit } from "./coordinate-release.mjs";
+
 const commitPattern = /^[0-9a-f]{40}$/;
 const digestPattern = /^sha256:[0-9a-f]{64}$/;
 const versionPattern = /^v\d+\.\d+\.\d+(?:-rc\.[1-9]\d*)?$/;
+const finalVersionPattern = /^v\d+\.\d+\.\d+$/;
+const lockPath = ".github/release-state/deployment-engine.json";
+
+/** @param {string} version */
+function lockBranch(version) {
+  return `automation/release-state-${version.slice(1)}`;
+}
 
 function errorStatus(error) {
   return Number(error?.status ?? error?.response?.status ?? 0);
@@ -67,14 +76,14 @@ async function getRef(github, owner, repo, branch) {
   }
 }
 
-/** @param {any} github @param {string} owner @param {string} repo @param {string} branch @param {string} path */
-async function getContent(github, owner, repo, branch, path) {
+/** @param {any} github @param {string} owner @param {string} repo @param {string} ref @param {string} path */
+async function getContent(github, owner, repo, ref, path) {
   try {
     const { data } = await github.rest.repos.getContent({
       owner,
       repo,
       path,
-      ref: branch
+      ref
     });
     if (Array.isArray(data) || data.type !== "file" || !data.content) {
       throw new Error(`Expected a release lock file at ${path}`);
@@ -88,6 +97,100 @@ async function getContent(github, owner, repo, branch, path) {
   }
 }
 
+// The controller writes the lock through the API with an App token, which
+// GitHub signs. A person-authored or unsigned commit means the lock was
+// replaced outside the controller.
+/** @param {any} github @param {string} owner @param {string} repo @param {string} branch @param {string} sha @param {string} releaseSourceCommit */
+async function verifyLockCommit(
+  github,
+  owner,
+  repo,
+  branch,
+  sha,
+  releaseSourceCommit
+) {
+  const { data: commit } = await github.rest.repos.getCommit({
+    owner,
+    repo,
+    ref: sha
+  });
+  if (
+    commit.parents?.length !== 1 ||
+    commit.parents[0].sha !== releaseSourceCommit
+  ) {
+    throw new Error(`Release state branch ${branch} has unexpected history`);
+  }
+  if (
+    commit.commit?.verification?.verified !== true ||
+    commit.author?.type !== "Bot"
+  ) {
+    throw new Error(
+      `Release state commit ${sha} on ${branch} is not a GitHub-verified App commit`
+    );
+  }
+}
+
+// A final release promotes its last RC, so it must ship the Deployment Engine
+// commit that RC locked. The RC tag in the Deployment Engine repository can
+// move after the RC; its lock, anchored on the RC's Radius tag, cannot.
+/** @param {{github: any, context: any, core: any}} options */
+async function readReleaseCandidateLock({ github, context, core }) {
+  const version = core.getInput("VERSION", { required: true });
+  const candidate = core.getInput("RELEASE_CANDIDATE", { required: true });
+  if (
+    !finalVersionPattern.test(version) ||
+    !versionPattern.test(candidate) ||
+    !candidate.startsWith(`${version}-rc.`)
+  ) {
+    throw new Error(`${candidate} is not a release candidate of ${version}`);
+  }
+
+  const owner = context.repo.owner;
+  const repo = context.repo.repo;
+  const branch = lockBranch(candidate);
+  const releaseSourceCommit = await tagCommit(github, context, candidate);
+  const reference = await getRef(github, owner, repo, branch);
+  const content =
+    reference &&
+    (await getContent(github, owner, repo, reference.object.sha, lockPath));
+  if (!content) {
+    throw new Error(
+      `${candidate} has no Deployment Engine lock on ${branch}; finish that release candidate first`
+    );
+  }
+  const lock = parseLock(content.content);
+  const deSourceCommit = lock?.deploymentEngine?.sourceCommit ?? "";
+  const expected = canonicalLock(
+    {
+      version: candidate,
+      releaseSourceCommit,
+      signedTag: candidate,
+      deSourceCommit,
+      imageTag: lock?.deploymentEngine?.imageTag
+    },
+    lock?.deploymentEngine?.digest
+  );
+  if (
+    !commitPattern.test(deSourceCommit) ||
+    !digestPattern.test(lock?.deploymentEngine?.digest ?? "") ||
+    !equalJSON(lock, expected)
+  ) {
+    throw new Error(
+      `${branch} does not hold the ${candidate} lock for Radius ${releaseSourceCommit}`
+    );
+  }
+  await verifyLockCommit(
+    github,
+    owner,
+    repo,
+    branch,
+    reference.object.sha,
+    releaseSourceCommit
+  );
+
+  core.setOutput("de-source-commit", deSourceCommit);
+}
+
 /** @param {{github: any, context: any, core: any}} options */
 export default async function reconcileReleaseControllerLock({
   github,
@@ -95,6 +198,10 @@ export default async function reconcileReleaseControllerLock({
   core
 }) {
   const mode = core.getInput("MODE", { required: true });
+  if (mode === "release-candidate") {
+    await readReleaseCandidateLock({ github, context, core });
+    return;
+  }
   const inputs = {
     version: core.getInput("VERSION", { required: true }),
     releaseSourceCommit: core.getInput("RELEASE_SOURCE_SHA", {
@@ -106,7 +213,7 @@ export default async function reconcileReleaseControllerLock({
   };
   const requestedDigest = core.getInput("DE_DIGEST");
   if (!new Set(["read", "create"]).has(mode)) {
-    throw new Error("MODE must be read or create");
+    throw new Error("MODE must be read, create, or release-candidate");
   }
   if (!versionPattern.test(inputs.version)) {
     throw new Error("VERSION must use vX.Y.Z or vX.Y.Z-rc.N format");
@@ -126,8 +233,8 @@ export default async function reconcileReleaseControllerLock({
 
   const owner = context.repo.owner;
   const repo = context.repo.repo;
-  const branch = `automation/release-state-${inputs.version.slice(1)}`;
-  const path = ".github/release-state/deployment-engine.json";
+  const branch = lockBranch(inputs.version);
+  const path = lockPath;
   let reference = await getRef(github, owner, repo, branch);
 
   if (!reference && mode === "create") {
@@ -212,28 +319,14 @@ export default async function reconcileReleaseControllerLock({
     );
   }
 
-  const { data: commit } = await github.rest.repos.getCommit({
+  await verifyLockCommit(
+    github,
     owner,
     repo,
-    ref: reference.object.sha
-  });
-  if (
-    commit.parents?.length !== 1 ||
-    commit.parents[0].sha !== inputs.releaseSourceCommit
-  ) {
-    throw new Error(`Release state branch ${branch} has unexpected history`);
-  }
-  // The controller writes the lock through the API with an App token, which
-  // GitHub signs. A person-authored or unsigned commit means the lock was
-  // replaced outside the controller.
-  if (
-    commit.commit?.verification?.verified !== true ||
-    commit.author?.type !== "Bot"
-  ) {
-    throw new Error(
-      `Release state commit ${reference.object.sha} on ${branch} is not a GitHub-verified App commit`
-    );
-  }
+    branch,
+    reference.object.sha,
+    inputs.releaseSourceCommit
+  );
 
   core.setOutput("exists", "true");
   core.setOutput("branch", branch);

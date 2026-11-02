@@ -41,7 +41,7 @@ Skip this step if every image and tag the pack references already exists. Only i
 
 1. Add one step per new Recipe to `.github/workflows/publish-bicep-recipes.yaml`, using a platform-specific registry, for example `REGISTRY=ghcr.io/radius-project/azure-aci-recipes`. After it merges, the push to `main` publishes each image with a commit-SHA tag and `edge`.
 2. Make sure each new GHCR package can be pulled anonymously. A `radius-project` organization admin must make private packages public.
-3. Add a `latest` tag to each **new** image. The pack references `:latest`, which normally moves only during the final Radius release ([release Step 7](./contributing-releases/README.md#step-7-publish-docs-samples-and-recipes)). Packs are released earlier, during the RC, and **Release Recipe Pack** fails its Recipe source check if a `:latest` image is missing. Point `latest` at the commit-SHA tag from step 1. List the tags first, and tag only when the listing succeeds and `latest` isn't in it, so a registry error never replaces an existing `latest`:
+3. Add a `latest` tag to each **new** image. The pack references `:latest`, which normally moves only during the final Radius release ([Publish Bicep Recipes](./contributing-releases/README.md#monitor-and-approve-publication)). Packs are released earlier, during the RC, and **Release Recipe Pack** fails its Recipe source check if a `:latest` image is missing. Point `latest` at the commit-SHA tag from step 1. List the tags first, and tag only when the listing succeeds and `latest` isn't in it, so a registry error never replaces an existing `latest`:
 
    ```bash
    IMAGE=ghcr.io/radius-project/<registry>/<recipe>
@@ -76,7 +76,7 @@ recipePacks:
 
 ### 6. Release the pack
 
-Release the pack with the other packs in [Step 2 of the RC process](./contributing-releases/README.md#step-2-release-resource-type-namespaces-and-recipe-packs). Its first release is `v0.1.0`. The **Notify Radius** job then moves the `defaults.yaml` pin from the edge commit to the stable tag through the `bot/update-resource-types` PR.
+Release the pack with the other packs in [the namespace and recipe-pack release step](./contributing-releases/README.md#release-resource-type-namespaces-and-recipe-packs). Its first release is `v0.1.0`. The **Notify Radius** job then moves the `defaults.yaml` pin from the edge commit to the stable tag through the `bot/update-resource-types` PR.
 
 ### 7. Update consumers
 

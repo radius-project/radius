@@ -11,7 +11,7 @@ There are many ways to get involved and make a meaningful impact on the Radius p
 - **Learn the codebase.** Browse the [contributor documentation](./docs/contributing/) for guides on prerequisites, building, testing, debugging, schema changes, design documents, and more.
 - **Tackle small tasks.** Start with a ["good first issue"](https://github.com/radius-project/radius/issues?q=is:issue+is:open+label:%22good+first+issue%22) to familiarize yourself with the project without a steep learning curve.
 - **Take on bigger projects.** Issues that are groomed and ready to be picked up are labeled ["triaged"](https://github.com/radius-project/radius/issues?q=is%3Aissue+is%3Aopen+label%3Atriaged).
-- **Contribute to designs.** Larger features need a design review before implementation; design proposals are created in the [design-notes repository](https://github.com/radius-project/design-notes).
+- **Contribute to designs.** Larger features need a design review before implementation. Open the design note pull request in the repository where the implementation lives; for this repository, design notes go in [eng/design-notes](./eng/design-notes/README.md). See [Working with design documents](./docs/contributing/contributing-code/contributing-code-design/README.md) for the process.
 - **Submit pull requests.** Fork the repository, make your changes, and open a pull request with a clear description of the purpose and benefits of your changes.
 - **Help with code reviews.** Give feedback and help with changes made by others.
 - **Engage with the community.** Participate in discussions, forums, and chat channels related to Radius — seek guidance, offer help, and build connections.
@@ -20,6 +20,12 @@ There are many ways to get involved and make a meaningful impact on the Radius p
 - **Spread the word.** Share your experiences through blog posts, talks, or social media, and star the project on GitHub!
 
 For all contributor guides and conventions, see the **[contributor documentation](./docs/contributing/)**.
+
+## Reporting bugs and security vulnerabilities
+
+For ordinary bugs, search the existing [issues](https://github.com/radius-project/radius/issues) first. If the problem has not been reported, use the [Bug Report form](https://github.com/radius-project/radius/issues/new?template=bug.yaml). Include your Radius version, steps to reproduce, expected and observed behavior, and relevant logs with credentials and sensitive information removed.
+
+**Do not report suspected security vulnerabilities in public GitHub issues.** Follow our [security policy](./SECURITY.md) to report them privately. If the listed channel is unavailable, ask maintainers for a working private reporting channel without posting vulnerability details publicly.
 
 ## Current status
 

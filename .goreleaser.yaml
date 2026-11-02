@@ -112,15 +112,14 @@ sboms:
       - rad
     documents:
       - "{{ .ArtifactName }}.sbom.json"
-    cmd: syft
-    # Narrower than GoReleaser's 'all' default: rad is a static Go binary, so
-    # this bounds enrichment to the Go module cache, vendor dir, and proxy.
+    cmd: bash
     args:
+      - "../../build/scripts/goreleaser-sbom.sh"
       - "${artifact}"
       - --output
       - "spdx-json=${document}"
-      - --enrich
-      - golang
+    env:
+      - "GORELEASER_SNAPSHOT={{ .IsSnapshot }}"
 
 dockers_v2:
   - id: ucpd

@@ -13,7 +13,7 @@ Use this document when you add or change any of these files:
 - `.github/prompts/*.prompt.md` (VS Code slash-command shortcuts)
 - `.github/agents/*.agent.md` (custom agents)
 
-This document encodes [Sections 2, 5, and 6 of the Agent Ex plan](../../specs/002-agent-ex/agent-ex-plan.md). For *how to write* a contributing or architecture doc, see [authoring-contributing-docs.md](./authoring-contributing-docs.md). For the end-to-end *"add a capability"* walkthrough, see [extending-agent-ex.md](./extending-agent-ex.md).
+For *how to write* a contributing or architecture doc, see [authoring-contributing-docs.md](./authoring-contributing-docs.md). For the end-to-end *"add a capability"* walkthrough, see [extending-agent-ex.md](./extending-agent-ex.md).
 
 ## The file-strategy rule
 
@@ -46,8 +46,6 @@ This rule keeps a single, durable knowledge base that humans read directly and e
 | Slash commands      | `.github/prompts/*.prompt.md`                                  | VS Code only                                   | shortcuts to a backing doc                  |
 | Custom agents       | `.github/agents/*.agent.md`                                    | Copilot surfaces; Claude via `.claude/agents/` | scoped agent personas                       |
 
-See the [tool landscape table in the plan](../../specs/002-agent-ex/agent-ex-plan.md#1-tool-landscape) for the full file-to-tool matrix.
-
 ## File-size budgets
 
 Always-on context costs tokens before a task starts, so each asset has a budget. Keep knowledge that an agent reads on demand in a doc instead of in always-on context.
@@ -79,7 +77,7 @@ Existing assets keep their current names; no rename migration is planned. New sk
 
 ## CI gates
 
-These deterministic checks run on every PR. Some are enforced today; the remainder are planned as the Agent Ex system lands (see [plan Section 6](../../specs/002-agent-ex/agent-ex-plan.md#6-ci-gates-deterministic-run-on-every-pr)). Author assets so they would pass all of them:
+These deterministic checks run on every PR. Some are enforced today; the remainder are planned as the Agent Ex system lands. Author assets so they would pass all of them:
 
 - `AGENTS.md` exists at the repo root.
 - `.github/copilot-instructions.md` is a symlink to `AGENTS.md`.
@@ -88,7 +86,7 @@ These deterministic checks run on every PR. Some are enforced today; the remaind
 - `actionlint` passes over `.github/workflows/`.
 - Markdown link check passes over `AGENTS.md`, [CONTRIBUTING.md](../../CONTRIBUTING.md), `docs/contributing/`, and [docs/architecture/](../architecture/).
 - [docs/architecture/README.md](../architecture/README.md) lists every `*.md` sibling.
-- `docs/contributing/README.md` capability index: every row links to exactly one primary backing doc and every linked path resolves (the index itself is added in Phase 3 of the plan).
+- `docs/contributing/README.md` capability index: every row links to exactly one primary backing doc and every linked path resolves.
 - Spellcheck (`cspell`) passes (see [.github/linters/.cspell.yml](../../.github/linters/.cspell.yml)).
 
 Docs drift is **not** a blocking gate. It is handled as advisory guidance by the docs-drift code-review instructions and by a scheduled weekly drift workflow.

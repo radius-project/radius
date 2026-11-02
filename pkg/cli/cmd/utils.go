@@ -18,11 +18,8 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/radius-project/radius/pkg/azure/tokencredentials"
-	"github.com/radius-project/radius/pkg/cli/aws"
-	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
@@ -32,46 +29,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
-
-// CreateEnvProviders forms the provider scope from the given
-//
-
-// CreateEnvProviders iterates through a list of providers and creates a corerp.Providers object with the appropriate
-// scopes for each provider type (Azure or AWS). If more than one provider of the same type is found, an error is returned.
-//
-// If an invalid type is found, an error is returned.
-func CreateEnvProviders(providersList []any) (corerp.Providers, error) {
-	var res corerp.Providers
-	for _, provider := range providersList {
-		switch p := provider.(type) {
-		case *azure.Provider:
-			if res.Azure != nil {
-				return corerp.Providers{}, clierrors.Message("Only one azure provider can be configured to a scope.")
-			}
-			if p == nil {
-				break
-			}
-			res.Azure = &corerp.ProvidersAzure{
-				Scope: new("/subscriptions/" + p.SubscriptionID + "/resourceGroups/" + p.ResourceGroup),
-			}
-		case *aws.Provider:
-			if res.Aws != nil {
-				return corerp.Providers{}, clierrors.Message("Only one aws provider can be configured to a scope.")
-			}
-			if p == nil {
-				break
-			}
-			res.Aws = &corerp.ProvidersAws{
-				Scope: new("/planes/aws/aws/accounts/" + p.AccountID + "/regions/" + p.Region),
-			}
-		case nil:
-			// skip nil provider
-		default:
-			return corerp.Providers{}, fmt.Errorf("internal error: cannot create environment with invalid type '%T'", provider)
-		}
-	}
-	return res, nil
-}
 
 // GetNamespace takes in an EnvironmentResource object and returns a string representing the namespace associated with the
 // KubernetesCompute object, or an empty string if the Compute property is not a KubernetesCompute object.

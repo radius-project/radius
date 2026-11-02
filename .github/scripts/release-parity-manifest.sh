@@ -536,7 +536,7 @@ collect_images() {
         category="$(jq -r '.category' <<<"${target}")"
         radius_build="$(jq -r '.radiusBuild' <<<"${target}")"
         reference="${registry}/${name}:${channel}"
-        if [[ "${STAGED}" == "true" && "${radius_build}" == "true" ]]; then
+        if [[ "${STAGED}" == "true" ]]; then
             reference="${registry}/${name}:${VERSION}"
         fi
         raw_path="${TEMP_DIR}/image-${name}-raw.json"
@@ -709,6 +709,9 @@ collect_oci_artifacts() {
         repository="$(jq -r '.repository' <<<"${target}")"
         expected_type="$(jq -r '.artifactType' <<<"${target}")"
         reference="${repository}:${channel}"
+        if [[ "${STAGED}" == "true" ]]; then
+            reference="${repository}:${VERSION}"
+        fi
         descriptor_path="${TEMP_DIR}/${name}-descriptor.json"
         manifest_path="${TEMP_DIR}/${name}-manifest.json"
 

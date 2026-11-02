@@ -9,26 +9,42 @@ export default async ({ context, core }) => {
 
     const eventName = context.eventName;
     const baseSha = core.getInput("BASE_SHA");
-    const onlyChanged = core.getInput("ONLY_CHANGED");
 
     core.info(`Event name: ${eventName}`);
     core.info(`Base SHA: ${baseSha || "(not provided)"}`);
 
     let result;
+    let releaseMetadata = "false";
     if (
       eventName === "pull_request" ||
       eventName === "pull_request_target" ||
-      eventName === "merge_group"
+      eventName === "merge_group" ||
+      baseSha
     ) {
-      core.info(
-        `PR or merge group event detected - using filter result: ${onlyChanged}`
+      const allFiles = core.getInput("ALL_FILES_COUNT");
+      const ignoredFiles = core.getInput("IGNORED_FILES_COUNT");
+      const releaseFiles = core.getInput("RELEASE_FILES_COUNT");
+      const workflowFiles = core.getInput("WORKFLOW_FILES_COUNT");
+      const subsets = [ignoredFiles, releaseFiles, workflowFiles];
+      if (
+        [allFiles, ...subsets].some(
+          (count) =>
+            !/^(0|[1-9]\d*)$/.test(count) ||
+            !Number.isSafeInteger(Number(count))
+        ) ||
+        subsets.some((count) => Number(count) > Number(allFiles))
+      ) {
+        throw new Error("Change filter returned invalid file counts");
+      }
+      releaseMetadata = String(Number(releaseFiles) > 0);
+      result = String(
+        Number(allFiles) > 0 &&
+          allFiles === ignoredFiles &&
+          !(releaseMetadata === "true" && Number(workflowFiles) > 0)
       );
-      result = onlyChanged;
-    } else if (baseSha) {
       core.info(
-        `Base SHA provided (PR-like context) - using filter result: ${onlyChanged}`
+        `PR-like event: ${ignoredFiles}/${allFiles} paths match the skip patterns; release=${releaseFiles}, workflows=${workflowFiles}`
       );
-      result = onlyChanged;
     } else {
       core.info(
         "Non-PR event without base SHA - skipping filter (all jobs will run)"
@@ -37,6 +53,7 @@ export default async ({ context, core }) => {
     }
 
     core.setOutput("only_changed", result);
+    core.setOutput("release_metadata", releaseMetadata);
   } catch (error) {
     const message =
       error instanceof Error ?

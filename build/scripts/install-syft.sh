@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# shellcheck source=build/scripts/retry-curl.sh
+source "$(dirname "${BASH_SOURCE[0]}")/retry-curl.sh"
+
 # Installs Syft into a user-owned directory for the current platform.
 
 readonly REPO="anchore/syft"
@@ -26,7 +29,7 @@ gh_curl() {
     if [[ -n "${GITHUB_TOKEN:-}" ]]; then
         headers+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
     fi
-    curl --proto '=https' --tlsv1.2 --retry 5 --retry-connrefused \
+    retry_curl \
         "${headers[@]}" "$@"
 }
 

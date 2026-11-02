@@ -18,11 +18,13 @@ package resource_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
@@ -200,4 +202,55 @@ func Test_RadiusCore_AzureMySql_PortalLink(t *testing.T) {
 	}
 
 	test.Test(t)
+}
+
+func isTransientCloudDeployError(err error) bool {
+	return step.IsTransientDeployError(err) ||
+		step.ErrorContainsAny(err, "ManagedServiceIdentityNotFound")
+}
+
+func Test_isTransientCloudDeployError(t *testing.T) {
+	msiError := &radcli.CLIError{
+		ErrorResponse: apiv1.ErrorResponse{
+			Error: &apiv1.ErrorDetails{
+				Code:    "DeploymentFailed",
+				Message: "At least one resource deployment operation failed.",
+				Details: []*apiv1.ErrorDetails{
+					{
+						Code:    "Internal",
+						Message: "ManagedServiceIdentityNotFound: the managed identity could not be found",
+					},
+				},
+			},
+		},
+	}
+
+	nonTransientError := &radcli.CLIError{
+		ErrorResponse: apiv1.ErrorResponse{
+			Error: &apiv1.ErrorDetails{
+				Code:    "DeploymentFailed",
+				Message: "the resource type is not supported",
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{name: "nil error", err: nil, expected: false},
+		{name: "nested managed identity error", err: msiError, expected: true},
+		{name: "plain transient error string", err: errors.New("deployment failed: ManagedServiceIdentityNotFound"), expected: true},
+		{name: "apiserver connection reset", err: errors.New("read: connection reset by peer"), expected: true},
+		{name: "apiserver restart response", err: errors.New("before all known HTTP paths have been installed"), expected: true},
+		{name: "non-transient CLIError", err: nonTransientError, expected: false},
+		{name: "unrelated error", err: errors.New("connection refused"), expected: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, isTransientCloudDeployError(tc.err))
+		})
+	}
 }

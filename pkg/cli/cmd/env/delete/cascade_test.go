@@ -240,7 +240,7 @@ func Test_Run_Cascade(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []any{
 			output.LogOutput{
-				Format: msgEnvironmentNotFoundPreview,
+				Format: msgEnvironmentNotFound,
 				Params: []any{"test-env"},
 			},
 		}, outputSink.Writes)
@@ -279,7 +279,7 @@ func Test_Run_Cascade(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, []any{
 			output.LogOutput{
-				Format: msgEnvironmentDeletedPreview,
+				Format: msgEnvironmentDeleted,
 				Params: []any{"test-env"},
 			},
 		}, outputSink.Writes)
@@ -348,7 +348,7 @@ func Test_Run_Cascade(t *testing.T) {
 			cmd.MsgDeletingResource,
 			msgDeletingApplications,
 			msgDeletingApplication,
-			msgEnvironmentDeletedPreview,
+			msgEnvironmentDeleted,
 		}, formats)
 	})
 
@@ -396,7 +396,7 @@ func Test_Run_Cascade(t *testing.T) {
 
 		err = runner.Run(t.Context())
 		require.NoError(t, err)
-		require.Contains(t, logFormats(outputSink), msgEnvironmentDeletedPreview)
+		require.Contains(t, logFormats(outputSink), msgEnvironmentDeleted)
 	})
 
 	t.Run("Success: prompt reports applications when the environment has no enumerable resources", func(t *testing.T) {
@@ -709,7 +709,7 @@ func Test_Run_Cascade(t *testing.T) {
 		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Failed to delete resources in environment 'test-env'")
-		require.NotContains(t, logFormats(outputSink), msgEnvironmentDeletedPreview)
+		require.NotContains(t, logFormats(outputSink), msgEnvironmentDeleted)
 	})
 
 	t.Run("Failure: application delete failure stops before the environment is deleted", func(t *testing.T) {
@@ -745,7 +745,7 @@ func Test_Run_Cascade(t *testing.T) {
 		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Failed to delete application 'app-a' in environment 'test-env'")
-		require.NotContains(t, logFormats(outputSink), msgEnvironmentDeletedPreview)
+		require.NotContains(t, logFormats(outputSink), msgEnvironmentDeleted)
 	})
 
 	t.Run("Failure: environment resource enumeration failure surfaces error", func(t *testing.T) {

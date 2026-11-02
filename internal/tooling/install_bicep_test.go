@@ -24,6 +24,10 @@ func TestInstallBicepCrossPlatform(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	retryScript, err := os.ReadFile(filepath.Join("..", "..", "build", "scripts", "retry-curl.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	tests := []struct {
 		name         string
 		existing     string
@@ -56,6 +60,7 @@ func TestInstallBicepCrossPlatform(t *testing.T) {
 			}
 			fixtures := map[string]string{
 				filepath.Join(root, "install-bicep.sh"): string(script),
+				filepath.Join(root, "retry-curl.sh"):    string(retryScript),
 				filepath.Join(bin, "uname"): `#!/bin/sh
 case "$1" in
     -s) echo Darwin ;;
@@ -66,18 +71,27 @@ esac
 				filepath.Join(bin, "curl"): `#!/bin/sh
 set -eu
 printf '%s\n' "$*" >> "$CURL_LOG"
+output=""
+headers=""
+url=""
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -o|--output) output="$2"; shift 2 ;;
+        --dump-header) headers="$2"; shift 2 ;;
+        --write-out) shift 2 ;;
+        https://*) url="$1"; shift ;;
+        *) shift ;;
+    esac
+done
 if [ "$FAIL_DOWNLOAD" = "true" ]; then
-    echo "simulated download failure" >&2
+    printf 'HTTP/2 404\r\n\r\n' > "$headers"
+    echo "simulated download failure" > "$output"
+    printf '404 %s' "$url"
     exit 22
 fi
-while [ "$#" -gt 0 ]; do
-    if [ "$1" = "-o" ]; then
-        cp "$DOWNLOAD_SOURCE" "$2"
-        exit 0
-    fi
-    shift
-done
-exit 1
+printf 'HTTP/2 200\r\n\r\n' > "$headers"
+cp "$DOWNLOAD_SOURCE" "$output"
+printf '200 %s' "$url"
 `,
 				filepath.Join(root, "download"): test.download,
 			}

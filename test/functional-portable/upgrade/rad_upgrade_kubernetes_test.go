@@ -234,7 +234,7 @@ func Test_RadUpgradeKubernetes(t *testing.T) {
 // radUpgradeImageArgs pins every image the chart renders so the result does not depend on the
 // chart's appVersion, which the versioned chart copies change. The Radius images come from the
 // build under test. The Deployment Engine and dashboard fall back to the tags the edge chart
-// renders ("latest") when no override is configured.
+// renders ("edge") when no override is configured.
 func radUpgradeImageArgs(registry, tag string, deImage deploymentEngineImage, rootCACertFile string) []string {
 	var args []string
 	for _, component := range radiusImageComponents {
@@ -243,9 +243,9 @@ func radUpgradeImageArgs(registry, tag string, deImage deploymentEngineImage, ro
 	if deImage.repository != "" {
 		args = append(args, "--set", fmt.Sprintf("de.image=%s,de.tag=%s", deImage.repository, deImage.tag))
 	} else {
-		args = append(args, "--set", "de.tag=latest")
+		args = append(args, "--set", "de.tag=edge")
 	}
-	args = append(args, "--set", "dashboard.tag=latest")
+	args = append(args, "--set", "dashboard.tag=edge")
 	if rootCACertFile != "" {
 		args = append(args, "--set-file", "global.rootCA.cert="+rootCACertFile)
 	}
@@ -406,7 +406,7 @@ func Test_radUpgradeImageArgs(t *testing.T) {
 	}{
 		{
 			name: "default Deployment Engine",
-			want: append(slices.Clone(components), "--set", "de.tag=latest", "--set", "dashboard.tag=latest"),
+			want: append(slices.Clone(components), "--set", "de.tag=edge", "--set", "dashboard.tag=edge"),
 		},
 		{
 			name:    "candidate Deployment Engine and root CA",
@@ -414,7 +414,7 @@ func Test_radUpgradeImageArgs(t *testing.T) {
 			cert:    "/tmp/certs/client.crt",
 			want: append(slices.Clone(components),
 				"--set", "de.image=ghcr.io/radius-project/deployment-engine,de.tag=candidate",
-				"--set", "dashboard.tag=latest",
+				"--set", "dashboard.tag=edge",
 				"--set-file", "global.rootCA.cert=/tmp/certs/client.crt"),
 		},
 	} {

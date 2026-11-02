@@ -105,7 +105,7 @@ func (client *AwsPlanesClient) createOrUpdateCreateRequest(ctx context.Context, 
 //   - options - AwsPlanesClientBeginDeleteOptions contains the optional parameters for the AwsPlanesClient.BeginDelete method.
 func (client *AwsPlanesClient) BeginDelete(ctx context.Context, planeName string, options *AwsPlanesClientBeginDeleteOptions) (*runtime.Poller[AwsPlanesClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, planeName, options)
+		resp, err := client.deleteOperation(ctx, planeName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -118,9 +118,9 @@ func (client *AwsPlanesClient) BeginDelete(ctx context.Context, planeName string
 	}
 }
 
-// delete - Delete a plane
+// deleteOperation - Delete a plane
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *AwsPlanesClient) delete(ctx context.Context, planeName string, options *AwsPlanesClientBeginDeleteOptions) (*http.Response, error) {
+func (client *AwsPlanesClient) deleteOperation(ctx context.Context, planeName string, options *AwsPlanesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "AwsPlanesClient.BeginDelete")
 	req, err := client.deleteCreateRequest(ctx, planeName, options)

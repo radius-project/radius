@@ -19,7 +19,6 @@ package authclient
 import (
 	"context"
 	"errors"
-	"net/url"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"oras.land/oras-go/v2/registry/remote"
@@ -47,13 +46,4 @@ func GetNewRegistryAuthClient(secrets recipes.SecretData) (AuthClient, error) {
 		return nil, errors.New("invalid type")
 	}
 
-}
-
-// getRegistryHostname returns the hostname from the registry template path
-func getRegistryHostname(templatePath string) (string, error) {
-	registryURL, err := url.Parse("https://" + templatePath)
-	if err != nil {
-		return "", err
-	}
-	return registryURL.Host, nil
 }

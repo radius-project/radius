@@ -47,8 +47,7 @@ Radius will be installed in the 'radius-system' namespace. For more information 
 
 This command installs the Radius control plane only. It does not create a resource group,
 an environment, or any recipes. Use 'rad init' to install Radius and set up a default
-resource group, environment, and recipes for deploying applications; 'rad init --preview'
-sets up the default recipe pack.
+resource group, environment, and recipe pack for deploying applications.
 
 Overrides can be set by specifying Helm chart values with the '--set' flag. For more information visit https://docs.radapp.io/guides/operations/kubernetes/install/.
 `,

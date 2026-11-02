@@ -112,7 +112,7 @@ func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, 
 //   - options - ExtendersClientBeginDeleteOptions contains the optional parameters for the ExtendersClient.BeginDelete method.
 func (client *ExtendersClient) BeginDelete(ctx context.Context, rootScope string, extenderName string, options *ExtendersClientBeginDeleteOptions) (*runtime.Poller[ExtendersClientDeleteResponse], error) {
 	if options == nil || options.ResumeToken == "" {
-		resp, err := client.delete(ctx, rootScope, extenderName, options)
+		resp, err := client.deleteOperation(ctx, rootScope, extenderName, options)
 		if err != nil {
 			return nil, err
 		}
@@ -125,9 +125,9 @@ func (client *ExtendersClient) BeginDelete(ctx context.Context, rootScope string
 	}
 }
 
-// delete - Delete a ExtenderResource
+// deleteOperation - Delete a ExtenderResource
 // If the operation fails it returns an *azcore.ResponseError type.
-func (client *ExtendersClient) delete(ctx context.Context, rootScope string, extenderName string, options *ExtendersClientBeginDeleteOptions) (*http.Response, error) {
+func (client *ExtendersClient) deleteOperation(ctx context.Context, rootScope string, extenderName string, options *ExtendersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
 	req, err := client.deleteCreateRequest(ctx, rootScope, extenderName, options)
 	if err != nil {

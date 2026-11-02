@@ -206,7 +206,7 @@ func TestBuildModeledGraph_InboundConnectionsAreReciprocal(t *testing.T) {
 }
 
 // TestBuildModeledGraph_ConnectionWinsOverDependencyOnRabbitMQShape locks
-// in SC-001 (specs/004-graph-dependency-edges/spec.md): when a resource
+// in the connection precedence rule: when a resource
 // has BOTH a properties.connections block targeting another resource AND
 // a dependsOn entry naming the same target, the static graph emits
 // exactly ONE edge tagged Kind: Connection. Connection wins.

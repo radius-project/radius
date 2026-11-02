@@ -48,7 +48,7 @@ fail() {
 }
 
 usage() {
-    cat <<'EOF'
+    cat << 'EOF'
 Usage: prepare-release.sh --release-type <rc|final|patch> --channel <X.Y> \
     --backports-file <path> --sibling-repositories-file <path> \
     --output-dir <path> [file options]
@@ -68,7 +68,7 @@ EOF
 }
 
 require_command() {
-    command -v "$1" >/dev/null || fail "required command not found: $1"
+    command -v "$1" > /dev/null || fail "required command not found: $1"
 }
 
 channel_version() {
@@ -84,12 +84,12 @@ release_branch_ref() {
     local branch="release/${CHANNEL}"
 
     if git rev-parse --verify --quiet "refs/remotes/origin/${branch}^{commit}" \
-        >/dev/null; then
+        > /dev/null; then
         printf 'refs/remotes/origin/%s\n' "${branch}"
         return 0
     fi
     if git rev-parse --verify --quiet "refs/heads/${branch}^{commit}" \
-        >/dev/null; then
+        > /dev/null; then
         printf 'refs/heads/%s\n' "${branch}"
         return 0
     fi
@@ -161,7 +161,7 @@ next_channel() {
     local major minor
 
     stable="${stable%%-*}"
-    IFS='.' read -r major minor _ <<<"${stable}"
+    IFS='.' read -r major minor _ <<< "${stable}"
     printf '%s.%s\n' "${major}" "$((10#${minor} + 1))"
 }
 
@@ -237,7 +237,7 @@ calculate_version() {
                 fail "versions.yaml has no stable ${CHANNEL} release"
             fi
             if ! git rev-parse --verify --quiet \
-                "refs/tags/${current}^{commit}" >/dev/null; then
+                "refs/tags/${current}^{commit}" > /dev/null; then
                 fail "stable tag does not exist: ${current}"
             fi
             if ! git merge-base --is-ancestor "refs/tags/${current}" \
@@ -266,7 +266,7 @@ validate_backports() {
     local branch_ref="$1"
     local missing
 
-    if ! jq -e 'type == "array"' "${BACKPORTS_FILE}" >/dev/null; then
+    if ! jq -e 'type == "array"' "${BACKPORTS_FILE}" > /dev/null; then
         fail "backports file must contain a JSON array"
     fi
 
@@ -294,8 +294,8 @@ validate_sibling_repositories() {
         all(.[].sourceRef;
             . == "main" or . == ("release/" + env.CHANNEL)) and
         all(.[]; .repository == ("radius-project/" + .name))
-    ' "${SIBLING_REPOSITORIES_FILE}" >/dev/null ||
-        fail "sibling repository state is invalid"
+    ' "${SIBLING_REPOSITORIES_FILE}" > /dev/null \
+                                                || fail "sibling repository state is invalid"
 }
 
 replace_marker() {
@@ -313,7 +313,7 @@ replace_marker() {
             next
         }
         { print }
-    ' "${document}" >"${output}"
+    ' "${document}" > "${output}"
     mv "${output}" "${document}"
 }
 
@@ -326,10 +326,10 @@ extract_section() {
         $0 == heading { active = 1; next }
         active && /^### / { exit }
         active { print }
-    ' "${document}" >"${output}"
+    ' "${document}" > "${output}"
 
     if [[ ! -s "${output}" ]]; then
-        printf 'None.\n' >"${output}"
+        printf 'None.\n' > "${output}"
     fi
 }
 
@@ -337,10 +337,16 @@ render_changelog() {
     local version="$1"
     local ref="$2"
     local body_file="$3"
+    local previous_version="$4"
     local range
     local -a remote_options=()
 
-    range="$(bash "${CHANGELOG_RANGE_SCRIPT}" --ref "${ref}")"
+    if [[ "${RELEASE_TYPE}" == patch ||
+        ("${RELEASE_TYPE}" == rc && "${previous_version}" == *-rc*) ]]; then
+        range="$(git rev-parse "${previous_version}^{commit}")..${ref}"
+    else
+        range="$(bash "${CHANGELOG_RANGE_SCRIPT}" --ref "${ref}")"
+    fi
     if [[ -z "${GITHUB_TOKEN:-}" ]]; then
         remote_options+=(--offline)
     fi
@@ -354,7 +360,7 @@ render_changelog() {
     awk -v heading="## [${version#v}] - ${RELEASE_DATE}" '
         NR == 1 && /^## \[/ { print heading; next }
         { print }
-    ' "${body_file}" >"${body_file}.tmp"
+    ' "${body_file}" > "${body_file}.tmp"
     mv "${body_file}.tmp" "${body_file}"
 }
 
@@ -415,7 +421,7 @@ update_changelog() {
             }
             close(body)
         }
-    ' "${CHANGELOG_FILE}" >"${output}"
+    ' "${CHANGELOG_FILE}" > "${output}"
     mv "${output}" "${CHANGELOG_FILE}"
 
     awk -v current="${display_version}" -v version="${version}" \
@@ -427,18 +433,21 @@ update_changelog() {
             next
         }
         { print }
-    ' "${CHANGELOG_FILE}" >"${output}"
+    ' "${CHANGELOG_FILE}" > "${output}"
     mv "${output}" "${CHANGELOG_FILE}"
 }
 
 generate_release_notes() {
     local version="$1"
-    local body_file="$2"
-    local notes_file="$3"
+    local previous_version="$2"
+    local body_file="$3"
+    local notes_file="$4"
     local template="${RELEASE_NOTES_TEMPLATE}"
     local generated="${OUTPUT_DIR}/notes-changelog.md"
     local breaking="${OUTPUT_DIR}/breaking-changes.md"
     local contributors="${OUTPUT_DIR}/new-contributors.md"
+    local comparison="https://github.com/radius-project/radius/compare"
+    comparison+="/${previous_version}...${version}"
 
     if [[ "${RELEASE_TYPE}" == "patch" ]]; then
         template="${PATCH_NOTES_TEMPLATE}"
@@ -448,7 +457,23 @@ generate_release_notes() {
     sed -i '/REMINDER TO UPDATE THE VERSION ABOVE AND DELETE THIS COMMENT/d' \
         "${notes_file}"
 
-    awk 'NR == 1 { next } { lines[++count] = $0 }
+    awk -v version="${version#v}" -v comparison="${comparison}" \
+        -v previous="${previous_version}" \
+        -v date="${RELEASE_DATE}" -v release_type="${RELEASE_TYPE}" '
+        NR == 1 {
+            print "[" version "](" comparison ") - " date
+            print ""
+            if (release_type == "rc" && previous ~ /-rc/) {
+                print "Changes since [" previous "](https://github.com/radius-project/radius/releases/tag/" previous "). See that release for earlier changes."
+                print ""
+            }
+            next
+        }
+        /^### / {
+            skip = release_type != "patch" && $0 == "### New contributors"
+        }
+        skip { next }
+        { lines[++count] = $0 }
         END {
             start = 1
             while (start <= count && lines[start] == "") { start++ }
@@ -456,7 +481,7 @@ generate_release_notes() {
                 print lines[cursor]
             }
         }
-    ' "${body_file}" >"${generated}"
+    ' "${body_file}" > "${generated}"
     replace_marker "${notes_file}" \
         '<!-- PASTE THE OUTPUT OF THE GENERATED CHANGELOG HERE -->' \
         "${generated}"
@@ -500,6 +525,7 @@ write_release_plan() {
         yq -n '
             {
             "schemaVersion": 2,
+                "changelogPolicy": "stable-only",
                 "version": strenv(VERSION),
                 "releaseType": strenv(RELEASE_TYPE),
                 "channel": strenv(CHANNEL),
@@ -519,7 +545,7 @@ write_release_plan() {
                 "expectedOutputs": load(strenv(TARGETS_FILE)),
                 "includedBackports": load(strenv(BACKPORTS_FILE))
             } | ... style = ""
-        ' >"${plan_file}"
+        ' > "${plan_file}"
 
     mkdir -p "$(dirname "${tracked_plan_file}")"
     cp "${plan_file}" "${tracked_plan_file}"
@@ -544,14 +570,14 @@ write_release_plan() {
         if [[ "${requires_backport}" == "true" ]]; then
             echo "- [ ] Rebase-merge this PR's generated backport after merge."
         fi
-    } >"${body_file}"
+    } > "${body_file}"
 
     printf 'chore(release): prepare %s\n' "${version}" \
-        >"${OUTPUT_DIR}/pr-title.txt"
+        > "${OUTPUT_DIR}/pr-title.txt"
     printf 'automation/prepare-release-%s\n' "${version#v}" \
-        >"${OUTPUT_DIR}/pr-branch.txt"
+        > "${OUTPUT_DIR}/pr-branch.txt"
     printf '%s\n' "${requires_backport}" \
-        >"${OUTPUT_DIR}/requires-backport.txt"
+        > "${OUTPUT_DIR}/requires-backport.txt"
 }
 
 main() {
@@ -637,9 +663,9 @@ main() {
     version="$(calculate_version)"
     validate_completed_releases
     mkdir -p "${OUTPUT_DIR}"
-    printf '%s\n' "${version}" >"${OUTPUT_DIR}/version.txt"
+    printf '%s\n' "${version}" > "${OUTPUT_DIR}/version.txt"
     printf 'automation/prepare-release-%s\n' "${version#v}" \
-        >"${OUTPUT_DIR}/pr-branch.txt"
+        > "${OUTPUT_DIR}/pr-branch.txt"
     if [[ "${VERSION_ONLY}" == "true" ]]; then
         printf 'Selected %s (%s) for release/%s.\n' \
             "${version}" "${RELEASE_TYPE}" "${CHANNEL}"
@@ -647,14 +673,14 @@ main() {
     fi
 
     [[ -f "${BACKPORTS_FILE}" ]] || fail "backports file not found"
-    [[ -f "${SIBLING_REPOSITORIES_FILE}" ]] ||
-        fail "sibling repositories file not found"
+    [[ -f "${SIBLING_REPOSITORIES_FILE}" ]] \
+                                            || fail "sibling repositories file not found"
     [[ -f "${CHANGELOG_FILE}" ]] || fail "changelog file not found"
     if [[ ! -f "${RELEASE_NOTES_TEMPLATE}" ]]; then
         fail "release notes template not found"
     fi
-    [[ -f "${PATCH_NOTES_TEMPLATE}" ]] ||
-        fail "patch notes template not found"
+    [[ -f "${PATCH_NOTES_TEMPLATE}" ]] \
+                                       || fail "patch notes template not found"
     [[ -f "${TARGETS_FILE}" ]] || fail "release targets file not found"
     [[ -f "${CLIFF_CONFIG}" ]] || fail "git-cliff config not found"
     require_command jq
@@ -666,7 +692,8 @@ main() {
     local changelog_base_version changelog_body notes_file
     current="$(channel_version)"
     previous_version="${current:-$(latest_supported_version)}"
-    if [[ "${RELEASE_TYPE}" == "patch" ]]; then
+    if [[ "${RELEASE_TYPE}" == patch ||
+        ("${RELEASE_TYPE}" == rc && -n "${branch_ref}") ]]; then
         changelog_base_version="${current}"
     else
         if ! changelog_base_version="$(newest_stable_tag)"; then
@@ -680,11 +707,15 @@ main() {
     changelog_body="${OUTPUT_DIR}/changelog-section.md"
     notes_file="docs/release-notes/${version}.md"
 
-    render_changelog "${version}" "${source_ref}" "${changelog_body}"
+    render_changelog "${version}" "${source_commit}" "${changelog_body}" \
+        "${changelog_base_version}"
     update_versions "${version}" "${current}"
-    update_changelog "${version}" "${changelog_base_version}" \
-        "${changelog_body}"
-    generate_release_notes "${version}" "${changelog_body}" "${notes_file}"
+    if [[ "${RELEASE_TYPE}" != rc ]]; then
+        update_changelog "${version}" "${changelog_base_version}" \
+            "${changelog_body}"
+    fi
+    generate_release_notes "${version}" "${changelog_base_version}" \
+        "${changelog_body}" "${notes_file}"
     write_release_plan "${version}" "${previous_version}" "${source_ref}" \
         "${source_commit}" "${requires_backport}"
     printf 'Prepared %s (%s) for release/%s.\n' \
