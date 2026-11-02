@@ -17,6 +17,7 @@ Audit contributor documentation and decide what work is needed. This skill **fin
 | **Create** a new contributing doc                                    | [radius-author-doc](../radius-author-doc/SKILL.md)                           |
 | **Fix** an existing doc that drifted from code                       | [radius-update-doc](../radius-update-doc/SKILL.md)                           |
 | **Diagram** a subsystem / write an architecture doc                  | [radius-architecture-documenter](../radius-architecture-documenter/SKILL.md) |
+| **Propose** a technical design for review (design note)              | [radius-author-design-note](../radius-author-design-note/SKILL.md)           |
 
 This skill covers `CONTRIBUTING.md`, `docs/contributing/`, and `docs/architecture/`.
 
