@@ -155,6 +155,8 @@ func Test_Flux_SourceMigration(t *testing.T) {
 		require.NoError(check, err)
 		require.Empty(check, pods.Items)
 	}, 2*time.Minute, time.Second)
+	require.NoError(t, runCommand(ctx, []string{"kubectl", "patch", "deployment/controller", "-n", radiusNamespace,
+		"--type=json", "-p", `[{"op":"test","path":"/spec/replicas","value":0},{"op":"add","path":"/spec/strategy","value":{"type":"Recreate"}}]`}))
 	require.NoError(t, runCommand(ctx, []string{"kubectl", "apply", "-R", "-f", filepath.Join(relativeChartPath, "crds")}))
 	require.NoError(t, helmUpgrade(ctx, registry, tag, deImage, map[string]string{"controller.flux.enabled": "false"}))
 	requireContainerImage(t, ctx, k8sClient, "controller", "controller", registry+"/controller:"+tag)

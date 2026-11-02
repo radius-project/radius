@@ -65,11 +65,20 @@ Existing source-managed templates with only `spec.repository` are held until an 
 
 Use an installation-specific, reviewed chart directory and values file. Keep the inventory and patch files private: templates and parameters can contain application data.
 
+The stop-and-upgrade steps also apply when no Flux templates exist: the controller's rollout strategy changes from the API-defaulted `RollingUpdate` to `Recreate`. Helm 4 server-side apply can retain the old `rollingUpdate` fields and reject the upgrade, even if the new manifest sets them to null. Replace the strategy explicitly while the controller is stopped; do not delete the Deployment or use force replacement.
+
 1. Inventory source identities, template UIDs/specifications, tracked resource IDs, and in-progress operation IDs. Pause the controller and wait for its pods to stop:
 
    ```console
    kubectl scale deployment/controller -n radius-system --replicas=0
    kubectl wait --for=delete pod -n radius-system -l app.kubernetes.io/name=controller --timeout=120s
+   ```
+
+   Replace the strategy without restarting the old controller. The JSON Patch refuses to run unless its desired replica count is still zero:
+
+   ```sh
+   kubectl patch deployment/controller -n radius-system --type=json \
+    -p '[{"op":"test","path":"/spec/replicas","value":0},{"op":"add","path":"/spec/strategy","value":{"type":"Recreate"}}]'
    ```
 
 2. Apply the DeploymentTemplate CRD from the same reviewed chart version as the new controller. Helm does not upgrade existing definitions from its `crds` directory. Install the new build with Flux disabled:
