@@ -629,7 +629,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ github.repository }}
-          ref: ${{ github.sha }}
+          ref: ${{ needs.setup.outputs.TRUSTED_SHA }}
           path: .workflow-azure-login
           sparse-checkout: .github/scripts/azure-oidc-login.mjs
           sparse-checkout-cone-mode: false
@@ -640,7 +640,7 @@ jobs:
           PUBLISHER_CLIENT_ID: ${{ secrets.AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID }}
           TEST_CLIENT_ID: ${{ secrets.AZURE_SP_TESTS_APPID }}
         run: |
-          if [[ -z "${PUBLISHER_CLIENT_ID}" || "${PUBLISHER_CLIENT_ID,,}" == "${TEST_CLIENT_ID,,}" ]]; then
+          if [[ -z "${PUBLISHER_CLIENT_ID}" || -z "${TEST_CLIENT_ID}" || "${PUBLISHER_CLIENT_ID,,}" == "${TEST_CLIENT_ID,,}" ]]; then
             echo "::error::Configure AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID in the protected cloud-test-types-publish environment with an identity distinct from AZURE_SP_TESTS_APPID."
             exit 1
           fi

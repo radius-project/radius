@@ -385,7 +385,12 @@ test("both jobs use the workflow script when the PR checkout lacks it", (t) => {
     )?.[0];
     assert.ok(checkout, `${jobName} must check out the workflow script`);
     assert.match(checkout, /repository: \$\{\{ github\.repository \}\}/);
-    assert.match(checkout, /ref: \$\{\{ github\.sha \}\}/);
+    assert.match(
+      checkout,
+      jobName === "upload-test-types" ?
+        /ref: \$\{\{ needs\.setup\.outputs\.TRUSTED_SHA \}\}/
+      : /ref: \$\{\{ github\.sha \}\}/
+    );
     assert.match(
       checkout,
       /sparse-checkout: \.github\/scripts\/azure-oidc-login\.mjs/
