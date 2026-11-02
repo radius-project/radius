@@ -43,7 +43,7 @@ The record (`datamodel.AWSResource`, read and written by `pkg/ucp/aws/records`) 
 
 PUT, and a DELETE that finds a record, require the `X-Radius-Resource-Owner` header, and fail with `400` without it. A PUT or DELETE from a different owner than the record's fails with `409`, and so does a PUT that would manage an AWS resource another alias's record already has. Owners are compared ignoring case.
 
-UCP owns every create, update, and delete. It saves the new last-applied properties on the record as pending values before it calls AWS, saves the Cloud Control request token, and queues an operation. The backend controller in `pkg/ucp/backend/controller/awsresources` polls Cloud Control, then moves the pending values to last-applied on success, or drops them on failure so the previous ones stay. A failed create removes the record. The operation status and result routes read UCP's data store, and fall back to Cloud Control for an operation UCP does not have (transitional, see below). A second PUT or DELETE while an operation is running gets `409`. One that finds an operation nothing has polled for 10 minutes, or one AWS accepted but UCP never queued, resumes it.
+UCP owns every create, update, and delete. It saves the new last-applied properties on the record as pending values before it calls AWS, saves the Cloud Control request token, and queues an operation. The backend controller in `pkg/ucp/backend/controller/awsresources` polls Cloud Control, then moves the pending values to last-applied on success, or drops them on failure so the previous ones stay. A failed create, and a finished delete, leave a tombstone in place of the record (transitional, see below). The operation status and result routes read UCP's data store, and fall back to Cloud Control for an operation UCP does not have (transitional, see below). A second PUT or DELETE while an operation is running gets `409`. One that finds an operation nothing has polled for 10 minutes, or one AWS accepted but UCP never queued, resumes it.
 
 Write-only values are never stored: not in the last-applied or pending properties, and not in operations.
 
@@ -55,6 +55,8 @@ Until the Deployment Engine deploys AWS resources by alias, UCP keeps four trans
 - A GET of a URL with no record reads the resource from AWS by the URL's last segment. The Bicep recipe driver relies on this to read the ARN of each AWS output resource.
 
 POST `/:put`, POST `/:delete`, and a DELETE with no record return `409` for a resource an alias's record manages, so they never skip that record's owner check. Resources with no record behave as before records.
+
+Because a URL with no record falls back to its last segment, UCP never removes a record while these fallbacks exist. A finished delete, or a create that failed, leaves a tombstone instead. A DELETE of a tombstone returns `204` and a GET returns `404`, both without calling AWS, so repeating a DELETE that succeeded never deletes an unrelated resource whose AWS identifier matches the alias. A PUT starts the alias over in the same record.
 
 <br/><br/>
 

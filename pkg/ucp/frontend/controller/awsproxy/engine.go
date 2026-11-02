@@ -334,7 +334,11 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err != nil {
 		return nil, err
 	}
-	if rec != nil {
+	if rec != nil && records.IsDeleted(rec) {
+		// A tombstone starts the alias over. The new record replaces it with the tombstone's ETag, so two first deploys
+		// of the alias still never both create a resource.
+		rec = records.NewRecord(r.id, owner)
+	} else if rec != nil {
 		rec, etag, resp, err = e.checkRecord(ctx, r, rec, etag, owner, v1.OperationPut)
 		if resp != nil || err != nil {
 			return resp, err
@@ -546,8 +550,8 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	}, CloudControlRegionOption(r.region))
 	if err != nil {
 		if !replay && ucp_aws.IsClientFault(err) {
-			// AWS rejected the first attempt, so nothing exists: remove the record, so the next deploy starts over.
-			delErr := e.store.Delete(ctx, r.id)
+			// AWS rejected the first attempt, so nothing exists: leave a tombstone, so the next deploy starts over.
+			delErr := e.store.Remove(ctx, r.id)
 			if delErr == nil {
 				return ucp_aws.HandleAWSError(ctx, err)
 			}
@@ -644,6 +648,11 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 	if rec == nil {
 		return e.deleteWithoutRecord(ctx, httpReq, r)
 	}
+	if records.IsDeleted(rec) {
+		// The alias's resource is already deleted. This never falls back to deleting by the URL, which could delete an
+		// unrelated resource whose AWS identifier matches the alias.
+		return armrpc_rest.NewNoContentResponse(), nil
+	}
 	owner, resp := ownerFromRequest(httpReq)
 	if resp != nil {
 		return resp, nil
@@ -694,8 +703,8 @@ func (e *engine) deleteWithoutRecord(ctx context.Context, httpReq *http.Request,
 	return e.asyncResponse(r.id, map[string]any{}, 202, operationID), nil
 }
 
-// startDelete reserves the record and deletes its AWS resource, and the worker removes the record when AWS finishes.
-// A record with no identifier and no client token has nothing in AWS, so only the record is removed. One with a client
+// startDelete reserves the record and deletes its AWS resource, and the worker leaves a tombstone when AWS finishes.
+// A record with no identifier and no client token has nothing in AWS, so it becomes a tombstone at once. One with a client
 // token has a create that may have reached AWS, which recoverCreate finds first.
 func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -748,7 +757,7 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 // request when AWS accepted it, and reads that request's status:
 //
 //   - succeeded: the record gets the identifier, and the delete continues.
-//   - failed: nothing exists, so only the record is removed.
+//   - failed: nothing exists, so the record becomes a tombstone.
 //   - AWS rejects the resend: the record is kept, and the DELETE returns the error, because a rejected replay does not
 //     show that the original create failed.
 //   - still running: UCP tracks the create and returns 409, and the caller deletes again when it finishes.
@@ -816,10 +825,10 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 	return etag, nil, nil
 }
 
-// removeRecord removes the record when AWS has nothing to delete. When that fails, the request fails, and the caller
-// deletes again.
+// removeRecord replaces the record with a tombstone when AWS has nothing to delete. When that fails, the request fails,
+// and the caller deletes again.
 func (e *engine) removeRecord(ctx context.Context, id resources.ID) (armrpc_rest.Response, error) {
-	if err := e.store.Delete(ctx, id); err != nil {
+	if err := e.store.Remove(ctx, id); err != nil {
 		return nil, fmt.Errorf("the AWS resource for the alias %q is deleted, but UCP failed to remove its record. Delete again: %w", id.Name(), err)
 	}
 	return armrpc_rest.NewNoContentResponse(), nil
@@ -845,6 +854,7 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	// no record then returns 404.
 	identifier := r.id.Name()
 	if rec != nil {
+		// A tombstone has no identifier, so it returns 404 without the fallback.
 		identifier = rec.Properties.AWSIdentifier
 	}
 	if identifier == "" {

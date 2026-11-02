@@ -56,12 +56,22 @@ type AWSResourceProperties struct {
 
 	// ClientToken is a UUID that UCP generates before the first create and sends with every attempt to create the
 	// resource, so Cloud Control treats a retry as the same request. It is cleared when the create succeeds, so a
-	// record that has one has a first create that has not finished. A failed create removes the record.
+	// record that has one has a first create that has not finished. A failed create leaves a tombstone (see Deleted).
 	ClientToken string `json:"clientToken,omitempty"`
 
 	// RequestToken is the token Cloud Control returns when it accepts a create, update, or delete. UCP polls the
 	// request with it, and uses it as the operation ID.
 	RequestToken string `json:"requestToken,omitempty"`
+
+	// Deleted marks a tombstone: the alias's AWS resource was deleted, or its first create failed, and the record
+	// keeps only that. A DELETE of a tombstone returns 204 and a GET returns 404, both without calling AWS, and a PUT
+	// starts the alias over.
+	//
+	// TRANSITIONAL: a URL with no record is read and deleted in AWS by its last segment while the Deployment Engine
+	// still deploys with POST /:put. A tombstone keeps a deleted alias from falling back to that, so a repeated DELETE
+	// never deletes an unrelated resource whose AWS identifier matches the alias. Records can be removed again once
+	// those fallbacks are (#13591).
+	Deleted bool `json:"deleted,omitempty"`
 
 	// LastRequestToken is the request token of the last operation that finished, and LastRequestError is its error,
 	// or nil when it succeeded. A redelivered operation that already finished reports this result instead of polling

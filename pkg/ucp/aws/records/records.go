@@ -101,23 +101,15 @@ func (s *Store) Save(ctx context.Context, rec *datamodel.AWSResource, etag strin
 	return obj.ETag, nil
 }
 
-// Delete removes the record stored under id. A missing record is not an error.
-func (s *Store) Delete(ctx context.Context, id resources.ID) error {
-	err := s.db.Delete(ctx, id.String())
-	if errors.Is(err, &database.ErrNotFound{}) {
-		return nil
+// Remove replaces the record stored under id with a tombstone (see Tombstone), whatever it holds.
+func (s *Store) Remove(ctx context.Context, id resources.ID) error {
+	rec := NewRecord(id, "")
+	Tombstone(rec, nil)
+	data := map[string]any{}
+	if err := convert(rec, &data); err != nil {
+		return err
 	}
-	return err
-}
-
-// DeleteIfUnchanged removes the record stored under id when its ETag is still etag. It fails with
-// database.ErrConcurrency when the record changed since it was read. A missing record is not an error.
-func (s *Store) DeleteIfUnchanged(ctx context.Context, id resources.ID, etag string) error {
-	err := s.db.Delete(ctx, id.String(), database.WithETag(etag))
-	if errors.Is(err, &database.ErrNotFound{}) {
-		return nil
-	}
-	return err
+	return s.db.Save(ctx, &database.Object{Metadata: database.Metadata{ID: rec.ID}, Data: data})
 }
 
 // Touch saves the record unchanged, so its lastModifiedAt moves forward. The worker calls it while it polls AWS, so
@@ -300,6 +292,24 @@ func finish(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 	rec.Properties.LastRequestToken = rec.Properties.RequestToken
 	rec.Properties.LastRequestError = failure
 	rec.Properties.RequestToken = ""
+}
+
+// Tombstone turns the record into a tombstone: it finishes the operation in progress with failure, so a redelivered
+// operation reports the same result, and keeps nothing else. A record is never removed while the no-record fallbacks
+// exist (see datamodel.AWSResourceProperties.Deleted).
+func Tombstone(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
+	finish(rec, failure)
+	rec.Properties = datamodel.AWSResourceProperties{
+		Deleted:          true,
+		LastRequestToken: rec.Properties.LastRequestToken,
+		LastRequestError: rec.Properties.LastRequestError,
+	}
+	rec.SetProvisioningState(v1.ProvisioningStateSucceeded)
+}
+
+// IsDeleted reports whether the record is a tombstone.
+func IsDeleted(rec *datamodel.AWSResource) bool {
+	return rec.Properties.Deleted
 }
 
 // AliasOf returns the alias, the last segment, of a record's resource ID.
