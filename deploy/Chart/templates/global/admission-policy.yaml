@@ -34,7 +34,7 @@ spec:
   # TODO(D7): match the application-template identity and drop the label condition.
   matchConditions:
     - name: application-identity
-      expression: 'request.userInfo.username in {{ include "radius.authz.applicationIdentities" . }}'
+      expression: {{ printf "request.userInfo.username in %s" (include "radius.authz.applicationIdentities" .) | quote }}
     - name: rendered-by-radius
       expression: "has(object.metadata.labels) && 'radapp.io/resource-type' in object.metadata.labels"
   variables:

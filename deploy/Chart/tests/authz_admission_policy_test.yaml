@@ -103,6 +103,18 @@ tests:
             expression: '["database-secret","radius-encryption-key","ucp-cert","my-root-ca","target-kubeconfig"]'
         documentIndex: 0
 
+  - it: safely quotes an identity containing an apostrophe, double quote, and backslash
+    capabilities: *vap
+    set:
+      global.rbac.dryRun: true
+      global.rbac.admission.applicationIdentities:
+        - "o'brien \"co\"\\path"
+    asserts:
+      - equal:
+          path: spec.matchConditions[0].expression
+          value: "request.userInfo.username in [\"o'brien \\\"co\\\"\\\\path\"]"
+        documentIndex: 0
+
   - it: uses custom application identities
     capabilities: *vap
     set:
