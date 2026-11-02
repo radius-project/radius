@@ -155,10 +155,10 @@ func prettyPrintJSON(o any) (string, error) {
 // handlePanic is the global panic recovery handler that formats and displays panic information
 func handlePanic() {
 	if r := recover(); r != nil {
-		fmt.Printf("Error: An unexpected internal error occurred: %v\n\n", r)
-		fmt.Println(string(debug.Stack()))
-		fmt.Println("\nPlease report this issue at https://github.com/radius-project/radius/issues")
-		fmt.Println("") // Output an extra blank line for readability
+		fmt.Fprintf(RootCmd.ErrOrStderr(), "Error: An unexpected internal error occurred: %v\n\n", r)
+		fmt.Fprintln(RootCmd.ErrOrStderr(), string(debug.Stack()))
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "\nPlease report this issue at https://github.com/radius-project/radius/issues")
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "") // Output an extra blank line for readability
 	}
 }
 
@@ -172,7 +172,7 @@ func Execute() error {
 
 	shutdown, err := initTracer()
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "Error:", err)
 		return err
 	}
 
@@ -189,8 +189,8 @@ func Execute() error {
 	defer span.End()
 	err = RootCmd.ExecuteContext(ctx)
 	if clierrors.IsFriendlyError(err) {
-		fmt.Println(err.Error())
-		fmt.Println("") // Output an extra blank line for readability
+		fmt.Fprintln(RootCmd.ErrOrStderr(), err.Error())
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "") // Output an extra blank line for readability
 		return err
 	} else if err != nil {
 		errText := prettyPrintRPError(err)
@@ -200,9 +200,9 @@ func Execute() error {
 		// from potentially corrupting the terminal.
 		errText = ansi.Strip(errText)
 
-		fmt.Println("Error:", errText)
-		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
-		fmt.Println("") // Output an extra blank line for readability
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "Error:", errText)
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "\nTraceId: ", span.SpanContext().TraceID().String())
+		fmt.Fprintln(RootCmd.ErrOrStderr(), "") // Output an extra blank line for readability
 		return err
 	}
 
@@ -240,6 +240,11 @@ func init() {
 }
 
 func initSubCommands() {
+	outputWriter := &output.OutputWriter{Writer: RootCmd.OutOrStdout()}
+	RootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		configureOutput(cmd, outputWriter)
+	}
+
 	graphStore, err := archive.NewStore(archive.Options{
 		Archive: factory.NewGraphArchive(os.Getenv(factory.GraphRegistryEnvVar)),
 	})
@@ -251,16 +256,14 @@ func initSubCommands() {
 	framework := &framework.Impl{
 		Bicep: &bicep.Impl{
 			FileSystem: filesystem.OSFileSystem{},
-			Output:     &output.OutputWriter{Writer: RootCmd.OutOrStdout()},
+			Output:     outputWriter,
 		},
-		ConnectionFactory: connections.DefaultFactory,
-		ConfigHolder:      ConfigHolder,
-		Deploy:            &deploy.Impl{},
-		Delete:            &delete.Impl{},
-		Logstream:         &logstream.Impl{},
-		Output: &output.OutputWriter{
-			Writer: RootCmd.OutOrStdout(),
-		},
+		ConnectionFactory:   connections.DefaultFactory,
+		ConfigHolder:        ConfigHolder,
+		Deploy:              &deploy.Impl{},
+		Delete:              &delete.Impl{},
+		Logstream:           &logstream.Impl{},
+		Output:              outputWriter,
 		Portforward:         &portforward.Impl{},
 		Prompter:            &prompt.Impl{},
 		ConfigFileInterface: &framework.ConfigFileInterfaceImpl{},
@@ -425,6 +428,15 @@ func initSubCommands() {
 	RootCmd.AddCommand(versionCmd)
 }
 
+func configureOutput(cmd *cobra.Command, writer *output.OutputWriter) {
+	writer.Writer = cmd.OutOrStdout()
+	writer.LogWriter = nil
+	if flag := cmd.Flag("output"); flag != nil && strings.EqualFold(strings.TrimSpace(flag.Value.String()), output.FormatJson) {
+		writer.LogWriter = cmd.ErrOrStderr()
+	}
+	output.SetLogWriter(writer.LogWriter)
+}
+
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
 // from context. However we need to initialize the context before we can read the config (before argument parsing).
 //
@@ -434,7 +446,7 @@ func initSubCommands() {
 func initConfig() {
 	v, err := cli.LoadConfig(ConfigHolder.ConfigFilePath)
 	if err != nil {
-		fmt.Printf("Error: failed to load config: %v\n", err)
+		fmt.Fprintf(RootCmd.ErrOrStderr(), "Error: failed to load config: %v\n", err)
 		os.Exit(1) //nolint:forbidigo // this is OK inside the CLI startup.
 	}
 

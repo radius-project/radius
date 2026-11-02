@@ -34,9 +34,62 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 	"github.com/stretchr/testify/require"
 )
+
+func TestTerraformCloudAzureReadinessProbe(t *testing.T) {
+	for i, method := range []string{http.MethodPut, http.MethodHead, http.MethodDelete} {
+		t.Run("permission propagation on "+method, func(t *testing.T) {
+			t.Parallel()
+			var requests []string
+			denied := false
+			exists := false
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path)
+				if r.Method == method && !denied {
+					denied = true
+					w.Header().Set("x-ms-error-code", "AuthorizationPermissionMismatch")
+					w.WriteHeader(http.StatusForbidden)
+					return
+				}
+				switch r.Method {
+				case http.MethodPut:
+					exists = true
+					w.WriteHeader(http.StatusCreated)
+				case http.MethodHead:
+					if !exists {
+						w.WriteHeader(http.StatusNotFound)
+						return
+					}
+					w.WriteHeader(http.StatusOK)
+				case http.MethodDelete:
+					exists = false
+					w.WriteHeader(http.StatusAccepted)
+				default:
+					w.WriteHeader(http.StatusMethodNotAllowed)
+				}
+			}))
+			defer server.Close()
+			client, err := azblob.NewClientWithNoCredential(server.URL, &azblob.ClientOptions{
+				Retry: policy.RetryOptions{MaxRetries: -1},
+			})
+			require.NoError(t, err)
+			err = probeAzureBlobAccess(t.Context(), client, "tfstate")
+			require.True(t, bloberror.HasCode(err, bloberror.AuthorizationPermissionMismatch), "probe must not pass before %s access is ready", method)
+			firstRequests := len(requests)
+			require.NoError(t, probeAzureBlobAccess(t.Context(), client, "tfstate"))
+			path := " /tfstate/" + azureReadinessProbeKey
+			expected := []string{http.MethodPut + path, http.MethodHead + path, http.MethodDelete + path}
+			require.Equal(t, expected, requests[firstRequests:])
+			require.Equal(t, expected[:i+1], requests[:firstRequests], "stop at the denied operation")
+			require.False(t, exists, "successful readiness must remove the probe blob")
+		})
+	}
+}
 
 func TestTerraformCloudAzureReadinessErrors(t *testing.T) {
 	type readinessCase struct {

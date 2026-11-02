@@ -46,7 +46,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 
 	if c != nil {
 		switch c.Kind {
-		case rpv1.KubernetesComputeKind, rpv1.ACIComputeKind:
+		case rpv1.KubernetesComputeKind:
 			inner = r.Inners[c.Kind]
 		default:
 			err = errors.New("unsupported compute kind")

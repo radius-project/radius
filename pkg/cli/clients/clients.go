@@ -184,6 +184,11 @@ type ApplicationsManagementClient interface {
 	// Names target Applications.Core; use full resource IDs for other environment and application types.
 	ListResourcesInEnvironmentOrApplications(ctx context.Context, environmentNameOrID string, applicationNameOrIDs []string) ([]generated.GenericResource, error)
 
+	// ListResourcesInPlane lists the resources in every resource group of the plane that contains the
+	// configured scope. It skips the same types as ListAllResourceTypesNames and makes one list call
+	// per resource type.
+	ListResourcesInPlane(ctx context.Context) ([]generated.GenericResource, error)
+
 	// GetResource retrieves a resource by its type and name (or id).
 	GetResource(ctx context.Context, resourceType string, resourceNameOrID string) (generated.GenericResource, error)
 

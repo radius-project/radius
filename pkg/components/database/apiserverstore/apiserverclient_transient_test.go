@@ -132,7 +132,7 @@ func Test_Operations_UseRetryingGet(t *testing.T) {
 	require.ErrorAs(t, err, &notFound)
 
 	calls = 0
-	err = client.Save(t.Context(), &database.Object{Metadata: database.Metadata{ID: id}, Data: map[string]any{}})
+	err = client.Save(t.Context(), &database.Object{ID: id, Data: map[string]any{}})
 	require.NoError(t, err)
 }
 

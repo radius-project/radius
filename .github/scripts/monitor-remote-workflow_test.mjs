@@ -857,7 +857,8 @@ test("all publisher callers use stable identifiers without time-window discovery
       identifier:
         "INPUT_RELEASE_IDENTIFIER: ${{ needs.validate.outputs.release-identifier }}",
       eventType: "INPUT_EVENT_TYPE: deployment-engine",
-      timeout: "timeout-minutes: 18"
+      // The job also waits up to 15 minutes for a newly created tag's build.
+      timeout: "timeout-minutes: 40"
     }
   ];
 

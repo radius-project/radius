@@ -64,7 +64,7 @@ func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter,
 	if ucpaws.IsAWSResourceNotFoundError(err) {
 		return armrpc_rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	} else if err != nil {
-		return ucpaws.HandleAWSError(err)
+		return ucpaws.HandleAWSError(ctx, err)
 	}
 
 	isTerminal := isStatusTerminal(response)

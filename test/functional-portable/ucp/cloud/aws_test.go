@@ -33,6 +33,9 @@ import (
 	awsgo "github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
@@ -45,6 +48,66 @@ var (
 	logGroupResourceType    = "AWS.Logs/LogGroup"
 	awsLogGroupResourceType = "AWS::Logs::LogGroup"
 )
+
+func Test_AWS_GetResourceWithImageID(t *testing.T) {
+	myTest := test.NewUCPTest(t, t.Name(), func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		ctx := t.Context()
+		cfg, err := awsconfig.LoadDefaultConfig(ctx)
+		require.NoError(t, err)
+		pages := ec2.NewDescribeImagesPaginator(ec2.NewFromConfig(cfg), &ec2.DescribeImagesInput{
+			Owners: []string{"amazon"},
+			Filters: []ec2types.Filter{
+				{Name: awsgo.String("name"), Values: []string{"al2023-ami-2023.*-x86_64"}},
+				{Name: awsgo.String("architecture"), Values: []string{"x86_64"}},
+				{Name: awsgo.String("state"), Values: []string{"available"}},
+				{Name: awsgo.String("is-public"), Values: []string{"true"}},
+			},
+		})
+		var newest ec2types.Image
+		for pages.HasMorePages() {
+			page, err := pages.NextPage(ctx)
+			require.NoError(t, err)
+			for _, image := range page.Images {
+				if awsgo.ToString(image.CreationDate) > awsgo.ToString(newest.CreationDate) {
+					newest = image
+				}
+			}
+		}
+		imageID := awsgo.ToString(newest.ImageId)
+		require.NotEmpty(t, imageID, "Amazon Linux 2023 must have a public AMI in %s", cfg.Region)
+
+		body := postGetAWSResource(t, ctx, url, roundTripper, "AWS.EC2/Image", map[string]any{"ImageId": imageID})
+		properties, ok := body["properties"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, imageID, properties["ImageId"])
+		require.Equal(t, properties["Arn"], body["name"])
+		require.NotEmpty(t, properties["Arn"])
+		require.Contains(t, body["name"], "::image/"+imageID)
+		require.Equal(t, "AWS.EC2/Image", body["type"])
+	})
+	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}
+	myTest.Test(t)
+}
+
+func postGetAWSResource(t *testing.T, ctx context.Context, url string, roundTripper http.RoundTripper, resourceType string, properties map[string]any) map[string]any {
+	t.Helper()
+	collection, err := validation.GetResourceIdentifier(ctx, resourceType, "")
+	require.NoError(t, err)
+	payload, err := json.Marshal(map[string]any{"properties": properties})
+	require.NoError(t, err)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		fmt.Sprintf("%s%s:get?api-version=%s", url, collection, v20231001preview.Version), bytes.NewReader(payload))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	response, err := roundTripper.RoundTrip(req)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	requireResponseStatus(t, response, http.StatusOK)
+	var body map[string]any
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&body))
+	require.Equal(t, strings.TrimSuffix(collection, "/")+"/"+fmt.Sprint(body["name"]), body["id"])
+	return body
+}
 
 func Test_AWS_DeleteResource(t *testing.T) {
 	ctx := t.Context()
@@ -141,6 +204,60 @@ func Test_AWS_ListResources(t *testing.T) {
 		// Verify payload has at least one resource
 		require.Len(t, body, 1)
 		require.GreaterOrEqual(t, len(body["value"]), 1)
+	})
+
+	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}
+	myTest.Test(t)
+}
+
+// Test_AWS_UnsupportedTypes checks the 400 errors UCP returns for AWS types it cannot manage. Neither request creates
+// anything in AWS: UCP rejects the legacy type before it calls AWS, and rejects the read-only type after reading its
+// provisioning type with CloudFormation DescribeType.
+func Test_AWS_UnsupportedTypes(t *testing.T) {
+	ctx := t.Context()
+
+	myTest := test.NewUCPTest(t, "Test_AWS_UnsupportedTypes", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		tests := []struct {
+			name         string
+			resourceType string
+			properties   map[string]any
+			want         string
+		}{
+			{
+				name:         "legacy type",
+				resourceType: "AWS.IAM/Policy",
+				properties:   map[string]any{"PolicyName": "radius-functional-test"},
+				want:         "Radius does not support the legacy AWS resource type AWS::IAM::Policy. Use AWS::IAM::ManagedPolicy, or AWS::IAM::RolePolicy, AWS::IAM::UserPolicy, or AWS::IAM::GroupPolicy for an inline policy instead.",
+			},
+			{
+				name:         "read-only type",
+				resourceType: "AWS.EC2/Image",
+				properties:   map[string]any{"Name": "radius-functional-test"},
+				want:         "The AWS resource type AWS::EC2::Image is created by AWS, so Radius cannot create or change it. Reference an existing resource with the Bicep `existing` keyword instead.",
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				resourceID, err := validation.GetResourceIdentifier(ctx, tt.resourceType, "unused")
+				require.NoError(t, err)
+				collectionID := strings.TrimSuffix(resourceID, "/unused")
+				putURL := fmt.Sprintf("%s%s/:put?api-version=%s", url, collectionID, v20231001preview.Version)
+
+				body, err := json.Marshal(map[string]any{"properties": tt.properties})
+				require.NoError(t, err)
+				request, err := http.NewRequest(http.MethodPost, putURL, bytes.NewBuffer(body))
+				require.NoError(t, err)
+				response, err := roundTripper.RoundTrip(request)
+				require.NoError(t, err)
+				requireResponseStatus(t, response, http.StatusBadRequest)
+				defer response.Body.Close()
+
+				errorResponse := v1.ErrorResponse{}
+				require.NoError(t, json.NewDecoder(response.Body).Decode(&errorResponse))
+				require.NotNil(t, errorResponse.Error)
+				require.Equal(t, tt.want, errorResponse.Error.Message)
+			})
+		}
 	})
 
 	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}

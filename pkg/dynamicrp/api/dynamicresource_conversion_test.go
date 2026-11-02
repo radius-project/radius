@@ -129,3 +129,27 @@ func Test_DynamicResource_ConvertDataModelToVersioned_NilProperties(t *testing.T
 		"provisioningState": fromProvisioningStateDataModel(dm.AsyncProvisioningState),
 	}, resource.Properties)
 }
+
+// Radius.* resources keep output resources in their properties, so providerResourceId reaches the API unchanged.
+func Test_DynamicResource_ConvertDataModelToVersioned_ProviderResourceID(t *testing.T) {
+	outputResources := []any{
+		map[string]any{
+			"id":                 "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket",
+			"radiusManaged":      true,
+			"providerResourceId": "arn:aws:s3:::my-bucket",
+		},
+	}
+	dm := &datamodel.DynamicResource{}
+	dm.Properties = map[string]any{"status": map[string]any{"outputResources": outputResources}}
+
+	resource := &DynamicResource{}
+	err := resource.ConvertFrom(dm)
+	require.NoError(t, err)
+
+	b, err := json.Marshal(resource)
+	require.NoError(t, err)
+	versioned := map[string]any{}
+	require.NoError(t, json.Unmarshal(b, &versioned))
+	status := versioned["properties"].(map[string]any)["status"].(map[string]any)
+	require.Equal(t, "arn:aws:s3:::my-bucket", status["outputResources"].([]any)[0].(map[string]any)["providerResourceId"])
+}

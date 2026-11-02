@@ -207,6 +207,77 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	require.Equal(t, "", state.ContourVersion)
 }
 
+func Test_Helm_HistoryConsumers_RevisionOrder(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		latestStatus     releasecommon.Status
+		latestAppVersion string
+		expectedVersion  string
+		expectedRollback int
+	}{
+		{"deployed", releasecommon.StatusDeployed, "0.62.0-rc.2", "0.62.0-rc.2", 10},
+		{"pending upgrade", releasecommon.StatusPendingUpgrade, "0.62.0-rc.2", "0.61.1", 9},
+		{"failed upgrade", releasecommon.StatusFailed, "0.62.0-rc.2", "0.61.1", 9},
+		{"rollback with newer revision", releasecommon.StatusDeployed, "0.60.3", "0.60.3", 9},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			newRelease := func(revision int, appVersion string, status releasecommon.Status) *releasev1.Release {
+				return &releasev1.Release{
+					Name:    "radius",
+					Version: revision,
+					Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: appVersion, AppVersion: appVersion}},
+					Info:    &releasev1.Info{Status: status},
+				}
+			}
+			previous := newRelease(9, "0.60.2", releasecommon.StatusSuperseded)
+			current := newRelease(10, "0.61.1", releasecommon.StatusDeployed)
+			latest := newRelease(11, tt.latestAppVersion, tt.latestStatus)
+			failed := newRelease(12, "0.62.0", releasecommon.StatusFailed)
+			if tt.latestStatus == releasecommon.StatusDeployed {
+				current.Info.Status = releasecommon.StatusSuperseded
+			}
+			configuration := newHistoryTestConfiguration([]release.Releaser{current, latest, failed, previous}, nil)
+
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().
+				RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
+				DoAndReturn(func(_ *helm.Configuration, name string) ([]*releasev1.Release, error) {
+					return NewHelmClient().RunHelmHistory(configuration, name)
+				}).Times(3)
+			client.EXPECT().
+				RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
+				Return(failed, nil)
+			client.EXPECT().
+				RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), contourReleaseName).
+				Return(nil, driver.ErrReleaseNotFound)
+			client.EXPECT().
+				RunHelmRollback(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", tt.expectedRollback, true).
+				Return(nil)
+			impl := &Impl{Helm: client}
+
+			state, err := impl.CheckRadiusInstall("test-context")
+			require.NoError(t, err)
+			require.True(t, state.RadiusInstalled)
+			require.Equal(t, tt.expectedVersion, state.RadiusVersion)
+
+			revisions, err := impl.GetRadiusRevisions(t.Context(), "test-context")
+			require.NoError(t, err)
+			require.Len(t, revisions, 4)
+			require.Equal(t, []int{12, 11, 10, 9}, []int{
+				revisions[0].Revision, revisions[1].Revision, revisions[2].Revision, revisions[3].Revision,
+			})
+
+			require.NoError(t, impl.RollbackRadius(t.Context(), "test-context"))
+		})
+	}
+}
+
 type defaultContourGatewayCalls struct {
 	configureCalls int
 	removeCalls    int

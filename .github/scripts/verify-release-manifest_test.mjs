@@ -187,6 +187,16 @@ test("RC, final and patch verify the same mandatory output set", () => {
   }
 });
 
+test("the additive changelog policy preserves the schema-v2 publication contract", () => {
+  const input = fixture("rc");
+  const legacy = verifyReleaseManifest(input);
+  input.plan.changelogPolicy = "stable-only";
+  const current = verifyReleaseManifest(input);
+  assert.deepEqual(current.checks, legacy.checks);
+  assert.deepEqual(current.outputs, legacy.outputs);
+  assert.notEqual(current.planSha256, legacy.planSha256);
+});
+
 test("reports expected and observed mismatches without weakening other checks", () => {
   for (const [name, mutate, check] of [
     [

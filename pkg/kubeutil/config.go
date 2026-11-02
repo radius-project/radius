@@ -78,6 +78,28 @@ func LoadConfigFile(configFilePath string) (*api.Config, error) {
 	return clientcmd.LoadFromFile(configFilePath)
 }
 
+// ApplyQPSAndBurst sets the QPS and Burst values on config when they are greater than zero. The
+// RADIUS_QPS_AND_BURST environment variable overrides each value that is set.
+func ApplyQPSAndBurst(config *rest.Config, qps float32, burst int) {
+	if qps > 0.0 {
+		if envQPS := os.Getenv("RADIUS_QPS_AND_BURST"); envQPS != "" {
+			if parsedQPS, err := strconv.ParseFloat(envQPS, 32); err == nil {
+				qps = float32(parsedQPS)
+			}
+		}
+		config.QPS = qps
+	}
+
+	if burst > 0 {
+		if envBurst := os.Getenv("RADIUS_QPS_AND_BURST"); envBurst != "" {
+			if parsedBurst, err := strconv.Atoi(envBurst); err == nil {
+				burst = parsedBurst
+			}
+		}
+		config.Burst = burst
+	}
+}
+
 // NewClientConfig builds a Kubernetes client config from either in-cluster or local configuration, and sets the QPS and
 // Burst values if provided. It returns an error if the config cannot be built.
 func NewClientConfig(options *ConfigOptions) (*rest.Config, error) {
@@ -96,26 +118,7 @@ func NewClientConfig(options *ConfigOptions) (*rest.Config, error) {
 		return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 	}
 
-	if options.QPS > 0.0 {
-		qps := options.QPS
-		if envQPS := os.Getenv("RADIUS_QPS_AND_BURST"); envQPS != "" {
-			if parsedQPS, err := strconv.ParseFloat(envQPS, 32); err == nil {
-				qps = float32(parsedQPS)
-			}
-		}
-		config.QPS = qps
-	}
-
-	if options.Burst > 0 {
-		burst := options.Burst
-		if envBurst := os.Getenv("RADIUS_QPS_AND_BURST"); envBurst != "" {
-			if parsedBurst, err := strconv.Atoi(envBurst); err == nil {
-				burst = parsedBurst
-			}
-		}
-		config.Burst = burst
-	}
-
+	ApplyQPSAndBurst(config, options.QPS, options.Burst)
 	return config, nil
 }
 
@@ -140,26 +143,7 @@ func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 		return nil, fmt.Errorf("failed to initialize Kubernetes client config: %w", err)
 	}
 
-	if options.QPS > 0.0 {
-		qps := options.QPS
-		if envQPS := os.Getenv("RADIUS_QPS_AND_BURST"); envQPS != "" {
-			if parsedQPS, err := strconv.ParseFloat(envQPS, 32); err == nil {
-				qps = float32(parsedQPS)
-			}
-		}
-		merged.QPS = qps
-	}
-
-	if options.Burst > 0 {
-		burst := options.Burst
-		if envBurst := os.Getenv("RADIUS_QPS_AND_BURST"); envBurst != "" {
-			if parsedBurst, err := strconv.Atoi(envBurst); err == nil {
-				burst = parsedBurst
-			}
-		}
-		merged.Burst = burst
-	}
-
+	ApplyQPSAndBurst(merged, options.QPS, options.Burst)
 	return merged, nil
 }
 

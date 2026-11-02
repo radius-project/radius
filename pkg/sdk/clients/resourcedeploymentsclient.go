@@ -26,8 +26,8 @@ import (
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -64,6 +64,10 @@ type DeploymentProperties struct {
 
 type Value struct {
 	Scope string `json:"scope,omitempty"`
+
+	// Owner identifies who deploys the AWS resources, for the AWS provider only. UCP uses it to check that only the
+	// owner of an alias changes it. See AWSRecipeOwner and AWSDeploymentOwner.
+	Owner string `json:"owner,omitempty"`
 }
 
 type Radius struct {

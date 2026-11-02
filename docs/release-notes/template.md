@@ -33,3 +33,7 @@ You can upgrade to this release by upgrading your Radius CLI then running `rad u
 ## Full changelog
 
 <!-- PASTE THE OUTPUT OF THE GENERATED CHANGELOG HERE -->
+
+---
+
+The changelog is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/), with Radius-specific change groups and contributor sections. Radius follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) under its [version policy](https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-releases/README.md).

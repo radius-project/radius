@@ -24,7 +24,7 @@ Install these tools and make sure each command is available on `PATH`:
 - Helm
 - OpenSSL 1.1.1 or later
 - jq
-- Python 3
+- zip
 - envsubst (provided by gettext)
 - curl 7.71.0 or later
 - Flux CLI 2.6.4
@@ -280,6 +280,8 @@ To run functional tests against an existing environment:
    make publish-test-terraform-recipes
    ```
 
+   The publisher uses Bash, `zip`, and `kubectl`; Python is not required for recipe publishing. Run `make test-publish-recipes` to check both recipe publishers without a registry or cluster (`zip` and `unzip` are required).
+
    Set `TF_RECIPE_MODULE_SERVER_URL` to the URL that test deployments can reach. CI and the local runner use `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local`; direct local tests default to `http://localhost:8999`.
 
 7. Make packages published for the tests publicly readable.
@@ -349,11 +351,11 @@ make authz-would-deny-check
 
 The check reads current and previous container logs from every pod in `radius-system`. Set `AUTHZ_NAMESPACE` to read another namespace, or pass extra arguments with `AUTHZ_WOULD_DENY_ARGS`, such as `AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/authz-logs"` to also scan saved logs. Known would-deny lines that are tracked by an issue can be listed in [`.github/scripts/authz-would-deny-allowlist.txt`](../../../../.github/scripts/authz-would-deny-allowlist.txt); each entry must start with the issue reference.
 
-CI wraps the entire functional-test command with [`.github/scripts/run-with-authz-logs.py`](../../../../.github/scripts/run-with-authz-logs.py), which requires Python 3.9+ and `kubectl`. It watches pods from the initial inventory's resource version, follows each container incarnation, and retains logs for replaced pods until the command finishes. The collector uses a separate directory containing only `radius-system` logs; the test-owned `dist/container_logs` streams can stop when their first test ends and are not reliable gate evidence. Collection failures, including an interrupted watch, fail the job. CI requires the collector's `complete` marker before scanning its files and uploads the files even on failure. To collect the same evidence locally, use a new directory for each run:
+CI wraps the entire functional-test command with [`.github/scripts/run-with-authz-logs.sh`](../../../../.github/scripts/run-with-authz-logs.sh), which requires Bash (including macOS Bash 3.2), `jq`, `kubectl`, and Perl. It watches pods from the initial inventory's resource version, follows each container incarnation, and retains logs for replaced pods until the command finishes. Perl bounds each raw watch object to 16 MiB before `jq` parses it, including incomplete objects. The collector uses a separate directory containing only `radius-system` logs; the test-owned `dist/container_logs` streams can stop when their first test ends and are not reliable gate evidence. Collection failures, including an interrupted watch, fail the job. CI requires the collector's `complete` marker before scanning its files and uploads the files even on failure. The collector's process-level tests remain in Python and run alongside the gate's shell tests with `make test-authz-would-deny-check`. To collect the same evidence locally, use a new directory for each run:
 
 ```bash
 AUTHZ_LOG_DIR=./dist/authz-logs-run1 \
-  python3 .github/scripts/run-with-authz-logs.py make test-functional-corerp-noncloud
+  bash .github/scripts/run-with-authz-logs.sh make test-functional-corerp-noncloud
 make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--collector-dir ./dist/authz-logs-run1"
 ```
 
@@ -392,6 +394,10 @@ Set `go.testTimeout` to `60m` and add `-v` to `go.testFlags`. Set `RAD_PATH` in 
 
 The `functional-test-noncloud.yaml` and `functional-test-cloud.yaml` workflows build Radius, publish test assets, create isolated infrastructure, run each selected group, capture diagnostics, and remove the test infrastructure.
 
+For PRs targeting `main` or `features/*` and for the `main` merge queue, the non-cloud workflow omits the legacy-only `daprrp-noncloud`, `datastoresrp-noncloud`, and `msgrp-noncloud` groups before allocating test runners. Mixed suites, all authorization dry-run variants, and cloud coverage remain unchanged. The Dapr Redis-helper unit tests still run on every PR through `make test-dapr-helpers`. `make test` checks the omitted suites' test inventory so new tests require an explicit decision about whether they need per-PR coverage.
+
+All three scheduled runs, at 01:00, 13:00, and 19:00 UTC, retain the full matrix. PRs targeting `release/*`, deployment-engine repository dispatches, and manual runs also retain full coverage by default. To reproduce the reduced matrix manually, dispatch `functional-test-noncloud.yaml` with the desired `branch` and `test-profile: pr`; leave `test-profile: full` for compatibility fixes. Legacy-only regressions can merge before a scheduled run detects them. Existing local functional-test Make targets continue to run their complete groups.
+
 The scheduled purge workflows remove cloud resources left by cancelled or timed-out runs. The `long-running-azure.yaml` workflow uses published Radius artifacts while running diagnostics from the `main` workflow checkout.
 
 Download the `all_container_logs` artifact to investigate a run. Treat downloaded logs as potentially sensitive.
@@ -412,7 +418,7 @@ To collect the same summary locally, use a Linux host with Bash, `kubectl`, `jq`
 
 The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Releases do not publish test images, so the workflow builds the Magpie test image from that test source and pushes it to the functional-test registry under a run-specific `test-` tag. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
 
-The LRT setup script [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) defines the required Helm overrides in `REQUIRED_CHART_VALUES`, shared by fresh installs, upgrades, and existing same-version IRSA reconciliation. Keep LRT-specific configuration in that array rather than changing global chart defaults or using `kubectl set resources`, which can cause field-ownership conflicts on later upgrades.
+The LRT setup script [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) defines the required Helm overrides in `REQUIRED_CHART_VALUES`, shared by fresh installs, upgrades, and existing same-version reconciliation. These include a `1Gi` memory limit for `dynamic-rp` to avoid Terraform AWS provider startup stalls caused by memory reclaim. For matching versions, setup checks both AWS IRSA token volumes and the `dynamic-rp` memory limit, reconciles missing or outdated settings through a Helm upgrade, and verifies both settings afterward. Keep LRT-specific configuration in that array rather than changing global chart defaults or using `kubectl set resources`, which can cause field-ownership conflicts on later upgrades.
 
 Download the `all_container_logs` artifact from a successful or failed run. Alongside the released test harness's logs, it contains:
 
@@ -494,7 +500,7 @@ Each backend test creates two independent states, updates only the first resourc
 
 These tests always perform synchronous destruction and state-removal checks, even when CI sets `RADIUS_TEST_FAST_CLEANUP=true`. Unique, test-owned backend storage is deleted only afterward by bounded cleanup callbacks; cleanup failures fail the test. The S3 test creates an unversioned private state bucket and two empty recipe-managed buckets. The Azure test creates a Standard LRS storage account in the CI-owned resource group, a private container with shared-key authentication disabled, and two empty recipe-managed resource groups. Do not run against production accounts or subscriptions. Process termination can interrupt cleanup; use the test's unique `tfbackend-` names (`tfauth-` for the guard regressions below) and `radiustest=terraform-cloud-backend` cloud tags to investigate leftovers.
 
-Azure setup has independent **10-minute ARM provisioning** and **10-minute Blob permission-propagation** budgets; provisioning does not consume the propagation allowance. The readiness probe writes and immediately deletes a temporary `radius-readiness-probe` blob rather than reading container metadata: blob writes are DataActions that the runner's subscription Contributor role does not grant, so a metadata read would succeed before the Storage Blob Data Contributor assignment had propagated and the suite's first real write would then fail. Only that probe retries expected authorization-propagation 403 responses, transient DNS/network failures, and SDK-retryable HTTP 408/429/500/502/503/504 responses. Permanent authentication, certificate and other HTTP failures stop immediately. Cancellation is preserved, and timeout diagnostics report the last error category/status without raw response bodies or tokens.
+Azure setup has independent **10-minute ARM provisioning** and **10-minute Blob permission-propagation** budgets; provisioning does not consume the propagation allowance. The readiness probe writes a temporary `radius-readiness-probe` blob, reads that blob's properties, and deletes it. Blob reads and writes are DataActions that the runner's subscription Contributor role does not grant; reading container metadata does not check those permissions. Terraform reads blob properties before it locks state, and that read can return 403 even after a write succeeds. The probe must complete all three operations before setup proceeds. Only that probe retries expected authorization-propagation 403 responses, transient DNS/network failures, and SDK-retryable HTTP 408/429/500/502/503/504 responses. It uses `pkg/retry` at five-second intervals within the propagation budget. Permanent authentication, certificate and other HTTP failures stop immediately. Cancellation is preserved, and timeout diagnostics report the last error category/status without raw response bodies or tokens.
 
 Normal Radius PUT/DELETE operations have a separate **15-minute** limit to allow cold Terraform binary/provider downloads; S3 SDK setup and individual cleanup callbacks remain bounded at **5 minutes**. A timed-out PUT can still be `Updating` server-side, so Radius cleanup retries 409 conflicts within its cleanup budget instead of force-deleting metadata under an active Terraform operation. Persistent conflicts and SDK fallback cleanup failures remain test failures. CI's existing **30-minute Go suite** and **35-minute test-step** ceilings are unchanged: stage limits are ceilings, not guaranteed time reservations, and multiple cold stages can exceed that shared suite budget. The dedicated command below allows 60 minutes for cold-start diagnosis; measure authorized live CI timings before deciding whether a separately budgeted cloud-backend lane is needed. Do not expand unrelated suites or treat timeout/cleanup failures as successful coverage.
 

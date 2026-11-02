@@ -54,6 +54,9 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 	if errResponse != nil {
 		return errResponse, nil
 	}
+	if errResponse := unsupportedTypeResponse(serviceCtx.ResourceTypeInAWSFormat()); errResponse != nil {
+		return errResponse, nil
+	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	// TODO pagination
@@ -61,7 +64,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudControlOpts...)
 	if err != nil {
-		return ucpaws.HandleAWSError(err)
+		return ucpaws.HandleAWSError(ctx, err)
 	}
 
 	// TODO there some limitations with listing resources:

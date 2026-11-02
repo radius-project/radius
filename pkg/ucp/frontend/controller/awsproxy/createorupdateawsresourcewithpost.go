@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	http "net/http"
 
 	"uuid"
@@ -64,6 +63,9 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	if errResponse != nil {
 		return errResponse, nil
 	}
+	if errResponse := unsupportedTypeResponse(serviceCtx.ResourceTypeInAWSFormat()); errResponse != nil {
+		return errResponse, nil
+	}
 
 	properties, err := readPropertiesFromBody(req)
 	if err != nil {
@@ -84,26 +86,36 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudFormationOpts...)
 	if err != nil {
-		return ucp_aws.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(ctx, err)
+	}
+	if errResponse, err := putErrorResponse(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput); err != nil {
+		return nil, err
+	} else if errResponse != nil {
+		return errResponse, nil
 	}
 
 	var operation uuid.UUID
 	desiredState, err := json.Marshal(properties)
 	if err != nil {
-		return ucp_aws.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(ctx, err)
+	}
+
+	secrets, err := secretProperties(serviceCtx.ResourceTypeInAWSFormat(), aws.ToString(describeTypeOutput.Schema))
+	if err != nil {
+		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
 	existing := true
 	var getResponse *cloudcontrol.GetResourceOutput = nil
 	computedResourceID := ""
-	responseProperties := map[string]any{}
+	currentProperties := map[string]any{}
 
 	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(properties, *describeTypeOutput.Schema)
 	if errors.Is(&ucp_aws.AWSMissingPropertyError{}, err) {
 		// assume that if we can't get the AWS resource identifier, we need to create the resource
 		existing = false
 	} else if err != nil {
-		return ucp_aws.HandleAWSError(err)
+		return ucp_aws.HandleAWSError(ctx, err)
 	} else {
 		computedResourceID = computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
 
@@ -116,17 +128,17 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		if ucp_aws.IsAWSResourceNotFoundError(err) {
 			existing = false
 		} else if err != nil {
-			return ucp_aws.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(ctx, err)
 		} else {
-			err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
+			err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &currentProperties)
 			if err != nil {
-				return ucp_aws.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(ctx, err)
 			}
 		}
 	}
 
-	// Properties specified by users take precedence
-	maps.Copy(responseProperties, properties)
+	// Properties specified by users take precedence, except secrets, which are never echoed back.
+	responseProperties := buildResponseProperties(currentProperties, properties, secrets)
 
 	if existing {
 		logger.Info(fmt.Sprintf("Updating resource : resourceType %q resourceID %q", serviceCtx.ResourceTypeInAWSFormat(), awsResourceIdentifier))
@@ -136,14 +148,24 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		resourceTypeSchema := []byte(*describeTypeOutput.Schema)
 		patch, err := awsoperations.GeneratePatch(currentState, desiredState, resourceTypeSchema)
 		if err != nil {
-			return ucp_aws.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(ctx, err)
+		}
+
+		if len(patch) > 0 {
+			var errResponse armrpc_rest.Response
+			patch, errResponse, err = checkPatch(serviceCtx.ResourceTypeInAWSFormat(), describeTypeOutput, patch)
+			if err != nil {
+				return nil, err
+			} else if errResponse != nil {
+				return errResponse, nil
+			}
 		}
 
 		// Call update only if the patch is not empty
 		if len(patch) > 0 {
 			marshaled, err := json.Marshal(&patch)
 			if err != nil {
-				return ucp_aws.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(ctx, err)
 			}
 
 			response, err := p.awsClients.CloudControl.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
@@ -152,12 +174,12 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 				PatchDocument: aws.String(string(marshaled)),
 			}, cloudControlOpts...)
 			if err != nil {
-				return ucp_aws.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(ctx, err)
 			}
 
 			operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 			if err != nil {
-				return ucp_aws.HandleAWSError(err)
+				return ucp_aws.HandleAWSError(ctx, err)
 			}
 		} else {
 			// mark provisioning state as succeeded here
@@ -180,12 +202,12 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			DesiredState: aws.String(string(desiredState)),
 		}, cloudControlOpts...)
 		if err != nil {
-			return ucp_aws.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(ctx, err)
 		}
 
 		operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 		if err != nil {
-			return ucp_aws.HandleAWSError(err)
+			return ucp_aws.HandleAWSError(ctx, err)
 		}
 
 		// Get the resource identifier from the progress event response

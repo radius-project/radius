@@ -202,6 +202,8 @@ Run `go test ./pkg/statearchive/... ./pkg/graph/persistence/... ./pkg/cli/cmd/ap
 
 ## Notable Details
 
+- **`rad shutdown` does not archive chart-generated keys.** The archive holds the PostgreSQL databases and Terraform state Secrets only. Secrets the Helm chart generates, such as `radius-aws-fingerprint-key`, are created again by the next install, so `rad startup` restores state into a control plane with a new key. See [credentials](./credentials.md#are-credentials-encrypted).
+
 - **`name` is a stable durable key.** OCI uses it as the artifact tag (`radius-state`, `radius-graph`). Graph key namespaces contain the percent-encoded source branch in `<namespace>/app-graph.json`.
 - **`Commit` on no changes is a deliberate no-op**, so idempotent callers (for example a graph `Save` that rewrites identical JSON) do not upload another artifact.
 - **`Close` never returns an error by design** — it is meant for `defer` and

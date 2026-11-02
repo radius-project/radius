@@ -54,15 +54,17 @@ Radius uses the pull request title as the squash commit subject. Format the titl
 | `fix`      | Bug fixes                                             | Fixed            |
 | `perf`     | Performance improvements                              | Changed          |
 | `refactor` | Internal changes that affect behavior or maintenance  | Changed          |
-| `style`    | Format and lint changes                               | Excluded         |
+| `style`    | Format and lint changes                               | Others           |
 | `revert`   | Reverted changes                                      | Reverted changes |
-| `docs`     | Documentation-only changes                            | Excluded         |
-| `test`     | Test-only changes                                     | Excluded         |
-| `build`    | Build-system changes                                  | Excluded         |
-| `ci`       | Continuous-integration changes                        | Excluded         |
-| `chore`    | Routine maintenance that fits no user-facing category | Excluded         |
+| `docs`     | Documentation-only changes                            | Others           |
+| `test`     | Test-only changes                                     | Others           |
+| `build`    | Build-system changes                                  | Others           |
+| `ci`       | Continuous-integration changes                        | Others           |
+| `chore`    | Routine maintenance that fits no user-facing category | Others           |
 
-Automated dependency updates keep the prefixes Dependabot is configured with, `ci(deps):` and `chore(deps):`, and are grouped under Dependencies rather than excluded.
+Automated dependency updates keep the prefixes Dependabot is configured with, `ci(deps):` and `chore(deps):`, and are grouped under Dependencies rather than Others.
+
+Every commit in the selected release range is retained. Other parsed conventional types and nonconventional or malformed subjects also appear under Others, the last change group before contributor sections. Breaking commits appear once under Breaking changes instead of their normal group.
 
 Scopes are optional. Add `!` before the colon for a breaking change. For example:
 

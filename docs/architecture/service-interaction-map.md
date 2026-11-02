@@ -57,6 +57,8 @@ This map is intentionally focused on the current contributor path for new work.
 Some legacy provider processes still exist in the runtime, but new authoring
 work should target Radius resource types through `dynamic-rp`.
 
+The built-in `Applications.Core` container and gateway renderers support Kubernetes only. The legacy Azure Container Instances (ACI) compute kind, runtime settings, and application extension are no longer supported. Delete existing legacy ACI deployments before you upgrade; this removal does not delete resources in Azure. Recipe-based container deployments through `dynamic-rp`, including the separate `azure-aci` recipe pack, are unchanged.
+
 ## Main Runtime Patterns
 
 ### CLI to service path

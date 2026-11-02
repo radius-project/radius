@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"time"
 
+	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/kubernetes"
-	"github.com/radius-project/radius/pkg/kubeutil"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -57,7 +57,7 @@ var (
 )
 
 func ensureDefaultContourGateway(ctx context.Context, kubeContext string) error {
-	client, err := newDynamicClient(kubeContext)
+	client, err := clikubernetes.NewDynamicClient(kubeContext)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func reconcileDefaultContourGateway(ctx context.Context, client dynamic.Interfac
 }
 
 func deleteDefaultContourGateway(ctx context.Context, kubeContext string) error {
-	client, err := newDynamicClient(kubeContext)
+	client, err := clikubernetes.NewDynamicClient(kubeContext)
 	if err != nil {
 		return err
 	}
@@ -123,24 +123,6 @@ func deleteDefaultContourGatewayResources(ctx context.Context, client dynamic.In
 	}
 
 	return deleteManagedResource(ctx, client.Resource(gatewayClassGVR), ContourGatewayClassName)
-}
-
-func newDynamicClient(kubeContext string) (dynamic.Interface, error) {
-	config, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
-		ContextName: kubeContext,
-		QPS:         kubeutil.DefaultCLIQPS,
-		Burst:       kubeutil.DefaultCLIBurst,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := dynamic.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
 }
 
 func reconcileGatewayClass(ctx context.Context, client dynamic.Interface) error {

@@ -1,6 +1,6 @@
 AAD
+Abdulrahim
 ACA
-ACIRuntimeProperties
 ADDENDUMS
 AKS
 APIM
@@ -290,6 +290,7 @@ OutputResource
 PATs
 POC
 POSIX
+Priya
 PRs
 PUBLICHOSTNAMEORIP
 PVCs
@@ -373,6 +374,7 @@ SARIF
 SBOMs
 SDKs
 SKUs
+SLSA
 SMIL
 SNI
 SNS
@@ -1163,7 +1165,6 @@ skuName
 snok
 someString
 spanId
-speckit
 sql
 sqlDatabases
 sqldatabases

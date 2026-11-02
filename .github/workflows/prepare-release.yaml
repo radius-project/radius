@@ -109,7 +109,6 @@ jobs:
         id: preflight
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
-          DE_TOKEN: ${{ steps.de-token.outputs.token || github.token }}
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
         run: |
@@ -127,10 +126,15 @@ jobs:
           git rev-parse --verify --quiet "${release_ref}^{commit}" \
             >/dev/null || release_ref=HEAD
           bash ./.github/scripts/verify-release-build-contract.sh \
-            "${release_ref}"
+            "${release_ref}" --require-sibling-releases
 
-          GH_TOKEN="${DE_TOKEN}" \
-            bash ./.github/scripts/verify-deployment-engine-tag.sh "${version}"
+          # A final promotes the channel's last release candidate.
+          release_candidate=""
+          if [[ "${RELEASE_TYPE}" == "final" ]]; then
+            release_candidate="$(CHANNEL="${CHANNEL}" yq -r \
+              '.supported[] | select(.channel == strenv(CHANNEL)) | .version' \
+              versions.yaml)"
+          fi
 
           existing="$(
             gh pr list --repo "${GITHUB_REPOSITORY}" --state open \
@@ -172,7 +176,42 @@ jobs:
             echo "existing-head=${existing_head}"
             echo "version=${version}"
             echo "branch=${branch}"
+            echo "release-candidate=${release_candidate}"
           } >> "${GITHUB_OUTPUT}"
+
+      # A final ships the Deployment Engine commit that its last RC locked. The
+      # RC tag in the Deployment Engine repository can move; the GitHub-verified
+      # lock on the RC's Radius tag cannot.
+      - name: Read release candidate Deployment Engine lock
+        if: inputs.release-type == 'final'
+        id: rc-lock
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: release-candidate
+          INPUT_VERSION: ${{ steps.preflight.outputs.version }}
+          INPUT_RELEASE_CANDIDATE: ${{ steps.preflight.outputs.release-candidate }}
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-release-controller-lock.mjs`)
+            await script({context, github, core})
+
+      # The controller creates an absent Deployment Engine tag after approval:
+      # at main for an RC or patch, and for a final at the commit its last RC
+      # locked. Check that plan, or an existing tag, before the pull request.
+      - name: Verify or plan Deployment Engine tag
+        env:
+          GH_TOKEN: ${{ steps.de-token.outputs.token || github.token }}
+          VERSION: ${{ steps.preflight.outputs.version }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          RELEASE_CANDIDATE: ${{ steps.preflight.outputs.release-candidate }}
+          RC_DE_COMMIT: ${{ steps.rc-lock.outputs.de-source-commit }}
+        run: |
+          args=(--allow-absent main "${VERSION}")
+          if [[ "${RELEASE_TYPE}" == "final" ]]; then
+            args=(--allow-absent "${RELEASE_CANDIDATE}" "${VERSION}"
+              "${RC_DE_COMMIT:?the release candidate lock has no commit}")
+          fi
+          bash ./.github/scripts/verify-deployment-engine-tag.sh "${args[@]}"
 
       - name: Read curated notes from existing release pull request
         if: >-
@@ -189,16 +228,13 @@ jobs:
             --jq .content | tr -d '\n' | base64 --decode > "${output}"
 
       - name: Collect selected backports
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
-          CHANNEL: ${{ inputs.channel }}
-          EXPLICIT_PRS: ${{ inputs.backport-pr-numbers }}
-        run: |
-          bash ./.github/scripts/collect-release-backports.sh \
-            --repository "${GITHUB_REPOSITORY}" \
-            --channel "${CHANNEL}" \
-            --explicit-prs "${EXPLICIT_PRS}" \
-            --output "${RUNNER_TEMP}/release-backports.json"
+        uses: radius-project/.github/.github/actions/release-backport@7ac45fd6568840927049680d60bb5e9853e67838
+        with:
+          operation: collect
+          github-token: ${{ steps.app-token.outputs.token || github.token }}
+          channel: ${{ inputs.channel }}
+          explicit-prs: ${{ inputs.backport-pr-numbers }}
+          output-file: ${{ runner.temp }}/release-backports.json
 
       - name: Capture sibling repository commits
         env:
@@ -214,7 +250,6 @@ jobs:
           inputs.backport-pr-numbers != ''
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          BACKPORT_PRS: ${{ inputs.backport-pr-numbers }}
           CHANNEL: ${{ inputs.channel }}
         run: |
           release_branch="refs/remotes/origin/release/${CHANNEL}"
@@ -227,12 +262,10 @@ jobs:
           gh label create "${label}" --repo "${GITHUB_REPOSITORY}" \
             --color 5319E7 --description "Backport to release/${CHANNEL}" \
             --force
-          IFS=',' read -r -a pull_requests <<< "${BACKPORT_PRS}"
-          for pull_request in "${pull_requests[@]}"; do
-            pull_request="${pull_request//[[:space:]]/}"
+          while IFS= read -r pull_request; do
             gh pr edit "${pull_request}" --repo "${GITHUB_REPOSITORY}" \
               --add-label "${label}"
-          done
+          done < <(jq -r '.[].source_pr' "${RUNNER_TEMP}/release-backports.json")
 
       - name: Prepare release changes and plan
         id: prepare

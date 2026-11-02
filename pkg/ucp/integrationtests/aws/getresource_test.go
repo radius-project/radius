@@ -44,6 +44,8 @@ func Test_GetAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
+		require.Equal(t, "AWS::Kinesis::Stream", *params.TypeName)
+		require.Equal(t, testAWSResourceName, *params.Identifier)
 		output := cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Identifier: new(testAWSResourceName),

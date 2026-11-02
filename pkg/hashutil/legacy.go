@@ -21,8 +21,7 @@ package hashutil
 // tokens written by older versions of Radius while they are migrated to SHA-256.
 //
 // A few call sites outside hashutil still compute SHA-1 directly and are migrated in a later
-// phase - notably the Kubernetes secret-hash pod annotation (pkg/kubernetes/secrets.go) and
-// the ACI gateway DNS prefix (pkg/corerp/renderers/aci/gateway/render.go). Once those are
+// phase - notably the Kubernetes secret-hash pod annotation (pkg/kubernetes/secrets.go). Once those are
 // migrated and all stored SHA-1 values have been re-keyed, deleting this file completes the
 // migration away from SHA-1.
 //

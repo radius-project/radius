@@ -372,17 +372,8 @@ jobs:
           git-password: ${{ env.GIT_HTTP_PASSWORD }}
 
       - name: Port-forward to Git server
-        run: |
-          # Start port forwarding in the background
-          kubectl port-forward -n git-http-backend svc/git-http 30080:3000 &
-
-          # Wait for port forwarding to be established
-          sleep 5
-
-          # Test the connection to ensure port forwarding is working
-          curl -s http://localhost:30080 > /dev/null || (echo "Port forwarding failed" && exit 1)
-
-          echo "Port forwarding established successfully"
+        # The log lands in the container logs artifact uploaded below.
+        run: ./.github/scripts/start-git-http-port-forward.sh "${GITHUB_WORKSPACE}/${RADIUS_CONTAINER_LOG_BASE}/git-http-port-forward.log"
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
@@ -509,7 +500,7 @@ jobs:
         env:
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           DIAGNOSTICS_NAME: all
-          DIAGNOSTICS_LOG_NAMESPACES: radius-system
+          DIAGNOSTICS_LOG_NAMESPACES: radius-system git-http-backend
         run: ./.github/scripts/collect-cluster-diagnostics.sh
 
       - name: Upload container logs

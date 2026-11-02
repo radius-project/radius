@@ -41,19 +41,95 @@ ARCH="${3:-amd64}"
 CLI_PATH="${RELEASE_VERIFY_CLI:-}"
 CHART_PATH="${RELEASE_VERIFY_CHART:-./deploy/Chart}"
 MANIFEST_FILE="${RELEASE_VERIFY_MANIFEST:-}"
+DIAGNOSTICS_FILE="${RELEASE_VERIFY_DIAGNOSTICS:-${RELEASE_VERIFY_DIR:-${SCRIPT_DIR}/../../dist/verification}/installation-diagnostics.json}"
+if [[ -n "${MANIFEST_FILE}" && -z "${RELEASE_VERIFY_DIAGNOSTICS:-}" ]]; then
+    DIAGNOSTICS_FILE="$(dirname "${MANIFEST_FILE}")/installation-diagnostics.json"
+fi
 TEMP_DIR=""
 CLUSTER_NAME="radius-verification-$$"
 CLUSTER_CREATED=false
+VERIFICATION_STAGE="prerequisites"
+RAD_VERSION_JSON="null"
 INSTALL_ARGS=(install kubernetes --skip-contour-install)
+
+collect_installation_diagnostics() {
+    local exit_code="$1" helm_version="" rad_version="null"
+    local helm_status="collected" secret_status="collected"
+    if ! helm_version="$(helm version --short)"; then
+        helm_status="unavailable"
+        echo "Warning: Could not collect the Helm version." >&2
+    fi
+    if ! rad_version="$(jq -c 'if type == "object" then {version, release} else null end' <<< "${RAD_VERSION_JSON}")"; then
+        rad_version="null"
+        echo "Warning: Could not parse the CLI version for diagnostics." >&2
+    fi
+    # Filter in the pipe: never write Secret data or last-applied annotations.
+    if ! kubectl get secret radius-encryption-key --namespace "${NAMESPACE}" \
+        --ignore-not-found --show-managed-fields --request-timeout=10s -o json \
+        | jq -s '
+            if length == 0 then null else .[0] | {
+                apiVersion, kind,
+                metadata: (.metadata | {
+                    name, namespace, uid, resourceVersion, creationTimestamp,
+                    annotations: ((.annotations // {}) | with_entries(select(
+                        .key == "radius.dev/last-rotation" or
+                        .key == "meta.helm.sh/release-name" or
+                        .key == "meta.helm.sh/release-namespace"
+                    ))),
+                    managedFields: [.managedFields[]? | {
+                        manager, operation, apiVersion, time,
+                        ownsKeyData: (.fieldsV1["f:data"]["f:keys.json"] != null),
+                        ownsLastRotation: (.fieldsV1["f:metadata"]["f:annotations"]["f:radius.dev/last-rotation"] != null)
+                    }]
+                })
+            } end
+        ' > "${TEMP_DIR}/encryption-secret-metadata.json"; then
+        secret_status="unavailable"
+        echo "Warning: Could not collect encryption Secret metadata." >&2
+        printf 'null\n' > "${TEMP_DIR}/encryption-secret-metadata.json" || return
+    fi
+    jq -n --arg stage "${VERIFICATION_STAGE}" --argjson exitCode "${exit_code}" \
+        --arg helm "${helm_version}" --argjson rad "${rad_version}" \
+        --arg helmStatus "${helm_status}" --arg secretStatus "${secret_status}" \
+        --slurpfile secret "${TEMP_DIR}/encryption-secret-metadata.json" '
+        {stage:$stage, exitCode:$exitCode, versions:{rad:$rad,helm:$helm},
+         encryptionSecret:$secret[0],
+         collection:{helmVersion:$helmStatus,encryptionSecret:$secretStatus}}
+    ' > "${TEMP_DIR}/installation-diagnostics.json" || return
+    mkdir -p "$(dirname "${DIAGNOSTICS_FILE}")" || return
+    mv "${TEMP_DIR}/installation-diagnostics.json" "${DIAGNOSTICS_FILE}" || return
+    echo "Installation diagnostics: ${DIAGNOSTICS_FILE}" >&2
+}
 
 # Cleanup function to remove temporary files and cluster
 cleanup() {
+    local exit_code="$?"
+    trap - EXIT
+    if ((exit_code != 0)) && [[ -n "${TEMP_DIR}" ]]; then
+        if [[ -n "${MANIFEST_FILE}" && -f "${MANIFEST_FILE}" ]]; then
+            if ! { jq '.checks.installation = "failed"' "${MANIFEST_FILE}" \
+                > "${TEMP_DIR}/failed.json" \
+                && mv "${TEMP_DIR}/failed.json" "${MANIFEST_FILE}"; }; then
+                echo "Warning: Could not record installation failure in the manifest." >&2
+            fi
+        fi
+        if [[ "${CLUSTER_CREATED}" == "true" ]]; then
+            if ! collect_installation_diagnostics "${exit_code}"; then
+                echo "Warning: Could not retain installation diagnostics." >&2
+            fi
+        fi
+    fi
     if [[ "${CLUSTER_CREATED}" == "true" ]]; then
-        kind delete cluster --name "${CLUSTER_NAME}" || true
+        if ! kind delete cluster --name "${CLUSTER_NAME}"; then
+            echo "Warning: Could not delete verification cluster ${CLUSTER_NAME}." >&2
+        fi
     fi
     if [[ -n "${TEMP_DIR}" ]]; then
-        rm -rf "${TEMP_DIR}"
+        if ! rm -rf "${TEMP_DIR}"; then
+            echo "Warning: Could not remove verification temporary files." >&2
+        fi
     fi
+    exit "${exit_code}"
 }
 
 # Set up cleanup trap
@@ -76,9 +152,9 @@ validate_prerequisites() {
 get_pod_base_image() {
     local pod_prefix="$1"
     local pod_name
-    pod_name=$(kubectl get pods --no-headers -n "$NAMESPACE" -o custom-columns=":metadata.name" |
-        grep "^${pod_prefix}" |
-        head -n 1)
+    pod_name=$(kubectl get pods --no-headers -n "$NAMESPACE" -o custom-columns=":metadata.name" \
+        | grep "^${pod_prefix}" \
+        | head -n 1)
 
     if [[ -z "$pod_name" ]]; then
         echo "Error: No pod found with prefix '$pod_prefix' in namespace '$NAMESPACE'" >&2
@@ -113,6 +189,7 @@ verify_pre_upgrade_image() {
     local expected_image="$1"
 
     # Staged installs reuse pinned digests; public installs keep the exact chart's defaults.
+    VERIFICATION_STAGE="helm-upgrade"
     helm upgrade radius "${CHART_PATH}" --namespace radius-system --reuse-values \
         --set preupgrade.enabled=true \
         --set preupgrade.checks.version=false \
@@ -120,6 +197,7 @@ verify_pre_upgrade_image() {
         --wait --timeout 5m
 
     # Extract the "image" field from the pre-upgrade job
+    VERIFICATION_STAGE="pre-upgrade-image"
     PRE_UPGRADE_IMAGE=$(kubectl get job pre-upgrade -n radius-system -o json | jq -r '.spec.template.spec.containers[0].image')
 
     if [[ "$PRE_UPGRADE_IMAGE" != "$expected_image" ]]; then
@@ -170,6 +248,8 @@ fi
 validate_prerequisites
 TEMP_DIR="$(mktemp -d)"
 export KUBECONFIG="${TEMP_DIR}/kubeconfig"
+rm -f "${DIAGNOSTICS_FILE}"
+VERIFICATION_STAGE="assets"
 
 readonly RADIUS_CLI_ARTIFACT="rad_${OS}_${ARCH}"
 readonly DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
@@ -228,6 +308,7 @@ if [[ -n "${MANIFEST_FILE}" ]]; then
 fi
 chmod +x "${CLI_PATH}"
 
+VERIFICATION_STAGE="cli-version"
 RAD_VERSION_JSON=$("${CLI_PATH}" version --cli -o json)
 echo "rad version output: $RAD_VERSION_JSON"
 
@@ -245,6 +326,7 @@ if [[ "${VERSION_FROM_RAD_VERSION}" != "v${EXPECTED_CLI_VERSION}" ]]; then
 fi
 
 echo "Creating kind cluster..."
+VERIFICATION_STAGE="cluster"
 CLUSTER_CREATED=true
 if ! kind create cluster --name "${CLUSTER_NAME}" \
     --kubeconfig "${KUBECONFIG}" --wait 120s; then
@@ -253,10 +335,12 @@ if ! kind create cluster --name "${CLUSTER_NAME}" \
 fi
 
 echo "Installing Radius..."
+VERIFICATION_STAGE="install"
 if ! "${CLI_PATH}" "${INSTALL_ARGS[@]}"; then
     echo "Error: Failed to install Radius" >&2
     exit 1
 fi
+VERIFICATION_STAGE="deployment-readiness"
 kubectl wait --for=condition=Available deployment --all \
     --namespace "${NAMESPACE}" --timeout=300s
 
@@ -273,6 +357,7 @@ expected_image() {
 
 # Verify all pod images
 echo "Verifying pod images..."
+VERIFICATION_STAGE="pod-images"
 verify_pod_image "applications-rp" "$(expected_image applications-rp)" "Applications RP"
 verify_pod_image "bicep-de" "$(expected_image deployment-engine)" "Deployment Engine"
 verify_pod_image "controller" "$(expected_image controller)" "Controller"
@@ -281,8 +366,9 @@ verify_pod_image "dynamic-rp" "$(expected_image dynamic-rp)" "Dynamic RP"
 verify_pod_image "ucp" "$(expected_image ucpd)" "UCP"
 verify_pre_upgrade_image "$(expected_image pre-upgrade)"
 if [[ -n "${MANIFEST_FILE}" ]]; then
-    kubectl get pods -n "${NAMESPACE}" -o json |
-        jq -e --arg image "$(expected_image bicep)" '
+    VERIFICATION_STAGE="bicep-image"
+    kubectl get pods -n "${NAMESPACE}" -o json \
+        | jq -e --arg image "$(expected_image bicep)" '
             any(.items[].spec.initContainers[]?; .image == $image)
         ' > /dev/null
     jq '.checks.installation = "verified"' "${MANIFEST_FILE}" \
