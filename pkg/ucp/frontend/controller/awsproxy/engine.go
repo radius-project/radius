@@ -551,11 +551,11 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	if err != nil {
 		if !replay && ucp_aws.IsClientFault(err) {
 			// AWS rejected the first attempt, so nothing exists: leave a tombstone, so the next deploy starts over.
-			delErr := e.store.Remove(ctx, r.id)
+			_, delErr := e.saveTombstone(ctx, rec, etag)
 			if delErr == nil {
 				return ucp_aws.HandleAWSError(ctx, err)
 			}
-			logger.Error(delErr, "Failed to remove the record after AWS rejected a create", "alias", r.id.Name())
+			logger.Error(delErr, "Failed to leave a tombstone after AWS rejected a create", "alias", r.id.Name())
 		}
 		// Otherwise AWS may have accepted the create. A client fault on a replay, such as throttling or a client token
 		// conflict, does not show that the original create failed. The record keeps its client token, so the next
@@ -709,7 +709,7 @@ func (e *engine) deleteWithoutRecord(ctx context.Context, httpReq *http.Request,
 func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if rec.Properties.AWSIdentifier == "" && !records.IsFirstCreate(rec) {
-		return e.removeRecord(ctx, r.id)
+		return e.removeRecord(ctx, r, rec, etag)
 	}
 
 	// A resumed delete finds the record still marked in progress; if AWS rejects the delete, it is released as Failed.
@@ -735,7 +735,7 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 		Identifier: aws.String(identifier),
 	}, CloudControlRegionOption(r.region))
 	if ucp_aws.IsAWSResourceNotFoundError(err) {
-		return e.removeRecord(ctx, r.id)
+		return e.removeRecord(ctx, r, rec, etag)
 	} else if err != nil {
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			records.ClearPending(rec)
@@ -811,7 +811,7 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 		}
 		return "", conflict("A create of the AWS resource %q is still running in AWS. Delete again when it finishes.", r.id.Name()), nil
 	case !status.Succeeded:
-		resp, err := e.removeRecord(ctx, r.id)
+		resp, err := e.removeRecord(ctx, r, rec, etag)
 		return "", resp, err
 	}
 
@@ -825,13 +825,23 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 	return etag, nil, nil
 }
 
-// removeRecord replaces the record with a tombstone when AWS has nothing to delete. When that fails, the request fails,
-// and the caller deletes again.
-func (e *engine) removeRecord(ctx context.Context, id resources.ID) (armrpc_rest.Response, error) {
-	if err := e.store.Remove(ctx, id); err != nil {
-		return nil, fmt.Errorf("the AWS resource for the alias %q is deleted, but UCP failed to remove its record. Delete again: %w", id.Name(), err)
+// removeRecord replaces the record with a tombstone when AWS has nothing to delete. The save uses the ETag the record
+// was read with, so it never replaces a record another request saved meanwhile: that request gets the alias, and this
+// one gets 409. When the save fails otherwise, the request fails, and the caller deletes again.
+func (e *engine) removeRecord(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
+	if _, err := e.saveTombstone(ctx, rec, etag); errors.Is(err, &database.ErrConcurrency{}) {
+		return saveError(r.id, err)
+	} else if err != nil {
+		return nil, fmt.Errorf("the AWS resource for the alias %q is deleted, but UCP failed to save its tombstone. Delete again: %w", r.id.Name(), err)
 	}
 	return armrpc_rest.NewNoContentResponse(), nil
+}
+
+// saveTombstone saves a tombstone in place of the record, with the ETag the record was read with. rec is unchanged.
+func (e *engine) saveTombstone(ctx context.Context, rec *datamodel.AWSResource, etag string) (string, error) {
+	tombstone := *rec
+	records.Tombstone(&tombstone, nil)
+	return e.store.Save(ctx, &tombstone, etag)
 }
 
 // get reads the AWS resource under the alias in the URL: the record, then AWS by the identifier in the record. It

@@ -17,9 +17,11 @@ limitations under the License.
 package awsproxy
 
 import (
+	"errors"
 	"net/http"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/require"
@@ -200,4 +202,20 @@ func Test_Tombstone_TakeOver(t *testing.T) {
 	resp := h.putBody(bkt2Path, testOwner, map[string]any{"name": "gone", "properties": map[string]any{"BucketName": "gone"}})
 	require.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
 	require.Equal(t, "gone", h.record(bkt2Path).Properties.AWSIdentifier)
+}
+
+// Test_Tombstone_LosesARace checks that a tombstone is saved only over the record the DELETE read, so it never replaces
+// a record another request saved meanwhile.
+func Test_Tombstone_LosesARace(t *testing.T) {
+	h := newHarness(t)
+	h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {})
+	h.failSavesAfter(0, &database.ErrConcurrency{})
+	resp := h.delete(vpcPath, testOwner)
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	require.False(t, records.IsDeleted(h.record(vpcPath)))
+
+	h.failSavesAfter(0, errors.New("database is down"))
+	resp = h.delete(vpcPath, testOwner)
+	require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+	require.Contains(t, resp.raw, "failed to save its tombstone")
 }

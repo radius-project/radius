@@ -76,16 +76,6 @@ func Test_Store(t *testing.T) {
 	require.NoError(t, store.Touch(t.Context(), id))
 	require.NoError(t, store.Touch(t.Context(), parse(t, otherID)))
 
-	// Remove leaves a tombstone, whatever the record holds, and also for an alias with no record.
-	for _, target := range []resources.ID{id, parse(t, otherID)} {
-		require.NoError(t, store.Remove(t.Context(), target))
-		got, _, err := store.Get(t.Context(), target)
-		require.NoError(t, err)
-		require.True(t, IsDeleted(got))
-		require.Equal(t, target.Name(), got.Name)
-		require.Empty(t, got.Properties.Owner)
-		require.Empty(t, got.Properties.AWSIdentifier)
-	}
 }
 
 func Test_Tombstone(t *testing.T) {
@@ -279,8 +269,7 @@ func Test_KeepPending(t *testing.T) {
 	require.Nil(t, rec.Properties.LastApplied)
 }
 
-func Test_Store_RemoveAndTouchErrors(t *testing.T) {
-	require.Error(t, NewStore(concurrentSave{Client: inmemory.NewClient()}).Remove(t.Context(), parse(t, vpcID)))
+func Test_Store_TouchErrors(t *testing.T) {
 
 	// Touch leaves alone a record another request saved meanwhile.
 	db := inmemory.NewClient()

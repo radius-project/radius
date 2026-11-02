@@ -101,17 +101,6 @@ func (s *Store) Save(ctx context.Context, rec *datamodel.AWSResource, etag strin
 	return obj.ETag, nil
 }
 
-// Remove replaces the record stored under id with a tombstone (see Tombstone), whatever it holds.
-func (s *Store) Remove(ctx context.Context, id resources.ID) error {
-	rec := NewRecord(id, "")
-	Tombstone(rec, nil)
-	data := map[string]any{}
-	if err := convert(rec, &data); err != nil {
-		return err
-	}
-	return s.db.Save(ctx, &database.Object{Metadata: database.Metadata{ID: rec.ID}, Data: data})
-}
-
 // Touch saves the record unchanged, so its lastModifiedAt moves forward. The worker calls it while it polls AWS, so
 // the operation does not look stale. A record that changed or was removed meanwhile is left alone.
 func (s *Store) Touch(ctx context.Context, id resources.ID) error {
