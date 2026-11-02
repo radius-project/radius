@@ -65,6 +65,12 @@ test-azure-oidc-login: ## Tests cloud CI token request retries and Azure login
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh
 
+.PHONY: test-long-running-azure
+test-long-running-azure: ## Tests persistent-cluster functional test selection
+	@bash ./.github/scripts/long-running-azure_test.sh
+
+test: test-long-running-azure
+
 .PHONY: test-local-functional-runner
 test-local-functional-runner: ## Tests local functional runner safety without infrastructure
 	@bash ./build/scripts/local-functional_test.sh

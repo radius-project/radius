@@ -456,7 +456,10 @@ jobs:
           #     that owns it, so cleanup fails with 409 Conflict. Fixed in #13193.
           # Skip these exact tests until a release that includes the fixes is cut.
           # See #12044, #12163, #12247, #12701, #13143, and #13193.
-          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RadiusCore_AzureMySql_PortalLink|Test_RabbitMQ|Test_RedisCache|Test_Container_ManagedSecretConnection)$$'"
+          # The startup-log smoke test requires fresh pods: this workflow preserves
+          # the control plane across runs, so kubelet may have rotated its startup logs.
+          # Keep that assertion in fresh-cluster authz-noncloud CI, not this soak test.
+          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RadiusCore_AzureMySql_PortalLink|Test_RabbitMQ|Test_RedisCache|Test_Container_ManagedSecretConnection|Test_AuthzMode_LoggedByEveryComponent)$$'"
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
           set -euo pipefail
