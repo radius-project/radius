@@ -92,3 +92,22 @@ callerAuthentication:
 	_, err = LoadConfig([]byte("callerAuthentication:\n  allowUnverifiedHeaders: true\n"))
 	require.ErrorContains(t, err, "field allowUnverifiedHeaders not found")
 }
+
+func Test_LoadConfig_UserAuthorization(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		input   string
+		enabled bool
+	}{
+		{input: "logging:\n  level: info\n"},
+		{input: "userAuthorization:\n  enabled: true\n", enabled: true},
+		{input: "userAuthorization:\n  enabled: false\n"},
+	} {
+		config, err := LoadConfig([]byte(tt.input))
+		require.NoError(t, err)
+		require.Equal(t, tt.enabled, config.UserAuthorization.Enabled)
+		require.Equal(t, authz.ModeOff, config.Authorization.EffectiveMode())
+	}
+	_, err := LoadConfig([]byte("userAuthorization:\n  mode: Disabled\n"))
+	require.ErrorContains(t, err, "field mode not found")
+}
