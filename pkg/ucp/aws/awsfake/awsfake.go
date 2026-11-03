@@ -78,6 +78,10 @@ type CloudControl struct {
 	// Errors maps an operation name to an error the fake returns instead of running it.
 	Errors map[string]error
 
+	// LostResponses maps an operation name to an error the fake returns after it runs the call, once, as when AWS
+	// applies a request and the response is lost on the way back.
+	LostResponses map[string]error
+
 	// Before maps an operation name to a function the fake runs when it receives that call, before it handles it and
 	// outside its lock. Tests use it to interleave another request while UCP waits on AWS.
 	Before map[string]func()
@@ -169,6 +173,13 @@ func (c *CloudControl) before(operation string) {
 func (c *CloudControl) record(call Call) error {
 	c.calls = append(c.calls, call)
 	return c.Errors[call.Operation]
+}
+
+// lostResponse returns, and forgets, the lost-response error set for an operation.
+func (c *CloudControl) lostResponse(operation string) error {
+	err := c.LostResponses[operation]
+	delete(c.LostResponses, operation)
+	return err
 }
 
 func (c *CloudControl) accept(op cctypes.Operation, typeName string, identifier string) string {
@@ -265,6 +276,9 @@ func (c *CloudControl) UpdateResource(ctx context.Context, params *cloudcontrol.
 			}
 		}
 		c.resources[key(typeName, identifier)] = updated
+	}
+	if err := c.lostResponse("UpdateResource"); err != nil {
+		return nil, err
 	}
 	return &cloudcontrol.UpdateResourceOutput{ProgressEvent: &cctypes.ProgressEvent{RequestToken: aws.String(token), OperationStatus: cctypes.OperationStatusInProgress}}, nil
 }

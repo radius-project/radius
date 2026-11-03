@@ -295,6 +295,14 @@ func (h *harness) record(path string) *datamodel.AWSResource {
 	return rec
 }
 
+// requireTombstone checks that the alias's record is a tombstone, which a DELETE or GET never falls back from.
+func (h *harness) requireTombstone(path string, msgAndArgs ...any) {
+	h.t.Helper()
+	rec := h.record(path)
+	require.NotNil(h.t, rec, msgAndArgs...)
+	require.True(h.t, records.IsDeleted(rec), msgAndArgs...)
+}
+
 func (h *harness) saveRecord(path string, change func(rec *datamodel.AWSResource)) {
 	h.t.Helper()
 	id, err := resources.ParseResource(path)
@@ -640,6 +648,30 @@ func Test_Update_FailurePaths(t *testing.T) {
 		require.Nil(t, rec.Properties.PendingLastApplied)
 	})
 
+	// AWS applies the update, and the response is lost on the way back. The outcome is unknown, so Radius owns the
+	// pending properties, and a later deploy that omits Tags clears them.
+	t.Run("the update response is lost", func(t *testing.T) {
+		h := setup(t)
+		h.cc.LostResponses = map[string]error{"UpdateResource": errors.New("connection reset")}
+		tags := []any{map[string]any{"Key": "team", "Value": "a"}}
+		resp := h.put(bktPath, map[string]any{"BucketName": "assets", "A": "1", "Tags": tags})
+		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+		require.Equal(t, tags, h.cc.Resource(bucketType, "assets")["Tags"], "AWS applied the update")
+		rec := h.record(bktPath)
+		require.Equal(t, map[string]any{"BucketName": "assets", "A": "1", "Tags": tags}, rec.Properties.LastApplied)
+		require.Nil(t, rec.Properties.PendingLastApplied)
+		require.False(t, records.IsRunning(rec))
+
+		h.cc.Calls()
+		resp = h.put(bktPath, map[string]any{"BucketName": "assets", "A": "1"})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"GetResource", "UpdateResource"}, operations(calls))
+		require.Contains(t, calls[1].Document, `"op":"remove","path":"/Tags"`)
+		h.finish()
+		require.NotContains(t, h.cc.Resource(bucketType, "assets"), "Tags")
+	})
+
 	t.Run("AWS reports the update failed", func(t *testing.T) {
 		h := setup(t)
 		h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest
@@ -725,7 +757,7 @@ func Test_Create_FailurePaths(t *testing.T) {
 			h.cc.Errors["CreateResource"] = rejection
 			resp := h.put(vpcPath, map[string]any{"CidrBlock": "bad"})
 			require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
-			require.Nil(t, h.record(vpcPath))
+			h.requireTombstone(vpcPath)
 		})
 	}
 
@@ -765,7 +797,7 @@ func Test_Create_FailurePaths(t *testing.T) {
 		require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
 		results := h.finish()
 		require.Equal(t, v1.CodeInternal, results[0].Error.Code)
-		require.Nil(t, h.record(vpcPath))
+		h.requireTombstone(vpcPath)
 	})
 
 	t.Run("the create call fails in a way AWS may have accepted it", func(t *testing.T) {
@@ -885,14 +917,14 @@ func Test_Delete(t *testing.T) {
 		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {})
 		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
 		require.Empty(t, h.cc.Calls())
-		require.Nil(t, h.record(vpcPath))
+		h.requireTombstone(vpcPath)
 	})
 
 	t.Run("resource AWS no longer has", func(t *testing.T) {
 		h := newHarness(t)
 		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = "vpc-gone" })
 		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
-		require.Nil(t, h.record(vpcPath))
+		h.requireTombstone(vpcPath)
 	})
 
 	t.Run("deletes by the record's identifier", func(t *testing.T) {
@@ -909,7 +941,7 @@ func Test_Delete(t *testing.T) {
 		require.Equal(t, v1.ProvisioningStateDeleting, h.record(vpcPath).ProvisioningState())
 
 		h.finish()
-		require.Nil(t, h.record(vpcPath))
+		h.requireTombstone(vpcPath)
 		require.Zero(t, h.cc.Count(vpcType))
 	})
 
@@ -1172,7 +1204,7 @@ func Test_ResumeDelete(t *testing.T) {
 	require.Empty(t, h.cc.Calls(), "the delete AWS accepted is polled, not sent again")
 	records.Now = time.Now
 	h.finish()
-	require.Nil(t, h.record(vpcPath))
+	h.requireTombstone(vpcPath)
 }
 
 func Test_Put_NoStatusManager(t *testing.T) {
@@ -1263,7 +1295,7 @@ func Test_Reservation_RejectsCompetingRequests(t *testing.T) {
 		require.Equal(t, http.StatusConflict, competing.status, competing.raw)
 
 		h.finish()
-		require.Nil(t, h.record(vpcPath))
+		h.requireTombstone(vpcPath)
 		require.Zero(t, h.cc.Count(vpcType))
 	})
 
@@ -1326,7 +1358,7 @@ func Test_Reservation_Recovery(t *testing.T) {
 		require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
 		records.Now = time.Now
 		h.finish()
-		require.Nil(t, h.record(vpcPath))
+		h.requireTombstone(vpcPath)
 		require.Zero(t, h.cc.Count(vpcType))
 	})
 
@@ -1341,7 +1373,7 @@ func Test_Reservation_Recovery(t *testing.T) {
 		resp := h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"})
 		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
 		require.Contains(t, resp.message(), "interrupted delete")
-		require.Nil(t, h.record(vpcPath), "AWS no longer had it, so the record is removed")
+		h.requireTombstone(vpcPath, "AWS no longer had it, so the record is a tombstone")
 	})
 
 	t.Run("delete: AWS fails, then the error is returned", func(t *testing.T) {
@@ -1406,7 +1438,7 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		require.Equal(t, "id-1", calls[1].Identifier)
 		records.Now = time.Now
 		h.finish()
-		require.Nil(t, h.record(vpcPath))
+		h.requireTombstone(vpcPath)
 		require.Zero(t, h.cc.Count(vpcType))
 	})
 
@@ -1425,7 +1457,7 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		resp := h.delete(vpcPath, testOwner)
 		require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
 		h.finish()
-		require.Nil(t, h.record(vpcPath))
+		h.requireTombstone(vpcPath)
 		require.Zero(t, h.cc.Count(vpcType))
 	})
 
@@ -1449,7 +1481,7 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		h := uncertain(t)
 		h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest
 		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
-		require.Nil(t, h.record(vpcPath))
+		h.requireTombstone(vpcPath)
 	})
 
 	// A rejected replay does not show that the original create failed, so the record is kept and the error returned,
@@ -1471,7 +1503,7 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		delete(h.cc.Errors, "CreateResource")
 		require.Equal(t, http.StatusAccepted, h.delete(vpcPath, testOwner).status)
 		h.finish()
-		require.Nil(t, h.record(vpcPath))
+		h.requireTombstone(vpcPath)
 		require.Zero(t, h.cc.Count(vpcType))
 	})
 

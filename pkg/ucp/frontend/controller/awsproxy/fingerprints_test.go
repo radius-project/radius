@@ -37,6 +37,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -902,4 +903,105 @@ func Test_WriteOnly_RecoverCreateRejected(t *testing.T) {
 	resp = h.put(secretPath, properties)
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+}
+
+// Test_WriteOnly_UpdateOutcomeUnknown covers an UpdateResource call whose outcome UCP cannot know: AWS applied it and
+// the response was lost, or a server error. The update keeps its pending properties as applied, like a stale
+// interrupted update, so it follows the same rule for fingerprints: the ones it changed are dropped and those values are
+// sent again, and the others stay.
+func Test_WriteOnly_UpdateOutcomeUnknown(t *testing.T) {
+	changed := dbProperties(password)
+	changed["Password"] = newPassword
+
+	tests := []struct {
+		name  string
+		setup func(cc *awsfake.CloudControl)
+	}{
+		{"AWS applied the update and the response was lost", func(cc *awsfake.CloudControl) {
+			cc.LostResponses = map[string]error{"UpdateResource": errors.New("connection reset")}
+		}},
+		{"AWS returned a server error", func(cc *awsfake.CloudControl) {
+			cc.Errors["UpdateResource"] = awsError(&smithy.GenericAPIError{Code: "ServiceInternalError", Message: "down", Fault: smithy.FaultServer})
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := deployed(t, dbPath, dbProperties(password))
+			previous := h.record(dbPath).Properties.Fingerprints
+			tt.setup(h.cc)
+			resp := h.put(dbPath, changed)
+			require.NotEqual(t, http.StatusCreated, resp.status, resp.raw)
+			delete(h.cc.Errors, "UpdateResource")
+
+			rec := h.record(dbPath)
+			require.Nil(t, rec.Properties.PendingFingerprints)
+			require.Equal(t, previous.KeyID, rec.Properties.Fingerprints.KeyID)
+			require.Equal(t, map[string]string{"Auth/Token": previous.Digests["Auth/Token"], "Users": previous.Digests["Users"]}, rec.Properties.Fingerprints.Digests)
+			require.NotContains(t, h.rawRecord(dbPath), newPassword)
+
+			// The next deploy sends only the password the update changed, and saves its fingerprint.
+			h.cc.Calls()
+			resp = h.put(dbPath, changed)
+			require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+			calls := h.cc.Calls()
+			require.Equal(t, []string{"add /Password"}, patchOps(t, calls[len(calls)-1].Document))
+			h.finish()
+			resp = h.put(dbPath, changed)
+			require.Equal(t, http.StatusOK, resp.status, resp.raw)
+			require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+		})
+	}
+}
+
+// Test_WriteOnly_TombstoneHasNoFingerprints checks that a tombstone keeps no fingerprints or pending fingerprints,
+// after a finished delete and after a failed create, and that deploying the alias again starts over: the write-only
+// values are sent with the create and fingerprinted again.
+func Test_WriteOnly_TombstoneHasNoFingerprints(t *testing.T) {
+	requireTombstone := func(t *testing.T, h *harness) {
+		t.Helper()
+		rec := h.record(dbPath)
+		require.True(t, records.IsDeleted(rec))
+		require.Nil(t, rec.Properties.Fingerprints)
+		require.Nil(t, rec.Properties.PendingFingerprints)
+		require.NotContains(t, h.rawRecord(dbPath), "fingerprints")
+	}
+	requireStartsOver := func(t *testing.T, h *harness) {
+		t.Helper()
+		h.cc.Calls()
+		resp := h.put(dbPath, dbProperties(password))
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Equal(t, "CreateResource", calls[len(calls)-1].Operation)
+		require.Contains(t, calls[len(calls)-1].Document, password)
+		h.finish()
+		require.Contains(t, h.record(dbPath).Properties.Fingerprints.Digests, "Password")
+	}
+
+	t.Run("delete", func(t *testing.T) {
+		h := deployed(t, dbPath, dbProperties(password))
+		require.NotNil(t, h.record(dbPath).Properties.Fingerprints)
+		require.Equal(t, http.StatusAccepted, h.delete(dbPath, testOwner).status)
+		h.finish()
+		requireTombstone(t, h)
+		requireStartsOver(t, h)
+	})
+
+	t.Run("failed create", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest
+		require.Equal(t, http.StatusCreated, h.put(dbPath, dbProperties(password)).status)
+		require.NotNil(t, h.record(dbPath).Properties.PendingFingerprints)
+		h.finish()
+		requireTombstone(t, h)
+		requireStartsOver(t, h)
+	})
+
+	t.Run("create rejected", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.Errors["CreateResource"] = awsError(&smithy.GenericAPIError{Code: "ValidationException", Message: "bad", Fault: smithy.FaultClient})
+		require.Equal(t, http.StatusBadRequest, h.put(dbPath, dbProperties(password)).status)
+		delete(h.cc.Errors, "CreateResource")
+		requireTombstone(t, h)
+		requireStartsOver(t, h)
+	})
 }

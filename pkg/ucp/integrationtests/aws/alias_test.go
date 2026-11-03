@@ -319,3 +319,26 @@ func Test_AWSResource_TransitionalPathsSkipManagedResources(t *testing.T) {
 	require.Equal(t, 1, cc.Count("AWS::S3::Bucket"))
 	require.Equal(t, http.StatusOK, send(t, ucp, http.MethodGet, collection+"/app-bucket", "", nil).status)
 }
+
+// Test_AWSResource_RepeatedDeleteKeepsTarget checks through the UCP host that a DELETE of an alias, repeated after it
+// succeeded, returns 204 and never deletes an unrelated resource whose AWS identifier matches the alias.
+func Test_AWSResource_RepeatedDeleteKeepsTarget(t *testing.T) {
+	ucp, cc := initializeFakeAWSTest(t, aliasSchemas)
+	cc.Identifiers["AWS::S3::Bucket"] = "BucketName"
+	cc.Put("AWS::S3::Bucket", "app-bucket", map[string]any{"BucketName": "app-bucket"})
+	path := awsProvidersPath + "AWS.S3/Bucket/app-bucket"
+
+	resp := send(t, ucp, http.MethodPut, path, testOwner, map[string]any{"properties": map[string]any{"BucketName": "assets"}})
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+
+	resp = send(t, ucp, http.MethodDelete, path, testOwner, nil)
+	require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+	require.Equal(t, "Succeeded", waitForOperation(t, ucp, resp))
+	require.Nil(t, cc.Resource("AWS::S3::Bucket", "assets"))
+
+	resp = send(t, ucp, http.MethodDelete, path, testOwner, nil)
+	require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+	require.Equal(t, http.StatusNotFound, send(t, ucp, http.MethodGet, path, "", nil).status)
+	require.NotNil(t, cc.Resource("AWS::S3::Bucket", "app-bucket"), "the unrelated bucket is left alone")
+}

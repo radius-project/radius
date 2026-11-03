@@ -76,11 +76,24 @@ func Test_Store(t *testing.T) {
 	require.NoError(t, store.Touch(t.Context(), id))
 	require.NoError(t, store.Touch(t.Context(), parse(t, otherID)))
 
-	_, etag, err = store.Get(t.Context(), id)
-	require.NoError(t, err)
-	require.ErrorIs(t, store.DeleteIfUnchanged(t.Context(), id, "stale"), &database.ErrConcurrency{})
-	require.NoError(t, store.DeleteIfUnchanged(t.Context(), id, etag))
-	require.NoError(t, store.Delete(t.Context(), id))
+}
+
+func Test_Tombstone(t *testing.T) {
+	rec := NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.AWSIdentifier = "vpc-1"
+	rec.Properties.LastApplied = map[string]any{"A": "1"}
+	rec.Properties.PendingLastApplied = map[string]any{"A": "2"}
+	rec.Properties.PendingOperation = OperationDelete
+	rec.Properties.RequestToken = "token"
+	rec.SetProvisioningState(v1.ProvisioningStateDeleting)
+	require.False(t, IsDeleted(rec))
+
+	failure := &v1.ErrorDetails{Code: v1.CodeInvalid, Message: "failed"}
+	Tombstone(rec, failure)
+	require.True(t, IsDeleted(rec))
+	require.Equal(t, datamodel.AWSResourceProperties{Deleted: true, LastRequestToken: "token", LastRequestError: failure}, rec.Properties)
+	require.Equal(t, v1.ProvisioningStateSucceeded, rec.ProvisioningState())
+	require.Equal(t, "app-vpc", rec.Name)
 }
 
 func Test_Store_Errors(t *testing.T) {
@@ -298,13 +311,7 @@ func Test_KeepPending_Fingerprints(t *testing.T) {
 	require.Nil(t, rec.Properties.PendingFingerprints)
 }
 
-func Test_Store_DeleteAndTouchErrors(t *testing.T) {
-	store := NewStore(failingWrites{Client: inmemory.NewClient()})
-	require.Error(t, store.Delete(t.Context(), parse(t, vpcID)))
-	require.Error(t, store.DeleteIfUnchanged(t.Context(), parse(t, vpcID), "etag"))
-
-	// DeleteIfUnchanged of a record that is already gone succeeds.
-	require.NoError(t, NewStore(notFoundDB{Client: inmemory.NewClient()}).DeleteIfUnchanged(t.Context(), parse(t, vpcID), "etag"))
+func Test_Store_TouchErrors(t *testing.T) {
 
 	// Touch leaves alone a record another request saved meanwhile.
 	db := inmemory.NewClient()
@@ -312,20 +319,6 @@ func Test_Store_DeleteAndTouchErrors(t *testing.T) {
 	_, err := NewStore(db).Save(t.Context(), rec, "")
 	require.NoError(t, err)
 	require.NoError(t, NewStore(concurrentSave{Client: db}).Touch(t.Context(), parse(t, vpcID)))
-}
-
-// failingWrites fails every delete.
-type failingWrites struct{ database.Client }
-
-func (failingWrites) Delete(ctx context.Context, id string, options ...database.DeleteOptions) error {
-	return errors.New("down")
-}
-
-// notFoundDB reports every delete as not found, as Postgres does for a missing record even with an ETag.
-type notFoundDB struct{ database.Client }
-
-func (notFoundDB) Delete(ctx context.Context, id string, options ...database.DeleteOptions) error {
-	return &database.ErrNotFound{ID: id}
 }
 
 // concurrentSave reports every save as losing a race.
