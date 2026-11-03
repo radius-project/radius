@@ -453,12 +453,12 @@ func Test_outputResourceEntryFromID(t *testing.T) {
 			wantPortalURL: testAWSFunctionConsoleURL,
 		},
 		{
-			name:          "AWS ID with a GovCloud ARN sets the GovCloud console list URL",
+			name:          "AWS ID with a GovCloud ARN sets the resource's GovCloud console URL",
 			id:            "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.Lambda/Function/f2",
 			arn:           "arn:aws-us-gov:lambda:us-gov-west-1:123456789012:function:f2",
 			wantName:      "f2",
 			wantType:      "AWS.Lambda/Function",
-			wantPortalURL: "https://console.amazonaws-us-gov.com/lambda/home?region=us-gov-west-1#/functions",
+			wantPortalURL: "https://console.amazonaws-us-gov.com/go/view?arn=arn%3Aaws-us-gov%3Alambda%3Aus-gov-west-1%3A123456789012%3Afunction%3Af2",
 		},
 		{
 			name:          "AWS ID in a GovCloud region sets the GovCloud console URL",

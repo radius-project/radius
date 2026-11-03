@@ -239,7 +239,11 @@ func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
 		awsGovQueueID: "arn:aws-us-gov:sqs:us-gov-west-1:123456789012:myqueue",
 		awsChinaRDSID: "arn:aws-cn:rds:cn-north-1:123456789012:db:mychinadb",
 	}
-	const functionURL = "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Alambda%3Aus-west-2%3A123456789012%3Afunction%3Amyfunction"
+	const (
+		functionURL = "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Alambda%3Aus-west-2%3A123456789012%3Afunction%3Amyfunction"
+		govQueueURL = "https://console.amazonaws-us-gov.com/go/view?arn=arn%3Aaws-us-gov%3Asqs%3Aus-gov-west-1%3A123456789012%3Amyqueue"
+		chinaRDSURL = "https://console.amazonaws.cn/go/view?arn=arn%3Aaws-cn%3Ards%3Acn-north-1%3A123456789012%3Adb%3Amychinadb"
+	)
 
 	tests := []struct {
 		name     string
@@ -252,10 +256,10 @@ func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
 			want: map[string]string{
 				azureStorageID: "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
 				awsDatabaseID:  "https://us-west-2.console.aws.amazon.com/rds/home?region=us-west-2#databases:",
-				awsGovQueueID:  "https://console.amazonaws-us-gov.com/sqs/v3/home?region=us-gov-west-1#/queues",
+				awsGovQueueID:  govQueueURL,
 				awsUnknownID:   "",
 				tfBucketID:     "https://console.aws.amazon.com/s3/buckets",
-				awsChinaRDSID:  "https://console.amazonaws.cn/rds/home?region=cn-north-1#databases:",
+				awsChinaRDSID:  chinaRDSURL,
 				tfIAMRoleID:    "https://console.aws.amazon.com/iam/home#/roles",
 				tfSubnetID:     "",
 				tfFunctionID:   functionURL,
@@ -267,10 +271,10 @@ func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
 			want: map[string]string{
 				azureStorageID: "",
 				awsDatabaseID:  "https://us-west-2.console.aws.amazon.com/rds/home?region=us-west-2#databases:",
-				awsGovQueueID:  "https://console.amazonaws-us-gov.com/sqs/v3/home?region=us-gov-west-1#/queues",
+				awsGovQueueID:  govQueueURL,
 				awsUnknownID:   "",
 				tfBucketID:     "https://console.aws.amazon.com/s3/buckets",
-				awsChinaRDSID:  "https://console.amazonaws.cn/rds/home?region=cn-north-1#databases:",
+				awsChinaRDSID:  chinaRDSURL,
 				tfIAMRoleID:    "https://console.aws.amazon.com/iam/home#/roles",
 				tfSubnetID:     "",
 				tfFunctionID:   functionURL,
