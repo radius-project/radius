@@ -166,8 +166,8 @@ type Runner struct {
 	Workspace                *workspaces.Workspace
 	Providers                *clients.Providers
 	EnvResult                *EnvironmentCheckResult
-	Yes      bool
-	Prompter prompt.Interface
+	Yes                      bool
+	Prompter                 prompt.Interface
 }
 
 // NewRunner creates a new instance of the `rad deploy` runner.

@@ -151,7 +151,7 @@ func (s *PolicyStore) ApplyDeployment(ctx context.Context, execution string, gen
 		next.Generation = version.Generation + int64(len(changes))
 		next.Settings.Properties.Generation = to.Ptr(next.Generation)
 		intent := uuid.NewString()
-		root, err := s.prepare(ctx, intent, next, stored)
+		root, err := s.prepare(ctx, intent, next)
 		if err != nil {
 			return nil, err
 		}

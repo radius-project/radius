@@ -5,7 +5,6 @@ package userauth
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -132,7 +131,7 @@ func TestBootstrapAndProvenance(t *testing.T) {
 	body["properties"].(map[string]any)["managedBy"] = map[string]string{"kind": "Bootstrap"}
 	require.Equal(t, http.StatusForbidden, call(t, h, "admin", nil, http.MethodPut, groupPath+"/providers/Radius.Core/roleAssignments/spoof", body).Code)
 	req := httptest.NewRequest(http.MethodPut, "/providers/Radius.Core/roleAssignments/spoof", bytes.NewBufferString(`{}`))
-	req = req.WithContext(authzcheck.WithCaller(context.Background(), authzcheck.Caller{Kind: authzcheck.CallerUser, Name: "admin"}))
+	req = req.WithContext(authzcheck.WithCaller(t.Context(), authzcheck.Caller{Kind: authzcheck.CallerUser, Name: "admin"}))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 	require.Equal(t, http.StatusUnauthorized, w.Code)

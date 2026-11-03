@@ -21,7 +21,7 @@ func main() {
 	flag.Parse()
 	if err := run(*path); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo // main reports generation failures to the caller.
 	}
 }
 
