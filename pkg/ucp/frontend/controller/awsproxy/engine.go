@@ -762,12 +762,12 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 //     show that the original create failed.
 //   - still running: UCP tracks the create and returns 409, and the caller deletes again when it finishes.
 //
+// The resend sends the pending properties, which have no write-only values. Cloud Control returns the original request
+// only when the body matches it exactly, so for a type with write-only properties it returns
+// ClientTokenConflictException instead, naming the original request. UCP reads that request's status the same way.
+//
 // When AWS never had the create, the resend creates the resource, and the delete then removes it. Cloud Control keeps a
 // client token for 36 hours, so after that a resend cannot find the original request and creates a second resource.
-// The resend sends the pending properties, which have no write-only values. Cloud Control returns the original request
-// only when the body matches it exactly, so for a type with write-only properties the resend gets
-// ClientTokenConflictException, and the DELETE fails with 400 until the client token expires. Deploying again recovers
-// it: a resumed PUT resends the full template, which matches, and saves the identifier, so the next DELETE works.
 func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (string, armrpc_rest.Response, error) {
 	desired := rec.Properties.PendingLastApplied
 	if desired == nil {
@@ -783,9 +783,14 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 		DesiredState: aws.String(string(desiredState)),
 		ClientToken:  aws.String(rec.Properties.ClientToken),
 	}, CloudControlRegionOption(r.region))
-	if err != nil {
-		// The resend is a replay, so an error, even a client fault such as throttling or a client token conflict, does
-		// not show that the original create failed. Keep the record so the next DELETE tries again.
+	var requestToken string
+	if err == nil {
+		requestToken = aws.ToString(response.ProgressEvent.RequestToken)
+	} else if token, ok := ucp_aws.ConflictingRequestToken(err, rec.Properties.ClientToken); ok {
+		requestToken = token
+	} else {
+		// The resend is a replay, so an error, even a client fault such as throttling, does not show that the original
+		// create failed. Keep the record so the next DELETE tries again.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			rec.Properties.PendingOperation = records.OperationCreate
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
@@ -794,7 +799,6 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 		return "", resp, err
 	}
 
-	requestToken := aws.ToString(response.ProgressEvent.RequestToken)
 	status, err := ucp_aws.GetRequestStatus(ctx, e.clients.CloudControl, r.region, requestToken)
 	if err != nil {
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {

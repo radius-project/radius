@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -74,8 +75,9 @@ const (
 )
 
 var harnessSchemas = map[string]string{
-	vpcType:    `{"primaryIdentifier": ["/properties/VpcId"], "readOnlyProperties": ["/properties/VpcId"], "createOnlyProperties": ["/properties/CidrBlock"]}`,
-	bucketType: `{"primaryIdentifier": ["/properties/BucketName"], "readOnlyProperties": ["/properties/Arn"], "createOnlyProperties": ["/properties/BucketName"]}`,
+	credentialType: `{"primaryIdentifier": ["/properties/CredentialId"], "readOnlyProperties": ["/properties/CredentialId"], "writeOnlyProperties": ["/properties/Password"]}`,
+	vpcType:        `{"primaryIdentifier": ["/properties/VpcId"], "readOnlyProperties": ["/properties/VpcId"], "createOnlyProperties": ["/properties/CidrBlock"]}`,
+	bucketType:     `{"primaryIdentifier": ["/properties/BucketName"], "readOnlyProperties": ["/properties/Arn"], "createOnlyProperties": ["/properties/BucketName"]}`,
 	dbType: `{
 		"primaryIdentifier": ["/properties/Name"],
 		"createOnlyProperties": ["/properties/Name"],
@@ -95,6 +97,7 @@ type harness struct {
 
 func newHarness(t *testing.T) *harness {
 	cc := awsfake.NewCloudControl()
+	cc.WriteOnly[credentialType] = []string{"Password"}
 	cc.Identifiers[bucketType] = "BucketName"
 	cc.Identifiers[dbType] = "Name"
 	cc.WriteOnly[dbType] = []string{"Password", "Auth/Token", "Users/*/Secret"}
@@ -1458,6 +1461,132 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
 		require.Empty(t, h.cc.Calls())
 	})
+}
+
+const (
+	// credentialType has an identifier AWS assigns and a write-only property.
+	credentialType = "AWS::Test::Credential"
+	credentialPath = providers + "AWS.Test/Credential/app-credential"
+)
+
+// Test_Delete_UncertainCreateWithWriteOnly covers a DELETE that recovers a create of a type with write-only properties.
+// The resend has no write-only values, so its body differs from the original create, and AWS returns
+// ClientTokenConflictException naming the original request instead of returning it.
+func Test_Delete_UncertainCreateWithWriteOnly(t *testing.T) {
+	// accepted leaves a create AWS accepted whose request token UCP failed to save, with a stale reservation.
+	accepted := func(t *testing.T) *harness {
+		h := newHarness(t)
+		allow := 1
+		inner := h.db
+		h.db = saveFailingDB{Client: inner, allow: &allow, err: errors.New("database is down")}
+		require.Equal(t, http.StatusInternalServerError, h.put(credentialPath, map[string]any{"Size": "small", "Password": password}).status)
+		h.db = inner
+		require.Equal(t, 1, h.cc.Count(credentialType))
+		require.Empty(t, h.record(credentialPath).Properties.AWSIdentifier)
+		records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+		t.Cleanup(func() { records.Now = time.Now })
+		h.cc.Calls()
+		return h
+	}
+	conflict := func(message string) error {
+		return &smithy.OperationError{ServiceID: "CloudControl", OperationName: "CreateResource", Err: &smithyhttp.ResponseError{Err: &cctypes.ClientTokenConflictException{Message: aws.String(message)}}}
+	}
+
+	t.Run("the conflict names the create: the resource is deleted", func(t *testing.T) {
+		h := accepted(t)
+		token := h.record(credentialPath).Properties.ClientToken
+		resp := h.delete(credentialPath, testOwner)
+		require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"CreateResource", "DeleteResource"}, operations(calls))
+		require.Equal(t, token, calls[0].ClientToken)
+		require.NotContains(t, calls[0].Document, password)
+		require.Equal(t, "id-1", calls[1].Identifier)
+		records.Now = time.Now
+		h.finish()
+		h.requireTombstone(credentialPath)
+		require.Zero(t, h.cc.Count(credentialType))
+	})
+
+	t.Run("the create is still running: 409 and the create is tracked", func(t *testing.T) {
+		h := accepted(t)
+		h.cc.PendingReads = 1
+		resp := h.delete(credentialPath, testOwner)
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "still running in AWS")
+		records.Now = time.Now
+		h.finish()
+		rec := h.record(credentialPath)
+		require.Equal(t, "id-1", rec.Properties.AWSIdentifier)
+		require.Empty(t, rec.Properties.ClientToken)
+
+		require.Equal(t, http.StatusAccepted, h.delete(credentialPath, testOwner).status)
+		h.finish()
+		require.Zero(t, h.cc.Count(credentialType))
+	})
+
+	t.Run("the create failed in AWS: only the record is removed", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest
+		allow := 1
+		inner := h.db
+		h.db = saveFailingDB{Client: inner, allow: &allow, err: errors.New("database is down")}
+		require.Equal(t, http.StatusInternalServerError, h.put(credentialPath, map[string]any{"Size": "small", "Password": password}).status)
+		h.db = inner
+		h.cc.Calls()
+		records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+		t.Cleanup(func() { records.Now = time.Now })
+
+		require.Equal(t, http.StatusNoContent, h.delete(credentialPath, testOwner).status)
+		require.Equal(t, []string{"CreateResource"}, operations(h.cc.Calls()))
+		h.requireTombstone(credentialPath)
+	})
+
+	// Polling the request the conflict names fails, so UCP does not know the create's outcome and keeps the record.
+	t.Run("reading the create status fails: the record is kept", func(t *testing.T) {
+		h := accepted(t)
+		token := h.record(credentialPath).Properties.ClientToken
+		h.cc.Errors["GetResourceRequestStatus"] = errors.New("connection reset")
+		require.Equal(t, http.StatusInternalServerError, h.delete(credentialPath, testOwner).status)
+		require.Equal(t, []string{"CreateResource"}, operations(h.cc.Calls()))
+		rec := h.record(credentialPath)
+		require.Equal(t, token, rec.Properties.ClientToken)
+		require.Empty(t, rec.Properties.AWSIdentifier)
+		require.False(t, records.IsRunning(rec))
+
+		// The next DELETE recovers the create and deletes the resource.
+		delete(h.cc.Errors, "GetResourceRequestStatus")
+		require.Equal(t, http.StatusAccepted, h.delete(credentialPath, testOwner).status)
+		records.Now = time.Now
+		h.finish()
+		h.requireTombstone(credentialPath)
+		require.Zero(t, h.cc.Count(credentialType))
+	})
+
+	// A conflict whose message has no request token UCP can read fails the DELETE with 400 and keeps the record,
+	// because it does not show what happened to the original create.
+	for name, message := range map[string]string{
+		"no request token":              "ClientToken %s is already associated with an existing operation",
+		"a request token for elsewhere": "ClientToken 0d6f2a1e-9a43-4f6e-8a7e-6d7b3c2a1f00 is already associated with an existing operation with RequestToken 5cebd516-0f6b-44ca-aa7d-3b687f2bf7a3",
+	} {
+		t.Run("the conflict has "+name+": 400 and the record is kept", func(t *testing.T) {
+			h := accepted(t)
+			token := h.record(credentialPath).Properties.ClientToken
+			if strings.Contains(message, "%s") {
+				message = fmt.Sprintf(message, token)
+			}
+			h.cc.Errors["CreateResource"] = conflict(message)
+			resp := h.delete(credentialPath, testOwner)
+			require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+			require.Equal(t, message, resp.message())
+			require.Equal(t, []string{"CreateResource"}, operations(h.cc.Calls()))
+			rec := h.record(credentialPath)
+			require.Equal(t, token, rec.Properties.ClientToken)
+			require.Empty(t, rec.Properties.AWSIdentifier)
+			require.False(t, records.IsRunning(rec))
+			require.Equal(t, 1, h.cc.Count(credentialType))
+		})
+	}
 }
 
 // Test_EngineEdgeCases covers inputs and failures the main flows do not reach.
