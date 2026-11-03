@@ -79,13 +79,13 @@
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/214"
     },
     "Radius.Core/roleDefinitions@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/226"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/224"
     },
     "Radius.Core/roleAssignments@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/242"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/240"
     },
     "Radius.Core/authorizationSettings@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/253"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/251"
     },
     "Radius.Data/mongoDatabases@2025-08-01-preview": {
       "$ref": "radius/radius.data/2025-08-01-preview/types.json#/19"
