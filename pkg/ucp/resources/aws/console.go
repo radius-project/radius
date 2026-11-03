@@ -122,8 +122,8 @@ var (
 )
 
 // consolePages maps each known AWS resource type, keyed by its lower-cased UCP type, to the console list page of its
-// service. A list page is the fallback for resources without a resource page link, because AWS has no documented link
-// format to a single resource that works for every type. The region is a query parameter, so the hash, when present, follows it.
+// service. A list page is the fallback for resources without a resource page link, such as resources with no ARN,
+// because AWS has no documented link format to a single resource that works for every type. The region is a query parameter, so the hash, when present, follows it.
 //
 // AWS.* types are deployed through UCP. Terraform.AWS/* types are discovered from Terraform recipe state, which records
 // only resources with an arn attribute, so Terraform types without one are not listed.
@@ -221,51 +221,21 @@ var consolePages = map[string]consolePage{
 	"terraform.aws/aws_sqs_queue":                     sqsQueues,
 }
 
-// resourcePageServices maps each AWS resource type, keyed by its lower-cased UCP type, whose ARN opens the resource's
-// own page through the console's go/view redirect, to the service its ARN names. AWS does not document the redirect,
-// so a type is listed only after its link has been checked in the commercial console. The redirect is not known to
-// work in GovCloud or China, so other partitions keep their list page.
-//
-// AWS.SecretsManager/Secret is not listed because the Bicep driver stores no ARN for it.
-var resourcePageServices = map[string]string{
-	"aws.dynamodb/table":    "dynamodb",
-	"aws.ecr/repository":    "ecr",
-	"aws.eks/cluster":       "eks",
-	"aws.iam/managedpolicy": "iam",
-	"aws.iam/role":          "iam",
-	"aws.lambda/function":   "lambda",
-	"aws.logs/loggroup":     "logs",
-	"aws.rds/dbcluster":     "rds",
-	"aws.rds/dbinstance":    "rds",
-	"aws.s3/bucket":         "s3",
-	"aws.sns/topic":         "sns",
-	"aws.sqs/queue":         "sqs",
-
-	"terraform.aws/aws_cloudwatch_log_group":  "logs",
-	"terraform.aws/aws_db_instance":           "rds",
-	"terraform.aws/aws_dynamodb_table":        "dynamodb",
-	"terraform.aws/aws_ecr_repository":        "ecr",
-	"terraform.aws/aws_eks_cluster":           "eks",
-	"terraform.aws/aws_iam_policy":            "iam",
-	"terraform.aws/aws_iam_role":              "iam",
-	"terraform.aws/aws_lambda_function":       "lambda",
-	"terraform.aws/aws_rds_cluster":           "rds",
-	"terraform.aws/aws_rds_cluster_instance":  "rds",
-	"terraform.aws/aws_s3_bucket":             "s3",
-	"terraform.aws/aws_secretsmanager_secret": "secretsmanager",
-	"terraform.aws/aws_sns_topic":             "sns",
-	"terraform.aws/aws_sqs_queue":             "sqs",
-}
+// resourcePageDenyList holds AWS resource types, keyed by their lower-cased UCP type, whose resource page link is
+// known not to work. They fall back to their service's list page, as resources with no ARN do. AWS does not document the console's go/view
+// redirect, so a type that turns out to be broken is added here.
+var resourcePageDenyList = map[string]struct{}{}
 
 // ConsoleURL returns a link to the AWS console for the resource id, or "" when there is none, so a caller never shows
 // a made-up link. arn is the resource's ARN, or "" when it is not known.
 //
-// When the type's resource page link has been checked and arn is a commercial ARN of the type's service, the link opens
-// the resource's own page. Otherwise it opens the list page of the service that owns the resource, in the region the ID
-// names. GovCloud, China, and European Sovereign Cloud regions use the console of their partition. A resource in the
-// global region gets a list page link only when that page is global, such as S3 buckets, using the console of the
-// partition the AWS plane names. There is no link when id is not an AWS resource, its type has no known page, or its
-// region is missing or not a valid region name.
+// When arn is an ARN in the commercial partition and the type is not in resourcePageDenyList, the link opens the
+// resource's own page. The console's go/view redirect is not known to work in GovCloud, China, or European Sovereign
+// Cloud, so those resources keep their list page. Otherwise the link opens the list page of the service that owns the
+// resource, in the region the ID names. GovCloud, China, and European Sovereign Cloud regions use the console of their
+// partition. A resource in the global region gets a list page link only when that page is global, such as S3 buckets,
+// using the console of the partition the AWS plane names. There is no list page link when the type has no known page,
+// or the region is missing or not a valid region name.
 func ConsoleURL(id resources.ID, arn string) string {
 	if !IsAWSResource(id) {
 		return ""
@@ -304,16 +274,15 @@ func ConsoleURL(id resources.ID, arn string) string {
 	return ""
 }
 
-// resourcePageURL returns a link to the console page of the resource arn names, or "" when resourceType has no checked
-// resource page link, or arn is not a commercial ARN of the type's service.
+// resourcePageURL returns a link to the console page of the resource arn names, or "" when arn is not an ARN in the
+// commercial partition, or resourceType is in resourcePageDenyList.
 func resourcePageURL(resourceType string, arn string) string {
-	service, ok := resourcePageServices[resourceType]
-	if !ok {
+	if _, denied := resourcePageDenyList[resourceType]; denied {
 		return ""
 	}
 
 	parsed, err := awsarn.Parse(arn)
-	if err != nil || parsed.Partition != commercialPartition || parsed.Service != service {
+	if err != nil || parsed.Partition != commercialPartition {
 		return ""
 	}
 

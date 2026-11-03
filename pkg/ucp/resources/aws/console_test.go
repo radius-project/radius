@@ -85,7 +85,7 @@ func Test_ConsoleURL(t *testing.T) {
 			id:   "/planes/aws/other/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/b",
 		},
 		{
-			name: "unknown type has no link",
+			name: "unknown type with no ARN has no link",
 			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/t",
 		},
 		{
@@ -295,16 +295,22 @@ func Test_ConsoleURL_ResourcePage(t *testing.T) {
 			want: "https://us-west-2.console.aws.amazon.com/lambda/home?region=us-west-2#/functions",
 		},
 		{
-			name: "ARN of another service uses the list page",
-			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Lambda/Function/f",
-			arn:  "arn:aws:sqs:us-west-2:123456789012:f",
-			want: "https://us-west-2.console.aws.amazon.com/lambda/home?region=us-west-2#/functions",
-		},
-		{
-			name: "unverified type uses the list page",
+			name: "type with a list page that was not checked on the live console",
 			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.IAM/InstanceProfile/p",
 			arn:  "arn:aws:iam::123456789012:instance-profile/p",
-			want: "https://console.aws.amazon.com/iam/home#/roles",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Aiam%3A%3A123456789012%3Ainstance-profile%2Fp",
+		},
+		{
+			name: "type with no list page",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Kinesis/Stream/s",
+			arn:  "arn:aws:kinesis:us-west-2:123456789012:stream/s",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Akinesis%3Aus-west-2%3A123456789012%3Astream%2Fs",
+		},
+		{
+			name: "Terraform type with no list page",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_kinesis_stream/s",
+			arn:  "arn:aws:kinesis:us-west-2:123456789012:stream/s",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Akinesis%3Aus-west-2%3A123456789012%3Astream%2Fs",
 		},
 		{
 			name: "GovCloud ARN uses the GovCloud list page",
@@ -325,9 +331,9 @@ func Test_ConsoleURL_ResourcePage(t *testing.T) {
 			want: "https://console.amazonaws-eusc.eu/rds/home?region=eusc-de-east-1#databases:",
 		},
 		{
-			name: "unknown type with an ARN has no link",
-			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/t",
-			arn:  "arn:aws:unknown:us-west-2:123456789012:thing/t",
+			name: "GovCloud type with no list page has no link",
+			id:   "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.Kinesis/Stream/s",
+			arn:  "arn:aws-us-gov:kinesis:us-gov-west-1:123456789012:stream/s",
 		},
 		{
 			name: "resource that is not an AWS resource has no link",
@@ -346,25 +352,51 @@ func Test_ConsoleURL_ResourcePage(t *testing.T) {
 	}
 }
 
-func Test_resourcePageServices(t *testing.T) {
-	t.Parallel()
+// Test_ConsoleURL_ResourcePageDenyList is not parallel because it changes resourcePageDenyList. Parallel tests in
+// this package wait until it has finished and restored the list.
+func Test_ConsoleURL_ResourcePageDenyList(t *testing.T) {
+	resourcePageDenyList["aws.lambda/function"] = struct{}{}
+	t.Cleanup(func() { delete(resourcePageDenyList, "aws.lambda/function") })
 
-	for resourceType, service := range resourcePageServices {
-		require.Equal(t, strings.ToLower(resourceType), resourceType, "keys must be lower case")
-		require.Contains(t, consolePages, resourceType, "%s must have a list page to fall back to", resourceType)
-		require.NotEmpty(t, service, "%s must name its ARN service", resourceType)
-		require.Equal(t, strings.ToLower(service), service, "%s service must be lower case", resourceType)
+	tests := []struct {
+		name string
+		id   string
+		arn  string
+		want string
+	}{
+		{
+			name: "denied type uses the list page",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Lambda/Function/f",
+			arn:  "arn:aws:lambda:us-west-2:123456789012:function:f",
+			want: "https://us-west-2.console.aws.amazon.com/lambda/home?region=us-west-2#/functions",
+		},
+		{
+			name: "denied type matching is case-insensitive",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/aws.lambda/function/f",
+			arn:  "arn:aws:lambda:us-west-2:123456789012:function:f",
+			want: "https://us-west-2.console.aws.amazon.com/lambda/home?region=us-west-2#/functions",
+		},
+		{
+			name: "other types still get their resource page",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_lambda_function/f",
+			arn:  "arn:aws:lambda:us-west-2:123456789012:function:f",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Alambda%3Aus-west-2%3A123456789012%3Afunction%3Af",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			id, err := resources.Parse(tt.id)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, ConsoleURL(id, tt.arn))
+		})
 	}
 }
 
-func Test_consolePages(t *testing.T) {
+func Test_resourcePageDenyList(t *testing.T) {
 	t.Parallel()
 
-	for resourceType, page := range consolePages {
+	for resourceType := range resourcePageDenyList {
 		require.Equal(t, strings.ToLower(resourceType), resourceType, "keys must be lower case")
-		require.True(t, strings.HasPrefix(resourceType, "aws.") || strings.HasPrefix(resourceType, "terraform.aws/aws_"),
-			"%s must be an AWS or Terraform AWS type", resourceType)
-		require.True(t, strings.HasPrefix(page.path, "/"), "%s path must start with /", resourceType)
-		require.True(t, page.hash == "" || strings.HasPrefix(page.hash, "#"), "%s hash must start with #", resourceType)
 	}
 }

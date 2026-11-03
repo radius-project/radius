@@ -493,6 +493,14 @@ func Test_outputResourceEntryFromID(t *testing.T) {
 			wantPortalURL: "",
 		},
 		{
+			name:          "AWS ID of an unknown type with an ARN sets the resource's console URL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Kinesis/Stream/s1",
+			arn:           "arn:aws:kinesis:us-west-2:123456789012:stream/s1",
+			wantName:      "s1",
+			wantType:      "AWS.Kinesis/Stream",
+			wantPortalURL: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Akinesis%3Aus-west-2%3A123456789012%3Astream%2Fs1",
+		},
+		{
 			name:          "AWS ID in the global region omits PortalURL for a regional console page",
 			id:            "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.SQS/Queue/q2",
 			tenantID:      tenantID,

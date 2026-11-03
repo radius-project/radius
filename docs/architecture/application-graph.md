@@ -351,8 +351,8 @@ human-readable text representation:
      direction indicated by the `Direction` field.
    - `Resources:` — each output resource shown as `{name} ({type})`. Azure
      resources are rendered as clickable console hyperlinks to the Azure Portal,
-     and AWS resources of a known type to the AWS console: the resource's own
-     page when its ARN allows it, otherwise its service's list page.
+     and AWS resources to the AWS console: the resource's own page when it has
+     a commercial ARN, otherwise its service's list page when the type is known.
 
 Example output:
 
@@ -700,14 +700,17 @@ The CLI uses `GITHUB_HEAD_REF`, falling back to `GITHUB_REF_NAME`, as the source
   sequences (`\x1b]8;;`) for clickable hyperlinks from each output resource's
   `portalUrl`. Azure resources link to the resource in the Azure Portal. An AWS
   resource links to its own page in the AWS console, through
-  `https://console.aws.amazon.com/go/view?arn=<ARN>`, when it has an ARN in its
-  `providerResourceId`, the ARN is in the commercial `aws` partition, and its
-  type is one whose link has been checked in the console. AWS does not document
-  this redirect, so every other AWS resource, including resources with no ARN
-  and all GovCloud, China, and European Sovereign Cloud resources, links to its
-  service's list page in the AWS console, in the resource's region. The mapping
-  lives in `pkg/ucp/resources/aws/console.go` and covers both `AWS.*` types and
-  `Terraform.AWS/*` types from Terraform recipes. Resources in the `global`
+  `https://console.aws.amazon.com/go/view?arn=<ARN>`, when its
+  `providerResourceId` is an ARN in the commercial `aws` partition. This covers
+  both `AWS.*` types and `Terraform.AWS/*` types from Terraform recipes. AWS
+  does not document this redirect, and it is not known to work in GovCloud,
+  China, or European Sovereign Cloud. A type found not to work is added to
+  `resourcePageDenyList` in `pkg/ucp/resources/aws/console.go`. Every other AWS
+  resource, including resources with no ARN, deny-listed types, and all
+  GovCloud, China, and European Sovereign Cloud resources, links to its
+  service's list page in the AWS console, in the resource's region. The list
+  page mapping lives in the same file and covers both `AWS.*` and
+  `Terraform.AWS/*` types. Resources in the `global`
   region get a list page link only when their console page is global (S3 and
   IAM). GovCloud, China, and European Sovereign Cloud resources link to their
   own partition's console. Resources in the ISO partitions, and types with no

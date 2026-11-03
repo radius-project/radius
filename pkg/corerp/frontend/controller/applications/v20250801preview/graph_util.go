@@ -568,8 +568,8 @@ func getResourceTypeSpecificProperties(resourceType string, properties map[strin
 
 // outputResourceEntryFromID creates a outputResourceEntry from an output resource. When tenantID
 // is non-empty and the ID is an Azure ARM resource, the entry is decorated with a portal URL.
-// An AWS resource of a known type is decorated with a link to the AWS console, which opens the
-// resource's own page when its ARN allows it.
+// An AWS resource is decorated with a link to the AWS console: the resource's own page when it
+// has a commercial ARN, otherwise its service's list page when the type is known.
 func outputResourceEntryFromID(or outputResourceRef, tenantID string) corerpv20250801preview.ApplicationGraphOutputResource {
 	entry := corerpv20250801preview.ApplicationGraphOutputResource{
 		ID:   new(or.ID.String()),
