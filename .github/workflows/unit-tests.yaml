@@ -141,6 +141,12 @@ jobs:
       - name: Test publishing credential isolation
         run: make test-publishing-isolation
 
+      - name: Install native Bicep capture tools
+        run: make install-bicep install-oras install-yq
+
+      - name: Test native Bicep capture and preparation
+        run: make test-bicep-types-native
+
       - name: Run make test (unit tests)
         env:
           GOTESTSUM_OPTS: --junitfile ./dist/unit_test/results.xml
