@@ -156,6 +156,96 @@ test("full runs preserve all base suites and authorization dry runs", () => {
   );
 });
 
+const prBaseOnly = pr.filter(
+  ({ name, authzDryRun }) => !authzDryRun && name !== "authz-noncloud"
+);
+
+for (const { name, context, expected } of [
+  {
+    name: "main PR",
+    context: {
+      eventName: "pull_request",
+      payload: { pull_request: { base: { ref: "main" } } }
+    },
+    expected: prBaseOnly
+  },
+  {
+    name: "feature PR",
+    context: {
+      eventName: "pull_request",
+      payload: { pull_request: { base: { ref: "features/example" } } }
+    },
+    expected: prBaseOnly
+  },
+  {
+    name: "main merge queue",
+    context: {
+      eventName: "merge_group",
+      payload: { merge_group: { base_ref: "refs/heads/main" } }
+    },
+    expected: prBaseOnly
+  },
+  {
+    name: "manual PR profile",
+    context: {
+      eventName: "workflow_dispatch",
+      payload: { inputs: { "test-profile": "pr" } }
+    },
+    expected: prBaseOnly
+  },
+  {
+    name: "release PR keeps every authorization mode",
+    context: {
+      eventName: "pull_request",
+      payload: { pull_request: { base: { ref: "release/0.60" } } }
+    },
+    expected: full
+  },
+  ...["schedule", "repository_dispatch", "workflow_dispatch"].map(
+    (eventName) => ({
+      name: `${eventName} keeps every authorization mode`,
+      context: { eventName },
+      expected: full
+    })
+  )
+]) {
+  test(`${name} without authorization changes selects the intended jobs`, () => {
+    const result = selectNonCloudTests({ ...context, authzChanged: false });
+    assert.deepEqual(result.matrix.include, expected);
+    assert.equal(result.authzModes, expected === full);
+  });
+}
+
+test("PR profile without authorization changes keeps default-mode suites", () => {
+  assert.deepEqual(
+    prBaseOnly.map(({ name }) => name),
+    [
+      "cli-noncloud",
+      "corerp-noncloud",
+      "database-noncloud",
+      "kubernetes-noncloud",
+      "multicluster-noncloud",
+      "statestore-noncloud",
+      "samples-noncloud",
+      "ucp-noncloud",
+      "dynamicrp-noncloud",
+      "upgrade-noncloud"
+    ]
+  );
+});
+
+test("missing authorization change result keeps every authorization mode", () => {
+  const context = {
+    eventName: "pull_request",
+    payload: { pull_request: { base: { ref: "main" } } }
+  };
+  assert.deepEqual(selectNonCloudTests(context).matrix.include, pr);
+  assert.deepEqual(
+    selectNonCloudTests({ ...context, authzChanged: true }).matrix.include,
+    pr
+  );
+});
+
 for (const { context, error } of [
   { context: {}, error: /event name is required/ },
   {
