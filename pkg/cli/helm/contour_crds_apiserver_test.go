@@ -136,6 +136,61 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		requireCRDsUnchanged(t, crdClient, traefikCRDs)
 	})
 
+	// The routes Gateway action of the Radius AI extensions creates the Gateway API CRDs that Contour watches with
+	// kubectl create, labeled app.kubernetes.io/managed-by: radius-repo and without Helm's ownership metadata. They stay
+	// after rad uninstall kubernetes --purge.
+	t.Run("Gateway API CRDs that another installer created with kubectl", func(t *testing.T) {
+		kubeconfig, crdClient := startGatewayAPITestServer(t)
+		routesCRDs := routesGatewayCRDs()
+		for _, err := range createCRDs(t, crdClient, routesCRDs) {
+			require.NoError(t, err)
+		}
+		requireCRDsUnchanged(t, crdClient, routesCRDs)
+		radiusChart, contourChart := writeStubCharts(t)
+
+		// rad install kubernetes v0.62.0 installed Radius, and then forced the Contour chart to manage the CRDs, which Helm
+		// rejects without recording a Contour release.
+		loadedRadius, err := loader.Load(radiusChart)
+		require.NoError(t, err)
+		_, err = NewHelmClient().RunHelmInstall(newTestHelmConfiguration(t, kubeconfig, RadiusSystemNamespace), loadedRadius, nil,
+			radiusReleaseName, RadiusSystemNamespace, false, time.Minute)
+		require.NoError(t, err)
+		loadedContour, err := loader.Load(contourChart)
+		require.NoError(t, err)
+		_, err = NewHelmClient().RunHelmInstall(newTestHelmConfiguration(t, kubeconfig, RadiusSystemNamespace), loadedContour,
+			map[string]any{"gatewayAPI": map[string]any{"manageCRDs": true}}, contourReleaseName, RadiusSystemNamespace, false, time.Minute)
+		require.ErrorContains(t, err, "invalid ownership metadata")
+		require.ErrorContains(t, err, `label validation error: key "app.kubernetes.io/managed-by" must equal "Helm": current value is "radius-repo"`)
+		requireNoRelease(t, kubeconfig, contourReleaseName)
+
+		// rad install kubernetes then finds Radius without Contour, so it prints rad install kubernetes --reinstall, which
+		// installs Contour with these CRDs. They serve every version that Contour 1.32.0 watches, so it needs no flags.
+		impl := &Impl{Helm: NewHelmClient()}
+		state, err := impl.CheckRadiusInstall(testKubeContext)
+		require.NoError(t, err)
+		require.True(t, state.RadiusInstalled)
+		require.False(t, state.ContourInstalled)
+		reinstall := stubClusterOptions(radiusChart, contourChart)
+		reinstall.Radius.Reinstall = true
+		require.NoError(t, impl.InstallRadius(t.Context(), reinstall, testKubeContext))
+		release := getTestRelease(t, kubeconfig, contourReleaseName)
+		require.Equal(t, false, nestedValue(release.Config, "gatewayAPI", "manageCRDs"))
+		requireRenderedContourValues(t, release, "false", "[]")
+		requireCRDsUnchanged(t, crdClient, routesCRDs)
+
+		// An upgrade keeps using them.
+		require.NoError(t, impl.UpgradeRadius(t.Context(), stubClusterOptions(radiusChart, contourChart), testKubeContext))
+		require.Equal(t, 2, getTestRelease(t, kubeconfig, contourReleaseName).Version)
+		requireCRDsUnchanged(t, crdClient, routesCRDs)
+		for _, crd := range routesCRDs {
+			object, err := crdClient.ApiextensionsV1().CustomResourceDefinitions().Get(t.Context(), crd.name, metav1.GetOptions{})
+			require.NoError(t, err)
+			for key, value := range crd.annotations {
+				require.Equal(t, value, object.Annotations[key], "%s keeps the annotations of the installer that created it", crd.name)
+			}
+		}
+	})
+
 	t.Run("cluster without Gateway API CRDs", func(t *testing.T) {
 		kubeconfig, crdClient := startGatewayAPITestServer(t)
 		radiusChart, contourChart := writeStubCharts(t)

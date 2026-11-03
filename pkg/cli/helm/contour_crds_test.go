@@ -260,6 +260,35 @@ func Test_gatewayAPICRDCheck(t *testing.T) {
 			wantManageCRDs: false,
 		},
 		{
+			// The routes Gateway action of the Radius AI extensions creates these CRDs with kubectl and installs a Contour
+			// release that does not manage them. The CRDs stay after rad uninstall kubernetes --purge removes that release,
+			// and Helm rejects them for a chart that renders them: the managed-by label is not Helm.
+			name:           "Gateway API CRDs that another installer created with kubectl and labeled as its own",
+			crds:           routesGatewayCRDs(),
+			wantManageCRDs: false,
+		},
+		{
+			name:           "Gateway API CRDs that another installer labeled as its own, with gatewayAPI.manageCRDs=true set by the user",
+			crds:           routesGatewayCRDs(),
+			values:         map[string]any{"gatewayAPI": map[string]any{"manageCRDs": true}},
+			wantManageCRDs: true,
+			wantErr: []string{
+				"these Gateway API CRDs already exist and belong to something else",
+				`  - backendtlspolicies.gateway.networking.k8s.io (owned by "radius-repo")` + "\n",
+				`  - udproutes.gateway.networking.k8s.io (owned by "radius-repo")` + "\n",
+				"Remove the gatewayAPI.manageCRDs=true Contour value",
+			},
+			wantNotErr: []string{"backendlbpolicies", "owned by Helm", "owned by an installer other than Helm"},
+		},
+		{
+			// rad upgrade kubernetes, and rad install kubernetes --reinstall, upgrade the Contour release of that action.
+			name:           "upgrade of a Contour release that does not manage the Gateway API CRDs that another installer labeled as its own",
+			crds:           routesGatewayCRDs(),
+			upgrade:        true,
+			stored:         map[string]any{"gatewayAPI": map[string]any{"manageCRDs": false}},
+			wantManageCRDs: false,
+		},
+		{
 			name:           "missing CRD that Contour always watches",
 			crds:           traefikWithoutHTTPRoutes,
 			values:         turnOffUnsupportedFeatures,
@@ -2528,6 +2557,19 @@ func contourBundleCRDs() []crdInfo {
 // withoutCRDs returns crds without the CRDs with the given names.
 func withoutCRDs(crds []crdInfo, names ...string) []crdInfo {
 	return slices.DeleteFunc(slices.Clone(crds), func(crd crdInfo) bool { return slices.Contains(names, crd.name) })
+}
+
+// routesGatewayCRDs returns the Gateway API CRDs that the routes Gateway action of the Radius AI extensions
+// (.github/extension/actions/manage-routes-gateway/routes-gateway.sh) creates with kubectl create: the experimental
+// channel v1.2.1 CRDs that Contour 1.32.0 bundles, except BackendLBPolicy, labeled as its own, with its ownership
+// annotation, and without Helm's ownership metadata.
+func routesGatewayCRDs() []crdInfo {
+	crds := withoutCRDs(contourBundleCRDs(), "backendlbpolicies."+gatewayAPIGroup)
+	for i := range crds {
+		crds[i].labels = map[string]string{helmManagedByLabel: "radius-repo"}
+		crds[i].annotations = map[string]string{"radius-project.io/routes-gateway-lifecycle": "v1"}
+	}
+	return crds
 }
 
 // keptCRDs returns crds with the helm.sh/resource-policy: keep annotation.
