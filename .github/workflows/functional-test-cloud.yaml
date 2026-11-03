@@ -1290,11 +1290,11 @@ jobs:
             const { testStatus } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-context.mjs`);
             const needs = JSON.parse(process.env.NEEDS_JSON);
             const status = testStatus(needs);
-            core.setOutput('test_status', status);
             await core.summary.addHeading('Functional test results')
               .addRaw(`Producer tag: ${process.env.REL_VERSION || 'not produced'}\n`)
               .addTable([['Phase', 'Result'], ...Object.entries(needs).map(([name, job]) => [name, job.result])])
               .write();
+            core.setOutput('test_status', status);
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
           REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
