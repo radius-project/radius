@@ -328,6 +328,9 @@ model WhoAmIResult {
 
   @doc("Whether the caller has Radius Administrator access.")
   isRadiusAdministrator: boolean;
+
+  @doc("Adoption and recovery warnings derived from the same fresh policy. No assignment identifiers or other principals are disclosed.")
+  warnings?: string[];
 }
 
 @doc("A permission and concrete target to evaluate. A reference never implies access to its target.")
