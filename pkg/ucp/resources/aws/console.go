@@ -18,8 +18,11 @@ package aws
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
+
+	awsarn "github.com/aws/aws-sdk-go-v2/aws/arn"
 
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
@@ -30,6 +33,12 @@ const (
 	govCloudConsoleHost          = "console.amazonaws-us-gov.com"
 	chinaConsoleHost             = "console.amazonaws.cn"
 	europeanSovereignConsoleHost = "console.amazonaws-eusc.eu"
+
+	// resourcePageURLPrefix is the commercial console redirect that opens the page of the resource an ARN names.
+	resourcePageURLPrefix = "https://console.aws.amazon.com/go/view?arn="
+
+	// commercialPartition is the ARN partition of the commercial AWS regions.
+	commercialPartition = "aws"
 
 	// globalRegion is the region Radius uses for AWS resources whose ARN has no region, such as S3 buckets.
 	globalRegion = "global"
@@ -113,8 +122,8 @@ var (
 )
 
 // consolePages maps each known AWS resource type, keyed by its lower-cased UCP type, to the console list page of its
-// service. A list page is used because AWS has no documented link format to a single resource that works for every
-// type. The region is a query parameter, so the hash, when present, follows it.
+// service. A list page is the fallback for resources without a resource page link, because AWS has no documented link
+// format to a single resource that works for every type. The region is a query parameter, so the hash, when present, follows it.
 //
 // AWS.* types are deployed through UCP. Terraform.AWS/* types are discovered from Terraform recipe state, which records
 // only resources with an arn attribute, so Terraform types without one are not listed.
@@ -212,17 +221,62 @@ var consolePages = map[string]consolePage{
 	"terraform.aws/aws_sqs_queue":                     sqsQueues,
 }
 
-// ConsoleURL returns a link to the AWS console list page of the service that owns the resource id, in the region the
-// ID names. GovCloud, China, and European Sovereign Cloud regions use the console of their partition. A resource in the
-// global region links only when its console page is global, such as S3 buckets, using the console of the partition
-// the AWS plane names. It returns "" when id is not an AWS resource, its type has no known page, or its region is
-// missing or not a valid region name, so a caller never shows a made-up link.
-func ConsoleURL(id resources.ID) string {
+// resourcePageServices maps each AWS resource type, keyed by its lower-cased UCP type, whose ARN opens the resource's
+// own page through the console's go/view redirect, to the service its ARN names. AWS does not document the redirect,
+// so a type is listed only after its link has been checked in the commercial console. The redirect is not known to
+// work in GovCloud or China, so other partitions keep their list page.
+//
+// AWS.SecretsManager/Secret is not listed because the Bicep driver stores no ARN for it.
+var resourcePageServices = map[string]string{
+	"aws.dynamodb/table":    "dynamodb",
+	"aws.ecr/repository":    "ecr",
+	"aws.eks/cluster":       "eks",
+	"aws.iam/managedpolicy": "iam",
+	"aws.iam/role":          "iam",
+	"aws.lambda/function":   "lambda",
+	"aws.logs/loggroup":     "logs",
+	"aws.rds/dbcluster":     "rds",
+	"aws.rds/dbinstance":    "rds",
+	"aws.s3/bucket":         "s3",
+	"aws.sns/topic":         "sns",
+	"aws.sqs/queue":         "sqs",
+
+	"terraform.aws/aws_cloudwatch_log_group":  "logs",
+	"terraform.aws/aws_db_instance":           "rds",
+	"terraform.aws/aws_dynamodb_table":        "dynamodb",
+	"terraform.aws/aws_ecr_repository":        "ecr",
+	"terraform.aws/aws_eks_cluster":           "eks",
+	"terraform.aws/aws_iam_policy":            "iam",
+	"terraform.aws/aws_iam_role":              "iam",
+	"terraform.aws/aws_lambda_function":       "lambda",
+	"terraform.aws/aws_rds_cluster":           "rds",
+	"terraform.aws/aws_rds_cluster_instance":  "rds",
+	"terraform.aws/aws_s3_bucket":             "s3",
+	"terraform.aws/aws_secretsmanager_secret": "secretsmanager",
+	"terraform.aws/aws_sns_topic":             "sns",
+	"terraform.aws/aws_sqs_queue":             "sqs",
+}
+
+// ConsoleURL returns a link to the AWS console for the resource id, or "" when there is none, so a caller never shows
+// a made-up link. arn is the resource's ARN, or "" when it is not known.
+//
+// When the type's resource page link has been checked and arn is a commercial ARN of the type's service, the link opens
+// the resource's own page. Otherwise it opens the list page of the service that owns the resource, in the region the ID
+// names. GovCloud, China, and European Sovereign Cloud regions use the console of their partition. A resource in the
+// global region gets a list page link only when that page is global, such as S3 buckets, using the console of the
+// partition the AWS plane names. There is no link when id is not an AWS resource, its type has no known page, or its
+// region is missing or not a valid region name.
+func ConsoleURL(id resources.ID, arn string) string {
 	if !IsAWSResource(id) {
 		return ""
 	}
 
-	page, ok := consolePages[strings.ToLower(id.Type())]
+	resourceType := strings.ToLower(id.Type())
+	if link := resourcePageURL(resourceType, arn); link != "" {
+		return link
+	}
+
+	page, ok := consolePages[resourceType]
 	if !ok {
 		return ""
 	}
@@ -248,4 +302,20 @@ func ConsoleURL(id resources.ID) string {
 	}
 
 	return ""
+}
+
+// resourcePageURL returns a link to the console page of the resource arn names, or "" when resourceType has no checked
+// resource page link, or arn is not a commercial ARN of the type's service.
+func resourcePageURL(resourceType string, arn string) string {
+	service, ok := resourcePageServices[resourceType]
+	if !ok {
+		return ""
+	}
+
+	parsed, err := awsarn.Parse(arn)
+	if err != nil || parsed.Partition != commercialPartition || parsed.Service != service {
+		return ""
+	}
+
+	return resourcePageURLPrefix + url.QueryEscape(arn)
 }

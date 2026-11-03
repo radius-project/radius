@@ -400,6 +400,10 @@ func Test_azurePortalURL(t *testing.T) {
 const (
 	testAWSQueueID  = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SQS/Queue/q1"
 	testAWSQueueURL = "https://us-west-2.console.aws.amazon.com/sqs/v3/home?region=us-west-2#/queues"
+
+	testAWSFunctionID         = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Lambda/Function/f1"
+	testAWSFunctionARN        = "arn:aws:lambda:us-west-2:123456789012:function:f1"
+	testAWSFunctionConsoleURL = "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Alambda%3Aus-west-2%3A123456789012%3Afunction%3Af1"
 )
 
 func Test_outputResourceEntryFromID(t *testing.T) {
@@ -410,6 +414,7 @@ func Test_outputResourceEntryFromID(t *testing.T) {
 	tests := []struct {
 		name          string
 		id            string
+		arn           string
 		tenantID      string
 		wantName      string
 		wantType      string
@@ -438,6 +443,22 @@ func Test_outputResourceEntryFromID(t *testing.T) {
 			wantName:      "q1",
 			wantType:      "AWS.SQS/Queue",
 			wantPortalURL: testAWSQueueURL,
+		},
+		{
+			name:          "AWS ID with an ARN sets the resource's console URL",
+			id:            testAWSFunctionID,
+			arn:           testAWSFunctionARN,
+			wantName:      "f1",
+			wantType:      "AWS.Lambda/Function",
+			wantPortalURL: testAWSFunctionConsoleURL,
+		},
+		{
+			name:          "AWS ID with a GovCloud ARN sets the GovCloud console list URL",
+			id:            "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.Lambda/Function/f2",
+			arn:           "arn:aws-us-gov:lambda:us-gov-west-1:123456789012:function:f2",
+			wantName:      "f2",
+			wantType:      "AWS.Lambda/Function",
+			wantPortalURL: "https://console.amazonaws-us-gov.com/lambda/home?region=us-gov-west-1#/functions",
 		},
 		{
 			name:          "AWS ID in a GovCloud region sets the GovCloud console URL",
@@ -518,7 +539,7 @@ func Test_outputResourceEntryFromID(t *testing.T) {
 			id, err := resources.Parse(tt.id)
 			require.NoError(t, err)
 
-			entry := outputResourceEntryFromID(id, tt.tenantID)
+			entry := outputResourceEntryFromID(outputResourceRef{ID: id, ProviderResourceID: tt.arn}, tt.tenantID)
 
 			require.NotNil(t, entry.ID)
 			require.Equal(t, tt.id, *entry.ID)
@@ -879,6 +900,7 @@ func Test_computeGraph_portalLinksInGraphJSON(t *testing.T) {
 			want: map[string]*string{
 				azureStorageID:         &azureURL,
 				testAWSQueueID:         to.Ptr(testAWSQueueURL),
+				testAWSFunctionID:      to.Ptr(testAWSFunctionConsoleURL),
 				terraformBucketID:      to.Ptr("https://console.aws.amazon.com/s3/buckets"),
 				kubernetesDeploymentID: nil,
 			},
@@ -888,6 +910,7 @@ func Test_computeGraph_portalLinksInGraphJSON(t *testing.T) {
 			want: map[string]*string{
 				azureStorageID:         nil,
 				testAWSQueueID:         to.Ptr(testAWSQueueURL),
+				testAWSFunctionID:      to.Ptr(testAWSFunctionConsoleURL),
 				terraformBucketID:      to.Ptr("https://console.aws.amazon.com/s3/buckets"),
 				kubernetesDeploymentID: nil,
 			},
@@ -898,7 +921,11 @@ func Test_computeGraph_portalLinksInGraphJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			outputResources := []any{}
 			for id := range tt.want {
-				outputResources = append(outputResources, map[string]any{"id": id})
+				or := map[string]any{"id": id}
+				if id == testAWSFunctionID {
+					or["providerResourceId"] = testAWSFunctionARN
+				}
+				outputResources = append(outputResources, or)
 			}
 			container := generated.GenericResource{
 				ID:   to.Ptr(containerID),
