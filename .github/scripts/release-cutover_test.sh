@@ -122,15 +122,14 @@ test_publication_gate() {
           (.if | contains("promote_channel")) and
           (."continue-on-error" // false) == false)) and
         (."finalize-release".steps | map(.name) |
-          index("Recheck outputs after approval") < index("Authenticate tagged finalizer for ACR compatibility") and
+          index("Recheck outputs after approval") < index("Get Bicep promotion token") and
           index("Promote and mirror locked Bicep extensions") < index("Publish and verify draft GitHub Release")) and
-        ."finalize-release".permissions."id-token" == "write" and
+        ."finalize-release".permissions."id-token" == null and
         (."finalize-release".steps | any(
-          .name == "Authenticate tagged finalizer for ACR compatibility" and
-          .run == "node .github/scripts/azure-oidc-login.mjs" and
-          .env.AZURE_CLIENT_ID == "${{ secrets.BICEPTYPES_CLIENT_ID }}" and
-          .env.AZURE_TENANT_ID == "${{ secrets.BICEPTYPES_TENANT_ID }}" and
-          .env.AZURE_SUBSCRIPTION_ID == "${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}")) and
+          .name == "Promote and mirror locked Bicep extensions" and
+          .with."github-token" == "${{ steps.promotion-token.outputs.token }}" and
+          (.with.script | contains("promote-release-bicep.mjs")))) and
+        (."finalize-release".steps | all(.[]; ((.run // "") | test("azure-oidc-login|az acr")) | not)) and
         ."publish-radius-bicep-extension".uses == "./.github/workflows/__publish-release-bicep.yaml" and
         (."publish-legacy-bicep-types".if | contains("ghcr-bicep == '\''false'\''")) and
         (."publish-radius-bicep-extension".if | contains("ghcr-bicep == '\''true'\''")) and
@@ -139,6 +138,8 @@ test_publication_gate() {
         (."finalize-release".steps | map(select(
           .name == "Get Bicep promotion token" or .name == "Promote verified Bicep aliases")) |
           length == 2 and all(.[]; .if | contains("ghcr-bicep == '\''false'\''"))) and
+        (."finalize-release".steps | any(.name == "Get Bicep promotion token" and
+          (.if | contains("ghcr-bicep == '\''true'\''")))) and
         (."finalize-release".steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json"))
     ' >/dev/null; then
         fail_test "failed verification or missing approval can reach publication"

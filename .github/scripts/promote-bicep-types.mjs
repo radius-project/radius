@@ -1,9 +1,20 @@
 import { readFile } from "node:fs/promises";
 import monitorRemoteWorkflow from "./monitor-remote-workflow.mjs";
 import { validatePublicationManifest } from "./publish-draft-release.mjs";
+import { verifyBicepExtensionOutputs } from "./release-bicep-extensions.mjs";
 
-export function promotionRequests(manifest, tag, sourceSha) {
+export function promotionRequests(manifest, tag, sourceSha, plan, lock) {
   validatePublicationManifest(manifest, tag, sourceSha);
+  if (plan || lock) {
+    if (plan?.version !== tag)
+      throw new Error("Bicep promotion plan tag mismatch");
+    verifyBicepExtensionOutputs(
+      plan,
+      sourceSha,
+      lock,
+      manifest.observed?.downstream?.ociArtifacts
+    );
+  }
   const version = tag.replace(/^v/, "");
   if (
     !/^v\d+\.\d+\.\d+$/.test(tag) ||
@@ -19,7 +30,10 @@ export function promotionRequests(manifest, tag, sourceSha) {
     const artifact = artifacts?.[0];
     if (
       artifacts?.length !== 1 ||
-      artifact.reference !== `biceptypes.azurecr.io/${target}:${version}` ||
+      artifact.reference !==
+        (plan ?
+          `ghcr.io/radius-project/bicep-types-${target}:${version}`
+        : `biceptypes.azurecr.io/${target}:${version}`) ||
       !/^sha256:[0-9a-f]{64}$/.test(artifact.descriptor?.digest)
     ) {
       throw new Error(`No verified immutable ${target} Bicep artifact`);
@@ -33,6 +47,35 @@ export function promotionRequests(manifest, tag, sourceSha) {
       digest: artifact.descriptor.digest,
       release_identifier: `${version}-${sourceSha}-${target}`
     };
+  });
+}
+
+export async function dispatchPromotion(
+  github,
+  core,
+  request,
+  monitor = monitorRemoteWorkflow
+) {
+  const inputs = {
+    OWNER: "azure-octo",
+    REPO: "radius-publisher",
+    WORKFLOW_FILE: "promote-bicep-types.yml",
+    EVENT_TYPE: "bicep-types.promote",
+    RELEASE_IDENTIFIER: request.release_identifier,
+    CLIENT_PAYLOAD: JSON.stringify(request),
+    REUSE_SUCCESSFUL: "false",
+    MAX_WAIT_SECONDS: "300",
+    POLL_INTERVAL_SECONDS: "10"
+  };
+  await monitor({
+    github,
+    core: {
+      ...core,
+      getInput: (name) => inputs[name] ?? "",
+      setFailed: (message) => {
+        throw new Error(message);
+      }
+    }
   });
 }
 
@@ -51,30 +94,15 @@ export default async function promoteBicepTypes({
     core.getInput("SOURCE_SHA", { required: true })
   );
   for (const request of requests) {
-    const inputs = {
-      OWNER: "azure-octo",
-      REPO: "radius-publisher",
-      WORKFLOW_FILE: "promote-bicep-types.yml",
-      EVENT_TYPE: "bicep-types.promote",
-      RELEASE_IDENTIFIER: request.release_identifier,
-      CLIENT_PAYLOAD: JSON.stringify(request),
-      // Mutable aliases must be reconciled again, not inferred from an old run.
-      REUSE_SUCCESSFUL: "false",
-      MAX_WAIT_SECONDS: "300",
-      POLL_INTERVAL_SECONDS: "10"
-    };
-    await monitor({
+    await dispatchPromotion(
       github,
-      context,
-      core: {
+      {
         ...core,
-        getInput: (name) => inputs[name] ?? "",
         setOutput: (name, value) =>
-          core.setOutput(`${request.registry_target}_${name}`, value),
-        setFailed: (message) => {
-          throw new Error(message);
-        }
-      }
-    });
+          core.setOutput(`${request.registry_target}_${name}`, value)
+      },
+      request,
+      monitor
+    );
   }
 }

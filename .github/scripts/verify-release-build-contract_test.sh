@@ -169,8 +169,6 @@ main() {
           "github.repository == '\''radius-project/radius'\'' && startsWith(github.ref, '\''refs/tags/v'\'') && needs.release-preflight.outputs.release-state != '\''published'\''" |
         del(.jobs."publish-radius-bicep-extension", .jobs."publish-legacy-bicep-types") |
         .jobs."finalize-release".steps |= map(select(
-          .name != "Authenticate tagged finalizer for ACR compatibility" and
-          .name != "Login to fixed compatibility registry" and
           .name != "Promote and mirror locked Bicep extensions" and
           .name != "Retain partial Bicep promotion and mirror receipt")) |
         (.jobs."finalize-release".steps[] | select(
@@ -226,8 +224,10 @@ main() {
         '(.jobs."finalize-release".steps[] | select(.name == "Promote verified Bicep aliases")).if += " || true"' \
         '(.jobs."finalize-release".steps[] | select(.name == "Promote and mirror locked Bicep extensions")).if = "false"' \
         '(.jobs."finalize-release".steps[] | select(.name == "Promote and mirror locked Bicep extensions"))."continue-on-error" = true' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Authenticate tagged finalizer for ACR compatibility")).if = "true"' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Login to fixed compatibility registry")).if = "true"' \
+        '.jobs."finalize-release".permissions."id-token" = "write"' \
+        '.jobs."finalize-release".env.BICEPTYPES_CLIENT_ID = "forbidden"' \
+        '.jobs."finalize-release".steps += [{"name":"Unexpected Azure login","run":"az acr login --name biceptypes"}]' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Get Bicep promotion token")).with.repositories = "other"' \
         '.jobs."publish-legacy-bicep-types".if += " || true"' \
         '.jobs."publish-radius-bicep-extension".if = "true"' \
         '(.jobs."build-and-push-remaining-images".steps[] | select(.run == "make docker-publish-bicep")).env.BICEP_RELEASE_PLAN = ""' \

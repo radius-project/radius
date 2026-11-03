@@ -265,32 +265,32 @@ verify_bicep_contract() {
         "needs.release-preflight.outputs.ghcr-bicep == '\''false'\'' &&
          env.UPDATE_RELEASE == '\''true'\'' &&
          steps.alias-policy.outputs.promote_channel == '\''true'\''" as $legacy |
-        ($finalize | step("Get Bicep promotion token"; $legacy)) and
+        ($ghcr + " || (" + $legacy + ")") as $transport |
+        ($finalize | step("Get Bicep promotion token"; $transport)) and
         ($finalize | step("Promote verified Bicep aliases"; $legacy)) and
         ($finalize | step("Promote and mirror locked Bicep extensions"; $ghcr)) and
         ([$finalize.steps[] | select(.uses // "" | contains("create-github-app-token"))] |
-            length == 1 and all(.[]; .name == "Get Bicep promotion token" and exact_if($legacy))) and
-        ($finalize | step("Authenticate tagged finalizer for ACR compatibility";
-            $ghcr + " && (contains(github.ref_name, '\''-rc.'\'') ||
-            steps.alias-policy.outputs.promote_channel == '\''true'\'')")) and
-        ($finalize | step("Login to fixed compatibility registry";
-            $ghcr + " && (contains(github.ref_name, '\''-rc.'\'') ||
-            steps.alias-policy.outputs.promote_channel == '\''true'\'')")) and
+            length == 1 and all(.[]; .name == "Get Bicep promotion token" and exact_if($transport) and
+                .with.owner == "azure-octo" and .with.repositories == "radius-publisher" and
+                .with."permission-actions" == "read" and .with."permission-contents" == "write")) and
+        $finalize.permissions."id-token" == null and
+        ($finalize | tojson | test("BICEPTYPES_|AZURE_CLIENT_ID|AZURE_TENANT_ID|AZURE_SUBSCRIPTION_ID") | not) and
+        ($finalize.steps | all(.[]; ((.run // "") | test("azure-oidc-login|az acr|oras cp.*azurecr")) | not)) and
+        ($finalize.steps | all(.[]; ((.uses // "") | startswith("azure/")) | not)) and
         ($steps | index("Persist the verified release manifest")) <
             ($steps | index("Get Bicep promotion token")) and
         ($steps | index("Promote stable aliases")) <
-            ($steps | index("Authenticate tagged finalizer for ACR compatibility")) and
-        ($steps | index("Authenticate tagged finalizer for ACR compatibility")) <
-            ($steps | index("Login to fixed compatibility registry")) and
-        ($steps | index("Login to fixed compatibility registry")) <
             ($steps | index("Promote and mirror locked Bicep extensions")) and
         ($steps | index("Promote and mirror locked Bicep extensions")) <
             ($steps | index("Publish and verify draft GitHub Release")) and
         ($finalize.steps | any(.name == "Promote and mirror locked Bicep extensions" and
-            (.run | contains("release-oci-artifacts.sh finalize-bicep")) and
-            (.run | contains("--bicep-lock dist/verification/assets/bicep-extension-lock.json")) and
-            .env.RELEASE_PROMOTE_CHANNEL == "${{ steps.alias-policy.outputs.promote_channel }}" and
-            .env.RELEASE_PROMOTE_LATEST == "${{ steps.alias-policy.outputs.promote_latest }}")) and
+            (.with.script | contains("promote-release-bicep.mjs")) and
+            .with."github-token" == "${{ steps.promotion-token.outputs.token }}" and
+            .env.INPUT_LOCK_FILE == "dist/verification/assets/bicep-extension-lock.json" and
+            .env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json" and
+            .env.INPUT_PLAN_FILE == "dist/verification/plan.json" and
+            .env.INPUT_PROMOTE_CHANNEL == "${{ steps.alias-policy.outputs.promote_channel }}" and
+            .env.INPUT_PROMOTE_LATEST == "${{ steps.alias-policy.outputs.promote_latest }}")) and
         ($jobs."publish-legacy-bicep-types" | exact_if(
             "github.repository == '\''radius-project/radius'\'' &&
              startsWith(github.ref, '\''refs/tags/v'\'') &&
