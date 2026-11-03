@@ -35,6 +35,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/ucp"
+	"github.com/radius-project/radius/pkg/ucp/authorization"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
@@ -82,6 +83,13 @@ func (s *Service) Name() string {
 // registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
 // returns an http server and an error if one occurs.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
+	if s.options.Config.CallerAuthentication != nil && s.options.Config.Server.TLSCertificateDirectory == "" {
+		return nil, fmt.Errorf("caller authentication requires a TLS server certificate directory")
+	}
+	authenticator, err := authorization.NewRequestHeaderAuthenticator(s.options.Config.CallerAuthentication)
+	if err != nil {
+		return nil, err
+	}
 	r := chi.NewRouter()
 
 	// Allow tests to override the default modules.
@@ -91,7 +99,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		modules = DefaultModules(s.options)
 	}
 
-	err := Register(ctx, r, modules, s.options)
+	err = Register(ctx, r, modules, s.options)
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +111,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 	app := http.Handler(r)
 	app = servicecontext.ARMRequestCtx(s.options.Config.Server.PathBase, s.options.Config.Environment.RoleLocation)(app)
+	app = authenticator.Middleware(app)
 	app = middleware.WithLogger(app)
 
 	app = otelhttp.NewHandler(
@@ -116,7 +125,8 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	app = middleware.RemoveRemoteAddr(app)
 
 	server := &http.Server{
-		Addr: s.options.Config.Server.Address(),
+		Addr:      s.options.Config.Server.Address(),
+		TLSConfig: authenticator.TLSConfig(),
 		// Need to be able to respond to requests with planes and resourcegroups segments with any casing e.g.: /Planes, /resourceGroups
 		// AWS SDK is case sensitive. Therefore, cannot use lowercase middleware. Therefore, introducing a new middleware that translates
 		// the path for only these segments and preserves the case for the other parts of the path.
