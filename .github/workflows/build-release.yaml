@@ -1158,7 +1158,6 @@ jobs:
       actions: read
       deployments: read # Required to recheck the previous RC's coordination receipts
       attestations: read # Required to recheck the release provenance
-      id-token: write # Tagged finalizer's explicitly configured ACR mirror identity
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1268,8 +1267,9 @@ jobs:
       - name: Get Bicep promotion token
         id: promotion-token
         if: >-
-          needs.release-preflight.outputs.ghcr-bicep == 'false' &&
-          env.UPDATE_RELEASE == 'true' && steps.alias-policy.outputs.promote_channel == 'true'
+          needs.release-preflight.outputs.ghcr-bicep == 'true' ||
+          (needs.release-preflight.outputs.ghcr-bicep == 'false' &&
+           env.UPDATE_RELEASE == 'true' && steps.alias-policy.outputs.promote_channel == 'true')
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
@@ -1303,42 +1303,30 @@ jobs:
           INPUT_TAG: ${{ github.ref_name }}
           INPUT_SOURCE_SHA: ${{ env.SOURCE_SHA }}
 
-      - name: Authenticate tagged finalizer for ACR compatibility
-        if: >-
-          needs.release-preflight.outputs.ghcr-bicep == 'true' &&
-          (contains(github.ref_name, '-rc.') ||
-           steps.alias-policy.outputs.promote_channel == 'true')
-        run: node .github/scripts/azure-oidc-login.mjs
-        env:
-          AZURE_CLIENT_ID: ${{ secrets.BICEPTYPES_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.BICEPTYPES_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
-
-      - name: Login to fixed compatibility registry
-        if: >-
-          needs.release-preflight.outputs.ghcr-bicep == 'true' &&
-          (contains(github.ref_name, '-rc.') ||
-           steps.alias-policy.outputs.promote_channel == 'true')
-        run: az acr login --name biceptypes
-
       - name: Promote and mirror locked Bicep extensions
         if: needs.release-preflight.outputs.ghcr-bicep == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.promotion-token.outputs.token }}
+          script: |
+            const {default: finalize} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/promote-release-bicep.mjs`)
+            await finalize({github, core, context})
         env:
-          RELEASE_PROMOTE_CHANNEL: ${{ steps.alias-policy.outputs.promote_channel }}
-          RELEASE_PROMOTE_LATEST: ${{ steps.alias-policy.outputs.promote_latest }}
-        run: |
-          bash ./.github/scripts/release-oci-artifacts.sh finalize-bicep \
-            --version "${REL_VERSION}" --source-sha "${SOURCE_SHA}" \
-            --bicep-plan dist/verification/plan.json \
-            --bicep-lock dist/verification/assets/bicep-extension-lock.json \
-            --output dist/bicep-publication-receipt.json
+          INPUT_PLAN_FILE: dist/verification/plan.json
+          INPUT_LOCK_FILE: dist/verification/assets/bicep-extension-lock.json
+          INPUT_MANIFEST_FILE: dist/verification/release-manifest.json
+          INPUT_PROMOTE_CHANNEL: ${{ steps.alias-policy.outputs.promote_channel }}
+          INPUT_PROMOTE_LATEST: ${{ steps.alias-policy.outputs.promote_latest }}
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-finalization
 
       - name: Retain partial Bicep promotion and mirror receipt
         if: always() && needs.release-preflight.outputs.ghcr-bicep == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bicep-publication-${{ github.run_id }}-${{ github.run_attempt }}
-          path: dist/bicep-publication-receipt.json
+          path: |
+            ${{ runner.temp }}/bicep-finalization/receipt.json
+            ${{ runner.temp }}/bicep-finalization/ghcr-receipt.json
           if-no-files-found: warn
           retention-days: 90
 
