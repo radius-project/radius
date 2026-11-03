@@ -725,20 +725,13 @@ test("real workflows preserve credential boundaries and require native digest ve
   );
 });
 
-test("Test ACR publishing requires a separate identity and protected environment after validation", () => {
+test("approved tests share Test ACR write access while GHCR publication stays isolated", () => {
   const uploader = cloud["upload-test-types"];
-  const check = step(uploader, "Require dedicated Test ACR publisher identity");
   const login = step(uploader, "Login to Test-tenant Azure");
-  assert.equal(uploader.environment, "cloud-test-types-publish");
-  assert.deepEqual(check.env, {
-    PUBLISHER_CLIENT_ID: "${{ secrets.AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID }}",
-    TEST_CLIENT_ID: "${{ secrets.AZURE_SP_TESTS_APPID }}"
-  });
-  assert.equal(check.if, undefined);
-  assert.equal(check["continue-on-error"], undefined);
+  assert.equal(uploader.environment, undefined);
   assert.equal(
     login.env.AZURE_CLIENT_ID,
-    "${{ secrets.AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID }}"
+    "${{ secrets.AZURE_SP_TESTS_APPID }}"
   );
   assert.equal(
     login.env.AZURE_TENANT_ID,
@@ -754,7 +747,6 @@ test("Test ACR publishing requires a separate identity and protected environment
     "Select the exact producing artifact",
     "Download immutable OCI data",
     "Validate source and import OCI data",
-    "Require dedicated Test ACR publisher identity",
     "Login to Test-tenant Azure",
     "Login only to the private test registry",
     "Copy validated Radius test types"
@@ -781,36 +773,23 @@ test("Test ACR publishing requires a separate identity and protected environment
     "${{ secrets.AZURE_SP_TESTS_APPID }}"
   );
   assert.equal(cloud.tests.environment, undefined);
-  for (const [name, job] of Object.entries(cloud)) {
-    if (name !== "upload-test-types")
-      assert.doesNotMatch(
-        JSON.stringify(job),
-        /AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID|cloud-test-types-publish/
-      );
-  }
-  for (const [publisher, candidate, expected] of [
-    ["", "", 1],
-    ["", "candidate", 1],
-    ["publisher", "", 1],
-    ["candidate", "candidate", 1],
-    ["CANDIDATE", "candidate", 1],
-    ["publisher", "candidate", 0]
-  ]) {
-    const result = spawnSync("bash", ["-e", "-c", check.run], {
-      env: {
-        ...process.env,
-        PUBLISHER_CLIENT_ID: publisher,
-        TEST_CLIENT_ID: candidate
-      },
-      encoding: "utf8"
-    });
-    assert.equal(result.status, expected);
-    if (expected)
-      assert.match(
-        result.stdout,
-        /::error::Configure AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID/
-      );
-  }
+  assert.doesNotMatch(
+    JSON.stringify(cloud),
+    /AZURE_TEST_TYPES_PUBLISHER_CLIENT_ID|cloud-test-types-publish|Require dedicated Test ACR publisher identity/
+  );
+  assert.equal(cloud.tests.permissions.packages, "read");
+  assert.equal(cloud["upload-ghcr"].permissions.packages, "write");
+  assert.deepEqual(
+    Object.entries(cloud)
+      .filter(([, job]) => job.permissions?.packages === "write")
+      .map(([name]) => name),
+    ["upload-ghcr"]
+  );
+  assert.equal(
+    cloud["approval-gate"].environment,
+    "external-contributor-approval"
+  );
+  assert.doesNotMatch(JSON.stringify(uploader), /BICEPTYPES_CLIENT_ID/);
 });
 
 test("merge-group Test ACR uploader executes the trusted helper, not the candidate revision", async () => {
