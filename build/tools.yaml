@@ -363,7 +363,7 @@ tools:
 
   - name: oras
     makePrefix: ORAS
-    version: v1.3.4
+    version: v1.3.6
     source:
       type: github-release
       repository: oras-project/oras
@@ -372,16 +372,16 @@ tools:
     platforms:
       linux_amd64:
         asset: oras_{version_no_v}_linux_amd64.tar.gz
-        checksum: f27adb935022d94df8dc77719c322dda592c78a0d57a6f7dcdd8d900b248c454
+        checksum: 66fb0ad7206f3f6fa77ed5b552049d364ccf4b50b1684554f731f76302b52ca0
       linux_arm64:
         asset: oras_{version_no_v}_linux_arm64.tar.gz
-        checksum: 15702c6e3a4a56a8bd8ac5c17efdbcab56d9bada661ccbcf017f5b10c1d89399
+        checksum: b84269e78dfc2d5329a4aab373da3200de95e6c138338cf6c66c10c0a3f248c1
       darwin_amd64:
         asset: oras_{version_no_v}_darwin_amd64.tar.gz
-        checksum: 5e964f3d5a36eb9499a9d3e252a86b09e7adf3e6f6447eec56fd249c6702af7e
+        checksum: 844e26430aa0afe2c40fdbddafc3b39ef968a6d41955b7380684bd02907fa397
       darwin_arm64:
         asset: oras_{version_no_v}_darwin_arm64.tar.gz
-        checksum: 217761a9500242ff473de8656b5aca21136ff39e17e9e61fd8936bbfd902704c
+        checksum: e2b25a53234e2471c5fc81936f957fa612065ab559c21834c02d8bfbc2f62b30
     checksumSource:
       type: github-release-file
       fileTemplate: oras_{version_no_v}_checksums.txt
