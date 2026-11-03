@@ -107,6 +107,28 @@ The protected-target guard checks successive URL parses, matching the Azure prox
 
 Ordinary deployments and their payloads continue unchanged. This layer does not implement deployment delegation, template preflight, reference extraction, PATCH effective-state checks, or response filtering, and does not scan templates or promise atomic rejection of mixed workload/policy deployments before workload side effects. Any attempted policy mutation that returns through UCP, including a deployment's subrequest, hits the same protected guard; there is no public writer or mutable generic resource record that commits policy. Direct access to a downstream component or database remains outside this user-facing boundary and requires the separate internal component authorization boundary.
 
+### User Authorization Inspection
+
+[Inspection](../../pkg/ucp/authorization/inspection_http.go) serves `GET /providers/Radius.Core/whoAmI` and `POST {scope}/providers/Radius.Core/checkAccess` with API version `2025-08-01-preview`, before generic resource/proxy routing. These operations require verified caller identity in every workload mode, including `Disabled`. Missing identity returns HTTP 401; absent, stale, starting, or stopped policy returns HTTP 503 `AuthorizationUnavailable`, never a fabricated `Disabled` response. The observer defers only these inspection operations to their explicit handlers, so they also work with fresh `Enforce` policy without enabling workload enforcement. The protected policy-mutation boundary remains unchanged.
+
+`WhoAmI` returns the stable principal, verified groups, issuer, mode, and whether an installation-wide built-in Radius Administrator assignment matches the caller or their groups. Its optional `warnings` field comes from the same fresh policy: disabled/observation-only/unsupported enforcement, bootstrap-only administrators, and unavailable recovery-grant management. Warnings disclose no assignments or other principals. This slice does not create recovery grants or provide recovery management.
+
+`CheckAccess` evaluates every requested permission and concrete target, preserving request order and returning one generation and mode for the complete batch. Both the authorization to inspect someone else and all returned results use the same locked, fresh snapshot; decisions reflect real grants even in `Disabled` and `DryRun`. The scope must be a supported assignment scope, and every target must be within it. Invalid scopes, unknown permissions, malformed or oversized JSON, empty batches, and caller-supplied group memberships fail explicitly. Granting role and assignment identifiers are not returned.
+
+Omitting `principal`, or supplying the exact verified principal tuple, checks the caller with their current verified groups. A different principal first requires `Radius.Core/checkAccess/action` at the inspection scope in every mode; denial is HTTP 403. Another group can be evaluated against its own assignments without enumerating members. Another user or workload returns HTTP 503 `AuthorizationIndeterminate`: the forwarded request cannot establish that other identity's memberships, and dropping unknown groups would produce misleading denials. There is no directory resolver or impersonation delegation in this slice.
+
+The read-only [`rad auth` commands](../../pkg/cli/cmd/auth/auth.go) use the current workspace's normal Kubernetes connection and generated authorization clients. All support `--workspace` and `--output json|table`:
+
+```bash
+rad auth whoami --output json
+rad auth status
+rad auth access check --action Radius.Core/applications/read
+rad auth access check --scope / --action Radius.Core/applications/read --target /planes/radius/local --action Radius.Core/applications/write --target /planes/radius/local
+rad auth access check --scope / --principal group:developers --action Radius.Core/applications/read
+```
+
+`access check` defaults scope and target to the workspace resource group. Repeat `--action` for a batch; either omit all `--target` flags or supply one per action in the same order. `--principal` takes `user:<subject>`, `group:<subject>`, or `workload:<subject>`; `--issuer` defaults to the current caller's verified issuer. A denied policy check is a successful inspection with `allowed: false`, not a command failure or a workload-enforcement decision. Transport, authentication, authorization, unavailable-policy, and indeterminate-membership errors are command failures with no success-shaped output.
+
 ## Invariants And Constraints
 
 - UCP should stay focused on routing, identity of targets, and translation.

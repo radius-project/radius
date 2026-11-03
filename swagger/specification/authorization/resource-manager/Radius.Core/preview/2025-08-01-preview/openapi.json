@@ -2003,6 +2003,13 @@
         "isRadiusAdministrator": {
           "type": "boolean",
           "description": "Whether the caller has Radius Administrator access."
+        },
+        "warnings": {
+          "type": "array",
+          "description": "Adoption and recovery warnings derived from the same fresh policy. No assignment identifiers or other principals are disclosed.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
