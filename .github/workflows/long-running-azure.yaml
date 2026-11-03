@@ -459,7 +459,10 @@ jobs:
           #     that owns it, so cleanup fails with 409 Conflict. Fixed in #13193.
           # Skip these exact tests until a release that includes the fixes is cut.
           # See #12044, #12163, #12247, #12701, #13143, and #13193.
-          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RadiusCore_AzureMySql_PortalLink|Test_RabbitMQ|Test_RedisCache|Test_Container_ManagedSecretConnection)$$'"
+          # Separately, the authz startup-log smoke test belongs to fresh-install CI:
+          # persistent pods can outlive log retention (#13558). Keep readiness checks
+          # below, but do not require startup logs or restart the control plane.
+          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RadiusCore_AzureMySql_PortalLink|Test_RabbitMQ|Test_RedisCache|Test_Container_ManagedSecretConnection|Test_AuthzMode_LoggedByEveryComponent)$$'"
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
           set -euo pipefail
@@ -491,7 +494,17 @@ jobs:
           # test-functional-all without rerunning the Kubernetes aggregate target.
           # Use main's diagnostics wrapper, not the released test harness.
           bash "$GITHUB_WORKSPACE/.github/scripts/run-with-cluster-diagnostics.sh" \
-            bash -e -c 'make test-functional-all-cloud; make test-functional-all-noncloud'
+            bash -e -o pipefail -c '
+              for component in ucp applications-rp dynamic-rp controller; do
+                kubectl rollout status "deployment/${component}" \
+                  --namespace radius-system --timeout=120s
+                kubectl get deployment "${component}" --namespace radius-system \
+                  --request-timeout=10s -o json \
+                  | jq -e ".status.readyReplicas > 0 or error(\"deployment ${component} has no ready replicas\")"
+              done
+              make test-functional-all-cloud
+              make test-functional-all-noncloud
+            '
 
       - name: Collect cluster diagnostics
         if: always()
