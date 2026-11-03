@@ -130,7 +130,10 @@ jobs:
        run: make test-cloud-test-helpers-native
  
       - name: Test publishing credential isolation
-        run: make install-yq test-publishing-isolation
+        run: make install-yq install-oras test-publishing-isolation
+
+      - name: Test native TLS artifact capture
+        run: make test-publishing-isolation-native
 
       - name: Run make test (unit tests)
         env:

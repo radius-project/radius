@@ -118,6 +118,7 @@ After a filter change merges, refresh an existing generated release PR through P
 - Run `bash .github/actions/create-local-registry/test.sh` for changes to the image pull retry. It checks cached images, retry limits, random-delay bounds, timeout settings, permanent errors, and exit codes with fake commands, so it needs no network.
 - Run `bash .github/scripts/purge-old-images_test.sh` for changes to package cleanup. It checks transient read and delete retries, package and tag filtering, pagination, protected-version skips, rejected versions, primary and secondary rate limits, and permanent failure handling with fake HTTP responses.
 - With Node.js, `yq` and OpenSSL installed, run `make test-publishing-isolation test-build-summary` for offline trust-boundary, producer-tag, retry, TLS configuration, and required-summary checks; no registry credentials or cloud resources are used.
+- With Docker running, localhost port 5000 available, and Node.js, `yq`, OpenSSL, and curl installed, run `make install-oras` followed by `PATH="$HOME/.local/bin:$PATH" make test-publishing-isolation-native`. This uses the pinned ORAS version against an owned TLS-local `registry:2` container, proves that omitting the explicit HTTPS flag fails, and verifies captured manifest digests and payload bytes. The container and temporary files are removed afterward. Only the test commands trust the temporary CA; no global trust store or external registry credentials are changed. The unit-test workflow runs this check too.
 
 ## Troubleshooting
 
