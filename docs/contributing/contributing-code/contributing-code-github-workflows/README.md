@@ -136,6 +136,15 @@ node --test .github/scripts/bicep-types.test.mjs .github/scripts/monitor-remote-
 actionlint .github/workflows/build-main.yaml .github/workflows/__publish-bicep-types.yaml
 ```
 
+For the actual main-publisher capture-to-prepare roundtrip, have Docker running and Node.js, curl and tar available, then run:
+
+```bash
+make install-bicep install-oras install-yq
+PATH="$HOME/.local/bin:$PATH" make test-bicep-types-native
+```
+
+The test checks the tool versions against `build/tools.yaml` and uses the committed generated Radius types without regenerating or copying them. It runs the real `capture()` and `prepare()` with native Bicep and ORAS against an owned plaintext registry on a random loopback port. An OCI-disabled control uses the same absolute index path; successful capture exercises the publisher's isolated scratch configuration. It checks the raw archive, native manifest/config/layer digests and bytes, source-only annotation stamping, and original-generation evidence across preparation retries. The owned container, volume and temporary files are removed afterward. No credentials, external registry publishing or global trust changes are used. Ubuntu unit CI installs the tools in a preceding step and runs this target separately from the cloud TLS capture test.
+
 ## Verification
 
 - The workflow you changed runs green on your pull request (open it as a draft first if you want to iterate).

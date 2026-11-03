@@ -181,6 +181,10 @@ test-publishing-isolation: install-yq ## Tests activation workflow boundaries wi
 	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
 		node --test .github/scripts/cloud-test-artifacts.test.mjs
 
+.PHONY: test-bicep-types-native
+test-bicep-types-native: ## Tests Bicep capture and preparation with pinned Bicep/ORAS and a local Docker registry (requires Node.js, yq and curl)
+	@node --test .github/scripts/bicep-types.integration.test.mjs
+
 .PHONY: test-capture-release-image-digests
 test-capture-release-image-digests: ## Tests production release image digest capture
 	@bash ./.github/scripts/capture-release-image-digests_test.sh
