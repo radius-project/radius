@@ -246,9 +246,14 @@ func (c *Client) Save(ctx context.Context, obj *database.Object, options ...data
 	defer c.mutex.Unlock()
 
 	config := database.NewSaveConfig(options...)
+	if config.CreateOnly && config.ETag != "" {
+		return &database.ErrInvalid{Message: "invalid argument. 'CreateOnly' cannot be combined with an ETag"}
+	}
 
 	entry, ok := c.resources[strings.ToLower(converted.String())]
-	if !ok && config.ETag != "" {
+	if ok && config.CreateOnly {
+		return &database.ErrConcurrency{}
+	} else if !ok && config.ETag != "" {
 		return &database.ErrConcurrency{}
 	} else if ok && config.ETag != "" && config.ETag != entry.obj.ETag {
 		return &database.ErrConcurrency{}

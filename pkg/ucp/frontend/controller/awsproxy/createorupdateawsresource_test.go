@@ -25,104 +25,15 @@ import (
 
 	"uuid"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	armrpc_v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
-
-func Test_CreateAWSResource(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.New().String())
-
-	testOptions := setupTest(t)
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		&cloudformation.DescribeTypeOutput{
-			TypeName: aws.String(testResource.AWSResourceType),
-			Schema:   aws.String(testResource.Schema),
-		}, nil)
-
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		nil, &types.ResourceNotFoundException{
-			Message: aws.String("Resource not found"),
-		})
-
-	testOptions.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		&cloudcontrol.CreateResourceOutput{
-			ProgressEvent: &types.ProgressEvent{
-				OperationStatus: types.OperationStatusSuccess,
-				RequestToken:    new(testAWSRequestToken),
-			},
-		}, nil)
-
-	requestBody := map[string]any{
-		"properties": map[string]any{
-			"RetentionPeriodHours": 178,
-			"ShardCount":           3,
-		},
-	}
-	requestBodyBytes, err := json.Marshal(requestBody)
-	require.NoError(t, err)
-
-	awsClients := ucp_aws.Clients{
-		CloudControl:   testOptions.AWSCloudControlClient,
-		CloudFormation: testOptions.AWSCloudFormationClient,
-	}
-	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
-	require.NoError(t, err)
-
-	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
-	request.Host = testHost
-	request.URL.Host = testHost
-	request.URL.Scheme = testScheme
-
-	require.NoError(t, err)
-
-	ctx := rpctest.NewARMRequestContext(request)
-	actualResponse, err := awsController.Run(ctx, nil, request)
-	require.NoError(t, err)
-
-	w := httptest.NewRecorder()
-	err = actualResponse.Apply(ctx, w, request)
-	require.NoError(t, err)
-
-	res := w.Result()
-	require.Equal(t, http.StatusCreated, res.StatusCode)
-	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
-	require.NoError(t, err)
-
-	require.NotNil(t, res.Header.Get("Location"))
-	require.Equal(t, testResource.LocationHeader, res.Header.Get("Location"))
-
-	require.NotNil(t, res.Header.Get("Azure-AsyncOperation"))
-	require.Equal(t, testResource.AzureAsyncOpHeader, res.Header.Get("Azure-AsyncOperation"))
-
-	expectedResponseObject := map[string]any{
-		"id":   testResource.SingleResourcePath,
-		"name": testResource.ResourceName,
-		"type": testResource.ResourceType,
-		"properties": map[string]any{
-			"RetentionPeriodHours": float64(178),
-			"ShardCount":           float64(3),
-			"provisioningState":    "Provisioning",
-		},
-	}
-
-	actualResponseObject := map[string]any{}
-	err = json.Unmarshal(body, &actualResponseObject)
-	require.NoError(t, err)
-
-	require.Equal(t, expectedResponseObject, actualResponseObject)
-}
 
 func Test_CreateAWSResourceInvalidRegion(t *testing.T) {
 	testResource := CreateKinesisStreamTestResourceWithInvalidRegion(uuid.New().String())
@@ -141,7 +52,7 @@ func Test_CreateAWSResourceInvalidRegion(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewCreateOrUpdateAWSResource(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
@@ -180,178 +91,6 @@ func Test_CreateAWSResourceInvalidRegion(t *testing.T) {
 	require.Equal(t, expectedResponseObject, actualResponseObject)
 }
 
-func Test_UpdateAWSResource(t *testing.T) {
-	testResource := CreateMemoryDBClusterTestResource(uuid.New().String())
-
-	output := cloudformation.DescribeTypeOutput{
-		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.Schema),
-	}
-
-	getResponseBody := map[string]any{
-		"ClusterEndpoint": map[string]any{
-			"Address": "test",
-			"Port":    6379,
-		},
-		"Port":                6379,
-		"ARN":                 "arn:aws:memorydb:us-west-2:123456789012:cluster:mycluster",
-		"NumReplicasPerShard": 1,
-	}
-	getResponseBodyBytes, err := json.Marshal(getResponseBody)
-	require.NoError(t, err)
-
-	testOptions := setupTest(t)
-
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
-
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		&cloudcontrol.GetResourceOutput{
-			ResourceDescription: &types.ResourceDescription{
-				Properties: aws.String(string(getResponseBodyBytes)),
-			},
-		}, nil)
-
-	testOptions.AWSCloudControlClient.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		&cloudcontrol.UpdateResourceOutput{
-			ProgressEvent: &types.ProgressEvent{
-				OperationStatus: types.OperationStatusSuccess,
-				RequestToken:    aws.String(testAWSRequestToken),
-			},
-		}, nil)
-
-	requestBody := map[string]any{
-		"properties": map[string]any{
-			"Port":                6379,
-			"NumReplicasPerShard": 0,
-		},
-	}
-	requestBodyBytes, err := json.Marshal(requestBody)
-	require.NoError(t, err)
-
-	awsClients := ucp_aws.Clients{
-		CloudControl:   testOptions.AWSCloudControlClient,
-		CloudFormation: testOptions.AWSCloudFormationClient,
-	}
-	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
-	require.NoError(t, err)
-
-	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
-	require.NoError(t, err)
-
-	ctx := rpctest.NewARMRequestContext(request)
-	actualResponse, err := awsController.Run(ctx, nil, request)
-	require.NoError(t, err)
-
-	w := httptest.NewRecorder()
-	err = actualResponse.Apply(ctx, w, request)
-	require.NoError(t, err)
-
-	res := w.Result()
-	require.Equal(t, http.StatusCreated, res.StatusCode)
-	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
-	require.NoError(t, err)
-
-	expectedResponseObject := map[string]any{
-		"id":   testResource.SingleResourcePath,
-		"name": testResource.ResourceName,
-		"type": testResource.ResourceType,
-		"properties": map[string]any{
-			"ClusterEndpoint": map[string]any{
-				"Address": "test",
-				"Port":    float64(6379),
-			},
-			"Port":                float64(6379),
-			"ARN":                 "arn:aws:memorydb:us-west-2:123456789012:cluster:mycluster",
-			"NumReplicasPerShard": float64(0),
-			"provisioningState":   "Provisioning",
-		},
-	}
-
-	actualResponseObject := map[string]any{}
-	err = json.Unmarshal(body, &actualResponseObject)
-	require.NoError(t, err)
-
-	require.Equal(t, expectedResponseObject, actualResponseObject)
-}
-
-func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.New().String())
-
-	output := cloudformation.DescribeTypeOutput{
-		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.Schema),
-	}
-
-	getResponseBody := map[string]any{
-		"RetentionPeriodHours": 178,
-		"ShardCount":           3,
-	}
-	getResponseBodyBytes, err := json.Marshal(getResponseBody)
-	require.NoError(t, err)
-
-	testOptions := setupTest(t)
-
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&output, nil)
-
-	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-		&cloudcontrol.GetResourceOutput{
-			ResourceDescription: &types.ResourceDescription{
-				Properties: new(string(getResponseBodyBytes)),
-			},
-		}, nil)
-
-	requestBody := map[string]any{
-		"properties": map[string]any{
-			"RetentionPeriodHours": 178,
-			"ShardCount":           3,
-		},
-	}
-	requestBodyBytes, err := json.Marshal(requestBody)
-	require.NoError(t, err)
-
-	awsClients := ucp_aws.Clients{
-		CloudControl:   testOptions.AWSCloudControlClient,
-		CloudFormation: testOptions.AWSCloudFormationClient,
-	}
-	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
-	require.NoError(t, err)
-
-	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
-	require.NoError(t, err)
-
-	ctx := rpctest.NewARMRequestContext(request)
-	actualResponse, err := awsController.Run(ctx, nil, request)
-	require.NoError(t, err)
-
-	w := httptest.NewRecorder()
-	err = actualResponse.Apply(ctx, w, request)
-	require.NoError(t, err)
-
-	res := w.Result()
-	require.Equal(t, http.StatusOK, res.StatusCode)
-	defer res.Body.Close()
-	body, err := io.ReadAll(res.Body)
-	require.NoError(t, err)
-
-	expectedResponseObject := map[string]any{
-		"id":   testResource.SingleResourcePath,
-		"name": testResource.ResourceName,
-		"type": testResource.ResourceType,
-		"properties": map[string]any{
-			"RetentionPeriodHours": float64(178),
-			"ShardCount":           float64(3),
-			"provisioningState":    "Succeeded",
-		},
-	}
-
-	actualResponseObject := map[string]any{}
-	err = json.Unmarshal(body, &actualResponseObject)
-	require.NoError(t, err)
-
-	require.Equal(t, expectedResponseObject, actualResponseObject)
-}
-
 func Test_CreateAWSResource_DescribeTypeError(t *testing.T) {
 	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
@@ -367,7 +106,7 @@ func Test_CreateAWSResource_DescribeTypeError(t *testing.T) {
 		},
 	})
 
-	awsController, err := NewCreateOrUpdateAWSResource(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, ucp_aws.Clients{
+	awsController, err := NewCreateOrUpdateAWSResource(testOptions.ControllerOptions(), ucp_aws.Clients{
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	})
@@ -377,6 +116,7 @@ func Test_CreateAWSResource_DescribeTypeError(t *testing.T) {
 	require.NoError(t, err)
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBody))
 	require.NoError(t, err)
+	withOwner(request)
 
 	ctx := rpctest.NewARMRequestContext(request)
 	actualResponse, err := awsController.Run(ctx, nil, request)

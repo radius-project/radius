@@ -27,9 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -136,24 +134,16 @@ func Test_UpdateAWSResource_ValuesAWSReportsDifferently(t *testing.T) {
 				body, err := json.Marshal(map[string]any{"properties": tt.desired})
 				require.NoError(t, err)
 
-				awsClients := ucp_aws.Clients{
-					CloudControl:   testOptions.AWSCloudControlClient,
-					CloudFormation: testOptions.AWSCloudFormationClient,
-				}
-				options := armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}
-
-				var controller armrpc_controller.Controller
-				var request *http.Request
+				controller, err := NewCreateOrUpdateAWSResource(testOptions.ControllerOptions(), testOptions.Clients())
+				require.NoError(t, err)
+				request, err := http.NewRequest(http.MethodPut, collectionPath(tt.resourceType)+"/"+tt.resourceName, bytes.NewBuffer(body))
 				if withPost {
-					controller, err = NewCreateOrUpdateAWSResourceWithPost(options, awsClients)
+					controller, err = NewCreateOrUpdateAWSResourceWithPost(testOptions.ControllerOptions(), testOptions.Clients())
 					require.NoError(t, err)
 					request, err = http.NewRequest(http.MethodPost, collectionPath(tt.resourceType), bytes.NewBuffer(body))
-				} else {
-					controller, err = NewCreateOrUpdateAWSResource(options, awsClients)
-					require.NoError(t, err)
-					request, err = http.NewRequest(http.MethodPut, collectionPath(tt.resourceType)+"/"+tt.resourceName, bytes.NewBuffer(body))
 				}
 				require.NoError(t, err)
+				withOwner(request)
 
 				ctx := rpctest.NewARMRequestContext(request)
 				response, err := controller.Run(ctx, nil, request)

@@ -19,12 +19,23 @@ package awsproxy
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"testing"
+	"time"
 
-	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/components/database/inmemory"
+	queueinmemory "github.com/radius-project/radius/pkg/components/queue/inmemory"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws/records"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 const (
@@ -38,25 +49,47 @@ const (
 	testAWSRequestToken = "79B9F0DA-4882-4DC8-A367-6FD3BC122DED" // Random UUID
 	testHost            = "localhost:5000"
 	testScheme          = "http"
+
+	// testOwner is the owner the tests send on PUT and DELETE.
+	testOwner = "deploy;/planes/radius/local/resourceGroups/rg;;/planes/radius/local/resourceGroups/rg/providers/Applications.Core/environments/env"
 )
 
 type TestOptions struct {
 	AWSCloudControlClient   *awsclient.MockAWSCloudControlClient
 	AWSCloudFormationClient *awsclient.MockAWSCloudFormationClient
-	DatabaseClient          *database.MockClient
+	DatabaseClient          database.Client
+	Queue                   *queueinmemory.Client
+	StatusManager           statusmanager.StatusManager
 }
 
-// setupTest returns a TestOptions struct with mocked AWS and database clients
+// setupTest returns a TestOptions struct with mocked AWS clients, and an in-memory data store and queue.
 func setupTest(t *testing.T) TestOptions {
 	mockCtrl := gomock.NewController(t)
-	mockCloudControlClient := awsclient.NewMockAWSCloudControlClient(mockCtrl)
-	mockCloudFormationClient := awsclient.NewMockAWSCloudFormationClient(mockCtrl)
-	mockDatabaseClient := database.NewMockClient(mockCtrl)
+	db := inmemory.NewClient()
+	queue := queueinmemory.New(queueinmemory.NewInMemQueue(time.Minute))
 	return TestOptions{
-		AWSCloudControlClient:   mockCloudControlClient,
-		AWSCloudFormationClient: mockCloudFormationClient,
-		DatabaseClient:          mockDatabaseClient,
+		AWSCloudControlClient:   awsclient.NewMockAWSCloudControlClient(mockCtrl),
+		AWSCloudFormationClient: awsclient.NewMockAWSCloudFormationClient(mockCtrl),
+		DatabaseClient:          db,
+		Queue:                   queue,
+		StatusManager:           statusmanager.New(db, queue, "global"),
 	}
+}
+
+// ControllerOptions returns the controller options for the test's data store and status manager.
+func (o TestOptions) ControllerOptions() armrpc_controller.Options {
+	return armrpc_controller.Options{DatabaseClient: o.DatabaseClient, StatusManager: o.StatusManager}
+}
+
+// Clients returns the test's AWS clients.
+func (o TestOptions) Clients() awsclient.Clients {
+	return awsclient.Clients{CloudControl: o.AWSCloudControlClient, CloudFormation: o.AWSCloudFormationClient}
+}
+
+// withOwner sets the owner header that PUT and DELETE require.
+func withOwner(req *http.Request) *http.Request {
+	req.Header.Set(sdkclients.AWSResourceOwnerHeader, testOwner)
+	return req
 }
 
 type AWSTestResource struct {
@@ -206,4 +239,35 @@ func getMockRedShiftEndpointAuthorizationResourceTypeSchema() map[string]any {
 			"/properties/Account",
 		},
 	}
+}
+
+// saveTestRecord saves a record for the resource id, owned by testOwner, after change edits it.
+func saveTestRecord(t *testing.T, options TestOptions, id string, change func(rec *datamodel.AWSResource)) {
+	t.Helper()
+	parsed, err := resources.ParseResource(id)
+	require.NoError(t, err)
+	rec := records.NewRecord(parsed, testOwner)
+	rec.SetProvisioningState("Succeeded")
+	if change != nil {
+		change(rec)
+	}
+	_, err = records.NewStore(options.DatabaseClient).Save(t.Context(), rec, "")
+	require.NoError(t, err)
+}
+
+// getTestRecord returns the record for the resource id, or nil.
+func getTestRecord(t *testing.T, options TestOptions, id string) *datamodel.AWSResource {
+	t.Helper()
+	parsed, err := resources.ParseResource(id)
+	require.NoError(t, err)
+	rec, _, err := records.NewStore(options.DatabaseClient).Get(t.Context(), parsed)
+	require.NoError(t, err)
+	return rec
+}
+
+// OperationTypeAWSResourceForTest is the async operation type the frontend queues AWS resource operations under.
+const OperationTypeAWSResourceForTest = records.OperationType
+
+func statusmanagerOptions() statusmanager.QueueOperationOptions {
+	return statusmanager.QueueOperationOptions{OperationTimeout: time.Minute}
 }

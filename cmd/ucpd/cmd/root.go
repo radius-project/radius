@@ -66,12 +66,12 @@ var rootCmd = &cobra.Command{
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
 
-		host, err := server.NewServer(options)
+		ctx := logr.NewContext(cmd.Context(), logger)
+		host, err := server.NewServer(ctx, options)
 		if err != nil {
 			return err
 		}
 
-		ctx := logr.NewContext(cmd.Context(), logger)
 		return hosting.RunWithInterrupts(ctx, host)
 	},
 }

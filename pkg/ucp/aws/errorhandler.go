@@ -80,6 +80,22 @@ func HandleAWSError(ctx context.Context, err error) (armrpc_rest.Response, error
 	return armrpc_rest.NewInternalServerErrorARMResponse(e), nil
 }
 
+// IsClientFault reports whether AWS rejected a request because of the request itself, such as an invalid property or
+// throttling, so AWS did nothing with that request. A transport error or a server fault returns false: AWS may have
+// accepted the request. On a replay with a client token, a client fault says nothing about the original request, which
+// AWS may have accepted.
+func IsClientFault(err error) bool {
+	var apiErr smithy.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	fault := apiErr.ErrorFault()
+	if fault == smithy.FaultUnknown && apiErr.ErrorCode() == "ValidationException" {
+		fault = smithy.FaultClient
+	}
+	return fault == smithy.FaultClient
+}
+
 // Checks if the given error is an AWS ResourceNotFoundException error. If so, it returns true, otherwise false.
 func IsAWSResourceNotFoundError(err error) bool {
 	target := &types.ResourceNotFoundException{}
