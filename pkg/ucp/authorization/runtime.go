@@ -150,6 +150,72 @@ func (r *PolicyRuntime) Evaluate(identity Identity, checks []Check) ([]Decision,
 	return decisions, err
 }
 
+// RequestEvaluation describes target checks against one fresh policy generation.
+// It is not a full deployment preflight, reference check, or list filter.
+type RequestEvaluation struct {
+	Mode       api.UserAuthorizationMode
+	Generation int64
+	Mapping    RequestMapping
+	Decisions  []Decision
+}
+
+// EvaluateRequest reads mode and evaluates target checks from the same snapshot.
+// Disabled skips mapping/evaluation. Enforce is reported without decisions: the
+// observation-only request layer must reject it rather than partially enforce.
+// Unavailability returns no mode, including when a previously loaded mode exists.
+func (r *PolicyRuntime) EvaluateRequest(identity Identity, method, path string) (RequestEvaluation, error) {
+	if r == nil {
+		return RequestEvaluation{Generation: -1}, ErrAuthorizationUnavailable
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	r.cache.mu.RLock()
+	defer r.cache.mu.RUnlock()
+	if r.ctx == nil || r.ctx.Err() != nil || r.cache.value == nil ||
+		r.cache.clock.Since(r.cache.asOf) >= PolicyMaxAge {
+		return RequestEvaluation{Generation: -1}, ErrAuthorizationUnavailable
+	}
+	snapshot := r.cache.value
+	result := RequestEvaluation{
+		Mode: *snapshot.policy.Settings.Properties.Mode, Generation: snapshot.Generation(),
+	}
+	if result.Mode != api.UserAuthorizationModeDryRun {
+		if result.Mode == api.UserAuthorizationModeEnforce {
+			mapping, err := snapshot.evaluator.catalog.MapRequest(method, path)
+			if err == nil && mapping.Kind == DiscoveryRequest {
+				result.Mapping = mapping
+			}
+		}
+		return result, nil
+	}
+	mapping, err := snapshot.evaluator.catalog.MapRequest(method, path)
+	result.Mapping = mapping
+	if err != nil {
+		return result, fmt.Errorf("AuthorizationIndeterminate: request target cannot be mapped")
+	}
+	switch mapping.Kind {
+	case DiscoveryRequest:
+		return result, nil
+	case OperationStatusRequest, SelfAccessRequest, MixedResourceListRequest:
+		return result, fmt.Errorf("AuthorizationIndeterminate: request requires additional trusted context or response checks")
+	}
+	result.Decisions, err = snapshot.Evaluate(identity, mapping.Checks)
+	if r.ctx.Err() != nil || r.cache.clock.Since(r.cache.asOf) >= PolicyMaxAge {
+		return RequestEvaluation{Generation: -1}, ErrAuthorizationUnavailable
+	}
+	if err != nil {
+		return result, fmt.Errorf("AuthorizationIndeterminate: target check could not be evaluated")
+	}
+	if mapping.Kind == ListRequest {
+		for _, decision := range result.Decisions {
+			if !decision.Allowed {
+				return result, fmt.Errorf("AuthorizationIndeterminate: list requires per-item filtering")
+			}
+		}
+	}
+	return result, nil
+}
+
 func (r *PolicyRuntime) operationContext(ctx context.Context) (context.Context, context.CancelFunc, error) {
 	if r == nil {
 		return nil, nil, ErrAuthorizationUnavailable

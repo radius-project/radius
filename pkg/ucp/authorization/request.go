@@ -44,7 +44,7 @@ type RequestMapping struct {
 
 // MapRequest maps a normalized path after the configured UCP path base has
 // been removed. It rejects unknown actions, malformed IDs and unknown types.
-// It is intentionally not installed as middleware.
+// It does not authenticate, enforce, inspect references, or filter responses.
 func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 	if !slices.Contains([]string{http.MethodGet, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodPost}, method) {
 		return RequestMapping{}, fmt.Errorf("unsupported request method %q", method)
