@@ -9,15 +9,19 @@ import { join } from "node:path";
 import { test } from "node:test";
 import script, {
   checkSummary,
+  complete,
+  copyRequest,
   prepare,
   publish,
-  publishPair,
+  publishGHCR,
   shouldPublish,
   selectSnapshot,
   sourceIdentity,
   targets,
+  tool,
   verifyArtifact
 } from "./bicep-types.mjs";
+import monitorRemoteWorkflow from "./monitor-remote-workflow.mjs";
 
 const context = {
   repo: { owner: "radius-project", repo: "radius" },
@@ -46,7 +50,7 @@ const artifact = {
   workflow_run: { id: 123, head_branch: "main", head_sha: context.sha }
 };
 
-test("queued main explicitly forwards only the required Azure IDs to trusted publishing", async () => {
+test("queued main isolates the private App and has no production Azure authority", async () => {
   const main = await readFile(
     new URL("../workflows/build-main.yaml", import.meta.url),
     "utf8"
@@ -61,44 +65,172 @@ test("queued main explicitly forwards only the required Azure IDs to trusted pub
   const [contract, generation, publishing] = reusable.split(
     /^  (?:bundle|publish):\s*$/m
   );
-  const names = [
-    "BICEPTYPES_CLIENT_ID",
-    "BICEPTYPES_TENANT_ID",
-    "BICEPTYPES_SUBSCRIPTION_ID"
-  ];
-  assert.deepEqual(
-    [
-      ...caller.matchAll(
-        /^\s+(BICEPTYPES_[A-Z_]+):\s*\$\{\{ secrets\.(BICEPTYPES_[A-Z_]+) \}\}/gm
-      )
-    ].map(([, input, secret]) => [input, secret]),
-    names.map((name) => [name, name])
+  assert.doesNotMatch(
+    caller + reusable,
+    /BICEPTYPES_|id-token:|az acr|az account|azure-oidc-login/
   );
-  for (const name of names) {
-    assert.match(contract, new RegExp(`${name}:\\s+required: true`));
-    assert.ok(publishing.includes(`secrets.${name}`));
-  }
-  assert.doesNotMatch(caller, /secrets:\s*inherit/);
+  assert.doesNotMatch(caller + contract, /secrets:/);
   assert.doesNotMatch(
     generation,
     /secrets\.|packages:\s*write|id-token:\s*write/
   );
   assert.match(generation, /uses: \.\/\.github\/actions\/go-mod-download/);
+  assert.match(publishing, /environment: publish-bicep/);
+  for (const name of [
+    "RADIUS_PUBLISHER_BOT_CLIENT_ID",
+    "RADIUS_PUBLISHER_BOT_PRIVATE_KEY"
+  ]) {
+    assert.ok(publishing.includes(`secrets.${name}`));
+  }
   assert.match(
     publishing,
-    /run: node \.github\/scripts\/azure-oidc-login\.mjs/
+    /owner: azure-octo\s+repositories: radius-publisher\s+permission-actions: read\s+permission-contents: write/
   );
-  for (const identifier of ["CLIENT_ID", "TENANT_ID", "SUBSCRIPTION_ID"]) {
-    assert.ok(
-      publishing.includes(
-        `AZURE_${identifier}: \${{ secrets.BICEPTYPES_${identifier} }}`
-      )
-    );
-  }
-  assert.match(publishing, /if: always\(\)\s+run: az account clear/);
+  const ordered = [
+    "Publish GHCR and verify public access",
+    "Get private publisher App token",
+    "Request and monitor the exact private ACR copy",
+    "Verify the mirrored digest and record the result",
+    "Retain publication receipt"
+  ].map((name) => publishing.indexOf(`name: ${name}`));
+  assert.ok(
+    ordered.every(
+      (index, i) => index >= 0 && (i === 0 || index > ordered[i - 1])
+    )
+  );
+  const mirror = publishing
+    .split("name: Request and monitor the exact private ACR copy")[1]
+    .split("      - name:")[0];
+  assert.match(
+    mirror,
+    /github-token: \$\{\{ steps\.publisher-token\.outputs\.token \}\}/
+  );
+  assert.match(mirror, /monitor-remote-workflow\.mjs/);
+  assert.match(mirror, /INPUT_REUSE_SUCCESSFUL: "false"/);
+  assert.match(mirror, /INPUT_WORKFLOW_FILE: publish-bicep-types\.yml/);
+  assert.match(mirror, /INPUT_EVENT_TYPE: bicep-types/);
+  assert.match(
+    mirror,
+    /if: steps\.publish\.outputs\.status == 'pending-mirror'/
+  );
+  assert.doesNotMatch(mirror, /retries:|bicep-types\.mjs/);
+  assert.equal(
+    (publishing.match(/github-token: \$\{\{ steps\.publisher-token/g) || [])
+      .length,
+    1
+  );
+  assert.match(
+    publishing,
+    /if: always\(\) && steps\.publish\.outcome == 'success'/
+  );
+  assert.match(
+    publishing,
+    /status: \$\{\{ steps\.complete\.outputs\.status \}\}/
+  );
+  assert.match(
+    publishing,
+    /MIRROR_RUN_ID: \$\{\{ steps\.mirror\.outputs\.run_id \}\}/
+  );
   assert.match(main, /group:\s*build-main-\$\{\{ github\.ref \}\}/);
   assert.match(main, /queue:\s*max/);
   assert.doesNotMatch(main, /cancel-in-progress:\s*true/);
+});
+
+function receiptFixture(publicationAttempt = 1) {
+  return {
+    source: { ...source },
+    artifact: { id: artifact.id, digest: artifact.digest },
+    manifestDigest: hash("uploaded manifest"),
+    publicationAttempt,
+    status: "failed",
+    ghcr: { reference: targets.ghcr },
+    acr: { reference: targets.acr }
+  };
+}
+
+test("copy contract binds the digest to original generation evidence across publication retries", () => {
+  const receipt = receiptFixture(2);
+  const payload = copyRequest(receipt);
+  assert.deepEqual(payload, {
+    mode: "copy",
+    source_repository: "radius-project/radius",
+    source_ref: "refs/heads/main",
+    source_sha: context.sha,
+    registry_target: "radius",
+    rel_channel: "edge",
+    digest: receipt.manifestDigest,
+    release_identifier: `copy-radius-edge-${context.sha}-123-1-${receipt.manifestDigest.slice(7)}`,
+    source_evidence: {
+      run_id: 123,
+      run_attempt: 1,
+      artifact_id: 7,
+      artifact_digest: artifact.digest
+    }
+  });
+  assert.deepEqual(copyRequest(receiptFixture(3)), payload);
+  for (const mutate of [
+    (r) => {
+      r.source.runId++;
+    },
+    (r) => {
+      r.source.generationAttempt++;
+    },
+    (r) => {
+      r.source.commit = "b".repeat(40);
+    },
+    (r) => {
+      r.manifestDigest = hash("different native bytes");
+    }
+  ]) {
+    const changed = receiptFixture(2);
+    mutate(changed);
+    assert.notEqual(
+      copyRequest(changed).release_identifier,
+      payload.release_identifier
+    );
+  }
+  for (const mutate of [
+    (r) => {
+      r.source.repository = "other/radius";
+    },
+    (r) => {
+      r.source.ref = "refs/tags/v1.0.0";
+    },
+    (r) => {
+      r.source.workflow = ".github/workflows/other.yaml";
+    },
+    (r) => {
+      r.source.commit = "main";
+    },
+    (r) => {
+      r.source.commit = "0".repeat(40);
+    },
+    (r) => {
+      r.source.runId = 0;
+    },
+    (r) => {
+      r.source.generationAttempt = 3;
+    },
+    (r) => {
+      r.artifact.id = Number.MAX_SAFE_INTEGER + 1;
+    },
+    (r) => {
+      r.artifact.digest = "sha256:wrong";
+    },
+    (r) => {
+      r.manifestDigest = "sha256:wrong";
+    },
+    (r) => {
+      r.ghcr.reference = "ghcr.io/other/repo:edge";
+    },
+    (r) => {
+      r.acr.reference = "biceptypes.azurecr.io/aws:latest";
+    }
+  ]) {
+    const invalid = receiptFixture(2);
+    mutate(invalid);
+    assert.throws(() => copyRequest(invalid));
+  }
 });
 
 test("eligible main publishes; only successful docs-only or ineligible contexts may skip", () => {
@@ -309,12 +441,12 @@ test("preparation rejects executable Bicep content, foreign URLs, and source/dig
 
 test("stale initial work can skip, but a stale retry never hides unknown previous writes", async () => {
   const receipt = { source, publicationAttempt: 1 };
-  await publishPair(receipt, "/layout", "b".repeat(40), async () =>
+  await publishGHCR(receipt, "/layout", "b".repeat(40), async () =>
     assert.fail("No writes")
   );
   assert.equal(receipt.status, "superseded");
   await assert.rejects(
-    publishPair({ source, publicationAttempt: 2 }, "/layout", "b".repeat(40)),
+    publishGHCR({ source, publicationAttempt: 2 }, "/layout", "b".repeat(40)),
     /prior publication may be partial/
   );
 });
@@ -353,6 +485,7 @@ test("summary requires a public publication result or a proven no-write skip", (
     { BICEP_PUBLISH_RESULT: "cancelled" },
     { BICEP_PUBLISH_RESULT: "" },
     { BICEP_PUBLICATION_STATUS: "partial" },
+    { BICEP_PUBLICATION_STATUS: "pending-mirror" },
     { BICEP_PUBLICATION_STATUS: "uploaded" },
     { BICEP_PUBLICATION_STATUS: "" }
   ]) {
@@ -360,14 +493,201 @@ test("summary requires a public publication result or a proven no-write skip", (
   }
 });
 
-test("bootstrap uploads before visibility lookup and preserves post-upload failures in the receipt", async (t) => {
+function mirrorEnvironment(receipt) {
+  return {
+    MIRROR_RESULT: "success",
+    MIRROR_RELEASE_IDENTIFIER: copyRequest(receipt).release_identifier,
+    MIRROR_RUN_STATE: "found",
+    MIRROR_RUN_ID: "456",
+    MIRROR_RUN_URL:
+      "https://github.com/azure-octo/radius-publisher/actions/runs/456",
+    MIRROR_CONCLUSION: "success"
+  };
+}
+
+test("completion rejects missing or mismatched correlation before registry reads", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "bicep-completion-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const receipt = receiptFixture();
+  receipt.status = "pending-mirror";
+  receipt.visibility = "public";
+  receipt.ghcr.digest = receipt.manifestDigest;
+  for (const override of [
+    { MIRROR_RESULT: "cancelled" },
+    { MIRROR_RELEASE_IDENTIFIER: "" },
+    { MIRROR_RELEASE_IDENTIFIER: "another-copy" },
+    { MIRROR_RUN_STATE: "unknown" },
+    { MIRROR_RUN_ID: "" },
+    { MIRROR_RUN_ID: "0" },
+    { MIRROR_RUN_ID: String(Number.MAX_SAFE_INTEGER + 1) },
+    { MIRROR_RUN_URL: "https://github.com/other/repo/actions/runs/456" },
+    { MIRROR_CONCLUSION: "" }
+  ]) {
+    await writeFile(join(directory, "receipt.json"), JSON.stringify(receipt));
+    await assert.rejects(
+      complete(
+        {
+          core: {
+            setOutput: () => assert.fail("No publication output"),
+            summary: { addCodeBlock: () => ({ write: async () => {} }) }
+          }
+        },
+        source,
+        directory,
+        { ...mirrorEnvironment(receipt), ...override },
+        async () =>
+          assert.fail("No registry read before successful correlation")
+      )
+    );
+    const retained = JSON.parse(
+      await readFile(join(directory, "receipt.json"), "utf8")
+    );
+    assert.equal(retained.status, "pending-mirror");
+    assert.equal(retained.acr.digest, undefined);
+  }
+});
+
+test("private first upload retries with the same digest and original generation evidence", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "bicep-public-retry-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await writeFile(
+    join(directory, "receipt.json"),
+    JSON.stringify(receiptFixture())
+  );
+  let visibility = "private";
+  const uploads = [],
+    payloads = [];
+  const github = {
+    rest: {
+      repos: {
+        getBranch: async () => ({
+          data: { protected: true, commit: { sha: source.commit } }
+        })
+      },
+      packages: {
+        getPackageForOrganization: async () => ({ data: { visibility } })
+      }
+    }
+  };
+  const core = {
+    setOutput: (name, value) => {
+      if (name === "client_payload") payloads.push(JSON.parse(value));
+    },
+    summary: { addCodeBlock: () => ({ write: async () => {} }) }
+  };
+  const run = async (args) => {
+    if (args[1] === "cp") {
+      uploads.push(args[3]);
+      assert.equal(args.at(-1), targets.ghcr);
+      return "";
+    }
+    assert.deepEqual(args.slice(0, 3), ["oras", "manifest", "fetch"]);
+    return "uploaded manifest";
+  };
+  await assert.rejects(
+    publish({ github, core }, source, directory, run),
+    /mirror has not been requested/
+  );
+  const first = JSON.parse(
+    await readFile(join(directory, "receipt.json"), "utf8")
+  );
+  assert.equal(first.status, "pending-mirror");
+  assert.deepEqual(payloads, []);
+  visibility = "public";
+  await writeFile(
+    join(directory, "receipt.json"),
+    JSON.stringify({ ...first, publicationAttempt: 2 })
+  );
+  await publish(
+    { github, core },
+    { ...source, generationAttempt: 2 },
+    directory,
+    run
+  );
+  assert.equal(uploads.length, 2);
+  assert.equal(uploads[0], uploads[1]);
+  assert.equal(payloads[0].digest, first.manifestDigest);
+  assert.deepEqual(
+    payloads[0].source_evidence,
+    copyRequest(first).source_evidence
+  );
+  assert.equal(
+    payloads[0].release_identifier,
+    copyRequest(first).release_identifier
+  );
+});
+
+test("native process readback hashes exact bytes and never writes an ACR target", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "bicep-copy-readback-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const receipt = receiptFixture();
+  receipt.status = "pending-mirror";
+  receipt.visibility = "public";
+  receipt.ghcr.digest = receipt.manifestDigest;
+  const stub = join(directory, "oras-stub.mjs");
+  await writeFile(
+    stub,
+    `
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const [directory, ...args] = process.argv.slice(2);
+assert.deepEqual(args.slice(0, 4), ["oras", "manifest", "fetch", "--registry-config"]);
+assert.deepEqual(JSON.parse(readFileSync(args[4], "utf8")), { auths: {} });
+const references = ${JSON.stringify([targets.acr, targets.ghcr])};
+assert.ok(references.includes(args[5]));
+process.stdout.write(readFileSync(directory + (args[5] === references[0] ? "/acr-manifest" : "/ghcr-manifest")));
+`
+  );
+  await writeFile(join(directory, "ghcr-manifest"), "uploaded manifest");
+  const outputs = {};
+  const core = {
+    setOutput: (name, value) => {
+      outputs[name] = value;
+    },
+    summary: { addCodeBlock: () => ({ write: async () => {} }) }
+  };
+  const run = (args, options) =>
+    tool([process.execPath, stub, directory, ...args], options);
+  for (const bytes of ["uploaded manifest", "uploaded manifest\n"]) {
+    await writeFile(join(directory, "receipt.json"), JSON.stringify(receipt));
+    await writeFile(join(directory, "acr-manifest"), bytes);
+    const promise = complete(
+      { core },
+      source,
+      directory,
+      mirrorEnvironment(receipt),
+      run
+    );
+    if (bytes === "uploaded manifest") {
+      await promise;
+      assert.equal(outputs.status, "published");
+    } else {
+      delete outputs.status;
+      await assert.rejects(promise, /Digest mismatch/);
+      assert.equal(outputs.status, undefined);
+    }
+  }
+});
+
+test("GHCR bootstrap, correlated private copy and anonymous readback preserve honest receipts", async (t) => {
   for (const outcome of [
     "public",
+    "publication retry",
+    "active remote",
     "private",
     "internal",
     "API failure",
+    "anonymous failure",
+    "upload failure",
+    "GHCR digest failure",
     "mirror failure",
-    "digest failure",
+    "mirror timeout",
+    "uncertain dispatch",
+    "App failure",
+    "ACR digest failure",
+    "GHCR moved",
+    "upload summary failure",
+    "final summary failure",
     "stale"
   ]) {
     await t.test(outcome, async (t) => {
@@ -375,21 +695,20 @@ test("bootstrap uploads before visibility lookup and preserves post-upload failu
       t.after(() => rm(directory, { recursive: true, force: true }));
       const raw = "uploaded manifest",
         digest = hash(raw);
+      const currentSource = {
+        ...source,
+        generationAttempt: outcome === "publication retry" ? 2 : 1
+      };
       await writeFile(
         join(directory, "receipt.json"),
-        JSON.stringify({
-          source,
-          manifestDigest: digest,
-          publicationAttempt: 1,
-          status: "failed",
-          ghcr: { reference: targets.ghcr },
-          acr: { reference: targets.acr }
-        })
+        JSON.stringify(receiptFixture(currentSource.generationAttempt))
       );
-      const outputs = {},
+      const uploadOutputs = {},
+        outputs = {},
         calls = [];
       let packageExists = false,
-        summary;
+        summary,
+        phase = "upload";
       const github = {
         rest: {
           repos: {
@@ -408,64 +727,218 @@ test("bootstrap uploads before visibility lookup and preserves post-upload failu
                 packageExists,
                 "A missing package must first be created by the upload"
               );
-              assert.deepEqual(calls, [
-                "upload",
-                "verify GHCR",
-                "mirror",
-                "verify ACR",
-                "verify GHCR"
-              ]);
+              assert.deepEqual(calls, ["upload", "verify GHCR"]);
+              const retained = JSON.parse(
+                await readFile(join(directory, "receipt.json"), "utf8")
+              );
+              assert.equal(retained.ghcr.digest, digest);
+              assert.equal(retained.status, "pending-mirror");
               calls.push("visibility");
               if (outcome === "API failure") throw new Error("HTTP 403");
-              return { data: { visibility: outcome } };
+              return {
+                data: {
+                  visibility:
+                    ["private", "internal"].includes(outcome) ? outcome : (
+                      "public"
+                    )
+                }
+              };
             }
           }
         }
       };
       const core = {
         setOutput: (key, value) => {
-          outputs[key] = value;
+          (phase === "upload" ? uploadOutputs : outputs)[key] = value;
         },
         summary: {
           addCodeBlock: (value) => {
             summary = JSON.parse(value);
-            return { write: async () => {} };
+            return {
+              write: async () => {
+                if (
+                  (phase === "upload" &&
+                    outcome === "upload summary failure") ||
+                  (phase === "complete" && outcome === "final summary failure")
+                )
+                  throw new Error("summary write failed");
+              }
+            };
           }
         }
       };
-      const run = async (args) => {
+      const run = async (args, options) => {
         if (args[1] === "cp") {
-          if (args.at(-1) === targets.ghcr) {
-            calls.push("upload");
-            packageExists = true;
-            assert.deepEqual(args, [
-              "oras",
-              "cp",
-              "--from-oci-layout",
-              `${directory}/layout@${digest}`,
-              targets.ghcr
-            ]);
-          } else {
-            calls.push("mirror");
-            assert.deepEqual(args, [
-              "oras",
-              "cp",
-              `${targets.ghcr.split(":")[0]}@${digest}`,
-              targets.acr
-            ]);
-            if (outcome === "mirror failure")
-              throw new Error("ACR unavailable");
-          }
+          calls.push("upload");
+          packageExists = true;
+          assert.deepEqual(args, [
+            "oras",
+            "cp",
+            "--from-oci-layout",
+            `${directory}/layout@${digest}`,
+            targets.ghcr
+          ]);
+          if (outcome === "upload failure") throw new Error("GHCR unavailable");
           return "";
         }
-        calls.push(args.at(-1) === targets.ghcr ? "verify GHCR" : "verify ACR");
-        return outcome === "digest failure" ? "wrong digest" : raw;
+        assert.deepEqual(args.slice(0, 3), ["oras", "manifest", "fetch"]);
+        assert.equal(options.timeout, 60_000);
+        const reference = args.at(-1);
+        if (args.includes("--registry-config")) {
+          assert.deepEqual(JSON.parse(await readFile(args[4], "utf8")), {
+            auths: {}
+          });
+          assert.equal(args[4], join(directory, "anonymous-registry.json"));
+          if (phase === "upload") {
+            assert.equal(reference, `${targets.ghcr.split(":")[0]}@${digest}`);
+            calls.push("anonymous GHCR");
+            if (outcome === "anonymous failure")
+              throw new Error("Anonymous pull denied");
+          } else {
+            calls.push(
+              reference === targets.acr ? "verify ACR" : "recheck GHCR"
+            );
+          }
+        } else {
+          assert.equal(reference, targets.ghcr);
+          calls.push("verify GHCR");
+        }
+        if (
+          (outcome === "GHCR digest failure" &&
+            !args.includes("--registry-config")) ||
+          (outcome === "ACR digest failure" && reference === targets.acr) ||
+          (outcome === "GHCR moved" &&
+            phase === "complete" &&
+            reference === targets.ghcr)
+        )
+          return "wrong digest";
+        return raw;
       };
       let failure;
       try {
-        await publish({ github, core }, source, directory, run);
+        await publish({ github, core }, currentSource, directory, run);
       } catch (error) {
         failure = error.message;
+      }
+      const remoteOutputs = {};
+      let mirrorResult = "skipped",
+        dispatches = 0;
+      if (
+        !failure &&
+        uploadOutputs.status === "pending-mirror" &&
+        outcome !== "App failure"
+      ) {
+        phase = "monitor";
+        const payload = JSON.parse(uploadOutputs.client_payload);
+        assert.equal(payload.source_evidence.run_attempt, 1);
+        assert.equal(payload.source_evidence.artifact_digest, artifact.digest);
+        const inputs = {
+          OWNER: "azure-octo",
+          REPO: "radius-publisher",
+          WORKFLOW_FILE: "publish-bicep-types.yml",
+          EVENT_TYPE: "bicep-types",
+          RELEASE_IDENTIFIER: uploadOutputs.release_identifier,
+          CLIENT_PAYLOAD: uploadOutputs.client_payload,
+          REUSE_SUCCESSFUL: "false",
+          MAX_WAIT_SECONDS: "3",
+          POLL_INTERVAL_SECONDS: "1"
+        };
+        const remoteRun = {
+          id: 456,
+          event: "repository_dispatch",
+          display_title: `bicep-types / ${payload.release_identifier}`,
+          status: "completed",
+          conclusion: outcome === "mirror failure" ? "failure" : "success",
+          html_url:
+            "https://github.com/azure-octo/radius-publisher/actions/runs/456"
+        };
+        const runs =
+          outcome === "active remote" ?
+            [{ ...remoteRun, status: "in_progress", conclusion: null }]
+          : [];
+        let clock = 0;
+        const failures = [];
+        await monitorRemoteWorkflow({
+          core: {
+            getInput: (name) => inputs[name] ?? "",
+            setOutput: (name, value) => {
+              remoteOutputs[name] = value;
+            },
+            setFailed: (message) => {
+              failures.push(message);
+            },
+            info: () => {}
+          },
+          now: () => clock,
+          sleep: async (ms) => {
+            clock += ms;
+          },
+          github: {
+            paginate: async () => runs,
+            rest: {
+              repos: {
+                createDispatchEvent: async (request) => {
+                  dispatches++;
+                  calls.push("dispatch");
+                  assert.equal(request.owner, "azure-octo");
+                  assert.equal(request.repo, "radius-publisher");
+                  assert.equal(request.event_type, "bicep-types");
+                  assert.deepEqual(request.client_payload, payload);
+                  const retained = JSON.parse(
+                    await readFile(join(directory, "receipt.json"), "utf8")
+                  );
+                  assert.equal(retained.status, "pending-mirror");
+                  assert.equal(retained.ghcr.digest, digest);
+                  assert.equal(retained.visibility, "public");
+                  assert.equal(retained.acr.digest, undefined);
+                  if (outcome === "uncertain dispatch")
+                    throw Object.assign(new Error("response lost"), {
+                      status: 503
+                    });
+                  runs.push(
+                    outcome === "mirror timeout" ?
+                      { ...remoteRun, status: "in_progress", conclusion: null }
+                    : remoteRun
+                  );
+                }
+              },
+              actions: {
+                listWorkflowRuns: async () => ({
+                  data: { workflow_runs: runs }
+                }),
+                getWorkflowRun: async () => ({
+                  data: outcome === "mirror timeout" ? runs[0] : remoteRun
+                }),
+                listJobsForWorkflowRun: async () => ({ data: { jobs: [] } })
+              }
+            }
+          }
+        });
+        mirrorResult = failures.length ? "failure" : "success";
+        assert.equal(dispatches, outcome === "active remote" ? 0 : 1);
+        if (["mirror timeout", "uncertain dispatch"].includes(outcome))
+          assert.equal(clock, 3000);
+      }
+      if (!failure) {
+        phase = "complete";
+        try {
+          await complete(
+            { core },
+            currentSource,
+            directory,
+            {
+              MIRROR_RESULT: mirrorResult,
+              MIRROR_RELEASE_IDENTIFIER: remoteOutputs.release_identifier,
+              MIRROR_RUN_STATE: remoteOutputs.run_state,
+              MIRROR_RUN_ID: remoteOutputs.run_id,
+              MIRROR_RUN_URL: remoteOutputs.run_url,
+              MIRROR_CONCLUSION: remoteOutputs.conclusion
+            },
+            run
+          );
+        } catch (error) {
+          failure = error.message;
+        }
       }
       const receipt = JSON.parse(
         await readFile(join(directory, "receipt.json"), "utf8")
@@ -475,40 +948,62 @@ test("bootstrap uploads before visibility lookup and preserves post-upload failu
         assert.deepEqual(calls, []);
         assert.equal(failure, undefined);
         assert.equal(outputs.status, "superseded");
-      } else if (outcome.endsWith("failure") && outcome !== "API failure") {
-        assert.match(
-          failure,
-          outcome === "mirror failure" ? /ACR unavailable/ : /Digest mismatch/
-        );
-        assert.equal(receipt.status, "partial");
-        assert.equal(
-          receipt.ghcr.digest,
-          outcome === "mirror failure" ? digest : undefined
-        );
-        assert.equal(receipt.acr.digest, undefined);
-        assert.equal(outputs.status, undefined);
-        assert.ok(!calls.includes("visibility"));
-      } else {
+        assert.equal(dispatches, 0);
+      } else if (
+        ["public", "publication retry", "active remote"].includes(outcome)
+      ) {
+        assert.equal(failure, undefined);
+        assert.equal(outputs.status, "published");
+        assert.equal(receipt.status, "published");
         assert.equal(receipt.ghcr.digest, digest);
         assert.equal(receipt.acr.digest, digest);
-        if (outcome === "public") {
-          assert.equal(failure, undefined);
-          assert.equal(outputs.status, "published");
-          assert.equal(receipt.status, "published");
+        assert.equal(receipt.mirror.run_id, "456");
+        assert.equal(calls.filter((call) => call === "upload").length, 1);
+        assert.deepEqual(calls.slice(-2), ["verify ACR", "recheck GHCR"]);
+      } else {
+        assert.ok(failure, outcome);
+        assert.equal(outputs.status, undefined);
+        if (["upload failure", "GHCR digest failure"].includes(outcome)) {
+          assert.equal(receipt.status, "partial");
+          assert.equal(receipt.ghcr.digest, undefined);
+          assert.ok(!calls.includes("visibility"));
         } else {
-          assert.equal(receipt.status, "uploaded");
+          assert.equal(receipt.ghcr.digest, digest);
           assert.equal(
-            receipt.visibility,
-            outcome === "API failure" ? "unknown" : outcome
+            receipt.status,
+            outcome === "final summary failure" ? "published" : "pending-mirror"
           );
-          assert.equal(outputs.status, undefined);
-          assert.match(failure, /artifact was uploaded and mirrored/);
-          assert.match(
-            failure,
-            /Packages -> bicep-types-radius -> Package settings -> Change visibility -> Public/
+        }
+        if (
+          ["private", "internal", "API failure", "anonymous failure"].includes(
+            outcome
+          )
+        ) {
+          assert.equal(dispatches, 0);
+          assert.equal(receipt.mirror.run_state, "not-requested");
+          assert.equal(receipt.acr.digest, undefined);
+          assert.match(failure, /private ACR mirror has not been requested/);
+          assert.match(failure, /Change visibility -> Public/);
+        }
+        if (
+          [
+            "mirror failure",
+            "mirror timeout",
+            "uncertain dispatch",
+            "App failure"
+          ].includes(outcome)
+        ) {
+          assert.equal(
+            receipt.mirror.run_state,
+            outcome === "uncertain dispatch" ? "unknown"
+            : outcome === "App failure" ? "not-requested"
+            : "found"
           );
-          assert.match(failure, /rerun and verify anonymous restore/);
-          if (outcome === "API failure") assert.match(failure, /HTTP 403/);
+          assert.equal(receipt.acr.digest, undefined);
+          assert.ok(!calls.includes("verify ACR"));
+        }
+        if (["ACR digest failure", "GHCR moved"].includes(outcome)) {
+          assert.match(failure, /Digest mismatch/);
         }
       }
     });

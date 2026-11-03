@@ -9,13 +9,6 @@ on:
         description: The successful change detector's explicit output.
         required: true
         type: string
-    secrets:
-      BICEPTYPES_CLIENT_ID:
-        required: true
-      BICEPTYPES_TENANT_ID:
-        required: true
-      BICEPTYPES_SUBSCRIPTION_ID:
-        required: true
     outputs:
       status:
         value: ${{ jobs.publish.outputs.status }}
@@ -130,10 +123,9 @@ jobs:
       contents: read
       actions: read
       packages: write
-      id-token: write
     outputs:
-      status: ${{ steps.publish.outputs.status }}
-      manifest_digest: ${{ steps.publish.outputs.manifest_digest }}
+      status: ${{ steps.complete.outputs.status }}
+      manifest_digest: ${{ steps.complete.outputs.manifest_digest }}
     steps:
       - name: Checkout trusted publisher
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -180,17 +172,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Login to Azure for the compatibility mirror
-        run: node .github/scripts/azure-oidc-login.mjs
-        env:
-          AZURE_CLIENT_ID: ${{ secrets.BICEPTYPES_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.BICEPTYPES_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
-
-      - name: Login to the fixed compatibility registry
-        run: az acr login --name biceptypes
-
-      - name: Publish and verify the complete pair
+      - name: Publish GHCR and verify public access
         id: publish
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
@@ -202,6 +184,56 @@ jobs:
           INPUT_OPERATION: publish
           INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
 
+      - name: Get private publisher App token
+        if: steps.publish.outputs.status == 'pending-mirror'
+        id: publisher-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          owner: azure-octo
+          repositories: radius-publisher
+          permission-actions: read
+          permission-contents: write
+
+      - name: Request and monitor the exact private ACR copy
+        if: steps.publish.outputs.status == 'pending-mirror'
+        id: mirror
+        timeout-minutes: 20
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.publisher-token.outputs.token }}
+          script: |
+            const { default: monitor } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/monitor-remote-workflow.mjs`)
+            await monitor({github, core})
+        env:
+          INPUT_OWNER: azure-octo
+          INPUT_REPO: radius-publisher
+          INPUT_WORKFLOW_FILE: publish-bicep-types.yml
+          INPUT_EVENT_TYPE: bicep-types
+          INPUT_RELEASE_IDENTIFIER: ${{ steps.publish.outputs.release_identifier }}
+          INPUT_CLIENT_PAYLOAD: ${{ steps.publish.outputs.client_payload }}
+          INPUT_REUSE_SUCCESSFUL: "false"
+
+      - name: Verify the mirrored digest and record the result
+        if: always() && steps.publish.outcome == 'success'
+        id: complete
+        timeout-minutes: 5
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: complete
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+          MIRROR_RESULT: ${{ steps.mirror.outcome }}
+          MIRROR_RELEASE_IDENTIFIER: ${{ steps.mirror.outputs.release_identifier }}
+          MIRROR_RUN_STATE: ${{ steps.mirror.outputs.run_state }}
+          MIRROR_RUN_ID: ${{ steps.mirror.outputs.run_id }}
+          MIRROR_RUN_URL: ${{ steps.mirror.outputs.run_url }}
+          MIRROR_CONCLUSION: ${{ steps.mirror.outputs.conclusion }}
+
       - name: Retain publication receipt
         if: always() && steps.prepare.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -210,7 +242,3 @@ jobs:
           path: ${{ runner.temp }}/bicep-types/receipt.json
           if-no-files-found: error
           retention-days: 30
-
-      - name: Clear Azure session
-        if: always()
-        run: az account clear
