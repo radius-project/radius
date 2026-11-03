@@ -166,12 +166,13 @@ type PolicySource interface {
 // PolicyCache has no background goroutines until its owner calls Run. Refresh
 // also supplies the immediate refresh hook for the common local write path.
 type PolicyCache struct {
-	source PolicySource
-	clock  clock.WithTicker
-	gate   chan struct{}
-	mu     sync.RWMutex
-	value  *PolicySnapshot
-	asOf   time.Time
+	source    PolicySource
+	clock     clock.WithTicker
+	gate      chan struct{}
+	mu        sync.RWMutex
+	value     *PolicySnapshot
+	asOf      time.Time
+	lastError error
 }
 
 // NewPolicyCache creates an initially unavailable cache. A nil clock uses real
@@ -188,13 +189,18 @@ func NewPolicyCache(source PolicySource, clk clock.WithTicker) (*PolicyCache, er
 
 // Refresh serializes local reloads without preventing cancellation while waiting.
 // The timestamp is from before I/O: a slow read cannot extend the stale window.
-func (c *PolicyCache) Refresh(ctx context.Context) error {
+func (c *PolicyCache) Refresh(ctx context.Context) (err error) {
 	select {
 	case c.gate <- struct{}{}:
 		defer func() { <-c.gate }()
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+	defer func() {
+		c.mu.Lock()
+		c.lastError = err
+		c.mu.Unlock()
+	}()
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -247,8 +253,9 @@ func (c *PolicyCache) Evaluate(identity Identity, checks []Check) ([]Decision, e
 	return value.Evaluate(identity, checks)
 }
 
-// Run refreshes every five seconds until cancelled. The owner must join this
-// call at shutdown. Failures are delivered to report, never silently discarded.
+// Run refreshes every five seconds until cancelled. Each attempt has a five
+// second deadline. The owner must join this call at shutdown. Failures are
+// delivered to report, never silently discarded.
 func (c *PolicyCache) Run(ctx context.Context, report func(error)) error {
 	if report == nil {
 		return fmt.Errorf("policy refresh error reporter is required")
@@ -256,7 +263,10 @@ func (c *PolicyCache) Run(ctx context.Context, report func(error)) error {
 	ticker := c.clock.NewTicker(PolicyRefreshInterval)
 	defer ticker.Stop()
 	for {
-		if err := c.Refresh(ctx); err != nil {
+		attempt, cancel := context.WithTimeout(ctx, PolicyRefreshInterval)
+		err := c.Refresh(attempt)
+		cancel()
+		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}

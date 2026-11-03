@@ -18,6 +18,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
@@ -33,6 +34,9 @@ import (
 // NewServer initializes a host for UCP based on the provided options. It creates the AWS clients first, so the
 // frontend and the backend share them.
 func NewServer(ctx context.Context, options *ucp.Options) (*hosting.Host, error) {
+	if options.Config.UserAuthorization.Enabled != (options.UserAuthorization != nil) {
+		return nil, fmt.Errorf("user authorization runtime must match configured enabled state")
+	}
 	if err := ucp_aws_frontend.InitializeClients(ctx, options); err != nil {
 		return nil, err
 	}
@@ -40,6 +44,10 @@ func NewServer(ctx context.Context, options *ucp.Options) (*hosting.Host, error)
 	services := []hosting.Service{
 		api.NewService(options),
 		backend.NewService(options),
+	}
+
+	if options.UserAuthorization != nil {
+		services = append(services, options.UserAuthorization)
 	}
 
 	if options.Config.Metrics.Enabled {
