@@ -1069,6 +1069,7 @@ func (w WhoAmIResult) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "issuer", w.Issuer)
 	populate(objectMap, "mode", w.Mode)
 	populate(objectMap, "principal", w.Principal)
+	populate(objectMap, "warnings", w.Warnings)
 	return json.Marshal(objectMap)
 }
 
@@ -1095,6 +1096,9 @@ func (w *WhoAmIResult) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "principal":
 			err = unpopulate(val, "Principal", &w.Principal)
+			delete(rawMsg, key)
+		case "warnings":
+			err = unpopulate(val, "Warnings", &w.Warnings)
 			delete(rawMsg, key)
 		}
 		if err != nil {

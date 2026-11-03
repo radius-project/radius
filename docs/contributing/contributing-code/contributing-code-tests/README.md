@@ -112,6 +112,16 @@ For policy runtime lifecycle and UCP wiring, run `go test -race ./pkg/ucp/author
 
 For request-target observations and protected-mutation rejection, run `go test -race ./pkg/ucp/authorization ./pkg/ucp/frontend/api -short -run 'TestObserveRequests|TestServiceDryRunRequests|TestServiceProtectedMutationsEveryMode|TestServiceRequestHeader' -count=1`. Observer tests cover allowed/denied/unknown/failed checks, unchanged bodies and responses, exact freshness expiry, stopped/missing runtimes, every workload mode, and unchanged committed policy after rejected writes. The frontend integration tests use real TLS request-header authentication, UCP plane/resource-group controllers, and deployment proxy routing; they verify `wouldDeny` evidence, unchanged ordinary deployment PUT/validation responses, and a simulated downstream policy step rejected when it returns through UCP. This does not substitute for live Kubernetes aggregation, a real deployment-engine execution, or full deployment preflight/enforcement coverage. See [request observations](../../../architecture/ucp.md#user-authorization-request-observations) for the deliberately limited `targetOnly` contract.
 
+For the read-only inspection API and CLI, run `go test -race ./pkg/ucp/authorization ./pkg/ucp/frontend/api ./pkg/cli/cmd/auth ./cmd/rad/cmd -short -count=1`. This covers JSON/table output, errors, self and other-principal checks, strict rejection of supplied groups, invalid scopes/permissions, mixed-case IDs, consistent batch generations during concurrent policy changes, every workload mode, unavailable policy, and the unchanged protected-mutation boundary.
+
+To exercise genuine Kubernetes API aggregation, set `KUBEBUILDER_ASSETS` using the envtest setup below and run:
+
+```bash
+go test -race ./pkg/ucp/frontend/api -run '^TestInspectionKubernetesAggregation$' -count=1 -v
+```
+
+The non-Windows test starts its own API server and etcd, registers a real `APIService` with a verified serving CA, and configures a dedicated front-proxy client certificate and request-header CA. A loopback `ExternalName` service avoids needing kube-proxy or exposing a listener on the local network. The actual CLI command tree runs through its workspace kubeconfig, Kubernetes transport, API-server authentication/RBAC gate, front proxy, and UCP handlers. It tests certificate-authenticated users and groups, a Kubernetes-issued service-account token, policy grants/denials, warnings, forged-header replacement at the Kubernetes endpoint, and rejection of missing/untrusted proxy certificates directly at UCP. It explicitly ignores `USE_EXISTING_CLUSTER`, seeds only an in-memory test policy through a fixture verifier, and stops its control plane and listeners after the test; no shared cluster resources or production policy are modified. Short runs skip this test and are not aggregation evidence.
+
 For real backend recovery checks, omit `-short` and select `TestPolicyStoreAPIServer` (envtest setup below) or `TestPolicyStorePostgres` (requires a disposable database via `TEST_POSTGRES_URL`, as shown by `make db-init`). Missing Postgres configuration skips those checks rather than proving concurrency. These tests cover storage and runtime lifecycle/readiness interfaces, not management APIs or runtime request enforcement.
 
 ## Verification
