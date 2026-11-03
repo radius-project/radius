@@ -189,11 +189,3 @@ The following changes implement the general feature; ACA ingress configuration r
 
 - **Registration complexity:** the platform engineer must configure compatible registrations: which Radius Resource Types delegate, how they select a target resource, and which delegating Radius Resource Types the target resource's recipe accepts.
 - **Recipe-authoring complexity:** the target resource's recipe must interpret several Radius Resource Types, combine their configuration, and return computed properties for each delegating resource. It replaces several smaller recipes with one more capable recipe.
-
-## Prototype evidence
-
-The prototype demonstrated one unchanged Bicep application on Kubernetes and ACA, using Terraform and Bicep recipes for target resources. Radius automatically reran the target resource's recipe when a delegating resource changed. Updates to the target Radius container resource preserved TCP ingress; updates to delegating Radius routes changed live TCP connectivity; deleting and recreating those routes preserved the platform workload. Kubernetes demonstrated two delegating resources per target resource; the ACA demo used one delegating Radius route for internal TCP.
-
-The demonstration exercised separate Radius container and Radius route requests. Its scope was to demonstrate combined recipe inputs, ownership of platform resources by one target resource, and automatic handling of subsequent Radius resource changes.
-
-The prototype's recipes, application, and runbook are under `test/experimental/delegated-provisioning-portability/` in its worktree. This ADR's Bicep blocks are explanatory excerpts, not complete deployable files.
