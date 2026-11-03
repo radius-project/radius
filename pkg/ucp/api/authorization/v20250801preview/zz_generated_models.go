@@ -449,4 +449,7 @@ type WhoAmIResult struct {
 
 	// REQUIRED; The authenticated user or workload.
 	Principal *Principal
+
+	// Adoption and recovery warnings derived from the same fresh policy. No assignment identifiers or other principals are disclosed.
+	Warnings []*string
 }
