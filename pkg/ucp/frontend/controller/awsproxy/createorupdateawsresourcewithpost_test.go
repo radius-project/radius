@@ -29,7 +29,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -75,7 +74,7 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath, bytes.NewBuffer(requestBodyBytes))
@@ -168,7 +167,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath, bytes.NewBuffer(requestBodyBytes))
@@ -257,7 +256,7 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.MemoryDB/Cluster", bytes.NewBuffer(requestBodyBytes))
@@ -336,7 +335,7 @@ func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:put", bytes.NewBuffer(requestBodyBytes))
@@ -417,7 +416,7 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:put", bytes.NewBuffer(requestBodyBytes))
@@ -509,7 +508,7 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath, bytes.NewBuffer(requestBodyBytes))

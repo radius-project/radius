@@ -283,6 +283,9 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 	}
 
 	config := database.NewSaveConfig(options...)
+	if config.CreateOnly && config.ETag != "" {
+		return &database.ErrInvalid{Message: "invalid argument. 'CreateOnly' cannot be combined with an ETag"}
+	}
 
 	err = c.doWithRetry(func() (bool, error) {
 		name, resource, found, err := c.getResourceForSave(ctx, id)
@@ -303,7 +306,9 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 		obj.ETag = converted.ETag
 
 		index := findIndex(&resource, id)
-		if index == nil && config.ETag != "" {
+		if index != nil && config.CreateOnly {
+			return false, &database.ErrConcurrency{}
+		} else if index == nil && config.ETag != "" {
 			// The ETag is only meaning for a replace/update operation not a create. We treat
 			// the absence of the resource as a match failure.
 			return false, &database.ErrConcurrency{}

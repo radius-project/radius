@@ -31,6 +31,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/testhost"
 )
 
@@ -52,6 +53,7 @@ func sendUCPRequest(t *testing.T, ucp *testhost.TestHost, method string, path st
 	request, err := rpctest.NewHTTPRequestWithContent(t.Context(), method, ucp.BaseURL()+path, content)
 	require.NoError(t, err)
 	request = request.WithContext(rpctest.NewARMRequestContext(request))
+	request.Header.Set(sdkclients.AWSResourceOwnerHeader, testOwner)
 
 	response, err := ucp.Client().Do(request)
 	require.NoError(t, err)

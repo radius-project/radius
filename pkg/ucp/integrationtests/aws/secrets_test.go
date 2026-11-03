@@ -28,13 +28,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 const (
-	testDBInstancePath           = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.RDS/DBInstance/app-db"
 	testDBInstanceCollectionPath = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.RDS/DBInstance"
 	testDBInstanceSchema         = `{
 		"primaryIdentifier": ["/properties/DBInstanceIdentifier"],
@@ -46,15 +46,14 @@ const (
 	testUserPoolClientCollectionPath = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Cognito/UserPoolClient"
 )
 
-// Test_PutAWSResource_DoesNotEchoWriteOnlyValue checks through the UCP routes that a write-only value from the request
-// is sent to AWS but never returned in the response.
+// Test_PutAWSResource_DoesNotEchoWriteOnlyValue checks through the transitional POST /:put route that a write-only
+// value from the request is sent to AWS but never returned in the response. PUT by alias is covered in alias_test.go.
 func Test_PutAWSResource_DoesNotEchoWriteOnlyValue(t *testing.T) {
 	tests := []struct {
 		name   string
 		method string
 		path   string
 	}{
-		{name: "PUT", method: http.MethodPut, path: testDBInstancePath},
 		{name: "POST /:put", method: http.MethodPost, path: testDBInstanceCollectionPath + "/:put"},
 	}
 
@@ -132,7 +131,7 @@ func Test_PutAWSResource_NoChange_KeepsAWSSecret(t *testing.T) {
 			}, nil
 		})
 
-	status, properties := sendPut(t, ucp, http.MethodPost, testUserPoolClientCollectionPath+"/:put", map[string]any{
+	status, properties := sendPut(t, ucp, http.MethodPut, testUserPoolClientCollectionPath+"/app-client", map[string]any{
 		"UserPoolId":     "us-east-1_pool",
 		"ClientId":       "client",
 		"ClientName":     "app",
@@ -159,6 +158,7 @@ func sendPut(t *testing.T, ucp *testhost.TestHost, method string, path string, p
 	request, err := rpctest.NewHTTPRequestWithContent(t.Context(), method, ucp.BaseURL()+path, body)
 	require.NoError(t, err)
 	request = request.WithContext(rpctest.NewARMRequestContext(request))
+	request.Header.Set(sdkclients.AWSResourceOwnerHeader, testOwner)
 
 	response, err := ucp.Client().Do(request)
 	require.NoError(t, err)

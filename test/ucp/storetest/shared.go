@@ -341,6 +341,43 @@ func RunTest(t *testing.T, client database.Client, clear func(t *testing.T)) {
 		require.Nil(t, obj1Get)
 	})
 
+	t.Run("save_create_only_creates_missing_resource", func(t *testing.T) {
+		clear(t)
+
+		obj1 := createObject(Resource1ID, Data1)
+		err := client.Save(ctx, &obj1, database.WithCreateOnly())
+		require.NoError(t, err)
+		require.NotEmpty(t, obj1.ETag)
+
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
+		require.NoError(t, err)
+		compareObjects(t, &obj1, obj1Get)
+	})
+
+	t.Run("save_create_only_cannot_replace_existing_resource", func(t *testing.T) {
+		clear(t)
+
+		obj1 := createObject(Resource1ID, Data1)
+		err := client.Save(ctx, &obj1)
+		require.NoError(t, err)
+
+		obj2 := createObject(Resource1ID, Data2)
+		err = client.Save(ctx, &obj2, database.WithCreateOnly())
+		require.ErrorIs(t, err, &database.ErrConcurrency{})
+
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
+		require.NoError(t, err)
+		compareObjects(t, &obj1, obj1Get)
+	})
+
+	t.Run("save_create_only_cannot_combine_with_etag", func(t *testing.T) {
+		clear(t)
+
+		obj1 := createObject(Resource1ID, Data1)
+		err := client.Save(ctx, &obj1, database.WithCreateOnly(), database.WithETag("abc"))
+		require.ErrorIs(t, err, &database.ErrInvalid{Message: "invalid argument. 'CreateOnly' cannot be combined with an ETag"})
+	})
+
 	t.Run("save_and_get_scope_only", func(t *testing.T) {
 		clear(t)
 

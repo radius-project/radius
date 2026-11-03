@@ -36,6 +36,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
@@ -109,66 +110,55 @@ func postGetAWSResource(t *testing.T, ctx context.Context, url string, roundTrip
 	return body
 }
 
-func Test_AWS_DeleteResource(t *testing.T) {
+// Test_AWS_DeployAndDeleteByAlias deploys a log group by its alias, redeploys it unchanged, and deletes it by its
+// alias. UCP keeps a record of the log group under the alias, so the redeploy and the delete find it.
+func Test_AWS_DeployAndDeleteByAlias(t *testing.T) {
 	ctx := t.Context()
 
-	myTest := test.NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	myTest := test.NewUCPTest(t, "Test_AWS_DeployAndDeleteByAlias", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		logGroupName := generateLogGroupName(t)
-		setupTestAWSResource(t, ctx, logGroupName)
+		cleanupTestAWSResource(t, logGroupName)
 		resourceID, err := validation.GetResourceIdentifier(ctx, logGroupResourceType, logGroupName)
 		require.NoError(t, err)
-
-		// Construct resource collection url
-		resourceIDParts := strings.Split(resourceID, "/")
-		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
-		resourceID = strings.Join(resourceIDParts, "/")
-		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", url, resourceID, v20231001preview.Version)
-		deleteRequestBody := map[string]any{
-			"properties": map[string]any{
-				"LogGroupName": logGroupName,
-			},
-		}
-		deleteBody, err := json.Marshal(deleteRequestBody)
+		resourceURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceID, v20231001preview.Version)
+		body, err := json.Marshal(map[string]any{"properties": map[string]any{"LogGroupName": logGroupName}})
 		require.NoError(t, err)
 
-		// Issue the Delete Request
-		deleteRequest, err := http.NewRequest(http.MethodPost, deleteURL, bytes.NewBuffer(deleteBody))
-		require.NoError(t, err)
-		deleteResponse, err := roundTripper.RoundTrip(deleteRequest)
-		require.NoError(t, err)
-		requireResponseStatus(t, deleteResponse, http.StatusAccepted)
-		defer deleteResponse.Body.Close()
+		// The first deploy creates the log group.
+		response := sendAWSRequest(t, roundTripper, http.MethodPut, resourceURL, body)
+		requireResponseStatus(t, response, http.StatusCreated)
+		require.NoError(t, response.Body.Close())
+		waitForUCPOperation(t, roundTripper, response.Header.Get("Azure-AsyncOperation"))
 
-		// Get the operation status url from the Azure-Asyncoperation header
-		deleteResponseCompletionUrl := deleteResponse.Header["Azure-Asyncoperation"][0]
-		getRequest, err := http.NewRequest(http.MethodGet, deleteResponseCompletionUrl, nil)
-		require.NoError(t, err)
-		maxRetries := 100
-		deleteSucceeded := false
-		for range maxRetries {
-			getResponse, err := roundTripper.RoundTrip(getRequest)
-			require.NoError(t, err)
-			require.Equal(t, http.StatusOK, getResponse.StatusCode)
+		// An unchanged redeploy finds the record and changes nothing.
+		response = sendAWSRequest(t, roundTripper, http.MethodPut, resourceURL, body)
+		requireResponseStatus(t, response, http.StatusOK)
+		require.NoError(t, response.Body.Close())
 
-			// Read the request status from the body
-			payload, err := io.ReadAll(getResponse.Body)
-			require.NoError(t, err)
-			require.NoError(t, getResponse.Body.Close())
-			body := map[string]any{}
-			err = json.Unmarshal(payload, &body)
-			require.NoError(t, err)
-			if body["status"] == "Succeeded" {
-				deleteSucceeded = true
-				break
-			}
-			// Give it more time
-			time.Sleep(1 * time.Second)
-		}
-		require.True(t, deleteSucceeded)
+		// The delete finds the log group through the record.
+		response = sendAWSRequest(t, roundTripper, http.MethodDelete, resourceURL, nil)
+		requireResponseStatus(t, response, http.StatusAccepted)
+		require.NoError(t, response.Body.Close())
+		waitForUCPOperation(t, roundTripper, response.Header.Get("Azure-AsyncOperation"))
+
+		response = sendAWSRequest(t, roundTripper, http.MethodGet, resourceURL, nil)
+		requireResponseStatus(t, response, http.StatusNotFound)
+		require.NoError(t, response.Body.Close())
 	})
 
 	myTest.RequiredFeatures = []test.RequiredFeature{test.FeatureAWS}
 	myTest.Test(t)
+}
+
+// sendAWSRequest sends a request to UCP's AWS plane with the owner header that PUT and DELETE require.
+func sendAWSRequest(t *testing.T, roundTripper http.RoundTripper, method string, url string, body []byte) *http.Response {
+	t.Helper()
+	request, err := http.NewRequest(method, url, bytes.NewReader(body))
+	require.NoError(t, err)
+	request.Header.Set(sdkclients.AWSResourceOwnerHeader, "deploy;/planes/radius/local/resourceGroups/ucp-functional-test;;")
+	response, err := roundTripper.RoundTrip(request)
+	require.NoError(t, err)
+	return response
 }
 
 func Test_AWS_ListResources(t *testing.T) {
@@ -241,14 +231,11 @@ func Test_AWS_UnsupportedTypes(t *testing.T) {
 				resourceID, err := validation.GetResourceIdentifier(ctx, tt.resourceType, "unused")
 				require.NoError(t, err)
 				collectionID := strings.TrimSuffix(resourceID, "/unused")
-				putURL := fmt.Sprintf("%s%s/:put?api-version=%s", url, collectionID, v20231001preview.Version)
+				putURL := fmt.Sprintf("%s%s/radius-functional-test?api-version=%s", url, collectionID, v20231001preview.Version)
 
 				body, err := json.Marshal(map[string]any{"properties": tt.properties})
 				require.NoError(t, err)
-				request, err := http.NewRequest(http.MethodPost, putURL, bytes.NewBuffer(body))
-				require.NoError(t, err)
-				response, err := roundTripper.RoundTrip(request)
-				require.NoError(t, err)
+				response := sendAWSRequest(t, roundTripper, http.MethodPut, putURL, body)
 				requireResponseStatus(t, response, http.StatusBadRequest)
 				defer response.Body.Close()
 
@@ -284,14 +271,25 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	require.NoError(t, err)
 	waitForSuccess(t, ctx, awsClient, response.ProgressEvent.RequestToken)
 
+	cleanupTestAWSResource(t, resourceName)
+	// End of test setup
+}
+
+// cleanupTestAWSResource deletes the log group when the test ends, if it still exists.
+func cleanupTestAWSResource(t *testing.T, resourceName string) {
 	t.Cleanup(func() {
 		// Use a fresh context because t.Context() is cancelled before cleanup runs.
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute) //nolint:usetesting
 		defer cancel()
 
+		cfg, err := awsconfig.LoadDefaultConfig(cleanupCtx)
+		require.NoError(t, err)
+		var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
+		cloudControlOpts := []func(*cloudcontrol.Options){awsproxy.CloudControlRegionOption("us-west-2")}
+
 		// Check if resource exists before issuing a delete because the AWS SDK async delete operation
 		// seems to fail if the resource does not exist
-		_, err := awsClient.GetResource(cleanupCtx, &cloudcontrol.GetResourceInput{
+		_, err = awsClient.GetResource(cleanupCtx, &cloudcontrol.GetResourceInput{
 			Identifier: &resourceName,
 			TypeName:   &awsLogGroupResourceType,
 		}, cloudControlOpts...)
@@ -308,7 +306,6 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 		// Ignoring status of delete since AWS command fails if the resource does not already exist
 		waitForSuccess(t, cleanupCtx, awsClient, deleteOutput.ProgressEvent.RequestToken)
 	})
-	// End of test setup
 }
 
 func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudControlClient, requestToken *string) {

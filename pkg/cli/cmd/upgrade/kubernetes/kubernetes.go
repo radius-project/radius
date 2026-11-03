@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
@@ -49,6 +50,12 @@ stored user-supplied values, and then overlays any --set / --set-file values pro
 current invocation. Pass --reset-values to opt out and use only the current --set flags plus
 the new chart's defaults (this mirrors 'helm upgrade --reset-values').
 
+When Contour is installed, the upgrade also upgrades it. Contour chart values can be set with
+'--contour-set' and '--contour-set-file'. They take precedence over the values stored on the Contour
+release and over the values that Radius sets, and --reset-values discards the stored Contour values too.
+Before it upgrades anything, Radius checks that the Contour upgrade does not delete CRDs or take over Gateway API
+CRDs that belong to something else, and that Contour can use the Gateway API CRDs in the cluster.
+
 The upgrade process includes preflight checks to ensure the cluster is ready for upgrade.
 Preflight checks include:
 - Kubernetes connectivity and permissions
@@ -56,6 +63,7 @@ Preflight checks include:
 - Version compatibility validation
 - Cluster resource availability
 - Custom configuration parameter validation
+- Contour upgrade validation, with the same Contour values as the upgrade
 
 Radius is installed in the 'radius-system' namespace. For more information visit https://docs.radapp.io/concepts/technical/architecture/.
 `,
@@ -112,6 +120,10 @@ rad upgrade kubernetes --chart /root/radius/deploy/Chart
 # Discard previously-stored Helm values and upgrade using only the current --set flags
 # plus the new chart's defaults (mirrors 'helm upgrade --reset-values').
 rad upgrade kubernetes --reset-values
+
+# Upgrade Radius and Contour on a k3s cluster with Traefik, whose Gateway API CRDs lack TLSRoute,
+# TCPRoute, and BackendTLSPolicy v1alpha3, by turning off the Contour features that use them
+rad upgrade kubernetes --contour-set "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}"
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -124,7 +136,9 @@ rad upgrade kubernetes --reset-values
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 	cmd.Flags().BoolVar(&runner.SkipPreflight, "skip-preflight", false, "Skip preflight checks before upgrade (not recommended)")
 	cmd.Flags().BoolVar(&runner.PreflightOnly, "preflight-only", false, "Run only preflight checks without performing the upgrade")
-	cmd.Flags().BoolVar(&runner.ResetValues, "reset-values", false, "Discard values previously stored on the Helm release and use only the current --set / --set-file flags plus the new chart's defaults")
+	cmd.Flags().BoolVar(&runner.ResetValues, "reset-values", false, "Discard values previously stored on the Helm releases and use only the current --set / --set-file and --contour-set / --contour-set-file flags plus the new charts' defaults")
+	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set Contour chart values on the command line when Contour is installed (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set Contour chart values from files on the command line when Contour is installed (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 
 	return cmd, runner
 }
@@ -134,14 +148,19 @@ type Runner struct {
 	Helm   helm.Interface
 	Output output.Interface
 
-	KubeContext   string
-	Chart         string
-	Version       string
-	Set           []string
-	SetFile       []string
-	SkipPreflight bool
-	PreflightOnly bool
-	ResetValues   bool
+	KubeContext    string
+	Chart          string
+	Version        string
+	Set            []string
+	SetFile        []string
+	SkipPreflight  bool
+	PreflightOnly  bool
+	ResetValues    bool
+	ContourSet     []string
+	ContourSetFile []string
+
+	// runChecks runs the preflight checks. Tests replace it so that the checks that need a cluster do not run.
+	runChecks func(ctx context.Context, checks []preflight.PreflightCheck) error
 }
 
 // NewRunner creates an instance of the runner for the `rad upgrade kubernetes` command.
@@ -183,11 +202,27 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Current Radius version: %s", currentVersion)
 	r.Output.LogInfo("Target Radius version: %s", targetVersion)
 
+	// The preflight checks and the upgrade use the same options, so that they agree.
+	cliOptions := helm.CLIClusterOptions{
+		Radius: helm.ChartOptions{
+			ChartPath:    r.Chart,
+			ChartVersion: targetVersion,
+			SetArgs:      r.Set,
+			SetFileArgs:  r.SetFile,
+		},
+		Contour: helm.ChartOptions{
+			SetArgs:     r.ContourSet,
+			SetFileArgs: r.ContourSetFile,
+		},
+		ResetValues: r.ResetValues,
+	}
+	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
+
 	// Run preflight checks unless skipped
 	if !r.SkipPreflight {
-		err = r.runPreflightChecks(ctx, currentVersion, targetVersion)
+		err = r.runPreflightChecks(ctx, r.preflightChecks(currentVersion, targetVersion, clusterOptions))
 		if err != nil {
-			return fmt.Errorf("preflight checks failed: %w", err)
+			return wrapError(err, "preflight checks failed")
 		}
 
 		r.Output.LogInfo("✓ All preflight checks passed")
@@ -202,50 +237,61 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Perform the upgrade
 	r.Output.LogInfo("Upgrading Radius from version %s to %s...", currentVersion, targetVersion)
 
-	cliOptions := helm.CLIClusterOptions{
-		Radius: helm.ChartOptions{
-			ChartPath:    r.Chart,
-			ChartVersion: targetVersion,
-			SetArgs:      r.Set,
-			SetFileArgs:  r.SetFile,
-		},
-		ResetValues: r.ResetValues,
-	}
-
-	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
-
 	err = r.Helm.UpgradeRadius(ctx, clusterOptions, r.KubeContext)
 	if err != nil {
-		return fmt.Errorf("failed to upgrade Radius: %w", err)
+		return wrapError(err, "failed to upgrade Radius")
 	}
 
 	r.Output.LogInfo("✓ Radius upgrade completed successfully!")
 	return nil
 }
 
-// runPreflightChecks executes all preflight checks before upgrade.
-func (r *Runner) runPreflightChecks(ctx context.Context, currentVersion, targetVersion string) error {
-	// Create preflight check registry
+// preflightChecks returns the preflight checks to run before the upgrade, in order of importance. clusterOptions are
+// the options of the upgrade.
+func (r *Runner) preflightChecks(currentVersion, targetVersion string, clusterOptions helm.ClusterOptions) []preflight.PreflightCheck {
+	return []preflight.PreflightCheck{
+		// 1. Basic connectivity checks first
+		preflight.NewKubernetesConnectivityCheck(r.KubeContext),
+		preflight.NewHelmConnectivityCheck(r.Helm, r.KubeContext),
+
+		// 2. Installation and version validation
+		preflight.NewRadiusInstallationCheck(r.Helm, r.KubeContext),
+		preflight.NewVersionCompatibilityCheck(currentVersion, targetVersion),
+
+		// 3. Configuration validation (warnings only)
+		preflight.NewCustomConfigValidationCheck(r.Set, r.SetFile, r.Chart, nil),
+
+		// 4. Resource availability check (warnings only)
+		preflight.NewKubernetesResourceCheck(r.KubeContext),
+
+		// 5. Contour upgrade validation, which downloads the Contour chart when Contour is installed
+		preflight.NewContourUpgradeCheck(r.Helm, clusterOptions, r.KubeContext),
+	}
+}
+
+// runPreflightChecks executes the preflight checks before upgrade.
+func (r *Runner) runPreflightChecks(ctx context.Context, checks []preflight.PreflightCheck) error {
+	if r.runChecks != nil {
+		return r.runChecks(ctx, checks)
+	}
+
 	registry := preflight.NewRegistry(r.Output)
-
-	// Add checks to registry in order of importance
-	// 1. Basic connectivity checks first
-	registry.AddCheck(preflight.NewKubernetesConnectivityCheck(r.KubeContext))
-	registry.AddCheck(preflight.NewHelmConnectivityCheck(r.Helm, r.KubeContext))
-
-	// 2. Installation and version validation
-	registry.AddCheck(preflight.NewRadiusInstallationCheck(r.Helm, r.KubeContext))
-	registry.AddCheck(preflight.NewVersionCompatibilityCheck(currentVersion, targetVersion))
-
-	// 3. Configuration validation (warnings only)
-	registry.AddCheck(preflight.NewCustomConfigValidationCheck(r.Set, r.SetFile, r.Chart, nil))
-
-	// 4. Resource availability check (warnings only)
-	registry.AddCheck(preflight.NewKubernetesResourceCheck(r.KubeContext))
+	for _, check := range checks {
+		registry.AddCheck(check)
+	}
 
 	// Run all checks - registry handles execution and logging
 	_, err := registry.RunChecks(ctx)
 	return err
+}
+
+// wrapError adds message to err. It returns a friendly error unchanged, so that the CLI shows it as is.
+func wrapError(err error, message string) error {
+	if clierrors.IsFriendlyError(err) {
+		return err
+	}
+
+	return fmt.Errorf("%s: %w", message, err)
 }
 
 // resolveTargetVersion resolves the target version for upgrade based on user input.
