@@ -128,6 +128,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 	app := http.Handler(r)
 	app = servicecontext.ARMRequestCtx(s.options.Config.Server.PathBase, s.options.Config.Environment.RoleLocation)(app)
+	app = authorization.ObserveRequests(s.options.UserAuthorization, s.options.Config.Server.PathBase)(app)
 	app = authenticator.Middleware(app)
 	app = middleware.WithLogger(app)
 
