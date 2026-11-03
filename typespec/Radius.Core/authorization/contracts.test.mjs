@@ -217,7 +217,10 @@ test("Bicep merges existing resources, preserves extensions and singleton, and e
     "roleAssignments",
     "authorizationSettings"
   ]) {
-    assert.ok(index.resources[`Radius.Core/${name}@2025-08-01-preview`]);
+    assert.equal(
+      index.resources[`Radius.Core/${name}@2025-08-01-preview`].$ref,
+      `radius/radius.core/2025-08-01-preview/types.json#/${types.indexOf(resource(name))}`
+    );
   }
 });
 
