@@ -31,6 +31,10 @@ readonly STATE_OWNED_MARKER="${WORK_DIR}/state-owned"
 readonly SAVED_DIGEST_FILE="${WORK_DIR}/saved-state-digest"
 readonly PHASE_DIR="${WORK_DIR}/phases"
 readonly BOOTSTRAP_TAG="bootstrap"
+# Pinned instead of using the k3d default so k3s upgrades are deliberate.
+# v1.35.6+ includes the cloud-controller-manager RBAC startup fix
+# (k3s-io/k3s#7328).
+readonly K3S_IMAGE="${K3S_IMAGE:-rancher/k3s:v1.35.9-k3s1}"
 
 : "${LOCAL_DOCKER_REGISTRY:?LOCAL_DOCKER_REGISTRY must be set}"
 : "${DOCKER_TAG_VERSION:?DOCKER_TAG_VERSION must be set}"
@@ -154,6 +158,14 @@ collect_diagnostics() {
     if [[ -d "${PHASE_DIR}" ]]; then
         find "${PHASE_DIR}" -maxdepth 1 -type f -printf '%f\n' \
             | sort >"${DIAGNOSTICS_DIR}/completed-phases.txt"
+    fi
+    if [[ -f "${WORK_DIR}/current-phase" ]]; then
+        local current_phase
+        current_phase="$(<"${WORK_DIR}/current-phase")"
+        if [[ ! -f "${PHASE_DIR}/${current_phase}" ]]; then
+            printf 'failed: %s\n' "${current_phase}" \
+                >>"${DIAGNOSTICS_DIR}/completed-phases.txt"
+        fi
     fi
     if [[ -f "${SAVED_DIGEST_FILE}" ]]; then
         cp "${SAVED_DIGEST_FILE}" \
@@ -322,17 +334,17 @@ cluster_exists() {
 wait_for_kubernetes_api() {
     local -a kubectl_args=("$@")
     local deadline=$((SECONDS + 60))
+    local last_error=""
 
     while ((SECONDS < deadline)); do
-        if kubectl "${kubectl_args[@]}" --request-timeout=5s \
-            get --raw=/readyz \
-            >/dev/null 2>&1; then
+        if last_error="$(kubectl "${kubectl_args[@]}" --request-timeout=5s \
+            get --raw=/readyz 2>&1 >/dev/null)"; then
             return 0
         fi
         sleep 1
     done
 
-    echo "Kubernetes API did not become ready." >&2
+    echo "Kubernetes API did not become ready. Last error: ${last_error}" >&2
     return 1
 }
 
@@ -388,6 +400,7 @@ create_workload_cluster() {
         --network "${NETWORK_NAME}" \
         --no-lb \
         --no-rollback \
+        --image "${K3S_IMAGE}" \
         --registry-config "${REGISTRY_CONFIG}" \
         --k3s-arg "--disable=traefik@server:*" \
         --wait
@@ -449,6 +462,7 @@ install_control_plane() {
         --network "${NETWORK_NAME}" \
         --no-lb \
         --no-rollback \
+        --image "${K3S_IMAGE}" \
         --registry-config "${REGISTRY_CONFIG}" \
         --k3s-arg "--disable=traefik@server:*" \
         --wait
