@@ -38,6 +38,7 @@ The development files combine shared host options with service-specific settings
 | `metricsProvider`               | [`metricsservice.Options`](../../../../pkg/components/metrics/metricsservice/options.go)              | `enabled`, `serviceName`, and nested `prometheus.path` / `prometheus.port`                                                                                      |
 | `server`, `workerServer`, `ucp` | [`pkg/armrpc/hostoptions`](../../../../pkg/armrpc/hostoptions/)                                       | HTTP listener, async worker, and UCP connection settings                                                                                                        |
 | `authorization`                 | [`authz.Options`](../../../../pkg/authz/mode.go)                                                      | `mode` is `off` (default), `dryRun`, or `enforce`; also `podSecurityLevel`, `controlPlaneNamespace`, `controlPlaneSecrets`, `certificateDirectory`, `namespace` |
+| `callerAuthentication`          | [`authorization.RequestHeaderOptions`](../../../../pkg/ucp/authorization/requestheader.go)            | UCP-only request-header CA file, allowed proxy names, and Kubernetes issuer                                                                                     |
 
 For example, local services commonly use Kubernetes API server storage and expose Prometheus settings in this shape:
 
@@ -116,6 +117,28 @@ The Applications RP rollout checksum covers its authorization mode and, when act
 
 UCP reads `aws.fingerprintKeyFile`, the file that holds the HMAC key for fingerprints of write-only AWS property values. It defaults to `/var/secrets/aws-fingerprint/key`, where the chart mounts the `radius-aws-fingerprint-key` Secret, so the chart does not render it. Set it when running UCP as a local process with a key file of at least 32 random bytes. When the file is missing or invalid, UCP still starts and logs an error naming the Secret.
 
+#### Configure verified Kubernetes caller identity
+
+UCP rejects requests carrying any `X-Remote-*` headers with HTTP 401 `InvalidAuthenticationInfo` unless `callerAuthentication` is configured and the TLS peer is a verified Kubernetes front proxy. This authentication boundary applies regardless of internal `authorization.mode` or workload authorization mode; `off`, `Disabled`, and `DryRun` do not permit spoofed identities. Headerless requests retain compatibility but have **no authenticated caller identity**. Protected endpoints must require `authorization.IdentityFromContext`; they must never fall back to a claimed user or treat an unidentified request as authenticated.
+
+Configure UCP with a TLS server certificate directory and the cluster's dedicated request-header trust:
+
+```yaml
+server:
+  tlsCertificateDirectory: /etc/radius/tls
+callerAuthentication:
+  caFile: /etc/radius/requestheader-ca.crt
+  allowedNames:
+    - front-proxy-client
+  kubernetesIssuer: kubernetes:<cluster-id>
+```
+
+Mount `requestheader-client-ca-file` from the `kube-system/extension-apiserver-authentication` ConfigMap as `caFile`, and copy its JSON `requestheader-allowed-names` array into `allowedNames`. Do **not** substitute the general Kubernetes client CA: its clients must not be able to assert other users. Names are exact, case-sensitive certificate common names. An empty allowed-name list follows Kubernetes semantics: any client certificate name signed by the dedicated request-header CA is accepted. Copy the cluster configuration deliberately rather than guessing a proxy name. Use a stable, cluster-specific issuer, normally `kubernetes:` followed by the UID of the `kube-system` namespace; a bare `kubernetes` issuer is rejected. This configuration is an opt-in UCP service configuration seam, not an automatic Helm/install rollout.
+
+UCP requests a TLS client certificate and independently validates its chain, validity period, client-authentication usage, and allowed name before consuming `X-Remote-User` and each `X-Remote-Group` value. Service-account user names become workload principals; other names become user principals. Anonymous and `system:unauthenticated` identities are rejected. Verified identities use the configured issuer; consumed `X-Remote-*` headers do not reach downstream handlers. Component certificates and forwarded certificate headers do not establish Kubernetes user identity.
+
+Trust is a startup snapshot. **Restart every UCP replica after rotating the CA bundle or changing allowed names or issuer.** A projected file update alone does not replace the active trust snapshot. Invalid trust configuration or configured authentication without server TLS fails startup. This slice establishes identity only; it does not add policy endpoints, authorization enforcement, or internal component TLS.
+
 ### 3. Configure supported environment overrides
 
 Some behavior is read directly from the process environment:
@@ -162,3 +185,4 @@ make debug-status
 - **A local service cannot reach UCP.** Compare its `ucp.direct.endpoint` with `cmd/ucpd/ucp-dev.yaml`; the development endpoint includes `/apis/api.ucp.dev/v1alpha3`.
 - **A Helm edit does not change the installed configuration.** Confirm you changed the appropriate `deploy/Chart/templates/<service>/configmaps.yaml` template or the value that feeds it, then render the chart before reinstalling.
 - **Logging ignores the YAML value.** Unset `RADIUS_LOGGING_JSON` or `RADIUS_LOGGING_LEVEL`; environment values take precedence.
+- **Aggregated requests return `InvalidAuthenticationInfo`.** Configure `callerAuthentication` from the cluster's request-header ConfigMap, verify that UCP receives the proxy's TLS client certificate, and restart all replicas after changing trust. Headerless local requests remain unidentified; disabling authorization does not make forwarded identity headers trustworthy.
