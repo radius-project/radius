@@ -51,6 +51,9 @@ type Config struct {
 	// the cluster at startup. It is mutually exclusive with CallerAuthentication.
 	KubernetesCallerAuthentication *authorization.KubernetesRequestHeaderOptions `yaml:"kubernetesCallerAuthentication,omitempty"`
 
+	// UserAuthorization enables the user-facing policy runtime, not enforcement.
+	UserAuthorization authorization.RuntimeOptions `yaml:"userAuthorization"`
+
 	// Database is the configuration for the database used for resource data.
 	Database databaseprovider.Options `yaml:"databaseProvider"`
 

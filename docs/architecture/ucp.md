@@ -23,31 +23,31 @@ creates a logger, builds the server, and hands execution to shared hosting.
 
 ## Quick Reference
 
-| Topic | Start Here |
-|------|------------|
-| Startup | `cmd/ucpd/cmd/root.go` |
-| HTTP/API wiring | `pkg/ucp/frontend/api/server.go` |
-| Top-level routes | `pkg/ucp/frontend/api/routes.go` |
+| Topic            | Start Here                                     |
+|------------------|------------------------------------------------|
+| Startup          | `cmd/ucpd/cmd/root.go`                         |
+| HTTP/API wiring  | `pkg/ucp/frontend/api/server.go`               |
+| Top-level routes | `pkg/ucp/frontend/api/routes.go`               |
 | Proxy/adaptation | `pkg/ucp/frontend/controller`, `pkg/ucp/proxy` |
-| Resource IDs | `pkg/ucp/resources` |
+| Resource IDs     | `pkg/ucp/resources`                            |
 
-| Test Focus | Packages |
-|-----------|----------|
+| Test Focus           | Packages                                        |
+|----------------------|-------------------------------------------------|
 | Unit and route tests | `./pkg/ucp/frontend/...`, `./pkg/ucp/proxy/...` |
-| Integration coverage | `./pkg/ucp/integrationtests/...` |
-| Broad safety check | `./pkg/ucp/...` |
+| Integration coverage | `./pkg/ucp/integrationtests/...`                |
+| Broad safety check   | `./pkg/ucp/...`                                 |
 
 ## Core Packages
 
-| Package | Responsibility |
-|--------|----------------|
-| `pkg/ucp/frontend` | HTTP handlers, route registration, API surface |
-| `pkg/ucp/proxy` | request forwarding and proxy helpers |
-| `pkg/ucp/aws` | AWS-specific adaptation logic |
-| `pkg/ucp/resources` | UCP resource ID parsing and construction |
-| `pkg/ucp/datamodel` | version-agnostic UCP storage model |
-| `pkg/ucp/server` | service startup and hosting integration |
-| `pkg/ucp/config` | runtime configuration types |
+| Package             | Responsibility                                 |
+|---------------------|------------------------------------------------|
+| `pkg/ucp/frontend`  | HTTP handlers, route registration, API surface |
+| `pkg/ucp/proxy`     | request forwarding and proxy helpers           |
+| `pkg/ucp/aws`       | AWS-specific adaptation logic                  |
+| `pkg/ucp/resources` | UCP resource ID parsing and construction       |
+| `pkg/ucp/datamodel` | version-agnostic UCP storage model             |
+| `pkg/ucp/server`    | service startup and hosting integration        |
+| `pkg/ucp/config`    | runtime configuration types                    |
 
 ## How It Works
 
@@ -79,6 +79,20 @@ uses `mtls.ListenAndServe` with the mounted `ucp-mtls` certificate, accepts any
 Radius component identity, and reloads certificates without a restart. See
 [Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization-mtls).
 
+### User Authorization Policy Lifecycle
+
+`userAuthorization.enabled: true` in the UCP YAML configuration opts into the policy runtime; omission or `false` leaves `Options.UserAuthorization` nil. This switch is separate from internal component `authorization.mode` and does not enable HTTP request enforcement or change caller-authentication requirements.
+
+[NewOptions](../../pkg/ucp/options.go) constructs the existing `PolicyStore` and `PolicyCache` through [PolicyRuntime](../../pkg/ucp/authorization/runtime.go), using the configured `database.Client` (Postgres or API server store in production). The UCP host owns one blocking `PolicyRuntime.Run` call. Startup immediately loads policy and recovers pending intent through the existing store; each generation check has a five-second deadline, and checks repeat every five seconds. Cancellation stops in-flight reads and the refresh loop; the host joins the loop on shutdown. Local callers own their calls to `Refresh` or `Mutate`, which are also cancelled when the runtime stops.
+
+The policy anchor must already have been initialized through `PolicyInitializer` with a trusted initialization verifier. This layer supplies neither bootstrap principals nor a production initializer or initialization endpoint. A missing anchor, corrupt policy, or failed startup recovery leaves the runtime `Unavailable`, logs the refresh error, and retries; it never creates an anchor, substitutes empty policy, or assumes `Disabled`. Construction errors fail startup. The default UCP wiring uses the release permission catalog, without dynamic registration extensions, and supplies no settings-change guard; unsupported policy fails validation, and settings changes remain unavailable rather than bypassing rollout prerequisites.
+
+`Options.UserAuthorization.State()` is safe even on a nil runtime and returns typed `NotConfigured`, `Unavailable`, or `Fresh` status. `LastKnownMode` is distinct from availability: it is empty until a successful load and is diagnostic, potentially stale information while unavailable. `LastError` exposes the most recent refresh failure and clears after recovery. A failed check never renews freshness. At exactly thirty seconds since the start of the last successful check, `Ready` fails and `Evaluate` returns `ErrAuthorizationUnavailable` without decisions. Cancellation also makes the runtime unavailable immediately, even for a young cache.
+
+`Mutate` requires fresh policy independently of workload mode, delegates access and safety checks to the existing store, and immediately checks the committed generation after successful or idempotent writes. A post-commit refresh failure returns `ErrAuthorizationUnavailable` with explicit committed-change context, not success; callers must inspect policy/history before retrying. No HTTP policy-write path is added here. Future handlers must derive identity and actor metadata from trusted server context, protect writes in every mode, and translate authorization unavailability to HTTP 503 rather than using a snapshot directly.
+
+**Readiness scope differs from the design's global readiness proposal:** `Ready` describes authorization readiness only; it does not withdraw the pod from discovery or change the Helm readiness probe. Global withdrawal would also block ordinary `DryRun` workloads, contradicting their nonblocking error behavior. The request layer must choose ordinary workload error behavior explicitly while keeping policy writes protected and evaluator data unavailable; stale policy must never become an allowing decision.
+
 ## Invariants And Constraints
 
 - UCP should stay focused on routing, identity of targets, and translation.
@@ -102,6 +116,7 @@ Radius component identity, and reloads certificates without a restart. See
 
 ### Suggested Test Scope
 
+- Deterministic lifecycle and host-wiring checks: `go test -race ./pkg/ucp/authorization ./pkg/ucp ./pkg/ucp/server -short -count=1`. Lifecycle tests use `testing/synctest`, including startup failure/recovery, five-second polling, the exact thirty-second boundary, local refresh, and cancellation.
 - `go test ./pkg/ucp/...`
 - Pay particular attention to route, proxy, and integration-style tests under:
   `pkg/ucp/frontend/...`, `pkg/ucp/proxy/...`, and `pkg/ucp/integrationtests/...`
