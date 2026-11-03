@@ -419,7 +419,10 @@ test("capture assigns a new tag and archive to each producer attempt with retain
         .filter((args) => args[0] === "oras")
         .every(
           (args) =>
-            args[3].startsWith("localhost:5000/") && args[3].endsWith(`:${tag}`)
+            args.includes("--from-plain-http=false") &&
+            !args.includes("--from-insecure") &&
+            args.at(-2).startsWith("localhost:5000/") &&
+            args.at(-2).endsWith(`:${tag}`)
         )
     );
   }
