@@ -102,7 +102,7 @@ func (s *Store) Save(ctx context.Context, rec *datamodel.AWSResource, etag strin
 }
 
 // DeleteIfUnchanged removes the record stored under id when its ETag is still etag. It fails with
-// database.ErrConcurrency when the record changed since it was read. A missing record is not an error.
+// database.ErrConcurrency when the record changed or was removed since it was read.
 func (s *Store) DeleteIfUnchanged(ctx context.Context, id resources.ID, etag string) error {
 	err := s.db.Delete(ctx, id.String(), database.WithETag(etag))
 	if errors.Is(err, &database.ErrNotFound{}) {
