@@ -99,15 +99,10 @@ jobs:
     uses: ./.github/workflows/__publish-bicep-types.yaml
     with:
       only_changed: ${{ needs.changes.outputs.only_changed }}
-    secrets:
-      BICEPTYPES_CLIENT_ID: ${{ secrets.BICEPTYPES_CLIENT_ID }}
-      BICEPTYPES_TENANT_ID: ${{ secrets.BICEPTYPES_TENANT_ID }}
-      BICEPTYPES_SUBSCRIPTION_ID: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
     permissions:
       contents: read
       actions: read
       packages: write
-      id-token: write
 
   build-summary:
     if: always()
