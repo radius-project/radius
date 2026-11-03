@@ -8,9 +8,9 @@ Only the target resource owns the platform resources created by its recipe and a
 
 ```mermaid
 flowchart LR
-    delegating["Delegating resource (Radius)"] -->|Delegates provisioning to| target["Target resource (Radius)"]
-    target -->|Uses| recipe["Target resource's recipe"]
-    recipe -->|Creates or updates| platform["Platform resources owned by target resource"]
+    delegating["Delegating resource (Radius)"] -->|Delegates<br>provisioning to| target["Target resource (Radius)"]
+    target -->|Deployed by| recipe["Target resource's recipe"]
+    recipe -->|Creates<br>or updates| platform["Platform resources owned by target resource"]
 ```
 
 ## Terms
@@ -23,8 +23,6 @@ flowchart LR
 | **Platform resource**      | An instance of a Platform Resource Type created or managed by a recipe. Its platform resource ID is distinct from the Radius resource ID of its owning Radius resource.                                                                                                          |
 | **Delegating resource**    | A Radius resource that uses a delegated recipe registration to supply its desired properties to a target resource's recipe. It retains its own Radius resource ID, status, and computed properties. In the ACA example, this is the Radius route `cache-tcp`.                    |
 | **Target resource**        | The Radius resource whose recipe provisions platform resources using its own desired properties and those of its delegating resources. It owns the resulting platform resources. In the ACA example, this is the Radius container resource `cache`, not the Azure Container App. |
-
-Resource IDs identify instances, not types. `Radius.Compute/routes` is a Radius Resource Type; `cacheRoute.id` identifies one Radius resource. `Microsoft.App/containerApps` is a Platform Resource Type; `containerApp.id` identifies one Azure platform resource.
 
 ## ACA example
 
