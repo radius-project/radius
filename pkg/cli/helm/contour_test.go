@@ -18,6 +18,8 @@ package helm
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -47,7 +49,7 @@ func TestBuildContourValues_HostNetworkEnabled(t *testing.T) {
 
 	// Assert - gateway config is always set
 	assertDefaultGatewayRef(t, values)
-	assertGatewayAPIManageCRDs(t, values)
+	assertNoGatewayAPICRDManagement(t, values)
 }
 
 func TestBuildContourValues_HostNetworkDisabled(t *testing.T) {
@@ -61,7 +63,58 @@ func TestBuildContourValues_HostNetworkDisabled(t *testing.T) {
 
 	// Assert - gateway config is always set
 	assertDefaultGatewayRef(t, values)
-	assertGatewayAPIManageCRDs(t, values)
+	assertNoGatewayAPICRDManagement(t, values)
+}
+
+// TestBuildContourValues_UserValues verifies that --contour-set and --contour-set-file values reach the Contour chart
+// values and take precedence over the values Radius sets.
+func TestBuildContourValues_UserValues(t *testing.T) {
+	t.Parallel()
+
+	setFile := filepath.Join(t.TempDir(), "annotations.yaml")
+	require.NoError(t, os.WriteFile(setFile, []byte("from-file"), 0600))
+
+	values, err := buildContourValues(ContourChartOptions{
+		ChartOptions: ChartOptions{
+			SetArgs: []string{
+				"envoy.service.type=NodePort",
+				"envoy.service.ports.http=9080",
+				"gatewayAPI.manageCRDs=false",
+				"contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes}",
+				"contour.replicaCount=1",
+				"contour.replicaCount=3",
+			},
+			SetFileArgs: []string{"envoy.service.annotations.example=" + setFile},
+		},
+		HostNetwork: true,
+	})
+	require.NoError(t, err)
+
+	// User values win over the values Radius sets, and the last value for a key wins.
+	assert.Equal(t, "NodePort", nestedValue(values, "envoy", "service", "type"))
+	assert.Equal(t, int64(9080), nestedValue(values, "envoy", "service", "ports", "http"))
+	assert.Equal(t, int64(3), nestedValue(values, "contour", "replicaCount"))
+	assert.Equal(t, "from-file", nestedValue(values, "envoy", "service", "annotations", "example"))
+	assert.Equal(t, []any{"--disable-feature=tlsroutes", "--disable-feature=tcproutes"}, nestedValue(values, "contour", "extraArgs"))
+
+	// Values that the user does not override keep Radius's values.
+	assertDefaultGatewayRef(t, values)
+	assert.Equal(t, true, nestedValue(values, "envoy", "hostNetwork"))
+	assert.Equal(t, 8443, nestedValue(values, "envoy", "service", "ports", "https"))
+
+	// An explicit gatewayAPI.manageCRDs=false survives the default that Radius applies after inspecting the cluster.
+	setDefaultValue(values, true, "gatewayAPI", "manageCRDs")
+	assert.Equal(t, false, nestedValue(values, "gatewayAPI", "manageCRDs"))
+}
+
+func TestBuildContourValues_InvalidUserValues(t *testing.T) {
+	t.Parallel()
+
+	_, err := buildContourValues(ContourChartOptions{ChartOptions: ChartOptions{SetArgs: []string{"invalid_no_equals"}}})
+	require.Error(t, err)
+
+	_, err = buildContourValues(ContourChartOptions{ChartOptions: ChartOptions{SetFileArgs: []string{"key=./testdata/nonexistent-file.txt"}}})
+	require.Error(t, err)
 }
 
 func Test_prepareContourChart_LoadChartError(t *testing.T) {
@@ -113,7 +166,7 @@ func Test_prepareContourChart_DoesNotMutateChartValues(t *testing.T) {
 
 	// Verify that user values contain gateway config
 	assertDefaultGatewayRef(t, values)
-	assertGatewayAPIManageCRDs(t, values)
+	assertNoGatewayAPICRDManagement(t, values)
 
 	// Verify that helmChart.Values remains unchanged
 	chartEnvoy, ok := helmChart.Values["envoy"].(map[string]any)
@@ -138,13 +191,13 @@ func assertDefaultGatewayRef(t *testing.T, values map[string]any) {
 	}
 }
 
-func assertGatewayAPIManageCRDs(t *testing.T, values map[string]any) {
+// assertNoGatewayAPICRDManagement verifies that values do not decide whether the chart manages the Gateway API CRDs.
+// The CRDs are shared by the whole cluster, so Radius decides only after it inspects the cluster.
+func assertNoGatewayAPICRDManagement(t *testing.T, values map[string]any) {
 	t.Helper()
 
-	gatewayAPI := requireMap(t, values, "gatewayAPI")
-	if manageCRDs := gatewayAPI["manageCRDs"]; manageCRDs != true {
-		t.Errorf("expected gatewayAPI.manageCRDs=true, got %v", manageCRDs)
-	}
+	_, found := values["gatewayAPI"]
+	assert.False(t, found, "gatewayAPI.manageCRDs depends on the cluster and must not be part of the static Contour values")
 }
 
 func requireMap(t *testing.T, values map[string]any, key string) map[string]any {

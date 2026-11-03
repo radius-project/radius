@@ -18,6 +18,8 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -50,6 +52,13 @@ an environment, or any recipes. Use 'rad init' to install Radius and set up a de
 resource group, environment, and recipe pack for deploying applications.
 
 Overrides can be set by specifying Helm chart values with the '--set' flag. For more information visit https://docs.radapp.io/guides/operations/kubernetes/install/.
+
+Contour chart values can be set with '--contour-set' and '--contour-set-file'. They take precedence over the values that Radius sets.
+When the cluster already has Gateway API CRDs from another installer, such as the Traefik chart in k3s, Radius uses them
+instead of letting Contour take them over. Before it installs anything, Radius checks that they serve the versions that Contour needs,
+and that installing Contour neither takes over nor deletes CRDs. On a k3s or RKE2 cluster that is still installing the Traefik CRDs,
+Radius first waits for them. Radius then installs Contour, followed by the Radius control plane.
+When Radius is installed but Contour is not, or the latest Contour release revision failed or did not finish, rerun the command with '--reinstall' to install or repair Contour.
 `,
 		Example: `# Install Radius with default settings in current Kubernetes context
 rad install kubernetes
@@ -59,6 +68,10 @@ rad install kubernetes --kubecontext mycluster
 
 # Install Radius without Contour ingress controller
 rad install kubernetes --skip-contour-install
+
+# Install Radius on a k3s cluster with Traefik, whose Gateway API CRDs lack TLSRoute, TCPRoute, and
+# BackendTLSPolicy v1alpha3, by turning off the Contour features that use them
+rad install kubernetes --contour-set "contour.extraArgs={--disable-feature=tlsroutes,--disable-feature=tcproutes,--disable-feature=backendtlspolicies}"
 
 # Install Radius with overrides in the current Kubernetes context
 rad install kubernetes --set key=value
@@ -115,8 +128,8 @@ rad install kubernetes --timeout 15m
 
 	cmd.Flags().BoolVar(&runner.ContourDisabled, "skip-contour-install", false, "Install Contour ingress controller (enabled by default)")
 	cmd.Flags().StringVar(&runner.ContourChart, "contour-chart", "", "Specify a local file path to a helm chart to install Contour from")
-	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
-	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
+	cmd.Flags().StringArrayVar(&runner.ContourSet, "contour-set", []string{}, "Set Contour chart values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
+	cmd.Flags().StringArrayVar(&runner.ContourSetFile, "contour-set-file", []string{}, "Set Contour chart values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
 
 	cmd.Flags().DurationVar(&runner.Timeout, "timeout", helm.DefaultInstallTimeout, "Specify how long to wait for the Radius control plane to become ready (for example 15m, 1h)")
 
@@ -198,6 +211,16 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	if state.RadiusInstalled && !r.Reinstall {
 		r.Output.LogInfo("Found existing Radius installation. Use '--reinstall' to force reinstallation.")
+		// An earlier install can stop after Radius and before Contour, or leave a Contour release that is not deployed.
+		if !r.ContourDisabled && (!state.ContourInstalled || state.ContourNeedsRepair()) {
+			problem, action := "Contour is not installed.", "install"
+			if state.ContourInstalled {
+				problem, action = fmt.Sprintf("The latest revision of the Contour release has the status %s.", state.ContourStatus), "repair"
+			}
+			r.Output.LogInfo("%s To %s Contour, run:\n    %s\n"+
+				"This also reinstalls Radius. If Contour cannot use the Gateway API CRDs in the cluster, the command stops before it changes anything and suggests the --contour-set values to add.",
+				problem, action, r.reinstallCommand())
+		}
 		return nil
 	}
 
@@ -216,4 +239,36 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// reinstallCommand returns the command that installs or repairs Contour on a cluster that has Radius, with the Radius
+// and Contour flags of this invocation.
+func (r *Runner) reinstallCommand() string {
+	command := []string{"rad install kubernetes --reinstall"}
+	if r.KubeContext != "" {
+		command = append(command, "--kubecontext", helm.QuoteFlagValue(r.KubeContext))
+	}
+	if r.Chart != "" {
+		command = append(command, "--chart", helm.QuoteFlagValue(r.Chart))
+	}
+	for _, value := range r.Set {
+		command = append(command, "--set", helm.QuoteFlagValue(value))
+	}
+	for _, value := range r.SetFile {
+		command = append(command, "--set-file", helm.QuoteFlagValue(value))
+	}
+	if r.Timeout > 0 && r.Timeout != helm.DefaultInstallTimeout {
+		command = append(command, "--timeout", r.Timeout.String())
+	}
+	if r.ContourChart != "" {
+		command = append(command, "--contour-chart", helm.QuoteFlagValue(r.ContourChart))
+	}
+	for _, value := range r.ContourSet {
+		command = append(command, "--contour-set", helm.QuoteFlagValue(value))
+	}
+	for _, value := range r.ContourSetFile {
+		command = append(command, "--contour-set-file", helm.QuoteFlagValue(value))
+	}
+
+	return strings.Join(command, " ")
 }
