@@ -846,6 +846,10 @@ test("cloud skips and final status require successful change detection", () => {
   assert.match(report, /name: Functional Test Run/);
   assert.match(
     report,
+    /uses: LouisBrunner\/checks-action@[^\n]+\n        if: always\(\)/
+  );
+  assert.match(
+    report,
     /conclusion: \$\{\{ steps\.get_test_status\.outputs\.test_status \|\| 'failure' \}\}/
   );
 });
@@ -919,6 +923,7 @@ for (const [name, overrides, expected] of [
       };
     }
     const outputs = [];
+    let written = false;
     const summary = {
       addHeading() {
         return this;
@@ -929,22 +934,63 @@ for (const [name, overrides, expected] of [
       addTable() {
         return this;
       },
-      async write() {}
+      async write() {
+        await Promise.resolve();
+        assert.deepEqual(outputs, []);
+        written = true;
+      }
     };
     const run = new (Object.getPrototypeOf(async () => {}).constructor)(
       "core",
       "process",
       aggregate
     );
-    await run(
-      { setOutput: (...args) => outputs.push(args), summary },
-      {
-        env: {
-          GITHUB_WORKSPACE: fileURLToPath(new URL("../../", import.meta.url)),
-          NEEDS_JSON: JSON.stringify(needs)
-        }
+    const core = {
+      setOutput: (...args) => {
+        assert.equal(written, true);
+        outputs.push(args);
+      },
+      summary
+    };
+    const processContext = {
+      env: {
+        GITHUB_WORKSPACE: fileURLToPath(new URL("../../", import.meta.url)),
+        NEEDS_JSON: JSON.stringify(needs)
       }
-    );
+    };
+    await run(core, processContext);
     assert.deepEqual(outputs, [["test_status", expected]]);
+    outputs.length = 0;
+    core.setOutput = (...args) => outputs.push(args);
+    const writeError = new Error("summary write failed");
+    summary.write = async () => {
+      throw writeError;
+    };
+    await assert.rejects(
+      run(core, processContext),
+      (error) => error === writeError
+    );
+    assert.deepEqual(outputs, []);
   });
 }
+
+test("missing final status still fails the always-run status guard", () => {
+  const guard = step(report, "Require successful final status");
+  assert.match(guard, /if: always\(\)/);
+  assert.match(
+    guard,
+    /TEST_STATUS: \$\{\{ steps\.get_test_status\.outputs\.test_status \}\}/
+  );
+  const script = guard
+    .match(/        run: \|\n([\s\S]*)/)[1]
+    .replace(/^          /gm, "");
+  const result = spawnSync("bash", ["-e", "-c", script], {
+    env: { ...process.env, TEST_STATUS: "" },
+    encoding: "utf8"
+  });
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stdout,
+    /::error::Functional tests did not complete successfully/
+  );
+});
