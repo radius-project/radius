@@ -565,6 +565,12 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	previous := pendingOf(rec)
 	rec.Properties.PendingLastApplied = applied.properties
 	rec.Properties.PendingFingerprints = applied.fingerprints
+	if replay {
+		// Until AWS answers, UCP cannot tell which attempt's write-only values AWS has, so the reservation saves no
+		// fingerprints. A request that finds the reservation stale, or after a failed save, then sends every value that
+		// can change. The fingerprints are set again once AWS shows which create it has.
+		rec.Properties.PendingFingerprints = nil
+	}
 	etag, resp, err := e.reserve(ctx, r, rec, etag, records.OperationCreate)
 	if resp != nil || err != nil {
 		return resp, err
@@ -599,19 +605,18 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 		// so the next deploy sends the create again with it and Cloud Control returns the first request instead of
 		// creating a second resource.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
-			switch {
-			case replay && ucp_aws.IsClientFault(err):
-				// AWS did nothing with this attempt, so the pending values still describe the create it may have.
+			// AWS did nothing with a replay it rejected, so the pending values still describe the create it may have.
+			// After any other error, AWS may have the create from this attempt or an earlier one, and the pending
+			// fingerprints stay unknown.
+			if replay && ucp_aws.IsClientFault(err) {
 				restorePending(rec, previous)
-			case replay:
-				// AWS may have the create from this attempt or from an earlier one, so UCP cannot tell which write-only
-				// values it has.
-				rec.Properties.PendingFingerprints = nil
 			}
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
 		})
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
+	// AWS returned the request for this body, so its fingerprints describe the create AWS has.
+	rec.Properties.PendingFingerprints = applied.fingerprints
 	if id := aws.ToString(response.ProgressEvent.Identifier); id != "" {
 		rec.Properties.AWSIdentifier = id
 	}

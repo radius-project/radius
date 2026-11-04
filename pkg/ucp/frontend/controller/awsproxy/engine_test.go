@@ -1913,21 +1913,38 @@ func Test_Put_UncertainCreateWithWriteOnly(t *testing.T) {
 		require.Equal(t, map[string]any{"Size": "large", "Password": password}, h.cc.Resource(credentialType, "id-2"))
 	})
 
-	// The resume and the reservation save; the save after reading AWS fails.
-	for name, setup := range map[string]func(h *harness){
-		"saving the identifier":     func(h *harness) {},
-		"saving the running create": func(h *harness) { h.cc.PendingReads = 1 },
-		"saving the tombstone":      func(h *harness) { h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest },
+	// The resume and the reservation save; the save after reading AWS fails. The failed request rotated the password,
+	// so its fingerprint must not count as applied: the next deploy with that password must send it.
+	for name, tt := range map[string]struct {
+		setup    func(h *harness)
+		recovers bool
+	}{
+		"saving the identifier":     {setup: func(h *harness) {}, recovers: true},
+		"saving the running create": {setup: func(h *harness) { h.cc.PendingReads = 1 }, recovers: true},
+		"saving the tombstone":      {setup: func(h *harness) { h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest }},
 	} {
 		t.Run(name+" fails: 500", func(t *testing.T) {
 			h := newHarness(t)
-			setup(h)
+			tt.setup(h)
 			acceptCreate(t, h, original)
+			template := map[string]any{"Size": "large", "Password": "rotated"}
+			inner := h.db
 			allow := 2
-			h.db = saveFailingDB{Client: h.db, allow: &allow, err: errors.New("database is down")}
-			resp := h.put(credentialPath, map[string]any{"Size": "large", "Password": password})
+			h.db = saveFailingDB{Client: inner, allow: &allow, err: errors.New("database is down")}
+			resp := h.put(credentialPath, template)
 			require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
 			require.NotEmpty(t, h.record(credentialPath).Properties.ClientToken)
+			if !tt.recovers {
+				return
+			}
+
+			// The next deploy finds the failed request's reservation stale.
+			h.db = inner
+			records.Now = func() time.Time { return time.Now().Add(2*records.StaleAfter + time.Minute) }
+			require.Equal(t, http.StatusCreated, h.put(credentialPath, template).status)
+			records.Now = time.Now
+			h.finish()
+			require.Equal(t, "rotated", h.cc.Resource(credentialType, "id-1")["Password"])
 		})
 	}
 }
@@ -1977,6 +1994,32 @@ func Test_Put_UncertainCreateWithWriteOnly_Fingerprints(t *testing.T) {
 		patch := updated(t, h, template)
 		require.Contains(t, patch, "/Password")
 		require.Equal(t, "rotated", h.cc.Resource(credentialType, "id-1")["Password"])
+	})
+
+	t.Run("a resend AWS rejected keeps the fingerprints of the create", func(t *testing.T) {
+		h := acceptedCreate(t, original)
+		h.cc.Errors["CreateResource"] = throttled()
+		require.Equal(t, http.StatusBadRequest, h.put(credentialPath, map[string]any{"Size": "large", "Password": "rotated"}).status)
+		delete(h.cc.Errors, "CreateResource")
+		h.cc.Calls()
+
+		patch := updated(t, h, map[string]any{"Size": "large", "Password": password})
+		require.NotContains(t, patch, "/Password")
+	})
+
+	// A resend with the original body gets the original request, so its fingerprints are the create's.
+	t.Run("a resend AWS accepted records its fingerprints", func(t *testing.T) {
+		h := acceptedCreate(t, original)
+		require.Equal(t, http.StatusCreated, h.put(credentialPath, original).status)
+		records.Now = time.Now
+		h.finish()
+		require.NotNil(t, h.record(credentialPath).Properties.Fingerprints)
+		h.cc.Calls()
+
+		require.Equal(t, http.StatusCreated, h.put(credentialPath, map[string]any{"Size": "large", "Password": password}).status)
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"GetResource", "UpdateResource"}, operations(calls))
+		require.NotContains(t, calls[1].Document, "/Password")
 	})
 
 	// A resend whose outcome is unknown may be the create AWS has, or not, so UCP no longer knows which password AWS
