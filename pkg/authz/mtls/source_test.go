@@ -18,6 +18,8 @@ package mtls
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -34,6 +36,15 @@ type kubeletDir struct {
 	n    int
 }
 
+// currentCert returns the certificate of the source's current material.
+func currentCert(src *Source) (*tls.Certificate, error) {
+	m, err := src.load()
+	if err != nil {
+		return nil, err
+	}
+	return m.cert, nil
+}
+
 func newKubeletDir(t *testing.T, cert testCert, caPEM []byte) *kubeletDir {
 	t.Helper()
 	k := &kubeletDir{root: t.TempDir()}
@@ -46,6 +57,12 @@ func newKubeletDir(t *testing.T, cert testCert, caPEM []byte) *kubeletDir {
 
 func (k *kubeletDir) update(t *testing.T, cert testCert, caPEM []byte) {
 	t.Helper()
+	require.NoError(t, k.stage(t, cert, caPEM)())
+}
+
+// stage writes a new version and returns a function that swaps ..data to it, as kubelet does.
+func (k *kubeletDir) stage(t *testing.T, cert testCert, caPEM []byte) func() error {
+	t.Helper()
 	k.n++
 	version := filepath.Join(k.root, fmt.Sprintf("..version%d", k.n))
 	require.NoError(t, os.Mkdir(version, 0o700))
@@ -53,7 +70,7 @@ func (k *kubeletDir) update(t *testing.T, cert testCert, caPEM []byte) {
 
 	tmp := filepath.Join(k.root, "..data_tmp")
 	require.NoError(t, os.Symlink(filepath.Base(version), tmp))
-	require.NoError(t, os.Rename(tmp, filepath.Join(k.root, "..data")))
+	return func() error { return os.Rename(tmp, filepath.Join(k.root, "..data")) }
 }
 
 func TestNewSource_Errors(t *testing.T) {
@@ -85,6 +102,14 @@ func TestNewSource_Errors(t *testing.T) {
 		_, err := NewSource(dir)
 		require.Error(t, err)
 	})
+
+	t.Run("certificate from another CA", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		writeFiles(t, dir, newCA(t).issue(t, certOptions{dnsNames: componentSANs("ucp")}), ca.pem)
+		_, err := NewSource(dir)
+		require.ErrorContains(t, err, "not issued by the CA bundle")
+	})
 }
 
 func TestSource_CertificateExpiresAfterLoad(t *testing.T) {
@@ -92,7 +117,7 @@ func TestSource_CertificateExpiresAfterLoad(t *testing.T) {
 	src := newTestSource(t, newCA(t), "ucp")
 	src.now = func() time.Time { return time.Now().Add(2 * time.Hour) }
 
-	_, err := src.ClientConfig(testNamespace).GetClientCertificate(nil)
+	_, err := src.ClientConfig(testNamespace)
 	requireCode(t, err, "CertificateExpired")
 }
 
@@ -113,7 +138,7 @@ func TestSource_Reload(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir.root, "..data", KeyFile), []byte("bad"), 0o600))
 	_, err = src.Reload()
 	require.Error(t, err)
-	cert, err := src.certificate()
+	cert, err := currentCert(src)
 	require.NoError(t, err)
 	require.Equal(t, first.cert.Raw, cert.Leaf.Raw)
 
@@ -127,13 +152,70 @@ func TestSource_Reload(t *testing.T) {
 	go src.Start(ctx, 10*time.Millisecond)
 
 	require.Eventually(t, func() bool {
-		cert, err := src.certificate()
+		cert, err := currentCert(src)
 		return err == nil && string(cert.Leaf.Raw) == string(second.cert.Raw)
 	}, 5*time.Second, 10*time.Millisecond)
 
 	// Handshakes use the reloaded certificate and CA without a new config.
 	client := newTestSource(t, rotatedCA, "controller")
-	result := handshake(t, src.ServerConfig(testNamespace), clientConfig(client, ucpServerName))
+	result := handshake(t, src.ServerConfig(testNamespace), clientConfig(t, client, ucpServerName))
 	require.NoError(t, result.serverErr)
 	require.NoError(t, result.clientErr)
+	require.Equal(t, second.cert.Raw, result.clientState.PeerCertificates[0].Raw)
+}
+
+func TestSource_ReloadDuringUpdate(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	dir := newKubeletDir(t, ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}), ca.pem)
+	src, err := NewSource(dir.root)
+	require.NoError(t, err)
+
+	// Swap the Secret after the first read of the key, so that read sees the old
+	// certificate and key with the new CA bundle.
+	rotatedCA := newCA(t)
+	second := rotatedCA.issue(t, certOptions{dnsNames: componentSANs("ucp")})
+	swapped := false
+	src.readFile = func(name string) ([]byte, error) {
+		data, err := os.ReadFile(name)
+		if !swapped && filepath.Base(name) == KeyFile {
+			swapped = true
+			dir.update(t, second, rotatedCA.pem)
+		}
+		return data, err
+	}
+
+	changed, err := src.Reload()
+	require.NoError(t, err)
+	require.True(t, changed)
+	require.True(t, swapped)
+
+	m, err := src.load()
+	require.NoError(t, err)
+	require.Equal(t, second.cert.Raw, m.cert.Leaf.Raw)
+	_, err = m.cert.Leaf.Verify(x509.VerifyOptions{Roots: m.pool, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}})
+	require.NoError(t, err)
+}
+
+func TestSource_ReloadKeepsChanging(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	dir := newKubeletDir(t, ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}), ca.pem)
+	src, err := NewSource(dir.root)
+	require.NoError(t, err)
+	before, err := currentCert(src)
+	require.NoError(t, err)
+
+	reads := 0
+	src.readFile = func(name string) ([]byte, error) {
+		reads++
+		data, err := os.ReadFile(name)
+		return append(data, byte(reads)), err
+	}
+
+	_, err = src.Reload()
+	require.ErrorContains(t, err, "kept changing")
+	after, err := currentCert(src)
+	require.NoError(t, err)
+	require.Same(t, before, after)
 }

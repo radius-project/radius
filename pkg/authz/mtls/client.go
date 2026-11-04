@@ -18,10 +18,15 @@ package mtls
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
 	"sync"
+	"time"
+
+	"github.com/go-logr/logr"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/radius-project/radius/pkg/authz"
 )
@@ -45,15 +50,61 @@ func sharedSource(dir string) (*Source, error) {
 	if err != nil {
 		return nil, err
 	}
-	go s.Start(context.Background(), DefaultPollInterval)
+	go s.Start(reloadContext(), DefaultPollInterval)
 	sharedSources[dir] = s
 	return s, nil
+}
+
+// reloadContext returns the context for a shared Source's reload loop. Transports are often
+// built before the component creates its logger, so the context carries controller-runtime's
+// process logger, which every Radius component sets at startup and which forwards to that
+// logger once it is set.
+func reloadContext() context.Context {
+	return logr.NewContext(context.Background(), runtimelog.Log)
 }
 
 // NewClientTransport returns an HTTP transport that presents this component's certificate
 // and verifies that the server is the Radius component named by the request URL's host.
 // It requires options.CertificateDirectory and options.Namespace.
-func NewClientTransport(options authz.Options) (*http.Transport, error) {
+func NewClientTransport(options authz.Options) (http.RoundTripper, error) {
+	return newClientTransport(options, "")
+}
+
+// clientTransport stops reusing connections outside the validity of the presented client
+// certificate or any certificate in the server's verified chains.
+type clientTransport struct {
+	*http.Transport
+	source *Source
+
+	mu    sync.Mutex
+	conns map[*trackedConn]connectionValidity
+}
+
+type connectionValidity struct {
+	notBefore time.Time
+	notAfter  time.Time
+}
+
+// trackedConn is a connection that clientTransport stops tracking when it is closed.
+type trackedConn struct {
+	net.Conn
+	transport *clientTransport
+}
+
+// Close implements net.Conn.
+func (c *trackedConn) Close() error {
+	c.transport.mu.Lock()
+	delete(c.transport.conns, c)
+	c.transport.mu.Unlock()
+	return c.Conn.Close()
+}
+
+// newClientTransport is NewClientTransport with an optional TLS server name that replaces
+// the request URL's host.
+//
+// Each connection reads the certificate and CA bundle once, so the certificate it presents
+// and the CA bundle it verifies the server against always come from the same version.
+func newClientTransport(options authz.Options, serverName string) (*clientTransport, error) {
 	if options.CertificateDirectory == "" || options.Namespace == "" {
 		return nil, fmt.Errorf("authorization mode %q requires certificateDirectory and namespace", options.EffectiveMode())
 	}
@@ -63,9 +114,88 @@ func NewClientTransport(options authz.Options) (*http.Transport, error) {
 		return nil, fmt.Errorf("failed to load mTLS certificate: %w", err)
 	}
 
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.TLSClientConfig = source.ClientConfig(options.Namespace)
-	return transport, nil
+	t := &clientTransport{
+		Transport: http.DefaultTransport.(*http.Transport).Clone(),
+		source:    source,
+		conns:     map[*trackedConn]connectionValidity{},
+	}
+	// A proxy would tunnel the TLS connection without the client certificate, and
+	// internal calls never go through a proxy.
+	t.Proxy = nil
+	t.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		name := serverName
+		if name == "" {
+			name = hostname(addr)
+		}
+
+		config, leaf, err := source.clientConfig(options.Namespace)
+		if err != nil {
+			return nil, err
+		}
+		config.ServerName = name
+		config.NextProtos = []string{"h2", "http/1.1"}
+
+		raw, err := t.DialContext(ctx, network, addr)
+		if err != nil {
+			return nil, err
+		}
+
+		ctx, cancel := context.WithTimeout(ctx, t.TLSHandshakeTimeout)
+		defer cancel()
+		tracked := &trackedConn{Conn: raw, transport: t}
+		conn := tls.Client(tracked, config)
+		if err := conn.HandshakeContext(ctx); err != nil {
+			_ = raw.Close()
+			return nil, err
+		}
+
+		validity := connectionValidity{notBefore: leaf.NotBefore, notAfter: leaf.NotAfter}
+		for _, chain := range conn.ConnectionState().VerifiedChains {
+			for _, cert := range chain {
+				if cert.NotBefore.After(validity.notBefore) {
+					validity.notBefore = cert.NotBefore
+				}
+				if cert.NotAfter.Before(validity.notAfter) {
+					validity.notAfter = cert.NotAfter
+				}
+			}
+		}
+		t.mu.Lock()
+		t.conns[tracked] = validity
+		t.mu.Unlock()
+		return conn, nil
+	}
+	return t, nil
+}
+
+// RoundTrip closes connections whose client certificate or verified server chain is no
+// longer valid, forcing a fresh handshake with current material.
+func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.closeExpired()
+	return t.Transport.RoundTrip(req)
+}
+
+func (t *clientTransport) closeExpired() {
+	var expired []*trackedConn
+	t.mu.Lock()
+	now := t.source.now()
+	for conn, validity := range t.conns {
+		if now.Before(validity.notBefore) || now.After(validity.notAfter) {
+			expired = append(expired, conn)
+		}
+	}
+	t.mu.Unlock()
+	if len(expired) == 0 {
+		return
+	}
+
+	// Closing idle connections removes them from the pool before this request picks one.
+	// Connections in use are closed too, which aborts their in-flight requests: an HTTP/2
+	// connection in use would otherwise take new requests.
+	t.CloseIdleConnections()
+	for _, conn := range expired {
+		_ = conn.Close()
+	}
 }
 
 // NewUpgradeTransport returns plain when the authorization mode is off. Otherwise it returns
@@ -81,11 +211,10 @@ func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, compone
 
 	secure := map[string]http.RoundTripper{}
 	for _, c := range components {
-		transport, err := NewClientTransport(options)
+		transport, err := newClientTransport(options, c+"."+options.Namespace+".svc")
 		if err != nil {
 			return nil, err
 		}
-		transport.TLSClientConfig.ServerName = c + "." + options.Namespace + ".svc"
 
 		secure[c] = transport
 		secure[c+"."+options.Namespace] = transport

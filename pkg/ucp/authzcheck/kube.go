@@ -63,6 +63,9 @@ func (c *FrontProxyConfig) Verify(certs []*x509.Certificate) error {
 	if err != nil {
 		return fmt.Errorf("client certificate is not signed by the request header CA: %w", err)
 	}
+	if !slices.Contains(certs[0].ExtKeyUsage, x509.ExtKeyUsageClientAuth) {
+		return errors.New("request header certificate must explicitly permit client authentication")
+	}
 	if len(c.AllowedNames) > 0 && !slices.Contains(c.AllowedNames, certs[0].Subject.CommonName) {
 		return fmt.Errorf("client certificate common name %q is not an allowed request header name", certs[0].Subject.CommonName)
 	}

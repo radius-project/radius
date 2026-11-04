@@ -20,10 +20,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -40,7 +42,9 @@ import (
 )
 
 // writeCertificate writes a self-signed controller certificate, key, and CA to a new directory.
-func writeCertificate(t *testing.T) string {
+// It also returns the certificate so a test server can present it. The certificate is valid
+// for 127.0.0.1 so that only the CA decides whether a client trusts that server.
+func writeCertificate(t *testing.T) (string, tls.Certificate) {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
@@ -48,12 +52,13 @@ func writeCertificate(t *testing.T) string {
 		SerialNumber:          big.NewInt(1),
 		Subject:               pkix.Name{CommonName: "controller"},
 		DNSNames:              []string{"controller.radius-system.svc"},
+		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1)},
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().Add(time.Hour),
 		IsCA:                  true,
 		BasicConstraintsValid: true,
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 	}
 	der, err := x509.CreateCertificate(rand.Reader, template, template, key.Public(), key)
 	require.NoError(t, err)
@@ -61,15 +66,18 @@ func writeCertificate(t *testing.T) string {
 	require.NoError(t, err)
 
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER})
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, mtls.CertFile), certPEM, 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, mtls.KeyFile), pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER}), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, mtls.KeyFile), keyPEM, 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, mtls.CAFile), certPEM, 0o600))
-	return dir
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	require.NoError(t, err)
+	return dir, cert
 }
 
 func Test_NewConnectionFromUCPConfig(t *testing.T) {
-	certDir := writeCertificate(t)
+	certDir, _ := writeCertificate(t)
 	on := func(mode authz.Mode) authz.Options {
 		return authz.Options{Mode: mode, CertificateDirectory: certDir, Namespace: "radius-system"}
 	}
@@ -109,11 +117,14 @@ func Test_NewConnectionFromUCPConfig(t *testing.T) {
 }
 
 // Test_NewConnectionFromUCPConfig_Transport checks which transport a direct connection uses
-// by calling a TLS server that is not a Radius component. The mTLS client rejects it as an
-// invalid peer; the default transport rejects its unknown CA.
+// by calling a TLS server at 127.0.0.1 whose certificate comes from the Radius CA and is valid
+// for that address. The default transport rejects the unknown CA; the mTLS client trusts the CA
+// but rejects 127.0.0.1 because it is not a Radius component name.
 func Test_NewConnectionFromUCPConfig_Transport(t *testing.T) {
-	certDir := writeCertificate(t)
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	certDir, cert := writeCertificate(t)
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	srv.TLS = &tls.Config{Certificates: []tls.Certificate{cert}}
+	srv.StartTLS()
 	t.Cleanup(srv.Close)
 
 	tests := []struct {

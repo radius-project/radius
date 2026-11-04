@@ -52,12 +52,17 @@ func TestAuthenticator(t *testing.T) {
 		cert       bool
 		proxyErr   error
 		remoteUser string
+		trailer    string
 		remoteAddr string
 		path       string
 		wantStatus int
 		wantCaller Caller
 	}{
 		{name: "verified proxy user", mode: authz.ModeEnforce, cert: true, remoteUser: "alice", wantStatus: 200, wantCaller: Caller{Kind: CallerUser, Name: "alice", VerifiedProxy: true}},
+		{name: "proxy identity trailer", mode: authz.ModeEnforce, cert: true, remoteUser: "alice", trailer: "X-Remote-User", wantStatus: 401},
+		{name: "headerless identity trailer", mode: authz.ModeEnforce, trailer: "x-ReMoTe-Group", wantStatus: 401},
+		{name: "empty proxy user", mode: authz.ModeEnforce, cert: true, wantStatus: 401},
+		{name: "whitespace proxy user", mode: authz.ModeEnforce, cert: true, remoteUser: " ", wantStatus: 401},
 		{name: "forged remote user", mode: authz.ModeEnforce, remoteUser: "admin", wantStatus: 401},
 		{name: "forged remote user dryRun", mode: authz.ModeDryRun, remoteUser: "admin", wantStatus: 200, wantCaller: Caller{Kind: CallerUser, Name: "admin"}},
 		{name: "bad proxy cert", mode: authz.ModeEnforce, cert: true, proxyErr: errors.New("bad"), remoteUser: "alice", wantStatus: 401},
@@ -96,6 +101,9 @@ func TestAuthenticator(t *testing.T) {
 			}
 			if tc.remoteUser != "" {
 				req.Header.Set("X-Remote-User", tc.remoteUser)
+			}
+			if tc.trailer != "" {
+				req.Trailer = http.Header{tc.trailer: nil}
 			}
 			if tc.cert {
 				req.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{{}}}

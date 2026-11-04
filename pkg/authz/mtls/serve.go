@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -89,6 +90,11 @@ func ListenAndServe(ctx context.Context, srv *http.Server, options authz.Options
 // Serve is like ListenAndServe but serves on an existing listener. It closes ln when
 // it returns. In off mode it calls srv.Serve(ln).
 func Serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz.Options, allowedCallers []string) error {
+	return serve(ctx, srv, ln, options, allowedCallers, DefaultPollInterval)
+}
+
+// serve is Serve with the interval at which the certificate files are polled for changes.
+func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz.Options, allowedCallers []string, pollInterval time.Duration) error {
 	mode := options.EffectiveMode()
 	if mode == authz.ModeOff {
 		return srv.Serve(ln)
@@ -107,11 +113,15 @@ func Serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 
 	sourceCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go source.Start(sourceCtx, DefaultPollInterval)
+	go source.Start(sourceCtx, pollInterval)
 
 	s := &server{source: source, mode: mode, namespace: options.Namespace, allowedCallers: allowedCallers}
 
-	srv.Handler = s.authorizeCaller(srv.Handler)
+	handler := srv.Handler
+	if handler == nil {
+		handler = http.DefaultServeMux
+	}
+	srv.Handler = s.authorizeCaller(handler)
 	next := srv.ConnContext
 	srv.ConnContext = func(ctx context.Context, c net.Conn) context.Context {
 		if next != nil {
@@ -124,22 +134,39 @@ func Serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 	if mode == authz.ModeEnforce {
 		tlsConfig = source.ServerConfig(options.Namespace)
 	} else {
-		tlsConfig = source.requestClientCertConfig()
+		tlsConfig = source.requestClientCertConfig(options.Namespace)
 	}
 
 	return srv.Serve(newListener(ctx, ln, tlsConfig, mode))
 }
 
-// requestClientCertConfig returns a server config that asks for, but does not require or
-// verify, a client certificate. connContext verifies it after the handshake.
-func (s *Source) requestClientCertConfig() *tls.Config {
+// requestClientCertConfig returns a server config that asks for, but does not require,
+// a client certificate. Each handshake uses one version of the certificate and CA bundle.
+// The client certificate is checked against that CA bundle, and the result is stored on
+// the connection for connContext; a failed check does not fail the handshake.
+func (s *Source) requestClientCertConfig(namespace string) *tls.Config {
 	return &tls.Config{
 		MinVersion: tls.VersionTLS12,
-		NextProtos: []string{"http/1.1"},
-		GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-			return s.certificate()
+		GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+			m, err := s.load()
+			if err != nil {
+				return nil, err
+			}
+			conn, _ := hello.Conn.(*peekedConn)
+			return &tls.Config{
+				MinVersion:   tls.VersionTLS12,
+				NextProtos:   []string{"http/1.1"},
+				Certificates: []tls.Certificate{*m.cert},
+				ClientAuth:   tls.RequestClientCert,
+				VerifyConnection: func(cs tls.ConnectionState) error {
+					if conn != nil {
+						conn.identity, _, conn.peerErr = s.verifyClient(m.pool, cs.PeerCertificates, namespace)
+						conn.checked = true
+					}
+					return nil
+				},
+			}, nil
 		},
-		ClientAuth: tls.RequestClientCert,
 	}
 }
 
@@ -165,13 +192,53 @@ func (s *server) connContext(ctx context.Context, c net.Conn) context.Context {
 	if s.mode == authz.ModeEnforce {
 		id, err = identityFromChains(state.VerifiedChains, s.namespace)
 	} else {
-		id, err = s.source.verifyClient(state.PeerCertificates, s.namespace)
+		id, err = peerCheckResult(tlsConn)
 	}
 	if err != nil {
-		logPeerFailure(ctx, s.mode, c.RemoteAddr(), err)
+		logPeerFailure(ctx, s.mode, c.RemoteAddr().String(), err)
 		return ctx
 	}
-	return WithIdentity(ctx, id)
+	return context.WithValue(WithIdentity(ctx, id), peerTrustKey{}, &peerTrust{})
+}
+
+type peerTrustKey struct{}
+
+// peerTrust caches verification until the material changes or a verified chain expires.
+type peerTrust struct {
+	verified atomic.Pointer[peerVerification]
+}
+
+type peerVerification struct {
+	material  *material
+	expiresAt time.Time
+}
+
+// checkPeerTrust verifies the client certificate of r against the current CA bundle.
+// The handshake verified it against the bundle at the time, but a connection can outlive
+// a reload that removes the client's CA, or either component's certificate expiry.
+func (s *server) checkPeerTrust(r *http.Request) error {
+	if r.TLS == nil {
+		return peerError("request did not use TLS", nil)
+	}
+	trust, _ := r.Context().Value(peerTrustKey{}).(*peerTrust)
+	current, err := s.source.load()
+	if err != nil {
+		return err
+	}
+	if trust != nil {
+		cached := trust.verified.Load()
+		if cached != nil && cached.material == current && !s.source.now().After(cached.expiresAt) {
+			return nil
+		}
+	}
+	_, expiresAt, err := s.source.verifyClient(current.pool, r.TLS.PeerCertificates, s.namespace)
+	if err != nil {
+		return err
+	}
+	if trust != nil {
+		trust.verified.Store(&peerVerification{material: current, expiresAt: expiresAt})
+	}
+	return nil
 }
 
 // authorizeCaller checks that the verified caller is one of the allowed components.
@@ -181,6 +248,18 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 		decision := authz.Decision{Allowed: true, Action: r.Method, Target: r.URL.Path}
 
 		id, ok := IdentityFromContext(ctx)
+		if ok {
+			if err := s.checkPeerTrust(r); err != nil {
+				logPeerFailure(ctx, s.mode, r.RemoteAddr, err)
+				if s.mode == authz.ModeEnforce {
+					w.Header().Set("Connection", "close")
+					writeDenied(ctx, w, r, &authz.DeniedError{Code: v1.CodeInvalidAuthenticationInfo, Action: decision.Action, Target: decision.Target})
+					return
+				}
+				ok = false
+			}
+		}
+
 		switch {
 		case !ok:
 			// The connection failure was already logged. Enforce mode never gets here
@@ -204,13 +283,21 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 }
 
 func writeDenied(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
-	authz.WriteDenied(ctx, w, r, err)
+	var denied *authz.DeniedError
+	if errors.As(err, &denied) {
+		if resp, rerr := denied.Response(); rerr == nil {
+			if aerr := resp.Apply(ctx, w, r); aerr == nil {
+				return
+			}
+		}
+	}
+	http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 }
 
 // logPeerFailure logs a failed peer certificate check with the authorization log fields.
 // Failures that are not an *Error, such as chain verification errors from crypto/tls, are
 // logged as PeerCertificateInvalid.
-func logPeerFailure(ctx context.Context, mode authz.Mode, remote net.Addr, err error) {
+func logPeerFailure(ctx context.Context, mode authz.Mode, remote string, err error) {
 	code := authz.CodePeerCertificateInvalid
 	reason := err.Error()
 	var mErr *Error
@@ -219,7 +306,7 @@ func logPeerFailure(ctx context.Context, mode authz.Mode, remote net.Addr, err e
 		reason = mErr.Error()
 	}
 
-	logger := ucplog.FromContextOrDiscard(ctx).WithValues(LogFieldReason, reason, LogFieldPeerAddress, remote.String())
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues(LogFieldReason, reason, LogFieldPeerAddress, remote)
 	_ = authz.Apply(logr.NewContext(ctx, logger), mode, authz.Decision{Code: code})
 }
 
@@ -311,7 +398,7 @@ func (l *listener) classify(c net.Conn) (net.Conn, error) {
 	peeked := &peekedConn{Conn: c, r: br}
 
 	if first[0] != tlsHandshakeRecord {
-		logPeerFailure(l.ctx, l.mode, c.RemoteAddr(), peerError("no client certificate: plain HTTP connection", nil))
+		logPeerFailure(l.ctx, l.mode, c.RemoteAddr().String(), peerError("no client certificate: plain HTTP connection", nil))
 		if l.mode == authz.ModeEnforce {
 			_, _ = io.WriteString(c, "HTTP/1.0 400 Bad Request\r\n\r\nClient sent an HTTP request to an HTTPS server.\n")
 			return nil, errors.New("plain HTTP rejected")
@@ -322,17 +409,31 @@ func (l *listener) classify(c net.Conn) (net.Conn, error) {
 
 	tlsConn := tls.Server(peeked, l.tlsConfig)
 	if err := tlsConn.HandshakeContext(l.ctx); err != nil {
-		logPeerFailure(l.ctx, l.mode, c.RemoteAddr(), err)
+		logPeerFailure(l.ctx, l.mode, c.RemoteAddr().String(), err)
 		return nil, err
 	}
 	_ = c.SetDeadline(time.Time{})
 	return tlsConn, nil
 }
 
-// peekedConn replays bytes buffered while classifying the connection.
+// peekedConn replays bytes buffered while classifying the connection. In dryRun mode it
+// also holds the result of the client certificate check made during the handshake.
 type peekedConn struct {
 	net.Conn
 	r *bufio.Reader
+
+	checked  bool
+	identity Identity
+	peerErr  error
+}
+
+// peerCheckResult returns the client certificate check recorded during a dryRun handshake.
+func peerCheckResult(c *tls.Conn) (Identity, error) {
+	conn, ok := c.NetConn().(*peekedConn)
+	if !ok || !conn.checked {
+		return Identity{}, peerError("client certificate was not checked", nil)
+	}
+	return conn.identity, conn.peerErr
 }
 
 func (c *peekedConn) Read(p []byte) (int, error) {

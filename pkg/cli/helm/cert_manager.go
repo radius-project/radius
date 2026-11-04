@@ -18,13 +18,17 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
@@ -34,6 +38,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/kubeutil"
 )
+
+var errCertManagerControllerMissing = errors.New("no cert-manager controller is running")
 
 // cert-manager versions. Bump both as upstream releases move: the default is the latest stable release and
 // the minimum is the oldest release still supported upstream. See https://cert-manager.io/docs/releases/.
@@ -88,15 +94,12 @@ func newCertManagerClients(kubeContext string) (kubernetes.Interface, apiextclie
 }
 
 // resolveAuthzMode returns the authorization mode the Radius chart will render from global.rbac. Values from the
-// current invocation override the stored release values key by key, matching Helm's reuse-values merge.
+// current invocation are merged over the stored release values with Helm's own CoalesceTables, the merge Helm
+// upgrade applies for ResetThenReuseValues, so null or non-map replacements clear stored flags like Helm does.
 func resolveAuthzMode(stored, current map[string]any) (authz.Mode, error) {
-	enabled, dryRun := rbacFlag(stored, "enabled"), rbacFlag(stored, "dryRun")
-	if v, ok := lookupRBACValue(current, "enabled"); ok {
-		enabled = rbacEnabled(v)
-	}
-	if v, ok := lookupRBACValue(current, "dryRun"); ok {
-		dryRun = rbacEnabled(v)
-	}
+	// CoalesceTables mutates both arguments, so merge copies.
+	merged := valuesutil.CoalesceTables(copyValues(current), copyValues(stored))
+	enabled, dryRun := rbacFlag(merged, "enabled"), rbacFlag(merged, "dryRun")
 
 	switch {
 	case enabled && dryRun:
@@ -111,27 +114,9 @@ func resolveAuthzMode(stored, current map[string]any) (authz.Mode, error) {
 }
 
 func rbacFlag(values map[string]any, key string) bool {
-	v, _ := lookupRBACValue(values, key)
-	return rbacEnabled(v)
-}
-
-func lookupRBACValue(values map[string]any, key string) (any, bool) {
 	global, _ := values["global"].(map[string]any)
 	rbac, _ := global["rbac"].(map[string]any)
-	v, ok := rbac[key]
-	return v, ok
-}
-
-func rbacEnabled(v any) bool {
-	switch b := v.(type) {
-	case bool:
-		return b
-	case string:
-		parsed, _ := strconv.ParseBool(b)
-		return parsed
-	default:
-		return false
-	}
+	return isTrue(rbac[key])
 }
 
 // detectCertManager finds cert-manager by its Certificate CRD and controller Deployment in any namespace.
@@ -153,7 +138,7 @@ func detectCertManager(ctx context.Context, kubeClient kubernetes.Interface, api
 	case !crdFound && len(deployments.Items) == 0:
 		return certManagerInstallation{}, nil
 	case len(deployments.Items) == 0:
-		return certManagerInstallation{}, fmt.Errorf("the %s CRD exists but no cert-manager controller is running. Repair or remove the existing cert-manager installation and retry", certManagerCRDName)
+		return certManagerInstallation{}, fmt.Errorf("the %s CRD exists but %w. Repair or remove the existing cert-manager installation and retry", certManagerCRDName, errCertManagerControllerMissing)
 	case !crdFound:
 		return certManagerInstallation{}, fmt.Errorf("a cert-manager controller is running in namespace %q but the %s CRD is missing. Repair the existing cert-manager installation and retry", deployments.Items[0].Namespace, certManagerCRDName)
 	}
@@ -177,6 +162,33 @@ func detectCertManager(ctx context.Context, kubeClient kubernetes.Interface, api
 	return certManagerInstallation{Installed: true, Version: version.String(), Namespace: controller.Namespace}, nil
 }
 
+func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, namespace string) error {
+	for _, component := range []string{"controller", "webhook"} {
+		name := "cert-manager"
+		if component == "webhook" {
+			name = "webhook"
+		}
+		selector := "app.kubernetes.io/name=" + name + ",app.kubernetes.io/component=" + component
+		deployments, err := client.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
+		if err != nil {
+			return fmt.Errorf("failed to check cert-manager %s readiness in namespace %q: %w", component, namespace, err)
+		}
+		if len(deployments.Items) != 1 {
+			return fmt.Errorf("cert-manager %s in namespace %q is not ready: expected one Deployment, found %d. Repair cert-manager and retry", component, namespace, len(deployments.Items))
+		}
+		deployment := deployments.Items[0]
+		replicas := int32(1)
+		if deployment.Spec.Replicas != nil {
+			replicas = *deployment.Spec.Replicas
+		}
+		if replicas == 0 || deployment.Status.ObservedGeneration < deployment.Generation ||
+			deployment.Status.UpdatedReplicas < replicas || deployment.Status.AvailableReplicas < replicas {
+			return fmt.Errorf("cert-manager %s Deployment %s/%s is not ready. Wait for its rollout or repair cert-manager and retry", component, namespace, deployment.Name)
+		}
+	}
+	return nil
+}
+
 // imageTag returns the tag of an image reference, ignoring any digest.
 func imageTag(image string) string {
 	image, _, _ = strings.Cut(image, "@")
@@ -188,7 +200,8 @@ func imageTag(image string) string {
 }
 
 // ensureCertManager makes cert-manager available when Radius authorization is enabled. It installs a pinned
-// version when none exists, upgrades a release rad installed when upgrade is true, reuses a supported
+// version when none exists, upgrades a release rad installed when upgrade is true or when that release is
+// not deployed or its controller is missing, reuses a supported
 // installation it did not install, and fails when that installation is older than CertManagerMinimumVersion.
 // With authorization off it returns without contacting the cluster.
 func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, upgrade bool) error {
@@ -206,17 +219,64 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 
 	helmAction := NewHelmAction(i.Helm)
 	chartOptions := options.CertManager.ChartOptions
-	owned, err := i.isRadOwnedCertManager(chartOptions, kubeContext)
+	ownedRelease, err := i.radOwnedCertManagerRelease(chartOptions, kubeContext)
 	if err != nil {
 		return err
 	}
 
-	if owned {
-		if !upgrade {
-			output.LogInfo("Using cert-manager installed by rad in namespace %s", chartOptions.Namespace)
-			return nil
+	newClients := i.newCertManagerClients
+	if newClients == nil {
+		newClients = newCertManagerClients
+	}
+	var kubeClient kubernetes.Interface
+	detect := func() (certManagerInstallation, error) {
+		var apiextClient apiextclient.Interface
+		var err error
+		kubeClient, apiextClient, err = newClients(kubeContext)
+		if err != nil {
+			return certManagerInstallation{}, fmt.Errorf("failed to create Kubernetes clients: %w", err)
 		}
-		output.LogInfo("Upgrading cert-manager...")
+		return detectCertManager(ctx, kubeClient, apiextClient)
+	}
+
+	if ownedRelease != nil {
+		if ownedRelease.Chart == nil || ownedRelease.Chart.Metadata == nil {
+			return fmt.Errorf("could not determine the rad-owned cert-manager chart version; repair its Helm release metadata and retry")
+		}
+		installedVersion, err := semver.NewVersion(ownedRelease.Chart.Metadata.Version)
+		if err != nil {
+			return fmt.Errorf("invalid rad-owned cert-manager chart version: %w", err)
+		}
+		targetVersion, err := semver.NewVersion(chartOptions.ChartVersion)
+		if err != nil {
+			return fmt.Errorf("invalid cert-manager target chart version: %w", err)
+		}
+		newer := installedVersion.GreaterThan(targetVersion)
+		if !upgrade || newer {
+			healthy := ownedRelease.Info != nil && ownedRelease.Info.Status == releasecommon.StatusDeployed
+			if healthy {
+				existing, err := detect()
+				if err != nil && !errors.Is(err, errCertManagerControllerMissing) {
+					return err
+				}
+				healthy = err == nil && existing.Installed
+				if healthy {
+					if err := checkCertManagerReady(ctx, kubeClient, existing.Namespace); err != nil {
+						return err
+					}
+				}
+			}
+			if healthy {
+				output.LogInfo("Using cert-manager installed by rad in namespace %s", chartOptions.Namespace)
+				return nil
+			}
+			if newer {
+				return fmt.Errorf("rad-owned cert-manager v%s is newer than target v%s but is not healthy. Repair it at its current version and retry; rad will not downgrade it", installedVersion, targetVersion)
+			}
+			output.LogInfo("Repairing cert-manager installed by rad...")
+		} else {
+			output.LogInfo("Upgrading cert-manager...")
+		}
 		helmChart, helmConf, err := loadChart(ctx, helmAction, chartOptions, kubeContext)
 		if err != nil {
 			return fmt.Errorf("failed to prepare cert-manager Helm chart, err: %w", err)
@@ -227,15 +287,7 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		return nil
 	}
 
-	newClients := i.newCertManagerClients
-	if newClients == nil {
-		newClients = newCertManagerClients
-	}
-	kubeClient, apiextClient, err := newClients(kubeContext)
-	if err != nil {
-		return fmt.Errorf("failed to create Kubernetes clients: %w", err)
-	}
-	existing, err := detectCertManager(ctx, kubeClient, apiextClient)
+	existing, err := detect()
 	if err != nil {
 		return err
 	}
@@ -244,6 +296,9 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		minimum := semver.MustParse(CertManagerMinimumVersion)
 		if semver.MustParse(existing.Version).LessThan(minimum) {
 			return fmt.Errorf("cert-manager v%s in namespace %q is older than the minimum supported version v%s. Upgrade cert-manager to v%s or later and retry; rad does not upgrade a cert-manager it did not install", existing.Version, existing.Namespace, minimum, minimum)
+		}
+		if err := checkCertManagerReady(ctx, kubeClient, existing.Namespace); err != nil {
+			return err
 		}
 		output.LogInfo("Using existing cert-manager v%s in namespace %s", existing.Version, existing.Namespace)
 		return nil
@@ -260,18 +315,25 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 	return nil
 }
 
-// isRadOwnedCertManager reports whether the cert-manager Helm release exists and carries rad's ownership labels.
-func (i *Impl) isRadOwnedCertManager(options ChartOptions, kubeContext string) (bool, error) {
+// radOwnedCertManagerRelease returns the latest cert-manager Helm release when it carries rad's ownership
+// labels, or nil when the release does not exist or rad did not install it.
+func (i *Impl) radOwnedCertManagerRelease(options ChartOptions, kubeContext string) (*releasev1.Release, error) {
 	rel, err := NewHelmAction(i.Helm).getRelease(kubeContext, options.ReleaseName, options.Namespace)
 	if err != nil || rel == nil {
-		return false, err
+		return nil, err
 	}
 	for k, v := range radManagedByLabels() {
 		if rel.Labels[k] != v {
-			return false, nil
+			return nil, nil
 		}
 	}
-	return true, nil
+	return rel, nil
+}
+
+// isRadOwnedCertManager reports whether the cert-manager Helm release exists and carries rad's ownership labels.
+func (i *Impl) isRadOwnedCertManager(options ChartOptions, kubeContext string) (bool, error) {
+	rel, err := i.radOwnedCertManagerRelease(options, kubeContext)
+	return rel != nil, err
 }
 
 // CertManagerInstalledByRad reports whether the default cert-manager release exists and rad installed it.
@@ -286,6 +348,8 @@ var certManagerResources = []schema.GroupVersionResource{
 	{Group: "cert-manager.io", Version: "v1", Resource: "certificaterequests"},
 	{Group: "cert-manager.io", Version: "v1", Resource: "issuers"},
 	{Group: "cert-manager.io", Version: "v1", Resource: "clusterissuers"},
+	{Group: "acme.cert-manager.io", Version: "v1", Resource: "orders"},
+	{Group: "acme.cert-manager.io", Version: "v1", Resource: "challenges"},
 }
 
 func newCertManagerDynamicClient(kubeContext string) (dynamic.Interface, error) {
@@ -305,6 +369,9 @@ func foreignCertManagerResources(ctx context.Context, client dynamic.Interface, 
 	var found []string
 	for _, gvr := range certManagerResources {
 		list, err := client.Resource(gvr).Namespace(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
+			continue
+		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to list %s: %w", gvr.Resource, err)
 		}
@@ -326,11 +393,13 @@ func foreignCertManagerResources(ctx context.Context, client dynamic.Interface, 
 func (i *Impl) uninstallCertManager(ctx context.Context, options ClusterOptions, kubeContext string) error {
 	chartOptions := options.CertManager.ChartOptions
 	owned, err := i.isRadOwnedCertManager(chartOptions, kubeContext)
-	if err != nil || !owned {
-		return err
+	if err != nil {
+		i.logInfo("Keeping cert-manager: could not check whether rad installed it: %v", err)
+		return nil
 	}
-
-	logInfo := i.logInfo
+	if !owned {
+		return nil
+	}
 	newClient := i.newCertManagerDynamicClient
 	if newClient == nil {
 		newClient = newCertManagerDynamicClient
@@ -341,14 +410,20 @@ func (i *Impl) uninstallCertManager(ctx context.Context, options ClusterOptions,
 		foreign, err = foreignCertManagerResources(ctx, client, options.Radius.Namespace)
 	}
 	if err != nil {
-		logInfo("Keeping cert-manager: could not check whether other workloads use it: %v", err)
+		i.logInfo("Keeping cert-manager: could not check whether other workloads use it: %v", err)
 		return nil
 	}
 	if len(foreign) > 0 {
-		logInfo("Keeping cert-manager: other workloads use it (%d resources, e.g. %s)", len(foreign), foreign[0])
+		i.logInfo("Keeping cert-manager: other workloads use it (%d resources, e.g. %s)", len(foreign), foreign[0])
 		return nil
 	}
 	return i.uninstallHelmRelease("cert-manager", chartOptions.ReleaseName, chartOptions.Namespace, kubeContext)
+}
+
+// UninstallCertManager removes cert-manager on its own, with the same ownership and other-workload checks
+// that UninstallRadius applies. It does not touch the Radius or Contour releases.
+func (i *Impl) UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
 }
 
 // buildCertManagerValues installs the CRDs with the release and removes them on uninstall, so a later

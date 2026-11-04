@@ -304,6 +304,9 @@ func (r *Runtime) policyAPI(w http.ResponseWriter, req *http.Request, path strin
 		if err == nil {
 			err = json.Unmarshal(body, &input)
 		}
+		if err == nil {
+			err = validateAccessCheck(input)
+		}
 		if err != nil {
 			fail(w, err)
 			return true
@@ -319,10 +322,6 @@ func (r *Runtime) policyAPI(w http.ResponseWriter, req *http.Request, path strin
 		}
 		checks := []authorization.Check{}
 		for _, check := range input.Checks {
-			if check == nil || check.Permission == nil || check.Target == nil {
-				fail(w, fmt.Errorf("checks require permission and target"))
-				return true
-			}
 			checks = append(checks, authorization.Check{Permission: *check.Permission, Target: *check.Target})
 		}
 		if input.Principal != nil && !samePrincipal(input.Principal, &identity.Principal) {

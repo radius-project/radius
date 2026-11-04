@@ -177,6 +177,9 @@ func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 }
 
 func (a *Authenticator) resolve(ctx context.Context, r *http.Request) (Caller, string) {
+	if hasRemoteHeaders(r.Trailer) {
+		return Caller{Kind: CallerAnonymous}, v1.CodeInvalidAuthenticationInfo
+	}
 	hasRemote := hasRemoteHeaders(r.Header)
 
 	if isInternal(ctx) {
@@ -206,6 +209,10 @@ func (a *Authenticator) resolve(ctx context.Context, r *http.Request) (Caller, s
 		}
 		if err := a.FrontProxy.Verify(ctx, certs); err != nil {
 			ucplog.FromContextOrDiscard(ctx).Info("aggregation proxy certificate rejected", "reason", err.Error())
+			return Caller{Kind: CallerAnonymous}, v1.CodeInvalidAuthenticationInfo
+		}
+		users := r.Header.Values("X-Remote-User")
+		if len(users) != 1 || strings.TrimSpace(users[0]) == "" {
 			return Caller{Kind: CallerAnonymous}, v1.CodeInvalidAuthenticationInfo
 		}
 		return Caller{Kind: CallerUser, Name: r.Header.Get("X-Remote-User"), Groups: append([]string(nil), r.Header.Values("X-Remote-Group")...), VerifiedProxy: true}, ""

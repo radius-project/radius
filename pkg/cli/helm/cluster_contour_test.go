@@ -140,11 +140,10 @@ func Test_Helm_InstallRadius_ContourPreflightFailureInstallsNothing(t *testing.T
 
 	client := NewMockHelmClient(gomock.NewController(t))
 	options := NewDefaultClusterOptions()
-	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 	expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
 	expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
 	client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
-	// No Radius or cert-manager query or installation is allowed after a failed preflight.
+	// No other Helm call is expected. In particular, Radius must not be installed.
 
 	gatewayCalls := &defaultContourGatewayCalls{}
 	impl := &Impl{
@@ -262,7 +261,6 @@ func Test_Helm_UpgradeRadius_ResetValuesWithoutContourValuesFails(t *testing.T) 
 	client := NewMockHelmClient(gomock.NewController(t))
 	options := NewDefaultClusterOptions()
 	options.ResetValues = true
-	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 
 	expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
 	expectContourHistory(client, options, newContourReleaseWithStoredValues(options))

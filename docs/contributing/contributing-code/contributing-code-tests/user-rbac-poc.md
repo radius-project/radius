@@ -4,7 +4,9 @@
 
 Test read-only access, environment restrictions, custom roles, revocation, and administrator protection from the [RBAC feature spec](../../../../eng/design-notes/security/2026-09-built-in-rbac-feature-spec.md#key-scenarios).
 
-Both user and internal RBAC are enforced. Internal RBAC uses prototype snapshot `093010a90`. Use only a disposable local cluster: deployment-engine identity uses pod IP, and component read/shared-store isolation is incomplete.
+Both user and internal RBAC are enforced. Internal RBAC originated from prototype snapshot `093010a90`, with selectively integrated review fixes. Use only a disposable local cluster: deployment-engine identity uses pod IP, and component read/shared-store isolation is incomplete.
+
+The prototype includes reviewed component certificate reload and connection-expiry fixes and requires explicit client-authentication usage on the Kubernetes aggregation proxy certificate. Its full user enforcement and broader admission rules remain prototype-specific; the smaller production stacks are not drop-in replacements.
 
 ## Prerequisites
 
@@ -51,6 +53,8 @@ For a new kit:
 bash hack/user-rbac/poc.sh up
 bash hack/user-rbac/poc.sh test
 ```
+
+For an isolated rehearsal, set a unique `RBAC_POC_CLUSTER=radius-user-rbac-poc-<suffix>` and `RBAC_POC_IMAGE_TAG` before `up`. This keeps state and local component tags separate from other kits. Pin external images with `RBAC_POC_ENGINE_IMAGE=ghcr.io/radius-project/deployment-engine@sha256:<digest>` and `RBAC_POC_BICEP_IMAGE=ghcr.io/radius-project/bicep@sha256:<digest>`; digest references take precedence over their tag settings. Record the source commit, binary hashes, image IDs, rendered values, and running pod image IDs, not just mutable local tags.
 
 `up` builds and installs Radius on the dedicated kind cluster. It grants authenticated test users entry to the Radius API, not access to Radius resources. It also gives `poc-admin` the Kubernetes permission Radius checks before allowing initial administrator bootstrap.
 
@@ -216,6 +220,8 @@ HOME="$RAD_HOME" "$RAD" auth access explain --scope "$CLI_APP" \
 ```
 
 **Expected:** write and staging use are allowed; production use and deletion are denied. The reader explanation allows read but hides grant details the reader cannot inspect. These checks do not change resources.
+
+Access-check and explanation requests accept 1–100 checks. Issuer, subject, display name, permission, and target strings are bounded to 256, 512, 128, 256, and 2,048 characters respectively before evaluation.
 
 ### 9. Grant a custom read-only role
 

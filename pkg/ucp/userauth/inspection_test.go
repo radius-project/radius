@@ -63,6 +63,44 @@ func TestIdentityAndEffectiveAccess(t *testing.T) {
 	require.Empty(t, access.Permissions)
 }
 
+func TestInspectionRequestLimits(t *testing.T) {
+	t.Parallel()
+	_, handler, _ := testRuntime(t)
+	setMode(t, handler, "Enforce")
+	for _, action := range []string{"checkAccess", "explainAccess"} {
+		for _, spec := range []struct {
+			name       string
+			count      int
+			permission string
+			target     string
+			principal  map[string]string
+			wantStatus int
+		}{
+			{"empty", 0, "Applications.Core/applications/read", applicationPath, nil, http.StatusBadRequest},
+			{"maximum", 100, "Applications.Core/applications/read", applicationPath, nil, http.StatusOK},
+			{"too many", 101, "Applications.Core/applications/read", applicationPath, nil, http.StatusBadRequest},
+			{"long permission", 1, strings.Repeat("a", 257), applicationPath, nil, http.StatusBadRequest},
+			{"long target", 1, "Applications.Core/applications/read", "/" + strings.Repeat("a", 2048), nil, http.StatusBadRequest},
+			{"long issuer", 1, "Applications.Core/applications/read", applicationPath, map[string]string{"type": "user", "issuer": strings.Repeat("a", 257), "subject": "alice"}, http.StatusBadRequest},
+			{"long subject", 1, "Applications.Core/applications/read", applicationPath, map[string]string{"type": "user", "issuer": "kubernetes:test", "subject": strings.Repeat("a", 513)}, http.StatusBadRequest},
+			{"long display name", 1, "Applications.Core/applications/read", applicationPath, map[string]string{"type": "user", "issuer": "kubernetes:test", "subject": "alice", "displayName": strings.Repeat("a", 129)}, http.StatusBadRequest},
+		} {
+			t.Run(action+"/"+spec.name, func(t *testing.T) {
+				checks := make([]map[string]string, spec.count)
+				for i := range checks {
+					checks[i] = map[string]string{"permission": spec.permission, "target": spec.target}
+				}
+				body := map[string]any{"checks": checks}
+				if spec.principal != nil {
+					body["principal"] = spec.principal
+				}
+				response := call(t, handler, "admin", []string{"admins"}, http.MethodPost, groupPath+"/providers/Radius.Core/"+action, body)
+				require.Equal(t, spec.wantStatus, response.Code, response.Body.String())
+			})
+		}
+	}
+}
+
 func TestExplanationRedactsUnreadableGrants(t *testing.T) {
 	t.Parallel()
 	_, handler, _ := testRuntime(t)

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"time"
 )
 
 // ServerConfig returns a TLS config for a server that requires a client certificate
@@ -32,7 +33,7 @@ import (
 func (s *Source) ServerConfig(namespace string) *tls.Config {
 	outer := &tls.Config{MinVersion: tls.VersionTLS12}
 	outer.GetConfigForClient = func(*tls.ClientHelloInfo) (*tls.Config, error) {
-		cert, err := s.certificate()
+		m, err := s.load()
 		if err != nil {
 			return nil, err
 		}
@@ -46,9 +47,12 @@ func (s *Source) ServerConfig(namespace string) *tls.Config {
 		return &tls.Config{
 			MinVersion:   tls.VersionTLS12,
 			NextProtos:   nextProtos,
-			Certificates: []tls.Certificate{*cert},
+			Certificates: []tls.Certificate{*m.cert},
 			ClientAuth:   tls.RequireAndVerifyClientCert,
-			ClientCAs:    s.pool(),
+			ClientCAs:    m.pool,
+			// Resumed sessions keep the chains verified in the original handshake, so a
+			// client could reconnect after its CA was removed from the bundle.
+			SessionTicketsDisabled: true,
 			VerifyConnection: func(cs tls.ConnectionState) error {
 				_, err := identityFromChains(cs.VerifiedChains, namespace)
 				return err
@@ -63,61 +67,83 @@ func (s *Source) ServerConfig(namespace string) *tls.Config {
 // only DNS SAN is the server name. The server name must be the canonical
 // "<component>.<namespace>.svc" name of a Radius component, set either in the returned
 // config or by the caller, such as http.Transport from the request URL.
-func (s *Source) ClientConfig(namespace string) *tls.Config {
+//
+// The config is bound to the certificate and CA bundle loaded when ClientConfig is called,
+// so the certificate it presents and the CA bundle it verifies against are always from the
+// same version. It does not follow later reloads: call ClientConfig for each new connection,
+// for example from http.Transport.DialTLSContext. Components reload at different times, so
+// rotating the CA requires a CA bundle that trusts both the old and new CA until every
+// component has reloaded.
+func (s *Source) ClientConfig(namespace string) (*tls.Config, error) {
+	config, _, err := s.clientConfig(namespace)
+	return config, err
+}
+
+// clientConfig is ClientConfig that also returns the certificate the config presents.
+func (s *Source) clientConfig(namespace string) (*tls.Config, *x509.Certificate, error) {
+	m, err := s.load()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return &tls.Config{
 		MinVersion: tls.VersionTLS12,
+		RootCAs:    m.pool,
+		Time:       s.now,
 		GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
-			return s.certificate()
+			return m.cert, nil
 		},
-		// The default verifier only supports a fixed RootCAs pool. VerifyConnection
-		// performs the full chain and hostname check against the current CA bundle instead.
-		InsecureSkipVerify: true, //nolint:gosec // verification is done in VerifyConnection.
+		// The standard verifier has checked the chain, validity dates, and server name.
 		VerifyConnection: func(cs tls.ConnectionState) error {
-			_, err := s.verifyServer(cs.PeerCertificates, cs.ServerName, namespace)
+			// A long-lived config must not keep using an expired certificate, even with a
+			// server that does not request one.
+			if err := s.checkExpiry(m.cert); err != nil {
+				return err
+			}
+			if _, err := identityFromSAN(cs.ServerName, namespace); err != nil {
+				return peerError(fmt.Sprintf("server name %q is not a canonical Radius component name", cs.ServerName), nil)
+			}
+			_, err := identityFromChains(cs.VerifiedChains, namespace)
 			return err
 		},
-	}
+	}, m.cert.Leaf, nil
 }
 
-// verifyServer verifies a server chain against the current CA bundle and server name,
-// then maps it to a component identity.
-func (s *Source) verifyServer(certs []*x509.Certificate, serverName, namespace string) (Identity, error) {
+// verifyClient checks a client's certificate chain against pool, the CA bundle of the
+// handshake's snapshot, and returns its identity and the earliest verified-chain expiry.
+// Servers use it during dry-run handshakes and to recheck trust on open connections.
+func (s *Source) verifyClient(pool *x509.CertPool, certs []*x509.Certificate, namespace string) (Identity, time.Time, error) {
 	if len(certs) == 0 {
-		return Identity{}, peerError("no peer certificate", nil)
+		return Identity{}, time.Time{}, peerError("no client certificate", nil)
 	}
-	if _, err := identityFromSAN(serverName, namespace); err != nil {
-		return Identity{}, peerError(fmt.Sprintf("server name %q is not a canonical Radius component name", serverName), nil)
-	}
-	return s.verifyPeer(certs, serverName, x509.ExtKeyUsageServerAuth, namespace)
-}
 
-// verifyClient checks a client's certificate chain against the current CA bundle and
-// returns its identity. Servers use it when the TLS handshake requests but does not
-// verify a client certificate, as in dry-run mode.
-func (s *Source) verifyClient(certs []*x509.Certificate, namespace string) (Identity, error) {
-	if len(certs) == 0 {
-		return Identity{}, peerError("no client certificate", nil)
-	}
-	return s.verifyPeer(certs, "", x509.ExtKeyUsageClientAuth, namespace)
-}
-
-func (s *Source) verifyPeer(certs []*x509.Certificate, dnsName string, usage x509.ExtKeyUsage, namespace string) (Identity, error) {
 	intermediates := x509.NewCertPool()
 	for _, cert := range certs[1:] {
 		intermediates.AddCert(cert)
 	}
 
 	chains, err := certs[0].Verify(x509.VerifyOptions{
-		Roots:         s.pool(),
+		Roots:         pool,
 		Intermediates: intermediates,
-		DNSName:       dnsName,
 		CurrentTime:   s.now(),
-		KeyUsages:     []x509.ExtKeyUsage{usage},
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	})
 	if err != nil {
-		return Identity{}, peerError("certificate verification failed", err)
+		return Identity{}, time.Time{}, peerError("certificate verification failed", err)
 	}
-	return identityFromChains(chains, namespace)
+	id, err := identityFromChains(chains, namespace)
+	if err != nil {
+		return Identity{}, time.Time{}, err
+	}
+	expiresAt := certs[0].NotAfter
+	for _, chain := range chains {
+		for _, cert := range chain {
+			if cert.NotAfter.Before(expiresAt) {
+				expiresAt = cert.NotAfter
+			}
+		}
+	}
+	return id, expiresAt, nil
 }
 
 // identityFromChains returns the identity from the first verified chain that passes

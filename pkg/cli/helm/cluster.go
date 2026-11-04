@@ -253,6 +253,9 @@ type Interface interface {
 	// CertManagerInstalledByRad reports whether the cluster has a cert-manager release that rad installed.
 	CertManagerInstalledByRad(kubeContext string) (bool, error)
 
+	// UninstallCertManager uninstalls cert-manager only when rad installed it and no other workload uses it.
+	UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
+
 	// RollbackRadius rolls back the Radius installation to the previous revision.
 	RollbackRadius(ctx context.Context, kubeContext string) error
 
@@ -324,8 +327,9 @@ func (i *Impl) logInfo(format string, v ...any) {
 	i.logger(format, v...)
 }
 
-// InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options. It prepares
-// and checks both charts before it changes the cluster, and then installs Contour, Radius, and the Radius Contour
+// InstallRadius installs Radius and its dependencies (Contour and, when authorization is enabled, cert-manager).
+// It prepares and checks the Radius and Contour charts before it changes the cluster, and then installs
+// cert-manager, Contour, Radius, and the Radius Contour
 // Gateway in that order.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Do note: the namespace passed in to rad install kubernetes

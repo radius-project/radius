@@ -9,11 +9,51 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/radius-project/radius/pkg/ucp/authorization"
 )
+
+func validateAccessCheck(input api.AccessCheckRequest) error {
+	if len(input.Checks) == 0 || len(input.Checks) > 100 {
+		return fmt.Errorf("checks must contain between 1 and 100 items")
+	}
+	validate := func(name string, value *string, limit int) error {
+		if value != nil && utf8.RuneCountInString(*value) > limit {
+			return fmt.Errorf("%s must contain at most %d characters", name, limit)
+		}
+		return nil
+	}
+	if p := input.Principal; p != nil {
+		for _, field := range []struct {
+			name  string
+			value *string
+			limit int
+		}{
+			{"principal.issuer", p.Issuer, 256},
+			{"principal.subject", p.Subject, 512},
+			{"principal.displayName", p.DisplayName, 128},
+		} {
+			if err := validate(field.name, field.value, field.limit); err != nil {
+				return err
+			}
+		}
+	}
+	for _, check := range input.Checks {
+		if check == nil || check.Permission == nil || check.Target == nil {
+			return fmt.Errorf("checks require permission and target")
+		}
+		if err := validate("permission", check.Permission, 256); err != nil {
+			return err
+		}
+		if err := validate("target", check.Target, 2048); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func assignmentScope(value api.RoleAssignmentResource) string {
 	id := strings.ToLower(*value.ID)
