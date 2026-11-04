@@ -6,6 +6,7 @@ package authorization
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -32,7 +33,9 @@ type ReferenceDescriptor struct {
 
 // ReferenceChecks extracts standard environment/application references on
 // built-in and registered resources, built-in connections, and schema-declared
-// references on PUT/PATCH, including unchanged references. For PATCH the caller
+// references on PUT/PATCH, including unchanged references. URL connection
+// sources are skipped; Azure and AWS connection sources require credential use
+// on the trusted cloud plane. For PATCH the caller
 // must supply the complete effective resource after applying the patch, not
 // just its changed fields. The top-level properties field must use exact casing.
 // It does not read target resources or follow their
@@ -86,6 +89,21 @@ func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, op
 		checks = append(checks, Check{c.permissions[strings.ToLower(permission)], canonical})
 		return nil
 	}
+	// addCredential checks use of the trusted credential plane for a cloud.
+	addCredential := func(cloud string) error {
+		plane, err := canonicalTarget(options.CloudPlanes[cloud])
+		if err != nil {
+			return fmt.Errorf("resolve %s credential plane: %w", cloud, err)
+		}
+		parsed, err := resources.Parse(plane)
+		if err != nil || !parsed.IsScope() || len(parsed.ScopeSegments()) != 1 ||
+			!strings.EqualFold(parsed.ScopeSegments()[0].Type, cloud) {
+			return fmt.Errorf("invalid %s credential plane", cloud)
+		}
+		namespace := map[string]string{"azure": "Azure", "aws": "AWS"}[cloud]
+		checks = append(checks, Check{"System." + namespace + "/credentials/use/action", plane})
+		return nil
+	}
 	typ := strings.ToLower(id.Type())
 	isBuiltIn := c.builtInConnections[typ] ||
 		containsFold([]string{"Radius.Core/environments", "Applications.Core/environments", "Radius.Core/recipePacks"}, typ)
@@ -118,6 +136,20 @@ func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, op
 					if !ok {
 						return nil, fmt.Errorf("connection %q must be an object", name)
 					}
+					source, _ := connection["source"].(string)
+					if isURLSource(source) {
+						// URLs address endpoints, not resources, so they grant nothing to check.
+						continue
+					}
+					if cloud := cloudSourcePlane(source); cloud != "" {
+						if _, err := resources.ParseResource(source); err != nil {
+							return nil, fmt.Errorf("connection %q: invalid %s resource ID", name, cloud)
+						}
+						if err := addCredential(cloud); err != nil {
+							return nil, fmt.Errorf("connection %q: %w", name, err)
+						}
+						continue
+					}
 					if err := add(connection["source"], "connect/action", nil); err != nil {
 						return nil, fmt.Errorf("connection %q: %w", name, err)
 					}
@@ -145,17 +177,9 @@ func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, op
 							if _, ok := provider.(map[string]any); !ok {
 								return nil, fmt.Errorf("provider %s must be an object", cloud)
 							}
-							plane, err := canonicalTarget(options.CloudPlanes[cloud])
-							if err != nil {
-								return nil, fmt.Errorf("resolve %s credential plane: %w", cloud, err)
+							if err := addCredential(cloud); err != nil {
+								return nil, err
 							}
-							parsed, err := resources.Parse(plane)
-							if err != nil || !parsed.IsScope() || len(parsed.ScopeSegments()) != 1 ||
-								!strings.EqualFold(parsed.ScopeSegments()[0].Type, cloud) {
-								return nil, fmt.Errorf("invalid %s credential plane", cloud)
-							}
-							namespace := map[string]string{"azure": "Azure", "aws": "AWS"}[cloud]
-							checks = append(checks, Check{"System." + namespace + "/credentials/use/action", plane})
 						}
 					}
 				}
@@ -174,6 +198,29 @@ func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, op
 		return strings.Compare(a.Target+" "+a.Permission, b.Target+" "+b.Permission)
 	})
 	return slices.Compact(checks), nil
+}
+
+// isURLSource mirrors the container renderer: a parseable URI that does not
+// start with "/" is an endpoint, not a resource ID.
+func isURLSource(source string) bool {
+	if source == "" || source[0] == '/' {
+		return false
+	}
+	_, err := url.ParseRequestURI(source)
+	return err == nil
+}
+
+// cloudSourcePlane returns the cloud whose credential a connection source uses:
+// Azure for ARM IDs and Azure-plane UCP IDs, AWS for AWS-plane UCP IDs.
+func cloudSourcePlane(source string) string {
+	lower := strings.ToLower(source)
+	switch {
+	case strings.HasPrefix(lower, "/subscriptions/"), strings.HasPrefix(lower, "/planes/azure/"):
+		return "azure"
+	case strings.HasPrefix(lower, "/planes/aws/"):
+		return "aws"
+	}
+	return ""
 }
 
 func sortedKeys(values map[string]any) []string {

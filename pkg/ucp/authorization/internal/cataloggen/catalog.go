@@ -56,7 +56,6 @@ func OwnedPermissions() []string {
 		"Radius.Core/authorizationSettings/read", "Radius.Core/authorizationSettings/write",
 		"Radius.Core/permissions/read", "Radius.Core/accessChanges/read",
 		"Radius.Core/checkAccess/action", "Radius.Core/explainAccess/action",
-		"Radius.Core/effectiveAccess/read",
 	)
 }
 
@@ -166,7 +165,8 @@ func swaggerPermission(path, method string) (string, bool) {
 		case "checkAccess", "explainAccess":
 			return namespace + "/" + tail[0] + "/action", true
 		case "effectiveAccess":
-			return namespace + "/effectiveAccess/read", true
+			// Listing effective access discloses assignments, so it requires roleAssignments/read.
+			return namespace + "/roleAssignments/read", true
 		default:
 			return "", false
 		}

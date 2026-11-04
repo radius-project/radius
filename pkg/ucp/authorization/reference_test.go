@@ -135,6 +135,45 @@ func lowerTarget(target string) string {
 	return strings.ToLower(target)
 }
 
+func TestConnectionSources(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	target := teamA + "/providers/Applications.Core/containers/frontend"
+	planes := ReferenceOptions{CloudPlanes: map[string]string{"azure": "/planes/azure/production", "aws": "/planes/aws/local"}}
+	put := func(source any, options ReferenceOptions) ([]Check, error) {
+		return catalog.ReferenceChecks("PUT", target, map[string]any{"properties": map[string]any{
+			"connections": map[string]any{"backend": map[string]any{"source": source}},
+		}}, options)
+	}
+	azure := []Check{{"System.Azure/credentials/use/action", "/planes/azure/production"}}
+	for _, tc := range []struct {
+		name   string
+		source string
+		want   []Check
+	}{
+		{"http URL", "http://cyclea:3000", []Check{}},
+		{"https URL", "https://example.com/api", []Check{}},
+		{"Azure ARM ID", "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/db", azure},
+		{"Azure UCP ID", "/planes/azure/azurecloud/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/sa", azure},
+		{"AWS UCP ID", "/planes/aws/aws/accounts/000/regions/us-west-2/providers/AWS.S3/Bucket/b",
+			[]Check{{"System.AWS/credentials/use/action", "/planes/aws/local"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			checks, err := put(tc.source, planes)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, checks)
+		})
+	}
+	t.Run("cloud source without a trusted plane fails closed", func(t *testing.T) {
+		_, err := put("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/sa", ReferenceOptions{})
+		require.ErrorContains(t, err, "resolve azure credential plane")
+	})
+	for _, source := range []any{nil, "", 42, "/subscriptions/sub", "not a url", "/planes/radius/local/../x"} {
+		_, err := put(source, planes)
+		require.Error(t, err, "source=%v", source)
+	}
+}
+
 func TestEnvironmentReferences(t *testing.T) {
 	catalog, err := NewCatalog(nil)
 	require.NoError(t, err)

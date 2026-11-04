@@ -17,6 +17,8 @@ import (
 func TestRequestMapping(t *testing.T) {
 	catalog, err := NewCatalog(nil)
 	require.NoError(t, err)
+	// Paths built the way rad deploy builds them (pkg/cli/deployment/deploy.go).
+	deployment := teamA + "/providers/Microsoft.Resources/deployments/rad-deploy"
 	for _, tt := range []struct {
 		method, path, permission, target string
 		kind                             RequestKind
@@ -37,6 +39,13 @@ func TestRequestMapping(t *testing.T) {
 		{"GET", "/providers/Radius.Core/permissions", "Radius.Core/permissions/read", "/", ListRequest},
 		{"POST", teamA + "/providers/Radius.Core/checkAccess", "Radius.Core/checkAccess/action", teamA, SelfAccessRequest},
 		{"GET", teamA + "/providers/Radius.Core/effectiveAccess", "Radius.Core/roleAssignments/read", teamA, ResourceRequest},
+		{"PUT", deployment, "Microsoft.Resources/deployments/write", deployment, ResourceRequest},
+		{"GET", deployment, "Microsoft.Resources/deployments/read", deployment, ResourceRequest},
+		{"DELETE", deployment, "Microsoft.Resources/deployments/delete", deployment, ResourceRequest},
+		{"GET", deployment + "/operations", "Microsoft.Resources/deployments/read", deployment, ResourceRequest},
+		{"GET", deployment + "/operations/0123", "Microsoft.Resources/deployments/read", deployment, ResourceRequest},
+		{"GET", deployment + "/operationStatuses/0123", "Microsoft.Resources/deployments/read", deployment, ResourceRequest},
+		{"GET", teamA + "/providers/Microsoft.Resources/deployments", "Microsoft.Resources/deployments/read", teamA, ListRequest},
 		{"GET", plane + "/providers", "System.Resources/providers/read", plane, ListRequest},
 		{"GET", plane + "/providers/Team.Data", "System.Resources/providers/read", plane, ResourceRequest},
 		{"GET", plane + "/providers/System.Resources/resourceproviders/Team.Data/resourcetypes/widgets/icons/abcd",
@@ -132,7 +141,7 @@ func TestSwaggerOperationsMap(t *testing.T) {
 				if mapping.Kind != SelfAccessRequest {
 					require.NotEmpty(t, mapping.Checks)
 				}
-				if mapping.Kind != SelfAccessRequest && !strings.HasSuffix(route.Path, "/effectiveAccess") {
+				if mapping.Kind != SelfAccessRequest {
 					require.Equal(t, strings.ToLower(route.Permission), strings.ToLower(mapping.Checks[0].Permission))
 				}
 			})

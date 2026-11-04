@@ -108,7 +108,6 @@
     "Radius.Core/bicepSettings/read",
     "Radius.Core/bicepSettings/write",
     "Radius.Core/checkAccess/action",
-    "Radius.Core/effectiveAccess/read",
     "Radius.Core/environments/delete",
     "Radius.Core/environments/read",
     "Radius.Core/environments/use/action",
@@ -230,7 +229,7 @@
     {
       "method": "GET",
       "path": "/providers/Radius.Core/effectiveAccess",
-      "permission": "Radius.Core/effectiveAccess/read"
+      "permission": "Radius.Core/roleAssignments/read"
     },
     {
       "method": "POST",
@@ -835,7 +834,7 @@
     {
       "method": "GET",
       "path": "/{scope}/providers/Radius.Core/effectiveAccess",
-      "permission": "Radius.Core/effectiveAccess/read"
+      "permission": "Radius.Core/roleAssignments/read"
     },
     {
       "method": "POST",
@@ -886,7 +885,6 @@
   "roles": {
     "access-administrator": [
       "Radius.Core/checkAccess/action",
-      "Radius.Core/effectiveAccess/read",
       "Radius.Core/explainAccess/action",
       "Radius.Core/permissions/read",
       "Radius.Core/roleAssignments/delete",
@@ -1006,7 +1004,6 @@
       "Radius.Core/accessChanges/read",
       "Radius.Core/authorizationSettings/read",
       "Radius.Core/checkAccess/action",
-      "Radius.Core/effectiveAccess/read",
       "Radius.Core/explainAccess/action",
       "Radius.Core/permissions/read",
       "Radius.Core/roleAssignments/read",

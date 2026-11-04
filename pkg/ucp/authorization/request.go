@@ -151,6 +151,16 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 			return c.mapping(ResourceRequest, "System.Resources/resourceProviders/resourceTypes/read", "/"+strings.Join(parts[:9], "/"))
 		}
 	}
+	// Deployment engine sub-routes, such as the operations rad deploy polls,
+	// read the parent deployment.
+	if method == http.MethodGet {
+		for i := 0; i+4 < len(parts); i++ {
+			if strings.EqualFold(parts[i], "providers") && strings.EqualFold(parts[i+1], "Microsoft.Resources") &&
+				strings.EqualFold(parts[i+2], "deployments") {
+				return c.mapping(ResourceRequest, "Microsoft.Resources/deployments/read", "/"+strings.Join(parts[:i+4], "/"))
+			}
+		}
+	}
 	op := map[string]string{http.MethodGet: "read", http.MethodPut: "write", http.MethodPatch: "write", http.MethodDelete: "delete"}[method]
 	target := path
 	if method == http.MethodPost {
