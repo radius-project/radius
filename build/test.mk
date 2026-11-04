@@ -67,6 +67,10 @@ test-authorization-contracts: ## Checks generated RBAC contracts, examples, and 
 
 test: test-authorization-contracts
 
+.PHONY: test-authorization-bicep
+test-authorization-bicep: ## Packages RBAC types and compiles a resource-group Bicep assignment (requires bicep).
+	@node --test typespec/Radius.Core/authorization/bicep.test.mjs
+
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh

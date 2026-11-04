@@ -157,7 +157,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
   assert.equal(path.test(`${group.slice(1)}/`), false);
 });
 
-test("Bicep merges existing resources, preserves extensions and singleton, and excludes read-only APIs", () => {
+test("Bicep merges resource-group resources and excludes installation-only and read-only APIs", () => {
   const types = json(
     new URL(
       "hack/bicep-types-radius/generated/radius/radius.core/2025-08-01-preview/types.json",
@@ -185,8 +185,8 @@ test("Bicep merges existing resources, preserves extensions and singleton, and e
   }
   assert.equal(resource("roleDefinitions").readableScopes, 0);
   assert.equal(resource("roleDefinitions").writableScopes, 0);
-  assert.equal(resource("roleAssignments").readableScopes, 16);
-  assert.equal(resource("roleAssignments").writableScopes, 16);
+  assert.equal(resource("roleAssignments").readableScopes, 0);
+  assert.equal(resource("roleAssignments").writableScopes, 0);
   const body = (name) => resolve(resource(name).body);
   const properties = (name) =>
     resolve(body(name).properties.properties.type).properties;
@@ -194,18 +194,11 @@ test("Bicep merges existing resources, preserves extensions and singleton, and e
     assert.equal(properties("roleAssignments")[key].flags, 2, key);
   }
   assert.equal(properties("roleDefinitions").roleType.flags, 2);
-  assert.deepEqual(
-    resolve(body("authorizationSettings").properties.name.type),
-    {
-      $type: "StringLiteralType",
-      value: "default"
-    }
-  );
   assert.equal(
     types.some(
       (type) =>
         type.$type === "ResourceType" &&
-        /\/(accessChanges|permissions)@/.test(type.name)
+        /\/(authorizationSettings|accessChanges|permissions)@/.test(type.name)
     ),
     false
   );
@@ -213,10 +206,16 @@ test("Bicep merges existing resources, preserves extensions and singleton, and e
     new URL("hack/bicep-types-radius/generated/index.json", root)
   );
   for (const name of [
-    "roleDefinitions",
-    "roleAssignments",
-    "authorizationSettings"
+    "authorizationSettings",
+    "accessChanges",
+    "permissions"
   ]) {
+    assert.equal(
+      `Radius.Core/${name}@2025-08-01-preview` in index.resources,
+      false
+    );
+  }
+  for (const name of ["roleDefinitions", "roleAssignments"]) {
     assert.equal(
       index.resources[`Radius.Core/${name}@2025-08-01-preview`].$ref,
       `radius/radius.core/2025-08-01-preview/types.json#/${types.indexOf(resource(name))}`
