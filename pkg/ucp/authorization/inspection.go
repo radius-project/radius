@@ -6,9 +6,20 @@ package authorization
 import (
 	"errors"
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
+)
+
+// Access-check limits mirror authorization.tsp and bound work before policy access.
+const (
+	maxAccessChecks               = 100
+	maxPrincipalIssuerLength      = 256
+	maxPrincipalSubjectLength     = 512
+	maxPrincipalDisplayNameLength = 128
+	maxPermissionLength           = 256
+	maxAccessScopeLength          = 2048
 )
 
 var (
@@ -18,24 +29,26 @@ var (
 	ErrMembershipUnavailable = errors.New("trusted group membership for another user or workload is unavailable; check as that caller or inspect a group")
 )
 
-// inspectPolicy holds the runtime and cache locks for the complete operation.
-// Neither the snapshot nor a permission decision escapes across a freshness gate.
+// inspectPolicy captures one immutable snapshot without blocking refresh during
+// evaluation. Its age and lifetime are rechecked before publishing any result.
 func (r *PolicyRuntime) inspectPolicy(inspect func(*PolicySnapshot) error) error {
 	if r == nil {
 		return ErrAuthorizationUnavailable
 	}
 	r.mu.RLock()
-	defer r.mu.RUnlock()
+	lifetime := r.ctx
+	r.mu.RUnlock()
 	r.cache.mu.RLock()
-	defer r.cache.mu.RUnlock()
+	snapshot, asOf := r.cache.value, r.cache.asOf
+	r.cache.mu.RUnlock()
 	fresh := func() bool {
-		return r.ctx != nil && r.ctx.Err() == nil && r.cache.value != nil &&
-			r.cache.clock.Since(r.cache.asOf) < PolicyMaxAge
+		return lifetime != nil && snapshot != nil &&
+			r.cache.clock.Since(asOf) < PolicyMaxAge && lifetime.Err() == nil
 	}
 	if !fresh() {
 		return ErrAuthorizationUnavailable
 	}
-	err := inspect(r.cache.value)
+	err := inspect(snapshot)
 	if !fresh() {
 		return ErrAuthorizationUnavailable
 	}
@@ -98,28 +111,12 @@ func (r *PolicyRuntime) WhoAmI(identity Identity) (api.WhoAmIResult, error) {
 // independently of workload mode. Group inspection uses only that group's grants.
 // Another user's memberships cannot be asserted or inferred from request input.
 func (r *PolicyRuntime) CheckAccess(caller Identity, scope string, request api.AccessCheckRequest) (api.CheckAccessResponse, error) {
+	checks, err := validateAccessCheck(scope, request)
+	if err != nil {
+		return api.CheckAccessResponse{}, err
+	}
 	var result api.CheckAccessResponse
-	err := r.inspectPolicy(func(snapshot *PolicySnapshot) error {
-		if err := ValidateScope(scope); err != nil {
-			return err
-		}
-		if len(request.Checks) == 0 {
-			return fmt.Errorf("at least one access check is required")
-		}
-		checks := make([]Check, 0, len(request.Checks))
-		for _, check := range request.Checks {
-			if check == nil || check.Permission == nil || check.Target == nil {
-				return fmt.Errorf("each check requires permission and target")
-			}
-			contained, err := ScopeContains(scope, *check.Target)
-			if err != nil {
-				return err
-			}
-			if !contained {
-				return fmt.Errorf("check target must be within the inspection scope")
-			}
-			checks = append(checks, Check{*check.Permission, *check.Target})
-		}
+	err = r.inspectPolicy(func(snapshot *PolicySnapshot) error {
 		identity := caller
 		if request.Principal != nil {
 			subject, err := key(request.Principal)
@@ -164,4 +161,65 @@ func (r *PolicyRuntime) CheckAccess(caller Identity, scope string, request api.A
 		return api.CheckAccessResponse{}, err
 	}
 	return result, nil
+}
+
+func validateAccessCheck(scope string, request api.AccessCheckRequest) ([]Check, error) {
+	if len(request.Checks) == 0 || len(request.Checks) > maxAccessChecks {
+		return nil, fmt.Errorf("checks must contain between 1 and %d items", maxAccessChecks)
+	}
+	if err := validateAccessString("scope", scope, maxAccessScopeLength); err != nil {
+		return nil, err
+	}
+	if err := ValidateScope(scope); err != nil {
+		return nil, err
+	}
+	if p := request.Principal; p != nil {
+		for _, field := range []struct {
+			name  string
+			value *string
+			limit int
+		}{
+			{"principal.issuer", p.Issuer, maxPrincipalIssuerLength},
+			{"principal.subject", p.Subject, maxPrincipalSubjectLength},
+			{"principal.displayName", p.DisplayName, maxPrincipalDisplayNameLength},
+		} {
+			if field.value != nil {
+				if err := validateAccessString(field.name, *field.value, field.limit); err != nil {
+					return nil, err
+				}
+			}
+		}
+		// The closed enum also rejects arbitrarily long type strings.
+		if _, err := key(p); err != nil {
+			return nil, err
+		}
+	}
+	checks := make([]Check, 0, len(request.Checks))
+	for _, check := range request.Checks {
+		if check == nil || check.Permission == nil || check.Target == nil {
+			return nil, fmt.Errorf("each check requires permission and target")
+		}
+		if err := validateAccessString("permission", *check.Permission, maxPermissionLength); err != nil {
+			return nil, err
+		}
+		if err := validateAccessString("target", *check.Target, maxAccessScopeLength); err != nil {
+			return nil, err
+		}
+		contained, err := ScopeContains(scope, *check.Target)
+		if err != nil {
+			return nil, err
+		}
+		if !contained {
+			return nil, fmt.Errorf("check target must be within the inspection scope")
+		}
+		checks = append(checks, Check{*check.Permission, *check.Target})
+	}
+	return checks, nil
+}
+
+func validateAccessString(field, value string, limit int) error {
+	if utf8.RuneCountInString(value) > limit {
+		return fmt.Errorf("%s must contain at most %d characters", field, limit)
+	}
+	return nil
 }
