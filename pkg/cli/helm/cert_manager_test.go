@@ -37,6 +37,8 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apiextfake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,6 +70,7 @@ func certManagerController(namespace, versionLabel, image string) *appsv1.Deploy
 		Spec: appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{
 			Containers: []corev1.Container{{Name: "cert-manager-controller", Image: image}},
 		}}},
+		Status: appsv1.DeploymentStatus{UpdatedReplicas: 1, AvailableReplicas: 1},
 	}
 }
 
@@ -80,6 +83,11 @@ func (c fakeCertManagerCluster) clients() (kubernetes.Interface, apiextclient.In
 	kubeObjects := []runtime.Object{}
 	if c.controller != nil {
 		kubeObjects = append(kubeObjects, c.controller)
+		webhook := certManagerController(c.controller.Namespace, "", "")
+		webhook.Name = "cert-manager-webhook"
+		webhook.Labels["app.kubernetes.io/name"] = "webhook"
+		webhook.Labels["app.kubernetes.io/component"] = "webhook"
+		kubeObjects = append(kubeObjects, webhook)
 	}
 	apiextObjects := []runtime.Object{}
 	if c.crd {
@@ -130,8 +138,8 @@ func Test_resolveAuthzMode(t *testing.T) {
 
 			stored, current := copyValues(tt.stored), copyValues(tt.current)
 			got, err := resolveAuthzMode(tt.stored, tt.current)
-			require.Equal(t, stored, tt.stored, "stored values must not be mutated")
-			require.Equal(t, current, tt.current, "current values must not be mutated")
+			require.Equal(t, stored, copyValues(tt.stored), "stored values must not be mutated")
+			require.Equal(t, current, copyValues(tt.current), "current values must not be mutated")
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				return
@@ -244,8 +252,8 @@ func Test_ensureCertManager(t *testing.T) {
 
 	dryRun := []string{"global.rbac.dryRun=true"}
 	storedDryRun := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
-	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
-	radOwnedFailed := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusFailed}}
+	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}}
+	radOwnedFailed := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusFailed}, Chart: radOwned.Chart}
 	healthy := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}
 	userOwned := &releasev1.Release{Name: certManagerReleaseName}
 
@@ -429,6 +437,7 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockHelmClient := NewMockHelmClient(ctrl)
 	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
+	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(&chart.Chart{}, nil)
 
 	impl := &Impl{
 		Helm: mockHelmClient,
@@ -439,14 +448,156 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	}
 
 	options := NewDefaultClusterOptions()
+	options.Radius.ChartPath = "radius-chart"
+	options.Contour.Disabled = true
 	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 	err := impl.InstallRadius(t.Context(), options, "test-context")
 	require.ErrorContains(t, err, "v"+CertManagerMinimumVersion)
 }
 
+func Test_ensureCertManager_NewerOwnedRelease(t *testing.T) {
+	t.Parallel()
+	for _, upgrade := range []bool{false, true} {
+		for _, healthy := range []bool{false, true} {
+			t.Run(fmt.Sprintf("upgrade=%t/healthy=%t", upgrade, healthy), func(t *testing.T) {
+				t.Parallel()
+				client := NewMockHelmClient(gomock.NewController(t))
+				status := releasecommon.StatusFailed
+				if healthy {
+					status = releasecommon.StatusDeployed
+				}
+				client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(&releasev1.Release{
+					Name: certManagerReleaseName, Labels: radManagedByLabels(),
+					Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "v1.22.1"}},
+					Info:  &releasev1.Info{Status: status},
+				}, nil)
+				impl := &Impl{Helm: client, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+					k, a := (fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, "v1.22.1", "")}).clients()
+					return k, a, nil
+				}}
+				options := NewDefaultClusterOptions()
+				options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
+				err := impl.ensureCertManager(t.Context(), options, "test-context", nil, upgrade)
+				if healthy {
+					require.NoError(t, err)
+				} else {
+					require.ErrorContains(t, err, "rad will not downgrade")
+				}
+			})
+		}
+	}
+}
+
+func Test_ensureCertManager_DetectionFailureDoesNotRepair(t *testing.T) {
+	t.Parallel()
+	for _, failure := range []error{
+		apierrors.NewForbidden(schema.GroupResource{Resource: "deployments"}, "", errors.New("denied")),
+		apierrors.NewServiceUnavailable("temporarily unavailable"),
+	} {
+		t.Run(failure.Error(), func(t *testing.T) {
+			t.Parallel()
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(&releasev1.Release{
+				Name: certManagerReleaseName, Labels: radManagedByLabels(),
+				Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}},
+				Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
+			}, nil)
+			impl := &Impl{Helm: client, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+				k, a := (fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}).clients()
+				k.(*k8sfake.Clientset).PrependReactor("list", "deployments", func(k8stesting.Action) (bool, runtime.Object, error) {
+					return true, nil, failure
+				})
+				return k, a, nil
+			}}
+			options := NewDefaultClusterOptions()
+			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
+			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, false)
+			require.ErrorIs(t, err, failure)
+		})
+	}
+}
+
+func Test_checkCertManagerReady(t *testing.T) {
+	t.Parallel()
+	for _, component := range []string{"controller", "webhook"} {
+		for _, failure := range []string{"missing", "scaled down", "unavailable", "stale rollout", "old replicas", "forbidden"} {
+			t.Run(component+"/"+failure, func(t *testing.T) {
+				t.Parallel()
+				k, _ := (fakeCertManagerCluster{controller: certManagerController("security", "v1.21.2", "")}).clients()
+				name := "cert-manager"
+				if component == "webhook" {
+					name += "-webhook"
+				}
+				deployments := k.AppsV1().Deployments("security")
+				deployment, err := deployments.Get(t.Context(), name, metav1.GetOptions{})
+				require.NoError(t, err)
+				switch failure {
+				case "missing":
+					require.NoError(t, deployments.Delete(t.Context(), name, metav1.DeleteOptions{}))
+				case "scaled down":
+					deployment.Spec.Replicas = new(int32(0))
+				case "unavailable":
+					deployment.Status.AvailableReplicas = 0
+				case "stale rollout":
+					deployment.Generation = 2
+					deployment.Status.ObservedGeneration = 1
+				case "old replicas":
+					deployment.Status.UpdatedReplicas = 0
+				case "forbidden":
+					k.(*k8sfake.Clientset).PrependReactor("list", "deployments", func(k8stesting.Action) (bool, runtime.Object, error) {
+						return true, nil, apierrors.NewForbidden(schema.GroupResource{Resource: "deployments"}, "", errors.New("denied"))
+					})
+				}
+				if failure != "missing" {
+					_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
+					require.NoError(t, err)
+				}
+				require.Error(t, checkCertManagerReady(t.Context(), k, "security"))
+			})
+		}
+	}
+}
+
+func Test_ensureCertManager_UnreadyWebhookIsNotReused(t *testing.T) {
+	t.Parallel()
+	for _, version := range []string{"external", CertManagerChartDefaultVersion, "v1.22.1"} {
+		t.Run(version, func(t *testing.T) {
+			t.Parallel()
+			client := NewMockHelmClient(gomock.NewController(t))
+			var rel *releasev1.Release
+			if version != "external" {
+				rel = &releasev1.Release{
+					Name: certManagerReleaseName, Labels: radManagedByLabels(),
+					Chart: &chart.Chart{Metadata: &chart.Metadata{Version: version}},
+					Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
+				}
+			}
+			client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(rel, nil)
+			k, a := (fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, "v1.22.1", "")}).clients()
+			webhooks := k.AppsV1().Deployments(CertManagerNamespace)
+			webhook, err := webhooks.Get(t.Context(), "cert-manager-webhook", metav1.GetOptions{})
+			require.NoError(t, err)
+			webhook.Status.AvailableReplicas = 0
+			_, err = webhooks.Update(t.Context(), webhook, metav1.UpdateOptions{})
+			require.NoError(t, err)
+			impl := &Impl{Helm: client, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+				return k, a, nil
+			}}
+			options := NewDefaultClusterOptions()
+			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
+			err = impl.ensureCertManager(t.Context(), options, "test-context", nil, version == "v1.22.1")
+			require.ErrorContains(t, err, "cert-manager webhook Deployment")
+			require.ErrorContains(t, err, "is not ready")
+		})
+	}
+}
+
 func certManagerResource(kind, namespace, name string) *unstructured.Unstructured {
 	u := &unstructured.Unstructured{}
 	u.SetAPIVersion("cert-manager.io/v1")
+	if kind == "Order" || kind == "Challenge" {
+		u.SetAPIVersion("acme.cert-manager.io/v1")
+	}
 	u.SetKind(kind)
 	u.SetNamespace(namespace)
 	u.SetName(name)
@@ -484,7 +635,9 @@ func Test_UninstallCertManager(t *testing.T) {
 	}{
 		{name: "not installed", getErr: driver.ErrReleaseNotFound},
 		{name: "user-owned is kept", release: &releasev1.Release{Name: certManagerReleaseName}},
-		{name: "get error", getErr: errors.New("boom"), wantErr: true},
+		{name: "get error keeps cert-manager without blocking purge", getErr: errors.New("boom"), wantLog: "Keeping cert-manager: could not check whether rad installed it:"},
+		{name: "missing resource types permit removal", release: radOwned, listErr: apierrors.NewNotFound(schema.GroupResource{Group: "cert-manager.io", Resource: "certificates"}, ""), wantUninstall: true},
+		{name: "unmapped resource types permit removal", release: radOwned, listErr: &meta.NoResourceMatchError{PartialResource: certManagerResources[0]}, wantUninstall: true},
 		{
 			name:          "rad-owned without foreign resources is removed",
 			release:       radOwned,
@@ -505,6 +658,12 @@ func Test_UninstallCertManager(t *testing.T) {
 			release: radOwned,
 			objects: []runtime.Object{certManagerResource("ClusterIssuer", "", "letsencrypt")},
 			wantLog: "Keeping cert-manager: other workloads use it (1 resources, e.g. ClusterIssuer/letsencrypt)",
+		},
+		{
+			name:    "foreign ACME resources keep cert-manager",
+			release: radOwned,
+			objects: []runtime.Object{certManagerResource("Order", "app", "renewal"), certManagerResource("Challenge", "app", "challenge")},
+			wantLog: "Keeping cert-manager: other workloads use it (2 resources",
 		},
 		{
 			name:    "list error keeps cert-manager",
@@ -532,7 +691,7 @@ func Test_UninstallCertManager(t *testing.T) {
 				newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
 					return fakeCertManagerDynamicClient(tt.listErr, tt.objects...), nil
 				},
-				logInfo: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
+				logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 			}
 			err := impl.UninstallCertManager(t.Context(), NewDefaultClusterOptions(), "test-context")
 			if tt.wantErr {
@@ -548,4 +707,33 @@ func Test_UninstallCertManager(t *testing.T) {
 			require.True(t, strings.HasPrefix(logs[0], tt.wantLog), logs[0])
 		})
 	}
+}
+
+func Test_UninstallRadius_CertManagerOwnershipErrorDoesNotBlockCleanup(t *testing.T) {
+	t.Parallel()
+	client := NewMockHelmClient(gomock.NewController(t))
+	for _, name := range []string{radiusReleaseName, contourReleaseName} {
+		client.EXPECT().RunHelmUninstall(gomock.Any(), name, RadiusSystemNamespace, true).Return(&release.UninstallReleaseResponse{}, nil)
+	}
+	client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, errors.New("release storage unavailable"))
+	var logs []string
+	impl := &Impl{
+		Helm:                        client,
+		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
+	}
+	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
+	require.Len(t, logs, 1)
+	require.Contains(t, logs[0], "Keeping cert-manager: could not check whether rad installed it")
+}
+
+func Test_foreignCertManagerResources_MissingTypeDoesNotHideOtherTypes(t *testing.T) {
+	t.Parallel()
+	client := fakeCertManagerDynamicClient(nil, certManagerResource("Issuer", "app", "issuer"))
+	client.PrependReactor("list", "certificates", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewNotFound(schema.GroupResource{Group: "cert-manager.io", Resource: "certificates"}, "")
+	})
+	foreign, err := foreignCertManagerResources(t.Context(), client, RadiusSystemNamespace)
+	require.NoError(t, err)
+	require.Equal(t, []string{"app/Issuer/issuer"}, foreign)
 }

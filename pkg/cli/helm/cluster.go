@@ -286,11 +286,10 @@ type Impl struct {
 	k3sWaited     map[string]bool
 
 	// contourCharts are the Contour charts that the Impl loaded, by source.
-	contourChartsLock sync.Mutex
-	contourCharts     map[contourChartSource]*chart.Chart
-	newCertManagerClients          certManagerClientsFunc
-	newCertManagerDynamicClient    func(kubeContext string) (dynamic.Interface, error)
-	logInfo                        func(format string, v ...any)
+	contourChartsLock           sync.Mutex
+	contourCharts               map[contourChartSource]*chart.Chart
+	newCertManagerClients       certManagerClientsFunc
+	newCertManagerDynamicClient func(kubeContext string) (dynamic.Interface, error)
 }
 
 var _ Interface = &Impl{}
@@ -329,8 +328,8 @@ func (i *Impl) logInfo(format string, v ...any) {
 }
 
 // InstallRadius installs Radius and its dependencies (Contour and, when authorization is enabled, cert-manager).
-// It prepares
-// and checks both charts before it changes the cluster, and then installs Contour, Radius, and the Radius Contour
+// It prepares and checks the Radius and Contour charts before it changes the cluster, and then installs
+// cert-manager, Contour, Radius, and the Radius Contour
 // Gateway in that order.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Do note: the namespace passed in to rad install kubernetes
@@ -517,10 +516,6 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if !reuseValues {
 		storedValues = nil
 	}
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
-		return err
-	}
-
 	output.LogInfo("Upgrading Radius...")
 	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(ctx, helmAction, clusterOptions.Radius, kubeContext)
 	if err != nil {
@@ -534,6 +529,10 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		if err != nil {
 			return err
 		}
+	}
+
+	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
+		return err
 	}
 
 	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
