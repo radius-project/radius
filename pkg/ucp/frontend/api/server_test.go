@@ -12,12 +12,17 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -170,6 +175,129 @@ func TestServiceRequestHeaderConfiguration(t *testing.T) {
 				} else {
 					require.Equal(t, http.StatusOK, response.Code)
 				}
+			}
+		})
+	}
+}
+
+func TestServiceRequestHeaderTrailers(t *testing.T) {
+	t.Parallel()
+	caFile, certificate := frontendProxyCertificate(t, "front-proxy-client")
+	_, untrustedCertificate := frontendProxyCertificate(t, "front-proxy-client")
+	for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
+		t.Run(string(mode), func(t *testing.T) {
+			for _, protocol := range []int{1, 2} {
+				t.Run(fmt.Sprintf("HTTP%d", protocol), func(t *testing.T) {
+					for _, peer := range []struct {
+						name       string
+						configured bool
+						cert       *tls.Certificate
+					}{
+						{name: "unconfigured"},
+						{name: "missing certificate", configured: true},
+						{name: "unverified certificate", configured: true, cert: &untrustedCertificate},
+						{name: "verified certificate", configured: true, cert: &certificate},
+					} {
+						t.Run(peer.name, func(t *testing.T) {
+							var forwarded atomic.Int64
+							backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+								forwarded.Add(1)
+								if _, err := io.Copy(io.Discard, r.Body); err != nil {
+									t.Errorf("read proxied body: %v", err)
+								}
+								w.WriteHeader(http.StatusNoContent)
+							}))
+							defer backend.Close()
+							target, err := url.Parse(backend.URL)
+							require.NoError(t, err)
+							config := &ucp.Config{
+								Authorization: authz.Options{Mode: mode},
+								Server: hostoptions.ServerOptions{
+									TLSCertificateDirectory: t.TempDir(), PathBase: "/apis/api.ucp.dev/v1alpha3",
+								},
+							}
+							if peer.configured {
+								config.CallerAuthentication = &authorization.RequestHeaderOptions{
+									CAFile: caFile, AllowedNames: []string{"front-proxy-client"}, KubernetesIssuer: "kubernetes:test-cluster",
+								}
+							}
+							server, err := NewService(identityTestOptions(t, config, httputil.NewSingleHostReverseProxy(target))).Initialize(t.Context())
+							require.NoError(t, err)
+							type receivedRequest struct {
+								protocol int
+								trailers http.Header
+								chunked  bool
+								peers    int
+							}
+							received := make(chan receivedRequest, 1)
+							listener := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+								// Record announcements before authentication or body consumption.
+								received <- receivedRequest{
+									protocol: r.ProtoMajor, trailers: r.Trailer.Clone(),
+									chunked: len(r.TransferEncoding) == 1 && r.TransferEncoding[0] == "chunked",
+									peers:   len(r.TLS.PeerCertificates),
+								}
+								server.Handler.ServeHTTP(w, r)
+							}))
+							listener.TLS = server.TLSConfig
+							listener.EnableHTTP2 = protocol == 2
+							listener.StartTLS()
+							defer listener.Close()
+							transport := listener.Client().Transport.(*http.Transport).Clone()
+							defer transport.CloseIdleConnections()
+							transport.ForceAttemptHTTP2 = protocol == 2
+							// Isolate early rejection from connection shutdown on prior streams.
+							transport.DisableKeepAlives = true
+							transport.TLSClientConfig.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+								if peer.cert != nil {
+									return peer.cert, nil
+								}
+								return &tls.Certificate{}, nil
+							}
+							client := &http.Client{Transport: transport}
+							for _, trailer := range []string{"x-remote-user", "X-REMOTE-GROUP", "x-ReMoTe-ExTrA-Admin", "X-Remote-Uid", "X-Safe-Trailer"} {
+								t.Run(trailer, func(t *testing.T) {
+									for _, headers := range []bool{false, true} {
+										t.Run(fmt.Sprintf("identity headers=%t", headers), func(t *testing.T) {
+											before := forwarded.Load()
+											request, err := http.NewRequest(http.MethodPost, listener.URL+config.Server.PathBase+"/planes/identity/local",
+												io.NopCloser(strings.NewReader("request body")))
+											require.NoError(t, err)
+											request.ContentLength = -1
+											request.Trailer = http.Header{}
+											request.Trailer.Set(trailer, "asserted identity")
+											if headers {
+												request.Header.Set("X-Remote-User", "alice")
+											}
+											response, err := client.Do(request)
+											require.NoError(t, err)
+											defer response.Body.Close()
+											body, err := io.ReadAll(response.Body)
+											require.NoError(t, err)
+											observed := <-received
+											require.Equal(t, protocol, observed.protocol)
+											require.Equal(t, protocol == 1, observed.chunked)
+											require.Contains(t, observed.trailers, http.CanonicalHeaderKey(trailer))
+											require.Empty(t, observed.trailers.Values(trailer), "only announcement is available before reading the body")
+											if peer.cert != nil {
+												require.Positive(t, observed.peers)
+											}
+											forbidden := trailer != "X-Safe-Trailer" || (headers && peer.name != "verified certificate")
+											if forbidden {
+												require.Equal(t, http.StatusUnauthorized, response.StatusCode, string(body))
+												require.Contains(t, string(body), "InvalidAuthenticationInfo")
+												require.Equal(t, before, forwarded.Load(), "identity trailers must not reach the reverse proxy")
+											} else {
+												require.Equal(t, http.StatusNoContent, response.StatusCode, string(body))
+												require.Equal(t, before+1, forwarded.Load(), "unrelated trailers remain supported")
+											}
+										})
+									}
+								})
+							}
+						})
+					}
+				})
 			}
 		})
 	}

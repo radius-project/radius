@@ -51,6 +51,11 @@ func newProxyPKI(t *testing.T) proxyPKI {
 
 func (p proxyPKI) client(t *testing.T, name string, usage x509.ExtKeyUsage, expired bool) *x509.Certificate {
 	t.Helper()
+	return p.clientWithUsages(t, name, []x509.ExtKeyUsage{usage}, expired)
+}
+
+func (p proxyPKI) clientWithUsages(t *testing.T, name string, usages []x509.ExtKeyUsage, expired bool) *x509.Certificate {
+	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
 	end := time.Now().Add(time.Hour)
@@ -60,7 +65,7 @@ func (p proxyPKI) client(t *testing.T, name string, usage x509.ExtKeyUsage, expi
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: name},
 		NotBefore: time.Now().Add(-time.Hour), NotAfter: end,
-		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{usage},
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: usages,
 	}
 	der, err := x509.CreateCertificate(rand.Reader, template, p.ca, &key.PublicKey, p.key)
 	require.NoError(t, err)
@@ -116,6 +121,15 @@ func TestRequestHeaderCertificateTrust(t *testing.T) {
 		{name: "server certificate is not a client", state: &tls.ConnectionState{PeerCertificates: []*x509.Certificate{
 			pki.client(t, "front-proxy-client", x509.ExtKeyUsageServerAuth, false),
 		}}},
+		{name: "missing EKU is not explicit client authentication", state: &tls.ConnectionState{PeerCertificates: []*x509.Certificate{
+			pki.clientWithUsages(t, "front-proxy-client", nil, false),
+		}}},
+		{name: "any EKU is not explicit client authentication", state: &tls.ConnectionState{PeerCertificates: []*x509.Certificate{
+			pki.client(t, "front-proxy-client", x509.ExtKeyUsageAny, false),
+		}}},
+		{name: "explicit client authentication with other usages", state: &tls.ConnectionState{PeerCertificates: []*x509.Certificate{
+			pki.clientWithUsages(t, "front-proxy-client", []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}, false),
+		}}, valid: true},
 		{name: "expired certificate", state: &tls.ConnectionState{PeerCertificates: []*x509.Certificate{
 			pki.client(t, "front-proxy-client", x509.ExtKeyUsageClientAuth, true),
 		}}},
@@ -270,6 +284,29 @@ func TestRequestHeaderMiddleware(t *testing.T) {
 					require.Equal(t, http.StatusUnauthorized, response.Code)
 				}
 			})
+		})
+	}
+}
+
+func TestRequestHeaderTrailerAnnouncements(t *testing.T) {
+	t.Parallel()
+	pki := newProxyPKI(t)
+	authenticator := pki.authenticator(t)
+	cert := pki.client(t, "front-proxy-client", x509.ExtKeyUsageClientAuth, false)
+	for _, name := range []string{"x-remote-user", "X-REMOTE-GROUP", "x-ReMoTe-ExTrA-Admin", "X-Remote-Uid"} {
+		t.Run(name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodPost, "/", nil)
+			r.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{cert}}
+			r.Header.Set("X-Remote-User", "alice")
+			r.Trailer = http.Header{name: nil}
+			identity, err := authenticator.Authenticate(r)
+			require.ErrorContains(t, err, "identity must not be supplied in trailers")
+			require.Empty(t, identity)
+			response := httptest.NewRecorder()
+			authenticator.Middleware(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+				t.Error("announced identity trailer reached handler")
+			})).ServeHTTP(response, r)
+			require.Equal(t, http.StatusUnauthorized, response.Code)
 		})
 	}
 }
