@@ -1,3 +1,5 @@
+//go:build !windows
+
 // Copyright 2026 The Radius Authors.
 // Licensed under the Apache License, Version 2.0.
 
