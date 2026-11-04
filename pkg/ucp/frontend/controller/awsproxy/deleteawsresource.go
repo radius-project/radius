@@ -38,7 +38,7 @@ type DeleteAWSResource struct {
 func NewDeleteAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 	return &DeleteAWSResource{
 		Operation: armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
-		engine:    newEngine(opts, awsClients),
+		engine:    newEngine(opts, awsClients, nil),
 	}, nil
 }
 

@@ -18,6 +18,7 @@ package awsproxy
 
 import (
 	"context"
+	"errors"
 	http "net/http"
 
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -34,11 +35,15 @@ type CreateOrUpdateAWSResource struct {
 	engine *engine
 }
 
-// NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource controller.
-func NewCreateOrUpdateAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+// NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource controller. fingerprintKey returns the key for
+// fingerprints of write-only values.
+func NewCreateOrUpdateAWSResource(opts armrpc_controller.Options, awsClients ucp_aws.Clients, fingerprintKey FingerprintKeyFunc) (armrpc_controller.Controller, error) {
+	if fingerprintKey == nil {
+		return nil, errors.New("the AWS resource PUT controller needs a source for the fingerprint key")
+	}
 	return &CreateOrUpdateAWSResource{
 		Operation: armrpc_controller.NewOperation(opts, armrpc_controller.ResourceOptions[datamodel.AWSResource]{}),
-		engine:    newEngine(opts, awsClients),
+		engine:    newEngine(opts, awsClients, fingerprintKey),
 	}, nil
 }
 

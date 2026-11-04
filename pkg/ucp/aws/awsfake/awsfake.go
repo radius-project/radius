@@ -356,15 +356,22 @@ func (c *CloudControl) ListResourceRequests(ctx context.Context, params *cloudco
 type CloudFormation struct {
 	// Schemas maps a type to its schema.
 	Schemas map[string]string
+
+	// ProvisioningTypes maps a type to its provisioning type. A type that is not in it is FULLY_MUTABLE.
+	ProvisioningTypes map[string]cftypes.ProvisioningType
 }
 
-// DescribeType returns the schema of a type as FULLY_MUTABLE.
+// DescribeType returns the schema and provisioning type of a type.
 func (c *CloudFormation) DescribeType(ctx context.Context, params *cloudformation.DescribeTypeInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeTypeOutput, error) {
 	schema, ok := c.Schemas[aws.ToString(params.TypeName)]
 	if !ok {
 		return nil, fmt.Errorf("no schema for %s", aws.ToString(params.TypeName))
 	}
-	return &cloudformation.DescribeTypeOutput{TypeName: params.TypeName, Schema: aws.String(schema), ProvisioningType: cftypes.ProvisioningTypeFullyMutable}, nil
+	provisioningType, ok := c.ProvisioningTypes[aws.ToString(params.TypeName)]
+	if !ok {
+		provisioningType = cftypes.ProvisioningTypeFullyMutable
+	}
+	return &cloudformation.DescribeTypeOutput{TypeName: params.TypeName, Schema: aws.String(schema), ProvisioningType: provisioningType}, nil
 }
 
 func clone(m map[string]any) map[string]any {
@@ -409,6 +416,10 @@ func applyOperation(obj map[string]any, op map[string]any) error {
 			p[last] = op["value"]
 		}
 	case []any:
+		if op["op"] == "add" && (last == "-" || last == strconv.Itoa(len(p))) {
+			// Adding at the end of an array appends an item. The array is replaced in its parent.
+			return setAt(obj, segments[:len(segments)-1], append(p, op["value"]))
+		}
 		i, err := strconv.Atoi(last)
 		if err != nil || i >= len(p) {
 			return fmt.Errorf("unsupported patch path %q", path)
@@ -418,6 +429,19 @@ func applyOperation(obj map[string]any, op map[string]any) error {
 		}
 		p[i] = op["value"]
 	}
+	return nil
+}
+
+// setAt sets the value at the object path segments of obj.
+func setAt(obj map[string]any, segments []string, value any) error {
+	for _, s := range segments[:len(segments)-1] {
+		next, ok := obj[s].(map[string]any)
+		if !ok {
+			return fmt.Errorf("unsupported patch path into %q", s)
+		}
+		obj = next
+	}
+	obj[segments[len(segments)-1]] = value
 	return nil
 }
 
