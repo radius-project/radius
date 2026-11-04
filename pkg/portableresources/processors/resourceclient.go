@@ -27,6 +27,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
@@ -50,6 +51,9 @@ import (
 	"k8s.io/client-go/rest"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// awsAPIVersion is the API version of UCP's AWS routes, which do not check it.
+const awsAPIVersion = "2023-10-01-preview"
 
 // ResourceClientFactory creates a resource client using the provided Kubernetes configuration.
 type ResourceClientFactory func(kubernetesConfig *rest.Config) ResourceClient
@@ -135,6 +139,49 @@ func (c *resourceClient) GetProperties(ctx context.Context, id string) (map[stri
 	}
 
 	return response.Properties, nil
+}
+
+// GetAWSPropertiesByIdentifier reads an AWS resource with UCP's POST /:get, which reads AWS by the top-level name in
+// the body. The name is the AWS identifier at the end of id.
+func (c *resourceClient) GetAWSPropertiesByIdentifier(ctx context.Context, id string) (map[string]any, error) {
+	parsed, err := resources.ParseResource(id)
+	if err != nil {
+		return nil, err
+	}
+	if !resources_aws.IsAWSResource(parsed) {
+		return nil, fmt.Errorf("resource %q is not an AWS resource", id)
+	}
+
+	client, err := arm.NewClient("github.com/radius-project/radius/pkg/portableresources/processors", "v0.0.1", &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.Endpoint(), parsed.RootScope(), "providers", parsed.Type(), ":get"))
+	if err == nil {
+		query := req.Raw().URL.Query()
+		query.Set("api-version", awsAPIVersion)
+		req.Raw().URL.RawQuery = query.Encode()
+		err = runtime.MarshalAsJSON(req, map[string]any{"name": parsed.Name(), "properties": map[string]any{}})
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Pipeline().Do(req)
+	if err != nil {
+		return nil, c.wrapError(parsed, err)
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return nil, c.wrapError(parsed, runtime.NewResponseError(resp))
+	}
+	body := struct {
+		Properties map[string]any `json:"properties"`
+	}{}
+	if err := runtime.UnmarshalAsJSON(resp, &body); err != nil {
+		return nil, c.wrapError(parsed, err)
+	}
+	return body.Properties, nil
 }
 
 func (c *resourceClient) wrapError(id resources.ID, err error) error {
