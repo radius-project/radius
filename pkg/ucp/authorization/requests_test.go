@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+	"k8s.io/utils/clock"
 )
 
 func requestRuntime(t *testing.T, mode api.UserAuthorizationMode) (*PolicyRuntime, *runtimeDatabase, func()) {
@@ -277,6 +278,7 @@ func TestPolicyRuntimeRequestGeneration(t *testing.T) {
 					if err != nil {
 						failures <- err
 					}
+
 					results <- result
 				}
 			})
@@ -299,4 +301,52 @@ func TestPolicyRuntimeRequestGeneration(t *testing.T) {
 		require.Equal(t, int64(1), after.Generation)
 		require.True(t, after.Decisions[0].Allowed)
 	})
+}
+
+func TestPolicyRuntimeEvaluateRequestAvailabilityChanges(t *testing.T) {
+	for _, mode := range []api.UserAuthorizationMode{
+		api.UserAuthorizationModeDisabled, api.UserAuthorizationModeDryRun, api.UserAuthorizationModeEnforce,
+	} {
+		for _, path := range []string{appA, "/version", "/unknown"} {
+			for _, scenario := range []string{"cancelled", "expired"} {
+				t.Run(string(mode)+path+"/"+scenario, func(t *testing.T) {
+					ctx, cancel := context.WithCancel(t.Context())
+					defer cancel()
+					snapshot := testPolicySnapshot(t, 1)
+					snapshot.policy.Settings.Properties.Mode = &mode
+					runtime := &PolicyRuntime{ctx: ctx}
+					asOf := time.Now()
+					calls := 0
+					clk := evaluationClock{WithTicker: clock.RealClock{}, since: func(captured time.Time) time.Duration {
+						require.Equal(t, asOf, captured, "must recheck the evaluated snapshot, not a refreshed timestamp")
+						require.True(t, runtime.mu.TryLock(), "evaluation must not hold the lifetime lock")
+						runtime.mu.Unlock()
+						require.True(t, runtime.cache.mu.TryLock(), "evaluation must not hold the refresh lock")
+						// A concurrent refresh cannot renew the captured decision.
+						runtime.cache.asOf = asOf.Add(time.Second)
+						runtime.cache.mu.Unlock()
+						calls++
+						if calls == 2 {
+							if scenario == "cancelled" {
+								cancel()
+							} else {
+								return PolicyMaxAge
+							}
+						}
+						return 0
+					}}
+					cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
+						return snapshot, nil
+					}), clk)
+					require.NoError(t, err)
+					cache.value, cache.asOf = snapshot, asOf
+					runtime.cache = cache
+					result, err := runtime.EvaluateRequest(testIdentity(), http.MethodGet, path)
+					require.Equal(t, 2, calls)
+					require.ErrorIs(t, err, ErrAuthorizationUnavailable)
+					require.Equal(t, RequestEvaluation{Generation: -1}, result)
+				})
+			}
+		}
+	}
 }
