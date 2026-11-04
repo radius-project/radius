@@ -7,7 +7,6 @@ package api
 
 import (
 	"bytes"
-	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -29,19 +28,14 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/go-logr/logr"
-	"github.com/go-logr/zapr"
 	"github.com/radius-project/radius/pkg/cli/cmd/auth"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/components/database"
 	authapi "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/radius-project/radius/pkg/ucp/authorization"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -72,33 +66,21 @@ func aggregationServingCertificate(t *testing.T, address string) (tls.Certificat
 	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key}, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 }
 
-type aggregationIdentity struct {
-	name, typ, group string
-	config           *rest.Config
-	admin            bool
-}
-
-type inspectionAggregation struct {
-	ucp                         *httptest.Server
-	caBundle                    []byte
-	proxyCertFile, proxyKeyFile string
-	identities                  []aggregationIdentity
-	logs                        *observer.ObservedLogs
-}
-
-func startInspectionAggregation(t *testing.T, directory string, policy func(database.Client) *authorization.PolicyRuntime) *inspectionAggregation {
-	t.Helper()
+func TestInspectionKubernetesAggregation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("starts isolated kube-apiserver and etcd; run without -short with KUBEBUILDER_ASSETS")
+	}
 	// Never honor USE_EXISTING_CLUSTER for this test: its APIService, RBAC,
 	// authentication configuration, and policy are exclusively test-owned.
 	environment := &envtest.Environment{UseExistingCluster: to.Ptr(false)}
 	caFile, proxyCertificate := frontendProxyCertificate(t, "front-proxy-client")
+	directory := t.TempDir()
 	proxyCertFile, proxyKeyFile := filepath.Join(directory, "proxy.crt"), filepath.Join(directory, "proxy.key")
 	require.NoError(t, os.WriteFile(proxyCertFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: proxyCertificate.Certificate[0]}), 0600))
 	key, err := x509.MarshalPKCS8PrivateKey(proxyCertificate.PrivateKey)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(proxyKeyFile, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: key}), 0600))
 	environment.ControlPlane.GetAPIServer().Configure().
-		Set("bind-address", "127.0.0.1").
 		Set("requestheader-client-ca-file", caFile).
 		Set("requestheader-allowed-names", "front-proxy-client").
 		Set("requestheader-username-headers", "X-Remote-User").
@@ -116,15 +98,29 @@ func startInspectionAggregation(t *testing.T, directory string, policy func(data
 	options := frontendRequestOptions(t, pathBase)
 	db, err := options.DatabaseProvider.GetClient(t.Context())
 	require.NoError(t, err)
-	runtime := policy(db)
+	_, runtime := frontendRequestPolicy(t, db, authapi.UserAuthorizationModeDryRun)
 	options.UserAuthorization = runtime
 	options.Config.Server.TLSCertificateDirectory = directory
 	options.Config.CallerAuthentication = &authorization.RequestHeaderOptions{
 		CAFile: caFile, AllowedNames: []string{"front-proxy-client"}, KubernetesIssuer: "kubernetes:test-cluster",
 	}
-	core, logs := observer.New(zap.InfoLevel)
-	ctx := logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core)))
-	server, err := NewService(options).Initialize(ctx)
+	actor := authorization.PolicyActor{
+		Identity: authorization.Identity{Principal: authapi.Principal{
+			Type: to.Ptr(authapi.PrincipalTypeUser), Issuer: to.Ptr("kubernetes:test-cluster"), Subject: to.Ptr("alice"),
+		}},
+		Management: authapi.AssignmentManagement{Kind: to.Ptr(authapi.AssignmentManagementKindImperative)},
+	}
+	for i, group := range []string{"developers", "system:serviceaccounts:default"} {
+		actor.RequestID = fmt.Sprintf("fixture-%d", i)
+		require.NoError(t, runtime.Mutate(t.Context(), actor, authorization.PolicyMutation{
+			Target: fmt.Sprintf("/providers/Radius.Core/roleAssignments/reader-%d", i),
+			Assignment: &authapi.RoleAssignmentProperties{
+				Principal:        &authapi.Principal{Type: to.Ptr(authapi.PrincipalTypeGroup), Issuer: to.Ptr("kubernetes:test-cluster"), Subject: &group},
+				RoleDefinitionID: to.Ptr("/providers/Radius.Core/roleDefinitions/reader"), Scope: to.Ptr("/"),
+			},
+		}))
+	}
+	server, err := NewService(options).Initialize(t.Context())
 	require.NoError(t, err)
 	const address = "127.0.0.1"
 	listener, err := net.Listen("tcp4", net.JoinHostPort(address, "0"))
@@ -133,7 +129,6 @@ func startInspectionAggregation(t *testing.T, directory string, policy func(data
 	ucp := httptest.NewUnstartedServer(server.Handler)
 	require.NoError(t, ucp.Listener.Close())
 	ucp.Listener = listener
-	ucp.Config.BaseContext = func(net.Listener) context.Context { return ctx }
 	ucp.TLS = server.TLSConfig.Clone()
 	ucp.TLS.Certificates = []tls.Certificate{servingCert}
 	ucp.StartTLS()
@@ -164,8 +159,8 @@ func startInspectionAggregation(t *testing.T, directory string, policy func(data
 	_, err = admin.RbacV1().ClusterRoles().Create(t.Context(), &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{Name: "radius-inspection"},
 		Rules: []rbacv1.PolicyRule{
-			{APIGroups: []string{"api.ucp.dev"}, Resources: []string{"*"}, Verbs: []string{"*"}},
-			{NonResourceURLs: []string{"/apis/api.ucp.dev", "/apis/api.ucp.dev/*"}, Verbs: []string{"*"}},
+			{APIGroups: []string{"api.ucp.dev"}, Resources: []string{"*"}, Verbs: []string{"get", "create"}},
+			{NonResourceURLs: []string{"/apis/api.ucp.dev", "/apis/api.ucp.dev/*"}, Verbs: []string{"get"}},
 		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -178,7 +173,7 @@ func startInspectionAggregation(t *testing.T, directory string, policy func(data
 	_, err = admin.CoreV1().ServiceAccounts("default").Create(t.Context(), &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "inspection"}}, metav1.CreateOptions{})
 	require.NoError(t, err)
 	token, err := admin.CoreV1().ServiceAccounts("default").CreateToken(t.Context(), "inspection", &authenticationv1.TokenRequest{
-		Spec: authenticationv1.TokenRequestSpec{ExpirationSeconds: to.Ptr(int64(3600))},
+		Spec: authenticationv1.TokenRequestSpec{ExpirationSeconds: to.Ptr(int64(600))},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 	serviceConfig := rest.AnonymousClientConfig(adminConfig)
@@ -187,71 +182,30 @@ func startInspectionAggregation(t *testing.T, directory string, policy func(data
 	require.NoError(t, err)
 	bob, err := environment.ControlPlane.AddUser(envtest.User{Name: "bob", Groups: []string{"developers"}}, adminConfig)
 	require.NoError(t, err)
+	kubeconfig := filepath.Join(directory, "kubeconfig")
+	t.Setenv("KUBECONFIG", kubeconfig)
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		response, err := admin.RESTClient().Get().AbsPath(pathBase).DoRaw(t.Context())
 		require.NoError(collect, err, string(response))
 	}, 30*time.Second, 100*time.Millisecond)
 
-	return &inspectionAggregation{
-		ucp: ucp, caBundle: caBundle, proxyCertFile: proxyCertFile, proxyKeyFile: proxyKeyFile, logs: logs,
-		identities: []aggregationIdentity{
-			{"alice", "user", "developers", alice.Config(), true},
-			{"bob", "user", "developers", bob.Config(), false},
-			{"system:serviceaccount:default:inspection", "workload", "system:serviceaccounts:default", serviceConfig, false},
-		},
-	}
-}
-
-func aggregationReaderGrants(t *testing.T, runtime *authorization.PolicyRuntime) {
-	t.Helper()
-	for i, group := range []string{"developers", "system:serviceaccounts:default"} {
-		require.NoError(t, runtime.Mutate(t.Context(), aggregationActor(fmt.Sprintf("fixture-%d", i)), authorization.PolicyMutation{
-			Target: fmt.Sprintf("/providers/Radius.Core/roleAssignments/reader-%d", i),
-			Assignment: &authapi.RoleAssignmentProperties{
-				Principal:        &authapi.Principal{Type: to.Ptr(authapi.PrincipalTypeGroup), Issuer: to.Ptr("kubernetes:test-cluster"), Subject: &group},
-				RoleDefinitionID: to.Ptr("/providers/Radius.Core/roleDefinitions/reader"), Scope: to.Ptr("/"),
-			},
-		}))
-	}
-}
-
-func aggregationActor(requestID string) authorization.PolicyActor {
-	return authorization.PolicyActor{
-		Identity: authorization.Identity{Principal: authapi.Principal{
-			Type: to.Ptr(authapi.PrincipalTypeUser), Issuer: to.Ptr("kubernetes:test-cluster"), Subject: to.Ptr("alice"),
-		}},
-		Management: authapi.AssignmentManagement{Kind: to.Ptr(authapi.AssignmentManagementKindImperative)},
-		RequestID:  requestID,
-	}
-}
-
-func aggregationKubeconfig(config *rest.Config) clientcmdapi.Config {
-	return clientcmdapi.Config{
-		Clusters: map[string]*clientcmdapi.Cluster{"isolated": {Server: strings.TrimSuffix(config.Host, "/"), CertificateAuthorityData: config.CAData}},
-		AuthInfos: map[string]*clientcmdapi.AuthInfo{"caller": {
-			ClientCertificateData: config.CertData, ClientKeyData: config.KeyData, Token: config.BearerToken,
-		}},
-		Contexts: map[string]*clientcmdapi.Context{"isolated": {Cluster: "isolated", AuthInfo: "caller"}}, CurrentContext: "isolated",
-	}
-}
-
-func TestInspectionKubernetesAggregation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("starts isolated kube-apiserver and etcd; run without -short with KUBEBUILDER_ASSETS")
-	}
-	directory := t.TempDir()
-	fixture := startInspectionAggregation(t, directory, func(db database.Client) *authorization.PolicyRuntime {
-		_, runtime := frontendRequestPolicy(t, db, authapi.UserAuthorizationModeDryRun)
-		aggregationReaderGrants(t, runtime)
-		return runtime
-	})
-	ucp, caBundle := fixture.ucp, fixture.caBundle
-	const pathBase = "/apis/api.ucp.dev/v1alpha3"
-	kubeconfig := filepath.Join(directory, "kubeconfig")
-	t.Setenv("KUBECONFIG", kubeconfig)
-	for _, identity := range fixture.identities {
+	for _, identity := range []struct {
+		name, typ, group string
+		config           *rest.Config
+		admin            bool
+	}{
+		{"alice", "user", "developers", alice.Config(), true},
+		{"bob", "user", "developers", bob.Config(), false},
+		{"system:serviceaccount:default:inspection", "workload", "system:serviceaccounts:default", serviceConfig, false},
+	} {
 		t.Run(identity.name, func(t *testing.T) {
-			require.NoError(t, clientcmd.WriteToFile(aggregationKubeconfig(identity.config), kubeconfig))
+			require.NoError(t, clientcmd.WriteToFile(clientcmdapi.Config{
+				Clusters: map[string]*clientcmdapi.Cluster{"isolated": {Server: strings.TrimSuffix(identity.config.Host, "/"), CertificateAuthorityData: identity.config.CAData}},
+				AuthInfos: map[string]*clientcmdapi.AuthInfo{"caller": {
+					ClientCertificateData: identity.config.CertData, ClientKeyData: identity.config.KeyData, Token: identity.config.BearerToken,
+				}},
+				Contexts: map[string]*clientcmdapi.Context{"isolated": {Cluster: "isolated", AuthInfo: "caller"}}, CurrentContext: "isolated",
+			}, kubeconfig))
 			runCLI := func(args ...string) (map[string]any, error) {
 				t.Helper()
 				config := viper.New()
