@@ -196,6 +196,7 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 // UCP stopped, or failed to save the operation's result, after it removed the record. The operation ID is the Cloud
 // Control request token, so the result is read from Cloud Control again.
 func (c *AwaitController) noRecord(ctx context.Context, id resources.ID, request *ctrl.Request) (ctrl.Result, error) {
+	ucplog.FromContextOrDiscard(ctx).Info("Reading the result of an AWS operation whose record is gone", "alias", id.Name(), "requestToken", request.OperationID.String())
 	_, err := ucp_aws.WaitForRequest(ctx, c.clients.CloudControl, id.FindScope(resources_aws.ScopeRegions), request.OperationID.String())
 
 	var notFound *cctypes.RequestTokenNotFoundException
