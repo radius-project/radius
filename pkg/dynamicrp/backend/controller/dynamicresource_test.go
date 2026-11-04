@@ -27,12 +27,14 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 const (
@@ -51,66 +53,68 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 		return controller.(*DynamicResourceController)
 	}
 
-	t.Run("inert PUT", func(t *testing.T) {
+	selectController := func(t *testing.T, request *ctrl.Request) (ctrl.Controller, error) {
 		controller := setup()
+		operationType, resourceTypeDetails, err := controller.extractOperationAndResourceTypeDetails(t.Context(), request)
+		require.NoError(t, err)
+		return controller.selectController(operationType, resourceTypeDetails)
+	}
+
+	t.Run("inert PUT", func(t *testing.T) {
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationPut}.String(),
 		}
 
-		selected, err := controller.selectController(t.Context(), request)
+		selected, err := selectController(t, request)
 		require.NoError(t, err)
 
 		require.IsType(t, &InertPutController{}, selected)
 	})
 
 	t.Run("inert DELETE", func(t *testing.T) {
-		controller := setup()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationDelete}.String(),
 		}
 
-		selected, err := controller.selectController(t.Context(), request)
+		selected, err := selectController(t, request)
 		require.NoError(t, err)
 
 		require.IsType(t, &InertDeleteController{}, selected)
 	})
 
 	t.Run("recipe PUT", func(t *testing.T) {
-		controller := setup()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + recipeResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: recipeResourceType, Method: v1.OperationPut}.String(),
 		}
 
-		selected, err := controller.selectController(t.Context(), request)
+		selected, err := selectController(t, request)
 		require.NoError(t, err)
 
 		require.IsType(t, &RecipePutController{}, selected)
 	})
 
 	t.Run("recipe DELETE", func(t *testing.T) {
-		controller := setup()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + recipeResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: recipeResourceType, Method: v1.OperationDelete}.String(),
 		}
 
-		selected, err := controller.selectController(t.Context(), request)
+		selected, err := selectController(t, request)
 		require.NoError(t, err)
 
 		require.IsType(t, &RecipeDeleteController{}, selected)
 	})
 
 	t.Run("unknown operation", func(t *testing.T) {
-		controller := setup()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationGet}.String(),
 		}
 
-		selected, err := controller.selectController(t.Context(), request)
+		selected, err := selectController(t, request)
 		require.Error(t, err)
 		require.Equal(t, "unsupported operation type: \"APPLICATIONS.TEST/TESTINERTRESOURCES|GET\"", err.Error())
 		require.Nil(t, selected)
@@ -279,19 +283,154 @@ func TestDynamicResourceController_validateRequestSchema(t *testing.T) {
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationDelete}.String(),
 		}
 
-		err := controller.validateRequestSchema(t.Context(), request)
+		operationType, resourceTypeDetails, err := controller.extractOperationAndResourceTypeDetails(t.Context(), request)
+		require.NoError(t, err)
+
+		err = controller.validateRequestSchema(t.Context(), request, operationType, resourceTypeDetails)
 		require.NoError(t, err) // Should skip validation for DELETE
 	})
+}
 
-	t.Run("error - invalid resource ID", func(t *testing.T) {
-		controller := setup()
+func Test_DynamicResourceController_Run(t *testing.T) {
+	resourceWithSize := func(size any) *database.Object {
+		return &database.Object{Data: map[string]any{"properties": map[string]any{"size": size}}}
+	}
+
+	tests := []struct {
+		name         string
+		resourceType string
+		method       v1.OperationMethod
+		setupDB      func(db *database.MockClient, resourceID string)
+		want         ctrl.Result
+	}{
+		{
+			name:         "inert DELETE",
+			resourceType: inertResourceType,
+			method:       v1.OperationDelete,
+			setupDB: func(db *database.MockClient, resourceID string) {
+				db.EXPECT().Delete(gomock.Any(), resourceID).Return(nil)
+			},
+			want: ctrl.Result{},
+		},
+		{
+			name:         "inert PUT with valid properties",
+			resourceType: inertResourceType,
+			method:       v1.OperationPut,
+			setupDB: func(db *database.MockClient, resourceID string) {
+				db.EXPECT().Get(gomock.Any(), resourceID).Return(resourceWithSize("small"), nil)
+			},
+			want: ctrl.Result{},
+		},
+		{
+			// The recipe PUT controller reads the resource again, so the mock fails if it runs.
+			name:         "schema validation failure",
+			resourceType: recipeResourceType,
+			method:       v1.OperationPut,
+			setupDB: func(db *database.MockClient, resourceID string) {
+				db.EXPECT().Get(gomock.Any(), resourceID).Return(resourceWithSize(3), nil)
+			},
+			want: ctrl.NewFailedResult(v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Message: `code InvalidRequestContent: err Schema validation failed: resource data validation failed: Error at "size": value must be a string`,
+			}),
+		},
+		{
+			name:         "resource type lookup failure",
+			resourceType: "Applications.Test/unknownType",
+			method:       v1.OperationPut,
+			want: ctrl.NewFailedResult(v1.ErrorDetails{
+				Code:    v1.CodeInvalidRequestContent,
+				Message: "failed to fetch resource type details: resource type Applications.Test/unknownType not recognized",
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gets := 0
+			resourceTypesServer := fake.ResourceTypesServer{
+				Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, options *v20231001preview.ResourceTypesClientGetOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder) {
+					gets++
+					properties := &v20231001preview.ResourceTypeProperties{}
+					switch resourceProviderName + resources.SegmentSeparator + resourceTypeName {
+					case inertResourceType:
+						properties.Capabilities = []*string{to.Ptr(datamodel.CapabilityManualResourceProvisioning)}
+					case recipeResourceType:
+					default:
+						errResp.SetError(fmt.Errorf("resource type %s/%s not recognized", resourceProviderName, resourceTypeName))
+						return
+					}
+					resp.SetResponse(http.StatusOK, v20231001preview.ResourceTypesClientGetResponse{
+						ResourceTypeResource: v20231001preview.ResourceTypeResource{
+							Name:       new(resourceTypeName),
+							Properties: properties,
+						},
+					}, nil)
+					return
+				},
+			}
+			apiVersionsServer := fake.APIVersionsServer{
+				Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
+					resp.SetResponse(http.StatusOK, v20231001preview.APIVersionsClientGetResponse{
+						APIVersionResource: v20231001preview.APIVersionResource{
+							Properties: &v20231001preview.APIVersionProperties{
+								Schema: map[string]any{
+									"type": "object",
+									"properties": map[string]any{
+										"size": map[string]any{"type": "string"},
+									},
+								},
+							},
+						},
+					}, nil)
+					return
+				},
+			}
+			ucp, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
+				Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+					APIVersionsServer:   apiVersionsServer,
+					ResourceTypesServer: resourceTypesServer,
+				}),
+			})
+			require.NoError(t, err)
+
+			databaseClient := database.NewMockClient(gomock.NewController(t))
+			controller, err := NewDynamicResourceController(ctrl.Options{DatabaseClient: databaseClient}, ucp, nil, nil, nil)
+			require.NoError(t, err)
+
+			request := &ctrl.Request{
+				ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + tt.resourceType + "/test-resource",
+				OperationType: v1.OperationType{Type: tt.resourceType, Method: tt.method}.String(),
+				APIVersion:    "2025-01-01-preview",
+			}
+			if tt.setupDB != nil {
+				tt.setupDB(databaseClient, request.ResourceID)
+			}
+
+			result, err := controller.Run(t.Context(), request)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, result)
+			require.Equal(t, 1, gets, "Run() resource type GETs")
+		})
+	}
+
+	t.Run("invalid resource ID", func(t *testing.T) {
+		ucp, err := testUCPClientFactory()
+		require.NoError(t, err)
+
+		controller, err := NewDynamicResourceController(ctrl.Options{}, ucp, nil, nil, nil)
+		require.NoError(t, err)
+
 		request := &ctrl.Request{
 			ResourceID:    "invalid-resource-id",
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationPut}.String(),
 		}
 
-		err := controller.validateRequestSchema(t.Context(), request)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid resource ID")
+		result, err := controller.Run(t.Context(), request)
+		require.NoError(t, err)
+		require.Equal(t, ctrl.NewFailedResult(v1.ErrorDetails{
+			Code:    v1.CodeInvalidRequestContent,
+			Message: `invalid resource ID: "invalid-resource-id"`,
+		}), result)
 	})
 }

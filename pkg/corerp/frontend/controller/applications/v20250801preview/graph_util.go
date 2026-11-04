@@ -28,7 +28,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/go-openapi/jsonpointer"
-	"golang.org/x/exp/maps"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -86,20 +85,30 @@ func computeGraphPayload(ctx context.Context, applicationID resources.ID, enviro
 		ClientOptions: clientOptions,
 	}
 
-	resourceTypes, err := ucpApplicationsManagementClient.ListAllResourceTypesNames(ctx, "local")
+	apiVersions, err := ucpApplicationsManagementClient.ListAllResourceTypesAPIVersions(ctx, "local")
 	if err != nil {
 		return nil, err
 	}
 
-	applicationResources, err := listAllResourcesByApplication(ctx, applicationID, resourceTypes, clientOptions)
+	applicationScopeResources, err := listAllResourcesInScope(ctx, applicationID.RootScope(), apiVersions, clientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	environmentResources, err := listAllResourcesByEnvironment(ctx, parsedEnvironmentID, resourceTypes, clientOptions)
-	if err != nil {
-		return nil, err
+	environmentScopeResources := applicationScopeResources
+	if !strings.EqualFold(parsedEnvironmentID.RootScope(), applicationID.RootScope()) {
+		environmentScopeResources, err = listAllResourcesInScope(ctx, parsedEnvironmentID.RootScope(), apiVersions, clientOptions)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	applicationResources := filterResources(applicationScopeResources, func(resource generated.GenericResource) bool {
+		return isResourceInApplication(resource, applicationID.Name())
+	})
+	environmentResources := filterResources(environmentScopeResources, func(resource generated.GenericResource) bool {
+		return isResourceInEnvironment(resource, parsedEnvironmentID.Name())
+	})
 
 	// Only look up the registered Azure tenant when the fetched resources
 	// actually contain at least one Azure output resource. Pure-Kubernetes
@@ -115,12 +124,11 @@ func computeGraphPayload(ctx context.Context, applicationID resources.ID, enviro
 // resolver is a function type to resolve appgraph connection.
 type resolver func(any) (string, corerpv20250801preview.Direction, error)
 
-// listAllResourcesByApplication takes a context, applicationID, list of resource types and clientOptions
-// and returns a slice of GenericResources in the application and also an error if one occurs.
-func listAllResourcesByApplication(ctx context.Context, applicationID resources.ID, resourceTypesList []string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
+// listAllResourcesInScope lists the resources of the given resource types in rootScope.
+func listAllResourcesInScope(ctx context.Context, rootScope string, apiVersions map[string]string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
-	for _, resourceType := range resourceTypesList {
-		resourceList, err := listAllResourcesOfTypeInApplication(ctx, applicationID, resourceType, clientOptions)
+	for resourceType, apiVersion := range apiVersions {
+		resourceList, err := listAllResourcesByType(ctx, rootScope, resourceType, apiVersion, clientOptions)
 		if err != nil {
 			return nil, err
 		}
@@ -129,73 +137,12 @@ func listAllResourcesByApplication(ctx context.Context, applicationID resources.
 	return results, nil
 }
 
-// listAllResourcesOfTypeInApplication takes in a context, an application ID and a
-// resource type and returns a slice of GenericResources of that type in the application and an error if one occurs.
-func listAllResourcesOfTypeInApplication(ctx context.Context, applicationID resources.ID, resourceType string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
-	results := []generated.GenericResource{}
-	resourceList, err := listAllResourcesByType(ctx, applicationID.RootScope(), resourceType, clientOptions)
-	if err != nil {
-		return nil, err
-	}
-	applicationName := applicationID.Name()
-	for _, resource := range resourceList {
-		isResourceWithApplication := isResourceInApplication(resource, applicationName)
-		if isResourceWithApplication {
-			results = append(results, resource)
-		}
-	}
-	return results, nil
-}
-
-// getAPIVersionForResourceType retrieves the default API version for a given resource type.
-// If no default is set, it returns the first available API version from the resource type's API versions.
-func getAPIVersionForResourceType(ctx context.Context, resourceType string, clientOptions *policy.ClientOptions) (string, error) {
-	// Validate and parse the resource type (must be in format "Provider/Type")
-	parts := strings.Split(resourceType, "/")
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return "", fmt.Errorf("invalid resource type format %q, expected format 'Provider/Type'", resourceType)
-	}
-	provider := parts[0]
-	resType := parts[1]
-
-	// Create a client to query the resource provider summary
-	client, err := ucpv20231001preview.NewResourceProvidersClient(&aztoken.AnonymousCredential{}, clientOptions)
-	if err != nil {
-		return "", fmt.Errorf("failed to create resource provider client: %w", err)
-	}
-
-	summary, err := client.GetProviderSummary(ctx, "local", provider, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to get resource provider summary for %q: %w", provider, err)
-	}
-
-	resourceTypeSummary, ok := summary.ResourceTypes[resType]
-	if !ok {
-		return "", fmt.Errorf("resource type %q not found in resource provider %q", resType, provider)
-	}
-
-	// Prioritize the default API version if it's set
-	if resourceTypeSummary.DefaultAPIVersion != nil && *resourceTypeSummary.DefaultAPIVersion != "" {
-		return *resourceTypeSummary.DefaultAPIVersion, nil
-	}
-
-	// Fall back to any available API version
-	apiVersions := maps.Keys(resourceTypeSummary.APIVersions)
-	if len(apiVersions) == 0 {
-		return "", fmt.Errorf("no API versions found for resource type %q", resourceType)
-	}
-
-	return apiVersions[0], nil
-}
-
-// listAllResourcesByType takes in a context, a root scope and a resource type and returns a slice of GenericResources and an error if one occurs.
-func listAllResourcesByType(ctx context.Context, rootScope string, resourceType string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
+// listAllResourcesByType lists the resources of resourceType in rootScope using apiVersion.
+func listAllResourcesByType(ctx context.Context, rootScope string, resourceType string, apiVersion string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 
-	// Get the appropriate API version for this resource type
-	apiVersion, err := getAPIVersionForResourceType(ctx, resourceType, clientOptions)
-	if err != nil {
-		return []generated.GenericResource{}, err
+	if apiVersion == "" {
+		return []generated.GenericResource{}, fmt.Errorf("no API versions found for resource type %q", resourceType)
 	}
 
 	// Set the API version in the client options
@@ -219,6 +166,16 @@ func listAllResourcesByType(ctx context.Context, rootScope string, resourceType 
 		}
 	}
 	return results, nil
+}
+
+func filterResources(resourceList []generated.GenericResource, include func(generated.GenericResource) bool) []generated.GenericResource {
+	results := []generated.GenericResource{}
+	for _, resource := range resourceList {
+		if include(resource) {
+			results = append(results, resource)
+		}
+	}
+	return results
 }
 
 // isResourceInApplication takes in a context, a GenericResource and an application name and returns
@@ -245,38 +202,6 @@ func isResourceInApplication(resource generated.GenericResource, applicationName
 	}
 
 	return false
-}
-
-// listAllResourcesByEnvironment takes in a context, an environment ID, list of
-// resource types and clientOptions and returns a slice of GenericResources and an error if one occurs.
-func listAllResourcesByEnvironment(ctx context.Context, environmentID resources.ID, resourceTypesList []string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
-	results := []generated.GenericResource{}
-	for _, resourceType := range resourceTypesList {
-		resourceList, err := listAllResourcesOfTypeInEnvironment(ctx, environmentID, resourceType, clientOptions)
-		if err != nil {
-			return nil, err
-		}
-		results = append(results, resourceList...)
-	}
-
-	return results, nil
-}
-
-// listAllResourcesOfTypeInEnvironment takes in a context, an environment ID and a
-// resource type and returns a slice of GenericResources and an error if one occurs.
-func listAllResourcesOfTypeInEnvironment(ctx context.Context, environmentID resources.ID, resourceType string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
-	results := []generated.GenericResource{}
-	resourceList, err := listAllResourcesByType(ctx, environmentID.RootScope(), resourceType, clientOptions)
-	if err != nil {
-		return nil, err
-	}
-	for _, resource := range resourceList {
-		isResourceInEnvironment := isResourceInEnvironment(resource, environmentID.Name())
-		if isResourceInEnvironment {
-			results = append(results, resource)
-		}
-	}
-	return results, nil
 }
 
 // isResourceInEnvironment takes in a context, a GenericResource and an environment name and returns
