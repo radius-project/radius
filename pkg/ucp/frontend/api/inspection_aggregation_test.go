@@ -248,6 +248,18 @@ func TestInspectionKubernetesAggregation(t *testing.T) {
 			checks := check["checks"].([]any)
 			require.Equal(t, true, checks[0].(map[string]any)["allowed"])
 			require.Equal(t, identity.admin, checks[1].(map[string]any)["allowed"])
+			batchArgs := []string{"access", "check"}
+			for range 100 {
+				batchArgs = append(batchArgs, "--action", "Radius.Core/applications/read")
+			}
+			boundary, err := runCLI(batchArgs...)
+			require.NoError(t, err)
+			require.Len(t, boundary["checks"], 100)
+			_, err = runCLI(append(batchArgs, "--action", "Radius.Core/applications/read")...)
+			require.ErrorContains(t, err, "InvalidRequestContent")
+			require.ErrorContains(t, err, "checks must contain between 1 and 100 items")
+			_, err = runCLI("access", "check", "--action", strings.Repeat("x", 257))
+			require.ErrorContains(t, err, "permission must contain at most 256 characters")
 			self, err := runCLI("access", "check", "--action", "Radius.Core/applications/read", "--principal", identity.typ+":"+identity.name)
 			require.NoError(t, err)
 			require.Equal(t, true, self["checks"].([]any)[0].(map[string]any)["allowed"])
