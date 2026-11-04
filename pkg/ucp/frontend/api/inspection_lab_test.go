@@ -49,7 +49,9 @@ func TestManualUserAuthorizationLab(t *testing.T) {
 		t.Skip("interactive lab: use bash hack/authz/user-lab.sh")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	// Keep repeated terminal/launcher signals intercepted until child-process
+	// cleanup has finished, rather than resetting handlers on test return.
+	t.Cleanup(stop)
 	info, err := os.Stat(directory)
 	require.NoError(t, err)
 	require.True(t, info.IsDir() && info.Mode().Perm() == 0700, "lab directory must be private (0700)")
