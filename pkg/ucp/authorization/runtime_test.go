@@ -12,6 +12,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
@@ -308,4 +309,77 @@ func TestPolicyRuntimeModeDoesNotBypassFreshness(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestPolicyRuntimePersistedUnregisteredPermissions(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		db := inmemory.NewClient()
+		catalog, err := NewCatalog([]Registration{{Type: "Team.Data/widgets"}})
+		require.NoError(t, err)
+		writer, err := NewPolicyStore(db, catalog, nil, nil)
+		require.NoError(t, err)
+		policy := initialPolicy()
+		roleID := teamA + "/providers/Radius.Core/roleDefinitions/widgets"
+		policy.CustomRoles = []api.RoleDefinitionResource{
+			customRole(roleID, "Team.Data/widgets/read", "Radius.Core/applications/read"),
+		}
+		assignment := assignmentMutation("widgets", roleID, teamA, "bob")
+		initializer, err := NewPolicyInitializer(writer, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
+		require.NoError(t, err)
+		require.NoError(t, initializer.Initialize(t.Context(), policy))
+		_, err = writer.Mutate(t.Context(), policyActor(), assignment)
+		require.NoError(t, err)
+
+		// The production runtime's release-only catalog does not know widgets.
+		runtime, stop := startPolicyRuntime(t, newTestPolicyStore(t, db, false))
+		defer stop()
+		require.NoError(t, runtime.Ready())
+		bob := Identity{Principal: *assignment.Assignment.Principal}
+		decisions, err := runtime.Evaluate(bob, []Check{{"Radius.Core/applications/read", appA}})
+		require.NoError(t, err)
+		require.True(t, decisions[0].Allowed, "known grants survive an unregistered sibling permission")
+		decisions, err = runtime.Evaluate(bob, []Check{{"Team.Data/widgets/read", teamA + "/providers/Team.Data/widgets/test"}})
+		require.Error(t, err)
+		require.Nil(t, decisions)
+		require.ErrorContains(t, runtime.Mutate(t.Context(), policyActor(), PolicyMutation{
+			Target: roleID, Role: policy.CustomRoles[0].Properties,
+		}), "UnknownPermission")
+		require.NoError(t, runtime.Mutate(t.Context(), policyActor(), PolicyMutation{Target: assignment.Target, Delete: true}))
+		require.NoError(t, runtime.Mutate(t.Context(), policyActor(), PolicyMutation{Target: roleID, Delete: true}))
+		require.Equal(t, int64(3), runtime.State().Generation)
+	})
+}
+
+func TestPolicyRuntimeBootstrapPromotionAndMissingGuard(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		store := newTestPolicyStore(t, inmemory.NewClient(), false)
+		policy := initialPolicy()
+		policy.Assignments = policy.Assignments[:1]
+		policy.Assignments[0].Properties.ManagedBy.Kind = to.Ptr(api.AssignmentManagementKindBootstrap)
+		initializer, err := NewPolicyInitializer(store, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
+		require.NoError(t, err)
+		require.NoError(t, initializer.Initialize(t.Context(), policy))
+		runtime, stop := startPolicyRuntime(t, store)
+		defer stop()
+
+		require.ErrorContains(t, runtime.Mutate(t.Context(), policyActor(), PolicyMutation{
+			Target: settingsID, Settings: &api.AuthorizationSettingsProperties{Mode: to.Ptr(api.UserAuthorizationModeDryRun)},
+		}), "settings transition guard is not installed")
+		require.Equal(t, int64(0), runtime.State().Generation)
+		require.Equal(t, api.UserAuthorizationModeDisabled, runtime.State().LastKnownMode)
+		require.NoError(t, runtime.Mutate(t.Context(), policyActor(), readerMutation()))
+		require.ErrorContains(t, runtime.Mutate(t.Context(), policyActor(), PolicyMutation{
+			Target: *policy.Assignments[0].ID, Delete: true,
+		}), "ManagedByConflict")
+		require.NoError(t, runtime.Mutate(t.Context(), policyActor(), PolicyMutation{
+			Target: *policy.Assignments[0].ID, Assignment: policy.Assignments[0].Properties,
+		}))
+		require.Equal(t, int64(2), runtime.State().Generation)
+		event, err := store.AccessChange(t.Context(), 2)
+		require.NoError(t, err)
+		require.Equal(t, api.AssignmentManagementKindImperative, *event.Properties.PolicyChange.After.RoleAssignment.ManagedBy.Kind)
+		require.ErrorContains(t, runtime.Mutate(t.Context(), policyActor(), PolicyMutation{
+			Target: *policy.Assignments[0].ID, Delete: true,
+		}), "LastAdministratorProtected")
+	})
 }
