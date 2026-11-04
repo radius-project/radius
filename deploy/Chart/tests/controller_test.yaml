@@ -153,5 +153,4 @@ tests:
             resources:
               - "*"
             verbs:
-              - get
               - delete

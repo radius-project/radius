@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/rest"
 	k8stesting "k8s.io/client-go/testing"
@@ -314,6 +316,7 @@ func Test_DeploymentResourceReconciler_KubernetesOutputDelete(t *testing.T) {
 		outputFinalizer bool
 		outputMissing   bool
 		deleteError     bool
+		discoveryError  bool
 		wantDelete      bool
 	}{
 		{name: "existing child in template inventory", inventoryID: outputID, wantDelete: true},
@@ -328,6 +331,7 @@ func Test_DeploymentResourceReconciler_KubernetesOutputDelete(t *testing.T) {
 		{name: "output finalizer", recordedID: outputID, outputFinalizer: true, wantDelete: true},
 		{name: "already deleted output", recordedID: outputID, outputMissing: true, wantDelete: true},
 		{name: "delete failure", recordedID: outputID, deleteError: true, wantDelete: true},
+		{name: "discovery failure", recordedID: outputID, outputMissing: true, discoveryError: true, wantDelete: true},
 	}
 
 	for _, tc := range cases {
@@ -375,29 +379,42 @@ func Test_DeploymentResourceReconciler_KubernetesOutputDelete(t *testing.T) {
 			if !tc.outputMissing {
 				builder.WithObjects(output)
 			}
-			if tc.deleteError {
-				builder.WithInterceptorFuncs(interceptor.Funcs{
-					Delete: func(ctx context.Context, c k8sClient.WithWatch, obj k8sClient.Object, opts ...k8sClient.DeleteOption) error {
-						if obj.GetObjectKind().GroupVersionKind().Kind == "ConfigMap" {
+			builder.WithInterceptorFuncs(interceptor.Funcs{
+				Get: func(ctx context.Context, c k8sClient.WithWatch, key k8sClient.ObjectKey, obj k8sClient.Object, opts ...k8sClient.GetOption) error {
+					if _, ok := obj.(*unstructured.Unstructured); ok {
+						return apierrors.NewForbidden(schema.GroupResource{Resource: "configmaps"}, key.Name, errors.New("generic output reads are not granted"))
+					}
+					return c.Get(ctx, key, obj, opts...)
+				},
+				Delete: func(ctx context.Context, c k8sClient.WithWatch, obj k8sClient.Object, opts ...k8sClient.DeleteOption) error {
+					if obj.GetObjectKind().GroupVersionKind().Kind == "ConfigMap" {
+						if tc.deleteError {
 							return errors.New("delete denied")
 						}
-						return c.Delete(ctx, obj, opts...)
-					},
-				})
-			}
+						options := (&k8sClient.DeleteOptions{}).ApplyOptions(opts)
+						require.NotNil(t, options.PropagationPolicy)
+						require.Equal(t, metav1.DeletePropagationBackground, *options.PropagationPolicy)
+					}
+					return c.Delete(ctx, obj, opts...)
+				},
+			})
 			c := builder.Build()
 			mockDeploymentClient := sdkclients.NewMockResourceDeploymentsClient()
+			recorder := record.NewFakeRecorder(10)
 			r := &DeploymentResourceReconciler{
 				Client:                    c,
-				EventRecorder:             record.NewFakeRecorder(10),
+				EventRecorder:             recorder,
 				ResourceDeploymentsClient: mockDeploymentClient,
 			}
-			result, err := r.reconcileDelete(ctx, child)
-			if tc.deleteError {
-				require.ErrorContains(t, err, "delete denied")
-			} else {
-				require.NoError(t, err)
+			if tc.discoveryError {
+				d := &fakediscovery.FakeDiscovery{Fake: &k8stesting.Fake{}}
+				d.PrependReactor("get", "resource", func(k8stesting.Action) (bool, runtime.Object, error) {
+					return true, nil, errors.New("discovery unavailable")
+				})
+				r.Discovery = d
 			}
+			result, err := r.reconcileDelete(ctx, child)
+			require.NoError(t, err)
 			require.Empty(t, mockDeploymentClient.DeletedResourceIDs(), "Kubernetes outputs must not be sent to UCP")
 			actual := &corev1.ConfigMap{}
 			err = c.Get(ctx, k8sClient.ObjectKeyFromObject(output), actual)
@@ -415,13 +432,117 @@ func Test_DeploymentResourceReconciler_KubernetesOutputDelete(t *testing.T) {
 				_, err = r.reconcileDelete(ctx, child)
 				require.NoError(t, err)
 			}
-			if tc.deleteError {
+			if tc.deleteError || tc.discoveryError {
+				require.Equal(t, r.deleteRetryDelay(), result.RequeueAfter)
+				require.Equal(t, radappiov1alpha3.DeploymentResourcePhraseFailed, child.Status.Phrase)
+				require.Contains(t, <-recorder.Events, "Warning ResourceError")
+				persisted := &radappiov1alpha3.DeploymentResource{}
+				require.NoError(t, c.Get(ctx, k8sClient.ObjectKeyFromObject(child), persisted))
+				require.Equal(t, radappiov1alpha3.DeploymentResourcePhraseFailed, persisted.Status.Phrase)
 				require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
 			} else {
+				if tc.wantDelete && !tc.outputMissing && !tc.outputFinalizer {
+					require.Positive(t, result.RequeueAfter)
+					require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
+					_, err = r.reconcileDelete(ctx, child)
+					require.NoError(t, err)
+				}
 				require.NotContains(t, child.Finalizers, DeploymentResourceFinalizer)
 			}
 		})
 	}
+}
+
+type partialOutputDiscovery struct {
+	discovery.DiscoveryInterface
+	resources []*metav1.APIResourceList
+	err       error
+}
+
+func (d *partialOutputDiscovery) ServerGroupsAndResources() ([]*metav1.APIGroup, []*metav1.APIResourceList, error) {
+	return nil, d.resources, d.err
+}
+
+func Test_DeploymentResourceReconciler_PartialOutputDiscovery(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name         string
+		failedGroup  string
+		targetServed bool
+		wantError    bool
+	}{
+		{name: "unrelated group with served output", failedGroup: "metrics.k8s.io", targetServed: true},
+		{name: "unrelated group with removed API", failedGroup: "metrics.k8s.io"},
+		{name: "target group partially unavailable", failedGroup: "example.com", targetServed: true, wantError: true},
+		{name: "target group unavailable", failedGroup: "example.com", wantError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			s := runtime.NewScheme()
+			require.NoError(t, radappiov1alpha3.AddToScheme(s))
+			child := makeDeploymentResource(types.NamespacedName{Namespace: "test", Name: "output"},
+				"/planes/kubernetes/local/namespaces/test/providers/example.com/Widget/output")
+			child.Finalizers = []string{DeploymentResourceFinalizer}
+			c := fake.NewClientBuilder().WithScheme(s).WithObjects(child).Build()
+			d := &partialOutputDiscovery{err: &discovery.ErrGroupDiscoveryFailed{
+				Groups: map[schema.GroupVersion]error{
+					{Group: tc.failedGroup, Version: "v1"}: errors.New("API unavailable"),
+				},
+			}}
+			if tc.targetServed {
+				d.resources = []*metav1.APIResourceList{{
+					GroupVersion: "example.com/v2",
+					APIResources: []metav1.APIResource{{Name: "widgets", Kind: "Widget", Namespaced: true}},
+				}}
+			}
+			r := &DeploymentResourceReconciler{Client: c, Discovery: d}
+			id, err := resources.ParseResource(child.Spec.Id)
+			require.NoError(t, err)
+			_, err = r.deleteKubernetesResource(t.Context(), child, id)
+			if tc.wantError {
+				require.ErrorContains(t, err, "API unavailable")
+				require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
+			} else {
+				require.NoError(t, err)
+				require.Empty(t, child.Finalizers)
+			}
+		})
+	}
+}
+
+func Test_DeploymentResourceReconciler_JobDeletePropagation(t *testing.T) {
+	t.Parallel()
+	s := runtime.NewScheme()
+	require.NoError(t, radappiov1alpha3.AddToScheme(s))
+	require.NoError(t, batchv1.AddToScheme(s))
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: "output", Namespace: "test"}}
+	child := makeDeploymentResource(types.NamespacedName{Namespace: "test", Name: "output"},
+		"/planes/kubernetes/local/namespaces/test/providers/batch/Job/output")
+	child.Finalizers = []string{DeploymentResourceFinalizer}
+	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{batchv1.SchemeGroupVersion})
+	mapper.Add(batchv1.SchemeGroupVersion.WithKind("Job"), meta.RESTScopeNamespace)
+	c := fake.NewClientBuilder().WithScheme(s).WithRESTMapper(mapper).WithObjects(child, job).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Delete: func(ctx context.Context, c k8sClient.WithWatch, obj k8sClient.Object, opts ...k8sClient.DeleteOption) error {
+				if obj.GetObjectKind().GroupVersionKind().Kind == "Job" {
+					options := (&k8sClient.DeleteOptions{}).ApplyOptions(opts)
+					require.NotNil(t, options.PropagationPolicy)
+					require.Equal(t, metav1.DeletePropagationBackground, *options.PropagationPolicy,
+						"override batch/v1 Job's default orphan policy")
+				}
+				return c.Delete(ctx, obj, opts...)
+			},
+		}).Build()
+	r := &DeploymentResourceReconciler{Client: c}
+	id, err := resources.ParseResource(child.Spec.Id)
+	require.NoError(t, err)
+	result, err := r.deleteKubernetesResource(t.Context(), child, id)
+	require.NoError(t, err)
+	require.Positive(t, result.RequeueAfter)
+	require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
+	_, err = r.deleteKubernetesResource(t.Context(), child, id)
+	require.NoError(t, err)
+	require.Empty(t, child.Finalizers)
 }
 
 func Test_DeploymentResourceReconciler_RemovedOutputAPI(t *testing.T) {

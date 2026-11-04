@@ -18,6 +18,7 @@ package reconciler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -270,7 +271,16 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		return ctrl.Result{}, err
 	}
 	if id.FindScope(resources_kubernetes.PlaneTypeKubernetes) != "" {
-		return r.deleteKubernetesResource(ctx, deploymentResource, id)
+		result, err := r.deleteKubernetesResource(ctx, deploymentResource, id)
+		if err == nil {
+			return result, nil
+		}
+		logger.Error(err, "Unable to delete Kubernetes output.")
+		r.EventRecorder.Event(deploymentResource, corev1.EventTypeWarning, "ResourceError", err.Error())
+		if statusErr := r.updateFailedStatus(ctx, deploymentResource); statusErr != nil {
+			return ctrl.Result{}, statusErr
+		}
+		return ctrl.Result{RequeueAfter: r.deleteRetryDelay()}, nil
 	}
 
 	deletePoller, err := r.startDeleteOperation(ctx, deploymentResource)
@@ -352,12 +362,8 @@ func (r *DeploymentResourceReconciler) deleteKubernetesResource(ctx context.Cont
 		resource.SetGroupVersionKind(mapping.GroupVersionKind)
 		resource.SetNamespace(namespace)
 		resource.SetName(name)
-		if err := r.Client.Delete(ctx, resource); err != nil && !apierrors.IsNotFound(err) {
-			return ctrl.Result{}, fmt.Errorf("failed to delete Kubernetes output resource %q: %w", id.String(), err)
-		}
-
-		// A Kubernetes delete may only set a deletion timestamp when finalizers remain.
-		err = r.Client.Get(ctx, client.ObjectKeyFromObject(resource), resource)
+		// Poll with DELETE rather than GET so cleanup does not require reading arbitrary Secrets.
+		err = r.Client.Delete(ctx, resource, client.PropagationPolicy(metav1.DeletePropagationBackground))
 		if apierrors.IsNotFound(err) {
 			// A cached mapping can resolve to an API version which is no longer served.
 			if !refreshed && r.Discovery != nil {
@@ -371,11 +377,19 @@ func (r *DeploymentResourceReconciler) deleteKubernetesResource(ctx context.Cont
 			return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
 		}
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to check Kubernetes output resource %q: %w", id.String(), err)
+			return ctrl.Result{}, fmt.Errorf("failed to delete Kubernetes output resource %q: %w", id.String(), err)
 		}
 		// Waiting for our own namespace would deadlock its content deletion against this finalizer.
-		if group == "" && kind == "Namespace" && name == deploymentResource.Namespace && resource.GetDeletionTimestamp() != nil {
-			return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+		if group == "" && kind == "Namespace" && name == deploymentResource.Namespace {
+			if err := r.Client.Get(ctx, client.ObjectKeyFromObject(resource), resource); err != nil {
+				if apierrors.IsNotFound(err) {
+					return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+				}
+				return ctrl.Result{}, fmt.Errorf("failed to check output namespace %q: %w", name, err)
+			}
+			if resource.GetDeletionTimestamp() != nil {
+				return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+			}
 		}
 		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	}
@@ -384,7 +398,15 @@ func (r *DeploymentResourceReconciler) deleteKubernetesResource(ctx context.Cont
 func (r *DeploymentResourceReconciler) freshKubernetesMapping(group, kind string) (*meta.RESTMapping, error) {
 	_, lists, err := r.Discovery.ServerGroupsAndResources()
 	if err != nil {
-		return nil, fmt.Errorf("failed to refresh Kubernetes output discovery: %w", err)
+		var partial *discovery.ErrGroupDiscoveryFailed
+		if !errors.As(err, &partial) || len(partial.Groups) == 0 {
+			return nil, fmt.Errorf("failed to refresh Kubernetes output discovery: %w", err)
+		}
+		for gv := range partial.Groups {
+			if gv.Group == group {
+				return nil, fmt.Errorf("failed to refresh Kubernetes output discovery: %w", err)
+			}
+		}
 	}
 	for _, list := range lists {
 		gv, err := schema.ParseGroupVersion(list.GroupVersion)

@@ -174,17 +174,6 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			return ctrl.Result{}, nil
 		}
 
-		// If deletion is requested, skip creating output resources
-		if deploymentTemplate.ObjectMeta.DeletionTimestamp != nil {
-			logger.Info("Skipping output resource creation due to pending deletion.")
-			deploymentTemplate.Status.Operation = nil
-			err := r.Client.Status().Update(ctx, deploymentTemplate)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		}
-
 		logger.Info("Creating output resources.")
 
 		// Get outputResources from the response. A nil OutputResources field is
@@ -206,6 +195,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			newOutputResources[resource] = true
 		}
 
+		terminatingOutput := false
 		for _, outputResourceId := range outputResources {
 			resourceName, err := generateDeploymentResourceName(outputResourceId)
 			if err != nil {
@@ -225,20 +215,23 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				return ctrl.Result{}, err
 			}
 
-			// A historical inventory entry does not guarantee its tracker still exists.
-			if err := r.Client.Create(ctx, deploymentResource); err != nil && !apierrors.IsAlreadyExists(err) {
+			// Admission may reject a duplicate POST at quota before returning AlreadyExists.
+			existing := &radappiov1alpha3.DeploymentResource{}
+			if err := r.APIReader.Get(ctx, client.ObjectKeyFromObject(deploymentResource), existing); apierrors.IsNotFound(err) {
+				if err := r.Client.Create(ctx, deploymentResource); err != nil && !apierrors.IsAlreadyExists(err) {
+					return ctrl.Result{}, err
+				}
+			} else if err != nil {
 				return ctrl.Result{}, err
 			}
 			if err := r.recordOutputIdentity(ctx, deploymentTemplate, outputResourceId, false); err != nil {
 				if errors.Is(err, errOutputTrackerTerminating) {
-					// Cleanup may have removed the freshly deployed output. Redeploy after it drains.
-					deploymentTemplate.Status.Operation = nil
-					deploymentTemplate.Status.StatusHash = ""
-					deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
-					if err := r.Client.Status().Update(ctx, deploymentTemplate); err != nil {
+					// Retain every output before discarding the completed deployment result.
+					if err := r.recordOutputIdentity(ctx, deploymentTemplate, outputResourceId, true); err != nil {
 						return ctrl.Result{}, err
 					}
-					return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+					terminatingOutput = true
+					continue
 				}
 				return ctrl.Result{}, err
 			}
@@ -270,7 +263,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		// ObservedGeneration is the generation this operation submitted. If the spec changed since,
 		// leave the hash empty so the next reconcile deploys the current spec.
 		var hash string
-		if deploymentTemplate.Generation == deploymentTemplate.Status.ObservedGeneration {
+		if !terminatingOutput && deploymentTemplate.Generation == deploymentTemplate.Status.ObservedGeneration {
 			hash, err = computeHash(deploymentTemplate)
 			if err != nil {
 				return ctrl.Result{}, err
@@ -290,7 +283,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.OutputResources = outputResources
 		deploymentTemplate.Status.StatusHash = hash
-		if residualsPresent {
+		if residualsPresent || terminatingOutput {
 			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
 		} else {
 			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
@@ -301,7 +294,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			return ctrl.Result{}, err
 		}
 
-		if residualsPresent {
+		if residualsPresent || terminatingOutput {
 			// Requeue as a backstop; the Owns(&DeploymentResource{}) watch also
 			// wakes us up when DRs are removed.
 			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
@@ -338,13 +331,26 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 		}
 	}
 
-	// Never provision over outputs that a previous deployment is still deleting.
+	// Wait for active cleanup, but let edits remove resources blocking dependency-gated cleanup.
 	children := &radappiov1alpha3.DeploymentResourceList{}
 	if err := r.APIReader.List(ctx, children, client.InNamespace(deploymentTemplate.Namespace)); err != nil {
 		return ctrl.Result{}, err
 	}
+	ownedChildren := make([]radappiov1alpha3.DeploymentResource, 0, len(children.Items))
 	for _, child := range children.Items {
-		if isOwnedBy(child, deploymentTemplate) && child.DeletionTimestamp != nil {
+		if isOwnedBy(child, deploymentTemplate) {
+			ownedChildren = append(ownedChildren, child)
+		}
+	}
+	for _, child := range ownedChildren {
+		if child.DeletionTimestamp != nil {
+			dependent, err := checkForDeploymentResourceDependencies(&child, ownedChildren)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			if dependent != "" && child.Status.Operation == nil {
+				continue
+			}
 			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
 			if err := r.Client.Status().Update(ctx, deploymentTemplate); err != nil {
 				return ctrl.Result{}, err
