@@ -23,6 +23,14 @@ Follow the [GitHub Workflows instruction file](../../../../.github/instructions/
 
 These restrictions do not change the release pipelines, release tag requirements, snapshot artifacts, or main CLI `edge` publication. Cloud functional-test credential isolation is separate. Workflow conditions supplement, rather than replace, repository protections and registry authorization policies.
 
+### Deploy trusted cloud helpers before workflow activation
+
+Trusted helpers loaded from `main` must merge there before the workflows that import them. Include their local imports, actions, and tool dependencies in the prerequisite change. Helpers present only in a candidate or merge-group checkout cannot satisfy a checkout of `main`; rebasing onto an unmerged helper branch is not sufficient.
+
+Run `make test-cloud-test-helpers` with Node.js 24 for credential-free helper tests and offline prepared-base dependency checks. The target installs pinned yq automatically. The dependency checks load helper exports in a temporary base tree, check local-action and installer dependencies, and fail if required files are removed. Keep that explicit inventory current when helper imports or tool dependencies change. These checks do not verify workflow checkout selection, candidate isolation, or the activation job graph; tests accompanying workflow activation must cover those separately.
+
+Run `make test-cloud-test-helpers-native` with Node.js 24, OpenSSL, curl, Docker, and free localhost port 5000 to verify real TLS export. This separate target installs pinned yq and ORAS automatically; Docker is not required for `make test-cloud-test-helpers`. Both targets add their install directories to the test process's PATH in the same invocation, defaulting to `$HOME/.local/bin`; override `YQ_INSTALL_DIR` and `ORAS_INSTALL_DIR` for isolated installations. First-time tool installation requires network access. The native fixture removes only its own container and temporary files, verifies OCI bytes, and reproduces the failure without `--from-plain-http=false`; it does not contact Azure, GHCR, or ACR.
+
 ## Steps
 
 1. Find the workflow under `.github/workflows/` and identify any reusable workflows, Make targets, or scripts it calls.
