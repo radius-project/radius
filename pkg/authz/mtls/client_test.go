@@ -22,10 +22,14 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
+	"net/http/httptrace"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -338,6 +342,100 @@ func TestClientTransport_CertificateExpiresOnOpenConnection(t *testing.T) {
 			require.Equal(t, second.tlsCertificate(t).Certificate[0], <-presented)
 			require.Equal(t, 1, transport.openConns())
 		})
+	}
+}
+
+func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
+	for _, http2 := range []bool{false, true} {
+		for _, kind := range []string{"leaf", "intermediate", "root"} {
+			for _, renewed := range []bool{false, true} {
+				t.Run(fmt.Sprintf("http2=%t/%s/renewed=%t", http2, kind, renewed), func(t *testing.T) {
+					now := time.Now().UTC().Truncate(time.Second)
+					expires := now.Add(10 * time.Minute)
+					root := expiringCA(t, nil, now.Add(4*time.Hour))
+					if kind == "root" {
+						root = expiringCA(t, nil, expires)
+					}
+					issuer := root
+					if kind == "intermediate" {
+						issuer = expiringCA(t, &root, expires)
+					}
+					leafExpiry := now.Add(2 * time.Hour)
+					if kind == "leaf" {
+						leafExpiry = expires
+					}
+					first := issuer.issue(t, certOptions{dnsNames: componentSANs("applications-rp"), notAfter: leafExpiry}).tlsCertificate(t)
+					if kind == "intermediate" {
+						first.Certificate = append(first.Certificate, issuer.cert.Raw)
+					}
+					var served atomic.Pointer[tls.Certificate]
+					served.Store(&first)
+					srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						fmt.Fprint(w, r.RemoteAddr)
+					}))
+					srv.EnableHTTP2 = http2
+					srv.TLS = &tls.Config{
+						MinVersion: tls.VersionTLS12,
+						GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+							return served.Load(), nil
+						},
+					}
+					srv.StartTLS()
+					t.Cleanup(srv.Close)
+
+					dir := t.TempDir()
+					writeFiles(t, dir, root.issue(t, certOptions{dnsNames: componentSANs("ucp"), notAfter: now.Add(2 * time.Hour)}), root.pem)
+					transport, err := newClientTransport(authz.Options{Mode: authz.ModeEnforce, CertificateDirectory: dir, Namespace: testNamespace}, appsRPServerName)
+					require.NoError(t, err)
+					t.Cleanup(transport.CloseIdleConnections)
+					client := &http.Client{Transport: transport}
+					request := func() (bool, error) {
+						var reused bool
+						req, err := http.NewRequestWithContext(httptrace.WithClientTrace(t.Context(), &httptrace.ClientTrace{
+							GotConn: func(info httptrace.GotConnInfo) { reused = info.Reused },
+						}), http.MethodGet, srv.URL, nil)
+						require.NoError(t, err)
+						response, err := client.Do(req)
+						if err != nil {
+							return reused, err
+						}
+						defer response.Body.Close()
+						_, err = io.Copy(io.Discard, response.Body)
+						require.NoError(t, err)
+						require.Equal(t, http.StatusOK, response.StatusCode)
+						if http2 {
+							require.Equal(t, 2, response.ProtoMajor)
+						}
+						return reused, nil
+					}
+					reused, err := request()
+					require.NoError(t, err)
+					require.False(t, reused)
+					reused, err = request()
+					require.NoError(t, err)
+					require.True(t, reused, "keep a real TLS connection open across expiry")
+					transport.source.mu.Lock()
+					transport.source.now = func() time.Time { return now.Add(30 * time.Minute) }
+					transport.source.mu.Unlock()
+					if renewed {
+						nextRoot := expiringCA(t, nil, now.Add(4*time.Hour))
+						next := nextRoot.issue(t, certOptions{dnsNames: componentSANs("applications-rp"), notAfter: now.Add(2 * time.Hour)}).tlsCertificate(t)
+						served.Store(&next)
+						writeFiles(t, dir, nextRoot.issue(t, certOptions{dnsNames: componentSANs("ucp"), notAfter: now.Add(2 * time.Hour)}), nextRoot.pem)
+						changed, err := transport.source.Reload()
+						require.NoError(t, err)
+						require.True(t, changed)
+					}
+					reused, err = request()
+					if renewed {
+						require.NoError(t, err)
+						require.False(t, reused, "renewal must replace the expired peer connection")
+					} else {
+						require.ErrorContains(t, err, "certificate has expired")
+					}
+				})
+			}
+		}
 	}
 }
 

@@ -19,11 +19,11 @@ package mtls
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -70,16 +70,19 @@ func NewClientTransport(options authz.Options) (http.RoundTripper, error) {
 	return newClientTransport(options, "")
 }
 
-// clientTransport is an http.Transport that stops using a connection once the certificate
-// it presented is outside its validity period. The TLS handshake checks the certificate
-// only when a connection is opened, so without this a reused connection would outlive it.
+// clientTransport stops reusing connections outside the validity of the presented client
+// certificate or any certificate in the server's verified chains.
 type clientTransport struct {
 	*http.Transport
 	source *Source
 
-	mu sync.Mutex
-	// conns maps each open connection to the certificate it presented.
-	conns map[*trackedConn]*x509.Certificate
+	mu    sync.Mutex
+	conns map[*trackedConn]connectionValidity
+}
+
+type connectionValidity struct {
+	notBefore time.Time
+	notAfter  time.Time
 }
 
 // trackedConn is a connection that clientTransport stops tracking when it is closed.
@@ -114,7 +117,7 @@ func newClientTransport(options authz.Options, serverName string) (*clientTransp
 	t := &clientTransport{
 		Transport: http.DefaultTransport.(*http.Transport).Clone(),
 		source:    source,
-		conns:     map[*trackedConn]*x509.Certificate{},
+		conns:     map[*trackedConn]connectionValidity{},
 	}
 	// A proxy would tunnel the TLS connection without the client certificate, and
 	// internal calls never go through a proxy.
@@ -146,17 +149,27 @@ func newClientTransport(options authz.Options, serverName string) (*clientTransp
 			return nil, err
 		}
 
+		validity := connectionValidity{notBefore: leaf.NotBefore, notAfter: leaf.NotAfter}
+		for _, chain := range conn.ConnectionState().VerifiedChains {
+			for _, cert := range chain {
+				if cert.NotBefore.After(validity.notBefore) {
+					validity.notBefore = cert.NotBefore
+				}
+				if cert.NotAfter.Before(validity.notAfter) {
+					validity.notAfter = cert.NotAfter
+				}
+			}
+		}
 		t.mu.Lock()
-		t.conns[tracked] = leaf
+		t.conns[tracked] = validity
 		t.mu.Unlock()
 		return conn, nil
 	}
 	return t, nil
 }
 
-// RoundTrip implements http.RoundTripper. It first closes every connection whose presented
-// certificate is outside its validity period, so the request uses a new connection, which
-// presents the current certificate or fails with CertificateExpired.
+// RoundTrip closes connections whose client certificate or verified server chain is no
+// longer valid, forcing a fresh handshake with current material.
 func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	t.closeExpired()
 	return t.Transport.RoundTrip(req)
@@ -165,8 +178,9 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 func (t *clientTransport) closeExpired() {
 	var expired []*trackedConn
 	t.mu.Lock()
-	for conn, leaf := range t.conns {
-		if !t.source.isValid(leaf) {
+	now := t.source.now()
+	for conn, validity := range t.conns {
+		if now.Before(validity.notBefore) || now.After(validity.notAfter) {
 			expired = append(expired, conn)
 		}
 	}
