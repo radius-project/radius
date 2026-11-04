@@ -61,6 +61,16 @@ test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-insta
 test-azure-oidc-login: ## Tests cloud CI token request retries and Azure login
 	@node --test ./.github/scripts/azure-oidc-login_test.mjs
 
+.PHONY: test-cloud-test-helpers
+test-cloud-test-helpers: ## Tests cloud helpers and trusted-base bootstrap without credentials (requires Node.js and yq)
+	@node --test .github/scripts/cloud-test-helpers.test.mjs .github/scripts/cloud-test-bootstrap.test.mjs
+
+test: test-cloud-test-helpers
+
+.PHONY: test-cloud-test-helpers-native
+test-cloud-test-helpers-native: ## Tests TLS capture with pinned ORAS and a local Docker registry (requires Node.js, yq, OpenSSL and curl)
+	@node --test .github/scripts/cloud-test-artifacts.integration.test.mjs
+
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh

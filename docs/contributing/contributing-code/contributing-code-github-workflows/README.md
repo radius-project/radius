@@ -23,6 +23,14 @@ Follow the [GitHub Workflows instruction file](../../../../.github/instructions/
 
 These restrictions do not change the release pipelines, release tag requirements, snapshot artifacts, or main CLI `edge` publication. Cloud functional-test credential isolation is separate. Workflow conditions supplement, rather than replace, repository protections and registry authorization policies.
 
+### Deploy trusted cloud helpers before workflow activation
+
+Cloud credential isolation must land in two stages: merge the trusted `cloud-test-context.mjs` and `cloud-test-artifacts.mjs` helpers into `main` first, then rebase and merge the activation workflow ([#13134](https://github.com/radius-project/radius/pull/13134)). The activation checks out `refs/heads/main` for setup and local-registry creation, and the captured protected-main SHA for export, upload, and summary helpers. Helpers present only in a candidate or merge-group checkout cannot satisfy those imports. Rebasing onto an unmerged helper branch is not sufficient; the helper prerequisite must actually merge into `main` before activation is queued.
+
+The helper prerequisite does not enable publishing or change the active cloud workflow, authentication, permissions, or approval gates. It is independent of the existing [#13154](https://github.com/radius-project/radius/pull/13154) stack; do not insert it into that stack. The existing local-registry action, Azure login helper, and pinned ORAS installer already supply its remaining trusted dependencies.
+
+Run `make test-cloud-test-helpers` with Node.js 24 and yq for credential-free helper tests and the offline bootstrap regression. The latter uses an immutable activation dependency manifest and separate prepared-base and candidate trees: trusted imports, local actions, and installer dependencies must resolve from the base, and missing dependencies fail even when candidate helpers exist. It intentionally does not assert the future workflow's full job graph against the pre-activation workflow. Run `make test-cloud-test-helpers-native` with the pinned ORAS (`make install-oras`), yq, OpenSSL, curl, Docker, and free localhost port 5000 to verify real TLS export. The fixture removes only its own container and temporary files, verifies OCI bytes, and reproduces the failure without `--from-plain-http=false`; it does not contact Azure, GHCR, or ACR.
+
 ## Steps
 
 1. Find the workflow under `.github/workflows/` and identify any reusable workflows, Make targets, or scripts it calls.
