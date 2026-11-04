@@ -6,6 +6,7 @@ package authorization
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -77,6 +78,9 @@ func Inspection(runtime *PolicyRuntime, pathBase string) func(http.Handler) http
 				var request api.AccessCheckRequest
 				request, err = decodeAccessCheck(w, r)
 				if err == nil {
+					_, err = validateAccessCheck(scope, request)
+				}
+				if err == nil {
 					result, err = runtime.CheckAccess(identity, scope, request)
 				}
 			}
@@ -124,6 +128,9 @@ func decodeAccessCheck(w http.ResponseWriter, r *http.Request) (api.AccessCheckR
 		return api.AccessCheckRequest{}, errors.New("expected exactly one JSON request object")
 	}
 	request := api.AccessCheckRequest{}
+	if len(wire.Checks) == 0 || len(wire.Checks) > maxAccessChecks {
+		return request, fmt.Errorf("checks must contain between 1 and %d items", maxAccessChecks)
+	}
 	if wire.Principal != nil {
 		request.Principal = &api.Principal{
 			Type: wire.Principal.Type, Issuer: wire.Principal.Issuer,
