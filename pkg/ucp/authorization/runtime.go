@@ -129,10 +129,25 @@ func (r *PolicyRuntime) Ready() error {
 
 // Evaluate never returns decisions when policy is unavailable or stale.
 func (r *PolicyRuntime) Evaluate(identity Identity, checks []Check) ([]Decision, error) {
-	if err := r.Ready(); err != nil {
-		return nil, err
+	if r == nil {
+		return nil, ErrAuthorizationUnavailable
 	}
-	return r.cache.Evaluate(identity, checks)
+	r.mu.RLock()
+	lifetime := r.ctx
+	r.mu.RUnlock()
+	r.cache.mu.RLock()
+	value, asOf := r.cache.value, r.cache.asOf
+	r.cache.mu.RUnlock()
+	if lifetime == nil || lifetime.Err() != nil || value == nil || r.cache.clock.Since(asOf) >= PolicyMaxAge {
+		return nil, ErrAuthorizationUnavailable
+	}
+	decisions, err := value.Evaluate(identity, checks)
+	// Evaluation uses an immutable snapshot without holding refresh locks. Check
+	// that same snapshot's age and lifetime again before publishing any result.
+	if r.cache.clock.Since(asOf) >= PolicyMaxAge || lifetime.Err() != nil {
+		return nil, ErrAuthorizationUnavailable
+	}
+	return decisions, err
 }
 
 func (r *PolicyRuntime) operationContext(ctx context.Context) (context.Context, context.CancelFunc, error) {
