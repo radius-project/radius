@@ -109,6 +109,13 @@ func (f *fixture) record() *datamodel.AWSResource {
 	return rec
 }
 
+func (f *fixture) etag() string {
+	f.t.Helper()
+	_, etag, err := f.store.Get(f.t.Context(), f.id)
+	require.NoError(f.t, err)
+	return etag
+}
+
 func Test_Await_CreateSucceeds(t *testing.T) {
 	f := newFixture(t)
 	f.accept(records.OperationCreate)
@@ -331,6 +338,68 @@ func Test_Await_Redelivery(t *testing.T) {
 		again := f.run(v1.OperationPut)
 		require.Equal(t, first.Error, again.Error)
 		require.Equal(t, v1.ProvisioningStateFailed, again.ProvisioningState())
+	})
+
+	// The worker removed the record, then UCP stopped or failed to save the operation's result, so the operation is
+	// delivered again with no record. The result is read from Cloud Control by the request token.
+	t.Run("after a failed create removed the record", func(t *testing.T) {
+		f := newFixture(t)
+		f.cc.FailNext = "InvalidRequest"
+		f.accept(records.OperationCreate)
+		first := f.run(v1.OperationPut)
+		require.NotNil(t, first.Error)
+		require.Equal(t, v1.CodeInvalid, first.Error.Code)
+		require.Nil(t, f.record())
+
+		again := f.run(v1.OperationPut)
+		require.Equal(t, first.Error, again.Error)
+		require.Equal(t, v1.ProvisioningStateFailed, again.ProvisioningState())
+	})
+
+	t.Run("after a delete removed the record", func(t *testing.T) {
+		f := newFixture(t)
+		f.accept(records.OperationUpdate)
+		require.Nil(t, f.run(v1.OperationPut).Error)
+		out, err := f.cc.DeleteResource(t.Context(), &cloudcontrol.DeleteResourceInput{TypeName: aws.String(vpcType), Identifier: aws.String("id-1")})
+		require.NoError(t, err)
+		f.op = uuid.MustParse(aws.ToString(out.ProgressEvent.RequestToken))
+		require.NoError(t, f.store.DeleteIfUnchanged(t.Context(), f.id, f.etag()))
+
+		result := f.run(v1.OperationDelete)
+		require.Nil(t, result.Error)
+		require.False(t, result.Requeue)
+	})
+
+	t.Run("after a delete AWS failed, with no record", func(t *testing.T) {
+		f := newFixture(t)
+		f.cc.Put(vpcType, "id-1", map[string]any{"CidrBlock": "10.0.0.0/16"})
+		f.cc.FailNext = "ResourceConflict"
+		out, err := f.cc.DeleteResource(t.Context(), &cloudcontrol.DeleteResourceInput{TypeName: aws.String(vpcType), Identifier: aws.String("id-1")})
+		require.NoError(t, err)
+		f.op = uuid.MustParse(aws.ToString(out.ProgressEvent.RequestToken))
+
+		result := f.run(v1.OperationDelete)
+		require.NotNil(t, result.Error)
+		require.Equal(t, v1.CodeInvalid, result.Error.Code)
+		require.Contains(t, result.Error.Message, "ResourceConflict")
+	})
+
+	t.Run("with no record, polling fails, so the operation is retried", func(t *testing.T) {
+		f := newFixture(t)
+		f.cc.Errors["GetResourceRequestStatus"] = errors.New("throttled")
+		require.True(t, f.run(v1.OperationPut).Requeue)
+		require.True(t, f.run(v1.OperationDelete).Requeue)
+	})
+
+	t.Run("with no record, the worker stops", func(t *testing.T) {
+		f := newFixture(t)
+		f.cc.Errors["GetResourceRequestStatus"] = errors.New("canceled")
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		c, err := NewAwaitController(ctrl.Options{DatabaseClient: f.db}, ucp_aws.Clients{CloudControl: f.cc}, v1.OperationDelete)
+		require.NoError(t, err)
+		_, err = c.Run(ctx, &ctrl.Request{ResourceID: vpcID, OperationID: f.op})
+		require.Error(t, err)
 	})
 
 	t.Run("an old delete after the alias was created again", func(t *testing.T) {
