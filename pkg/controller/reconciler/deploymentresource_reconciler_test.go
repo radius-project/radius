@@ -30,10 +30,16 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
@@ -283,6 +289,127 @@ func Test_resourceWithinScope(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func Test_DeploymentResourceReconciler_KubernetesOutputDelete(t *testing.T) {
+	t.Parallel()
+
+	const outputID = "/planes/kubernetes/local/namespaces/workload/providers/core/ConfigMap/inventory-owned"
+	cases := []struct {
+		name            string
+		annotationID    string
+		inventoryID     string
+		resourceID      string
+		staleOwner      bool
+		missingOwner    bool
+		outputFinalizer bool
+		outputMissing   bool
+		deleteError     bool
+		wantDelete      bool
+	}{
+		{name: "existing child in template inventory", inventoryID: outputID, wantDelete: true},
+		{name: "recorded child after removal from inventory", annotationID: outputID, wantDelete: true},
+		{name: "untracked Kubernetes resource"},
+		{name: "changed resource id", annotationID: outputID, resourceID: "/planes/kubernetes/local/namespaces/workload/providers/core/ConfigMap/other"},
+		{name: "stale owner", annotationID: outputID, staleOwner: true},
+		{name: "missing owner", annotationID: outputID, missingOwner: true},
+		{name: "different cluster", inventoryID: "/planes/kubernetes/remote/namespaces/workload/providers/core/ConfigMap/inventory-owned", resourceID: "/planes/kubernetes/remote/namespaces/workload/providers/core/ConfigMap/inventory-owned"},
+		{name: "output finalizer", annotationID: outputID, outputFinalizer: true, wantDelete: true},
+		{name: "already deleted output", annotationID: outputID, outputMissing: true, wantDelete: true},
+		{name: "delete failure", annotationID: outputID, deleteError: true, wantDelete: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := t.Context()
+			s := runtime.NewScheme()
+			require.NoError(t, corev1.AddToScheme(s))
+			require.NoError(t, radappiov1alpha3.AddToScheme(s))
+			providerConfig, err := sdkclients.NewDefaultProviderConfig("integration").String()
+			require.NoError(t, err)
+			owner := makeDeploymentTemplate(types.NamespacedName{Namespace: "integration", Name: "inventory"}, "{}", providerConfig, nil)
+			owner.UID = "owner-uid"
+			if tc.inventoryID != "" {
+				owner.Status.OutputResources = []string{tc.inventoryID}
+			}
+			id := tc.resourceID
+			if id == "" {
+				id = outputID
+			}
+			child := makeDeploymentResource(types.NamespacedName{Namespace: owner.Namespace, Name: "inventory-owned"}, id)
+			child.Finalizers = []string{DeploymentResourceFinalizer}
+			child.Annotations = map[string]string{deploymentResourceOutputIDAnnotation: tc.annotationID}
+			child.OwnerReferences = []metav1.OwnerReference{{
+				APIVersion: radappiov1alpha3.GroupVersion.String(),
+				Kind:       deploymentTemplateKind,
+				Name:       owner.Name,
+				UID:        owner.UID,
+				Controller: new(true),
+			}}
+			if tc.staleOwner {
+				child.OwnerReferences[0].UID = "stale-uid"
+			}
+			output := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Namespace: "workload", Name: "inventory-owned"}}
+			if tc.outputFinalizer {
+				output.Finalizers = []string{"example.com/hold"}
+			}
+			mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{corev1.SchemeGroupVersion})
+			mapper.Add(corev1.SchemeGroupVersion.WithKind("ConfigMap"), meta.RESTScopeNamespace)
+			builder := fake.NewClientBuilder().WithScheme(s).WithRESTMapper(mapper).WithStatusSubresource(child).WithObjects(child)
+			if !tc.missingOwner {
+				builder.WithObjects(owner)
+			}
+			if !tc.outputMissing {
+				builder.WithObjects(output)
+			}
+			if tc.deleteError {
+				builder.WithInterceptorFuncs(interceptor.Funcs{
+					Delete: func(ctx context.Context, c k8sClient.WithWatch, obj k8sClient.Object, opts ...k8sClient.DeleteOption) error {
+						if obj.GetObjectKind().GroupVersionKind().Kind == "ConfigMap" {
+							return errors.New("delete denied")
+						}
+						return c.Delete(ctx, obj, opts...)
+					},
+				})
+			}
+			c := builder.Build()
+			mockDeploymentClient := sdkclients.NewMockResourceDeploymentsClient()
+			r := &DeploymentResourceReconciler{
+				Client:                    c,
+				EventRecorder:             record.NewFakeRecorder(10),
+				ResourceDeploymentsClient: mockDeploymentClient,
+			}
+			result, err := r.reconcileDelete(ctx, child)
+			if tc.deleteError {
+				require.ErrorContains(t, err, "delete denied")
+			} else {
+				require.NoError(t, err)
+			}
+			require.Empty(t, mockDeploymentClient.DeletedResourceIDs(), "Kubernetes outputs must not be sent to UCP")
+			actual := &corev1.ConfigMap{}
+			err = c.Get(ctx, k8sClient.ObjectKeyFromObject(output), actual)
+			if tc.wantDelete && !tc.outputFinalizer && !tc.deleteError {
+				require.True(t, apierrors.IsNotFound(err), "Kubernetes output should be deleted: %v", err)
+			} else {
+				require.NoError(t, err)
+			}
+			if tc.outputFinalizer {
+				require.NotNil(t, actual.DeletionTimestamp)
+				require.Positive(t, result.RequeueAfter)
+				require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
+				actual.Finalizers = nil
+				require.NoError(t, c.Update(ctx, actual))
+				_, err = r.reconcileDelete(ctx, child)
+				require.NoError(t, err)
+			}
+			if tc.deleteError {
+				require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
+			} else {
+				require.NotContains(t, child.Finalizers, DeploymentResourceFinalizer)
+			}
 		})
 	}
 }

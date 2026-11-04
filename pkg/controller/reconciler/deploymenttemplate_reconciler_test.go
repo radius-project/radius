@@ -989,6 +989,64 @@ func Test_DeploymentTemplateReconciler_NilOutputResourcesTriggersCleanup(t *test
 	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
 }
 
+func Test_DeploymentTemplateReconciler_KubernetesOutputCleanup(t *testing.T) {
+	for _, removeOutput := range []bool{false, true} {
+		name := "delete-template"
+		if removeOutput {
+			name = "remove-output"
+		}
+		t.Run(name, func(t *testing.T) {
+			ctx := t.Context()
+			_, mockDeploymentClient, c := SetupDeploymentTemplateTest(t)
+			namespace := "kubernetes-output-" + name
+			require.NoError(t, c.Create(ctx, &corev1.Namespace{Name: namespace}))
+			key := types.NamespacedName{Namespace: namespace, Name: "inventory"}
+			providerConfig, err := sdkclients.NewDefaultProviderConfig(namespace).String()
+			require.NoError(t, err)
+			template := makeDeploymentTemplate(key, "{}", providerConfig, nil)
+			require.NoError(t, c.Create(ctx, template))
+			status := waitForDeploymentTemplateStateUpdating(t, c, key, nil)
+
+			output := &corev1.ConfigMap{Name: "inventory-owned", Namespace: namespace, Data: map[string]string{"marker": "owned"}}
+			require.NoError(t, c.Create(ctx, output))
+			outputID := "/planes/kubernetes/local/namespaces/" + namespace + "/providers/core/ConfigMap/inventory-owned"
+			mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+				resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
+				require.True(t, ok)
+				resource.Properties.OutputResources = []*armdeployments.ResourceReference{{ID: new(outputID)}}
+				state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
+			})
+			waitForDeploymentTemplateStateReady(t, c, key)
+			childKey := types.NamespacedName{Namespace: namespace, Name: output.Name}
+			child := &radappiov1alpha3.DeploymentResource{}
+			require.NoError(t, c.Get(ctx, childKey, child))
+			require.Equal(t, outputID, child.Annotations[deploymentResourceOutputIDAnnotation])
+
+			require.NoError(t, c.Get(ctx, key, template))
+			if removeOutput {
+				template.Spec.Template = `{"resources":{}}`
+				require.NoError(t, c.Update(ctx, template))
+				status = waitForDeploymentTemplateStateUpdating(t, c, key, nil)
+				mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+					resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
+					require.True(t, ok)
+					resource.Properties.OutputResources = nil
+					state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
+				})
+				waitForDeploymentTemplateStateReady(t, c, key)
+			} else {
+				require.NoError(t, c.Delete(ctx, template))
+				waitForDeploymentTemplateStateDeleted(t, c, key)
+			}
+			require.Eventually(t, func() bool {
+				return apierrors.IsNotFound(c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: output.Name}, &corev1.ConfigMap{}))
+			}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "ConfigMap must be deleted")
+			waitForDeploymentResourceDeleted(t, c, childKey)
+			require.Empty(t, mockDeploymentClient.DeletedResourceIDs(), "Kubernetes outputs must not be sent to UCP")
+		})
+	}
+}
+
 func waitForDeploymentTemplateStateUpdating(t *testing.T, client k8sclient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentTemplateStatus {
 	ctx := t.Context()
 

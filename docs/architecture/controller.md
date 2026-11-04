@@ -48,6 +48,8 @@ Some reconcilers call back into Radius APIs using SDK clients configured with
 the current UCP connection. That is the main architectural bridge between the
 controller and the rest of the control plane.
 
+`DeploymentResourceReconciler` deletes Radius-scoped outputs through UCP. Local Kubernetes outputs are deleted through the Kubernetes client only when the owning `DeploymentTemplate` UID matches and the output ID is recorded in the template inventory or the child's `radapp.io/deployment-output-id` annotation. The annotation preserves the recorded identity when a redeploy removes an output from the template inventory. The controller retains the child finalizer until the Kubernetes object is gone, including when the object has its own finalizers. Its ClusterRole grants `get` and `delete` across resource types for this cleanup.
+
 ## Invariants And Constraints
 
 - Reconciler logic should stay idempotent.

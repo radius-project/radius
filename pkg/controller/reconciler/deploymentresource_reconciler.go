@@ -24,7 +24,9 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,9 +37,12 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 )
+
+const deploymentResourceOutputIDAnnotation = "radapp.io/deployment-output-id"
 
 // DeploymentResourceReconciler reconciles a DeploymentResource object.
 type DeploymentResourceReconciler struct {
@@ -206,8 +211,8 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 
 	// Only delete the referenced resource if this controller provisioned it for a DeploymentTemplate.
 	// A DeploymentResource is eligible for deletion when it is a controller-owned child of an existing
-	// DeploymentTemplate and its Spec.Id falls within that template's deployment scope. Skipping the
-	// delete otherwise avoids issuing a UCP delete for a resource the controller never created (for
+	// DeploymentTemplate and its Spec.Id falls within that template's deployment scope or is a
+	// recorded Kubernetes output. Skipping the delete otherwise avoids deleting a resource the controller never created (for
 	// example a DeploymentResource whose Spec.Id points outside its owning template).
 	ownerRef := metav1.GetControllerOf(deploymentResource)
 	eligible, err := r.deleteIsEligible(ctx, deploymentResource, ownerRef)
@@ -218,9 +223,9 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		// deleteIsEligible can return false for several reasons (no controller owner, owner not
 		// found, UID mismatch, unresolvable scope, or Spec.Id outside scope); the specific reason is
 		// logged within deleteIsEligible. Keep this message general so it is not misleading.
-		logger.Info("Skipping delete: DeploymentResource is not an eligible controller-owned child of a DeploymentTemplate within its scope.", "resourceId", deploymentResource.Spec.Id)
+		logger.Info("Skipping delete: DeploymentResource is not an eligible controller-owned child of a DeploymentTemplate.", "resourceId", deploymentResource.Spec.Id)
 		r.EventRecorder.Event(deploymentResource, corev1.EventTypeNormal, EventDeploymentResourceDeleteSkipped,
-			fmt.Sprintf("Skipping delete of %q: it is not an eligible controller-owned child of a DeploymentTemplate within the matching deployment scope", deploymentResource.Spec.Id))
+			fmt.Sprintf("Skipping delete of %q: it is not an eligible controller-owned child of a DeploymentTemplate within the matching deployment scope or recorded Kubernetes output inventory", deploymentResource.Spec.Id))
 
 		// Nothing to delete in UCP. Remove the finalizer so the object is not wedged in
 		// Terminating; the controller never provisioned the referenced resource.
@@ -255,6 +260,14 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	err = r.Client.Status().Update(ctx, deploymentResource)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	id, err := resources.ParseResource(deploymentResource.Spec.Id)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if id.FindScope(resources_kubernetes.PlaneTypeKubernetes) != "" {
+		return r.deleteKubernetesResource(ctx, deploymentResource, id)
 	}
 
 	deletePoller, err := r.startDeleteOperation(ctx, deploymentResource)
@@ -313,6 +326,32 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	return ctrl.Result{}, nil
 }
 
+func (r *DeploymentResourceReconciler) deleteKubernetesResource(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource, id resources.ID) (ctrl.Result, error) {
+	group, kind, namespace, name := resources_kubernetes.ToParts(id)
+	mapping, err := r.Client.RESTMapper().RESTMapping(schema.GroupKind{Group: group, Kind: kind})
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to resolve Kubernetes output resource %q: %w", id.String(), err)
+	}
+
+	resource := &unstructured.Unstructured{}
+	resource.SetGroupVersionKind(mapping.GroupVersionKind)
+	resource.SetNamespace(namespace)
+	resource.SetName(name)
+	if err := r.Client.Delete(ctx, resource); err != nil && !apierrors.IsNotFound(err) {
+		return ctrl.Result{}, fmt.Errorf("failed to delete Kubernetes output resource %q: %w", id.String(), err)
+	}
+
+	// A Kubernetes delete may only set a deletion timestamp when finalizers remain.
+	err = r.Client.Get(ctx, client.ObjectKeyFromObject(resource), resource)
+	if apierrors.IsNotFound(err) {
+		return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+	}
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to check Kubernetes output resource %q: %w", id.String(), err)
+	}
+	return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+}
+
 func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (sdkclients.Poller[sdkclients.ClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -331,10 +370,11 @@ func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context,
 	return nil, nil
 }
 
-// deleteIsEligible reports whether the controller should issue a UCP delete for deploymentResource.
+// deleteIsEligible reports whether the controller should delete the referenced resource.
 // A DeploymentResource is eligible only when it is controlled by a DeploymentTemplate that still
 // exists in the same namespace and the resource it references (Spec.Id) is within that template's
-// deployment scope. This keeps the controller from deleting a resource it did not provision, such as
+// deployment scope or is a recorded local Kubernetes output. This keeps the controller from
+// deleting a resource it did not provision, such as
 // a DeploymentResource whose Spec.Id points outside its owning template. It returns false (without an
 // error) when eligibility cannot be established so the caller can safely skip the delete.
 func (r *DeploymentResourceReconciler) deleteIsEligible(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource, ownerRef *metav1.OwnerReference) (bool, error) {
@@ -360,6 +400,30 @@ func (r *DeploymentResourceReconciler) deleteIsEligible(ctx context.Context, dep
 	// UID (for example a template that was deleted and recreated under the same name).
 	if owner.UID != ownerRef.UID {
 		logger.Info("Owning DeploymentTemplate UID does not match the owner reference.", "owner", ownerRef.Name)
+		return false, nil
+	}
+
+	id, err := resources.ParseResource(deploymentResource.Spec.Id)
+	if err != nil {
+		logger.Info("Unable to parse resource id for ownership check; skipping delete.", "resourceId", deploymentResource.Spec.Id, "error", err.Error())
+		return false, nil
+	}
+	if plane := id.FindScope(resources_kubernetes.PlaneTypeKubernetes); plane != "" {
+		if !strings.EqualFold(plane, resources_kubernetes.PlaneNameTODO) {
+			logger.Info("Kubernetes output belongs to a different cluster; skipping delete.", "resourceId", deploymentResource.Spec.Id)
+			return false, nil
+		}
+		// The annotation preserves output identity after a redeploy removes the ID from the
+		// template's current inventory. Existing children can use the template inventory.
+		if strings.EqualFold(deploymentResource.Annotations[deploymentResourceOutputIDAnnotation], id.String()) {
+			return true, nil
+		}
+		for _, outputID := range owner.Status.OutputResources {
+			if strings.EqualFold(outputID, id.String()) {
+				return true, nil
+			}
+		}
+		logger.Info("Kubernetes resource is not a recorded deployment output; skipping delete.", "resourceId", deploymentResource.Spec.Id)
 		return false, nil
 	}
 

@@ -223,6 +223,9 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				deploymentResource := &radappiov1alpha3.DeploymentResource{
 					Name:      resourceName,
 					Namespace: deploymentTemplate.Namespace,
+					Annotations: map[string]string{
+						deploymentResourceOutputIDAnnotation: outputResourceId,
+					},
 					Spec: radappiov1alpha3.DeploymentResourceSpec{
 						Id: outputResourceId,
 					},
