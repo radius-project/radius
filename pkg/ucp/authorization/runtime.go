@@ -163,20 +163,28 @@ type RequestEvaluation struct {
 // Disabled skips mapping/evaluation. Enforce is reported without decisions: the
 // observation-only request layer must reject it rather than partially enforce.
 // Unavailability returns no mode, including when a previously loaded mode exists.
-func (r *PolicyRuntime) EvaluateRequest(identity Identity, method, path string) (RequestEvaluation, error) {
+func (r *PolicyRuntime) EvaluateRequest(identity Identity, method, path string) (result RequestEvaluation, err error) {
 	if r == nil {
 		return RequestEvaluation{Generation: -1}, ErrAuthorizationUnavailable
 	}
 	r.mu.RLock()
-	defer r.mu.RUnlock()
+	lifetime := r.ctx
+	r.mu.RUnlock()
 	r.cache.mu.RLock()
-	defer r.cache.mu.RUnlock()
-	if r.ctx == nil || r.ctx.Err() != nil || r.cache.value == nil ||
-		r.cache.clock.Since(r.cache.asOf) >= PolicyMaxAge {
+	snapshot, asOf := r.cache.value, r.cache.asOf
+	r.cache.mu.RUnlock()
+	if lifetime == nil || lifetime.Err() != nil || snapshot == nil ||
+		r.cache.clock.Since(asOf) >= PolicyMaxAge {
 		return RequestEvaluation{Generation: -1}, ErrAuthorizationUnavailable
 	}
-	snapshot := r.cache.value
-	result := RequestEvaluation{
+	// Recheck the captured snapshot, not a newer cache timestamp, on every
+	// return path. Mapping and evaluation must not hold refresh locks.
+	defer func() {
+		if r.cache.clock.Since(asOf) >= PolicyMaxAge || lifetime.Err() != nil {
+			result, err = RequestEvaluation{Generation: -1}, ErrAuthorizationUnavailable
+		}
+	}()
+	result = RequestEvaluation{
 		Mode: *snapshot.policy.Settings.Properties.Mode, Generation: snapshot.Generation(),
 	}
 	if result.Mode != api.UserAuthorizationModeDryRun {
@@ -200,9 +208,6 @@ func (r *PolicyRuntime) EvaluateRequest(identity Identity, method, path string) 
 		return result, fmt.Errorf("AuthorizationIndeterminate: request requires additional trusted context or response checks")
 	}
 	result.Decisions, err = snapshot.Evaluate(identity, mapping.Checks)
-	if r.ctx.Err() != nil || r.cache.clock.Since(r.cache.asOf) >= PolicyMaxAge {
-		return RequestEvaluation{Generation: -1}, ErrAuthorizationUnavailable
-	}
 	if err != nil {
 		return result, fmt.Errorf("AuthorizationIndeterminate: target check could not be evaluated")
 	}
