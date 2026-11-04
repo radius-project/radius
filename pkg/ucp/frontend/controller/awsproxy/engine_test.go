@@ -1931,3 +1931,67 @@ func Test_Put_UncertainCreateWithWriteOnly(t *testing.T) {
 		})
 	}
 }
+
+// Test_Put_UncertainCreateWithWriteOnly_Fingerprints checks that a PUT that recovers a first create after a client token
+// conflict compares the template's write-only values with the fingerprints of the create AWS has.
+func Test_Put_UncertainCreateWithWriteOnly_Fingerprints(t *testing.T) {
+	original := map[string]any{"Size": "small", "Password": password}
+
+	// updated recovers the create with the template, finishes the update, and returns the patch UCP sent.
+	updated := func(t *testing.T, h *harness, template map[string]any) string {
+		t.Helper()
+		resp := h.put(credentialPath, template)
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"CreateResource", "GetResource", "UpdateResource"}, operations(calls))
+		records.Now = time.Now
+		h.finish()
+		return calls[2].Document
+	}
+
+	t.Run("an unchanged password is not sent", func(t *testing.T) {
+		h := acceptedCreate(t, original)
+		patch := updated(t, h, map[string]any{"Size": "large", "Password": password})
+		require.Contains(t, patch, "/Size")
+		require.NotContains(t, patch, "/Password")
+		require.Equal(t, password, h.cc.Resource(credentialType, "id-1")["Password"])
+	})
+
+	t.Run("a changed password is sent", func(t *testing.T) {
+		h := acceptedCreate(t, original)
+		patch := updated(t, h, map[string]any{"Size": "large", "Password": "rotated"})
+		require.Contains(t, patch, "/Password")
+		require.Equal(t, "rotated", h.cc.Resource(credentialType, "id-1")["Password"])
+	})
+
+	// AWS rejects a resend with a new password, so the record must keep the fingerprints of the create AWS has, or the
+	// next PUT with that password would not send it.
+	t.Run("a resend AWS rejected does not replace the fingerprints", func(t *testing.T) {
+		h := acceptedCreate(t, original)
+		template := map[string]any{"Size": "large", "Password": "rotated"}
+		h.cc.Errors["CreateResource"] = throttled()
+		require.Equal(t, http.StatusBadRequest, h.put(credentialPath, template).status)
+		delete(h.cc.Errors, "CreateResource")
+		h.cc.Calls()
+
+		patch := updated(t, h, template)
+		require.Contains(t, patch, "/Password")
+		require.Equal(t, "rotated", h.cc.Resource(credentialType, "id-1")["Password"])
+	})
+
+	// A resend whose outcome is unknown may be the create AWS has, or not, so UCP no longer knows which password AWS
+	// has, and sends it.
+	t.Run("a resend with an unknown outcome drops the fingerprints", func(t *testing.T) {
+		h := acceptedCreate(t, original)
+		template := map[string]any{"Size": "large", "Password": "rotated"}
+		h.cc.Errors["CreateResource"] = errors.New("connection reset")
+		require.Equal(t, http.StatusInternalServerError, h.put(credentialPath, template).status)
+		require.Nil(t, h.record(credentialPath).Properties.PendingFingerprints)
+		delete(h.cc.Errors, "CreateResource")
+		h.cc.Calls()
+
+		patch := updated(t, h, template)
+		require.Contains(t, patch, "/Password")
+		require.Equal(t, "rotated", h.cc.Resource(credentialType, "id-1")["Password"])
+	})
+}

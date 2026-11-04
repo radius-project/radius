@@ -599,6 +599,15 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 		// so the next deploy sends the create again with it and Cloud Control returns the first request instead of
 		// creating a second resource.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			switch {
+			case replay && ucp_aws.IsClientFault(err):
+				// AWS did nothing with this attempt, so the pending values still describe the create it may have.
+				restorePending(rec, previous)
+			case replay:
+				// AWS may have the create from this attempt or from an earlier one, so UCP cannot tell which write-only
+				// values it has.
+				rec.Properties.PendingFingerprints = nil
+			}
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
 		})
 		return ucp_aws.HandleAWSError(ctx, err)
