@@ -6,17 +6,22 @@ package authorization
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 	"testing/synctest"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/stretchr/testify/require"
+	"k8s.io/utils/clock"
+	clocktesting "k8s.io/utils/clock/testing"
 )
 
 func TestInspectionEveryMode(t *testing.T) {
@@ -124,7 +129,9 @@ func TestInspectionUnavailable(t *testing.T) {
 			result, err := runtime.WhoAmI(policyActor().Identity)
 			require.ErrorIs(t, err, ErrAuthorizationUnavailable)
 			require.Nil(t, result.Mode)
-			batch, err := runtime.CheckAccess(policyActor().Identity, "/", api.AccessCheckRequest{})
+			batch, err := runtime.CheckAccess(policyActor().Identity, "/", api.AccessCheckRequest{
+				Checks: []*api.AccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")}},
+			})
 			require.ErrorIs(t, err, ErrAuthorizationUnavailable)
 			require.Nil(t, batch.Mode)
 		}
@@ -136,6 +143,150 @@ func TestInspectionUnavailable(t *testing.T) {
 		require.ErrorIs(t, err, ErrAuthorizationUnavailable)
 		stop()
 	})
+}
+
+func TestInspectionSnapshotAvailabilityChanges(t *testing.T) {
+	for _, scenario := range []string{"expired", "refreshed after expiry", "cancelled"} {
+		t.Run(scenario, func(t *testing.T) {
+			clk := clocktesting.NewFakeClock(time.Now())
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			snapshot := testPolicySnapshot(t, 1)
+			runtime := &PolicyRuntime{ctx: ctx, cache: &PolicyCache{value: snapshot, asOf: clk.Now(), clock: clk}}
+			err := runtime.inspectPolicy(func(captured *PolicySnapshot) error {
+				require.Same(t, snapshot, captured)
+				require.True(t, runtime.mu.TryLock(), "inspection must not hold the runtime lock")
+				runtime.mu.Unlock()
+				require.True(t, runtime.cache.mu.TryLock(), "inspection must not block refresh")
+				defer runtime.cache.mu.Unlock()
+				if scenario == "cancelled" {
+					cancel()
+				} else {
+					clk.Step(PolicyMaxAge)
+					if scenario == "refreshed after expiry" {
+						runtime.cache.value = testPolicySnapshot(t, 2)
+						runtime.cache.asOf = clk.Now()
+					}
+				}
+				return nil
+			})
+			require.ErrorIs(t, err, ErrAuthorizationUnavailable)
+		})
+	}
+	for _, operation := range []string{"whoami", "checkAccess"} {
+		for _, scenario := range []string{"expired", "cancelled"} {
+			t.Run(operation+"/"+scenario, func(t *testing.T) {
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				calls := 0
+				clk := evaluationClock{WithTicker: clock.RealClock{}, since: func(time.Time) time.Duration {
+					calls++
+					if calls == 2 {
+						if scenario == "cancelled" {
+							cancel()
+						} else {
+							return PolicyMaxAge
+						}
+					}
+					return 0
+				}}
+				runtime := &PolicyRuntime{ctx: ctx, cache: &PolicyCache{value: testPolicySnapshot(t, 1), asOf: time.Now(), clock: clk}}
+				method, body, route := http.MethodGet, "", "whoAmI"
+				if operation == "checkAccess" {
+					method, body, route = http.MethodPost, `{"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`, "checkAccess"
+				}
+				request := httptest.NewRequest(method, "/providers/Radius.Core/"+route+"?api-version=2025-08-01-preview", strings.NewReader(body))
+				request = request.WithContext(context.WithValue(request.Context(), identityContextKey{}, policyActor().Identity))
+				response := httptest.NewRecorder()
+				Inspection(runtime, "")(http.NotFoundHandler()).ServeHTTP(response, request)
+				require.Equal(t, http.StatusServiceUnavailable, response.Code, response.Body.String())
+				require.Contains(t, response.Body.String(), "AuthorizationUnavailable")
+				require.NotContains(t, response.Body.String(), `"checks"`)
+				require.NotContains(t, response.Body.String(), `"principal"`)
+			})
+		}
+	}
+}
+
+func TestInspectionInputLimits(t *testing.T) {
+	snapshot := testPolicySnapshot(t, 1)
+	longPermission := "Test.Long/" + strings.Repeat("x", maxPermissionLength-len("Test.Long//read")) + "/read"
+	snapshot.evaluator.catalog.permissions[strings.ToLower(longPermission)] = longPermission
+	runtime := &PolicyRuntime{ctx: t.Context(), cache: &PolicyCache{value: snapshot, asOf: time.Now(), clock: clock.RealClock{}}}
+	for _, field := range []struct {
+		name  string
+		limit int
+		set   func(*api.AccessCheckRequest, *string, int)
+	}{
+		{"checks", maxAccessChecks, func(r *api.AccessCheckRequest, _ *string, n int) {
+			check := r.Checks[0]
+			r.Checks = make([]*api.AccessCheck, n)
+			for i := range r.Checks {
+				r.Checks[i] = check
+			}
+		}},
+		{"principal.issuer", maxPrincipalIssuerLength, func(r *api.AccessCheckRequest, _ *string, n int) { r.Principal.Issuer = to.Ptr(strings.Repeat("i", n)) }},
+		{"principal.subject", maxPrincipalSubjectLength, func(r *api.AccessCheckRequest, _ *string, n int) {
+			r.Principal.Subject = to.Ptr(strings.Repeat("s", n))
+		}},
+		{"principal.displayName", maxPrincipalDisplayNameLength, func(r *api.AccessCheckRequest, _ *string, n int) {
+			r.Principal.DisplayName = to.Ptr(strings.Repeat("\u754c", n))
+		}},
+		{"permission", maxPermissionLength, func(r *api.AccessCheckRequest, _ *string, n int) {
+			r.Checks[0].Permission = to.Ptr(longPermission + strings.Repeat("x", n-maxPermissionLength))
+		}},
+		{"target", maxAccessScopeLength, func(r *api.AccessCheckRequest, _ *string, n int) {
+			r.Checks[0].Target = to.Ptr("/planes/radius/" + strings.Repeat("t", n-len("/planes/radius/")))
+		}},
+		{"scope", maxAccessScopeLength, func(r *api.AccessCheckRequest, scope *string, n int) {
+			*scope = "/planes/radius/" + strings.Repeat("s", n-len("/planes/radius/"))
+			r.Checks[0].Target = scope
+		}},
+	} {
+		for _, above := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/above=%t", field.name, above), func(t *testing.T) {
+				request := api.AccessCheckRequest{
+					Principal: to.Ptr(testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-a", "other-group")),
+					Checks:    []*api.AccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")}},
+				}
+				scope, n := "/", field.limit
+				if above {
+					n++
+				}
+				field.set(&request, &scope, n)
+				result, err := runtime.CheckAccess(policyActor().Identity, scope, request)
+				if above {
+					require.ErrorContains(t, err, field.name)
+					require.Nil(t, result.Checks)
+					// Even an unconfigured runtime must reject oversized input
+					// before inspecting policy or trying to acquire its locks.
+					_, err = (*PolicyRuntime)(nil).CheckAccess(policyActor().Identity, scope, request)
+					require.ErrorContains(t, err, field.name)
+				} else {
+					require.NoError(t, err)
+					require.Len(t, result.Checks, len(request.Checks))
+				}
+				body, err := json.Marshal(request)
+				require.NoError(t, err)
+				pathScope := strings.TrimSuffix(scope, "/")
+				req := httptest.NewRequest(http.MethodPost, pathScope+"/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", strings.NewReader(string(body)))
+				req = req.WithContext(context.WithValue(req.Context(), identityContextKey{}, policyActor().Identity))
+				response := httptest.NewRecorder()
+				handlerRuntime := runtime
+				if above {
+					handlerRuntime = nil
+				}
+				Inspection(handlerRuntime, "")(http.NotFoundHandler()).ServeHTTP(response, req)
+				if above {
+					require.Equal(t, http.StatusBadRequest, response.Code, response.Body.String())
+					require.Contains(t, response.Body.String(), "InvalidRequestContent")
+					require.Contains(t, response.Body.String(), field.name)
+				} else {
+					require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+				}
+			})
+		}
+	}
 }
 
 func TestInspectionBatchGeneration(t *testing.T) {
@@ -173,6 +324,37 @@ func TestInspectionBatchGeneration(t *testing.T) {
 	})
 }
 
+func TestInspectionContractLimits(t *testing.T) {
+	data, err := os.ReadFile("../../../swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json")
+	require.NoError(t, err)
+	type schema struct {
+		MaxLength  int `json:"maxLength"`
+		Properties map[string]struct {
+			MaxItems  int `json:"maxItems"`
+			MaxLength int `json:"maxLength"`
+		} `json:"properties"`
+	}
+	var document struct {
+		Definitions map[string]schema `json:"definitions"`
+	}
+	require.NoError(t, json.Unmarshal(data, &document))
+	for _, field := range []struct {
+		model, property string
+		limit           int
+	}{
+		{"Principal", "issuer", maxPrincipalIssuerLength},
+		{"Principal", "subject", maxPrincipalSubjectLength},
+		{"Principal", "displayName", maxPrincipalDisplayNameLength},
+		{"AccessCheck", "target", maxAccessScopeLength},
+	} {
+		require.Equal(t, field.limit, document.Definitions[field.model].Properties[field.property].MaxLength, "%s.%s", field.model, field.property)
+	}
+	require.Equal(t, maxAccessChecks, document.Definitions["AccessCheckRequest"].Properties["checks"].MaxItems)
+	require.Equal(t, maxPermissionLength, document.Definitions["PermissionName"].MaxLength)
+	require.Equal(t, maxAccessScopeLength, document.Definitions["AuthorizationScope"].MaxLength)
+	require.Equal(t, maxAccessScopeLength-1, document.Definitions["AuthorizationScopePath"].MaxLength)
+}
+
 func TestInspectionBootstrapWarning(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		store := newTestPolicyStore(t, inmemory.NewClient(), false)
@@ -207,6 +389,7 @@ func TestInspectionHTTPValidation(t *testing.T) {
 			{"scope invalid", "POST", "/bad/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", valid, 400},
 			{"spoof groups", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", `{"groups":["admins"],"checks":[]}`, 400},
 			{"nested groups", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", `{"principal":{"groups":["admins"]},"checks":[]}`, 400},
+			{"oversize principal type", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", `{"principal":{"type":"` + strings.Repeat("x", 1024) + `","issuer":"cluster","subject":"other"},"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`, 400},
 			{"unknown check field", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", `{"checks":[{"groups":["admins"]}]}`, 400},
 			{"empty", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", `{"checks":[]}`, 400},
 			{"null", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", `null`, 400},

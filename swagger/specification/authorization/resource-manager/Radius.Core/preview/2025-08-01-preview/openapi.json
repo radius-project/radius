@@ -1275,7 +1275,8 @@
         },
         "target": {
           "type": "string",
-          "description": "The concrete target resource or scope ID."
+          "description": "The concrete target resource or scope ID, up to 2048 characters including the leading slash.",
+          "maxLength": 2048
         }
       },
       "required": [
@@ -1293,8 +1294,9 @@
         },
         "checks": {
           "type": "array",
-          "description": "The checks to evaluate.",
+          "description": "The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with its own policy generation.",
           "minItems": 1,
+          "maxItems": 100,
           "items": {
             "$ref": "#/definitions/AccessCheck"
           }
@@ -1429,12 +1431,14 @@
     },
     "AuthorizationScope": {
       "type": "string",
-      "description": "An installation, plane, resource group, or supported resource ID. Inheritance follows the ID hierarchy, never resource references. Supported resources are Radius.Core environments, recipePacks, applications and Applications.Core environments and applications. UCP validates the scope's topology and supported type using ARM's case-insensitive ID rules; the string constraint only validates path syntax.",
+      "description": "An installation, plane, resource group, or supported resource ID, up to 2048 characters including the leading slash. Inheritance follows the ID hierarchy, never resource references. Supported resources are Radius.Core environments, recipePacks, applications and Applications.Core environments and applications. UCP validates the scope's topology and supported type using ARM's case-insensitive ID rules; the string constraint only validates path syntax.",
+      "maxLength": 2048,
       "pattern": "^(/|/[^/\\s*]+(/[^/\\s*]+)*)$"
     },
     "AuthorizationScopePath": {
       "type": "string",
       "description": "A scope ID as a URI path prefix, without the leading slash. Resource properties and IDs always retain their leading slash. Installation operations have separate paths.",
+      "maxLength": 2047,
       "pattern": "^[^/\\s*]+(/[^/\\s*]+)*$"
     },
     "AuthorizationSettingsProperties": {
@@ -1647,7 +1651,8 @@
     },
     "PermissionName": {
       "type": "string",
-      "description": "An explicit catalog permission such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.",
+      "description": "An explicit catalog permission, up to 256 characters, such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.",
+      "maxLength": 256,
       "pattern": "^[^*/\\s]+(/[^*/\\s]+){2,}$"
     },
     "PolicyChange": {
@@ -1752,8 +1757,9 @@
         },
         "issuer": {
           "type": "string",
-          "description": "The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller.",
+          "description": "The trusted identity system, including its trust domain, up to 256 characters. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller.",
           "minLength": 1,
+          "maxLength": 256,
           "x-ms-mutability": [
             "read",
             "create"
@@ -1761,8 +1767,9 @@
         },
         "subject": {
           "type": "string",
-          "description": "The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.",
+          "description": "The identity within the issuer, up to 512 characters to accommodate Kubernetes service-account names and namespaces. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.",
           "minLength": 1,
+          "maxLength": 512,
           "x-ms-mutability": [
             "read",
             "create"
@@ -1770,7 +1777,8 @@
         },
         "displayName": {
           "type": "string",
-          "description": "An optional mutable label that is never used to match principals."
+          "description": "An optional mutable label, up to 128 characters, that is never used to match principals.",
+          "maxLength": 128
         }
       },
       "required": [
@@ -1926,6 +1934,7 @@
     "RoleDefinitionScope": {
       "type": "string",
       "description": "The installation, a plane, or a resource group. Role definitions cannot be created beneath individual resources.",
+      "maxLength": 2048,
       "pattern": "^(/|/[^/\\s*]+(/[^/\\s*]+)*)$"
     },
     "RoleType": {
@@ -2036,6 +2045,7 @@
       "description": "Filter by the changed policy's scope.",
       "required": false,
       "type": "string",
+      "maxLength": 2048,
       "pattern": "^(/|/[^/\\s*]+(/[^/\\s*]+)*)$",
       "x-ms-parameter-location": "method"
     },
@@ -2077,6 +2087,7 @@
       "description": "The plane, resource-group, or supported-resource ID without a leading or trailing slash, for example planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging. Use the installation operations for scope /.",
       "required": true,
       "type": "string",
+      "maxLength": 2047,
       "pattern": "^[^/\\s*]+(/[^/\\s*]+)*$",
       "x-ms-parameter-location": "method",
       "x-ms-skip-url-encoding": true
@@ -2095,6 +2106,7 @@
       "description": "The plane or resource-group ID without a leading or trailing slash, for example planes/radius/local/resourceGroups/team-a. Use the installation operations for scope /.",
       "required": true,
       "type": "string",
+      "maxLength": 2047,
       "pattern": "^[^/\\s*]+(/[^/\\s*]+)*$",
       "x-ms-parameter-location": "method",
       "x-ms-skip-url-encoding": true
