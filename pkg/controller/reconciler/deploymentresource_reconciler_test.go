@@ -26,15 +26,20 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	fakediscovery "k8s.io/client-go/discovery/fake"
+	"k8s.io/client-go/rest"
+	k8stesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -300,6 +305,7 @@ func Test_DeploymentResourceReconciler_KubernetesOutputDelete(t *testing.T) {
 	cases := []struct {
 		name            string
 		annotationID    string
+		recordedID      string
 		inventoryID     string
 		resourceID      string
 		staleOwner      bool
@@ -310,15 +316,17 @@ func Test_DeploymentResourceReconciler_KubernetesOutputDelete(t *testing.T) {
 		wantDelete      bool
 	}{
 		{name: "existing child in template inventory", inventoryID: outputID, wantDelete: true},
-		{name: "recorded child after removal from inventory", annotationID: outputID, wantDelete: true},
+		{name: "recorded child after removal from inventory", recordedID: outputID, wantDelete: true},
+		{name: "forged annotation", annotationID: outputID},
 		{name: "untracked Kubernetes resource"},
-		{name: "changed resource id", annotationID: outputID, resourceID: "/planes/kubernetes/local/namespaces/workload/providers/core/ConfigMap/other"},
-		{name: "stale owner", annotationID: outputID, staleOwner: true},
-		{name: "missing owner", annotationID: outputID, missingOwner: true},
+		{name: "changed resource id", recordedID: outputID, resourceID: "/planes/kubernetes/local/namespaces/workload/providers/core/ConfigMap/other"},
+		{name: "changed id still in inventory", recordedID: "/planes/kubernetes/local/namespaces/workload/providers/core/ConfigMap/other", inventoryID: outputID},
+		{name: "stale owner", recordedID: outputID, staleOwner: true},
+		{name: "missing owner", recordedID: outputID, missingOwner: true},
 		{name: "different cluster", inventoryID: "/planes/kubernetes/remote/namespaces/workload/providers/core/ConfigMap/inventory-owned", resourceID: "/planes/kubernetes/remote/namespaces/workload/providers/core/ConfigMap/inventory-owned"},
-		{name: "output finalizer", annotationID: outputID, outputFinalizer: true, wantDelete: true},
-		{name: "already deleted output", annotationID: outputID, outputMissing: true, wantDelete: true},
-		{name: "delete failure", annotationID: outputID, deleteError: true, wantDelete: true},
+		{name: "output finalizer", recordedID: outputID, outputFinalizer: true, wantDelete: true},
+		{name: "already deleted output", recordedID: outputID, outputMissing: true, wantDelete: true},
+		{name: "delete failure", recordedID: outputID, deleteError: true, wantDelete: true},
 	}
 
 	for _, tc := range cases {
@@ -341,7 +349,8 @@ func Test_DeploymentResourceReconciler_KubernetesOutputDelete(t *testing.T) {
 			}
 			child := makeDeploymentResource(types.NamespacedName{Namespace: owner.Namespace, Name: "inventory-owned"}, id)
 			child.Finalizers = []string{DeploymentResourceFinalizer}
-			child.Annotations = map[string]string{deploymentResourceOutputIDAnnotation: tc.annotationID}
+			child.Annotations = map[string]string{"radapp.io/deployment-output-id": tc.annotationID}
+			child.Status.ProvisionedResourceID = tc.recordedID
 			child.OwnerReferences = []metav1.OwnerReference{{
 				APIVersion: radappiov1alpha3.GroupVersion.String(),
 				Kind:       deploymentTemplateKind,
@@ -412,6 +421,97 @@ func Test_DeploymentResourceReconciler_KubernetesOutputDelete(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_DeploymentResourceReconciler_RemovedOutputAPI(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name           string
+		discoveryError bool
+		apiPresent     bool
+	}{
+		{name: "removed API"},
+		{name: "discovery failure", discoveryError: true},
+		{name: "stale mapping", apiPresent: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := t.Context()
+			s := runtime.NewScheme()
+			require.NoError(t, radappiov1alpha3.AddToScheme(s))
+			child := makeDeploymentResource(types.NamespacedName{Namespace: "test", Name: "output"},
+				"/planes/kubernetes/local/namespaces/test/providers/example.com/Widget/output")
+			child.Finalizers = []string{DeploymentResourceFinalizer}
+			c := fake.NewClientBuilder().WithScheme(s).WithObjects(child).Build()
+			d := &fakediscovery.FakeDiscovery{Fake: &k8stesting.Fake{}}
+			if tc.apiPresent {
+				d.Resources = []*metav1.APIResourceList{{
+					GroupVersion: "example.com/v1",
+					APIResources: []metav1.APIResource{{Name: "widgets", Kind: "Widget"}},
+				}}
+			}
+			if tc.discoveryError {
+				d.PrependReactor("get", "resource", func(k8stesting.Action) (bool, runtime.Object, error) {
+					return true, nil, errors.New("discovery unavailable")
+				})
+			}
+			r := &DeploymentResourceReconciler{Client: c, Discovery: d}
+			id, err := resources.ParseResource(child.Spec.Id)
+			require.NoError(t, err)
+			_, err = r.deleteKubernetesResource(ctx, child, id)
+			if tc.apiPresent || tc.discoveryError {
+				require.Error(t, err)
+				require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
+			} else {
+				require.NoError(t, err)
+				require.Empty(t, child.Finalizers)
+			}
+		})
+	}
+}
+
+func Test_DeploymentResource_OutputIdentityStatusSubresource(t *testing.T) {
+	SkipWithoutEnvironment(t)
+	ctx := t.Context()
+	c, err := k8sClient.New(config, k8sClient.Options{Scheme: scheme})
+	require.NoError(t, err)
+	namespace := "protected-output-identity"
+	require.NoError(t, c.Create(ctx, &corev1.Namespace{Name: namespace}))
+	require.NoError(t, c.Create(ctx, &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{Name: "resource-editor", Namespace: namespace},
+		Rules: []rbacv1.PolicyRule{{
+			APIGroups: []string{"radapp.io"},
+			Resources: []string{"deploymentresources"},
+			Verbs:     []string{"get", "create", "update", "delete"},
+		}},
+	}))
+	require.NoError(t, c.Create(ctx, &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: "resource-editor", Namespace: namespace},
+		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "Role", Name: "resource-editor"},
+		Subjects:   []rbacv1.Subject{{Kind: "User", Name: "deployment-resource-editor"}},
+	}))
+	callerConfig := rest.CopyConfig(config)
+	callerConfig.Impersonate.UserName = "deployment-resource-editor"
+	caller, err := k8sClient.New(callerConfig, k8sClient.Options{Scheme: scheme})
+	require.NoError(t, err)
+	child := makeDeploymentResource(types.NamespacedName{Namespace: namespace, Name: "forged"}, "untrusted")
+	child.Status.ProvisionedResourceID = "forged-on-create"
+	require.Eventually(t, func() bool {
+		err = caller.Create(ctx, child)
+		return err == nil
+	}, time.Second*10, time.Millisecond*100, "wait for RBAC propagation")
+	require.Empty(t, child.Status.ProvisionedResourceID, "normal create must not persist provenance")
+	child.Status.ProvisionedResourceID = "forged-on-update"
+	require.NoError(t, caller.Update(ctx, child))
+	require.Empty(t, child.Status.ProvisionedResourceID, "normal update must not persist provenance")
+	child.Status.ProvisionedResourceID = "forged-via-status"
+	require.True(t, apierrors.IsForbidden(caller.Status().Update(ctx, child)), "resource access must not confer status access")
+	child.Status.ProvisionedResourceID = "controller-recorded"
+	require.NoError(t, c.Status().Update(ctx, child))
+	child.Status.ProvisionedResourceID = "forged-on-update"
+	require.NoError(t, caller.Update(ctx, child))
+	require.Equal(t, "controller-recorded", child.Status.ProvisionedResourceID)
 }
 
 func waitForDeploymentResourceStateReady(t *testing.T, client k8sClient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentResourceStatus {

@@ -43,6 +43,9 @@ import (
 
 // DeploymentTemplateReconciler reconciles a DeploymentTemplate object.
 type DeploymentTemplateReconciler struct {
+	// APIReader reads output identities without waiting for the informer cache.
+	APIReader client.Reader
+
 	// Client is the Kubernetes client.
 	Client client.Client
 
@@ -223,9 +226,6 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				deploymentResource := &radappiov1alpha3.DeploymentResource{
 					Name:      resourceName,
 					Namespace: deploymentTemplate.Namespace,
-					Annotations: map[string]string{
-						deploymentResourceOutputIDAnnotation: outputResourceId,
-					},
 					Spec: radappiov1alpha3.DeploymentResourceSpec{
 						Id: outputResourceId,
 					},
@@ -239,10 +239,13 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 					// Create the DeploymentResource
 					err = r.Client.Create(ctx, deploymentResource)
-					if err != nil {
+					if err != nil && !apierrors.IsAlreadyExists(err) {
 						return ctrl.Result{}, err
 					}
 				}
+			}
+			if err := r.recordOutputIdentity(ctx, deploymentTemplate, outputResourceId); err != nil {
+				return ctrl.Result{}, err
 			}
 		}
 
@@ -250,6 +253,9 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			if _, ok := newOutputResources[resource]; !ok {
 				// Resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
 
+				if err := r.recordOutputIdentity(ctx, deploymentTemplate, resource); err != nil {
+					return ctrl.Result{}, err
+				}
 				logger.Info("Deleting resource.", "resourceId", resource)
 				resourceName, err := generateDeploymentResourceName(resource)
 				if err != nil {
@@ -565,6 +571,29 @@ func ParseDeploymentScopeFromProviderConfig(providerConfig any) (string, error) 
 	}
 
 	return config.Deployments.Value.Scope, nil
+}
+
+func (r *DeploymentTemplateReconciler) recordOutputIdentity(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, outputID string) error {
+	name, err := generateDeploymentResourceName(outputID)
+	if err != nil {
+		return err
+	}
+	child := &radappiov1alpha3.DeploymentResource{}
+	if err := r.APIReader.Get(ctx, client.ObjectKey{Namespace: owner.Namespace, Name: name}, child); err != nil {
+		return client.IgnoreNotFound(err)
+	}
+	if !isOwnedBy(*child, owner) || child.Spec.Id != outputID {
+		return fmt.Errorf("deployment output %q does not match its owned DeploymentResource", outputID)
+	}
+	if child.Status.ProvisionedResourceID != "" {
+		if child.Status.ProvisionedResourceID != outputID {
+			return fmt.Errorf("deployment output %q conflicts with recorded identity", outputID)
+		}
+		return nil
+	}
+	base := child.DeepCopy()
+	child.Status.ProvisionedResourceID = outputID
+	return r.Client.Status().Patch(ctx, child, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{}))
 }
 
 func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1alpha3.DeploymentTemplate) bool {

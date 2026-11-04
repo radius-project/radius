@@ -23,10 +23,12 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,10 +44,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const deploymentResourceOutputIDAnnotation = "radapp.io/deployment-output-id"
-
 // DeploymentResourceReconciler reconciles a DeploymentResource object.
 type DeploymentResourceReconciler struct {
+	// Discovery confirms API removal before abandoning a Kubernetes output.
+	Discovery discovery.DiscoveryInterface
+
 	// Client is the Kubernetes client.
 	Client client.Client
 
@@ -330,6 +333,27 @@ func (r *DeploymentResourceReconciler) deleteKubernetesResource(ctx context.Cont
 	group, kind, namespace, name := resources_kubernetes.ToParts(id)
 	mapping, err := r.Client.RESTMapper().RESTMapping(schema.GroupKind{Group: group, Kind: kind})
 	if err != nil {
+		if meta.IsNoMatchError(err) && r.Discovery != nil {
+			_, lists, discoveryErr := r.Discovery.ServerGroupsAndResources()
+			if discoveryErr != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to confirm Kubernetes output API removal: %w", discoveryErr)
+			}
+			found := false
+			for _, list := range lists {
+				gv, parseErr := schema.ParseGroupVersion(list.GroupVersion)
+				if parseErr != nil {
+					return ctrl.Result{}, fmt.Errorf("invalid discovered group version: %w", parseErr)
+				}
+				for _, resource := range list.APIResources {
+					if gv.Group == group && resource.Kind == kind {
+						found = true
+					}
+				}
+			}
+			if !found {
+				return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+			}
+		}
 		return ctrl.Result{}, fmt.Errorf("failed to resolve Kubernetes output resource %q: %w", id.String(), err)
 	}
 
@@ -413,13 +437,12 @@ func (r *DeploymentResourceReconciler) deleteIsEligible(ctx context.Context, dep
 			logger.Info("Kubernetes output belongs to a different cluster; skipping delete.", "resourceId", deploymentResource.Spec.Id)
 			return false, nil
 		}
-		// The annotation preserves output identity after a redeploy removes the ID from the
-		// template's current inventory. Existing children can use the template inventory.
-		if strings.EqualFold(deploymentResource.Annotations[deploymentResourceOutputIDAnnotation], id.String()) {
-			return true, nil
+		// Never fall back to another output when a recorded identity no longer matches spec.
+		if recordedID := deploymentResource.Status.ProvisionedResourceID; recordedID != "" {
+			return recordedID == id.String(), nil
 		}
 		for _, outputID := range owner.Status.OutputResources {
-			if strings.EqualFold(outputID, id.String()) {
+			if outputID == id.String() {
 				return true, nil
 			}
 		}

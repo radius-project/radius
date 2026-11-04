@@ -48,7 +48,11 @@ Some reconcilers call back into Radius APIs using SDK clients configured with
 the current UCP connection. That is the main architectural bridge between the
 controller and the rest of the control plane.
 
-`DeploymentResourceReconciler` deletes Radius-scoped outputs through UCP. Local Kubernetes outputs are deleted through the Kubernetes client only when the owning `DeploymentTemplate` UID matches and the output ID is recorded in the template inventory or the child's `radapp.io/deployment-output-id` annotation. The annotation preserves the recorded identity when a redeploy removes an output from the template inventory. The controller retains the child finalizer until the Kubernetes object is gone, including when the object has its own finalizers. Its ClusterRole grants `get` and `delete` across resource types for this cleanup.
+`DeploymentResourceReconciler` deletes Radius-scoped outputs through UCP. Local Kubernetes outputs are deleted through the Kubernetes client only when the owning `DeploymentTemplate` UID matches and `spec.id` exactly matches the child's controller-recorded `status.provisionedResourceID`. The template controller records this identity through the status subresource and backfills older children from its output inventory before removing outputs on redeploy. An unrecorded child can use the template's current inventory, but a recorded mismatch is never authorized through that fallback. Caller-writable annotations are not used as provenance.
+
+The controller retains the child finalizer until the Kubernetes object is gone, including when the object has its own finalizers. If discovery cannot map an output's kind, a successful fresh discovery must confirm the API is absent before cleanup can complete; discovery failures remain retryable.
+
+Generic templates can provision arbitrary built-in or custom Kubernetes resource types, including across namespaces and at cluster scope. The controller's ClusterRole therefore grants `get` and `delete` across resource types for cleanup, but does not add wildcard create, update, patch, list, or watch permissions. This is a privileged capability: deployments must restrict writes to `deploymentresources/status` and `deploymenttemplates/status` to trusted controllers, independently of access to the ordinary resources. Ordinary create/update requests cannot set or overwrite status provenance. A fixed resource allowlist would change which template outputs Radius supports rather than safely implementing generic cleanup.
 
 ## Invariants And Constraints
 

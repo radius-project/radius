@@ -62,6 +62,7 @@ rules:
   - watch
   - list
   - get
+# Templates may own arbitrary built-in and custom outputs; status provenance gates cleanup.
 - apiGroups:
   - "*"
   resources:

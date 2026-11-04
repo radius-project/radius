@@ -71,6 +71,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	// Set up DeploymentTemplateReconciler.
 	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&DeploymentTemplateReconciler{
+		APIReader:                 mgr.GetAPIReader(),
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
 		EventRecorder:             mgr.GetEventRecorderFor("deploymenttemplate-controller"),
@@ -1020,10 +1021,15 @@ func Test_DeploymentTemplateReconciler_KubernetesOutputCleanup(t *testing.T) {
 			childKey := types.NamespacedName{Namespace: namespace, Name: output.Name}
 			child := &radappiov1alpha3.DeploymentResource{}
 			require.NoError(t, c.Get(ctx, childKey, child))
-			require.Equal(t, outputID, child.Annotations[deploymentResourceOutputIDAnnotation])
+			require.Equal(t, outputID, child.Status.ProvisionedResourceID)
 
 			require.NoError(t, c.Get(ctx, key, template))
 			if removeOutput {
+				// Simulate a child created before protected output identities were introduced.
+				child.Status.ProvisionedResourceID = ""
+				require.NoError(t, c.Status().Update(ctx, child))
+				output.Finalizers = []string{"example.com/hold"}
+				require.NoError(t, c.Update(ctx, output))
 				template.Spec.Template = `{"resources":{}}`
 				require.NoError(t, c.Update(ctx, template))
 				status = waitForDeploymentTemplateStateUpdating(t, c, key, nil)
@@ -1033,6 +1039,15 @@ func Test_DeploymentTemplateReconciler_KubernetesOutputCleanup(t *testing.T) {
 					resource.Properties.OutputResources = nil
 					state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
 				})
+				waitForDeploymentTemplateStateReadyPendingCleanup(t, c, key)
+				require.NoError(t, c.Get(ctx, childKey, child))
+				require.Equal(t, outputID, child.Status.ProvisionedResourceID, "legacy identity must survive inventory replacement")
+				require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
+				require.Eventually(t, func() bool {
+					return c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: output.Name}, output) == nil && output.DeletionTimestamp != nil
+				}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval)
+				output.Finalizers = nil
+				require.NoError(t, c.Update(ctx, output))
 				waitForDeploymentTemplateStateReady(t, c, key)
 			} else {
 				require.NoError(t, c.Delete(ctx, template))
