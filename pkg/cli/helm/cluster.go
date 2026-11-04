@@ -512,10 +512,6 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if !reuseValues {
 		storedValues = nil
 	}
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
-		return err
-	}
-
 	output.LogInfo("Upgrading Radius...")
 	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(ctx, helmAction, clusterOptions.Radius, kubeContext)
 	if err != nil {
@@ -529,6 +525,10 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		if err != nil {
 			return err
 		}
+	}
+
+	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
+		return err
 	}
 
 	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)

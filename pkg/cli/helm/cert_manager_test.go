@@ -365,6 +365,8 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 
 	options := NewDefaultClusterOptions()
 	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
+	options.Contour.Disabled = true
+	expectChartPull(t, mockHelmClient, radiusChartRef(options), &chart.Chart{})
 	err := impl.InstallRadius(t.Context(), options, "test-context")
 	require.ErrorContains(t, err, "v"+CertManagerMinimumVersion)
 }

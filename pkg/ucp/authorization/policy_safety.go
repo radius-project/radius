@@ -384,7 +384,8 @@ func applyPolicyMutationWithAuthority(ctx context.Context, current, authority *P
 				if !strings.EqualFold(*old.RoleDefinitionID, roleID) || oldKey != principal {
 					return fail(fmt.Errorf("RoleAssignmentImmutable: %s", id))
 				}
-				if reflect.DeepEqual(old.Description, p.Description) &&
+				if *old.ManagedBy.Kind != api.AssignmentManagementKindBootstrap &&
+					reflect.DeepEqual(old.Description, p.Description) &&
 					reflect.DeepEqual(old.Principal.DisplayName, p.Principal.DisplayName) {
 					return policy, nil, false, nil
 				}
@@ -471,12 +472,6 @@ func applyPolicyMutationWithAuthority(ctx context.Context, current, authority *P
 		operation = api.PolicyChangeOperationUpdate
 		change.Before = &api.PolicySnapshot{AuthorizationSettings: policy.Settings.Properties}
 		policy.Settings.Properties = mutation.Settings
-		if mutation.Settings.Mode != nil && *mutation.Settings.Mode == api.UserAuthorizationModeEnforce {
-			policy.Assignments = slices.DeleteFunc(policy.Assignments, func(assignment api.RoleAssignmentResource) bool {
-				return assignment.Properties.ManagedBy != nil && assignment.Properties.ManagedBy.Kind != nil &&
-					*assignment.Properties.ManagedBy.Kind == api.AssignmentManagementKindBootstrap
-			})
-		}
 		change.After = &api.PolicySnapshot{AuthorizationSettings: mutation.Settings}
 		highImpact = true
 	default:

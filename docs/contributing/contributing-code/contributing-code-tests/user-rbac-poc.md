@@ -56,6 +56,8 @@ bash hack/user-rbac/poc.sh test
 
 `test` initializes Radius authorization, creates the bootstrap administrator, grants permanent installation-wide administration to `poc-admins`, and creates the test fixtures. It runs API, CLI, and Bicep scenarios and leaves enforcement enabled. The identities and broad API-entry binding are test setup; the bootstrap itself uses Radius's permission-checked initialization API. Normal `rad install` does not yet perform this user-RBAC bootstrap.
 
+Enabling enforcement preserves the protected bootstrap administrator. An authorized imperative PUT to its existing assignment ID with the same role and principal promotes it to a permanent assignment; unchanged descriptive metadata does not skip promotion. Deployment-owned assignments cannot promote it. The kit's last-permanent-administrator check still protects the `poc-admins` assignment until another permanent administrator exists.
+
 For an existing, initialized kit, repeat setup with:
 
 ```sh

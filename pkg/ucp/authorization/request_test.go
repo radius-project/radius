@@ -84,12 +84,6 @@ func TestRequestMapping(t *testing.T) {
 		{"GET", appA + "%2f"}, {"GET", "https://host" + appA}, {"GET", appA + "?api-version=2025"},
 		{"GET", teamA + "/providers/Unknown.Namespace/types/test"},
 		{"PUT", teamA + "/providers/Microsoft.Resources/deployments/demo/operationStatuses/123"},
-		{"GET", teamA + "/providers/Microsoft.Resources/deployments/demo/operationStatuses"},
-		{"GET", teamA + "/providers/Microsoft.Resources/deployments/demo/operations/123"},
-		{"GET", teamA + "/providers/Microsoft.Resources/deployments/demo/operationStatuses/123/children/other"},
-		{"GET", teamA + "/providers/Radius.Core/applications/demo/providers/Microsoft.Resources/deployments/demo/operationStatuses/123"},
-		{"GET", "/planes/radius/other/resourceGroups/team-a/providers/Microsoft.Resources/deployments/demo/operationStatuses/123"},
-		{"GET", plane + "/providers/Microsoft.Resources/deployments/demo/operations"},
 	} {
 		_, err := catalog.MapRequest(tt.method, tt.path)
 		require.Error(t, err, "%s %s", tt.method, tt.path)

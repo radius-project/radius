@@ -51,7 +51,7 @@ func testRuntime(t *testing.T) (*Runtime, http.Handler, *int) {
 	})
 	h := r.Middleware(next)
 	require.Equal(t, http.StatusCreated, call(t, h, "admin", nil, http.MethodPost, initializePath, nil).Code)
-	// Bootstrap is temporary; install a permanent group before enabling.
+	// Install a permanent group in addition to the protected bootstrap administrator.
 	require.Equal(t, http.StatusOK, call(t, h, "admin", nil, http.MethodPut,
 		"/providers/Radius.Core/roleAssignments/permanent", assignmentBody("radius-administrator", "group", "admins")).Code)
 	return r, h, &writes
@@ -114,9 +114,8 @@ func TestModesPolicyProtectionAndRevocation(t *testing.T) {
 	require.NoError(t, err)
 	value, err := policy.Policy()
 	require.NoError(t, err)
-	for _, assignment := range value.Assignments {
-		require.NotEqual(t, api.AssignmentManagementKindBootstrap, *assignment.Properties.ManagedBy.Kind)
-	}
+	require.NotEmpty(t, value.Assignments)
+	require.Equal(t, api.AssignmentManagementKindBootstrap, *value.Assignments[0].Properties.ManagedBy.Kind)
 	event, err := r.Store.AccessChange(t.Context(), value.Generation)
 	require.NoError(t, err)
 	require.Equal(t, "admin", *event.Properties.Principal.Subject)
@@ -138,6 +137,34 @@ func TestBootstrapAndProvenance(t *testing.T) {
 	r.Options.AcceptIncompleteHistory = false
 	response := call(t, h, "admin", nil, http.MethodPut, settingsPath, map[string]any{"properties": map[string]string{"mode": "Enforce"}})
 	require.Contains(t, response.Body.String(), "DryRunHistoryIncomplete")
+}
+
+func TestBootstrapAdministratorPromotion(t *testing.T) {
+	t.Parallel()
+	r, h, _ := testRuntime(t)
+	setMode(t, h, "Enforce")
+	before, err := r.Store.LoadPolicy(t.Context(), -1)
+	require.NoError(t, err)
+	policy, err := before.Policy()
+	require.NoError(t, err)
+	require.NotEmpty(t, policy.Assignments)
+	bootstrap := policy.Assignments[0]
+	require.Equal(t, api.AssignmentManagementKindBootstrap, *bootstrap.Properties.ManagedBy.Kind)
+	body := assignmentBody("radius-administrator", "user", "admin")
+	require.Equal(t, http.StatusForbidden, call(t, h, "mallory", nil, http.MethodPut, *bootstrap.ID, body).Code)
+	require.Equal(t, http.StatusOK, call(t, h, "admin", nil, http.MethodPut, *bootstrap.ID, body).Code)
+	after, err := r.Store.LoadPolicy(t.Context(), -1)
+	require.NoError(t, err)
+	require.Equal(t, before.Generation()+1, after.Generation())
+	promoted, err := after.Policy()
+	require.NoError(t, err)
+	require.Len(t, promoted.Assignments, len(policy.Assignments))
+	require.Equal(t, api.AssignmentManagementKindImperative, *promoted.Assignments[0].Properties.ManagedBy.Kind)
+	event, err := r.Store.AccessChange(t.Context(), after.Generation())
+	require.NoError(t, err)
+	require.True(t, *event.Properties.HighImpact)
+	require.Equal(t, api.AssignmentManagementKindBootstrap, *event.Properties.PolicyChange.Before.RoleAssignment.ManagedBy.Kind)
+	require.Equal(t, api.AssignmentManagementKindImperative, *event.Properties.PolicyChange.After.RoleAssignment.ManagedBy.Kind)
 }
 
 func TestPreflightAndEffectivePatch(t *testing.T) {
