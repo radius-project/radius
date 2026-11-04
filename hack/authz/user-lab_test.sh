@@ -83,10 +83,11 @@ rejected([], "Set KUBEBUILDER_ASSETS", KUBEBUILDER_ASSETS="/nonexistent")
 rejected([], "fixture compile failure", LAB_COMPILE_FAIL="true")
 rejected([], "fixture startup failure", LAB_CHILD_FAIL="true")
 
-for stop in ("quit", "eof", signal.SIGTERM, signal.SIGINT):
+for stop in ("quit", "eof", signal.SIGTERM, signal.SIGINT, "group-int"):
     process = subprocess.Popen(
         ["bash", script, "DryRun"], stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        start_new_session=True,
     )
     try:
         deadline = time.monotonic() + 10
@@ -107,10 +108,12 @@ for stop in ("quit", "eof", signal.SIGTERM, signal.SIGINT):
         elif stop == "eof":
             process.stdin.close()
             process.stdin = None
+        elif stop == "group-int":
+            os.killpg(process.pid, signal.SIGINT)
         else:
             process.send_signal(stop)
         stdout, stderr = process.communicate(timeout=10)
-        assert process.returncode == {"quit": 0, "eof": 0, signal.SIGINT: 130, signal.SIGTERM: 143}[stop], stderr
+        assert process.returncode == {"quit": 0, "eof": 0, signal.SIGINT: 130, signal.SIGTERM: 143, "group-int": 130}[stop], stderr
         assert "TEST-ONLY-PRIVATE" not in stdout + stderr
         assert not lab.exists(), "launcher left private artifacts"
         try:
