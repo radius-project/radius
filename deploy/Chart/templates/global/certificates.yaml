@@ -77,7 +77,7 @@ spec:
     - digital signature
     - server auth
     - client auth
-  # One SAN only: the CA is name-constrained to <namespace>.svc.
+  # One SAN for compatibility with future CA name constraints on <namespace>.svc.
   dnsNames:
     - {{ $component }}.{{ $ns }}.svc
   issuerRef:
