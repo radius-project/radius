@@ -177,12 +177,9 @@ test-build-summary: ## Tests the build job summary rendering shared by the build
 	@bash ./.github/scripts/build-summary_test.sh
 
 .PHONY: test-publishing-isolation
-test-publishing-isolation: ## Tests publishing boundaries without credentials (requires Node.js, yq and OpenSSL)
-	@node --test .github/scripts/cloud-test-artifacts.test.mjs
-
-.PHONY: test-publishing-isolation-native
-test-publishing-isolation-native: ## Tests TLS capture with pinned ORAS and a local Docker registry (requires Node.js, yq, OpenSSL and curl)
-	@node --test .github/scripts/cloud-test-artifacts.integration.test.mjs
+test-publishing-isolation: install-yq ## Tests activation workflow boundaries without credentials (requires Node.js and OpenSSL; installs pinned yq)
+	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
+		node --test .github/scripts/cloud-test-artifacts.test.mjs
 
 .PHONY: test-capture-release-image-digests
 test-capture-release-image-digests: ## Tests production release image digest capture
