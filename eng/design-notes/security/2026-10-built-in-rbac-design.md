@@ -383,7 +383,7 @@ Role assignments are new `Radius.Core/roleAssignments` ARM-style extension resou
 
 - If GitOps created an assignment, only the same GitOps source can change or delete it. Anyone else gets `ManagedByConflict`.
 - An admin can override with `rad auth assignment delete --take-ownership` (API: `?takeOwnership=true`). Radius logs the override.
-- `Bootstrap` assignments can be changed only through [installation settings](#turning-rbac-on).
+- `Bootstrap` assignments are managed through [installation settings](#turning-rbac-on), except that an authorized imperative `PUT` may promote an unchanged root `radius-administrator` assignment to permanent ownership. This requires `roleAssignments/write` on the existing assignment and server-verified `Imperative` provenance. The assignment ID, scope, role, principal, and creator stay unchanged; the change records a `highImpact` history event. GitOps and deployments cannot promote it. Deleting or retargeting a bootstrap grant remains forbidden.
 
 #### Piece 3: Policy store
 
@@ -491,13 +491,13 @@ Resource group lists are filtered the same way.
 
 These rules run in UCP on every role or assignment change from any client, in addition to the permission check.
 
-| Rule                                    | What it does                                                                                                                                                                                                                  |
-|-----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Keep at least one admin                 | There must always be at least one `radius-administrator` assignment at `/` to a user or group. Temporary bootstrap assignments do not count. A change that would remove the last one fails with `LastAdministratorProtected`. |
-| No giving out what you do not have      | To assign role R at scope S, you must already have each permission in R at S, **or** be an `access-administrator` or `radius-administrator` there. Otherwise, the request fails with `PrivilegeEscalationDenied`.             |
-| No growing a role you do not fully have | Unless you are an Access Administrator or Radius Administrator, you can add a permission to a custom role only if you already have that permission everywhere the role can be assigned.                                       |
-| Assign only where allowed               | An assignment's scope must be in the role's `assignableScopes`.                                                                                                                                                               |
-| Respect ownership                       | See [who owns an assignment](#role-assignments).                                                                                                                                                                              |
+| Rule                                    | What it does                                                                                                                                                                                                                                                                                                                                            |
+|-----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Keep at least one admin                 | Once a permanent `radius-administrator` assignment at `/` to a user or group exists, no change may remove the last one; it fails with `LastAdministratorProtected`. Bootstrap and workload assignments do not count as permanent admins. A bootstrap-only installation may accept normally authorized additive changes and promote its bootstrap admin. |
+| No giving out what you do not have      | To assign role R at scope S, you must already have each permission in R at S, **or** be an `access-administrator` or `radius-administrator` there. Otherwise, the request fails with `PrivilegeEscalationDenied`.                                                                                                                                       |
+| No growing a role you do not fully have | Unless you are an Access Administrator or Radius Administrator, you can add a permission to a custom role only if you already have that permission everywhere the role can be assigned.                                                                                                                                                                 |
+| Assign only where allowed               | An assignment's scope must be in the role's `assignableScopes`.                                                                                                                                                                                                                                                                                         |
+| Respect ownership                       | See [who owns an assignment](#role-assignments).                                                                                                                                                                                                                                                                                                        |
 
 **Access Administrator can grant admin**, as in Azure. Radius makes it visible:
 
