@@ -126,8 +126,11 @@ jobs:
         # Ubuntu provides jq and GNU timeout; keep these optional for make test.
         run: make test-cluster-diagnostics
 
+      - name: Install cloud helper test tools
+        run: make install-yq install-oras
+
       - name: Test native cloud helper TLS capture
-        run: make install-yq install-oras test-cloud-test-helpers-native
+        run: make test-cloud-test-helpers-native
 
       - name: Run make test (unit tests)
         env:
