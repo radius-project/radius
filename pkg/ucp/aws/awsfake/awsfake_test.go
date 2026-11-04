@@ -221,3 +221,24 @@ func Test_LostResponse(t *testing.T) {
 	_, err = cc.UpdateResource(t.Context(), &cloudcontrol.UpdateResourceInput{TypeName: aws.String("AWS::S3::Bucket"), Identifier: aws.String("assets"), PatchDocument: aws.String(`[]`)})
 	require.NoError(t, err)
 }
+
+func Test_AppendArrayItem(t *testing.T) {
+	c := NewCloudControl()
+	c.Put(vpc, "id", map[string]any{"Spec": map[string]any{"List": []any{"a"}}})
+	for _, path := range []string{"/Spec/List/-", "/Spec/List/2"} {
+		_, err := c.UpdateResource(t.Context(), &cloudcontrol.UpdateResourceInput{
+			TypeName: aws.String(vpc), Identifier: aws.String("id"),
+			PatchDocument: aws.String(`[{"op":"add","path":"` + path + `","value":"x"}]`),
+		})
+		require.NoError(t, err, path)
+	}
+	require.Equal(t, map[string]any{"Spec": map[string]any{"List": []any{"a", "x", "x"}}}, c.Resource(vpc, "id"))
+
+	// An array inside another array's item cannot be replaced in its parent.
+	c.Put(vpc, "nested", map[string]any{"Outer": []any{map[string]any{"List": []any{}}}})
+	_, err := c.UpdateResource(t.Context(), &cloudcontrol.UpdateResourceInput{
+		TypeName: aws.String(vpc), Identifier: aws.String("nested"),
+		PatchDocument: aws.String(`[{"op":"add","path":"/Outer/0/List/-","value":"x"}]`),
+	})
+	require.Error(t, err)
+}
