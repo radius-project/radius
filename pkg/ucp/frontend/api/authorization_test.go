@@ -6,7 +6,6 @@ package api
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"io"
 	"net"
@@ -241,6 +240,9 @@ func TestServiceDryRunRequests(t *testing.T) {
 	events := logs.FilterMessage("User authorization request").FilterField(zap.String("permission", "Microsoft.Resources/deployments/write")).All()
 	require.Len(t, events, 1)
 	require.Equal(t, "wouldDeny", events[0].ContextMap()["result"])
+	for _, event := range logs.FilterMessage("Forwarding request to plane").All() {
+		require.Contains(t, event.ContextMap(), "resourceId", "downstream logging retains resource context")
+	}
 	encodedLogs, err := json.Marshal(logs.All())
 	require.NoError(t, err)
 	require.NotContains(t, string(encodedLogs), "do-not-log")
@@ -285,13 +287,12 @@ func TestServiceDryRunRequests(t *testing.T) {
 func TestServiceProtectedMutationsEveryMode(t *testing.T) {
 	t.Parallel()
 	caFile, certificate := frontendProxyCertificate(t, "front-proxy-client")
-	leaf, err := x509.ParseCertificate(certificate.Certificate[0])
-	require.NoError(t, err)
 	for _, mode := range []authapi.UserAuthorizationMode{
 		authapi.UserAuthorizationModeDisabled, authapi.UserAuthorizationModeDryRun, authapi.UserAuthorizationModeEnforce,
 	} {
 		t.Run(string(mode), func(t *testing.T) {
-			options := frontendRequestOptions(t, "")
+			const pathBase = "/apis/api.ucp.dev/v1alpha3"
+			options := frontendRequestOptions(t, pathBase)
 			options.Config.Server.TLSCertificateDirectory = t.TempDir()
 			options.Config.CallerAuthentication = &authorization.RequestHeaderOptions{
 				CAFile: caFile, AllowedNames: []string{"front-proxy-client"}, KubernetesIssuer: "kubernetes:test-cluster",
@@ -305,29 +306,97 @@ func TestServiceProtectedMutationsEveryMode(t *testing.T) {
 			require.NoError(t, err)
 			for _, active := range []*authorization.PolicyRuntime{nil, runtime} {
 				options.UserAuthorization = active
-				server, err := NewService(options).Initialize(t.Context())
+				core, logs := observer.New(zap.InfoLevel)
+				ctx := logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core)))
+				server, err := NewService(options).Initialize(ctx)
 				require.NoError(t, err)
+				listener := httptest.NewUnstartedServer(server.Handler)
+				listener.Config.BaseContext = func(net.Listener) context.Context { return ctx }
+				listener.TLS = server.TLSConfig
+				listener.StartTLS()
+				defer listener.Close()
+				transport := listener.Client().Transport.(*http.Transport).Clone()
+				defer transport.CloseIdleConnections()
+				transport.TLSClientConfig.Certificates = []tls.Certificate{certificate}
+				client := &http.Client{Transport: transport}
+				assertPrivateEvents := func() {
+					t.Helper()
+					for _, event := range logs.FilterMessage("User authorization request").All() {
+						fields := event.ContextMap()
+						require.NotContains(t, fields, "resourceId")
+						encoded, err := json.Marshal(fields)
+						require.NoError(t, err)
+						for _, private := range []string{"private-assignment-id", "private-definition-id"} {
+							require.NotContains(t, strings.ToLower(string(encoded)), private)
+						}
+					}
+				}
+				send := func(method, target, subject, overrideHeader, override string) (int, string) {
+					t.Helper()
+					query := "?api-version=2025-08-01-preview"
+					if overrideHeader == "_method" {
+						query += "&_method=" + override
+					}
+					request, err := http.NewRequest(method, listener.URL+pathBase+target+query, strings.NewReader(`{"properties":{}}`))
+					require.NoError(t, err)
+					if subject != "" {
+						request.Header.Set("X-Remote-User", subject)
+					}
+					if overrideHeader != "" && overrideHeader != "_method" {
+						request.Header.Set(overrideHeader, override)
+					}
+					response, err := client.Do(request)
+					require.NoError(t, err)
+					defer response.Body.Close()
+					body, err := io.ReadAll(response.Body)
+					require.NoError(t, err)
+					return response.StatusCode, string(body)
+				}
 				for _, subject := range []string{"alice", "bob", ""} {
 					for _, method := range []string{http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete} {
 						for _, target := range []string{
 							"/providers/Radius.Core/authorizationSettings/default",
-							"/planes/radius/local/providers/Radius.Core/roleDefinitions/test",
-							"/planes/radius/local/resourcegroups/team-a/providers/Radius.Core/roleAssignments/test",
-							"/planes/azure/local/providers/Radius.Core/roleAssignments/test",
+							"/planes/radius/local/providers/Radius.Core/roleDefinitions/private-definition-id",
+							"/planes/radius/local/resourcegroups/team-a/providers/Radius.Core/roleAssignments/private-assignment-id",
+							"/planes/azure/local/providers/Radius.Core/roleAssignments/private-assignment-id",
 							"/planes/radius/local/providers/System.Authorization/policyObjects/test",
+							"/planes/radius/local/providers%2FRadius.Core%2FroleAssignments%2Fprivate-assignment-id",
+							"/planes/radius/local/providers/%52adius%2eCore/role%41ssignments%2fprivate-assignment-id",
+							"/planes/radius/local/providers//Radius.Core//roleAssignments/private-assignment-id",
+							"/planes/radius/local/providers/Radius.Core/roleDefinitions/private-definition-id/",
+							"/Planes/radius/local/providers/RADIUS.CORE/ROLEASSIGNMENTS/private-assignment-id",
 						} {
-							request := httptest.NewRequest(method, target+"?api-version=2025-08-01-preview", strings.NewReader(`{"properties":{}}`))
-							request.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{leaf}}
-							if subject != "" {
-								request.Header.Set("X-Remote-User", subject)
+							for _, overrideHeader := range []string{"", "X-HTTP-Method-Override", "X-HTTP-Method", "X-Method-Override", "_method"} {
+								logs.TakeAll()
+								status, body := send(method, target, subject, overrideHeader, http.MethodGet)
+								expected := http.StatusServiceUnavailable
+								if subject == "" {
+									expected = http.StatusUnauthorized
+								}
+								require.Equal(t, expected, status, "%s %s: %s", method, target, body)
+								require.Len(t, logs.FilterMessage("User authorization request").All(), 1)
+								require.Zero(t, logs.FilterMessage("Forwarding request to plane").Len())
+								assertPrivateEvents()
 							}
-							response := httptest.NewRecorder()
-							server.Handler.ServeHTTP(response, request)
-							expected := http.StatusServiceUnavailable
-							if subject == "" {
-								expected = http.StatusUnauthorized
-							}
-							require.Equal(t, expected, response.Code, response.Body.String())
+						}
+					}
+				}
+				// Overrides are ignored in both directions. A read cannot become a
+				// policy mutation, and the same ordinary handler response is kept.
+				for _, target := range []string{
+					"/planes/radius/local/providers/Radius.Core/roleAssignments/private-assignment-id",
+					"/planes/radius/local/providers/Radius.Core/roleDefinitions/private-definition-id",
+				} {
+					for _, method := range []string{http.MethodGet, http.MethodHead, http.MethodOptions} {
+						logs.TakeAll()
+						status, body := send(method, target, "alice", "", "")
+						assertPrivateEvents()
+						for _, overrideHeader := range []string{"X-HTTP-Method-Override", "X-HTTP-Method", "X-Method-Override", "_method"} {
+							logs.TakeAll()
+							overriddenStatus, overriddenBody := send(method, target, "alice", overrideHeader, http.MethodPut)
+							require.Equal(t, status, overriddenStatus)
+							require.Equal(t, body, overriddenBody)
+							assertPrivateEvents()
 						}
 					}
 				}

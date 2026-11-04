@@ -72,8 +72,12 @@ func ObserveRequests(runtime *PolicyRuntime, pathBase string) func(http.Handler)
 					if !decision.Allowed {
 						outcome = "wouldDeny"
 					}
+					target := decision.Target
+					if protectedTarget(target) {
+						target = "[redacted]"
+					}
 					logger.Info("User authorization request", append(fields,
-						"result", outcome, "permission", decision.Permission, "target", decision.Target)...)
+						"result", outcome, "permission", decision.Permission, "target", target)...)
 				}
 			}
 			next.ServeHTTP(w, r)
@@ -95,10 +99,14 @@ func protectedMutation(method, path string) bool {
 	if method == http.MethodGet || method == http.MethodHead || method == http.MethodOptions {
 		return false
 	}
+	return protectedTarget(path)
+}
+
+func protectedTarget(path string) bool {
 	// Match namespace/type pairs anywhere in the path, including extension
 	// resources and proxy paths. Do not rely on successful catalog mapping:
 	// malformed, unknown, and private store targets must not bypass the guard.
-	parts := strings.Split(strings.ToLower(path), "/")
+	parts := strings.FieldsFunc(strings.ToLower(path), func(r rune) bool { return r == '/' })
 	for i := 0; i+1 < len(parts); i++ {
 		if parts[i] != "providers" {
 			continue
