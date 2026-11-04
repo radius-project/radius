@@ -52,7 +52,7 @@ func Test_CreateAWSResourceInvalidRegion(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewCreateOrUpdateAWSResource(testOptions.ControllerOptions(), awsClients)
+	awsController, err := newTestPutController(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
@@ -106,7 +106,7 @@ func Test_CreateAWSResource_DescribeTypeError(t *testing.T) {
 		},
 	})
 
-	awsController, err := NewCreateOrUpdateAWSResource(testOptions.ControllerOptions(), ucp_aws.Clients{
+	awsController, err := newTestPutController(testOptions.ControllerOptions(), ucp_aws.Clients{
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	})
