@@ -438,6 +438,8 @@ requiredChecks(request):
 | `properties.connections.*.source` pointing to a Radius resource                                                           | `<sourceType>/connect/action`                                                                      |
 | A property in a user-defined type marked with a new `x-radius-reference` schema extension                                 | `<referencedType>/read`                                                                            |
 
+Legacy recipe secret-store checks cover `recipeConfig.terraform.authentication.git.pat.{host}.secret`, `recipeConfig.terraform.providers.{name}[].secrets.{key}.source`, `recipeConfig.bicep.authentication.{host}.secret`, and `recipeConfig.envSecrets.{name}.source`. Plain `recipeConfig.env` strings are not resource references. Present references must be nonempty resource IDs of the expected type; malformed values do not bypass the checks.
+
 Connection sources can also be URLs or cloud resource IDs. URLs do not identify Radius resources and add no Radius reference check. Azure resource IDs and Azure/AWS UCP resource IDs require `System.Azure/credentials/use/action` or `System.AWS/credentials/use/action` on the cloud plane selected by the environment. If the required plane cannot be resolved, the check fails rather than guessing a credential scope.
 
 UCP checks **every** reference in the resulting resource. For `PATCH`, it checks target write permission, loads the resource, and applies the patch using the type's update semantics before extracting references. Omitted environment and connection references are still checked. Unresolved resources or required references return `AuthorizationIndeterminate` in `Enforce`; workload checks remain log-only in `DryRun`.
