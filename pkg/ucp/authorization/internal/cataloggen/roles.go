@@ -47,7 +47,7 @@ var auditPermissions = []string{
 	"Radius.Core/roleDefinitions/read", "Radius.Core/roleAssignments/read",
 	"Radius.Core/authorizationSettings/read", "Radius.Core/permissions/read",
 	"Radius.Core/accessChanges/read", "Radius.Core/checkAccess/action",
-	"Radius.Core/explainAccess/action", "Radius.Core/effectiveAccess/read",
+	"Radius.Core/explainAccess/action",
 }
 
 func typePermissions(types []string, operations ...string) []string {
@@ -72,7 +72,7 @@ func ReleaseRoles() map[string][]string {
 		"System.Azure/credentials/use/action", "System.AWS/credentials/use/action")
 	access := typePermissions([]string{"Radius.Core/roleDefinitions", "Radius.Core/roleAssignments"}, "read", "write", "delete")
 	access = append(access, "Radius.Core/permissions/read", "Radius.Core/checkAccess/action",
-		"Radius.Core/explainAccess/action", "Radius.Core/effectiveAccess/read", "System.Resources/resourceGroups/read")
+		"Radius.Core/explainAccess/action", "System.Resources/resourceGroups/read")
 	readerTypes := slices.Concat(applicationTypes, platformTypes, registrationTypes, []string{
 		"Radius.Core/recipePacks", "Radius.Core/bicepSettings", "Radius.Core/terraformSettings",
 		"System.Radius/planes", "System.Azure/planes", "System.AWS/planes",

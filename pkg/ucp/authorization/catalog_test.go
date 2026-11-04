@@ -34,7 +34,9 @@ func TestCatalogAndReleaseRoles(t *testing.T) {
 			require.NoError(t, catalog.ValidatePermissions(permissions))
 		})
 	}
-	for _, permission := range []string{"Radius.Core/*", "Radius.Core/applications/deploy/action", "AWS.S3/Bucket/write", "Microsoft.Compute/virtualMachines/read", "Radius.Core/newType/read"} {
+	for _, permission := range []string{"Radius.Core/*", "Radius.Core/applications/deploy/action", "AWS.S3/Bucket/write", "Microsoft.Compute/virtualMachines/read", "Radius.Core/newType/read",
+		// effectiveAccess is authorized by roleAssignments/read, so it has no permission of its own.
+		"Radius.Core/effectiveAccess/read"} {
 		require.ErrorContains(t, catalog.ValidatePermissions([]string{permission}), "UnknownPermission")
 	}
 	require.NoError(t, catalog.ValidatePermissions([]string{"Applications.Core/extenders/listSecrets/action", "Radius.Core/applications/getGraph/action"}))
