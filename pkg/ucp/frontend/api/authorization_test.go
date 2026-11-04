@@ -48,6 +48,22 @@ func frontendRequestPolicy(t *testing.T, db database.Client, mode authapi.UserAu
 	require.NoError(t, err)
 	store, err := authorization.NewPolicyStore(db, catalog, nil, nil)
 	require.NoError(t, err)
+	frontendRequestSeed(t, store, mode)
+	runtime, err := authorization.NewPolicyRuntime(store, nil)
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- runtime.Run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		require.ErrorIs(t, <-done, context.Canceled)
+	})
+	require.Eventually(t, func() bool { return runtime.Ready() == nil }, time.Second, time.Millisecond)
+	return store, runtime
+}
+
+func frontendRequestSeed(t *testing.T, store *authorization.PolicyStore, mode authapi.UserAuthorizationMode) {
+	t.Helper()
 	initializer, err := authorization.NewPolicyInitializer(store, requestPolicyVerifier{})
 	require.NoError(t, err)
 	require.NoError(t, initializer.Initialize(t.Context(), authorization.Policy{
@@ -69,17 +85,6 @@ func frontendRequestPolicy(t *testing.T, db database.Client, mode authapi.UserAu
 			},
 		}},
 	}))
-	runtime, err := authorization.NewPolicyRuntime(store, nil)
-	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() { done <- runtime.Run(ctx) }()
-	t.Cleanup(func() {
-		cancel()
-		require.ErrorIs(t, <-done, context.Canceled)
-	})
-	require.Eventually(t, func() bool { return runtime.Ready() == nil }, time.Second, time.Millisecond)
-	return store, runtime
 }
 
 func frontendRequestOptions(t *testing.T, pathBase string) *ucp.Options {
