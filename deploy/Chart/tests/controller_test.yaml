@@ -101,7 +101,7 @@ tests:
     asserts:
       - lengthEqual:
           path: rules
-          count: 7
+          count: 8
       - equal:
           path: rules[0].resources
           value:
@@ -136,6 +136,17 @@ tests:
             - customresourcedefinitions
       - equal:
           path: rules[6]
+          value:
+            apiGroups:
+              - apiextensions.k8s.io
+            resources:
+              - customresourcedefinitions
+            resourceNames:
+              - deploymentresources.radapp.io
+            verbs:
+              - patch
+      - equal:
+          path: rules[7]
           value:
             apiGroups:
               - "*"

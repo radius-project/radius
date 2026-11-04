@@ -34,6 +34,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -433,7 +434,7 @@ func Test_DeploymentResourceReconciler_RemovedOutputAPI(t *testing.T) {
 	}{
 		{name: "removed API"},
 		{name: "discovery failure", discoveryError: true},
-		{name: "stale mapping", apiPresent: true},
+		{name: "missing output with stale mapping", apiPresent: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -460,12 +461,120 @@ func Test_DeploymentResourceReconciler_RemovedOutputAPI(t *testing.T) {
 			id, err := resources.ParseResource(child.Spec.Id)
 			require.NoError(t, err)
 			_, err = r.deleteKubernetesResource(ctx, child, id)
-			if tc.apiPresent || tc.discoveryError {
+			if tc.discoveryError {
 				require.Error(t, err)
 				require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
 			} else {
 				require.NoError(t, err)
 				require.Empty(t, child.Finalizers)
+			}
+		})
+	}
+}
+
+func Test_DeploymentResourceReconciler_StaleServedVersion(t *testing.T) {
+	t.Parallel()
+	for _, discoveryFailure := range []bool{false, true} {
+		t.Run(fmt.Sprintf("discovery-failure-%t", discoveryFailure), func(t *testing.T) {
+			t.Parallel()
+			ctx := t.Context()
+			s := runtime.NewScheme()
+			require.NoError(t, radappiov1alpha3.AddToScheme(s))
+			oldVersion := schema.GroupVersion{Group: "example.com", Version: "v1"}
+			newVersion := schema.GroupVersion{Group: "example.com", Version: "v2"}
+			mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{oldVersion, newVersion})
+			mapper.Add(oldVersion.WithKind("Widget"), meta.RESTScopeNamespace)
+			mapper.Add(newVersion.WithKind("Widget"), meta.RESTScopeNamespace)
+			child := makeDeploymentResource(types.NamespacedName{Namespace: "test", Name: "output"},
+				"/planes/kubernetes/local/namespaces/test/providers/example.com/Widget/output")
+			child.Finalizers = []string{DeploymentResourceFinalizer}
+			output := &unstructured.Unstructured{}
+			output.SetGroupVersionKind(newVersion.WithKind("Widget"))
+			output.SetNamespace("test")
+			output.SetName("output")
+			output.SetFinalizers([]string{"example.com/hold"})
+			c := fake.NewClientBuilder().WithScheme(s).WithRESTMapper(mapper).WithObjects(child, output).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Delete: func(ctx context.Context, c k8sClient.WithWatch, obj k8sClient.Object, opts ...k8sClient.DeleteOption) error {
+						if obj.GetObjectKind().GroupVersionKind() == oldVersion.WithKind("Widget") {
+							return apierrors.NewNotFound(oldVersion.WithResource("widgets").GroupResource(), obj.GetName())
+						}
+						return c.Delete(ctx, obj, opts...)
+					},
+					Get: func(ctx context.Context, c k8sClient.WithWatch, key k8sClient.ObjectKey, obj k8sClient.Object, opts ...k8sClient.GetOption) error {
+						if obj.GetObjectKind().GroupVersionKind() == oldVersion.WithKind("Widget") {
+							return apierrors.NewNotFound(oldVersion.WithResource("widgets").GroupResource(), key.Name)
+						}
+						return c.Get(ctx, key, obj, opts...)
+					},
+				}).Build()
+			d := &fakediscovery.FakeDiscovery{Fake: &k8stesting.Fake{}}
+			d.Resources = []*metav1.APIResourceList{{
+				GroupVersion: newVersion.String(),
+				APIResources: []metav1.APIResource{{Name: "widgets", Kind: "Widget", Namespaced: true}},
+			}}
+			if discoveryFailure {
+				d.PrependReactor("get", "resource", func(k8stesting.Action) (bool, runtime.Object, error) {
+					return true, nil, errors.New("discovery unavailable")
+				})
+			}
+			r := &DeploymentResourceReconciler{Client: c, Discovery: d}
+			id, err := resources.ParseResource(child.Spec.Id)
+			require.NoError(t, err)
+			result, err := r.deleteKubernetesResource(ctx, child, id)
+			if discoveryFailure {
+				require.ErrorContains(t, err, "discovery unavailable")
+				require.NoError(t, c.Get(ctx, k8sClient.ObjectKeyFromObject(output), output))
+				require.Nil(t, output.GetDeletionTimestamp())
+			} else {
+				require.NoError(t, err)
+				require.Positive(t, result.RequeueAfter)
+				require.NoError(t, c.Get(ctx, k8sClient.ObjectKeyFromObject(output), output))
+				require.NotNil(t, output.GetDeletionTimestamp(), "must delete using the served version, not abandon the output")
+				output.SetFinalizers(nil)
+				require.NoError(t, c.Update(ctx, output))
+				_, err = r.deleteKubernetesResource(ctx, child, id)
+				require.NoError(t, err)
+				require.Empty(t, child.Finalizers)
+				return
+			}
+			require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
+		})
+	}
+}
+
+func Test_DeploymentResourceReconciler_NamespaceOutput(t *testing.T) {
+	t.Parallel()
+	for _, ownNamespace := range []bool{false, true} {
+		t.Run(fmt.Sprintf("own-namespace-%t", ownNamespace), func(t *testing.T) {
+			t.Parallel()
+			ctx := t.Context()
+			s := runtime.NewScheme()
+			require.NoError(t, radappiov1alpha3.AddToScheme(s))
+			require.NoError(t, corev1.AddToScheme(s))
+			namespace := "output"
+			if !ownNamespace {
+				namespace = "other"
+			}
+			output := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace, Finalizers: []string{"example.com/hold"}}}
+			child := makeDeploymentResource(types.NamespacedName{Namespace: "output", Name: "namespace"},
+				"/planes/kubernetes/local/providers/core/Namespace/"+namespace)
+			child.Finalizers = []string{DeploymentResourceFinalizer}
+			mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{corev1.SchemeGroupVersion})
+			mapper.Add(corev1.SchemeGroupVersion.WithKind("Namespace"), meta.RESTScopeRoot)
+			c := fake.NewClientBuilder().WithScheme(s).WithRESTMapper(mapper).WithObjects(child, output).Build()
+			r := &DeploymentResourceReconciler{Client: c}
+			id, err := resources.ParseResource(child.Spec.Id)
+			require.NoError(t, err)
+			result, err := r.deleteKubernetesResource(ctx, child, id)
+			require.NoError(t, err)
+			require.NoError(t, c.Get(ctx, k8sClient.ObjectKeyFromObject(output), output))
+			require.NotNil(t, output.DeletionTimestamp)
+			if ownNamespace {
+				require.Empty(t, child.Finalizers, "release child so namespace content deletion can complete")
+			} else {
+				require.Positive(t, result.RequeueAfter)
+				require.Contains(t, child.Finalizers, DeploymentResourceFinalizer, "unrelated namespaces must still drain")
 			}
 		})
 	}

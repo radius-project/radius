@@ -37,6 +37,7 @@ import (
 	"k8s.io/client-go/discovery"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
@@ -87,6 +88,14 @@ func (s *Service) Run(ctx context.Context) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create controller manager: %w", err)
+	}
+
+	migrationClient, err := client.New(s.Options.K8sConfig, client.Options{Scheme: scheme})
+	if err != nil {
+		return fmt.Errorf("failed to create CRD migration client: %w", err)
+	}
+	if err := ensureDeploymentResourceSchema(ctx, migrationClient); err != nil {
+		return fmt.Errorf("failed to migrate DeploymentResource status schema: %w", err)
 	}
 
 	logger.Info("Registering controllers.")

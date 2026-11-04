@@ -593,7 +593,17 @@ func (r *DeploymentTemplateReconciler) recordOutputIdentity(ctx context.Context,
 	}
 	base := child.DeepCopy()
 	child.Status.ProvisionedResourceID = outputID
-	return r.Client.Status().Patch(ctx, child, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{}))
+	if err := r.Client.Status().Patch(ctx, child, client.MergeFromWithOptions(base, client.MergeFromWithOptimisticLock{})); err != nil {
+		return err
+	}
+	child = &radappiov1alpha3.DeploymentResource{}
+	if err := r.APIReader.Get(ctx, client.ObjectKey{Namespace: owner.Namespace, Name: name}, child); err != nil {
+		return err
+	}
+	if child.Status.ProvisionedResourceID != outputID {
+		return fmt.Errorf("DeploymentResource schema pruned the recorded output identity; retry after schema migration")
+	}
+	return nil
 }
 
 func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1alpha3.DeploymentTemplate) bool {

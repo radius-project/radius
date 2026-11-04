@@ -62,6 +62,14 @@ rules:
   - watch
   - list
   - get
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  resourceNames:
+  - deploymentresources.radapp.io
+  verbs:
+  - patch
 # Templates may own arbitrary built-in and custom outputs; status provenance gates cleanup.
 - apiGroups:
   - "*"

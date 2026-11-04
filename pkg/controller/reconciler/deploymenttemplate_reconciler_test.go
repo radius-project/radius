@@ -1062,6 +1062,37 @@ func Test_DeploymentTemplateReconciler_KubernetesOutputCleanup(t *testing.T) {
 	}
 }
 
+func Test_DeploymentTemplateReconciler_SelfContainingNamespaceCleanup(t *testing.T) {
+	ctx := t.Context()
+	_, mockDeploymentClient, c := SetupDeploymentTemplateTest(t)
+	namespace := "self-containing-namespace"
+	require.NoError(t, c.Create(ctx, &corev1.Namespace{Name: namespace}))
+	key := types.NamespacedName{Namespace: namespace, Name: "inventory"}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(namespace).String()
+	require.NoError(t, err)
+	template := makeDeploymentTemplate(key, "{}", providerConfig, nil)
+	require.NoError(t, c.Create(ctx, template))
+	status := waitForDeploymentTemplateStateUpdating(t, c, key, nil)
+	outputID := "/planes/kubernetes/local/providers/core/Namespace/" + namespace
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
+		require.True(t, ok)
+		resource.Properties.OutputResources = []*armdeployments.ResourceReference{{ID: new(outputID)}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
+	})
+	waitForDeploymentTemplateStateReady(t, c, key)
+	require.NoError(t, c.Get(ctx, key, template))
+	require.NoError(t, c.Delete(ctx, template))
+	waitForDeploymentResourceDeleted(t, c, types.NamespacedName{Namespace: namespace, Name: namespace})
+	waitForDeploymentTemplateStateDeleted(t, c, key)
+	// envtest has no namespace controller, so the Namespace remains, but neither child nor
+	// template finalizers may prevent its content cleanup when a real controller is running.
+	output := &corev1.Namespace{}
+	require.NoError(t, c.Get(ctx, types.NamespacedName{Name: namespace}, output))
+	require.NotNil(t, output.DeletionTimestamp)
+	require.Empty(t, mockDeploymentClient.DeletedResourceIDs())
+}
+
 func waitForDeploymentTemplateStateUpdating(t *testing.T, client k8sclient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentTemplateStatus {
 	ctx := t.Context()
 
