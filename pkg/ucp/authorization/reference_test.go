@@ -195,6 +195,98 @@ func TestEnvironmentReferences(t *testing.T) {
 	require.ErrorContains(t, err, "invalid azure credential plane")
 }
 
+func TestEnvironmentSettingsReferences(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	legacyEnv := teamA + "/providers/Applications.Core/environments/legacy"
+	terraform := plane + "/providers/Radius.Core/terraformSettings/tf"
+	bicep := plane + "/providers/Radius.Core/bicepSettings/bicep"
+	store := func(name string) string { return teamB + "/providers/Applications.Core/secretStores/" + name }
+	recipeConfig := map[string]any{
+		"terraform": map[string]any{
+			"authentication": map[string]any{"git": map[string]any{"pat": map[string]any{
+				"github.com":    map[string]any{"secret": store("pat")},
+				"dev.azure.com": map[string]any{},
+			}}},
+			"providers": map[string]any{"azurerm": []any{
+				map[string]any{"subscriptionId": "sub", "secrets": map[string]any{"clientSecret": map[string]any{"source": store("provider"), "key": "secret"}}},
+				map[string]any{"alias": "other"},
+			}},
+		},
+		"bicep":      map[string]any{"authentication": map[string]any{"myregistry.azurecr.io": map[string]any{"secret": store("registry")}}},
+		"env":        map[string]any{"PLAIN": "value"},
+		"envSecrets": map[string]any{"TOKEN": map[string]any{"source": store("env"), "key": "token"}},
+	}
+	for _, method := range []string{"PUT", "PATCH"} {
+		t.Run(method, func(t *testing.T) {
+			checks, err := catalog.ReferenceChecks(method, envA, map[string]any{"properties": map[string]any{
+				"terraformSettings": terraform, "bicepSettings": bicep,
+			}}, ReferenceOptions{})
+			require.NoError(t, err)
+			require.ElementsMatch(t, []Check{
+				{"Radius.Core/terraformSettings/use/action", lowerTarget(terraform)},
+				{"Radius.Core/bicepSettings/use/action", lowerTarget(bicep)},
+			}, checks)
+			checks, err = catalog.ReferenceChecks(method, legacyEnv, map[string]any{"properties": map[string]any{"recipeConfig": recipeConfig}}, ReferenceOptions{})
+			require.NoError(t, err)
+			want := []Check{}
+			for _, name := range []string{"pat", "provider", "registry", "env"} {
+				want = append(want, Check{"Applications.Core/secretStores/use/action", lowerTarget(store(name))})
+			}
+			require.ElementsMatch(t, want, checks)
+			// PATCH checks only the fields it sends.
+			checks, err = catalog.ReferenceChecks(method, legacyEnv, map[string]any{"properties": map[string]any{
+				"recipeConfig": map[string]any{"env": map[string]any{"PLAIN": "value"}},
+			}}, ReferenceOptions{})
+			require.NoError(t, err)
+			require.Empty(t, checks)
+		})
+	}
+	for name, tc := range map[string]struct {
+		target     string
+		properties map[string]any
+	}{
+		"terraformSettings wrong type": {envA, map[string]any{"terraformSettings": bicep}},
+		"bicepSettings wrong type":     {envA, map[string]any{"bicepSettings": terraform}},
+		"terraformSettings empty":      {envA, map[string]any{"terraformSettings": ""}},
+		"bicepSettings not a string":   {envA, map[string]any{"bicepSettings": 42}},
+		"settings on legacy env":       {legacyEnv, map[string]any{"terraformSettings": terraform}},
+		"pat secret wrong type":        {legacyEnv, map[string]any{"recipeConfig": map[string]any{"terraform": map[string]any{"authentication": map[string]any{"git": map[string]any{"pat": map[string]any{"h": map[string]any{"secret": teamB + "/providers/Applications.Dapr/secretStores/s"}}}}}}}},
+		"registry secret empty":        {legacyEnv, map[string]any{"recipeConfig": map[string]any{"bicep": map[string]any{"authentication": map[string]any{"h": map[string]any{"secret": ""}}}}}},
+		"envSecrets source missing ID": {legacyEnv, map[string]any{"recipeConfig": map[string]any{"envSecrets": map[string]any{"T": map[string]any{"source": nil}}}}},
+		"provider secrets not a map":   {legacyEnv, map[string]any{"recipeConfig": map[string]any{"terraform": map[string]any{"providers": map[string]any{"p": []any{map[string]any{"secrets": []any{}}}}}}}},
+		"providers entry not an array": {legacyEnv, map[string]any{"recipeConfig": map[string]any{"terraform": map[string]any{"providers": map[string]any{"p": map[string]any{}}}}}},
+		"recipeConfig not an object":   {legacyEnv, map[string]any{"recipeConfig": "x"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := catalog.ReferenceChecks("PUT", tc.target, map[string]any{"properties": tc.properties}, ReferenceOptions{})
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestEnvironmentSettingsRoleBoundary(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	identity := testIdentity()
+	checks := []Check{
+		{"Radius.Core/terraformSettings/use/action", lowerTarget(plane + "/providers/Radius.Core/terraformSettings/tf")},
+		{"Radius.Core/bicepSettings/use/action", lowerTarget(plane + "/providers/Radius.Core/bicepSettings/bicep")},
+		{"Applications.Core/secretStores/use/action", lowerTarget(teamA + "/providers/Applications.Core/secretStores/s")},
+	}
+	for role, allowed := range map[string]bool{"platform-administrator": true, "application-developer": false, "environment-deployer": false} {
+		t.Run(role, func(t *testing.T) {
+			evaluator, err := NewEvaluator(catalog, nil, []api.RoleAssignmentResource{testAssignment(role, builtInID(role), plane, identity.Principal)})
+			require.NoError(t, err)
+			results, err := evaluator.Evaluate(identity, checks)
+			require.NoError(t, err)
+			for _, result := range results {
+				require.Equal(t, allowed, result.Allowed, result.Permission)
+			}
+		})
+	}
+}
+
 func TestResolvedSchemaReferences(t *testing.T) {
 	catalog, err := NewCatalog([]Registration{{Type: "Team.Data/widgets"}})
 	require.NoError(t, err)

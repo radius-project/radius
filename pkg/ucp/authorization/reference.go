@@ -167,6 +167,26 @@ func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, op
 						}
 					}
 				}
+				for _, settings := range []string{"terraformSettings", "bicepSettings"} {
+					if value, exists := properties[settings]; exists {
+						if !strings.EqualFold(typ, "Radius.Core/environments") {
+							return nil, fmt.Errorf("properties.%s is not supported on %s", settings, id.Type())
+						}
+						if err := add(value, "use/action", []string{"Radius.Core/" + settings}); err != nil {
+							return nil, fmt.Errorf("properties.%s: %w", settings, err)
+						}
+					}
+				}
+				if strings.EqualFold(typ, "Applications.Core/environments") {
+					use := func(value any) error {
+						return add(value, "use/action", []string{"Applications.Core/secretStores"})
+					}
+					for _, path := range legacyRecipeSecretPaths {
+						if err := walkTyped(path, body, use); err != nil {
+							return nil, fmt.Errorf("%s: %w", strings.Join(path, "."), err)
+						}
+					}
+				}
 				if value, exists := properties["providers"]; exists {
 					providers, ok := value.(map[string]any)
 					if !ok {
@@ -198,6 +218,57 @@ func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, op
 		return strings.Compare(a.Target+" "+a.Permission, b.Target+" "+b.Permission)
 	})
 	return slices.Compact(checks), nil
+}
+
+// legacyRecipeSecretPaths lists the Applications.Core/environments recipeConfig
+// fields that reference an Applications.Core/secretStores resource. "{}" visits
+// each dictionary value and "[]" each array element.
+var legacyRecipeSecretPaths = [][]string{
+	{"properties", "recipeConfig", "terraform", "authentication", "git", "pat", "{}", "secret"},
+	{"properties", "recipeConfig", "terraform", "providers", "{}", "[]", "secrets", "{}", "source"},
+	{"properties", "recipeConfig", "bicep", "authentication", "{}", "secret"},
+	{"properties", "recipeConfig", "envSecrets", "{}", "source"},
+}
+
+// walkTyped visits optional values at path, rejecting values whose JSON kind
+// does not match the schema.
+func walkTyped(path []string, value any, visit func(any) error) error {
+	if len(path) == 0 {
+		return visit(value)
+	}
+	switch path[0] {
+	case "[]":
+		items, ok := value.([]any)
+		if !ok {
+			return fmt.Errorf("expected an array")
+		}
+		for _, item := range items {
+			if err := walkTyped(path[1:], item, visit); err != nil {
+				return err
+			}
+		}
+		return nil
+	case "{}":
+		entries, ok := value.(map[string]any)
+		if !ok {
+			return fmt.Errorf("expected an object")
+		}
+		for _, name := range sortedKeys(entries) {
+			if err := walkTyped(path[1:], entries[name], visit); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	object, ok := value.(map[string]any)
+	if !ok {
+		return fmt.Errorf("%q requires an object", path[0])
+	}
+	child, exists := object[path[0]]
+	if !exists {
+		return nil
+	}
+	return walkTyped(path[1:], child, visit)
 }
 
 // isURLSource mirrors the container renderer: a parseable URI that does not

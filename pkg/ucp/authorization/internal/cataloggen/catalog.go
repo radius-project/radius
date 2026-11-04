@@ -138,7 +138,8 @@ func Generate(root string) (Catalog, error) {
 	}
 	result.Permissions = append(result.Permissions,
 		"Radius.Core/environments/use/action", "Applications.Core/environments/use/action",
-		"Radius.Core/recipePacks/use/action")
+		"Radius.Core/recipePacks/use/action", "Radius.Core/terraformSettings/use/action",
+		"Radius.Core/bicepSettings/use/action", "Applications.Core/secretStores/use/action")
 	slices.Sort(result.Permissions)
 	result.Permissions = slices.Compact(result.Permissions)
 	slices.SortFunc(result.Routes, func(a, b Route) int {

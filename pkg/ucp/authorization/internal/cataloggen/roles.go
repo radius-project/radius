@@ -69,6 +69,8 @@ func ReleaseRoles() map[string][]string {
 	platform = append(platform,
 		"Radius.Core/environments/use/action", "Applications.Core/environments/use/action",
 		"Radius.Core/recipePacks/read", "Radius.Core/recipePacks/use/action",
+		"Radius.Core/terraformSettings/use/action", "Radius.Core/bicepSettings/use/action",
+		"Applications.Core/secretStores/use/action",
 		"System.Azure/credentials/use/action", "System.AWS/credentials/use/action")
 	access := typePermissions([]string{"Radius.Core/roleDefinitions", "Radius.Core/roleAssignments"}, "read", "write", "delete")
 	access = append(access, "Radius.Core/permissions/read", "Radius.Core/checkAccess/action",
