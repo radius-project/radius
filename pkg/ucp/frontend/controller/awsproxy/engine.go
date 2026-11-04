@@ -460,6 +460,11 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	// AWS never returns write-only values, so the patch sets every one the template sets. Leave out the ones the
 	// fingerprints show need not be sent.
 	immutable := typeInfo.ProvisioningType == cftypes.ProvisioningTypeImmutable
+	if previous := rec.Properties.Fingerprints; applied.fingerprints != nil && (previous == nil || previous.Partial) {
+		// UCP took the resource over, or the record is older than fingerprints, so it does not know every write-only
+		// value the resource has. That stays true after this deploy.
+		applied.fingerprints.Partial = true
+	}
 	patch = withoutUnsentWriteOnly(patch, parsed, immutable, compareFingerprints(rec.Properties.Fingerprints, applied.fingerprints))
 	if len(patch) > 0 {
 		if errResponse := checkRecordPatch(r.typeName, typeInfo, patch); errResponse != nil {

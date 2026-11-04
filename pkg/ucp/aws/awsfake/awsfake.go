@@ -416,6 +416,10 @@ func applyOperation(obj map[string]any, op map[string]any) error {
 			p[last] = op["value"]
 		}
 	case []any:
+		if op["op"] == "add" && (last == "-" || last == strconv.Itoa(len(p))) {
+			// Adding at the end of an array appends an item. The array is replaced in its parent.
+			return setAt(obj, segments[:len(segments)-1], append(p, op["value"]))
+		}
 		i, err := strconv.Atoi(last)
 		if err != nil || i >= len(p) {
 			return fmt.Errorf("unsupported patch path %q", path)
@@ -425,6 +429,19 @@ func applyOperation(obj map[string]any, op map[string]any) error {
 		}
 		p[i] = op["value"]
 	}
+	return nil
+}
+
+// setAt sets the value at the object path segments of obj.
+func setAt(obj map[string]any, segments []string, value any) error {
+	for _, s := range segments[:len(segments)-1] {
+		next, ok := obj[s].(map[string]any)
+		if !ok {
+			return fmt.Errorf("unsupported patch path into %q", s)
+		}
+		obj = next
+	}
+	obj[segments[len(segments)-1]] = value
 	return nil
 }
 

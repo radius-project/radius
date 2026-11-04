@@ -510,7 +510,7 @@ func Test_WriteOnly_FingerprintKeyUnavailable(t *testing.T) {
 			resp := h.put(dbPath, map[string]any{"Name": "db", "Engine": "x"})
 			require.Equal(t, http.StatusCreated, resp.status, resp.raw)
 			h.finish()
-			require.Nil(t, h.record(dbPath).Properties.Fingerprints)
+			require.Equal(t, &datamodel.AWSFingerprints{Digests: map[string]string{}}, h.record(dbPath).Properties.Fingerprints)
 			require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
 			require.Equal(t, http.StatusOK, h.get(dbPath).status)
 			require.Equal(t, http.StatusAccepted, h.delete(dbPath, testOwner).status)
@@ -565,14 +565,28 @@ func Test_ValueAt(t *testing.T) {
 
 func Test_CompareFingerprints(t *testing.T) {
 	current := &datamodel.AWSFingerprints{KeyID: "k1", Digests: map[string]string{"Same": "a", "Changed": "b", "New": "c"}}
-	require.Equal(t,
-		map[string]fingerprintStatus{"Same": fingerprintUnchanged, "Changed": fingerprintChanged, "New": fingerprintChanged},
-		compareFingerprints(&datamodel.AWSFingerprints{KeyID: "k1", Digests: map[string]string{"Same": "a", "Changed": "x", "Removed": "r"}}, current))
-
-	unknown := map[string]fingerprintStatus{"Same": fingerprintUnknown, "Changed": fingerprintUnknown, "New": fingerprintUnknown}
-	require.Equal(t, unknown, compareFingerprints(&datamodel.AWSFingerprints{KeyID: "k0", Digests: map[string]string{"Same": "a"}}, current))
-	require.Equal(t, unknown, compareFingerprints(nil, current))
-	require.Empty(t, compareFingerprints(&datamodel.AWSFingerprints{KeyID: "k1"}, nil))
+	fingerprints := func(keyID string, partial bool, digests map[string]string) *datamodel.AWSFingerprints {
+		return &datamodel.AWSFingerprints{KeyID: keyID, Partial: partial, Digests: digests}
+	}
+	previous := map[string]string{"Same": "a", "Changed": "x", "Removed": "r"}
+	tests := []struct {
+		name     string
+		previous *datamodel.AWSFingerprints
+		want     map[string]fingerprintStatus
+	}{
+		{"same key", fingerprints("k1", false, previous), map[string]fingerprintStatus{"Same": fingerprintUnchanged, "Changed": fingerprintChanged, "New": fingerprintChanged}},
+		// The last deploy did not set New, whichever key made the others.
+		{"different key", fingerprints("k0", false, previous), map[string]fingerprintStatus{"Same": fingerprintUnknown, "Changed": fingerprintUnknown, "New": fingerprintChanged}},
+		{"no write-only values", fingerprints("", false, map[string]string{}), map[string]fingerprintStatus{"Same": fingerprintChanged, "Changed": fingerprintChanged, "New": fingerprintChanged}},
+		{"partial", fingerprints("k1", true, previous), map[string]fingerprintStatus{"Same": fingerprintUnchanged, "Changed": fingerprintChanged, "New": fingerprintUnknown}},
+		{"none", nil, map[string]fingerprintStatus{"Same": fingerprintUnknown, "Changed": fingerprintUnknown, "New": fingerprintUnknown}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, compareFingerprints(tt.previous, current))
+		})
+	}
+	require.Empty(t, compareFingerprints(fingerprints("k1", false, previous), nil))
 }
 
 func Test_WithoutUnsentWriteOnly(t *testing.T) {
@@ -603,18 +617,17 @@ func Test_WithoutUnsentWriteOnly(t *testing.T) {
 		{"unchanged, next to a readable property", add("/Auth", map[string]any{"Token": "x", "Mode": "m"}), false, new(add("/Auth", map[string]any{"Mode": "m"}))},
 		{"unchanged, next to a changed one", add("/Auth", map[string]any{"Token": "x", "Key": "k"}), false, new(add("/Auth", map[string]any{"Key": "k"}))},
 		{"unchanged, next to an empty object", add("/Auth", map[string]any{"Token": "x", "Options": map[string]any{}}), false, new(add("/Auth", map[string]any{"Options": map[string]any{}}))},
+		{"unchanged, next to arrays", add("/Auth", map[string]any{"Token": "x", "Empty": []any{}, "List": []any{"a"}}), false, new(add("/Auth", map[string]any{"Empty": []any{}, "List": []any{"a"}}))},
 		{"unchanged, in an object left empty", add("/Deep", map[string]any{"Inner": map[string]any{"Token": "x"}, "Mode": "m"}), false, new(add("/Deep", map[string]any{"Mode": "m"}))},
 		{"changed", add("/Password", "x"), false, new(add("/Password", "x"))},
 		{"changed create-only", add("/Snapshot", "x"), false, new(add("/Snapshot", "x"))},
 		{"unknown create-only", add("/Settings/Key", "x"), false, nil},
 		{"unknown updatable", add("/Users/0/Secret", "x"), false, new(add("/Users/0/Secret", "x"))},
 		{"unknown on a create-and-delete-only type", add("/Users/0/Secret", "x"), true, nil},
-		{
-			"unknown in array items, next to readable values",
-			add("/Users", []any{map[string]any{"Secret": "x"}, map[string]any{"Name": "n", "Secret": "y"}, []any{}}),
-			true,
-			new(add("/Users", []any{map[string]any{}, map[string]any{"Name": "n"}, []any{}})),
-		},
+		{"unknown in an array item AWS has", add("/Users/1/Secret", "x"), true, nil},
+		// An operation that adds array items always sends their write-only values: AWS does not have those items.
+		{"unknown in an array item the operation adds", add("/Users/-", map[string]any{"Name": "n", "Secret": "y"}), true, new(add("/Users/-", map[string]any{"Name": "n", "Secret": "y"}))},
+		{"unknown in the array the operation adds", add("/Users", []any{map[string]any{"Secret": "x"}}), true, new(add("/Users", []any{map[string]any{"Secret": "x"}}))},
 		{"readable", jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}, false, new(jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2})},
 		{"empty object", add("/Auth", map[string]any{}), false, new(add("/Auth", map[string]any{}))},
 		{"remove", jsondiff.Operation{Type: jsondiff.OperationRemove, Path: "/Auth/Token"}, false, new(jsondiff.Operation{Type: jsondiff.OperationRemove, Path: "/Auth/Token"})},
@@ -813,7 +826,8 @@ func Test_WriteOnly_ContainerWithoutWriteOnlyValue(t *testing.T) {
 			h = newHarness(t)
 			require.Equal(t, http.StatusCreated, h.put(dbPath, properties).status)
 			h.finish()
-			require.Nil(t, h.record(dbPath).Properties.Fingerprints)
+			// The record knows the deploy set no write-only value, without the key.
+			require.Equal(t, &datamodel.AWSFingerprints{Digests: map[string]string{}}, h.record(dbPath).Properties.Fingerprints)
 		})
 	}
 }
@@ -1003,5 +1017,77 @@ func Test_WriteOnly_TombstoneHasNoFingerprints(t *testing.T) {
 		delete(h.cc.Errors, "CreateResource")
 		requireTombstone(t, h)
 		requireStartsOver(t, h)
+	})
+}
+
+// Test_WriteOnly_RestoresMissingArrayItem deletes an array item outside Radius and redeploys the unchanged template.
+// The array's fingerprint matches, but the item is new to AWS, so its write-only value is sent with it. Values in
+// items AWS still has are not sent.
+func Test_WriteOnly_RestoresMissingArrayItem(t *testing.T) {
+	properties := map[string]any{"Name": "db", "Users": []any{
+		map[string]any{"Name": "u1", "Secret": password},
+		map[string]any{"Name": "u2", "Secret": newPassword},
+	}}
+	h := deployed(t, dbPath, properties)
+	h.cc.Put(dbType, "db", map[string]any{"Name": "db", "Users": []any{map[string]any{"Name": "u1", "Secret": password}}})
+	h.cc.Calls()
+
+	resp := h.put(dbPath, properties)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	calls := h.cc.Calls()
+	require.Equal(t, []string{"GetResource", "UpdateResource"}, operations(calls))
+	patch := jsondiff.Patch{}
+	require.NoError(t, json.Unmarshal([]byte(calls[1].Document), &patch))
+	require.Len(t, patch, 1, calls[1].Document)
+	require.Equal(t, map[string]any{"Name": "u2", "Secret": newPassword}, patch[0].Value)
+	require.NotContains(t, calls[1].Document, `"`+password+`"`)
+	h.finish()
+	require.Equal(t, properties["Users"], h.cc.Resource(dbType, "db")["Users"])
+}
+
+// Test_WriteOnly_FirstWriteOnlyValue creates a resource without write-only values and then adds one. UCP knows the
+// last deploy set none, so the value is changed: it is sent, or fails with 400 on a create-and-delete-only type.
+// A resource UCP took over has no such history, so there the value is unknown and handled as the design describes.
+func Test_WriteOnly_FirstWriteOnlyValue(t *testing.T) {
+	t.Run("create-and-delete-only", func(t *testing.T) {
+		h := deployed(t, immutablePath, map[string]any{"Name": "i1", "Size": 1})
+		h.cc.Calls()
+		resp := h.put(immutablePath, map[string]any{"Name": "i1", "Size": 1, "Password": password})
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "cannot change: Password.")
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+	})
+
+	t.Run("create-only on an updatable type", func(t *testing.T) {
+		h := deployed(t, clusterPath, map[string]any{"Name": "c1"})
+		h.cc.Calls()
+		resp := h.put(clusterPath, map[string]any{"Name": "c1", "SnapshotIdentifier": "snap-1"})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"add /SnapshotIdentifier"}, patchOps(t, calls[len(calls)-1].Document))
+	})
+
+	t.Run("a key the history does not have", func(t *testing.T) {
+		// The last deploy set only the password, with an earlier key. The snapshot is still known to be new.
+		h := deployed(t, clusterPath, map[string]any{"Name": "c1", "MasterUserPassword": password})
+		h = h.restart(keyOf(7))
+		h.cc.Calls()
+		resp := h.put(clusterPath, map[string]any{"Name": "c1", "MasterUserPassword": password, "SnapshotIdentifier": "snap-1"})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"add /MasterUserPassword", "add /SnapshotIdentifier"}, patchOps(t, calls[len(calls)-1].Document))
+	})
+
+	t.Run("taken over", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.Put(immutableType, "i1", map[string]any{"Name": "i1", "Size": 1, "Password": password})
+		resp := h.put(immutablePath, map[string]any{"Name": "i1", "Size": 1})
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		h.cc.Calls()
+
+		resp = h.put(immutablePath, map[string]any{"Name": "i1", "Size": 1, "Password": password})
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+		require.Contains(t, h.record(immutablePath).Properties.Fingerprints.Digests, "Password")
 	})
 }

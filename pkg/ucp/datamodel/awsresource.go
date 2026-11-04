@@ -97,6 +97,11 @@ type AWSFingerprints struct {
 	// by ucp_aws.FingerprintKey.Fingerprint. A write-only property inside array items, such as Users/*/Password, is
 	// covered by a digest of the whole array, Users.
 	Digests map[string]string `json:"digests"`
+
+	// Partial means the digests may not cover every write-only value the resource has: UCP took the resource over, or
+	// the record is older than fingerprints. A path with no digest then has an unknown value. Otherwise a path with no
+	// digest was not set by the last deploy.
+	Partial bool `json:"partial,omitempty"`
 }
 
 // ResourceTypeName returns the resource type of the record, such as AWS.EC2/VPC.

@@ -57,12 +57,16 @@ const (
 	fingerprintChanged
 )
 
-// fingerprints makes the fingerprints of the write-only values in properties with the current key. It returns nil
-// when properties set no write-only value, so those requests work without the key. When properties set a write-only
+// fingerprints makes the fingerprints of the write-only values in properties with the current key. It returns nil when
+// the type has no write-only properties. When properties set no write-only value, it returns fingerprints with no
+// digests, which record that, without the key, so those requests work without it. When properties set a write-only
 // value and the key is not available, it returns a 500 naming the Secret. put calls it before it saves anything or
 // calls Cloud Control.
 func (e *engine) fingerprints(r *request, schema *typeSchema, properties map[string]any) (*datamodel.AWSFingerprints, armrpc_rest.Response, error) {
 	writeOnly := awsoperations.PropertyPaths(schema.WriteOnlyProperties)
+	if len(writeOnly) == 0 {
+		return nil, nil, nil
+	}
 	paths := fingerprintPaths(writeOnly)
 	values := map[string]any{}
 	for _, w := range writeOnly {
@@ -74,7 +78,7 @@ func (e *engine) fingerprints(r *request, schema *typeSchema, properties map[str
 		values[path], _ = valueAt(properties, path)
 	}
 	if len(values) == 0 {
-		return nil, nil, nil
+		return &datamodel.AWSFingerprints{Digests: map[string]string{}}, nil, nil
 	}
 
 	key, err := e.fingerprintKey()
@@ -181,18 +185,27 @@ func valueAt(properties map[string]any, path string) (any, bool) {
 }
 
 // compareFingerprints compares the fingerprints of this deploy with the record's, and returns the status of each
-// path. When the record has no fingerprints, or a different key made them, every path is unknown. Otherwise a path
-// the record has no fingerprint for is changed, because the last deploy did not set it.
+// path. A path the record has no fingerprint for is changed, because the last deploy did not set it, unless the
+// record's fingerprints are partial or missing: UCP took the resource over, or the record is older than fingerprints.
+// Then, and when a different key made the record's fingerprint, the path is unknown.
 func compareFingerprints(previous *datamodel.AWSFingerprints, current *datamodel.AWSFingerprints) map[string]fingerprintStatus {
 	out := map[string]fingerprintStatus{}
 	if current == nil {
 		return out
 	}
 	for path, digest := range current.Digests {
+		recorded, ok := "", false
+		if previous != nil {
+			recorded, ok = previous.Digests[path]
+		}
 		switch {
-		case previous == nil || previous.KeyID != current.KeyID:
+		case previous == nil || (!ok && previous.Partial):
 			out[path] = fingerprintUnknown
-		case hmac.Equal([]byte(previous.Digests[path]), []byte(digest)):
+		case !ok:
+			out[path] = fingerprintChanged
+		case previous.KeyID != current.KeyID:
+			out[path] = fingerprintUnknown
+		case hmac.Equal([]byte(recorded), []byte(digest)):
 			out[path] = fingerprintUnchanged
 		default:
 			out[path] = fingerprintChanged
@@ -208,6 +221,7 @@ func compareFingerprints(previous *datamodel.AWSFingerprints, current *datamodel
 //     and sending it would fail the update. Every value of a create-and-delete-only type cannot change after create.
 //
 // A value with no usable fingerprint that can change, such as a password, stays in the patch, so it is sent once.
+// A value in an array item the operation adds is always sent, because AWS does not have that item.
 //
 // When AWS omits an object because all of its properties are write-only, the patch adds the whole object in one
 // operation. Its values that are not sent are removed from the operation, and the operation is dropped when nothing is
@@ -222,7 +236,7 @@ func withoutUnsentWriteOnly(patch jsondiff.Patch, schema *typeSchema, immutable 
 		}
 		unsent := map[string]bool{}
 		for _, leaf := range leafPaths(op.Path, op.Value) {
-			if schema.isUnsent(leaf, paths, immutable, status) {
+			if schema.isUnsent(op.Path, leaf, paths, immutable, status) {
 				unsent[leaf] = true
 			}
 		}
@@ -238,11 +252,12 @@ func withoutUnsentWriteOnly(patch jsondiff.Patch, schema *typeSchema, immutable 
 	return out
 }
 
-// isUnsent reports whether the value at a JSON patch path is a write-only value UCP does not send. The status of a
-// write-only property is the status of the fingerprint in paths that covers it.
-func (s *typeSchema) isUnsent(patchPath string, paths []string, immutable bool, status map[string]fingerprintStatus) bool {
+// isUnsent reports whether the value at the JSON patch path patchPath, inside the operation at opPath, is a write-only
+// value UCP does not send. The status of a write-only property is the status of the fingerprint in paths that covers
+// it.
+func (s *typeSchema) isUnsent(opPath string, patchPath string, paths []string, immutable bool, status map[string]fingerprintStatus) bool {
 	pattern, ok := s.writeOnlyPattern(patchPath)
-	if !ok {
+	if !ok || addsArrayItem(opPath, pattern) {
 		return false
 	}
 	switch status[coveringPath(paths, fingerprintPath(pattern))] {
@@ -253,6 +268,13 @@ func (s *typeSchema) isUnsent(patchPath string, paths []string, immutable bool, 
 	default:
 		return false
 	}
+}
+
+// addsArrayItem reports whether an operation at the JSON patch path opPath adds the array items that hold the
+// write-only property pattern, such as Users/*/Secret: it adds an item, such as /Users/-, or the whole array.
+func addsArrayItem(opPath string, pattern string) bool {
+	star := slices.Index(strings.Split(pattern, "/"), "*")
+	return star >= 0 && len(strings.Split(strings.TrimPrefix(opPath, "/"), "/")) <= star+1
 }
 
 // withoutPaths returns value, which is at the JSON patch path path, without the values at the paths in remove, and
