@@ -5,6 +5,8 @@ This package contains utilities and components for upgrading Radius installation
 ## Structure
 
 - `preflight/` - Pre-upgrade validation checks that can be used by any component
+- `preupgrade/` - Runs the configured preflight checks before an upgrade
+- `hashmigration/` - Background migration of values that older versions derived with SHA-1, run by each control-plane component after an upgrade
 
 ## Preflight Checks
 
@@ -71,3 +73,7 @@ type PreflightCheck interface {
     Severity() CheckSeverity
 }
 ```
+
+## SHA-256 Migration
+
+`hashmigration` moves values that older versions of Radius derived with SHA-1, such as datastore object names, tracked-resource IDs, Terraform state names, and container secret hashes, to their SHA-256 form. UCP, Applications RP, and Dynamic RP each run a `hashmigration.Service` with the steps for the data they own. The service retries until every step is done and records the status of each step in the `radius-sha256-migration` ConfigMap in `radius-system`. The release that removes SHA-1 must check that status first. See the [design note](../../eng/design-notes/security/2026-06-sha1-to-sha256-migration.md#automatic-migration).

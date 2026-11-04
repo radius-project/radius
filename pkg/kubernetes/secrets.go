@@ -17,37 +17,84 @@ limitations under the License.
 package kubernetes
 
 import (
-	"crypto/sha1"
-	"fmt"
-	"sort"
+	"encoding/binary"
+	"slices"
+
+	"github.com/radius-project/radius/pkg/hashutil"
+)
+
+const (
+	// SecretHashPrefix starts every secret hash HashSecretData returns. Secret hashes that older versions of Radius
+	// computed with SHA-1 have no prefix.
+	SecretHashPrefix = "sha256:"
+
+	// secretHashDomain separates secret hashes from other SHA-256 values computed over the same bytes.
+	secretHashDomain = "radapp.io/secret-hash/v1"
+
+	// legacySecretHashLength is the length of a hexadecimal SHA-1 hash.
+	legacySecretHashLength = 40
 )
 
 // HashSecretData hashes the data in a secret to produce a deterministic hash.
 //
 // This can be used as a Kubernetes annotation to force a Deployment to redeploy pods
-// when the secret changes.
-//
-// NOTE: This intentionally still uses SHA-1. The resulting value is embedded in the
-// Pod template annotation (radapp.io/secret-hash) by a stateless renderer, so changing
-// the algorithm would change the annotation for otherwise-unchanged secrets and force a
-// rollout of every workload on upgrade. Migrating this to SHA-256 requires preserving the
-// existing annotation when the secret is unchanged. See issue #8084.
+// when the secret changes. The hash is SHA-256 over an unambiguous encoding of the
+// sorted keys and values, prefixed with SecretHashPrefix.
 func HashSecretData(secretData map[string][]byte) string {
-	// Sort keys so we can hash deterministically
-	keys := []string{}
-	for k := range secretData {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	hash := sha1.New()
-
-	for _, k := range keys {
-		// Using | as a delimiter
-		_, _ = hash.Write([]byte("|" + k + "|"))
-		_, _ = hash.Write(secretData[k])
+	encoded := appendSecretHashField(nil, []byte(secretHashDomain))
+	for _, key := range sortedKeys(secretData) {
+		encoded = appendSecretHashField(encoded, []byte(key))
+		encoded = appendSecretHashField(encoded, secretData[key])
 	}
 
-	sum := hash.Sum(nil)
-	return fmt.Sprintf("%x", sum)
+	return SecretHashPrefix + hashutil.Hex(encoded)
+}
+
+// LegacyHashSecretData returns the secret hash that older versions of Radius computed with SHA-1.
+//
+// It exists only so Radius can tell whether a Pod template that carries a legacy hash still matches
+// its secret, and keep that Pod template instead of rolling out the workload. Use HashSecretData for
+// new values. See https://github.com/radius-project/radius/issues/8084.
+func LegacyHashSecretData(secretData map[string][]byte) string {
+	var encoded []byte
+	for _, key := range sortedKeys(secretData) {
+		// Older versions of Radius used | as a delimiter.
+		encoded = append(encoded, '|')
+		encoded = append(encoded, key...)
+		encoded = append(encoded, '|')
+		encoded = append(encoded, secretData[key]...)
+	}
+
+	return hashutil.LegacyHex(encoded)
+}
+
+// IsLegacySecretHash reports whether value has the form of a secret hash computed by LegacyHashSecretData.
+func IsLegacySecretHash(value string) bool {
+	if len(value) != legacySecretHashLength {
+		return false
+	}
+
+	for _, c := range value {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+
+	return true
+}
+
+// appendSecretHashField appends value to encoded, preceded by its length, so that no two different
+// sets of keys and values encode to the same bytes.
+func appendSecretHashField(encoded []byte, value []byte) []byte {
+	encoded = binary.BigEndian.AppendUint64(encoded, uint64(len(value)))
+	return append(encoded, value...)
+}
+
+func sortedKeys(secretData map[string][]byte) []string {
+	keys := make([]string, 0, len(secretData))
+	for key := range secretData {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	return keys
 }

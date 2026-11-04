@@ -1,0 +1,56 @@
+suite: UCP SHA-256 migration status RBAC
+templates:
+  - ucp/rbac.yaml
+release:
+  namespace: radius-system
+tests:
+  - it: should limit UCP to the migration status ConfigMap in its namespace
+    documentSelector:
+      path: kind
+      value: Role
+    asserts:
+      - equal:
+          path: metadata.name
+          value: ucp-sha256-migration
+      - equal:
+          path: metadata.namespace
+          value: radius-system
+      - equal:
+          path: rules
+          value:
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+              verbs:
+                - create
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+              resourceNames:
+                - radius-sha256-migration
+              verbs:
+                - get
+                - patch
+
+  - it: should bind the Role to the UCP service account
+    documentSelector:
+      path: kind
+      value: RoleBinding
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: radius-system
+      - equal:
+          path: roleRef
+          value:
+            apiGroup: rbac.authorization.k8s.io
+            kind: Role
+            name: ucp-sha256-migration
+      - equal:
+          path: subjects
+          value:
+            - kind: ServiceAccount
+              name: ucp
+              namespace: radius-system

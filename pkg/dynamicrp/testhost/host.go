@@ -136,6 +136,9 @@ func StartWithOptions(t *testing.T, options *dynamicrp.Options) (*TestHost, *ucp
 	options.UCP, err = sdk.NewDirectConnection(options.Config.UCP.Direct.Endpoint)
 	require.NoError(t, err)
 
+	// The migration would record its status in whatever cluster the local kubeconfig selects.
+	options.Config.SHA256Migration.Disabled = true
+
 	baseURL := fmt.Sprintf(
 		"http://%s%s",
 		options.Config.Server.Address(),

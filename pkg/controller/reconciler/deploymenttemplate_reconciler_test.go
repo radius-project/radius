@@ -27,6 +27,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/hashutil"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/assert"
@@ -229,6 +230,15 @@ func Test_DeploymentTemplateReconciler_IsUpToDate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			isUpToDate := isUpToDate(tc.deploymentTemplate)
 			require.Equal(t, tc.expected, isUpToDate)
+
+			if tc.expected {
+				// A legacy hash is replaced with the current hash, which reconcileUpdate saves with the status.
+				hash, err := computeHash(tc.deploymentTemplate)
+				require.NoError(t, err)
+				require.Equal(t, hash, tc.deploymentTemplate.Status.StatusHash)
+			} else {
+				require.Equal(t, "incorrecthash", tc.deploymentTemplate.Status.StatusHash)
+			}
 		})
 	}
 }
@@ -420,6 +430,41 @@ func Test_DeploymentTemplateReconciler_SpecChangedDuringOperation(t *testing.T) 
 	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
 	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
 	require.Equal(t, updatedHash, status.StatusHash)
+
+	require.NoError(t, k8sClient.Delete(ctx, deploymentTemplate))
+	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
+}
+
+func Test_DeploymentTemplateReconciler_MigratesLegacyStatusHash(t *testing.T) {
+	ctx := t.Context()
+	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
+	namespacedName := types.NamespacedName{Namespace: "deploymenttemplate-legacy-hash", Name: "test-deploymenttemplate"}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(namespacedName.Namespace).String()
+	require.NoError(t, err)
+	require.NoError(t, k8sClient.Create(ctx, &corev1.Namespace{Name: namespacedName.Namespace}))
+
+	deploymentTemplate := makeDeploymentTemplate(namespacedName, "{}", providerConfig, nil)
+	require.NoError(t, k8sClient.Create(ctx, deploymentTemplate))
+	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
+	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
+	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+	currentHash := status.StatusHash
+
+	// Record the status an older version of Radius wrote: the SHA-1 hash of the same spec.
+	require.NoError(t, k8sClient.Get(ctx, namespacedName, deploymentTemplate))
+	b, err := json.Marshal(deploymentTemplate.Spec)
+	require.NoError(t, err)
+	deploymentTemplate.Status.StatusHash = hashutil.LegacyHex(b)
+	require.NoError(t, k8sClient.Status().Update(ctx, deploymentTemplate))
+
+	// The controller must replace the hash without starting a deployment, which would leave an operation in the status.
+	require.EventuallyWithT(t, func(t *assert.CollectT) {
+		current := &radappiov1alpha3.DeploymentTemplate{}
+		require.NoError(t, k8sClient.Get(ctx, namespacedName, current))
+		require.Nil(t, current.Status.Operation)
+		require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReady, current.Status.Phrase)
+		require.Equal(t, currentHash, current.Status.StatusHash)
+	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval)
 
 	require.NoError(t, k8sClient.Delete(ctx, deploymentTemplate))
 	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)

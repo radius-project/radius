@@ -20,6 +20,7 @@ package storetest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/components/database"
@@ -448,6 +449,37 @@ func RunTest(t *testing.T, client database.Client, clear func(t *testing.T)) {
 		objs, err := client.Query(ctx, database.Query{RootScope: RadiusScope, ResourceType: "asdf"})
 		require.NoError(t, err)
 		require.Empty(t, objs)
+	})
+
+	t.Run("enumerate", func(t *testing.T) {
+		enumerator, ok := client.(database.Enumerator)
+		if !ok {
+			t.Skip("the client does not implement database.Enumerator")
+		}
+		clear(t)
+
+		empty := 0
+		require.NoError(t, enumerator.Enumerate(ctx, func(*database.Object) error { empty++; return nil }))
+		require.Zero(t, empty)
+
+		group1 := createObject(ResourceGroup1ID, ResourceGroup1Data)
+		require.NoError(t, client.Save(ctx, &group1))
+		obj1 := createObject(Resource1ID, Data1)
+		require.NoError(t, client.Save(ctx, &obj1))
+		nested1 := createObject(NestedResource1ID, NestedData1)
+		require.NoError(t, client.Save(ctx, &nested1))
+
+		visited := []database.Object{}
+		require.NoError(t, enumerator.Enumerate(ctx, func(obj *database.Object) error {
+			visited = append(visited, *obj)
+			return nil
+		}))
+		CompareObjectLists(t, []database.Object{group1, obj1, nested1}, visited)
+
+		stop := errors.New("stop")
+		calls := 0
+		require.ErrorIs(t, enumerator.Enumerate(ctx, func(*database.Object) error { calls++; return stop }), stop)
+		require.Equal(t, 1, calls, "enumeration must stop at the first error")
 	})
 
 	t.Run("query", func(t *testing.T) {

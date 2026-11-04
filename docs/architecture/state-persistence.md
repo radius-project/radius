@@ -105,6 +105,8 @@ type Client interface {
 | `Delete` | Removes a single resource by ID. Supports OCC via an optional ETag. |
 | `Save` | Creates or updates a resource (logical PUT). Computes and sets the ETag on the object after writing. Supports OCC via an optional ETag. |
 
+E
+
 #### Key Types
 
 - **`Object`** — Wraps a `Metadata` (ID + ETag) and a `Data` field (`any`) that is marshaled to/from JSON.
@@ -224,8 +226,8 @@ Radius runs on Kubernetes.
 
 **How it works:**
 
-- Each UCP resource is stored as an entry inside a Kubernetes `Resource` object.
-  The Kubernetes object name is derived from `<resource-name>.<SHA1-hash-of-id>`.
+-
+-
 - Labels on the Kubernetes object encode the root scope segments and resource
   type, enabling efficient list queries via label selectors.
 - Hash collisions are handled by storing multiple entries in a single Kubernetes

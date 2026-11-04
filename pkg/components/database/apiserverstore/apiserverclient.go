@@ -25,7 +25,7 @@ limitations under the License.
 // Since this scheme allows collisions we need to use optimistic concurrency controls when writing and
 // consider the possibility of multiple resources being present when reading.
 //
-// Each Kubernetes Resource object stores a list of UCP resources. Since we use SHA1 to generate hashes,
+// Each Kubernetes Resource object stores a list of UCP resources. Since we use truncated SHA-256 hashes,
 // we expect collisions to be extremely rare. The only case we need to be concerned about is when collisions
 // cause the total size of the Kubernetes Resource object to be larger than the 8mb limit of Kubernetes.
 //
@@ -124,6 +124,11 @@ func (c *APIServerClient) Query(ctx context.Context, query database.Query, optio
 	}
 
 	results := database.ObjectQueryResult{}
+
+	// A resource can be stored under both its current (SHA-256) object name and its legacy (SHA-1) object name when an
+	// older writer created a second copy. Reads prefer the current copy, so queries return only that copy.
+	seen := map[string]int{}
+	seenObject := map[string]string{}
 	for _, resource := range rs.Items {
 		for _, entry := range resource.Entries {
 			id, err := resources.Parse(entry.ID)
@@ -148,6 +153,17 @@ func (c *APIServerClient) Query(ctx context.Context, query database.Query, optio
 					continue
 				}
 
+				key := strings.ToLower(entry.ID)
+				if index, ok := seen[key]; ok {
+					if resource.Name == resourceName(id) && seenObject[key] != resource.Name {
+						results.Items[index] = *converted
+						seenObject[key] = resource.Name
+					}
+					continue
+				}
+
+				seen[key] = len(results.Items)
+				seenObject[key] = resource.Name
 				results.Items = append(results.Items, *converted)
 			}
 		}
@@ -483,16 +499,36 @@ func makeResourceName(id resources.ID, hash string) string {
 }
 
 // getResourceWithFallback reads the Kubernetes Resource object that stores id, preferring the
-// current (SHA-256) object name and falling back to the legacy (SHA-1) name written by older
-// versions of Radius. The returned error is NotFound only if neither object exists. See
+// current (SHA-256) entry and falling back to the legacy (SHA-1) entry written by older versions
+// of Radius. If neither object contains id, it retains the current object when present, so a new
+// entry can share its collision bucket. The returned error is NotFound only if neither object exists. See
 // https://github.com/radius-project/radius/issues/8084.
 func (c *APIServerClient) getResourceWithFallback(ctx context.Context, id resources.ID, resource *ucpv1alpha1.Resource) error {
-	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}, resource)
-	if apierrors.IsNotFound(err) {
-		return c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacyResourceName(id)}, resource)
+	currentErr := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}, resource)
+	if currentErr != nil && !apierrors.IsNotFound(currentErr) {
+		return currentErr
+	}
+	if currentErr == nil && findIndex(resource, id) != nil {
+		return nil
 	}
 
-	return err
+	legacy := ucpv1alpha1.Resource{}
+	legacyErr := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacyResourceName(id)}, &legacy)
+	if legacyErr != nil && !apierrors.IsNotFound(legacyErr) {
+		return legacyErr
+	}
+	if legacyErr == nil && findIndex(&legacy, id) != nil {
+		*resource = legacy
+		return nil
+	}
+	if currentErr == nil {
+		return nil
+	}
+	if legacyErr == nil {
+		*resource = legacy
+	}
+
+	return legacyErr
 }
 
 // getResourceForSave reads the Kubernetes Resource object that should store id for a write. It
@@ -504,22 +540,13 @@ func (c *APIServerClient) getResourceWithFallback(ctx context.Context, id resour
 func (c *APIServerClient) getResourceForSave(ctx context.Context, id resources.ID) (string, ucpv1alpha1.Resource, bool, error) {
 	current := resourceName(id)
 	resource := ucpv1alpha1.Resource{}
-	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: current}, &resource)
-	if err == nil {
-		return current, resource, true, nil
-	} else if !apierrors.IsNotFound(err) {
+	err := c.getResourceWithFallback(ctx, id, &resource)
+	if err != nil && !apierrors.IsNotFound(err) {
 		return "", ucpv1alpha1.Resource{}, false, err
 	}
 
-	// The current-named object does not exist. Fall back to the legacy name if this resource's entry
-	// was written by an older version of Radius, so we update it in place.
-	legacy := legacyResourceName(id)
-	legacyResource := ucpv1alpha1.Resource{}
-	err = c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacy}, &legacyResource)
-	if err == nil && findIndex(&legacyResource, id) != nil {
-		return legacy, legacyResource, true, nil
-	} else if err != nil && !apierrors.IsNotFound(err) {
-		return "", ucpv1alpha1.Resource{}, false, err
+	if err == nil && (resource.Name == current || findIndex(&resource, id) != nil) {
+		return resource.Name, resource, true, nil
 	}
 
 	return current, ucpv1alpha1.Resource{}, false, nil

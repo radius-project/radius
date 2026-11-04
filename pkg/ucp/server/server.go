@@ -28,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
 	ucp_aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
 	"github.com/radius-project/radius/pkg/ucp/initializer"
+	"github.com/radius-project/radius/pkg/upgrade/hashmigration"
 )
 
 // NewServer initializes a host for UCP based on the provided options. It creates the AWS clients first, so the
@@ -55,6 +56,10 @@ func NewServer(ctx context.Context, options *ucp.Options) (*hosting.Host, error)
 	}
 
 	services = append(services, initializer.NewService(options))
+
+	if !options.Config.SHA256Migration.Disabled {
+		services = append(services, newHashMigrationService(options.DatabaseProvider, hashmigration.NewKubernetesReporter()))
+	}
 
 	return &hosting.Host{
 		Services: services,

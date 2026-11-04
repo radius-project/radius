@@ -26,10 +26,14 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	backend_ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/integrationtests/testrp"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/testhost"
+	"github.com/radius-project/radius/pkg/ucp/trackedresource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,6 +68,11 @@ func Test_RadiusPlane_Proxy_ResourceGroupDoesNotExist(t *testing.T) {
 }
 
 func Test_RadiusPlane_ResourceSync(t *testing.T) {
+	t.Run("new tracking entry", func(t *testing.T) { testRadiusPlaneResourceSync(t, false) })
+	t.Run("legacy tracking entry", func(t *testing.T) { testRadiusPlaneResourceSync(t, true) })
+}
+
+func testRadiusPlaneResourceSync(t *testing.T, legacy bool) {
 	ucp := testhost.Start(t)
 	rp := testrp.Start(t)
 	rp.Handler = testrp.SyncResource(t, ucp, testResourceGroupID)
@@ -80,6 +89,10 @@ func Test_RadiusPlane_ResourceSync(t *testing.T) {
 	createResourceType(ucp, resourceTypeURL)
 
 	createLocation(ucp, address)
+
+	if legacy {
+		seedLegacyTrackingEntry(t, ucp)
+	}
 
 	message := "here is some test data"
 
@@ -130,6 +143,7 @@ func Test_RadiusPlane_ResourceSync(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, resources.Value, 1)
 		require.Equal(t, expectedTrackedResource, *resources.Value[0])
+		requireTrackingIdentity(t, ucp, legacy)
 	})
 
 	t.Run("GET", func(t *testing.T) {
@@ -169,6 +183,11 @@ func Test_RadiusPlane_ResourceSync(t *testing.T) {
 }
 
 func Test_RadiusPlane_ResourceAsync(t *testing.T) {
+	t.Run("new tracking entry", func(t *testing.T) { testRadiusPlaneResourceAsync(t, false) })
+	t.Run("legacy tracking entry", func(t *testing.T) { testRadiusPlaneResourceAsync(t, true) })
+}
+
+func testRadiusPlaneResourceAsync(t *testing.T, legacy bool) {
 	ucp := testhost.Start(t)
 	rp := testrp.Start(t)
 
@@ -210,6 +229,10 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 	createResourceType(ucp, resourceTypeURL)
 
 	createLocation(ucp, address)
+
+	if legacy {
+		seedLegacyTrackingEntry(t, ucp)
+	}
 
 	message := "here is some test data"
 
@@ -265,6 +288,7 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, resources.Value, 1)
 		require.Equal(t, expectedTrackedResource, *resources.Value[0])
+		requireTrackingIdentity(t, ucp, legacy)
 	})
 
 	t.Run("GET (during PUT)", func(t *testing.T) {
@@ -399,6 +423,38 @@ func Test_RadiusPlane_ResourceAsync(t *testing.T) {
 		response := ucp.MakeRequest(http.MethodDelete, testResourceID+"?api-version="+testrp.Version, nil)
 		response.EqualsStatusCode(http.StatusNoContent)
 	})
+}
+
+func seedLegacyTrackingEntry(t *testing.T, ucp *testhost.TestHost) {
+	t.Helper()
+	client, err := ucp.Options().DatabaseProvider.GetClient(t.Context())
+	require.NoError(t, err)
+	id := resources.MustParse(testResourceID)
+	legacyID := trackedresource.LegacyIDFor(id)
+	entry := datamodel.GenericResourceFromID(id, legacyID)
+	entry.Properties.APIVersion = testrp.Version
+	entry.AsyncProvisioningState = v1.ProvisioningStateSucceeded
+	require.NoError(t, client.Save(t.Context(), &database.Object{ID: legacyID.String(), Data: entry}))
+}
+
+func requireTrackingIdentity(t *testing.T, ucp *testhost.TestHost, legacy bool) {
+	t.Helper()
+	client, err := ucp.Options().DatabaseProvider.GetClient(t.Context())
+	require.NoError(t, err)
+	id := resources.MustParse(testResourceID)
+	selected, other := trackedresource.IDFor(id), trackedresource.LegacyIDFor(id)
+	if legacy {
+		selected, other = other, selected
+	}
+	obj, err := client.Get(t.Context(), selected.String())
+	require.NoError(t, err)
+	require.Equal(t, selected.String(), obj.ID)
+	entry := &datamodel.GenericResource{}
+	require.NoError(t, obj.As(entry))
+	require.Equal(t, selected.String(), entry.ID)
+	require.Equal(t, id.String(), entry.Properties.ID)
+	_, err = client.Get(t.Context(), other.String())
+	require.ErrorIs(t, err, &database.ErrNotFound{})
 }
 
 func createRadiusPlane(ucp *testhost.TestHost, resourceProviders map[string]*string) {

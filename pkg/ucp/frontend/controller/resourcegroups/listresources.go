@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	http "net/http"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -29,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/trackedresource"
 )
 
 var _ armrpc_controller.Controller = (*ListResources)(nil)
@@ -91,6 +93,9 @@ func (r *ListResources) createResponse(ctx context.Context, result *database.Obj
 	items := v1.PaginatedList{}
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
+	// A resource can briefly have tracked entries under both its legacy (SHA-1) and current (SHA-256) tracking IDs
+	// while the background migration moves it. List each resource once, preferring the current entry.
+	seen := map[string]int{}
 	for _, item := range result.Items {
 		data := datamodel.GenericResource{}
 		err := item.As(&data)
@@ -103,6 +108,15 @@ func (r *ListResources) createResponse(ctx context.Context, result *database.Obj
 			return nil, err
 		}
 
+		key := strings.ToLower(data.Properties.ID)
+		if index, ok := seen[key]; ok && key != "" {
+			if original, err := resources.Parse(data.Properties.ID); err == nil && strings.EqualFold(item.ID, trackedresource.IDFor(original).String()) {
+				items.Value[index] = versioned
+			}
+			continue
+		}
+
+		seen[key] = len(items.Value)
 		items.Value = append(items.Value, versioned)
 	}
 

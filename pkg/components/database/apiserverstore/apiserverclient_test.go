@@ -32,6 +32,7 @@ import (
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/util/etag"
+	"github.com/radius-project/radius/pkg/upgrade/hashmigration"
 	"github.com/radius-project/radius/test/ucp/kubeenv"
 	shared "github.com/radius-project/radius/test/ucp/storetest"
 )
@@ -239,6 +240,117 @@ func Test_APIServer_Client(t *testing.T) {
 		}
 
 		require.Equal(t, expected, resource.Labels)
+	})
+
+	t.Run("legacy_entry_in_current_bucket_collision", func(t *testing.T) {
+		clear(t)
+
+		id := shared.Resource1ID
+		current := fallbackTestResource(t, ns, resourceName(id), "current", []resources.ID{shared.Resource2ID})
+		legacy := fallbackTestResource(t, ns, legacyResourceName(id), "legacy", []resources.ID{id, shared.Resource3ID})
+		require.NoError(t, rc.Create(ctx, current))
+		require.NoError(t, rc.Create(ctx, legacy))
+
+		got, err := client.Get(ctx, id.String())
+		require.NoError(t, err)
+		require.Equal(t, "legacy-etag", got.ETag)
+		require.Equal(t, map[string]any{"format": "legacy"}, got.Data)
+
+		obj := &database.Object{ID: id.String(), Data: shared.Data2}
+		require.ErrorIs(t, client.Save(ctx, obj, database.WithETag("stale")), &database.ErrConcurrency{})
+		require.NoError(t, client.Save(ctx, obj, database.WithETag(got.ETag)))
+
+		updated := &ucpv1alpha1.Resource{}
+		require.NoError(t, rc.Get(ctx, runtimeclient.ObjectKeyFromObject(legacy), updated))
+		require.Equal(t, legacy.UID, updated.UID)
+		require.NotEqual(t, legacy.ResourceVersion, updated.ResourceVersion)
+		require.Len(t, updated.Entries, 2)
+		require.Equal(t, legacy.Entries[1], updated.Entries[1])
+		require.Equal(t, obj.ETag, updated.Entries[0].ETag)
+		require.JSONEq(t, string(shared.MarshalOrPanic(shared.Data2)), string(updated.Entries[0].Data.Raw))
+
+		unchanged := &ucpv1alpha1.Resource{}
+		require.NoError(t, rc.Get(ctx, runtimeclient.ObjectKeyFromObject(current), unchanged))
+		require.Equal(t, current.UID, unchanged.UID)
+		require.Equal(t, current.ResourceVersion, unchanged.ResourceVersion)
+		require.Equal(t, current.Entries, unchanged.Entries)
+
+		result, err := client.Query(ctx, database.Query{RootScope: shared.RadiusScope, ScopeRecursive: true, ResourceType: id.Type()})
+		require.NoError(t, err)
+		matches := 0
+		for _, entry := range result.Items {
+			if strings.EqualFold(entry.ID, id.String()) {
+				matches++
+			}
+		}
+		require.Equal(t, 1, matches)
+
+		require.ErrorIs(t, client.Delete(ctx, id.String(), database.WithETag("stale")), &database.ErrConcurrency{})
+		require.NoError(t, client.Delete(ctx, id.String(), database.WithETag(obj.ETag)))
+		require.NoError(t, rc.Get(ctx, runtimeclient.ObjectKeyFromObject(legacy), updated))
+		require.Equal(t, legacy.UID, updated.UID)
+		require.Equal(t, legacy.Entries[1:], updated.Entries)
+		require.Equal(t, map[string]string(assignLabels(updated)), updated.Labels)
+		require.NoError(t, rc.Get(ctx, runtimeclient.ObjectKeyFromObject(current), unchanged))
+		require.Equal(t, current.Entries, unchanged.Entries)
+		require.Equal(t, current.ResourceVersion, unchanged.ResourceVersion)
+	})
+
+	t.Run("migrate_legacy_names", func(t *testing.T) {
+		clear(t)
+
+		legacyResource := fallbackTestResource(t, ns, legacyResourceName(shared.Resource1ID), "legacy", []resources.ID{shared.Resource1ID})
+		legacyScope := fallbackTestResource(t, ns, legacyResourceName(shared.ResourceGroup1ID), "scope", []resources.ID{shared.ResourceGroup1ID})
+		unrelated := fallbackTestResource(t, ns, resourceName(shared.Resource2ID), "current", []resources.ID{shared.Resource2ID})
+		for _, object := range []*ucpv1alpha1.Resource{legacyResource, legacyScope, unrelated} {
+			require.NoError(t, rc.Create(ctx, object))
+		}
+
+		result, err := client.MigrateLegacyNames(ctx)
+		require.NoError(t, err)
+		require.Equal(t, hashmigration.Result{Migrated: 2}, result)
+
+		for _, legacy := range []*ucpv1alpha1.Resource{legacyResource, legacyScope} {
+			err := rc.Get(ctx, runtimeclient.ObjectKeyFromObject(legacy), &ucpv1alpha1.Resource{})
+			require.True(t, apierrors.IsNotFound(err), "legacy object %s must be removed", legacy.Name)
+		}
+
+		for _, id := range []resources.ID{shared.Resource1ID, shared.ResourceGroup1ID} {
+			migrated := &ucpv1alpha1.Resource{}
+			require.NoError(t, rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName(id)}, migrated))
+			require.Len(t, migrated.Entries, 1)
+			require.Equal(t, map[string]string(assignLabels(migrated)), migrated.Labels)
+		}
+
+		got, err := client.Get(ctx, shared.Resource1ID.String())
+		require.NoError(t, err)
+		require.Equal(t, "legacy-etag", got.ETag, "callers holding the old ETag must still succeed")
+		require.Equal(t, map[string]any{"format": "legacy"}, got.Data)
+
+		obj := &database.Object{ID: shared.Resource1ID.String(), Data: shared.Data2}
+		require.NoError(t, client.Save(ctx, obj, database.WithETag(got.ETag)))
+
+		queried, err := client.Query(ctx, database.Query{RootScope: shared.RadiusScope, ScopeRecursive: true, ResourceType: shared.Resource1ID.Type()})
+		require.NoError(t, err)
+		matches := 0
+		for _, item := range queried.Items {
+			if strings.EqualFold(item.ID, shared.Resource1ID.String()) {
+				matches++
+			}
+		}
+		require.Equal(t, 1, matches)
+
+		unchanged := &ucpv1alpha1.Resource{}
+		require.NoError(t, rc.Get(ctx, runtimeclient.ObjectKeyFromObject(unrelated), unchanged))
+		require.Equal(t, unrelated.Entries, unchanged.Entries)
+
+		again, err := client.MigrateLegacyNames(ctx)
+		require.NoError(t, err)
+		require.Equal(t, hashmigration.Result{}, again)
+
+		require.NoError(t, client.Delete(ctx, shared.Resource1ID.String(), database.WithETag(obj.ETag)))
+		_, err = client.Get(ctx, shared.Resource1ID.String())
+		require.ErrorIs(t, err, &database.ErrNotFound{})
 	})
 
 	t.Run("save_scope_and_validate_kubernetes_object", func(t *testing.T) {

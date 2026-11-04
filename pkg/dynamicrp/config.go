@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/upgrade/hashmigration"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -69,6 +70,9 @@ type Config struct {
 
 	// Server is the configuration for the HTTP server.
 	Server hostoptions.ServerOptions `yaml:"server"`
+
+	// SHA256Migration is the configuration for the automatic migration of SHA-1-derived values.
+	SHA256Migration hashmigration.Config `yaml:"sha256Migration"`
 
 	// Terraform configures properties for the Terraform recipe driver.
 	Terraform hostoptions.TerraformOptions `yaml:"terraform"`

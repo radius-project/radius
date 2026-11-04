@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"maps"
 	"sort"
+	"strings"
 	"testing"
 
 	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -843,6 +844,7 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 
 	require.Contains(t, deployment.Spec.Template.Annotations, kubernetes.AnnotationSecretHash)
 	hash1 := deployment.Spec.Template.Annotations[kubernetes.AnnotationSecretHash]
+	require.True(t, strings.HasPrefix(hash1, kubernetes.SecretHashPrefix), "new secret hashes must use SHA-256")
 
 	// Update and render again
 	dependencies[makeRadiusResourceID(t, "SomeProvider/ResourceType", "A").String()].ComputedValues["ComputedKey1"] = "new value"

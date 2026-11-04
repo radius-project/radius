@@ -54,3 +54,48 @@ subjects:
   - kind: ServiceAccount
     name: ucp
     namespace: {{ .Release.Namespace }}
+---
+# UCP records the status of the automatic SHA-256 migration in one ConfigMap in its own namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ucp-sha256-migration
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+rules:
+  # A create request carries no object name to authorize, so it cannot be limited by resourceNames.
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    resourceNames:
+      - radius-sha256-migration
+    verbs:
+      - get
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ucp-sha256-migration
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ucp-sha256-migration
+subjects:
+  - kind: ServiceAccount
+    name: ucp
+    namespace: {{ .Release.Namespace }}

@@ -258,27 +258,6 @@ func (p *ProxyController) UpdateTrackedResource(ctx context.Context, downstreamU
 func (p *ProxyController) EnqueueTrackedResourceUpdate(ctx context.Context, id resources.ID, apiVersion string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	// Resolve the tracking ID, preferring an existing entry under the current (SHA-256) tracking
-	// ID and falling back to a legacy (SHA-1) entry written by older versions of Radius. This keeps
-	// the SHA-1 -> SHA-256 migration from orphaning existing tracked resources. See issue #8084.
-	trackingID, _, err := trackedresource.ResolveTrackingEntry(ctx, p.DatabaseClient(), id)
-	if err != nil {
-		return err
-	}
-
-	// Create a serviceCtx for the operation that we're going to process on the resource.
-	serviceCtx := *v1.ARMRequestContextFromContext(ctx)
-	serviceCtx.ResourceID = trackingID
-	serviceCtx.OperationType = v1.OperationType{Type: trackingID.Type(), Method: datamodel.OperationProcess}
-
-	// Create the database entry for the tracked resource.
-	//
-	// If a non-terminal response was returned from the RP then at this instant the resource exists, even if it is
-	// being deleted.
-	entry := datamodel.GenericResourceFromID(id, trackingID)
-	entry.Properties.APIVersion = apiVersion
-	entry.Properties.OperationID = serviceCtx.OperationID.String()
-
 	// We need to update the tracked resource entry in the database using optimistic concurrency. This means that we
 	// need to read the existing entry, update it, and then write it back. If the write fails then we need to retry.
 	//
@@ -288,14 +267,30 @@ func (p *ProxyController) EnqueueTrackedResourceUpdate(ctx context.Context, id r
 	// resource is changing, you should check it out". The background process then reads the resource and updates the
 	// state.
 	queueOperation := false
+	var serviceCtx v1.ARMRequestContext
 retry:
 	for retryCount := 1; retryCount <= EnqueueOperationRetryCount; retryCount++ {
-		obj, err := p.DatabaseClient().Get(ctx, trackingID.String())
-		if errors.Is(err, &database.ErrNotFound{}) {
-			// Safe to ignore. This means that the resource has not been tracked yet.
-		} else if err != nil {
+		// Resolve the tracking ID on every attempt, preferring an existing entry under the current (SHA-256) tracking
+		// ID and falling back to a legacy (SHA-1) entry written by older versions of Radius. Resolving again after a
+		// conflict follows an entry that the background migration moved to its current ID instead of recreating the
+		// legacy entry. See issue #8084.
+		trackingID, obj, err := trackedresource.ResolveTrackingEntry(ctx, p.DatabaseClient(), id)
+		if err != nil {
 			return err
 		}
+
+		// Create a serviceCtx for the operation that we're going to process on the resource.
+		serviceCtx = *v1.ARMRequestContextFromContext(ctx)
+		serviceCtx.ResourceID = trackingID
+		serviceCtx.OperationType = v1.OperationType{Type: trackingID.Type(), Method: datamodel.OperationProcess}
+
+		// Create the database entry for the tracked resource.
+		//
+		// If a non-terminal response was returned from the RP then at this instant the resource exists, even if it is
+		// being deleted.
+		entry := datamodel.GenericResourceFromID(id, trackingID)
+		entry.Properties.APIVersion = apiVersion
+		entry.Properties.OperationID = serviceCtx.OperationID.String()
 
 		etag := ""
 		if obj != nil {
@@ -331,8 +326,7 @@ retry:
 		return nil
 	}
 
-	err = p.StatusManager().QueueAsyncOperation(ctx, &serviceCtx, statusmanager.QueueOperationOptions{OperationTimeout: ProcessOperationTimeout, RetryAfter: ProcessOperationRetryAfter})
-	if err != nil {
+	if err := p.StatusManager().QueueAsyncOperation(ctx, &serviceCtx, statusmanager.QueueOperationOptions{OperationTimeout: ProcessOperationTimeout, RetryAfter: ProcessOperationRetryAfter}); err != nil {
 		return err
 	}
 
