@@ -5,12 +5,14 @@ package authorization
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"slices"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/google/uuid"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 )
 
@@ -42,9 +44,20 @@ type SettingsChangeGuard interface {
 	ValidateSettingsChange(context.Context, PolicyActor, api.AuthorizationSettingsProperties, api.AuthorizationSettingsProperties) error
 }
 
+// BootstrapAdministratorProvider is an optional settings guard capability.
+// It returns trusted, Kubernetes-authorized bootstrap identities, never identities
+// accepted directly from a settings request. It is used only outside Enforce.
+type BootstrapAdministratorProvider interface {
+	BootstrapAdministrators(context.Context, PolicyActor, api.AuthorizationSettingsProperties, api.AuthorizationSettingsProperties) ([]api.Principal, error)
+}
+
 const settingsID = "/providers/radius.core/authorizationsettings/default"
 
 func permanentAdministrators(policy Policy) int {
+	return installationAdministrators(policy, false)
+}
+
+func installationAdministrators(policy Policy, includeBootstrap bool) int {
 	count := 0
 	for _, a := range policy.Assignments {
 		p := a.Properties
@@ -55,7 +68,7 @@ func permanentAdministrators(policy Policy) int {
 		if err != nil || scope != "/" || !strings.EqualFold(*p.RoleDefinitionID, builtInID("radius-administrator")) {
 			continue
 		}
-		if p.ManagedBy != nil && p.ManagedBy.Kind != nil && *p.ManagedBy.Kind == api.AssignmentManagementKindBootstrap {
+		if !includeBootstrap && p.ManagedBy != nil && p.ManagedBy.Kind != nil && *p.ManagedBy.Kind == api.AssignmentManagementKindBootstrap {
 			continue
 		}
 		if *p.Principal.Type == api.PrincipalTypeUser || *p.Principal.Type == api.PrincipalTypeGroup {
@@ -63,6 +76,47 @@ func permanentAdministrators(policy Policy) int {
 		}
 	}
 	return count
+}
+
+func addBootstrapAdministrators(policy *Policy, principals []api.Principal, actor PolicyActor) error {
+	for _, principal := range principals {
+		identity, err := key(&principal)
+		if err != nil {
+			return err
+		}
+		if identity.typ != api.PrincipalTypeUser && identity.typ != api.PrincipalTypeGroup {
+			return fmt.Errorf("bootstrap administrator must be a user or group")
+		}
+		exists := false
+		for _, assignment := range policy.Assignments {
+			existing, err := key(assignment.Properties.Principal)
+			if err != nil {
+				return err
+			}
+			exists = exists || existing == identity &&
+				strings.EqualFold(*assignment.Properties.RoleDefinitionID, builtInID("radius-administrator")) &&
+				*assignment.Properties.Scope == "/"
+		}
+		if exists {
+			continue
+		}
+		tuple, err := json.Marshal([]string{string(identity.typ), identity.issuer, identity.subject})
+		if err != nil {
+			return err
+		}
+		id := "/providers/radius.core/roleassignments/" + uuid.NewSHA1(uuid.NameSpaceURL, tuple).String()
+		if slices.ContainsFunc(policy.Assignments, func(a api.RoleAssignmentResource) bool { return strings.EqualFold(*a.ID, id) }) {
+			return fmt.Errorf("RoleAssignmentImmutable: bootstrap assignment ID collision")
+		}
+		policy.Assignments = append(policy.Assignments, api.RoleAssignmentResource{
+			ID: to.Ptr(id), Properties: &api.RoleAssignmentProperties{
+				RoleDefinitionID: to.Ptr(builtInID("radius-administrator")), Principal: &principal, Scope: to.Ptr("/"),
+				CreatedBy: to.Ptr(principalDisplay(actor.Identity.Principal)),
+				ManagedBy: &api.AssignmentManagement{Kind: to.Ptr(api.AssignmentManagementKindBootstrap)},
+			},
+		})
+	}
+	return nil
 }
 
 func principalDisplay(p api.Principal) string {
@@ -154,7 +208,10 @@ func checkOwnership(actor PolicyActor, existing *api.RoleAssignmentProperties, d
 	}
 	switch *existing.ManagedBy.Kind {
 	case api.AssignmentManagementKindBootstrap:
-		return fmt.Errorf("ManagedByConflict: bootstrap assignments require installation settings")
+		if deleting || scope != "/" || !strings.EqualFold(*existing.RoleDefinitionID, builtInID("radius-administrator")) ||
+			*actor.Management.Kind != api.AssignmentManagementKindImperative {
+			return fmt.Errorf("ManagedByConflict: bootstrap assignments require installation settings or explicit administrator promotion")
+		}
 	case api.AssignmentManagementKindGitOps:
 		sameSource := actor.Management.Kind != nil && *actor.Management.Kind == api.AssignmentManagementKindGitOps &&
 			actor.Management.Source != nil && existing.ManagedBy.Source != nil &&
@@ -329,6 +386,10 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 				}
 				updated.Description = p.Description
 				updated.Principal.DisplayName = p.Principal.DisplayName
+				if *old.ManagedBy.Kind == api.AssignmentManagementKindBootstrap {
+					updated.ManagedBy = &actor.Management
+					highImpact = true
+				}
 				operation = api.PolicyChangeOperationUpdate
 				policy.Assignments[index].Properties = updated
 				change.After = &api.PolicySnapshot{RoleAssignment: updated}
@@ -371,8 +432,11 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 		if mutation.Delete || mutation.Settings == nil {
 			return fail(fmt.Errorf("authorization settings cannot be deleted"))
 		}
-		if err := current.allows(actor.Identity, "Radius.Core/authorizationSettings/write", id); err != nil {
-			return fail(err)
+		enforcing := *policy.Settings.Properties.Mode == api.UserAuthorizationModeEnforce
+		if enforcing {
+			if err := current.allows(actor.Identity, "Radius.Core/authorizationSettings/write", id); err != nil {
+				return fail(err)
+			}
 		}
 		if guard == nil {
 			return fail(fmt.Errorf("AuthorizationUnavailable: settings transition guard is not installed"))
@@ -380,6 +444,21 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 		mutation.Settings.Generation = to.Ptr(policy.Generation)
 		if err := guard.ValidateSettingsChange(ctx, actor, *policy.Settings.Properties, *mutation.Settings); err != nil {
 			return fail(err)
+		}
+		if !enforcing {
+			if provider, ok := guard.(BootstrapAdministratorProvider); ok {
+				principals, err := provider.BootstrapAdministrators(ctx, actor, *policy.Settings.Properties, *mutation.Settings)
+				if err != nil {
+					return fail(err)
+				}
+				if err := addBootstrapAdministrators(&policy, principals, actor); err != nil {
+					return fail(err)
+				}
+			}
+		}
+		if mutation.Settings.Mode != nil && *mutation.Settings.Mode != api.UserAuthorizationModeDisabled &&
+			installationAdministrators(policy, true) == 0 {
+			return fail(fmt.Errorf("LastAdministratorProtected: enabling authorization requires an installation administrator"))
 		}
 		operation = api.PolicyChangeOperationUpdate
 		change.Before = &api.PolicySnapshot{AuthorizationSettings: policy.Settings.Properties}
@@ -389,10 +468,10 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 	default:
 		return fail(fmt.Errorf("unsupported policy resource %s", id))
 	}
-	if reflect.DeepEqual(change.Before, change.After) {
+	if reflect.DeepEqual(change.Before, change.After) && reflect.DeepEqual(current.policy.Assignments, policy.Assignments) {
 		return policy, nil, false, nil
 	}
-	if permanentAdministrators(policy) == 0 {
+	if permanentAdministrators(current.policy) > 0 && permanentAdministrators(policy) == 0 {
 		return fail(fmt.Errorf("LastAdministratorProtected: a permanent installation administrator is required"))
 	}
 	if len(policy.Assignments) > 10000 || len(policy.CustomRoles) > 1000 {

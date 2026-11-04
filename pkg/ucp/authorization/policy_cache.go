@@ -54,7 +54,7 @@ func NewPolicySnapshot(catalog *Catalog, policy Policy) (*PolicySnapshot, error)
 	if err != nil {
 		return nil, err
 	}
-	evaluator, err := NewEvaluator(catalog, owned.CustomRoles, owned.Assignments)
+	evaluator, err := newEvaluator(catalog, owned.CustomRoles, owned.Assignments, true)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func NewPolicySnapshot(catalog *Catalog, policy Policy) (*PolicySnapshot, error)
 	}
 	definitions := append(catalog.BuiltInRoles(), owned.CustomRoles...)
 	for i, definition := range definitions {
-		compiled, err := compileRole(catalog, definition, i < len(definitions)-len(owned.CustomRoles))
+		compiled, err := compilePolicyRole(catalog, definition, i < len(definitions)-len(owned.CustomRoles), true)
 		if err != nil {
 			return nil, err
 		}

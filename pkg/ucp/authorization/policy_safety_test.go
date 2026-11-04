@@ -167,6 +167,9 @@ func TestPolicySafetyMetadataOwnership(t *testing.T) {
 		t.Run(scenario.name, func(t *testing.T) {
 			policy := initialPolicy()
 			policy.Assignments[1].Properties.ManagedBy = &scenario.management
+			if *scenario.management.Kind == api.AssignmentManagementKindBootstrap {
+				policy.Assignments[1].Properties.RoleDefinitionID = to.Ptr(builtInID("reader"))
+			}
 			snapshot, err := NewPolicySnapshot(catalog, policy)
 			require.NoError(t, err)
 			actor := policyActor()
@@ -249,7 +252,7 @@ func TestPolicySafetyServerFieldsAndBootstrapTransition(t *testing.T) {
 	current, err := NewPolicySnapshot(catalog, policy)
 	require.NoError(t, err)
 	_, _, _, err = applyPolicyMutation(t.Context(), current, policyActor(), readerMutation(), nil)
-	require.ErrorContains(t, err, "LastAdministratorProtected")
+	require.NoError(t, err)
 	mutation := assignmentMutation("permanent", builtInID("radius-administrator"), "/", "charlie")
 	mutation.Assignment.Scope = to.Ptr(teamB)
 	mutation.Assignment.CreatedBy = to.Ptr("forged")

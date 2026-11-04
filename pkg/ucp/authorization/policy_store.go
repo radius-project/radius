@@ -127,6 +127,11 @@ func (i *PolicyInitializer) Initialize(ctx context.Context, initial Policy) erro
 	if err := validateStoredPolicy(policy); err != nil {
 		return err
 	}
+	for _, definition := range policy.CustomRoles {
+		if _, err := compileRole(i.store.catalog, definition, false); err != nil {
+			return err
+		}
+	}
 	if _, err := NewPolicySnapshot(i.store.catalog, policy); err != nil {
 		return err
 	}
