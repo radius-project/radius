@@ -160,7 +160,7 @@ func (s *Source) requestClientCertConfig(namespace string) *tls.Config {
 				ClientAuth:   tls.RequestClientCert,
 				VerifyConnection: func(cs tls.ConnectionState) error {
 					if conn != nil {
-						conn.identity, conn.peerErr = s.verifyClient(m.pool, cs.PeerCertificates, namespace)
+						conn.identity, _, conn.peerErr = s.verifyClient(m.pool, cs.PeerCertificates, namespace)
 						conn.checked = true
 					}
 					return nil
@@ -203,29 +203,40 @@ func (s *server) connContext(ctx context.Context, c net.Conn) context.Context {
 
 type peerTrustKey struct{}
 
-// peerTrust records the CA bundle a connection's client certificate was last verified
-// against, so requests only re-verify the certificate after the bundle changes.
+// peerTrust caches verification until the material changes or a verified chain expires.
 type peerTrust struct {
-	verified atomic.Pointer[material]
+	verified atomic.Pointer[peerVerification]
+}
+
+type peerVerification struct {
+	material  *material
+	expiresAt time.Time
 }
 
 // checkPeerTrust verifies the client certificate of r against the current CA bundle.
 // The handshake verified it against the bundle at the time, but a connection can outlive
-// a reload that removes the client's CA.
+// a reload that removes the client's CA, or either component's certificate expiry.
 func (s *server) checkPeerTrust(r *http.Request) error {
 	if r.TLS == nil {
 		return peerError("request did not use TLS", nil)
 	}
 	trust, _ := r.Context().Value(peerTrustKey{}).(*peerTrust)
-	current := s.source.current.Load()
-	if trust != nil && trust.verified.Load() == current {
-		return nil
-	}
-	if _, err := s.source.verifyClient(current.pool, r.TLS.PeerCertificates, s.namespace); err != nil {
+	current, err := s.source.load()
+	if err != nil {
 		return err
 	}
 	if trust != nil {
-		trust.verified.Store(current)
+		cached := trust.verified.Load()
+		if cached != nil && cached.material == current && !s.source.now().After(cached.expiresAt) {
+			return nil
+		}
+	}
+	_, expiresAt, err := s.source.verifyClient(current.pool, r.TLS.PeerCertificates, s.namespace)
+	if err != nil {
+		return err
+	}
+	if trust != nil {
+		trust.verified.Store(&peerVerification{material: current, expiresAt: expiresAt})
 	}
 	return nil
 }

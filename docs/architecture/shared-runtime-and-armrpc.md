@@ -139,6 +139,8 @@ New handshakes use the new material, and each request's client certificate is
 checked against the current CA bundle. Probes and metrics stay on their plain
 ports.
 
+Every request also checks the current server certificate's validity. Cached peer verification lasts only until the earliest expiry in the verified chains or a material reload, whichever comes first. On an open connection, expired certificates or removed trust cause `enforce` to return `401 InvalidAuthenticationInfo` and close the connection; `dryRun` logs the failure and continues serving. Renewing the server certificate does not invalidate an otherwise trusted peer on an existing connection.
+
 ### Request context and validation
 
 The server layer applies middleware that creates an ARM-aware request context.

@@ -19,8 +19,10 @@ package mtls
 import (
 	"context"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"io"
 	"net"
@@ -30,6 +32,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -287,6 +290,142 @@ func TestServe_RemovedCAOnOpenConnection(t *testing.T) {
 			require.Equal(t, tc.want, status)
 			requireLogged(t, srv.logs, tc.mode, authz.CodePeerCertificateInvalid, "unknown authority")
 		})
+	}
+}
+
+// startServerWithSource uses an injected Source so tests can advance its clock and
+// explicitly reload material without racing the file poller.
+func startServerWithSource(t *testing.T, src *Source, mode authz.Mode) testServer {
+	t.Helper()
+	core, logs := observer.New(zapcore.InfoLevel)
+	ctx := logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core)))
+	s := &server{source: src, mode: mode, namespace: testNamespace, allowedCallers: []string{"ucp"}}
+	srv := &http.Server{
+		Handler:     s.authorizeCaller(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})),
+		ConnContext: s.connContext,
+		BaseContext: func(net.Listener) context.Context { return ctx },
+	}
+	cfg := src.ServerConfig(testNamespace)
+	if mode == authz.ModeDryRun {
+		cfg = src.requestClientCertConfig(testNamespace)
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	done := make(chan error, 1)
+	go func() { done <- srv.Serve(newListener(ctx, ln, cfg, mode)) }()
+	t.Cleanup(func() {
+		_ = srv.Close()
+		require.ErrorIs(t, <-done, http.ErrServerClosed)
+	})
+	return testServer{url: ln.Addr().String(), dir: src.dir, logs: logs}
+}
+
+func expiringCA(t *testing.T, parent *testCA, notAfter time.Time) testCA {
+	t.Helper()
+	ca := newCA(t)
+	template := *ca.cert
+	template.NotAfter = notAfter
+	if parent == nil {
+		parent = &ca
+	}
+	der, err := x509.CreateCertificate(rand.Reader, &template, parent.cert, ca.key.Public(), parent.key)
+	require.NoError(t, err)
+	ca.cert, err = x509.ParseCertificate(der)
+	require.NoError(t, err)
+	ca.pem = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	return ca
+}
+
+func TestServe_CertificateExpiryOnOpenConnection(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
+		for _, kind := range []string{"peer leaf", "peer intermediate", "peer root", "local server", "renewed server"} {
+			t.Run(string(mode)+"/"+kind, func(t *testing.T) {
+				t.Parallel()
+				now := time.Now().UTC().Truncate(time.Second)
+				expires := now.Add(10 * time.Minute)
+				serverCA := expiringCA(t, nil, now.Add(4*time.Hour))
+				clientCA := expiringCA(t, nil, now.Add(4*time.Hour))
+				if kind == "peer root" {
+					clientCA = expiringCA(t, nil, expires)
+				}
+				issuer := clientCA
+				if kind == "peer intermediate" {
+					issuer = expiringCA(t, &clientCA, expires)
+				}
+				clientExpiry, serverExpiry := now.Add(2*time.Hour), now.Add(2*time.Hour)
+				if kind == "peer leaf" {
+					clientExpiry = expires
+				}
+				if kind == "local server" || kind == "renewed server" {
+					serverExpiry = expires
+				}
+				ucp := issuer.issue(t, certOptions{dnsNames: componentSANs("ucp"), notAfter: clientExpiry})
+				if kind == "peer intermediate" {
+					ucp.certPEM = append(ucp.certPEM, issuer.pem...)
+				}
+				dir := t.TempDir()
+				bundle := append(slices.Clone(serverCA.pem), clientCA.pem...)
+				writeFiles(t, dir, serverCA.issue(t, certOptions{dnsNames: componentSANs("applications-rp"), notAfter: serverExpiry}), bundle)
+				src, err := NewSource(dir)
+				require.NoError(t, err)
+				var elapsed atomic.Int64
+				src.now = func() time.Time { return now.Add(time.Duration(elapsed.Load())) }
+				srv := startServerWithSource(t, src, mode)
+				c := client(t, serverCA, &ucp)
+				transport := c.Transport.(*http.Transport)
+				transport.MaxConnsPerHost = 1
+				t.Cleanup(transport.CloseIdleConnections)
+
+				send := func() (int, bool, bool) {
+					t.Helper()
+					var reused bool
+					trace := &httptrace.ClientTrace{GotConn: func(info httptrace.GotConnInfo) { reused = info.Reused }}
+					req, err := http.NewRequestWithContext(httptrace.WithClientTrace(t.Context(), trace), http.MethodGet, "https://"+srv.url, nil)
+					require.NoError(t, err)
+					resp, err := c.Do(req)
+					require.NoError(t, err)
+					defer resp.Body.Close()
+					_, err = io.Copy(io.Discard, resp.Body)
+					require.NoError(t, err)
+					return resp.StatusCode, reused, resp.Close
+				}
+				status, reused, _ := send()
+				require.Equal(t, http.StatusOK, status)
+				require.False(t, reused)
+
+				// Populate the cache, then check the inclusive X.509 validity boundary.
+				elapsed.Store(int64(expires.Sub(now)))
+				status, reused, _ = send()
+				require.True(t, reused)
+				require.Equal(t, http.StatusOK, status)
+
+				if kind == "renewed server" {
+					writeFiles(t, dir, serverCA.issue(t, certOptions{dnsNames: componentSANs("applications-rp"), notAfter: now.Add(2 * time.Hour)}), bundle)
+					changed, err := src.Reload()
+					require.NoError(t, err)
+					require.True(t, changed)
+				}
+				elapsed.Add(1)
+				status, reused, closed := send()
+				require.True(t, reused, "expiry must be checked on the existing connection")
+				wantStatus := http.StatusOK
+				if kind != "renewed server" && mode == authz.ModeEnforce {
+					wantStatus = http.StatusUnauthorized
+				}
+				require.Equal(t, wantStatus, status)
+				if wantStatus == http.StatusUnauthorized {
+					require.True(t, closed)
+				}
+				if kind == "renewed server" {
+					require.Empty(t, srv.logs.All())
+				} else if kind == "local server" {
+					requireLogged(t, srv.logs, mode, authz.CodeCertificateExpired, "own certificate")
+				} else {
+					requireLogged(t, srv.logs, mode, authz.CodePeerCertificateInvalid, "expired")
+				}
+			})
+		}
 	}
 }
 
