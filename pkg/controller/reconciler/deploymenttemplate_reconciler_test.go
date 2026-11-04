@@ -33,10 +33,14 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
@@ -1060,6 +1064,120 @@ func Test_DeploymentTemplateReconciler_KubernetesOutputCleanup(t *testing.T) {
 			require.Empty(t, mockDeploymentClient.DeletedResourceIDs(), "Kubernetes outputs must not be sent to UCP")
 		})
 	}
+}
+
+func Test_DeploymentTemplateReconciler_RemoveAndReaddOutput(t *testing.T) {
+	ctx := t.Context()
+	_, mockDeploymentClient, c := SetupDeploymentTemplateTest(t)
+	namespace := "remove-readd-output"
+	require.NoError(t, c.Create(ctx, &corev1.Namespace{Name: namespace}))
+	key := types.NamespacedName{Namespace: namespace, Name: "inventory"}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(namespace).String()
+	require.NoError(t, err)
+	template := makeDeploymentTemplate(key, "{}", providerConfig, nil)
+	require.NoError(t, c.Create(ctx, template))
+	status := waitForDeploymentTemplateStateUpdating(t, c, key, nil)
+	output := &corev1.ConfigMap{
+		Name: namespace, Namespace: namespace, Finalizers: []string{"example.com/hold"},
+	}
+	require.NoError(t, c.Create(ctx, output))
+	outputID := "/planes/kubernetes/local/namespaces/" + namespace + "/providers/core/ConfigMap/" + namespace
+	complete := func(status *radappiov1alpha3.DeploymentTemplateStatus, outputs []*armdeployments.ResourceReference) {
+		t.Helper()
+		mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+			resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
+			require.True(t, ok)
+			resource.Properties.OutputResources = outputs
+			state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
+		})
+	}
+	complete(status, []*armdeployments.ResourceReference{{ID: new(outputID)}})
+	waitForDeploymentTemplateStateReady(t, c, key)
+	childKey := types.NamespacedName{Namespace: namespace, Name: namespace}
+	child := &radappiov1alpha3.DeploymentResource{}
+	require.NoError(t, c.Get(ctx, childKey, child))
+	oldUID := child.UID
+
+	require.NoError(t, c.Get(ctx, key, template))
+	template.Spec.Template = `{"resources":{}}`
+	require.NoError(t, c.Update(ctx, template))
+	status = waitForDeploymentTemplateStateUpdating(t, c, key, nil)
+	complete(status, nil)
+	waitForDeploymentTemplateStateReadyPendingCleanup(t, c, key)
+	require.Eventually(t, func() bool {
+		return c.Get(ctx, childKey, child) == nil && child.DeletionTimestamp != nil
+	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval)
+
+	require.NoError(t, c.Get(ctx, key, template))
+	template.Spec.Template = "{}"
+	require.NoError(t, c.Update(ctx, template))
+	require.Never(t, func() bool {
+		current := &radappiov1alpha3.DeploymentTemplate{}
+		require.NoError(t, c.Get(ctx, key, current))
+		return current.Status.Operation != nil || current.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady
+	}, time.Second, time.Millisecond*100, "re-add must not deploy or report Ready during old cleanup")
+
+	require.NoError(t, c.Get(ctx, childKey, output))
+	output.Finalizers = nil
+	require.NoError(t, c.Update(ctx, output))
+	waitForDeploymentResourceDeleted(t, c, childKey)
+	status = waitForDeploymentTemplateStateUpdating(t, c, key, nil)
+	recreated := &corev1.ConfigMap{Name: namespace, Namespace: namespace}
+	require.NoError(t, c.Create(ctx, recreated))
+	complete(status, []*armdeployments.ResourceReference{{ID: new(outputID)}})
+	waitForDeploymentTemplateStateReady(t, c, key)
+	require.NoError(t, c.Get(ctx, childKey, child))
+	require.NotEqual(t, oldUID, child.UID)
+	require.Nil(t, child.DeletionTimestamp)
+	require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
+	require.Equal(t, outputID, child.Status.ProvisionedResourceID)
+	require.NoError(t, c.Get(ctx, childKey, recreated), "re-added output must survive old cleanup")
+
+	require.NoError(t, c.Get(ctx, key, template))
+	require.NoError(t, c.Delete(ctx, template))
+	waitForDeploymentTemplateStateDeleted(t, c, key)
+	require.Eventually(t, func() bool {
+		return apierrors.IsNotFound(c.Get(ctx, childKey, &corev1.ConfigMap{}))
+	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval)
+}
+
+func Test_DeploymentTemplateReconciler_CompletedPutWithTerminatingTracker(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	s := runtime.NewScheme()
+	require.NoError(t, radappiov1alpha3.AddToScheme(s))
+	owner := makeDeploymentTemplate(types.NamespacedName{Namespace: "test", Name: "inventory"}, "{}", "", nil)
+	owner.UID = "owner"
+	const outputID = "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/output"
+	child := makeDeploymentResource(types.NamespacedName{Namespace: owner.Namespace, Name: "output"}, outputID)
+	child.Finalizers = []string{DeploymentResourceFinalizer}
+	now := metav1.Now()
+	child.DeletionTimestamp = &now
+	child.Status.ProvisionedResourceID = outputID
+	require.NoError(t, controllerutil.SetControllerReference(owner, child, s))
+	mockClient := sdkclients.NewMockResourceDeploymentsClient()
+	poller, err := mockClient.CreateOrUpdate(ctx, sdkclients.Deployment{}, "/deployment", "version")
+	require.NoError(t, err)
+	token, err := poller.ResumeToken()
+	require.NoError(t, err)
+	owner.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindPut}
+	owner.Status.StatusHash = "old-hash"
+	mockClient.CompleteOperation(token, func(state *sdkclients.OperationState) {
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{
+			OutputResources: []*armdeployments.ResourceReference{{ID: new(outputID)}},
+		}}
+	})
+	c := fake.NewClientBuilder().WithScheme(s).WithStatusSubresource(owner, child).WithObjects(owner, child).Build()
+	r := &DeploymentTemplateReconciler{Client: c, APIReader: c, Scheme: s, ResourceDeploymentsClient: mockClient}
+	result, err := r.reconcileOperation(ctx, owner)
+	require.NoError(t, err)
+	require.Positive(t, result.RequeueAfter)
+	require.Nil(t, owner.Status.Operation)
+	require.Empty(t, owner.Status.StatusHash, "re-added output must be reprovisioned after deletion drains")
+	require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup, owner.Status.Phrase)
+	require.NoError(t, c.Get(ctx, types.NamespacedName{Namespace: child.Namespace, Name: child.Name}, child))
+	require.NotNil(t, child.DeletionTimestamp)
+	require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
 }
 
 func Test_DeploymentTemplateReconciler_SelfContainingNamespaceCleanup(t *testing.T) {

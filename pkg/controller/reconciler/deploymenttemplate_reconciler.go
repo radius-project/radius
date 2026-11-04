@@ -19,6 +19,7 @@ package reconciler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -40,6 +41,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 )
+
+var errOutputTrackerTerminating = errors.New("deployment output tracker is terminating")
 
 // DeploymentTemplateReconciler reconciles a DeploymentTemplate object.
 type DeploymentTemplateReconciler struct {
@@ -198,53 +201,45 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			}
 		}
 
-		// Compare outputResources with existing DeploymentResources
-		// if is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
-		// if is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
-		// if is present in both, do nothing
-
-		existingOutputResources := make(map[string]bool)
-		for _, resource := range deploymentTemplate.Status.OutputResources {
-			existingOutputResources[resource] = true
-		}
-
 		newOutputResources := make(map[string]bool)
 		for _, resource := range outputResources {
 			newOutputResources[resource] = true
 		}
 
 		for _, outputResourceId := range outputResources {
-			if _, ok := existingOutputResources[outputResourceId]; !ok {
-				// Resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
-
-				logger.Info("Creating DeploymentResource.", "resourceId", outputResourceId)
-				resourceName, err := generateDeploymentResourceName(outputResourceId)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-
-				deploymentResource := &radappiov1alpha3.DeploymentResource{
-					Name:      resourceName,
-					Namespace: deploymentTemplate.Namespace,
-					Spec: radappiov1alpha3.DeploymentResourceSpec{
-						Id: outputResourceId,
-					},
-				}
-
-				if controllerutil.AddFinalizer(deploymentResource, DeploymentResourceFinalizer) {
-					// Add the DeploymentTemplate as the owner of the DeploymentResource
-					if err := controllerutil.SetControllerReference(deploymentTemplate, deploymentResource, r.Scheme); err != nil {
-						return ctrl.Result{}, err
-					}
-
-					// Create the DeploymentResource
-					err = r.Client.Create(ctx, deploymentResource)
-					if err != nil && !apierrors.IsAlreadyExists(err) {
-						return ctrl.Result{}, err
-					}
-				}
+			resourceName, err := generateDeploymentResourceName(outputResourceId)
+			if err != nil {
+				return ctrl.Result{}, err
 			}
-			if err := r.recordOutputIdentity(ctx, deploymentTemplate, outputResourceId); err != nil {
+
+			deploymentResource := &radappiov1alpha3.DeploymentResource{
+				Name:       resourceName,
+				Namespace:  deploymentTemplate.Namespace,
+				Finalizers: []string{DeploymentResourceFinalizer},
+				Spec: radappiov1alpha3.DeploymentResourceSpec{
+					Id: outputResourceId,
+				},
+			}
+
+			if err := controllerutil.SetControllerReference(deploymentTemplate, deploymentResource, r.Scheme); err != nil {
+				return ctrl.Result{}, err
+			}
+
+			// A historical inventory entry does not guarantee its tracker still exists.
+			if err := r.Client.Create(ctx, deploymentResource); err != nil && !apierrors.IsAlreadyExists(err) {
+				return ctrl.Result{}, err
+			}
+			if err := r.recordOutputIdentity(ctx, deploymentTemplate, outputResourceId, false); err != nil {
+				if errors.Is(err, errOutputTrackerTerminating) {
+					// Cleanup may have removed the freshly deployed output. Redeploy after it drains.
+					deploymentTemplate.Status.Operation = nil
+					deploymentTemplate.Status.StatusHash = ""
+					deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
+					if err := r.Client.Status().Update(ctx, deploymentTemplate); err != nil {
+						return ctrl.Result{}, err
+					}
+					return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+				}
 				return ctrl.Result{}, err
 			}
 		}
@@ -253,7 +248,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			if _, ok := newOutputResources[resource]; !ok {
 				// Resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
 
-				if err := r.recordOutputIdentity(ctx, deploymentTemplate, resource); err != nil {
+				if err := r.recordOutputIdentity(ctx, deploymentTemplate, resource, true); err != nil {
 					return ctrl.Result{}, err
 				}
 				logger.Info("Deleting resource.", "resourceId", resource)
@@ -340,6 +335,21 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 		err := r.Client.Update(ctx, deploymentTemplate)
 		if err != nil {
 			return ctrl.Result{}, err
+		}
+	}
+
+	// Never provision over outputs that a previous deployment is still deleting.
+	children := &radappiov1alpha3.DeploymentResourceList{}
+	if err := r.APIReader.List(ctx, children, client.InNamespace(deploymentTemplate.Namespace)); err != nil {
+		return ctrl.Result{}, err
+	}
+	for _, child := range children.Items {
+		if isOwnedBy(child, deploymentTemplate) && child.DeletionTimestamp != nil {
+			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
+			if err := r.Client.Status().Update(ctx, deploymentTemplate); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 	}
 
@@ -573,17 +583,26 @@ func ParseDeploymentScopeFromProviderConfig(providerConfig any) (string, error) 
 	return config.Deployments.Value.Scope, nil
 }
 
-func (r *DeploymentTemplateReconciler) recordOutputIdentity(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, outputID string) error {
+func (r *DeploymentTemplateReconciler) recordOutputIdentity(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, outputID string, allowTerminating bool) error {
 	name, err := generateDeploymentResourceName(outputID)
 	if err != nil {
 		return err
 	}
 	child := &radappiov1alpha3.DeploymentResource{}
 	if err := r.APIReader.Get(ctx, client.ObjectKey{Namespace: owner.Namespace, Name: name}, child); err != nil {
-		return client.IgnoreNotFound(err)
+		if allowTerminating {
+			return client.IgnoreNotFound(err)
+		}
+		return err
 	}
 	if !isOwnedBy(*child, owner) || child.Spec.Id != outputID {
 		return fmt.Errorf("deployment output %q does not match its owned DeploymentResource", outputID)
+	}
+	if !allowTerminating && child.DeletionTimestamp != nil {
+		return errOutputTrackerTerminating
+	}
+	if !allowTerminating && !controllerutil.ContainsFinalizer(child, DeploymentResourceFinalizer) {
+		return fmt.Errorf("deployment output %q has no cleanup finalizer", outputID)
 	}
 	if child.Status.ProvisionedResourceID != "" {
 		if child.Status.ProvisionedResourceID != outputID {
