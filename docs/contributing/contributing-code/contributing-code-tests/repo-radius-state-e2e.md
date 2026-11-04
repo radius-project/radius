@@ -36,7 +36,7 @@ $ gh workflow run repo-radius-state-e2e.yaml \
 
 ## Diagnostics and failure handling
 
-Each lifecycle phase is a separate workflow step. On failure, inspect the failed step first, then download the `repo-radius-state-e2e-diagnostics` artifact. A separate post-lifecycle job retries run-specific state cleanup even if the main job times out. Scheduled failures in the upstream repository also create an issue labeled `test-failure`; manual and fork runs do not. Successful runs record the saved/restored digest in the job summary; the private package and bootstrap version remain.
+Each lifecycle phase is a separate workflow step. On failure, inspect the failed step first, then download the `repo-radius-state-e2e-diagnostics` artifact. Its `completed-phases.txt` lists the phases that finished and ends with `failed: <phase>` for the phase that did not, and the `k3d-*.docker.log` files hold the k3s server logs. The k3s image is pinned by `K3S_IMAGE` in [`test-repo-radius-state-e2e.sh`](../../../../.github/scripts/test-repo-radius-state-e2e.sh) rather than following the k3d default. A separate post-lifecycle job retries run-specific state cleanup even if the main job times out. Scheduled failures in the upstream repository also create an issue labeled `test-failure`; manual and fork runs do not. Successful runs record the saved/restored digest in the job summary; the private package and bootstrap version remain.
 
 ## Related docs
 
