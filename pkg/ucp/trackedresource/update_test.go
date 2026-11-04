@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -58,6 +59,45 @@ func setupUpdater(t *testing.T) (*Updater, *database.MockClient, *mockRoundTripp
 	updater.RequestTimeout = time.Microsecond * 100
 
 	return updater, databaseClient, roundTripper
+}
+
+func Test_ResolveTrackingEntry(t *testing.T) {
+	t.Parallel()
+	currentID, legacyID := IDFor(testID), LegacyIDFor(testID)
+	current := &database.Object{ID: currentID.String(), ETag: "current-etag"}
+	legacy := &database.Object{ID: legacyID.String(), ETag: "legacy-etag"}
+	notFound := &database.ErrNotFound{}
+	failure := errors.New("database unavailable")
+	for _, tt := range []struct {
+		name       string
+		current    *database.Object
+		currentErr error
+		legacy     *database.Object
+		legacyErr  error
+		wantID     resources.ID
+		want       *database.Object
+		wantErr    error
+	}{
+		{name: "current only", current: current, wantID: currentID, want: current},
+		{name: "both present prefer current", current: current, legacy: legacy, wantID: currentID, want: current},
+		{name: "legacy only", currentErr: notFound, legacy: legacy, wantID: legacyID, want: legacy},
+		{name: "neither present", currentErr: notFound, legacyErr: notFound, wantID: currentID},
+		{name: "current read error", currentErr: failure, wantID: currentID, wantErr: failure},
+		{name: "legacy read error", currentErr: notFound, legacyErr: failure, wantID: currentID, wantErr: failure},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			client := database.NewMockClient(gomock.NewController(t))
+			first := client.EXPECT().Get(gomock.Any(), currentID.String()).Return(tt.current, tt.currentErr)
+			if errors.Is(tt.currentErr, notFound) {
+				client.EXPECT().Get(gomock.Any(), legacyID.String()).Return(tt.legacy, tt.legacyErr).After(first.Call)
+			}
+			id, obj, err := ResolveTrackingEntry(t.Context(), client, testID)
+			require.ErrorIs(t, err, tt.wantErr)
+			require.Equal(t, tt.wantID, id)
+			require.Same(t, tt.want, obj)
+		})
+	}
 }
 
 func Test_Update(t *testing.T) {
@@ -303,6 +343,7 @@ func Test_run(t *testing.T) {
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 				require.Equal(t, LegacyIDFor(testID).String(), obj.ID)
+				require.Equal(t, etag, database.NewSaveConfig(options...).ETag)
 
 				dm := obj.Data.(*datamodel.GenericResource)
 				require.Equal(t, LegacyIDFor(testID).String(), dm.ID)
@@ -356,27 +397,29 @@ func Test_run(t *testing.T) {
 	})
 
 	t.Run("successful delete", func(t *testing.T) {
-		updater, databaseClient, roundTripper := setupUpdater(t)
-
-		etag := "some-etag"
-		dm := datamodel.GenericResourceFromID(testID, IDFor(testID))
-		dm.Properties.APIVersion = apiVersion
-
-		databaseClient.EXPECT().
-			Get(gomock.Any(), IDFor(testID).String()).
-			Return(&database.Object{ETag: etag, Data: dm}, nil).
-			Times(1)
-
-		// Mock a successful (terminal) response from the downstream API.
-		roundTripper.RespondWithJSON(t, http.StatusNotFound, &v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeNotFound}})
-
-		databaseClient.EXPECT().
-			Delete(gomock.Any(), IDFor(testID).String(), gomock.Any()).
-			Return(nil).
-			Times(1)
-
-		err := updater.run(t.Context(), testID, testURL, apiVersion)
-		require.NoError(t, err)
+		for _, tt := range []struct {
+			name string
+			id   resources.ID
+		}{{"current", IDFor(testID)}, {"legacy", LegacyIDFor(testID)}} {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				updater, databaseClient, roundTripper := setupUpdater(t)
+				etag := "some-etag"
+				dm := datamodel.GenericResourceFromID(testID, tt.id)
+				dm.Properties.APIVersion = apiVersion
+				if tt.name == "legacy" {
+					databaseClient.EXPECT().Get(gomock.Any(), IDFor(testID).String()).Return(nil, &database.ErrNotFound{})
+				}
+				databaseClient.EXPECT().Get(gomock.Any(), tt.id.String()).Return(&database.Object{ETag: etag, Data: dm}, nil)
+				roundTripper.RespondWithJSON(t, http.StatusNotFound, &v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeNotFound}})
+				databaseClient.EXPECT().Delete(gomock.Any(), tt.id.String(), gomock.Any()).
+					DoAndReturn(func(_ context.Context, _ string, options ...database.DeleteOptions) error {
+						require.Equal(t, etag, database.NewDeleteConfig(options...).ETag)
+						return nil
+					})
+				require.NoError(t, updater.run(t.Context(), testID, testURL, apiVersion))
+			})
+		}
 	})
 
 	t.Run("resource still provisioning", func(t *testing.T) {

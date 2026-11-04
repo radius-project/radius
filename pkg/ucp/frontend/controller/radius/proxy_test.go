@@ -19,10 +19,12 @@ package radius
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"uuid"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
@@ -243,11 +245,10 @@ func Test_Run(t *testing.T) {
 			Get(gomock.Any(), locationResource.ID).
 			Return(&database.Object{Data: locationResource}, nil).Times(1)
 
-		// Tracking entry created. The entry is read three times for a new resource: the current and
-		// legacy IDs during ResolveTrackingEntry, then once more in the enqueue retry loop.
+		// Tracking entry created. A new resource is resolved by reading the current and legacy IDs.
 		databaseClient.EXPECT().
 			Get(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil, &database.ErrNotFound{}).Times(3)
+			Return(nil, &database.ErrNotFound{}).Times(2)
 		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil).Times(1)
@@ -307,7 +308,7 @@ func Test_Run(t *testing.T) {
 		}
 		databaseClient.EXPECT().
 			Get(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(existingEntry, nil).Times(2)
+			Return(existingEntry, nil).Times(1)
 		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil).Times(1)
@@ -349,6 +350,131 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expected, response)
 	})
+}
+
+func Test_EnqueueTrackedResourceUpdate_LegacyEntry(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name     string
+		state    v1.ProvisioningState
+		conflict bool
+	}{
+		{"completed", v1.ProvisioningStateSucceeded, false},
+		{"concurrent update", v1.ProvisioningStateSucceeded, true},
+		{"already queued", v1.ProvisioningStateAccepted, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			p, client, _, _, statusManager := createController(t)
+			id := resources.MustParse("/planes/test/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource")
+			legacyID := trackedresource.LegacyIDFor(id)
+			request := &v1.ARMRequestContext{
+				ResourceID:  id,
+				OperationID: uuid.New(),
+			}
+			ctx := v1.WithARMRequestContext(t.Context(), request)
+			entry := datamodel.GenericResourceFromID(id, legacyID)
+			entry.AsyncProvisioningState = tt.state
+			entry.Properties.APIVersion = apiVersion
+
+			etags := []string{"first-etag"}
+			if tt.conflict {
+				etags = append(etags, "retry-etag")
+			}
+			var previous *gomock.Call
+			for attempt, etag := range etags {
+				// Every attempt resolves the tracking ID again: the current ID first, then the legacy ID.
+				current := client.EXPECT().Get(gomock.Any(), trackedresource.IDFor(id).String()).Return(nil, &database.ErrNotFound{})
+				if previous != nil {
+					current.After(previous)
+				}
+				read := client.EXPECT().Get(gomock.Any(), legacyID.String()).
+					Return(&database.Object{ID: legacyID.String(), ETag: etag, Data: entry}, nil).After(current.Call)
+				previous = client.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(_ context.Context, obj *database.Object, options ...database.SaveOptions) error {
+						require.Equal(t, legacyID.String(), obj.ID)
+						require.Equal(t, etag, database.NewSaveConfig(options...).ETag)
+						saved := obj.Data.(*datamodel.GenericResource)
+						require.Equal(t, legacyID.String(), saved.ID)
+						require.Equal(t, id.String(), saved.Properties.ID)
+						require.Equal(t, v1.ProvisioningStateAccepted, saved.AsyncProvisioningState)
+						if tt.conflict && attempt == 0 {
+							return &database.ErrConcurrency{}
+						}
+						return nil
+					}).After(read)
+			}
+			if tt.state.IsTerminal() {
+				statusManager.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(_ context.Context, queued *v1.ARMRequestContext, _ statusmanager.QueueOperationOptions) error {
+						require.Equal(t, legacyID, queued.ResourceID)
+						require.Equal(t, request.OperationID, queued.OperationID)
+						require.Equal(t, v1.OperationType{Type: legacyID.Type(), Method: datamodel.OperationProcess}, queued.OperationType)
+						return nil
+					}).After(previous)
+			}
+			require.NoError(t, p.EnqueueTrackedResourceUpdate(ctx, id, apiVersion))
+			require.Equal(t, id, request.ResourceID, "queueing must not mutate the request context")
+		})
+	}
+}
+
+func Test_EnqueueTrackedResourceUpdate_FollowsMigratedEntry(t *testing.T) {
+	t.Parallel()
+	p, client, _, _, statusManager := createController(t)
+	id := resources.MustParse("/planes/test/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource")
+	currentID, legacyID := trackedresource.IDFor(id), trackedresource.LegacyIDFor(id)
+	ctx := v1.WithARMRequestContext(t.Context(), &v1.ARMRequestContext{ResourceID: id, OperationID: uuid.New()})
+	legacyEntry := datamodel.GenericResourceFromID(id, legacyID)
+	legacyEntry.AsyncProvisioningState = v1.ProvisioningStateSucceeded
+	currentEntry := datamodel.GenericResourceFromID(id, currentID)
+	currentEntry.AsyncProvisioningState = v1.ProvisioningStateSucceeded
+
+	// The first attempt resolves the legacy entry. The migration moves it before the save, so the save conflicts.
+	first := client.EXPECT().Get(gomock.Any(), currentID.String()).Return(nil, &database.ErrNotFound{})
+	legacyRead := client.EXPECT().Get(gomock.Any(), legacyID.String()).
+		Return(&database.Object{ID: legacyID.String(), ETag: "legacy-etag", Data: legacyEntry}, nil).After(first.Call)
+	conflict := client.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(&database.ErrConcurrency{}).After(legacyRead)
+
+	// The retry resolves the moved entry under its current ID; the legacy entry is never recreated.
+	second := client.EXPECT().Get(gomock.Any(), currentID.String()).
+		Return(&database.Object{ID: currentID.String(), ETag: "current-etag", Data: currentEntry}, nil).After(conflict)
+	saved := client.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *database.Object, options ...database.SaveOptions) error {
+			require.Equal(t, currentID.String(), obj.ID)
+			require.Equal(t, "current-etag", database.NewSaveConfig(options...).ETag)
+			return nil
+		}).After(second)
+	statusManager.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, queued *v1.ARMRequestContext, _ statusmanager.QueueOperationOptions) error {
+			require.Equal(t, currentID, queued.ResourceID)
+			return nil
+		}).After(saved)
+
+	require.NoError(t, p.EnqueueTrackedResourceUpdate(ctx, id, apiVersion))
+}
+
+func Test_EnqueueTrackedResourceUpdate_LookupError(t *testing.T) {
+	t.Parallel()
+	for _, legacy := range []bool{false, true} {
+		name := "current"
+		if legacy {
+			name = "legacy"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			p, client, _, _, _ := createController(t)
+			id := resources.MustParse("/planes/test/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource")
+			failure := errors.New("database unavailable")
+			if legacy {
+				first := client.EXPECT().Get(gomock.Any(), trackedresource.IDFor(id).String()).Return(nil, &database.ErrNotFound{})
+				client.EXPECT().Get(gomock.Any(), trackedresource.LegacyIDFor(id).String()).Return(nil, failure).After(first.Call)
+			} else {
+				client.EXPECT().Get(gomock.Any(), trackedresource.IDFor(id).String()).Return(nil, failure)
+			}
+			require.ErrorIs(t, p.EnqueueTrackedResourceUpdate(t.Context(), id, apiVersion), failure)
+		})
+	}
 }
 
 func Test_ProxyController_PrepareProxyRequest(t *testing.T) {

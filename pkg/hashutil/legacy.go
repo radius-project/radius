@@ -16,14 +16,12 @@ limitations under the License.
 
 package hashutil
 
-// This file centralizes the SHA-1 implementation behind pkg/hashutil. SHA-1 is used here
-// only for non-cryptographic, backward-compatible reads of identifiers and change-detection
-// tokens written by older versions of Radius while they are migrated to SHA-256.
-//
-// A few call sites outside hashutil still compute SHA-1 directly and are migrated in a later
-// phase - notably the Kubernetes secret-hash pod annotation (pkg/kubernetes/secrets.go). Once those are
-// migrated and all stored SHA-1 values have been re-keyed, deleting this file completes the
-// migration away from SHA-1.
+// This file holds the only SHA-1 implementation in Radius. SHA-1 is used here only to
+// recognize non-cryptographic identifiers and change-detection tokens written by older
+// versions of Radius, including the Kubernetes secret-hash pod annotation
+// (pkg/kubernetes/secrets.go), while the automatic migration in pkg/upgrade/hashmigration
+// moves stored values to SHA-256. A later release deletes this file, and its upgrade checks
+// require the recorded migration status to show that the migration finished.
 //
 // See https://github.com/radius-project/radius/issues/8084.
 
