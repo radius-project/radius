@@ -93,6 +93,9 @@ func IdentityFromContext(ctx context.Context) (Identity, bool) {
 // before reading a single asserted user or group. VerifiedChains from other TLS
 // trust domains and forwarded certificate headers are deliberately not trusted.
 func (a *RequestHeaderAuthenticator) Authenticate(r *http.Request) (Identity, error) {
+	if hasRemoteHeaders(r.Trailer) {
+		return Identity{}, fmt.Errorf("request-header identity must not be supplied in trailers")
+	}
 	if a.roots == nil {
 		return Identity{}, fmt.Errorf("request-header authentication is not configured")
 	}
@@ -108,6 +111,11 @@ func (a *RequestHeaderAuthenticator) Authenticate(r *http.Request) (Identity, er
 		Roots: a.roots, Intermediates: intermediates, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}); err != nil {
 		return Identity{}, fmt.Errorf("verify request-header client certificate: %w", err)
+	}
+	// x509.Verify also permits absent EKU and Any; proxy identity requires an
+	// explicit clientAuth purpose on the leaf, not merely an unrestricted key.
+	if !slices.Contains(certs[0].ExtKeyUsage, x509.ExtKeyUsageClientAuth) {
+		return Identity{}, fmt.Errorf("request-header client certificate must explicitly permit client authentication")
 	}
 	if len(a.allowedNames) > 0 && !slices.Contains(a.allowedNames, certs[0].Subject.CommonName) {
 		return Identity{}, fmt.Errorf("client certificate is not an allowed request-header proxy")
@@ -147,17 +155,11 @@ func (a *RequestHeaderAuthenticator) Authenticate(r *http.Request) (Identity, er
 // Middleware rejects unverified forwarded headers in every enforcement mode.
 // Headerless requests continue unidentified for compatibility; protected
 // endpoints must require IdentityFromContext themselves. Remote headers are
-// consumed here and never forwarded to downstream handlers.
+// consumed here and never forwarded to downstream handlers. Announced remote
+// trailers are always rejected before body consumption, even from trusted peers.
 func (a *RequestHeaderAuthenticator) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		hasRemote := false
-		for name := range r.Header {
-			if strings.HasPrefix(strings.ToLower(name), "x-remote-") {
-				hasRemote = true
-				break
-			}
-		}
-		if !hasRemote {
+		if !hasRemoteHeaders(r.Header) && !hasRemoteHeaders(r.Trailer) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -178,6 +180,15 @@ func (a *RequestHeaderAuthenticator) Middleware(next http.Handler) http.Handler 
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func hasRemoteHeaders(headers http.Header) bool {
+	for name := range headers {
+		if strings.HasPrefix(strings.ToLower(name), "x-remote-") {
+			return true
+		}
+	}
+	return false
 }
 
 func headerValues(headers http.Header, name string) []string {
