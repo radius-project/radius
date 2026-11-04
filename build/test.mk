@@ -130,6 +130,12 @@ test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned 
 	@bash ./.github/scripts/authz-would-deny-check_test.sh
 	@python3 ./.github/scripts/run-with-authz-logs_test.py
 
+.PHONY: test-user-authz-lab
+test-user-authz-lab: ## Tests the isolated user authorization lab launcher without infrastructure
+	@bash ./hack/authz/user-lab_test.sh
+
+test: test-user-authz-lab
+
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
 	@bash ./.github/scripts/collect-cluster-diagnostics_test.sh
