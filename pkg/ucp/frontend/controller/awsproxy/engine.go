@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/aws/extraproperties"
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/components/database"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
@@ -321,6 +322,8 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if resp != nil {
 		return resp, nil
 	}
+	// UCP adds extra properties only to its read responses, so they are never sent to AWS or stored.
+	body.Properties = extraproperties.Without(r.typeName, body.Properties)
 
 	typeInfo, err := e.describeType(ctx, r)
 	if err != nil {
@@ -917,6 +920,9 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		if err := json.Unmarshal([]byte(*current.ResourceDescription.Properties), &properties); err != nil {
 			return nil, err
 		}
+	}
+	if resp, err := addExtraProperties(ctx, e.clients.Kafka, r.typeName, r.region, properties); resp != nil || err != nil {
+		return resp, err
 	}
 	return armrpc_rest.NewOKResponse(map[string]any{
 		"id":         r.id.String(),
