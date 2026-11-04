@@ -222,12 +222,16 @@ A permission is `<Namespace>/<type>/<operation>`. UCP maps each request to one p
 
 **Use permissions.** These work like Azure `join` actions. They protect references from one resource to another.
 
-| Use permission                                                              | Needed when                                                                                                                                                                                                                    |
-|-----------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `Radius.Core/environments/use/action` (and the `Applications.Core` version) | A resource's `environment` property points at the environment. This means "deploy to this environment".                                                                                                                        |
-| `Radius.Core/recipePacks/use/action`                                        | An environment's `recipePacks` list includes the Recipe Pack.                                                                                                                                                                  |
-| `System.Azure/credentials/use/action`, `System.AWS/credentials/use/action`  | An environment's Azure or AWS provider settings are set or changed, or a template creates cloud resources directly ([see below](#cloud-resources-in-templates)). In both cases, Radius acts with the plane's cloud credential. |
-| `<type>/connect/action`                                                     | A resource adds a connection to a resource of that type.                                                                                                                                                                       |
+| Use permission                                                                     | Needed when                                                                                                                                                                                                                    |
+|------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Radius.Core/environments/use/action` (and the `Applications.Core` version)        | A resource's `environment` property points at the environment. This means "deploy to this environment".                                                                                                                        |
+| `Radius.Core/recipePacks/use/action`                                               | An environment's `recipePacks` list includes the Recipe Pack.                                                                                                                                                                  |
+| `Radius.Core/terraformSettings/use/action`, `Radius.Core/bicepSettings/use/action` | An environment references Terraform or Bicep settings.                                                                                                                                                                         |
+| `Applications.Core/secretStores/use/action`                                        | A legacy environment's recipe configuration references a secret store for authentication or environment secrets.                                                                                                               |
+| `System.Azure/credentials/use/action`, `System.AWS/credentials/use/action`         | An environment's Azure or AWS provider settings are set or changed, or a template creates cloud resources directly ([see below](#cloud-resources-in-templates)). In both cases, Radius acts with the plane's cloud credential. |
+| `<type>/connect/action`                                                            | A resource adds a connection to a resource of that type.                                                                                                                                                                       |
+
+`platform-administrator` includes settings and recipe secret-store use; `application-developer` does not. A custom role can grant use on a specific referenced resource without granting permission to manage it. `radius-administrator` includes all permissions.
 
 **No `applications/deploy/action`.** Radius has no separate deployment API. "Deploy my app to staging" needs `applications/write` on the app resources and `environments/use/action` on staging.
 
@@ -423,14 +427,18 @@ requiredChecks(request):
 
 **References.** Radius checks referenced resources during create and update:
 
-| Property in the request                                                                   | Extra check on the resource it points to                                                   |
-|-------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| `properties.environment`                                                                  | `<envType>/use/action` (can you deploy here?)                                              |
-| `properties.application`                                                                  | `<appType>/write`, so you cannot attach resources to another team's application            |
-| `properties.recipePacks[]` on an environment                                              | `Radius.Core/recipePacks/use/action`                                                       |
-| `properties.providers.azure` or `.aws` on an environment                                  | `System.Azure/credentials/use/action` or `System.AWS/credentials/use/action` on that plane |
-| `properties.connections.*.source`                                                         | `<sourceType>/connect/action`                                                              |
-| A property in a user-defined type marked with a new `x-radius-reference` schema extension | `<referencedType>/read`                                                                    |
+| Property in the request                                                                                                   | Extra check on the resource it points to                                                           |
+|---------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| `properties.environment`                                                                                                  | `<envType>/use/action` (can you deploy here?)                                                      |
+| `properties.application`                                                                                                  | `<appType>/write`, so you cannot attach resources to another team's application                    |
+| `properties.recipePacks[]` on an environment                                                                              | `Radius.Core/recipePacks/use/action`                                                               |
+| `properties.terraformSettings` or `properties.bicepSettings` on a `Radius.Core` environment                               | `Radius.Core/terraformSettings/use/action` or `Radius.Core/bicepSettings/use/action`, respectively |
+| Recipe authentication or environment-secret references in `properties.recipeConfig` on an `Applications.Core` environment | `Applications.Core/secretStores/use/action` on the referenced secret store                         |
+| `properties.providers.azure` or `.aws` on an environment                                                                  | `System.Azure/credentials/use/action` or `System.AWS/credentials/use/action` on that plane         |
+| `properties.connections.*.source` pointing to a Radius resource                                                           | `<sourceType>/connect/action`                                                                      |
+| A property in a user-defined type marked with a new `x-radius-reference` schema extension                                 | `<referencedType>/read`                                                                            |
+
+Connection sources can also be URLs or cloud resource IDs. URLs do not identify Radius resources and add no Radius reference check. Azure resource IDs and Azure/AWS UCP resource IDs require `System.Azure/credentials/use/action` or `System.AWS/credentials/use/action` on the cloud plane selected by the environment. If the required plane cannot be resolved, the check fails rather than guessing a credential scope.
 
 UCP checks **every** reference in the resulting resource. For `PATCH`, it checks target write permission, loads the resource, and applies the patch using the type's update semantics before extracting references. Omitted environment and connection references are still checked. Unresolved resources or required references return `AuthorizationIndeterminate` in `Enforce`; workload checks remain log-only in `DryRun`.
 
@@ -859,6 +867,7 @@ Add under `deploy/Chart/templates`:
 - Access based on groups.
 - `assignableScopes`.
 - Reference checks for each built-in type and for `x-radius-reference`.
+- Environment settings and legacy recipe secret-store references require the corresponding `use/action` on the referenced resource. Cover each supported reference shape, a caller who can write the environment but cannot use its settings or secret store, and references to the wrong resource type.
 - A `PATCH` omits an existing environment or connection whose use permission was revoked. Checks still include that reference from the effective resource and deny the update in `Enforce`; an unresolved effective resource returns `AuthorizationIndeterminate`.
 - Each safety rule, with `PrivilegeEscalationDenied`, `LastAdministratorProtected`, and `highImpact` audit events when an Access Administrator assigns `radius-administrator`.
 - In each mode, a caller without the required permission cannot create, update, or delete roles or assignments, even when the proposed change passes the safety rules.
