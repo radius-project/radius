@@ -522,14 +522,16 @@ func equivalentFor(r *request) func(path string, template any, aws any) bool {
 }
 
 // outcomeOf returns how much of a start call that failed with err AWS applied: the outcome a native handler reports
-// with a *native.Failure, OutcomeRejected for a client fault, such as an invalid property, and OutcomeUnknown
-// otherwise, because a transport or server error does not show that AWS changed nothing.
+// with a *native.Failure, OutcomeRejected for a client fault, such as an invalid property, and for a resource of
+// another product, which the handler refuses before it changes anything, and OutcomeUnknown otherwise, because a
+// transport or server error does not show that AWS changed nothing.
 func outcomeOf(err error) native.Outcome {
 	var failure *native.Failure
 	if errors.As(err, &failure) {
 		return failure.Outcome
 	}
-	if ucp_aws.IsClientFault(err) {
+	var other *native.OtherProductError
+	if errors.As(err, &other) || ucp_aws.IsClientFault(err) {
 		return native.OutcomeRejected
 	}
 	return native.OutcomeUnknown

@@ -21,6 +21,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -29,6 +30,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/aws/schemas"
+	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -514,4 +516,127 @@ func Test_outcomeOf(t *testing.T) {
 	require.Equal(t, native.OutcomeRejected, outcomeOf(nativefake.ClientError("ValidationException", "bad value")))
 	require.Equal(t, native.OutcomeUnknown, outcomeOf(nativefake.ServerError("InternalFailure", "unavailable")))
 	require.Equal(t, native.OutcomeUnknown, outcomeOf(errors.New("connection reset")))
+}
+
+// Test_Native_AppliedStartCall checks that a start call that fails after AWS applied every change records the
+// operation as done: a create's values become last-applied, and a delete or reset removes the record.
+func Test_Native_AppliedStartCall(t *testing.T) {
+	applied := &native.Failure{Message: "every change was made, then a call failed", Outcome: native.OutcomeApplied}
+
+	t.Run("create", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.fake.LostResponses["Create"] = applied
+		resp := h.put(nativePath, nativeProperties(1))
+		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+		rec := h.record(nativePath)
+		require.Empty(t, rec.Properties.ClientToken, "the create is finished")
+		require.Equal(t, "app-native", rec.Properties.AWSIdentifier)
+		require.NotEmpty(t, rec.Properties.Fingerprints.Digests["Password"])
+		h.fake.Calls()
+
+		resp = h.put(nativePath, nativeProperties(1))
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"Read"}, methods(h.fake.Calls()), "the unchanged password isn't sent again")
+	})
+
+	t.Run("create whose identifier AWS didn't return", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.assigned.Errors["Create"] = applied
+		require.Equal(t, http.StatusInternalServerError, h.put(assignedPath, map[string]any{"Size": 1}).status)
+		h.requireCreateKept(assignedPath)
+	})
+
+	for _, method := range []string{"Delete", "Reset"} {
+		t.Run(method, func(t *testing.T) {
+			h := newNativeHarness(t)
+			if method == "Reset" {
+				h.withMetadata(metadata(nativeType, schemas.IdentityScopeRegion, schemas.OnDeleteReset))
+			}
+			h.deploy(nativePath, nativeProperties(1))
+			h.fake.Errors[method] = applied
+			resp := h.delete(nativePath, testOwner)
+			require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+			require.Equal(t, applied.Message, resp.message())
+			require.Nil(t, h.record(nativePath))
+		})
+	}
+
+	t.Run("removing the record fails", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.deploy(nativePath, nativeProperties(1))
+		h.fake.Errors["Delete"] = applied
+		h.failSavesAfter(1, errors.New("database is down"))
+		resp := h.delete(nativePath, testOwner)
+		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+		require.Equal(t, applied.Message, resp.message())
+		require.NotNil(t, h.record(nativePath), "the record stays, and the next DELETE finds nothing to delete")
+	})
+}
+
+// Test_Native_UpdateOtherProduct checks that an update the handler refuses because the identifier now names another
+// product leaves the record's values as they were.
+func Test_Native_UpdateOtherProduct(t *testing.T) {
+	h := newNativeHarness(t)
+	h.deploy(nativePath, nativeProperties(1))
+	h.fake.Errors["Update"] = &native.OtherProductError{Identifier: "app-native", Product: "neptune"}
+
+	resp := h.put(nativePath, nativeProperties(2))
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	rec := h.record(nativePath)
+	require.EqualValues(t, 1, rec.Properties.LastApplied["Size"])
+	require.NotEmpty(t, rec.Properties.Fingerprints.Digests["Password"])
+}
+
+// Test_Native_RejectAfterInterruptedCreate checks a DELETE of a type whose onDelete is reject after a create was
+// interrupted.
+func Test_Native_RejectAfterInterruptedCreate(t *testing.T) {
+	t.Run("the found create's values count as applied", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.withMetadata(metadata(handWrittenType, schemas.IdentityScopeRegion, schemas.OnDeleteReject))
+		h.loseCreate(h.handWritten, handWrittenPath, map[string]any{"Name": "app-handwritten", "Description": "first"})
+		require.Equal(t, http.StatusBadRequest, h.delete(handWrittenPath, testOwner).status)
+
+		h.deploy(handWrittenPath, map[string]any{"Name": "app-handwritten"})
+		require.NotContains(t, h.cc.Resource(handWrittenType, "app-handwritten"), "Description", "a later deploy clears what the template no longer sets")
+	})
+
+	for _, exists := range []bool{false, true} {
+		name := map[bool]string{false: "Cloud Control create that never reached AWS", true: "Cloud Control create that reached AWS"}[exists]
+		t.Run(name, func(t *testing.T) {
+			h := newNativeHarness(t)
+			h.withMetadata(metadata(nativeType, schemas.IdentityScopeRegion, schemas.OnDeleteReject))
+			h.provisioningTypes[nativeType] = cftypes.ProvisioningTypeFullyMutable
+			h.cc.Errors["CreateResource"] = nativefake.ServerError("InternalFailure", "unavailable")
+			require.Equal(t, http.StatusInternalServerError, h.put(nativePath, nativeProperties(1)).status)
+			delete(h.cc.Errors, "CreateResource")
+			rec := h.record(nativePath)
+			require.NotEmpty(t, rec.Properties.ClientToken)
+			require.Equal(t, "app-native", rec.Properties.AWSIdentifier)
+			if exists {
+				h.cc.Put(nativeType, "app-native", map[string]any{"Name": "app-native", "Size": 1})
+			}
+			h.cc.Calls()
+
+			resp := h.delete(nativePath, testOwner)
+			if exists {
+				require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+				require.NotNil(t, h.record(nativePath))
+				require.NotNil(t, h.cc.Resource(nativeType, "app-native"))
+			} else {
+				require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+				require.Nil(t, h.record(nativePath))
+			}
+			require.Zero(t, countOps(h.cc.Calls(), "CreateResource", "DeleteResource"), "the delete never creates or deletes in AWS")
+		})
+	}
+}
+
+func countOps(calls []awsfake.Call, ops ...string) int {
+	n := 0
+	for _, c := range calls {
+		if slices.Contains(ops, c.Operation) {
+			n++
+		}
+	}
+	return n
 }

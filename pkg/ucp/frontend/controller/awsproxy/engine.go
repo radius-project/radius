@@ -608,15 +608,24 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 		// resource (see resumeNativeCreate), or sends the create again with it and Cloud Control returns the first
 		// request instead of creating a second resource.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
-			// AWS did nothing with a replay it rejected, so the pending values still describe the create it may have.
-			// After any other error, AWS may have the create from this attempt or an earlier one, and the pending
-			// fingerprints stay unknown.
-			if replay && outcome == native.OutcomeRejected {
-				restorePending(rec, previous)
-			}
 			if created != "" {
 				rec.Properties.AWSIdentifier = created
 			}
+			switch {
+			case outcome == native.OutcomeApplied && rec.Properties.AWSIdentifier != "":
+				// The native handler made every change, and UCP has the identifier, so the create is finished: its
+				// values and fingerprints are last-applied, and the next deploy updates the resource as usual.
+				records.Settle(rec, outcome)
+				rec.Properties.ClientToken = ""
+				rec.SetProvisioningState(v1.ProvisioningStateFailed)
+				return
+			case replay && outcome == native.OutcomeRejected:
+				// AWS did nothing with a replay it rejected, so the pending values still describe the create it may
+				// have.
+				restorePending(rec, previous)
+			}
+			// After any other error, AWS may have the create from this attempt or an earlier one, and the pending
+			// fingerprints stay unknown.
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
 		})
 		return handleError(ctx, r.id, err)
@@ -809,7 +818,9 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	if rec.Properties.AWSIdentifier == "" && !records.IsFirstCreate(rec) {
 		return e.removeRecord(ctx, r, etag)
 	}
-	if onDelete(r) == schemas.OnDeleteReject && !records.IsFirstCreate(rec) {
+	// A native first create is found below, with the steps a PUT takes. Any other record with an identifier is read by it,
+	// including a Cloud Control first create, whose identifier the template gave.
+	if onDelete(r) == schemas.OnDeleteReject && rec.Properties.AWSIdentifier != "" && (r.handler == nil || !records.IsFirstCreate(rec)) {
 		current, err := e.readResource(ctx, r, rec.Properties.AWSIdentifier)
 		switch {
 		case isGoneForDelete(err), err == nil && current == nil:
@@ -842,9 +853,10 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 		}
 	}
 	if onDelete(r) == schemas.OnDeleteReject {
-		// The create reached AWS, and the record now has its identifier.
+		// The create reached AWS, and the record now has its identifier. The create's values count as possibly applied,
+		// as when a PUT finds it, so a later deploy that leaves one out clears it.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
-			records.ClearPending(rec)
+			records.KeepPending(rec)
 			rec.SetProvisioningState(prior)
 		})
 		return rejected(r), nil
@@ -856,6 +868,14 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	if isGoneForDelete(err) {
 		return e.removeRecord(ctx, r, etag)
 	} else if err != nil {
+		if outcomeOf(err) == native.OutcomeApplied {
+			// The native handler made every change, so the delete or reset is done, as when the worker finds it so.
+			delErr := e.store.DeleteIfUnchanged(ctx, r.id, etag)
+			if delErr == nil {
+				return handleError(ctx, r.id, err)
+			}
+			logger.Error(delErr, "Failed to remove the record after AWS applied a delete", "alias", r.id.Name())
+		}
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			records.ClearPending(rec)
 			rec.SetProvisioningState(prior)
