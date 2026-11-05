@@ -406,7 +406,8 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 //     properties, because the template may have changed since. If AWS has none, the create is sent again with the
 //     template. If another alias manages the resource Find returns, the request gets 409.
 //   - RecoverByResend: the create is sent again with the template. AWS may return the first resource, with the lost
-//     create's values, so UCP treats the result like a found resource rather than a new create.
+//     create's values, so UCP treats the result like a found resource rather than a new create. For a handler whose
+//     resource is some members of a parent, UCP first saves the members of both (see saveResendMembers).
 //
 // When UCP reads the resource, it continues by what AWS shows:
 //
@@ -424,6 +425,11 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 	if identifier == "" {
 		var err error
 		if r.handler.Options().Recovery == native.RecoverByResend {
+			var resp armrpc_rest.Response
+			etag, resp, err = e.saveResendMembers(ctx, r, rec, etag, deploy)
+			if resp != nil || err != nil {
+				return resp, err
+			}
 			identifier, err = e.resendCreate(ctx, r, rec, properties)
 		} else {
 			identifier, err = e.findCreate(ctx, r, rec, rec.Properties.PendingLastApplied)
@@ -574,6 +580,26 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 	records.KeepPending(rec)
 	rec.Properties.ClientToken = ""
 	etag, err = e.store.Save(ctx, rec, etag)
+	if err != nil {
+		resp, err := saveError(r.id, err)
+		return "", resp, err
+	}
+	return etag, nil, nil
+}
+
+// saveResendMembers saves the record before a create is sent again with the template, for a handler whose resource is
+// some members of a parent (native.ScopedReader). The create sent again may add the template's members and then fail,
+// so the pending values become the template's, with the members of the lost create added, and a DELETE removes the
+// members of both. Which attempt's write-only values AWS has is unknown, so the record keeps no fingerprints for them.
+func (e *engine) saveResendMembers(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, deploy applied) (string, armrpc_rest.Response, error) {
+	if _, scoped := r.handler.(native.ScopedReader); !scoped {
+		return etag, nil, nil
+	}
+	pending := maps.Clone(deploy.properties)
+	addMembers(pending, rec.Properties.PendingLastApplied)
+	rec.Properties.PendingLastApplied = pending
+	rec.Properties.PendingFingerprints = nil
+	etag, err := e.store.Save(ctx, rec, etag)
 	if err != nil {
 		resp, err := saveError(r.id, err)
 		return "", resp, err

@@ -192,6 +192,7 @@ func Run(t *testing.T, s Suite) {
 	}
 	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
 	t.Run("delete fails after it finds a lost create", func(t *testing.T) { s.lostCreateFailedDelete(t) })
+	t.Run("delete after the create sent again is lost", func(t *testing.T) { s.lostResend(t) })
 	t.Run("lost create that matches more than one resource", func(t *testing.T) { s.lostCreateDuplicates(t) })
 	if nameProperty != "" {
 		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
@@ -578,6 +579,35 @@ func (s Suite) lostCreateFailedDelete(t *testing.T) {
 	}
 	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
 	require.NotNil(t, h.record())
+
+	h.removeEventually()
+	h.requireRemoved(nil)
+}
+
+// lostResend loses a create that reached AWS, deploys a changed template, and loses the create UCP sends again for
+// it too, for a handler whose resource is some members of a parent and that finds a lost create by sending it again.
+// Both creates may have added members, so the delete removes the members of both templates.
+func (s Suite) lostResend(t *testing.T) {
+	if s.Outside == nil {
+		t.Skip("the resource is not some members of a parent")
+	}
+	h := s.newHarness(t)
+	if h.handler.Options().Recovery != native.RecoverByResend {
+		t.Skip("the handler finds a lost create by search")
+	}
+	if od := h.onDelete(); od != schemas.OnDeleteDelete {
+		t.Skipf("a delete of the type doesn't delete it in AWS (onDelete %s)", od)
+	}
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	if h.record().Properties.AWSIdentifier != "" {
+		t.Skip("UCP saves the identifier before the create, so it reads AWS by it instead of sending the create again")
+	}
+
+	h.handler.lose("Create", true)
+	resp = h.put(s.Changed)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
 
 	h.removeEventually()
 	h.requireRemoved(nil)

@@ -100,21 +100,27 @@ func managedValues(rec *datamodel.AWSResource, desired map[string]any) []map[str
 // still owns them until a later deploy removes them.
 func keepPending(r *request, rec *datamodel.AWSResource) {
 	if _, scoped := r.handler.(native.ScopedReader); scoped {
-		for name, value := range rec.Properties.PendingLastApplied {
-			pending, ok := value.([]any)
-			previous, wasList := rec.Properties.LastApplied[name].([]any)
-			if !ok || !wasList {
-				continue
-			}
-			for _, member := range previous {
-				if !slices.ContainsFunc(pending, func(v any) bool { return reflect.DeepEqual(v, member) }) {
-					pending = append(pending, member)
-				}
-			}
-			rec.Properties.PendingLastApplied[name] = pending
-		}
+		addMembers(rec.Properties.PendingLastApplied, rec.Properties.LastApplied)
 	}
 	records.KeepPending(rec)
+}
+
+// addMembers adds to each list in properties the members of the same list in previous that it doesn't have.
+func addMembers(properties map[string]any, previous map[string]any) {
+	for name, value := range properties {
+		list, ok := value.([]any)
+		earlier, wasList := previous[name].([]any)
+		if !ok || !wasList {
+			continue
+		}
+		list = slices.Clone(list)
+		for _, member := range earlier {
+			if !slices.ContainsFunc(list, func(v any) bool { return reflect.DeepEqual(v, member) }) {
+				list = append(list, member)
+			}
+		}
+		properties[name] = list
+	}
 }
 
 // begin reads the region and rejects legacy and deprecated types. A non-nil response ends the request.
