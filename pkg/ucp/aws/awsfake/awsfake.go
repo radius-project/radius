@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -34,6 +35,8 @@ import (
 	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 )
 
@@ -51,6 +54,12 @@ type Call struct {
 	ClientToken string
 }
 
+// clientRequest is the create a client token was first sent with.
+type clientRequest struct {
+	requestToken string
+	desiredState string
+}
+
 type request struct {
 	operation  cctypes.Operation
 	typeName   string
@@ -63,7 +72,7 @@ type CloudControl struct {
 	mu        sync.Mutex
 	resources map[string]map[string]any
 	requests  map[string]*request
-	tokens    map[string]string
+	tokens    map[string]clientRequest
 	calls     []Call
 	next      int
 
@@ -99,7 +108,7 @@ func NewCloudControl() *CloudControl {
 	return &CloudControl{
 		resources:   map[string]map[string]any{},
 		requests:    map[string]*request{},
-		tokens:      map[string]string{},
+		tokens:      map[string]clientRequest{},
 		Identifiers: map[string]string{},
 		WriteOnly:   map[string][]string{},
 		Errors:      map[string]error{},
@@ -216,7 +225,8 @@ func (c *CloudControl) GetResource(ctx context.Context, params *cloudcontrol.Get
 	}, nil
 }
 
-// CreateResource accepts a create. A client token it has seen returns the first request instead of creating again.
+// CreateResource accepts a create. A client token it has seen returns the first request instead of creating again
+// when the desired state is the same, and ClientTokenConflictException naming the first request otherwise, like AWS.
 // The resource exists when the request's status is read and it succeeds.
 func (c *CloudControl) CreateResource(ctx context.Context, params *cloudcontrol.CreateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.CreateResourceOutput, error) {
 	c.before("CreateResource")
@@ -227,8 +237,12 @@ func (c *CloudControl) CreateResource(ctx context.Context, params *cloudcontrol.
 	if err := c.record(Call{Operation: "CreateResource", TypeName: typeName, Document: aws.ToString(params.DesiredState), ClientToken: clientToken}); err != nil {
 		return nil, err
 	}
-	if token, ok := c.tokens[clientToken]; ok && clientToken != "" {
-		return &cloudcontrol.CreateResourceOutput{ProgressEvent: &cctypes.ProgressEvent{RequestToken: aws.String(token), OperationStatus: cctypes.OperationStatusInProgress}}, nil
+	if first, ok := c.tokens[clientToken]; ok && clientToken != "" {
+		if first.desiredState != aws.ToString(params.DesiredState) {
+			message := fmt.Sprintf("ClientToken %s is already associated with an existing operation with RequestToken %s", clientToken, first.requestToken)
+			return nil, &smithy.OperationError{ServiceID: "CloudControl", OperationName: "CreateResource", Err: &smithyhttp.ResponseError{Response: &smithyhttp.Response{Response: &http.Response{StatusCode: http.StatusBadRequest}}, Err: &cctypes.ClientTokenConflictException{Message: aws.String(message)}}}
+		}
+		return &cloudcontrol.CreateResourceOutput{ProgressEvent: &cctypes.ProgressEvent{RequestToken: aws.String(first.requestToken), OperationStatus: cctypes.OperationStatusInProgress}}, nil
 	}
 
 	props := map[string]any{}
@@ -245,7 +259,7 @@ func (c *CloudControl) CreateResource(ctx context.Context, params *cloudcontrol.
 		c.resources[key(typeName, identifier)] = props
 	}
 	if clientToken != "" {
-		c.tokens[clientToken] = token
+		c.tokens[clientToken] = clientRequest{requestToken: token, desiredState: aws.ToString(params.DesiredState)}
 	}
 	return &cloudcontrol.CreateResourceOutput{ProgressEvent: &cctypes.ProgressEvent{RequestToken: aws.String(token), OperationStatus: cctypes.OperationStatusInProgress}}, nil
 }
