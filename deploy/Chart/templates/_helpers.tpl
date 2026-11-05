@@ -176,7 +176,7 @@ serviceaccount.yaml templates and the Secrets the chart creates.
 {{- end -}}
 
 {{- define "radius.authz.controlPlaneSecrets" -}}
-{{- list "database-secret" "radius-encryption-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName | uniq | toJson -}}
+{{- list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName | uniq | toJson -}}
 {{- end -}}
 
 {{/*
