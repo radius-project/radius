@@ -29,6 +29,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.10
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.6
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.82.2
+	github.com/aws/aws-sdk-go-v2/service/codebuild v1.78.9
 	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.75.6
 	github.com/aws/aws-sdk-go-v2/service/dax v1.38.12
 	github.com/aws/aws-sdk-go-v2/service/docdb v1.58.1
