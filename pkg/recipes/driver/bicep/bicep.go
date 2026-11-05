@@ -718,9 +718,10 @@ func (d *bicepDriver) addAWSProviderResourceIDs(ctx context.Context, output *rec
 		}
 
 		properties, err := resourceClient.GetProperties(ctx, resource)
-		if clientv2.Is404Error(err) {
-			// UCP has no record of a resource the recipe references with existing, so GET returns 404. Its ID ends in
-			// the AWS identifier, so read it from AWS by that.
+		if isAWSNoRecordError(err) {
+			// UCP has no record of a resource the recipe references with existing. Its ID ends in the AWS identifier,
+			// so read it from AWS by that. Any other 404 is for an alias whose resource is gone, and reading by the
+			// alias could read an unrelated resource.
 			properties, err = resourceClient.GetAWSPropertiesByIdentifier(ctx, resource)
 		}
 		if err != nil {
@@ -732,6 +733,12 @@ func (d *bicepDriver) addAWSProviderResourceIDs(ctx context.Context, output *rec
 			output.SetProviderResourceID(resource, arnproperties.ProviderResourceID(arn))
 		}
 	}
+}
+
+// isAWSNoRecordError reports whether err is UCP's 404 for an AWS resource ID that has no record.
+func isAWSNoRecordError(err error) bool {
+	respErr, ok := clientv2.ExtractResponseError(err)
+	return ok && respErr.StatusCode == http.StatusNotFound && respErr.ErrorCode == clients.AWSResourceNoRecordCode
 }
 
 // arnFromProperties returns the ARN in the given property of an AWS resource, or in its Arn, ARN, or arn property when

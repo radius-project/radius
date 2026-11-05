@@ -158,6 +158,9 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 			return nil, err
 		}
 	}
+	if resp, err := addExtraProperties(ctx, p.awsClients.Kafka, serviceCtx.ResourceTypeInAWSFormat(), region, *describeTypeOutput.Schema, resourceProperties); resp != nil || err != nil {
+		return resp, err
+	}
 
 	computedResourceID := computeResourceID(serviceCtx.ResourceID, addressSegment(rt.native, awsResourceIdentifier))
 	responseBody := map[string]any{
