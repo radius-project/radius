@@ -756,3 +756,22 @@ func Test_withGeneratedName(t *testing.T) {
 		require.Equal(t, properties, got)
 	})
 }
+
+// Test_Native_FindLostCreate_DeleteFails finds a lost create on DELETE, and then AWS rejects the delete. Radius still
+// owns the values the lost create set, so a later PUT that leaves one out clears it.
+func Test_Native_FindLostCreate_DeleteFails(t *testing.T) {
+	h := newNativeHarness(t)
+	withTier := map[string]any{"Name": "app-native", "Size": 1, "Tier": "standard", "Password": password}
+	h.loseCreate(h.fake, nativePath, withTier)
+	h.fake.Errors["Delete"] = nativefake.ClientError("InvalidState", "the resource can't be deleted now")
+
+	resp := h.delete(nativePath, testOwner)
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	rec := h.record(nativePath)
+	require.Empty(t, rec.Properties.ClientToken)
+	require.Equal(t, "standard", rec.Properties.LastApplied["Tier"], "the lost create's values count as applied")
+	delete(h.fake.Errors, "Delete")
+
+	h.deploy(nativePath, nativeProperties(1))
+	require.NotContains(t, h.cc.Resource(nativeType, "app-native"), "Tier")
+}
