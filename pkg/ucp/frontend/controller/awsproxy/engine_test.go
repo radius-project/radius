@@ -970,16 +970,31 @@ func Test_Delete(t *testing.T) {
 	})
 }
 
+func (r response) code() string {
+	e, _ := r.body["error"].(map[string]any)
+	c, _ := e["code"].(string)
+	return c
+}
+
+// Test_Get checks that a GET with no record returns 404 with the no-record code, and a GET of a record whose AWS
+// resource is not there returns 404 with NotFound, so a caller can tell them apart.
 func Test_Get(t *testing.T) {
 	h := newHarness(t)
-	require.Equal(t, http.StatusNotFound, h.get(vpcPath).status)
+	resp := h.get(vpcPath)
+	require.Equal(t, http.StatusNotFound, resp.status)
+	require.Equal(t, sdkclients.AWSResourceNoRecordCode, resp.code())
+	require.Contains(t, resp.message(), "UCP has no record of the AWS resource")
 	require.Empty(t, h.cc.Calls())
 
 	h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {})
-	require.Equal(t, http.StatusNotFound, h.get(vpcPath).status)
+	resp = h.get(vpcPath)
+	require.Equal(t, http.StatusNotFound, resp.status)
+	require.Equal(t, v1.CodeNotFound, resp.code())
 
 	h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = "vpc-1" })
-	require.Equal(t, http.StatusNotFound, h.get(vpcPath).status)
+	resp = h.get(vpcPath)
+	require.Equal(t, http.StatusNotFound, resp.status)
+	require.Equal(t, v1.CodeNotFound, resp.code())
 
 	h.cc.Errors["GetResource"] = awsError(&smithy.GenericAPIError{Code: "Throttling", Message: "slow", Fault: smithy.FaultServer})
 	require.Equal(t, http.StatusInternalServerError, h.get(vpcPath).status)

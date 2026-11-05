@@ -918,7 +918,10 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err != nil {
 		return nil, err
 	}
-	if rec == nil || rec.Properties.AWSIdentifier == "" {
+	if rec == nil {
+		return noRecordResponse(r.id), nil
+	}
+	if rec.Properties.AWSIdentifier == "" {
 		return armrpc_rest.NewNotFoundResponse(r.id), nil
 	}
 
@@ -942,6 +945,17 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		"type":       r.id.Type(),
 		"properties": properties,
 	}), nil
+}
+
+// noRecordResponse returns the 404 for an AWS resource ID that has no record. Its code tells it apart from a record
+// whose AWS resource is gone, so a caller can read a resource Radius did not deploy with POST /:get instead, and never
+// does so for an alias, which could read an unrelated resource whose AWS identifier matches the alias.
+func noRecordResponse(id resources.ID) armrpc_rest.Response {
+	return &armrpc_rest.NotFoundResponse{Body: v1.ErrorResponse{Error: &v1.ErrorDetails{
+		Code:    sdkclients.AWSResourceNoRecordCode,
+		Message: fmt.Sprintf("UCP has no record of the AWS resource %q. Deploy it by alias, or reference it with existing and name or properties.", id.String()),
+		Target:  id.String(),
+	}}}
 }
 
 // identifierFromProperties returns the AWS identifier the properties give, or "" when they do not set every primary
