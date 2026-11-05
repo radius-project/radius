@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -620,4 +621,106 @@ func Test_Native_ListWithoutProperties(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	items := resp.body["value"].([]any)
 	require.Equal(t, map[string]any{}, items[0].(map[string]any)["properties"])
+}
+
+// Test_Native_RedeliveredWithoutRecord runs a native operation again after its record is gone, as when the worker
+// stops after a delete removes the record and before it saves the operation's result. UCP never asks Cloud Control
+// about a native operation, even for a type that has a CloudFormation type.
+func Test_Native_RedeliveredWithoutRecord(t *testing.T) {
+	for _, method := range []string{http.MethodDelete, http.MethodPut} {
+		t.Run(method, func(t *testing.T) {
+			h := newNativeHarness(t)
+			h.deploy(nativePath, nativeProperties(1))
+			h.cc.Errors["GetResourceRequestStatus"] = nativefake.ClientError("AccessDeniedException", "not allowed")
+			if method == http.MethodDelete {
+				require.Equal(t, http.StatusAccepted, h.delete(nativePath, testOwner).status)
+			} else {
+				require.Equal(t, http.StatusCreated, h.put(nativePath, nativeProperties(2)).status)
+			}
+
+			msg, err := h.queue.Dequeue(t.Context(), queue.QueueClientConfig{})
+			require.NoError(t, err)
+			req := &ctrl.Request{}
+			require.NoError(t, json.Unmarshal(msg.Data, req))
+			require.True(t, strings.HasPrefix(req.OperationType, records.NativeOperationType+"|"), req.OperationType)
+			armCtx, err := req.ARMRequestContext()
+			require.NoError(t, err)
+			controller, err := awsresources.NewAwaitController(ctrl.Options{DatabaseClient: h.db}, h.clients(), armCtx.OperationType.Method)
+			require.NoError(t, err)
+
+			require.NoError(t, h.db.Delete(t.Context(), nativePath))
+			result, err := controller.Run(t.Context(), req)
+			require.NoError(t, err)
+			require.False(t, result.Requeue, "UCP must not poll Cloud Control for a native operation")
+			if method == http.MethodDelete {
+				require.Nil(t, result.Error)
+			} else {
+				require.Equal(t, `UCP has no record of the AWS resource "app-native". Deploy again.`, result.Error.Message)
+			}
+		})
+	}
+}
+
+// encodingHarness serves nativeType with a handler whose identifier encoding is encode.
+func encodingHarness(t *testing.T, encode func(properties map[string]any) (string, error)) *nativeHarness {
+	h := newNativeHarness(t)
+	h.fake.IdentifierOf = encode
+	registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{nativeType: nativeSchemas[nativeType]}}, h.fake.Encoding())
+	require.NoError(t, err)
+	h.native = registry
+	return h
+}
+
+// Test_Native_ExistingWithEncoderOnCloudControl checks that `existing` finds a resource by the handler's identifier
+// encoding where Cloud Control serves the type, as create and take-over do.
+func Test_Native_ExistingWithEncoderOnCloudControl(t *testing.T) {
+	h := encodingHarness(t, func(properties map[string]any) (string, error) {
+		name, _ := properties["Name"].(string)
+		return "encoded-" + name, nil
+	})
+	h.provisioningTypes[nativeType] = cftypes.ProvisioningTypeFullyMutable
+	h.cc.Put(nativeType, "encoded-app", map[string]any{"Name": "app", "Size": 1})
+
+	resp := h.do(func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
+		return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
+	}, http.MethodPost, providers+"AWS.Test/Native/:get", "", map[string]any{"properties": map[string]any{"Name": "app"}})
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, providers+"AWS.Test/Native/encoded-app", resp.body["id"])
+	calls := h.cc.Calls()
+	require.Equal(t, "encoded-app", calls[len(calls)-1].Identifier)
+	require.Empty(t, h.fake.Calls(), "Cloud Control serves the read")
+}
+
+// Test_Native_IdentifierIsOneSegment checks that UCP rejects an encoded identifier that is not one resource ID segment.
+func Test_Native_IdentifierIsOneSegment(t *testing.T) {
+	for _, identifier := range []string{"a/b", ".", ".."} {
+		t.Run(identifier, func(t *testing.T) {
+			h := encodingHarness(t, func(map[string]any) (string, error) { return identifier, nil })
+			resp := h.put(nativePath, nativeProperties(1))
+			require.Equal(t, http.StatusInternalServerError, resp.status)
+			require.Contains(t, resp.raw, "is not a single resource ID segment")
+			require.Empty(t, h.fake.Calls())
+			require.Nil(t, h.record(nativePath))
+		})
+	}
+
+	t.Run("encoder error", func(t *testing.T) {
+		h := encodingHarness(t, func(map[string]any) (string, error) { return "", errors.New("Key is not a string") })
+		resp := h.do(func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
+			return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
+		}, http.MethodPost, providers+"AWS.Test/Native/:get", "", map[string]any{"properties": map[string]any{"Name": "app"}})
+		require.Equal(t, http.StatusBadRequest, resp.status)
+		require.Equal(t, "Key is not a string", resp.message())
+	})
+}
+
+// Test_Native_ListKeepsIdentifier checks that a list returns each identifier as it is, without resolving "..".
+func Test_Native_ListKeepsIdentifier(t *testing.T) {
+	h := newNativeHarness(t)
+	h.fake.Opts.List = native.ListRegion
+	h.cc.Put(nativeType, "x/../app-native", map[string]any{"Name": "x/../app-native"})
+	resp := h.do(NewListAWSResources, http.MethodGet, providers+"AWS.Test/Native", "", nil)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	items := resp.body["value"].([]any)
+	require.Equal(t, providers+"AWS.Test/Native/x/../app-native", items[0].(map[string]any)["id"])
 }

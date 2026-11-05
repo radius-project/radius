@@ -69,6 +69,23 @@ func writeOnlyPaths(schema string) ([]string, error) {
 	return paths, nil
 }
 
+// asJSON returns properties as JSON decodes them, so nested values are map[string]any and []any, which removePaths
+// walks.
+func asJSON(properties map[string]any) (map[string]any, error) {
+	var out map[string]any
+	b, err := json.Marshal(properties)
+	if err == nil {
+		err = json.Unmarshal(b, &out)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if out == nil {
+		out = map[string]any{}
+	}
+	return out, nil
+}
+
 // removeWriteOnly removes the values at the write-only paths from a resource AWS returned. Cloud Control never returns
 // write-only values, but a native schema can mark more properties write-only than CloudFormation's, and some service
 // APIs return secrets, such as MediaLive's DescribeChannel.

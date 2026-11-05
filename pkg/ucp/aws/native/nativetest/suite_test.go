@@ -17,8 +17,8 @@ limitations under the License.
 package nativetest
 
 import (
-	"encoding/json"
 	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
@@ -189,8 +189,9 @@ func Test_Suite_HandWrittenType(t *testing.T) {
 		if bucket == "" || key == "" {
 			return "", nil
 		}
-		b, err := json.Marshal([]string{bucket, key})
-		return string(b), err
+		// Escaping each value keeps "/" and "|" out of the identifier, so it is one resource ID segment that splits
+		// back into the values.
+		return url.PathEscape(bucket) + "|" + url.PathEscape(key), nil
 	}
 	properties := map[string]any{"Bucket": "app-assets", "Key": "config/a|b.json", "ContentType": "application/json", "Body": "e30="}
 	identifier, err := identifierOf(properties)
