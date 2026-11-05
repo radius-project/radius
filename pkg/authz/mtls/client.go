@@ -112,7 +112,7 @@ func newClientTransport(options authz.Options, serverName string) (*clientTransp
 		return nil, fmt.Errorf("authorization mode %q requires certificateDirectory and namespace", options.EffectiveMode())
 	}
 
-	source, err := sharedSource(options.CertificateDirectory)
+	source, err := clientSource(options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load mTLS certificate: %w", err)
 	}

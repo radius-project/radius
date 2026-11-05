@@ -1,0 +1,105 @@
+suite: test Go component TLS evidence opt-in
+templates:
+  - rp/deployment.yaml
+  - dynamic-rp/deployment.yaml
+  - ucp/deployment.yaml
+  - controller/deployment.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: leaves normal installations unchanged
+    asserts: &disabled
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UCP_MTLS_STARTUP_PROOF_ENABLED
+          any: true
+  - it: leaves normal enforce mode unchanged
+    set:
+      global.rbac.enabled: true
+    asserts: *disabled
+  - it: supports saved values with no proof settings
+    set:
+      global.rbac.startupProof: null
+    asserts: *disabled
+  - it: injects the agreed public settings into every managed Go process
+    set:
+      global.rbac.enabled: true
+      global.rbac.startupProof.enabled: true
+      global.rbac.startupProof.expectedTrustSHA256: "6134ae3055977f0d025f1c2ada38ebdcad54514560ee2819b32a4a33e03f3a9f"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UCP_MTLS_STARTUP_PROOF_ENABLED
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UCP_MTLS_EXPECTED_TRUST_SHA256
+            value: "6134ae3055977f0d025f1c2ada38ebdcad54514560ee2819b32a4a33e03f3a9f"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UCP_MTLS_POD_UID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
+  - it: rejects proof in Off mode
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.startupProof.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: global.rbac.startupProof.enabled requires component mTLS
+  - it: never enables a disabled metrics listener
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.enabled: true
+      global.rbac.startupProof.enabled: true
+      global.prometheus.enabled: false
+    asserts:
+      - failedTemplate:
+          errorMessage: global.rbac.startupProof.enabled requires the existing metrics listener on a fixed valid port
+  - it: rejects an ephemeral observation port
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.enabled: true
+      global.rbac.startupProof.enabled: true
+      global.prometheus.port: 0
+    asserts:
+      - failedTemplate:
+          errorMessage: global.rbac.startupProof.enabled requires the existing metrics listener on a fixed valid port
+  - it: rejects a conflicting metrics route
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.enabled: true
+      global.rbac.startupProof.enabled: true
+      global.prometheus.path: /healthz/ucp-mtls
+    asserts:
+      - failedTemplate:
+          errorMessage: global.prometheus.path conflicts with the TLS startup proof endpoint
+  - it: requires the canonical public trust digest
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.enabled: true
+      global.rbac.startupProof.enabled: true
+      global.rbac.startupProof.expectedTrustSHA256: "ABC"
+    asserts:
+      - failedTemplate:
+          errorMessage: global.rbac.startupProof.expectedTrustSHA256 must be a lowercase SHA-256 digest of the dedicated CA fingerprint set
+  - it: rejects dormant trust settings
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.startupProof.expectedTrustSHA256: "6134ae3055977f0d025f1c2ada38ebdcad54514560ee2819b32a4a33e03f3a9f"
+    asserts:
+      - failedTemplate:
+          errorMessage: global.rbac.startupProof.expectedTrustSHA256 requires startupProof.enabled=true
+  - it: rejects nonboolean opt-in
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.startupProof.enabled: "false"
+    asserts:
+      - failedTemplate:
+          errorMessage: global.rbac.startupProof.enabled must be a boolean

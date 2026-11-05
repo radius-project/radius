@@ -59,11 +59,12 @@ func (c testCert) tlsCertificate(t *testing.T) tls.Certificate {
 }
 
 type certOptions struct {
-	dnsNames  []string
-	cn        string
-	key       crypto.Signer
-	notBefore time.Time
-	notAfter  time.Time
+	dnsNames    []string
+	cn          string
+	key         crypto.Signer
+	notBefore   time.Time
+	notAfter    time.Time
+	extKeyUsage []x509.ExtKeyUsage
 }
 
 func ecKey(t *testing.T, curve elliptic.Curve) crypto.Signer {
@@ -118,6 +119,9 @@ func (ca testCA) issue(t *testing.T, opts certOptions) testCert {
 	if opts.notAfter.IsZero() {
 		opts.notAfter = time.Now().Add(time.Hour)
 	}
+	if opts.extKeyUsage == nil {
+		opts.extKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
+	}
 
 	serial, err := rand.Int(rand.Reader, big.NewInt(1<<62))
 	require.NoError(t, err)
@@ -128,7 +132,7 @@ func (ca testCA) issue(t *testing.T, opts certOptions) testCert {
 		NotBefore:    opts.notBefore,
 		NotAfter:     opts.notAfter,
 		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		ExtKeyUsage:  opts.extKeyUsage,
 	}
 	der, err := x509.CreateCertificate(rand.Reader, template, ca.cert, opts.key.Public(), ca.key)
 	require.NoError(t, err)

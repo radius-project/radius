@@ -50,7 +50,17 @@ The versioned response reports `schemaVersion: 1`, `ready`, `proofKind: "startup
 
 Observe this endpoint through authenticated Kubernetes exact-pod proxy, with pod-read and pod-proxy permissions. Independently bind the response to the live pod UID and running container identity before and after the request, compare expected roots and the current public leaf, and re-list all consumers before a phase transition. A replacement or restart invalidates earlier observations. Generic Pod Ready, projected files and this initialization response do not prove a successful UCP handshake, completion of old streams, or termination of old processes.
 
-This is a rotation prerequisite, not a rotation command or completed consumer barrier. The Go TLS evidence primitives and CLI exact-pod observer do not yet cover every running Radius role. RP listeners require component mTLS and cannot simply expose this status to plaintext pod proxy. Full consumer lifecycle wiring, safe aggregation migration and a server-enforced injector write fence remain required.
+This is a rotation prerequisite, not a rotation command or completed consumer barrier. Full consumer inventory and restart orchestration, safe aggregation migration and a server-enforced injector write fence remain required.
+
+### Go component loaded-trust evidence
+
+`global.rbac.startupProof.enabled=true` enables the same public evidence contract in UCP, Applications RP, Dynamic RP and the controller. Set `global.rbac.startupProof.expectedTrustSHA256` to the canonical digest described above. The chart supplies the same three proof environment variables, including the actual pod UID. This setting does not enable the separate deployment-engine opt-in or select an engine image.
+
+The endpoint is added beside `/metrics` on the existing metrics listener, normally port 9090. Proof mode requires component mTLS and enabled metrics on a fixed valid port. It never silently enables metrics, adds a listener or makes the application API public. Without the opt-in, no proof endpoint is mounted and existing listener/client lifetimes remain unchanged.
+
+The bundled `networkPolicies.enabled` policy permits API-server ingress only to UCP port 9443, not to the Go metrics ports or the engine observation port. On an enforcing CNI, exact-pod proxy observation therefore also needs an operator-approved ingress policy for those destinations and the actual API-server source addresses. The proof opt-ins do not widen network access automatically. A proxy timeout or denial is a failed observation, never evidence of trust adoption.
+
+In proof mode, the component's incoming listener and all outgoing component-client factories use the same actual pinned TLS Source. This also covers the clients used by workers sharing the RP or UCP process. Startup validates the component identity, permitted keys and both server/client certificate usages; renewals are validated through that same Source. The report therefore describes material installed for actual use, not a separately parsed copy of the files. A ready report is still only local TLS initialization: it does not assert that every hosted service is healthy, a remote handshake succeeded, or old processes and streams have stopped. UCP's separate aggregation serving certificate is not covered by this component-trust report.
 
 ## Configuration Options
 

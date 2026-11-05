@@ -49,13 +49,14 @@ const (
 
 // material is one consistent set of certificate, key, and CA bundle.
 type material struct {
-	cert      *tls.Certificate
-	pool      *x509.CertPool
-	trust     [sha256.Size]byte
-	notBefore time.Time
-	notAfter  time.Time
-	caPEM     []byte
-	epoch     uint64
+	cert          *tls.Certificate
+	pool          *x509.CertPool
+	intermediates *x509.CertPool
+	trust         [sha256.Size]byte
+	notBefore     time.Time
+	notAfter      time.Time
+	caPEM         []byte
+	epoch         uint64
 }
 
 // Source holds a component's certificate, key, and CA bundle loaded from a directory,
@@ -67,12 +68,14 @@ type Source struct {
 	now      func() time.Time
 	readFile func(string) ([]byte, error)
 
-	mu            sync.Mutex
-	digest        [sha256.Size]byte
-	current       atomic.Pointer[material]
-	expectedTrust string
-	proofMode     atomic.Bool
-	invalidations uint64
+	mu             sync.Mutex
+	digest         [sha256.Size]byte
+	current        atomic.Pointer[material]
+	expectedTrust  string
+	proofMode      atomic.Bool
+	invalidations  uint64
+	startupProof   *StartupProof
+	proofNamespace string
 }
 
 // NewSource loads the certificate, key, and CA bundle from dir. It returns an error if
@@ -114,6 +117,11 @@ func (s *Source) Reload() (changed bool, err error) {
 		return false, err
 	}
 	m.epoch = s.invalidations
+	if s.proofNamespace != "" {
+		if err := s.validateProofIdentity(m, s.proofNamespace); err != nil {
+			return false, err
+		}
+	}
 	if s.expectedTrust != "" {
 		trust, err := parsePublicTrust(raw[2], s.now())
 		if err != nil || trust.digest != s.expectedTrust {
@@ -202,7 +210,7 @@ func (s *Source) parse(certPEM, keyPEM, caPEM []byte) (*material, error) {
 		return nil, fmt.Errorf("certificate is not issued by the CA bundle: %w", err)
 	}
 
-	m := &material{cert: &cert, pool: pool, trust: sha256.Sum256(caPEM), caPEM: bytes.Clone(caPEM),
+	m := &material{cert: &cert, pool: pool, intermediates: intermediates, trust: sha256.Sum256(caPEM), caPEM: bytes.Clone(caPEM),
 		notBefore: cert.Leaf.NotBefore, notAfter: cert.Leaf.NotAfter}
 	for _, c := range chains[0] {
 		if c.NotBefore.After(m.notBefore) {
