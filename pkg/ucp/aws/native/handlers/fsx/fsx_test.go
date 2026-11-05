@@ -784,3 +784,32 @@ func Test_Options(t *testing.T) {
 	inRegion("eu-west-2")(&options)
 	require.Equal(t, "eu-west-2", options.Region)
 }
+
+// Test_UpdatesEveryUpdatableProperty checks that Update applies every property the schema lets a deploy change,
+// including those inside each configuration, so UCP never records a change AWS didn't get. Any other property must be
+// create-only, which UCP rejects.
+func Test_UpdatesEveryUpdatableProperty(t *testing.T) {
+	configs := slices.Sorted(maps.Keys(updatable))
+	require.ElementsMatch(t, nativetest.Updatable(t, schema(t)), append([]string{"FileSystemTypeVersion", "NetworkType", "StorageCapacity", "StorageType", "Tags"}, configs...))
+
+	var doc struct {
+		Properties map[string]struct {
+			Ref string `json:"$ref"`
+		} `json:"properties"`
+		Definitions map[string]struct {
+			Properties map[string]any `json:"properties"`
+		} `json:"definitions"`
+		CreateOnly []string `json:"createOnlyProperties"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(schema(t)), &doc))
+	for _, config := range configs {
+		definition := doc.Definitions[strings.TrimPrefix(doc.Properties[config].Ref, "#/definitions/")]
+		want := []string{}
+		for name := range definition.Properties {
+			if !slices.Contains(doc.CreateOnly, "/properties/"+config+"/"+name) {
+				want = append(want, name)
+			}
+		}
+		require.ElementsMatch(t, want, updatable[config], config)
+	}
+}

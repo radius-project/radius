@@ -765,6 +765,10 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 				return err
 			})
 		case "CoreInstanceGroup", "TaskInstanceGroups":
+			if removesField(request.Patch, key, nil) {
+				unsupported = append(unsupported, "Instances/"+key)
+				continue
+			}
 			if groups == nil {
 				var err error
 				if groups, err = h.groups(ctx, request.Region, request.Identifier); err != nil {
@@ -778,7 +782,7 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 			}
 			resizes = append(resizes, changes...)
 		case "MasterInstanceFleet", "CoreInstanceFleet", "TaskInstanceFleets":
-			if !scaled || !covers(without(desired[key], capacities...), without(current[key], capacities...), false) {
+			if !scaled || removesField(request.Patch, key, capacities) || !covers(without(desired[key], capacities...), without(current[key], capacities...), false) {
 				unsupported = append(unsupported, "Instances/"+key)
 			}
 		default:
@@ -792,6 +796,23 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 		}}, calls...)
 	}
 	return calls, unsupported, nil
+}
+
+// removesField reports whether the patch removes a property inside the Instances property key, other than those in
+// allowed. EMR has no call that clears one, and the comparison with AWS only checks the properties the template still
+// sets, so a removal would otherwise count as applied.
+func removesField(patch jsondiff.Patch, key string, allowed []string) bool {
+	prefix := "/Instances/" + key + "/"
+	for _, op := range patch {
+		if op.Type != jsondiff.OperationRemove || !strings.HasPrefix(op.Path, prefix) {
+			continue
+		}
+		segments := strings.Split(op.Path, "/")
+		if !slices.Contains(allowed, segments[len(segments)-1]) {
+			return true
+		}
+	}
+	return false
 }
 
 // changedKeys returns the properties of Instances the patch changes, sorted.

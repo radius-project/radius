@@ -19,6 +19,7 @@ package docdb
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
 const region = "us-west-2"
@@ -312,4 +314,40 @@ func Test_Instance_Errors(t *testing.T) {
 	require.ErrorContains(t, err, "unavailable")
 	_, err = h.Progress(t.Context(), region, "one", native.OperationCreate)
 	require.ErrorContains(t, err, "unavailable")
+}
+
+// Test_Cluster_UpdatesEveryUpdatableProperty checks that Update applies every property the schema lets a deploy
+// change, so UCP never records a change AWS didn't get. Any other property must be create-only, which UCP rejects.
+func Test_Cluster_UpdatesEveryUpdatableProperty(t *testing.T) {
+	require.ElementsMatch(t, nativetest.Updatable(t, schema(t, "aws-docdb-dbcluster.json")), append(slices.Clone(modifiable), "Tags"))
+}
+
+// Test_Instance_UpdatesEveryUpdatableProperty is Test_Cluster_UpdatesEveryUpdatableProperty for instances.
+func Test_Instance_UpdatesEveryUpdatableProperty(t *testing.T) {
+	require.ElementsMatch(t, nativetest.Updatable(t, schema(t, "aws-docdb-dbinstance.json")), append(slices.Clone(modifiableInstance), "Tags"))
+}
+
+// Test_Instance_RemovedDefaults checks that a removed property with an AWS default goes back to it, and one without
+// is left as AWS has it.
+func Test_Instance_RemovedDefaults(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewInstance(api)
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{
+		"DBInstanceIdentifier": "one", "DBClusterIdentifier": "app", "AutoMinorVersionUpgrade": false,
+		"EnablePerformanceInsights": true, "PreferredMaintenanceWindow": "sun:05:00-sun:05:30",
+	}})
+	require.NoError(t, err)
+	api.calls = nil
+
+	err = h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: "one", Desired: map[string]any{}, Patch: jsondiff.Patch{
+		{Type: jsondiff.OperationRemove, Path: "/AutoMinorVersionUpgrade"},
+		{Type: jsondiff.OperationRemove, Path: "/EnablePerformanceInsights"},
+		{Type: jsondiff.OperationRemove, Path: "/PreferredMaintenanceWindow"},
+	}})
+	require.NoError(t, err)
+	require.Equal(t, []string{"DescribeDBInstances", "ModifyDBInstance"}, api.calls)
+	got := api.store.Resource(instanceType, "one")
+	require.Equal(t, true, got["AutoMinorVersionUpgrade"])
+	require.Equal(t, false, got["EnablePerformanceInsights"])
+	require.Equal(t, "sun:05:00-sun:05:30", got["PreferredMaintenanceWindow"], "the window has no default, so AWS keeps it")
 }

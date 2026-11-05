@@ -218,9 +218,45 @@ func Test_Update_RemovedWithoutDefault(t *testing.T) {
 	require.NoError(t, update(t, h, identifier, with(cluster, map[string]any{"Description": nil})))
 	require.NotContains(t, api.calls, "UpdateCluster", "DAX keeps a removed description")
 
-	require.NoError(t, update(t, h, identifier, with(cluster, map[string]any{"AvailabilityZones": []any{"us-west-2b"}})))
-	require.NotContains(t, api.calls, "UpdateCluster")
-	require.NotContains(t, api.calls, "IncreaseReplicationFactor", "DAX has no call that moves a node")
+}
+
+// Test_Update_UnreachableZones checks that a change of AvailabilityZones that adding or removing nodes can't reach is
+// rejected, since DAX has no call that moves a node, and one it can reach is applied.
+func Test_Update_UnreachableZones(t *testing.T) {
+	two := with(cluster, map[string]any{"ReplicationFactor": 2, "AvailabilityZones": []any{"us-west-2a", "us-west-2b"}})
+	tests := []struct {
+		name    string
+		desired map[string]any
+		ok      bool
+	}{
+		{"same count, other zone", with(two, map[string]any{"AvailabilityZones": []any{"us-west-2a", "us-west-2c"}}), false},
+		{"same zones, other order", with(two, map[string]any{"AvailabilityZones": []any{"us-west-2b", "us-west-2a"}}), true},
+		{"increase that moves a node", with(two, map[string]any{"ReplicationFactor": 3, "AvailabilityZones": []any{"us-west-2a", "us-west-2c", "us-west-2c"}}), false},
+		{"increase that keeps the nodes", with(two, map[string]any{"ReplicationFactor": 3, "AvailabilityZones": []any{"us-west-2a", "us-west-2b", "us-west-2c"}}), true},
+		{"increase with a list that doesn't count the nodes", with(two, map[string]any{"ReplicationFactor": 3, "AvailabilityZones": []any{"us-west-2a", "us-west-2b"}}), false},
+		{"decrease to a zone no node is in", with(two, map[string]any{"ReplicationFactor": 1, "AvailabilityZones": []any{"us-west-2d"}}), false},
+		{"zones removed", with(two, map[string]any{"AvailabilityZones": nil}), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			api := newFakeAPI(awsfake.NewCloudControl())
+			h := NewCluster(api)
+			identifier := deploy(t, h, two)
+			api.calls = nil
+			err := update(t, h, identifier, tt.desired)
+			if tt.ok {
+				require.NoError(t, err)
+				return
+			}
+			var failure *native.Failure
+			require.ErrorAs(t, err, &failure)
+			require.True(t, failure.ClientError)
+			require.Equal(t, native.OutcomeRejected, failure.Outcome)
+			for _, call := range []string{"UpdateCluster", "IncreaseReplicationFactor", "DecreaseReplicationFactor", "TagResource", "UntagResource"} {
+				require.NotContains(t, api.calls, call, "nothing is changed")
+			}
+		})
+	}
 }
 
 func Test_Update_DecreaseReplicationFactor(t *testing.T) {
@@ -231,7 +267,6 @@ func Test_Update_DecreaseReplicationFactor(t *testing.T) {
 	}{
 		{"the template names the zones left", []any{"us-west-2b"}, []string{"us-west-2a", "us-west-2c"}},
 		{"the template names no zones", nil, nil},
-		{"the zones don't match the nodes", []any{"us-west-2d"}, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -270,7 +305,7 @@ func Test_Update_Errors(t *testing.T) {
 	require.ErrorIs(t, err, native.ErrNotFound)
 
 	api.errs["IncreaseReplicationFactor"] = fault("InvalidClusterStateFault")
-	err = update(t, h, identifier, with(cluster, map[string]any{"Description": "changed", "ReplicationFactor": 3}))
+	err = update(t, h, identifier, with(cluster, map[string]any{"Description": "changed", "ReplicationFactor": 3, "AvailabilityZones": nil}))
 	var failure *native.Failure
 	require.ErrorAs(t, err, &failure, "a failure after UpdateCluster is partly applied")
 	require.Equal(t, native.OutcomePartial, failure.Outcome)

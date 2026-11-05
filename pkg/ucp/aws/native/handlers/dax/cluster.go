@@ -312,8 +312,8 @@ func (h *Cluster) updateCall(ctx context.Context, cluster *types.Cluster, reques
 
 // replicationCall returns the call that changes the number of nodes to the desired ReplicationFactor, or nil when it
 // doesn't change. New nodes go in the desired AvailabilityZones. A decrease removes nodes from the zones the desired
-// list no longer has, when the list says which, and DAX chooses otherwise. DAX has no call that moves a node, so a
-// change of AvailabilityZones alone changes nothing.
+// list no longer has, and DAX chooses when the template sets no zones. DAX has no call that moves a node, so a change
+// of AvailabilityZones that adding or removing nodes can't reach is rejected rather than recorded as applied.
 func (h *Cluster) replicationCall(ctx context.Context, cluster *types.Cluster, request native.UpdateRequest, changed []string, opt func(*dax.Options)) (func() error, error) {
 	if !slices.Contains(changed, "ReplicationFactor") && !slices.Contains(changed, "AvailabilityZones") {
 		return nil, nil
@@ -326,6 +326,13 @@ func (h *Cluster) replicationCall(ctx context.Context, cluster *types.Cluster, r
 		return nil, err
 	}
 	current := replicationFactor(cluster)
+	if slices.Contains(changed, "AvailabilityZones") && len(desired.AvailabilityZones) > 0 && !zonesReachable(cluster.Nodes, desired.AvailabilityZones, int(desired.ReplicationFactor-current)) {
+		return nil, &native.Failure{
+			Message:     "DAX can't move a node to another Availability Zone, so the cluster's nodes can't end in the template's AvailabilityZones. Set AvailabilityZones to the zones of the nodes kept and added, or delete the cluster and deploy again.",
+			ClientError: true,
+			Outcome:     native.OutcomeRejected,
+		}
+	}
 	switch {
 	case desired.ReplicationFactor > current:
 		input := &dax.IncreaseReplicationFactorInput{
@@ -349,6 +356,26 @@ func (h *Cluster) replicationCall(ctx context.Context, cluster *types.Cluster, r
 		}, nil
 	}
 	return nil, nil
+}
+
+// zonesReachable reports whether adding delta nodes, or removing -delta, can leave the nodes in exactly the desired
+// zones, counting each zone as often as the list has it.
+func zonesReachable(nodes []types.Node, desired []string, delta int) bool {
+	if delta < 0 {
+		return removedZones(nodes, desired, -delta) != nil
+	}
+	left := map[string]int{}
+	for _, zone := range desired {
+		left[zone]++
+	}
+	for _, node := range nodes {
+		zone := aws.ToString(node.AvailabilityZone)
+		if left[zone] == 0 {
+			return false
+		}
+		left[zone]--
+	}
+	return len(desired)-len(nodes) == delta
 }
 
 // removedZones returns the zone of each node to remove, so the nodes left are in the desired zones, or nil when

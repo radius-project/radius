@@ -30,6 +30,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -195,6 +196,31 @@ func Run(t *testing.T, s Suite) {
 		}
 		t.Run("DescribeType fails", func(t *testing.T) { s.describeTypeFails(t) })
 	}
+}
+
+// Updatable returns the top-level properties of the schema a deploy can change after create: those that are neither
+// read-only nor create-only. A handler's Update must apply each one, or UCP records a change AWS never got.
+func Updatable(t *testing.T, schema string) []string {
+	var doc struct {
+		Properties map[string]any `json:"properties"`
+		ReadOnly   []string       `json:"readOnlyProperties"`
+		CreateOnly []string       `json:"createOnlyProperties"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(schema), &doc))
+	fixed := map[string]bool{}
+	for _, path := range slices.Concat(doc.ReadOnly, doc.CreateOnly) {
+		if name, ok := strings.CutPrefix(path, "/properties/"); ok && !strings.Contains(name, "/") {
+			fixed[name] = true
+		}
+	}
+	out := []string{}
+	for name := range doc.Properties {
+		if !fixed[name] {
+			out = append(out, name)
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 // runSwitchCases runs the cases that create a resource with one handler, then use the other.

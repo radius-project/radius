@@ -685,6 +685,28 @@ func Test_Native_CreateOnlyChange(t *testing.T) {
 	require.Equal(t, []string{"Read"}, methods(h.fake.Calls()))
 }
 
+// Test_Native_CreateOnlyWriteOnlyChange checks that a changed write-only value of a create-only property gets 400 and
+// never reaches the handler, as for a create-only property AWS returns, while the same value deployed again succeeds.
+func Test_Native_CreateOnlyWriteOnlyChange(t *testing.T) {
+	h := newNativeHarness(t)
+	schema := strings.Replace(nativeSchemas[nativeType], `"createOnlyProperties": ["/properties/Name"]`, `"createOnlyProperties": ["/properties/Name", "/properties/Password"]`, 1)
+	registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{nativeType: schema}, Metadata: map[string]schemas.Metadata{}}, h.fake)
+	require.NoError(t, err)
+	h.native = registry
+	h.deploy(nativePath, nativeProperties(1))
+	h.fake.Calls()
+
+	changed := nativeProperties(1)
+	changed["Password"] = "other-password"
+	resp := h.put(nativePath, changed)
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.Contains(t, resp.message(), "can't change after it is created: Password")
+	require.Equal(t, []string{"Read"}, methods(h.fake.Calls()))
+
+	resp = h.put(nativePath, nativeProperties(1))
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+}
+
 // Test_Native_DeleteTokenClearedByUpdate checks that the delete token of a failed delete is kept for the next delete,
 // and cleared when an update starts, so a later delete makes a new one.
 func Test_Native_DeleteTokenClearedByUpdate(t *testing.T) {

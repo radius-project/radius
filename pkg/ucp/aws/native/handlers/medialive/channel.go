@@ -355,7 +355,8 @@ var updatable = slices.DeleteFunc(awsapi.FieldNames(&medialive.UpdateChannelInpu
 })
 
 // removedDefaults are the values a property goes back to when the template removes it. AWS keeps the value of any
-// other removed property.
+// other removed property, including ChannelClass: going back to STANDARD would take UpdateChannelClass, which needs
+// Destinations for both pipelines, so a template that removes ChannelClass doesn't change the class.
 var removedDefaults = map[string]any{"LogLevel": string(types.LogLevelDisabled)}
 
 // Update changes the channel with UpdateChannel, or UpdateChannelClass for a new ChannelClass, then adds and removes

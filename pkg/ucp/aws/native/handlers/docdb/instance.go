@@ -143,6 +143,13 @@ var modifiableInstance = []string{
 	"EnablePerformanceInsights", "PreferredMaintenanceWindow",
 }
 
+// removedInstanceDefaults are the values a removed property goes back to, AWS's defaults. AWS keeps the value of any
+// other removed property: CACertificateIdentifier and PreferredMaintenanceWindow have no default to go back to.
+var removedInstanceDefaults = map[string]any{
+	"AutoMinorVersionUpgrade":   true,
+	"EnablePerformanceInsights": false,
+}
+
 // Update makes the patch's changes with ModifyDBInstance, applied at once, then adds and removes tags.
 func (h *Instance) Update(ctx context.Context, request native.UpdateRequest) error {
 	instance, err := h.describe(ctx, request.Region, request.Identifier)
@@ -153,9 +160,16 @@ func (h *Instance) Update(ctx context.Context, request native.UpdateRequest) err
 	changed := awsapi.Changed(request)
 	values := map[string]any{}
 	for _, name := range changed {
-		if value, ok := request.Desired[name]; ok && slices.Contains(modifiableInstance, name) {
-			values[name] = value
+		if !slices.Contains(modifiableInstance, name) {
+			continue
 		}
+		value, ok := request.Desired[name]
+		if !ok {
+			if value, ok = removedInstanceDefaults[name]; !ok {
+				continue
+			}
+		}
+		values[name] = value
 	}
 	calls := []func() error{}
 	if len(values) > 0 {

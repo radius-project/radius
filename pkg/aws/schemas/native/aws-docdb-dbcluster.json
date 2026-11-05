@@ -166,7 +166,11 @@
     "/properties/DBClusterIdentifier",
     "/properties/AvailabilityZones",
     "/properties/DBSubnetGroupName",
-    "/properties/StorageEncrypted"
+    "/properties/StorageEncrypted",
+    "/properties/RestoreToTime",
+    "/properties/RestoreType",
+    "/properties/UseLatestRestorableTime",
+    "/properties/GlobalClusterIdentifier"
   ],
   "primaryIdentifier": ["/properties/Id"],
   "readOnlyProperties": [

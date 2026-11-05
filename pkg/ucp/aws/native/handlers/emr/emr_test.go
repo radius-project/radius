@@ -415,6 +415,8 @@ func Test_Update_Unchangeable(t *testing.T) {
 		{"master group", with(base, map[string]any{"Instances": with(instances(1, nil), map[string]any{"MasterInstanceGroup": map[string]any{"InstanceCount": 3, "InstanceType": "m5.xlarge", "Market": "ON_DEMAND", "Name": "master"}})}), "Instances/MasterInstanceGroup"},
 		{"core instance type", with(base, map[string]any{"Instances": with(instances(1, nil), map[string]any{"CoreInstanceGroup": map[string]any{"InstanceCount": 1, "InstanceType": "r5.xlarge", "Market": "ON_DEMAND", "Name": "core"}})}), "Instances/CoreInstanceGroup"},
 		{"removed core group", with(base, map[string]any{"Instances": with(instances(1, nil), map[string]any{"CoreInstanceGroup": nil})}), "Instances/CoreInstanceGroup"},
+		{"removed core group name", with(base, map[string]any{"Instances": with(instances(1, nil), map[string]any{"CoreInstanceGroup": map[string]any{"InstanceCount": 1, "InstanceType": "m5.xlarge", "Market": "ON_DEMAND"}})}), "Instances/CoreInstanceGroup"},
+		{"removed core group market", with(base, map[string]any{"Instances": with(instances(1, nil), map[string]any{"CoreInstanceGroup": map[string]any{"InstanceCount": 1, "InstanceType": "m5.xlarge", "Name": "core"}})}), "Instances/CoreInstanceGroup"},
 		{"added task group", with(base, map[string]any{"Instances": instances(1, map[string]any{"TaskInstanceGroups": []any{map[string]any{"InstanceCount": 1, "InstanceType": "m5.xlarge"}}})}), "Instances/TaskInstanceGroups"},
 	}
 	for _, tt := range tests {
@@ -880,6 +882,15 @@ func Test_ScaledCounts(t *testing.T) {
 		require.Empty(t, changes(api), "the capacities EMR set stay")
 
 		require.ErrorContains(t, update(t, h, id, with(base, map[string]any{"Instances": fleets(2, "r5.xlarge")})), "Instances/CoreInstanceFleet")
+
+		unnamed := fleets(2, "m5.xlarge")
+		delete(asMap(unnamed["CoreInstanceFleet"]), "Name")
+		require.ErrorContains(t, update(t, h, id, with(base, map[string]any{"Instances": unnamed}), "Instances/CoreInstanceFleet/Name"), "Instances/CoreInstanceFleet",
+			"EMR can't clear a fleet's name")
+		uncounted := fleets(2, "m5.xlarge")
+		delete(asMap(uncounted["CoreInstanceFleet"]), "TargetSpotCapacity")
+		require.NoError(t, update(t, h, id, with(base, map[string]any{"Instances": uncounted}), "Instances/CoreInstanceFleet/TargetSpotCapacity"),
+			"managed scaling sets the capacity, so removing it changes nothing")
 		unscaled := with(base, map[string]any{"ManagedScalingPolicy": nil})
 		require.ErrorContains(t, update(t, h, id, unscaled, "ManagedScalingPolicy/ComputeLimits/MaximumCapacityUnits"), "Instances/CoreInstanceFleet, Instances/TaskInstanceFleets",
 			"EMR has no call here to set a fleet's capacity")

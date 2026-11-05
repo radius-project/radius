@@ -531,6 +531,7 @@
     "/properties/OpenZFSConfiguration/DeploymentType",
     "/properties/OpenZFSConfiguration/EndpointIpAddressRange",
     "/properties/OpenZFSConfiguration/PreferredSubnetId",
+    "/properties/OpenZFSConfiguration/Options",
     "/properties/OpenZFSConfiguration/RootVolumeConfiguration",
     "/properties/WindowsConfiguration/ActiveDirectoryId",
     "/properties/WindowsConfiguration/DeploymentType",
