@@ -19,14 +19,21 @@ package handlers
 
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
+	docdbsdk "github.com/aws/aws-sdk-go-v2/service/docdb"
+
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/docdb"
 )
 
 // All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
 // is in pkg/aws/schemas.
 func All(cfg aws.Config) []native.Handler {
-	return nil
+	docdbAPI := docdbsdk.NewFromConfig(cfg)
+	return []native.Handler{
+		docdb.NewCluster(docdbAPI),
+		docdb.NewInstance(docdbAPI),
+	}
 }
 
 // NewRegistry returns the registry of every handler All returns, with the schemas built into Radius.
