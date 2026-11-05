@@ -287,7 +287,7 @@ func (e *engine) describeType(ctx context.Context, r *request) (*cloudformation.
 //
 //  1. Read the record. A running operation gets 409, unless it is stale or was never queued, and then the request
 //     resumes it. A record that still has a client token has a first create that has not finished, so the request
-//     sends the create again with that token.
+//     sends the create again with that token (see recoverReplay when the template differs from the first create).
 //  2. With no AWS resource in the record, look for one by the top-level name, then by the identifier in the
 //     properties. If AWS has it, take it over. Otherwise save the record with a client token, and with the identifier
 //     when the properties give it, and create. Before taking over or creating a resource whose identifier is known,
@@ -405,7 +405,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if current != nil {
 		return e.update(ctx, r, rec, etag, current, identifier, properties, applied, typeInfo, parsed, secrets)
 	}
-	return e.create(ctx, r, rec, etag, name, properties, applied, schema, secrets)
+	return e.create(ctx, r, rec, etag, name, properties, applied, typeInfo, parsed, secrets)
 }
 
 // applied is what a successful deploy records: the properties without write-only and secret values, and the
@@ -537,8 +537,9 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 
 // create creates the AWS resource. The record is saved with a client token before AWS is called, so a retry sends
 // the same token and Cloud Control does not create a second resource.
-func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, name string, properties map[string]any, applied applied, schema string, secrets []string) (armrpc_rest.Response, error) {
+func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, name string, properties map[string]any, applied applied, typeInfo *cloudformation.DescribeTypeOutput, parsed *typeSchema, secrets []string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	schema := aws.ToString(typeInfo.Schema)
 
 	// name takes over a resource that already exists. When AWS has none, create one only if the identifier properties
 	// give that same name; otherwise the template asked for a resource that is not there.
@@ -561,8 +562,15 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	// Save the identifier the properties give before the create, so the identifier check also finds a create that is
 	// still running. AWS assigns the others, and the worker saves them when the create finishes.
 	rec.Properties.AWSIdentifier = known
+	previous := pendingOf(rec)
 	rec.Properties.PendingLastApplied = applied.properties
 	rec.Properties.PendingFingerprints = applied.fingerprints
+	if replay {
+		// Until AWS answers, UCP cannot tell which attempt's write-only values AWS has, so the reservation saves no
+		// fingerprints. A request that finds the reservation stale, or after a failed save, then sends every value that
+		// can change. The fingerprints are set again once AWS shows which create it has.
+		rec.Properties.PendingFingerprints = nil
+	}
 	etag, resp, err := e.reserve(ctx, r, rec, etag, records.OperationCreate)
 	if resp != nil || err != nil {
 		return resp, err
@@ -587,15 +595,28 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 			}
 			logger.Error(delErr, "Failed to leave a tombstone after AWS rejected a create", "alias", r.id.Name())
 		}
+		if replay {
+			if token, ok := ucp_aws.ConflictingRequestToken(err, rec.Properties.ClientToken); ok {
+				return e.recoverReplay(ctx, r, rec, etag, token, previous, properties, applied, typeInfo, parsed, secrets)
+			}
+		}
 		// Otherwise AWS may have accepted the create. A client fault on a replay, such as throttling or a client token
-		// conflict, does not show that the original create failed. The record keeps its client token, so the next
-		// deploy sends the create again with it and Cloud Control returns the first request instead of creating a
-		// second resource.
+		// conflict UCP cannot read, does not show that the original create failed. The record keeps its client token,
+		// so the next deploy sends the create again with it and Cloud Control returns the first request instead of
+		// creating a second resource.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			// AWS did nothing with a replay it rejected, so the pending values still describe the create it may have.
+			// After any other error, AWS may have the create from this attempt or an earlier one, and the pending
+			// fingerprints stay unknown.
+			if replay && ucp_aws.IsClientFault(err) {
+				restorePending(rec, previous)
+			}
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
 		})
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
+	// AWS returned the request for this body, so its fingerprints describe the create AWS has.
+	rec.Properties.PendingFingerprints = applied.fingerprints
 	if id := aws.ToString(response.ProgressEvent.Identifier); id != "" {
 		rec.Properties.AWSIdentifier = id
 	}
@@ -609,6 +630,74 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	responseProperties["provisioningState"] = v1.ProvisioningStateProvisioning
 	responseBody := map[string]any{"id": r.id.String(), "name": r.id.Name(), "type": r.id.Type(), "properties": responseProperties}
 	return e.asyncResponse(r.id, responseBody, 201, operationID), nil
+}
+
+// pendingOf returns the pending values of the record's operation in progress.
+func pendingOf(rec *datamodel.AWSResource) applied {
+	return applied{properties: rec.Properties.PendingLastApplied, fingerprints: rec.Properties.PendingFingerprints}
+}
+
+// restorePending sets the record's pending values back to p, the result of pendingOf.
+func restorePending(rec *datamodel.AWSResource, p applied) {
+	rec.Properties.PendingLastApplied = p.properties
+	rec.Properties.PendingFingerprints = p.fingerprints
+}
+
+// recoverReplay finishes a resumed first create that AWS answered with ClientTokenConflictException naming the request
+// token of the original create. The template differs from the original create's body, for example in write-only
+// values, so AWS did not return the original request. The record gets back previous, the pending values it had before
+// this request, which describe a create that may have reached AWS, and UCP reads the original request's status:
+//
+//   - succeeded: the pending values and fingerprints become last-applied, as when the worker finishes a create, the
+//     record gets the identifier, and the request continues as an update with the template. The update compares the
+//     template's write-only values with those fingerprints, as for any other update.
+//   - failed: nothing exists, so the record becomes a tombstone, as when the worker finds a create failed, and the
+//     request returns the failure. The next deploy starts over.
+//   - still running: UCP tracks the create and returns 409, and the caller deploys again when it finishes.
+//   - reading the status fails: the record is kept, and the request returns the error.
+func (e *engine) recoverReplay(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, requestToken string, previous applied, properties map[string]any, deploy applied, typeInfo *cloudformation.DescribeTypeOutput, parsed *typeSchema, secrets []string) (armrpc_rest.Response, error) {
+	restorePending(rec, previous)
+	status, err := ucp_aws.GetRequestStatus(ctx, e.clients.CloudControl, r.region, requestToken)
+	if err != nil {
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		})
+		return ucp_aws.HandleAWSError(ctx, err)
+	}
+	switch {
+	case !status.Done:
+		if _, err := e.track(ctx, r, rec, etag, v1.OperationPut, records.OperationCreate, requestToken); err != nil {
+			return nil, err
+		}
+		return conflict("A create of the AWS resource %q is still running in AWS. Deploy again when it finishes.", r.id.Name()), nil
+	case !status.Succeeded:
+		if _, err := e.saveTombstone(ctx, rec, etag); err != nil {
+			return saveError(r.id, err)
+		}
+		failure := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInternal, Message: status.Error(), Target: r.id.String()}}
+		if status.IsClientError() {
+			failure.Error.Code = v1.CodeInvalid
+			return armrpc_rest.NewBadRequestARMResponse(failure), nil
+		}
+		return armrpc_rest.NewInternalServerErrorARMResponse(failure), nil
+	}
+
+	rec.Properties.AWSIdentifier = status.Identifier
+	records.ApplyPending(rec)
+	etag, err = e.store.Save(ctx, rec, etag)
+	if err != nil {
+		return saveError(r.id, err)
+	}
+	current, err := e.readResource(ctx, r, status.Identifier)
+	if err != nil {
+		return ucp_aws.HandleAWSError(ctx, err)
+	}
+	if current == nil {
+		// Deleted outside Radius since the create: create it again.
+		rec.Properties.AWSIdentifier = ""
+		return e.create(ctx, r, rec, etag, "", properties, deploy, typeInfo, parsed, secrets)
+	}
+	return e.update(ctx, r, rec, etag, current, status.Identifier, properties, deploy, typeInfo, parsed, secrets)
 }
 
 // track saves the operation AWS accepted on the record, still in progress, and queues it. The request token is saved
@@ -792,12 +881,12 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 //     show that the original create failed.
 //   - still running: UCP tracks the create and returns 409, and the caller deletes again when it finishes.
 //
+// The resend sends the pending properties, which have no write-only values. Cloud Control returns the original request
+// only when the body matches it exactly, so for a type with write-only properties it returns
+// ClientTokenConflictException instead, naming the original request. UCP reads that request's status the same way.
+//
 // When AWS never had the create, the resend creates the resource, and the delete then removes it. Cloud Control keeps a
 // client token for 36 hours, so after that a resend cannot find the original request and creates a second resource.
-// The resend sends the pending properties, which have no write-only values. Cloud Control returns the original request
-// only when the body matches it exactly, so for a type with write-only properties the resend gets
-// ClientTokenConflictException, and the DELETE fails with 400 until the client token expires. Deploying again recovers
-// it: a resumed PUT resends the full template, which matches, and saves the identifier, so the next DELETE works.
 // Because the resend may be what creates the resource, the pending fingerprints are dropped: they describe values this
 // create may not have set.
 func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (string, armrpc_rest.Response, error) {
@@ -816,9 +905,14 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 		DesiredState: aws.String(string(desiredState)),
 		ClientToken:  aws.String(rec.Properties.ClientToken),
 	}, CloudControlRegionOption(r.region))
-	if err != nil {
-		// The resend is a replay, so an error, even a client fault such as throttling or a client token conflict, does
-		// not show that the original create failed. Keep the record so the next DELETE tries again.
+	var requestToken string
+	if err == nil {
+		requestToken = aws.ToString(response.ProgressEvent.RequestToken)
+	} else if token, ok := ucp_aws.ConflictingRequestToken(err, rec.Properties.ClientToken); ok {
+		requestToken = token
+	} else {
+		// The resend is a replay, so an error, even a client fault such as throttling, does not show that the original
+		// create failed. Keep the record so the next DELETE tries again.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			rec.Properties.PendingOperation = records.OperationCreate
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
@@ -827,7 +921,6 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 		return "", resp, err
 	}
 
-	requestToken := aws.ToString(response.ProgressEvent.RequestToken)
 	status, err := ucp_aws.GetRequestStatus(ctx, e.clients.CloudControl, r.region, requestToken)
 	if err != nil {
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
