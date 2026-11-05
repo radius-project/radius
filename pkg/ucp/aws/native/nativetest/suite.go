@@ -191,6 +191,7 @@ func Run(t *testing.T, s Suite) {
 		t.Run("delete "+suffix, func(t *testing.T) { s.lostCreateDelete(t, reached) })
 	}
 	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
+	t.Run("delete fails after it finds a lost create", func(t *testing.T) { s.lostCreateFailedDelete(t) })
 	t.Run("lost create that matches more than one resource", func(t *testing.T) { s.lostCreateDuplicates(t) })
 	if nameProperty != "" {
 		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
@@ -553,6 +554,33 @@ func (s Suite) lostCreateDuplicates(t *testing.T) {
 	resp = h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
 	h.finish()
 	requireAmbiguous(resp)
+}
+
+// lostCreateFailedDelete loses a create that reached AWS, and deletes the alias. The delete finds the resource, and
+// its call to AWS fails, so the record keeps what the create may have applied. The next delete removes it all, including
+// the members of a handler whose resource is some members of a parent (native.ScopedDeleter).
+func (s Suite) lostCreateFailedDelete(t *testing.T) {
+	h := s.newHarness(t)
+	if od := h.onDelete(); od != schemas.OnDeleteDelete {
+		t.Skipf("a delete of the type doesn't delete it in AWS (onDelete %s)", od)
+	}
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+
+	h.handler.lose("Delete", false)
+	for range maxAttempts {
+		resp = h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
+		h.finish()
+		if resp.status != http.StatusConflict {
+			break
+		}
+	}
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	require.NotNil(t, h.record())
+
+	h.removeEventually()
+	h.requireRemoved(nil)
 }
 
 // generatedNameRetry loses a create of a template that leaves out the name, and deploys again. Both attempts send
